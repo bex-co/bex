@@ -1,6 +1,6 @@
 # w4 · m544 — An agent session runs the Python its repo asks for, chosen by Render's rules, from the official builds with GNU readline
 
-**Worker:** worker4 **Goal:** a cloud agent session picks its Python the way a Render native build does (`PYTHON_VERSION` → `.python-version` → Render's dated default), from the same table the hosted-app build uses, and runs that version from the official Docker Python builds (GNU readline) in every shell and setup step. **Status:** todo (t001–t010 done; t011 Closeout waits for the production replay)
+**Worker:** worker4 **Goal:** a cloud agent session picks its Python the way a Render native build does (`PYTHON_VERSION` → `.python-version` → Render's dated default), from the same table the hosted-app build uses, and runs that version from the official Docker Python builds (GNU readline) in every shell and setup step. **Status:** blocked (t001–t010 done; t011 Closeout waits for production to carry `344463497`)
 
 ## Tasks (in order)
 
@@ -36,3 +36,7 @@ On production agent sessions (a fresh session and one booted from a snapshot beh
 - **Expected outcome:** today every session gets the baked 3.12.16 (or uv's download) whatever the repository asks for (w10/m513); after this, an agent runs, tests and debugs on the Python the repository's deploy would get on Render.
 - **Why now:** agent automations run on Python repositories every few hours, and a session on the wrong line produces work that fails on the line the repository actually uses. The resolver is still operator-internal (`lego/operator/internal/build/nativeversion.go`), so the move to `lego/types` must come before any session-side caller.
 - **Render parity:** included (t008). Selection follows Render's documented rules; the agent-side behavior (a visible step before setup, the PATH reaching setup steps and terminals) is checked against Devin, the reference for agent surfaces (ADR047).
+
+## Parked 2026-11-21
+
+t001–t010 shipped in `344463497`. What is left is t011: replaying the definition of done on production agent sessions, fresh and booted from a snapshot, once the platform pin carries that commit (the agent image is built and its build check, which this host could not run, proves the baked lines on that deploy). Then, in a repository session on the QA workspace: a root `.python-version` `3.13` gives `python3 --version` 3.13.18 and `readline.backend == "readline"` in the agent's shell, a setup step and the web Shell; a `PYTHON_VERSION=3.11.9` repo secret gives exactly 3.11.9 (its value shows redacted in the transcript, ADR098 D6); a repository with neither gets 3.14.10; `2.7.18` fails `AGENT_SESSION_SETUP_FAILED` naming it; a uv `python-preference = "only-managed"` repository still downloads uv's build while `/usr/bin/python3` stays 3.11; the transcript's first step reads `==> Using Python <version> (from …)` or `(default)`. Record the evidence here and close with t011.
