@@ -174,6 +174,11 @@ const (
 // then builds on what Render gives it.
 var renderDefaults20261103 = time.Date(2026, time.November, 3, 0, 0, 0, 0, time.UTC)
 
+// renderRubyDefault20261119 is when Render moved its default Ruby to 3.4.13
+// for new services (render.com/docs/ruby-version, w9/138), past the 3.4 line's
+// reviewed 3.4.12: the resolve phase swaps in the official 3.4.13 image.
+var renderRubyDefault20261119 = time.Date(2026, time.November, 19, 0, 0, 0, 0, time.UTC)
+
 // renderNodeDefault20261021 and renderElixirDefault20250612 are when Render's
 // current Node (24.22.1, render.com/docs/node-version) and Elixir (1.18.4,
 // render.com/docs/elixir-erlang-versions) defaults took effect.
@@ -254,15 +259,16 @@ type exactDefault struct {
 }
 
 // exactDefaults are Render's default patches by creation date, oldest first
-// (w8/198, w8/217, w4/620, w6/m291). The versions stay exact even where a step
-// equals the line's reviewed patch, so a later line-pin bump never moves a
-// default (the w8/217 regression class).
+// (w8/198, w8/217, w4/620, w6/m291, w9/138). The versions stay exact even
+// where a step equals the line's reviewed patch, so a later line-pin bump never
+// moves a default (the w8/217 regression class).
 var exactDefaults = map[string][]exactDefault{
 	nativeNodeRuntime:   {{renderNodeDefault20261021, "24.22.1"}},
 	nativeElixirRuntime: {{renderElixirDefault20250612, "1.18.4"}},
 	nativeRubyRuntime: {
 		{rubyDefaultCutoff, rubyDefaultVersion},
 		{renderDefaults20261103, "3.4.12"},
+		{renderRubyDefault20261119, "3.4.13"},
 	},
 	nativePythonRuntime: {
 		// Render's 3.14.8 (since 2026-10-12) from when bex's default line

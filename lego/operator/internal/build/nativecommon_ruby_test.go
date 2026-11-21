@@ -52,6 +52,7 @@ func nativeRubyQualificationCases() []nativeRubyQualificationCase {
 	ruby, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
 	return append(cases,
 		nativeRubyQualificationCase{name: "ruby344-creation-default", version: rubyDefaultVersion, created: rubyDefaultCutoff.Add(time.Second)},
+		nativeRubyQualificationCase{name: "ruby3413-creation-default", version: "3.4.13", created: renderRubyDefault20261119.Add(time.Second)},
 		nativeRubyQualificationCase{name: "ruby320-locked-bullseye", version: nativeRubyBullseyeRelease, locked: true},
 		nativeRubyQualificationCase{name: "node-static-ruby34", line: ruby.line, version: ruby.version, static: true})
 }
@@ -233,8 +234,8 @@ func TestCommonRubyQualificationCanonicalRecipes(t *testing.T) {
 	t.Cleanup(func() { nativeCommonBase = original })
 	nativeCommonBase = commonFixtureImage
 	cases := nativeRubyQualificationCases()
-	if len(cases) != len(nativeToolchains[nativeRubyRuntime].lines)+3 {
-		t.Fatal("profile must cover every reviewed Ruby line, creation default, static companion and locked bullseye release")
+	if len(cases) != len(nativeToolchains[nativeRubyRuntime].lines)+4 {
+		t.Fatal("profile must cover every reviewed Ruby line, both exact creation defaults, static companion and locked bullseye release")
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -256,9 +257,9 @@ func TestCommonRubyQualificationCanonicalRecipes(t *testing.T) {
 				fake.digests["ruby:"+tc.version+"-bullseye"] = exactDigest
 				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + tc.version, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bullseye")}
 			default:
-				primary = "ruby:" + rubyDefaultVersion + "-bookworm@" + exactDigest
-				fake.digests["ruby:"+rubyDefaultVersion+"-bookworm"] = exactDigest
-				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + rubyDefaultVersion, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bookworm")}
+				primary = "ruby:" + tc.version + "-bookworm@" + exactDigest
+				fake.digests["ruby:"+tc.version+"-bookworm"] = exactDigest
+				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + tc.version, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bookworm")}
 			}
 			choices, err := ResolveNativeBuildExact(context.Background(), fake, tc.created, o.Runtime, bundle, path, source)
 			must(t, err)
@@ -301,7 +302,7 @@ func assertRubyQualificationRecipe(t *testing.T, tc nativeRubyQualificationCase,
 	if choices[0].Image != ruby || choices[1].Image != node.image || !strings.Contains(recipe, o.StartCommand) || !strings.Contains(recipe, "ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH="+nativeRubyGems) {
 		t.Fatalf("primary Ruby defaults, Node companion or runtime command lost: %+v\n%s", choices, recipe)
 	}
-	if tc.line == "" && !tc.locked && (choices[0].Line != rubyDefaultVersion || !strings.Contains(choices[0].Narration(), "(default)")) {
+	if tc.line == "" && !tc.locked && (choices[0].Line != tc.version || choices[0].Narration() != "==> Using Ruby "+tc.version+" (default)") {
 		t.Fatalf("creation default was replaced by a reviewed-line patch: %+v", choices)
 	}
 	if tc.locked && (choices[0].Line != tc.version || !strings.HasPrefix(choices[0].Narration(), "==> Using Ruby "+tc.version+" (from Gemfile.lock)\n") ||

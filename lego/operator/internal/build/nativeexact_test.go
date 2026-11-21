@@ -312,13 +312,17 @@ func TestDockerHubResolver(t *testing.T) {
 	}
 }
 
-// w8/198: a Ruby service created since the cutoff with no version signal builds
-// on Render's default 3.4.4, and the log names it; an older or unknown-age
-// service, and any explicit signal, keep the line's reviewed patch.
+// w8/198, w9/138: a Ruby service created since a dated step with no version
+// signal builds on Render's default patch for that date, and the log names it;
+// an older or unknown-age service, and any explicit signal, keep the line's
+// reviewed patch.
 func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
-	exactEnv := []string{"RUBY_VERSION=3.4.4"}
-	fake := &fakeExact{digests: map[string]string{"ruby:3.4.4-bookworm": exactDigest}, envByImage: map[string]fakeExactMetadata{
-		"ruby:3.4.4-bookworm@" + exactDigest: {exactEnv, []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}}}
+	exactEnv := map[string][]string{"3.4.4": {"RUBY_VERSION=3.4.4"}, "3.4.13": {"RUBY_VERSION=3.4.13"}}
+	fake := &fakeExact{digests: map[string]string{}, envByImage: map[string]fakeExactMetadata{}}
+	for version, env := range exactEnv {
+		fake.digests["ruby:"+version+"-bookworm"] = exactDigest
+		fake.envByImage["ruby:"+version+"-bookworm@"+exactDigest] = fakeExactMetadata{env, []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}
+	}
 	reviewed, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
 	run := func(created time.Time, files map[string]string) NativeChoice {
 		t.Helper()
@@ -329,10 +333,10 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if choices[0].Image == "ruby:3.4.4-bookworm@"+exactDigest {
+		if env, ok := exactEnv[choices[0].Line]; ok {
 			out, err := os.ReadFile(dockerfile)
 			must(t, err)
-			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, exactEnv)
+			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, env)
 		}
 		return choices[0]
 	}
@@ -349,23 +353,35 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 	if c := run(renderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.4.4" {
 		t.Errorf("service created just before 2026-11-03 must keep 3.4.4: %+v", c)
 	}
+	// w9/138: Render's default moved to 3.4.13 for services created since
+	// 2026-11-19, past the line's reviewed 3.4.12, so the official 3.4.13 image
+	// stands in; one created the hour before keeps the reviewed 3.4.12.
+	if c := run(renderRubyDefault20261119.Add(time.Hour), nil); c.Line != "3.4.13" || c.Image != "ruby:3.4.13-bookworm@"+exactDigest || c.Narration() != "==> Using Ruby 3.4.13 (default)" {
+		t.Errorf("service created after 2026-11-19 must build on 3.4.13: %+v narration %q", c, c.Narration())
+	}
+	if c := run(renderRubyDefault20261119.Add(-time.Hour), nil); c.Line != "3.4" || c.Image != reviewed.image || c.Narration() != "==> Using Ruby 3.4.12 (default)" {
+		t.Errorf("service created just before 2026-11-19 must keep the reviewed 3.4.12: %+v narration %q", c, c.Narration())
+	}
 	for name, c := range map[string]NativeChoice{
-		"older service":   run(rubyDefaultCutoff.Add(-time.Hour), nil),
-		"unknown age":     run(time.Time{}, nil),
-		"explicit signal": run(rubyDefaultCutoff.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
+		"older service":                    run(rubyDefaultCutoff.Add(-time.Hour), nil),
+		"unknown age":                      run(time.Time{}, nil),
+		"explicit signal":                  run(rubyDefaultCutoff.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
+		"explicit signal after 2026-11-19": run(renderRubyDefault20261119.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
 	} {
-		if c.Line != "3.4" && c.Line != "3.4.4" || strings.Contains(c.Image, "ruby:3.4.4-bookworm@") {
+		if c.Line != "3.4" || c.Image != reviewed.image {
 			t.Errorf("%s must keep the reviewed 3.4 patch: %+v", name, c)
 		}
 	}
 
 	missing := &fakeExact{digests: map[string]string{}}
-	o := nativeOptions()
-	o.Runtime = "ruby"
-	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
-	choices, err := ResolveNativeBuildExact(context.Background(), missing, rubyDefaultCutoff.Add(time.Hour), "ruby", bundle, dockerfile, src)
-	if err != nil || choices[0].Line != "3.4" || !strings.Contains(choices[0].Narration(), "No official image ruby:3.4.4-bookworm") {
-		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
+	for created, version := range map[time.Time]string{rubyDefaultCutoff.Add(time.Hour): "3.4.4", renderRubyDefault20261119.Add(time.Hour): "3.4.13"} {
+		o := nativeOptions()
+		o.Runtime = "ruby"
+		bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+		choices, err := ResolveNativeBuildExact(context.Background(), missing, created, "ruby", bundle, dockerfile, src)
+		if err != nil || choices[0].Line != "3.4" || choices[0].Image != reviewed.image || !strings.Contains(choices[0].Narration(), "No official image ruby:"+version+"-bookworm") {
+			t.Errorf("a missing %s tag must fall back to the reviewed patch and say so: %+v %v", version, choices[0], err)
+		}
 	}
 }
 
@@ -772,18 +788,41 @@ func TestRubyReleaseOlderThanBookwormComesFromBullseye(t *testing.T) {
 // w4/620: a later bump of a line's reviewed patch must not move a dated
 // default: a service created since 2026-11-03 still asks for exactly 3.14.10.
 func TestDatedDefaultSurvivesALinePinBump(t *testing.T) {
-	saved := nativeToolchains[nativePythonRuntime]
-	t.Cleanup(func() { nativeToolchains[nativePythonRuntime] = saved })
-	bumped := saved
-	bumped.lines = append([]nativeLine(nil), saved.lines...)
-	for i := range bumped.lines {
-		if bumped.lines[i].line == "3.14" {
-			bumped.lines[i].version = "3.14.11"
-		}
-	}
-	nativeToolchains[nativePythonRuntime] = bumped
+	withLineVersion(t, nativePythonRuntime, "3.14", "3.14.11")
 	got := defaultExact(renderDefaults20261103.Add(time.Hour), nativePythonRuntime, NativeChoice{Line: "3.14"})
 	if got != "3.14.10" {
 		t.Fatalf("defaultExact after a 3.14.11 line bump = %q, want 3.14.10", got)
 	}
+}
+
+// w9/138: refreshing the 3.4 line to 3.4.13 leaves a Ruby service created
+// from 2026-11-03 until 2026-11-19 on exactly 3.4.12, as Render's table does,
+// and one created since 2026-11-19 on the line's patch with no swap.
+func TestRubyDatedDefaultsSurviveALineRefreshToTheirNewestStep(t *testing.T) {
+	withLineVersion(t, nativeRubyRuntime, "3.4", "3.4.13")
+	for created, want := range map[time.Time]string{
+		renderRubyDefault20261119.Add(-time.Hour): "3.4.12",
+		renderRubyDefault20261119:                 "",
+		renderRubyDefault20261119.Add(time.Hour):  "",
+	} {
+		if got := defaultExact(created, nativeRubyRuntime, NativeChoice{Line: "3.4"}); got != want {
+			t.Errorf("defaultExact(%s) after a 3.4.13 line refresh = %q, want %q", created, got, want)
+		}
+	}
+}
+
+// withLineVersion sets the reviewed patch of one of runtime's lines for the
+// rest of the test, as a toolchain refresh would.
+func withLineVersion(t *testing.T, runtime, line, version string) {
+	t.Helper()
+	saved := nativeToolchains[runtime]
+	t.Cleanup(func() { nativeToolchains[runtime] = saved })
+	bumped := saved
+	bumped.lines = slices.Clone(saved.lines)
+	for i := range bumped.lines {
+		if bumped.lines[i].line == line {
+			bumped.lines[i].version = version
+		}
+	}
+	nativeToolchains[runtime] = bumped
 }
