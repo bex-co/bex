@@ -108,8 +108,8 @@ Re-read [Security profiles](https://docs.devin.ai/product-guides/security-profil
 | Open, comment on, edit and close issues | Same | none |
 | Re-run and cancel workflow runs | Same, runs and jobs | none |
 | Create pull requests and edit their title and body | Through `open_or_update_draft_pr`, which records the PR and its footer | none an agent needs: the tool does both |
-| Mark ready, merge, close a pull request | Refused | filed as [w10/034](../../034.md) |
-| Dispatch a workflow (Actions write) | Refused | filed as [w10/033](../../033.md), for the session's own branch |
+| Mark ready, merge, close a pull request | Refused | filed as [w10/034](../034.md) |
+| Dispatch a workflow (Actions write) | Refused | filed as [w10/033](../033.md), for the session's own branch |
 | Approve a pull request | Refused | not filed: Devin documents no approvals, and an App approval satisfies required reviews |
 | Set commit statuses, check runs | Refused | not filed: a session's CI results come from the repository's own workflows; nothing in bex reports through statuses |
 | Push code, create branches and tags (contents, workflows) | Only `git push` of the session branch through the Git proxy | none an agent needs (ADR047's branch confinement) |
