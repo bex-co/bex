@@ -85,20 +85,43 @@ class Literals(unittest.TestCase):
         self.assertFalse(any(v.endswith("/z") for v in got), "a variable mid-join makes the path unknowable")
 
 
-class Repo(unittest.TestCase):
-    """End to end on a throwaway repository."""
+class Shell(unittest.TestCase):
+    def test_words_reads_and_runs(self):
+        src = """
+        # bash scripts/commented.sh
+        bash scripts/a.sh --flag
+        . "$here/lib/b.sh"
+        bash -n scripts/c.sh
+        grep -qF 'bash scripts/needle.sh' deploy/x.yaml
+        out=$(python3 -B -m unittest scripts/t1.py scripts/t2.py -v)
+        runner="$repo_root/scripts/d.sh"
+        bash "$runner" --check
+        echo "see docs/e.md" >&2
+        """
+        got = cti.shell_words(src)
+        for word in ["scripts/a.sh", cti.HOLE + "/lib/b.sh", "scripts/t1.py", "scripts/t2.py",
+                     cti.HOLE + "/scripts/d.sh"]:
+            self.assertIn((word, True), got)
+        for word in ["scripts/c.sh", "scripts/needle.sh", "deploy/x.yaml", "docs/e.md"]:
+            self.assertIn((word, False), got, "named, so read, but not run")
+        self.assertFalse(any("commented" in word for word, _ in got))
+
+    def test_paths_resolve_holes_and_repository_globs(self):
+        tracked = {"scripts/lib/b.sh", "scripts/x.sh", "deploy/a.yaml", "deploy/b.yaml", "README.md"}
+        self.assertEqual(cti.shell_paths(cti.HOLE + "/lib/b.sh", "scripts/t.sh", tracked), ["scripts/lib/b.sh"])
+        self.assertEqual(cti.shell_paths(cti.HOLE + "/x.sh", "scripts/t.sh", tracked), ["scripts/x.sh"])
+        self.assertEqual(cti.shell_paths("deploy/*.yaml", "scripts/t.sh", tracked), ["deploy/a.yaml", "deploy/b.yaml"])
+        for scratch in ["*", "*/*", cti.HOLE + "/deploy/*.yaml", "../x.sh"]:
+            self.assertEqual(cti.shell_paths(scratch, "scripts/t.sh", tracked), [], scratch)
+
+
+class Throwaway(unittest.TestCase):
+    """A throwaway repository to check end to end."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = pathlib.Path(self.tmp.name)
         subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
-        self.write("dashboard/package.json", "{}")
-        self.write("lego/backend/pricing.yaml", "x")
-        self.write("lego/backend/fixture.go", "x")
-        self.write("dashboard/src/__tests__/pricing.test.ts",
-                   'read(`${process.cwd()}/../lego/backend/pricing.yaml`);\n'
-                   'const sample = "lego/backend/fixture.go";\n'
-                   'const filter = "lego/**/*.go";\n')
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -108,10 +131,25 @@ class Repo(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
 
-    def run_check(self, ignored=None):
+    def tracked(self):
         subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
-        tracked = set(subprocess.run(["git", "ls-files"], cwd=self.repo, capture_output=True, text=True,
-                                     check=True).stdout.split())
+        return set(subprocess.run(["git", "ls-files"], cwd=self.repo, capture_output=True, text=True,
+                                  check=True).stdout.split())
+
+
+class Repo(Throwaway):
+    def setUp(self):
+        super().setUp()
+        self.write("dashboard/package.json", "{}")
+        self.write("lego/backend/pricing.yaml", "x")
+        self.write("lego/backend/fixture.go", "x")
+        self.write("dashboard/src/__tests__/pricing.test.ts",
+                   'read(`${process.cwd()}/../lego/backend/pricing.yaml`);\n'
+                   'const sample = "lego/backend/fixture.go";\n'
+                   'const filter = "lego/**/*.go";\n')
+
+    def run_check(self, ignored=None):
+        tracked = self.tracked()
         suite = cti.Suite(("dashboard",), (".test.ts",), ignored or {})
         with mock.patch.dict(cti.SUITES, {WORKFLOW: suite}):
             return cti.check(self.repo, WORKFLOW, tracked)
@@ -156,6 +194,62 @@ class Repo(unittest.TestCase):
         self.assertIn(f"{WORKFLOW}: paths miss the workflow file itself", problems)
 
 
+class RunsRepo(Throwaway):
+    """A suite whose tests are the scripts its workflow runs."""
+
+    WORKFLOW = ".github/workflows/gitops.yml"
+    LISTED = ["deploy/gitops/**", WORKFLOW, "scripts/validate.sh", "scripts/guard.sh", "infra/policy.json",
+              "docs/runbook.md", "scripts/live-check.sh"]
+
+    def setUp(self):
+        super().setUp()
+        self.write("deploy/gitops/base/a.yaml", "x")
+        self.write("scripts/validate.sh", "bash scripts/guard.sh\n"
+                   "grep -qF 'bash scripts/needle.sh' docs/runbook.md\n"
+                   "grep -qF 'live scope' scripts/live-check.sh\n")
+        self.write("scripts/guard.sh", 'here="$(dirname "$0")"\nyq . "$here/../infra/policy.json"\n')
+        self.write("infra/policy.json", "{}")
+        self.write("docs/runbook.md", "x")
+        # Named only as a needle or a grep target: what they read is no input.
+        self.write("scripts/needle.sh", "cat lego/never.go\n")
+        self.write("scripts/live-check.sh", "cat lego/live-only.go\n")
+        self.write("lego/never.go", "x")
+        self.write("lego/live-only.go", "x")
+
+    def run_check(self, ignored=None):
+        tracked = self.tracked()
+        suite = cti.Suite(("deploy/gitops",), (), ignored or {}, runs=True)
+        with mock.patch.dict(cti.SUITES, {self.WORKFLOW: suite}, clear=True):
+            return cti.check(self.repo, self.WORKFLOW, tracked)
+
+    def steps(self, paths):
+        text = workflow(paths).replace("permissions:", "jobs:\n  render:\n    steps:\n"
+                                       "      - run: bash scripts/validate.sh\n\npermissions:")
+        self.write(self.WORKFLOW, text)
+
+    def test_the_scripts_run_and_what_they_read_pass_when_listed(self):
+        self.steps(self.LISTED)
+        self.assertEqual(self.run_check({"scripts/needle.sh": "a needle"}), [])
+
+    def test_a_grepped_script_and_a_transitive_read_must_be_listed(self):
+        self.steps([p for p in self.LISTED if p not in ("scripts/live-check.sh", "infra/policy.json")])
+        problems = self.run_check({"scripts/needle.sh": "a needle"})
+        self.assertIn(f"{self.WORKFLOW}: paths miss infra/policy.json, read by scripts/guard.sh", problems)
+        self.assertIn(f"{self.WORKFLOW}: paths miss scripts/live-check.sh, read by scripts/validate.sh", problems)
+        self.assertEqual(len(problems), 2, problems)
+
+    def test_affected_counts_the_scripts_a_suite_runs(self):
+        self.steps(self.LISTED)
+        self.tracked()
+        suite = cti.Suite(("deploy/gitops",), (), {}, runs=True)
+        out = io.StringIO()
+        with mock.patch.dict(cti.SUITES, {self.WORKFLOW: suite}, clear=True), \
+                mock.patch("sys.stdin", io.StringIO("scripts/guard.sh\nscripts/live-check.sh\ndocs/a.md\n")), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(cti.main(["--repo", str(self.repo), "--affected"]), 0)
+        self.assertEqual(out.getvalue().split(), ["scripts/guard.sh"])
+
+
 class Affected(unittest.TestCase):
     def test_only_what_could_open_a_gap(self):
         changed = ["lego/backend/internal/x/a_test.go", "lego/backend/internal/x/a.go", "dashboard/src/b.test.tsx",
@@ -171,6 +265,16 @@ class RealTree(unittest.TestCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             rc = cti.main(["--repo", str(HERE.parent)])
         self.assertEqual(rc, 0, out.getvalue())
+
+    def test_gitops_scans_what_its_validation_greps(self):
+        # gitops-validate.sh greps verify-static-site-security.sh for its live
+        # scope guard; the workflow listed neither it nor a dozen like it.
+        repo = HERE.parent
+        workflow = ".github/workflows/gitops.yml"
+        found, scripts = cti.run_references(repo, workflow, cti.SUITES[workflow], cti._tracked(repo))
+        self.assertIn("scripts/gitops-validate.sh", scripts)
+        self.assertIn("scripts/gitops-validate.sh", found["scripts/verify-static-site-security.sh"])
+        self.assertNotIn("scripts/verify-static-site-security.sh", scripts, "only grepped, never run")
 
     def test_no_suite_checks_the_board_out(self):
         # The premise of BOARD: a file outside the checkout cannot be read.

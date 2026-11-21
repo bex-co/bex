@@ -32,6 +32,16 @@ fails too, so the list only holds live exceptions. Directory reads and paths
 composed at run time are not resolved: list those by hand (deploy.yml's full
 run is the backstop).
 
+A suite whose tests are scripts (gitops.yml: gitops-validate.sh and the
+guards it runs) is scanned as shell from its workflow: every word naming a
+tracked file is a read, quoted or not, and a script a scanned file runs
+(`bash x.sh`, `. lib.sh`, `python3 -m unittest t.py`, `"$here/x.sh"`, or a
+variable assigned that path) is scanned in turn. A path inside single quotes
+is a needle, read but never run, and `bash -n` only reads. gitops.yml missed
+some forty files that gitops-validate.sh and its guards read or grep
+(verify-static-site-security.sh among them) while the checker scanned only Go
+and TypeScript tests.
+
 A path under `.pm/` is never a read. Every suite's checkout leaves the board
 out (w6/m157), so a test that names a board file names a fixture, and board
 items move between `blocked/`, the queue and `done/`: a move that made a
@@ -62,6 +72,9 @@ class Suite:
     tests: tuple[str, ...] = ()  # suffixes of the test sources to scan
     # Out-of-tree paths a test names but never reads: path -> why.
     ignored: dict[str, str] = dataclasses.field(default_factory=dict)
+    # The tests are the scripts the workflow's steps run: the workflow file
+    # and every script it, or a script it runs, executes are scanned as shell.
+    runs: bool = False
 
     def inside(self, path: str) -> bool:
         return any(path == root or path.startswith(root + "/") for root in self.roots)
@@ -86,12 +99,35 @@ SUITES = {
     # Tests the pinned upstream controller with the carried patches; no test
     # source of its own to scan.
     ".github/workflows/opensandbox-controller-test.yml": Suite(("deploy/opensandbox/patches",)),
+    ".github/workflows/gitops.yml": Suite(("deploy/gitops", "lego/operator/config"), ("_test.go",), {
+        "README.md": "a grep --exclude pattern, not the root README",
+        "docs/ADR010-observability.md": "named in a warning when promtool is missing",
+        "docs/ADR011-etcd-backup-restore.md": "named in a failure message about the etcd image",
+        "docs/ADR079-security-review-round18.md": "named in env-file.sh's permission error",
+        "lego/agent-image/Dockerfile": "a needle the deploy workflow's agent-image build step must carry",
+    }, runs=True),
 }
 
 _STRING = re.compile(r'"((?:[^"\\\n]|\\.)*)"|\'((?:[^\'\\\n]|\\.)*)\'|`([^`]*)`')
 _JOIN = re.compile(r"\b(?:filepath\.Join|path\.Join|path\.join|path\.resolve|join|resolve)\(")
 _PLACEHOLDER = re.compile(r"\$\{[^}]*\}")
 _COMMENT = re.compile(r"^\s*(//|\*|/\*)")
+# Shell (and the YAML and Python a workflow runs): a path is any word, quoted
+# or not, and a `$var`, `${…}` or `$(…)` before a `/` is a hole.
+_SHELL_HOLE = re.compile(r"(?:\$\{[^}\n]*\}|\$\((?:[^()\n]|\([^()\n]*\))*\)|\$\w+)(?=/)")
+_SHELL_COMMENT = re.compile(r"(?:^|\s)#(?:\s.*)?$")
+_SHELL_WORD = re.compile(r"(?<![\w.@*/-])(?:\0/)?[\w.@*-]+(?:/[\w.@*-]+)*")
+# `name=path`, and a later `$name` or `${name}` that runs it.
+_SHELL_ASSIGN = re.compile(r"^\s*(?:(?:local|readonly|export)\s+)?(\w+)=[\"']?((?:\0/)?[\w.@-]+(?:/[\w.@-]+)*)[\"']?\s*$")
+_SHELL_VAR = re.compile(r"\$\{?(\w+)\}?")
+# What runs the word after it: an interpreter (not `-n`, a syntax check, nor
+# `-c`, whose program is the word), every file `unittest` is given, or the
+# script itself in command position. A word inside single quotes is a needle
+# or a program's text, never run.
+_SHELL_RUN = re.compile(r"(?:^|[\s;&|(!{`\"'])(?:(?:bash|sh|source|\.|python3?|exec)(?P<flags>(?:\s+-[\w-]+)*)"
+                        r"|python3?(?:\s+-\w+)*\s+-m\s+unittest\b[^;&|]*)\s+[\"']?\Z"
+                        r"|(?:^|[;&|!`]|\$\(|\bthen|\bdo)\s*[\"']?\Z")
+_SCRIPT = (".sh", ".bash", ".py")
 HOLE = "\0"  # a ${…} placeholder: REPO_ROOT, process.cwd(), …
 BOARD = ".pm/"  # in no suite's checkout, so never a test input
 
@@ -210,6 +246,70 @@ def literals(text: str) -> list[str]:
     return [_PLACEHOLDER.sub(HOLE, value) for value in found]
 
 
+def _single_quoted(line: str) -> list[bool]:
+    """Whether each character of a shell line is inside single quotes."""
+    mask, quote, escaped = [], "", False
+    for ch in line:
+        mask.append(quote == "'")
+        if escaped:
+            escaped = False
+        elif ch == "\\" and quote != "'":
+            escaped = True
+        elif ch in "'\"" and quote in ("", ch):
+            quote = "" if quote else ch
+    return mask
+
+
+def shell_words(text: str) -> list[tuple[str, bool]]:
+    """Each path-like word of a shell, workflow or Python source (a leading
+    hole as HOLE), and whether the source runs it."""
+    words, assigned = [], {}
+
+    def runs(line: str, quoted: list[bool], start: int) -> bool:
+        run = None if quoted[start] else _SHELL_RUN.search(line[:start])
+        return run is not None and not {"-n", "-c"} & set((run.group("flags") or "").split())
+
+    for line in text.replace("\\\n", " ").splitlines():
+        line = _SHELL_COMMENT.sub("", _SHELL_HOLE.sub(HOLE, line))
+        quoted = _single_quoted(line)
+        if assignment := _SHELL_ASSIGN.match(line):
+            assigned[assignment[1]] = assignment[2]
+        for match in _SHELL_WORD.finditer(line):
+            words.append((match.group(), runs(line, quoted, match.start())))
+        for match in _SHELL_VAR.finditer(line):
+            if match[1] in assigned and runs(line, quoted, match.start()):
+                words.append((assigned[match[1]], True))
+    return words
+
+
+def shell_paths(value: str, source: str, tracked: set[str]) -> list[str]:
+    """The tracked files a shell word names: relative to the repository root,
+    where the steps run; after a hole also to the source's directory; a glob
+    as every file it matches."""
+    directory = os.path.dirname(source)
+    if value.startswith(HOLE):
+        rest = value[1:].lstrip("/")
+        bases = ("", directory) if "/" in rest else (directory,)
+    else:
+        rest, bases = value, ("",)
+    for base in bases:
+        candidate = os.path.normpath(os.path.join(base, rest))
+        if candidate.startswith(".."):
+            continue
+        if "*" in candidate:
+            # Only a glob under a literal directory of the repository: `*`,
+            # `*/*` or `$tmp/*.json` is a case arm, a regex, SQL or scratch.
+            if value.startswith(HOLE) or "*" in candidate.partition("/")[0]:
+                continue
+            pattern = _glob(candidate)
+            matches = sorted(f for f in tracked if pattern.match(f))
+            if matches:
+                return matches
+        elif candidate in tracked:
+            return [candidate]
+    return []
+
+
 def _package_root(source: str, tracked: set[str]) -> str:
     """Where the test runs: the Go package directory, or the nearest package.json."""
     directory = os.path.dirname(source)
@@ -264,6 +364,25 @@ def references(repo: pathlib.Path, suite: Suite, tracked: set[str]) -> dict[str,
     return found
 
 
+def run_references(repo: pathlib.Path, workflow: str, suite: Suite,
+                   tracked: set[str]) -> tuple[dict[str, set[str]], set[str]]:
+    """Out-of-tree files the workflow and the scripts it runs name, and those
+    scripts: the workflow, and each script a scanned one runs, transitively."""
+    found: dict[str, set[str]] = {}
+    sources, queue = {workflow}, [workflow]
+    while queue:
+        source = queue.pop()
+        text = (repo / source).read_text(encoding="utf-8", errors="replace")
+        for value, runs in shell_words(text):
+            for path in shell_paths(value, source, tracked):
+                if runs and path.endswith(_SCRIPT) and path not in sources:
+                    sources.add(path)
+                    queue.append(path)
+                if not suite.inside(path) and not path.startswith(BOARD):
+                    found.setdefault(path, set()).add(source)
+    return found, sources
+
+
 def check(repo: pathlib.Path, workflow: str, tracked: set[str]) -> list[str]:
     suite = SUITES[workflow]
     filters = path_filters((repo / workflow).read_text())
@@ -280,6 +399,9 @@ def check(repo: pathlib.Path, workflow: str, tracked: set[str]) -> list[str]:
     if workflow not in push:
         problems.append(f"{workflow}: paths miss the workflow file itself")
     found = references(repo, suite, tracked)
+    if suite.runs:
+        for path, sources in run_references(repo, workflow, suite, tracked)[0].items():
+            found.setdefault(path, set()).update(sources)
     for path in sorted(found):
         if path in suite.ignored:
             continue
@@ -293,10 +415,16 @@ def check(repo: pathlib.Path, workflow: str, tracked: set[str]) -> list[str]:
     return problems
 
 
-def affected(paths: list[str]) -> list[str]:
-    """The changed paths that could open a gap: test sources, suite workflows, this checker."""
-    return [p for p in paths if p in SUITES or p == "scripts/ci_test_inputs.py"
+def affected(paths: list[str], scripts: set[str] | frozenset[str] = frozenset()) -> list[str]:
+    """The changed paths that could open a gap: test sources, the scripts a
+    suite's steps run, suite workflows, this checker."""
+    return [p for p in paths if p in SUITES or p in scripts or p == "scripts/ci_test_inputs.py"
             or any(suite.is_test(p) for suite in SUITES.values())]
+
+
+def _tracked(repo: pathlib.Path) -> set[str]:
+    return set(subprocess.run(["git", "-C", str(repo), "ls-files", "-z"], capture_output=True,
+                              text=True, check=True).stdout.split("\0")) - {""}
 
 
 def main(argv: list[str]) -> int:
@@ -307,20 +435,26 @@ def main(argv: list[str]) -> int:
     mode.add_argument("--suites", action="store_true", help="print the suite workflow file names")
     parser.add_argument("workflows", nargs="*", default=sorted(SUITES))
     args = parser.parse_args(argv)
+    repo = pathlib.Path(args.repo)
     if args.affected:
-        print("\n".join(affected(sys.stdin.read().split())))
+        try:
+            tracked = _tracked(repo)
+            scripts = {path for workflow, suite in SUITES.items() if suite.runs and workflow in tracked
+                       for path in run_references(repo, workflow, suite, tracked)[1]}
+        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+            print(f"ci-test-inputs: unusable: {exc}", file=sys.stderr)
+            return 2
+        print("\n".join(affected(sys.stdin.read().split(), scripts)))
         return 0
     if args.suites:
         print("\n".join(os.path.basename(w) for w in sorted(SUITES)))
         return 0
-    repo = pathlib.Path(args.repo)
     unknown = [w for w in args.workflows if w not in SUITES]
     if unknown:
         print(f"ci-test-inputs: unknown suite workflow {unknown[0]}; known: {', '.join(sorted(SUITES))}", file=sys.stderr)
         return 2
     try:
-        tracked = set(subprocess.run(["git", "-C", str(repo), "ls-files", "-z"], capture_output=True,
-                                     text=True, check=True).stdout.split("\0")) - {""}
+        tracked = _tracked(repo)
         problems = [p for w in args.workflows for p in check(repo, w, tracked)]
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"ci-test-inputs: unusable: {exc}", file=sys.stderr)
