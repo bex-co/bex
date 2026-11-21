@@ -111,6 +111,10 @@ jobs:
           sparse-checkout: |
             /*
             !/.pm/
+      # The trigger paths above must cover every file outside the suite's
+      # tree that these steps read; the check fails on one they miss.
+      - name: trigger paths cover the files the steps read
+        run: python3 -B scripts/ci_test_inputs.py .github/workflows/gitops.yml
       - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
         with:
           version: v1.36.1

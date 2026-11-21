@@ -55,6 +55,14 @@ move between `blocked/`, the queue and `done/`: a move that made a fixture's
 sample path a tracked file turned the operator suite red
 (`.pm/w8/m91/README.md`, 2026-11-16) on a push no gate checked.
 
+Every suite with tests or scripts to scan runs `python3 -B
+scripts/ci_test_inputs.py <its workflow>` as a step, so a push that drops a
+read from its paths fails that suite's own run as well as scripts.yml's
+real-tree test and /ship's gate (the seven script-running suites had no such
+step, so a push that bypassed /ship drifted their lists silently). This file
+is no suite's read: a change to it runs scripts.yml, whose real-tree test
+checks every suite.
+
   python3 scripts/ci_test_inputs.py [--repo DIR] [WORKFLOW ...]   # default: every suite
   python3 scripts/ci_test_inputs.py --affected < changed-paths    # which could open a gap
   python3 scripts/ci_test_inputs.py --suites                      # the suite workflows
@@ -162,8 +170,10 @@ _SHELL_RUN = re.compile(r"(?:^|[\s;&|(!{`\"'])(?:(?:bash|sh|source|\.|python3?|e
                         r"|(?:^|[;&|!`]|\$\(|\bthen|\bdo)\s*[\"']?\Z")
 _SCRIPT = (".sh", ".bash", ".py")
 _FOLDED = re.compile(r":\s*>[-+]?\s*$")  # a YAML folded scalar starts
-# This file: its suite table names other suites' paths, which a real-tree run
-# checks against their own lists, so its words are never its suite's reads.
+# This file is no suite's read, and neither are its words. Each suite's own
+# run executes it, but a change to it runs scripts.yml, whose real-tree test
+# checks every suite, so no suite lists it; and its table names other suites'
+# paths, which that run checks against their own lists.
 CHECKER = "scripts/ci_test_inputs.py"
 HOLE = "\0"  # a ${…} placeholder: REPO_ROOT, process.cwd(), …
 BOARD = ".pm/"  # left out of a suite's checkout unless Suite.board says otherwise
@@ -432,17 +442,16 @@ def run_references(repo: pathlib.Path, workflow: str, suite: Suite,
                    tracked: set[str]) -> tuple[dict[str, set[str]], set[str]]:
     """Out-of-tree files the workflow and the scripts it runs name, and those
     scripts: the workflow, and each script a scanned one runs, transitively.
-    An ignored path is named, never read, so never run either."""
+    An ignored path is named, never read, so never run either; CHECKER is
+    neither."""
     found: dict[str, set[str]] = {}
     sources, queue = {workflow}, [workflow]
     while queue:
         source = queue.pop()
-        if source == CHECKER:
-            continue
         text = (repo / source).read_text(encoding="utf-8", errors="replace")
         for value, runs in shell_words(_jobs(text) if source == workflow else text):
             for path in shell_paths(value, source, tracked):
-                if path.startswith(BOARD) and not suite.board:
+                if path == CHECKER or (path.startswith(BOARD) and not suite.board):
                     continue
                 if runs and path.endswith(_SCRIPT) and path not in sources and path not in suite.ignored:
                     sources.add(path)
@@ -450,6 +459,15 @@ def run_references(repo: pathlib.Path, workflow: str, suite: Suite,
                 if not suite.inside(path):
                     found.setdefault(path, set()).add(source)
     return found, sources
+
+
+def reads(repo: pathlib.Path, workflow: str, suite: Suite, tracked: set[str]) -> dict[str, set[str]]:
+    """Every out-of-tree file the suite reads: {path: {source, …}}."""
+    found = references(repo, suite, tracked)
+    if suite.runs:
+        for path, sources in run_references(repo, workflow, suite, tracked)[0].items():
+            found.setdefault(path, set()).update(sources)
+    return found
 
 
 def check(repo: pathlib.Path, workflow: str, tracked: set[str]) -> list[str]:
@@ -464,10 +482,7 @@ def check(repo: pathlib.Path, workflow: str, tracked: set[str]) -> list[str]:
     problems = []
     if len(lists) == 2 and lists[0] != lists[1]:
         problems.append(f"{workflow}: push and pull_request paths differ; keep one list in both")
-    found = references(repo, suite, tracked)
-    if suite.runs:
-        for path, sources in run_references(repo, workflow, suite, tracked)[0].items():
-            found.setdefault(path, set()).update(sources)
+    found = reads(repo, workflow, suite, tracked)
     if lists:
         patterns = lists[0]
         for root in suite.roots:

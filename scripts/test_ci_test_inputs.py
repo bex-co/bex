@@ -18,6 +18,7 @@ import contextlib
 import importlib.util
 import io
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -308,6 +309,18 @@ class RunsRepo(Throwaway):
             problems = cti.check(self.repo, self.WORKFLOW, tracked)
         self.assertEqual(problems, [f"{self.WORKFLOW}: paths miss .pm/w1/README.md, read by scripts/guard.sh"])
 
+    def test_the_checker_its_own_step_runs_is_no_read(self):
+        # Each suite's run checks its own paths; a change to the checker runs
+        # scripts.yml, whose real-tree test checks every suite, so no suite
+        # lists it, and nothing it names is a read either.
+        self.write(cti.CHECKER, "cat lego/never.go\n")
+        self.steps(self.LISTED)
+        text = (self.repo / self.WORKFLOW).read_text().replace(
+            "      - run: bash scripts/validate.sh\n",
+            f"      - run: python3 -B {cti.CHECKER} {self.WORKFLOW}\n      - run: bash scripts/validate.sh\n")
+        self.write(self.WORKFLOW, text)
+        self.assertEqual(self.run_check({"scripts/needle.sh": "a needle"}), [])
+
     def test_affected_counts_the_scripts_a_suite_runs(self):
         self.steps(self.LISTED)
         self.tracked()
@@ -362,6 +375,34 @@ class RealTree(unittest.TestCase):
         _, scripts = scan(".github/workflows/scripts.yml")
         self.assertIn("scripts/secret-argv-validate.sh", scripts)
         self.assertNotIn("scripts/adr-registry-validate.sh", scripts, "shellcheck reads it; docs.yml runs it")
+
+    def test_every_suite_fails_its_own_run_when_its_paths_drop_a_read(self):
+        # The seven script-running suites once relied on scripts.yml and the
+        # ship gate alone, so a push that bypassed /ship drifted their lists.
+        repo, tracked = HERE.parent, cti._tracked(HERE.parent)
+        step = re.compile(r"^\s*(?:-\s+)?run:\s*python3 -B scripts/ci_test_inputs\.py (\S+)\s*$", re.M)
+        real = cti.path_filters
+        for workflow, suite in cti.SUITES.items():
+            if not (suite.tests or suite.runs):
+                continue  # opensandbox-controller-test.yml: nothing to scan, so no read to miss
+            text = (repo / workflow).read_text()
+            self.assertIn(workflow, step.findall(cti._jobs(text)), f"{workflow} has no step checking its own paths")
+            if all(paths is None for paths in real(text).values()):
+                continue  # references.yml: every event runs on every change
+            reads = sorted(set(cti.reads(repo, workflow, suite, tracked)) - set(suite.ignored) - {workflow})
+            self.assertTrue(reads, f"{workflow} reads nothing outside its tree")
+            drop = {p for p in next(p for p in real(text).values() if p) if cti.covered(reads[0], [p])}
+
+            def dropped(text, drop=drop):
+                return {event: None if paths is None else [p for p in paths if p not in drop]
+                        for event, paths in real(text).items()}
+
+            out = io.StringIO()
+            with mock.patch.object(cti, "path_filters", dropped), contextlib.redirect_stderr(out), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                rc = cti.main(["--repo", str(repo), workflow])
+            self.assertEqual(rc, 1, f"{workflow} without {sorted(drop)}")
+            self.assertIn(f"{workflow}: paths miss {reads[0]}, read by", out.getvalue())
 
     def test_only_a_board_suite_checks_the_board_out(self):
         # The premise of BOARD: a file outside the checkout cannot be read,

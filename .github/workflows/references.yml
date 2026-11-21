@@ -39,6 +39,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      # Neither event filters paths, so nothing can be missed until one
+      # does; a stale ignored entry still fails.
+      - name: trigger paths cover the files the steps read
+        run: python3 -B scripts/ci_test_inputs.py .github/workflows/references.yml
       - name: Docs links resolve
         run: bash scripts/docs-links-validate.sh
       - name: Docs link gate self-test

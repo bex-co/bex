@@ -90,6 +90,10 @@ jobs:
             /*
             !/.pm/
             /.pm/w*/dev-*/
+      # The trigger paths above must cover every file outside the suite's
+      # tree that these steps read; the check fails on one they miss.
+      - name: trigger paths cover the files the steps read
+        run: python3 -B scripts/ci_test_inputs.py .github/workflows/scripts.yml
       - name: Skill layout consistency
         run: bash scripts/skill-layout-validate.sh
       # The /loopx guard is the Stop hook of every Claude Code session in this
