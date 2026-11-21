@@ -255,8 +255,12 @@ sed -i.bak 's|test "$ARCH" = x86_64 \&\& ||' "$d/sandbox-pool.yaml" && rm "$d/sa
 assert "gVisor non-x86_64 bootstrap no longer fails closed" 1 "$d" "fail closed on a non-x86_64 architecture"
 
 d="$(fixture gvisor-latest)"
-sed -i.bak 's|releases/release/20260622.0|releases/release/latest|' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+sed -i.bak -E 's#GVURL="[^"]*"#GVURL="https://github.com/bex-co/gvisor/releases/latest/download"#' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
 assert "gVisor downloaded from the mutable latest channel" 1 "$d" "exactly one versioned"
+
+d="$(fixture gvisor-upstream-latest)"
+sed -i.bak -E 's#GVURL="[^"]*"#GVURL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}"#' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+assert "gVisor downloaded from upstream's mutable latest channel" 1 "$d" "exactly one versioned"
 
 # ── RED (round 18, runtime proof): tampered binary + matching tampered
 # same-origin checksum must STILL fail against the repository-pinned digest ──

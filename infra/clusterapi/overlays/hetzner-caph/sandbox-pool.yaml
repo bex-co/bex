@@ -246,20 +246,29 @@ spec:
       # hostile tenant sandboxes, so the binaries are verified against SHA-512
       # digests pinned in THIS repository — never against checksum files
       # co-fetched from the same origin (a compromised release bucket/publisher
-      # would replace binary + checksum together). Pins reviewed 2026-08-20
-      # against upstream's published digests:
-      #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/runsc.sha512
-      #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/containerd-shim-runsc-v1.sha512
+      # would replace binary + checksum together).
+      # w4/m545: the pool runs gVisor release-20260622.0 plus one fix, so that
+      # a PTY echoes Ctrl-C as "^C" like Linux (stock gVisor drops the echo,
+      # and a repository's interrupt tests failed only in sandboxes). Built
+      # from github.com/bex-co/gvisor branch bex/release-20260622.0-echo-signal-chars
+      # at cd906399a by that fork's "bex echo signal characters" workflow, run
+      # 44955648773, whose build log prints these digests; published as its
+      # release release-20260622.0-bex.1 (runsc --version: cd906399ac80).
+      # .github/workflows/sandbox-runsc-pty.yml runs a PTY probe under the
+      # binary this item installs, so a gVisor change that loses the echo turns
+      # red before the pool rolls onto it. Return to a stock release, from
+      # https://storage.googleapis.com/gvisor/releases/release/<version>/${ARCH},
+      # once one carries the fix.
       # x86_64 is the only architecture this pool runs (cpx and cx). The
       # download retries a few times; the gate after the containerd config
       # below is what makes a wrong arch, a failed download or a digest
       # mismatch fatal (w9/074).
-      # When bumping the gVisor release, fetch the new .sha512 files from the
-      # versioned URL above, verify the binaries against them, and update the
-      # two pinned digests in the same commit.
-      - ARCH=$(uname -m); GVURL="https://storage.googleapis.com/gvisor/releases/release/20260622.0/${ARCH}";
-        RUNSC_SHA512=6df95d09363dbd9ee5d5c889c1549b457e1783b039ff60a8f9f16f8c94c774a2ca2eef5b1c370e36b863f6b0407b53ba3c69051c6ef051253843dabf89a6de4e;
-        SHIM_SHA512=87c63197836574b7a2c057d2c0647d2badb679187f0b9175ecf78ac52207cdaa3f101629d3e5d165c95930ca35fe81bc26bb90fcf08e09b99c2ee047b6235ce2;
+      # When changing the gVisor build, verify the new binaries (upstream's
+      # versioned .sha512 files for a stock release, the fork's build log for
+      # a bex build) and update the two pinned digests in the same commit.
+      - ARCH=$(uname -m); GVURL="https://github.com/bex-co/gvisor/releases/download/release-20260622.0-bex.1";
+        RUNSC_SHA512=2ef20fe646fccd64ac282fd9aeeb3f6eafabdd151b1446c57c3015ab8ea0a311f9a5786c3af33855ad687e6f4edd8b4dc9cfd9be30ecad0127f25609e2854438;
+        SHIM_SHA512=6670b23959486010b727143678d6c3d915b00c83efa4bd5642600efcbc071072747e4bd2d6bd8dedce279c871be4233f427d7f855d1c94f3770616cc92d4049a;
         for attempt in 1 2 3 4 5; do cd /tmp && rm -f runsc containerd-shim-runsc-v1 &&
         wget -q -T 60 "${GVURL}/runsc" "${GVURL}/containerd-shim-runsc-v1" && break;
         sleep $((attempt * 10)); done;

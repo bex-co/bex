@@ -1,0 +1,47 @@
+name: sandbox runsc (pty)
+
+# w4/m545: a terminal in a bex sandbox must echo Ctrl-C, Ctrl-\ and Ctrl-Z as
+# Linux does ("^C"), or a repository's own interrupt tests fail only in bex.
+# Stock gVisor did not until bex's patched runsc; this runs the PTY probe
+# under the exact runsc the sandbox pool installs (URL + pinned digests from
+# sandbox-pool.yaml), so a gVisor bump that loses the echo turns red before
+# the pool rolls onto it. The pool's runsc is x86_64 only, hence ubuntu-latest.
+# Run locally on Linux x86_64 with: bash scripts/sandbox-runsc-pty-check.sh
+on:
+  pull_request:
+    paths:
+      - "infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
+      - "scripts/pty-signal-echo-probe.py"
+      - "scripts/sandbox-runsc-pty-check.sh"
+      - ".github/workflows/sandbox-runsc-pty.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
+      - "scripts/pty-signal-echo-probe.py"
+      - "scripts/sandbox-runsc-pty-check.sh"
+      - ".github/workflows/sandbox-runsc-pty.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sandbox-runsc-pty-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pty:
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            infra/clusterapi/overlays/hetzner-caph
+            scripts
+      - name: the pool's runsc echoes signal characters as Linux does
+        run: bash scripts/sandbox-runsc-pty-check.sh

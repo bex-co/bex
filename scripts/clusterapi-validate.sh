@@ -948,9 +948,11 @@ if [ "$(printf '%s\n' "$gvisor_pins" | grep -c .)" -ne 2 ]; then
   printf '%s\n' "$gvisor_pins" | sed 's/^/    /' >&2
   fail=1
 fi
-gvisor_release="$(echo "$sandbox_prek" | grep -oE 'gvisor/releases/release/[0-9]+\.[0-9]+' | sort -u || true)"
+# w4/m545: upstream's versioned bucket, or a bex build of one release published
+# as a release-<version>-bex.<n> tag of github.com/bex-co/gvisor.
+gvisor_release="$(echo "$sandbox_prek" | grep -oE 'gvisor/releases/release/[0-9]+\.[0-9]+|github\.com/bex-co/gvisor/releases/download/release-[0-9]+\.[0-9]+-bex\.[0-9]+' | sort -u || true)"
 if [ "$(printf '%s\n' "$gvisor_release" | grep -c .)" -ne 1 ]; then
-  echo "FAIL: sandbox bootstrap must download gVisor from exactly one versioned releases/release/<version> URL (never latest), got:" >&2
+  echo "FAIL: sandbox bootstrap must download gVisor from exactly one versioned URL, upstream's releases/release/<version> or a bex-co/gvisor release-<version>-bex.<n> tag (never latest), got:" >&2
   printf '%s\n' "$gvisor_release" | sed 's/^/    /' >&2
   fail=1
 fi
