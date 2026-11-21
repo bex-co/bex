@@ -79,10 +79,11 @@ func classifyResources(resourceIDs []string) (resourceKinds, error) {
 // request placed while this one runs, so each kind applies as a delta on the
 // named ids, never as a full list computed from an earlier read. A malformed
 // id refuses the whole request before anything changes; the kinds then apply
-// in turn, and a failure reverses what this request changed in the kinds
-// already applied, newest first, so the request is all-or-nothing. When a
-// reversal fails too, the answer is ENVIRONMENT_MEMBERSHIP_PARTIAL naming the
-// members that may still be changed.
+// in turn, and a failure returns every member this request changed in the
+// kinds already applied, newest first, to the environment it was in before
+// (or to none), so the request is all-or-nothing. When a reversal fails too,
+// the answer is ENVIRONMENT_MEMBERSHIP_PARTIAL naming the members that may
+// still be changed.
 func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []string, add bool) (EnvironmentView, error) {
 	// Authorization and existence first: a caller who may not touch the
 	// environment learns nothing about its id format rules.
@@ -116,13 +117,7 @@ func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []
 			// have been placed by a concurrent request since.
 			var kept []string
 			for _, d := range slices.Backward(done) {
-				if len(d.changed) == 0 {
-					continue
-				}
-				if _, _, undoErr := s.changeKind(ctx, d, id, d.changed, !add); undoErr != nil {
-					log.Printf("environments: reversing %v in %s: %v", d.changed, e.ID, undoErr)
-					kept = append(kept, d.changed...)
-				}
+				kept = append(kept, s.reverseKind(ctx, d, e.ID)...)
 			}
 			return EnvironmentView{}, membershipInterrupted(e.ID, kept, failed, err)
 		}
@@ -133,18 +128,32 @@ func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []
 // memberKind is one member kind of a ChangeResources request: the ids it names
 // and, once applied, the members it changed.
 type memberKind struct {
-	requested, changed []string
+	requested []string
+	changed   []memberChange
 	// services marks the kind with its own store verb; idx serves the
 	// label-backed kinds (nil when that kind is unwired).
 	services bool
 	idx      resourceIndex
 }
 
+// memberChange is one member a membership write changed, with the environment
+// it was in before ("" for none).
+type memberChange struct{ id, from string }
+
+// changedIDs is the ids of changes.
+func changedIDs(changes []memberChange) []string {
+	out := make([]string, len(changes))
+	for i, c := range changes {
+		out[i] = c.id
+	}
+	return out
+}
+
 // changeKind adds (add) or removes only memberIDs of k's kind, leaving every
 // other member as it is. It returns the members it changed — on failure too,
 // with the member it stopped at when one member's change failed — which a
-// reversal passes back with add flipped.
-func (s *Service) changeKind(ctx context.Context, k memberKind, id string, memberIDs []string, add bool) ([]string, string, error) {
+// reversal returns to where they were.
+func (s *Service) changeKind(ctx context.Context, k memberKind, id string, memberIDs []string, add bool) ([]memberChange, string, error) {
 	if k.services {
 		changed, err := s.changeServices(ctx, id, memberIDs, add)
 		return changed, "", err
@@ -155,4 +164,38 @@ func (s *Service) changeKind(ctx context.Context, k memberKind, id string, membe
 	}
 	_, _, changed, failed, err := s.changeMembers(ctx, k.idx, id, memberIDs, mode)
 	return changed, failed, err
+}
+
+// reverseKind returns each member k changed in environment envID to the
+// environment it was in before: a member an add took from another environment
+// goes back to it, one it placed from no environment leaves again, and one a
+// removal took out rejoins. It returns the members it could not return.
+func (s *Service) reverseKind(ctx context.Context, k memberKind, envID string) []string {
+	var sources []string
+	bySource := map[string][]string{}
+	for _, c := range k.changed {
+		if _, seen := bySource[c.from]; !seen {
+			sources = append(sources, c.from)
+		}
+		bySource[c.from] = append(bySource[c.from], c.id)
+	}
+	var kept []string
+	for _, from := range sources {
+		memberIDs := bySource[from]
+		var err error
+		switch {
+		case from == "" || from == envID:
+			// Placed from no environment: leave again. Removed: rejoin.
+			_, _, err = s.changeKind(ctx, k, envID, memberIDs, from == envID)
+		case k.services:
+			err = s.returnServices(ctx, envID, from, memberIDs)
+		default:
+			err = s.returnMembers(ctx, k.idx, envID, from, memberIDs)
+		}
+		if err != nil {
+			log.Printf("environments: returning %v from %s to %q: %v", memberIDs, envID, from, err)
+			kept = append(kept, memberIDs...)
+		}
+	}
+	return kept
 }

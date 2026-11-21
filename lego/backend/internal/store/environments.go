@@ -249,6 +249,32 @@ func (s *PGStore) ChangeEnvironmentServices(ctx context.Context, environmentID, 
 	return changes, err
 }
 
+// ReturnEnvironmentServices moves the identified services that are still in
+// fromEnvironmentID to toEnvironmentID and its project toProjectID, within
+// tenantID, and writes no other row: a service another writer moved since it
+// reached fromEnvironmentID stays where that writer put it. It is how a failed
+// add returns the services it took from another environment. Returns the
+// per-service placement diff, which exit vets before commit as
+// ChangeEnvironmentServices' does.
+func (s *PGStore) ReturnEnvironmentServices(ctx context.Context, fromEnvironmentID, toEnvironmentID, toProjectID, tenantID string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	if len(serviceIDs) == 0 {
+		return nil, nil
+	}
+	var changes []core.ServicePlacementChange
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var err error
+		changes, err = placementDiffAround(ctx, tx, "environment_id", fromEnvironmentID, tenantID, serviceIDs, func(locked []string) error {
+			_, err := tx.Exec(ctx,
+				`UPDATE apps SET environment_id = $1, project_id = $2, updated_at = now()
+				 WHERE environment_id = $3 AND id = ANY($4) AND tenant_id = $5 AND id = ANY($6)`,
+				toEnvironmentID, toProjectID, fromEnvironmentID, serviceIDs, tenantID, locked)
+			return err
+		}, exit)
+		return err
+	})
+	return changes, err
+}
+
 // ListEnvironmentServices returns the public ids of all services currently in the
 // environment. Filters on project_id too (not just environment_id): a
 // service's project_id can drift out from under it via the independent

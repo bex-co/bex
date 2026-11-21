@@ -164,6 +164,34 @@ func (f *fakeStore) ChangeEnvironmentServices(_ context.Context, environmentID, 
 	return f.setServicesLocked(environmentID, projectID, next, exit)
 }
 
+// ReturnEnvironmentServices moves the named services still in
+// fromEnvironmentID to toEnvironmentID, as the PG store does.
+func (f *fakeStore) ReturnEnvironmentServices(_ context.Context, fromEnvironmentID, toEnvironmentID, toProjectID, _ string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var changes []core.ServicePlacementChange
+	for _, sid := range serviceIDs {
+		if f.assign[fromEnvironmentID][sid] {
+			changes = append(changes, core.ServicePlacementChange{ServiceID: sid, ServiceName: sid, ServiceMove: core.ServiceMove{
+				EnvironmentFrom: &fromEnvironmentID, EnvironmentTo: &toEnvironmentID, ProjectTo: &toProjectID,
+			}})
+		}
+	}
+	if exit != nil {
+		if err := exit(core.LeftEnvironments(changes)...); err != nil {
+			return nil, err
+		}
+	}
+	for _, mv := range changes {
+		delete(f.assign[fromEnvironmentID], mv.ServiceID)
+		if f.assign[toEnvironmentID] == nil {
+			f.assign[toEnvironmentID] = map[string]bool{}
+		}
+		f.assign[toEnvironmentID][mv.ServiceID] = true
+	}
+	return changes, nil
+}
+
 func (f *fakeStore) setServicesLocked(environmentID, projectID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	m := map[string]bool{}
 	var changes []core.ServicePlacementChange

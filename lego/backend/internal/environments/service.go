@@ -32,6 +32,7 @@ import (
 	"slices"
 	"time"
 
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -62,6 +63,9 @@ type EnvironmentStore interface {
 	// ChangeEnvironmentServices adds or removes only the named services; every
 	// other member keeps its placement.
 	ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
+	// ReturnEnvironmentServices moves the named services still in
+	// fromEnvironmentID to toEnvironmentID; every other row keeps its placement.
+	ReturnEnvironmentServices(ctx context.Context, fromEnvironmentID, toEnvironmentID, toProjectID, tenantID string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
@@ -1231,10 +1235,10 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 
 // changeServices adds (add) or removes only the named services, so a member
 // another request placed meanwhile keeps its placement and its environment
-// rules. It returns the services whose membership changed, which a reversal
-// passes back with add flipped; a failure after the store write still names
-// them, since that write stands.
-func (s *Service) changeServices(ctx context.Context, id string, serviceIDs []string, add bool) ([]string, error) {
+// rules. It returns the services whose membership changed, each with the
+// environment it was in before, which a reversal returns it to; a failure
+// after the store write still names them, since that write stands.
+func (s *Service) changeServices(ctx context.Context, id string, serviceIDs []string, add bool) ([]memberChange, error) {
 	ctx, e, moves, err := s.moveServices(ctx, id, func(ctx context.Context, e store.Environment, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 		return s.Store.ChangeEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs, add, exit)
 	})
@@ -1242,7 +1246,8 @@ func (s *Service) changeServices(ctx context.Context, id string, serviceIDs []st
 		return nil, err
 	}
 	leaving := servicesLeaving(moves, e.ID)
-	var arriving, changed []string
+	var arriving []string
+	var changed []memberChange
 	for _, mv := range moves {
 		if mv.EnvironmentTo == nil || *mv.EnvironmentTo != e.ID {
 			continue
@@ -1251,12 +1256,33 @@ func (s *Service) changeServices(ctx context.Context, id string, serviceIDs []st
 		// here, but it was a member already: reversing the add must not
 		// take it out.
 		arriving = append(arriving, mv.ServiceID)
-		if mv.EnvironmentFrom == nil || *mv.EnvironmentFrom != e.ID {
-			changed = append(changed, mv.ServiceID)
+		if from := ptr.Deref(mv.EnvironmentFrom, ""); from != e.ID {
+			changed = append(changed, memberChange{id: mv.ServiceID, from: from})
 		}
 	}
-	changed = append(changed, leaving...)
+	for _, sid := range leaving {
+		changed = append(changed, memberChange{id: sid, from: e.ID})
+	}
 	return changed, s.syncServiceLayers(ctx, e, leaving, arriving)
+}
+
+// returnServices moves the named services that are still in environment fromID
+// to environment toID, the one a failed add took them from, and gives them
+// toID's environment rules. A service moved on since stays where it is.
+func (s *Service) returnServices(ctx context.Context, fromID, toID string, serviceIDs []string) error {
+	ctx, to, moves, err := s.moveServices(ctx, toID, func(ctx context.Context, to store.Environment, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+		return s.Store.ReturnEnvironmentServices(ctx, fromID, to.ID, to.ProjectID, to.TenantID, serviceIDs, exit)
+	})
+	if err != nil {
+		return err
+	}
+	var arriving []string
+	for _, mv := range moves {
+		if ptr.Deref(mv.EnvironmentTo, "") == to.ID {
+			arriving = append(arriving, mv.ServiceID)
+		}
+	}
+	return s.syncServiceLayers(ctx, to, nil, arriving)
 }
 
 // moveServices runs one service-placement write on environment id behind the
@@ -1376,7 +1402,7 @@ func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []str
 func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string) (EnvironmentView, error) {
 	ctx, e, changed, failed, err := s.changeMembers(ctx, idx, id, wantIDs, replaceMembers)
 	if err != nil {
-		return EnvironmentView{}, membershipInterrupted(e.ID, changed, failed, err)
+		return EnvironmentView{}, membershipInterrupted(e.ID, changedIDs(changed), failed, err)
 	}
 	return s.toFullView(ctx, e)
 }
@@ -1394,33 +1420,44 @@ const (
 	removeMembers
 )
 
-// changeMembers applies one membership write to environment id's idx members.
-// It returns the environment-scoped context and environment, the members
-// changed, and on failure the member it stopped at: members change one at a
-// time and an earlier change is not undone here when a later one fails.
-func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id string, memberIDs []string, mode membershipMode) (context.Context, store.Environment, []string, string, error) {
+// membershipTarget authorizes a membership write on environment id's idx
+// members and returns the environment, with the context bound to its own
+// workspace.
+func (s *Service) membershipTarget(ctx context.Context, idx resourceIndex, id string) (context.Context, store.Environment, error) {
 	ctx, err := s.scopeEnvironment(ctx, id)
 	if err != nil {
-		return ctx, store.Environment{}, nil, "", err
+		return ctx, store.Environment{}, err
 	}
 	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.EnvironmentTarget(ids.EnvironmentPublicID(id))); err != nil {
-		return ctx, store.Environment{}, nil, "", err
+		return ctx, store.Environment{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
 	if err != nil {
-		return ctx, store.Environment{}, nil, "", err
+		return ctx, store.Environment{}, err
 	}
 	if idx == nil {
-		return ctx, e, nil, "", ErrEnvironmentsUnavailable
+		return ctx, e, ErrEnvironmentsUnavailable
 	}
 	if err := s.authorizeMembershipChange(ctx, e); err != nil {
-		return ctx, e, nil, "", err
+		return ctx, e, err
 	}
 	// Act inside the environment's OWN workspace: env group writes authorize
 	// against the context workspace, while the Database/KeyValue seams resolve
 	// it from the resource's own labels and are unaffected — binding it here
 	// puts all three kinds on the same resource-scoped rule.
-	ctx = core.WithWorkspace(ctx, e.TenantID)
+	return core.WithWorkspace(ctx, e.TenantID), e, nil
+}
+
+// changeMembers applies one membership write to environment id's idx members.
+// It returns the environment-scoped context and environment, the members
+// changed (each with the environment it was in before), and on failure the
+// member it stopped at: members change one at a time and an earlier change is
+// not undone here when a later one fails.
+func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id string, memberIDs []string, mode membershipMode) (context.Context, store.Environment, []memberChange, string, error) {
+	ctx, e, err := s.membershipTarget(ctx, idx, id)
+	if err != nil {
+		return ctx, e, nil, "", err
+	}
 	existing, err := idx.list(ctx, e.TenantID)
 	if err != nil {
 		return ctx, e, nil, "", err
@@ -1462,7 +1499,7 @@ func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id strin
 	if err := exit(sources...); err != nil {
 		return ctx, e, nil, "", err
 	}
-	var changed []string
+	var changed []memberChange
 	for _, r := range existing {
 		var err error
 		switch {
@@ -1476,9 +1513,33 @@ func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id strin
 		if err != nil {
 			return ctx, e, changed, r.id, err
 		}
-		changed = append(changed, r.id)
+		changed = append(changed, memberChange{id: r.id, from: r.environmentID})
 	}
 	return ctx, e, changed, "", nil
+}
+
+// returnMembers moves idx members memberIDs from environment fromID to
+// environment toID, the one a failed add took them from. A Postgres or Key
+// Value join observes fromID, so one moved on since is refused rather than
+// taken from where it is now.
+func (s *Service) returnMembers(ctx context.Context, idx resourceIndex, fromID, toID string, memberIDs []string) error {
+	ctx, to, err := s.membershipTarget(ctx, idx, toID)
+	if err != nil {
+		return err
+	}
+	exit, err := s.loadExitGuard(ctx, to.TenantID)
+	if err != nil {
+		return err
+	}
+	if err := exit(fromID); err != nil {
+		return err
+	}
+	for _, mid := range memberIDs {
+		if err := idx.join(ctx, to, mid, fromID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // membershipInterrupted reports a membership change that stopped partway.

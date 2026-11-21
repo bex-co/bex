@@ -140,6 +140,59 @@ func TestChangeResourcesFailureReversesOnlyWhatItChanged(t *testing.T) {
 	}
 }
 
+// A failed add returns each member it moved to where it was: a service and a
+// database it took from another environment go back there, with that
+// environment's isolation and inbound-IP layer, and a service it placed from
+// no environment leaves again. The old reversal left the moved ones in no
+// environment.
+func TestChangeResourcesFailureReturnsMovedMembersToTheirEnvironment(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})
+	web, worker, db, group := ids.New(ids.Service), ids.New(ids.Service), ids.New(ids.Postgres), ids.New(ids.EnvGroup)
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: db, OwnerID: "tea-a"})
+	groups := &failingEnvGroupIndex{refuse: group}
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: "tea-a"}}
+	svc, cl := newServiceWithClient(st, sampleApp(web), sampleApp(worker))
+	svc.Databases, svc.EnvGroups = dbs, groups
+	staging, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	production, _ := svc.Create(ctxAs("user-a"), "prj-1", "production")
+	office := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}
+	if err := st.SetEnvironmentACL(context.Background(), ids.EnvironmentStorageID(staging.ID), ProtectedStatusUnprotected, true, office); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), staging.ID, []string{web, db}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// The group's join fails after web, worker and db joined production.
+	_, err := svc.ChangeResources(ctxAs("user-a"), production.ID, []string{web, worker, db, group}, true)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed add = %v, want the group's own failure", err)
+	}
+	gotStaging, _ := svc.Get(ctxAs("user-a"), staging.ID)
+	gotProduction, _ := svc.Get(ctxAs("user-a"), production.ID)
+	if !slices.Equal(gotStaging.ServiceIDs, []string{web}) || !slices.Equal(gotStaging.DatabaseIDs, []string{db}) {
+		t.Fatalf("staging after the reversal: services %v, databases %v; want %s and %s back", gotStaging.ServiceIDs, gotStaging.DatabaseIDs, web, db)
+	}
+	if !EnvironmentOccupied(gotStaging) || EnvironmentOccupied(gotProduction) {
+		t.Fatalf("production after the reversal = %+v, want it empty", gotProduction)
+	}
+	stagingID := ids.EnvironmentStorageID(staging.ID)
+	cidrs := core.EnvironmentLayerCIDRs(office)
+	if app := getApp(t, cl, web); app.Labels[core.LabelNetworkIsolation] != stagingID || !slices.Equal(app.Spec.EnvironmentIPAllowList, cidrs) {
+		t.Errorf("returned %s carries isolation %q and IP layer %v, want staging's %q and %v",
+			web, app.Labels[core.LabelNetworkIsolation], app.Spec.EnvironmentIPAllowList, stagingID, cidrs)
+	}
+	if !dbs.isolation[db] || !slices.Equal(dbs.envLayers[db], cidrs) {
+		t.Errorf("returned %s carries isolation %v and IP layer %v, want staging's", db, dbs.isolation[db], dbs.envLayers[db])
+	}
+	if app := getApp(t, cl, worker); app.Labels[core.LabelEnvironment] != "" || len(app.Spec.EnvironmentIPAllowList) != 0 {
+		t.Errorf("%s, placed from no environment, kept production's labels %v and IP layer %v", worker, app.Labels, app.Spec.EnvironmentIPAllowList)
+	}
+}
+
 func TestDeleteIfEmptyRefusesAnOccupiedEnvironment(t *testing.T) {
 	st := newFakeStore()
 	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})

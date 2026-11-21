@@ -18,6 +18,7 @@ package environments
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -28,6 +29,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
@@ -90,7 +92,11 @@ func (g *gatedStore) ChangeEnvironmentServices(ctx context.Context, environmentI
 // changes only the services it names, so every add lands, the one removal
 // takes out only its own service, and every member keeps the environment's
 // isolation label and inbound-IP layer.
-func TestChangeResourcesConcurrentRequestsChangeOnlyTheirOwnMembers(t *testing.T) {
+// resourcesWorkspace opens the real store and creates a fresh workspace for
+// one test, removed when it ends; it returns the store, the workspace id and
+// a stamp that keeps the test's names unique.
+func resourcesWorkspace(t *testing.T) (*store.PGStore, string, string) {
+	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		testenv.Skip(t, "BEX_TEST_DB_URI not set")
@@ -98,24 +104,29 @@ func TestChangeResourcesConcurrentRequestsChangeOnlyTheirOwnMembers(t *testing.T
 	if err := store.Migrate(uri); err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, uri)
+	pool, err := pgxpool.New(context.Background(), uri)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
 	pg := store.NewPGStore(pool)
 	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
-	workspace, err := pg.CreateWorkspace(ctx, "env-resources-"+stamp, store.PlanHobby, "user-a")
+	workspace, err := pg.CreateWorkspace(context.Background(), "env-resources-"+stamp, store.PlanHobby, "user-a")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = pg.DeleteTenant(context.Background(), workspace.ID) })
-	project, err := pg.CreateProject(ctx, workspace.ID, "stack-"+stamp)
+	return pg, workspace.ID, stamp
+}
+
+func TestChangeResourcesConcurrentRequestsChangeOnlyTheirOwnMembers(t *testing.T) {
+	pg, workspaceID, stamp := resourcesWorkspace(t)
+	ctx := context.Background()
+	project, err := pg.CreateProject(ctx, workspaceID, "stack-"+stamp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, err := pg.CreateEnvironment(ctx, project.ID, workspace.ID, "production")
+	env, err := pg.CreateEnvironment(ctx, project.ID, workspaceID, "production")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +138,7 @@ func TestChangeResourcesConcurrentRequestsChangeOnlyTheirOwnMembers(t *testing.T
 	services := make([]string, n)
 	apps := make([]*appv1alpha1.App, n)
 	for i := range services {
-		app, err := pg.CreateApp(ctx, store.App{TenantID: workspace.ID, Name: fmt.Sprintf("svc%d-%s", i, stamp), Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+		app, err := pg.CreateApp(ctx, store.App{TenantID: workspaceID, Name: fmt.Sprintf("svc%d-%s", i, stamp), Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -186,5 +197,70 @@ func TestChangeResourcesConcurrentRequestsChangeOnlyTheirOwnMembers(t *testing.T
 	if removed.Labels[core.LabelNetworkIsolation] != "" || len(removed.Spec.EnvironmentIPAllowList) != 0 {
 		t.Errorf("removed %s still carries isolation %q and IP layer %v",
 			services[1], removed.Labels[core.LabelNetworkIsolation], removed.Spec.EnvironmentIPAllowList)
+	}
+}
+
+// A failed add returns a service it took from an environment in another
+// project to that environment and project, with its isolation label and
+// inbound-IP layer, and the store's return moves only a service still where
+// the add put it.
+func TestChangeResourcesFailureReturnsAServiceToItsEnvironmentPG(t *testing.T) {
+	pg, workspaceID, stamp := resourcesWorkspace(t)
+	ctx := context.Background()
+	left, err := pg.CreateProject(ctx, workspaceID, "left-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := pg.CreateProject(ctx, workspaceID, "right-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staging, err := pg.CreateEnvironment(ctx, left.ID, workspaceID, "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	production, err := pg.CreateEnvironment(ctx, right.ID, workspaceID, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	office := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}
+	if err := pg.SetEnvironmentACL(ctx, staging.ID, ProtectedStatusUnprotected, true, office); err != nil {
+		t.Fatal(err)
+	}
+	app, err := pg.CreateApp(ctx, store.App{TenantID: workspaceID, Name: "web-" + stamp, Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	group := ids.New(ids.EnvGroup)
+	groups := &failingEnvGroupIndex{refuse: group}
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: workspaceID}}
+	svc, cl := newServiceWithClient(pg, sampleApp(app.ID))
+	svc.EnvGroups = groups
+	if _, err := svc.ChangeResources(ctxAs("user-a"), ids.EnvironmentPublicID(staging.ID), []string{app.ID}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// The service moves to production, then the group's join fails.
+	_, err = svc.ChangeResources(ctxAs("user-a"), ids.EnvironmentPublicID(production.ID), []string{app.ID, group}, true)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed add = %v, want the group's own failure", err)
+	}
+	if got, err := pg.ListEnvironmentServices(ctx, staging.ID, left.ID); err != nil || !slices.Equal(got, []string{app.ID}) {
+		t.Fatalf("staging after the reversal = %v, %v; want %s back in it and in its project", got, err, app.ID)
+	}
+	if got, err := pg.ListEnvironmentServices(ctx, production.ID, right.ID); err != nil || len(got) != 0 {
+		t.Fatalf("production after the reversal = %v, %v; want it empty", got, err)
+	}
+	cidrs := core.EnvironmentLayerCIDRs(office)
+	if cr := getApp(t, cl, app.ID); cr.Labels[core.LabelNetworkIsolation] != staging.ID || !slices.Equal(cr.Spec.EnvironmentIPAllowList, cidrs) {
+		t.Errorf("returned %s carries isolation %q and IP layer %v, want staging's %q and %v",
+			app.ID, cr.Labels[core.LabelNetworkIsolation], cr.Spec.EnvironmentIPAllowList, staging.ID, cidrs)
+	}
+
+	// A return naming a service that is no longer in production moves nothing.
+	moves, err := pg.ReturnEnvironmentServices(ctx, production.ID, staging.ID, left.ID, workspaceID, []string{app.ID}, nil)
+	if err != nil || len(moves) != 0 {
+		t.Fatalf("return of a service not in production = %+v, %v; want no change", moves, err)
 	}
 }
