@@ -401,8 +401,8 @@ describe("dashboard topbar navigation", () => {
     expect(screen.getByText("Navigation")).toBeInTheDocument();
     expect(screen.getByText("Resources")).toBeInTheDocument();
     expect(document.querySelector("[cmdk-separator]")).toBeInTheDocument();
-    // …but "db" matches only the primary-db database, zero navigation pages.
-    await user.type(screen.getByRole("combobox"), "db");
+    // …but "primary-db" matches only the primary-db database, zero navigation pages.
+    await user.type(screen.getByRole("combobox"), "primary-db");
 
     expect(await screen.findByText("primary-db")).toBeInTheDocument();
     expect(screen.getByText("Resources")).toBeInTheDocument();

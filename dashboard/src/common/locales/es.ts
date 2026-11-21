@@ -135,6 +135,10 @@ const esCommon: Record<string, TranslationEntry> = {
     message: "Grupos de entorno",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navSandboxGroups": {
+    message: "Grupos de sandbox",
+    description: "Workspace sidebar link to sandbox groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",

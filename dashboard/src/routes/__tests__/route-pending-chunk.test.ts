@@ -11,6 +11,10 @@ import {
   OrganizationSettingsRouteSkeleton,
   OrganizationWorkspacesRouteSkeleton,
 } from "@/features/organizations/components/organization-route-skeletons";
+import {
+  SandboxGroupDetailRouteSkeleton,
+  SandboxGroupsListRouteSkeleton,
+} from "@/features/sandbox-groups/components/sandbox-group-skeletons";
 import { Route as AccountSettingsRoute } from "../settings";
 import { Route as WorkspaceSettingsRoute } from "../workspace.settings";
 import { Route as DeploysRoute } from "../services.$serviceId.deploys.index";
@@ -20,6 +24,8 @@ import { Route as ServiceRoute } from "../services.$serviceId";
 import { Route as OrganizationWorkspacesRoute } from "../org.$orgId.workspaces";
 import { Route as OrganizationMembersRoute } from "../org.$orgId.members";
 import { Route as OrganizationSettingsRoute } from "../org.$orgId.settings";
+import { Route as SandboxGroupsRoute } from "../sandbox-groups";
+import { Route as SandboxGroupDetailRoute } from "../sandbox-groups_.$sandboxGroupId";
 
 /**
  * Where a route's `pendingComponent` lands when the router plugin code-splits
@@ -60,6 +66,17 @@ describe("route pending components and code splitting (w3/066)", () => {
       "/org/$orgId/settings",
       OrganizationSettingsRoute,
       OrganizationSettingsRouteSkeleton,
+    ],
+    // w2/m533: sandbox groups & detail skeletons live in a skeleton-only module.
+    [
+      "/sandbox-groups",
+      SandboxGroupsRoute,
+      SandboxGroupsListRouteSkeleton,
+    ],
+    [
+      "/sandbox-groups/$sandboxGroupId",
+      SandboxGroupDetailRoute,
+      SandboxGroupDetailRouteSkeleton,
     ],
   ] as const)(
     "%s keeps its skeleton out of the page's lazy chunk",

@@ -125,6 +125,10 @@ const koCommon: Record<string, TranslationEntry> = {
     message: "환경 그룹",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navSandboxGroups": {
+    message: "샌드박스 그룹",
+    description: "Workspace sidebar link to sandbox groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",

@@ -1386,6 +1386,16 @@ export type ChargeLine = {
   unit: Maybe<Scalars['String']['output']>;
 };
 
+export type CreateSandboxGroupCredentialInput = {
+  domain: Scalars['String']['input'];
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  id: Scalars['String']['input'];
+  injection: SandboxGroupCredentialInjectionInput;
+  methods?: InputMaybe<Array<Scalars['String']['input']>>;
+  paths?: InputMaybe<Array<Scalars['String']['input']>>;
+  value: Scalars['String']['input'];
+};
+
 export type CreatedObjectAccessKey = {
   __typename: 'CreatedObjectAccessKey';
   createdAt: Scalars['String']['output'];
@@ -2334,6 +2344,7 @@ export type Mutation = {
   createSSHKey: Maybe<SshKey>;
   createSandbox: Maybe<Sandbox>;
   createSandboxGroup: Maybe<SandboxGroup>;
+  createSandboxGroupCredential: Maybe<SandboxGroupCredential>;
   createSandboxSnapshot: Maybe<SandboxSnapshot>;
   createSavedSearch: Maybe<SavedSearch>;
   createService: Maybe<Service>;
@@ -2373,6 +2384,7 @@ export type Mutation = {
   deleteRouterKey: Maybe<Scalars['Boolean']['output']>;
   deleteSSHKey: Scalars['Boolean']['output'];
   deleteSandboxGroup: Scalars['Boolean']['output'];
+  deleteSandboxGroupCredential: Scalars['Boolean']['output'];
   deleteSandboxImage: Scalars['Boolean']['output'];
   deleteSandboxSnapshot: Scalars['Boolean']['output'];
   deleteSavedSearch: Maybe<Scalars['String']['output']>;
@@ -2429,6 +2441,7 @@ export type Mutation = {
   restartDatabase: Maybe<Database>;
   restartServer: Maybe<Deploy>;
   restoreDiskSnapshot: Maybe<Disk>;
+  restoreSandboxGroupCredential: Maybe<SandboxGroupCredential>;
   /** Re-enable an automation. */
   resumeAgentAutomation: AgentAutomation;
   resumeAgentSession: Maybe<AgentSession>;
@@ -2558,6 +2571,7 @@ export type Mutation = {
   updateRegistryCredential: Maybe<RegistryCredential>;
   updateRouterKey: Maybe<Scalars['Boolean']['output']>;
   updateSandboxGroup: Maybe<SandboxGroup>;
+  updateSandboxGroupCredential: Maybe<SandboxGroupCredential>;
   updateSavedSearch: Maybe<SavedSearch>;
   updateServicePlan: Maybe<Service>;
   updateUserLogThemeSetting: Maybe<User>;
@@ -2926,6 +2940,13 @@ export type MutationCreateSandboxGroupArgs = {
 };
 
 
+export type MutationCreateSandboxGroupCredentialArgs = {
+  input: CreateSandboxGroupCredentialInput;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
 export type MutationCreateSandboxSnapshotArgs = {
   expiresAt?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
@@ -3144,6 +3165,13 @@ export type MutationDeleteSshKeyArgs = {
 export type MutationDeleteSandboxGroupArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteSandboxGroupCredentialArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
 };
 
 
@@ -3487,6 +3515,14 @@ export type MutationRestartServerArgs = {
 export type MutationRestoreDiskSnapshotArgs = {
   id: Scalars['String']['input'];
   snapshotKey: Scalars['String']['input'];
+};
+
+
+export type MutationRestoreSandboxGroupCredentialArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  versionId: Scalars['Int']['input'];
 };
 
 
@@ -4288,6 +4324,14 @@ export type MutationUpdateSandboxGroupArgs = {
 };
 
 
+export type MutationUpdateSandboxGroupCredentialArgs = {
+  id: Scalars['String']['input'];
+  input: UpdateSandboxGroupCredentialInput;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
 export type MutationUpdateSavedSearchArgs = {
   filters?: InputMaybe<Scalars['JSONObject']['input']>;
   id: Scalars['String']['input'];
@@ -4805,6 +4849,9 @@ export type Query = {
   sandboxExecution: Maybe<SandboxExecution>;
   sandboxExecutions: Maybe<Array<Maybe<SandboxExecution>>>;
   sandboxGroup: Maybe<SandboxGroup>;
+  sandboxGroupCredential: Maybe<SandboxGroupCredential>;
+  sandboxGroupCredentialVersions: Maybe<Array<SandboxGroupCredentialVersion>>;
+  sandboxGroupCredentials: Maybe<Array<SandboxGroupCredential>>;
   sandboxGroups: Maybe<Array<Maybe<SandboxGroup>>>;
   sandboxImage: Maybe<SandboxImage>;
   sandboxImages: Maybe<Array<Maybe<SandboxImage>>>;
@@ -5619,6 +5666,26 @@ export type QuerySandboxGroupArgs = {
 };
 
 
+export type QuerySandboxGroupCredentialArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
+export type QuerySandboxGroupCredentialVersionsArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
+export type QuerySandboxGroupCredentialsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
 export type QuerySandboxGroupsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -6018,6 +6085,39 @@ export type SandboxGroup = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type SandboxGroupCredential = {
+  __typename: 'SandboxGroupCredential';
+  domain: Scalars['String']['output'];
+  enabled: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  injection: SandboxGroupCredentialInjection;
+  methods: Array<Scalars['String']['output']>;
+  paths: Array<Scalars['String']['output']>;
+  version: SandboxGroupCredentialVersion;
+};
+
+export type SandboxGroupCredentialInjection = {
+  __typename: 'SandboxGroupCredentialInjection';
+  name: Maybe<Scalars['String']['output']>;
+  template: Maybe<Scalars['String']['output']>;
+  type: Scalars['String']['output'];
+};
+
+export type SandboxGroupCredentialInjectionInput = {
+  name?: InputMaybe<Scalars['String']['input']>;
+  template?: InputMaybe<Scalars['String']['input']>;
+  type: Scalars['String']['input'];
+};
+
+export type SandboxGroupCredentialVersion = {
+  __typename: 'SandboxGroupCredentialVersion';
+  fingerprint: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  restoredFromVersionId: Maybe<Scalars['Int']['output']>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+  updatedBy: Scalars['String']['output'];
+};
+
 export type SandboxImage = {
   __typename: 'SandboxImage';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -6400,6 +6500,15 @@ export enum ThemeSetting {
   System = 'SYSTEM',
   SystemHighContrast = 'SYSTEM_HIGH_CONTRAST'
 }
+
+export type UpdateSandboxGroupCredentialInput = {
+  domain?: InputMaybe<Scalars['String']['input']>;
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  injection?: InputMaybe<SandboxGroupCredentialInjectionInput>;
+  methods?: InputMaybe<Array<Scalars['String']['input']>>;
+  paths?: InputMaybe<Array<Scalars['String']['input']>>;
+  value?: InputMaybe<Scalars['String']['input']>;
+};
 
 export type UsageCoverage = {
   __typename: 'UsageCoverage';

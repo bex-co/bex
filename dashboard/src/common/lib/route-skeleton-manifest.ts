@@ -712,6 +712,18 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "deploys-list",
     regions: ["deploys-table"],
   },
+  "/sandbox-groups": {
+    kind: "render",
+    owner: "routes/sandbox-groups.tsx",
+    shape: "sandbox-groups-list",
+    regions: ["page-header", "sandbox-groups-list"],
+  },
+  "/sandbox-groups/$sandboxGroupId": {
+    kind: "render",
+    owner: "routes/sandbox-groups_.$sandboxGroupId.tsx",
+    shape: "sandbox-group-detail",
+    regions: ["page-header", "group-metadata", "credentials-panel"],
+  },
 } satisfies { [Path in RoutePath]: RouteSkeletonDisposition };
 
 export type RouteSkeletonManifest = typeof ROUTE_SKELETON_MANIFEST;

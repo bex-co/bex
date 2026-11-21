@@ -124,6 +124,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "环境组",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navSandboxGroups": {
+    message: "沙箱组",
+    description: "Workspace sidebar link to sandbox groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",

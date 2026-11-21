@@ -25,10 +25,11 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // + a project's Service Metrics view (w3/m508); before it 100: + a
+    // + /sandbox-groups and /sandbox-groups/$sandboxGroupId (w2/m533); before
+    // them 101: + a project's Service Metrics view (w3/m508); before it 100: + a
     // project's Application Logs and Request Logs views (w3/m505); before
     // them 98: + a service's Compute page (w6/m483)
-    expect(classified).toHaveLength(101);
+    expect(classified).toHaveLength(103);
   });
 
   it("points every classification at a real route owner", () => {

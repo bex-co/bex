@@ -125,6 +125,10 @@ const jaCommon: Record<string, TranslationEntry> = {
     message: "環境グループ",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navSandboxGroups": {
+    message: "サンドボックスグループ",
+    description: "Workspace sidebar link to sandbox groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",

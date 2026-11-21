@@ -2,6 +2,7 @@ import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   Bot,
+  Box,
   CalendarClock,
   Network,
   Boxes,
@@ -512,6 +513,11 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     match: (path) => path.startsWith("/env-groups"),
     labelKey: "common.navEnvGroups",
     icon: Boxes,
+  },
+  {
+    match: (path) => path.startsWith("/sandbox-groups"),
+    labelKey: "common.navSandboxGroups",
+    icon: Box,
   },
   {
     match: (path) => path === "/webhooks/new",

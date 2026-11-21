@@ -1,8 +1,4 @@
-# Sandbox groups (ADR104, w22/m311). The dashboard only creates one, from
-# "+ New > Sandbox Group", as Render's does; Render documents no list page, so
-# there is no list query. `environmentId` places the group in a project
-# environment, optionally, as Render's dashboard lets a customer do (w22/m412);
-# a group in none reads it back as null.
+# Sandbox groups and group credentials (ADR104, ADR122, w22/m311, w2/m533).
 fragment SandboxGroupFields on SandboxGroup {
   id
   name
@@ -10,6 +6,48 @@ fragment SandboxGroupFields on SandboxGroup {
   isDefault
   environmentId
   concurrencyLimit
+}
+
+fragment SandboxGroupCredentialVersionFields on SandboxGroupCredentialVersion {
+  id
+  updatedAt
+  updatedBy
+  fingerprint
+  restoredFromVersionId
+}
+
+fragment SandboxGroupCredentialFields on SandboxGroupCredential {
+  id
+  domain
+  enabled
+  methods
+  paths
+  injection {
+    type
+    name
+    template
+  }
+  version {
+    ...SandboxGroupCredentialVersionFields
+  }
+}
+
+query SandboxGroups($ownerId: String) {
+  sandboxGroups(ownerId: $ownerId) {
+    ...SandboxGroupFields
+    ownerId
+    createdAt
+    updatedAt
+  }
+}
+
+query SandboxGroup($id: String!, $ownerId: String) {
+  sandboxGroup(id: $id, ownerId: $ownerId) {
+    ...SandboxGroupFields
+    ownerId
+    createdAt
+    updatedAt
+  }
 }
 
 mutation CreateSandboxGroup(
@@ -25,5 +63,83 @@ mutation CreateSandboxGroup(
     environmentId: $environmentId
   ) {
     ...SandboxGroupFields
+  }
+}
+
+query SandboxGroupCredentials($sandboxGroupId: String!, $ownerId: String) {
+  sandboxGroupCredentials(sandboxGroupId: $sandboxGroupId, ownerId: $ownerId) {
+    ...SandboxGroupCredentialFields
+  }
+}
+
+query SandboxGroupCredentialVersions(
+  $sandboxGroupId: String!
+  $id: String!
+  $ownerId: String
+) {
+  sandboxGroupCredentialVersions(
+    sandboxGroupId: $sandboxGroupId
+    id: $id
+    ownerId: $ownerId
+  ) {
+    ...SandboxGroupCredentialVersionFields
+  }
+}
+
+mutation CreateSandboxGroupCredential(
+  $sandboxGroupId: String!
+  $input: CreateSandboxGroupCredentialInput!
+  $ownerId: String
+) {
+  createSandboxGroupCredential(
+    sandboxGroupId: $sandboxGroupId
+    input: $input
+    ownerId: $ownerId
+  ) {
+    ...SandboxGroupCredentialFields
+  }
+}
+
+mutation UpdateSandboxGroupCredential(
+  $sandboxGroupId: String!
+  $id: String!
+  $input: UpdateSandboxGroupCredentialInput!
+  $ownerId: String
+) {
+  updateSandboxGroupCredential(
+    sandboxGroupId: $sandboxGroupId
+    id: $id
+    input: $input
+    ownerId: $ownerId
+  ) {
+    ...SandboxGroupCredentialFields
+  }
+}
+
+mutation DeleteSandboxGroupCredential(
+  $sandboxGroupId: String!
+  $id: String!
+  $ownerId: String
+) {
+  deleteSandboxGroupCredential(
+    sandboxGroupId: $sandboxGroupId
+    id: $id
+    ownerId: $ownerId
+  )
+}
+
+mutation RestoreSandboxGroupCredential(
+  $sandboxGroupId: String!
+  $id: String!
+  $versionId: Int!
+  $ownerId: String
+) {
+  restoreSandboxGroupCredential(
+    sandboxGroupId: $sandboxGroupId
+    id: $id
+    versionId: $versionId
+    ownerId: $ownerId
+  ) {
+    ...SandboxGroupCredentialFields
   }
 }

@@ -64,6 +64,8 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "project.$projectId.observability.metrics.tsx",
     "project.$projectId.settings.tsx",
     "project.$projectId.tsx",
+    "sandbox-groups.tsx",
+    "sandbox-groups_.$sandboxGroupId.tsx",
     "services.$serviceId.tsx",
     "services.$serviceId.builds.tsx",
     "services.$serviceId.compute.tsx",

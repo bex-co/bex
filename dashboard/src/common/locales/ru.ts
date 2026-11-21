@@ -141,6 +141,10 @@ const ruCommon: Record<string, TranslationEntry> = {
     message: "Группы окружения",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navSandboxGroups": {
+    message: "Группы песочниц",
+    description: "Workspace sidebar link to sandbox groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",

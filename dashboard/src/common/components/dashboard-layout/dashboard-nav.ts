@@ -1,6 +1,7 @@
 import {
   Bell,
   Bot,
+  Box,
   Boxes,
   CalendarClock,
   CreditCard,
@@ -43,6 +44,7 @@ export const NAV_GROUPS: SidebarNavGroup[] = [
         icon: CalendarClock,
       },
       { labelKey: "common.navEnvGroups", to: "/env-groups", icon: Boxes },
+      { labelKey: "common.navSandboxGroups", to: "/sandbox-groups", icon: Box },
     ],
   },
   {
