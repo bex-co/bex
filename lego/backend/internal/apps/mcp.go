@@ -214,7 +214,7 @@ type createWebServiceArgs struct {
 	PreDeployCommand        string                  `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
 	MaintenanceMode         *maintenanceModeArg     `json:"maintenanceMode,omitempty" jsonschema:"Render's maintenanceMode object at create time; web_service only, omit for disabled"`
 	Port                    int32                   `json:"port,omitempty" jsonschema:"the port the app listens on (default 10000, as on Render; a Git-built Docker private_service created without one publishes every TCP port its image declares, and this field only picks the primary; ignored for a background_worker)"`
-	Replicas                int32                   `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	Replicas                *int32                  `json:"replicas,omitempty" jsonschema:"desired running instances, 1-100 (default 1)"`
 	DryRun                  bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 	IPAllowList             []string                `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); omit to leave the service open to all source IPs (Render default); [] blocks every public request. Only applies to web_service and static_site."`
 	IPAllowListEntries      []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}; use instead of ipAllowList"`
@@ -275,13 +275,19 @@ type listCronJobRunsResult struct {
 }
 
 // createRequest is create_web_service's whole wire-to-request step: the
-// tool's refusals, then toCreateRequest with the call's workspace and the
-// resolved allowlist (TestCreateWireFieldsReachTheRequest drives it).
+// tool's refusals, then toCreateRequest with the call's workspace, the
+// resolved allowlist and the checked instance count
+// (TestCreateWireFieldsReachTheRequest drives it).
 func (a createWebServiceArgs) createRequest(ctx context.Context) (CreateRequest, error) {
 	if _, _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
 		return CreateRequest{}, err
 	}
 	if err := a.dockerDetails().conflict(); err != nil {
+		return CreateRequest{}, err
+	}
+	// replicas is this tool's name for Render's numInstances (w8/364).
+	replicas, err := optionalInstanceCount("replicas", a.Replicas)
+	if err != nil {
 		return CreateRequest{}, err
 	}
 	allowList, err := serviceAllowListInputs(a.IPAllowListEntries, a.IPAllowListEntries != nil, a.IPAllowList, a.IPAllowList != nil)
@@ -296,6 +302,7 @@ func (a createWebServiceArgs) createRequest(ctx context.Context) (CreateRequest,
 	req.Env = env
 	req.OwnerID = core.NamedWorkspace(ctx)
 	req.IPAllowList = allowList
+	req.Replicas = replicas
 	return req, nil
 }
 
@@ -334,7 +341,6 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		PreDeployCommand:        a.PreDeployCommand,
 		MaintenanceMode:         a.MaintenanceMode.toView(),
 		Port:                    a.Port,
-		Replicas:                a.Replicas,
 		DryRun:                  a.DryRun,
 	}
 }

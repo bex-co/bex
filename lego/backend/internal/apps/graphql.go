@@ -794,6 +794,11 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 	if err != nil {
 		return CreateRequest{}, err
 	}
+	// replicas is this mutation's name for Render's numInstances (w8/364).
+	replicas, err := optionalInstanceCount("replicas", gqlInt32Ptr(args, "replicas"))
+	if err != nil {
+		return CreateRequest{}, err
+	}
 	return CreateRequest{
 		OwnerID:                 gqlutil.Str(args, "ownerId"),
 		EnvironmentID:           gqlutil.Str(args, "environmentId"),
@@ -819,7 +824,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		AutoDeployChecksPass:    checksPass,
 		NotifyOnFail:            gqlutil.Str(args, "notifyOnFail"),
 		Port:                    int32(gqlutil.Int(args, "port")),
-		Replicas:                int32(gqlutil.Int(args, "replicas")),
+		Replicas:                replicas,
 		Env:                     env,
 		SecretFiles:             gqlSecretFileInputs(args, "secretFiles"),
 		PublishPath:             gqlutil.Str(args, "publishPath"),

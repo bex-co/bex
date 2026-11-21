@@ -361,13 +361,13 @@ func TestSpecFromCreateNormalizationErrors(t *testing.T) {
 			name:    "negative replicas",
 			svcType: appv1alpha1.TypeWebService,
 			req:     CreateRequest{Replicas: -1},
-			wantErr: fmt.Sprintf("bad request: replicas must be 0-%d", store.MaxReplicas),
+			wantErr: fmt.Sprintf("bad request: numInstances must be 1-%d", store.MaxReplicas),
 		},
 		{
 			name:    "replicas beyond the cap",
 			svcType: appv1alpha1.TypeWebService,
 			req:     CreateRequest{Replicas: store.MaxReplicas + 1},
-			wantErr: fmt.Sprintf("bad request: replicas must be 0-%d", store.MaxReplicas),
+			wantErr: fmt.Sprintf("bad request: numInstances must be 1-%d", store.MaxReplicas),
 		},
 		{
 			name:    "runtime and builder both set",

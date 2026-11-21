@@ -267,7 +267,7 @@ type serviceDetailsReq struct {
 	// (resourcemeta.CheckRequestedRegion) and normalizes it to the configured
 	// placement, as Blueprints do (w8/152).
 	Region                  string        `json:"region"`
-	NumInstances            int32         `json:"numInstances"`
+	NumInstances            *int32        `json:"numInstances"`
 	HealthCheckPath         string        `json:"healthCheckPath"`
 	MaxShutdownDelaySeconds optionalInt32 `json:"maxShutdownDelaySeconds"`
 	Runtime                 string        `json:"runtime"`
@@ -671,7 +671,9 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		if r.ServiceDetails.BuildCommand != "" {
 			buildCommand = r.ServiceDetails.BuildCommand
 		}
-		replicas = r.ServiceDetails.NumInstances
+		if replicas, err = optionalInstanceCount("numInstances", r.ServiceDetails.NumInstances); err != nil {
+			return CreateRequest{}, err
+		}
 		if r.ServiceDetails.MaxShutdownDelaySeconds.Set {
 			value := r.ServiceDetails.MaxShutdownDelaySeconds.Value
 			maxShutdownDelaySeconds = &value

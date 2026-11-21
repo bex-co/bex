@@ -3820,6 +3820,27 @@ func createAutoDeployTrigger(autoDeploy bool, checksPass *bool) string {
 	return ""
 }
 
+// validateInstanceCount is Render's bound on a manual instance count: its
+// pinned numInstances has minimum 1, and a service on any bex plan scales to
+// at most store.MaxReplicas (Render's 100 for plans up to 8 CPU / 32 GB).
+// field is the name the caller sent the count under (w8/364).
+func validateInstanceCount(field string, n int32) error {
+	if n < 1 || n > store.MaxReplicas {
+		return fmt.Errorf("%w: %s must be 1-%d", core.ErrBadRequest, field, store.MaxReplicas)
+	}
+	return nil
+}
+
+// optionalInstanceCount is a transport's optional count: omitted it is 0
+// (Create's default of 1), present it must pass validateInstanceCount, so an
+// explicit 0 is refused as Render's pinned minimum refuses it.
+func optionalInstanceCount(field string, n *int32) (int32, error) {
+	if n == nil {
+		return 0, nil
+	}
+	return *n, validateInstanceCount(field, *n)
+}
+
 // normalizeCreateDefaults bounds-checks the create's port/replica values and
 // resolves the fields with request-shape defaults: port (DefaultPort),
 // replicas (1), branch ("main" for a repo-backed service), and autoDeploy.
@@ -3835,8 +3856,13 @@ func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch st
 			return 0, 0, "", false, err
 		}
 	}
-	if req.Replicas < 0 || req.Replicas > store.MaxReplicas {
-		return 0, 0, "", false, fmt.Errorf("%w: replicas must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
+	// Replicas 0 is "unset" (default 1). REST, GraphQL and MCP check an
+	// explicit count under their own field name; this backstop is what a
+	// Blueprint's numInstances reaches (w8/364).
+	if req.Replicas != 0 {
+		if err := validateInstanceCount("numInstances", req.Replicas); err != nil {
+			return 0, 0, "", false, err
+		}
 	}
 	port = req.Port
 	if port == 0 {
@@ -4926,8 +4952,8 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return AppView{}, err
 	}
-	if replicas < 1 || replicas > store.MaxReplicas {
-		return AppView{}, fmt.Errorf("%w: numInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
+	if err := validateInstanceCount("numInstances", replicas); err != nil {
+		return AppView{}, err
 	}
 	if err := checkInstanceCap(a.Spec.Tier, replicas); err != nil {
 		return AppView{}, err
