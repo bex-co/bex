@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 const urlScheme = "s3://"
@@ -51,7 +52,63 @@ func parseLocation(arg string) (location, error) {
 	if !bucketName.MatchString(bucket) {
 		return location{}, usageError("%q does not name a bucket: write s3://bucket/key, with a bucket of 3 to 63 lowercase letters, digits and hyphens", arg)
 	}
+	if key != "" { // no key is the bucket itself
+		if err := checkKey(key); err != nil {
+			return location{}, usageError("%q cannot name an object or a prefix: %v", arg, err)
+		}
+	}
 	return location{Remote: true, Bucket: bucket, Key: key}, nil
+}
+
+// maxKeyBytes is the longest key bex object storage takes.
+const maxKeyBytes = 1024
+
+// keyRule is ADR112 D7's key rule in words.
+const keyRule = `bex object storage serves a key of 1 to 1,024 bytes of UTF-8 with no leading or doubled slash, no "." or ".." segment, and no backslash or control character`
+
+// keyProblem says what breaks ADR112 D7's key rule in key, or "" when nothing
+// does. bex-s3 refuses such a key on every route (objectstorage.ValidateKey in
+// lego/backend, which this module cannot import), and Traefik cleans a dot
+// segment or a doubled slash out of the path before bex-s3 sees it, so a
+// request for one would fail its signature check instead. A trailing slash is
+// an ordinary key. lego/cli/testdata/object-keys.txt holds the cases both
+// modules' tests check, so the two copies cannot drift.
+func keyProblem(key string) string {
+	switch {
+	case key == "":
+		return "is empty"
+	case len(key) > maxKeyBytes:
+		return fmt.Sprintf("is %d bytes long", len(key))
+	case !utf8.ValidString(key):
+		return "is not UTF-8"
+	case strings.HasPrefix(key, "/"):
+		return "starts with a slash"
+	case strings.Contains(key, "//"):
+		return "has a doubled slash"
+	}
+	for _, r := range key {
+		switch {
+		case r == '\\':
+			return "has a backslash"
+		case r < 0x20 || r == 0x7f:
+			return "has a control character"
+		}
+	}
+	for _, segment := range strings.Split(key, "/") {
+		if segment == "." || segment == ".." {
+			return fmt.Sprintf("has a %q segment", segment)
+		}
+	}
+	return ""
+}
+
+// checkKey refuses a key bex object storage does not serve before a request
+// for it is sent, as a wrong command line (exit 2).
+func checkKey(key string) error {
+	if problem := keyProblem(key); problem != "" {
+		return usageError("the key %q %s (%s)", key, problem, keyRule)
+	}
+	return nil
 }
 
 // parseRemote is parseLocation for an argument that must be in a bucket.

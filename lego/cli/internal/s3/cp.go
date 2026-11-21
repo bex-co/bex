@@ -219,6 +219,11 @@ func (r *run) finishGroup(w *group, produced error) error {
 func (r *run) uploadJob(path string, size int64, bucket, key string, o *transferOptions) job {
 	dest := location{Remote: true, Bucket: bucket, Key: key}
 	return job{label: "upload " + path, size: size, run: func(ctx context.Context) error {
+		// A file's name can hold what no key may (a backslash or a control
+		// character): that file fails, and a recursive upload goes on.
+		if err := checkKey(key); err != nil {
+			return err
+		}
 		if !o.dryrun {
 			if err := r.uploadFile(ctx, path, size, bucket, key, o.put); err != nil {
 				return err

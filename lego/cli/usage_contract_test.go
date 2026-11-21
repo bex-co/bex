@@ -60,6 +60,9 @@ func TestBexNativeUsageErrorsExit2(t *testing.T) {
 		{"s3 mb", []string{"accepts 1 arg(s), received 0"}},
 		{"s3 mb a b c", []string{"accepts 1 arg(s), received 3"}},
 		{"s3 ls --qa-bogus", []string{"unknown flag: --qa-bogus"}},
+		// a key bex object storage cannot serve (w32/063)
+		{"s3 cp a.txt s3://photos/x/../y", []string{`"s3://photos/x/../y" cannot name an object or a prefix: the key "x/../y" has a ".." segment`}},
+		{"s3 cp a.txt s3://photos//dbl", []string{`the key "/dbl" starts with a slash`, "no leading or doubled slash"}},
 		{"upgrade frob", []string{`unknown command "frob" for "bex upgrade"`}},
 	} {
 		t.Run(tc.args, func(t *testing.T) {

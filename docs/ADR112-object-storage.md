@@ -242,6 +242,7 @@ Render has no bucket-level access control that I could find: access is the works
   - Reason: "Wasabi's handling of `..` in S3 keys" is unproven on a live deployment ([m394](../.pm/w21/done/m394/README.md)). A `..` segment is the one input that could step out of `<tea-id>/<obk-id>/`.
   - `http.ServeMux` cleans and redirects such paths, but the check runs on the decoded value regardless, with cases for `%2e%2e`, doubled slashes and Unicode.
   - Render's key rules are not fully known, and S3 itself accepts a key with a `.` or `..` segment and a leading `/`, so this is a bex rule, recorded in ADR018, answered with `InvalidArgument` (`KeyTooLongError` above 1024 bytes). A client that syncs a directory tree does not produce those keys.
+  - `bex s3` checks the same rule before it sends a key (w32/063). Without the check, a doubled slash or a dot segment reached bex-s3 cleaned and failed as `SignatureDoesNotMatch`, and the client blamed the clock and the secret. The CLI imports no sibling module, so it keeps its own copy of the rule (`keyProblem`, `lego/cli/internal/s3/location.go`). `lego/cli/testdata/object-keys.txt` holds the cases, and both `ValidateKey`'s test and the CLI's read that file, so the two copies cannot drift.
 
 ### D8 — Usage, quotas and billing: the bucket is the truth, the gate is at write, v1 is a shadow meter
 

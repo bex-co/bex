@@ -23,6 +23,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -95,50 +96,58 @@ func TestValidateBucketName(t *testing.T) {
 	}
 }
 
+// TestValidateKey checks the cases of lego/cli/testdata/object-keys.txt, which
+// `bex s3`'s own copy of the rule is tested against too (w32/063): the CLI
+// imports no sibling module, so a change to the rule here must change that
+// table, and the CLI with it.
 func TestValidateKey(t *testing.T) {
-	valid := []string{
-		"a", "cat.jpg", "dir/cat.jpg", "a/b/c/d", "with space", "ünï/çödé", "日本語/キー",
-		"trailing/", "dots.in.name", ".hidden", "..hidden", "name..", "a/.../b", "100%", "%2e%2e", "%252e%252e/x",
-		"a?b#c", "a;b", strings.Repeat("k", MaxKeyBytes),
-		// Look-alikes of ".." are ordinary names: S3 keys are opaque.
-		"．．/x", "‥/x",
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "cli", "testdata", "object-keys.txt"))
+	if err != nil {
+		t.Fatal(err)
 	}
+	limit := 0
+	var valid, invalid []string
+	for n, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		kind, rest, _ := strings.Cut(line, " ")
+		if kind == "max-key-bytes" {
+			if limit, err = strconv.Atoi(rest); err != nil {
+				t.Fatalf("object-keys.txt:%d: %v", n+1, err)
+			}
+			continue
+		}
+		key, err := strconv.Unquote(rest)
+		if err != nil {
+			t.Fatalf("object-keys.txt:%d: %s is not a Go string literal: %v", n+1, rest, err)
+		}
+		switch kind {
+		case "valid":
+			valid = append(valid, key)
+		case "invalid":
+			invalid = append(invalid, key)
+		default:
+			t.Fatalf("object-keys.txt:%d: %q is not max-key-bytes, valid or invalid", n+1, kind)
+		}
+	}
+	if limit != MaxKeyBytes {
+		t.Fatalf("object-keys.txt has max-key-bytes %d, and MaxKeyBytes is %d", limit, MaxKeyBytes)
+	}
+	if len(valid) == 0 || len(invalid) == 0 {
+		t.Fatalf("object-keys.txt has %d valid and %d invalid keys", len(valid), len(invalid))
+	}
+	valid = append(valid, strings.Repeat("k", limit))
+	invalid = append(invalid, strings.Repeat("k", limit+1), strings.Repeat("é", limit/2+1))
 	for _, key := range valid {
 		if err := ValidateKey(key); err != nil {
 			t.Errorf("ValidateKey(%q) = %v, want nil", key, err)
 		}
 	}
-	invalid := map[string]string{
-		"empty":                 "",
-		"too long":              strings.Repeat("k", MaxKeyBytes+1),
-		"too long in bytes":     strings.Repeat("é", MaxKeyBytes/2+1),
-		"leading slash":         "/a",
-		"only a slash":          "/",
-		"dot":                   ".",
-		"dot dot":               "..",
-		"leading dot dot":       "../a",
-		"inner dot dot":         "a/../b",
-		"trailing dot dot":      "a/..",
-		"dot segment":           "a/./b",
-		"leading dot segment":   "./a",
-		"trailing dot segment":  "a/.",
-		"doubled slash then ..": "a//../b",
-		"doubled slash":         "a//b",
-		"doubled slash at end":  "a//",
-		"doubled slash inside":  "dir//file.txt",
-		"backslash":             `a\b`,
-		"backslash dot dot":     `..\a`,
-		"nul":                   "a\x00b",
-		"newline":               "a\nb",
-		"tab":                   "a\tb",
-		"escape":                "a\x1bb",
-		"delete":                "a\x7fb",
-		"invalid utf-8":         "a\xffb",
-		"truncated utf-8":       "a\xe2\x82",
-	}
-	for name, key := range invalid {
+	for _, key := range invalid {
 		if err := ValidateKey(key); !errors.Is(err, ErrInvalidKey) {
-			t.Errorf("%s: ValidateKey(%q) = %v, want ErrInvalidKey", name, key, err)
+			t.Errorf("ValidateKey(%q) = %v, want ErrInvalidKey", key, err)
 		}
 	}
 }

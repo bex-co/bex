@@ -1,0 +1,66 @@
+# ADR112 D7's object key rule as one table of cases. bex-s3 refuses a key that
+# breaks it on every route (ValidateKey, lego/backend/internal/objectstorage/
+# keys.go), and `bex s3` refuses one before it sends a request
+# (keyProblem, lego/cli/internal/s3/location.go). The CLI imports no sibling
+# module, so it keeps its own copy of the rule; both modules' tests read this
+# file, so the copies cannot drift.
+#
+# A line is "max-key-bytes N", or "valid" or "invalid" followed by a key
+# written as a Go string literal (strconv.Unquote). Each test also tries a key
+# of N bytes (valid), one of N+1 bytes (invalid), and one of N/2+1 two-byte
+# characters (invalid: the bound counts bytes).
+
+max-key-bytes 1024
+
+# Keys are opaque: dots inside a name, a trailing slash, spaces, escapes and
+# Unicode are ordinary.
+valid "a"
+valid "cat.jpg"
+valid "dir/cat.jpg"
+valid "a/b/c/d"
+valid "with space"
+valid "ünï/çödé"
+valid "日本語/キー"
+valid "trailing/"
+valid "dir/"
+valid "a.b/c"
+valid "dots.in.name"
+valid ".hidden"
+valid "..hidden"
+valid "name.."
+valid "a/.../b"
+valid "100%"
+valid "%2e%2e"
+valid "%252e%252e/x"
+valid "a?b#c"
+valid "a;b"
+# Look-alikes of ".." are ordinary names.
+valid "．．/x"
+valid "‥/x"
+
+invalid ""
+invalid "/a"
+invalid "/"
+invalid "/dbl"
+invalid "."
+invalid ".."
+invalid "../a"
+invalid "a/../b"
+invalid "x/../y"
+invalid "a/.."
+invalid "a/./b"
+invalid "./a"
+invalid "a/."
+invalid "a//../b"
+invalid "a//b"
+invalid "a//"
+invalid "dir//file.txt"
+invalid "a\\b"
+invalid "..\\a"
+invalid "a\x00b"
+invalid "a\nb"
+invalid "a\tb"
+invalid "a\x1bb"
+invalid "a\x7fb"
+invalid "a\xffb"
+invalid "a\xe2\x82"
