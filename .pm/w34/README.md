@@ -13,3 +13,4 @@
 - [ ] [001](001.md) — Capture Render's answers where its logical-replication docs are silent, on a Pro workspace (~1h with a Render Pro workspace) ← same brainstorm, item 4; needs a Render workspace, which the board does not have (the [`w10/blocked/002`](../w10/blocked/002.md) gate)
 - [ ] [002](002.md) — Decide how a workspace asks for logical replication: a request channel bex does not have yet, or self-service as a signed-off divergence (~45m, a user decision) ← same brainstorm, item 5
 - [ ] [003](003.md) — A logical-replication subscriber with an HA standby can skip its last transactions at a failover (asynchronous standby) ← found by w34/m543, 2026-11-21
+- [ ] [004](004.md) — A Postgres user's password Secret outlives its database: `CreateUser` gives it no owner reference, and 18 orphans were on production ← found by w34/m542's production replay, 2026-11-21
