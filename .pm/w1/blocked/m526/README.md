@@ -1,6 +1,6 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** todo (t001–t009, t012 and t013 done; t010 re-walks the agent composer row once production carries t013, and the first install on another of the user's orgs, per the 2026-11-21 unblock)
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009, t012 and t013 done; t010 waits for the production pin to carry `3391d36cc` to re-walk the agent composer row's disconnect and reconnect, and for the user's GitHub sudo-mode 2FA for the first install)
 
 ## Tasks (in order)
 
@@ -29,7 +29,7 @@
    - the source picker in Service Settings → Update Source;
    - the agent new-session composer.
 
-   From that action, an account that already has the bex GitHub App (`puncsky`, `bex-co`) connects without reinstalling and without GitHub's Configure dead end. An account without the App (`BlockEdenHQ`, after it is uninstalled) installs and connects. No starting point leaves the user on github.com with nothing bound.
+   From that action, an account that already has the bex GitHub App (`puncsky`, `bex-co`) connects without reinstalling and without GitHub's Configure dead end. An account without the App installs and connects: one of the user's orgs that lacks it (the 2026-11-21 unblock; `BlockEdenHQ` stays installed). No starting point leaves the user on github.com with nothing bound.
 
 2. The account chooser:
    - lists every installed account the authorizing GitHub user administers;
@@ -147,3 +147,21 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
   2. Walk the first install through the chooser.
   3. Record the "install on a new account" column for the other rows. One live first install through the chooser covers the mechanism they share.
   4. Run t011 if every cell passes.
+
+## Park (2026-11-21)
+
+- **Walk 2** ran on pin `820edf28d22d`; t010 holds its matrix.
+  - Passed in the agent composer: connect through the callout (new tab, chooser, repos listed with no reload, input kept), reconnect after a reload, and the "GitHub settings" link landing on `/settings#integrations`.
+  - Failed in the agent composer: disconnect and reconnect. A disconnect made in another tab left the account's 27 repos listed. After a same-tab disconnect of the last account, the composer kept its cached "connected" readiness and offered no connect action. t013 fixes both in `3391d36cc`.
+  - The first install reached GitHub's install page for `cuckoo-network`, with Only select repositories and the one public repo `cuckoo-network/stable-diffusion-miner-docker`. Install & Authorize opened GitHub's **Confirm access**, its sudo mode. Installing on an org needs the user's 2FA, as uninstalling does. Nothing was installed.
+- **Gate 1, which clears by itself:** ``pin must carry `3391d36cc` ``. Then a worker re-walks the composer row's disconnect and reconnect in `bex-canary`:
+  1. Connect BlockEdenHQ through the callout.
+  2. With the composer open, disconnect BlockEdenHQ from Settings in another tab. On returning to the composer's tab, its repos leave the repository list, and reaching for a repository shows the callout.
+  3. Connect it again through the callout.
+  4. Disconnect it from Settings in the same tab and go back to Agents. Reaching for a repository shows the callout again.
+- **Gate 2, which needs the user:** GitHub's sudo-mode 2FA for the first install. The user does one of these:
+  - is at the walk browser to approve **Confirm access** (GitHub Mobile, a passkey, an authenticator code or an emailed code) when the worker clicks Install & Authorize, after which GitHub asks again only after a few hours of inactivity;
+  - or runs the install from bex themselves: `bex-canary` → Account Settings → Connect another account → Install on another GitHub account → `cuckoo-network` → Only select repositories → `stable-diffusion-miner-docker` → Install & Authorize → confirm.
+
+  The worker then checks that `cuckoo-network` binds in `bex-canary` and its repo appears, disconnects it from `bex-canary`, and records that the App stays installed on `cuckoo-network` with that one repository, for the user to remove later.
+- Once both gates are walked and pass, t011 closes the milestone.
