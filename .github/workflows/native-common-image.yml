@@ -480,7 +480,8 @@ jobs:
       - name: check common ARM64 startup and core tools only
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: deploy/native-common
+          # check-local.Dockerfile.dockerignore admits only the wormhole check.
+          context: deploy
           file: deploy/native-common/check-local.Dockerfile
           platforms: linux/arm64
           push: false

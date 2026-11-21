@@ -45,9 +45,12 @@ printf 'deb [signed-by=/usr/share/keyrings/bex-pgdg.asc] %s %s-pgdg main\n' \
   "$pg_repo" "$VERSION_CODENAME" > /etc/apt/sources.list.d/bex-pgdg.list
 apt-get update
 # Trusted factory recipes may add distribution-matching runtime dependencies.
+# magic-wormhole is Render's pre-installed way to move disk files through
+# Shell; its /usr/bin/wormhole runs on the system /usr/bin/python3, never on a
+# primary runtime installed above under /usr/local (w6/m549).
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  postgresql-client-18 gettext ghostscript jq libvips-dev libvips-tools pandoc \
-  pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip unzip \
+  postgresql-client-18 gettext ghostscript jq libvips-dev libvips-tools \
+  magic-wormhole pandoc pigz python3-dev python3-pip python3-setuptools rsync sqlite3 swig zip unzip \
   gnupg2 nano vim libbrotli1 libbrotli-dev "$@"
 
 sh /tmp/bex-patch-system-brotli.sh

@@ -19,6 +19,15 @@ RUN --network=none --mount=type=bind,from=native,source=/,target=/candidate,read
   fi \
   && printf 'verified\n' > /tmp/bex-node-portability-verified
 
+# The wormhole round trip needs a mailbox and a transit relay. This suite's own
+# signed Debian server packages are unpacked here and never installed, so the
+# client under test keeps exactly the candidate's files and dpkg state.
+FROM native AS wormhole-servers
+RUN apt-get update \
+  && mkdir /tmp/bex-wormhole-debs && cd /tmp/bex-wormhole-debs \
+  && apt-get download python3-magic-wormhole-mailbox-server magic-wormhole-transit-relay \
+  && for package in ./*.deb; do dpkg-deb -x "$package" /opt/bex-wormhole-servers; done
+
 FROM native
 COPY --from=node-portability /tmp/bex-node-portability-verified /tmp/bex-node-portability-verified
 COPY testdata/archive.dump.b64 /tmp/archive.dump.b64
@@ -26,6 +35,7 @@ COPY testdata/rows.txt /tmp/expected-rows.txt
 COPY check-tools.py /tmp/check-tools.py
 COPY check-brotli.py /tmp/check-brotli.py
 COPY check-primary-python.py /tmp/check-primary-python.py
+COPY check-wormhole.py /tmp/check-wormhole.py
 RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump \
   && echo 'a640255a7f226c765d84ad869a6a986ea4d39be7a72a68b02599dcf87721637c  /tmp/archive.dump' | sha256sum -c - \
   && pg_restore --file=/tmp/archive.sql /tmp/archive.dump \
@@ -35,4 +45,6 @@ RUN --network=none base64 -d /tmp/archive.dump.b64 > /tmp/archive.dump \
   && ! pg_restore --file=/tmp/invalid.sql /dev/null
 RUN --network=none /usr/bin/python3 /tmp/check-tools.py
 RUN --network=none /usr/bin/python3 /tmp/check-brotli.py
+RUN --network=none --mount=type=bind,from=wormhole-servers,source=/opt/bex-wormhole-servers,target=/opt/bex-wormhole-servers,readonly \
+  /usr/bin/python3 /tmp/check-wormhole.py /opt/bex-wormhole-servers
 RUN --network=none if [ -x /usr/local/bin/python3 ]; then /usr/local/bin/python3 /tmp/check-primary-python.py; fi

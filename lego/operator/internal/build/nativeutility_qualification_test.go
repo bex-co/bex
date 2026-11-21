@@ -342,6 +342,10 @@ func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, e
 	} else if copied, err := exec.CommandContext(ctx, "docker", "cp", container+":/opt/render/project/src/public", filepath.Join(evidence, "public")).CombinedOutput(); err != nil {
 		t.Fatalf("export static artifacts: %v %s", err, copied)
 	}
+	wormhole := !tc.static && nativeCommonBase != ""
+	if wormhole {
+		d.probeWormhole(ctx, t, tag, evidence, runtimeEnv)
+	}
 	inspected, err := exec.CommandContext(ctx, "docker", "inspect", container).Output()
 	must(t, err)
 	var states []struct {
@@ -362,10 +366,44 @@ func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, e
 	if tc.name == "python3148-default" && os.Getenv("BEX_NATIVE_TEST_SYFT") != "" {
 		nativeUtilityGeneratedSBOM(t, ctx, states[0].Image, actualPlatform, evidence)
 	}
-	receipt, err := json.MarshalIndent(map[string]any{"case": tc.name, "container_id": container, "image_config_id": states[0].Image, "image_platform": actualPlatform, "owner": d.owner, "builder": d.builder, "common_base": nativeCommonBase, "test_prerequisite_overlay": prerequisites, "runtime_environment": runtimeEnv, "network": "none", "runtime_command_executed": !tc.static, "static_artifacts_extracted": tc.static, "scope": "local generated image; recorded qualification overlays and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim"}, "", "  ")
+	receipt, err := json.MarshalIndent(map[string]any{"case": tc.name, "container_id": container, "image_config_id": states[0].Image, "image_platform": actualPlatform, "owner": d.owner, "builder": d.builder, "common_base": nativeCommonBase, "test_prerequisite_overlay": prerequisites, "runtime_environment": runtimeEnv, "network": "none", "runtime_command_executed": !tc.static, "static_artifacts_extracted": tc.static, "wormhole_probed": wormhole, "scope": "local generated image; recorded qualification overlays and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim"}, "", "  ")
 	must(t, err)
 	must(t, os.WriteFile(filepath.Join(evidence, "receipt.json"), receipt, 0o600))
 	t.Logf("%s passed actual generated network-off commands; image %s", tc.name, states[0].Image)
+}
+
+// nativeWormholeProbe is what a tenant's Shell on a native service runs:
+// Render pre-installs magic-wormhole on every native runtime (w6/m549). The
+// runtime copied over the common image must neither shadow the packaged
+// client nor change its interpreter, and the client's crypto must load. The
+// factory check sends a real file through a relay; this proves the generated
+// image of every family still carries that client.
+const nativeWormholeProbe = `set -eu
+test "$(command -v wormhole)" = /usr/bin/wormhole
+test "$(head -n 1 /usr/bin/wormhole | sed 's/^#![[:space:]]*//')" = /usr/bin/python3
+wormhole --version
+cd / && /usr/bin/python3 -c '
+import nacl.secret, spake2, wormhole.cli.cmd_receive, wormhole.cli.cmd_send
+box = nacl.secret.SecretBox(bytes(32))
+assert box.decrypt(box.encrypt(b"bex")) == b"bex"
+a, b = spake2.SPAKE2_Symmetric(b"code"), spake2.SPAKE2_Symmetric(b"code")
+sa, sb = a.start(), b.start()
+assert a.finish(sb) == b.finish(sa)
+print("wormhole client loads on the system interpreter")'
+`
+
+func (d nativeUtilityDocker) probeWormhole(ctx context.Context, t *testing.T, tag, evidence string, runtimeEnv []string) {
+	t.Helper()
+	args := make([]string, 0, 11+2*len(runtimeEnv))
+	args = append(args, "run", "--rm", "--network", "none", "--label", d.label(), "--entrypoint", "/bin/sh")
+	for _, entry := range runtimeEnv {
+		args = append(args, "--env", entry)
+	}
+	out, err := exec.CommandContext(ctx, "docker", append(args, tag, "-c", nativeWormholeProbe)...).CombinedOutput()
+	must(t, os.WriteFile(filepath.Join(evidence, "wormhole.log"), out, 0o600))
+	if err != nil || !strings.Contains(string(out), "magic-wormhole ") {
+		t.Fatalf("packaged wormhole in the generated image: %v\n%s", err, out)
+	}
 }
 
 func nativeUtilityWheelRecipe(recipe, common string) (string, error) {
