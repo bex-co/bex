@@ -1,6 +1,6 @@
 # blueprint-refs — do Blueprint references reach a running process?
 
-The fixture for [w8/375](../../.pm/w8/blocked/375.md): a free-only [`render.yaml`](render.yaml) whose web service takes every kind of Blueprint reference a free service can, and reports at `GET /` what each one resolved to. `blueprints validate` proves a reference parses; this shows its value arriving.
+The fixture for [w8/375](../../.pm/w8/done/375.md): a free-only [`render.yaml`](render.yaml) whose web service takes every kind of Blueprint reference a free service can, and reports at `GET /` what each one resolved to. `blueprints validate` proves a reference parses; this shows its value arriving.
 
 | Reference | Declared on `blueprint-refs-app` | Expected line in the report |
 | --- | --- | --- |
