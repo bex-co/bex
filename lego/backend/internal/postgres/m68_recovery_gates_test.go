@@ -19,8 +19,11 @@ package postgres
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -179,6 +182,89 @@ func TestRecoveryValidatesOnlyCallerSuppliedPlanAndVersion(t *testing.T) {
 			t.Fatalf("recovery of a default-version instance => %v, want success", err)
 		}
 	})
+}
+
+// w34/006: Render's API spells a recovery's plan basic_256mb, pro_4gb or
+// 1c-4g. The recovered copy's spec.plan is the catalog id on every surface,
+// because the CRD's enum refuses the alias (production answered 500 with the
+// CR rejected); an unknown plan is still a 400 and creates nothing.
+func TestRecoveryWritesTheCanonicalPlanForARenderAliasOnEverySurface(t *testing.T) {
+	recoverWithPlan := func(t *testing.T, svc *Service, surface, plan string) (ok bool) {
+		t.Helper()
+		rest := func(path, body string, created int) bool {
+			res := serveREST(svc, http.MethodPost, path, body)
+			if res.Code != created && res.Code != http.StatusBadRequest {
+				t.Fatalf("%s with plan %q answered %d %s", path, plan, res.Code, res.Body)
+			}
+			return res.Code == created
+		}
+		switch surface {
+		case "REST": // Render's endpoint answers 200
+			return rest("/v1/postgres/dpg-src/recovery", `{"restoreName":"restored","plan":"`+plan+`"}`, http.StatusOK)
+		case "REST /recover": // bex's native alias answers 201
+			return rest("/v1/postgres/dpg-src/recover", `{"name":"restored","plan":"`+plan+`"}`, http.StatusCreated)
+		case "GraphQL":
+			schema, err := pgGQLSchema(svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctxAs("user-a"),
+				VariableValues: map[string]any{"p": plan},
+				RequestString:  `mutation($p:String) { recoverDatabase(id:"dpg-src", name:"restored", plan:$p) { id } }`})
+			return len(res.Errors) == 0
+		case "MCP":
+			session, cleanup := pgMCPSession(t, svc)
+			defer cleanup()
+			res, err := session.CallTool(ctxAs("user-a"), &mcp.CallToolParams{Name: "recover_postgres",
+				Arguments: map[string]any{"postgresId": "dpg-src", "name": "restored", "plan": plan}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return !res.IsError
+		}
+		t.Fatalf("unknown surface %q", surface)
+		return false
+	}
+	// recoveredPlans is the spec.plan of every recovered copy.
+	recoveredPlans := func(t *testing.T, cl client.Client) []string {
+		t.Helper()
+		var list appv1alpha1.DatabaseList
+		if err := cl.List(context.Background(), &list); err != nil {
+			t.Fatal(err)
+		}
+		var plans []string
+		for _, d := range list.Items {
+			if d.Spec.Recovery != nil {
+				plans = append(plans, d.Spec.Plan)
+			}
+		}
+		return plans
+	}
+
+	for _, surface := range []string{"REST", "REST /recover", "GraphQL", "MCP"} {
+		t.Run(surface, func(t *testing.T) {
+			for alias, want := range map[string]string{"basic_256mb": "basic-256mb", "pro_4gb": "pro-4gb", "1c-4g": "pro-4gb", "basic-1gb": "basic-1gb"} {
+				svc, _ := backedUpSource(t, "basic-256mb")
+				svc.Payment = &switchablePaymentGate{bound: true}
+				if !recoverWithPlan(t, svc, surface, alias) {
+					t.Errorf("recovery naming %q was refused", alias)
+					continue
+				}
+				if got := recoveredPlans(t, svc.Client); len(got) != 1 || got[0] != want {
+					t.Errorf("recovery naming %q wrote copies on plans %q, want one on %q", alias, got, want)
+				}
+			}
+
+			svc, _ := backedUpSource(t, "basic-256mb")
+			svc.Payment = &switchablePaymentGate{bound: true}
+			if recoverWithPlan(t, svc, surface, "basic_512mb") {
+				t.Errorf("recovery naming an unknown plan was accepted")
+			}
+			if got := recoveredPlans(t, svc.Client); len(got) != 0 {
+				t.Errorf("a refused recovery created %d copies", len(got))
+			}
+		})
+	}
 }
 
 func clientKey(name string) client.ObjectKey {

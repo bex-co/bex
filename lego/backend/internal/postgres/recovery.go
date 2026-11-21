@@ -416,14 +416,6 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 				map[string]any{"latestTargetTime": latestText})
 		}
 	}
-	plan := req.Plan
-	if plan == "" {
-		plan = src.Spec.Plan
-	}
-	version := req.Version
-	if version == "" {
-		version = currentPostgresVersion(src)
-	}
 	// Recovery was written as its own create path and inherited none of the
 	// shared create invariants (codex round-5 F5). A caller-supplied plan and
 	// version reached the CR unvalidated, and neither billing gate ran, so a
@@ -436,6 +428,9 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	// on a plan since retired from the catalog — or one whose version is empty
 	// because it takes the operator's default. The billing gates use the
 	// RESOLVED plan either way, because that is what the recovery actually costs.
+	//
+	// The plan resolves only after it is canonicalized: Render's API spells it
+	// basic_256mb or 1c-4g, and the CR accepts the catalog id alone (w34/006).
 	if req.Plan != "" {
 		req.Plan = tiers.Postgres.CanonicalID(req.Plan)
 		if _, ok := tiers.Postgres.ByID(req.Plan); !ok {
@@ -444,6 +439,14 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	}
 	if req.Version != "" && !postgresVersionKnown(req.Version) {
 		return PostgresView{}, fmt.Errorf("%w: version must be one of %s", core.ErrBadRequest, supportedPostgresVersionText())
+	}
+	plan := req.Plan
+	if plan == "" {
+		plan = src.Spec.Plan
+	}
+	version := req.Version
+	if version == "" {
+		version = currentPostgresVersion(src)
 	}
 	sourceBackupServerName := effectiveBackupServerName(src)
 	newDB := &appv1alpha1.Database{
@@ -487,7 +490,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	// plan too small for the source's data is refused here instead of failing
 	// mid-restore (w4/360). An inherited plan since retired from the catalog
 	// is not re-validated (see above): its storage already fit it.
-	if _, known := tiers.Postgres.ByID(tiers.Postgres.CanonicalID(plan)); known {
+	if _, known := tiers.Postgres.ByID(plan); known {
 		if err := CheckDatabaseAdmission(nil, newDB.Spec); err != nil {
 			return PostgresView{}, err
 		}
