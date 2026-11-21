@@ -95,6 +95,7 @@ func TestBlueprintEmptyInlineEnvironmentKeepsGroupAndSeedOwnership(t *testing.T)
 			groups := &envgroups.Service{Base: svc.Base, Store: kv, Groups: envgroupstest.New()}
 			sec := &secrets.Service{Base: svc.Base, Store: kv}
 			svc.EnvGroups, svc.EnvSeeder = groups, sec
+			svc.EnvGroupWritesOwed = envgroups.GroupWritesOwed(groups)
 			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: tc.manifest}); err != nil {
 				t.Fatal(err)
@@ -130,8 +131,8 @@ func TestBlueprintEmptyInlineEnvironmentKeepsGroupAndSeedOwnership(t *testing.T)
 					if action.Kind == BlueprintResourceService && (action.Operation != BlueprintPlanNoop || len(action.ChangedFields) != 0) {
 						t.Errorf("service plan = %+v, want noop", action)
 					}
-					if action.Kind == BlueprintResourceEnvVarGroup && action.Operation != BlueprintPlanUpdate {
-						t.Errorf("existing env group must keep its conservative update: %+v", action)
+					if action.Kind == BlueprintResourceEnvVarGroup && (action.Operation != BlueprintPlanNoop || len(action.ChangedFields) != 0) {
+						t.Errorf("unchanged env group plan = %+v, want noop (w8/376)", action)
 					}
 				}
 				if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: tc.manifest}); err != nil {

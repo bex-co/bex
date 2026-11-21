@@ -342,12 +342,6 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     description:
       "Plan row detail for an update: the changed field paths (never values)",
   },
-  "blueprints.previewEnvGroupReapplied": {
-    message:
-      "グループの値は書き込み専用のため、宣言されたすべての変数が再適用されます。",
-    description:
-      "Plan row note: env groups always plan as an update because their values can't be compared",
-  },
   "blueprints.previewKindService": {
     message: "サービス",
     description: "Plan row resource kind",

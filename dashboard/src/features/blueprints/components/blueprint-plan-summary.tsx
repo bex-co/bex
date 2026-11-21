@@ -90,11 +90,6 @@ function PlanActionRow({
           {action.message}
         </p>
       )}
-      {operation === "update" && action.kind === "env_var_group" && (
-        <p className="text-xs text-muted-foreground">
-          {t("blueprints.previewEnvGroupReapplied")}
-        </p>
-      )}
       {operation === "error" && action.message && (
         <p className="break-words text-xs text-destructive">{action.message}</p>
       )}

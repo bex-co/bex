@@ -259,6 +259,14 @@ type Service struct {
 	// envgroups.GroupPlacements; nil counts every declared group as moving,
 	// failing closed.
 	EnvGroupPlacements func(ctx context.Context) (map[string]string, error)
+	// EnvGroupWritesOwed reports whether EnvGroups.ApplyEnvGroup would write
+	// any variable of the existing group it names, from the apply's own diff
+	// and without returning values, so a current-state plan of an unchanged
+	// group reads no change (w8/376). core.ErrForbidden means the caller may
+	// not read the group's values. The composition root wires
+	// envgroups.GroupWritesOwed; nil plans every existing group's variables
+	// as changed, failing closed.
+	EnvGroupWritesOwed func(ctx context.Context, name string, literals map[string]string, generates []string) (bool, error)
 	// EnvSeeder, when set (OpenBao is wired), seeds a render.yaml's sync:false and
 	// generateValue vars into the mutable env-vars store SEED-ONCE (w1/m35), so a
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a

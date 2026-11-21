@@ -388,12 +388,6 @@ const esBlueprints: Record<string, TranslationEntry> = {
     description:
       "Plan row detail for an update: the changed field paths (never values)",
   },
-  "blueprints.previewEnvGroupReapplied": {
-    message:
-      "Los valores del grupo son de solo escritura, así que se vuelven a aplicar todas las variables declaradas.",
-    description:
-      "Plan row note: env groups always plan as an update because their values can't be compared",
-  },
   "blueprints.previewKindService": {
     message: "Servicio",
     description: "Plan row resource kind",

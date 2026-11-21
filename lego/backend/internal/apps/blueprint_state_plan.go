@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -34,10 +35,10 @@ import (
 )
 
 // blueprintActionPlan returns an authorized current-state plan when the
-// complete non-secret state needed to make one is available. Env groups store
-// mutable secret values behind a deliberately write-only seam: an absent group
-// is a create, while an existing group is conservatively an update because a
-// no-op cannot be proved without revealing its values.
+// complete non-secret state needed to make one is available. An absent env
+// group is a create; an existing one is an update only when the apply would
+// write one of its variables, which the plan learns without reading the
+// values out (planEnvGroupVars).
 func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string, snap *workspaceSnapshot) (BlueprintPlan, bool, error) {
 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
 		if err := checkBlueprintDatabaseCreates(st); err != nil {
@@ -423,15 +424,16 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return action, nil
 		}
 	case BlueprintResourceEnvVarGroup:
-		// Group values are write-only. ApplyEnvGroup reconciles declarations, so
-		// an existing group must be represented as a possible update rather than
-		// a false no-op; field paths are safe and values remain omitted.
-		action.Operation = BlueprintPlanUpdate
-		action.ChangedFields = blueprintDeclaredFieldChanges(resource.Fields)
+		// The group was matched by its name, so name is never a change.
+		if err := r.planEnvGroupVars(ctx, &action, resource.Name); err != nil {
+			return BlueprintPlanAction{}, err
+		}
 		if err := r.planEnvGroupMove(ctx, &action, resource.Name); err != nil {
 			return BlueprintPlanAction{}, err
 		}
-		return action, nil
+		if action.Operation == BlueprintPlanUpdate {
+			return action, nil
+		}
 	}
 	action.Operation = BlueprintPlanNoop
 	return action, nil
@@ -501,6 +503,46 @@ func (r *blueprintActionResolver) planMoves(ctx context.Context, action *Bluepri
 	}
 	if moves := placements.moves(grouping, ungrouped, isolation, labels); len(moves) > 0 {
 		addChangedFields(action, moves...)
+	}
+	return nil
+}
+
+// envGroupValuesUnread is an existing group's update message when the plan
+// cannot compare the declared variables with the group's values.
+const envGroupValuesUnread = "This plan cannot read the group's values, so its variables are listed as changed; a sync writes only those that differ."
+
+// planEnvGroupVars lists envVars for an existing group when the apply would
+// write one of its declared variables: EnvGroupWritesOwed runs
+// ApplyEnvGroup's own diff, so an unchanged group plans no change (w8/376).
+// Until then every existing group planned as an update of its declared
+// fields, and approving that plan wrote nothing. When the plan cannot tell,
+// because the seam is not wired or the caller may not read the group's
+// values, envVars is listed with envGroupValuesUnread: a write the plan
+// cannot rule out must not pass as no change, and a viewer's plan must not
+// reveal whether a declared value matches the stored one.
+func (r *blueprintActionResolver) planEnvGroupVars(ctx context.Context, action *BlueprintPlanAction, name string) error {
+	group, ok := parsedBlueprintEnvGroup(r.parsed, name)
+	if !ok {
+		return fmt.Errorf("compiled env group is missing")
+	}
+	owed, known := true, false
+	if writesOwed := r.service.EnvGroupWritesOwed; writesOwed != nil {
+		var err error
+		owed, err = writesOwed(ctx, group.name, group.literals, group.generates)
+		switch {
+		case errors.Is(err, core.ErrForbidden):
+			owed = true
+		case err != nil:
+			return err
+		default:
+			known = true
+		}
+	}
+	if owed {
+		addChangedFields(action, "envVars")
+	}
+	if !known {
+		action.Message = envGroupValuesUnread
 	}
 	return nil
 }
@@ -660,18 +702,6 @@ func blueprintPlanFieldChanges(paths iter.Seq[string], applyOne func(name string
 		if changed {
 			changes = append(changes, BlueprintFieldChange{Path: name})
 		}
-	}
-	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
-	return changes
-}
-
-// blueprintDeclaredFieldChanges is the fallback for a resource kind with no
-// per-field applier to probe (env groups, whose values are write-only): report
-// the declared set, sorted, as before.
-func blueprintDeclaredFieldChanges(fields map[string]BlueprintField) []BlueprintFieldChange {
-	changes := make([]BlueprintFieldChange, 0, len(fields))
-	for name := range fields {
-		changes = append(changes, BlueprintFieldChange{Path: name})
 	}
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
 	return changes

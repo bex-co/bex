@@ -1233,6 +1233,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	environmentsSvc.Services = appsSvc
 	if envGroupApplier != nil {
 		appsSvc.EnvGroupPlacements = envgroups.GroupPlacements(envGroupsSvc)
+		appsSvc.EnvGroupWritesOwed = envgroups.GroupWritesOwed(envGroupsSvc)
 	}
 	agentStops := &agentsessions.StopSignal{}
 	agentSessionsSvc := &agentsessions.Service{

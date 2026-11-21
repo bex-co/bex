@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -58,6 +59,9 @@ type fakeEnvGroups struct {
 	// each it deploys in rolled.
 	owed   map[string][]string
 	rolled []string
+	// stored is each group's variables as ApplyEnvGroup leaves them: literals
+	// re-synced, generates minted once, undeclared keys kept.
+	stored map[string]map[string]string
 }
 
 func newFakeEnvGroups(preexisting ...string) *fakeEnvGroups {
@@ -114,6 +118,20 @@ func (f *fakeEnvGroups) GroupIDsByName(context.Context) (map[string]string, erro
 
 func (f *fakeEnvGroups) ApplyEnvGroup(_ context.Context, name string, literals map[string]string, generates []string) (func(context.Context, map[string]bool) error, error) {
 	f.applied[name] = appliedGroup{literals: literals, generates: generates}
+	if f.stored == nil {
+		f.stored = map[string]map[string]string{}
+	}
+	env := f.stored[name]
+	if env == nil {
+		env = map[string]string{}
+		f.stored[name] = env
+	}
+	maps.Copy(env, literals)
+	for _, key := range generates {
+		if _, ok := env[key]; !ok {
+			env[key] = "minted"
+		}
+	}
 	if len(f.owed[name]) == 0 {
 		return nil, nil
 	}
@@ -125,6 +143,27 @@ func (f *fakeEnvGroups) ApplyEnvGroup(_ context.Context, name string, literals m
 		}
 		return nil
 	}, nil
+}
+
+// writesOwed is envgroups.GroupWritesOwed's answer over stored: an absent
+// group, a literal absent or different, or a generate absent owes a write.
+func (f *fakeEnvGroups) writesOwed(ctx context.Context, name string, literals map[string]string, generates []string) (bool, error) {
+	ids, err := f.GroupIDsByName(ctx)
+	if _, exists := ids[name]; err != nil || !exists {
+		return !exists, err
+	}
+	env := f.stored[name]
+	for key, value := range literals {
+		if current, ok := env[key]; !ok || current != value {
+			return true, nil
+		}
+	}
+	for _, key := range generates {
+		if _, ok := env[key]; !ok {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fakeEnvGroups) LinkEnvGroup(_ context.Context, name, service string) error {

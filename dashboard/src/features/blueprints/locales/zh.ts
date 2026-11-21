@@ -335,11 +335,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Plan row detail for an update: the changed field paths (never values)",
   },
-  "blueprints.previewEnvGroupReapplied": {
-    message: "环境组的值只写不可读，因此每个声明的变量都会重新应用。",
-    description:
-      "Plan row note: env groups always plan as an update because their values can't be compared",
-  },
   "blueprints.previewKindService": {
     message: "服务",
     description: "Plan row resource kind",

@@ -366,12 +366,6 @@ const deBlueprints: Record<string, TranslationEntry> = {
     description:
       "Plan row detail for an update: the changed field paths (never values)",
   },
-  "blueprints.previewEnvGroupReapplied": {
-    message:
-      "Gruppenwerte sind nur schreibbar, daher wird jede deklarierte Variable erneut angewendet.",
-    description:
-      "Plan row note: env groups always plan as an update because their values can't be compared",
-  },
   "blueprints.previewKindService": {
     message: "Service",
     description: "Plan row resource kind",

@@ -1660,28 +1660,9 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		if err != nil {
 			return err
 		}
-		writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
-		for _, key := range core.SortedKeys(literals) {
-			if err := core.CheckEnvKey(key); err != nil {
-				return err
-			}
-			// An absent key reads as "", so presence decides too: a declared
-			// empty variable must be written, not mistaken for current (w8/095).
-			if current, ok := env[key]; !ok || current != literals[key] {
-				writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
-			}
-		}
-		for _, key := range generates {
-			if err := core.CheckEnvKey(key); err != nil {
-				return err
-			}
-			if _, ok := env[key]; ok {
-				continue // generate-once: an existing value persists across syncs
-			}
-			writes = append(writes, EnvVarPatch{Key: key, GenerateValue: true})
-		}
-		if len(writes) == 0 {
-			return nil
+		writes, err := blueprintVarWrites(env, literals, generates)
+		if err != nil || len(writes) == 0 {
+			return err
 		}
 		files, err := s.getGroupMap(ctx, g.TenantID, filesPath(g.ID))
 		if err != nil {
@@ -1700,6 +1681,80 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		_, err := s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, owed, store.TriggerBlueprintSync)
 		return err
 	}, nil
+}
+
+// blueprintVarWrites is the one diff of a Blueprint group declaration against
+// the group's stored variables: ApplyEnvGroup writes exactly these, and
+// GroupWritesOwed asks whether there are any, so the plan and the apply
+// cannot disagree (w8/376). A literal is written when its key is absent or
+// holds another value, a generateValue key only when it is absent.
+func blueprintVarWrites(env, literals map[string]string, generates []string) ([]EnvVarPatch, error) {
+	writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
+	for _, key := range core.SortedKeys(literals) {
+		if err := core.CheckEnvKey(key); err != nil {
+			return nil, err
+		}
+		// An absent key reads as "", so presence decides too: a declared
+		// empty variable must be written, not mistaken for current (w8/095).
+		if current, ok := env[key]; !ok || current != literals[key] {
+			writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
+		}
+	}
+	for _, key := range generates {
+		if err := core.CheckEnvKey(key); err != nil {
+			return nil, err
+		}
+		if _, ok := env[key]; ok {
+			continue // generate-once: an existing value persists across syncs
+		}
+		writes = append(writes, EnvVarPatch{Key: key, GenerateValue: true})
+	}
+	return writes, nil
+}
+
+// GroupWritesOwed is s's answer to the Blueprint plan's question for an
+// existing group: would ApplyEnvGroup(ctx, name, literals, generates) write
+// any of its variables (w8/376)? It runs the apply's own diff
+// (blueprintVarWrites) and returns no values. Whether a declared value
+// matches the stored one is itself a fact about the value, so a caller who
+// may not read the group's values (no can_view_sensitive, or a key not
+// granted them) is refused with core.ErrForbidden, from a probe that records
+// nothing; the plan then cannot tell, rather than learning whether a guess
+// matched. A group that does not exist owes its creation. A function, not a
+// Service method, so the verb sweeps do not take it for a verb.
+func GroupWritesOwed(s *Service) func(ctx context.Context, name string, literals map[string]string, generates []string) (bool, error) {
+	return func(ctx context.Context, name string, literals map[string]string, generates []string) (bool, error) {
+		name, err := core.TrimmedLabel(name)
+		if err != nil {
+			return false, err
+		}
+		g, found, err := s.findGroupByName(ctx, name)
+		if err != nil {
+			return false, err
+		}
+		if !found {
+			return true, nil
+		}
+		if s.CanDecisionOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(g.TenantID)).Outcome != core.DecisionAllowed {
+			return false, core.ErrForbidden
+		}
+		if granted, err := s.KeyGrantAllows(ctx, core.KeyEnvGroupsValues); err != nil {
+			return false, err
+		} else if !granted {
+			return false, core.ErrForbidden
+		}
+		owed := false
+		err = s.withGroupContent(ctx, g.ID, func(ctx context.Context, g store.EnvGroup) error {
+			env, err := s.getGroupMap(ctx, g.TenantID, envPath(g.ID))
+			if err != nil {
+				return err
+			}
+			writes, err := blueprintVarWrites(env, literals, generates)
+			owed = len(writes) > 0
+			return err
+		})
+		return owed, err
+	}
 }
 
 // LinkEnvGroup links the named group to a service for the blueprint apply path

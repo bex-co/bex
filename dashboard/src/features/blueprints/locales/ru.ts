@@ -403,12 +403,6 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     description:
       "Plan row detail for an update: the changed field paths (never values)",
   },
-  "blueprints.previewEnvGroupReapplied": {
-    message:
-      "Значения группы доступны только для записи, поэтому все объявленные переменные применяются заново.",
-    description:
-      "Plan row note: env groups always plan as an update because their values can't be compared",
-  },
   "blueprints.previewKindService": {
     message: "Сервис",
     description: "Plan row resource kind",

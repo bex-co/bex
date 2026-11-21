@@ -144,7 +144,9 @@ describe("BlueprintPlanSummary operations", () => {
     ]);
   });
 
-  it("says an env group re-applies its write-only values, and shows a refused action's reason", () => {
+  // w8/376: an env group plans as an update only when a declared variable
+  // differs, so its row reads like any other update.
+  it("lists an env group's changed variables, and shows a refused action's reason", () => {
     render(
       <BlueprintPlanSummary
         plan={{
@@ -164,10 +166,9 @@ describe("BlueprintPlanSummary operations", () => {
       />,
     );
     expect(
-      screen.getByText(
-        "Group values are write-only, so every declared variable is re-applied.",
-      ),
+      screen.getByText("Changes: envVarGroups[0].envVars"),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/write-only/)).not.toBeInTheDocument();
     expect(screen.getByText("Can't apply")).toBeInTheDocument();
     expect(screen.getByText("plan cannot shrink storage")).toBeInTheDocument();
   });

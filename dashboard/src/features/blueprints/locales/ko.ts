@@ -342,11 +342,6 @@ const koBlueprints: Record<string, TranslationEntry> = {
     description:
       "Plan row detail for an update: the changed field paths (never values)",
   },
-  "blueprints.previewEnvGroupReapplied": {
-    message: "그룹 값은 쓰기 전용이므로 선언된 모든 변수가 다시 적용됩니다.",
-    description:
-      "Plan row note: env groups always plan as an update because their values can't be compared",
-  },
   "blueprints.previewKindService": {
     message: "서비스",
     description: "Plan row resource kind",

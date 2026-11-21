@@ -244,13 +244,15 @@ const groupedEnvGroup = `envVarGroups:
 // An env group declared under a projects[].environments[] nesting is placed
 // by the apply (applyStackEnvGroups' SetGroupEnvironment), as services,
 // databases and key values are by the regroup. Its plan names that move:
-// without "environment" a move between environments plans as a value-only
-// update, and approving it moves the group somewhere the plan never said.
+// without "environment" a move between environments plans as no change, and
+// approving it moves the group somewhere the plan never said. A move alone
+// lists only environment: the group's variables are unchanged (w8/376).
 func TestBlueprintPlanListsAnEnvGroupMove(t *testing.T) {
 	svc, _, _, ctx, _ := groupingStackService(t)
 	groups := newFakeEnvGroups()
 	svc.EnvGroups = groups
 	svc.EnvGroupPlacements = func(context.Context) (map[string]string, error) { return groups.environments, nil }
+	svc.EnvGroupWritesOwed = groups.writesOwed
 	deploy := func(manifest string) {
 		t.Helper()
 		if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: manifest}); err != nil {
@@ -266,28 +268,33 @@ func TestBlueprintPlanListsAnEnvGroupMove(t *testing.T) {
 		return plannedUpdates(v.Plan.Actions)
 	}
 	deploy(groupedResources(groupedEnvGroup, "shop", "staging"))
-	if got := planned(groupedResources(groupedEnvGroup, "shop", "staging")); got != "update env_var_group cfg: envVars, name" {
-		t.Fatalf("the same file planned %q, want a value-only update", got)
+	if got := planned(groupedResources(groupedEnvGroup, "shop", "staging")); got != "" {
+		t.Fatalf("the same file planned %q, want no change", got)
 	}
 	for _, step := range []struct{ project, environment, want string }{
-		{"shop", "production", "update env_var_group cfg: envVars, environment, name"},
-		{"blog", "production", "update env_var_group cfg: envVars, environment, name"},
-		{"shop", "qa", "create environment qa; update env_var_group cfg: envVars, environment, name"},
+		{"shop", "production", "update env_var_group cfg: environment"},
+		{"blog", "production", "update env_var_group cfg: environment"},
+		{"shop", "qa", "create environment qa; update env_var_group cfg: environment"},
 	} {
 		manifest := groupedResources(groupedEnvGroup, step.project, step.environment)
 		if got := planned(manifest); got != step.want {
 			t.Fatalf("moving into %q/%q planned %q, want %q", step.project, step.environment, got, step.want)
 		}
 		deploy(manifest)
-		if got := planned(manifest); got != "update env_var_group cfg: envVars, name" {
-			t.Fatalf("after the move into %q/%q the same file planned %q, want a value-only update", step.project, step.environment, got)
+		if got := planned(manifest); got != "" {
+			t.Fatalf("after the move into %q/%q the same file planned %q, want no change", step.project, step.environment, got)
 		}
+	}
+	// A move and a value change together list both.
+	changed := strings.Replace(groupedEnvGroup, "value: info", "value: debug", 1)
+	if got := planned(groupedResources(changed, "shop", "staging")); got != "update env_var_group cfg: envVars, environment" {
+		t.Fatalf("a moved group with a new value planned %q, want environment and envVars", got)
 	}
 	// A group declared at the top level keeps its scope: the apply assigns no
 	// environment, so the plan names no move.
 	topLevel := "envVarGroups:\n  - name: cfg\n    envVars:\n      - {key: LOG_LEVEL, value: info}\n"
-	if got := planned(topLevel); got != "update env_var_group cfg: envVars, name" {
-		t.Fatalf("a top-level group planned %q, want a value-only update", got)
+	if got := planned(topLevel); got != "" {
+		t.Fatalf("a top-level unchanged group planned %q, want no change", got)
 	}
 }
 
