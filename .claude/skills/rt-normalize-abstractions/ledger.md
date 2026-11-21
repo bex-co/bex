@@ -7,6 +7,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 - 2026-11-15 `dashboard/.../databases/components/database-plan-section.tsx` — recomposes `postgres.CheckDatabaseAdmission` (HA, `maxStorageGB`, replica cap, autoscaling, pooler) to disable Save; needs an admission-verdict API field
 - 2026-11-15 `databases/lib/storage.ts` — mirrors `storageStepGB = 5` and grow-only, omits the 6-hour `CheckStorageIncreaseWait` cooldown, so the UI can offer a resize the server refuses; needs the next-allowed time from the API
 - 2026-11-15 `workspaces/types.ts` plan gates (`proFeaturesPlan`, `inboundIpRulesPlan`) — re-encode `core.planFeatures`/`PlanAllows`; needs a per-feature allow list on `Workspace`
+- 2026-11-15 `services/lib/instance-type.ts` `offeredInstanceTypes`/`offersFreeTier` — mirror `apps.paidOnlyServiceType` (the server enforces it via `errFreePlanForType`; the two sets agree today, with no test comparing them); needs the offered plans per service type from the API
 - 2026-11-15 `metrics/lib/range.ts` 720 h cap — mirrors the `BEX_MAX_QUERY_HOURS` deployment setting
 - 2026-11-15 mobile `features/notifications/destination-access.ts` — copies `notifications.destinationRequiredRelation`; needs the relation on `PushNotification`
 - 2026-11-15 mobile `features/deploys/deploy-action-eligibility.ts` — implements `RollbackEligible` but not `RollbackActionable`, so it can pick the live deploy; the projection lacks a target id
