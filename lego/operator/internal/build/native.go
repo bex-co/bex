@@ -21,6 +21,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"sort"
@@ -458,15 +459,16 @@ done < ` + nativeEnvSecretPath + "\n" + nativeOIDCExports(o) + nativeLockedBundl
 	installLines, installStep := nativeStaticInstall(o)
 	run := shellJSON(nativeEnvLoaderPrefix + installStep + nativePublishCheckStep(o) + o.BuildCommand)
 	hugo := nativeStaticTools(o)
+	sourceDir := nativeSourceDir(o)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
 %sWORKDIR %s
-COPY . .
+%sCOPY . .
 COPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
-%s`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+%s`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, sourceDir, nativeSourceLink(sourceDir), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o)+nativeXDGCacheMount+depsMount, run, depsSave)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
@@ -549,10 +551,87 @@ const nativeXDGCacheMount = " --mount=type=cache,id=" + nativeXDGCacheID + ",tar
 // (VENV_ROOT, render.com/docs/environment-variables).
 const nativePythonVenv = nativeWorkdir + "/.venv"
 
-// nativeWorkdir is a native image's working directory, Render's: it holds the
-// service's root directory, and the publish check looks from it as the
-// publish Job's extract does.
+// nativeWorkdir is a native image's working directory on every runtime but
+// Go, Render's: it holds the service's root directory, and the publish check
+// looks from it as the publish Job's extract does.
 const nativeWorkdir = "/opt/render/project/src"
+
+// nativeSourceDir is o's working directory: the source is copied into it, and
+// the start command, the pre-deploy command, a cron run and a Shell or SSH
+// session all start in it, since no workload of the image sets a working
+// directory of its own. Render's table of source paths (render.com/docs/disks,
+// read 2026-11-20) gives every native runtime nativeWorkdir but Go, whose
+// source sits in its GOPATH at /opt/render/project/go/src/github.com/<owner>/<repo>,
+// with the documented example disk at that directory's data (w6/m546). A
+// static site keeps nativeWorkdir, whatever toolchain builds it: Render's
+// static sites have no runtime.
+func nativeSourceDir(o Options) string {
+	if o.StaticSite || nativeRuntime(o) != "go" {
+		return nativeWorkdir
+	}
+	if dir, ok := nativeGoSourceDir(o.Repo, o.RootDir); ok {
+		return dir
+	}
+	return nativeWorkdir
+}
+
+// nativeSourceLink keeps nativeWorkdir resolving in an image whose source is
+// in dir: a link to it, so an absolute path and a disk mounted under
+// /opt/render/project/src before w6/m546 still land in the service's own tree
+// (the container runtime resolves a mount path's links inside the image). The
+// link is made after WORKDIR has made its target; "" when dir is nativeWorkdir.
+func nativeSourceLink(dir string) string {
+	if dir == nativeWorkdir {
+		return ""
+	}
+	return "RUN ln -s " + dir + " " + nativeWorkdir + "\n"
+}
+
+// nativeSourceSegment is a part of a source directory used as is: the image's
+// WORKDIR expands $ and \, and the link step is a shell line. It is the
+// character set of a GitHub owner and repository name.
+var nativeSourceSegment = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+
+// nativeGoSourceDir is Render's directory for a Go service built from repo:
+// GOPATH's src/<host>/<owner>/<repo>, with the service's root directory under
+// it, since Render runs every command from the root directory
+// (render.com/docs/monorepo-support). The host is lowercased; the owner and
+// the repository keep the URL's case, as RENDER_GIT_REPO_SLUG does, and a
+// trailing .git goes. Render documents GitHub's form only: a GitLab or
+// Bitbucket repository gets its own host and full path the same way, which is
+// unverified against Render. ok is false when repo names no host and
+// owner/repo, or when a part is ".", ".." or holds a character outside
+// nativeSourceSegment; the service then keeps nativeWorkdir.
+func nativeGoSourceDir(repo, rootDir string) (string, bool) {
+	host, repoPath, ok := gitHostPath(repo)
+	parts := strings.Split(repoPath, "/")
+	if !ok || len(parts) < 2 {
+		return "", false
+	}
+	if rel := repoRelative(rootDir); rel != "" {
+		parts = append(parts, strings.Split(rel, "/")...)
+	}
+	for _, part := range append([]string{host}, parts...) {
+		if part == "." || part == ".." || !nativeSourceSegment.MatchString(part) {
+			return "", false
+		}
+	}
+	return nativeGoPath + "/src/" + host + "/" + strings.Join(parts, "/"), true
+}
+
+// gitHostPath splits a repository URL in a form the App accepts (https://,
+// ssh://, or git@host:path) into its lowercased host and its path, without
+// the surrounding slashes or a trailing .git.
+func gitHostPath(repo string) (host, repoPath string, ok bool) {
+	s := strings.TrimSpace(repo)
+	if rest, scp := strings.CutPrefix(s, "git@"); scp {
+		host, repoPath, ok = strings.Cut(rest, ":")
+	} else if u, err := url.Parse(s); err == nil && (u.Scheme == "https" || u.Scheme == "ssh") {
+		host, repoPath, ok = u.Hostname(), u.Path, true
+	}
+	repoPath = strings.TrimSuffix(strings.Trim(repoPath, "/"), ".git")
+	return strings.ToLower(host), repoPath, ok && host != "" && repoPath != ""
+}
 
 // nativeBuildDefaults is the environment Render gives a native runtime at
 // build and runtime alike, as image ENV before the build RUN: the env loader
