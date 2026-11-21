@@ -561,6 +561,8 @@ func (f *idleFixture) dialedStates() []string {
 // phases is the sandbox's meter phase sequence, repeats collapsed (every
 // authorized read also samples the phase).
 func (f *idleFixture) phases(id string) []string {
+	f.meter.mu.Lock()
+	defer f.meter.mu.Unlock()
 	var out []string
 	for _, o := range f.meter.observations {
 		if o.SandboxID == id && (len(out) == 0 || out[len(out)-1] != o.Phase) {

@@ -21,13 +21,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
+// fakeMeterStore is safe for concurrent use: parallel requests (the group
+// admission tests) observe and label sandboxes at once. A test reads a field
+// directly only once the work that writes it has returned.
 type fakeMeterStore struct {
+	mu sync.Mutex
+
 	keys         []store.SandboxTenantKey
 	observations []store.SandboxMeterObservation
 	missingWS    string
@@ -49,10 +55,14 @@ type fakeMeterStore struct {
 }
 
 func (f *fakeMeterStore) ClaimSandboxCPUWindows(context.Context, time.Time, time.Time, int) ([]store.SandboxCPUWindow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.cpuWindows, nil
 }
 
 func (f *fakeMeterStore) AccrueSandboxCPUWindow(_ context.Context, w store.SandboxCPUWindow, seconds float64) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.cpuAccrued == nil {
 		f.cpuAccrued = map[string]float64{}
 	}
@@ -61,11 +71,15 @@ func (f *fakeMeterStore) AccrueSandboxCPUWindow(_ context.Context, w store.Sandb
 }
 
 func (f *fakeMeterStore) DeferSandboxCPUWindow(_ context.Context, w store.SandboxCPUWindow, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.cpuDeferred = append(f.cpuDeferred, w.SandboxID)
 	return nil
 }
 
 func (f *fakeMeterStore) SandboxCPUStats(context.Context) (store.SandboxCPUStats, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.cpuStats, nil
 }
 
@@ -74,38 +88,54 @@ func (f *fakeMeterStore) PruneSandboxIntervals(context.Context, time.Time, int) 
 }
 
 func (f *fakeMeterStore) ClaimUnsizedSandboxStorage(context.Context, time.Time, int) ([]store.SandboxStorageObject, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.unsized, nil
 }
 
 func (f *fakeMeterStore) SetSandboxStorageBytes(_ context.Context, ws, id string, _ time.Time, bytes int64) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.sized = append(f.sized, fmt.Sprintf("%s/%s=%d", ws, id, bytes))
 	return nil
 }
 
 func (f *fakeMeterStore) PruneSandboxStorage(context.Context, time.Time, int) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.pruneCalls++
 	return 0, nil
 }
 
 func (f *fakeMeterStore) AccrueSandboxStorage(context.Context, time.Time, int) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.accrueCalls++
 	return 0, nil
 }
 
 func (f *fakeMeterStore) SandboxStorageStats(context.Context, time.Time) (store.SandboxStorageStats, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.stats, nil
 }
 
 func (f *fakeMeterStore) ListReapableSandboxStorage(context.Context, int) ([]store.SandboxStorageObject, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.reapable, nil
 }
 
 func (f *fakeMeterStore) MarkSandboxStorageReaped(_ context.Context, ws, id string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.reaped = append(f.reaped, ws+"/"+id)
 	return nil
 }
 
 func (f *fakeMeterStore) RecordResourceDisplayNames(_ context.Context, ws string, records []store.ResourceDisplayName) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.labels == nil {
 		f.labels = map[string]string{}
 	}
@@ -116,13 +146,21 @@ func (f *fakeMeterStore) RecordResourceDisplayNames(_ context.Context, ws string
 }
 
 func (f *fakeMeterStore) ListSandboxTenantKeys(context.Context) ([]store.SandboxTenantKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.keys, nil
 }
+
 func (f *fakeMeterStore) ObserveSandboxMeter(_ context.Context, obs store.SandboxMeterObservation) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.observations = append(f.observations, obs)
 	return nil
 }
+
 func (f *fakeMeterStore) TerminateMissingSandboxMeters(_ context.Context, ws string, seen []string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.missingWS, f.missingSeen = ws, append([]string(nil), seen...)
 	return nil
 }
