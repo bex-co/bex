@@ -107,4 +107,4 @@
   - A 20-min session on each proxy ended on its own mid-drain with the same id, and its old pod exited with it.
   - The deploy's wait passed in 3 s while five old pods drained. `bex-operator` read Healthy for the rest of the hour, and `PlatformGitOpsUnhealthy` never fired.
   - The probes and `dpg-dbvtucpbgjqs73fpskhg` are deleted.
-- **Found.** The bytes of a draining pod's last stream, and of every stream the bound closes, never reached the scrape. That gap predates this milestone and is filed as [w6/151](../../151.md). Rolling the proxies less often is [w6/150](../../150.md) (t009).
+- **Found.** The bytes of a draining pod's last stream, and of every stream the bound closes, never reached the scrape. That gap predates this milestone and is filed as [w6/151](../../151.md). Rolling the proxies less often is [w6/150](../150.md) (t009).
