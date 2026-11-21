@@ -296,16 +296,23 @@ func (s *Service) readProjectResource(ctx context.Context, q MetricQuery, r save
 
 // authorizeProjectResource is the view check a read of r would make.
 func (s *Service) authorizeProjectResource(ctx context.Context, r savedsearch.Resource) error {
-	var err error
 	switch r.Type {
 	case savedsearch.KindPostgres:
-		_, err = s.AuthorizeDatabase(ctx, core.RelCanView, r.ID)
+		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, r.ID)
+		if err != nil {
+			return err
+		}
+		return core.NotFoundIfDeleting(db)
 	case savedsearch.KindKeyValue:
-		_, err = s.AuthorizeKeyValue(ctx, core.RelCanView, r.ID)
+		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, r.ID)
+		if err != nil {
+			return err
+		}
+		return core.NotFoundIfDeleting(kv)
 	default:
-		_, err = s.AuthorizeApp(ctx, core.RelCanView, r.ID)
+		_, err := s.AuthorizeApp(ctx, core.RelCanView, r.ID)
+		return err
 	}
-	return err
 }
 
 // groupProjectSeries groups the resources' series as groupBy asks. RESOURCE

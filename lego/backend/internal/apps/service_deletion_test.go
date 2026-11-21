@@ -124,3 +124,36 @@ func TestDeletingProjectionDropsDeadURL(t *testing.T) {
 		t.Fatalf("pending URL for a deleting web service = %q, want empty", v.URL)
 	}
 }
+
+// w8/366: a service whose delete was accepted is absent to every verb that
+// names it, writes included, the moment the delete returns. A repeated delete
+// answers 404 as on Render and repeats none of the teardown, and a write that
+// would change nothing (a save of the root directory the service already has)
+// no longer answers 200 with the dying service's view.
+func TestDeletingServiceIsAbsentToEveryWrite(t *testing.T) {
+	rec := &recordingStore{}
+	purger := &appDeletePurger{}
+	gone := staticSite(deletingApp("gone"))
+	svc, cl := newService(rec, gone)
+	svc.SecretsEraser = purger
+	ctx := context.Background()
+	before := getApp(t, cl, "gone").ResourceVersion
+
+	for verb, call := range map[string]func() error{
+		"delete":       func() error { return svc.Delete(ctx, "gone") },
+		"root dir":     func() error { _, err := svc.SetRootDir(ctx, "gone", gone.Spec.RootDir); return err },
+		"routes":       func() error { _, err := svc.SetRoutes(ctx, "gone", nil); return err },
+		"suspend":      func() error { _, err := svc.Suspend(ctx, "gone"); return err },
+		"capabilities": func() error { _, err := svc.ActionCapabilities(ctx, "gone"); return err },
+	} {
+		if err := call(); !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("%s on a deleting service = %v, want core.ErrNotFound", verb, err)
+		}
+	}
+	if purger.calls != 0 || len(rec.deleteCalls) != 0 {
+		t.Errorf("a repeated delete repeated the teardown: purges=%d row deletes=%v", purger.calls, rec.deleteCalls)
+	}
+	if after := getApp(t, cl, "gone").ResourceVersion; after != before {
+		t.Errorf("a verb patched the deleting App (resourceVersion %s → %s)", before, after)
+	}
+}

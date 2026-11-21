@@ -68,3 +68,32 @@ func TestActiveServiceDeployHistoryUnaffected(t *testing.T) {
 		t.Fatalf("List deploys for a live service = %v len=%d, want the one row", err, len(list))
 	}
 }
+
+// w8/366: for about 10 s after `bex services delete`, GET …/deploy-hook still
+// answered 200 with a hook URL, minting one for a service that never had a hook,
+// while every other read of the service was 404. Both hook verbs now answer a
+// deleting service as one that never existed, and write no token onto it; a
+// live service keeps its hook.
+func TestDeletingServiceHasNoDeployHook(t *testing.T) {
+	app := sampleApp("web", "srv-1")
+	now := metav1.NewTime(fixedNow())
+	app.DeletionTimestamp = &now
+	app.Finalizers = []string{"app.bex.co/finalizer"}
+	svc, cl := newService(newFakeStore(), app, sampleApp("live", "srv-2"))
+	ctx := context.Background()
+	before := getApp(t, cl, "web")
+
+	if _, err := svc.GetDeployHook(ctx, "web"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("GetDeployHook on a deleting service = %v, want core.ErrNotFound", err)
+	}
+	if _, err := svc.RegenerateDeployHook(ctx, "web"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("RegenerateDeployHook on a deleting service = %v, want core.ErrNotFound", err)
+	}
+	after := getApp(t, cl, "web")
+	if after.ResourceVersion != before.ResourceVersion || after.Annotations[DeployHookTokenAnnotation] != "" || after.Labels[DeployHookTokenDigestLabel] != "" {
+		t.Errorf("a hook verb wrote a token onto the deleting App: annotations %v, labels %v", after.Annotations, after.Labels)
+	}
+	if hook, err := svc.GetDeployHook(ctx, "live"); err != nil || hook.URL == "" {
+		t.Errorf("GetDeployHook on a live service = %+v, %v; want its URL", hook, err)
+	}
+}

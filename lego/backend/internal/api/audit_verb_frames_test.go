@@ -35,7 +35,7 @@ import (
 var derivedVerbEntries = map[string]bool{
 	"Authorize": true, "AuthorizeTarget": true, "AuthorizeOn": true, "AuthorizeOnOwner": true,
 	"AuthorizeOnTarget": true, "AuthorizeWorkspace": true, "AuthorizeWorkspaceOrRecorded": true, "AuthorizeWorkspaceTarget": true,
-	"AuthorizeApp": true, "AuthorizeLiveApp": true, "AuthorizeDatabase": true, "AuthorizeKeyValue": true,
+	"AuthorizeApp": true, "AuthorizeDatabase": true, "AuthorizeKeyValue": true,
 }
 
 // verbFrameSite is one place in a function that authorizes, calls a function

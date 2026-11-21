@@ -407,12 +407,15 @@ func (s *Service) fetchKeyValueAs(ctx context.Context, verb, relation, name stri
 	return s.AuthorizeKeyValueAs(ctx, verb, relation, name)
 }
 
-// fetchKeyValueForRead is the by-id read gate: authorize + fetch, then treat a
-// DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
-// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). A plan or
-// settings change uses it too (fetchToChange, w5/m116); lifecycle teardown
-// keeps fetchKeyValue so a finalizer can still authorize the CR.
-func (s *Service) fetchKeyValueForRead(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
+// fetchLiveKeyValue is the by-id gate of every tenant verb: authorize +
+// fetch, then treat a DeletionTimestamp as not-found so get/connection-info/
+// sibling reads agree with List and with Render's GET 404 (w8/m35 /
+// core.NotFoundIfDeleting). Writes use it too, a plan or settings change
+// (fetchToChange, w5/m116), suspend, resume, internal auth and a repeated
+// delete (w8/366), as a service's verbs do through AuthorizeApp. Only the
+// project and environment placement fan-outs keep fetchKeyValue, so a
+// departing store's labels can still be cleared.
+func (s *Service) fetchLiveKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
 	kv, err := s.fetchKeyValue(ctx, relation, name)
 	if err != nil {
 		return nil, err
@@ -428,7 +431,7 @@ func (s *Service) fetchKeyValueForRead(ctx context.Context, relation, name strin
 // connection-info verb reads. Returns core.ErrNotFound when the KeyValue or its
 // Secret isn't provisioned yet.
 func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, *corev1.Secret, error) {
-	kv, err := s.fetchKeyValueForRead(ctx, relation, name)
+	kv, err := s.fetchLiveKeyValue(ctx, relation, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -558,7 +561,7 @@ func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, nam
 
 // GetKeyValue returns one managed key-value store, or core.ErrNotFound.
 func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, error) {
-	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
+	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -795,7 +798,7 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv
 // DeleteKeyValue removes a managed key-value store (cascades the StatefulSet,
 // PVC, Secret and any external route via owner refs).
 func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -827,7 +830,7 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 // again, while the plan's connection limit still holds. Linked services read
 // the new URL on their next deploy.
 func (s *Service) EnableInternalAuth(ctx context.Context, name string) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -856,7 +859,7 @@ func (s *Service) Resume(ctx context.Context, name string) (KeyValueView, error)
 // from zero). The spec is the single writer of intent — the same discipline the
 // App lifecycle verbs follow.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
+	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -1065,7 +1068,7 @@ func (s *Service) setEnvironmentID(ctx context.Context, kv *appv1alpha1.KeyValue
 // saved rules (core.EffectiveAllowList, w4/m315). The internal path is never
 // gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
-	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
+	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1145,10 +1148,10 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool, relation string) (context.Context, *appv1alpha1.KeyValue, error) {
 	if !dryRun {
 		ctx = core.WithDeferredAllowedWriteAudit(ctx)
-		kv, err := s.fetchKeyValueForRead(ctx, relation, name)
+		kv, err := s.fetchLiveKeyValue(ctx, relation, name)
 		return ctx, kv, err
 	}
-	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
+	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return ctx, nil, err
 	}

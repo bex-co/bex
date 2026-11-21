@@ -164,6 +164,10 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		if err != nil {
 			return GenerateBlueprintResult{}, err
 		}
+		// Deleting is absent, as a service is through AuthorizeApp (w8/366).
+		if err := core.NotFoundIfDeleting(d); err != nil {
+			return GenerateBlueprintResult{}, err
+		}
 		databases = append(databases, d)
 		dbDisplayByID[d.Name] = d.Spec.Name
 	}
@@ -172,6 +176,9 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	for _, id := range req.KeyValueIDs {
 		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewSensitive, id)
 		if err != nil {
+			return GenerateBlueprintResult{}, err
+		}
+		if err := core.NotFoundIfDeleting(kv); err != nil {
 			return GenerateBlueprintResult{}, err
 		}
 		keyValues = append(keyValues, kv)

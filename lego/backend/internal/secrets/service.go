@@ -205,7 +205,7 @@ func (s *Service) scope(ctx context.Context, relation, service string) (*appv1al
 	if err != nil {
 		return nil, nil, "", err // ErrNotFound for unknown services, exactly like Get
 	}
-	return s.scopeAuthorized(ctx, relation, a, service)
+	return s.scopeAuthorized(ctx, a, service)
 }
 
 // scopeAs is scope with the audit verb named by the caller, for a read that a
@@ -219,21 +219,14 @@ func (s *Service) scopeAs(ctx context.Context, verb, relation, service string) (
 	if err != nil {
 		return nil, nil, "", err
 	}
-	return s.scopeAuthorized(ctx, relation, a, service)
+	return s.scopeAuthorized(ctx, a, service)
 }
 
 // scopeAuthorized is what scope and scopeAs do once a is authorized. Its
 // service-named result is the store's canonical name for the service, so its
 // parameter is not named service: the key-canonicalization sweep reads that name
 // as the caller's raw token.
-func (s *Service) scopeAuthorized(ctx context.Context, relation string, a *appv1alpha1.App, requested string) (*appv1alpha1.App, context.Context, string, error) {
-	// A read of a service whose deletion is accepted is as absent as the service
-	// itself (w3/m81, w4/503); a write keeps reaching the CR being torn down.
-	if relation == core.RelCanView || relation == core.RelCanViewSensitive {
-		if err := core.NotFoundIfDeleting(a); err != nil {
-			return nil, nil, "", err
-		}
-	}
+func (s *Service) scopeAuthorized(ctx context.Context, a *appv1alpha1.App, requested string) (*appv1alpha1.App, context.Context, string, error) {
 	if s.Store == nil {
 		return nil, nil, "", core.ErrSecretsUnavailable
 	}

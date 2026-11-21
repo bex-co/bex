@@ -162,3 +162,24 @@ func TestDeletingKeyValueNotFoundAcrossSurfaces(t *testing.T) {
 		t.Fatalf("get_key_value on deleting = %#v, want IsError", res)
 	}
 }
+
+// w8/366: a Key Value whose delete was accepted is absent to its writes too,
+// as a service is through AuthorizeApp, and none of them touches the CR.
+func TestDeletingKeyValueIsAbsentToEveryWrite(t *testing.T) {
+	svc, cl := newService(deletingKeyValue("gone"))
+	ctx := context.Background()
+	before := getKeyValueCR(t, cl, "gone").ResourceVersion
+	for verb, call := range map[string]func() error{
+		"suspend":       func() error { _, err := svc.Suspend(ctx, "gone"); return err },
+		"resume":        func() error { _, err := svc.Resume(ctx, "gone"); return err },
+		"internal auth": func() error { _, err := svc.EnableInternalAuth(ctx, "gone"); return err },
+		"delete":        func() error { return svc.DeleteKeyValue(ctx, "gone") },
+	} {
+		if err := call(); !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("%s on a deleting Key Value = %v, want core.ErrNotFound", verb, err)
+		}
+	}
+	if after := getKeyValueCR(t, cl, "gone").ResourceVersion; after != before {
+		t.Errorf("a verb patched the deleting KeyValue (resourceVersion %s → %s)", before, after)
+	}
+}

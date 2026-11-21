@@ -717,6 +717,11 @@ func (s *Service) authorizeLogOwner(ctx context.Context, resource string) (clien
 	if err != nil {
 		return nil, err
 	}
+	// A datastore whose delete was accepted is absent, as a service is through
+	// AuthorizeApp (w8/m35, w8/366).
+	if err := core.NotFoundIfDeleting(owner); err != nil {
+		return nil, err
+	}
 	return owner, nil
 }
 
@@ -1186,6 +1191,9 @@ func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery, fromStore bo
 		if err != nil {
 			return tailTarget{}, err
 		}
+		if err := core.NotFoundIfDeleting(database); err != nil {
+			return tailTarget{}, err
+		}
 		q.App, q.Database = "", database.Name
 		target = tailTarget{
 			workspace: database.Labels[core.LabelTenant],
@@ -1205,6 +1213,9 @@ func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery, fromStore bo
 	} else {
 		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, requested)
 		if err != nil {
+			return tailTarget{}, err
+		}
+		if err := core.NotFoundIfDeleting(kv); err != nil {
 			return tailTarget{}, err
 		}
 		q.App, q.KeyValue = "", kv.Name

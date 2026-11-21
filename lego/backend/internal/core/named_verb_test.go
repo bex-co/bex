@@ -148,27 +148,6 @@ func TestAsEntryPointsAuthorizeLikeTheirTwins(t *testing.T) {
 	}
 }
 
-func TestAuthorizeLiveAppRecordsItsCallersVerb(t *testing.T) {
-	b := denyingBase()
-	sink := &fakeAuditSink{}
-	b.Audit = sink
-	// A denied read records its denial: the verb must be the caller's, not
-	// "core.AuthorizeLiveApp", the sibling AuthorizeApp stops on when asked to name
-	// the frame above it.
-	if _, err := liveAppReadVerb(b, actingCtx()); err == nil {
-		t.Fatal("denied read succeeded")
-	}
-	if got := recordedVerbs(sink); len(got) != 1 || got[0] != "core.liveAppReadVerb" {
-		t.Fatalf("recorded %v, want [core.liveAppReadVerb]", got)
-	}
-}
-
-// liveAppReadVerb stands in for a verb that reads one service through
-// AuthorizeLiveApp (jobs.ListJobs and the like).
-func liveAppReadVerb(b *Base, ctx context.Context) (any, error) {
-	return b.AuthorizeLiveApp(ctx, RelCanView, "web")
-}
-
 func TestWithAuditVerbNamesWhatNoVerbMethodNames(t *testing.T) {
 	const named = "feature.NamedOperation"
 	for _, tc := range []struct {

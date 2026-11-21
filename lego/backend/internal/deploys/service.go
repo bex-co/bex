@@ -466,14 +466,9 @@ func (s *Service) List(ctx context.Context, service string, filter ListFilter) (
 	return s.listFetched(ctx, a, filter)
 }
 
-// listFetched is List for an App the caller already authorized.
+// listFetched is List for an App the caller already authorized, which
+// AuthorizeApp returns only while no delete was accepted (w3/m81).
 func (s *Service) listFetched(ctx context.Context, a *appv1alpha1.App, filter ListFilter) ([]DeployView, error) {
-	// A deleting service is absent from every by-id surface, its deploy history
-	// included (w3/m81): reads agree with List and Render's GET 404 rather than
-	// serving the history of a resource that is being torn down.
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return nil, err
-	}
 	if s.Store == nil {
 		return nil, core.ErrDeploysUnavailable
 	}
@@ -523,10 +518,6 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 
 // getFetched is Get for an App the caller already authorized.
 func (s *Service) getFetched(ctx context.Context, a *appv1alpha1.App, deployID string) (DeployView, error) {
-	// Absent once deletion is accepted, same by-id contract as the list (w3/m81).
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return DeployView{}, err
-	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
@@ -679,9 +670,6 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 		return DeployView{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
-		return DeployView{}, err
-	}
-	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err
 	}
 	// Render: "Restart the service with the provided ID. Not supported for
@@ -1140,9 +1128,6 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	}
 	// Whatever the cancel ended, the row behind it is the next to move.
 	defer s.kickReconciler()
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return DeployView{}, err
-	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
@@ -1296,9 +1281,6 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	}
 	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
-		return DeployView{}, err
-	}
-	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {

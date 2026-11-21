@@ -47,7 +47,7 @@ func (s *Service) Resume(ctx context.Context, name string) (PostgresView, error)
 // wake). A no-op write is skipped so an idempotent suspend/resume doesn't bump
 // the generation needlessly.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -75,7 +75,7 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 // the operator stamps CNPG's restart annotation and CNPG bounces the instance.
 func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error) {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -99,7 +99,7 @@ func (s *Service) Failover(ctx context.Context, name string) error {
 	// — an availability interruption on a member the tenant marked protected
 	// (w4/m127). Fetched before the patch so the guard runs on the real
 	// environment label rather than on the mutate closure's copy.
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return err
 	}

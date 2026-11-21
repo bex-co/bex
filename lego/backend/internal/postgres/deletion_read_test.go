@@ -175,3 +175,33 @@ func TestDeletingPostgresNotFoundAcrossSurfaces(t *testing.T) {
 		t.Fatalf("get_postgres on deleting = %#v, want IsError", res)
 	}
 }
+
+// w8/366: a Postgres whose delete was accepted is absent to its writes too,
+// as a service is through AuthorizeApp: the lifecycle, access, export and
+// console verbs and a repeated delete answer as for a database that never
+// existed, and none of them touches the CR.
+func TestDeletingPostgresIsAbsentToEveryWrite(t *testing.T) {
+	svc, cl := newService(deletingDatabase("gone"))
+	ctx := context.Background()
+	before := getDatabase(t, cl, "gone").ResourceVersion
+	for verb, call := range map[string]func() error{
+		"suspend":           func() error { _, err := svc.Suspend(ctx, "gone"); return err },
+		"resume":            func() error { _, err := svc.Resume(ctx, "gone"); return err },
+		"restart":           func() error { _, err := svc.Restart(ctx, "gone"); return err },
+		"failover":          func() error { return svc.Failover(ctx, "gone") },
+		"create user":       func() error { _, err := svc.CreateUser(ctx, "gone", "readonly"); return err },
+		"delete user":       func() error { return svc.DeleteUser(ctx, "gone", "readonly") },
+		"delete credential": func() error { _, err := svc.DeleteCredential(ctx, "gone", "app_user"); return err },
+		"export":            func() error { _, err := svc.CreateExport(ctx, "gone"); return err },
+		"recover":           func() error { _, err := svc.Recover(ctx, "gone", RecoverRequest{}); return err },
+		"writable query":    func() error { _, err := svc.ExecuteQuery(ctx, "gone", "select 1", true); return err },
+		"delete":            func() error { return svc.DeletePostgres(ctx, "gone") },
+	} {
+		if err := call(); !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("%s on a deleting Postgres = %v, want core.ErrNotFound", verb, err)
+		}
+	}
+	if after := getDatabase(t, cl, "gone").ResourceVersion; after != before {
+		t.Errorf("a verb patched the deleting Database (resourceVersion %s → %s)", before, after)
+	}
+}

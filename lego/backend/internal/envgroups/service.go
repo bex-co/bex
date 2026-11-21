@@ -598,6 +598,11 @@ func (s *Service) findCreateService(ctx context.Context, serviceID, workspace st
 	if err != nil {
 		return nil, err
 	}
+	// A service being deleted cannot join a group: it is absent, as it is to
+	// every verb that names it (AuthorizeApp, w8/366).
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return nil, err
+	}
 	if a.Labels[core.LabelTenant] != workspace {
 		return nil, core.ErrForbidden
 	}

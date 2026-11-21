@@ -48,7 +48,7 @@ import (
 // saved rules (core.EffectiveAllowList, w4/m315). The internal -rw path is
 // never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ type CreateUserResult struct {
 // ListUsers returns the database's additional managed login roles (not the
 // owner role, which is CNPG-managed). Passwords are never surfaced.
 func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ type PostgresCredentialView struct {
 // the additional managed roles, marking whichever one is the default. The native ListUsers contract intentionally keeps
 // only additional roles for its existing editing clients.
 func (s *Service) ListCredentials(ctx context.Context, name string) ([]PostgresCredentialView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (s *Service) CreateCredential(ctx context.Context, name, username string) (
 
 func (s *Service) createUser(ctx context.Context, name, field, role string, asDefault bool) (CreateUserResult, *appv1alpha1.Database, error) {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return CreateUserResult{}, nil, err
 	}
@@ -245,7 +245,7 @@ func (s *Service) createUser(ctx context.Context, name, field, role string, asDe
 // the role, leaving it valid in Postgres after the API reports deletion.
 func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -298,7 +298,7 @@ func (s *Service) patchCredentials(ctx context.Context, orig, d *appv1alpha1.Dat
 // Any other credential is retired exactly like DeleteUser.
 func (s *Service) DeleteCredential(ctx context.Context, name, username string) ([]PostgresCredentialView, error) {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return nil, err
 	}

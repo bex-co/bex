@@ -113,6 +113,11 @@ func (s *Service) MetricsRetention(ctx context.Context, resource string) (*Reten
 	if err != nil {
 		return nil, err
 	}
+	// A datastore whose delete was accepted is absent, as a service is
+	// (AuthorizeApp, w8/m35, w8/366).
+	if err := core.NotFoundIfDeleting(owner); err != nil {
+		return nil, err
+	}
 	plan, ok, err := s.WorkspacePlanOf(ctx, owner.GetLabels()[core.LabelTenant])
 	if err != nil || !ok {
 		return nil, err

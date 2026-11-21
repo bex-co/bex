@@ -716,12 +716,15 @@ func (s *Service) fetchDatabaseAs(ctx context.Context, verb, relation, name stri
 	return s.AuthorizeDatabaseAs(ctx, verb, relation, name)
 }
 
-// fetchDatabaseForRead is the by-id read gate: authorize + fetch, then treat a
-// DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
-// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). A plan or
-// settings change uses it too (fetchToChange, w5/m116); lifecycle teardown
-// keeps fetchDatabase so a finalizer can still authorize the CR.
-func (s *Service) fetchDatabaseForRead(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
+// fetchLiveDatabase is the by-id gate of every tenant verb: authorize +
+// fetch, then treat a DeletionTimestamp as not-found so get/connection-info/
+// sibling reads agree with List and with Render's GET 404 (w8/m35 /
+// core.NotFoundIfDeleting). Writes use it too, a plan or settings change
+// (fetchToChange, w5/m116), the lifecycle and access verbs, the writable
+// console and a repeated delete (w8/366), as a service's verbs do through
+// AuthorizeApp. Only the project and environment placement fan-outs keep
+// fetchDatabase, so a departing database's labels can still be cleared.
+func (s *Service) fetchLiveDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
 	d, err := s.fetchDatabase(ctx, relation, name)
 	if err != nil {
 		return nil, err
@@ -737,7 +740,7 @@ func (s *Service) fetchDatabaseForRead(ctx context.Context, relation, name strin
 // the read-only query verb share. Returns core.ErrNotFound when the Database or
 // its Secret isn't provisioned yet.
 func (s *Service) loadAppSecret(ctx context.Context, relation, name string) (*appv1alpha1.Database, *corev1.Secret, error) {
-	d, err := s.fetchDatabaseForRead(ctx, relation, name)
+	d, err := s.fetchLiveDatabase(ctx, relation, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -799,7 +802,7 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 
 // GetPostgres returns one managed Postgres, or core.ErrNotFound.
 func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -1068,7 +1071,7 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, d *appv1
 // DeletePostgres removes a managed Postgres (cascades the CNPG Cluster, PVC,
 // Secret and any external route via owner refs).
 func (s *Service) DeletePostgres(ctx context.Context, name string) error {
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -1379,10 +1382,10 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool, relation string) (context.Context, *appv1alpha1.Database, error) {
 	if !dryRun {
 		ctx = core.WithDeferredAllowedWriteAudit(ctx)
-		d, err := s.fetchDatabaseForRead(ctx, relation, name)
+		d, err := s.fetchLiveDatabase(ctx, relation, name)
 		return ctx, d, err
 	}
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return ctx, nil, err
 	}
@@ -2065,7 +2068,7 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 // patchDatabase fetches the Database and merge-patches it — the spec-intent
 // writer the operator converges (the App/KeyValue lifecycle discipline).
 func (s *Service) patchDatabase(ctx context.Context, relation, name string, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, relation, name)
+	d, err := s.fetchLiveDatabase(ctx, relation, name)
 	if err != nil {
 		return PostgresView{}, err
 	}

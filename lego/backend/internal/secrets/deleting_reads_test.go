@@ -27,8 +27,9 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// w4/503: the env-var and secret-file reads answer ErrNotFound for a service
-// whose deletion is accepted, while a write still reaches it (teardown).
+// w4/503, w8/366: the env-var and secret-file reads and writes answer
+// ErrNotFound for a service whose deletion is accepted. Its teardown purges
+// them through PurgeApp, which takes the App it already holds.
 func TestDeletingServiceEnvAndFileReadsAreNotFound(t *testing.T) {
 	gone := sampleApp("gone")
 	now := metav1.NewTime(time.Unix(1_700_000_000, 0))

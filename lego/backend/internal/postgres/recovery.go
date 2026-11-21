@@ -228,7 +228,7 @@ func effectiveBackupServerName(d *appv1alpha1.Database) string {
 // RecoveryInfo returns the recovery window + backup list for a managed Postgres.
 // A no-backup plan returns {enabled:false} rather than an error.
 func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return RecoveryInfoView{}, err
 	}
@@ -339,7 +339,7 @@ func backupStatus(phase string) string {
 // object-store backups to a point in time (Render's recover) — the source is
 // never touched. The new Database defaults to the source's plan/version.
 func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) (PostgresView, error) {
-	src, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	src, err := s.fetchLiveDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -572,7 +572,7 @@ func inheritBoundary(src, dst *appv1alpha1.Database, environment core.Environmen
 // is available yet, or each has expired) records none, and a refused one is the
 // denial its authorization already recorded.
 func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanViewSensitive, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +703,7 @@ func pruneTerminalExports(spec []appv1alpha1.DatabaseExportRequest, statusByID m
 // never handles dump bytes. Render permits only one in-progress export per DB.
 func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, error) {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return ExportView{}, err
 	}

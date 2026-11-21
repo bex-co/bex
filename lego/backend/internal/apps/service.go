@@ -1661,20 +1661,14 @@ func tierDisplayName(id string) string {
 // Get returns one App, or core.ErrNotFound. With the store on, a cross-tenant
 // Get is core.ErrForbidden (the App exists, the caller just doesn't own it) —
 // not ErrNotFound, matching the existing error convention — enforced by the
-// shared GetApp, not a re-check here.
+// shared GetApp, not a re-check here. A deleting App is ErrNotFound too
+// (AuthorizeApp, w3/m81): the `terminating` quota counter (workspaceLimits,
+// w6/m129) is the aggregate signal that cleanup is still in flight, and a stuck
+// finalizer surfaces to operators as a DeletionStalled App condition
+// (docs/ADR029 § Deletion and finalizer bound).
 func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
-		return AppView{}, err
-	}
-	// A deleting App is absent from every by-id surface, matching List and
-	// Render's GET 404 (w3/m81): the moment a DeletionTimestamp is set the detail
-	// read must not keep serving `phase: Deleting` plus a now-withdrawn URL while
-	// the finalizer tears down the resource. The `terminating` quota counter
-	// (workspaceLimits, w6/m129) is the aggregate signal that cleanup is still in
-	// flight; a stuck finalizer surfaces to operators as a DeletionStalled App
-	// condition (docs/ADR029 § Deletion and finalizer bound).
-	if err := core.NotFoundIfDeleting(a); err != nil {
 		return AppView{}, err
 	}
 	views, err := s.readViews(ctx, []appv1alpha1.App{*a})
@@ -1713,7 +1707,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 //     the short interval before Kubernetes finishes deleting old Pods. The
 //     latter includes auto-sleep's scale-to-zero state.
 func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInstanceView, error) {
-	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -3412,19 +3406,18 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 func (s *Service) Delete(ctx context.Context, name string) error {
 	// The allowed row waits for the delete, which names it by the service's
 	// type (deleteVerb, w9/m449); a refusal still records at once.
+	//
+	// An App already being deleted is ErrNotFound here, as a service that never
+	// existed is (w8/366). The App's own delete is the last step below, so such
+	// an App had every earlier one done, and repeating them would purge the
+	// OpenBao paths, keyed by the service's name, of a service re-created under
+	// that name beside this teardown (w2/m365).
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
 	if err := s.requireUnprotected(ctx, a, "delete"); err != nil {
 		return err
-	}
-	// The App's own delete is the last step below, so an App already being
-	// deleted had every earlier one done. Repeating them would purge the
-	// OpenBao paths, keyed by the service's name, of a service re-created
-	// under that name beside this teardown (w2/m365).
-	if !a.DeletionTimestamp.IsZero() {
-		return nil
 	}
 	// codex round-8 #8: deletion is irreversible (store row + CR cascade + OpenBao
 	// purge) — re-assert can_create uncached so a member revoked inside
@@ -4556,7 +4549,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string, cancelActive 
 // status slice is already bounded by the operator; Page supplies Render-style
 // cursor/limit semantics and an unknown cursor yields an empty tail.
 func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit int) ([]CronRunView, error) {
-	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4644,7 +4637,7 @@ func cronRunRecordView(rec store.CronRunRecord) CronRunView {
 // A run from another service, an unknown id, or a non-cron service is the same
 // 404 shape so ids cannot be used to probe across resources.
 func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunView, error) {
-	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return CronRunView{}, err
 	}
@@ -6586,10 +6579,6 @@ func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteVie
 	if err != nil {
 		return nil, err
 	}
-	// Absent once deletion is accepted, same by-id contract as Get (w3/m81).
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return nil, err
-	}
 	if err := requireStaticSite(a, name); err != nil {
 		return nil, err
 	}
@@ -6624,10 +6613,6 @@ func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRou
 func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
-		return nil, err
-	}
-	// Absent once deletion is accepted, same by-id contract as Get (w3/m81).
-	if err := core.NotFoundIfDeleting(a); err != nil {
 		return nil, err
 	}
 	if err := requireStaticSite(a, name); err != nil {
@@ -6861,7 +6846,7 @@ func autoscalingView(a *appv1alpha1.App) AutoscalingView {
 // GetAutoscaling returns the current autoscaling configuration for a service.
 // Returns AutoscalingView{Enabled:false} when no autoscaling spec is set.
 func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingView, error) {
-	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return AutoscalingView{}, err
 	}

@@ -1440,6 +1440,9 @@ func (b *Base) AppWorkspace(ctx context.Context, a *appv1alpha1.App) string {
 // exhausted. Per-candidate denial rows are capped at
 // maxFallbackCandidateAudits per request, with one aggregate row past the cap
 // (w4/015 — see the constant's doc for the latency/amplification rationale).
+//
+// A service whose delete was accepted answers ErrNotFound once the caller is
+// authorized, for every verb (w8/366, see authorizeApp).
 func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
 	return b.authorizeApp(ctx, callerVerb(ctx, verbFrameSkip), relation, name)
 }
@@ -1453,7 +1456,27 @@ func (b *Base) AuthorizeAppAs(ctx context.Context, verb, relation, name string) 
 
 // authorizeApp is the body AuthorizeApp and AuthorizeAppAs share. verb is a
 // parameter, not derived here: see verbFrameSkip.
+//
+// An App whose deletion Kubernetes has accepted answers ErrNotFound, like a
+// service that never existed, once the caller is authorized (so a forbidden
+// caller still sees forbidden, and the check is no existence oracle). Every
+// verb scoped to one named service goes through here, so its reads and writes
+// all agree with List and with Render the moment a delete returns (w3/m81,
+// w4/503, w8/366), with no per-verb check to forget.
 func (b *Base) authorizeApp(ctx context.Context, verb, relation, name string) (*appv1alpha1.App, error) {
+	a, err := b.resolveAuthorizedApp(ctx, verb, relation, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := NotFoundIfDeleting(a); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+// resolveAuthorizedApp resolves name to an App and authorizes relation on it;
+// see AuthorizeApp.
+func (b *Base) resolveAuthorizedApp(ctx context.Context, verb, relation, name string) (*appv1alpha1.App, error) {
 	acting, actingErr := b.resolveWorkspace(ctx)
 	if actingErr != nil {
 		named, _ := WorkspaceFrom(ctx)
@@ -1780,36 +1803,15 @@ func AppPublicName(a *appv1alpha1.App) string {
 	return a.Name
 }
 
-// AuthorizeLiveApp is AuthorizeApp for a by-id read: after the caller is
-// authorized (so a forbidden caller still sees forbidden, and the check is no
-// existence oracle), an App whose deletion Kubernetes has accepted answers
-// ErrNotFound like a service that never existed (w3/m81, w4/503). Writes and
-// lifecycle teardown keep AuthorizeApp, which must still reach the CR being
-// removed.
-//
-// It authorizes through authorizeApp with its own caller's verb, not through
-// AuthorizeApp: this exported method would otherwise be the frame callerVerb
-// stops at, and a denied read recorded "core.AuthorizeLiveApp" (w21/093).
-func (b *Base) AuthorizeLiveApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
-	a, err := b.authorizeApp(ctx, callerVerb(ctx, verbFrameSkip), relation, name)
-	if err != nil {
-		return nil, err
-	}
-	if err := NotFoundIfDeleting(a); err != nil {
-		return nil, err
-	}
-	return a, nil
-}
-
 // NotFoundIfDeleting implements the m81/m35 read contract for any CR whose
 // deletion Kubernetes has accepted (a stamped DeletionTimestamp): every by-id
 // tenant read reports it as absent — ErrNotFound, indistinguishable from a
 // resource that never existed — so detail surfaces agree with List and with
 // Render's GET 404. Applied to Apps (w3/m81) and Database/KeyValue (w8/m35).
-// Read verbs call it after Authorize*, and so do the verbs that change a
-// resource's configuration — a plan or settings change and its dry-run
-// (w5/m116). Lifecycle teardown deliberately does not: a finalizer must still
-// be able to authorize the CR it is removing.
+// AuthorizeApp applies it to every App verb (w8/366). A Database or KeyValue
+// verb calls it after Authorize*, reads and tenant writes alike; only the
+// project and environment placement fan-outs, which must still clear a
+// departing datastore's labels, skip it.
 func NotFoundIfDeleting(obj client.Object) error {
 	if obj == nil {
 		return nil

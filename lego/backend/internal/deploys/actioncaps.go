@@ -219,9 +219,6 @@ func (s *Service) ActionCapabilities(ctx context.Context, service string) ([]cor
 	if err != nil {
 		return nil, err
 	}
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return nil, err
-	}
 	if err := s.RequireResourceInActingWorkspace(ctx, a.Labels); err != nil {
 		return nil, err
 	}

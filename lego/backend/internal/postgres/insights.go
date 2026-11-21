@@ -581,7 +581,7 @@ func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (Q
 // are both read relations, so Authorize uses the decision cache; re-check
 // uncached before loading the connection Secret (codex round-15 #4).
 func (s *Service) insightDatabase(ctx context.Context, relation, dbID string) (*appv1alpha1.Database, error) {
-	db, err := s.fetchDatabaseForRead(ctx, relation, dbID)
+	db, err := s.fetchLiveDatabase(ctx, relation, dbID)
 	if err != nil {
 		return nil, err
 	}
@@ -915,7 +915,7 @@ func parameterOverrideViews(res QueryResult) []ParameterOverrideView {
 // them. Distinct from ParameterOverrides, the observed pg_settings config,
 // which is mostly the operator's (w6/m133).
 func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSpecView, error) {
-	db, err := s.fetchDatabaseForRead(ctx, core.RelCanView, dbID)
+	db, err := s.fetchLiveDatabase(ctx, core.RelCanView, dbID)
 	if err != nil {
 		return nil, err
 	}
@@ -968,7 +968,7 @@ func parameterSpecViews(params map[string]string, observed []ParameterOverrideVi
 // Database CR (spec.parameters), not from pg_settings. Use ParameterOverrides for
 // the live database view.
 func (s *Service) GetParameterSpec(ctx context.Context, dbID string) (map[string]string, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, dbID)
+	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, dbID)
 	if err != nil {
 		return nil, err
 	}
