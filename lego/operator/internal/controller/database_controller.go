@@ -2222,9 +2222,9 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // handleDBDeletion runs the finalizer teardown for a Database being deleted:
 // waits for the CNPG Cluster to be fully gone (preventing a race with in-flight
-// WAL archiving), then optionally dispatches an S3 backup purge Job before
-// removing the finalizer. Extracted from Reconcile to keep its cyclomatic
-// complexity in check.
+// WAL archiving), then optionally dispatches an S3 backup purge Job and
+// deletes the added users' password Secrets before removing the finalizer.
+// Extracted from Reconcile to keep its cyclomatic complexity in check.
 func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Request, db *appv1alpha1.Database) (ctrl.Result, error) {
 	if controllerutil.ContainsFinalizer(db, dbFinalizer) {
 		// Wait for the CNPG Cluster to be gone before purging its S3 backups.
@@ -2276,12 +2276,34 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 			}
 			return ctrl.Result{}, fmt.Errorf("database backup purge configuration is unavailable")
 		}
+		if err := r.deleteUserSecrets(ctx, db); err != nil {
+			return ctrl.Result{}, err
+		}
 		controllerutil.RemoveFinalizer(db, dbFinalizer)
 		if err := r.Update(ctx, db); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 	return ctrl.Result{}, nil
+}
+
+// deleteUserSecrets removes the password Secrets of the logins bex-api added
+// (spec.users): on Render nothing of a deleted database outlives it (w34/004).
+// bex-api owner-references the ones it creates, but one written before that
+// has no owner for garbage collection to follow. Only bex-api's user Secret
+// names (<db>-user-…) are deleted, so spec.users cannot aim this at another
+// Secret in the namespace.
+func (r *DatabaseReconciler) deleteUserSecrets(ctx context.Context, db *appv1alpha1.Database) error {
+	for _, u := range db.Spec.Users {
+		if !strings.HasPrefix(u.SecretName, db.Name+"-user-") {
+			continue
+		}
+		secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: u.SecretName, Namespace: db.Namespace}}
+		if err := deleteTolerantly(ctx, r.secretClient(), secret); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *DatabaseReconciler) dbDeletionOverran(db *appv1alpha1.Database) bool {

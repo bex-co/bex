@@ -199,6 +199,75 @@ func TestDatabaseDeletionRetainsFinalizerAndRetriesCleanupError(t *testing.T) {
 	}
 }
 
+// TestDatabaseDeletionRemovesAddedUsersSecrets is w34/004: the password Secret
+// of a user added before bex-api owner-referenced it has nothing for garbage
+// collection to follow, so the finalizer deletes every spec.users Secret,
+// holding the Database until it can. Production had 18 left behind by deleted
+// databases. A spec.users entry naming a Secret that is not a user Secret of
+// this database is never followed.
+func TestDatabaseDeletionRemovesAddedUsersSecrets(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
+
+	now := metav1.Now()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dpg-gone", Namespace: "default", Finalizers: []string{dbFinalizer}, DeletionTimestamp: &now,
+		},
+		Spec: appv1alpha1.DatabaseSpec{Users: []appv1alpha1.DatabaseUser{
+			{Name: "reporting", SecretName: "dpg-gone-user-0610cb9fb5aae04d3842844735b6c3af"},
+			{Name: "legacy", SecretName: "dpg-gone-user-legacy"},
+			{Name: "stray", SecretName: "dpg-other-user-0610cb9fb5aae04d3842844735b6c3af"},
+			{Name: "app", SecretName: "dpg-gone-app"},
+		}},
+	}
+	secret := func(name string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: db.Namespace}}
+	}
+	failOnce := true
+	cl := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(db, secret(db.Spec.Users[0].SecretName), secret(db.Spec.Users[1].SecretName),
+			secret(db.Spec.Users[2].SecretName), secret(db.Spec.Users[3].SecretName)).
+		WithStatusSubresource(&appv1alpha1.Database{}).
+		WithInterceptorFuncs(interceptor.Funcs{Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			if _, isSecret := obj.(*corev1.Secret); isSecret && failOnce {
+				failOnce = false
+				return errors.New("transient secret delete failure")
+			}
+			return c.Delete(ctx, obj, opts...)
+		}}).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: db.Name, Namespace: db.Namespace}
+	req := reconcile.Request{NamespacedName: nn}
+
+	if _, err := r.Reconcile(ctx, req); err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("first secret delete error = %v", err)
+	}
+	current := &appv1alpha1.Database{}
+	if err := cl.Get(ctx, nn, current); err != nil || !controllerutil.ContainsFinalizer(current, dbFinalizer) {
+		t.Fatalf("a failed user Secret delete released the Database (err=%v): its Secret would be orphaned", err)
+	}
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if err := cl.Get(ctx, nn, current); !apierrors.IsNotFound(err) {
+		t.Fatalf("database remained after its user Secrets were deleted: %v", err)
+	}
+	for _, u := range db.Spec.Users[:2] {
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: u.SecretName}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+			t.Errorf("user %q Secret %s outlived its database: %v", u.Name, u.SecretName, err)
+		}
+	}
+	for _, u := range db.Spec.Users[2:] {
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: u.SecretName}, &corev1.Secret{}); err != nil {
+			t.Errorf("Secret %s is not a user Secret of %s and must survive: %v", u.SecretName, db.Name, err)
+		}
+	}
+}
+
 // codex round-9 #13: the backup-purge Job runs in a tenant hosting namespace,
 // where the extended workload-admission grammar now denies added capabilities,
 // privilege escalation, and non-RuntimeDefault seccomp — the generated Job must

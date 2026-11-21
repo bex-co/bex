@@ -600,6 +600,11 @@ func TestUsersCRUD(t *testing.T) {
 	if string(sec.Data["password"]) != res.Password {
 		t.Fatal("user secret password mismatch")
 	}
+	// w34/004: the Secret is collected with its Database, so deleting the
+	// database leaves no credential behind, as on Render.
+	if refs := sec.OwnerReferences; len(refs) != 1 || refs[0].Kind != "Database" || refs[0].Name != "usr-db" || refs[0].UID != db.UID {
+		t.Fatalf("user secret owner references = %+v, want the Database usr-db", refs)
+	}
 
 	// duplicate rejected
 	if _, err := svc.CreateUser(ctx, "usr-db", "reporting"); !errors.Is(err, core.ErrBadRequest) {

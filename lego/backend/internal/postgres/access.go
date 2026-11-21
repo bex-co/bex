@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -214,6 +215,12 @@ func (s *Service) createUser(ctx context.Context, name, field, role string, asDe
 			"username": []byte(role),
 			"password": []byte(pw),
 		},
+	}
+	// Collected with the Database, as Render leaves no credential of a deleted
+	// database behind (w34/004); this also reaches a Secret whose CR patch
+	// below lost and whose cleanup failed.
+	if err := controllerutil.SetOwnerReference(d, sec, s.Client.Scheme()); err != nil {
+		return CreateUserResult{}, nil, err
 	}
 	if err := s.Client.Create(ctx, sec); err != nil {
 		return CreateUserResult{}, nil, err
