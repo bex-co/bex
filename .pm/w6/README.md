@@ -90,7 +90,7 @@ Materialized from `/pm-brainstorm for w6` 2026-11-17 after its verification pass
 
 Materialized from all five proposals of `/pm-brainstorm one aspect of render parity for w6` 2026-11-20 (persistent disks: the Render behaviors ADR082 had not matched or had recorded as unsigned divergences), approved by the user's `/pmx them to w6`. Numbers moved from the proposal's provisional ones: the milestones are m546–m549 and the note is 157. Scheduled items for worker6, not a workstream specialty.
 
-1. **[m546](m546/README.md)** — a native Go service runs from Render's Go source path, so a disk mounted where Render's docs say keeps its data (9 tasks).
+1. **[m546](blocked/m546/README.md)** — a native Go service runs from Render's Go source path, so a disk mounted where Render's docs say keeps its data (9 tasks).
 2. **[m547](m547/README.md)** — a disk-bearing service is unavailable for a few seconds on a deploy, as on Render (9 tasks; measures first).
 3. **[m548](m548/README.md)** — a service with a disk keeps the default shutdown delay, as on Render (10 tasks).
 4. **[m549](m549/README.md)** — every native runtime has magic-wormhole, so disk files move in and out through Shell, as on Render (8 tasks).
@@ -98,7 +98,7 @@ Materialized from all five proposals of `/pm-brainstorm one aspect of render par
 
 ## Milestones
 
-- [ ] **m546** — [A native Go service runs from Render's Go source path, so a disk mounted where Render's docs say keeps its data](m546/README.md) (9 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-20
+- [ ] **m546** — **BLOCKED (pin must carry `35ac61c80`: then t005 runs on production. Redeploy `w6-m546-go-old` and expect its pre-change `data/probe` at both paths with `pwd` in Render's Go path, then create a fixture with a disk at Render's Go example path, check `pwd` in Shell, SSH and a cron run, and delete the fixtures; t009 closes. t001–t004 and t006–t008 done: Go's `WORKDIR` is Render's Go source path, `/opt/render/project/src` is a link to it, and the ADRs record it)** — [A native Go service runs from Render's Go source path, so a disk mounted where Render's docs say keeps its data](blocked/m546/README.md) (9 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-20
 - [ ] **m547** — [A disk-bearing service is unavailable for a few seconds on a deploy, as on Render](m547/README.md) (9 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-20
 - [ ] **m548** — [A service with a disk keeps the default shutdown delay, as on Render](m548/README.md) (10 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-20
 - [ ] **m549** — [Every native runtime has magic-wormhole, so disk files move in and out through Shell, as on Render](m549/README.md) (8 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-20

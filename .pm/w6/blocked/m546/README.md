@@ -1,6 +1,6 @@
 # w6 · m546 — A native Go service runs from Render's Go source path, so a disk mounted where Render's docs say keeps its data
 
-**Worker:** worker6 **Goal:** a native Go service's working directory is Render's `/opt/render/project/go/src/github.com/<owner>/<repo>`, so a disk mounted at Render's documented Go example path (`…/<repo>/data`) holds the files the app writes to `data/`, and an existing Go service's paths and mounts keep resolving. **Status:** todo (t001–t004 and t006–t008 done; t005 checks production once the pin carries the change)
+**Worker:** worker6 **Goal:** a native Go service's working directory is Render's `/opt/render/project/go/src/github.com/<owner>/<repo>`, so a disk mounted at Render's documented Go example path (`…/<repo>/data`) holds the files the app writes to `data/`, and an existing Go service's paths and mounts keep resolving. **Status:** blocked (t001–t004 and t006–t008 done; t005 waits for the first pin carrying `35ac61c80`)
 
 ## Tasks (in order)
 
