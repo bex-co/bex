@@ -260,7 +260,7 @@ func TestServingDeploymentMountsAnEarlierDiskInTheRootDirectory(t *testing.T) {
 				t.Fatal(err)
 			}
 			dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-			if err := r.applyServingDeployment(context.Background(), app, dep, deploymentParams{image: w32048Image, port: 10000, replicas: 1}, nil); err != nil {
+			if _, err := r.applyServingDeployment(context.Background(), app, dep, deploymentParams{image: w32048Image, port: 10000, replicas: 1}, nil); err != nil {
 				t.Fatal(err)
 			}
 			want := []string{old, moved}

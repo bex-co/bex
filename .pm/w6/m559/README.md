@@ -1,18 +1,18 @@
 # w6 · m559 — A disk service's volume stays on its node through a same-node deploy or restart
 
-**Worker:** worker6 **Goal:** when a deploy, restart or plan change of a disk-bearing service starts its new instance on the node its volume is attached to, the volume never leaves that node in between. A minimal holder pod keeps it in use there through the swap, so the attach/detach controller has no moment to detach it, and the kubelet keeps it mounted for the new instance. **Status:** todo
+**Worker:** worker6 **Goal:** when a deploy, restart or plan change of a disk-bearing service starts its new instance on the node its volume is attached to, the volume never leaves that node in between. A minimal holder pod keeps it in use there through the swap, so the attach/detach controller has no moment to detach it, and the kubelet keeps it mounted for the new instance. **Status:** todo (t001–t004, t006 and t007 done; t005 measures on production once the pin carries them)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The disk holder Job](t001.md) | 1h | — |
-| t002 | [A disk service's `Recreate` rollout starts its holder first and ends it once the new instance has the volume](t002.md) | 2h | t001 |
-| t003 | [The holder is never an instance](t003.md) | 45m | t001 |
-| t004 | [Record the holder and the 2 s sync decision in ADR082, ADR004 and ADR018](t004.md) | 30m | t002 |
+| t001 | [The disk holder Job](done/t001.md) — **DONE** | 1h | — |
+| t002 | [A disk service's `Recreate` rollout starts its holder first and ends it once the new instance has the volume](done/t002.md) — **DONE** | 2h | t001 |
+| t003 | [The holder is never an instance](done/t003.md) — **DONE** | 45m | t001 |
+| t004 | [Record the holder and the 2 s sync decision in ADR082, ADR004 and ADR018](done/t004.md) — **DONE** | 30m | t002 |
 | t005 | [Ship and measure on production](t005.md) | 1h30m | t002, t003, t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
+| t006 | [Simplify](done/t006.md) — **DONE** (run with the code, before t005) | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** (written with the code, before t005) | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done

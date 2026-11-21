@@ -159,7 +159,7 @@ func TestSavedConfigurationExistingFilesNoopRevertAndSecondSave(t *testing.T) {
 			t.Fatal("unchanged comparison issued another status write")
 		}
 		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-		if err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
+		if _, err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
 			t.Fatal(err)
 		}
 		if err := updateStatusIfChanged(t.Context(), r.Client, app); err != nil {
@@ -208,7 +208,7 @@ func TestSavedConfigurationFirstReferencesRemainDeferredAcrossRuntimeTypes(t *te
 					}
 				} else {
 					dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-					if err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image,
+					if _, err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image,
 						port: 3000, replicas: 1, worker: serviceType == appv1alpha1.TypeBackgroundWorker}, nil); err != nil {
 						t.Fatal(err)
 					}
@@ -251,7 +251,7 @@ func TestSavedConfigurationClearsOnlyAfterCandidateServes(t *testing.T) {
 		t.Fatal(err)
 	}
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
+	if _, err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	app = reconcileSavedConfiguration(t, r, app, true)
@@ -352,7 +352,7 @@ func TestSavedConfigurationDeletedSourcesClearAfterStandardDeploy(t *testing.T) 
 				t.Fatal(err)
 			}
 			dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-			if err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
+			if _, err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
 				t.Fatal(err)
 			}
 			before := dep.Spec.Template.DeepCopy()
@@ -409,7 +409,7 @@ func deploySavedConfiguration(t *testing.T, r *AppReconciler, app *appv1alpha1.A
 		t.Fatal(err)
 	}
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
+	if _, err := r.applyServingDeployment(t.Context(), app, dep, deploymentParams{image: app.Status.Image, port: 3000, replicas: 1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	dep.Status.ReadyReplicas = 1

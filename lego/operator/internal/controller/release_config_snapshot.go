@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -732,11 +733,13 @@ func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1al
 // applyServingDeployment creates or updates the Deployment from params, applying a
 // served release's recorded template verbatim when restore is non-nil, then runs
 // afterServingDeployment with whether the pod template actually changed — which is
-// the difference between a rollout and a no-op.
-func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, params deploymentParams, restore *corev1.PodTemplateSpec) error {
+// the difference between a rollout and a no-op. A wait > 0 writes nothing: a
+// disk-bearing App's rollout waits that long for its volume to be held on its
+// node first (disk_holder.go), and the caller requeues.
+func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, params deploymentParams, restore *corev1.PodTemplateSpec) (time.Duration, error) {
 	runtime, launch, err := r.selectedLaunch(ctx, app)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	params.launch = launch
 	// From the selected runtime, not app: a held, rolled-back or save-only
@@ -744,14 +747,14 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 	// those. A restore replaces the template verbatim, so it needs no lookup.
 	if restore == nil {
 		if params.webConcurrency, err = r.webConcurrency(ctx, runtime); err != nil {
-			return err
+			return 0, err
 		}
 		if params.servingPortEnv, err = r.servingPortDefault(ctx, runtime); err != nil {
-			return err
+			return 0, err
 		}
 		// The release's own variables decide its token mounts, as above.
 		if params.managedOIDC, err = r.managedOIDC(ctx, app, runtime); err != nil {
-			return err
+			return 0, err
 		}
 		// Cached on app's status, which this pass persists; runtime is a view.
 		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
@@ -759,31 +762,47 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		// The node the disk's volume is on, which a rolling pass prefers.
 		params.diskNode = r.diskNode(ctx, runtime)
 		if params.diskMove, err = r.earlierDiskMove(ctx, runtime); err != nil {
-			return err
+			return 0, err
 		}
 	} else {
 		recordManagedOIDCOf(app, *restore)
 	}
-	var prior *corev1.PodTemplateSpec
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
-		if !dep.CreationTimestamp.IsZero() {
-			prior = dep.Spec.Template.DeepCopy()
+	// project is this pass's whole write to the Deployment, and returns the
+	// template it replaces (nil for a new one). The disk hold reads it on a
+	// copy of the stored Deployment before the write.
+	project := func(d *appsv1.Deployment) *corev1.PodTemplateSpec {
+		var prior *corev1.PodTemplateSpec
+		if !d.CreationTimestamp.IsZero() {
+			prior = d.Spec.Template.DeepCopy()
 		}
-		applyDeploymentSpec(dep, runtime, params)
+		applyDeploymentSpec(d, runtime, params)
 		if restore != nil {
-			dep.Spec.Template = *restore.DeepCopy()
+			d.Spec.Template = *restore.DeepCopy()
 		}
 		// The environment labels never roll a pod: a template that differs
 		// from the stored one only in them keeps the stored values, and the
 		// running pods are relabelled in place (relabelAppPods, w4/m342).
-		holdIsolationLabel(&dep.Spec.Template, prior != nil, prior, appTemplateEnvironmentLabels(app))
+		holdIsolationLabel(&d.Spec.Template, prior != nil, prior, appTemplateEnvironmentLabels(app))
+		return prior
+	}
+	hold := r.holdDiskThroughRollout(ctx, app, runtime.Spec.Tier, params.replicas, project)
+	if hold.wait > 0 {
+		return hold.wait, nil
+	}
+	var prior *corev1.PodTemplateSpec
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
+		prior = project(dep)
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
-		return err
+		return 0, err
+	}
+	// A held write is one the hold found rolling the template.
+	if hold.held {
+		diskHoldsTotal.WithLabelValues(diskHoldHeld).Inc()
 	}
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
-	return nil
+	return 0, nil
 }
 
 // applyServingCronJob is applyServingDeployment for a cron job: it converges the

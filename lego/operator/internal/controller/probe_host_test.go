@@ -298,7 +298,7 @@ func TestCancelRestoresTheServedProbeHost(t *testing.T) {
 	if err != nil || restore == nil {
 		t.Fatalf("restore=%v err=%v", restore, err)
 	}
-	if err := r.applyServingDeployment(context.Background(), app, live, deploymentParams{image: "image:A", port: 3000, replicas: 2}, restore); err != nil {
+	if _, err := r.applyServingDeployment(context.Background(), app, live, deploymentParams{image: "image:A", port: 3000, replicas: 2}, restore); err != nil {
 		t.Fatal(err)
 	}
 	if got := probeHostOf(t, live.Spec.Template.Spec.Containers[0]); got != served {

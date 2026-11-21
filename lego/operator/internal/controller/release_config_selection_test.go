@@ -118,7 +118,7 @@ func materializeSelectedTestRelease(t *testing.T, r *AppReconciler, app *appv1al
 		t.Fatal("selected release has no artifact")
 	}
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if err := r.applyServingDeployment(ctx, app, dep, deploymentParams{image: image, port: 3000, replicas: effectiveReplicas(runtime)}, nil); err != nil {
+	if _, err := r.applyServingDeployment(ctx, app, dep, deploymentParams{image: image, port: 3000, replicas: effectiveReplicas(runtime)}, nil); err != nil {
 		t.Fatal(err)
 	}
 	// Publish the serving revision before comparing status: dispatch alone is
@@ -638,7 +638,7 @@ func TestCancelAfterRollbackKeepsTheSelectedServingTemplate(t *testing.T) {
 	if err != nil || restore == nil {
 		t.Fatalf("restore=%v err=%v", restore, err)
 	}
-	if err := r.applyServingDeployment(context.Background(), app, live, deploymentParams{image: "image:A", port: 3000, replicas: 2}, restore); err != nil {
+	if _, err := r.applyServingDeployment(context.Background(), app, live, deploymentParams{image: "image:A", port: 3000, replicas: 2}, restore); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(live.Spec.Template.Spec.Containers[0].Command, " ") != "echo A" {

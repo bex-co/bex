@@ -35,6 +35,11 @@ const (
 	// pre-deploy Job, a build or publish in the App's namespace), which
 	// also carries LabelApp; the App's own instances never carry it.
 	LabelComponent = "app.bex.co/component"
+	// ComponentDiskHolder is LabelComponent's value on a disk holder's pod
+	// (w6/m559): a Job's pod that keeps a disk service's volume mounted on
+	// its node through a Recreate deploy. It runs no app container, so
+	// bex-api's reads of the app container leave it out.
+	ComponentDiskHolder = "disk-holder"
 	// LabelPreDeploy carries the service name on a pre-deploy Job and its
 	// pod (like build's "app.bex.co/build"), so the backend can find the
 	// step's pod for its logs.

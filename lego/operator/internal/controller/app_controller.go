@@ -3035,7 +3035,7 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 	}
 
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if err := r.applyServingDeployment(ctx, app, dep, deploymentParams{
+	holdWait, err := r.applyServingDeployment(ctx, app, dep, deploymentParams{
 		image:       image,
 		port:        port,
 		replicas:    replicas,
@@ -3047,8 +3047,15 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 		// registry-hosted, so a prebuilt public image is left untouched.
 		pullSecrets:    r.withLinkedSourcePullSecret(ctx, app, image, r.imagePullSecrets(app, image)),
 		userNamespaces: r.userNamespacesFor(app),
-	}, restore); err != nil {
+	}, restore)
+	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
+	}
+	// A disk-bearing App's rollout waits for its volume to be held on its node
+	// (disk_holder.go). The old instance serves meanwhile, and the next pass
+	// writes the template.
+	if holdWait > 0 {
+		return ctrl.Result{RequeueAfter: holdWait}, updateStatusIfChanged(ctx, r.Client, app)
 	}
 	// The k8s core Service (ClusterIP) that fronts the App's pods, and the one
 	// the public Ingress routes to. It converges before reportDeploymentStarting
@@ -6678,6 +6685,7 @@ func (r *AppReconciler) nodeLossMessage(ctx context.Context, dep *appsv1.Deploym
 		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return ""
 	}
+	pods.Items = instancePods(pods.Items)
 pods:
 	for i := range pods.Items {
 		p := &pods.Items[i]
@@ -6727,6 +6735,15 @@ func nodeReadyWord(status corev1.ConditionStatus) string {
 	return "not ready"
 }
 
+// instancePods drops the App's Job pods from pods listed by its app label. A
+// pre-deploy step, a disk snapshot or a disk holder (w6/m559) carries that
+// label beside the instances, and a component label no instance does: the
+// rule core.OwnAppPods applies for bex-api. A Job pod's state says nothing
+// about why the instances are not ready, and its name is no instance's.
+func instancePods(pods []corev1.Pod) []corev1.Pod {
+	return slices.DeleteFunc(pods, func(p corev1.Pod) bool { return p.Labels[execution.LabelComponent] != "" })
+}
+
 // stuckPodMessage inspects the pods behind a not-yet-ready tenant Deployment
 // for a terminal-looking container state and returns an actionable Ready
 // condition (reason, message). Empty when the rollout is merely progressing.
@@ -6741,6 +6758,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return "", ""
 	}
+	pods.Items = instancePods(pods.Items)
 	for i := range pods.Items {
 		p := &pods.Items[i]
 		for _, cs := range p.Status.ContainerStatuses {

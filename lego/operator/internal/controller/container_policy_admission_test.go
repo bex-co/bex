@@ -816,7 +816,7 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 		params := webParams()
 		params.worker = kind.value == appv1alpha1.TypeBackgroundWorker
-		Expect(r.applyServingDeployment(ctx, app, dep, params, nil)).To(Succeed())
+		Expect(r.applyServingDeployment(ctx, app, dep, params, nil)).To(BeZero())
 		workloads = append(workloads, dep)
 	}
 	r, app := newApp("cron", appv1alpha1.TypeCronJob)
@@ -848,14 +848,19 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 	app.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
 	Expect(r.Update(ctx, app)).To(Succeed())
 	live := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	Expect(r.applyServingDeployment(ctx, app, live, webParams(), nil)).To(Succeed())
+	Expect(r.applyServingDeployment(ctx, app, live, webParams(), nil)).To(BeZero())
 	app.Status.ActiveRevision = releaseRevision(app)
 	r.reconcileInitialDeployHook(ctx, app, live, "busybox:latest")
 	hook := &batchv1.Job{}
 	Expect(r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: predeploy.HookJobName(app.Name, releaseBuildRevision(app))}, hook)).To(Succeed())
 	Expect(hook.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("VolumeSource.PersistentVolumeClaim", Not(BeNil()))),
 		"the hook Job under admission must be the disk-sharing one")
-	return append(workloads, hook)
+	// The disk holder (w6/m559): an App-owned Job pinned to the volume's
+	// node by affinity, never nodeName, in the tier's serving pool.
+	r, app = newApp("holder", appv1alpha1.TypeWebService)
+	holder, err := diskHolderJob(app, tier, "node-a", r.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	return append(workloads, hook, holder)
 }
 
 // admissionEdgeCacheWorkloads is the real Deployment of a paid image-port web
@@ -883,7 +888,7 @@ func admissionEdgeCacheWorkloads(namespace string) []client.Object {
 		cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
 		r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: cl.Scheme(), BackupHelperImage: "ghcr.io/bex-co/bex:test"}
 		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-		Expect(r.applyServingDeployment(ctx, app, dep, params, nil)).To(Succeed())
+		Expect(r.applyServingDeployment(ctx, app, dep, params, nil)).To(BeZero())
 		Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1), name)
 		withStoredEdgeCacheSidecar(&dep.Spec.Template, app, params.port, true)
 		pod := dep.Spec.Template.Spec

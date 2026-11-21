@@ -748,9 +748,15 @@ func (q *LogQuery) scopeToApp(app *appv1alpha1.App) {
 	q.notBefore = core.AppNotBefore(app)
 }
 
-// ownPods is the App's pods without an earlier incarnation's (core.OwnAppPods).
+// ownPods is the App's pods without an earlier incarnation's (core.OwnAppPods)
+// and without a disk holder's (w6/m559). Every reader of these pods reads the
+// app container, which a holder does not run: the kubelet's refusal failed the
+// whole store-less read while a disk service deployed.
 func (s *Service) ownPods(ctx context.Context, namespace string, q LogQuery) ([]corev1.Pod, error) {
 	pods, err := s.AppPodsIn(ctx, namespace, q.App)
+	pods = slices.DeleteFunc(pods, func(p corev1.Pod) bool {
+		return p.Labels[core.PodLabelComponent] == appv1alpha1.ComponentDiskHolder
+	})
 	if q.appID == "" {
 		return pods, err
 	}

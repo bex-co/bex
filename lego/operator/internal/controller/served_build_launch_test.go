@@ -202,7 +202,7 @@ func TestServedBuildRerunTemplateIsStable(t *testing.T) {
 	ctx := context.Background()
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	p := deploymentParams{image: w32048Image, port: 10000, replicas: 1}
-	if err := r.applyServingDeployment(ctx, app, dep, p, nil); err != nil {
+	if _, err := r.applyServingDeployment(ctx, app, dep, p, nil); err != nil {
 		t.Fatal(err)
 	}
 	first := dep.Spec.Template.DeepCopy()
@@ -220,7 +220,7 @@ func TestServedBuildRerunTemplateIsStable(t *testing.T) {
 	// The release goes live: it is now the served one, and its own record
 	// decides.
 	app.Status.ActiveRevision = "rev-7"
-	if err := r.applyServingDeployment(ctx, app, dep, p, nil); err != nil {
+	if _, err := r.applyServingDeployment(ctx, app, dep, p, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(dep.Spec.Template.Spec.Containers[0].Args, first.Spec.Containers[0].Args) {
@@ -257,7 +257,7 @@ func TestARerunOfTheServedBuildKeepsSavedBuildSettingsUndeployed(t *testing.T) {
 		}
 		app.Status.ConfigSnapshotGeneration = gen
 		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-		if err := r.applyServingDeployment(ctx, app, dep, deploymentParams{image: w32048Image, port: 10000, replicas: 1}, nil); err != nil {
+		if _, err := r.applyServingDeployment(ctx, app, dep, deploymentParams{image: w32048Image, port: 10000, replicas: 1}, nil); err != nil {
 			t.Fatal(err)
 		}
 		app.Status.ActiveRevision = fmt.Sprintf("rev-%d", gen)

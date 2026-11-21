@@ -788,8 +788,18 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1a
 	// to inherit. A pod with no (or zero) limit is omitted, never faked.
 	limitAt := constantLimitAt(limits)
 
+	// The metrics API selects the App's label, which its Job pods carry too: a
+	// disk holder (w6/m559), a disk snapshot, a pre-deploy step. Only its
+	// instances are series, as in every other read of them.
+	own := make(map[string]bool, len(pods))
+	for i := range pods {
+		own[pods[i].Name] = true
+	}
 	out := make([]MetricSeries, 0, len(usage))
 	for _, u := range usage {
+		if !own[u.Pod] {
+			continue
+		}
 		val := u.CPUCores
 		if q.Metric == MetricMemory {
 			val = u.MemoryBytes

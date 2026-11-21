@@ -622,16 +622,13 @@ func (r *AppReconciler) nudgeDiskPods(ctx context.Context, app *appv1alpha1.App,
 		logf.FromContext(ctx).Error(err, "listing the disk's instances to grow it failed", "app", app.Name)
 		return
 	}
-	want, claim := strconv.Itoa(int(sizeGB)), diskPVCName(app.Name)
-	mountsDisk := func(v corev1.Volume) bool {
-		return v.PersistentVolumeClaim != nil && v.PersistentVolumeClaim.ClaimName == claim
-	}
+	want := strconv.Itoa(int(sizeGB))
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		owner := metav1.GetControllerOf(pod)
 		serving := owner != nil && owner.Kind == kindReplicaSet &&
 			pod.Status.Phase == corev1.PodRunning && pod.DeletionTimestamp.IsZero()
-		if !serving || pod.Annotations[annotDiskResizeRequested] == want || !slices.ContainsFunc(pod.Spec.Volumes, mountsDisk) {
+		if !serving || pod.Annotations[annotDiskResizeRequested] == want || !mountsDiskClaim(pod.Spec, app.Name) {
 			continue
 		}
 		patch := client.MergeFrom(pod.DeepCopy())
@@ -669,6 +666,8 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 	if done, err := r.reconcileDiskSnapshotCleanup(ctx, app); err != nil || !done {
 		return err
 	}
+	// A holder would keep the claim in use, and its deletion waiting.
+	r.releaseDiskHold(ctx, app, diskHoldEndStopped)
 	// Blind deletes rather than the usual get-then-delete: this path runs a
 	// handful of times per detach, and a delete that finds nothing is already
 	// the outcome it wants.

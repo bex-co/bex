@@ -685,7 +685,8 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 		// Scale to zero BEFORE the Job exists: the restore container mounts the
 		// same claim, and starting it while the service still holds the volume
 		// would either block on attach or, worse, rewrite files under a live
-		// process.
+		// process. A rollout's disk holder has nothing left to hold for.
+		r.releaseDiskHold(ctx, app, diskHoldEndStopped)
 		if err := r.scaleDeploymentToZero(ctx, app); err != nil {
 			return true, err
 		}
