@@ -2187,17 +2187,17 @@ export type MetricLabel = {
   value: Maybe<Scalars['String']['output']>;
 };
 
+export type MetricResultParameters = {
+  __typename: 'MetricResultParameters';
+  quantile: Maybe<Scalars['Float']['output']>;
+};
+
 export type MetricSeries = {
   __typename: 'MetricSeries';
   labels: Maybe<Array<Maybe<MetricLabel>>>;
-  parameters: Maybe<Array<Maybe<MetricSeriesParameter>>>;
+  parameters: Maybe<MetricResultParameters>;
   unit: Maybe<Scalars['String']['output']>;
   values: Maybe<Array<Maybe<MetricValue>>>;
-};
-
-export type MetricSeriesParameter = {
-  __typename: 'MetricSeriesParameter';
-  quantile: Maybe<Scalars['Float']['output']>;
 };
 
 export type MetricValue = {

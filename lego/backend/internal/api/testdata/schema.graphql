@@ -1851,15 +1851,15 @@ type MetricLabel {
   value: String
 }
 
-type MetricSeries {
-  labels: [MetricLabel]
-  parameters: [MetricSeriesParameter]
-  unit: String
-  values: [MetricValue]
+type MetricResultParameters {
+  quantile: Float
 }
 
-type MetricSeriesParameter {
-  quantile: Float
+type MetricSeries {
+  labels: [MetricLabel]
+  parameters: MetricResultParameters
+  unit: String
+  values: [MetricValue]
 }
 
 type MetricValue {

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -220,29 +221,8 @@ func TestGraphQLMetricLabelNames(t *testing.T) {
 		{"project percentiles", svc, `projectMetrics(query: {project: "prj-x", name: "HTTP_LATENCY", parameters: [{quantile: 0.5}, {quantile: 0.9}]}) { series`, "", "RESOURCE,quantile", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			schema, err := gqlSchema(tc.svc)
-			if err != nil {
-				t.Fatal(err)
-			}
-			query := "{ " + tc.graphql + " { labels { field value } } }"
-			if strings.HasSuffix(tc.graphql, "{ series") {
-				query = "{ " + tc.graphql + " { labels { field value } } } }"
-			}
-			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
-			if len(res.Errors) > 0 {
-				t.Fatalf("gql %s: %v", query, res.Errors)
-			}
-			var data map[string]json.RawMessage
-			if raw, err := json.Marshal(res.Data); err != nil || json.Unmarshal(raw, &data) != nil {
-				t.Fatalf("decode %+v: %v", res.Data, err)
-			}
 			var series []renderMetricSeries
-			for _, raw := range data {
-				var project struct{ Series []renderMetricSeries }
-				if json.Unmarshal(raw, &series) != nil && json.Unmarshal(raw, &project) == nil {
-					series = project.Series
-				}
-			}
+			decodeGraphQLSeries(t, tc.svc, tc.graphql, "labels { field value }", &series)
 			assertEveryFields(t, "GraphQL", labelFields(series), tc.gql)
 
 			if tc.rest == "" {
@@ -272,6 +252,109 @@ func TestGraphQLMetricLabelNames(t *testing.T) {
 			t.Errorf("MCP get_metrics %v label fields = %q, want %q", tc.args, got, tc.want)
 		}
 	}
+}
+
+// TestGraphQLSeriesParametersRenderShape is w3/095: Render's GraphQL answers a
+// series' parameters as one MetricResultParameters object, {quantile}, with
+// quantile null where the series has none. Its dashboard names a latency line
+// `p${(e.parameters.quantile?.toFixed(2) ?? "").slice(2)}`; renderLatencyName is
+// that expression, so a list-shaped parameters fails to decode here.
+func TestGraphQLSeriesParametersRenderShape(t *testing.T) {
+	svc, _ := projectFixture(t)
+	stores := newService(nil, nil, sampleDatabase("pg", false))
+	stores.DatastoreActivity = func(context.Context, DatastoreActivityRequest) ([]MetricSeries, error) {
+		point := []MetricPoint{{Timestamp: fixedClock().Format(time.RFC3339), Value: 1}}
+		return []MetricSeries{{Labels: map[string]string{LabelResource: "pg", LabelDirection: directionRead}, Unit: unitBytes, Points: point}}, nil
+	}
+
+	web := `filters: [{field: "RESOURCE", values: ["web"]}]`
+	for _, tc := range []struct {
+		name    string
+		svc     *Service
+		graphql string // a query whose one field answers [MetricSeries] or {series}
+		want    string // the distinct Render line names, sorted; "null" for no quantile
+	}{
+		{"default percentile", svc, `metrics(query: {` + web + `, name: "HTTP_LATENCY"})`, "p95"},
+		{"picked percentile", svc, `metrics(query: {` + web + `, name: "HTTP_LATENCY", parameters: [{quantile: 0.9}]})`, "p90"},
+		{"percentile overlay", svc, `metrics(query: {` + web + `, name: "HTTP_LATENCY", parameters: [{quantile: 0.5}, {quantile: 0.99}]})`, "p50,p99"},
+		{"no percentile", svc, `metrics(query: {` + web + `, name: "CPU"})`, "null"},
+		{"datastore", stores, `datastoreMetrics(query: {resource: "pg", name: "NETWORK_ACTIVITY"})`, "null"},
+		{"project percentiles", svc, `projectMetrics(query: {project: "prj-x", name: "HTTP_LATENCY", parameters: [{quantile: 0.5}, {quantile: 0.9}]}) { series`, "p50,p90"},
+		{"project without percentile", svc, `projectMetrics(query: {project: "prj-x", name: "CPU"}) { series`, "null"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var series []struct {
+				Parameters *struct {
+					Typename string   `json:"__typename"`
+					Quantile *float64 `json:"quantile"`
+				} `json:"parameters"`
+			}
+			decodeGraphQLSeries(t, tc.svc, tc.graphql, "parameters { __typename quantile }", &series)
+			if len(series) == 0 {
+				t.Fatalf("%s answered no series", tc.graphql)
+			}
+			names := map[string]bool{}
+			for _, s := range series {
+				if s.Parameters == nil || s.Parameters.Typename != "MetricResultParameters" {
+					t.Fatalf("each series carries one MetricResultParameters object, got %s", mustJSON(series))
+				}
+				names[renderLatencyName(s.Parameters.Quantile)] = true
+			}
+			got := make([]string, 0, len(names))
+			for name := range names {
+				got = append(got, name)
+			}
+			sort.Strings(got)
+			if strings.Join(got, ",") != tc.want {
+				t.Errorf("Render line names = %v, want %s", got, tc.want)
+			}
+		})
+	}
+}
+
+// decodeGraphQLSeries runs field, which answers [MetricSeries] or, ending in
+// "{ series", {series}, selecting selection on each series, and decodes the
+// series into out.
+func decodeGraphQLSeries(t *testing.T, svc *Service, field, selection string, out any) {
+	t.Helper()
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := strings.HasSuffix(field, "{ series")
+	query := "{ " + field + " { " + selection + " } }"
+	if project {
+		query += " }"
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql %s: %v", query, res.Errors)
+	}
+	var data map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(mustJSON(res.Data)), &data); err != nil {
+		t.Fatalf("decode %+v: %v", res.Data, err)
+	}
+	for _, raw := range data {
+		if project {
+			var answer struct{ Series json.RawMessage }
+			if err := json.Unmarshal(raw, &answer); err != nil {
+				t.Fatalf("decode %s: %v", raw, err)
+			}
+			raw = answer.Series
+		}
+		if err := json.Unmarshal(raw, out); err != nil {
+			t.Fatalf("decode the series of %s: %v in %s", query, err, raw)
+		}
+	}
+}
+
+// renderLatencyName is Render's `p${(quantile?.toFixed(2) ?? "").slice(2)}`,
+// "null" where the series has no quantile.
+func renderLatencyName(quantile *float64) string {
+	if quantile == nil {
+		return "null"
+	}
+	return "p" + strconv.FormatFloat(*quantile, 'f', 2, 64)[2:]
 }
 
 func mustJSON(v any) string {

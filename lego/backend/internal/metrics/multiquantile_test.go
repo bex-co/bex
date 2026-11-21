@@ -152,7 +152,8 @@ func TestRESTMultiQuantileLatency(t *testing.T) {
 }
 
 // TestGraphQLMultiQuantileLatency: several `parameters` entries overlay a series
-// per percentile, each echoing its own quantile back through `parameters`.
+// per percentile, each echoing its own quantile back through its one
+// `parameters` object.
 func TestGraphQLMultiQuantileLatency(t *testing.T) {
 	var calls []float64
 	svc := newService(nil, echoQuantileSource(&calls), sampleApp("web"))
@@ -171,11 +172,11 @@ func TestGraphQLMultiQuantileLatency(t *testing.T) {
 	}
 	seen := map[float64]bool{}
 	for _, item := range list {
-		params := item.(map[string]any)["parameters"].([]any)
-		if len(params) != 1 {
-			t.Fatalf("each series echoes exactly one quantile, got %d", len(params))
+		params, ok := item.(map[string]any)["parameters"].(map[string]any)
+		if !ok {
+			t.Fatalf("each series echoes its quantile in one parameters object, got %#v", item.(map[string]any)["parameters"])
 		}
-		seen[params[0].(map[string]any)["quantile"].(float64)] = true
+		seen[params["quantile"].(float64)] = true
 	}
 	for _, q := range []float64{0.5, 0.9, 0.99} {
 		if !seen[q] {

@@ -1516,7 +1516,7 @@ export type MetricsQueryVariables = Exact<{
 }>;
 
 
-export type MetricsQuery = { metrics: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null, parameters: Array<{ __typename: 'MetricSeriesParameter', quantile: number | null } | null> | null } | null> | null };
+export type MetricsQuery = { metrics: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null, parameters: { __typename: 'MetricResultParameters', quantile: number | null } | null } | null> | null };
 
 export type MonthToDateBandwidthQueryVariables = Exact<{
   resourceId: string;
@@ -1530,7 +1530,7 @@ export type ProjectMetricsQueryVariables = Exact<{
 }>;
 
 
-export type ProjectMetricsQuery = { projectMetrics: { __typename: 'ProjectMetrics', series: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null, parameters: Array<{ __typename: 'MetricSeriesParameter', quantile: number | null } | null> | null }>, resources: Array<{ __typename: 'ProjectMetricResource', id: string, name: string, type: string, environmentId: string | null, status: string }> } | null };
+export type ProjectMetricsQuery = { projectMetrics: { __typename: 'ProjectMetrics', series: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null, parameters: { __typename: 'MetricResultParameters', quantile: number | null } | null }>, resources: Array<{ __typename: 'ProjectMetricResource', id: string, name: string, type: string, environmentId: string | null, status: string }> } | null };
 
 export type MetricsFiltersQueryVariables = Exact<{
   query: Types.MetricsFiltersQueryInput;

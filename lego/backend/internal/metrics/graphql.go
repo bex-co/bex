@@ -156,44 +156,38 @@ var metricLabelGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-var metricSeriesParameterGQLType = graphql.NewObject(graphql.ObjectConfig{
-	Name: "MetricSeriesParameter",
+// metricResultParametersGQLType is Render's MetricResultParameters: one object
+// per series, whose quantile is the percentile an HTTP_LATENCY series was read
+// at and null on every other series (w3/095).
+var metricResultParametersGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MetricResultParameters",
 	Fields: graphql.Fields{
 		"quantile": &graphql.Field{Type: graphql.Float, Resolve: func(p graphql.ResolveParams) (any, error) {
-			return p.Source.(float64), nil
+			r := p.Source.(QuantileSeries)
+			if !r.HasQuantile {
+				return nil, nil
+			}
+			return r.Quantile, nil
 		}},
 	},
 })
 
-// metricSeriesResult pairs a series with the query's resolved quantile so the
-// "parameters" field (Render's per-series quantile echo on HTTP_LATENCY) can be
-// resolved without threading query state through MetricSeries itself.
-type metricSeriesResult struct {
-	MetricSeries
-	Quantile    float64
-	HasQuantile bool
-}
-
-// metricSeriesGQLType projects MetricSeries; labels are exposed as Render's
+// metricSeriesGQLType projects a QuantileSeries; labels are exposed as Render's
 // sorted {field,value} array, named as Render's GraphQL names them.
 var metricSeriesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "MetricSeries",
 	Fields: graphql.Fields{
 		"unit": &graphql.Field{Type: graphql.String, Resolve: func(p graphql.ResolveParams) (any, error) {
-			return p.Source.(metricSeriesResult).Unit, nil
+			return p.Source.(QuantileSeries).Unit, nil
 		}},
 		"labels": &graphql.Field{Type: graphql.NewList(metricLabelGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
-			return toGraphQLLabels(p.Source.(metricSeriesResult).MetricSeries), nil
+			return toGraphQLLabels(p.Source.(QuantileSeries).MetricSeries), nil
 		}},
 		"values": &graphql.Field{Type: graphql.NewList(metricValueGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
-			return p.Source.(metricSeriesResult).Points, nil
+			return p.Source.(QuantileSeries).Points, nil
 		}},
-		"parameters": &graphql.Field{Type: graphql.NewList(metricSeriesParameterGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
-			r := p.Source.(metricSeriesResult)
-			if !r.HasQuantile {
-				return []float64{}, nil
-			}
-			return []float64{r.Quantile}, nil
+		"parameters": &graphql.Field{Type: metricResultParametersGQLType, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source, nil
 		}},
 	},
 })
@@ -373,13 +367,7 @@ var projectMetricsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// percentiles.
 		"series": gqlutil.Typed(
 			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricSeriesGQLType))),
-			func(m ProjectMetrics) any {
-				out := make([]metricSeriesResult, 0, len(m.Series))
-				for _, r := range m.Series {
-					out = append(out, metricSeriesResult{MetricSeries: r.MetricSeries, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
-				}
-				return out
-			},
+			func(m ProjectMetrics) any { return m.Series },
 		),
 		// resources is every resource of the view the caller may read, in the
 		// project's order (services, then datastores).
@@ -406,7 +394,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err := checkFanOut(len(resources), 1, latencyFan(q.Metric, q.Quantiles)); err != nil {
 					return nil, err
 				}
-				var out []metricSeriesResult
+				var out []QuantileSeries
 				for _, res := range resources {
 					q.App = res
 					// MetricsWithQuantiles echoes the (single or per-quantile)
@@ -416,9 +404,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					if err != nil {
 						return nil, err
 					}
-					for _, r := range qs {
-						out = append(out, metricSeriesResult{MetricSeries: r.MetricSeries, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
-					}
+					out = append(out, qs...)
 				}
 				return out, nil
 			},
@@ -451,9 +437,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				out := make([]metricSeriesResult, 0, len(series))
+				out := make([]QuantileSeries, 0, len(series))
 				for _, ser := range series {
-					out = append(out, metricSeriesResult{MetricSeries: ser})
+					out = append(out, QuantileSeries{MetricSeries: ser})
 				}
 				return out, nil
 			},
