@@ -98,20 +98,45 @@ func (f *fakeBlueprintStore) InsertPlannedBlueprintSync(_ context.Context, p sto
 	return p, nil
 }
 
-func (f *fakeBlueprintStore) LatestBlueprintPlan(_ context.Context, blueprintID string) (store.PlannedBlueprintSync, error) {
+func (f *fakeBlueprintStore) LatestBlueprintPlan(_ context.Context, blueprintID string, now time.Time) (store.PlannedBlueprintSync, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for i := len(f.insertedSyncs) - 1; i >= 0; i-- {
 		id := f.insertedSyncs[i].ID
 		p, planned := f.planned[id]
 		run := f.syncs[id]
-		if !planned || run.BlueprintID != blueprintID {
+		if !planned || run.BlueprintID != blueprintID || waitingPlanExpired(run, now) {
 			continue
 		}
 		p.BlueprintSync = run
 		return p, nil
 	}
 	return store.PlannedBlueprintSync{}, fmt.Errorf("blueprint_sync: %w", store.ErrNotFound)
+}
+
+// waitingPlanExpired mirrors the store (w32/075): a plan still waiting for
+// approval store.BlueprintPlanApprovalWindow after it was planned is deleted.
+func waitingPlanExpired(run store.BlueprintSync, now time.Time) bool {
+	return run.State == store.BlueprintSyncStateCreated && !run.StartedAt.After(now.Add(-store.BlueprintPlanApprovalWindow))
+}
+
+func (f *fakeBlueprintStore) DeleteExpiredBlueprintPlans(_ context.Context, now time.Time, limit int) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	deleted := 0
+	for _, inserted := range f.insertedSyncs {
+		if deleted == limit {
+			break
+		}
+		run, ok := f.syncs[inserted.ID]
+		if !ok || !waitingPlanExpired(run, now) {
+			continue
+		}
+		delete(f.syncs, run.ID)
+		delete(f.planned, run.ID)
+		deleted++
+	}
+	return deleted, nil
 }
 
 func (f *fakeBlueprintStore) SettleNoChangesPlan(_ context.Context, blueprintID, tenantID, manifest string) (store.Blueprint, error) {

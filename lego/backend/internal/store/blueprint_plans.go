@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
@@ -31,6 +32,14 @@ const (
 	BlueprintExistingAdopt     = "adopt"
 	BlueprintExistingCreateNew = "create_new"
 )
+
+// BlueprintPlanApprovalWindow is how long a planned sync waits for approval.
+// Render: "A planned Sync that is not approved within 24 hours will be
+// automatically deleted" (the pinned CLI's CreateBlueprintSync, w32/075). A
+// `created` sync planned this long ago or longer is no planning attempt any
+// more: LatestBlueprintPlan passes over it and DeleteExpiredBlueprintPlans
+// deletes it.
+const BlueprintPlanApprovalWindow = 24 * time.Hour
 
 // PlannedBlueprintSync is a planning attempt: a sync planned but not applied
 // (or a failed plan), the path and branch it was planned at, and the manual
@@ -158,11 +167,34 @@ func (s *PGStore) InsertPlannedBlueprintSync(ctx context.Context, p PlannedBluep
 // attempts, and neither are an earlier connection's: a row revived before
 // migration 0229 kept the history of the connection it had before and had its
 // created_at reset, and that earlier applied plan must not answer for the
-// connection it has now (w2/m256 t014).
-func (s *PGStore) LatestBlueprintPlan(ctx context.Context, blueprintID string) (PlannedBlueprintSync, error) {
+// connection it has now (w2/m256 t014). A plan still waiting for approval a
+// full BlueprintPlanApprovalWindow after it was planned (started_at, against
+// now) counts as deleted, as on Render, whether or not the sweep has deleted
+// it yet, so the attempt before it answers (w32/075).
+func (s *PGStore) LatestBlueprintPlan(ctx context.Context, blueprintID string, now time.Time) (PlannedBlueprintSync, error) {
 	return s.scanPlannedSync(ctx, `WHERE blueprint_id = $1 AND plan_path IS NOT NULL
 		AND created_at >= (SELECT b.created_at FROM blueprints b WHERE b.id = $1)
-		ORDER BY created_at DESC, id DESC LIMIT 1`, blueprintID)
+		AND NOT (state = 'created' AND started_at <= $2)
+		ORDER BY created_at DESC, id DESC LIMIT 1`, blueprintID, now.Add(-BlueprintPlanApprovalWindow))
+}
+
+// DeleteExpiredBlueprintPlans deletes up to limit planned syncs, oldest first,
+// still waiting for approval a full BlueprintPlanApprovalWindow after they
+// were planned, as Render deletes them (w32/075). It returns how many it
+// deleted. An approval that admits the row first turns it into a run, which
+// this never deletes.
+func (s *PGStore) DeleteExpiredBlueprintPlans(ctx context.Context, now time.Time, limit int) (int, error) {
+	tag, err := s.Pool.Exec(ctx, `
+		DELETE FROM blueprint_syncs WHERE id IN (
+			SELECT id FROM blueprint_syncs
+			WHERE state = 'created' AND started_at <= $1
+			ORDER BY started_at LIMIT $2
+			FOR UPDATE SKIP LOCKED)`,
+		now.Add(-BlueprintPlanApprovalWindow), limit)
+	if err != nil {
+		return 0, classify("blueprint_sync", err)
+	}
+	return int(tag.RowsAffected()), nil
 }
 
 // SettleNoChangesPlan records a plan that found nothing to change. It writes

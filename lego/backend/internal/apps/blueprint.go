@@ -115,6 +115,10 @@ type BlueprintStore interface {
 	// abandoned generation still owns it (w8/m37 t004 + w8/m39). False means
 	// another writer settled first.
 	AbandonBlueprintSync(ctx context.Context, runID string, now time.Time, reason string) (bool, error)
+	// DeleteExpiredBlueprintPlans deletes planned syncs left unapproved for
+	// store.BlueprintPlanApprovalWindow, oldest first, bounded per tick, as
+	// Render deletes them (w32/075).
+	DeleteExpiredBlueprintPlans(ctx context.Context, now time.Time, limit int) (int, error)
 	// ClaimBlueprintResource takes (or keeps) the durable workspace claim for
 	// one resource name (w8/m40). expectedOwner "" adopts only when absent or
 	// already ours; non-empty transfers only while that owner still holds it.

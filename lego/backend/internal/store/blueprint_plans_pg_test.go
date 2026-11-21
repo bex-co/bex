@@ -97,7 +97,7 @@ func TestPlannedBlueprintSyncsPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	latest, err := st.LatestBlueprintPlan(ctx, b.ID)
+	latest, err := st.LatestBlueprintPlan(ctx, b.ID, time.Now())
 	if err != nil || latest.ID != planned.ID || latest.Path != "render.yaml" || latest.Branch != "release" || string(latest.RequiredManualEnvVars) == "[]" ||
 		!strings.Contains(string(latest.PlanActions), `"operation": "create"`) && !strings.Contains(string(latest.PlanActions), `"operation":"create"`) {
 		t.Fatalf("latest = %+v (actions %s) err=%v", latest, latest.PlanActions, err)
@@ -336,7 +336,7 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE blueprints SET active_run_id = NULL, status = 'in_sync', last_sync_at = now() WHERE id = $1`, b.ID); err != nil {
 		t.Fatal(err)
 	}
-	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != applied.ID {
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID, time.Now()); err != nil || latest.ID != applied.ID {
 		t.Fatalf("latest before the reconnect = %+v err=%v, want %s", latest, err, applied.ID)
 	}
 
@@ -351,7 +351,7 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	if got, err := st.BlueprintPlannedSync(ctx, b.ID, waiting.ID); err != nil || got.State != store.BlueprintSyncStateCreated || got.ErrorMessage != nil {
 		t.Fatalf("waiting plan after a no_changes plan = %+v err=%v, want it still created", got, err)
 	}
-	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != waiting.ID {
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID, time.Now()); err != nil || latest.ID != waiting.ID {
 		t.Fatalf("latest plan after a no_changes plan = %+v err=%v, want the waiting plan %s", latest, err, waiting.ID)
 	}
 	// The plan is stamped whatever the status, after the plan still waiting
@@ -368,7 +368,7 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	if err != nil || b.ID == deleted.ID {
 		t.Fatalf("create after the delete = %+v err=%v, want a new Blueprint, not %s", b, err, deleted.ID)
 	}
-	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); !errors.Is(err, store.ErrNotFound) {
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID, time.Now()); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("latest plan of the new Blueprint = %+v err=%v, want ErrNotFound (the deleted Blueprint's do not count)", latest, err)
 	}
 	if fresh, err := st.GetBlueprint(ctx, b.ID, ws.ID); err != nil || fresh.NoChangesPlannedAt != nil {
@@ -381,7 +381,7 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 		t.Fatalf("settle on created = %+v err=%v, want in_sync with last_sync_at, the manifest and the stamp", settled, err)
 	}
 	own := plan(b.ID)
-	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != own.ID {
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID, time.Now()); err != nil || latest.ID != own.ID {
 		t.Fatalf("latest plan = %+v err=%v, want this connection's %s", latest, err, own.ID)
 	}
 	// A plan after the no_changes one is newer than its stamp.
@@ -398,5 +398,137 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	settled, err = st.SettleNoChangesPlan(ctx, manual.ID, ws.ID, manifest)
 	if err != nil || settled.Status != store.BlueprintStatusPaused || settled.AutoSync || settled.LastSyncAt == nil || settled.Manifest != manifest {
 		t.Fatalf("settle on created without auto-sync = %+v err=%v, want paused with last_sync_at and the manifest", settled, err)
+	}
+}
+
+// TestBlueprintPlanApprovalWindowPG pins w32/075 on real Postgres: Render
+// deletes "a planned Sync that is not approved within 24 hours". A `created`
+// plan planned 24 hours before the caller's clock is passed over, so the
+// attempt before it is the newest, while one 23 hours old still answers; only
+// a waiting plan expires, never a run or a failed plan; and the sweep deletes
+// exactly the expired ones, so the sync history no longer lists them.
+func TestBlueprintPlanApprovalWindowPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	ws, err := st.CreateWorkspace(ctx, "bp-expiry-"+stamp, store.PlanHobby, "bp-expiry-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+	// The plans are dated a week back, so the sweep below, at now, finds no
+	// other test's rows expired.
+	now := time.Now().UTC().Add(-7 * 24 * time.Hour).Truncate(time.Microsecond)
+	commit := "0123456789abcdef0123456789abcdef01234567"
+	blueprint := func(name string) store.Blueprint {
+		t.Helper()
+		b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: name, Repo: "https://github.com/acme/expiry-" + stamp, Branch: "main", Path: "render.yaml"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	plan := func(bpID, state string, age time.Duration) store.PlannedBlueprintSync {
+		t.Helper()
+		p := store.PlannedBlueprintSync{
+			BlueprintSync: store.BlueprintSync{BlueprintID: bpID, CommitID: commit, State: state, StartedAt: now.Add(-age)},
+			Path:          "render.yaml", PlanActions: json.RawMessage(`[{"operation":"create","kind":"service","name":"api"}]`),
+		}
+		if state == store.BlueprintSyncStateError {
+			msg := "planning failed: boom"
+			p.CompletedAt, p.ErrorMessage, p.PlanActions = &p.StartedAt, &msg, nil
+		}
+		p, err := st.InsertPlannedBlueprintSync(ctx, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	latest := func(bpID string, at time.Time) string {
+		t.Helper()
+		p, err := st.LatestBlueprintPlan(ctx, bpID, at)
+		if errors.Is(err, store.ErrNotFound) {
+			return ""
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p.ID
+	}
+	stored := func(syncID string) bool {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM blueprint_syncs WHERE id = $1`, syncID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n == 1
+	}
+
+	// A first plan: approvable at 23 hours, gone at 24.
+	first := blueprint("first")
+	young := plan(first.ID, store.BlueprintSyncStateCreated, 23*time.Hour)
+	if got := latest(first.ID, now); got != young.ID {
+		t.Fatalf("latest plan at 23h = %q, want %s", got, young.ID)
+	}
+	if got := latest(first.ID, now.Add(time.Hour)); got != "" {
+		t.Fatalf("latest plan at 24h = %q, want none: the plan expired", got)
+	}
+
+	// A re-plan behind a failed one: once it expires, the failed plan before
+	// it answers again. A failed plan never expires.
+	replanned := blueprint("replanned")
+	failed := plan(replanned.ID, store.BlueprintSyncStateError, 48*time.Hour)
+	expired := plan(replanned.ID, store.BlueprintSyncStateCreated, 24*time.Hour)
+	if got := latest(replanned.ID, now.Add(-time.Second)); got != expired.ID {
+		t.Fatalf("latest plan a second before 24h = %q, want the waiting plan %s", got, expired.ID)
+	}
+	if got := latest(replanned.ID, now); got != failed.ID {
+		t.Fatalf("latest plan at 24h = %q, want the failed plan before it, %s", got, failed.ID)
+	}
+
+	// An approved plan is a run, which never expires.
+	approved := blueprint("approved")
+	applied := plan(approved.ID, store.BlueprintSyncStateCreated, 2*time.Hour)
+	if _, _, err := st.AdmitBlueprintSyncRun(ctx, approved.ID, ws.ID, store.BlueprintSync{ID: applied.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: now.Add(-2 * time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := latest(approved.ID, now.Add(30*24*time.Hour)); got != applied.ID {
+		t.Fatalf("latest plan of an approved Blueprint a month on = %q, want its run %s", got, applied.ID)
+	}
+
+	deleted, err := st.DeleteExpiredBlueprintPlans(ctx, now, 100)
+	if err != nil || deleted < 1 {
+		t.Fatalf("sweep = %d err=%v, want the expired plan deleted", deleted, err)
+	}
+	if stored(expired.ID) {
+		t.Errorf("the plan waiting 24h is still stored after the sweep")
+	}
+	for _, kept := range []store.PlannedBlueprintSync{young, failed, applied} {
+		if !stored(kept.ID) {
+			t.Errorf("the sweep deleted %s (%s), which had not expired", kept.ID, kept.State)
+		}
+	}
+	runs, err := st.ListBlueprintSyncs(ctx, replanned.ID, "", 20)
+	if err != nil || len(runs) != 1 || runs[0].ID != failed.ID {
+		t.Fatalf("sync history after the sweep = %+v err=%v, want only the failed plan %s", runs, err, failed.ID)
+	}
+	if again, err := st.DeleteExpiredBlueprintPlans(ctx, now, 100); err != nil || again != 0 {
+		t.Fatalf("a second sweep = %d err=%v, want nothing left to delete", again, err)
+	}
+	// An hour on, the young plan has expired too.
+	if deleted, err := st.DeleteExpiredBlueprintPlans(ctx, now.Add(time.Hour), 100); err != nil || deleted < 1 || stored(young.ID) {
+		t.Fatalf("sweep an hour later = %d err=%v (young stored %v), want the young plan deleted", deleted, err, stored(young.ID))
 	}
 }

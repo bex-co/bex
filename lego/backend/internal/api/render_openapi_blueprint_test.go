@@ -197,6 +197,10 @@ func (f *blueprintFixtureStore) AbandonBlueprintSync(context.Context, string, ti
 	return false, nil
 }
 
+func (f *blueprintFixtureStore) DeleteExpiredBlueprintPlans(context.Context, time.Time, int) (int, error) {
+	return 0, nil
+}
+
 func (f *blueprintFixtureStore) ClaimBlueprintResource(context.Context, string, store.BlueprintClaimKind, string, string, string) error {
 	return nil
 }

@@ -60,7 +60,7 @@ type blueprintPlanStore interface {
 	UndoPlannedBlueprintCreate(ctx context.Context, created store.Blueprint) error
 	BlueprintNameTaken(ctx context.Context, tenantID, name, exceptID string) (bool, error)
 	InsertPlannedBlueprintSync(ctx context.Context, p store.PlannedBlueprintSync) (store.PlannedBlueprintSync, error)
-	LatestBlueprintPlan(ctx context.Context, blueprintID string) (store.PlannedBlueprintSync, error)
+	LatestBlueprintPlan(ctx context.Context, blueprintID string, now time.Time) (store.PlannedBlueprintSync, error)
 	BlueprintPlannedSync(ctx context.Context, blueprintID, syncID string) (store.PlannedBlueprintSync, error)
 	SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID, manifest string) (store.Blueprint, error)
 }
@@ -466,7 +466,9 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 // PlannedSync is the Blueprint's newest planning attempt while it still waits
 // for approval — the plan and the manual env vars approval must supply — or
 // nil when there is nothing to approve (w2/m256 t012: the dashboard shows it
-// with its Approve control).
+// with its Approve control). A plan not approved within
+// store.BlueprintPlanApprovalWindow is deleted, as on Render, so it is never
+// the answer (w32/075).
 func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncWithPlan, error) {
 	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
 	if err != nil {
@@ -480,7 +482,7 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 	if err != nil {
 		return nil, store.MapError(err)
 	}
-	p, err := plans.LatestBlueprintPlan(ctx, b.ID)
+	p, err := plans.LatestBlueprintPlan(ctx, b.ID, s.Now())
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, nil
 	}
@@ -512,7 +514,11 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 // changes saves no sync, so a plan waiting from before it is still the newest
 // and is what approval applies, as Render's does (w32/073). So is a plan made
 // before an update changed the Blueprint's path or branch: it applies from the
-// source it was planned at (w32/074).
+// source it was planned at (w32/074). A plan not approved within 24 hours is
+// deleted, as Render's is ("A planned Sync that is not approved within 24 hours
+// will be automatically deleted", the pinned CLI's CreateBlueprintSync), so
+// approval answers as if it had never been made: the attempt before it
+// decides, and with none the Blueprint has nothing to approve (w32/075).
 //
 // planned, when set, is the sync id of the plan the caller reviewed: approval
 // is refused unless it is still the newest planned sync, so a re-plan another
@@ -536,12 +542,13 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 	} else if taken {
 		return ApprovedSync{}, errBlueprintNameTakenAtApproval(b.Name)
 	}
-	latest, err := plans.LatestBlueprintPlan(ctx, b.ID)
+	latest, err := plans.LatestBlueprintPlan(ctx, b.ID, s.Now())
 	if errors.Is(err, store.ErrNotFound) {
 		if b.NoChangesPlannedAt != nil {
 			return ApprovedSync{}, errNoChangesToApprove()
 		}
-		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE", "this Blueprint has no planned sync; plan one first", nil)
+		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE",
+			"this Blueprint has no planned sync (a plan not approved within 24 hours is deleted); plan one first", nil)
 	}
 	if err != nil {
 		return ApprovedSync{}, err
@@ -1050,7 +1057,7 @@ func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "approve_blueprint",
-		Description: "Approve and apply the Blueprint's newest planned sync after confirming that planning succeeded; approval can update existing resources. Call it only after the user authorizes applying the reviewed plan. Supply a user-provided value in manualEnvVars for every entry in sync.requiredManualEnvVars; never invent a value (they appear as plaintext in the agent context — the user can instead approve through POST /v1/blueprints/{blueprintId}/approve or the dashboard). Pass the reviewed plan's sync.id as syncId, so a plan that replaced it meanwhile is refused rather than applied. Refused when the newest sync failed planning or is not awaiting approval. Returns the approved sync, before its deployments finish.",
+		Description: "Approve and apply the Blueprint's newest planned sync after confirming that planning succeeded; approval can update existing resources. Call it only after the user authorizes applying the reviewed plan. Supply a user-provided value in manualEnvVars for every entry in sync.requiredManualEnvVars; never invent a value (they appear as plaintext in the agent context — the user can instead approve through POST /v1/blueprints/{blueprintId}/approve or the dashboard). Pass the reviewed plan's sync.id as syncId, so a plan that replaced it meanwhile is refused rather than applied. Refused when the newest sync failed planning or is not awaiting approval. A planned sync not approved within 24 hours is deleted; call plan_blueprint again. Returns the approved sync, before its deployments finish.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in approveBlueprintArgs) (*mcp.CallToolResult, ApprovedSync, error) {
 		res, err := s.ApproveBlueprint(ctx, in.BlueprintID, core.NamedWorkspace(ctx), in.SyncID, in.ManualEnvVars)
 		return nil, res, err

@@ -35,12 +35,18 @@ import (
 // still owns it — disconnected rows and newer generations are preserved. A
 // settled run carries an actionable retry instruction; partial application is
 // never replayed, only retried through an explicit new sync.
+//
+// The same tick deletes planned syncs left unapproved for
+// store.BlueprintPlanApprovalWindow, as Render deletes "a planned Sync that is
+// not approved within 24 hours" (w32/075), so they leave the sync history too.
+// Approval already passes over them from the moment they expire.
 
 // BlueprintRecoveryStore is the persisted surface the recovery sweep needs.
 // *store.PGStore satisfies it; the apps fake backs the unit tests.
 type BlueprintRecoveryStore interface {
 	ListAbandonedBlueprintSyncs(ctx context.Context, before time.Time, limit int) ([]store.AbandonedBlueprintSync, error)
 	AbandonBlueprintSync(ctx context.Context, runID string, now time.Time, reason string) (bool, error)
+	DeleteExpiredBlueprintPlans(ctx context.Context, now time.Time, limit int) (int, error)
 }
 
 // blueprintRecoveryBatch bounds one sweep tick (w5/m85 precedent: 100).
@@ -86,13 +92,19 @@ func (r *BlueprintRecoverer) Run(ctx context.Context) {
 	}
 }
 
-// recoverOnce settles one bounded batch of abandoned runs. A single run's
-// failure is isolated; it never blocks the others. Independent cleanup
-// contexts (per-call timeout) keep one slow store call from starving the tick.
+// recoverOnce deletes one bounded batch of expired plans and settles one
+// bounded batch of abandoned runs. A single run's failure is isolated; it
+// never blocks the others. Independent cleanup contexts (per-call timeout)
+// keep one slow store call from starving the tick.
 func (r *BlueprintRecoverer) recoverOnce(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	now := r.now()
+	if deleted, err := r.Store.DeleteExpiredBlueprintPlans(ctx, now, blueprintRecoveryBatch); err != nil {
+		log.Printf("blueprint recovery: delete expired plans: %v", err)
+	} else if deleted > 0 {
+		log.Printf("blueprint recovery: deleted %d planned syncs not approved within %s", deleted, store.BlueprintPlanApprovalWindow)
+	}
 	due, err := r.Store.ListAbandonedBlueprintSyncs(ctx, now.Add(-store.BlueprintRunRecoveryBound), blueprintRecoveryBatch)
 	if err != nil {
 		log.Printf("blueprint recovery: list abandoned runs: %v", err)
