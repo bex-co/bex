@@ -1,6 +1,6 @@
 # w9 · m539 — Every member's API keys list shows their own keys, as on Render; an Admin opts into the workspace's to revoke a demoted member's or a creator-less key
 
-**Worker:** worker9 **Goal:** the API keys list on REST, GraphQL, MCP and the dashboard's Account Settings panel shows every caller the keys they minted, whatever their role, as Render's Account Settings does; a Developer lists, edits and revokes only their own keys; editing a key's grant is its creator's verb alone; and an Admin keeps one explicit, opt-in view of every key in the workspace, with revoke, so a demoted member's keys and keys with no recorded creator stay reachable. **Status:** todo (t001–t005 and t007–t009 done; t006 waits for production to carry the code, then t010)
+**Worker:** worker9 **Goal:** the API keys list on REST, GraphQL, MCP and the dashboard's Account Settings panel shows every caller the keys they minted, whatever their role, as Render's Account Settings does; a Developer lists, edits and revokes only their own keys; editing a key's grant is its creator's verb alone; and an Admin keeps one explicit, opt-in view of every key in the workspace, with revoke, so a demoted member's keys and keys with no recorded creator stay reachable. **Status:** blocked (t001–t005 and t007–t009 done and checked on dev-9 for every role; t006's production check waits for a pin carrying `704667da6`, then t010)
 
 ## Tasks (in order)
 
@@ -31,7 +31,7 @@ The note's open question had three options: narrow every role's list to their ow
 
 ## Security boundary (holds for every task)
 
-- **I1–I12 hold unchanged:** m481's I1–I5, m496's I6–I8, m514's I9 and w9/116's I11–I12 ([ADR024](../../../docs/ADR024-members.md)). A key acts with no more than its creator's current role and its grant, in its own workspace.
+- **I1–I12 hold unchanged:** m481's I1–I5, m496's I6–I8, m514's I9 and w9/116's I11–I12 ([ADR024](../../../../docs/ADR024-members.md)). A key acts with no more than its creator's current role and its grant, in its own workspace.
 - **I10, restated for every role:** by default every caller lists only the keys they minted in the workspace the request acts in. A machine caller owns nothing, so an API key's default list is empty. Only the key's creator edits its grant.
 - **I13 (new): only an Admin reaches another member's key or a creator-less key.** That reach is the workspace-wide list (asked for explicitly with `allMembers`) and the revoke of a key that is not the caller's. Both are decided by one `Authorize` against `can_manage` (Admin), audited once. A Developer, a Contributor, a Viewer and a Billing member get 403 for both. `requireKeyIn` still holds the key to the request's workspace.
 - **Nothing widens.** No caller lists, edits or revokes a key it could not before. An Admin's key with an All grant keeps reaching what its creator reaches (it passes `allMembers`). Every refusal keeps today's shape: 403 for another member's key, `ErrNotInNamedWorkspace` for another workspace's, 404 for an unbound one.
@@ -46,9 +46,9 @@ The note's open question had three options: narrow every role's list to their ow
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w9/131](../done/131.md) (2026-11-20), filed by w9/m514 t007. Today `apikeys.Service.ListAPIKeys` (`lego/backend/internal/apikeys/service.go:546`) shows every key bound to the workspace to a caller holding `can_manage_keys` (Developer or Admin, `:560`). `keyRelation` (`:662`) decides a verb on another member's key with `can_manage_keys`, and `UpdateAPIKeyPermissions` (`:717`) lets an Admin edit any key's grant.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Every customer-facing behavior must match render.com in every workspace, and today a Developer and an Admin see a page no Render member sees.
+- **Source:** promoted from [w9/131](../../done/131.md) (2026-11-20), filed by w9/m514 t007. Today `apikeys.Service.ListAPIKeys` (`lego/backend/internal/apikeys/service.go:546`) shows every key bound to the workspace to a caller holding `can_manage_keys` (Developer or Admin, `:560`). `keyRelation` (`:662`) decides a verb on another member's key with `can_manage_keys`, and `UpdateAPIKeyPermissions` (`:717`) lets an Admin edit any key's grant.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Every customer-facing behavior must match render.com in every workspace, and today a Developer and an Admin see a page no Render member sees.
 - **Expected outcome:** a member opening Account Settings sees the keys they made, as on Render. A Developer can no longer revoke an Admin's or a teammate's CI key. An Admin still has one deliberate place to revoke a demoted member's or a creator-less key.
 - **Why now:** w9/m514 just gave every role its own keys and left Developer and Admin on the old view. ADR018's API keys row carries this as its one open divergence. Every new member and key adds to the set a Developer can revoke by mistake.
 - **Render parity:** included (t007). The change is customer-facing on REST, GraphQL, MCP and the dashboard.
-- **Adjacent, out of scope:** [w9/132](../132.md) (the API keys table is wider than its card) touches the same panel. Coordinate, but do not fold it in.
+- **Adjacent, out of scope:** [w9/132](../../132.md) (the API keys table is wider than its card) touches the same panel. Coordinate, but do not fold it in.
