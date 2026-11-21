@@ -7015,6 +7015,11 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 // probeStallText is a probe stall's in-flight sentence, worded from the shared
 // templates, which the dashboard words in its own language (w4/591, w5/m356).
 func probeStallText(kind string, probe *corev1.Probe, restarts int32) string {
+	if healthProbeChecksOpenPort(probe.Exec) {
+		// Render's default check (w4/m350) has no path and names no port
+		// (w8/384).
+		return appv1alpha1.OpenPortProbeStallReason(kind, restarts)
+	}
 	path, port, ok := probeGET(probe)
 	tcp := probe.TCPSocket != nil
 	if tcp {

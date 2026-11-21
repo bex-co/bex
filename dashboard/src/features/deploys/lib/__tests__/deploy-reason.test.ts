@@ -193,6 +193,33 @@ describe("deployReasonText", () => {
     });
   });
 
+  // w8/384: Render's default check, a connect to any open port, has no path,
+  // so neither language tells the user to check one.
+  it("words a stall of the any-open-port check without the path advice", () => {
+    const worker =
+      " If the service does not need to receive traffic on any port, create a background worker instead.";
+    const stall = wire(
+      "probe_open_port_failed",
+      [
+        { name: "kind", value: "startup" },
+        { name: "hint", value: worker },
+      ],
+      [{ code: "hint_background_worker", params: [], text: worker }],
+    );
+    const sentence =
+      "the container is running but its startup health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance." +
+      " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port." +
+      worker;
+    expect(deployReasonText(translator("en"), sentence, stall)).toBe(sentence);
+    const zh = deployReasonText(translator("zh"), sentence, stall);
+    expect(zh).toBe(
+      "容器正在运行，但其启动健康检查在发布时限内始终未成功，部署因此失败：到实例上任一开放端口的 TCP 连接。" +
+        "未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否至少在一个端口上监听。" +
+        "如果服务不需要在任何端口上接收流量，请改为创建后台工作进程。",
+    );
+    expect(zh).not.toContain("路径在服务自身端口上返回");
+  });
+
   // w5/m356: a never-started build's cause is worded too.
   describe("a build that never started", () => {
     const cause =

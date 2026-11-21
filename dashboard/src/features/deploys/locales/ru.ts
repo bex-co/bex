@@ -765,6 +765,30 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
   },
+  "deploys.reason.probe_open_port_waiting": {
+    message:
+      "контейнер запущен, но его проверка {kind} ещё не пройдена, поэтому выкатка ожидает: TCP-подключение к любому открытому порту экземпляра. Путь проверки работоспособности не задан, поэтому используется TCP-подключение, которое лишь проверяет, слушает ли процесс хотя бы один порт.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_waiting_restarted": {
+    message:
+      "контейнер запущен, но его проверка {kind} ещё не пройдена, поэтому выкатка ожидает: TCP-подключение к любому открытому порту экземпляра. Проверка liveness уже перезапускала контейнер (раз: {restarts}), так что проверка не проходит, а не просто выполняется медленно. Путь проверки работоспособности не задан, поэтому используется TCP-подключение, которое лишь проверяет, слушает ли процесс хотя бы один порт.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed": {
+    message:
+      "контейнер запущен, но его проверка {kind} так и не была пройдена в отведённое для выкатки время, поэтому деплой не удался: TCP-подключение к любому открытому порту экземпляра. Путь проверки работоспособности не задан, поэтому используется TCP-подключение, которое лишь проверяет, слушает ли процесс хотя бы один порт.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed_restarted": {
+    message:
+      "контейнер запущен, но его проверка {kind} так и не была пройдена в отведённое для выкатки время, поэтому деплой не удался: TCP-подключение к любому открытому порту экземпляра. Проверка liveness уже перезапускала контейнер (раз: {restarts}), так что проверка не проходит, а не просто выполняется медленно. Путь проверки работоспособности не задан, поэтому используется TCP-подключение, которое лишь проверяет, слушает ли процесс хотя бы один порт.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
   "deploys.reason.hint_image_default_port": {
     message:
       " Ничто не приняло TCP-подключение на порту {port}, который выбран по умолчанию, так как образ не объявляет TCP-портов. Сервер должен слушать хост 0.0.0.0 на порту из PORT ({port}).",

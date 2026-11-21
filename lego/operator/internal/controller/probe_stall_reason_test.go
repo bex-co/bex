@@ -37,6 +37,7 @@ func TestProbeStallMessageParsesAsItsTemplate(t *testing.T) {
 		restarted = " The liveness check has already restarted the container 3 time(s), so the check is failing rather than merely slow."
 		pathTail  = " Check that the path returns a 2xx or 3xx status on the service's own port."
 		tcpTail   = " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port."
+		openTail  = " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port."
 	)
 	probe := func(h corev1.ProbeHandler) *corev1.Probe {
 		return &corev1.Probe{ProbeHandler: h, PeriodSeconds: 10, TimeoutSeconds: 5}
@@ -44,6 +45,7 @@ func TestProbeStallMessageParsesAsItsTemplate(t *testing.T) {
 	httpGet := probe(corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/healthz", Port: intstr.FromInt(3000)}})
 	tcp := probe(corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(3000)}})
 	exec := probe(healthProbeExecHandler("/cgi-bin/health", 8080, ""))
+	openPort := probe(healthProbeOpenPortHandler())
 	started := true
 	for name, tc := range map[string]struct {
 		probe              *corev1.Probe
@@ -87,6 +89,22 @@ func TestProbeStallMessageParsesAsItsTemplate(t *testing.T) {
 			failed:   head + "readiness health check never succeeded within the rollout window, so the deploy failed: a TCP connect to port 3000." + restarted + tcpTail,
 			waitCode: appv1alpha1.DeployReasonProbeTCPWaitingRestarted, failCode: appv1alpha1.DeployReasonProbeTCPFailedRestarted,
 			params: map[string]string{"kind": "readiness", "port": "3000", "restarts": "3"},
+		},
+		// w8/384: a first web image release with no Health Check Path runs
+		// Render's default check, which has no path to advise on.
+		"any open port at startup": {
+			probe:    openPort,
+			waiting:  head + "startup health check has not succeeded, so the rollout is waiting: a TCP connect to any open port on the instance." + openTail,
+			failed:   head + "startup health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance." + openTail,
+			waitCode: appv1alpha1.DeployReasonProbeOpenPortWaiting, failCode: appv1alpha1.DeployReasonProbeOpenPortFailed,
+			params: map[string]string{"kind": "startup"},
+		},
+		"any open port restarted by liveness": {
+			probe: openPort, started: &started, restarts: 3,
+			waiting:  head + "readiness health check has not succeeded, so the rollout is waiting: a TCP connect to any open port on the instance." + restarted + openTail,
+			failed:   head + "readiness health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance." + restarted + openTail,
+			waitCode: appv1alpha1.DeployReasonProbeOpenPortWaitingRestarted, failCode: appv1alpha1.DeployReasonProbeOpenPortFailedRestarted,
+			params: map[string]string{"kind": "readiness", "restarts": "3"},
 		},
 	} {
 		pod := corev1.Pod{

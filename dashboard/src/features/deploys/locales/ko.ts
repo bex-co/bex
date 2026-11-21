@@ -736,6 +736,30 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
   },
+  "deploys.reason.probe_open_port_waiting": {
+    message:
+      "컨테이너는 실행 중이지만 {kind} 헬스 체크가 아직 성공하지 않아 롤아웃이 대기 중입니다. 인스턴스에서 열려 있는 아무 포트로의 TCP 연결입니다. 헬스 체크 경로가 설정되지 않아 TCP 연결로 확인하며, 이는 프로세스가 하나 이상의 포트에서 수신 대기 중인지만 확인합니다.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_waiting_restarted": {
+    message:
+      "컨테이너는 실행 중이지만 {kind} 헬스 체크가 아직 성공하지 않아 롤아웃이 대기 중입니다. 인스턴스에서 열려 있는 아무 포트로의 TCP 연결입니다. 라이브니스 체크가 이미 컨테이너를 {restarts}회 다시 시작했으므로, 단순히 느린 것이 아니라 체크가 실패하고 있습니다. 헬스 체크 경로가 설정되지 않아 TCP 연결로 확인하며, 이는 프로세스가 하나 이상의 포트에서 수신 대기 중인지만 확인합니다.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed": {
+    message:
+      "컨테이너는 실행 중이지만 {kind} 헬스 체크가 롤아웃 허용 시간 내에 성공하지 않아 배포가 실패했습니다. 인스턴스에서 열려 있는 아무 포트로의 TCP 연결입니다. 헬스 체크 경로가 설정되지 않아 TCP 연결로 확인하며, 이는 프로세스가 하나 이상의 포트에서 수신 대기 중인지만 확인합니다.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed_restarted": {
+    message:
+      "컨테이너는 실행 중이지만 {kind} 헬스 체크가 롤아웃 허용 시간 내에 성공하지 않아 배포가 실패했습니다. 인스턴스에서 열려 있는 아무 포트로의 TCP 연결입니다. 라이브니스 체크가 이미 컨테이너를 {restarts}회 다시 시작했으므로, 단순히 느린 것이 아니라 체크가 실패하고 있습니다. 헬스 체크 경로가 설정되지 않아 TCP 연결로 확인하며, 이는 프로세스가 하나 이상의 포트에서 수신 대기 중인지만 확인합니다.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
   "deploys.reason.hint_image_default_port": {
     message:
       " 이미지가 TCP 포트를 선언하지 않아 기본값으로 사용한 {port} 포트에서 TCP 연결을 수락하는 곳이 없습니다. 서버는 PORT({port})에 지정된 포트의 호스트 0.0.0.0에 바인딩해야 합니다.",

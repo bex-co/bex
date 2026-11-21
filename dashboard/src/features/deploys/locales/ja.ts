@@ -742,6 +742,30 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
   },
+  "deploys.reason.probe_open_port_waiting": {
+    message:
+      "コンテナーは実行中ですが、{kind} ヘルスチェックが成功していないため、ロールアウトは待機中です: インスタンスで開いている任意のポートへの TCP 接続。ヘルスチェックパスが設定されていないため、チェックは TCP 接続となり、プロセスが少なくとも 1 つのポートでリッスンしているかどうかだけを確認します。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_waiting_restarted": {
+    message:
+      "コンテナーは実行中ですが、{kind} ヘルスチェックが成功していないため、ロールアウトは待機中です: インスタンスで開いている任意のポートへの TCP 接続。ライブネスチェックによってコンテナーはすでに {restarts} 回再起動されており、単に遅いのではなくチェックが失敗しています。ヘルスチェックパスが設定されていないため、チェックは TCP 接続となり、プロセスが少なくとも 1 つのポートでリッスンしているかどうかだけを確認します。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed": {
+    message:
+      "コンテナーは実行中ですが、ロールアウトの制限時間内に {kind} ヘルスチェックが一度も成功しなかったため、デプロイに失敗しました: インスタンスで開いている任意のポートへの TCP 接続。ヘルスチェックパスが設定されていないため、チェックは TCP 接続となり、プロセスが少なくとも 1 つのポートでリッスンしているかどうかだけを確認します。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed_restarted": {
+    message:
+      "コンテナーは実行中ですが、ロールアウトの制限時間内に {kind} ヘルスチェックが一度も成功しなかったため、デプロイに失敗しました: インスタンスで開いている任意のポートへの TCP 接続。ライブネスチェックによってコンテナーはすでに {restarts} 回再起動されており、単に遅いのではなくチェックが失敗しています。ヘルスチェックパスが設定されていないため、チェックは TCP 接続となり、プロセスが少なくとも 1 つのポートでリッスンしているかどうかだけを確認します。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
   "deploys.reason.hint_image_default_port": {
     message:
       " ポート {port} で TCP 接続を受け付けたものはありませんでした。イメージが TCP ポートを宣言していないため、これがデフォルトのポートです。サーバーは PORT ({port}) のポートで、ホスト 0.0.0.0 にバインドする必要があります。",

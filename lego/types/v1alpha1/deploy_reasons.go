@@ -69,6 +69,13 @@ const (
 	DeployReasonProbeOtherWaitingRestarted = "probe_other_waiting_restarted"
 	DeployReasonProbeOtherFailed           = "probe_other_failed"
 	DeployReasonProbeOtherFailedRestarted  = "probe_other_failed_restarted"
+	// w8/384: Render's default check, a TCP connect to any open port, which
+	// a first web image release with no Health Check Path runs while its HTTP
+	// port is discovered (w4/m350). It has no path to advise on.
+	DeployReasonProbeOpenPortWaiting          = "probe_open_port_waiting"
+	DeployReasonProbeOpenPortWaitingRestarted = "probe_open_port_waiting_restarted"
+	DeployReasonProbeOpenPortFailed           = "probe_open_port_failed"
+	DeployReasonProbeOpenPortFailedRestarted  = "probe_open_port_failed_restarted"
 	// The rollout deadline's verdict when nothing diagnosed the stall.
 	DeployReasonRolloutDeadline = "rollout_deadline_exceeded"
 
@@ -149,6 +156,10 @@ const (
 	probeStallRestarted = " The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow."
 	probeStallPathTail  = " Check that the path returns a 2xx or 3xx status on the service's own port."
 	probeStallTCPTail   = " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port."
+	// Render's default check names no port, as Render's port scan asks for
+	// "at least one open port" (w8/384).
+	probeStallOpenPort     = ": a TCP connect to any open port on the instance."
+	probeStallOpenPortTail = " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port."
 	// The operator appends port hints to the sentence (rolloutStallDiagnosis);
 	// {hint} carries them, so the sentence keeps its code with or without
 	// one, and ParseDeployReasonParts reads their sentences.
@@ -182,6 +193,11 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonProbeTCPWaitingRestarted:  probeStallHead + ProbeStallWaiting + probeStallTCP + probeStallRestarted + probeStallTCPTail + probeStallHint,
 	DeployReasonProbeTCPFailed:            probeStallHead + ProbeStallFailed + probeStallTCP + probeStallTCPTail + probeStallHint,
 	DeployReasonProbeTCPFailedRestarted:   probeStallHead + ProbeStallFailed + probeStallTCP + probeStallRestarted + probeStallTCPTail + probeStallHint,
+	// Render's default check has no path to advise on (w8/384).
+	DeployReasonProbeOpenPortWaiting:          probeStallHead + ProbeStallWaiting + probeStallOpenPort + probeStallOpenPortTail + probeStallHint,
+	DeployReasonProbeOpenPortWaitingRestarted: probeStallHead + ProbeStallWaiting + probeStallOpenPort + probeStallRestarted + probeStallOpenPortTail + probeStallHint,
+	DeployReasonProbeOpenPortFailed:           probeStallHead + ProbeStallFailed + probeStallOpenPort + probeStallOpenPortTail + probeStallHint,
+	DeployReasonProbeOpenPortFailedRestarted:  probeStallHead + ProbeStallFailed + probeStallOpenPort + probeStallRestarted + probeStallOpenPortTail + probeStallHint,
 	// Any other check keeps the path advice its sentence has always ended on.
 	DeployReasonProbeOtherWaiting:          probeStallHead + ProbeStallWaiting + probeStallOther + probeStallPathTail + probeStallHint,
 	DeployReasonProbeOtherWaitingRestarted: probeStallHead + ProbeStallWaiting + probeStallOther + probeStallRestarted + probeStallPathTail + probeStallHint,
@@ -315,9 +331,20 @@ func ProbeStallReason(kind string, tcp bool, path, port string, restarts int32) 
 // OtherProbeStallReason is ProbeStallReason for a check that is neither a GET
 // nor a TCP connect.
 func OtherProbeStallReason(kind string, restarts int32) string {
-	code := DeployReasonProbeOtherWaiting
+	return portlessProbeStallReason(DeployReasonProbeOtherWaiting, DeployReasonProbeOtherWaitingRestarted, kind, restarts)
+}
+
+// OpenPortProbeStallReason is ProbeStallReason for Render's default check, a
+// TCP connect to any open port (w8/384).
+func OpenPortProbeStallReason(kind string, restarts int32) string {
+	return portlessProbeStallReason(DeployReasonProbeOpenPortWaiting, DeployReasonProbeOpenPortWaitingRestarted, kind, restarts)
+}
+
+// portlessProbeStallReason is the in-flight stall of a check that names no
+// port: code, or restarted once liveness has restarted the container.
+func portlessProbeStallReason(code, restarted, kind string, restarts int32) string {
 	if restarts > 0 {
-		code = DeployReasonProbeOtherWaitingRestarted
+		code = restarted
 	}
 	return FormatDeployReason(code, DeployReasonParam{Name: "kind", Value: kind},
 		DeployReasonParam{Name: "restarts", Value: strconv.Itoa(int(restarts))})

@@ -719,6 +719,30 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
   },
+  "deploys.reason.probe_open_port_waiting": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：到实例上任一开放端口的 TCP 连接。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否至少在一个端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_waiting_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：到实例上任一开放端口的 TCP 连接。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否至少在一个端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：到实例上任一开放端口的 TCP 连接。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否至少在一个端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：到实例上任一开放端口的 TCP 连接。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否至少在一个端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
   "deploys.reason.hint_image_default_port": {
     message:
       "端口 {port} 上没有任何进程接受 TCP 连接；镜像未声明任何 TCP 端口，因此使用的是默认端口。服务器必须绑定到 0.0.0.0，并监听 PORT 环境变量指定的端口（{port}）。",

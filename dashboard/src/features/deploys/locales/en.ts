@@ -747,6 +747,30 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
   },
+  "deploys.reason.probe_open_port_waiting": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: a TCP connect to any open port on the instance. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_waiting_restarted": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: a TCP connect to any open port on the instance. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_waiting_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
+  "deploys.reason.probe_open_port_failed_restarted": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on at least one port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_open_port_failed_restarted, w8/384): the stall of Render's default check, a TCP connect to any open port, which a first web image release with no Health Check Path runs; params are the sentence's values",
+  },
   "deploys.reason.hint_image_default_port": {
     message:
       " Nothing accepted a TCP connection on port {port}, the default because the image declares no TCP ports. The server must bind host 0.0.0.0 on the port in PORT ({port}).",
