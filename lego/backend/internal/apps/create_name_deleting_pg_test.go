@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -35,7 +36,8 @@ import (
 // (its App held Terminating by the operator's finalizer), create one under the
 // same name at once. The create, dry run and real alike, succeeds; the new
 // row records its own App object name and a fresh slug; the name resolves to
-// it; and a repeated delete of the old service's id touches nothing.
+// it; and a repeated delete of the old service's id answers 404 and touches
+// nothing.
 func TestPGCreateUnderADeletedNameSucceedsAtOnce(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -117,10 +119,10 @@ func TestPGCreateUnderADeletedNameSucceedsAtOnce(t *testing.T) {
 	if got, err := svc.Get(ctx, "api"); err != nil || got.ID != second.ID {
 		t.Fatalf("GET api = %+v, %v; want the new service %s", got, err, second.ID)
 	}
-	// A repeated delete of the old service, still reachable by id, is done
-	// already and touches nothing (it would purge the name's secrets).
-	if err := svc.Delete(ctx, first.ID); err != nil {
-		t.Fatalf("repeat delete of %s: %v", first.ID, err)
+	// A repeated delete of the old service answers as for an id that never
+	// existed (w8/366) and touches nothing (it would purge the name's secrets).
+	if err := svc.Delete(ctx, first.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("repeat delete of %s = %v, want core.ErrNotFound", first.ID, err)
 	}
 	if n := rows(); n != 1 {
 		t.Fatalf("%d service rows after the repeat delete, want the new one", n)
