@@ -175,7 +175,7 @@ func (s *Service) CheckEgressBudget(ctx context.Context, workspaceID string) err
 		stored += b
 	}
 	if limit := max(stored, S3EgressBudgetFloor); egress >= limit {
-		return &QuotaError{Resource: QuotaEgress, Limit: limit}
+		return &QuotaError{Resource: QuotaEgress, Limit: limit, Resets: store.MonthStartUTC(now).AddDate(0, 1, 0)}
 	}
 	return nil
 }

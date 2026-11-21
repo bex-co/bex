@@ -21,3 +21,6 @@ import "time"
 // SetStreamDeadline shortens how long one streamed put or get may run, so a
 // test can stall Wasabi without waiting 30 minutes.
 func (s *Service) SetStreamDeadline(d time.Duration) { s.streamDeadline = d }
+
+// SetNow fixes the clock the egress budget reads.
+func (s *Service) SetNow(now func() time.Time) { s.nowFunc = now }

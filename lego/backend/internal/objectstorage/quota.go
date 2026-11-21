@@ -20,6 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // ErrObjectTooLarge refuses one object above the contract's per-object cap.
@@ -33,15 +36,31 @@ const (
 	QuotaObjects QuotaResource = "objects"
 )
 
-// QuotaError refuses a write that would take a workspace past a cap. Resource
-// says which one, so the answer can name it.
+// QuotaError refuses a write that would take a workspace past a cap in a region, or
+// an S3 read once the workspace's monthly egress budget is spent. Resource says
+// which one, so the answer can name it.
 type QuotaError struct {
 	Resource QuotaResource
 	Limit    int64
+	// Resets is when the egress budget starts again: the next month's first instant
+	// in UTC. The per-region caps have none.
+	Resets time.Time
 }
 
 func (e *QuotaError) Error() string {
+	if e.Resource == QuotaEgress {
+		// The budget covers every region, has already been reached, and comes back
+		// when the month turns, so the per-region sentence below is wrong for it.
+		return fmt.Sprintf("this workspace's S3 reads this month have reached its egress limit of %s (the larger of the bytes it stores and %s, across every region); reads resume on %s UTC",
+			formatGiB(e.Limit), formatGiB(S3EgressBudgetFloor), e.Resets.UTC().Format(time.DateOnly))
+	}
 	return fmt.Sprintf("this workspace's object storage in this region would exceed its %s limit of %d", e.Resource, e.Limit)
+}
+
+// formatGiB writes n bytes in GiB with at most two decimals: 5368709120 is "5 GiB".
+func formatGiB(n int64) string {
+	s := strconv.FormatFloat(float64(n)/(1<<30), 'f', 2, 64)
+	return strings.TrimSuffix(strings.TrimRight(s, "0"), ".") + " GiB"
 }
 
 // CheckObjectSize refuses an object larger than max, or a negative size.

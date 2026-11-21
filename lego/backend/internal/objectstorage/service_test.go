@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -189,6 +190,73 @@ func TestGateRefusesWritesThatPassACap(t *testing.T) {
 	repo := &stubRepo{usageErr: boom}
 	if err := objectstorage.NewService(repo, stores).Gate(context.Background(), "tea-x", objectstorage.Oregon, 1); !errors.Is(err, boom) {
 		t.Errorf("a failed usage read = %v, want it surfaced", err)
+	}
+}
+
+// egressRepo is a stubRepo with a month-to-date egress meter.
+type egressRepo struct {
+	stubRepo
+	egress int64
+	since  time.Time
+}
+
+func (r *egressRepo) ObjectStorageWorkspaceEgressSince(_ context.Context, _ string, since time.Time) (int64, error) {
+	r.since = since
+	return r.egress, nil
+}
+
+// w32/064: the egress budget's refusal read "in this region would exceed its egress
+// limit of 5368709120", so a user made a bucket in another region to get around it.
+// The budget is the workspace's in every region, it has already been reached, and it
+// comes back when the month turns.
+func TestTheEgressBudgetRefusalSaysTheWorkspacesBudgetIsSpentAndWhenReadsResume(t *testing.T) {
+	cases := []struct {
+		name         string
+		now          time.Time
+		storedPerReg int64 // ObjectStorageUsageTotals answers this for each region
+		egress       int64
+		limit, reset string
+		monthStart   time.Time
+	}{
+		{"at the floor", time.Date(2026, 11, 21, 8, 27, 0, 0, time.UTC), 0, objectstorage.S3EgressBudgetFloor + 11,
+			"egress limit of 5 GiB", "reads resume on 2026-12-01 UTC", time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)},
+		// 3.25 GiB in each of two regions: the budget is the 6.5 GiB the workspace stores.
+		{"past the stored bytes", time.Date(2026, 11, 21, 8, 27, 0, 0, time.UTC), 13 << 28, 7 << 30,
+			"egress limit of 6.5 GiB", "reads resume on 2026-12-01 UTC", time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)},
+		// The month is UTC's: 20:00 on 30 November in New York is already December.
+		{"across a year in another zone", time.Date(2026, 11, 30, 20, 0, 0, 0, time.FixedZone("EST", -5*3600)), 0, objectstorage.S3EgressBudgetFloor,
+			"egress limit of 5 GiB", "reads resume on 2027-01-01 UTC", time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, c := range cases {
+		repo := &egressRepo{stubRepo: stubRepo{bytes: c.storedPerReg}, egress: c.egress}
+		s := objectstorage.NewService(repo, nil)
+		s.SetNow(func() time.Time { return c.now })
+		err := s.CheckEgressBudget(context.Background(), "tea-x")
+		var q *objectstorage.QuotaError
+		if !errors.As(err, &q) || q.Resource != objectstorage.QuotaEgress {
+			t.Fatalf("%s: err = %v, want an egress QuotaError", c.name, err)
+		}
+		if !repo.since.Equal(c.monthStart) {
+			t.Errorf("%s: the meter was read since %s, want %s", c.name, repo.since, c.monthStart)
+		}
+		msg := err.Error()
+		for _, bad := range []string{"in this region", "would exceed", strconv.FormatInt(q.Limit, 10)} {
+			if strings.Contains(msg, bad) {
+				t.Errorf("%s: %q says %q", c.name, msg, bad)
+			}
+		}
+		for _, want := range []string{"S3 reads this month have reached", c.limit, "the larger of the bytes it stores and 5 GiB", "across every region", c.reset} {
+			if !strings.Contains(msg, want) {
+				t.Errorf("%s: %q does not say %q", c.name, msg, want)
+			}
+		}
+	}
+
+	// The per-region caps keep their sentence, which is true for them.
+	stores, _ := oregonOnly(t)
+	err := objectstorage.NewService(&stubRepo{bytes: objectstorage.MaxWorkspaceBytes}, stores).Gate(context.Background(), "tea-x", objectstorage.Oregon, 1)
+	if want := "this workspace's object storage in this region would exceed its bytes limit of 100000000000"; err == nil || err.Error() != want {
+		t.Errorf("the bytes cap's refusal = %v, want %q", err, want)
 	}
 }
 
