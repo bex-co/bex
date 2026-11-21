@@ -98,11 +98,12 @@ const (
 // budget, in order, as they share one execution deadline, and a document
 // that would overdraw it is refused before graphql-go reads it. The rate
 // limiter charges a batch one token per member, so these bound the
-// validation one token buys. Each budget sits far above what bex's clients
-// send (2026-11-20): only the dashboard batches, at most 32 documents (94 KB
-// if all 32 were its largest), with at most 18 bytes of argument values in a
-// document (the mobile app sends 274, one document at a time), at most 52
-// overlap steps a document and no argument values compared.
+// validation, and the introspection, one token buys. Each budget sits far
+// above what bex's clients send (2026-11-20): only the dashboard batches, at
+// most 32 documents (94 KB if all 32 were its largest), with at most 18
+// bytes of argument values in a document (the mobile app sends 274, one
+// document at a time), at most 52 overlap steps a document, no argument
+// values compared and no introspection.
 const (
 	// gqlMaxRequestDocumentBytes caps the documents' text together.
 	gqlMaxRequestDocumentBytes = 128 << 10
@@ -117,11 +118,17 @@ const (
 	// gqlMaxRequestOverlapArgumentBytes caps the argument values the overlap
 	// check prints to compare two fields.
 	gqlMaxRequestOverlapArgumentBytes = 1 << 10
+	// gqlMaxRequestIntrospectionCalls caps the resolver calls introspection
+	// makes, as countGraphQLIntrospection counts them. The standard
+	// introspection query (graphql-go's, and graphql-js 17's that codegen
+	// sends) makes 35,000 against bex's schema; a call takes about 0.5 µs
+	// and 1 KB of allocations, so the budget is a tenth of a second.
+	gqlMaxRequestIntrospectionCalls = 200000
 )
 
 // gqlBudget is what one request's documents have spent of the request budgets.
 type gqlBudget struct {
-	documentBytes, valueBytes, overlapSteps, overlapArgumentBytes int
+	documentBytes, valueBytes, overlapSteps, overlapArgumentBytes, introspectionCalls int
 }
 
 // spendDocument charges a document's text, before it is parsed.
@@ -158,6 +165,15 @@ func (b *gqlBudget) spendOverlap(steps, argumentBytes int) error {
 	}
 	if b.overlapArgumentBytes > gqlMaxRequestOverlapArgumentBytes {
 		return fmt.Errorf("query rejected: the request's fields that share a response name compare more than %d bytes of argument values", gqlMaxRequestOverlapArgumentBytes)
+	}
+	return nil
+}
+
+// spendIntrospection charges calls introspection resolvers will make.
+func (b *gqlBudget) spendIntrospection(calls int) error {
+	b.introspectionCalls += calls
+	if b.introspectionCalls > gqlMaxRequestIntrospectionCalls {
+		return fmt.Errorf("query rejected: the request's introspection makes more than %d resolver calls", gqlMaxRequestIntrospectionCalls)
 	}
 	return nil
 }

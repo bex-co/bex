@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ import (
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/kinds"
 	"github.com/graphql-go/graphql/language/printer"
+	"github.com/graphql-go/graphql/language/visitor"
 	"github.com/graphql-go/graphql/testutil"
 )
 
@@ -351,6 +353,15 @@ func TestGraphQLClientDocumentsPassTheGates(t *testing.T) {
 		if err := validateGraphQLDocument(text, b); err != nil {
 			t.Errorf("%s: operation %s refused: %v", where[op], op.Name.Value, err)
 		}
+		// The fields a Service reads through (gqlMaxNestedReads), counted
+		// by name on any type.
+		reads := 0
+		for _, def := range defs {
+			reads += selectedFields(def, "envVarKeys", "envVar", "secretFileNames", "secretFile", "outboundIps")
+		}
+		if 4*reads > gqlMaxNestedReads {
+			t.Errorf("%s: operation %s makes up to %d nested reads, over a quarter of the %d a document may", where[op], op.Name.Value, reads, gqlMaxNestedReads)
+		}
 		// Only the dashboard batches (Apollo's BatchHttpLink, at most 32).
 		if strings.Contains(where[op], "/dashboard/") {
 			most.documentBytes = max(most.documentBytes, b.documentBytes)
@@ -395,6 +406,18 @@ func addTypename(sel *ast.SelectionSet) {
 	if !has {
 		sel.Selections = append(sel.Selections, &ast.Field{Kind: kinds.Field, Name: &ast.Name{Kind: kinds.Name, Value: "__typename"}})
 	}
+}
+
+// selectedFields is how many fields node selects under any of names.
+func selectedFields(node ast.Node, names ...string) int {
+	n := 0
+	visitor.Visit(node, &visitor.VisitorOptions{Enter: func(p visitor.VisitFuncParams) (string, any) {
+		if f, ok := p.Node.(*ast.Field); ok && f.Name != nil && slices.Contains(names, f.Name.Value) {
+			n++
+		}
+		return visitor.ActionNoChange, nil
+	}}, nil)
+	return n
 }
 
 // spreadFragments is the names of the fragments sel spreads, directly or

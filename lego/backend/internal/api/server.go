@@ -2095,6 +2095,9 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody,
 		if err := validateGraphQLComplexityParsed(fragments, ops, budget); err != nil {
 			return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
 		}
+		if err := countGraphQLIntrospection(&s.schema, fragments, ops, body.Variables, budget); err != nil {
+			return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
+		}
 		if err := s.requireGraphQLScopeFrom(parent, fragments, ops, body.OperationName); err != nil {
 			return operation, opType, graphqlOutcome(err), graphqlErrorResult(err)
 		}
@@ -2106,15 +2109,19 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody,
 	// Env-var reads nest under the apps Service type but live in the secrets
 	// feature; inject the reader so those resolvers reach it via context (the
 	// shared Service GraphQL type stays stateless — no per-server closure).
+	// Each document reads through its own budget (gqlMaxNestedReads).
 	ctx := parent
+	reads := &nestedReads{}
 	if s.Secrets != nil {
-		ctx = core.WithEnvVars(ctx, s.Secrets)
-		ctx = core.WithSecretFiles(ctx, s.Secrets)
+		reads.envVars, reads.secretFiles = s.Secrets, s.Secrets
+		ctx = core.WithEnvVars(ctx, reads)
+		ctx = core.WithSecretFiles(ctx, reads)
 	}
 	// The outboundIps field nests the apps Service's own outbound-IPs verb
 	// under the same stateless type through the matching reader seam.
 	if s.Apps != nil {
-		ctx = core.WithOutboundIPs(ctx, s.Apps)
+		reads.outboundIPs = s.Apps
+		ctx = core.WithOutboundIPs(ctx, reads)
 	}
 	// graphql-go starts resolving before it looks at ctx, so an expired
 	// context alone does not keep a write from starting: refuse here, at the
