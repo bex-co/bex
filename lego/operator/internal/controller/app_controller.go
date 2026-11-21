@@ -7321,8 +7321,9 @@ func (r *AppReconciler) writeAppStatus(ctx context.Context, app *appv1alpha1.App
 // market-size's first r.fail). On conflict, re-read the live object, re-apply
 // the local status, and update again; other errors are logged at ERROR so a
 // lost marker is at least visible. The projector never writes status; the
-// independent saved-configuration controller owns UndeployedChanges, which a
-// retry retains from the fresh object.
+// independent saved-configuration controller owns UndeployedChanges and the
+// fields beside it (savedConfigurationStatus), which a retry retains from the
+// fresh object.
 func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alpha1.App, site string) {
 	for range statusWriteAttempts {
 		if err := updateStatusIfChanged(ctx, r.Client, app); err == nil {
@@ -7340,8 +7341,7 @@ func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alph
 				"app", app.Name, "site", site)
 			return
 		}
-		app.Status.UndeployedChanges = fresh.Status.UndeployedChanges
-		app.Status.UndeployedChangesApplying = fresh.Status.UndeployedChangesApplying
+		savedConfigurationStatusOf(&fresh.Status).applyTo(&app.Status)
 		fresh.Status = app.Status
 		*app = *fresh
 		keepReleaseView(ctx, app)
@@ -7376,7 +7376,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 			return
 		}
 		// Lost the race: re-read for a fresh resourceVersion, re-apply this
-		// pass's status, and retry. App's independent configuration flag is kept.
+		// pass's status, and retry. App's independent configuration status is kept.
 		fresh := obj.DeepCopyObject().(client.Object)
 		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), fresh); err != nil {
 			logf.FromContext(ctx).Error(err, "re-read for status retry failed",
@@ -7387,8 +7387,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 		case *appv1alpha1.App:
 			local := *typed // keep the local status…
 			*typed = *fresh.(*appv1alpha1.App)
-			local.Status.UndeployedChanges = typed.Status.UndeployedChanges
-			local.Status.UndeployedChangesApplying = typed.Status.UndeployedChangesApplying
+			savedConfigurationStatusOf(&typed.Status).applyTo(&local.Status)
 			typed.Status = local.Status // …over the fresh resourceVersion
 			keepReleaseView(ctx, typed)
 		case *appv1alpha1.Database:

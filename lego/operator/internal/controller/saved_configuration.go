@@ -191,19 +191,34 @@ func staticReleaseEndedUnpublished(app *appv1alpha1.App) bool {
 	return c != nil && c.Status == metav1.ConditionFalse && c.ObservedGeneration == release
 }
 
+// savedConfigurationStatus is the part of an App's status the app-config-status
+// controller owns. It writes the fields together (recordUndeployedChanges), and
+// a runtime status write retried over a newer App keeps all of them from that
+// App (updateStatusRetrying, setNotReadyCondition). A retry that kept only the
+// flag put back the reason read before a save: false with saved, or true with
+// none (w32/057). A field the controller adds here is kept by both retries too.
+type savedConfigurationStatus struct {
+	different, applying bool
+	reason              string
+}
+
+func savedConfigurationStatusOf(status *appv1alpha1.AppStatus) savedConfigurationStatus {
+	return savedConfigurationStatus{status.UndeployedChanges, status.UndeployedChangesApplying, status.UndeployedChangesReason}
+}
+
+func (s savedConfigurationStatus) applyTo(status *appv1alpha1.AppStatus) {
+	status.UndeployedChanges, status.UndeployedChangesApplying, status.UndeployedChangesReason = s.different, s.applying, s.reason
+}
+
 // recordUndeployedChanges writes the saved-configuration status when it moved.
 // A concurrent save or serving-revision change invalidates the comparison, so
 // only these fields are patched and a conflict retries the complete read.
 func (r *AppReconciler) recordUndeployedChanges(ctx context.Context, app *appv1alpha1.App, different, applying bool, reason string) error {
-	if app.Status.UndeployedChanges == different && app.Status.UndeployedChangesApplying == applying &&
-		app.Status.UndeployedChangesReason == reason {
+	recorded := savedConfigurationStatus{different: different, applying: applying, reason: reason}
+	if savedConfigurationStatusOf(&app.Status) == recorded {
 		return nil
 	}
-	return r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
-		status.UndeployedChanges = different
-		status.UndeployedChangesApplying = applying
-		status.UndeployedChangesReason = reason
-	})
+	return r.patchAppStatus(ctx, app, recorded.applyTo)
 }
 
 // inFlightCarriesSavedConfiguration reports whether a release newer than the

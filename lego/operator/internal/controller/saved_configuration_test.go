@@ -601,37 +601,68 @@ func TestSavedConfigurationScopeGuards(t *testing.T) {
 	}
 }
 
+// A runtime status write holds the saved-configuration status it read; the
+// app-config-status controller publishes a newer one before that write lands.
+// Its conflict retry keeps every field the controller published, not only the
+// flag. w32/057 on production: a web service's bad branch put back read false
+// with saved for minutes, and a static site's save during a build read true
+// with no reason.
 func TestRuntimeStatusRetriesPreserveSavedConfigurationStatus(t *testing.T) {
-	for _, path := range []string{"phase", "failure"} {
-		t.Run(path, func(t *testing.T) {
-			r, app := savedConfigurationFixture(t, appv1alpha1.TypeWebService, nil)
-			stale := app.DeepCopy()
-			app.Status.UndeployedChanges = true
-			if err := r.Status().Update(t.Context(), app); err != nil {
-				t.Fatal(err)
-			}
-			// The fake does not consistently enforce stale status Updates across
-			// Kubernetes versions. Model the API server's resourceVersion check.
-			base := r.Client.(client.WithWatch)
-			r.Client = interceptor.NewClient(base, interceptor.Funcs{SubResourceUpdate: func(ctx context.Context, cl client.Client, subresource string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-				live := &appv1alpha1.App{}
-				if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), live); err != nil {
-					return err
+	saved := appv1alpha1.UndeployedReasonSaved
+	for _, tc := range []struct {
+		name        string
+		held, fresh savedConfigurationStatus
+	}{
+		{name: "live setting put back", held: savedConfigurationStatus{different: true, reason: saved}},
+		{name: "saved during a build", fresh: savedConfigurationStatus{different: true, reason: saved}},
+		{name: "first difference applying", fresh: savedConfigurationStatus{different: true, applying: true, reason: saved}},
+		{name: "override then saved",
+			held:  savedConfigurationStatus{different: true, reason: appv1alpha1.UndeployedReasonImageOverride},
+			fresh: savedConfigurationStatus{different: true, reason: saved}},
+	} {
+		for _, path := range []string{"phase", "failure"} {
+			t.Run(tc.name+"/"+path, func(t *testing.T) {
+				r, app := savedConfigurationFixture(t, appv1alpha1.TypeWebService, nil)
+				tc.held.applyTo(&app.Status)
+				if err := r.Status().Update(t.Context(), app); err != nil {
+					t.Fatal(err)
 				}
-				if live.ResourceVersion != obj.GetResourceVersion() {
-					return apierrors.NewConflict(schema.GroupResource{Group: appv1alpha1.SchemeGroupVersion.Group, Resource: "apps"}, obj.GetName(), errors.New("stale status"))
+				stale := app.DeepCopy()
+				tc.fresh.applyTo(&app.Status)
+				if err := r.Status().Update(t.Context(), app); err != nil {
+					t.Fatal(err)
 				}
-				return cl.SubResource(subresource).Update(ctx, obj, opts...)
-			}})
-			if path == "phase" {
-				r.setPhase(t.Context(), stale, appv1alpha1.PhaseDeploying, "Deploying", "applying a deployment")
-			} else {
-				_, _ = r.fail(t.Context(), stale, "DeployFailed", errors.New("deployment unavailable"))
-			}
-			if current := savedConfigurationApp(t, r, app); !current.Status.UndeployedChanges {
-				t.Fatal("runtime retry overwrote the concurrently published configuration difference")
-			}
-		})
+				// The fake does not consistently enforce stale status Updates across
+				// Kubernetes versions. Model the API server's resourceVersion check.
+				base := r.Client.(client.WithWatch)
+				conflicted := false
+				r.Client = interceptor.NewClient(base, interceptor.Funcs{SubResourceUpdate: func(ctx context.Context, cl client.Client, subresource string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+					live := &appv1alpha1.App{}
+					if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), live); err != nil {
+						return err
+					}
+					if live.ResourceVersion != obj.GetResourceVersion() {
+						conflicted = true
+						return apierrors.NewConflict(schema.GroupResource{Group: appv1alpha1.SchemeGroupVersion.Group, Resource: "apps"}, obj.GetName(), errors.New("stale status"))
+					}
+					return cl.SubResource(subresource).Update(ctx, obj, opts...)
+				}})
+				want := appv1alpha1.PhaseDeploying
+				if path == "phase" {
+					r.setPhase(t.Context(), stale, appv1alpha1.PhaseDeploying, "Deploying", "applying a deployment")
+				} else {
+					want = appv1alpha1.PhaseFailed
+					_, _ = r.fail(t.Context(), stale, "DeployFailed", errors.New("deployment unavailable"))
+				}
+				current := savedConfigurationApp(t, r, app)
+				if !conflicted || current.Status.Phase != want {
+					t.Fatalf("conflicted=%v phase=%q; the runtime write must conflict, then land %q", conflicted, current.Status.Phase, want)
+				}
+				if got := savedConfigurationStatusOf(&current.Status); got != tc.fresh {
+					t.Fatalf("saved-configuration status after the retry = %+v, want the published %+v (held %+v)", got, tc.fresh, tc.held)
+				}
+			})
+		}
 	}
 }
 
