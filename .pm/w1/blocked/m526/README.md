@@ -1,6 +1,6 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009, t012 and t013 done; t010 waits for the production pin to carry `3391d36cc` to re-walk the agent composer row's disconnect and reconnect, and for the user's GitHub sudo-mode 2FA for the first install)
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009, t012 and t013 done; walk 3 on pin `f797f525f5df` passed the agent composer row's disconnect and reconnect; t010 waits only for the user's GitHub sudo-mode 2FA for the first install, or their sign-off to skip that cell)
 
 ## Tasks (in order)
 
@@ -165,3 +165,28 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
 
   The worker then checks that `cuckoo-network` binds in `bex-canary` and its repo appears, disconnects it from `bex-canary`, and records that the App stays installed on `cuckoo-network` with that one repository, for the user to remove later.
 - Once both gates are walked and pass, t011 closes the milestone.
+
+## Unblock (2026-11-21, pin `f797f525f5df`)
+
+- **Affected:** t010.
+- **Source:** verified evidence (`/loopx w1` dispatch, gate check).
+  - The newest `chore(deploy): pin platform images to …` on origin/main is `4c41a69d7`, which pins `f797f525f5df`. It came from deploy run https://github.com/bex-co/bex/actions/runs/44853233162, and every job in that run was green.
+  - `git merge-base --is-ancestor 3391d36cc f797f525f5df` holds, so production carries t013.
+- **Gate:** gate 1 of the 2026-11-21 park is cleared. Gate 2, the user's GitHub sudo-mode 2FA for the first install, is unchanged.
+- **Next:** re-walk t010's agent composer row in `bex-canary`: disconnect in another tab and in the same tab, then reconnect.
+
+## Park (2026-11-21, walk 3)
+
+- **Walk 3** ran on pin `f797f525f5df`; t010 holds its results.
+  - Passed in the agent composer, in `bex-canary`:
+    - connect through the callout;
+    - with the composer open, a disconnect from Settings in another tab emptied its repository list and brought the callout back;
+    - reconnect through the callout;
+    - a same-tab disconnect of the last account, then a trip back to Agents, brought the callout back;
+    - reconnecting from that callout brought the 27 repos back.
+  - The typed task and the spend limit were kept throughout.
+  - Every matrix cell now passes except the "install on a new account" column. One live first install through the chooser covers that column for every row.
+- **Gate, which needs the user:** the first install. GitHub's sudo mode (**Confirm access**) guards installing the bex.co App on an org. The user has been offered two choices and has not answered yet:
+  1. be at the walk browser to complete Confirm access (GitHub Mobile, a passkey, an authenticator code or an emailed code) when the worker clicks Install & Authorize for `cuckoo-network` with only `stable-diffusion-miner-docker` selected;
+  2. or sign off skipping that cell. t010's acceptance criteria allow an exception the user explicitly accepts.
+- **Next:** after either answer, a worker finishes t010 (the first-install cell, or the recorded sign-off) and then runs t011.
