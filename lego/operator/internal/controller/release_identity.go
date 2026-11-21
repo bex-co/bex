@@ -717,9 +717,7 @@ func releaseHasServed(app *appv1alpha1.App) bool {
 }
 
 func canceledReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
-	raw := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]
-	generation, err := strconv.ParseInt(raw, 10, 64)
-	return generation, err == nil && generation > 0
+	return appv1alpha1.GenerationAnnotation(app, appv1alpha1.AnnotationCanceledReleaseGeneration)
 }
 
 // canceledReleaseIsLatest reports that the newest release requested is the one
@@ -818,15 +816,14 @@ func redispatchSurvivor(app *appv1alpha1.App) appReleaseDecision {
 // survivingReleaseGeneration is the release a cancel left running
 // (AnnotationSurvivingReleaseGeneration); ok is false when there is none.
 func survivingReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
-	generation, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationSurvivingReleaseGeneration], 10, 64)
-	return generation, err == nil && generation > 0
+	return appv1alpha1.GenerationAnnotation(app, appv1alpha1.AnnotationSurvivingReleaseGeneration)
 }
 
 // stampedReleaseGeneration is the release generation the backend's deploy
-// verbs last stamped; ok is false when the annotation is absent or unparsable.
+// verbs last stamped; ok is false when the annotation is absent or not a
+// positive integer, the same rule the backend's own readers apply.
 func stampedReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
-	generation, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
-	return generation, err == nil
+	return appv1alpha1.GenerationAnnotation(app, appv1alpha1.AnnotationReleaseGeneration)
 }
 
 // releaseUnadopted reports a release bex-api has stamped that the operator has
@@ -883,8 +880,8 @@ func reusableArtifactImage(app *appv1alpha1.App, decision appReleaseDecision) (s
 // notification settings, etc.) do not consume it: deploy verbs alone advance
 // AnnotationReleaseGeneration to the pending generation or newer.
 func sourceUpdatePending(app *appv1alpha1.App) bool {
-	pending, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration], 10, 64)
-	if err != nil || pending <= 0 {
+	pending, ok := appv1alpha1.GenerationAnnotation(app, appv1alpha1.AnnotationPendingSourceGeneration)
+	if !ok {
 		return false
 	}
 	release, _ := stampedReleaseGeneration(app)

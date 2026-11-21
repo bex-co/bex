@@ -762,3 +762,45 @@ func TestStampReleaseStart(t *testing.T) {
 		})
 	}
 }
+
+// TestStampReadersAgreeWithTheBackend pins the cross-module contract on the
+// release-generation stamps: a generation that is absent, unparsable, or not
+// positive reads as absent on every stamp. The backend's store package parses
+// the same annotations with that rule, so an operator reader that accepted
+// "0" would see a release the backend does not (and a cancel it recorded
+// would not settle the same way here).
+func TestStampReadersAgreeWithTheBackend(t *testing.T) {
+	readers := map[string]func(*appv1alpha1.App) (int64, bool){
+		"CanceledReleaseGeneration": func(app *appv1alpha1.App) (int64, bool) {
+			return canceledReleaseGeneration(app)
+		},
+		"SurvivingReleaseGeneration": func(app *appv1alpha1.App) (int64, bool) {
+			return survivingReleaseGeneration(app)
+		},
+		"StampedReleaseGeneration": func(app *appv1alpha1.App) (int64, bool) {
+			return stampedReleaseGeneration(app)
+		},
+	}
+	keys := map[string]string{
+		"CanceledReleaseGeneration":  appv1alpha1.AnnotationCanceledReleaseGeneration,
+		"SurvivingReleaseGeneration": appv1alpha1.AnnotationSurvivingReleaseGeneration,
+		"StampedReleaseGeneration":   appv1alpha1.AnnotationReleaseGeneration,
+	}
+	names := []string{"CanceledReleaseGeneration", "SurvivingReleaseGeneration", "StampedReleaseGeneration"}
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			read := readers[name]
+			key := keys[name]
+			for _, raw := range []string{"0", "-2", "not-a-generation", ""} {
+				app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{key: raw}}}
+				if generation, ok := read(app); ok {
+					t.Fatalf("%s %q = (%d, true), want ok=false", key, raw, generation)
+				}
+			}
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{key: "7"}}}
+			if generation, ok := read(app); !ok || generation != 7 {
+				t.Fatalf("%s \"7\" = (%d, %v), want (7, true)", key, generation, ok)
+			}
+		})
+	}
+}

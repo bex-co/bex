@@ -2016,12 +2016,12 @@ func endedWithNewerCancel(open Deploy, app *appv1alpha1.App) bool {
 // and the operator has not made it the reported release yet. A deploy requested
 // since replaces both, and the row closes as superseded as before.
 func awaitingSurvivor(open Deploy, app *appv1alpha1.App) bool {
-	survivor, ok := generationAnnotation(app, appv1alpha1.AnnotationSurvivingReleaseGeneration)
+	survivor, ok := appv1alpha1.GenerationAnnotation(app, appv1alpha1.AnnotationSurvivingReleaseGeneration)
 	if !ok || open.Generation != survivor || app.Status.ReleaseGeneration == survivor {
 		return false
 	}
 	canceled, stamped := canceledReleaseGeneration(app)
-	requested, _ := generationAnnotation(app, appv1alpha1.AnnotationReleaseGeneration)
+	requested, _ := appv1alpha1.GenerationAnnotation(app, appv1alpha1.AnnotationReleaseGeneration)
 	return stamped && canceled > survivor && requested == canceled
 }
 
