@@ -699,11 +699,11 @@ const jaBlueprints: Record<string, TranslationEntry> = {
   "blueprints.plannedTitle": {
     message: "計画された同期",
     description:
-      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
   },
   "blueprints.plannedBody": {
     message:
-      "この Blueprint は、計画付きで作成されました。コミット {commit} で承認すると何が変更されるかを確認し、承認して適用してください。",
+      "この計画は承認待ちです。コミット {commit} で承認すると何が変更されるかを確認し、承認して適用してください。",
     description:
       "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
   },

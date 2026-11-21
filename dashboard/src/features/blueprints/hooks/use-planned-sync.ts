@@ -8,6 +8,10 @@ import {
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
+import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
@@ -45,29 +49,39 @@ export function manualEnvVarKey(v: ManualEnvVarRequest): string {
 }
 
 /**
- * The plan a created Blueprint waits to have approved (w2/m256 t012), and the
- * two things that can happen to it: approve (apply it with its manual env var
+ * The plan a Blueprint waits to have approved (w2/m256 t012), and the two
+ * things that can happen to it: approve (apply it with its manual env var
  * values) or plan again. Render's plan-then-approve flow applies a created
- * Blueprint only this way; the legacy Sync refuses it.
+ * Blueprint only this way; the legacy Sync refuses it. A Blueprint past
+ * `created` can wait on a plan too (a re-plan, or a first plan kept by a
+ * no-changes re-plan, w32/073), and Render links every waiting plan to its
+ * dashboard for review (w32/076).
  */
 export function usePlannedSync(
   blueprintId: string,
   enabled: boolean,
 ): UsePlannedSyncResult {
   const { t } = useTranslations();
+  // Polled with the page's Blueprint: a plan made elsewhere (the CLI, MCP)
+  // shows up, and one that expired unapproved leaves (w32/075, w32/076).
   const { data, loading, refetch } = useQuery(BlueprintPlannedSyncDocument, {
     variables: { id: blueprintId },
     skip: !enabled,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
-  // Approving moves the Blueprint off created, which unmounts the panel, so
-  // only the page and its history are re-read.
+  // Approving turns the plan into a run. The panel no longer unmounts with
+  // the Blueprint's `created` status (w32/076), so the plan is read again with
+  // the page and its history, or the applied plan would stay on screen.
   const [approveMutation] = useMutation(ApproveBlueprintDocument, {
-    refetchQueries: ["Blueprint", "BlueprintSyncs"],
+    refetchQueries: ["BlueprintPlannedSync", "Blueprint", "BlueprintSyncs"],
   });
+  // A plan that finds no changes takes a created Blueprint to in_sync (or
+  // paused), so the page re-reads the Blueprint too (w32/073).
   const [planMutation] = useMutation(PlanBlueprintSyncDocument, {
-    refetchQueries: ["BlueprintPlannedSync", "BlueprintSyncs"],
+    refetchQueries: ["BlueprintPlannedSync", "Blueprint", "BlueprintSyncs"],
   });
   const paymentGate = usePaymentRequiredGate();
   const [busy, setBusy] = useState(false);

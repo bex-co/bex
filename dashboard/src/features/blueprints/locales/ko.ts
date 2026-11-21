@@ -699,11 +699,11 @@ const koBlueprints: Record<string, TranslationEntry> = {
   "blueprints.plannedTitle": {
     message: "계획된 동기화",
     description:
-      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
   },
   "blueprints.plannedBody": {
     message:
-      "이 Blueprint는 계획과 함께 생성되었습니다. 커밋 {commit}에서 승인 시 변경될 내용을 검토한 후 승인하여 적용하세요.",
+      "이 계획은 승인을 기다리고 있습니다. 커밋 {commit}에서 승인 시 변경될 내용을 검토한 후 승인하여 적용하세요.",
     description:
       "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
   },

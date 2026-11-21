@@ -25,9 +25,10 @@ export interface PlannedSyncPanelProps {
 }
 
 /**
- * A created Blueprint's waiting plan (w2/m256 t012): what approving would do,
- * the sync:false values it needs, and the Approve control — the only way such
- * a Blueprint applies, as in Render's plan-then-approve flow.
+ * A Blueprint's waiting plan (w2/m256 t012): what approving would do, the
+ * sync:false values it needs, and the Approve control — the only way a
+ * created Blueprint applies, as in Render's plan-then-approve flow. A
+ * Blueprint past `created` shows it too while a plan waits (w32/076).
  */
 export function PlannedSyncPanel({
   planned,

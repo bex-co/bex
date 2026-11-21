@@ -723,11 +723,11 @@ const deBlueprints: Record<string, TranslationEntry> = {
   "blueprints.plannedTitle": {
     message: "Geplante Synchronisierung",
     description:
-      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
   },
   "blueprints.plannedBody": {
     message:
-      "Dieser Blueprint wurde mit einem Plan erstellt. Prüfe, was die Genehmigung bei Commit {commit} ändert, und genehmige dann, um den Plan anzuwenden.",
+      "Dieser Plan wartet auf Genehmigung. Prüfe, was die Genehmigung bei Commit {commit} ändert, und genehmige dann, um den Plan anzuwenden.",
     description:
       "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
   },

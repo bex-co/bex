@@ -760,11 +760,11 @@ const ruBlueprints: Record<string, TranslationEntry> = {
   "blueprints.plannedTitle": {
     message: "Запланированная синхронизация",
     description:
-      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
   },
   "blueprints.plannedBody": {
     message:
-      "Этот Blueprint создан с планом. Проверьте, что изменится при подтверждении в коммите {commit}, затем подтвердите, чтобы применить его.",
+      "Этот план ожидает подтверждения. Проверьте, что изменится при подтверждении в коммите {commit}, затем подтвердите, чтобы применить его.",
     description:
       "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
   },

@@ -694,11 +694,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.plannedTitle": {
     message: "计划同步",
     description:
-      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
   },
   "blueprints.plannedBody": {
     message:
-      "此 Blueprint 创建时附带了一份计划。请查看批准后将在提交 {commit} 上发生的变更，然后批准以应用。",
+      "此计划正在等待批准。请查看批准后将在提交 {commit} 上发生的变更，然后批准以应用。",
     description:
       "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
   },

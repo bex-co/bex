@@ -53,37 +53,36 @@ vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
 }));
 
 // --- sync hook mock ---
-const sync = vi.fn(
-  async (): Promise<BlueprintSyncActionResult> => ({
-    status: "success",
-    result: null,
-  }),
-);
+const sync = vi.fn(async (): Promise<BlueprintSyncActionResult> => ({
+  status: "success",
+  result: null,
+}));
 vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
 
 // --- planned-sync hook mock (w2/m256 t012) ---
+type PlannedSyncView =
+  import("@/features/blueprints/hooks/use-planned-sync").PlannedSyncView;
+const waitingPlan: PlannedSyncView = {
+  id: "exe-1",
+  commitId: "0123456789abcdef",
+  actions: [
+    {
+      operation: "create",
+      kind: "service",
+      name: "express-hello-world",
+      sourcePath: "#/services/0",
+      resourceId: null,
+      changedFields: [],
+      message: null,
+    },
+  ],
+  requiredManualEnvVars: [],
+};
 const approvePlanned = vi.fn(async () => true);
 const plannedSyncState = {
-  planned: {
-    id: "exe-1",
-    commitId: "0123456789abcdef",
-    actions: [
-      {
-        operation: "create",
-        kind: "service",
-        name: "express-hello-world",
-        sourcePath: "#/services/0",
-        resourceId: null,
-        changedFields: [],
-        message: null,
-      },
-    ],
-    requiredManualEnvVars: [],
-  } as
-    | import("@/features/blueprints/hooks/use-planned-sync").PlannedSyncView
-    | null,
+  planned: null as PlannedSyncView | null,
   loading: false,
   busy: false,
   approve: approvePlanned,
@@ -95,7 +94,11 @@ vi.mock(
     ...(await importOriginal<
       typeof import("@/features/blueprints/hooks/use-planned-sync")
     >()),
-    usePlannedSync: () => plannedSyncState,
+    // A disabled query is skipped, as the real hook's is: it reads no plan.
+    usePlannedSync: (_id: string, enabled: boolean) =>
+      enabled
+        ? plannedSyncState
+        : { ...plannedSyncState, planned: null, loading: false },
   }),
 );
 
@@ -274,6 +277,9 @@ beforeEach(() => {
   syncPreviewState.preview = null;
   syncPreviewState.loading = false;
   syncPreviewState.error = undefined;
+  plannedSyncState.planned = null;
+  plannedSyncState.loading = false;
+  approvePlanned.mockClear();
   sync.mockReset();
   sync.mockResolvedValue({ status: "success", result: null });
 });
@@ -374,6 +380,7 @@ describe("BlueprintDetailPage", () => {
   // Sync that would apply it past the plan.
   it("shows a created Blueprint's plan with Approve instead of Sync", async () => {
     blueprintDetailState.blueprint = bp({ status: "created" });
+    plannedSyncState.planned = waitingPlan;
     renderDetailPage();
 
     await screen.findAllByText("hello-go");
@@ -382,6 +389,66 @@ describe("BlueprintDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /approve/i }));
     expect(approvePlanned).toHaveBeenCalledWith({});
   });
+
+  // w32/076: a no-changes re-plan takes a created Blueprint to in_sync and
+  // keeps its waiting first plan (w32/073), and an approved Blueprint can wait
+  // on a re-plan. Render links every waiting plan to its dashboard for review,
+  // and the CLI, REST, GraphQL and MCP can approve it, so the page shows it.
+  it.each(["in_sync", "paused", "error"])(
+    "shows a waiting plan and its Approve on a Blueprint that is %s",
+    async (status) => {
+      blueprintDetailState.blueprint = bp({ status });
+      plannedSyncState.planned = waitingPlan;
+      renderDetailPage();
+
+      await screen.findAllByText("hello-go");
+      expect(screen.getByText("Planned sync")).toBeInTheDocument();
+      expect(
+        screen.getByText(/this plan is waiting for approval/i),
+      ).toHaveTextContent("commit 0123456");
+      expect(screen.getByText("express-hello-world")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /^approve$/i }));
+      expect(approvePlanned).toHaveBeenCalledWith({});
+      // Past created, the Blueprint still syncs as before.
+      expect(
+        screen.getByRole("button", { name: /^sync$/i }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("shows no planned-sync card on a Blueprint past created with no waiting plan (w32/076)", async () => {
+    blueprintDetailState.blueprint = bp({ status: "in_sync" });
+    renderDetailPage();
+
+    await screen.findAllByText("hello-go");
+    expect(screen.queryByText("Planned sync")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^approve$/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^sync$/i })).toBeInTheDocument();
+  });
+
+  // The skeleton rule: a loading frame never invents a region the ready page
+  // lacks. A created Blueprint always has the card; any other has it only
+  // when a plan waits, which it usually does not.
+  it.each([
+    ["created", true],
+    ["in_sync", false],
+  ] as const)(
+    "while the plan loads, a %s Blueprint reserves the planned-sync card: %s (w32/076)",
+    async (status, reserved) => {
+      blueprintDetailState.blueprint = bp({ status });
+      plannedSyncState.loading = true;
+      renderDetailPage();
+
+      await screen.findAllByText("hello-go");
+      const frame = document.querySelector(
+        '[data-skeleton-region="planned-sync"]',
+      );
+      if (reserved) expect(frame).toBeInTheDocument();
+      else expect(frame).not.toBeInTheDocument();
+    },
+  );
 
   it("renders the manifest and metadata for a found blueprint", async () => {
     blueprintDetailState.blueprint = bp();

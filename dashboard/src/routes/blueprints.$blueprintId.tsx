@@ -224,7 +224,14 @@ export function BlueprintDetailPage() {
   // A Blueprint created through Render's plan-then-approve flow applies only by
   // approving its plan; the legacy Sync refuses it (w2/m256 t012).
   const awaitingApproval = blueprint?.status === "created";
-  const plannedSync = usePlannedSync(blueprintId, awaitingApproval);
+  // Any Blueprint can wait on a plan (a re-plan, or the first plan a
+  // no-changes re-plan kept, w32/073), and Render links every waiting plan to
+  // its dashboard, so the card shows whenever GraphQL returns one (w32/076).
+  // Only a created Blueprint, whose way forward is the plan, keeps the card
+  // while it loads or when none waits; any other reserves no card for a plan
+  // it usually does not have.
+  const plannedSync = usePlannedSync(blueprintId, !!blueprint);
+  const showPlannedSync = awaitingApproval || plannedSync.planned !== null;
 
   const [confirming, setConfirming] = useState(false);
   // Snapshot of the preview the user is about to confirm (w8/m41). Never
@@ -396,7 +403,7 @@ export function BlueprintDetailPage() {
             <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
           ) : blueprint ? (
             <>
-              {awaitingApproval ? (
+              {showPlannedSync ? (
                 <PlannedSyncPanel
                   key={plannedSync.planned?.id ?? "none"}
                   planned={plannedSync.planned}
