@@ -562,7 +562,7 @@ const jaDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "デフォルトでは無効です。Pro 以上のワークスペースでは、ストレージが 10 GB 以上のデータベースが、bex の内外のサブスクライバーに変更を公開できます。有効にするには、このデータベースの ID、サブスクライバーが接続に使う認証情報、読み取るスキーマ、すべてのテーブルを公開するかどうかを添えてサポートに連絡してください。その後、このデータベースのユーザーとして CREATE PUBLICATION … FOR TABLE でパブリケーションを作成し、サブスクライバーはプール URL ではなく外部 URL に接続してください。",
+      "デフォルトでは無効です。Pro 以上のワークスペースでは、ストレージが 10 GB 以上のデータベースが、bex の内外のサブスクライバーに変更を公開できます。有効にするには、このデータベースの ID、サブスクライバーが接続に使う認証情報、読み取るスキーマ、すべてのテーブルを公開するかどうかを添えてサポートに連絡してください。その後、このデータベースのユーザーとして CREATE PUBLICATION … FOR TABLE でパブリケーションを作成し、サブスクライバーはプール URL ではなく外部 URL に接続してください。 bex の内外にある別のデータベースをサブスクライブすることもできます。同じ方法で、サブスクリプションを作成する認証情報を添えて依頼し、テーブルを作成してから CREATE SUBSCRIPTION を実行してください（PostgreSQL 15 以前では、サポートがサブスクリプションを作成します）。",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

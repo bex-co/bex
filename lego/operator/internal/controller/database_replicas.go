@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -160,16 +161,11 @@ func readReplicaClusterSpec(db *appv1alpha1.Database, replica string, primary ma
 		"bootstrap":         map[string]any{"pg_basebackup": map[string]any{"source": readReplicaSourceName}},
 		"replica":           map[string]any{"enabled": true, "source": readReplicaSourceName},
 		"externalClusters": []any{map[string]any{
-			"name": readReplicaSourceName,
-			"connectionParameters": map[string]any{
-				"host":    fmt.Sprintf("%s-rw.%s.svc", db.Name, db.Namespace),
-				"user":    "streaming_replica",
-				"dbname":  "postgres",
-				"sslmode": "verify-ca",
-			},
-			"sslKey":      map[string]any{"name": replication, "key": corev1.TLSPrivateKeyKey},
-			"sslCert":     map[string]any{"name": replication, "key": corev1.TLSCertKey},
-			"sslRootCert": map[string]any{"name": serverCA, "key": "ca.crt"},
+			"name":                 readReplicaSourceName,
+			"connectionParameters": libpqParameters(fmt.Sprintf("%s-rw.%s.svc", db.Name, db.Namespace), "streaming_replica", "postgres", "verify-ca"),
+			"sslKey":               map[string]any{"name": replication, "key": corev1.TLSPrivateKeyKey},
+			"sslCert":              map[string]any{"name": replication, "key": corev1.TLSCertKey},
+			"sslRootCert":          map[string]any{"name": serverCA, "key": "ca.crt"},
 		}},
 		// Away from the primary's node where there is room, so a replica's
 		// reads do not take the primary's CPU.
@@ -391,19 +387,26 @@ func (r *DatabaseReconciler) listReadReplicaObjects(ctx context.Context, db *app
 	if len(db.Spec.ReadReplicas) == 0 && len(db.Status.ReadReplicaStatuses) == 0 {
 		return nil, nil
 	}
+	return listControlledObjects(ctx, r.Client, db, gvk, client.MatchingLabels{labelReadReplicaOf: db.Name})
+}
+
+// libpqParameters is a CNPG externalClusters entry's connectionParameters:
+// the libpq keywords CNPG writes into the connection string.
+func libpqParameters(host, user, dbname, sslmode string) map[string]any {
+	return map[string]any{"host": host, "user": user, "dbname": dbname, "sslmode": sslmode}
+}
+
+// listControlledObjects lists the objects of gvk in db's namespace that
+// match selector and that db controls. A kind whose CRD is not installed
+// has none.
+func listControlledObjects(ctx context.Context, c client.Client, db *appv1alpha1.Database, gvk schema.GroupVersionKind, selector client.MatchingLabels) ([]unstructured.Unstructured, error) {
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(gvk.GroupVersion().WithKind(gvk.Kind + "List"))
-	if err := r.List(ctx, list, client.InNamespace(db.Namespace), client.MatchingLabels{labelReadReplicaOf: db.Name}); err != nil {
+	if err := c.List(ctx, list, client.InNamespace(db.Namespace), selector); err != nil {
 		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	owned := list.Items[:0]
-	for _, item := range list.Items {
-		if metav1.IsControlledBy(&item, db) {
-			owned = append(owned, item)
-		}
-	}
-	return owned, nil
+	return slices.DeleteFunc(list.Items, func(item unstructured.Unstructured) bool { return !metav1.IsControlledBy(&item, db) }), nil
 }

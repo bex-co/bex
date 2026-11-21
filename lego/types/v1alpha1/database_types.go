@@ -317,14 +317,17 @@ type DatabaseSpec struct {
 	// +optional
 	Parameters map[string]string `json:"parameters,omitempty"`
 
-	// LogicalReplication, when set, makes the database a logical-replication
-	// publisher, as Render's support team enables one
-	// (render.com/docs/postgresql-logical-replication; w34/m541). Only bex's
-	// operators write it, through bex-api's cluster-internal verb: Render has
-	// no API field for it. The operator gives PublisherRole the REPLICATION
-	// attribute, bounds the WAL a replication slot may retain
-	// (max_slot_wal_keep_size), and with AllTables declares the
-	// LogicalReplicationAllTablesPublication. Absent: none of that, as before.
+	// LogicalReplication, when set, enables the database for logical
+	// replication as a publisher, a subscriber or both, as Render's support
+	// team enables one (render.com/docs/postgresql-logical-replication;
+	// w34/m541, w34/m542). Only bex's operators write it, through bex-api's
+	// cluster-internal verb: Render has no API field for it. As a publisher
+	// the operator gives PublisherRole the REPLICATION attribute, bounds the
+	// WAL a replication slot may retain (max_slot_wal_keep_size), and with
+	// AllTables declares the LogicalReplicationAllTablesPublication. As a
+	// subscriber it lets SubscriberRole create subscriptions, or creates
+	// Subscriptions itself on PostgreSQL 13-15. Absent: none of that, as
+	// before.
 	// +optional
 	LogicalReplication *DatabaseLogicalReplication `json:"logicalReplication,omitempty"`
 }
@@ -335,21 +338,46 @@ type DatabaseSpec struct {
 // it; subscribers name it in CREATE SUBSCRIPTION.
 const LogicalReplicationAllTablesPublication = "bex_all_tables"
 
-// ConditionLogicalReplication reports a publisher's state on the Database:
-// True once the all-tables publication (when requested) is applied, False
-// with CNPG's message when it failed. Absent while LogicalReplication is not
-// set. It never affects Ready.
+// ConditionLogicalReplication reports a logical-replication database's state
+// on the Database: True once the all-tables publication and every
+// Subscription (when requested) are applied, False with CNPG's message when
+// one failed. Absent while LogicalReplication is not set. It never affects
+// Ready.
 const ConditionLogicalReplication = "LogicalReplication"
 
-// DatabaseLogicalReplication is a database's publisher settings: Render's
-// request inputs, minus the database id.
+// LogicalSubscriptionsMax caps DatabaseLogicalReplication.Subscriptions:
+// PostgreSQL's default max_logical_replication_workers, which every apply
+// worker and initial table copy shares. The CRD's MaxItems says the same.
+const LogicalSubscriptionsMax = 4
+
+// PgCreateSubscriptionMajor is the first PostgreSQL major with the
+// predefined role pg_create_subscription, so the first on which a
+// non-superuser can create a subscription: SubscriberRole's majors.
+// Subscriptions serve the majors before it.
+const PgCreateSubscriptionMajor = 16
+
+// LogicalSubscriptionSSLModes are the sslmode values a Subscription may
+// name, as the CRD's enum does; LogicalSubscriptionDefaultSSLMode is the one
+// it gets when it names none. verify-ca and verify-full need a root
+// certificate the instance does not carry for an arbitrary publisher.
+var LogicalSubscriptionSSLModes = []string{"disable", "allow", "prefer", "require"}
+
+const LogicalSubscriptionDefaultSSLMode = "require"
+
+// DatabaseLogicalReplication is a database's logical-replication settings:
+// Render's request inputs, minus the database id. A database may be a
+// publisher (PublisherRole), a subscriber (SubscriberRole or Subscriptions)
+// or both, as Render's request covers "both publishers and subscribers".
+// +kubebuilder:validation:XValidation:rule="has(self.publisherRole) || has(self.subscriberRole) || (has(self.subscriptions) && size(self.subscriptions) > 0)",message="logicalReplication names a publisherRole, a subscriberRole or a subscription"
+// +kubebuilder:validation:XValidation:rule="has(self.publisherRole) || (!has(self.schemas) && !(has(self.allTables) && self.allTables))",message="schemas and allTables belong to a publisherRole"
 type DatabaseLogicalReplication struct {
 	// PublisherRole is the credential subscribers connect as: the database's
 	// owner or one of Users. It alone gets the REPLICATION attribute.
-	// +required
+	// Empty: the database does not publish.
+	// +optional
 	// +kubebuilder:validation:MaxLength=63
 	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
-	PublisherRole string `json:"publisherRole"`
+	PublisherRole string `json:"publisherRole,omitempty"`
 
 	// Schemas are the schemas subscribers read. bex-api granted PublisherRole
 	// USAGE and SELECT on them when it enabled the publisher; the operator
@@ -364,6 +392,84 @@ type DatabaseLogicalReplication struct {
 	// database's primary database.
 	// +optional
 	AllTables bool `json:"allTables,omitempty"`
+
+	// SubscriberRole is the credential that creates subscriptions itself
+	// (PostgreSQL 16 and later): the database's owner or one of Users. It
+	// alone is made a member of pg_create_subscription, once the cluster
+	// runs 16 or later. Empty: no role may create a subscription.
+	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
+	SubscriberRole string `json:"subscriberRole,omitempty"`
+
+	// Subscriptions are subscriptions the operator creates for the database,
+	// as the superuser, on PostgreSQL 13-15, where CREATE SUBSCRIPTION needs
+	// a superuser and no bex role is one. Each is a CloudNativePG
+	// Subscription in the primary database (LogicalSubscriptionObjectName),
+	// connecting to an externalClusters entry for its publisher.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=4
+	Subscriptions []DatabaseLogicalSubscription `json:"subscriptions,omitempty"`
+}
+
+// Publishes reports whether lr makes the database a publisher.
+func (lr *DatabaseLogicalReplication) Publishes() bool {
+	return lr != nil && lr.PublisherRole != ""
+}
+
+// DatabaseLogicalSubscription is one subscription the operator creates: the
+// publisher's connection and the publication it follows.
+type DatabaseLogicalSubscription struct {
+	// Name is the subscription's name in PostgreSQL.
+	// +required
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
+	Name string `json:"name"`
+
+	// Publication is the publication's name in the publisher's database.
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	Publication string `json:"publication"`
+
+	// Host, Port, DBName, User and SSLMode are the publisher's connection
+	// parameters, as libpq reads them.
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
+	Host string `json:"host"`
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Port int32 `json:"port,omitempty"`
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	DBName string `json:"dbname"`
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	User string `json:"user"`
+	// +optional
+	// +kubebuilder:validation:Enum=disable;allow;prefer;require
+	SSLMode string `json:"sslmode,omitempty"`
+
+	// PasswordSecret is the Secret in the Database's namespace whose
+	// "password" key authenticates User. bex-api writes it.
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
+	PasswordSecret string `json:"passwordSecret"`
+}
+
+// LogicalSubscriptionObjectName names what one of db's Subscriptions is
+// made of: the CloudNativePG Subscription and the password Secret,
+// "<db>-sub-<the first 10 hex of sha256(name)>". A subscription name has
+// underscores, which a Kubernetes name may not.
+func LogicalSubscriptionObjectName(db, name string) string {
+	return db + "-sub-" + nameDigest(name)
 }
 
 // DatabaseReadReplica declares one named read replica of a Database: its own

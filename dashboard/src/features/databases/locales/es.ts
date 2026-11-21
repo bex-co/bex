@@ -565,7 +565,7 @@ const esDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "Desactivada de forma predeterminada. En un workspace Pro o superior, una base de datos con al menos 10 GB de almacenamiento puede publicar sus cambios a suscriptores dentro o fuera de bex. Para activarla, contacta con soporte indicando el ID de esta base de datos, la credencial con la que se conectan los suscriptores, los esquemas que leen y si se publican todas las tablas. Después crea publicaciones con CREATE PUBLICATION … FOR TABLE como usuario de esta base de datos y conecta los suscriptores a la URL externa, nunca a la del pooler.",
+      "Desactivada de forma predeterminada. En un workspace Pro o superior, una base de datos con al menos 10 GB de almacenamiento puede publicar sus cambios a suscriptores dentro o fuera de bex. Para activarla, contacta con soporte indicando el ID de esta base de datos, la credencial con la que se conectan los suscriptores, los esquemas que leen y si se publican todas las tablas. Después crea publicaciones con CREATE PUBLICATION … FOR TABLE como usuario de esta base de datos y conecta los suscriptores a la URL externa, nunca a la del pooler. También puede suscribirse a otra base de datos dentro o fuera de bex: solicítalo de la misma forma indicando la credencial que crea las suscripciones y ejecuta CREATE SUBSCRIPTION cuando existan las tablas (en PostgreSQL 15 y anteriores, soporte crea la suscripción por ti).",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

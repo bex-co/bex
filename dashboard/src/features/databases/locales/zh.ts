@@ -549,7 +549,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "默认关闭。在 Pro 及以上的工作区中，存储至少 10 GB 的数据库可以向 bex 内外的订阅端发布变更。如需开启，请联系支持团队，并提供此数据库的 ID、订阅端连接所用的凭据、订阅端读取的 schema，以及是否发布所有表。之后以此数据库的用户身份用 CREATE PUBLICATION … FOR TABLE 创建发布，并让订阅端连接外部 URL，而不是连接池 URL。",
+      "默认关闭。在 Pro 及以上的工作区中，存储至少 10 GB 的数据库可以向 bex 内外的订阅端发布变更。如需开启，请联系支持团队，并提供此数据库的 ID、订阅端连接所用的凭据、订阅端读取的 schema，以及是否发布所有表。之后以此数据库的用户身份用 CREATE PUBLICATION … FOR TABLE 创建发布，并让订阅端连接外部 URL，而不是连接池 URL。它也可以订阅 bex 内外的另一个数据库：以同样方式申请，并提供创建订阅所用的凭据，在表建好之后运行 CREATE SUBSCRIPTION（PostgreSQL 15 及更早版本由支持团队代为创建订阅）。",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

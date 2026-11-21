@@ -82,7 +82,7 @@ var filePatches = map[string][]rule{
 	},
 	// Render's logical-replication guidance (render.com/docs/postgresql-logical-replication,
 	// read 2026-11-20), which upstream's Postgres skill lacks; bex enables it
-	// on request the same way (w34/m541).
+	// on request the same way, for publishers (w34/m541) and subscribers (w34/m542).
 	"render-postgres/SKILL.md": {
 		r(`\n## Useful MCP Commands\n`, "\n"+postgresLogicalReplication+"## Useful MCP Commands\n"),
 	},
@@ -98,7 +98,8 @@ const postgresLogicalReplication = "## Logical Replication\n\n" +
 	"- Requires a **Pro** workspace or higher and at least **10 GB** of storage.\n" +
 	"- To enable it, contact bex support with the database ID (`dpg-…`), the credential subscribers connect as (Render recommends a dedicated read-only user, not the default one), the schemas they read, and whether to publish all tables.\n" +
 	"- `CREATE PUBLICATION … FOR ALL TABLES` needs a superuser, so support creates it as `bex_all_tables`. Create `CREATE PUBLICATION … FOR TABLE …` publications yourself as the database's user.\n" +
-	"- Subscribers connect to the **external** URL over TLS, never the pooled URL (PgBouncer cannot carry replication). Create the subscriber's tables first: logical replication does not copy DDL.\n\n"
+	"- Subscribers connect to the **external** URL over TLS, never the pooled URL (PgBouncer cannot carry replication). Create the subscriber's tables first: logical replication does not copy DDL.\n" +
+	"- A bex Postgres can also be a **subscriber**, copying another database (on Render, bex or anywhere else) and following it until cutover. Ask support the same way, naming the credential that will create subscriptions (use the database's own user: it owns the tables the subscription writes). Then create the tables and run `CREATE SUBSCRIPTION … CONNECTION '…password=…' PUBLICATION …` as that user; sequences are not replicated, so copy them at cutover. On PostgreSQL 15 and older only a superuser can, so support creates the subscription from the publisher's URL and publication.\n\n"
 
 // cliCommands are the CLI's top-level commands a skill names; only these turn
 // `render <command>` into `bex <command>`, so prose ("render the page") stays.

@@ -1,21 +1,29 @@
 # w34 · m542 — A bex Postgres subscribes to another bex database or one outside bex once it is enabled as a subscriber, as on Render
 
-**Worker:** worker34 **Goal:** a bex Postgres enabled as a subscriber lets its named role run `CREATE SUBSCRIPTION` against another enabled bex database or a PostgreSQL outside bex, so a live database can be copied onto bex and kept in sync until cutover. **Status:** todo
+**Worker:** worker34 **Goal:** a bex Postgres enabled as a subscriber lets its named role run `CREATE SUBSCRIPTION` against another enabled bex database or a PostgreSQL outside bex, so a live database can be copied onto bex and kept in sync until cutover. **Status:** todo (t001–t005, t007–t009 done; t006 and t010 replay it on production once the pin carries it)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Contract in ADR009: subscriber enablement by major version (16+ `pg_create_subscription`; 13–15) | 45m | m541/t001 |
-| [t002](t002.md) | `spec.logicalReplication.subscriberRole`; the operator grants `pg_create_subscription` only while enabled | 1h | t001, m541/t002 |
-| [t003](t003.md) | Egress: an enabled subscriber's CNPG pods reach its publisher, and nothing more | 1h15m | t001 |
-| [t004](t004.md) | The ops verb enables a subscriber with Render's prerequisites | 30m | t002, m541/t006 |
-| [t005](t005.md) | Subscriber lifecycle: the apply worker resumes after restarts; disable with live subscriptions is refused by name | 45m | t002 |
+| [t001](done/t001.md) | Contract in ADR009: subscriber enablement by major version (16+ `pg_create_subscription`; 13–15) — **DONE** | 45m | m541/t001 |
+| [t002](done/t002.md) | `spec.logicalReplication.subscriberRole`; the operator grants `pg_create_subscription` only while enabled — **DONE** | 1h | t001, m541/t002 |
+| [t003](done/t003.md) | Egress: an enabled subscriber's CNPG pods reach its publisher, and nothing more — **DONE** | 1h15m | t001 |
+| [t004](done/t004.md) | The ops verb enables a subscriber with Render's prerequisites — **DONE** | 30m | t002, m541/t006 |
+| [t005](done/t005.md) | Subscriber lifecycle: the apply worker resumes after restarts; disable with live subscriptions is refused by name — **DONE** | 45m | t002 |
 | [t006](t006.md) | Live check on dev-N: bex→bex across two workspaces, and an outside PostgreSQL→bex | 1h15m | t003, t004, t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
 | [t010](t010.md) | Closeout (live replay on production) | 45m | t008, t009 |
+
+## Progress (2026-11-21, loopx w34)
+
+- **Shipped:** `spec.logicalReplication.subscriberRole` and `subscriptions[]`; the operator's projection (the subscriber role's `pg_create_subscription` membership on a cluster running 16 or later; on 13–15 an `externalClusters` entry and a CloudNativePG `Subscription` per requested subscription, with the verdicts on the `LogicalReplication` condition); the verb's subscriber forms with m541's prerequisites, the `CREATE` grant, a password Secret per 13–15 subscription, per-half disable and the `LOGICAL_REPLICATION_SUBSCRIPTIONS_EXIST` and `LOGICAL_REPLICATION_SUBSCRIBER_FORM` refusals; the runbook, the dashboard note and the agent skill. Design and evidence: [ADR009 § Subscribers](../../../docs/ADR009-postgresql-management.md#subscribers-w34m542); the ADR018 row "Logical replication (subscriber)" is ◐ with its owners.
+- **Egress (t003):** none needed. From a production CNPG pod in `bex-canary`, a TLS session through another database's `<id>.db.bex.co` reached PostgreSQL and one to a PostgreSQL outside bex connected, from the node's ExternalIP. Both ride `allow-internet-egress`; nothing opens for any database (DoD 4).
+- **Verified off-cluster:** the verb end to end on real PostgreSQL 17 (CI's) and locally on 15 and 18: before enabling, the refusal is PostgreSQL's (DoD 2); on 16 and later the enabled default user subscribes and receives the copy, inserts, updates and deletes (DoD 1 at the SQL level), disable is refused naming the subscription until the user drops it, and a dedicated credential gets `CREATE` on the database; on 15 the role form is refused and a subscription bex creates is written with its password in a Secret and removed with it (DoD 3). Locally, a CNPG-shaped superuser subscription with a passfile on PostgreSQL 15 copied a PostgreSQL 18 publisher, and a PostgreSQL 17 subscriber stopped mid-stream resumed with every row exactly once.
+- **Corrected premise (t005):** a subscription outlives its owner's `pg_create_subscription` and the owner can still alter and drop it; the disable refusal stands for another reason, recorded in ADR009.
+- **Left:** t006 (DoD 1–4 on a real cluster) runs on production, since no dev stack is available to w34; it and t010 follow once the production pin carries this milestone's commit and m541's, with `bex-canary` on Pro for the walk under the user's 2026-10-31 permission and back to Hobby afterwards.
 
 ## Definition of done
 

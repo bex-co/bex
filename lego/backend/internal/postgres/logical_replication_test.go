@@ -188,7 +188,7 @@ func TestLogicalReplicationIsNoRESTRoute(t *testing.T) {
 	}
 }
 
-func TestPublisherCandidate(t *testing.T) {
+func TestLiveCredential(t *testing.T) {
 	d := publisherDatabase("dpg-lr")
 	for role, want := range map[string]bool{
 		d.Spec.EffectiveDatabaseUser(d.Name): true,
@@ -200,26 +200,26 @@ func TestPublisherCandidate(t *testing.T) {
 		"Cdc_Reader":                         false,
 		"":                                   false,
 	} {
-		if got := publisherCandidate(d, role); got != want {
-			t.Errorf("publisherCandidate(%q) = %v, want %v", role, got, want)
+		if got := liveCredential(d, role); got != want {
+			t.Errorf("liveCredential(%q) = %v, want %v", role, got, want)
 		}
 	}
 	// A retired owner is no publisher either.
 	d.Spec.DeletedUsers = append(d.Spec.DeletedUsers, d.Spec.EffectiveDatabaseUser(d.Name))
-	if publisherCandidate(d, d.Spec.EffectiveDatabaseUser(d.Name)) {
-		t.Error("a retired owner was accepted as the publisher")
+	if liveCredential(d, d.Spec.EffectiveDatabaseUser(d.Name)) {
+		t.Error("a retired owner was accepted as a live credential")
 	}
 }
 
 func TestParseRequestSchemasAreNormalized(t *testing.T) {
 	d := publisherDatabase("dpg-lr")
 	svc, _ := newLogicalReplicationService(t, "pro", d)
-	lr, err := svc.checkLogicalReplicationRequest(context.Background(), d,
+	change, err := svc.checkLogicalReplicationRequest(context.Background(), d,
 		LogicalReplicationRequest{Database: d.Name, Enable: true, PublisherRole: "cdc_reader", Schemas: []string{"sales", "public", "sales"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(lr.Schemas, ",") != "public,sales" || lr.AllTables {
+	if lr := change.next; strings.Join(lr.Schemas, ",") != "public,sales" || lr.AllTables {
 		t.Errorf("spec = %+v, want the sorted unique schemas and no all-tables publication", lr)
 	}
 	if _, err := svc.checkLogicalReplicationRequest(context.Background(), d,

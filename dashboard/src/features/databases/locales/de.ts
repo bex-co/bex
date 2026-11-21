@@ -568,7 +568,7 @@ const deDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "Standardmäßig aus. Ab einem Pro-Workspace kann eine Datenbank mit mindestens 10 GB Speicher ihre Änderungen an Subscriber innerhalb oder außerhalb von bex veröffentlichen. Zum Aktivieren wende dich an den Support und nenne die ID dieser Datenbank, die Zugangsdaten, mit denen sich Subscriber verbinden, die Schemas, die sie lesen, und ob alle Tabellen veröffentlicht werden sollen. Erstelle danach Publikationen mit CREATE PUBLICATION … FOR TABLE als Benutzer dieser Datenbank und verbinde Subscriber mit der externen URL, nie mit der Pooler-URL.",
+      "Standardmäßig aus. Ab einem Pro-Workspace kann eine Datenbank mit mindestens 10 GB Speicher ihre Änderungen an Subscriber innerhalb oder außerhalb von bex veröffentlichen. Zum Aktivieren wende dich an den Support und nenne die ID dieser Datenbank, die Zugangsdaten, mit denen sich Subscriber verbinden, die Schemas, die sie lesen, und ob alle Tabellen veröffentlicht werden sollen. Erstelle danach Publikationen mit CREATE PUBLICATION … FOR TABLE als Benutzer dieser Datenbank und verbinde Subscriber mit der externen URL, nie mit der Pooler-URL. Sie kann auch eine andere Datenbank innerhalb oder außerhalb von bex abonnieren: Frag auf dieselbe Weise an, nenne die Zugangsdaten, die Subscriptions anlegen, und führe CREATE SUBSCRIPTION aus, sobald die Tabellen existieren (bei PostgreSQL 15 und älter legt der Support die Subscription für dich an).",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

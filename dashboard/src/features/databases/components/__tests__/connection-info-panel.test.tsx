@@ -41,9 +41,10 @@ describe("ConnectionInfoPanel", () => {
     expect(reveal).not.toHaveBeenCalled();
   });
 
-  // Render's logical-replication rules (w34/m541): off by default, enabled
-  // on request, subscribers on the external URL. Shown before and after a
-  // reveal, and by the route-pending preview, so the card never changes height.
+  // Render's logical-replication rules (w34/m541, m542): off by default,
+  // enabled on request for publishers and subscribers, subscribers on the
+  // external URL. Shown before and after a reveal, and by the route-pending
+  // preview, so the card never changes height.
   it("says logical replication is enabled on request, before and after a reveal", () => {
     const { rerender } = render(<ConnectionInfoPanel id="db" />);
     expect(screen.getByText("Logical replication")).toBeInTheDocument();
@@ -54,6 +55,8 @@ describe("ConnectionInfoPanel", () => {
       /contact support/i,
       /create publication … for table/i,
       /external url, never the pooled one/i,
+      /subscribe to another database inside or outside bex/i,
+      /create subscription once the tables exist/i,
     ]) {
       expect(note.textContent).toMatch(rule);
     }

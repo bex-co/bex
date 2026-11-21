@@ -136,6 +136,8 @@ func publicationScheme() *runtime.Scheme {
 	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(cnpgDatabaseGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(cnpgPublicationGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(cnpgSubscriptionGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(cnpgSubscriptionGVK.GroupVersion().WithKind(cnpgSubscriptionGVK.Kind+"List"), &unstructured.UnstructuredList{})
 	return scheme
 }
 

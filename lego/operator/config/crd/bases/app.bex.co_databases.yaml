@@ -191,14 +191,17 @@ spec:
                 type: array
               logicalReplication:
                 description: |-
-                  LogicalReplication, when set, makes the database a logical-replication
-                  publisher, as Render's support team enables one
-                  (render.com/docs/postgresql-logical-replication; w34/m541). Only bex's
-                  operators write it, through bex-api's cluster-internal verb: Render has
-                  no API field for it. The operator gives PublisherRole the REPLICATION
-                  attribute, bounds the WAL a replication slot may retain
-                  (max_slot_wal_keep_size), and with AllTables declares the
-                  LogicalReplicationAllTablesPublication. Absent: none of that, as before.
+                  LogicalReplication, when set, enables the database for logical
+                  replication as a publisher, a subscriber or both, as Render's support
+                  team enables one (render.com/docs/postgresql-logical-replication;
+                  w34/m541, w34/m542). Only bex's operators write it, through bex-api's
+                  cluster-internal verb: Render has no API field for it. As a publisher
+                  the operator gives PublisherRole the REPLICATION attribute, bounds the
+                  WAL a replication slot may retain (max_slot_wal_keep_size), and with
+                  AllTables declares the LogicalReplicationAllTablesPublication. As a
+                  subscriber it lets SubscriberRole create subscriptions, or creates
+                  Subscriptions itself on PostgreSQL 13-15. Absent: none of that, as
+                  before.
                 properties:
                   allTables:
                     description: |-
@@ -209,6 +212,7 @@ spec:
                     description: |-
                       PublisherRole is the credential subscribers connect as: the database's
                       owner or one of Users. It alone gets the REPLICATION attribute.
+                      Empty: the database does not publish.
                     maxLength: 63
                     pattern: ^[a-z_][a-z0-9_]{0,62}$
                     type: string
@@ -223,9 +227,94 @@ spec:
                       type: string
                     type: array
                     x-kubernetes-list-type: set
-                required:
-                - publisherRole
+                  subscriberRole:
+                    description: |-
+                      SubscriberRole is the credential that creates subscriptions itself
+                      (PostgreSQL 16 and later): the database's owner or one of Users. It
+                      alone is made a member of pg_create_subscription, once the cluster
+                      runs 16 or later. Empty: no role may create a subscription.
+                    maxLength: 63
+                    pattern: ^[a-z_][a-z0-9_]{0,62}$
+                    type: string
+                  subscriptions:
+                    description: |-
+                      Subscriptions are subscriptions the operator creates for the database,
+                      as the superuser, on PostgreSQL 13-15, where CREATE SUBSCRIPTION needs
+                      a superuser and no bex role is one. Each is a CloudNativePG
+                      Subscription in the primary database (LogicalSubscriptionObjectName),
+                      connecting to an externalClusters entry for its publisher.
+                    items:
+                      description: |-
+                        DatabaseLogicalSubscription is one subscription the operator creates: the
+                        publisher's connection and the publication it follows.
+                      properties:
+                        dbname:
+                          maxLength: 63
+                          minLength: 1
+                          type: string
+                        host:
+                          description: |-
+                            Host, Port, DBName, User and SSLMode are the publisher's connection
+                            parameters, as libpq reads them.
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        name:
+                          description: Name is the subscription's name in PostgreSQL.
+                          maxLength: 63
+                          pattern: ^[a-z_][a-z0-9_]{0,62}$
+                          type: string
+                        passwordSecret:
+                          description: |-
+                            PasswordSecret is the Secret in the Database's namespace whose
+                            "password" key authenticates User. bex-api writes it.
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        publication:
+                          description: Publication is the publication's name in the
+                            publisher's database.
+                          maxLength: 63
+                          minLength: 1
+                          type: string
+                        sslmode:
+                          enum:
+                          - disable
+                          - allow
+                          - prefer
+                          - require
+                          type: string
+                        user:
+                          maxLength: 63
+                          minLength: 1
+                          type: string
+                      required:
+                      - dbname
+                      - host
+                      - name
+                      - passwordSecret
+                      - publication
+                      - user
+                      type: object
+                    maxItems: 4
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                 type: object
+                x-kubernetes-validations:
+                - message: logicalReplication names a publisherRole, a subscriberRole
+                    or a subscription
+                  rule: has(self.publisherRole) || has(self.subscriberRole) || (has(self.subscriptions)
+                    && size(self.subscriptions) > 0)
+                - message: schemas and allTables belong to a publisherRole
+                  rule: has(self.publisherRole) || (!has(self.schemas) && !(has(self.allTables)
+                    && self.allTables))
               name:
                 description: |-
                   Name is the required mutable, user-facing database name. metadata.name is

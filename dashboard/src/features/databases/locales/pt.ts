@@ -563,7 +563,7 @@ const ptDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "Desativada por padrão. Em um workspace Pro ou superior, um banco de dados com pelo menos 10 GB de armazenamento pode publicar suas alterações para assinantes dentro ou fora do bex. Para ativá-la, entre em contato com o suporte informando o ID deste banco de dados, a credencial com que os assinantes se conectam, os esquemas que eles leem e se todas as tabelas devem ser publicadas. Depois, crie publicações com CREATE PUBLICATION … FOR TABLE como usuário deste banco de dados e conecte os assinantes à URL externa, nunca à do pooler.",
+      "Desativada por padrão. Em um workspace Pro ou superior, um banco de dados com pelo menos 10 GB de armazenamento pode publicar suas alterações para assinantes dentro ou fora do bex. Para ativá-la, entre em contato com o suporte informando o ID deste banco de dados, a credencial com que os assinantes se conectam, os esquemas que eles leem e se todas as tabelas devem ser publicadas. Depois, crie publicações com CREATE PUBLICATION … FOR TABLE como usuário deste banco de dados e conecte os assinantes à URL externa, nunca à do pooler. Ele também pode assinar outro banco de dados dentro ou fora do bex: solicite da mesma forma informando a credencial que cria as assinaturas e execute CREATE SUBSCRIPTION quando as tabelas existirem (no PostgreSQL 15 e anteriores, o suporte cria a assinatura para você).",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

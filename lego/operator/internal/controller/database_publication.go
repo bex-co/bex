@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,15 +62,22 @@ func slotWALKeepSize(storageGB int32) string {
 }
 
 // markPublisherRole gives the publisher role CNPG's `replication: true` in the
-// projected managed roles. Only an active login qualifies: a retired one
-// (login false) never replicates, and a role managedRoles left out (reserved)
-// is not there to mark. Every other role keeps PostgreSQL's NOREPLICATION, so
-// removing the field or naming another role takes the attribute back off.
+// projected managed roles. Every other role keeps PostgreSQL's
+// NOREPLICATION, so removing the field or naming another role takes the
+// attribute back off.
 func markPublisherRole(roles []any, publisher string) {
+	withActiveLogin(roles, publisher, func(role map[string]any) { role["replication"] = true })
+}
+
+// withActiveLogin applies mark to the projected managed role name, when it
+// is there and an active login: a retired one (login false) never
+// replicates or subscribes, and a role managedRoles left out (reserved) is
+// not there to mark.
+func withActiveLogin(roles []any, name string, mark func(map[string]any)) {
 	for _, item := range roles {
 		role, ok := item.(map[string]any)
-		if ok && role["name"] == publisher && role["login"] == true {
-			role["replication"] = true
+		if ok && role["name"] == name && role["login"] == true {
+			mark(role)
 		}
 	}
 }
@@ -108,49 +117,95 @@ var allTablesPublicationVerdict = cnpgChildVerdict{
 	retryMessage:   "retrying the all-tables publication",
 }
 
-// reconcileLogicalReplication converges db's all-tables publication and
-// reports it on ConditionLogicalReplication. The condition's presence is
-// also the memory that a publication may exist, so a database that was never
-// a publisher costs no read here. A problem never fails the reconcile: it
-// degrades only the condition, as the application database's does.
+// reconcileLogicalReplication converges db's CloudNativePG children, the
+// all-tables publication and the 13-15 Subscriptions, and reports them on
+// ConditionLogicalReplication. The condition's presence is also the memory
+// that a child may exist, so a database that was never enabled costs no read
+// here. A problem never fails the reconcile: it degrades only the condition,
+// as the application database's does.
 func (r *DatabaseReconciler) reconcileLogicalReplication(ctx context.Context, db *appv1alpha1.Database, dbname string) {
 	lr := db.Spec.LogicalReplication
 	present := meta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionLogicalReplication) != nil
 	if lr == nil && !present {
 		return
 	}
+	publication, publicationAsked := r.reconcileAllTablesPublication(ctx, db, dbname)
+	subscriptions, subscriptionsAsked := r.reconcileLogicalSubscriptions(ctx, db, dbname)
+	if db.Spec.Suspended && present && (publicationAsked || subscriptionsAsked) {
+		// Hibernated: CNPG cannot reach the instance, so keep the verdict.
+		return
+	}
+	condition := worstCondition(publication, subscriptions)
+	switch {
+	case condition != nil:
+	case lr == nil:
+		meta.RemoveStatusCondition(&db.Status.Conditions, appv1alpha1.ConditionLogicalReplication)
+		return
+	default:
+		condition = &metav1.Condition{Status: metav1.ConditionTrue, Reason: reasonLogicalReplicationEnabled, Message: enabledMessage(lr)}
+	}
+	condition.Type, condition.ObservedGeneration = appv1alpha1.ConditionLogicalReplication, db.Generation
+	meta.SetStatusCondition(&db.Status.Conditions, *condition)
+}
+
+// enabledMessage describes an enabled database with no CloudNativePG child.
+func enabledMessage(lr *appv1alpha1.DatabaseLogicalReplication) string {
+	var parts []string
+	if lr.Publishes() {
+		parts = append(parts, lr.PublisherRole+" may start a walsender; no all-tables publication was requested")
+	}
+	if lr.SubscriberRole != "" {
+		parts = append(parts, lr.SubscriberRole+" may create subscriptions on PostgreSQL 16 and later")
+	}
+	return strings.Join(parts, "; ")
+}
+
+// reconcileAllTablesPublication converges the all-tables publication and
+// returns its verdict (nil: none requested and none left), and whether CNPG
+// was asked for one.
+func (r *DatabaseReconciler) reconcileAllTablesPublication(ctx context.Context, db *appv1alpha1.Database, dbname string) (*metav1.Condition, bool) {
+	lr := db.Spec.LogicalReplication
 	child := &unstructured.Unstructured{}
 	child.SetGroupVersionKind(cnpgPublicationGVK)
 	child.SetName(allTablesPublicationName(db))
 	child.SetNamespace(db.Namespace)
-	condition := metav1.Condition{Type: appv1alpha1.ConditionLogicalReplication, ObservedGeneration: db.Generation}
 	switch {
-	case lr == nil || !lr.AllTables:
+	case !lr.Publishes() || !lr.AllTables:
 		if err := deleteOptionalObject(ctx, r.Client, child); err != nil {
 			logf.FromContext(ctx).Error(err, "remove the all-tables publication", "publication", child.GetName())
-			condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, reasonLogicalReplicationRemoveError, err.Error()
-			break
+			return &metav1.Condition{Status: metav1.ConditionFalse, Reason: reasonLogicalReplicationRemoveError, Message: err.Error()}, false
 		}
-		if lr == nil {
-			meta.RemoveStatusCondition(&db.Status.Conditions, appv1alpha1.ConditionLogicalReplication)
-			return
-		}
-		condition.Status, condition.Reason = metav1.ConditionTrue, reasonLogicalReplicationEnabled
-		condition.Message = fmt.Sprintf("%s may start a walsender; no all-tables publication was requested", lr.PublisherRole)
+		return nil, false
 	case appv1alpha1.ReservedPostgresDatabaseName(dbname):
 		// CNPG refuses to manage a PostgreSQL-owned database.
-		condition.Status, condition.Reason = metav1.ConditionFalse, reasonReservedDatabaseName
-		condition.Message = fmt.Sprintf("the all-tables publication is not managed in the PostgreSQL-owned database %q", dbname)
-	default:
-		err := upsertOwnedObject(ctx, r.Client, r.Scheme, db, child, allTablesPublicationSpec(db.Name, dbname))
-		if err != nil {
-			logf.FromContext(ctx).Error(err, "apply the all-tables publication", "publication", child.GetName())
-		}
-		if db.Spec.Suspended && present {
-			// Hibernated: CNPG cannot reach the instance, so keep the verdict.
-			return
-		}
-		condition = allTablesPublicationVerdict.condition(child, db.Generation, err)
+		return &metav1.Condition{Status: metav1.ConditionFalse, Reason: reasonReservedDatabaseName,
+			Message: fmt.Sprintf("the all-tables publication is not managed in the PostgreSQL-owned database %q", dbname)}, false
 	}
-	meta.SetStatusCondition(&db.Status.Conditions, condition)
+	err := upsertOwnedObject(ctx, r.Client, r.Scheme, db, child, allTablesPublicationSpec(db.Name, dbname))
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "apply the all-tables publication", "publication", child.GetName())
+	}
+	condition := allTablesPublicationVerdict.condition(child, db.Generation, err)
+	return &condition, true
+}
+
+// worstCondition folds verdicts into one: the first False, else the first
+// Unknown, else True with every message. nil when there is none.
+func worstCondition(verdicts ...*metav1.Condition) *metav1.Condition {
+	verdicts = slices.DeleteFunc(verdicts, func(c *metav1.Condition) bool { return c == nil })
+	for _, status := range []metav1.ConditionStatus{metav1.ConditionFalse, metav1.ConditionUnknown} {
+		if i := slices.IndexFunc(verdicts, func(c *metav1.Condition) bool { return c.Status == status }); i >= 0 {
+			return verdicts[i]
+		}
+	}
+	if len(verdicts) == 0 {
+		return nil
+	}
+	messages := make([]string, len(verdicts))
+	for i, c := range verdicts {
+		messages[i] = c.Message
+	}
+	folded := *verdicts[0]
+	folded.Message = strings.Join(messages, "; ")
+	return &folded
 }

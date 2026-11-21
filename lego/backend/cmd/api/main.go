@@ -201,7 +201,7 @@ func main() {
 		os.Exit(runPlatformRebuild(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
 	}
 	if len(os.Args) > 1 && os.Args[1] == logicalReplicationCommand {
-		os.Exit(runLogicalReplication(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
+		os.Exit(runLogicalReplication(ctx, cfg, os.Args[2:], os.Stdin, os.Stdout, os.Stderr))
 	}
 	if len(os.Args) > 1 && os.Args[1] == revokeOAuthGrantCommand {
 		os.Exit(runRevokeOAuthGrant(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))

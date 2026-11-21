@@ -566,7 +566,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "Off by default. On a Pro workspace or higher, a database with at least 10 GB of storage can publish its changes to subscribers inside or outside bex. To enable it, contact support with this database's ID, the credential subscribers connect as, the schemas they read, and whether to publish all tables. Then create publications with CREATE PUBLICATION … FOR TABLE as this database's user, and connect subscribers to the external URL, never the pooled one.",
+      "Off by default. On a Pro workspace or higher, a database with at least 10 GB of storage can publish its changes to subscribers inside or outside bex. To enable it, contact support with this database's ID, the credential subscribers connect as, the schemas they read, and whether to publish all tables. Then create publications with CREATE PUBLICATION … FOR TABLE as this database's user, and connect subscribers to the external URL, never the pooled one. It can also subscribe to another database inside or outside bex: ask the same way, naming the credential that creates subscriptions, then run CREATE SUBSCRIPTION once the tables exist (on PostgreSQL 15 and older, support creates the subscription for you).",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

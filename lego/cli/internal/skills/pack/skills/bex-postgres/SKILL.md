@@ -99,6 +99,7 @@ Logical replication is **off by default** and enabled on request, as on Render:
 - To enable it, contact bex support with the database ID (`dpg-…`), the credential subscribers connect as (Render recommends a dedicated read-only user, not the default one), the schemas they read, and whether to publish all tables.
 - `CREATE PUBLICATION … FOR ALL TABLES` needs a superuser, so support creates it as `bex_all_tables`. Create `CREATE PUBLICATION … FOR TABLE …` publications yourself as the database's user.
 - Subscribers connect to the **external** URL over TLS, never the pooled URL (PgBouncer cannot carry replication). Create the subscriber's tables first: logical replication does not copy DDL.
+- A bex Postgres can also be a **subscriber**, copying another database (on Render, bex or anywhere else) and following it until cutover. Ask support the same way, naming the credential that will create subscriptions (use the database's own user: it owns the tables the subscription writes). Then create the tables and run `CREATE SUBSCRIPTION … CONNECTION '…password=…' PUBLICATION …` as that user; sequences are not replicated, so copy them at cutover. On PostgreSQL 15 and older only a superuser can, so support creates the subscription from the publisher's URL and publication.
 
 ## Useful MCP Commands
 

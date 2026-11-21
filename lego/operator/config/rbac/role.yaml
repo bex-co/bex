@@ -205,6 +205,7 @@ rules:
   - poolers
   - publications
   - scheduledbackups
+  - subscriptions
   verbs:
   - create
   - delete

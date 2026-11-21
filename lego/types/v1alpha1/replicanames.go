@@ -34,8 +34,9 @@ import (
 
 const (
 	readReplicaClusterInfix = "-r-"
-	// readReplicaDigestBytes of sha256 name a replica cluster: 10 hex.
-	readReplicaDigestBytes = 5
+	// nameDigestBytes of sha256 name a replica cluster (and a logical
+	// subscription's objects): 10 hex.
+	nameDigestBytes = 5
 )
 
 // ReadReplicaClusterName is a replica's CNPG Cluster, "<db>-r-<the first 10 hex
@@ -43,7 +44,7 @@ const (
 // id "<db>-ro-<name>" reaches 63, so the cluster carries a digest of the name.
 // Its Pods are "<cluster>-<n>".
 func ReadReplicaClusterName(db, replica string) string {
-	return db + readReplicaClusterInfix + readReplicaDigest(replica)
+	return db + readReplicaClusterInfix + nameDigest(replica)
 }
 
 // DatabaseClustersPattern is an unanchored regexp (RE2, as PromQL and LogQL
@@ -51,7 +52,7 @@ func ReadReplicaClusterName(db, replica string) string {
 // it, and each read replica's, removed ones included, so a replica's history
 // stays.
 func DatabaseClustersPattern(db string) string {
-	return fmt.Sprintf("%s(%s[0-9a-f]{%d})?", regexp.QuoteMeta(db), readReplicaClusterInfix, 2*readReplicaDigestBytes)
+	return fmt.Sprintf("%s(%s[0-9a-f]{%d})?", regexp.QuoteMeta(db), readReplicaClusterInfix, 2*nameDigestBytes)
 }
 
 // ReadReplicaServiceName is a replica's direct Service, "<db>-ro-<name>": its
@@ -75,10 +76,10 @@ func readReplicaLabel(db, kind, replica string) string {
 	if label := db + "-" + kind + "-" + replica; len(validation.IsDNS1035Label(label)) == 0 {
 		return label
 	}
-	return db + "-" + kind + "-" + readReplicaDigest(replica)
+	return db + "-" + kind + "-" + nameDigest(replica)
 }
 
-func readReplicaDigest(replica string) string {
+func nameDigest(replica string) string {
 	sum := sha256.Sum256([]byte(replica))
-	return hex.EncodeToString(sum[:readReplicaDigestBytes])
+	return hex.EncodeToString(sum[:nameDigestBytes])
 }

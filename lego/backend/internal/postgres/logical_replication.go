@@ -17,6 +17,7 @@ limitations under the License.
 package postgres
 
 import (
+	"cmp"
 	"context"
 	"crypto/subtle"
 	"errors"
@@ -41,13 +42,14 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Logical replication as a publisher (w34/m541; docs/ADR009 § Logical
-// replication). Render "do[es] not enable logical replication by default":
-// a workspace on Pro or higher asks its support team, naming the database,
-// the role subscribers use, the schemas they read and whether to publish all
-// tables (render.com/docs/postgresql-logical-replication, read 2026-11-20).
-// bex's operators play that support team with this verb. It has no REST,
-// GraphQL or MCP surface, as Render has no API field.
+// Logical replication (w34/m541 publishers, w34/m542 subscribers;
+// docs/ADR009 § Logical replication). Render "do[es] not enable logical
+// replication by default": a workspace on Pro or higher asks its support
+// team, naming each database it wants enabled, "both publishers and
+// subscribers", the role subscribers use, the schemas they read and whether
+// to publish all tables (render.com/docs/postgresql-logical-replication, read
+// 2026-11-20). bex's operators play that support team with this verb. It has
+// no REST, GraphQL or MCP surface, as Render has no API field.
 
 // LogicalReplicationPath is the verb on bex-api's cluster-internal :8091
 // listener, behind the control-plane bearer (BEX_CP_TOKEN), like the fleet
@@ -74,7 +76,14 @@ const (
 	LogicalReplicationSchemaUnknownCode    = "LOGICAL_REPLICATION_SCHEMA_UNKNOWN"
 	LogicalReplicationUnavailableCode      = "LOGICAL_REPLICATION_DATABASE_UNAVAILABLE"
 	LogicalReplicationPublicationInUseCode = "LOGICAL_REPLICATION_PUBLICATION_NAME_IN_USE"
-	logicalReplicationInvalidRequestCode   = "LOGICAL_REPLICATION_INVALID_REQUEST"
+	// LogicalReplicationSubscriberFormCode: the subscriber form does not fit
+	// the database's PostgreSQL major (a subscriber role on 13-15, a
+	// subscription bex creates on 16 and later).
+	LogicalReplicationSubscriberFormCode = "LOGICAL_REPLICATION_SUBSCRIBER_FORM"
+	// LogicalReplicationSubscriptionsExistCode: the subscriber role would
+	// lose pg_create_subscription while it still owns subscriptions.
+	LogicalReplicationSubscriptionsExistCode = "LOGICAL_REPLICATION_SUBSCRIPTIONS_EXIST"
+	logicalReplicationInvalidRequestCode     = "LOGICAL_REPLICATION_INVALID_REQUEST"
 )
 
 // How long the verb waits for the operator and CNPG to converge, and how
@@ -88,16 +97,30 @@ var (
 // :8091 server's own WriteTimeout is 30 s.
 const logicalReplicationWriteTimeout = 4 * time.Minute
 
-// LogicalReplicationRequest is one enable or disable: Render's request inputs.
+// LogicalReplicationRequest is one enable or disable: Render's request
+// inputs. An enable sets each half it names and keeps the others, so one
+// database may be a publisher and a subscriber.
 type LogicalReplicationRequest struct {
 	// Database is the dpg- id.
 	Database string `json:"database"`
-	// Enable true makes the database a publisher; false stops it publishing.
+	// Enable true enables what the request names; false disables.
 	Enable bool `json:"enable"`
-	// PublisherRole, Schemas and AllTables are read only when enabling.
+	// PublisherRole, Schemas and AllTables are the publisher half, read only
+	// when enabling.
 	PublisherRole string   `json:"publisherRole,omitempty"`
 	Schemas       []string `json:"schemas,omitempty"`
 	AllTables     bool     `json:"allTables,omitempty"`
+	// SubscriberRole is the subscriber half on PostgreSQL 16 and later: the
+	// credential that creates subscriptions itself. Read only when enabling.
+	SubscriberRole string `json:"subscriberRole,omitempty"`
+	// Subscription is the subscriber half on PostgreSQL 13-15: one
+	// subscription bex creates. Enabling adds it, or replaces the one of the
+	// same name; disabling with only its Name removes that one.
+	Subscription *LogicalSubscriptionRequest `json:"subscription,omitempty"`
+	// Publisher and Subscriber limit a disable to that half. Neither, and no
+	// Subscription, disables both.
+	Publisher  bool `json:"publisher,omitempty"`
+	Subscriber bool `json:"subscriber,omitempty"`
 }
 
 // LogicalReplicationResult reports the outcome, read back from the database
@@ -112,11 +135,20 @@ type LogicalReplicationResult struct {
 	Publication string `json:"publication,omitempty"`
 	// ExternalHost is the host subscribers connect to (never the pooler's).
 	ExternalHost string `json:"externalHost,omitempty"`
-	// Converged: PostgreSQL reports the role's REPLICATION attribute and the
-	// all-tables publication as requested.
-	Converged       bool `json:"converged"`
-	RoleReplication bool `json:"roleReplication"`
-	PublicationLive bool `json:"publicationLive"`
+	// SubscriberRole and Subscriptions are the subscriber half: the role
+	// that creates subscriptions, or the names of those bex creates.
+	SubscriberRole string   `json:"subscriberRole,omitempty"`
+	Subscriptions  []string `json:"subscriptions,omitempty"`
+	// Converged: PostgreSQL reports every half as requested: the publisher
+	// role's REPLICATION attribute and the all-tables publication, the
+	// subscriber role's pg_create_subscription membership, and on 13-15
+	// exactly the requested subscriptions.
+	Converged                bool `json:"converged"`
+	RoleReplication          bool `json:"roleReplication"`
+	PublicationLive          bool `json:"publicationLive"`
+	RoleCreatesSubscriptions bool `json:"roleCreatesSubscriptions"`
+	// LiveSubscriptions are the subscriptions PostgreSQL has in the database.
+	LiveSubscriptions []string `json:"liveSubscriptions,omitempty"`
 	// DroppedSlots are the logical replication slots a disable dropped;
 	// RemainingSlots are any it could not, which still hold back WAL.
 	DroppedSlots   []string `json:"droppedSlots,omitempty"`
@@ -126,9 +158,21 @@ type LogicalReplicationResult struct {
 	Message string `json:"message,omitempty"`
 }
 
-// SetLogicalReplication enables or disables d as a logical-replication
-// publisher. It is the platform's own action on a workspace's request, so it
-// carries no caller authorization: the caller is the cluster-internal bearer.
+// logicalReplicationChange is a checked enable: the spec it leads to, and
+// which halves it names.
+type logicalReplicationChange struct {
+	previous, next *appv1alpha1.DatabaseLogicalReplication
+	publisher      bool
+	subscriberRole bool
+	// subscription indexes next.Subscriptions, -1 when none is named; its
+	// password goes to a Secret, never the spec.
+	subscription int
+	password     string
+}
+
+// SetLogicalReplication enables or disables d for logical replication. It is
+// the platform's own action on a workspace's request, so it carries no
+// caller authorization: the caller is the cluster-internal bearer.
 func (s *Service) SetLogicalReplication(ctx context.Context, req LogicalReplicationRequest) (LogicalReplicationResult, error) {
 	d, err := s.findDatabaseByID(ctx, req.Database)
 	if err != nil {
@@ -138,9 +182,9 @@ func (s *Service) SetLogicalReplication(ctx context.Context, req LogicalReplicat
 		return LogicalReplicationResult{}, err
 	}
 	if !req.Enable {
-		return s.disableLogicalReplication(ctx, d)
+		return s.disableLogicalReplication(ctx, d, req)
 	}
-	lr, err := s.checkLogicalReplicationRequest(ctx, d, req)
+	change, err := s.checkLogicalReplicationRequest(ctx, d, req)
 	if err != nil {
 		return LogicalReplicationResult{}, err
 	}
@@ -148,23 +192,38 @@ func (s *Service) SetLogicalReplication(ctx context.Context, req LogicalReplicat
 	if err != nil {
 		return LogicalReplicationResult{}, err
 	}
-	if err := checkPublisherSQL(ctx, uri, lr); err != nil {
+	if err := checkLogicalReplicationSQL(ctx, uri, change); err != nil {
 		return LogicalReplicationResult{}, err
 	}
-	// Render's form asks for the schemas, so its support grants them. The
-	// grants are idempotent, so re-running a request repairs them.
-	if err := grantPublisherSchemas(ctx, uri, lr, ownerPrivilegedRoles(d)); err != nil {
-		return LogicalReplicationResult{}, err
+	// Render's form asks for the schemas, so its support grants them; a
+	// subscriber role needs CREATE on the database. The grants are
+	// idempotent, so re-running a request repairs them.
+	if change.publisher {
+		if err := grantPublisherSchemas(ctx, uri, change.next, ownerPrivilegedRoles(d)); err != nil {
+			return LogicalReplicationResult{}, err
+		}
+	}
+	if change.subscriberRole {
+		if err := grantSubscriberCreate(ctx, uri, change.next.SubscriberRole); err != nil {
+			return LogicalReplicationResult{}, err
+		}
+	}
+	if change.subscription >= 0 {
+		if err := s.storeSubscriptionPassword(ctx, d, &change.next.Subscriptions[change.subscription], change.password); err != nil {
+			return LogicalReplicationResult{}, err
+		}
 	}
 	// Re-running the same request (to check on it) writes no spec and records
 	// nothing new.
-	if !reflect.DeepEqual(d.Spec.LogicalReplication, lr) {
-		if d, err = s.writeLogicalReplication(ctx, d, lr); err != nil {
+	if !reflect.DeepEqual(change.previous, change.next) {
+		if d, err = s.writeLogicalReplication(ctx, d, change.next); err != nil {
 			return LogicalReplicationResult{}, err
 		}
 		s.RecordDatabaseSystemEffect(ctx, d, AuditVerbEnableLogicalReplication, logicalReplicationAuditCaller)
 	}
-	return s.awaitLogicalReplication(ctx, d, uri, lr), nil
+	res := s.awaitLogicalReplication(ctx, d, uri, change.next, change.previous)
+	res.Message = joinMessages(append([]string{res.Message}, s.deleteSubscriptionSecrets(ctx, d, removedSubscriptionSecrets(change.previous, change.next))...)...)
+	return res, nil
 }
 
 // slotDropBudget bounds the whole slot-drop phase of a disable, so many
@@ -172,49 +231,91 @@ func (s *Service) SetLogicalReplication(ctx context.Context, req LogicalReplicat
 // left are reported.
 const slotDropBudget = 45 * time.Second
 
-// disableLogicalReplication drops the publisher's slots, clears the spec and
-// cuts the walsenders left. A slot nobody follows any more would otherwise
-// hold back WAL with no bound, since the bound leaves with the publisher.
-func (s *Service) disableLogicalReplication(ctx context.Context, d *appv1alpha1.Database) (LogicalReplicationResult, error) {
+// disableLogicalReplication takes away the halves req names. A publisher's
+// slots are dropped first and its walsenders cut after: a slot nobody
+// follows any more would otherwise hold back WAL with no bound, since the
+// bound leaves with the publisher. A subscriber role that still owns
+// subscriptions is refused by name, before anything is written.
+func (s *Service) disableLogicalReplication(ctx context.Context, d *appv1alpha1.Database, req LogicalReplicationRequest) (LogicalReplicationResult, error) {
 	lr := d.Spec.LogicalReplication
 	uri, err := s.databaseURI(ctx, d)
 	if err != nil {
 		return LogicalReplicationResult{}, err
 	}
-	if lr == nil {
-		return s.readLogicalReplication(ctx, d, uri, nil), nil
+	next := disabledHalves(lr, req)
+	if reflect.DeepEqual(lr, next) {
+		return s.readLogicalReplication(ctx, d, uri, lr, nil), nil
+	}
+	if lr.SubscriberRole != "" && (next == nil || next.SubscriberRole != lr.SubscriberRole) {
+		if err := refuseOwnedSubscriptions(ctx, uri, lr.SubscriberRole); err != nil {
+			return LogicalReplicationResult{}, err
+		}
 	}
 	// The disable goes ahead whatever the drop managed: the slots left are
 	// reported, with why.
 	var dropped, problems []string
-	publisherURI, err := s.roleURI(ctx, d, uri, lr.PublisherRole)
-	if err == nil {
-		dropCtx, cancel := context.WithTimeout(ctx, slotDropBudget)
-		dropped, err = dropLogicalSlots(dropCtx, publisherURI)
-		cancel()
+	publisherURI := ""
+	if lr.Publishes() && !next.Publishes() {
+		publisherURI, err = s.roleURI(ctx, d, uri, lr.PublisherRole)
+		if err == nil {
+			dropCtx, cancel := context.WithTimeout(ctx, slotDropBudget)
+			dropped, err = dropLogicalSlots(dropCtx, publisherURI)
+			cancel()
+		}
+		if err != nil {
+			problems = append(problems, "dropping the slots: "+err.Error())
+		}
 	}
-	if err != nil {
-		problems = append(problems, "dropping the slots: "+err.Error())
-	}
-	if d, err = s.writeLogicalReplication(ctx, d, nil); err != nil {
+	if d, err = s.writeLogicalReplication(ctx, d, next); err != nil {
 		return LogicalReplicationResult{}, err
 	}
 	s.RecordDatabaseSystemEffect(ctx, d, AuditVerbDisableLogicalReplication, logicalReplicationAuditCaller)
-	res := s.awaitLogicalReplication(ctx, d, uri, nil)
+	res := s.awaitLogicalReplication(ctx, d, uri, next, lr)
 	if publisherURI != "" {
 		if err := terminateWalsenders(ctx, publisherURI); err != nil {
 			problems = append(problems, "ending the walsenders: "+err.Error())
 		}
+		res.DroppedSlots = dropped
+		if res.RemainingSlots, err = logicalSlots(ctx, uri); err != nil {
+			problems = append(problems, "listing the slots left: "+err.Error())
+		}
 	}
-	res.DroppedSlots = dropped
-	if res.RemainingSlots, err = logicalSlots(ctx, uri); err != nil {
-		problems = append(problems, "listing the slots left: "+err.Error())
-	}
+	problems = append(problems, s.deleteSubscriptionSecrets(ctx, d, removedSubscriptionSecrets(lr, next))...)
 	res.Message = joinMessages(append([]string{res.Message}, problems...)...)
 	if len(problems) > 0 {
 		log.Printf("postgres logical replication: disable %s: %s", d.Name, strings.Join(problems, "; "))
 	}
 	return res, nil
+}
+
+// disabledHalves is lr without what req disables: one subscription by name,
+// the halves it flags, or everything. nil once nothing is left.
+func disabledHalves(lr *appv1alpha1.DatabaseLogicalReplication, req LogicalReplicationRequest) *appv1alpha1.DatabaseLogicalReplication {
+	if lr == nil {
+		return nil
+	}
+	next := lr.DeepCopy()
+	both := !req.Publisher && !req.Subscriber
+	switch {
+	case req.Subscription != nil:
+		next.Subscriptions = slices.DeleteFunc(next.Subscriptions, func(sub appv1alpha1.DatabaseLogicalSubscription) bool {
+			return sub.Name == req.Subscription.Name
+		})
+	default:
+		if both || req.Publisher {
+			next.PublisherRole, next.Schemas, next.AllTables = "", nil, false
+		}
+		if both || req.Subscriber {
+			next.SubscriberRole, next.Subscriptions = "", nil
+		}
+	}
+	if len(next.Subscriptions) == 0 {
+		next.Subscriptions = nil
+	}
+	if !next.Publishes() && next.SubscriberRole == "" && len(next.Subscriptions) == 0 {
+		return nil
+	}
+	return next
 }
 
 // joinMessages joins the non-empty parts of a result's Message.
@@ -260,8 +361,9 @@ func requirePublishable(d *appv1alpha1.Database) error {
 }
 
 // checkLogicalReplicationRequest applies Render's prerequisites and the
-// request's own validity, reading nothing but the CR and the workspace plan.
-func (s *Service) checkLogicalReplicationRequest(ctx context.Context, d *appv1alpha1.Database, req LogicalReplicationRequest) (*appv1alpha1.DatabaseLogicalReplication, error) {
+// request's own validity, reading nothing but the CR and the workspace plan,
+// and returns the spec it leads to.
+func (s *Service) checkLogicalReplicationRequest(ctx context.Context, d *appv1alpha1.Database, req LogicalReplicationRequest) (*logicalReplicationChange, error) {
 	workspace := d.Labels[core.LabelTenant]
 	params := map[string]any{"database": d.Name}
 	plan, ok, err := s.WorkspacePlanOf(ctx, workspace)
@@ -286,29 +388,78 @@ func (s *Service) checkLogicalReplicationRequest(ctx context.Context, d *appv1al
 		return nil, core.NewBadRequestError(LogicalReplicationStorageTooSmallCode,
 			fmt.Sprintf("logical replication requires at least %d GB of storage; this database has %d GB", tiers.PostgresLogicalReplicationMinStorageGB, storage), params)
 	}
-	if !publisherCandidate(d, req.PublisherRole) {
-		params["publisherRole"] = req.PublisherRole
-		return nil, core.NewBadRequestError(LogicalReplicationRoleUnknownCode,
-			fmt.Sprintf("publisherRole %q is not one of this database's credentials (its owner or a user added to it)", req.PublisherRole), params)
+	change := &logicalReplicationChange{previous: d.Spec.LogicalReplication, next: &appv1alpha1.DatabaseLogicalReplication{}, subscription: -1}
+	if change.previous != nil {
+		change.next = change.previous.DeepCopy()
 	}
-	schemas := slices.Clone(req.Schemas)
-	slices.Sort(schemas)
-	schemas = slices.Compact(schemas)
-	if len(schemas) == 0 {
-		return nil, core.NewBadRequestError(logicalReplicationInvalidRequestCode, "schemas is required: the schemas subscribers read", params)
-	}
-	for _, schema := range schemas {
-		if schema == "" || len(schema) > 63 || strings.ContainsRune(schema, 0) {
-			params["schema"] = schema
-			return nil, core.NewBadRequestError(logicalReplicationInvalidRequestCode, fmt.Sprintf("schema %q is not a valid PostgreSQL schema name", schema), params)
+	next := change.next
+	if req.PublisherRole != "" || len(req.Schemas) > 0 || req.AllTables {
+		if err := requireCredential(d, "publisherRole", req.PublisherRole, params); err != nil {
+			return nil, err
 		}
+		schemas := slices.Clone(req.Schemas)
+		slices.Sort(schemas)
+		schemas = slices.Compact(schemas)
+		if len(schemas) == 0 {
+			return nil, core.NewBadRequestError(logicalReplicationInvalidRequestCode, "schemas is required: the schemas subscribers read", params)
+		}
+		for _, schema := range schemas {
+			if schema == "" || len(schema) > 63 || strings.ContainsRune(schema, 0) {
+				params["schema"] = schema
+				return nil, core.NewBadRequestError(logicalReplicationInvalidRequestCode, fmt.Sprintf("schema %q is not a valid PostgreSQL schema name", schema), params)
+			}
+		}
+		next.PublisherRole, next.Schemas, next.AllTables = req.PublisherRole, schemas, req.AllTables
+		change.publisher = true
 	}
-	return &appv1alpha1.DatabaseLogicalReplication{PublisherRole: req.PublisherRole, Schemas: schemas, AllTables: req.AllTables}, nil
+	if req.SubscriberRole != "" {
+		if err := requireCredential(d, "subscriberRole", req.SubscriberRole, params); err != nil {
+			return nil, err
+		}
+		next.SubscriberRole = req.SubscriberRole
+		change.subscriberRole = true
+	}
+	if req.Subscription != nil {
+		sub, password, err := parseSubscriptionRequest(*req.Subscription, params)
+		if err != nil {
+			return nil, err
+		}
+		change.password = password
+		change.subscription = slices.IndexFunc(next.Subscriptions, func(s appv1alpha1.DatabaseLogicalSubscription) bool { return s.Name == sub.Name })
+		if change.subscription < 0 {
+			if len(next.Subscriptions) >= appv1alpha1.LogicalSubscriptionsMax {
+				params["subscriptions"] = len(next.Subscriptions)
+				return nil, core.NewBadRequestError(logicalReplicationInvalidRequestCode,
+					fmt.Sprintf("the database already has %d subscriptions, the most bex creates for one database", len(next.Subscriptions)), params)
+			}
+			next.Subscriptions = append(next.Subscriptions, appv1alpha1.DatabaseLogicalSubscription{})
+			change.subscription = len(next.Subscriptions) - 1
+		}
+		// The password Secret is chosen when it is stored.
+		sub.PasswordSecret = next.Subscriptions[change.subscription].PasswordSecret
+		next.Subscriptions[change.subscription] = sub
+	}
+	if !change.publisher && !change.subscriberRole && change.subscription < 0 {
+		return nil, core.NewBadRequestError(logicalReplicationInvalidRequestCode,
+			"name what to enable: a publisherRole and its schemas, a subscriberRole, or a subscription", params)
+	}
+	return change, nil
 }
 
-// publisherCandidate reports whether role is a live credential of d: its
-// owner or a user, never a retired login or a role PostgreSQL reserves.
-func publisherCandidate(d *appv1alpha1.Database, role string) bool {
+// requireCredential refuses a role, named by the request's field, that is
+// not a live credential of d.
+func requireCredential(d *appv1alpha1.Database, field, role string, params map[string]any) error {
+	if liveCredential(d, role) {
+		return nil
+	}
+	params[field] = role
+	return core.NewBadRequestError(LogicalReplicationRoleUnknownCode,
+		fmt.Sprintf("%s %q is not one of this database's credentials (its owner or a user added to it)", field, role), params)
+}
+
+// liveCredential reports whether role is a live credential of d: its owner
+// or a user, never a retired login or a role PostgreSQL reserves.
+func liveCredential(d *appv1alpha1.Database, role string) bool {
 	if !appv1alpha1.ValidPostgresIdentifier(role) || appv1alpha1.ReservedPostgresRole(role) || slices.Contains(d.Spec.DeletedUsers, role) {
 		return false
 	}
@@ -340,12 +491,13 @@ func (s *Service) writeLogicalReplication(ctx context.Context, d *appv1alpha1.Da
 	return d, nil
 }
 
-// awaitLogicalReplication waits until PostgreSQL itself reports lr (nil: no
-// publisher), or the timeout, and reports what it read last.
-func (s *Service) awaitLogicalReplication(ctx context.Context, d *appv1alpha1.Database, uri string, lr *appv1alpha1.DatabaseLogicalReplication) LogicalReplicationResult {
+// awaitLogicalReplication waits until PostgreSQL itself reports lr (nil:
+// nothing enabled), or the timeout, and reports what it read last. previous
+// is the spec before the change: a role it named must lose what it had.
+func (s *Service) awaitLogicalReplication(ctx context.Context, d *appv1alpha1.Database, uri string, lr, previous *appv1alpha1.DatabaseLogicalReplication) LogicalReplicationResult {
 	deadline := time.Now().Add(logicalReplicationConvergeTimeout)
 	for {
-		res := s.readLogicalReplication(ctx, d, uri, lr)
+		res := s.readLogicalReplication(ctx, d, uri, lr, previous)
 		if res.Converged || time.Now().After(deadline) || ctx.Err() != nil {
 			if !res.Converged {
 				res.Message = joinMessages(res.Message, s.logicalReplicationCondition(ctx, d))
@@ -359,30 +511,46 @@ func (s *Service) awaitLogicalReplication(ctx context.Context, d *appv1alpha1.Da
 	}
 }
 
-// readLogicalReplication reads the publisher's state from the database.
-func (s *Service) readLogicalReplication(ctx context.Context, d *appv1alpha1.Database, uri string, lr *appv1alpha1.DatabaseLogicalReplication) LogicalReplicationResult {
+// readLogicalReplication reads the database's logical-replication state
+// for lr, and for the roles previous named that lr no longer does.
+func (s *Service) readLogicalReplication(ctx context.Context, d *appv1alpha1.Database, uri string, lr, previous *appv1alpha1.DatabaseLogicalReplication) LogicalReplicationResult {
 	res := LogicalReplicationResult{Database: d.Name, Enabled: lr != nil, ExternalHost: d.Status.ExternalHost}
+	var wanted []string
 	if lr != nil {
 		res.PublisherRole, res.Schemas, res.AllTables = lr.PublisherRole, lr.Schemas, lr.AllTables
-		if lr.AllTables {
+		if lr.Publishes() && lr.AllTables {
 			res.Publication = appv1alpha1.LogicalReplicationAllTablesPublication
 		}
+		res.SubscriberRole = lr.SubscriberRole
+		for _, sub := range lr.Subscriptions {
+			wanted = append(wanted, sub.Name)
+		}
+		slices.Sort(wanted)
+		res.Subscriptions = wanted
 	}
-	replicates, publication, err := publisherState(ctx, uri, res.PublisherRole)
+	publisher, subscriber := res.PublisherRole, res.SubscriberRole
+	if previous != nil {
+		publisher, subscriber = cmp.Or(publisher, previous.PublisherRole), cmp.Or(subscriber, previous.SubscriberRole)
+	}
+	state, err := readLogicalReplicationState(ctx, uri, publisher, subscriber)
 	if err != nil {
 		res.Message = "could not read the database: " + err.Error()
 		return res
 	}
-	res.RoleReplication, res.PublicationLive = replicates, publication
-	if lr == nil {
-		res.Converged = !publication
-	} else {
-		res.Converged = replicates && publication == lr.AllTables
+	res.RoleReplication, res.PublicationLive = state.replicates, state.allTables
+	res.RoleCreatesSubscriptions, res.LiveSubscriptions = state.createsSubscriptions, state.subscriptions
+	publishes, subscribes := lr.Publishes(), lr != nil && lr.SubscriberRole != ""
+	res.Converged = state.replicates == publishes && state.allTables == (publishes && lr.AllTables) &&
+		state.createsSubscriptions == subscribes
+	// On 13-15 only bex creates subscriptions, so the database's are exactly
+	// the requested ones. From 16 a subscriber role makes its own.
+	if state.major < appv1alpha1.PgCreateSubscriptionMajor {
+		res.Converged = res.Converged && slices.Equal(wanted, state.subscriptions)
 	}
 	return res
 }
 
-// logicalReplicationCondition is the operator's report on the publisher,
+// logicalReplicationCondition is the operator's report on the database,
 // read fresh: the verb's copy of d predates the operator's work.
 func (s *Service) logicalReplicationCondition(ctx context.Context, d *appv1alpha1.Database) string {
 	var fresh appv1alpha1.Database
@@ -392,7 +560,7 @@ func (s *Service) logicalReplicationCondition(ctx context.Context, d *appv1alpha
 	if c := meta.FindStatusCondition(fresh.Status.Conditions, appv1alpha1.ConditionLogicalReplication); c != nil {
 		return c.Reason + ": " + c.Message
 	}
-	return "the operator has not reported on the publisher yet"
+	return "the operator has not reported on the database yet"
 }
 
 // roleURI is uri with role's credentials: the owner's from CNPG's
@@ -444,12 +612,7 @@ func connectForLogicalReplication(ctx context.Context, uri string) (*pgx.Conn, e
 // existing publication of the all-tables name that is not a FOR ALL TABLES
 // one (a user's FOR TABLE publication, which CNPG would adopt and, on disable,
 // drop).
-func checkPublisherSQL(ctx context.Context, uri string, lr *appv1alpha1.DatabaseLogicalReplication) error {
-	conn, err := connectForLogicalReplication(ctx, uri)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = conn.Close(ctx) }()
+func checkPublisherSQL(ctx context.Context, conn *pgx.Conn, lr *appv1alpha1.DatabaseLogicalReplication) error {
 	var missing []string
 	if err := conn.QueryRow(ctx,
 		`SELECT coalesce(array_agg(n ORDER BY n), '{}') FROM unnest($1::text[]) AS n WHERE NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = n)`,
@@ -464,7 +627,7 @@ func checkPublisherSQL(ctx context.Context, uri string, lr *appv1alpha1.Database
 		return nil
 	}
 	var allTables bool
-	err = conn.QueryRow(ctx, `SELECT puballtables FROM pg_catalog.pg_publication WHERE pubname = $1`, appv1alpha1.LogicalReplicationAllTablesPublication).Scan(&allTables)
+	err := conn.QueryRow(ctx, `SELECT puballtables FROM pg_catalog.pg_publication WHERE pubname = $1`, appv1alpha1.LogicalReplicationAllTablesPublication).Scan(&allTables)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
@@ -522,21 +685,6 @@ func grantPublisherSchemas(ctx context.Context, uri string, lr *appv1alpha1.Data
 		}
 	}
 	return mapPGError(tx.Commit(ctx))
-}
-
-// publisherState reads whether role holds REPLICATION (false for an empty
-// role) and whether the all-tables publication exists as FOR ALL TABLES.
-func publisherState(ctx context.Context, uri, role string) (replicates, allTables bool, err error) {
-	conn, err := connectForLogicalReplication(ctx, uri)
-	if err != nil {
-		return false, false, err
-	}
-	defer func() { _ = conn.Close(ctx) }()
-	err = conn.QueryRow(ctx,
-		`SELECT coalesce((SELECT rolreplication FROM pg_catalog.pg_roles WHERE rolname = $1), false),
-		        coalesce((SELECT puballtables FROM pg_catalog.pg_publication WHERE pubname = $2), false)`,
-		role, appv1alpha1.LogicalReplicationAllTablesPublication).Scan(&replicates, &allTables)
-	return replicates, allTables, mapPGError(err)
 }
 
 // listLogicalSlots lists the current database's logical replication slots,

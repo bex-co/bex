@@ -29,28 +29,62 @@ import (
 )
 
 func TestParseLogicalReplicationArgs(t *testing.T) {
-	req, err := parseLogicalReplicationArgs([]string{"enable", "--database", "dpg-1", "--role", "cdc_reader", "--schema", "public", "--schema", "sales", "--all-tables"})
+	parse := func(args ...string) (postgres.LogicalReplicationRequest, error) {
+		return parseLogicalReplicationArgs(args, strings.NewReader(""))
+	}
+	req, err := parse("enable", "--database", "dpg-1", "--role", "cdc_reader", "--schema", "public", "--schema", "sales", "--all-tables")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !req.Enable || req.Database != "dpg-1" || req.PublisherRole != "cdc_reader" || strings.Join(req.Schemas, ",") != "public,sales" || !req.AllTables {
 		t.Errorf("enable = %+v", req)
 	}
-	req, err = parseLogicalReplicationArgs([]string{"disable", "--database", "dpg-1"})
-	if err != nil || req.Enable || req.Database != "dpg-1" {
+	req, err = parse("disable", "--database", "dpg-1")
+	if err != nil || req.Enable || req.Database != "dpg-1" || req.Publisher || req.Subscriber || req.Subscription != nil {
 		t.Errorf("disable = %+v, %v", req, err)
+	}
+	// The subscriber forms (w34/m542).
+	req, err = parse("enable", "--database", "dpg-1", "--subscriber-role", "orders_user")
+	if err != nil || req.SubscriberRole != "orders_user" || req.PublisherRole != "" || req.Subscription != nil {
+		t.Errorf("enable a subscriber role = %+v, %v", req, err)
+	}
+	// The URL carries a password, so it comes from stdin, never the command
+	// line.
+	req, err = parseLogicalReplicationArgs([]string{"enable", "--database", "dpg-1", "--subscription", "from_render", "--publisher-url", "-", "--publication", "pub"},
+		strings.NewReader("postgresql://u:secret@h/db\n"))
+	if err != nil || req.Subscription == nil || *req.Subscription != (postgres.LogicalSubscriptionRequest{Name: "from_render", PublisherURL: "postgresql://u:secret@h/db", Publication: "pub"}) {
+		t.Errorf("enable a subscription = %+v, %v", req.Subscription, err)
+	}
+	if _, err := parseLogicalReplicationArgs([]string{"enable", "--database", "dpg-1", "--subscription", "s", "--publisher-url", "-", "--publication", "pub"},
+		strings.NewReader(strings.Repeat("x", publisherURLMaxBytes+1))); err == nil {
+		t.Error("an oversized stdin URL was accepted")
+	}
+	req, err = parse("disable", "--database", "dpg-1", "--subscriber")
+	if err != nil || !req.Subscriber || req.Publisher {
+		t.Errorf("disable the subscriber = %+v, %v", req, err)
+	}
+	req, err = parse("disable", "--database", "dpg-1", "--subscription", "from_render")
+	if err != nil || req.Subscription == nil || req.Subscription.Name != "from_render" || req.Subscription.PublisherURL != "" {
+		t.Errorf("remove a subscription = %+v, %v", req, err)
 	}
 	for _, bad := range [][]string{
 		nil,
 		{"enable"},
-		{"enable", "--database", "dpg-1", "--schema", "public"},           // no role
-		{"enable", "--database", "dpg-1", "--role", "cdc_reader"},         // no schema
-		{"enable", "--database", "srv-1", "--role", "r", "--schema", "p"}, // not a Postgres
-		{"disable", "--database", "dpg-1", "--role", "cdc_reader"},        // enable's flags
+		{"enable", "--database", "dpg-1"}, // nothing to enable
+		{"enable", "--database", "dpg-1", "--schema", "public"},                                              // no role
+		{"enable", "--database", "dpg-1", "--role", "cdc_reader"},                                            // no schema
+		{"enable", "--database", "dpg-1", "--all-tables"},                                                    // no role
+		{"enable", "--database", "srv-1", "--role", "r", "--schema", "p"},                                    // not a Postgres
+		{"enable", "--database", "dpg-1", "--subscription", "s", "--publication", "pub"},                     // no URL
+		{"enable", "--database", "dpg-1", "--subscription", "s", "--publisher-url", "postgresql://u:p@h/db"}, // no publication
+		{"enable", "--database", "dpg-1", "--publisher-url", "-", "--publication", "pub"},                    // no name
+		{"disable", "--database", "dpg-1", "--role", "cdc_reader"},                                           // enable's flags
+		{"disable", "--database", "dpg-1", "--subscriber-role", "orders_user"},                               // enable's flags
+		{"disable", "--database", "dpg-1", "--subscription", "s", "--subscriber"},                            // one or the other
 		{"disable", "dpg-1"},
 		{"toggle", "--database", "dpg-1"},
 	} {
-		if _, err := parseLogicalReplicationArgs(bad); err == nil {
+		if _, err := parse(bad...); err == nil {
 			t.Errorf("parse %q: want a usage error", bad)
 		}
 	}
@@ -80,7 +114,7 @@ func TestRunLogicalReplicationExitCodes(t *testing.T) {
 	cfg := &Config{CPToken: "cp-token", CPAddr: strings.TrimPrefix(srv.URL, "http://")}
 	run := func() (int, string) {
 		var out, errOut bytes.Buffer
-		code := runLogicalReplication(context.Background(), cfg, []string{"disable", "--database", "dpg-1"}, &out, &errOut)
+		code := runLogicalReplication(context.Background(), cfg, []string{"disable", "--database", "dpg-1"}, strings.NewReader(""), &out, &errOut)
 		return code, out.String()
 	}
 	if code, out := run(); code != 0 || !strings.Contains(out, `"converged":true`) || got.Database != "dpg-1" || got.Enable {

@@ -557,7 +557,7 @@ const koDatabases: Record<string, TranslationEntry> = {
   },
   "databases.connLogicalReplicationBody": {
     message:
-      "기본적으로 꺼져 있습니다. Pro 이상 워크스페이스에서는 스토리지가 10GB 이상인 데이터베이스가 bex 안팎의 구독자에게 변경 사항을 게시할 수 있습니다. 사용하려면 이 데이터베이스의 ID, 구독자가 연결할 자격 증명, 읽을 스키마, 모든 테이블을 게시할지 여부를 지원팀에 알려 주세요. 그런 다음 이 데이터베이스의 사용자로 CREATE PUBLICATION … FOR TABLE로 게시를 만들고, 구독자는 풀링 URL이 아닌 외부 URL에 연결하세요.",
+      "기본적으로 꺼져 있습니다. Pro 이상 워크스페이스에서는 스토리지가 10GB 이상인 데이터베이스가 bex 안팎의 구독자에게 변경 사항을 게시할 수 있습니다. 사용하려면 이 데이터베이스의 ID, 구독자가 연결할 자격 증명, 읽을 스키마, 모든 테이블을 게시할지 여부를 지원팀에 알려 주세요. 그런 다음 이 데이터베이스의 사용자로 CREATE PUBLICATION … FOR TABLE로 게시를 만들고, 구독자는 풀링 URL이 아닌 외부 URL에 연결하세요. bex 안팎의 다른 데이터베이스를 구독할 수도 있습니다. 같은 방법으로 구독을 만들 자격 증명을 알려 요청하고, 테이블을 만든 뒤 CREATE SUBSCRIPTION을 실행하세요(PostgreSQL 15 이하에서는 지원팀이 구독을 만들어 드립니다).",
     description:
       "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
   },

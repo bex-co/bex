@@ -178,6 +178,8 @@ func (r *DatabaseReconciler) databaseStorageIntent(
 // plan — kept as a struct so the growing set (backup, recovery, users, HA) stays
 // readable and the projection remains a pure, unit-testable function.
 type clusterParams struct {
+	// name is the Database's, and so the Cluster's, name.
+	name      string
 	plan      tiers.PostgresTier
 	storageGB int32
 	version   string
@@ -228,7 +230,9 @@ type clusterParams struct {
 	serverCASecret  string
 	// logicalReplication is Database.spec.logicalReplication: its publisher
 	// role gets REPLICATION and the cluster bounds the WAL a slot may retain
-	// (database_publication.go). nil projects neither.
+	// (database_publication.go); its subscriber role joins
+	// pg_create_subscription, and its 13-15 subscriptions' publishers are
+	// externalClusters (database_subscription.go). nil projects none of it.
 	logicalReplication *appv1alpha1.DatabaseLogicalReplication
 }
 
@@ -625,7 +629,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	}
 	for k, v := range p.parameters {
 		name := strings.ToLower(strings.TrimSpace(k))
-		publisherBound := p.logicalReplication != nil && name == paramMaxSlotWALKeepSize
+		publisherBound := p.logicalReplication.Publishes() && name == paramMaxSlotWALKeepSize
 		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) && !publisherBound {
 			pgParams[k] = v
 		}
@@ -642,7 +646,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// disk (slotWALKeepSize); the merge above drops a legacy declared value of
 	// any spelling while it publishes. It is reloadable, and without a
 	// publisher bex withdraws its value.
-	if p.logicalReplication != nil {
+	if p.logicalReplication.Publishes() {
 		pgParams[paramMaxSlotWALKeepSize] = slotWALKeepSize(p.storageGB)
 	}
 	preload := []any{"pg_stat_statements"}
@@ -675,10 +679,19 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		spec["plugins"] = []any{barmanCloudPlugin(p.backupServerName, true)}
 	}
 	if roles := managedRoles(p.owner, p.users, p.deletedUsers); roles != nil {
-		if p.logicalReplication != nil {
-			markPublisherRole(roles, p.logicalReplication.PublisherRole)
+		if lr := p.logicalReplication; lr != nil {
+			markPublisherRole(roles, lr.PublisherRole)
+			if lr.SubscriberRole != "" && hasPgCreateSubscription(p) {
+				markSubscriberRole(roles, lr.SubscriberRole)
+			}
 		}
 		spec["managed"] = map[string]any{"roles": roles}
+	}
+	// The 13-15 subscriptions' publishers join a recovered database's source
+	// rather than replace it: the bootstrap stanza still names that entry.
+	if entries := subscriptionExternalClusters(p.logicalReplication, p.name); len(entries) > 0 {
+		existing, _ := spec["externalClusters"].([]any)
+		spec["externalClusters"] = append(existing, entries...)
 	}
 	return spec
 }
@@ -888,7 +901,7 @@ func (r *DatabaseReconciler) secretClient() client.Client {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
-// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers;databases;publications,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers;databases;publications;subscriptions,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // reconcileTenantBackupStore reads the GitOps-installed ObjectStore in the apps
 // namespace and projects it into each tenant namespace (ADR043 D8.4). Without
@@ -1011,7 +1024,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		serverTLSSecret, serverCASecret = databasePublicTLSName(&db), databasePublicCAName(&db)
 	}
 	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
-		plan: plan, storageGB: storageGB, version: db.Spec.Version, runningVersion: db.Status.CurrentVersion,
+		name: db.Name, plan: plan, storageGB: storageGB, version: db.Spec.Version, runningVersion: db.Status.CurrentVersion,
 		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
 		backupServerName: backups.targetServerName,
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
@@ -2174,6 +2187,8 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	application.SetGroupVersionKind(cnpgDatabaseGVK)
 	publication := &unstructured.Unstructured{}
 	publication.SetGroupVersionKind(cnpgPublicationGVK)
+	subscription := &unstructured.Unstructured{}
+	subscription.SetGroupVersionKind(cnpgSubscriptionGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.Database{}, builder.WithPredicates(generationDeletionOrFinalizerPredicate{})).
 		// CNPG reports readiness and major-upgrade progress through Cluster status
@@ -2184,8 +2199,10 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// status update too; without this an existing Ready database would
 		// report it only on an unrelated Cluster change.
 		Owns(application, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
-		// The all-tables publication's verdict likewise (w34/m541).
+		// The all-tables publication's and the 13-15 subscriptions' verdicts
+		// likewise (w34/m541, w34/m542).
 		Owns(publication, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Owns(subscription, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		// Job status updates do not change metadata.generation, so use resource
 		// version here; otherwise completed/failed exports would never settle.
 		Owns(&batchv1.Job{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
