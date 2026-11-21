@@ -151,10 +151,15 @@ func TestBlueprintSyncPublicIDOnEverySurface(t *testing.T) {
 		t.Fatalf("second approve = %v, want a refusal naming %s", err, plan)
 	}
 
-	// The history: the fake returns its stored runs (bsr- keys) in order.
+	// The history: the fake returns its stored runs (bsr- keys) in order. The
+	// create's plan, which the re-plan replaced, still waits in `created`, so
+	// it is not listed, as on Render (w32/077); only the applied plan is.
 	durable := ids.BlueprintStorageID(bp)
 	for _, id := range []string{ids.BlueprintSyncStorageID(plan), ids.BlueprintSyncStorageID(created.Sync.ID)} {
 		st.syncsToReturn = append(st.syncsToReturn, st.syncs[id])
+	}
+	if run := st.syncs[ids.BlueprintSyncStorageID(created.Sync.ID)]; run.State != store.BlueprintSyncStateCreated {
+		t.Fatalf("the replaced plan is %s, want it still waiting in created", run.State)
 	}
 	cursor := ids.BlueprintSyncStorageID(created.Sync.ID)
 	for _, spelling := range []string{ids.BlueprintSyncPublicID(cursor), cursor} {
@@ -166,8 +171,8 @@ func TestBlueprintSyncPublicIDOnEverySurface(t *testing.T) {
 				} `json:"sync"`
 				Cursor string `json:"cursor"`
 			}
-			if err := json.Unmarshal([]byte(body), &rows); err != nil || code != http.StatusOK || len(rows) != 2 {
-				t.Fatalf("REST syncs = %d %s (%v)", code, body, err)
+			if err := json.Unmarshal([]byte(body), &rows); err != nil || code != http.StatusOK || len(rows) != 1 || rows[0].Sync.ID != plan {
+				t.Fatalf("REST syncs = %d %s (%v), want only the applied plan %s", code, body, err, plan)
 			}
 			for _, r := range rows {
 				if public(t, "REST syncs", r.Sync.ID, body) != r.Cursor {
@@ -185,8 +190,9 @@ func TestBlueprintSyncPublicIDOnEverySurface(t *testing.T) {
 				t.Fatalf("GraphQL blueprintSyncs: %v", out.Errors)
 			}
 			raw, _ := json.Marshal(out.Data)
-			for _, row := range out.Data.(map[string]any)["blueprintSyncs"].([]any) {
-				public(t, "GraphQL blueprintSyncs", row.(map[string]any)["id"].(string), string(raw))
+			gqlRows := out.Data.(map[string]any)["blueprintSyncs"].([]any)
+			if len(gqlRows) != 1 || public(t, "GraphQL blueprintSyncs", gqlRows[0].(map[string]any)["id"].(string), string(raw)) != plan {
+				t.Fatalf("GraphQL blueprintSyncs = %s, want only the applied plan %s", raw, plan)
 			}
 			if st.gotSyncCursor != cursor {
 				t.Errorf("GraphQL cursor %s reached the store as %q, want %s", spelling, st.gotSyncCursor, cursor)
@@ -200,11 +206,9 @@ func TestBlueprintSyncPublicIDOnEverySurface(t *testing.T) {
 			}
 			raw, _ = json.Marshal(res.StructuredContent)
 			var listed listBlueprintSyncsResult
-			if err := json.Unmarshal(raw, &listed); err != nil || len(listed.Syncs) != 2 {
-				t.Fatalf("MCP list_blueprint_syncs = %s (%v)", raw, err)
-			}
-			for _, run := range listed.Syncs {
-				public(t, "MCP list_blueprint_syncs", run.ID, string(raw))
+			if err := json.Unmarshal(raw, &listed); err != nil || len(listed.Syncs) != 1 ||
+				public(t, "MCP list_blueprint_syncs", listed.Syncs[0].ID, string(raw)) != plan {
+				t.Fatalf("MCP list_blueprint_syncs = %s (%v), want only the applied plan %s", raw, err, plan)
 			}
 			if st.gotSyncCursor != cursor {
 				t.Errorf("MCP cursor %s reached the store as %q, want %s", spelling, st.gotSyncCursor, cursor)

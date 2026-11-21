@@ -532,3 +532,95 @@ func TestBlueprintPlanApprovalWindowPG(t *testing.T) {
 		t.Fatalf("sweep an hour later = %d err=%v (young stored %v), want the young plan deleted", deleted, err, stored(young.ID))
 	}
 }
+
+// w32/077: the sync history leaves out a plan still waiting for approval, as
+// Render's list does ("Syncs that are planned but not yet approved (in the
+// `created` state) are not included", the pinned CLI's ListBlueprintSyncs). A
+// failed plan and an applied run are listed; the filter comes before the page
+// limit; a cursor naming the waiting plan pages from where it stands; and
+// approving the plan lists it under the same id.
+func TestBlueprintSyncHistoryLeavesOutWaitingPlansPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	ws, err := st.CreateWorkspace(ctx, "bp-history-"+stamp, store.PlanHobby, "bp-history-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "history", Repo: "https://github.com/acme/history-" + stamp, Branch: "main", Path: "render.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	commit := "0123456789abcdef0123456789abcdef01234567"
+	done := now.Add(-3 * time.Hour)
+	applied, err := st.InsertBlueprintSync(ctx, store.BlueprintSync{BlueprintID: b.ID, CommitID: commit, State: store.BlueprintSyncStateSuccess, StartedAt: done, CompletedAt: &done})
+	if err != nil {
+		t.Fatal(err)
+	}
+	planned := func(state string, age time.Duration) string {
+		t.Helper()
+		p := store.PlannedBlueprintSync{
+			BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commit, State: state, StartedAt: now.Add(-age)},
+			Path:          "render.yaml", PlanActions: json.RawMessage(`[{"operation":"create","kind":"service","name":"api"}]`),
+		}
+		if state == store.BlueprintSyncStateError {
+			msg := "planning failed: boom"
+			p.CompletedAt, p.ErrorMessage, p.PlanActions = &p.StartedAt, &msg, nil
+		}
+		p, err := st.InsertPlannedBlueprintSync(ctx, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p.ID
+	}
+	failed := planned(store.BlueprintSyncStateError, 2*time.Hour)
+	waiting := planned(store.BlueprintSyncStateCreated, time.Hour)
+	list := func(cursor string, limit int) string {
+		t.Helper()
+		runs, err := st.ListBlueprintSyncs(ctx, b.ID, cursor, limit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := make([]string, len(runs))
+		for i, r := range runs {
+			out[i] = r.ID + ":" + r.State
+		}
+		return strings.Join(out, " ")
+	}
+	failedRow, appliedRow := failed+":"+store.BlueprintSyncStateError, applied.ID+":"+store.BlueprintSyncStateSuccess
+	for _, tc := range []struct {
+		name, cursor string
+		limit        int
+		want         string
+	}{
+		{"the first page", "", 20, failedRow + " " + appliedRow},
+		{"a page of one", "", 1, failedRow},
+		{"from the waiting plan", waiting, 20, failedRow + " " + appliedRow},
+		{"from the failed plan", failed, 20, appliedRow},
+	} {
+		if got := list(tc.cursor, tc.limit); got != tc.want {
+			t.Errorf("%s = %q, want %q: a plan waiting for approval is not listed", tc.name, got, tc.want)
+		}
+	}
+
+	if _, _, err := st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: waiting, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := list("", 20), waiting+":"+store.BlueprintSyncStateRunning+" "+failedRow+" "+appliedRow; got != want {
+		t.Fatalf("history once the plan is approved = %q, want %q", got, want)
+	}
+}

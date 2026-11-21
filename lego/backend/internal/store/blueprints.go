@@ -353,7 +353,12 @@ func (s *PGStore) UpdateBlueprintSync(ctx context.Context, id, state string, com
 }
 
 // ListBlueprintSyncs returns sync runs for a blueprint, newest first, with
-// cursor-based paging (exclusive, by started_at DESC + id).
+// cursor-based paging (exclusive, by started_at DESC + id). A plan still
+// waiting for approval (`created`) is never listed, as Render's list leaves
+// it out ("Syncs that are planned but not yet approved (in the `created`
+// state) are not included", the pinned CLI's ListBlueprintSyncs; w32/077).
+// The filter precedes the limit, so a page is never short for it, and a
+// cursor naming a waiting plan still pages from where the plan stands.
 func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor string, limit int) ([]BlueprintSync, error) {
 	// core's shared bounds, not hand-spelled literals. The previous form
 	// (`<= 0 || > 100 ⇒ 20`) folded the oversized arm in with the absent one,
@@ -372,7 +377,7 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 	if cursor == "" {
 		rows, err = s.Pool.Query(ctx,
 			`SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, note
-			 FROM blueprint_syncs WHERE blueprint_id = $1
+			 FROM blueprint_syncs WHERE blueprint_id = $1 AND state <> 'created'
 			 ORDER BY started_at DESC, id DESC LIMIT $2`,
 			blueprintID, limit)
 	} else {
@@ -380,7 +385,7 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 		rows, err = s.Pool.Query(ctx,
 			`SELECT bs.id, bs.blueprint_id, bs.commit_id, bs.state, bs.started_at, bs.completed_at, bs.created_at, bs.error_message, bs.note
 			 FROM blueprint_syncs bs
-			 WHERE bs.blueprint_id = $1
+			 WHERE bs.blueprint_id = $1 AND bs.state <> 'created'
 			   AND (bs.started_at, bs.id) < (
 			       SELECT started_at, id FROM blueprint_syncs WHERE id = $2
 			   )

@@ -530,7 +530,14 @@ func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, 
 	defer f.mu.Unlock()
 	_ = blueprintID
 	f.gotSyncLimit, f.gotSyncCursor = limit, cursor
-	return f.syncsToReturn, nil
+	// As the PG store, a plan waiting for approval is not listed (w32/077).
+	var out []store.BlueprintSync
+	for _, run := range f.syncsToReturn {
+		if run.State != store.BlueprintSyncStateCreated {
+			out = append(out, run)
+		}
+	}
+	return out, nil
 }
 
 // --- lifecycle fencing (w8/m37): in-memory mirror of the store's conditional

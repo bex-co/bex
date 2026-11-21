@@ -1141,7 +1141,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_blueprint_syncs",
-		Description: "List sync run history for a blueprint, newest first. Each run records state (running/success/error), commitId, startedAt, and completedAt. bex extension (w2/m62).",
+		Description: "List sync run history for a blueprint, newest first. Each run records state (running/success/error), commitId, startedAt, and completedAt. A sync planned but not yet approved (the `created` state) is not listed, as on Render; approve_blueprint applies it, and from then on it is listed under the same id. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listBlueprintSyncsArgs) (*mcp.CallToolResult, listBlueprintSyncsResult, error) {
 		syncs, err := s.ListBlueprintSyncs(ctx, in.ID, core.NamedWorkspace(ctx), in.Cursor, in.Limit)
 		return nil, listBlueprintSyncsResult{Syncs: syncs}, err

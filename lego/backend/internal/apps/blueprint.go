@@ -2032,6 +2032,8 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.
 // cursor is a sync id in either spelling (exe- public, bsr- durable, w2/m288).
+// A plan still waiting for approval is not listed, as on Render (the store
+// leaves `created` rows out, w32/077); PlannedSync reads it.
 func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int) ([]BlueprintSyncView, error) {
 	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
 	if err != nil {

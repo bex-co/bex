@@ -267,10 +267,11 @@ func TestBlueprintRecovererDeletesExpiredPlans(t *testing.T) {
 }
 
 // The expiry on real Postgres, on the service clock: the plan is made a day
-// back, approve refuses it once 24 hours have passed, the sweep deletes it so
-// the sync history no longer lists it, and planning again is the way forward.
+// back, approve refuses it once 24 hours have passed, the sweep deletes it,
+// and planning again is the way forward. The sync history lists the plan at
+// no point while it waits, as Render's never lists a `created` sync (w32/077).
 func TestAPlanNotApprovedWithin24HoursIsGonePG(t *testing.T) {
-	svc, st, _, ctx, wsID := newRecreatePGService(t)
+	svc, st, pool, ctx, wsID := newRecreatePGService(t)
 	// Planned a day back, so the sweep at now finds no other test's plan
 	// expired.
 	start := time.Now().UTC().Add(-store.BlueprintPlanApprovalWindow)
@@ -304,12 +305,13 @@ func TestAPlanNotApprovedWithin24HoursIsGonePG(t *testing.T) {
 		}
 		return out
 	}
-	if got := listed(); len(got) != 1 || got[0] != res.Sync.ID {
-		t.Fatalf("sync history before the sweep = %v, want the waiting plan %s", got, res.Sync.ID)
+	if got := listed(); len(got) != 0 {
+		t.Fatalf("sync history before the sweep = %v, want none: a waiting plan is not listed", got)
 	}
 	(&BlueprintRecoverer{Store: st, Now: func() time.Time { return now }}).recoverOnce(context.Background())
-	if got := listed(); len(got) != 0 {
-		t.Fatalf("sync history after the sweep = %v, want the expired plan deleted", got)
+	var stored int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM blueprint_syncs WHERE id = $1`, ids.BlueprintSyncStorageID(res.Sync.ID)).Scan(&stored); err != nil || stored != 0 {
+		t.Fatalf("the expired plan after the sweep: %d rows (%v), want it deleted", stored, err)
 	}
 	if b, err := st.GetBlueprint(ctx, id, wsID); err != nil || b.Status != store.BlueprintStatusCreated {
 		t.Fatalf("blueprint after the sweep = %+v err=%v, want it still created", b, err)
@@ -319,8 +321,14 @@ func TestAPlanNotApprovedWithin24HoursIsGonePG(t *testing.T) {
 	if err != nil || again.PlanningOutcome != PlanningPlanned {
 		t.Fatalf("re-plan = %+v err=%v, want planned", again, err)
 	}
+	if got := listed(); len(got) != 0 {
+		t.Fatalf("sync history with the re-plan waiting = %v, want none", got)
+	}
 	applied, err := svc.ApproveBlueprint(ctx, id, wsID, again.Sync.ID, nil)
 	if err != nil || applied.ID != again.Sync.ID || applied.State != store.BlueprintSyncStateSuccess {
 		t.Fatalf("approve of the new plan = %+v err=%v, want %s applied", applied, err, again.Sync.ID)
+	}
+	if got := listed(); len(got) != 1 || got[0] != again.Sync.ID {
+		t.Fatalf("sync history once approved = %v, want the applied plan %s", got, again.Sync.ID)
 	}
 }
