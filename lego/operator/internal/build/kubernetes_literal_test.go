@@ -189,6 +189,9 @@ func TestCloneAndBuildPathsSurviveKubeletExpansion(t *testing.T) {
 	if got := expandedBuildValues(resolver.Env)["BEX_NATIVE_SOURCE_DIR"]; got != boundedSourceDir(o.RootDir) {
 		t.Fatalf("native resolver source=%q", got)
 	}
+	if got := expandedBuildValues(resolver.Env)[NativeProjectDirEnv]; got != nativeSourceDir(o) {
+		t.Fatalf("native resolver project dir=%q want=%q", got, nativeSourceDir(o))
+	}
 	// Raw Options remain reusable; escapes are added only at Kubernetes fields.
 	if !reflect.DeepEqual(o.BuildEnv, dockerOpts().BuildEnv) {
 		t.Fatal("projection mutated build intent")

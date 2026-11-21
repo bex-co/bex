@@ -87,11 +87,11 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 
 	write("3.11.9")
 	var out, errOut bytes.Buffer
-	if code := run(time.Time{}, "python", dir, bundle, dockerfile, &out, &errOut); code != 0 {
+	if code := run(time.Time{}, "python", dir, build.NativeWorkdir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const wantPython = "==> Using Python 3.11.9 (from PYTHON_VERSION=3.11.9)\n==> Using Poetry 2.1.3 (default)\n" +
-		"==> Using Node 24.22.3 (default)"
+	const wantPython = "==> Using Python version 3.11.9 via environment variable PYTHON_VERSION\n" +
+		"==> Using Poetry version 2.1.3 (default)\n==> Using Node.js version 24.22.3 (default)"
 	if got := strings.TrimSpace(out.String()); got != wantPython {
 		t.Errorf("narration = %q", got)
 	}
@@ -99,7 +99,8 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	write("2.7.18")
 	out.Reset()
 	errOut.Reset()
-	if code := run(time.Time{}, "python", dir, bundle, dockerfile, &out, &errOut); code != build.ExitTenantError {
+	code := run(time.Time{}, "python", dir, build.NativeWorkdir, bundle, dockerfile, &out, &errOut)
+	if code != build.ExitTenantError {
 		t.Fatalf("unsupported exit = %d, want ExitTenantError", code)
 	}
 	const want = "PYTHON_VERSION=2.7.18 is not a supported Python version; " +
@@ -127,11 +128,35 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out, errOut bytes.Buffer
-	if code := run(time.Time{}, "node", dir, bundle, dockerfile, &out, &errOut); code != 0 {
+	if code := run(time.Time{}, "node", dir, build.NativeWorkdir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node 24.22.3 (default)\n==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)"
+	const want = "==> Using Node.js version 24.22.3 (default)\n==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)"
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q", got)
+	}
+}
+
+// A version file is named by its path in the image, under the service's root
+// directory, as Render's log names it (w9/139): Render's "…/backend/.python-version".
+func TestRunNamesAVersionFileUnderTheProjectDir(t *testing.T) {
+	dir := t.TempDir()
+	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
+	base := "# syntax=docker/dockerfile:1.7\n" +
+		"FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496\n" +
+		"RUN true\n"
+	for name, content := range map[string]string{"Dockerfile": base, "render-env": "", ".nvmrc": "22\n"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var out, errOut bytes.Buffer
+	projectDir := build.NativeWorkdir + "/apps/web"
+	if code := run(time.Time{}, "node", dir, projectDir, bundle, dockerfile, &out, &errOut); code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut.String())
+	}
+	const want = "==> Using Node.js version 22.23.5 via /opt/render/project/src/apps/web/.nvmrc"
+	if got := strings.TrimSpace(out.String()); got != want {
+		t.Errorf("narration = %q, want %q", got, want)
 	}
 }

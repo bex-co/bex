@@ -243,7 +243,9 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 
 	fake := published()
 	choices, dockerfile := resolveExactAt(t, fake, created, nativeElixirRuntime, nil, nil)
-	if got, want := choices[0].Narration(), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.2 (default)"; got != want {
+	// Render names the default Erlang on a line of its own, before Elixir
+	// (w9/139).
+	if got, want := choices[0].Narration(), "==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)"; got != want {
 		t.Errorf("narration %q, want %q", got, want)
 	}
 	if choices[0].Image != erlangImage || choices[0].Line != "1.18.4" {
@@ -275,7 +277,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			choices, _ := resolveExactAt(t, published(), tc.created, nativeElixirRuntime, tc.env, nil)
-			if c := choices[0]; c.Image != tc.image || c.Line != tc.line || c.otp != "" || strings.Contains(c.Narration(), "Erlang/OTP") {
+			if c := choices[0]; c.Image != tc.image || c.Line != tc.line || c.otp != "" || strings.Contains(c.Narration(), "Erlang") {
 				t.Errorf("must keep %s %s with the image's own OTP: %+v", tc.image, tc.line, c)
 			}
 		})
@@ -294,7 +296,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 	// default and says why, instead of failing.
 	t.Run("no image carries it", func(t *testing.T) {
 		choices, _ := resolveExactAt(t, &fakeExact{digests: map[string]string{"elixir:1.18.4": exactDigest}}, created, nativeElixirRuntime, nil, nil)
-		want := "==> Using Elixir 1.18.4 (default)\n==> Could not install the default Erlang/OTP 28.0.2 (no published image carries it); using the Erlang/OTP of the Elixir image"
+		want := "==> Using Elixir version 1.18.4 (default)\n==> Could not install the default Erlang/OTP 28.0.2 (no published image carries it); using the Erlang/OTP of the Elixir image"
 		if c := choices[0]; c.Image != "elixir:1.18.4@"+exactDigest || c.otp != "" || c.Narration() != want {
 			t.Errorf("fallback %+v narration %q, want %q", c, c.Narration(), want)
 		}
@@ -303,7 +305,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, nil, files(nil))
 		must(t, err)
 		got := pinDefaultErlang(t.Context(), &fakeExact{err: errors.New("registry answered 500")}, choice)
-		want := "==> Using Elixir " + reviewed.lineVersion + " (default)\n" +
+		want := "==> Using Elixir version " + reviewed.lineVersion + " (default)\n" +
 			"==> Could not install the default Erlang/OTP 28.0.2 (look up Elixir 1.18.4 on Erlang/OTP 28.0.2.0: registry answered 500); using the Erlang/OTP of the Elixir image\n" +
 			"==> Could not look up elixir:1.18.4 (registry answered 500); using the reviewed Elixir 1.18 image"
 		if got.Image != reviewed.Image || got.erlang != "" || got.Narration() != want {

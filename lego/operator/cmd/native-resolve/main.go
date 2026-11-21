@@ -24,12 +24,15 @@ limitations under the License.
 // on the default line.
 //
 // Environment: BEX_NATIVE_RUNTIME, BEX_NATIVE_SOURCE_DIR (the service's root
-// directory in the checkout). It reads /native/render-env and rewrites
-// /native/Dockerfile, both written by the preparer. With BEX_NATIVE_INIT set
-// it also stages the image's /native-init there for the build (w8/m88).
+// directory in the checkout), BEX_NATIVE_PROJECT_DIR (that directory in the
+// image, which the log names a version file under; NativeWorkdir when unset).
+// It reads /native/render-env and rewrites /native/Dockerfile, both written by
+// the preparer. With BEX_NATIVE_INIT set it also stages the image's
+// /native-init there for the build (w8/m88).
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -42,7 +45,8 @@ import (
 
 func main() {
 	created, _ := time.Parse(time.RFC3339, os.Getenv(build.NativeServiceCreatedEnv))
-	code := run(created, os.Getenv("BEX_NATIVE_RUNTIME"), os.Getenv("BEX_NATIVE_SOURCE_DIR"),
+	projectDir := cmp.Or(os.Getenv(build.NativeProjectDirEnv), build.NativeWorkdir)
+	code := run(created, os.Getenv("BEX_NATIVE_RUNTIME"), os.Getenv("BEX_NATIVE_SOURCE_DIR"), projectDir,
 		"/native/render-env", "/native/Dockerfile", os.Stdout, os.Stderr)
 	if dest := os.Getenv(build.NativeInitEnv); code == 0 && dest != "" {
 		if err := build.StageNativeInit(build.NativeInitBinary, dest); err != nil {
@@ -57,7 +61,7 @@ func main() {
 // (w8/175); tests replace it so no unit test reaches the registry.
 var exactImages build.ExactImageResolver = build.NewDockerHubResolver()
 
-func run(created time.Time, runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
+func run(created time.Time, runtime, sourceDir, projectDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
 	choices, err := build.ResolveNativeBuildExact(context.Background(), exactImages, created, runtime,
 		bundle, dockerfile, sourceDir)
 	var unsupported *build.UnsupportedVersionError
@@ -70,7 +74,7 @@ func run(created time.Time, runtime, sourceDir, bundle, dockerfile string, stdou
 		return 1
 	}
 	for _, choice := range choices {
-		_, _ = fmt.Fprintln(stdout, choice.Narration())
+		_, _ = fmt.Fprintln(stdout, choice.NarrationIn(projectDir))
 	}
 	return 0
 }

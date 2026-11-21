@@ -45,7 +45,11 @@ const (
 	// NativeServiceCreatedEnv carries the App's creation time (RFC 3339) to the
 	// resolve phase, where Render's creation-date defaults need it (w8/174).
 	NativeServiceCreatedEnv = "BEX_SERVICE_CREATED_AT"
-	nativeResolveContainer  = "resolve-native-runtime"
+	// NativeProjectDirEnv carries the service's source directory in the image
+	// (NativeSourceDir), under which the log names the version file it read,
+	// as Render's does (w9/139).
+	NativeProjectDirEnv    = "BEX_NATIVE_PROJECT_DIR"
+	nativeResolveContainer = "resolve-native-runtime"
 	// NativeResolveBinary is the entrypoint in bex's image (lego/Dockerfile).
 	NativeResolveBinary = "/native-resolve"
 )
@@ -386,6 +390,7 @@ func nativeVersionResolver(o Options) corev1.Container {
 	env := []corev1.EnvVar{
 		{Name: "BEX_NATIVE_RUNTIME", Value: nativeRuntime(o)},
 		{Name: "BEX_NATIVE_SOURCE_DIR", Value: execution.KubernetesLiteral(boundedSourceDir(o.RootDir))},
+		{Name: NativeProjectDirEnv, Value: execution.KubernetesLiteral(nativeSourceDir(o))},
 	}
 	if !o.ServiceCreatedAt.IsZero() {
 		env = append(env, corev1.EnvVar{Name: NativeServiceCreatedEnv, Value: o.ServiceCreatedAt.UTC().Format(time.RFC3339)})

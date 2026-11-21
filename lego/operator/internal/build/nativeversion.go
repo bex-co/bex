@@ -20,6 +20,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -90,14 +91,16 @@ type NativeChoice struct {
 	lineVersion string
 }
 
-// Narration is the build-log line that names the choice and its source.
-func (c NativeChoice) Narration() string {
+// Narration is NarrationIn for a service whose source sits at NativeWorkdir,
+// one with no root directory.
+func (c NativeChoice) Narration() string { return c.NarrationIn(NativeWorkdir) }
+
+// NarrationIn is the build-log line that names the choice and its source. dir
+// is the service's source directory in the image, which Render's line names a
+// version file under (NativeSourceDir).
+func (c NativeChoice) NarrationIn(dir string) string {
 	if c.declined != "" {
 		return fmt.Sprintf("==> Not adding %s: %s", c.Label, c.declined)
-	}
-	from := "default"
-	if c.Source != "" {
-		from = "from " + c.Source
 	}
 	version := c.Line
 	if c.narratedVersion != "" {
@@ -107,14 +110,82 @@ func (c NativeChoice) Narration() string {
 		// the exact interpreter (w4/668).
 		version = c.lineVersion
 	}
-	if c.otp != "" {
-		version += " on Erlang/OTP " + c.otp
+	line, ok := c.renderNarration(version, dir)
+	if !ok {
+		line = c.bexNarration(version)
 	}
-	line := fmt.Sprintf("==> Using %s %s (%s)", c.Label, version, from)
 	if c.note != "" {
 		line += "\n" + c.note
 	}
 	return line
+}
+
+// renderSignalFrom is how Render's build log says where a version came from.
+type renderSignalFrom int
+
+const (
+	renderFromDefault renderSignalFrom = iota // `(default)`
+	renderFromEnv                             // `via environment variable NODE_VERSION`
+	renderFromFile                            // `via /opt/render/project/src/.nvmrc`
+)
+
+// renderSignals are the signals, per toolchain label, whose line Render's own
+// build logs show (w9/139; the logs are quoted in
+// docs/render-artifacts/native-version-narration.md). A signal is "" for no
+// signal, an environment variable's name, or a version file's name. A
+// lockfile that only opts a companion in names no version, so Render's line
+// says its default. A signal missing here has no Render log on record and
+// keeps bex's own line (bexNarration).
+var renderSignals = map[string]map[string]renderSignalFrom{
+	"Node": {"": renderFromDefault, "NODE_VERSION": renderFromEnv,
+		".node-version": renderFromFile, ".nvmrc": renderFromFile, "package.json": renderFromFile},
+	"Python": {"": renderFromDefault, "PYTHON_VERSION": renderFromEnv, ".python-version": renderFromFile},
+	"Ruby":   {"": renderFromDefault, "Gemfile.lock": renderFromFile, ".ruby-version": renderFromFile, "Gemfile": renderFromFile},
+	"Elixir": {"": renderFromDefault},
+	"Bun":    {"bun.lock": renderFromDefault, "bun.lockb": renderFromDefault},
+	"Poetry": {"": renderFromDefault},
+	"uv":     {"uv.lock": renderFromDefault},
+}
+
+// renderNames are Render's names for the toolchains whose label differs.
+var renderNames = map[string]string{"Node": "Node.js"}
+
+// renderNarration is the choice's line as Render's build log words it:
+// `==> Using Ruby version 3.4.1 via /opt/render/project/src/Gemfile.lock`.
+// ok is false for a signal Render's logs do not show. Render names Erlang on a
+// line of its own, before Elixir's.
+func (c NativeChoice) renderNarration(version, dir string) (line string, ok bool) {
+	signal, _, _ := strings.Cut(c.Source, "=")
+	signal, _, _ = strings.Cut(signal, " ") // "package.json engines.node"
+	from, ok := renderSignals[c.Label][signal]
+	if !ok {
+		return "", false
+	}
+	how := "(default)"
+	switch from {
+	case renderFromEnv:
+		how = "via environment variable " + signal
+	case renderFromFile:
+		how = "via " + path.Join(dir, signal)
+	}
+	line = fmt.Sprintf("==> Using %s version %s %s", cmp.Or(renderNames[c.Label], c.Label), version, how)
+	if c.otp != "" {
+		line = fmt.Sprintf("==> Using Erlang version %s %s\n%s", c.otp, how, line)
+	}
+	return line, true
+}
+
+// bexNarration is bex's own line for a signal no Render log shows:
+// `==> Using Bun 1.3.14 (from BUN_VERSION=1.3)`.
+func (c NativeChoice) bexNarration(version string) string {
+	from := "default"
+	if c.Source != "" {
+		from = "from " + c.Source
+	}
+	if c.otp != "" {
+		version += " on Erlang/OTP " + c.otp
+	}
+	return fmt.Sprintf("==> Using %s %s (%s)", c.Label, version, from)
 }
 
 // UnsupportedVersionError is a version request no reviewed line satisfies. It
