@@ -1,6 +1,6 @@
 # w9 · m539 — Every member's API keys list shows their own keys, as on Render; an Admin opts into the workspace's to revoke a demoted member's or a creator-less key
 
-**Worker:** worker9 **Goal:** the API keys list on REST, GraphQL, MCP and the dashboard's Account Settings panel shows every caller the keys they minted, whatever their role, as Render's Account Settings does; a Developer lists, edits and revokes only their own keys; editing a key's grant is its creator's verb alone; and an Admin keeps one explicit, opt-in view of every key in the workspace, with revoke, so a demoted member's keys and keys with no recorded creator stay reachable. **Status:** blocked (t001–t005 and t007–t009 done and checked on dev-9 for every role; t006's production check waits for a pin carrying `704667da6`, then t010)
+**Worker:** worker9 **Goal:** the API keys list on REST, GraphQL, MCP and the dashboard's Account Settings panel shows every caller the keys they minted, whatever their role, as Render's Account Settings does; a Developer lists, edits and revokes only their own keys; editing a key's grant is its creator's verb alone; and an Admin keeps one explicit, opt-in view of every key in the workspace, with revoke, so a demoted member's keys and keys with no recorded creator stay reachable. **Status:** done (2026-11-21: dev-9 checked for every role, production checked as the QA user on pin b32b3ff43)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Adapters: REST `?allMembers=true`, GraphQL `allMembers`, MCP `allMembers`; the real-DB e2e on all three surfaces — **DONE** | 1h30m | t002 |
 | [t004](done/t004.md) | Scripts that read a workspace-wide key list ask for it, and still clean up what they mint — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Dashboard: the panel lists the caller's keys; an Admin switches to every member's keys and revokes there — **DONE** | 1h30m | t003 |
-| [t006](t006.md) | Live check on dev-9 (every role) and on production (the QA user, an Admin) | 1h | t004, t005 |
+| [t006](done/t006.md) | Live check on dev-9 (every role) and on production (the QA user, an Admin) — **DONE** | 1h | t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 7h45m**.
 
@@ -35,6 +35,12 @@ The note's open question had three options: narrow every role's list to their ow
 - **I10, restated for every role:** by default every caller lists only the keys they minted in the workspace the request acts in. A machine caller owns nothing, so an API key's default list is empty. Only the key's creator edits its grant.
 - **I13 (new): only an Admin reaches another member's key or a creator-less key.** That reach is the workspace-wide list (asked for explicitly with `allMembers`) and the revoke of a key that is not the caller's. Both are decided by one `Authorize` against `can_manage` (Admin), audited once. A Developer, a Contributor, a Viewer and a Billing member get 403 for both. `requireKeyIn` still holds the key to the request's workspace.
 - **Nothing widens.** No caller lists, edits or revokes a key it could not before. An Admin's key with an All grant keeps reaching what its creator reaches (it passes `allMembers`). Every refusal keeps today's shape: 403 for another member's key, `ErrNotInNamedWorkspace` for another workspace's, 404 for an unbound one.
+
+## Unblock (2026-11-21, verified evidence, not a user decision)
+
+- **Affected:** t006 step 2, then t010.
+- **Finding:** the gate `pin must carry 704667da6` holds. The newest pin on `origin/main` is b32b3ff43 ("chore(deploy): pin platform images to cce6c749f6ff", 2026-11-21 09:00Z), and `git merge-base --is-ancestor 704667da6 cce6c749f6ff` succeeds. The production app cluster runs it: both `bex-system/bex-api` replicas report `ghcr.io/bex-co/bex-operator@sha256:e14f8ee4…`, and `dashboard/dashboard` reports `ghcr.io/bex-co/bex-dashboard@sha256:8d881204…`, the digests b32b3ff43 writes into `deploy/gitops/base/bex.yaml` and `dashboard.yaml`; both rollouts complete.
+- **Remaining gates:** none. **Next:** t006 step 2 as the QA user in `bex-canary` (mint a key, find it in the default and `allMembers` lists on REST, GraphQL, MCP and the dashboard, revoke it, get 401 from it, log out), then t010.
 
 ## Definition of done
 
