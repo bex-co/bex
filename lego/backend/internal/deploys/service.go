@@ -667,11 +667,25 @@ func (s *Service) Rebuild(ctx context.Context, service string) (DeployView, erro
 // one already running, not content the caller selects, so a contributor can
 // restart without create rights. REST, GraphQL (restartServer), MCP and the
 // dashboard all restart through this verb.
+//
+// server_restarted is recorded once the restart was accepted, whether it runs
+// now or waits for the deploy in flight (w8/379): every refusal below comes
+// after authorization, and a refused restart used to land in the feed and
+// fire the webhook as one.
 func (s *Service) Restart(ctx context.Context, service string) (DeployView, error) {
-	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(false), service)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.LifecycleOrCreate(false), service)
 	if err != nil {
 		return DeployView{}, err
 	}
+	d, err := s.restart(ctx, service, a)
+	if err != nil {
+		return DeployView{}, err
+	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeploysRestart)
+	return d, nil
+}
+
+func (s *Service) restart(ctx context.Context, service string, a *appv1alpha1.App) (DeployView, error) {
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return DeployView{}, err
 	}

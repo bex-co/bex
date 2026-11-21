@@ -392,9 +392,11 @@ const (
 //     apps.DeleteAutoscaling, the disk verbs, the eleven apps.Set… config
 //     verbs, apps.Suspend/Resume, apps.SetSourceAndRegistryCredential, the five
 //     secrets environment verbs, the three env-group link verbs, and the two
-//     one-off job verbs, apps.SetIdleTTL, apps.SetDisplayName, and
-//     deploys.RegenerateDeployHook. Idle-timeout and display-name re-saves
-//     still repair projections but emit no event unless their value changed.
+//     one-off job verbs, apps.SetIdleTTL, apps.SetDisplayName,
+//     deploys.RegenerateDeployHook, and both restart entry points
+//     (apps.Restart, deploys.Restart; w8/379). Idle-timeout and display-name
+//     re-saves still repair projections but emit no event unless their value
+//     changed.
 //     A hook rotation always replaces the token, but its fresh authorization
 //     check or token write can fail after the first authorization.
 //     What remains unGATED is deliberate: a verb that validates BEFORE it

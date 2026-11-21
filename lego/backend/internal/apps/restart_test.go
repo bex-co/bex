@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w1/m148: REST POST .../restart and MCP restart_service restart on the
@@ -48,6 +49,29 @@ func TestRestartKeepsTheBuildCommitPin(t *testing.T) {
 	}
 	if got.Spec.RestartedAt == "" {
 		t.Error("restart must stamp spec.restartedAt")
+	}
+}
+
+// w8/379: the store-less restart records server_restarted once, after the
+// stamp lands, and a cron job's refusal records none. It used to write the
+// row when authorization passed, and once more in its patch.
+func TestStorelessRestartRecordsServerRestartedOnlyWhenItRuns(t *testing.T) {
+	cron := sampleApp("nightly")
+	cron.Spec.Type = appv1alpha1.TypeCronJob
+	sink := &captureAuditSink{}
+	svc := &Service{Base: &core.Base{Client: fakeClient(sampleApp("web"), cron), Namespace: "default", Audit: sink}}
+
+	if _, err := svc.Restart(context.Background(), "nightly"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("Restart cron job = %v, want the 400", err)
+	}
+	if n := sink.countVerb(core.AuditVerbAppsRestart); n != 0 {
+		t.Fatalf("a refused restart recorded %d server_restarted rows", n)
+	}
+	if _, err := svc.Restart(context.Background(), "web"); err != nil {
+		t.Fatalf("Restart: %v", err)
+	}
+	if n := sink.countVerb(core.AuditVerbAppsRestart); n != 1 {
+		t.Fatalf("server_restarted rows = %d, want 1: %+v", n, sink.events)
 	}
 }
 

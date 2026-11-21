@@ -315,6 +315,14 @@ const (
 	AuditVerbSetAutoscaling    = "apps.SetAutoscaling"
 	AuditVerbDeleteAutoscaling = "apps.DeleteAutoscaling"
 	AuditVerbSetAutoDeploy     = "apps.SetAutoDeploy"
+	// AuditVerbDeploysRestart and AuditVerbAppsRestart are Restart's two
+	// entry points, both server_restarted (w4/379): deploys.Restart with a
+	// deploy store wired, apps.Restart's CR-only path without one. Each is
+	// recorded once the restart was accepted (w8/379): a restart refused
+	// after authorization (nothing live, a cron job, a suspended service)
+	// used to land in the feed and fire the webhook as a restart.
+	AuditVerbDeploysRestart = "deploys.Restart"
+	AuditVerbAppsRestart    = "apps.Restart"
 	// AuditVerbAddDomain / AuditVerbVerifyDomain / AuditVerbDeleteDomain are the
 	// three custom-domain verbs, spelled as callerVerb() derives them so the
 	// recording helpers below can name them without walking the stack.
@@ -967,6 +975,7 @@ func (b *Base) RecordDomainEffect(ctx context.Context, app *appv1alpha1.App, ver
 // cannot invent an action: RecordAppConfigChanged refuses anything not here.
 var appConfigVerbs = map[string]bool{
 	AuditVerbSuspend: true, AuditVerbResume: true,
+	AuditVerbDeploysRestart: true, AuditVerbAppsRestart: true,
 	AuditVerbSetSubdomainPolicy: true, AuditVerbSetRootDir: true,
 	AuditVerbSetDockerfilePath: true, AuditVerbSetDockerContext: true, AuditVerbSetPort: true,
 	AuditVerbSetBuildFilter: true, AuditVerbSetCommands: true,

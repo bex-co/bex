@@ -4538,16 +4538,23 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 		}
 		return s.Get(ctx, name)
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// server_restarted is recorded once the stamp lands, as deploys.Restart
+	// records it (w8/379): a refused restart is not a restart.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob {
 		return AppView{}, fmt.Errorf("%w: restart is not supported for cron jobs; trigger a run instead", core.ErrBadRequest)
 	}
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbAppsRestart)
+	return v, nil
 }
 
 // TriggerCronRun requests a one-off run of a cron_job now (Render's

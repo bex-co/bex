@@ -226,6 +226,102 @@ func TestRestartImageBackedWithoutALiveDeployIsRefused(t *testing.T) {
 	}
 }
 
+// restartedRows is the allowed rows the events feed and webhooks read as
+// server_restarted.
+func restartedRows(sink *deployHookAuditSink) []core.AuditEvent {
+	var rows []core.AuditEvent
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbDeploysRestart && ev.Outcome == core.AuditAllowed {
+			rows = append(rows, ev)
+		}
+	}
+	return rows
+}
+
+// w8/379's live check: each refused restart still put "Server restarted" in
+// the feed, because the row was written when authorization passed and every
+// refusal comes after it. A restart records it once accepted, run now or
+// queued behind the deploy in flight, and the queued one's later run records
+// no second row.
+func TestRestartRecordsServerRestartedOnlyWhenAccepted(t *testing.T) {
+	cron := repoApp("nightly", "srv-1", "main")
+	cron.Spec.Type = appv1alpha1.TypeCronJob
+	suspended := sampleApp("web", "srv-1")
+	suspended.Spec.Suspended = true
+	for _, tc := range []struct {
+		name string
+		app  *appv1alpha1.App
+		rows []store.Deploy
+		want error
+	}{
+		{"image service never live", sampleApp("web", "srv-1"),
+			[]store.Deploy{{ID: "dep-first", Status: store.DeployUpdateFailed, Image: "web:missing"}}, core.ErrConflict},
+		{"repo service never live", repoApp("web", "srv-1", "main"),
+			[]store.Deploy{{ID: "dep-first", Status: store.DeployBuildFailed, Commit: branchHead}}, core.ErrConflict},
+		{"cron job", cron,
+			[]store.Deploy{{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit}}, core.ErrBadRequest},
+		{"suspended", suspended,
+			[]store.Deploy{{ID: "dep-live", Status: store.DeployLive, Image: "web:v1"}}, core.ErrConflict},
+	} {
+		t.Run("refused: "+tc.name, func(t *testing.T) {
+			ds := newDeferringStore()
+			seedDeploys(ds.fakeStore, tc.rows...)
+			svc, _ := newService(ds, tc.app)
+			sink := &deployHookAuditSink{}
+			svc.Audit = sink
+			if _, err := svc.Restart(context.Background(), tc.app.Name); !errors.Is(err, tc.want) {
+				t.Fatalf("Restart = %v, want %v", err, tc.want)
+			}
+			if rows := restartedRows(sink); len(rows) != 0 {
+				t.Fatalf("a refused restart recorded server_restarted: %+v", rows)
+			}
+		})
+	}
+
+	t.Run("accepted now", func(t *testing.T) {
+		ds := newFakeStore()
+		seedDeploys(ds, store.Deploy{ID: "dep-live", Status: store.DeployLive, Image: "web:v1"})
+		svc, _ := newService(ds, sampleApp("web", "srv-1"))
+		sink := &deployHookAuditSink{}
+		svc.Audit = sink
+		if _, err := svc.Restart(context.Background(), "web"); err != nil {
+			t.Fatalf("Restart: %v", err)
+		}
+		if rows := restartedRows(sink); len(rows) != 1 || rows[0].Target != core.ServiceTarget("srv-1") {
+			t.Fatalf("server_restarted rows = %+v, want one on service:srv-1", rows)
+		}
+	})
+
+	t.Run("accepted and queued", func(t *testing.T) {
+		ds := newDeferringStore()
+		seedDeploys(ds.fakeStore,
+			store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Commit: branchHead, Generation: 3},
+			store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit, Generation: 2},
+		)
+		svc, _ := newService(ds, repoApp("web", "srv-1", "main"))
+		svc.Commits = &branchResolver{}
+		sink := &deployHookAuditSink{}
+		svc.Audit = sink
+		d, err := svc.Restart(context.Background(), "web")
+		if err != nil || d.Status != store.DeployQueued {
+			t.Fatalf("Restart = %+v, %v; want a queued restart", d, err)
+		}
+		if rows := restartedRows(sink); len(rows) != 1 {
+			t.Fatalf("server_restarted rows after the queued restart = %+v, want one", rows)
+		}
+		ds.set("dep-flight", func(d *store.Deploy) { d.Status = store.DeployLive })
+		if err := (&DeferredDeployWorker{Svc: svc}).tick(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if row := ds.byApp["srv-1"][0]; row.ID != d.ID || row.Status != store.DeployCreated {
+			t.Fatalf("queued restart did not run: %+v", row)
+		}
+		if rows := restartedRows(sink); len(rows) != 1 {
+			t.Fatalf("server_restarted rows after the queued restart ran = %+v, want still one", rows)
+		}
+	})
+}
+
 // Render: restart is "Not supported for cron jobs" (w8/040). The refusal is a
 // named 400 before any mutation, on the verb every surface shares. Caller
 // commitId stays refused for a cron job as well.
