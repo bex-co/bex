@@ -52,7 +52,7 @@ The default range is seven days, refresh is five minutes, and daily/cohort bound
 | Family | Commands (and every subcommand) |
 | --- | --- |
 | `hosting` | `services`, `deploys`, `jobs`, `restart`, `logs`, `ssh`, `blueprints`, `ea blueprints`, `environments`, `projects`, `workflows` |
-| `data` | `postgres`, `keyvalues`, `psql`, `pgcli`, `kv-cli`, `ea objects`, `s3` |
+| `data` | `postgres`, `keyvalues`, `psql`, `pgcli`, `kv-cli`, `ea objects`, `s3`, `s3api` (`s3api` only for launchers before v0.9.0, which still report it) |
 | `agent` | `agent` and its session verbs, except the two rows below |
 | `automation` | `agent automations` |
 | `desktop` | `edit` (also `bex <path>`), `agent open` |
