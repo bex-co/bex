@@ -1324,6 +1324,64 @@ helm template traefik "${chart_archives[traefik]}" -n traefik \
 kubectl kustomize deploy/gitops/overlays/prod >"$tmp/prod-apps.yaml"
 kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
 
+# A Render-CLI login saves oauth.bex.co, the device grant's verification
+# origin, as its dashboard origin. Hydra's Ingress sends every link built on it
+# to the dashboard with the path and query kept, and keeps every OAuth/OIDC
+# route (w8/089, w32/054). Bash's ERE reads this expression as Go's RE2 does
+# (bracket literals, alternation, both anchors), so a match here expands
+# exactly as Traefik's ReplaceAllString does.
+echo "==> oauth.bex.co sends CLI dashboard links to the dashboard, and OAuth routes to Hydra"
+hydra_middlewares="$(yq -N 'select(.kind == "Ingress") | .metadata.annotations."traefik.ingress.kubernetes.io/router.middlewares"' "$tmp/hydra-prod.yaml")"
+if [ "$hydra_middlewares" != auth-cli-dashboard-redirect@kubernetescrd ]; then
+  echo "FAIL: Hydra's public Ingress must run auth-cli-dashboard-redirect@kubernetescrd (got '$hydra_middlewares')" >&2
+  fail=1
+fi
+cli_links=deploy/gitops/charts/cli-dashboard-links/middleware.yaml
+cli_link_regex="$(yq -N '.spec.redirectRegex.regex' "$cli_links")"
+cli_link_replacement="$(yq -N '.spec.redirectRegex.replacement' "$cli_links")"
+scalar cli_link_regex "$cli_link_regex" || fail=1
+scalar cli_link_replacement "$cli_link_replacement" || fail=1
+# <request URL> <redirect target, or - for Hydra>
+while read -r from want; do
+  got=-
+  if [[ "$from" =~ $cli_link_regex ]]; then
+    got="$cli_link_replacement"
+    for i in 1 2 3 4 5 6 7 8 9; do
+      got="${got//"\${$i}"/"${BASH_REMATCH[$i]:-}"}"
+    done
+  fi
+  if [ "$got" != "$want" ]; then
+    echo "FAIL: cli-dashboard-redirect sends $from to '$got', want '$want'" >&2
+    fail=1
+  fi
+done <<'EOF'
+https://oauth.bex.co/web/srv-dbkq3hdhhjfs73eiahe0 https://dashboard.bex.co/web/srv-dbkq3hdhhjfs73eiahe0
+https://oauth.bex.co/worker/srv-a https://dashboard.bex.co/worker/srv-a
+https://oauth.bex.co/pserv/srv-a https://dashboard.bex.co/pserv/srv-a
+https://oauth.bex.co/static/srv-a https://dashboard.bex.co/static/srv-a
+https://oauth.bex.co/cron/srv-a/deploys/dep-b https://dashboard.bex.co/cron/srv-a/deploys/dep-b
+https://oauth.bex.co/d/dpg-a https://dashboard.bex.co/d/dpg-a
+https://oauth.bex.co/r/red-a?x=1&y=2 https://dashboard.bex.co/r/red-a?x=1&y=2
+https://oauth.bex.co/agents/ags-dbvt0b1bgjqs73fpzzzz https://dashboard.bex.co/agents/ags-dbvt0b1bgjqs73fpzzzz
+https://oauth.bex.co/agents/ags-a?x=1 https://dashboard.bex.co/agents/ags-a?x=1
+https://oauth.bex.co/settings https://dashboard.bex.co/settings
+https://oauth.bex.co/settings?x=1 https://dashboard.bex.co/settings?x=1
+https://oauth.bex.co/.well-known/openid-configuration -
+https://oauth.bex.co/.well-known/jwks.json -
+https://oauth.bex.co/oauth2/auth?client_id=a&redirect_uri=https://dashboard.bex.co/settings -
+https://oauth.bex.co/oauth2/device/auth -
+https://oauth.bex.co/oauth2/device/verify?user_code=a -
+https://oauth.bex.co/oauth2/token -
+https://oauth.bex.co/oauth2/revoke -
+https://oauth.bex.co/oauth2/sessions/logout -
+https://oauth.bex.co/userinfo -
+https://oauth.bex.co/health/ready -
+https://oauth.bex.co/web/ -
+https://oauth.bex.co/agents -
+https://oauth.bex.co/settingsx -
+https://oauth.bex.co.example/settings -
+EOF
+
 # Traefik loads its local plugin only at startup, so plugin code reaches the
 # edge only when the pods roll. The plugin ConfigMap's name carries a hash of
 # its files and Traefik mounts it by that exact name, so a code change rolls

@@ -12,6 +12,7 @@ import {
   PanelTableHeader,
   PanelTableFrame,
 } from "@/common/components/panel-states";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectedAgents } from "@/features/connected-agents/hooks/use-connected-agents";
 import { ConnectedAgentRow } from "@/features/connected-agents/components/connected-agent-row";
@@ -23,6 +24,10 @@ import { connectedAgentsColumns } from "@/features/connected-agents/lib/connecte
  * the m16 remembered-consent flow shipped without. Account-scoped (the
  * subject is whoever's Kratos session this request carries), not
  * workspace-scoped, so it needs no workspace switcher wiring.
+ *
+ * `#cli-tokens` is where the CLI's logout warning sends a token it could not
+ * revoke (`<dashboard>/settings#cli-tokens`, upstream `cmd/logout.go`): the
+ * bex CLI's grant is listed and revoked here (w32/054).
  */
 export function ConnectedAgentsPanel() {
   const { t } = useTranslations();
@@ -30,7 +35,7 @@ export function ConnectedAgentsPanel() {
   const columns = connectedAgentsColumns(t);
 
   return (
-    <Card>
+    <Card id="cli-tokens" className={SECTION_NAVIGATION_TARGET_CLASS}>
       <CardHeader>
         <CardTitle>{t("connectedAgents.title")}</CardTitle>
         <CardDescription>{t("connectedAgents.description")}</CardDescription>
