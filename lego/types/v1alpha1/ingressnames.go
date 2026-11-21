@@ -19,6 +19,8 @@ package v1alpha1
 import (
 	"crypto/sha256"
 	"fmt"
+	"strings"
+	"unicode"
 )
 
 // The suffixes of the Ingresses an App owns beside its serving Ingress (named
@@ -38,6 +40,22 @@ func ChildIngressName(appName, suffix string) string {
 	}
 	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
 	return appName[:63-len(suffix)-len(sum)-1] + "-" + sum + suffix
+}
+
+// TraefikRouterKey is the key the pinned Traefik's Kubernetes Ingress provider
+// (v3.7.17, pkg/provider/kubernetes/ingress) gives the router of one Ingress
+// path: namespace, Ingress name, host and path joined, with each run of
+// characters that are not letters or digits collapsed to one hyphen
+// (provider.Normalize). Two Ingresses can produce the same key: "*.example.com"
+// on "app.wildcard" and "wildcard.example.com" on "app", or "api.example.com"
+// on App "web" and "example.com" on App "web-api". When paths inside one Ingress
+// share a key, Traefik appends a hash of each rule. When two Ingresses share
+// one, the Ingress read last replaces the other's router. The operator keeps
+// its routes' keys apart, and bex-api names an App's routers from them.
+func TraefikRouterKey(namespace, ingress, host, path string) string {
+	return strings.Join(strings.FieldsFunc(namespace+"-"+ingress+"-"+host+path, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	}), "-")
 }
 
 // ChildIngressNames are the names of every Ingress an App may own beside its

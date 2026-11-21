@@ -283,6 +283,41 @@ func TestTraefikRouterNamesRejectCrossIngressNormalizedCollision(t *testing.T) {
 	}
 }
 
+// The operator writes a route's path twice when another Ingress produces its
+// router key (App "web" serving "api.example.com" beside App "web-api"
+// serving "example.com"). The names are the ones Traefik v3.7.17 listed for
+// that Ingress on a kind cluster, and the two Apps' routers stop being
+// ambiguous.
+func TestTraefikRouterNamesFollowARouteWrittenTwice(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := networkingv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	const ns = "tea-d0000000000000000000"
+	web := traefikTestIngress(ns+"-web", ns+"-web", "api.example.com")
+	web.Namespace = ns
+	paths := &web.Spec.Rules[0].HTTP.Paths
+	*paths = append(*paths, *(*paths)[0].DeepCopy())
+	webAPI := traefikTestIngress(ns+"-web-api", ns+"-web-api", "example.com")
+	webAPI.Namespace = ns
+
+	names, err := TraefikRouterNamesForIngress(web)
+	if err != nil {
+		t.Fatalf("TraefikRouterNamesForIngress: %v", err)
+	}
+	const key = ns + "-" + ns + "-web-api-example-com-2e61dec151f63c79add1"
+	if want := []string{key + "@kubernetes", "web-" + key + "@kubernetes"}; !slices.Equal(names, want) {
+		t.Fatalf("router names: got %v, want %v", names, want)
+	}
+
+	base := &Base{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(web, webAPI).Build(), Namespace: ns}
+	for _, app := range []string{ns + "-web", ns + "-web-api"} {
+		if _, err := base.TraefikRouterNames(context.Background(), &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: app, Namespace: ns}}); err != nil {
+			t.Errorf("%s: %v", app, err)
+		}
+	}
+}
+
 // w4/m326 t012: an App's wildcard custom domains and www/apex redirect hosts
 // have Ingresses of their own beside its serving one. Their routers are the
 // App's traffic too, metered and charted with it — a wildcard-only App has no

@@ -24,7 +24,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"unicode"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,8 +92,9 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 		owned[ingress.Name] = true
 		names = append(names, routers...)
 	}
-	// Two of the App's own Ingresses can normalize to one router key (a
-	// "wildcard.<base>" host beside "*.<base>"); count that router once.
+	// Two of the App's own Ingresses can share a router key (a
+	// "wildcard.<base>" host beside "*.<base>") until the operator writes
+	// them apart; count that router once.
 	names = slices.Compact(slices.Sorted(slices.Values(names)))
 	if len(owned) == 0 {
 		if app.Spec.HasPublicHosts() && app.Status.Phase == appv1alpha1.PhaseRunning {
@@ -107,8 +107,10 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 	// normalizes punctuation. Different operator-owned Ingresses can therefore
 	// collapse to the same metric label across hyphen boundaries (for example,
 	// App "web" + host "api-x" versus App "web-api" + host "x"). Traefik's
-	// per-Ingress collision hash does not cover that cross-Ingress case. Reject
-	// the ambiguity instead of charging both Apps for one router counter.
+	// per-Ingress collision hash does not cover that cross-Ingress case. The
+	// operator writes such a route's path twice so the hash applies, and its
+	// names then differ. Until it has, reject the ambiguity instead of
+	// charging both Apps for one router counter.
 	wanted := make(map[string]struct{}, len(names))
 	for _, name := range names {
 		wanted[name] = struct{}{}
@@ -135,9 +137,10 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 // TraefikRouterNamesForIngress reproduces the Kubernetes Ingress provider's
 // router-key algorithm in the Traefik version pinned by production (v3.7.17;
 // identical to v3.7.5, which it was written against — w8/m145).
-// It deliberately accepts only the shape reconcileIngress owns: one Prefix
-// path at "/" per host. If that contract drifts, metering fails closed rather
-// than guessing at an identity and charging another App's bytes.
+// It deliberately accepts only the shape reconcileIngress owns: a Prefix path
+// at "/" per host, written twice when another Ingress produces the host's
+// router key. If that contract drifts, metering fails closed rather than
+// guessing at an identity and charging another App's bytes.
 func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, error) {
 	if ingress == nil {
 		return nil, fmt.Errorf("resolve Traefik routers: nil Ingress")
@@ -172,18 +175,22 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 	counts := map[string]int{}
 	for i := range ingress.Spec.Rules {
 		ingressRule := &ingress.Spec.Rules[i]
-		if ingressRule.Host == "" || ingressRule.HTTP == nil || len(ingressRule.HTTP.Paths) != 1 {
-			return nil, fmt.Errorf("resolve Traefik routers: Ingress %s/%s rule %d is not one host with one HTTP path", ingress.Namespace, ingress.Name, i)
+		if ingressRule.Host == "" || ingressRule.HTTP == nil || len(ingressRule.HTTP.Paths) == 0 {
+			return nil, fmt.Errorf("resolve Traefik routers: Ingress %s/%s rule %d is not one host with HTTP paths", ingress.Namespace, ingress.Name, i)
 		}
-		path := &ingressRule.HTTP.Paths[0]
-		if path.Path != "/" || path.PathType == nil || *path.PathType != networkingv1.PathTypePrefix || path.Backend.Service == nil {
-			return nil, fmt.Errorf("resolve Traefik routers: Ingress %s/%s rule %d is not the operator-owned Prefix / service route", ingress.Namespace, ingress.Name, i)
-		}
-
-		key := strings.TrimPrefix(traefikNormalize(ingress.Namespace+"-"+ingress.Name+"-"+ingressRule.Host+path.Path), "-")
+		// Traefik builds one router per path. The operator writes a host's
+		// path twice when another Ingress produces its router key, and the
+		// two then share a hashed key (v1alpha1.TraefikRouterKey).
 		rule := fmt.Sprintf(`Host(%q) && PathPrefix("/")`, ingressRule.Host)
-		candidates = append(candidates, candidate{key: key, rule: rule, tls: tlsHosts[ingressRule.Host]})
-		counts[key]++
+		for j := range ingressRule.HTTP.Paths {
+			path := &ingressRule.HTTP.Paths[j]
+			if path.Path != "/" || path.PathType == nil || *path.PathType != networkingv1.PathTypePrefix || path.Backend.Service == nil {
+				return nil, fmt.Errorf("resolve Traefik routers: Ingress %s/%s rule %d is not the operator-owned Prefix / service route", ingress.Namespace, ingress.Name, i)
+			}
+			key := appv1alpha1.TraefikRouterKey(ingress.Namespace, ingress.Name, ingressRule.Host, path.Path)
+			candidates = append(candidates, candidate{key: key, rule: rule, tls: tlsHosts[ingressRule.Host]})
+			counts[key]++
+		}
 	}
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("resolve Traefik routers: Ingress %s/%s has no operator-owned routes", ingress.Namespace, ingress.Name)
@@ -236,14 +243,6 @@ func TraefikRouterMatcher(names []string) string {
 		return "^" + quoted[0] + "$"
 	}
 	return "^(" + strings.Join(quoted, "|") + ")$"
-}
-
-// traefikNormalize is provider.Normalize from Traefik v3.7.5–v3.7.17: runs of every
-// non-letter/non-number character collapse to one hyphen.
-func traefikNormalize(name string) string {
-	return strings.Join(strings.FieldsFunc(name, func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-	}), "-")
 }
 
 // appIngress reports whether ingress is one of app's own: the serving Ingress

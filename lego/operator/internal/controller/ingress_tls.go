@@ -84,19 +84,26 @@ func ingressTLSSecretNames(ing *networkingv1.Ingress) map[string]bool {
 	return names
 }
 
-// writeAppIngress create-or-updates ing through mutate. ingress-shim deletes
-// the Certificates of TLS entries an Ingress drops, but only while the
-// Ingress carries its issuer; when the written Ingress has none, those
-// Certificates are deleted here, once, so a platform host's old Certificate
-// stops renewing or retrying a rate-limited order (w4/650). Its Secret stays
-// until App deletion sweeps the App's TLS Secrets.
+// writeAppIngress create-or-updates ing through mutate, then keeps its
+// routes' Traefik router keys apart from every other Ingress's
+// (separateRouterKeys). ingress-shim deletes the Certificates of TLS entries
+// an Ingress drops, but only while the Ingress carries its issuer; when the
+// written Ingress has none, those Certificates are deleted here, once, so a
+// platform host's old Certificate stops renewing or retrying a rate-limited
+// order (w4/650). Its Secret stays until App deletion sweeps the App's TLS
+// Secrets.
 func (r *AppReconciler) writeAppIngress(ctx context.Context, ing *networkingv1.Ingress, mutate func() error) error {
+	taken, err := r.routerKeysElsewhere(ctx, ing)
+	if err != nil {
+		return err
+	}
 	var dropped []string
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
 		previous := ingressTLSSecretNames(ing)
 		if err := mutate(); err != nil {
 			return err
 		}
+		separateRouterKeys(ing, taken)
 		current := ingressTLSSecretNames(ing)
 		for name := range previous {
 			if !current[name] {
@@ -116,6 +123,57 @@ func (r *AppReconciler) writeAppIngress(ctx context.Context, ing *networkingv1.I
 		}
 	}
 	return nil
+}
+
+// routerKeysElsewhere is the Traefik router key (v1alpha1.TraefikRouterKey)
+// of every path of every Ingress except ing, across all namespaces: Traefik
+// keeps one router per key for the whole cluster.
+func (r *AppReconciler) routerKeysElsewhere(ctx context.Context, ing *networkingv1.Ingress) (map[string]bool, error) {
+	var list networkingv1.IngressList
+	if err := r.List(ctx, &list, client.UnsafeDisableDeepCopy); err != nil {
+		return nil, fmt.Errorf("list Ingresses for their Traefik router keys: %w", err)
+	}
+	keys := map[string]bool{}
+	for i := range list.Items {
+		other := &list.Items[i]
+		if other.Namespace == ing.Namespace && other.Name == ing.Name {
+			continue
+		}
+		for _, rule := range other.Spec.Rules {
+			if rule.HTTP == nil {
+				continue
+			}
+			for _, path := range rule.HTTP.Paths {
+				keys[appv1alpha1.TraefikRouterKey(other.Namespace, other.Name, rule.Host, path.Path)] = true
+			}
+		}
+	}
+	return keys, nil
+}
+
+// separateRouterKeys writes a second, identical "/" path for each route of
+// ing whose router key another Ingress also produces (taken). When two
+// Ingresses produce one key, Traefik keeps only the router of the Ingress it
+// reads last. That order changes from one configuration rebuild to the next,
+// so one of the two hosts answered 404, and which one flipped. Paths that
+// share a key inside one Ingress get the key with a hash of their rule
+// appended instead. The rule names the exact host, so with the copy the route
+// gets a key no other Ingress produces. The copy matches the same requests and
+// sends them to the same backend. Each side of a shared key writes its own
+// copy, so the result does not depend on which Ingress was written first. A
+// route whose key no other Ingress produces keeps its single path and its
+// router name.
+func separateRouterKeys(ing *networkingv1.Ingress, taken map[string]bool) {
+	for i := range ing.Spec.Rules {
+		rule := &ing.Spec.Rules[i]
+		if rule.HTTP == nil || len(rule.HTTP.Paths) != 1 {
+			continue
+		}
+		path := &rule.HTTP.Paths[0]
+		if taken[appv1alpha1.TraefikRouterKey(ing.Namespace, ing.Name, rule.Host, path.Path)] {
+			rule.HTTP.Paths = append(rule.HTTP.Paths, *path.DeepCopy())
+		}
+	}
 }
 
 // deleteIngressCertificate deletes ingress-shim's Certificate for the Secret
