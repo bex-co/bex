@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"slices"
 	"strings"
@@ -337,6 +338,96 @@ func TestATransferIsRecordedAndStoppedWithoutAnExitCode(t *testing.T) {
 	if len(rows) != 1 || rows[0].ID != token.ExecutionID || rows[0].Type != "files" || rows[0].Operation != "upload" ||
 		rows[0].Command != "/workspace/out.txt" || rows[0].StoppedAt == nil || rows[0].ExitCode != nil {
 		t.Fatalf("records = %+v, want one stopped files/upload of the path with no exit code", rows)
+	}
+}
+
+// heldStops holds each StopSandboxExecution until release closes, so a test
+// sees what a client already has while a stop is still being written.
+type heldStops struct {
+	*fakeExecutions
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (h *heldStops) StopSandboxExecution(ctx context.Context, ws, id string, at time.Time, exit *int) error {
+	select {
+	case h.entered <- struct{}{}:
+	default:
+	}
+	<-h.release
+	return h.fakeExecutions.StopSandboxExecution(ctx, ws, id, at, exit)
+}
+
+// w32/059: the proxy flushes the gateway's response as it arrives, so a stop
+// written once the handler returned came after the client had an upload's 204
+// (now and then) or a download's last byte (always), and a history read right
+// after the transfer saw it running. The response now ends only after the stop.
+func TestATransferIsStoppedBeforeItsResponseEnds(t *testing.T) {
+	for _, operation := range []string{"upload", "download"} {
+		t.Run(operation, func(t *testing.T) {
+			f := newFileConnectFixture(t, "id-a", nil, func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.Copy(io.Discard, r.Body)
+				if r.Method == http.MethodGet {
+					_, _ = w.Write([]byte("payload")) // a declared Content-Length
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+			})
+			execs := &heldStops{fakeExecutions: &fakeExecutions{}, entered: make(chan struct{}, 1), release: make(chan struct{})}
+			release := sync.OnceFunc(func() { close(execs.release) })
+			t.Cleanup(release) // before the servers' Close, which waits for the handler
+			f.svc.Executions = execs
+			token := f.mint(t, operation, "/workspace/out.txt")
+			type ending struct {
+				status int
+				body   string
+				err    error
+			}
+			ended := make(chan ending, 1)
+			go func() {
+				var upload io.Reader
+				if token.Method == http.MethodPut {
+					upload = strings.NewReader("x")
+				}
+				req, _ := http.NewRequest(token.Method, token.URI, upload)
+				req.Header.Set("Authorization", "Bearer "+token.Token)
+				res, err := http.DefaultClient.Do(req)
+				if err != nil {
+					ended <- ending{err: err}
+					return
+				}
+				defer res.Body.Close()
+				body, err := io.ReadAll(res.Body)
+				ended <- ending{res.StatusCode, string(body), err}
+			}()
+			select {
+			case <-execs.entered:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the transfer's stop was never written")
+			}
+			select {
+			case got := <-ended:
+				t.Fatalf("the response ended (%+v) while the transfer's stop was still being written", got)
+			case <-time.After(100 * time.Millisecond):
+			}
+			release()
+			var got ending
+			select {
+			case got = <-ended:
+			case <-time.After(5 * time.Second):
+				t.Fatal("the response never ended")
+			}
+			want := ending{status: http.StatusNoContent}
+			if operation == "download" {
+				want = ending{status: http.StatusOK, body: "payload"}
+			}
+			if got != want {
+				t.Fatalf("response = %+v, want %+v", got, want)
+			}
+			if rows := execs.snapshot(); len(rows) != 1 || rows[0].StoppedAt == nil {
+				t.Fatalf("records = %+v, want the transfer stopped", rows)
+			}
+		})
 	}
 }
 

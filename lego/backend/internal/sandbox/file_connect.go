@@ -25,6 +25,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
@@ -241,10 +242,11 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			return
 		}
 		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: core.MethodSandboxFileConnect, AuditMethod: claims.MinterMethod})
-		// A transfer reports no exit code; its record ends with the request,
-		// whether the transfer or a later reauthorization ended it.
-		defer s.stopExecution(ctx, claims.Workspace, claims.ExecutionID, nil)
-		defer s.keepExecutionAlive(ctx, claims.Workspace, claims.ExecutionID)()
+		// A transfer reports no exit code. Its record ends before the client
+		// can read the end of the gateway's response (transferEnd), else with
+		// the request, whether the transfer or a reauthorization ended it.
+		endRecord := s.transferRecord(ctx, claims.Workspace, claims.ExecutionID)
+		defer endRecord()
 		ctx, cancel := context.WithTimeout(ctx, sandboxfiles.DefaultTransferTimeout)
 		defer cancel()
 		// A canceled proxy context stops the gateway request, but alone cannot
@@ -293,6 +295,10 @@ func (s *Service) ConnectFileHandler() http.Handler {
 					p.Out.Body = io.NopCloser(strings.NewReader(""))
 				}
 			},
+			ModifyResponse: func(res *http.Response) error {
+				res.Body = transferEnd(res, endRecord)
+				return nil
+			},
 			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, err error) {
 				core.WriteErrStatus(w, http.StatusServiceUnavailable, fileGatewayFailure(err))
 			},
@@ -301,6 +307,46 @@ func (s *Service) ConnectFileHandler() http.Handler {
 		proxy.Transport = s.gatewayClient().Transport
 		proxy.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// transferRecord starts a transfer's record heartbeat and returns its end: the
+// heartbeat stops and the record stops once, whichever path ends it first.
+func (s *Service) transferRecord(ctx context.Context, workspace, executionID string) (end func()) {
+	stopHeartbeat := s.keepExecutionAlive(ctx, workspace, executionID)
+	return sync.OnceFunc(func() {
+		stopHeartbeat()
+		s.stopExecution(ctx, workspace, executionID, nil)
+	})
+}
+
+// transferEnd runs end before the client can read the end of the gateway's
+// response: at once when there is no body (an upload's 204), else when the
+// body's last declared byte, its EOF or its error is read, before the proxy
+// writes it on. The proxy flushes as it copies (FlushInterval -1), so a record
+// stopped only when the handler returned was still open after the client had
+// the whole response, and a history read right after the transfer saw it
+// running (w32/059).
+func transferEnd(res *http.Response, end func()) io.ReadCloser {
+	if res.ContentLength == 0 {
+		end()
+		return res.Body
+	}
+	return &endOnLastRead{ReadCloser: res.Body, left: res.ContentLength, end: end}
+}
+
+type endOnLastRead struct {
+	io.ReadCloser
+	left int64 // of the declared length; negative when none was declared
+	end  func()
+}
+
+func (b *endOnLastRead) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	b.left -= int64(n)
+	if err != nil || b.left == 0 {
+		b.end()
+	}
+	return n, err
 }
 
 // fileGatewayFailure says why a transfer got no response from the gateway: it
