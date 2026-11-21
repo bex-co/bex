@@ -47,6 +47,22 @@ func releaseView(saved, adopted appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 	return view
 }
 
+// decideRelease takes the pass's release decision (prepareAppReleaseDecision)
+// over the release in flight's view, which it also returns. A static Rollback
+// it adopts then carries its restored publication's settings, which only that
+// publication's record holds (carryRestoredPublicationSettings, w32/055).
+func (r *AppReconciler) decideRelease(ctx context.Context, app *appv1alpha1.App) (appReleaseDecision, *appv1alpha1.AppSpec, error) {
+	view, err := r.heldReleaseView(ctx, app)
+	if err != nil {
+		return appReleaseDecision{}, nil, err
+	}
+	decision := prepareAppReleaseDecision(app, view)
+	if decision.releaseChanged {
+		err = r.carryRestoredPublicationSettings(ctx, app)
+	}
+	return decision, view, err
+}
+
 // heldReleaseView is the spec the release in flight was adopted with, viewed
 // through the saved spec's operational fields, when the saved spec has since
 // moved on to another release. It is nil when no release is in flight, when

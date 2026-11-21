@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"path"
 	"slices"
 	"strconv"
 
@@ -74,20 +75,82 @@ func restoredPublicationAdopted(app *appv1alpha1.App) bool {
 	return ref != nil && ref.Generation == app.Status.ReleaseGeneration
 }
 
+// staticPublicationSettingsKey holds, in a publication record, the settings
+// fingerprint (releaseSettingsFingerprint) of the release that publication
+// was released with (w32/055). Only the operator reads it.
+const staticPublicationSettingsKey = "settings"
+
+// carryRestoredPublicationSettings gives a static Rollback the operator just
+// adopted the settings of the publication it restores, which that
+// publication's record holds (w32/055). The copy publishes none of the saved
+// settings, so a save that differs from the target's still waits for a
+// deploy (staticSaveWaits), as Render's next standard deploy applies the
+// current configuration (render.com/docs/rollbacks). A record written before
+// w32/055 holds none; the rollback then carries the settings serving when it
+// was requested, so a save that was waiting keeps waiting. A Restart already
+// carries the served settings (prepareAppReleaseDecision).
+func (r *AppReconciler) carryRestoredPublicationSettings(ctx context.Context, app *appv1alpha1.App) error {
+	if !restoredPublicationAdopted(app) || restoresServedPublication(app) {
+		return nil
+	}
+	settings, err := r.restoredPublicationSettings(ctx, app, staticRestoreSelection(app).StaticPrefix)
+	if err != nil {
+		return fmt.Errorf("read the restored publication's settings: %w", err)
+	}
+	if settings == "" {
+		settings = app.Status.ServedSettingsFingerprint
+	}
+	if settings != "" {
+		app.Status.ReleaseSettingsFingerprint = settings
+	}
+	return nil
+}
+
+// restoredPublicationSettings is the settings fingerprint recorded with the
+// publication at prefix: the record of the generation its rev-N segment
+// names, as bex-api selected it. "" when that record is gone, is not this
+// App's, names another prefix, or predates w32/055.
+func (r *AppReconciler) restoredPublicationSettings(ctx context.Context, app *appv1alpha1.App, prefix string) (string, error) {
+	generation, ok := appv1alpha1.RevisionGeneration(path.Base(prefix))
+	if !ok {
+		return "", nil
+	}
+	rec := &corev1.Secret{}
+	err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.StaticPublicationRecordName(app.Name, generation)}, rec)
+	if apierrors.IsNotFound(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if !recordsPublication(rec, app, prefix) {
+		return "", nil
+	}
+	return string(rec.Data[staticPublicationSettingsKey]), nil
+}
+
+// recordsPublication reports whether rec is app's own record of the
+// publication at prefix, never a same-name predecessor's leftover.
+func recordsPublication(rec *corev1.Secret, app *appv1alpha1.App, prefix string) bool {
+	return metav1.IsControlledBy(rec, app) && string(rec.Data[appv1alpha1.StaticPublicationPrefixKey]) == prefix
+}
+
 // recordStaticPublications records where the just-published revision lives,
 // and backfills the outgoing served revision when it predates these records:
 // its prefix is exactly what the static-server serves, so it is known rather
-// than guessed. Records are written before status adopts the new revision; a
+// than guessed. Each record also keeps the settings its publication was
+// released with: the just-published release's, and the outgoing one's served
+// settings. Records are written before status adopts the new revision; a
 // failed write is retried by the next pass, which re-observes the completed
 // publish Job without re-uploading.
 func (r *AppReconciler) recordStaticPublications(ctx context.Context, app *appv1alpha1.App, rev string) error {
 	if served, ok := appv1alpha1.RevisionGeneration(app.Status.ActiveRevision); ok && app.Status.ActiveRevision != rev {
 		prefix := identity.ServedStaticPrefix(app.Status.StaticPrefix, app.Name, app.Status.ActiveRevision)
-		if err := r.writeStaticPublicationRecord(ctx, app, served, prefix, false); err != nil {
+		if err := r.writeStaticPublicationRecord(ctx, app, served, prefix, app.Status.ServedSettingsFingerprint, false); err != nil {
 			return err
 		}
 	}
-	if err := r.writeStaticPublicationRecord(ctx, app, releaseGeneration(app), appIdentity(app).StaticPrefix(rev), true); err != nil {
+	if err := r.writeStaticPublicationRecord(ctx, app, releaseGeneration(app), appIdentity(app).StaticPrefix(rev), app.Status.ReleaseSettingsFingerprint, true); err != nil {
 		return err
 	}
 	// Like the runtime path, an expired-record sweep failure never fails a
@@ -98,34 +161,35 @@ func (r *AppReconciler) recordStaticPublications(ctx context.Context, app *appv1
 	return nil
 }
 
-// writeStaticPublicationRecord stores prefix as generation's publication. A
-// backfill never replaces an existing record; the release that just published
-// always states its own prefix.
-func (r *AppReconciler) writeStaticPublicationRecord(ctx context.Context, app *appv1alpha1.App, generation int64, prefix string, overwrite bool) error {
+// writeStaticPublicationRecord stores prefix, and the settings it was released
+// with when known, as generation's publication. A backfill never replaces an
+// existing record: it only adds the settings to one of this App's that names
+// the same prefix and was written without them (before w32/055). The release
+// that just published always states its own prefix.
+func (r *AppReconciler) writeStaticPublicationRecord(ctx context.Context, app *appv1alpha1.App, generation int64, prefix, settings string, overwrite bool) error {
 	if !appv1alpha1.ValidStaticPublicationPrefix(prefix) {
 		return nil // e.g. a pre-revision "latest" publish: nothing restorable to name
 	}
 	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.StaticPublicationRecordName(app.Name, generation), Namespace: app.Namespace}}
-	mutate := func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.uncachedSecretClient(), rec, func() error {
+		if !overwrite && rec.ResourceVersion != "" {
+			if settings != "" && len(rec.Data[staticPublicationSettingsKey]) == 0 && recordsPublication(rec, app, prefix) {
+				rec.Data[staticPublicationSettingsKey] = []byte(settings)
+			}
+			return nil
+		}
 		if rec.Labels == nil {
 			rec.Labels = map[string]string{}
 		}
 		rec.Labels[snapshotOfLabel] = k8sname.Fit(app.Name + "-static")
 		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(generation, 10)
 		rec.Data = map[string][]byte{appv1alpha1.StaticPublicationPrefixKey: []byte(prefix)}
+		if settings != "" {
+			rec.Data[staticPublicationSettingsKey] = []byte(settings)
+		}
 		return controllerutil.SetControllerReference(app, rec, r.Scheme)
-	}
-	if overwrite {
-		_, err := controllerutil.CreateOrUpdate(ctx, r.uncachedSecretClient(), rec, mutate)
-		return err
-	}
-	if err := mutate(); err != nil {
-		return err
-	}
-	if err := r.uncachedSecretClient().Create(ctx, rec); err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
+	})
+	return err
 }
 
 // markStaticPublishDispatched persists annotStaticPublishDispatched before a

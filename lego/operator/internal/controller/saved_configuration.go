@@ -134,7 +134,9 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 // identity. Only a release-v2 fingerprint can be compared. A release that
 // restores a retained publication published none of the saved settings, so a
 // save still waits after its request consumed the pending marker: a Restart
-// keeps the served settings fingerprint (w32/049).
+// keeps the served settings fingerprint (w32/049), and a Rollback carries the
+// restored publication's, so saved settings that differ from the target's
+// wait for the next deploy (w32/055).
 //
 // A release that ended without publishing (its build or publication failed,
 // or its deploy was canceled) served none of the settings it was dispatched

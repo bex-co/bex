@@ -17,11 +17,19 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+	"errors"
+	"maps"
 	"strconv"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -215,12 +223,221 @@ func TestStaticRestartKeepsTheServedSettings(t *testing.T) {
 		t.Fatal("a deploy that publishes the save must record its settings and end the wait")
 	}
 
-	// Control: a rollback to another release's publication, whose settings
-	// are not recorded, records the saved ones as before w32/049.
+	// Control: a rollback to another release's publication is not a restart.
+	// The decision records the saved settings, and the reconciler then
+	// carries the restored publication's from its record
+	// (TestStaticRollbackCarriesTheRestoredSettings, w32/055).
 	app = saved()
 	restore(app, "site/rev-1/")
 	if app.Status.ReleaseSettingsFingerprint != releaseSettingsFingerprint(app.Spec) {
 		t.Fatal("a rollback to another publication must record the saved settings")
+	}
+}
+
+// w32/055: a static Rollback restores another release's publication, built
+// with that release's settings. The reconciler carries the settings its
+// record holds, so saved settings that differ from the target's wait for the
+// next deploy, which Render runs with the current configuration, whether or
+// not a save was pending. A record written before w32/055 holds none: the
+// rollback then carries the settings serving when it was requested.
+func TestStaticRollbackCarriesTheRestoredSettings(t *testing.T) {
+	ctx := context.Background()
+	spec := func(marker string) appv1alpha1.AppSpec {
+		return appv1alpha1.AppSpec{
+			Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/bex", Branch: "main", RootDir: "examples/static-site",
+			BuildCommand: "mkdir -p dist && echo " + marker + " > dist/marker.txt", PublishPath: "dist",
+		}
+	}
+	// Release 1 published PUB1, release 2 serves PUB2, and PUB3 is a save
+	// waiting for a deploy.
+	target, served, pending := spec("PUB1"), spec("PUB2"), spec("PUB3")
+	const uid = types.UID("site-uid")
+	record := func(owner types.UID, prefix, settings string) *corev1.Secret {
+		rec := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.StaticPublicationRecordName("site", 1), Namespace: snapshotTestNS,
+				OwnerReferences: []metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: "site", UID: owner, Controller: new(true)}}},
+			Data: map[string][]byte{appv1alpha1.StaticPublicationPrefixKey: []byte(prefix)},
+		}
+		if settings != "" {
+			rec.Data[staticPublicationSettingsKey] = []byte(settings)
+		}
+		return rec
+	}
+	recorded := record(uid, "site/rev-1/", releaseSettingsFingerprint(target))
+	// rollback adopts release 4, which restores prefix, over the saved spec.
+	rollback := func(t *testing.T, saved appv1alpha1.AppSpec, prefix string, records ...client.Object) (*appv1alpha1.App, error) {
+		t.Helper()
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "site", Namespace: snapshotTestNS, UID: uid, Generation: 4, Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:       "4",
+				appv1alpha1.AnnotationPendingSourceGeneration: "3",
+			}},
+			Spec: saved,
+			Status: appv1alpha1.AppStatus{
+				Phase: appv1alpha1.PhaseRunning, ReleaseGeneration: 2, ActiveRevision: "rev-2", StaticPrefix: "site/rev-2/",
+				ReleaseFingerprint:         desiredAppReleaseIdentity(served).release,
+				ReleaseSettingsFingerprint: releaseSettingsFingerprint(served), ServedSettingsFingerprint: releaseSettingsFingerprint(served),
+			},
+		}
+		app.Spec.RestartedAt = "2026-11-20T05:43:18Z"
+		app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 4, Image: "zot/site:gen-1@sha256:aa", StaticPrefix: prefix}
+		scheme := deletionScheme(t)
+		r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(records...).Build(), Scheme: scheme}
+		if d := prepareAppReleaseDecision(app, nil); !d.releaseChanged || app.Status.ReleaseGeneration != 4 {
+			t.Fatalf("decision = %+v (release %d), want the rollback adopted as release 4", d, app.Status.ReleaseGeneration)
+		}
+		return app, r.carryRestoredPublicationSettings(ctx, app)
+	}
+	// waits reads the saved-change status while the copy runs and once it serves.
+	waits := func(t *testing.T, app *appv1alpha1.App) bool {
+		t.Helper()
+		during := staticSaveWaits(app)
+		recordStaticRevision(app, "rev-4", true)
+		if after := staticSaveWaits(app); after != during {
+			t.Fatalf("the save waits %v while the copy runs but %v once it serves", during, after)
+		}
+		if during && undeployedChangesReason(app, true, false) != appv1alpha1.UndeployedReasonSaved {
+			t.Fatalf("reason = %q, want saved", undeployedChangesReason(app, true, false))
+		}
+		return during
+	}
+
+	for _, tc := range []struct {
+		name    string
+		saved   appv1alpha1.AppSpec
+		records []client.Object
+		carries appv1alpha1.AppSpec
+		waits   bool
+	}{
+		{"a pending save", pending, []client.Object{recorded}, target, true},
+		{"no pending save, the target released with other settings", served, []client.Object{recorded}, target, true},
+		{"no pending save, the target released with the saved settings", target, []client.Object{recorded}, target, false},
+		{"a pending save, the target's record from before w32/055", pending, []client.Object{record(uid, "site/rev-1/", "")}, served, true},
+		{"no pending save, the target's record from before w32/055", served, []client.Object{record(uid, "site/rev-1/", "")}, served, false},
+		{"a pending save, a record another App left", pending, []client.Object{record("other-uid", "site/rev-1/", releaseSettingsFingerprint(target))}, served, true},
+		{"a pending save, a record of another prefix", pending, []client.Object{record(uid, "site/rev-9/", releaseSettingsFingerprint(target))}, served, true},
+		{"no pending save, no record", served, nil, served, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := rollback(t, tc.saved, "site/rev-1/", tc.records...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if app.Status.ReleaseSettingsFingerprint != releaseSettingsFingerprint(tc.carries) {
+				t.Fatalf("the rollback carries %s, want %s", app.Status.ReleaseSettingsFingerprint, releaseSettingsFingerprint(tc.carries))
+			}
+			if got := waits(t, app); got != tc.waits {
+				t.Fatalf("staticSaveWaits = %v, want %v", got, tc.waits)
+			}
+			if app.Status.ServedSettingsFingerprint != releaseSettingsFingerprint(tc.carries) {
+				t.Fatal("the restored publication must serve with the settings the rollback carried")
+			}
+		})
+	}
+
+	t.Run("the next deploy publishes the saved settings", func(t *testing.T) {
+		app, err := rollback(t, pending, "site/rev-1/", recorded)
+		if err != nil || !waits(t, app) {
+			t.Fatalf("precondition: the save waits after the rollback (err %v)", err)
+		}
+		// bex-api's deploy drops the selection (deploys.Service.Trigger).
+		app.Generation = 5
+		app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "5"
+		app.Spec.ReleaseConfig, app.Spec.RestartedAt = nil, "2026-11-20T05:50:00Z"
+		prepareAppReleaseDecision(app, nil)
+		recordStaticRevision(app, "rev-5", true)
+		if staticSaveWaits(app) {
+			t.Fatal("a deploy that publishes the save must end the wait")
+		}
+	})
+
+	t.Run("a restart keeps the served settings without reading a record", func(t *testing.T) {
+		app, err := rollback(t, pending, "site/rev-2/", record(uid, "site/rev-2/", releaseSettingsFingerprint(target)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if app.Status.ReleaseSettingsFingerprint != releaseSettingsFingerprint(served) {
+			t.Fatal("a restart of the served publication must carry the served settings")
+		}
+	})
+
+	t.Run("a failed read fails the pass", func(t *testing.T) {
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "site", Namespace: snapshotTestNS, UID: uid},
+			Spec:       pending,
+			Status:     appv1alpha1.AppStatus{ReleaseGeneration: 4, SelectedReleaseGeneration: 4, ActiveRevision: "rev-2", StaticPrefix: "site/rev-2/"},
+		}
+		app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 4, StaticPrefix: "site/rev-1/"}
+		scheme := deletionScheme(t)
+		cl := interceptor.NewClient(fake.NewClientBuilder().WithScheme(scheme).Build(), interceptor.Funcs{
+			Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+				return errors.New("apiserver unavailable")
+			},
+		})
+		r := &AppReconciler{Client: cl, Scheme: scheme}
+		if err := r.carryRestoredPublicationSettings(ctx, app); err == nil {
+			t.Fatal("an unreadable record must not be taken for one with no settings")
+		}
+	})
+}
+
+// Each publication record keeps the settings its publication was released
+// with (w32/055). The release that just published states its own; a backfill
+// adds the served settings only to this App's record of the same prefix that
+// was written without them, and replaces nothing.
+func TestStaticPublicationRecordsKeepTheirSettings(t *testing.T) {
+	ctx := context.Background()
+	scheme := deletionScheme(t)
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "site", Namespace: snapshotTestNS, UID: "site-uid"}}
+	owned := func(gen int64, data map[string]string, owner types.UID) *corev1.Secret {
+		rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.StaticPublicationRecordName("site", gen), Namespace: snapshotTestNS,
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: "site", UID: owner, Controller: new(true)}}},
+			Data: map[string][]byte{}}
+		for k, v := range data {
+			rec.Data[k] = []byte(v)
+		}
+		return rec
+	}
+	prefixKey, settingsKey := appv1alpha1.StaticPublicationPrefixKey, staticPublicationSettingsKey
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		owned(1, map[string]string{prefixKey: "site/rev-1/"}, app.UID),
+		owned(2, map[string]string{prefixKey: "site/rev-2/", settingsKey: "release-v2:old"}, app.UID),
+		owned(3, map[string]string{prefixKey: "site/rev-3/"}, "other-uid"),
+		owned(4, map[string]string{prefixKey: "site/rev-9/"}, app.UID),
+	).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme}
+	for _, w := range []struct {
+		gen       int64
+		settings  string
+		overwrite bool
+	}{
+		{1, "release-v2:s1", false}, {2, "release-v2:s2", false}, {3, "release-v2:s3", false}, {4, "release-v2:s4", false},
+		{5, "release-v2:s5", false}, {6, "", false}, {7, "release-v2:s7", true},
+	} {
+		if err := r.writeStaticPublicationRecord(ctx, app, w.gen, "site/rev-"+strconv.FormatInt(w.gen, 10)+"/", w.settings, w.overwrite); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for gen, want := range map[int64]map[string]string{
+		1: {prefixKey: "site/rev-1/", settingsKey: "release-v2:s1"},  // an older record gains its settings
+		2: {prefixKey: "site/rev-2/", settingsKey: "release-v2:old"}, // a recorded setting is never replaced
+		3: {prefixKey: "site/rev-3/"},                                // another App's record is left alone
+		4: {prefixKey: "site/rev-9/"},                                // so is one naming another prefix
+		5: {prefixKey: "site/rev-5/", settingsKey: "release-v2:s5"},  // a missing record is created with them
+		6: {prefixKey: "site/rev-6/"},                                // unknown settings are not recorded
+		7: {prefixKey: "site/rev-7/", settingsKey: "release-v2:s7"},  // the release that just published
+	} {
+		rec := &corev1.Secret{}
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: snapshotTestNS, Name: appv1alpha1.StaticPublicationRecordName("site", gen)}, rec); err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for k, v := range rec.Data {
+			got[k] = string(v)
+		}
+		if !maps.Equal(got, want) {
+			t.Errorf("record %d = %v, want %v", gen, got, want)
+		}
 	}
 }
 

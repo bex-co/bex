@@ -745,12 +745,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.adoptOlderReleaseIdentity(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
-	view, err := r.heldReleaseView(ctx, &app)
+	dispatched := app.Status.ReleaseGeneration
+	releaseDecision, view, err := r.decideRelease(ctx, &app)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	dispatched := app.Status.ReleaseGeneration
-	releaseDecision := prepareAppReleaseDecision(&app, view)
 	stampReleaseStart(&app, dispatched, time.Now())
 	if view != nil && releaseDecision.pinned {
 		// The pinned release builds and runs as it was adopted; the saved spec

@@ -391,6 +391,150 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		})
 	})
 
+	// w32/055: on production a rollback re-served an earlier publication, and
+	// afterwards undeployedChanges read false, though the saved build command
+	// that the next deploy publishes was not the target's. A rollback restores
+	// the target's files (w4/m197), so it serves the target's settings.
+	Context("after a rollback (w32/055)", func() {
+		expectUndeployed := func(nn types.NamespacedName, want bool, why string) {
+			GinkgoHelper()
+			different, reason := undeployed(nn)
+			Expect(different).To(Equal(want), "%s (reason %q)", why, reason)
+			if want {
+				Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
+			}
+		}
+		record := func(nn types.NamespacedName, gen int64) *corev1.Secret {
+			GinkgoHelper()
+			rec := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: appv1alpha1.StaticPublicationRecordName(nn.Name, gen), Namespace: ns}, rec)).To(Succeed())
+			return rec
+		}
+		// liveSite serves rev-1 and returns the image its build produced.
+		liveSite := func(name string) (types.NamespacedName, string) {
+			GinkgoHelper()
+			nn := create(name)
+			build1(nn)
+			finishFirst(nn)
+			passes(nn, 3)
+			expectLive(nn)
+			return nn, envtestApp(nn).Status.Image
+		}
+		// redeploy is bex deploys create, built and published: bex-api's deploy
+		// drops a rollback's selection.
+		redeploy := func(nn types.NamespacedName, at string) {
+			GinkgoHelper()
+			var gen int64
+			update(nn, func(app *appv1alpha1.App) {
+				gen = app.Generation + 1
+				app.Spec.ReleaseConfig, app.Spec.RestartedAt = nil, at
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(gen, 10))
+			})
+			passes(nn, 3)
+			completeBuildJob(nn.Name, "gen-"+strconv.FormatInt(gen, 10))
+			passes(nn, 2)
+			rev := "rev-" + strconv.FormatInt(gen, 10)
+			completeEnvtestJob(publishJob(nn.Name, rev), metav1.Now())
+			passes(nn, 3)
+			Expect(envtestApp(nn).Status.ActiveRevision).To(Equal(rev), "status: %+v", envtestApp(nn).Status)
+		}
+		// rollback is bex-api's: a release that selects the target's retained
+		// publication from its record and leaves the saved settings as saved.
+		// The copy runs in a publish Job, with no build.
+		rollback := func(nn types.NamespacedName, target int64, image, at string) int64 {
+			GinkgoHelper()
+			prefix := string(record(nn, target).Data[appv1alpha1.StaticPublicationPrefixKey])
+			var gen int64
+			update(nn, func(app *appv1alpha1.App) {
+				gen = app.Generation + 1
+				app.Spec.RestartedAt = at
+				app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: gen, Image: image, StaticPrefix: prefix}
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(gen, 10))
+			})
+			passes(nn, 3)
+			_, err := buildJobFor(nn.Name, "gen-"+strconv.FormatInt(gen, 10))
+			Expect(err).To(HaveOccurred(), "a rollback builds nothing")
+			rev := "rev-" + strconv.FormatInt(gen, 10)
+			completeEnvtestJob(publishJob(nn.Name, rev), metav1.Now())
+			passes(nn, 3)
+			app := envtestApp(nn)
+			Expect(app.Status.ActiveRevision).To(Equal(rev), "status: %+v", app.Status)
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+			return gen
+		}
+		buildCommand := func(marker string) func(*appv1alpha1.AppSpec) {
+			return func(s *appv1alpha1.AppSpec) { s.BuildCommand = "mkdir -p out && echo " + marker + " > out/marker.txt" }
+		}
+
+		It("reads a save the rollback did not publish as undeployed until a deploy publishes it", func() {
+			nn, image := liveSite("w32-055-pending")
+			live := envtestApp(nn).Spec
+			redeploy(nn, "2026-11-20T05:39:29Z")
+			expectUndeployed(nn, false, "rev-2 serves the saved settings")
+
+			save(nn, buildCommand("PUB2"))
+			pass(nn)
+			expectUndeployed(nn, true, "the save waits for a deploy")
+
+			gen := rollback(nn, 1, image, "2026-11-20T05:43:18Z")
+			expectUndeployed(nn, true, "the rollback restored rev-1's files: the saved build command never published")
+			Expect(record(nn, gen).Data[staticPublicationSettingsKey]).To(Equal(record(nn, 1).Data[staticPublicationSettingsKey]),
+				"the restored publication is recorded with the target's settings")
+			Expect(record(nn, 1).Data).To(HaveKey(staticPublicationSettingsKey))
+
+			By("putting the target's build command back")
+			save(nn, func(s *appv1alpha1.AppSpec) { s.BuildCommand = live.BuildCommand })
+			pass(nn)
+			expectUndeployed(nn, false, "the saved settings are the restored publication's")
+
+			By("saving the build command again, then deploying it")
+			save(nn, buildCommand("PUB2"))
+			pass(nn)
+			expectUndeployed(nn, true, "the save waits again")
+			redeploy(nn, "2026-11-20T05:50:00Z")
+			expectUndeployed(nn, false, "the deploy published the save")
+		})
+
+		It("reads saved settings that differ from the target's as undeployed, with no save pending", func() {
+			nn, image := liveSite("w32-055-other")
+			save(nn, buildCommand("PUB2"))
+			pass(nn)
+			redeploy(nn, "2026-11-20T05:39:29Z")
+			expectUndeployed(nn, false, "rev-2 published PUB2")
+
+			rollback(nn, 1, image, "2026-11-20T05:43:18Z")
+			expectUndeployed(nn, true, "rev-1 was built with another build command, which the next deploy replaces")
+			redeploy(nn, "2026-11-20T05:50:00Z")
+			expectUndeployed(nn, false, "the deploy published the saved settings")
+		})
+
+		It("reads nothing to deploy after a rollback to a release built with the saved settings", func() {
+			nn, image := liveSite("w32-055-same")
+			redeploy(nn, "2026-11-20T05:39:29Z")
+			rollback(nn, 1, image, "2026-11-20T05:43:18Z")
+			expectUndeployed(nn, false, "rev-1 was built with the saved settings")
+		})
+
+		It("compares with the settings serving at the request when the target's record predates its settings", func() {
+			nn, image := liveSite("w32-055-legacy")
+			save(nn, buildCommand("PUB2"))
+			pass(nn)
+			redeploy(nn, "2026-11-20T05:39:29Z")
+			served := envtestApp(nn).Spec.BuildCommand
+			rec := record(nn, 1)
+			delete(rec.Data, staticPublicationSettingsKey)
+			Expect(k8sClient.Update(ctx, rec)).To(Succeed())
+
+			save(nn, buildCommand("PUB3"))
+			pass(nn)
+			rollback(nn, 1, image, "2026-11-20T05:43:18Z")
+			expectUndeployed(nn, true, "a save that was waiting keeps waiting")
+			save(nn, func(s *appv1alpha1.AppSpec) { s.BuildCommand = served })
+			pass(nn)
+			expectUndeployed(nn, false, "the saved settings are the ones serving at the request")
+		})
+	})
+
 	It("publishes the directory it started with, and the next deploy publishes the saved one", func() {
 		nn := create("m460-publish")
 		build1(nn)

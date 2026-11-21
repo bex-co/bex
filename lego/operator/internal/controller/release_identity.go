@@ -638,7 +638,9 @@ func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) 
 		// compares a later save with (staticSaveWaits). A static Restart
 		// re-serves the served publication, so it carries the served settings:
 		// a save it did not deploy still waits (w32/049), and so does one a
-		// failed release dispatched before it (w32/053).
+		// failed release dispatched before it (w32/053). A static Rollback
+		// carries the restored publication's, which decideRelease then reads
+		// from its record (carryRestoredPublicationSettings, w32/055).
 		if !restoresServedPublication(app) {
 			app.Status.ReleaseSettingsFingerprint = releaseSettingsFingerprint(app.Spec)
 		} else if served := app.Status.ServedSettingsFingerprint; served != "" {
