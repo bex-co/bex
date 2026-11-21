@@ -49,6 +49,11 @@ type Blueprint struct {
 	// other readers leave them empty, which means adopt with no suffix.
 	ExistingResources string `json:"-"`
 	ResourceSuffix    string `json:"-"`
+	// NoChangesPlannedAt is when a plan of this Blueprint last found nothing
+	// to change (w32/071, migration 0320). Such a plan writes no sync row, so
+	// approval compares this with its newest planning attempt. Read by
+	// GetBlueprint; other readers leave it nil.
+	NoChangesPlannedAt *time.Time `json:"-"`
 	// GitHubRepoID is GitHub's numeric id for Repo (w10/m490), which a push
 	// matches the Blueprint by: 0 when unknown. Read by ListAutoSyncBlueprints;
 	// other readers leave it zero. Internal, never on an API view.
@@ -192,12 +197,12 @@ func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Bluepr
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix
+		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix, no_changes_planned_at
 		 FROM blueprints WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'`,
 		ids.BlueprintStorageID(id), tenantID,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
 		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt,
-		&out.ExistingResources, &out.ResourceSuffix)
+		&out.ExistingResources, &out.ResourceSuffix, &out.NoChangesPlannedAt)
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}

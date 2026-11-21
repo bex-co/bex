@@ -255,10 +255,12 @@ func TestNoChangesFirstPlanLeavesCreated(t *testing.T) {
 	if stored.Status != store.BlueprintStatusInSync || stored.Manifest != recreateManifest {
 		t.Fatalf("stored = status %q manifest %q, want in_sync with the planned file", stored.Status, stored.Manifest)
 	}
-	// Nothing to approve on this connection, said without the earlier one's sync.
+	// Nothing to approve on this connection, said without the earlier one's
+	// sync: its plan found no changes (w32/071).
 	_, err = svc.ApproveBlueprint(ctx, again.Blueprint.ID, "tea-a", "", nil)
-	if err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" || strings.Contains(err.Error(), first.Sync.ID) {
-		t.Fatalf("approve = %v, want BLUEPRINT_NOTHING_TO_APPROVE naming no earlier-connection sync", err)
+	assertNoChangesToApprove(t, err)
+	if strings.Contains(err.Error(), first.Sync.ID) {
+		t.Fatalf("approve = %v names the earlier connection's sync", err)
 	}
 	if got, err := svc.PlannedSync(ctx, again.Blueprint.ID, "tea-a"); err != nil || got != nil {
 		t.Fatalf("planned sync = %+v err=%v, want none", got, err)
@@ -269,7 +271,8 @@ func TestNoChangesFirstPlanLeavesCreated(t *testing.T) {
 }
 
 // A no_changes plan supersedes a plan still waiting for approval: approval
-// applies the newest plan, and the newest needs nothing.
+// applies the newest plan, and the newest needs nothing, which is what the
+// refusal says (w32/071), naming no sync.
 func TestNoChangesPlanSupersedesAWaitingPlan(t *testing.T) {
 	svc, _, ctx := newOnboardingService(t, recreateManifest)
 	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "s", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
@@ -285,8 +288,9 @@ func TestNoChangesPlanSupersedesAWaitingPlan(t *testing.T) {
 		t.Fatalf("plan = %+v err=%v, want no_changes", plan, err)
 	}
 	_, err = svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil)
-	if err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" || !strings.Contains(err.Error(), "superseded") {
-		t.Fatalf("approving the superseded plan: err = %v, want BLUEPRINT_NOTHING_TO_APPROVE (superseded)", err)
+	assertNoChangesToApprove(t, err)
+	if got, err := svc.PlannedSync(ctx, res.Blueprint.ID, "tea-a"); err != nil || got != nil {
+		t.Fatalf("planned sync = %+v err=%v, want none: the waiting plan was superseded", got, err)
 	}
 	if _, err := svc.SyncBlueprint(ctx, res.Blueprint.ID, "tea-a", "", "", nil); err != nil {
 		t.Fatalf("sync after the no_changes plan: %v", err)

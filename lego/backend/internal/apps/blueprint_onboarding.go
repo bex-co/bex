@@ -506,7 +506,8 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 
 // ApproveBlueprint applies the Blueprint's newest planned sync, with the
 // sync:false values it requires. A newest sync that failed planning, or that
-// was already applied, cannot be approved.
+// was already applied, cannot be approved, and neither can a Blueprint whose
+// newest plan found no changes.
 //
 // planned, when set, is the sync id of the plan the caller reviewed: approval
 // is refused unless it is still the newest planned sync, so a re-plan another
@@ -532,6 +533,9 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 	}
 	latest, err := plans.LatestBlueprintPlan(ctx, b.ID)
 	if errors.Is(err, store.ErrNotFound) {
+		if b.NoChangesPlannedAt != nil {
+			return ApprovedSync{}, errNoChangesToApprove()
+		}
 		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE", "this Blueprint has no planned sync; plan one first", nil)
 	}
 	if err != nil {
@@ -540,6 +544,13 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 	syncID := ids.BlueprintSyncPublicID(latest.ID)
 	switch {
 	case latest.State == store.BlueprintSyncStateCreated:
+		// A no-changes plan supersedes every waiting plan as it is stamped, so
+		// a waiting plan is newer than the stamp.
+	case b.NoChangesPlannedAt != nil && latest.CreatedAt.Before(*b.NoChangesPlannedAt):
+		// The newest plan found no changes and wrote no sync, so the attempt
+		// before it (failed, superseded or applied) is not what approval
+		// answers for (w32/071).
+		return ApprovedSync{}, errNoChangesToApprove()
 	case latest.State == store.BlueprintSyncStateError && len(latest.PlanActions) > 0:
 		// A plan that was approved (or superseded) and then failed: there is
 		// nothing left to approve, and the next plan is the way forward.
@@ -580,6 +591,13 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 		ID: ids.BlueprintSyncPublicID(applied.ID), Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
 		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
+}
+
+// errNoChangesToApprove refuses approving a Blueprint whose newest plan found
+// no changes. No sync is pending, so it names none.
+func errNoChangesToApprove() error {
+	return core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE",
+		"the newest plan of this Blueprint found no changes; there is nothing to approve", nil)
 }
 
 // errBlueprintNameTaken refuses a create under a name another approved

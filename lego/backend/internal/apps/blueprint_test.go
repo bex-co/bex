@@ -580,6 +580,11 @@ func (f *fakeBlueprintStore) admitBlueprintSyncRunLocked(blueprintID, tenantID s
 	f.blueprints[blueprintID] = b
 	run.BlueprintID = b.ID
 	run.ExecutionGeneration = b.ExecutionGeneration
+	// An approved plan's row becomes the run and keeps its created_at, as in
+	// the PG store, so approval still orders it against a no-changes plan.
+	if planned, ok := f.syncs[run.ID]; ok {
+		run.CreatedAt = planned.CreatedAt
+	}
 	f.syncs[run.ID] = run
 	f.insertedSyncs = append(f.insertedSyncs, run)
 	return b, run, nil

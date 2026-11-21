@@ -176,9 +176,8 @@ func TestNoChangesFirstPlanLeavesCreatedPG(t *testing.T) {
 	if err != nil || b.Status != store.BlueprintStatusInSync || b.LastSyncAt == nil || b.Manifest != recreateManifest {
 		t.Fatalf("stored = %+v err=%v, want in_sync with last_sync_at and the planned file", b, err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, again.Blueprint.ID, wsID, "", nil); err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" {
-		t.Fatalf("approve: err = %v, want BLUEPRINT_NOTHING_TO_APPROVE", err)
-	}
+	_, err = svc.ApproveBlueprint(ctx, again.Blueprint.ID, wsID, "", nil)
+	assertNoChangesToApprove(t, err)
 	res, err := svc.SyncBlueprint(ctx, again.Blueprint.ID, wsID, "", "", nil)
 	if err != nil || res.Blueprint.Status != store.BlueprintStatusInSync {
 		t.Fatalf("manual sync = %+v err=%v, want in_sync", res.Blueprint, err)

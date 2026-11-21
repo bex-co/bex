@@ -342,6 +342,11 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 		got.ErrorMessage == nil || !strings.Contains(*got.ErrorMessage, "superseded") {
 		t.Fatalf("waiting plan after a no_changes plan = %+v err=%v, want superseded", got, err)
 	}
+	// The plan is stamped whatever the status, after the plan it superseded
+	// (w32/071): it writes no sync row, so approval orders by the stamp.
+	if settled.NoChangesPlannedAt == nil || !waiting.CreatedAt.Before(*settled.NoChangesPlannedAt) {
+		t.Fatalf("no_changes_planned_at = %v, want a time after the superseded plan's %v", settled.NoChangesPlannedAt, waiting.CreatedAt)
+	}
 
 	if err := st.DisconnectBlueprint(ctx, b.ID, ws.ID); err != nil {
 		t.Fatal(err)
@@ -354,14 +359,22 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("latest plan of the new Blueprint = %+v err=%v, want ErrNotFound (the deleted Blueprint's do not count)", latest, err)
 	}
+	if fresh, err := st.GetBlueprint(ctx, b.ID, ws.ID); err != nil || fresh.NoChangesPlannedAt != nil {
+		t.Fatalf("new Blueprint = %+v err=%v, want no no-changes plan (the deleted one's stamp is its own)", fresh, err)
+	}
 	const manifest = "services: []\n"
 	settled, err = st.SettleNoChangesPlan(ctx, b.ID, ws.ID, manifest)
-	if err != nil || settled.Status != store.BlueprintStatusInSync || settled.LastSyncAt == nil || settled.Manifest != manifest {
-		t.Fatalf("settle on created = %+v err=%v, want in_sync with last_sync_at and the manifest", settled, err)
+	if err != nil || settled.Status != store.BlueprintStatusInSync || settled.LastSyncAt == nil || settled.Manifest != manifest ||
+		settled.NoChangesPlannedAt == nil {
+		t.Fatalf("settle on created = %+v err=%v, want in_sync with last_sync_at, the manifest and the stamp", settled, err)
 	}
 	own := plan(b.ID)
 	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != own.ID {
 		t.Fatalf("latest plan = %+v err=%v, want this connection's %s", latest, err, own.ID)
+	}
+	// A plan after the no_changes one is newer than its stamp.
+	if !settled.NoChangesPlannedAt.Before(own.CreatedAt) {
+		t.Fatalf("plan created_at %v, want after the no-changes stamp %v", own.CreatedAt, *settled.NoChangesPlannedAt)
 	}
 
 	// Without auto-sync, the same settle leaves created for paused, as a
