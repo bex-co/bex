@@ -1,6 +1,6 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009 and t012 done; t010 waits for the production pin to carry `210793c9b` to re-walk the agent composer row, and for the user to clear GitHub's sudo-mode 2FA for the BlockEdenHQ first install)
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** todo (t001–t009, t012 and t013 done; t010 re-walks the agent composer row once production carries t013, and the first install on another of the user's orgs, per the 2026-11-21 unblock)
 
 ## Tasks (in order)
 
@@ -16,7 +16,8 @@
 | t008 | Simplify — **DONE** | 30m | t007 |
 | t009 | Test coverage — **DONE** | 60m | t007 |
 | t012 | Agent composer: a workspace without GitHub offers the connect action once the person reaches for a repository — **DONE** | 45m | t009 |
-| t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point | 2h | t008, t009, t012 |
+| t013 | Agent composer: the repo list and GitHub readiness follow the connection set while the composer is open — **DONE** | 45m | t012 |
+| t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point | 2h | t008, t009, t012, t013 |
 | t011 | Closeout | 15m | t010 |
 
 ## Definition of done
@@ -125,3 +126,24 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
 
   The worker then installs the App on BlockEdenHQ again through bex's "Install on another GitHub account", checks that the binding lands in the walking workspace, and reconnects BlockEdenHQ to `bex`.
 - Once both gates are walked and pass, t011 closes the milestone.
+
+## Unblock (2026-11-21)
+
+- **Affected:** t010, then t011.
+- **Source:** verified evidence for gate 1; the user's reply plus the loop's own choice for gate 2.
+  - **Gate 1 cleared.** The newest `chore(deploy): pin platform images to …` on origin/main is `7474e1c6a`, which pins `820edf28d22d`. `git merge-base --is-ancestor 210793c9b 820edf28d22d` holds, so production carries t012.
+  - **Gate 2, the user's reply.** Shown that the BlockEdenHQ first install needed their GitHub 2FA, the user replied on 2026-11-21: "什么意思？你不能自己解决吗？" ("What do you mean? Can't you solve it yourself?").
+- **Chosen behavior.** The `/loopx w1` orchestrator changed the first-install subject. This choice is the loop's, not the user's:
+  - The App stays installed on BlockEdenHQ. Uninstalling needs GitHub's sudo-mode 2FA, which is the user's alone.
+  - Instead, the bex.co App is installed on one of the user's GitHub orgs that does not have it yet. The org is taken from GitHub's install picker (`installations/select_target`), which shows it as an install target and not as Configure.
+  - On GitHub's install page the worker chooses **Only select repositories** and selects exactly one repository, preferably a small or public one, so the grant stays minimal.
+  - If GitHub turns the install into an install _request_ (`puncsky` is not an owner of that org), that cell becomes the live check of t003's `install_requested` path, and the worker tries the next org.
+  - The install starts from bex's chooser ("Install on another GitHub account") in `bex-canary`. The worker confirms that the new account binds there and its repo appears, then disconnects it from `bex-canary`. The App stays installed on GitHub, since uninstalling needs the user's 2FA. t010 names the org and the one granted repo, so the user can remove it later.
+- **Rationale.** The first-install mechanism is the same for any account without the App: GitHub's install page, the setup URL with `installation_id` and the signed `state`, then the bind in the workspace that started it. Which account is installed does not change what the cell checks. Render's GitHub connect also installs its App on an account from GitHub's own picker.
+- **Verified before moving:** `gh api user/memberships/orgs` shows `puncsky` as admin of `cuckoo-network`, `sugarsnap-ai`, `jingyueAItec` and `MagicWandAI`, and GitHub's install picker lists each of them as an install target (`puncsky`, `bex-co` and `BlockEdenHQ` show Configure).
+- **Remaining gates:** none known. If GitHub asks for a sign-in or 2FA during the install, that step needs the user, and the milestone parks with exactly that.
+- **Next:**
+  1. Re-walk t010's agent composer row in `bex-canary` while it has no GitHub connection.
+  2. Walk the first install through the chooser.
+  3. Record the "install on a new account" column for the other rows. One live first install through the chooser covers the mechanism they share.
+  4. Run t011 if every cell passes.

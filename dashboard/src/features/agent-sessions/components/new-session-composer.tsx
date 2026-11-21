@@ -1,4 +1,11 @@
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -29,6 +36,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useConnectGitAccount } from "@/features/git/hooks/use-connect-git";
+import { useGitConnections } from "@/features/git/hooks/use-git-connection";
 import { useOnGitConnectionsChange } from "@/features/git/hooks/use-on-git-connections-change";
 import { useRefetchOnFocus } from "@/common/hooks/use-refetch-on-focus";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
@@ -110,12 +118,31 @@ export function NewSessionComposer() {
     error: capabilitiesError,
     refetch: refetchCapabilities,
   } = useAgentSessionCapabilities();
-  // GitHub connected elsewhere (the callout's new tab): re-read readiness and
-  // repos so the callout goes away and the repo becomes usable.
-  const refreshGitHub = useCallback(() => {
-    void refetchCapabilities();
-    void refetchRepos();
-  }, [refetchCapabilities, refetchRepos]);
+  // The composer follows the polled connection set for as long as it is open,
+  // not only while the callout shows (w1/m526 t013). An account connected or
+  // disconnected elsewhere (the callout's new tab, Settings in another tab, a
+  // teammate) re-reads the repos, so the list holds only connected accounts'.
+  const {
+    connected: gitConnected,
+    loading: gitConnectionsLoading,
+    error: gitConnectionsError,
+    refetch: refetchGitConnections,
+  } = useGitConnections();
+  useOnGitConnectionsChange(refetchRepos, { poll: false });
+  // Back on this tab: read the set now rather than at the next poll.
+  useRefetchOnFocus(refetchGitConnections);
+  // Readiness is read once and cached, while the connection set is polled. A
+  // cached answer that disagrees with the set is read again: the callout then
+  // comes and goes, also after a change made while the composer was closed.
+  const liveGitConnected =
+    gitConnectionsLoading || gitConnectionsError ? undefined : gitConnected;
+  const cachedGitConnected = capabilities?.github.connected;
+  useEffect(() => {
+    if (liveGitConnected === undefined || cachedGitConnected === undefined) {
+      return;
+    }
+    if (liveGitConnected !== cachedGitConnected) void refetchCapabilities();
+  }, [liveGitConnected, cachedGitConnected, refetchCapabilities]);
 
   const attachmentLimits = capabilities?.attachments ?? null;
   const uploads = useAttachmentUploads(attachmentLimits);
@@ -345,9 +372,7 @@ export function NewSessionComposer() {
         </Alert>
       ) : null}
 
-      {showGitHubCallout ? (
-        <GitHubEmptyCallout onConnected={refreshGitHub} />
-      ) : null}
+      {showGitHubCallout ? <GitHubEmptyCallout /> : null}
 
       <Form {...form}>
         <form onSubmit={onSubmit}>
@@ -558,15 +583,12 @@ export function NewSessionComposer() {
 
 /**
  * Connect GitHub from the composer (w1/m526): the single connect entry
- * (ADR078 §3b) in a NEW TAB, so the task the person typed survives. Once the
- * account is connected there — the connections query polls, and focus counts
- * too — `onConnected` re-reads the composer's readiness and repos.
+ * (ADR078 §3b) in a NEW TAB, so the task the person typed survives. The
+ * composer's own connection watcher picks the new account up from there.
  */
-function GitHubEmptyCallout({ onConnected }: { onConnected: () => void }) {
+function GitHubEmptyCallout() {
   const { t } = useTranslations();
   const { connect, busy } = useConnectGitAccount({ newTab: true });
-  useOnGitConnectionsChange(onConnected);
-  useRefetchOnFocus(onConnected);
   return (
     <div
       className="flex flex-col items-center gap-3 px-6 py-8 text-center"

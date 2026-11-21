@@ -47,18 +47,20 @@ vi.mock("@/features/git/hooks/use-connect-git", () => ({
   },
 }));
 
-// The connection set the callout watches (w1/m526): a new installation means
-// the account was connected in the other tab.
+// The connection set the composer watches (w1/m526): a new installation means
+// the account was connected in another tab, a missing one that it was
+// disconnected there.
 const gitConnectionsState = vi.hoisted(() => ({
   connections: [] as { installationId: number }[],
 }));
+const refetchGitConnections = vi.hoisted(() => vi.fn());
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnections: () => ({
     connections: gitConnectionsState.connections,
     connected: gitConnectionsState.connections.length > 0,
     loading: false,
     error: undefined,
-    refetch: vi.fn(),
+    refetch: refetchGitConnections,
   }),
 }));
 
@@ -261,7 +263,9 @@ beforeEach(() => {
   connectGitOptions.mockReset();
   refetchRepos.mockReset();
   refetchCapabilities.mockReset();
-  gitConnectionsState.connections = [];
+  refetchGitConnections.mockReset();
+  // GitHub is connected by default, as the readiness above says.
+  gitConnectionsState.connections = [{ installationId: 1 }];
   create.mockReset();
   create.mockResolvedValue({
     session: { id: "as-new" },
@@ -945,6 +949,7 @@ describe("NewSessionComposer", () => {
 
   it("allows chat-only without GitHub but explains and blocks a repo-backed session", async () => {
     capabilitiesState.capabilities.github.connected = false;
+    gitConnectionsState.connections = [];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
@@ -970,6 +975,7 @@ describe("NewSessionComposer", () => {
   // that holds the GitHub card.
   it("connects GitHub from the callout in a new tab and links the GitHub card", async () => {
     capabilitiesState.capabilities.github.connected = false;
+    gitConnectionsState.connections = [];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
@@ -990,6 +996,7 @@ describe("NewSessionComposer", () => {
   // composer without a reload or a focus event.
   it("refreshes readiness and repos once an account is connected elsewhere", async () => {
     capabilitiesState.capabilities.github.connected = false;
+    gitConnectionsState.connections = [];
     const user = userEvent.setup();
     const { rerender } = render(<NewSessionComposer />);
     await typeTask(user);
@@ -1002,6 +1009,68 @@ describe("NewSessionComposer", () => {
 
     expect(refetchCapabilities).toHaveBeenCalledTimes(1);
     expect(refetchRepos).toHaveBeenCalledTimes(1);
+  });
+
+  // w1/m526 t013: with GitHub connected the callout is not mounted, and a
+  // disconnect made in Settings in another tab must still drop that account's
+  // repos (the t010 walk-2 failure: 27 stale repos stayed listed).
+  it("re-reads the repos once an account is disconnected elsewhere, and readiness once none is left", async () => {
+    gitConnectionsState.connections = [
+      { installationId: 154851602 },
+      { installationId: 183918549 },
+    ];
+    const user = userEvent.setup();
+    const { rerender } = render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(
+      screen.queryByTestId("agent-composer-github-empty"),
+    ).not.toBeInTheDocument();
+    expect(refetchRepos).not.toHaveBeenCalled();
+
+    // One account goes: its repos must go, and GitHub is still connected.
+    gitConnectionsState.connections = [{ installationId: 154851602 }];
+    rerender(<NewSessionComposer />);
+    expect(refetchRepos).toHaveBeenCalledTimes(1);
+    expect(refetchCapabilities).not.toHaveBeenCalled();
+
+    // The last one goes: the cached "connected" no longer holds.
+    gitConnectionsState.connections = [];
+    rerender(<NewSessionComposer />);
+    expect(refetchRepos).toHaveBeenCalledTimes(2);
+    expect(refetchCapabilities).toHaveBeenCalledTimes(1);
+  });
+
+  // w1/m526 t013: the readiness answer is cached. After the last account was
+  // disconnected while the composer was closed, the composer opens on a stale
+  // "connected" and must read it again, or the empty repository list offers
+  // no way to connect (the t010 walk-2 failure).
+  it("re-reads a cached readiness that disagrees with the connection set", async () => {
+    gitConnectionsState.connections = [];
+    render(<NewSessionComposer />);
+
+    await waitFor(() => expect(refetchCapabilities).toHaveBeenCalledTimes(1));
+    expect(refetchRepos).not.toHaveBeenCalled();
+  });
+
+  it("leaves a readiness that agrees with the connection set alone", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+
+    expect(refetchCapabilities).not.toHaveBeenCalled();
+  });
+
+  it("re-reads the connection set when the tab regains focus", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(refetchGitConnections).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    expect(refetchGitConnections).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces an egress-allowlist code as a form-level error", async () => {
@@ -1177,6 +1246,7 @@ describe("NewSessionComposer", () => {
   it("offers Connect GitHub once the person opens an empty repository list without GitHub", async () => {
     reposState.repos = [];
     capabilitiesState.capabilities.github.connected = false;
+    gitConnectionsState.connections = [];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
