@@ -64,7 +64,7 @@ Read without signing in, from Render's public dashboard bundle (`https://dashboa
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/091](../../done/091.md) on 2026-11-20 by `/loopx w3`, filed by [w3/m528](../m528/README.md) t010's parity check (Render's `UserSettings-3jrn6Tc2.js`: Appearance holds three settings saved on the account; bex's has Dashboard Theme, kept in the browser).
+- **Source:** promoted from [w3/091](../../done/091.md) on 2026-11-20 by `/loopx w3`, filed by [w3/m528](../../done/m528/README.md) t010's parity check (Render's `UserSettings-3jrn6Tc2.js`: Appearance holds three settings saved on the account; bex's has Dashboard Theme, kept in the browser).
 - **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)): a Render user's theme follows them to every browser and their log explorer can keep its own theme. Accessibility: High Contrast Mode is the setting Render offers readers who need stronger edges.
 - **Expected outcome:** a reader picks a theme once and every browser they sign in to opens in it; a reader who wants a dark log on a light dashboard, or stronger contrast, gets it the way Render offers it.
 - **Why now:** w3/m528 built Appearance with Dashboard Theme and linked every explorer's Options ▸ Theme Settings to it, so the section exists and is reachable, and it is two settings short of Render's. The theme provider and the stylesheet's dark variant are touched by nothing else on the board now (w3/092 and w3/093 change the explorer's Options and range picker, not its theme).

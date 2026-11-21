@@ -8,7 +8,7 @@
 - a paused view that offers "New logs in Live Tail" when new lines arrive;
 - an Options menu that ends with a Theme Settings link to an Appearance section in account Settings.
 
-**Status:** blocked — t001–t008 and t010–t012 done, shipped in `c4c67370b`; t009's walk passed on the tree and, on production pin `11b1e8f85f06`, for every piece but View in context opened fresh on a window longer than one page, fixed in `93051820b`. On pin `820edf28d22d` that fix held in the re-walk's named checks, and a closed window whose mark is the oldest line of the page that brings it in left the mark on the panel's edge or off it, fixed in `71d3dc5e5`; that check waits for a pin carrying `71d3dc5e5`, then t013 closes
+**Status:** done — t001–t008 and t010–t012 shipped in `c4c67370b`; t009's walk passed on the tree and on production: every piece on pin `11b1e8f85f06`, and View in context, after the fixes `93051820b` and `71d3dc5e5`, on pin `f797f525f5df` (2026-11-21), including a closed window whose mark is its page's oldest line
 
 ## Tasks (in order)
 
@@ -22,11 +22,11 @@
 | [t006](done/t006.md) | Row menu: View in context, while a search or filter narrows the explorer — **DONE** | 1h | t005 |
 | [t007](done/t007.md) | Row menu: SSH into instance, opening the service's Shell on that instance — **DONE** | 45m | t005 |
 | [t008](done/t008.md) | Account Settings gains Render's Appearance section, and Options ends with a Theme Settings link to it — **DONE** | 45m | t001 |
-| [t009](t009.md) | Verify in a real browser at 1440 and 390, on the tree and on production | 45m | t003, t004, t006, t007, t008 |
+| [t009](done/t009.md) | Verify in a real browser at 1440 and 390, on the tree and on production — **DONE** | 45m | t003, t004, t006, t007, t008 |
 | [t010](done/t010.md) | Render parity — **DONE** | 30m | t009 |
 | [t011](done/t011.md) | Simplify — **DONE** | 20m | t010 |
 | [t012](done/t012.md) | Test coverage — **DONE** | 45m | t010 |
-| [t013](t013.md) | Closeout | 10m | t011, t012 |
+| [t013](done/t013.md) | Closeout — **DONE** | 10m | t011, t012 |
 
 Total: **13 tasks, about 9h**.
 
@@ -115,6 +115,16 @@ The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2
 
 **Cleanup.** The web service and the project were deleted (`DELETE` 204 each), and by-id `GET` answered 404 for both and the environment. The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), and its jar, the screenshots and the patched stub were deleted.
 
+**Third walk on production (t009, 2026-11-21, pin `f797f525f5df`).** Pin commit `4c41a69d7` carries `71d3dc5e5`. It also carries w3/m537 (`781b1d7c9`), so each range picker lists Live tail as a range, a View in context link no longer carries `live=0`, and the tab it opens is paused because its range is custom. As the QA user in `bex-canary`, in Playwright (Chromium, America/Los_Angeles), the fixture project `qa-20261121-m528c` (`prj-dc0gk3d2b0us73dob8o0`, environment `evm-dc0gk3d2b0us73dob8og`) held a starter web service created over REST, `qa-20261121-m528c-web` (`srv-dc0gk8526tvc739p14mg`, `busybox:1.36`). From 03:04:09Z (n=1) it printed `level=info msg="tick" n=N` about once a second, a `warn` "slow query took 1200ms" on every 5th line and an `error` "upstream timeout" on the other 11ths. Its deploy `dep-dc0gk8526tvc739p14n0` went live at 03:04:38Z. Each link came from the row menu (`target="_blank"`) under the search `slow query`, and was opened fresh in a new tab at the width under test. "Centred" compares the marked row's middle with the panel's, and every position held 5 s later. Each tab opened with no search, on the link's custom range, with Return to Bottom and no New logs in Live Tail.
+
+| check | production | result |
+| --- | --- | --- |
+| A line in the first page of a still-open window | service tab, 1440: n=230 (window 02:57:58–03:17:58Z, opened 03:09:14Z) read one page and opened on the mark, 599 against 610, rows n 220–240. 390: n=200, 566 against 567. Application Logs, 1440: n=290, 546 against 551. 390: n=300, 590 against 591 | holds |
+| A line whose ±10 minute window has closed, the mark arriving as the oldest line of a page | service tab, 1440: n=100 (window 02:55:48–03:15:48Z, opened 03:16:46Z) read the first page and six older pages. The fifth older page's oldest line was the mark itself (03:05:48.534Z), the shape that left the mark on the panel's edge on pin `820edf28d22d`. The sixth (99 lines back to n=1, `hasMore` false) gave it lines on its older side, and the mark sat centred, 541 against 552 in a 317–786 panel, rows n 90–110. 390: n=105, the same six older pages with the mark the fifth's oldest line, 567 against 567, rows n 101–109. Application Logs, 1440: n=110, the same, 546 against 551 in a 258–844 panel, rows n 98–123. 390: n=115, the same, 590 against 591, rows n 112–118: the tinted mark with its rule in the middle of the panel, under the "Only part of this time range is loaded" notice | holds |
+| No horizontal scroll at 390 | scroll width 390 on every 390 run above | holds |
+
+**Cleanup.** The web service and the project were deleted (`DELETE` 204 each), and by-id `GET` answered 404 for both and the environment; the project's default saved views go with it (`saved_searches` is `ON DELETE CASCADE`). The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), and its jar, the scratch script and the screenshot were deleted.
+
 ## Unblock record (2026-11-20)
 
 - **Affected:** w3/m528 t009 (production walk), t013 (closeout).
@@ -143,6 +153,12 @@ The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2
 - **Source:** verified evidence (§ Verification record, Re-walk on production). On pin `820edf28d22d`, both checks § Parked again names held, in the service tab and Application Logs at 1440 and 390. A closed window whose mark was the oldest line of its page left the mark on the panel's edge at 1440 and off it at 390. That was this milestone's defect, fixed and shipped in `71d3dc5e5`.
 - **Remaining gate:** a production pin carrying `71d3dc5e5` (clears by itself).
 - **Next:** as the QA user in `bex-canary`, with a short-lived web service logging about a line a second, wait until a `slow query` line's ±10 minute window has closed. Then open its View in context link fresh, at 1440 and 390, in a service Logs tab and a project's Application Logs view. Six older pages load, and the line is marked and centred, not on the panel's edge. Also open one line in the first page of a still-open window, to see it still opens on the mark. Delete the fixture, log out, record it here, and close with t013.
+
+## Unblocked a third time (2026-11-21)
+
+- **Affected:** w3/m528 t009 (View in context's production check on a closed window), t013 (closeout).
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `4c41a69d7` (02:20Z), pinning `f797f525f5df`, and `git merge-base --is-ancestor 71d3dc5e5 f797f525f5df` succeeds, so production runs the fix. The gate `pin must carry 71d3dc5e5` holds. The same pin carries w3/m537 (`781b1d7c9`), so each explorer's range picker now lists Live tail as a range instead of a Live switch.
+- **Next:** the re-walk § Parked a second time names, on production as the QA user in `bex-canary` at 1440 and 390; the rest of t009's walk passed on earlier pins and is not repeated. Then t013 closes the milestone. No gate remains.
 
 ## Also read from the bundle, outside this milestone's scope
 

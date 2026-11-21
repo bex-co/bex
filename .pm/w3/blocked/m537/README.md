@@ -62,7 +62,7 @@ Render's bundle and docs were read on 2026-11-20 and the findings are in the [ca
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/093](../../done/093.md) on 2026-11-20 by `/loopx w3`. The note was filed by [w3/m528](../m528/README.md) t010's parity check: Render's range picker starts with Live tail, and w3/m528 t001 mapped Render's relative range onto bex's Live off on a preset range and kept the switch.
+- **Source:** promoted from [w3/093](../../done/093.md) on 2026-11-20 by `/loopx w3`. The note was filed by [w3/m528](../../done/m528/README.md) t010's parity check: Render's range picker starts with Live tail, and w3/m528 t001 mapped Render's relative range onto bex's Live off on a preset range and kept the switch.
 - **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). A Render user looks for Live tail in the range list, and finds a switch beside it instead.
 - **Expected outcome:** one control decides what an explorer shows, as on Render, and a shared link names Live tail the way it names a range.
 - **Why now:** this is the last open follow-up from w3/m528. The explorer's Options menu, Display, Order by, Copy logs and Clear logs (w3/088–092) have shipped, so the range picker is the one part of the toolbar left that is shaped differently from Render's. w3/m528 itself waits only for a production re-walk of View in context, which this milestone must leave as it is.
