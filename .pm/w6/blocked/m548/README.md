@@ -1,6 +1,6 @@
 # w6 · m548 — A service with a disk keeps the default shutdown delay, as on Render
 
-**Worker:** worker6 **Goal:** as Render documents ("You can't change the shutdown delay for a service with a persistent disk"), every surface refuses a custom `maxShutdownDelaySeconds` on a service with a disk, attaching a disk returns a custom delay to the 30 s default, and the dashboard says why the setting is unavailable. **Status:** todo (t001–t003, t005, t006, t008, t009 done; t004 step 3, t007 and t010 wait for production)
+**Worker:** worker6 **Goal:** as Render documents ("You can't change the shutdown delay for a service with a persistent disk"), every surface refuses a custom `maxShutdownDelaySeconds` on a service with a disk, attaching a disk returns a custom delay to the 30 s default, and the dashboard says why the setting is unavailable. **Status:** blocked (pin must carry `667d4f7dc`; t001–t003, t005, t006, t008, t009 done; t004 step 3, t007 and t010 wait for production)
 
 ## Tasks (in order)
 
