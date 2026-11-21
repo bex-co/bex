@@ -37,14 +37,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/render-oss/cli/pkg/cfg"
-	"github.com/render-oss/cli/pkg/command"
 	"github.com/render-oss/cli/pkg/config"
 	"github.com/spf13/cobra"
-)
 
-// exitUsage is the exit code of a command line that is wrong, as `bex agent`
-// uses it.
-const exitUsage = 2
+	"github.com/bex-co/bex/lego/cli/internal/usage"
+)
 
 // deps is the process boundary, injectable for tests.
 type deps struct {
@@ -145,7 +142,7 @@ func newCommands(d deps) []*cobra.Command {
 
 // usageError is a command line that is wrong: exit code 2.
 func usageError(format string, args ...any) error {
-	return command.NewExitError(exitUsage, fmt.Errorf(format, args...))
+	return usage.Errorf(format, args...)
 }
 
 // commandContext is the command's context, never nil.

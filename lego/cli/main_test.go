@@ -1343,6 +1343,8 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 			{"blueprints", "validate", blueprint, "--workspace", teamID, "-o", "json"},
 			{"blueprints", "validate", blueprint, "-w" + teamID, "-o", "json"},
 			{"pg"}, {"workspace"},
+			// bex's groups run only to refuse a word (w8/368)
+			{"agent"}, {"agent", "secrets"}, {"s3", "keys"},
 		} {
 			if code, stderr := run(workspace, args...); code != 0 {
 				t.Errorf("BEX_WORKSPACE=%s bex %v exited %d: %s", workspace, args, code, stderr)

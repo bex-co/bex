@@ -30,6 +30,8 @@ import (
 	"github.com/render-oss/cli/pkg/style"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"github.com/bex-co/bex/lego/cli/internal/usage"
 )
 
 // DocsURL is opened by the overridden `bex docs` command: the public Bex docs
@@ -67,12 +69,11 @@ func Apply(root *cobra.Command, bexVersion string) {
 		return style.SubtleText.Faint(true).Render("bex CLI v" + bexVersion)
 	})
 	cobra.AddTemplateFunc("agentSkillsHelp", agentSkillsHelp)
-	root.SetHelpTemplate(strings.Replace(
-		cmd.CustomHelpTemplate,
-		`(eq .CommandPath "render")`,
-		`(eq .CommandPath "bex")`,
-		1,
-	))
+	cobra.AddTemplateFunc("subcommandOptional", subcommandOptional)
+	root.SetHelpTemplate(strings.NewReplacer(
+		`(eq .CommandPath "render")`, `(eq .CommandPath "bex")`,
+		`{{if .Runnable}} [subcommand]`, `{{if subcommandOptional .}} [subcommand]`,
+	).Replace(cmd.CustomHelpTemplate))
 	root.Use = "bex"
 
 	brandTree(root)
@@ -92,6 +93,14 @@ func Apply(root *cobra.Command, bexVersion string) {
 		Refresh(root)
 		return prevUsage(c)
 	})
+}
+
+// subcommandOptional is what upstream's help reads from Runnable: a group
+// that does something itself takes "[subcommand]", one that does not
+// "<subcommand>". A bex-native group runs only to refuse a word that is not
+// a subcommand (usage.Guard), so its help still says "<subcommand>".
+func subcommandOptional(c *cobra.Command) bool {
+	return c.Runnable() && !usage.HelpOnly(c)
 }
 
 // agentSkillsHelp replaces upstream's root-help "Start here (for AI agents)"

@@ -47,6 +47,7 @@ import (
 
 	"github.com/bex-co/bex/lego/cli/internal/desktop"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
+	"github.com/bex-co/bex/lego/cli/internal/usage"
 )
 
 // Exit codes. A command that waits (run/send --wait or --follow, wait, logs
@@ -176,7 +177,7 @@ func newCommand(d deps) *cobra.Command {
 }
 
 func usageError(format string, args ...any) error {
-	return command.NewExitError(exitUsage, fmt.Errorf(format, args...))
+	return usage.Errorf(format, args...)
 }
 
 // sessionArgs requires a session first, then up to more further arguments

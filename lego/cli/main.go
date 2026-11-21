@@ -26,6 +26,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 	"github.com/bex-co/bex/lego/cli/internal/update"
 	"github.com/bex-co/bex/lego/cli/internal/upgrade"
+	"github.com/bex-co/bex/lego/cli/internal/usage"
 	"github.com/render-oss/cli/cmd"
 	"github.com/render-oss/cli/pkg/cfg"
 	"github.com/spf13/cobra"
@@ -53,16 +54,9 @@ func main() {
 	// against. It covers the detached analytics sender too: that subprocess
 	// re-executes this binary, so it runs main and installs the same wrapper.
 	bridge.InstallControlPlaneHeaders(bexVersion)
-	// The Bex-native coding commands (`bex code`, `bex glm`, …) and the
-	// self-update command are additions to the imported command tree; the
+	// The Bex-native commands are additions to the imported command tree; the
 	// upstream commands remain untouched.
-	cmd.RootCmd.AddCommand(code.Commands()...)
-	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
-	cmd.RootCmd.AddCommand(desktop.Command())
-	cmd.RootCmd.AddCommand(agent.Command())
-	// `bex s3` is a native client of bex object storage (ADR112 D3): its commands
-	// return through Cobra, so upstream's post-run hook reports each of them.
-	cmd.RootCmd.AddCommand(s3.Commands()...)
+	cmd.RootCmd.AddCommand(nativeCommands(bexVersion)...)
 	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
 	// takes its place with the same subcommands and flags.
 	replaceCommand(cmd.RootCmd, skills.Command())
@@ -137,6 +131,21 @@ func main() {
 		printUpdateNotice(os.Stderr, notice)
 	}
 	os.Exit(exitCode)
+}
+
+// nativeCommands are bex's own commands: the coding-agent launchers and
+// `bex code`, self-update, `bex edit`, Cloud Agents and `bex s3`, a native
+// client of bex object storage (ADR112 D3) whose commands return through
+// Cobra, so upstream's post-run hook reports each of them. A wrong command
+// line of any of them exits 2 (w8/368). `skills`, which takes the place of
+// upstream's command, is not among them: it keeps the Render CLI's codes.
+func nativeCommands(bexVersion string) []*cobra.Command {
+	commands := append(code.Commands(), upgrade.Command(bexVersion), desktop.Command(), agent.Command())
+	commands = append(commands, s3.Commands()...)
+	for _, c := range commands {
+		usage.Guard(c)
+	}
+	return commands
 }
 
 // replaceCommand swaps the root's child named like replacement.
@@ -313,7 +322,7 @@ func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 	if err != nil || target == nil {
 		return bridge.WorkspaceRequired
 	}
-	if !target.Runnable() {
+	if !target.Runnable() || usage.HelpOnly(target) {
 		return bridge.WorkspaceUnused
 	}
 	path := strings.TrimPrefix(target.CommandPath(), root.Name()+" ")

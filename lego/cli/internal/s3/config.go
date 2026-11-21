@@ -31,6 +31,8 @@ import (
 	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/spf13/cobra"
+
+	"github.com/bex-co/bex/lego/cli/internal/usage"
 )
 
 // maxRulesFile bounds a rules file: the gateway keeps at most 64 KiB of CORS
@@ -151,7 +153,7 @@ func corsCommand(d deps, g *globals) *cobra.Command {
 			"bucket (`bex s3 public`), where browsers read it.",
 		Example:      "  bex s3 cors set photos --file cors.json\n  bex s3 cors get photos\n  bex s3 cors delete photos",
 		SilenceUsage: true,
-		Args:         subcommandArgs,
+		Args:         usage.SubcommandArgs,
 		RunE:         func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cors.AddCommand(corsGet(d, g), configSet(d, g, corsRules), configDelete(d, g, corsRules))
@@ -173,19 +175,11 @@ func lifecycleCommand(d deps, g *globals) *cobra.Command {
 			"transitions, versions and the tag and size filters are not stored.",
 		Example:      "  bex s3 lifecycle set photos --file lifecycle.json\n  bex s3 lifecycle get photos -o json\n  bex s3 lifecycle delete photos",
 		SilenceUsage: true,
-		Args:         subcommandArgs,
+		Args:         usage.SubcommandArgs,
 		RunE:         func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	lifecycle.AddCommand(lifecycleGet(d, g), configSet(d, g, lifecycleRules), configDelete(d, g, lifecycleRules))
 	return lifecycle
-}
-
-// subcommandArgs refuses a word that is not a subcommand of a group.
-func subcommandArgs(c *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return nil
-	}
-	return usageError("unknown command %q for %q", args[0], c.CommandPath())
 }
 
 // ---- get ----------------------------------------------------------------------
