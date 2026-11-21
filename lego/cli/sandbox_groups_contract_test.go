@@ -188,3 +188,24 @@ func TestPinnedSandboxListSendsTheGroupFilter(t *testing.T) {
 		t.Fatalf("requests = %+v, want one list of %s filtered by sandboxGroupId=%s for the workspace", seen, c.SandboxCreate.Path, group)
 	}
 }
+
+// Since v2.37.0 `sandboxes list` opens an interactive list in a terminal, and
+// `-o text` is the table. Outside a terminal both the flag and its absence
+// print the table from one unpaged-by-the-user list request.
+func TestPinnedSandboxListTextOutputIsTheTable(t *testing.T) {
+	c := loadSandboxGroupsContract(t)
+	id, _ := c.SandboxCreate.Response["id"].(string)
+	for _, args := range [][]string{{"sandboxes", "list", "-o", "text"}, {"sandboxes", "list"}} {
+		srv, calls := groupsContractServer(t, c)
+		stdout, stderr, err := runBexAgainst(t, srv.URL, args...)
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, stderr)
+		}
+		if !strings.Contains(stdout, id) || !strings.Contains(stdout, "creating") || strings.HasPrefix(strings.TrimSpace(stdout), "[") {
+			t.Errorf("%v printed %q, want the table with %s", args, stdout, id)
+		}
+		if seen := calls(); len(seen) != 1 || seen[0].method != http.MethodGet || seen[0].path != c.SandboxCreate.Path || !strings.Contains(seen[0].query, "ownerId=tea-bex") {
+			t.Errorf("%v requests = %+v, want one list for the workspace", args, seen)
+		}
+	}
+}

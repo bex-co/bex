@@ -158,9 +158,14 @@ func TestPinnedSandboxExecTransportMatchesBexContract(t *testing.T) {
 	if connect.method != c.Connect.Method || connect.path != c.Connect.Path || connect.query != c.Connect.Query {
 		t.Errorf("connect request = %s %s?%s, want %s %s?%s", connect.method, connect.path, connect.query, c.Connect.Method, c.Connect.Path, c.Connect.Query)
 	}
+	// Since v2.37.0 the mint names no command: the token takes the one its
+	// redeem sends, which bex-api records in the execution history instead.
 	var connectBody map[string]string
 	if json.Unmarshal([]byte(connect.body), &connectBody) != nil || connectBody["command"] != c.Connect.RequestBody.Command {
 		t.Errorf("connect body = %s, want command %q", connect.body, c.Connect.RequestBody.Command)
+	}
+	if _, sent := connectBody["command"]; sent != (c.Connect.RequestBody.Command != "") {
+		t.Errorf("connect body = %s, but the contract's mint body is %+v — move the contract and bex-api's mint together", connect.body, c.Connect.RequestBody)
 	}
 	// Step two: the redeem at bex's uri, authenticated by the connect token.
 	got, ok = seen.Load("stream")

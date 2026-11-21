@@ -61,7 +61,7 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
 | `BEX_API_KEY` | A bex API key for non-interactive use, as `RENDER_API_KEY` is for Render's CLI: the launcher sends it as the bearer, with no login and no exchange ([CI and automation](#ci-and-automation)). It outranks `BEX_ACCESS_TOKEN` and a stored login. It is not persisted by the bridge, and `bex logout` neither revokes nor unsets it. Works since `bex` v0.8.0; v0.7.0 and older ignore it, and take the key in `BEX_ACCESS_TOKEN` instead. |
 | `BEX_ACCESS_TOKEN` | An already-issued OAuth access token for an unattended invocation, used when `BEX_API_KEY` is unset. An API key works here too, because both variables are sent as the bearer. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
-| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.36.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
+| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.37.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
 | `BEX_CLI_DISABLE_ANALYTICS` | Any non-empty value disables CLI usage telemetry (see below). Telemetry is otherwise on once the one-time notice has been shown: one event per invocation to bex-api, never to Render. |
 
 The launcher sends the active workspace from `bex workspace set` or `BEX_WORKSPACE` to the configured API in `X-Bex-Workspace`. Service names on `/v1/services/{name}/…` resolve only in that workspace, including renamed services, deploys, restart, instances and jobs. A missing name returns 404; it never falls through to another workspace. Without a selection, a name must be unique across visible workspaces or the API returns `409 SERVICE_NAME_AMBIGUOUS` with the candidate IDs. Service IDs remain global addresses and authorize against the resource's workspace. This header is a bex extension; Render's corresponding paths accept IDs.
@@ -525,7 +525,7 @@ grep -rnE '"[^"]*\brender [a-z]' "$MOD" --include='*.go' \
   | grep -v '_test.go' | grep -vE 'Example|Short:|Long:|Use:|Deprecated:'
 ```
 
-At the current pin (**v2.36.0**, `4fd34231b637`) it yields the following.
+At the current pin (**v2.37.0**, `11ef59f330de`) it yields the following.
 
 **Resource-not-found, one per resource type** (returned errors, rewritten). Each ends "run `bex workspace set <name|ID>`":
 
@@ -577,6 +577,8 @@ Tests: `TestNameBexInputsRenamesOnlyFilledVariables` and `TestBrandPreRunOutputN
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
+
+**`sandbox-groups images` (v2.37.0)**: the two new hits, both in `cmd/sandboximageslist.go`, are help text, rewritten by the overlay (`TestBexNestedHelp`). `images delete` prints "Re-run with --confirm to proceed", which names no command. The interactive `sandboxes list` screen shows the workspace name and "Sandboxes" and no product name.
 
 **`sandbox-groups` (v2.36.0)**: `pkg/sandboxgroup/repo.go` returns "make another group the default with `render sandbox-groups default set <sandboxGroupId>` first" (a returned error, rewritten); the other new hits (`cmd/sandboxgroups.go`, `sandboxgroupsdefault.go`, `sandboxgroupsdelete.go`, the `sandboxcredentialscreate.go` example) are help, rewritten by the overlay. bex serves `delete` and `default set` since w2/m359 (the repo error is reachable: a `409 default_sandbox_group_not_deletable` prints it, rewritten) and answers `credentials` with `SANDBOX_CREDENTIALS_UNSUPPORTED` (w3/m303); groups themselves are served since w22/m311.
 

@@ -7,14 +7,19 @@
     "method": "POST",
     "path": "/v1/sandboxes/os-1/runs/stream/token",
     "query": "ownerId=tea-a",
-    "requestBody": { "command": "sh -c 'echo out; echo err >&2; exit 7'" },
+    "_requestBody": "Empty since the v2.37.0 pin (upstream ef214e7, w22/m444): the client no longer sends the command with the mint, and the token takes the command its redeem names (bex-api: TestConnectRunWithoutACommandBindsTheRedeemsCommand). A client up to v2.36.0 sends {command} and gets a token bound to it.",
+    "requestBody": {},
     "status": 201,
     "fields": ["executionId", "expiresAt", "method", "token", "uri"],
     "responseMethod": "POST",
     "uriPath": "/v1/sandboxes/os-1/runs/{executionId}/stream"
   },
   "stream": {
-    "headers": { "Authorization": "Bearer {token}", "Content-Type": "application/json", "Accept": "text/event-stream" },
+    "headers": {
+      "Authorization": "Bearer {token}",
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream"
+    },
     "requestBody": { "command": "sh -c 'echo out; echo err >&2; exit 7'" },
     "status": 200,
     "contentType": "text/event-stream"

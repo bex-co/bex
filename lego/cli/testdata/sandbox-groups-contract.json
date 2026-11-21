@@ -56,6 +56,41 @@
       "createdAt": "2026-11-10T12:00:00Z"
     }
   },
+  "images": {
+    "_comment": "The image (sandbox build) routes the v2.37.0 client's `sandbox-groups images list|delete` call (w22/m444). The CLI test runs the pinned commands against these answers (sandbox_images_contract_test.go) and bex-api is proven to give them (lego/backend/internal/sandbox/images_cli_contract_test.go). listQuery is the query string the pinned client sends for `--name python --status succeeded --status failed`: an exact name, the statuses comma-separated in one parameter, and pages of 100 (a page shorter than that ends the list).",
+    "listPath": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg/builds",
+    "listQuery": "limit=100&name=python&status=succeeded,failed",
+    "buildPath": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg/builds/sbb-cph1rs3idesc73a2b2mg",
+    "deleteStatus": 204,
+    "listResponse": [
+      {
+        "build": {
+          "id": "sbb-cph1rs3idesc73a2b2mg",
+          "sandboxGroupId": "sbg-cph1rs3idesc73a2b2mg",
+          "name": "python",
+          "source": {
+            "repository": "docker.io",
+            "image": "library/python",
+            "reference": "3.13"
+          },
+          "sourceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "status": "succeeded",
+          "failureReason": null,
+          "failureCode": null,
+          "createdAt": "2026-11-10T12:00:00Z",
+          "finishedAt": "2026-11-10T12:00:05Z"
+        },
+        "cursor": "sbb-cph1rs3idesc73a2b2mg"
+      }
+    ],
+    "inUse": {
+      "status": 409,
+      "code": "image_in_use",
+      "id": "conflict",
+      "dependent": "sbx-cph1rs3idesc73a2b2mg",
+      "message": "sandboxes that have not terminated still depend on this build: sbx-cph1rs3idesc73a2b2mg; terminate them before deleting it"
+    }
+  },
   "errors": {
     "nameTaken": {
       "status": 409,
