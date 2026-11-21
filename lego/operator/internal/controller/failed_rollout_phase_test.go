@@ -576,6 +576,58 @@ func TestPermanentStartupCrashSettlesBeforeRolloutDeadline(t *testing.T) {
 	}
 }
 
+// w8/383: a first deploy whose start command exits 0 settles like any startup
+// crash and records exit 0, the cause deploy_ended reports as Render's
+// earlyExit. A non-zero exit in another pod of the release still wins.
+func TestStartupCleanExitRecordsExitZero(t *testing.T) {
+	sched := metav1.NewTime(time.Now().Add(-3 * time.Minute))
+	neverReady := []corev1.PodCondition{
+		{Type: corev1.PodScheduled, Status: corev1.ConditionTrue, LastTransitionTime: sched},
+		{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.NewTime(sched.Add(2 * time.Second))},
+	}
+	crashPod := func(name string, code int32, reason string) *corev1.Pod {
+		return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+			Labels: map[string]string{"app": "web", labelRevision: "rev-1"}},
+			Status: corev1.PodStatus{Conditions: neverReady, ContainerStatuses: []corev1.ContainerStatus{{Name: "app", RestartCount: 2,
+				State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+				LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: code, Reason: reason}}}}}}
+	}
+	for _, tc := range []struct {
+		name string
+		pods []client.Object
+		want int32
+	}{
+		{"exit 0", []client.Object{crashPod("web-a", 0, "Completed")}, 0},
+		{"exit 0 beside exit 1", []client.Object{crashPod("web-a", 0, "Completed"), crashPod("web-b", 1, "Error")}, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 1},
+				Spec:   appv1alpha1.AppSpec{Image: "docker.io/library/busybox:1.36"},
+				Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ReleaseGeneration: 1}}
+			dep := progressDeadlineDep("web")
+			dep.Status.Conditions = nil
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(append(tc.pods, app, dep)...).
+				WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+			if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
+				t.Fatal(err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			if stored.Status.Phase != appv1alpha1.PhaseFailed {
+				t.Fatalf("phase = %q, want Failed before any deadline", stored.Status.Phase)
+			}
+			if f := stored.Status.RolloutFailure; f == nil || f.ExitCode == nil || *f.ExitCode != tc.want ||
+				f.OOMKilled || f.TimedOutSeconds != 0 || f.Generation != 1 {
+				t.Fatalf("rolloutFailure = %+v, want exit %d before any deadline for release 1", f, tc.want)
+			}
+		})
+	}
+}
+
 // w4/630: a service the kernel kills for its memory limit while starting
 // settles as Render's "Out of memory", naming its compute plan's limit and
 // the exit code, with no port-bind hint and no pointer at logs it never wrote.

@@ -3403,8 +3403,9 @@ type RanImage struct {
 
 // DeployEnd is the structured cause a failing close records (w8/m146), from
 // the operator's status.rolloutFailure for the row's release: the app
-// container's last non-zero exit, an OOM kill, and the rollout budget a
-// deadline close ran out of. The zero value records nothing.
+// container's last exit (0 for a clean exit during startup, w8/383), an OOM
+// kill, and the rollout budget a deadline close ran out of. The zero value
+// records nothing.
 type DeployEnd struct {
 	ExitCode        *int32
 	OOMKilled       bool

@@ -4387,8 +4387,10 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 
 // recordRolloutExit records how the app container last ended in a pod of the
 // failing release (w8/m146): its exit code, and whether the kernel killed it
-// for memory. Nothing is recorded when no current-revision container exited
-// non-zero; an earlier record for the same release (a deadline) is kept.
+// for memory. A clean exit (status 0) is recorded too, as Render's earlyExit
+// with no nonZeroExit (w8/383), but a non-zero exit or an OOM kill in any pod
+// wins over it. Nothing is recorded when no current-revision container
+// exited; an earlier record for the same release (a deadline) is kept.
 func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) {
 	revision := dep.Spec.Template.Labels[labelRevision]
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 || revision == "" {
@@ -4398,6 +4400,12 @@ func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return
 	}
+	record := func(t *corev1.ContainerStateTerminated) {
+		failure := rolloutFailureFor(app)
+		exit := t.ExitCode
+		failure.ExitCode, failure.OOMKilled = &exit, t.Reason == containerReasonOOMKilled
+	}
+	var clean *corev1.ContainerStateTerminated
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		if pod.DeletionTimestamp != nil || pod.Labels[labelRevision] != revision {
@@ -4411,13 +4419,18 @@ func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.
 			if t == nil {
 				t = cs.State.Terminated
 			}
-			if t != nil && (t.ExitCode != 0 || t.Reason == containerReasonOOMKilled) {
-				failure := rolloutFailureFor(app)
-				exit := t.ExitCode
-				failure.ExitCode, failure.OOMKilled = &exit, t.Reason == containerReasonOOMKilled
+			switch {
+			case t == nil:
+			case t.ExitCode != 0 || t.Reason == containerReasonOOMKilled:
+				record(t)
 				return
+			case clean == nil:
+				clean = t
 			}
 		}
+	}
+	if clean != nil {
+		record(clean)
 	}
 }
 

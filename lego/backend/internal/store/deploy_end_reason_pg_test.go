@@ -86,4 +86,29 @@ func TestPGDeployEndReasonReachesEventReads(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("by-id", lookup.Event.End)
+
+	// w8/383: a start command that exits 0 is stored as exit 0, not dropped,
+	// so deploy_ended can report Render's earlyExit for it.
+	clean, err := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "clean-exit", Image: "busybox:1.36", Type: "web_service",
+		Branch: "main", Port: 10000, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := st.TransitionDeploy(ctx, clean.FirstDeployID, DeployUpdateInProgress, RanImage{}, "", "", "", nil); err != nil || !ok {
+		t.Fatalf("start clean-exit rollout = (%v, %v)", ok, err)
+	}
+	zero := int32(0)
+	if ok, err := st.TransitionDeploy(ctx, clean.FirstDeployID, DeployUpdateFailed, RanImage{}, "container exited", "", "", nil,
+		DeployEnd{ExitCode: &zero}); err != nil || !ok {
+		t.Fatalf("fail clean-exit rollout = (%v, %v)", ok, err)
+	}
+	ended, err := st.ListServiceEvents(ctx, clean.ID, ten.ID, ServiceEventFilter{Phases: []string{EventPhaseEnded}, Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ended) != 1 || ended[0].End.ExitCode == nil || *ended[0].End.ExitCode != 0 || ended[0].End.OOMKilled {
+		t.Fatalf("clean-exit ended rows = %+v, want one with exit 0", ended)
+	}
 }

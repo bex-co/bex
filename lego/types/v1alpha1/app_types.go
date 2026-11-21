@@ -1807,7 +1807,8 @@ type RolloutFailureStatus struct {
 	// Generation is the release generation whose rollout failed.
 	Generation int64 `json:"generation"`
 
-	// ExitCode is the app container's last non-zero exit code, if it exited.
+	// ExitCode is the app container's last exit code, if it exited. Zero is a
+	// clean exit during startup, which a service must not make (w8/383).
 	// +optional
 	ExitCode *int32 `json:"exitCode,omitempty"`
 

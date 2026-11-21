@@ -40,6 +40,12 @@ func TestDeployAndBuildEndedCarryRendersReason(t *testing.T) {
 			`{"failure":{"earlyExit":true,"evicted":false,"nonZeroExit":1}}`},
 		{"deadline with a crash on record", ended(store.DeployUpdateFailed, "", store.DeployEnd{ExitCode: &exit, TimedOutSeconds: 900}),
 			`{"failure":{"evicted":false,"nonZeroExit":1,"timedOutSeconds":900}}`},
+		// w8/383: Render's nonZeroExit is only a non-zero status, so a start
+		// command that exits 0 is an early exit and nothing else.
+		{"startup clean exit", ended(store.DeployUpdateFailed, "", store.DeployEnd{ExitCode: &[]int32{0}[0]}),
+			`{"failure":{"earlyExit":true,"evicted":false}}`},
+		{"deadline with a clean exit on record", ended(store.DeployUpdateFailed, "", store.DeployEnd{ExitCode: &[]int32{0}[0], TimedOutSeconds: 900}),
+			`{"failure":{"evicted":false,"timedOutSeconds":900}}`},
 		{"oom", ended(store.DeployUpdateFailed, "", store.DeployEnd{ExitCode: &[]int32{137}[0], OOMKilled: true}),
 			`{"failure":{"earlyExit":true,"evicted":false,"nonZeroExit":137,"oomKilled":{"memoryLimit":""}}}`},
 		{"failed with no structured cause", ended(store.DeployUpdateFailed, "", store.DeployEnd{}), `{}`},

@@ -796,11 +796,18 @@ func buildEndReason(r store.ServiceEventRow, service string) *EndReason {
 	return &EndReason{}
 }
 
+// failureFromEnd is Render's failure object for an ended rollout. nonZeroExit
+// is only ever a non-zero status, so a clean exit during startup reads as
+// earlyExit alone (w8/383), which Render's schema says a service besides a
+// cron job should never do.
 func failureFromEnd(end store.DeployEnd) *FailureReason {
 	if end.ExitCode == nil && !end.OOMKilled && end.TimedOutSeconds == 0 {
 		return nil
 	}
-	f := &FailureReason{NonZeroExit: end.ExitCode}
+	f := &FailureReason{}
+	if end.ExitCode != nil && *end.ExitCode != 0 {
+		f.NonZeroExit = end.ExitCode
+	}
 	if end.OOMKilled {
 		f.OOMKilled = &OOMKilledInfo{}
 	}
