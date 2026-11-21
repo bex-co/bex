@@ -33,7 +33,11 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-func selectedReleaseFixture(t *testing.T) (*AppReconciler, *appv1alpha1.App) {
+// selectedReleaseFixture is an image service whose release 3, a Restart or
+// rollback, selects release 1 (image:A, echo A, /A, two instances, literal and
+// Secret values A) while the saved spec holds B. Each of mutate applies to the
+// saved spec and to release 1's, after release 1's own values.
+func selectedReleaseFixture(t *testing.T, mutate ...func(*appv1alpha1.AppSpec)) (*AppReconciler, *appv1alpha1.App) {
 	t.Helper()
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: snapshotTestNS, UID: "api-uid", Generation: 3,
@@ -42,6 +46,9 @@ func selectedReleaseFixture(t *testing.T) (*AppReconciler, *appv1alpha1.App) {
 			Env: []appv1alpha1.EnvVar{{Name: "LITERAL", Value: "B"}}, EnvFromSecret: "api-env", EnvFromSecrets: []string{"evg-shared-env"}, FilesFromSecrets: []string{"api-files"},
 			ReleaseConfig: &appv1alpha1.ReleaseConfigReference{Generation: 3, SourceGeneration: 1, Image: "image:A"}},
 		Status: appv1alpha1.AppStatus{ReleaseGeneration: 3, ConfigSnapshotGeneration: 2, ActiveRevision: "rev-2", Image: "image:B"},
+	}
+	for _, m := range mutate {
+		m(&app.Spec)
 	}
 	scheme := deletionScheme(t)
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(app).WithObjects(app,
@@ -54,6 +61,9 @@ func selectedReleaseFixture(t *testing.T) (*AppReconciler, *appv1alpha1.App) {
 	target.Spec.HealthCheckPath = "/A"
 	target.Spec.Replicas = 2
 	target.Spec.Env[0].Value = "A"
+	for _, m := range mutate {
+		m(&target.Spec)
+	}
 	target.Status.ReleaseGeneration = 1
 	target.Status.ConfigSnapshotGeneration = 1
 	for _, source := range releaseConfigSources(target) {
@@ -317,6 +327,217 @@ func TestEnvOnlyRollbackReportsUndeployedChanges(t *testing.T) {
 	materializeSelectedTestRelease(t, r, app)
 	if !app.Status.UndeployedChanges {
 		t.Fatal("different saved Secret values were invisible")
+	}
+}
+
+// A Restart or rollback runs its target's build, so a saved build command,
+// branch or root directory that build was not made from waits for the next
+// deploy, as Render's next standard deploy "uses the service's current
+// configuration" (render.com/docs/rollbacks); the target's put back waits for
+// nothing. Render's rollback keeps the current plan, so a plan changed since
+// the target is not a change. The selection's record named the saved build
+// settings, so a pending one read as deployed and the target's put back as
+// undeployed (w32/058).
+func TestASelectionKeepsSavedBuildSettingsUndeployed(t *testing.T) {
+	builds := map[string]func(*appv1alpha1.AppSpec){
+		"a Dockerfile service": func(s *appv1alpha1.AppSpec) {
+			s.Repo, s.Image, s.Branch, s.BuildCommand, s.Builder = "https://github.com/bex-co/hello", "", "main", "make a", "dockerfile"
+		},
+		// A native build bakes its start command and environment in too.
+		"a native service": func(s *appv1alpha1.AppSpec) {
+			s.Repo, s.Image, s.Branch, s.BuildCommand, s.Runtime = "https://github.com/bex-co/hello", "", "main", "make a", "node"
+		},
+	}
+	// selectTheTarget makes the saved selected settings release 1's, as an
+	// identical Restart's are, applies save, and serves release 3.
+	selectTheTarget := func(t *testing.T, build func(*appv1alpha1.AppSpec), restart bool, save func(*appv1alpha1.AppSpec)) (*AppReconciler, *appv1alpha1.App) {
+		t.Helper()
+		r, app := selectedReleaseFixture(t, build)
+		target, err := r.readRuntimeConfigRecord(t.Context(), app, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		app.Spec.StartCommand, app.Spec.HealthCheckPath = target.spec.StartCommand, *target.spec.HealthCheckPath
+		app.Spec.Replicas, app.Spec.Env = *target.spec.Replicas, target.spec.Env
+		if target.spec.BuildSettingsFingerprint != buildSettingsFingerprint(app.Spec) {
+			t.Fatal("precondition: release 1's record names the build settings it was built from")
+		}
+		app.Spec.ReleaseConfig.PreserveGroupValues = restart
+		save(&app.Spec)
+		if err := r.Update(t.Context(), app); err != nil {
+			t.Fatal(err)
+		}
+		setSelectedTestSecret(t, r, "api-env", "A")
+		setSelectedTestSecret(t, r, "api-files", "file-A")
+		setSelectedTestSecret(t, r, "evg-shared-env", "group-A")
+		materializeSelectedTestRelease(t, r, app)
+		return r, app
+	}
+	undeployed := func(t *testing.T, r *AppReconciler, app *appv1alpha1.App) bool {
+		t.Helper()
+		different, _, err := r.servingConfigurationDiffers(t.Context(), app)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return different
+	}
+	for kind, build := range builds {
+		for _, tc := range []struct {
+			name    string
+			restart bool
+			save    func(*appv1alpha1.AppSpec)
+			want    bool
+		}{
+			{"an identical Restart", true, func(*appv1alpha1.AppSpec) {}, false},
+			{"an identical rollback", false, func(*appv1alpha1.AppSpec) {}, false},
+			{"a Restart, a saved build command", true, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "make b" }, true},
+			{"a rollback, a saved build command", false, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "make b" }, true},
+			{"a Restart, a saved branch", true, func(s *appv1alpha1.AppSpec) { s.Branch = "b" }, true},
+			{"a rollback, a saved root directory", false, func(s *appv1alpha1.AppSpec) { s.RootDir = "b" }, true},
+			{"a rollback, a plan changed since the target", false, func(s *appv1alpha1.AppSpec) { s.Tier = "pro" }, false},
+		} {
+			t.Run(kind+", "+tc.name, func(t *testing.T) {
+				r, app := selectTheTarget(t, build, tc.restart, tc.save)
+				if app.Status.UndeployedChanges != tc.want {
+					t.Fatalf("undeployedChanges = %v after the selection served, want %v", app.Status.UndeployedChanges, tc.want)
+				}
+				target, err := r.readRuntimeConfigRecord(t.Context(), app, 1)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rec, err := r.readRuntimeConfigRecord(t.Context(), app, 3)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rec.spec.BuildSettingsFingerprint != target.spec.BuildSettingsFingerprint {
+					t.Fatal("the selection's record must name its target's build settings, not the saved ones")
+				}
+			})
+		}
+
+		t.Run(kind+", the target's build settings put back wait for nothing, and a later save waits", func(t *testing.T) {
+			r, app := selectTheTarget(t, build, true, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "make b" })
+			if !app.Status.UndeployedChanges {
+				t.Fatal("precondition: the saved build command waits")
+			}
+			app.Spec.BuildCommand = "make a"
+			if undeployed(t, r, app) {
+				t.Fatal("the build command the Restart runs, put back, still reads undeployed")
+			}
+			app.Spec.Branch = "b"
+			if !undeployed(t, r, app) {
+				t.Fatal("a saved branch after the Restart reads deployed")
+			}
+		})
+
+		t.Run(kind+", a Restart of a rollback keeps the rollback target's build settings", func(t *testing.T) {
+			r, app := selectTheTarget(t, build, false, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "make b" })
+			app.Generation = 4
+			app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "4"
+			app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 4, SourceGeneration: 3, Image: "image:A", PreserveGroupValues: true}
+			if err := r.Update(t.Context(), app); err != nil {
+				t.Fatal(err)
+			}
+			app.Status.ReleaseGeneration = 4
+			materializeSelectedTestRelease(t, r, app)
+			if !app.Status.UndeployedChanges {
+				t.Fatal("a Restart of the rollback reads the saved build command deployed")
+			}
+			app.Spec.BuildCommand = "make a"
+			if undeployed(t, r, app) {
+				t.Fatal("the rollback target's build command put back reads undeployed after the Restart")
+			}
+		})
+	}
+
+	t.Run("a target recorded before build settings keeps the saved comparison", func(t *testing.T) {
+		r, app := selectedReleaseFixture(t, builds["a Dockerfile service"])
+		target, err := r.readRuntimeConfigRecord(t.Context(), app, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		target.spec.BuildSettingsFingerprint = ""
+		if err := r.persistRuntimeConfigRecord(t.Context(), app, 1, target); err != nil {
+			t.Fatal(err)
+		}
+		app.Spec.StartCommand, app.Spec.HealthCheckPath = target.spec.StartCommand, *target.spec.HealthCheckPath
+		app.Spec.Replicas, app.Spec.Env, app.Spec.BuildCommand = *target.spec.Replicas, target.spec.Env, "make b"
+		app.Spec.ReleaseConfig.PreserveGroupValues = true
+		if err := r.Update(t.Context(), app); err != nil {
+			t.Fatal(err)
+		}
+		setSelectedTestSecret(t, r, "api-env", "A")
+		setSelectedTestSecret(t, r, "api-files", "file-A")
+		setSelectedTestSecret(t, r, "evg-shared-env", "group-A")
+		materializeSelectedTestRelease(t, r, app)
+		rec, err := r.readRuntimeConfigRecord(t.Context(), app, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rec.spec.BuildSettingsFingerprint != "" || rec.spec.SettingsFingerprint != releaseSettingsFingerprint(app.Spec) {
+			t.Fatal("a selection of a record with no build settings must name the saved settings and claim no build")
+		}
+		if app.Status.UndeployedChanges {
+			t.Fatal("with no recorded build settings the comparison is the saved one, as before")
+		}
+	})
+}
+
+// A release held through its rollout records, on a pass that renders the newer
+// saved spec, the stamps it was adopted with: its settings, and the build
+// settings a Restart or rollback of it runs (w8/m120, w32/058).
+func TestAHeldReleaseRecordKeepsItsAdoptedStamps(t *testing.T) {
+	adopted := appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/hello", Branch: "main", BuildCommand: "make a", Port: 3000, Replicas: 1}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: snapshotTestNS, UID: "api-uid", Generation: 2},
+		Spec:       adopted,
+		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseBuilding, ReleaseGeneration: 2, ActiveRevision: "rev-1",
+			ReleaseFingerprint: desiredAppReleaseIdentity(adopted).release},
+	}
+	scheme := deletionScheme(t)
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(app).WithObjects(app).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes}
+	if err := r.recordAdoptedRelease(t.Context(), app); err != nil {
+		t.Fatal(err)
+	}
+	app.Spec.BuildCommand, app.Spec.Replicas = "make b", 2
+	if !heldRelease(app) {
+		t.Fatal("precondition: the saved spec moved on past the release in flight")
+	}
+	if err := r.recordReleasePodTemplate(t.Context(), app, corev1.PodTemplateSpec{}); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := r.readRuntimeConfigRecord(t.Context(), app, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.spec.SettingsFingerprint != releaseSettingsFingerprint(adopted) || *rec.spec.SavedReplicas != 1 {
+		t.Fatal("the held release's record took the newer saved settings")
+	}
+	if rec.spec.BuildSettingsFingerprint != buildSettingsFingerprint(adopted) {
+		t.Fatal("the held release's record lost the build settings it was adopted with")
+	}
+}
+
+// selectedSettingsFingerprint names a spec's own build exactly as
+// releaseSettingsFingerprint does, so a Restart that runs the saved settings'
+// own build reads them deployed.
+func TestSelectedSettingsFingerprintOfTheSavedBuildIsTheSavedSettings(t *testing.T) {
+	for name, spec := range map[string]appv1alpha1.AppSpec{
+		"image": {Image: "nginx:1", Port: 80, Tier: "starter"},
+		"native": {Repo: "https://github.com/bex-co/hello", Runtime: "node", BuildCommand: "npm ci", StartCommand: "node .",
+			Env: []appv1alpha1.EnvVar{{Name: "K", Value: "v"}}, EnvFromSecret: "api-env", RestartedAt: "now", BuildCommit: "abc"},
+		"docker": {Repo: "https://github.com/bex-co/hello", Branch: "dev", DockerfilePath: "Dockerfile",
+			ReleaseConfig: &appv1alpha1.ReleaseConfigReference{Generation: 2, SourceGeneration: 1, Image: "x"}},
+	} {
+		if got, want := selectedSettingsFingerprint(spec, buildSettingsFingerprint(spec)), releaseSettingsFingerprint(spec); got != want {
+			t.Errorf("%s: %s, want %s", name, got, want)
+		}
+		other := spec
+		other.BuildCommand = "other"
+		if selectedSettingsFingerprint(spec, buildSettingsFingerprint(other)) == releaseSettingsFingerprint(spec) {
+			t.Errorf("%s: another build's settings name the saved ones", name)
+		}
 	}
 }
 

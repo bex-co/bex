@@ -151,6 +151,8 @@ var _ = Describe("A release held through rollout keeps its own settings (w8/m120
 		Expect(err).NotTo(HaveOccurred())
 		Expect(rec.spec.SettingsFingerprint).To(Equal(releaseSettingsFingerprint(adoptedA)),
 			"A's record keeps the settings fingerprint it was adopted with, which a cancel compares against")
+		Expect(rec.spec.BuildSettingsFingerprint).To(Equal(buildSettingsFingerprint(adoptedA)),
+			"and the build settings A was built from, which a Restart of A runs (w32/058)")
 	}
 
 	It("rolls out and records its own start command and env while a newer save waits", func() {

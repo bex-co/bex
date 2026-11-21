@@ -50,6 +50,10 @@ type runtimeConfigRecord struct {
 	// the stored one, or store adoptedIfAbsent when there is none.
 	adopted         *appv1alpha1.AppSpec
 	adoptedIfAbsent *appv1alpha1.AppSpec
+	// selected marks the record of a release that runs the image of the
+	// release it selects (a Restart or rollback): its spec carries that
+	// release's build settings, which writeRuntimeConfigRecord keeps.
+	selected bool
 }
 
 func (r *AppReconciler) readReleaseRecordSecret(ctx context.Context, app *appv1alpha1.App, generation int64) (*corev1.Secret, error) {
@@ -179,6 +183,9 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 		if desiredAppReleaseIdentity(app.Spec).release == app.Status.ReleaseFingerprint {
 			rec.adoptedIfAbsent = &app.Spec
 		}
+		// And it runs the selected release's image, built from that release's
+		// build settings, not the saved ones (w32/058).
+		rec.selected = true
 		if err := r.writeRuntimeConfigRecord(ctx, app, ref.Generation, rec); err != nil {
 			return err
 		}
@@ -313,14 +320,22 @@ func selectedSourceName(app *appv1alpha1.App, ref *appv1alpha1.ReleaseConfigRefe
 }
 
 func (r *AppReconciler) selectedRuntimeApp(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, error) {
+	runtime, _, err := r.selectedRuntimeAppFrom(ctx, app)
+	return runtime, err
+}
+
+// selectedRuntimeAppFrom is selectedRuntimeApp with the record it projects
+// (runtimeRecord): nil when the pass renders the saved spec.
+func (r *AppReconciler) selectedRuntimeAppFrom(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, *runtimeConfigRecord, error) {
 	rec, gen, err := r.runtimeRecord(ctx, app)
-	if err != nil || rec == nil {
-		if err != nil {
-			return nil, err
-		}
-		return r.retainReleaseSources(ctx, app)
+	if err != nil {
+		return nil, nil, err
 	}
-	return rec.projectRuntimeApp(app, gen), nil
+	if rec == nil {
+		runtime, err := r.retainReleaseSources(ctx, app)
+		return runtime, nil, err
+	}
+	return rec.projectRuntimeApp(app, gen), rec, nil
 }
 
 // runtimeRecord is the record this pass renders the release from, and its
@@ -578,10 +593,23 @@ func releaseRuntimeSpec(app *appv1alpha1.App) appv1alpha1.AppSpec {
 }
 
 // writeRuntimeConfigRecord stores record for generation, stamped with the saved
-// settings (replicas, settings fingerprint) app holds as it is written.
+// settings (replicas, settings and build settings fingerprints) app holds as it
+// is written. A selected record keeps the build settings of the image it runs,
+// and its settings fingerprint names them with its own recorded settings and
+// the saved plan and disk (selectedSettingsFingerprint, w32/058). One whose
+// target's record predates build settings knows none, and names the saved
+// settings, as before.
 func (r *AppReconciler) writeRuntimeConfigRecord(ctx context.Context, app *appv1alpha1.App, generation int64, record *runtimeConfigRecord) error {
 	record.spec.SavedReplicas = new(app.Spec.Replicas)
-	record.spec.SettingsFingerprint = releaseSettingsFingerprint(app.Spec)
+	switch built := record.spec.BuildSettingsFingerprint; {
+	case !record.selected:
+		record.spec.SettingsFingerprint = releaseSettingsFingerprint(app.Spec)
+		record.spec.BuildSettingsFingerprint = buildSettingsFingerprint(app.Spec)
+	case built != "":
+		record.spec.SettingsFingerprint = selectedSettingsFingerprint(record.projectRuntimeApp(app, generation).Spec, built)
+	default:
+		record.spec.SettingsFingerprint = releaseSettingsFingerprint(app.Spec)
+	}
 	return r.persistRuntimeConfigRecord(ctx, app, generation, record)
 }
 

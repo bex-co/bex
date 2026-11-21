@@ -200,12 +200,18 @@ func releaseIdentityWith(spec appv1alpha1.AppSpec, version, cacheProfile string)
 	}
 
 	artifact := identityFingerprint("artifact-v1", artifactInput)
+	return appReleaseIdentity{artifact: artifact, release: releaseFingerprintOf(spec, version, cacheProfile, artifact)}
+}
+
+// releaseFingerprintOf is the release identity of spec's release inputs run
+// on the artifact the artifact fingerprint names.
+func releaseFingerprintOf(spec appv1alpha1.AppSpec, version, cacheProfile, artifact string) string {
 	serviceType := spec.Type
 	if serviceType == "" {
 		serviceType = appv1alpha1.TypeWebService
 	}
 	port := spec.EffectivePort()
-	release := identityFingerprint(version, releaseIdentityInput{
+	return identityFingerprint(version, releaseIdentityInput{
 		ReleaseConfig:              spec.ReleaseConfig,
 		ContainerPolicy:            spec.ContainerPolicy,
 		Artifact:                   artifact,
@@ -230,7 +236,6 @@ func releaseIdentityWith(spec appv1alpha1.AppSpec, version, cacheProfile string)
 		Tier:                       spec.Tier,
 		Disk:                       releaseDisk(spec.Disk),
 	})
-	return appReleaseIdentity{artifact: artifact, release: release}
 }
 
 // releaseSettingsFingerprint is the release identity of spec's saved settings
@@ -247,6 +252,27 @@ func settingsIdentitySpec(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 	spec.RestartedAt, spec.BuildCommit, spec.ExternalRegistryPullSecret = "", "", ""
 	spec.ReleaseConfig = nil
 	return spec
+}
+
+// buildSettingsFingerprint is the artifact identity of spec's saved settings
+// (releaseSettingsFingerprint's spec): what a build dispatched from spec reads,
+// the repository or image, branch, root directory, build command, Dockerfile
+// and runtime, and for a native build the start command and environment it
+// bakes in.
+func buildSettingsFingerprint(spec appv1alpha1.AppSpec) string {
+	return desiredAppReleaseIdentity(settingsIdentitySpec(spec)).artifact
+}
+
+// selectedSettingsFingerprint is the settings fingerprint of a release that
+// runs runtime's settings on an image another release built from the settings
+// built names (its buildSettingsFingerprint): a Restart or rollback, which
+// runs its target's image and recorded settings with the saved plan and disk
+// (render.com/docs/rollbacks). Compared with releaseSettingsFingerprint, saved
+// build settings that image was not built from then read as undeployed until
+// the next deploy builds them, and the target's put back as deployed
+// (w32/058).
+func selectedSettingsFingerprint(runtime appv1alpha1.AppSpec, built string) string {
+	return releaseFingerprintOf(settingsIdentitySpec(runtime), releaseIdentityVersion, "", built)
 }
 
 // recordedSettingsMatch reports whether a release record's SettingsFingerprint

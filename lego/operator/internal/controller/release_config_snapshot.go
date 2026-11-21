@@ -510,14 +510,20 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 		// adopted with.
 		spec := releaseRecordSpec(adopted.projectRuntimeApp(app, gen))
 		spec.SavedReplicas, spec.SettingsFingerprint = adopted.spec.SavedReplicas, adopted.spec.SettingsFingerprint
+		spec.BuildSettingsFingerprint = adopted.spec.BuildSettingsFingerprint
 		spec.ImageSource = r.releaseImageSource(ctx, app, tmpl)
 		return r.persistRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: spec, template: tmpl})
 	}
-	runtime, err := r.selectedRuntimeApp(ctx, app)
+	runtime, selected, err := r.selectedRuntimeAppFrom(ctx, app)
 	if err != nil {
 		return err
 	}
 	record := &runtimeConfigRecord{spec: releaseRecordSpec(runtime), template: tmpl}
+	if selected != nil {
+		// A Restart or rollback runs the image of the release it selects, whose
+		// build settings its record carries (w32/058).
+		record.spec.BuildSettingsFingerprint, record.selected = selected.spec.BuildSettingsFingerprint, true
+	}
 	record.spec.ImageSource = r.releaseImageSource(ctx, app, tmpl)
 	// The release's spec, for a later save to be held against
 	// (pendingReleaseView): kept once recorded, and taken only while the spec
