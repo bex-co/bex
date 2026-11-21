@@ -109,6 +109,74 @@ func TestValidateBlueprintAggregatesPerServiceErrorsWithLocations(t *testing.T) 
 	}
 }
 
+// w8/365: two unknown keys in one service are two errors, each at its key,
+// on every surface (the w8/365 QA file).
+func TestValidateBlueprintReportsEachUnknownKeyOnEverySurface(t *testing.T) {
+	const manifest = `services:
+  - type: web
+    name: qa-web
+    runtime: node
+    plan: free
+    repo: https://github.com/render-examples/express-hello-world
+    buildCommand: yarn
+    startCommand: node app.js
+    bogusField: 1
+    healthCheck: /healthz
+topLevelBogus: true
+`
+	want := []struct {
+		path, error  string
+		line, column float64
+	}{
+		{"services[0].bogusField", "at '/services/0': additional properties 'bogusField' not allowed", 9, 5},
+		{"services[0].healthCheck", "at '/services/0': additional properties 'healthCheck' not allowed", 10, 5},
+		{"topLevelBogus", "at '': additional properties 'topLevelBogus' not allowed", 11, 1},
+	}
+	check := func(surface string, got []any) {
+		t.Helper()
+		if len(got) != len(want) {
+			t.Fatalf("%s errors = %+v, want %d", surface, got, len(want))
+		}
+		for i, w := range want {
+			e, _ := got[i].(map[string]any)
+			if e["path"] != w.path || e["error"] != w.error || e["line"] != w.line || e["column"] != w.column {
+				t.Errorf("%s error %d = %+v, want %s %q at %v:%v", surface, i, e, w.path, w.error, w.line, w.column)
+			}
+		}
+	}
+
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, manifest))))
+	var rest struct {
+		Errors []any `json:"errors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("REST unmarshal: %v (%s)", err, rec.Body.String())
+	}
+	check("REST", rest.Errors)
+
+	res := graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: context.Background(),
+		RequestString: fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { errorDetails { path error line column } } }`, manifest)})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL: %v", res.Errors)
+	}
+	details, _ := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)["errorDetails"].([]any)
+	// graphql-go hands Int fields back as int.
+	for _, d := range details {
+		e := d.(map[string]any)
+		e["line"], e["column"] = float64(e["line"].(int)), float64(e["column"].(int))
+	}
+	check("GraphQL", details)
+
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+	mcpErrors, _ := call("validate_bex_yml", map[string]any{"bexYaml": manifest})["errors"].([]any)
+	check("MCP", mcpErrors)
+}
+
 // A parse-stage refusal (a malformed env key) and a later service's own check
 // (free worker) are independent: both are reported.
 func TestValidateBlueprintReportsParseAndServiceErrorsTogether(t *testing.T) {

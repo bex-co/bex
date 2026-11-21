@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -83,6 +84,58 @@ func TestBlueprintUnknownPropertyPointsAtItsKey(t *testing.T) {
 	}
 	if got := problems[0]; got.Line != 7 || got.Column != 5 {
 		t.Errorf("position = %d:%d, want the key at 7:5", got.Line, got.Column)
+	}
+}
+
+// w8/365: several unknown keys in one mapping are one problem each, at the
+// key the message names, as a lone key is (w4/632). The validator lists them
+// in Go map order, so repeated runs must still compare equal.
+func TestBlueprintUnknownPropertiesPointAtEachKey(t *testing.T) {
+	const web = "services:\n  - type: web\n    name: qa-web\n    runtime: node\n    plan: free\n" +
+		"    repo: https://github.com/render-examples/express-hello-world\n" +
+		"    buildCommand: yarn\n    startCommand: node app.js\n"
+	type want struct {
+		path, key    string
+		line, column int
+	}
+	for _, tc := range []struct {
+		name, manifest string
+		want           []want
+	}{
+		{"two keys in a service and one at the root", web + "    bogusField: 1\n    healthCheck: /healthz\ntopLevelBogus: true\n", []want{
+			{"#/services/0/bogusField", "bogusField", 9, 5},
+			{"#/services/0/healthCheck", "healthCheck", 10, 5},
+			{"#/topLevelBogus", "topLevelBogus", 11, 1},
+		}},
+		{"three keys in a service", web + "    zeta: 1\n    alpha: 2\n    mid: 3\n", []want{
+			{"#/services/0/alpha", "alpha", 10, 5},
+			{"#/services/0/mid", "mid", 11, 5},
+			{"#/services/0/zeta", "zeta", 9, 5},
+		}},
+		{"two keys in an env var", web + "    envVars:\n      - key: GREETING\n        value: hi\n        colour: blue\n        shade: dark\n", []want{
+			{"#/services/0/envVars/0/colour", "colour", 12, 9},
+			{"#/services/0/envVars/0/shade", "shade", 13, 9},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, first := CompileBlueprintIR(tc.manifest)
+			if len(first) != len(tc.want) {
+				t.Fatalf("problems = %+v, want %d, one per unknown key", first, len(tc.want))
+			}
+			for i, w := range tc.want {
+				got := first[i]
+				parent := strings.TrimPrefix(w.path[:strings.LastIndex(w.path, "/")], "#")
+				message := "at '" + parent + "': additional properties '" + w.key + "' not allowed"
+				if got.Code != "BLUEPRINT_SCHEMA_INVALID" || got.Path != w.path || got.Message != message || got.Line != w.line || got.Column != w.column {
+					t.Errorf("problem %d = %+v, want %s %q at %d:%d", i, got, w.path, message, w.line, w.column)
+				}
+			}
+			for run := 0; run < 20; run++ {
+				if _, _, again := CompileBlueprintIR(tc.manifest); !reflect.DeepEqual(again, first) {
+					t.Fatalf("run %d: problems = %+v, want %+v", run, again, first)
+				}
+			}
+		})
 	}
 }
 

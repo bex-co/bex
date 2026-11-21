@@ -1440,12 +1440,23 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, sourc
 		}
 		return
 	}
-	path := renderSchemaPointer(validation.InstanceLocation)
-	unknownKey := false
-	if additional, ok := validation.ErrorKind.(*kind.AdditionalProperties); ok && len(additional.Properties) == 1 {
-		path = renderSchemaPointer(append(append([]string(nil), validation.InstanceLocation...), additional.Properties[0]))
-		unknownKey = true
+	// Each unknown property is its own problem at its key, not its value
+	// (w4/632). The validator names a mapping's unknown keys in Go map order,
+	// so one problem per key is also what keeps the output stable (w8/365).
+	if additional, ok := validation.ErrorKind.(*kind.AdditionalProperties); ok {
+		for _, key := range additional.Properties {
+			leaf := *validation
+			leaf.ErrorKind = &kind.AdditionalProperties{Properties: []string{key}}
+			path := renderSchemaPointer(append(append([]string(nil), validation.InstanceLocation...), key))
+			location, ok := source.keyLocations[path]
+			if !ok {
+				location = lookupBlueprintLocation(path, source.Locations)
+			}
+			*problems = append(*problems, BlueprintSourceProblem{Code: "BLUEPRINT_SCHEMA_INVALID", Path: path, Message: leaf.Error(), Line: location.Line, Column: location.Column})
+		}
+		return
 	}
+	path := renderSchemaPointer(validation.InstanceLocation)
 	// Only cronPlan lacks free among the service plan enums. A free cron is
 	// refused by the service stage beside a free worker or private service
 	// instead, so a file with several of them reports each in one run
@@ -1454,10 +1465,6 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, sourc
 		return
 	}
 	location := lookupBlueprintLocation(path, source.Locations)
-	// An unknown property's position is its key, not its value (w4/632).
-	if key, ok := source.keyLocations[path]; ok && unknownKey {
-		location = key
-	}
 	message := "Blueprint does not satisfy the reviewed Render schema"
 	if validation.ErrorKind != nil {
 		message = blueprintSchemaLeafMessage(validation)
