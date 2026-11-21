@@ -124,7 +124,7 @@ func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.Ap
 		if unservedOnly && marked != generation && servesGeneration(a, generation) {
 			return ErrReleaseServes
 		}
-		kept, keeps := generationAnnotation(a, appv1alpha1.AnnotationSurvivingReleaseGeneration)
+		kept, keeps := appv1alpha1.GenerationAnnotation(a, appv1alpha1.AnnotationSurvivingReleaseGeneration)
 		moves := generation > marked
 		if !moves && !(keeps && kept == generation) {
 			return nil
@@ -133,7 +133,7 @@ func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.Ap
 		delete(a.Annotations, appv1alpha1.AnnotationSurvivingReleaseGeneration)
 		if moves {
 			metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
-			if requested, _ := generationAnnotation(a, appv1alpha1.AnnotationReleaseGeneration); survivor != nil && requested == generation {
+			if requested, _ := appv1alpha1.GenerationAnnotation(a, appv1alpha1.AnnotationReleaseGeneration); survivor != nil && requested == generation {
 				metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationSurvivingReleaseGeneration, strconv.FormatInt(survivor.Generation, 10))
 				// A saved-image release builds nothing, and a selected one runs
 				// its selection: the saved commit is neither's (w4/666).
@@ -162,16 +162,10 @@ func SelectionAdopted(a *appv1alpha1.App, generation int64) bool {
 }
 
 // canceledReleaseGeneration is the release generation the App's cancel stamp
-// names; ok is false when there is none.
+// names; ok is false when there is none. The validity rule lives in lego/types
+// with the operator's readers, so both sides agree on what a stamp names.
 func canceledReleaseGeneration(a *appv1alpha1.App) (int64, bool) {
-	return generationAnnotation(a, appv1alpha1.AnnotationCanceledReleaseGeneration)
-}
-
-// generationAnnotation is the release generation one of the App's annotations
-// names; ok is false when it is absent or not a positive integer.
-func generationAnnotation(a *appv1alpha1.App, key string) (int64, bool) {
-	generation, err := strconv.ParseInt(a.Annotations[key], 10, 64)
-	return generation, err == nil && generation > 0
+	return appv1alpha1.GenerationAnnotation(a, appv1alpha1.AnnotationCanceledReleaseGeneration)
 }
 
 // releaseCanceledFor reports that the App's cancel stamp names this open row's

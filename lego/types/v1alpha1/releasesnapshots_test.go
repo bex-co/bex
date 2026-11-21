@@ -16,7 +16,11 @@ limitations under the License.
 
 package v1alpha1
 
-import "testing"
+import (
+	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // The operator writes these names and bex-api reads them; both sides call this
 // package, so the contract is pinned once, here.
@@ -67,5 +71,33 @@ func TestAppReleaseSnapshotNameScopesSharedSources(t *testing.T) {
 	// snapshot already on a cluster read them.
 	if got := AppReleaseSnapshotName("srv-a", "srv-a-env", 3); got != ReleaseSnapshotName("srv-a-env", 3) {
 		t.Errorf("own snapshot = %q", got)
+	}
+}
+
+// GenerationAnnotation is the one validity rule the backend's stamp writers
+// and the operator's stamp readers share: a stamp that is absent, unparsable,
+// or not positive reads as absent on both sides, so a cancel one side records
+// settles the same way on the other.
+func TestGenerationAnnotationRejectsNonPositive(t *testing.T) {
+	for _, key := range []string{
+		AnnotationReleaseGeneration,
+		AnnotationCanceledReleaseGeneration,
+		AnnotationSurvivingReleaseGeneration,
+		AnnotationPendingSourceGeneration,
+	} {
+		for _, raw := range []string{"", "not-a-generation", "0", "-2"} {
+			app := &App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{key: raw}}}
+			if generation, ok := GenerationAnnotation(app, key); ok {
+				t.Fatalf("%s %q = (%d, true), want ok=false", key, raw, generation)
+			}
+		}
+		bare := &App{}
+		if generation, ok := GenerationAnnotation(bare, key); ok {
+			t.Fatalf("%s absent = (%d, true), want ok=false", key, generation)
+		}
+		app := &App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{key: "7"}}}
+		if generation, ok := GenerationAnnotation(app, key); !ok || generation != 7 {
+			t.Fatalf("%s \"7\" = (%d, %v), want (7, true)", key, generation, ok)
+		}
 	}
 }

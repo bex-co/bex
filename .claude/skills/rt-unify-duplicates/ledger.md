@@ -8,6 +8,9 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-21 `FilterOf` in backend audit/deploys/events — intentionally different strictness (strict 400 vs permissive-onto-default-window), each documented at its site; per-domain rules, not copies
+- 2026-11-21 operator `JobName` in publish/predeploy/build — thin per-kind delegates to `appv1alpha1.*JobName`, already unified at the contract layer
+- 2026-11-21 `Register(mux, h)` in backend settingsguard/opsrole/identityclaims — per-handler readiness gates (different required fields and methods); 5-line shapes below the bar
 - 2026-11-19 postgres/keyvalue restart-free helpers (`restartFreePending`/`markRestartFree`/`annotationRestartFreeGeneration`) — intentionally different per-datastore restart semantics (CNPG cert-reload and allow-list layers vs Valkey eviction policy, `externalAccessRestarts` and the SNI-proxy layers); the field allow-lists must stay per datastore, comments already cross-reference
 - 2026-11-18 `pg-sni-proxy`/`kv-sni-proxy` mains — deliberately parallel binaries (Postgres SSLRequest preamble vs plain TLS); twins maintained with backport comments, merging two mains is out of the bar
 - 2026-11-18 `bandwidth`/`buildminutes` Sweepers — parallel enforcement policies with intentionally different stages (spend-limit stage only in buildminutes); shared sweep primitives already live in `core`/`store`

@@ -341,7 +341,7 @@ func (a *App) ActiveReleaseConfig() *ReleaseConfigReference {
 	if gen == ref.Generation && a.Status.SelectedReleaseGeneration == gen {
 		return ref
 	}
-	if requested, err := strconv.ParseInt(a.Annotations[AnnotationReleaseGeneration], 10, 64); err == nil && requested > gen {
+	if requested, ok := GenerationAnnotation(a, AnnotationReleaseGeneration); ok && requested > gen {
 		gen = requested
 	}
 	if gen <= 0 {
@@ -361,5 +361,16 @@ func RevisionGeneration(rev string) (int64, bool) {
 		return 0, false
 	}
 	generation, err := strconv.ParseInt(raw, 10, 64)
+	return generation, err == nil && generation > 0
+}
+
+// GenerationAnnotation is the release generation one of the App's annotations
+// names; ok is false when it is absent or not a positive integer. The backend
+// stamps these (AnnotationReleaseGeneration, AnnotationCanceledReleaseGeneration,
+// AnnotationSurvivingReleaseGeneration) and the operator reads them back, so the
+// validity rule has to agree exactly on both sides: it is derived here and
+// nowhere else, like RevisionGeneration above.
+func GenerationAnnotation(app *App, key string) (int64, bool) {
+	generation, err := strconv.ParseInt(app.Annotations[key], 10, 64)
 	return generation, err == nil && generation > 0
 }
