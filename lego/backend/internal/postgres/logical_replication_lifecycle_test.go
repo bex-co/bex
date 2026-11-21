@@ -140,41 +140,50 @@ func TestDroppedSlotsNotice(t *testing.T) {
 	}
 }
 
-// The verb tells the operator how a failover treats a publisher with a
-// standby (t002): before 17 every slot is lost, pending pg_failover_slots in
-// bex's image (w8/m92); from 17 a subscription keeps its place only with
-// failover = true. A database with no standby, or one that only subscribes,
+// The verb tells the operator how a failover treats a database with a
+// standby. As a publisher (t002): before 17 every slot is lost, pending
+// pg_failover_slots in bex's image (w8/m92); from 17 a subscription keeps its
+// place only with failover = true. As a subscriber, on every major (w34/003):
+// the asynchronous standby can miss what the subscriptions applied last, which
+// their publishers never resend. A database with no standby, or not enabled,
 // has nothing to warn about.
 func TestFailoverWarnings(t *testing.T) {
 	publisher := &appv1alpha1.DatabaseLogicalReplication{PublisherRole: "cdc_reader", Schemas: []string{"public"}}
 	subscriber := &appv1alpha1.DatabaseLogicalReplication{SubscriberRole: "cdc_reader"}
+	created := &appv1alpha1.DatabaseLogicalReplication{Subscriptions: []appv1alpha1.DatabaseLogicalSubscription{{Name: "from_render"}}}
+	both := &appv1alpha1.DatabaseLogicalReplication{PublisherRole: "cdc_reader", Schemas: []string{"public"}, SubscriberRole: "cdc_reader"}
+	const subscriberLoss = "an automatic failover can lose the changes its subscriptions applied"
 	for _, tc := range []struct {
 		name  string
 		ha    bool
 		lr    *appv1alpha1.DatabaseLogicalReplication
 		major int
-		want  string
+		want  []string
 	}{
-		{name: "HA publisher on 16", ha: true, lr: publisher, major: 16, want: "w8/m92"},
-		{name: "HA publisher on 13", ha: true, lr: publisher, major: 13, want: "PostgreSQL 13, whose failover or switchover does not carry"},
-		{name: "HA publisher on 17", ha: true, lr: publisher, major: 17, want: "WITH (failover = true)"},
-		{name: "HA publisher on 18", ha: true, lr: publisher, major: 18, want: "WITH (failover = true)"},
+		{name: "HA publisher on 16", ha: true, lr: publisher, major: 16, want: []string{"w8/m92"}},
+		{name: "HA publisher on 13", ha: true, lr: publisher, major: 13, want: []string{"PostgreSQL 13, whose failover or switchover does not carry"}},
+		{name: "HA publisher on 17", ha: true, lr: publisher, major: 17, want: []string{"WITH (failover = true)"}},
+		{name: "HA publisher on 18", ha: true, lr: publisher, major: 18, want: []string{"WITH (failover = true)"}},
 		{name: "publisher without a standby", lr: publisher, major: 16},
-		{name: "HA subscriber only", ha: true, lr: subscriber, major: 16},
+		{name: "HA subscriber role on 18", ha: true, lr: subscriber, major: 18, want: []string{subscriberLoss}},
+		{name: "HA subscriber role on 16", ha: true, lr: subscriber, major: 16, want: []string{subscriberLoss}},
+		{name: "HA with subscriptions bex creates on 15", ha: true, lr: created, major: 15, want: []string{subscriberLoss}},
+		{name: "HA publisher and subscriber on 18", ha: true, lr: both, major: 18, want: []string{"WITH (failover = true)", subscriberLoss}},
+		{name: "HA publisher and subscriber on 16", ha: true, lr: both, major: 16, want: []string{"w8/m92", subscriberLoss}},
+		{name: "subscriber without a standby", lr: subscriber, major: 18},
 		{name: "HA, not enabled", ha: true, major: 16},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := publisherDatabase("dpg-fo")
 			d.Spec.HighAvailability = tc.ha
 			got := failoverWarnings(d, tc.lr, tc.major)
-			if tc.want == "" {
-				if len(got) != 0 {
-					t.Fatalf("warnings = %q, want none", got)
-				}
-				return
+			if len(got) != len(tc.want) {
+				t.Fatalf("warnings = %q, want %d naming %q", got, len(tc.want), tc.want)
 			}
-			if len(got) != 1 || !strings.Contains(got[0], tc.want) {
-				t.Fatalf("warnings = %q, want one naming %q", got, tc.want)
+			for i, want := range tc.want {
+				if !strings.Contains(got[i], want) {
+					t.Fatalf("warning %d = %q, want it to name %q", i, got[i], want)
+				}
 			}
 		})
 	}

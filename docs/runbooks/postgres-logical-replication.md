@@ -80,6 +80,11 @@ printf '%s' 'postgresql://<user>:<password>@<host>:5432/<db>?sslmode=require' |
 
 The user creates the tables first: CloudNativePG's `CREATE SUBSCRIPTION` fails while a published table is missing, and the answer's `message` then carries the operator's `LogicalReplication` condition with PostgreSQL's error. Exit 0 means `liveSubscriptions` lists it. `sslmode` may be `disable`, `allow`, `prefer` or `require` (the default); `verify-ca` and `verify-full` are refused because the instance has no root certificate for an arbitrary publisher. A database takes at most four. Running the same command with a new password replaces the stored one. The user cannot alter or drop this subscription themselves (`must be owner of subscription`): remove it with `disable --subscription <name>`.
 
+**A subscriber with a standby** (high availability). The answer's `warnings` says so on every major: the standby replicates asynchronously, as Render's does, so an automatic failover can lose the changes the subscriptions applied in its last seconds, and their publishers do not send those again. Nothing is applied twice, and a failover requested on a healthy primary (`POST /v1/postgres/{id}/failover`, a switchover) loses nothing. Tell the user that after an automatic failover (a `postgres_cluster_leader_changed` event they did not request), a subscription whose tables must match the publisher exactly is re-created over emptied tables, which copies them again:
+
+- **16 and later:** as the subscriber role, `DROP SUBSCRIPTION <name>` (which also drops its slot on the publisher), `TRUNCATE` its tables, then `CREATE SUBSCRIPTION` again as above.
+- **13–15:** run `disable --subscription <name>`, which drops it and its slot, have the user `TRUNCATE` its tables, then run the enable again with the same subscription and the publisher URL the user gives you again.
+
 **Network.** Every database's instance can already reach another workspace's external URL, a host outside bex, and a same-workspace database's internal host on port 5432; nothing is opened per subscriber. A publisher with inbound IP rules must admit bex's tenant node addresses, from which subscribers connect (there is no fixed egress IP).
 
 ## A recovered copy

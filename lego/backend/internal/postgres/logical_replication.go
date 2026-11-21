@@ -558,20 +558,32 @@ func (s *Service) readLogicalReplication(ctx context.Context, d *appv1alpha1.Dat
 	return res
 }
 
-// failoverWarnings says what a failover or switchover does to the slots of
-// a publisher with a standby (w34/m543; ADR009 § Logical replication ›
-// Failover). On 17 or later the operator keeps each slot created with
-// failover = true on the standby; before 17 that takes the pg_failover_slots
-// extension, which bex's PostgreSQL image does not have yet (w8/m92), so a
-// failover loses every slot. Nothing to say for a database with no standby.
+// failoverWarnings says what a failover or switchover does to the logical
+// replication of a database with a standby (w34/m543; ADR009 § Logical
+// replication › Failover). As a publisher: on 17 or later the operator keeps
+// each slot created with failover = true on the standby; before 17 that
+// takes the pg_failover_slots extension, which bex's PostgreSQL image does
+// not have yet (w8/m92), so a failover loses every slot. As a subscriber
+// (w34/003): the standby replicates asynchronously, as Render's does, so an
+// automatic failover can lose what the subscriptions applied in its last
+// seconds, and the publishers, already told it was applied, never send it
+// again. Nothing to say for a database with no standby.
 func failoverWarnings(d *appv1alpha1.Database, lr *appv1alpha1.DatabaseLogicalReplication, major int) []string {
-	if !d.Spec.HighAvailability || !lr.Publishes() {
+	if !d.Spec.HighAvailability {
 		return nil
 	}
-	if major >= appv1alpha1.LogicalSlotsCarriedMajor {
-		return []string{"the database has a standby: a subscription keeps its place through a failover or switchover only when it was created WITH (failover = true), which needs a PostgreSQL 17 or later subscriber; re-create any other subscription after one"}
+	var warnings []string
+	switch {
+	case !lr.Publishes():
+	case major >= appv1alpha1.LogicalSlotsCarriedMajor:
+		warnings = append(warnings, "the database has a standby: a subscription keeps its place through a failover or switchover only when it was created WITH (failover = true), which needs a PostgreSQL 17 or later subscriber; re-create any other subscription after one")
+	default:
+		warnings = append(warnings, fmt.Sprintf("the database has a standby and runs PostgreSQL %d, whose failover or switchover does not carry logical replication slots to the standby (bex's image lacks pg_failover_slots, w8/m92): after one, every subscriber must be re-created and copy its tables again; PostgreSQL 17 and later keep them", major))
 	}
-	return []string{fmt.Sprintf("the database has a standby and runs PostgreSQL %d, whose failover or switchover does not carry logical replication slots to the standby (bex's image lacks pg_failover_slots, w8/m92): after one, every subscriber must be re-created and copy its tables again; PostgreSQL 17 and later keep them", major)}
+	if lr.Subscribes() {
+		warnings = append(warnings, "the database has a standby, which replicates asynchronously, as Render's does: an automatic failover can lose the changes its subscriptions applied in the last seconds before it, and their publishers do not send those again; a failover requested on a healthy primary is a switchover and loses nothing. After an automatic failover, re-create a subscription over emptied tables when they must match its publisher exactly")
+	}
+	return warnings
 }
 
 // logicalReplicationCondition is the operator's report on the database,

@@ -29,6 +29,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -251,9 +252,10 @@ func TestRecoveredCopyRefusesASubscriberWhileHoldingItsSourcesSubscriptions(t *t
 	}
 }
 
-// An HA publisher's enable answers the failover warning for its major, as
-// read from the server itself (t002).
-func TestHAPublisherEnableWarnsAboutFailover(t *testing.T) {
+// haLRFixture is newLRFixture's database with a standby, and the major the
+// test server runs.
+func haLRFixture(t *testing.T) (*lrFixture, appv1alpha1.Database, int) {
+	t.Helper()
 	f := newLRFixture(t)
 	shortenLogicalReplicationWait(t, 300*time.Millisecond)
 	ctx := context.Background()
@@ -270,11 +272,36 @@ func TestHAPublisherEnableWarnsAboutFailover(t *testing.T) {
 		_ = conn.QueryRow(ctx, `SELECT current_setting('server_version_num')::int / 10000`).Scan(&major)
 		_ = conn.Close(ctx)
 	}
-	res, err := f.svc.SetLogicalReplication(ctx, LogicalReplicationRequest{Database: f.db.Name, Enable: true, PublisherRole: f.readerRole, Schemas: []string{"public"}})
+	return f, d, major
+}
+
+// An HA publisher's enable answers the failover warning for its major, as
+// read from the server itself (t002).
+func TestHAPublisherEnableWarnsAboutFailover(t *testing.T) {
+	f, d, major := haLRFixture(t)
+	res, err := f.svc.SetLogicalReplication(context.Background(), LogicalReplicationRequest{Database: f.db.Name, Enable: true, PublisherRole: f.readerRole, Schemas: []string{"public"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if want := failoverWarnings(&d, &appv1alpha1.DatabaseLogicalReplication{PublisherRole: f.readerRole}, major); len(want) != 1 || strings.Join(res.Warnings, "|") != want[0] {
+		t.Fatalf("warnings = %q, want %q", res.Warnings, want)
+	}
+}
+
+// An HA subscriber's enable answers that its asynchronous standby can miss
+// the changes its subscriptions applied last before an automatic failover,
+// which their publishers never send again (w34/003).
+func TestHASubscriberEnableWarnsAboutFailover(t *testing.T) {
+	f, d, major := haLRFixture(t)
+	if major < appv1alpha1.PgCreateSubscriptionMajor {
+		testenv.Skip(t, "the subscriber role form needs PostgreSQL 16 or later")
+	}
+	res, err := f.svc.SetLogicalReplication(context.Background(), LogicalReplicationRequest{Database: f.db.Name, Enable: true, SubscriberRole: f.ownerRole})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := failoverWarnings(&d, &appv1alpha1.DatabaseLogicalReplication{SubscriberRole: f.ownerRole}, major)
+	if len(want) != 1 || !strings.Contains(want[0], "an automatic failover can lose") || strings.Join(res.Warnings, "|") != want[0] {
 		t.Fatalf("warnings = %q, want %q", res.Warnings, want)
 	}
 }
