@@ -608,6 +608,20 @@ drain-guard watches the workload cluster's Nodes. When the taint lands on a guar
 
 **Tenant visibility (`w4/m504`, 2026-11-19).** When a non-`Recreate` App Deployment gains a new `drain-guard.bex.co/evacuated-from` value, the App reconciler records the transition on `App.status.platformRedeploy` (keyed by node and Deployment generation; trigger `node_replacement` for a CAPI Machine roll or `node_consolidation` when the node carries `ToBeDeletedByClusterAutoscaler`), and ends it once that generation's rollout completes or the old pod is gone after hold expiry. The control-plane reconciler projects it into idempotent `zero_downtime_redeploy_started` and `zero_downtime_redeploy_ended` service events on REST, GraphQL, MCP, outbound webhooks and the dashboard. Disk-attached (`Recreate`) services record neither.
 
+## Disk-attached services roll with `Recreate` (w6/m547)
+
+A service with a persistent disk cannot run two instances on one volume, so Render stops the old instance before starting the new one, "which makes the service unavailable for a few seconds". Its Deployment uses `Recreate` ([ADR082 § D3](ADR082-persistent-disks.md#d3--mechanism-deployment--operator-managed-pvc-recreate-strategy)), and every second between the old instance's stop and the new one's first answer is downtime. These rules keep that time short:
+
+- **No drain.** The preStop drain is 0 s (`drainSecondsFor`), so the stop side is the app's own exit within its 30-second grace (w6/m548).
+- **The volume's node first.** The pod template prefers the node the instance runs on, so the volume stays attached and the image stays cached. The term is learned lazily and never rolls the instance by itself. An unschedulable node is skipped and the volume moves.
+- **A 1 s startup probe.** It keeps the 15-minute budget (900 × 1 s), so a server that listens at once is found within a second, not up to 10 s later. Readiness keeps its 5 s × 3.
+- **Tenant kubelets sync node status every 2 s.** The kubelet mounts the volume only after a sync reports it in use.
+
+Measured on production on 2026-11-21: restarts took 5.7–6.3 s and code deploys 7.25–9.0 s on the volume's node, against 15.8–23.3 s before. A move to another node took 34 s. Still open:
+
+- the attach/detach controller sometimes detaches the volume between the two pods on the same node ([w6/161](../.pm/w6/161.md));
+- a web image service that names no port waits 25 s while its HTTP port is rediscovered ([w6/162](../.pm/w6/162.md)).
+
 ## Gotchas
 
 - **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/ADR003-control-plane.md`](ADR003-control-plane.md) for the planned Postgres source of truth.

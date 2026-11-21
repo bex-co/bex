@@ -123,7 +123,30 @@ When `spec.disk` is set, `applyDeploymentSpec` additionally:
 - sets `Strategy: Recreate` (today no strategy is set anywhere — every App keeps the Kubernetes `RollingUpdate` default; that remains true for disk-less Apps);
 - mounts one PVC `disk-<app>` at `mountPath`;
 - adds `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` (the KeyValue precedent — consolidation must not silently kill a volume-attached pod);
-- runs the 30-second default shutdown delay whatever `spec.maxShutdownDelaySeconds` or a rolled-back release holds (`AppSpec.ShutdownDelaySeconds`, w6/m548): under `Recreate` every second of grace is downtime, and Render does not let a disk service change it. A disk App never drains, so its `terminationGracePeriodSeconds` is 30.
+- runs the 30-second default shutdown delay whatever `spec.maxShutdownDelaySeconds` or a rolled-back release holds (`AppSpec.ShutdownDelaySeconds`, w6/m548): under `Recreate` every second of grace is downtime, and Render does not let a disk service change it. A disk App never drains, so its `terminationGracePeriodSeconds` is 30;
+- prefers the node its volume is on (w6/m547): a weight-100 `preferredDuringSchedulingIgnoredDuringExecution` term on the name of the node running, or last running, the App's instance. It is a preference, never a requirement, so a cordoned, draining, full or gone node is skipped and the volume moves. The term is adopted only when a deploy, restart or plan change already rolls the instance, so learning the node never Recreates it;
+- runs the startup probe every second (`periodSeconds: 1`) with the same 15-minute budget (w6/m547). Readiness keeps 5 s × 3: the kubelet runs it as soon as startup passes, and Ready followed 0.2–0.8 s later on every measured run.
+
+**Measured unavailable window (w6/m547, production, 2026-11-21).** Tenant kubelets sync node status every 2 s (`node-status-update-frequency` in the tenant KubeadmConfigTemplates). That matters because the kubelet mounts an attachable volume only after a sync has reported it in use, and the attach/detach controller releases a volume only after the old node's sync reports it free. `bex-tenant-0` rolled onto it that day; `bex-tenant-burst` and `bex-tenant-lg` adopt it when their machines are next replaced. For a Starter disk service whose server listens at once and names its port, the window (first failed request at the edge to first success, probed every 250 ms) is:
+
+| case                                          | before (t001) | after (t005) |
+| --------------------------------------------- | ------------- | ------------ |
+| restart, same node                            | —             | 5.7–6.3 s    |
+| code deploy, same node                        | 15.8–23.3 s   | 7.25–9.0 s   |
+| the volume moves (the node was unschedulable) | 39.8–46.8 s   | 34.2 s       |
+
+A same-node swap now spends: stop 0.5–1.1 s, the kubelet's sync gate up to 2 s, publish 2.8–3.4 s (the LUKS open, about 2.2 s and a floor the operator cannot move, plus the mount and the pod sandbox), pull 0.6–2.2 s (`imagePullPolicy: Always` re-checks even a cached digest), and the startup probe 0.5–1.0 s. The edge follows Ready within the same probe interval.
+
+The bound excludes:
+
+- the app's own exit and start time;
+- a node that is gone or unschedulable, where Hetzner's detach (about 9.4 s) and attach (15–16 s) dominate;
+- a large image's pull, which [w6/160](../.pm/w6/160.md) would move before the stop.
+
+Two terms are still open, so m547 is parked:
+
+- One same-node swap in ten detached and reattached the volume (+25.6 s): the controller checked the volume as the old pod was deleted, after the node's 2 s sync had already reported it free, and 50 ms before the new pod was bound to the same node ([w6/161](../.pm/w6/161.md)).
+- A web image service that names no port waits 25 s after Ready on each image deploy while its HTTP port is rediscovered ([w6/162](../.pm/w6/162.md)).
 
 The operator creates the PVC itself (not via a claim template): `ReadWriteOnce`, `<sizeGB>Gi`, ownerReference → the App CR (Kubernetes GC deletes the PVC on App deletion; the StorageClass's `reclaimPolicy: Delete` then deletes the Hetzner volume, which is what stops Hetzner billing). This needs two mechanical grants that the ADR calls out because they are today deliberately absent: `persistentvolumeclaims` **create/delete** in the App controller's RBAC markers, and a `CREATE`/`DELETE` rule for PVCs in `operator-workload-admission.yaml` (which currently admits PVC `UPDATE` only, minted for the KeyValue expander).
 
