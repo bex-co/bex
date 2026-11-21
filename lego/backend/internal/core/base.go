@@ -280,7 +280,9 @@ const LabelBlueprint = "bex.co/blueprint-id"
 // manifest and left out of this one: Render keeps such a variable on the
 // service as an ordinary one, so env writes may change or delete it
 // (w21/m421). An App with no annotation (synced before it existed) treats
-// every literal as declared, as before.
+// every literal as declared, as before. A disconnect, or a sync that stops
+// declaring the service, sets it to "" with the label's removal, and an App
+// that carries it without the label declares nothing either (w8/381).
 const AnnotationBlueprintEnv = "bex.co/blueprint-env"
 
 // LabelNetworkIsolation carries an App CR's environment id (w6/m19

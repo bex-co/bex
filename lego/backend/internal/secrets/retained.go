@@ -38,6 +38,12 @@ import (
 // literal outside that record is retained, listed as an ordinary variable, and
 // moved into the mutable store when a write names it.
 //
+// A reference (fromDatabase, or fromService to a Key Value) is retained the
+// same way, with the value its Secret holds (resolveManifestRefs), and so is
+// every variable of a service no Blueprint manages any longer: a disconnect
+// leaves the resources as ordinary ones, and nothing will sync them again
+// (w8/381, declaredBlueprintEnv).
+//
 // Every write that names one makes that move inside its own write: the store
 // takes the literal with the write's edit, and the same locked App patch removes
 // the literal from spec.Env (dropMovedRetained). The environment patch
@@ -52,12 +58,22 @@ import (
 
 // declaredBlueprintEnv is the set of names the App's Blueprint declared at its
 // last sync, and whether a sync has recorded one at all.
+//
+// A recorded App no Blueprint manages any longer (no core.LabelBlueprint: a
+// disconnect, or a sync that stopped declaring the service) declares nothing:
+// no sync will converge its variables again, so all of them are retained
+// (w8/381). A release records that itself (apps.releaseBlueprintMarkers);
+// reading the missing label the same way also frees the services disconnected
+// before it did.
 func declaredBlueprintEnv(a *appv1alpha1.App) (map[string]bool, bool) {
 	raw, ok := a.GetAnnotations()[core.AnnotationBlueprintEnv]
 	if !ok {
 		return nil, false
 	}
 	declared := map[string]bool{}
+	if a.GetLabels()[core.LabelBlueprint] == "" {
+		return declared, true
+	}
 	for name := range strings.SplitSeq(raw, ",") {
 		if name != "" {
 			declared[name] = true
@@ -66,11 +82,13 @@ func declaredBlueprintEnv(a *appv1alpha1.App) (map[string]bool, bool) {
 	return declared, true
 }
 
-// retainedEnv returns the spec.Env literals the App's Blueprint no longer
-// declares, by name: the ordinary variables a sync left in place. An App no
-// sync has recorded a declaration for has none (every literal is declared).
-// Names no env verb accepts are the older debris manifestEnv already lists as
-// deletable, not retained variables.
+// retainedEnv returns the spec.Env variables the App's Blueprint no longer
+// declares, by name: the ordinary variables a sync left in place. A literal
+// carries its value; a reference (a fromDatabase or Key Value SecretKeyRef)
+// carries "", and the reads and writes that need its value fill it in
+// (resolveManifestRefs). An App no sync has recorded a declaration for has none
+// (every variable is declared). Names no env verb accepts are the older debris
+// manifestEnv already lists as deletable, not retained variables.
 func retainedEnv(a *appv1alpha1.App) map[string]string {
 	declared, tracked := declaredBlueprintEnv(a)
 	if !tracked {
@@ -78,7 +96,7 @@ func retainedEnv(a *appv1alpha1.App) map[string]string {
 	}
 	var retained map[string]string
 	for _, item := range a.Spec.Env {
-		if item.ValueFrom != nil || item.Name == "" || declared[item.Name] || !core.ValidEnvKey(item.Name) {
+		if !specEnvVariable(item) || declared[item.Name] || !core.ValidEnvKey(item.Name) {
 			continue
 		}
 		if retained == nil {
@@ -89,12 +107,18 @@ func retainedEnv(a *appv1alpha1.App) map[string]string {
 	return retained
 }
 
-// dropSpecEnvNames removes the named literals from spec.Env, inside a locked
+// specEnvVariable reports whether item is a variable an env read lists: a named
+// literal or a Secret reference.
+func specEnvVariable(item appv1alpha1.EnvVar) bool {
+	return item.Name != "" && (item.ValueFrom == nil || item.ValueFrom.SecretKeyRef != nil)
+}
+
+// dropSpecEnvNames removes the named variables from spec.Env, inside a locked
 // patch that has just stored them.
 func dropSpecEnvNames(a *appv1alpha1.App, names map[string]string) {
 	a.Spec.Env = slices.DeleteFunc(a.Spec.Env, func(item appv1alpha1.EnvVar) bool {
 		_, drop := names[item.Name]
-		return drop && item.ValueFrom == nil
+		return drop
 	})
 	if len(a.Spec.Env) == 0 {
 		a.Spec.Env = nil

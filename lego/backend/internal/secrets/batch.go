@@ -260,6 +260,9 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	// literal (finalizeEnvironmentPatch). Moving it in an earlier write would
 	// advance the revision under the caller (w21/103).
 	moved := retainedForPatch(a, patch)
+	if err := s.resolveManifestRefs(ctx, a, moved); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
 	if _, exists := oldEnv[casKey]; !exists && len(moved) == 0 {
 		return EnvironmentPatchResult{}, core.NewNotFoundError(
 			"ENVIRONMENT_VARIABLE_NOT_FOUND",
@@ -329,6 +332,9 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 	// A retained literal the patch names, or every one when it replaces the set,
 	// moves into the store inside this write (see retained.go).
 	moved := retainedForPatch(a, patch)
+	if err := s.resolveManifestRefs(ctx, a, moved); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
 
 	// Each mutate checks the quota on the map it is about to write, so the check
 	// re-runs against the latest committed map on every CAS retry (ADR066 #6).

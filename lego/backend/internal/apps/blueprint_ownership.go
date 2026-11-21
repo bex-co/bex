@@ -498,7 +498,8 @@ func (s *Service) releaseUndeclaredClaims(ctx context.Context, tenantID, bluepri
 
 // clearBlueprintMarkers removes core.LabelBlueprint from the resources named in
 // released — the CR-label mirror of the claims releaseUndeclaredClaims just
-// dropped. The claim is the writer of truth (replicas coordinate through it),
+// dropped — with the rest of the management releaseBlueprintMarkers ends. The
+// claim is the writer of truth (replicas coordinate through it),
 // so a marker that outlives its claim is stale rather than authoritative; the
 // first failure is returned so a sync reports the incomplete cleanup instead of
 // inferring success, the same posture clearBlueprintOwnership takes.
@@ -510,12 +511,7 @@ func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprint
 			return
 		}
 		base := obj.DeepCopyObject().(client.Object)
-		labels := obj.GetLabels()
-		if labels == nil {
-			return
-		}
-		delete(labels, core.LabelBlueprint)
-		obj.SetLabels(labels)
+		releaseBlueprintMarkers(obj)
 		if err := s.Client.Patch(ctx, obj, client.MergeFrom(base)); err != nil && firstErr == nil {
 			firstErr = fmt.Errorf("clearing Blueprint marker on %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -551,7 +547,8 @@ func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprint
 
 // clearBlueprintOwnership removes the marker from every resource the
 // disconnected blueprint owned — they become unmanaged (Render disconnect
-// semantics: resources survive, management ends). It continues past individual
+// semantics: resources survive, management ends; releaseBlueprintMarkers says
+// what a service's App drops with it). It continues past individual
 // patch failures and returns the first one: disconnect reports cleanup failure
 // instead of inferring success from a discarded error (w8/m37 t003). A failed
 // clear leaves the row disconnected — the markers are inert without an owning
@@ -570,12 +567,7 @@ func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, bluepri
 
 	clear := func(obj client.Object) {
 		base := obj.DeepCopyObject().(client.Object)
-		labels := obj.GetLabels()
-		if labels == nil {
-			return
-		}
-		delete(labels, core.LabelBlueprint)
-		obj.SetLabels(labels)
+		releaseBlueprintMarkers(obj)
 		if err := s.Client.Patch(ctx, obj, client.MergeFrom(base)); err != nil {
 			fail("clearing ownership on %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
 		}
@@ -606,6 +598,32 @@ func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, bluepri
 		}
 	}
 	return firstErr
+}
+
+// releaseBlueprintMarkers ends a Blueprint's management of obj on the object
+// itself, in the one patch its caller sends: it drops core.LabelBlueprint and,
+// on an App, everything else a sync recorded to keep managing the service's
+// environment. Render's disconnect "stops automatic resource syncing … It
+// does not _delete_ any services or other resources that were managed by the
+// blueprint" (https://api-docs.render.com/reference/disconnect-blueprint): what
+// the manifest set stays, as ordinary settings. So the App records that no
+// manifest declares any of its variables (core.AnnotationBlueprintEnv = ""),
+// and the literals and references its last sync wrote list and edit as the
+// retained variables a sync leaves behind (w21/m421), instead of answering
+// ENV_VAR_MANIFEST_MANAGED for a Blueprint that no longer exists (w8/381). The
+// fromService port records go too: ServiceRefPropagator would otherwise keep
+// rewriting those variables, and put back one the owner moved or deleted.
+func releaseBlueprintMarkers(obj client.Object) {
+	labels := obj.GetLabels()
+	delete(labels, core.LabelBlueprint)
+	delete(labels, serviceRefsLabel)
+	obj.SetLabels(labels)
+	app, ok := obj.(*appv1alpha1.App)
+	if !ok {
+		return
+	}
+	delete(app.Annotations, serviceRefsAnnotation)
+	metav1.SetMetaDataAnnotation(&app.ObjectMeta, core.AnnotationBlueprintEnv, "")
 }
 
 // previewOwnershipConflicts reports cross-blueprint conflicts as validation

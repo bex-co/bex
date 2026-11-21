@@ -353,6 +353,16 @@ The claim is also now readable: `blueprintId` appears on every service, database
 
 **A resource conflict names the manifest kind (w5/098).** `BLUEPRINT_RESOURCE_CONFLICT` carries params `resource`, `kind`, `owningBlueprintId` and `confirm`. `kind` is the kind plan actions use (`service`, `postgres`, `key_value`), so a client labels a conflict exactly as it labels a plan action. The message keeps its display wording, as in `key value "cache" is managed by blueprint …`. `kind` used to carry that display text, which the dashboard had to accept as a lookup key.
 
+### Blueprint disconnect: the resources become ordinary ones (w8/381, 2026-11-21)
+
+Render's [disconnect](https://api-docs.render.com/reference/disconnect-blueprint) "stops automatic resource syncing via the associated `render.yaml` file. It does not _delete_ any services or other resources that were managed by the blueprint." Before this, a disconnect dropped only the label. The service's App kept the last sync's record of declared variables (`bex.co/blueprint-env`), so every literal and reference the manifest had set still answered 409 `ENV_VAR_MANIFEST_MANAGED` ("edit the manifest and sync the blueprint") to edit, delete and bulk replace. Reads still said `managedBy: blueprint`, although no Blueprint was left to edit or sync.
+
+- **What a release clears.** `DELETE /v1/blueprints/{id}` (GraphQL and MCP disconnect run the same code) and a sync that stops declaring a service (w4/m125) release each App in one patch (`releaseBlueprintMarkers`). The patch drops the label, records that no variable is declared (`bex.co/blueprint-env: ""`) and drops the `fromService` port records (`app.bex.co/service-refs`). Without that last step, `ServiceRefPropagator` would keep rewriting those variables and put back one the owner had moved or deleted. Nothing else on the service is Blueprint-locked: env-group links, secret files, routes, headers, disks, custom domains and settings were already editable while the Blueprint was connected.
+- **Variables.** Every variable the last sync wrote is then _retained_, the w21/m421 state: it lists with no owner and keeps the value the process has. A write that names it moves it into the mutable store, and the same App patch removes it from the spec. A delete only removes it.
+- **References.** `fromDatabase` and Key Value references follow the same rule. They are listed with their Secret's current value. The first write that names one stores that value, or the write's own, and removes the `SecretKeyRef`. A reference nothing writes keeps following its Secret. The disconnect does not resolve references into stored values: that would mean a store write per variable outside the App patch, or plaintext credentials in the App.
+- **Services disconnected before this fix.** An App that carries the record but no label declares nothing. This also frees services disconnected before the release wrote the empty record, with no migration. An App with no record at all (synced before w21/m421, or applied through `POST /v1/blueprints/deploy`, which has no Blueprint) keeps treating every variable as declared.
+- **Connected services.** A reference a sync stops declaring is now retained like a literal. The ones it declares stay refused (w4/m120).
+
 ## Consequences
 
 ### Positive

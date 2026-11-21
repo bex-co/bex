@@ -37,9 +37,11 @@ import (
 // manifest still declares. Production, 2026-11-16: DELETE and PUT of such a
 // MESSAGE answered 409 ENV_VAR_MANIFEST_MANAGED ("declared in this service's
 // render.yaml manifest") although the manifest no longer named it, and nothing
-// the caller could do freed it.
+// the caller could do freed it. The Blueprint is still connected (it carries
+// the label).
 func retainedApp(name string) *appv1alpha1.App {
 	a := sampleApp(name)
+	a.Labels = map[string]string{core.LabelBlueprint: "exs-connected"}
 	a.Annotations = map[string]string{core.AnnotationBlueprintEnv: "KEEPME"}
 	a.Spec.Env = []appv1alpha1.EnvVar{
 		{Name: "MESSAGE", Value: "hello from bex"},
@@ -170,6 +172,7 @@ func TestOnlyAnUndeclaredLiteralIsFreed(t *testing.T) {
 func retainedManagedApp(name string) *appv1alpha1.App {
 	a, r := managedApp(name), retainedApp(name)
 	a.Annotations, a.Spec.Env = r.Annotations, r.Spec.Env
+	maps.Copy(a.Labels, r.Labels)
 	return a
 }
 

@@ -31,6 +31,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -279,6 +280,10 @@ func (s *Service) readMap(ctx context.Context, path string) (map[string]string, 
 // such a variable on the service and lists it (w8/299). Its value is whatever
 // the named Secret holds, so manifestEnv lists it with "" and reads that need
 // values fill it in (resolveManifestRefs).
+//
+// Either kind is the manifest's only while it declares the variable: one the
+// manifest left out, or any on a service no Blueprint manages any longer, is
+// retained (retainedEnv).
 func manifestEnv(a *appv1alpha1.App) map[string]string {
 	if a == nil || len(a.Spec.Env) == 0 {
 		return nil
@@ -287,29 +292,36 @@ func manifestEnv(a *appv1alpha1.App) map[string]string {
 	out := make(map[string]string, len(a.Spec.Env))
 	for _, item := range a.Spec.Env {
 		switch {
-		case item.Name == "":
-			// A sync before w8/302 could write one; no process reads it.
+		case !specEnvVariable(item):
+			// A sync before w8/302 could write a nameless one; no process reads it.
+		case tracked && !declared[item.Name] && core.ValidEnvKey(item.Name):
+			// retained: left out of the manifest, see retainedEnv
 		case item.ValueFrom == nil:
-			if tracked && !declared[item.Name] && core.ValidEnvKey(item.Name) {
-				continue // retained: left out of the manifest, see retainedEnv
-			}
 			out[item.Name] = item.Value
-		case item.ValueFrom.SecretKeyRef != nil:
+		default:
 			out[item.Name] = ""
 		}
 	}
 	return out
 }
 
-// resolveManifestRefs sets each reference in manifest to the value its Secret
-// holds now, the value a container started now would get. The Secret lives in
-// the App's own namespace, the only one a SecretKeyRef can name. A Secret or key
-// that is absent (a datastore still provisioning, or deleted) reads "", as
-// the process cannot start with it either.
-func (s *Service) resolveManifestRefs(ctx context.Context, a *appv1alpha1.App, manifest map[string]string) error {
+// resolveManifestRefs sets each reference named in vars to the value its Secret
+// holds now, the value a container started now would get, and reads no Secret
+// for a reference none of them names. The Secret lives in the App's own
+// namespace, the only one a SecretKeyRef can name. A Secret or key that is
+// absent (a datastore still provisioning, or deleted) reads "", as the process
+// cannot start with it either.
+func (s *Service) resolveManifestRefs(ctx context.Context, a *appv1alpha1.App, vars ...map[string]string) error {
 	secrets := map[string]*corev1.Secret{}
 	for _, item := range a.Spec.Env {
 		if item.ValueFrom == nil || item.ValueFrom.SecretKeyRef == nil {
+			continue
+		}
+		named := slices.IndexFunc(vars, func(m map[string]string) bool {
+			_, ok := m[item.Name]
+			return ok
+		})
+		if named < 0 {
 			continue
 		}
 		ref := item.ValueFrom.SecretKeyRef
@@ -325,7 +337,7 @@ func (s *Service) resolveManifestRefs(ctx context.Context, a *appv1alpha1.App, m
 			secrets[ref.Name] = sec
 		}
 		if sec != nil {
-			manifest[item.Name] = string(sec.Data[ref.Key])
+			vars[named][item.Name] = string(sec.Data[ref.Key])
 		}
 	}
 	return nil
@@ -348,7 +360,7 @@ func (s *Service) mergeManifestEnv(ctx context.Context, env map[string]string, a
 		return env, nil, nil
 	}
 	if withValues {
-		if err := s.resolveManifestRefs(ctx, a, manifest); err != nil {
+		if err := s.resolveManifestRefs(ctx, a, manifest, retained); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -356,7 +368,7 @@ func (s *Service) mergeManifestEnv(ctx context.Context, env map[string]string, a
 	for k, v := range env {
 		merged[k] = v
 	}
-	// A retained literal is what the process holds, so it shows beside the
+	// A retained variable is what the process holds, so it shows beside the
 	// store's variables, and not as the manifest's (not in owned).
 	for k, v := range retained {
 		merged[k] = v
@@ -691,6 +703,9 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	// into the store with it, inside this write: what the request names is stored
 	// and the rest is replaced away with the literal (see retained.go).
 	moved := retainedEnv(a)
+	if err := s.resolveManifestRefs(ctx, a, moved); err != nil {
+		return nil, err
+	}
 	// Render's PUT replaces the whole set, last writer wins; the CAS write is
 	// what lets a failed projection's restore tell a later write apart.
 	_, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
@@ -769,6 +784,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	// A retained literal of this name moves into the store with this write, and
 	// only when the write is accepted (see retained.go).
 	moved := retainedEnvNamed(a, key)
+	if err := s.resolveManifestRefs(ctx, a, moved); err != nil {
+		return EnvVarView{}, err
+	}
 	// Round-11 #6: enforce the aggregate quota inside the CAS mutate so it is
 	// re-checked against the fresh map on every retry; a quota breach mutates
 	// nothing (changed=false) and surfaces after the loop.
