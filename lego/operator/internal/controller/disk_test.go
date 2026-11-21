@@ -51,7 +51,7 @@ func diskApp(name string, disk *appv1alpha1.DiskSpec) *appv1alpha1.App {
 
 func projectDisk(app *appv1alpha1.App, dep *appsv1.Deployment) *corev1.Container {
 	container := &corev1.Container{Name: "app"}
-	applyDiskProjection(dep, container, app)
+	applyDiskProjection(dep, container, app, diskMove{})
 	return container
 }
 

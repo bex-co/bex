@@ -559,49 +559,95 @@ const nativeXDGCacheDir = "ENV XDG_CACHE_HOME=" + nativeXDGCacheHome + "\n" +
 const nativeXDGCacheMount = " --mount=type=cache,id=" + nativeXDGCacheID + ",target=" + nativeXDGCacheHome + ",sharing=locked"
 
 // nativePythonVenv is where Render keeps a Python service's virtualenv
-// (VENV_ROOT, render.com/docs/environment-variables).
-const nativePythonVenv = nativeWorkdir + "/.venv"
+// (VENV_ROOT, render.com/docs/environment-variables). It stays there when the
+// service has a root directory, outside the directory the service runs in: a
+// Render service with root directory backend ran /opt/render/project/src/
+// backend/server.py from /opt/render/project/src/.venv/lib/python3.12/
+// site-packages (w6/m558).
+const nativePythonVenv = NativeWorkdir + "/.venv"
 
-// nativeWorkdir is a native image's working directory on every runtime but
-// Go, Render's: it holds the service's root directory, and the publish check
-// looks from it as the publish Job's extract does.
-const nativeWorkdir = "/opt/render/project/src"
+// NativeWorkdir is where Render keeps a native service's source
+// (render.com/docs/disks): every runtime but Go works in it, or in the root
+// directory under it.
+const NativeWorkdir = "/opt/render/project/src"
 
 // nativeSourceDir is o's working directory: the source is copied into it, and
 // the start command, the pre-deploy command, a cron run and a Shell or SSH
 // session all start in it, since no workload of the image sets a working
-// directory of its own. Render's table of source paths (render.com/docs/disks,
-// read 2026-11-20) gives every native runtime nativeWorkdir but Go, whose
-// source sits in its GOPATH at /opt/render/project/go/src/github.com/<owner>/<repo>,
-// with the documented example disk at that directory's data (w6/m546). A
-// static site keeps nativeWorkdir, whatever toolchain builds it: Render's
-// static sites have no runtime.
+// directory of its own. A static site's build runs in it too, and its publish
+// directory is read from it. NativeSourceDir decides it for a service; a
+// static site, whatever toolchain builds it, works in its root directory under
+// NativeWorkdir, as a Node service does: Render's static sites have no
+// runtime of their own.
 func nativeSourceDir(o Options) string {
-	if o.StaticSite || nativeRuntime(o) != "go" {
-		return nativeWorkdir
+	if o.StaticSite {
+		return nativeRootDir(o.RootDir)
 	}
-	if dir, ok := nativeGoSourceDir(o.Repo, o.RootDir); ok {
-		return dir
-	}
-	return nativeWorkdir
+	return NativeSourceDir(nativeRuntime(o), o.Repo, o.RootDir)
 }
 
-// nativeSourceLink keeps nativeWorkdir resolving in an image whose source is
-// in dir: a link to it, so an absolute path and a disk mounted under
-// /opt/render/project/src before w6/m546 still land in the service's own tree
-// (the container runtime resolves a mount path's links inside the image). The
-// link is made after WORKDIR has made its target; "" when dir is nativeWorkdir.
+// NativeSourceDir is the working directory of a native image of runtime built
+// from repo's rootDir. Render's table of source paths (render.com/docs/disks,
+// read 2026-11-20) gives every native runtime NativeWorkdir but Go, whose
+// source sits in its GOPATH at /opt/render/project/go/src/github.com/<owner>/<repo>,
+// with the documented example disk at that directory's data (w6/m546). Render
+// runs every command from the service's root directory under it
+// ("Render runs commands and interacts with files relative to your service's
+// root directory", render.com/docs/monorepo-support): a Node service with root
+// directory backend runs /opt/render/project/src/backend/server.js (w6/m558).
+// The operator mounts a disk made before w6/m558 by it (diskMountPaths).
+func NativeSourceDir(runtime, repo, rootDir string) string {
+	if runtime != "go" {
+		return nativeRootDir(rootDir)
+	}
+	if dir, ok := nativeGoSourceDir(repo, rootDir); ok {
+		return dir
+	}
+	return NativeWorkdir
+}
+
+// nativeRootDir is rootDir under NativeWorkdir, or NativeWorkdir itself for
+// no root directory or one with a part outside nativeSourceSegment.
+func nativeRootDir(rootDir string) string {
+	rel := repoRelative(rootDir)
+	if rel == "" {
+		return NativeWorkdir
+	}
+	parts := strings.Split(rel, "/")
+	if !nativeSourceParts(parts) {
+		return NativeWorkdir
+	}
+	return NativeWorkdir + "/" + rel
+}
+
+// nativeSourceLink keeps NativeWorkdir resolving in an image whose source is
+// outside it, a Go service's: a link to it, so an absolute path and a disk
+// mounted under /opt/render/project/src before w6/m546 still land in the
+// service's own tree (the container runtime resolves a mount path's links
+// inside the image). The link is made after WORKDIR has made its target; ""
+// when dir is NativeWorkdir or under it, which then holds the source itself.
 func nativeSourceLink(dir string) string {
-	if dir == nativeWorkdir {
+	if dir == NativeWorkdir || strings.HasPrefix(dir, NativeWorkdir+"/") {
 		return ""
 	}
-	return "RUN ln -s " + dir + " " + nativeWorkdir + "\n"
+	return "RUN ln -s " + dir + " " + NativeWorkdir + "\n"
 }
 
 // nativeSourceSegment is a part of a source directory used as is: the image's
-// WORKDIR expands $ and \, and the link step is a shell line. It is the
-// character set of a GitHub owner and repository name.
+// WORKDIR expands $ and \, and the link step and the publish check are shell
+// lines. It is the character set of a GitHub owner and repository name.
 var nativeSourceSegment = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+
+// nativeSourceParts reports whether every part of a source directory can be
+// used as is: none is "." or "..", and each is in nativeSourceSegment.
+func nativeSourceParts(parts []string) bool {
+	for _, part := range parts {
+		if part == "." || part == ".." || !nativeSourceSegment.MatchString(part) {
+			return false
+		}
+	}
+	return true
+}
 
 // nativeGoSourceDir is Render's directory for a Go service built from repo:
 // GOPATH's src/<host>/<owner>/<repo>, with the service's root directory under
@@ -611,8 +657,8 @@ var nativeSourceSegment = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 // trailing .git goes. Render documents GitHub's form only: a GitLab or
 // Bitbucket repository gets its own host and full path the same way, which is
 // unverified against Render. ok is false when repo names no host and
-// owner/repo, or when a part is ".", ".." or holds a character outside
-// nativeSourceSegment; the service then keeps nativeWorkdir.
+// owner/repo, or when a part fails nativeSourceParts; the service then keeps
+// NativeWorkdir.
 func nativeGoSourceDir(repo, rootDir string) (string, bool) {
 	host, repoPath, ok := gitHostPath(repo)
 	parts := strings.Split(repoPath, "/")
@@ -622,10 +668,8 @@ func nativeGoSourceDir(repo, rootDir string) (string, bool) {
 	if rel := repoRelative(rootDir); rel != "" {
 		parts = append(parts, strings.Split(rel, "/")...)
 	}
-	for _, part := range append([]string{host}, parts...) {
-		if part == "." || part == ".." || !nativeSourceSegment.MatchString(part) {
-			return "", false
-		}
+	if !nativeSourceParts(append([]string{host}, parts...)) {
+		return "", false
 	}
 	return nativeGoPath + "/src/" + host + "/" + strings.Join(parts, "/"), true
 }

@@ -18,6 +18,7 @@ package build
 
 import (
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -79,18 +80,19 @@ const (
 //     already.
 //   - Rust: Cargo's registry and git checkouts under CARGO_HOME,
 //     /opt/render/project/.cargo (a link to the toolchain's own, whose bin
-//     holds the toolchain and is the image's), and the target directory at
-//     the service root, which Render caches ("We're caching any target
-//     directory at your repo root").
-//   - Elixir: Mix's deps and _build at the service root, kept together:
-//     _build links into deps, and a compiled dependency's NIFs are written
-//     into deps.
-//   - Python: the virtualenv at the service root, /opt/render/project/src/
-//     .venv (a path Render caches by its own account), which pip, Poetry and
-//     uv install into. Unlike the others, the recipe makes it before the
-//     source copy (nativeBuildDefaults), so it is never missing when the seed
-//     runs: the seed replaces it only while it is still the one the recipe
-//     made (nativeDepsSeed).
+//     holds the toolchain and is the image's), and the target directory in
+//     the directory the service builds in, which Render caches ("We're
+//     caching any target directory at your repo root"): Cargo writes it
+//     beside the root directory's Cargo.toml (nativeSourceDependencyDirs).
+//   - Elixir: Mix's deps and _build in the directory the service builds in,
+//     kept together: _build links into deps, and a compiled dependency's
+//     NIFs are written into deps.
+//   - Python: the virtualenv at /opt/render/project/src/.venv (a path Render
+//     caches by its own account, and keeps there with a root directory),
+//     which pip, Poetry and uv install into. Unlike the others, the recipe
+//     makes it before the source copy (nativeBuildDefaults), so it is never
+//     missing when the seed runs: the seed replaces it only while it is
+//     still the one the recipe made (nativeDepsSeed).
 //
 // What a build regenerates and a cold build starts without stays out:
 // .gems/bin and go/bin are first on PATH, so a binstub or tool kept there
@@ -104,9 +106,18 @@ var nativeDependencyDirs = map[string][]string{
 	nativeRubyRuntime: {nativeRubyGems + "/ruby",
 		nativeRubyGems + "/gems", nativeRubyGems + "/specifications", nativeRubyGems + "/extensions"},
 	"go":                {nativeGoPath + "/pkg"},
-	nativeRustRuntime:   {nativeCargoHome + "/registry", nativeCargoHome + "/git", nativeWorkdir + "/target"},
-	nativeElixirRuntime: {nativeWorkdir + "/deps", nativeWorkdir + "/_build"},
+	nativeRustRuntime:   {nativeCargoHome + "/registry", nativeCargoHome + "/git"},
 	nativePythonRuntime: {nativePythonVenv},
+}
+
+// nativeSourceDependencyDirs is each runtime's dependency directories in the
+// directory its build runs in (nativeSourceDir), after nativeDependencyDirs'.
+// A service with a root directory keeps them in it since w6/m558, so its
+// first build after that change finds them in the cache under their old
+// paths, which the seed discards, and installs them once from nothing.
+var nativeSourceDependencyDirs = map[string][]string{
+	nativeRustRuntime:   {"target"},
+	nativeElixirRuntime: {"deps", "_build"},
 }
 
 // depsCache is the dependency directories this build carries to the next
@@ -117,7 +128,13 @@ func (o Options) depsCache() []string {
 	if !o.xdgCache() {
 		return nil
 	}
-	return nativeDependencyDirs[nativeRuntime(o)]
+	runtime := nativeRuntime(o)
+	dirs := slices.Clone(nativeDependencyDirs[runtime])
+	dir := nativeSourceDir(o)
+	for _, name := range nativeSourceDependencyDirs[runtime] {
+		dirs = append(dirs, dir+"/"+name)
+	}
+	return dirs
 }
 
 // nativeDepsRecipe is what the recipe adds for a build that carries dirs:

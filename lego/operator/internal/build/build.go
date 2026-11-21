@@ -960,7 +960,7 @@ var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process (
 var buildkitNativeRunStep = regexp.MustCompile(`(?m)` + regexp.QuoteMeta(nativeEnvRunMount) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
 	printedQuote(nativeEnvLoaderPrefix) +
 	`(?:` + printedQuote(nativeStaticInstallStep) + `)?` +
-	`(?:` + regexp.QuoteMeta(nativePublishCheckVar+"=") + `.*?` + printedQuote("\n"+nativePublishCheck) + `)?(.*)"\](:)?$`)
+	`(?:` + regexp.QuoteMeta(nativePublishCheckVar+"=") + `.*?` + printedQuote("\n"+nativePublishCheckHead) + `\S+` + printedQuote(nativePublishCheckTail) + `)?(.*)"\](:)?$`)
 
 // printedQuote matches s as BuildKit prints it in a step header, where a
 // newline is the two characters \n.
@@ -996,7 +996,7 @@ func nativeCommandFailure(msg string) (rewritten, step string) {
 		command = strings.TrimPrefix(command, nativeStaticInstallStep)
 		checked := false
 		if strings.HasPrefix(command, nativePublishCheckVar+"=") {
-			if _, rest, ok := strings.Cut(command, nativePublishCheck); ok {
+			if rest, ok := cutPublishCheck(command); ok {
 				command, checked = rest, true
 			}
 		}

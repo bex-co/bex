@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -46,7 +47,7 @@ func TestNativeGoSourceDirIsRendersGoPath(t *testing.T) {
 		}
 	}
 	// A URL with no owner and repository, or a part the WORKDIR line or the
-	// link step would have to quote, keeps the service at nativeWorkdir.
+	// link step would have to quote, keeps the service at NativeWorkdir.
 	for _, tc := range []struct{ repo, rootDir string }{
 		{"", ""},
 		{"https://github.com/", ""},
@@ -113,5 +114,84 @@ func TestNativeDockerfileWorkdirIsTheRuntimesSourcePath(t *testing.T) {
 		if df := nativeDockerfile(o); !strings.Contains(df, "\nWORKDIR /opt/render/project/src\nCOPY . .\n") || strings.Contains(df, "ln -s /opt") {
 			t.Errorf("%s left /opt/render/project/src:\n%s", name, df)
 		}
+	}
+}
+
+// w6/m558: every native runtime but Go runs from its root directory under
+// /opt/render/project/src, as on Render (a Node service with root directory
+// backend runs /opt/render/project/src/backend/server.js), and so does a
+// static site's build. /opt/render/project/src is its parent, never a link.
+func TestNativeRootDirectoryIsTheWorkdir(t *testing.T) {
+	const dir = "/opt/render/project/src/apps/api"
+	for runtime := range nativeToolchains {
+		service := nativeOptions()
+		service.Runtime, service.RootDir = runtime, "apps/api"
+		carrier := service
+		carrier.BuildOnly, carrier.StartCommand = true, ""
+		static := service
+		static.StaticSite, static.StartCommand, static.StaticPublishPath = true, "", "dist"
+		for kind, o := range map[string]Options{"service": service, "build source": carrier, "static site": static} {
+			df := nativeDockerfile(o)
+			if runtime == "go" && !o.StaticSite {
+				// m546's directory, which holds the root directory itself.
+				if !strings.Contains(df, "\nWORKDIR /opt/render/project/go/src/github.com/example/app/apps/api\nRUN ln -s ") {
+					t.Errorf("go %s left Render's Go path:\n%s", kind, df)
+				}
+				continue
+			}
+			if !strings.Contains(df, "\nWORKDIR "+dir+"\nCOPY . .\n") || strings.Contains(df, "ln -s /opt") {
+				t.Errorf("%s %s does not work in its root directory:\n%s", runtime, kind, df)
+			}
+		}
+	}
+
+	// The root directory is cleaned as the build context is, and one the
+	// WORKDIR line would have to quote keeps the old directory.
+	for rootDir, want := range map[string]string{
+		"": NativeWorkdir, ".": NativeWorkdir, "/": NativeWorkdir, "/backend/./api/": NativeWorkdir + "/backend/api",
+		"../backend": NativeWorkdir + "/backend", "my app": NativeWorkdir, "a\\b": NativeWorkdir, "a/$HOME": NativeWorkdir,
+	} {
+		if got := NativeSourceDir("node", "https://github.com/example/app", rootDir); got != want {
+			t.Errorf("NativeSourceDir(node, %q) = %q, want %q", rootDir, got, want)
+		}
+	}
+	if got := NativeSourceDir("go", "https://github.com/example/app", "apps/api"); got != "/opt/render/project/go/src/github.com/example/app/apps/api" {
+		t.Errorf("NativeSourceDir(go) = %q, want m546's Go path", got)
+	}
+}
+
+// w6/m558: what a build keeps in the directory it runs in follows it there;
+// the virtualenv stays at Render's VENV_ROOT, outside the root directory, as a
+// Render Python service with root directory backend ran from
+// /opt/render/project/src/.venv.
+func TestNativeRootDirectoryKeepsItsDependencyDirectories(t *testing.T) {
+	for runtime, want := range map[string][]string{
+		"rust":   {"/opt/render/project/.cargo/registry", "/opt/render/project/.cargo/git", "/opt/render/project/src/backend/target"},
+		"elixir": {"/opt/render/project/src/backend/deps", "/opt/render/project/src/backend/_build"},
+		"python": {"/opt/render/project/src/.venv"},
+	} {
+		o := depsOpts(runtime)
+		o.RootDir = "backend"
+		if got := o.depsCache(); !slices.Equal(got, want) {
+			t.Errorf("%s: carries %v, want %v", runtime, got, want)
+		}
+	}
+	python := nativeOptions()
+	python.Runtime, python.RootDir = "python", "backend"
+	df := nativeDockerfile(python)
+	for _, want := range []string{"RUN python3 -m venv /opt/render/project/src/.venv\n",
+		"ENV VIRTUAL_ENV=/opt/render/project/src/.venv VENV_ROOT=/opt/render/project/src/.venv\n",
+		"\nWORKDIR /opt/render/project/src/backend\n"} {
+		if !strings.Contains(df, want) {
+			t.Errorf("python with a root directory lacks %q:\n%s", want, df)
+		}
+	}
+
+	// A static site's publish directory is checked from its root directory,
+	// where the publish Job's extract, running in the image's WORKDIR, reads it.
+	static := publishCheckOptions("dist")
+	static.RootDir = "apps/web"
+	if step := nativePublishCheckStep(static); !strings.Contains(step, "(cd /opt/render/project/src/apps/web && [ -d ") {
+		t.Errorf("publish check does not look from the root directory: %q", step)
 	}
 }

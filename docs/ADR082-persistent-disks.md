@@ -106,6 +106,15 @@ Behavior table (Render → bex):
 
 Mount path for a native service's source (w6/m546, 2026-11-21). Render's [disk docs](https://render.com/docs/disks) tell a service whose framework writes to a relative path to mount the disk at that path's absolute form, under the source directory. That directory is `/opt/render/project/src` for Node, Python, Ruby, Elixir and Rust, and `/opt/render/project/go/src/github.com/<owner>/<repo>` for Go, whose example disk is at `…/<repo>/data`. bex's native images use the same directories ([ADR060 § D7](ADR060-build-worker-reliability-and-performance.md#d7--the-baseline-is-checked-in-not-ambient), source directory). On a Go service `/opt/render/project/src` links to the Go directory, so a disk a Go service mounted under `/opt/render/project/src/…` before the change still lands in its source tree. The Go source directory is not a reserved path: Render refuses only the exact paths above, and bex refuses the same list.
 
+Root directory (w6/m558, 2026-11-21). Render runs a service's commands from its root directory, so the source directory for a disk path is `/opt/render/project/src/<rootDir>` for Node, Python, Ruby, Elixir and Rust: a service with root directory `backend` keeps what it writes to `uploads/` on a disk at `/opt/render/project/src/backend/uploads`. bex's native images work there too ([ADR060 § D7](ADR060-build-worker-reliability-and-performance.md#d7--the-baseline-is-checked-in-not-ambient), root directory). A disk at `/opt/render/project/src/uploads` on that service is outside its tree, as on Render. Until the change such a service ran from `/opt/render/project/src` itself, so a disk mounted under it named a place in the service's own tree. A disk whose claim predates the change keeps that meaning.
+
+- Every claim the operator makes since carries `app.bex.co/disk-layout: root-directory`; one without it predates the change.
+- Such a disk, on a native service other than Go with a root directory, whose path is under `/opt/render/project/src/` but outside `<rootDir>/`, is mounted at its path and at the same path under the root directory (`diskMountPaths`, `lego/operator/internal/controller/disk.go`). The app keeps both the relative path and the absolute path it wrote through.
+- A path equal to the root directory or one of its parents would hide the source there, so it is mounted only at its new place.
+- The second mount comes with the service's next deploy, which builds the image that runs in the root directory. The operator upgrade itself rolls no disk service.
+- A rollback to an image built before the change gets the second mount as well. That is harmless for a path outside the root directory, but a path that would hide the source then sits outside that old image's tree until the next build.
+- One volume mounted at two paths of one container was measured on production's runtime on 2026-11-21.
+
 CRD validation (CEL, mirrored by bex-api 400s so REST/GraphQL/MCP agree):
 
 - `has(self.disk)` ⇒ `self.type in [web_service, private_service, background_worker]` ∧ `self.tier != 'free'` ∧ `self.replicas ≤ 1` ∧ autoscaling absent or disabled;

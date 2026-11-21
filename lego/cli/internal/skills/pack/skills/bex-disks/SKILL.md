@@ -56,6 +56,8 @@ services:
       sizeGB: 5
 ```
 
+A service with a root directory (`rootDir`) runs from it: with `rootDir: backend`, mount the disk at `/opt/render/project/src/backend/uploads` to keep what the app writes to `uploads/`. A path under `/opt/render/project/src` outside the root directory is outside the service's own files.
+
 Fetch the current disk documentation and Blueprint specification through `references/persistent-disks.md` before finalizing the mount path or size.
 
 ## Database Backups and File Recovery

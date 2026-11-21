@@ -218,6 +218,9 @@ type deploymentParams struct {
 	// diskNode is the node a disk-bearing App's volume is attached to, which
 	// its next instance prefers (preferDiskNode); "" for none known.
 	diskNode string
+	// diskMove is where a disk made before w6/m558 is also mounted
+	// (diskMountPaths); the zero value for none.
+	diskMove diskMove
 	// openPortCheck is a first web image release whose template must not
 	// depend on the HTTP port discovery chooses (checksAnyOpenPort, w4/m350).
 	openPortCheck bool
@@ -803,7 +806,16 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			p.diskNode = keptNode
 		}
 		nodeStale := app.Spec.Disk != nil && keptNode != p.diskNode
-		if drainStale || periodStale || probeStale || cacheStale || startupStale || nodeStale {
+		// So is the second mount of a disk made before w6/m558: it moves
+		// into the service's tree with the next deploy, which builds the
+		// image that works there, and the upgrade that ships it rolls no
+		// disk service.
+		keptMove := p.diskMove
+		if app.Spec.Disk != nil && slices.Equal(storedDiskMountPaths(stored.Spec), []string{app.Spec.Disk.MountPath}) {
+			keptMove = diskMove{}
+		}
+		moveStale := keptMove != p.diskMove
+		if drainStale || periodStale || probeStale || cacheStale || startupStale || nodeStale || moveStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
 			unchanged := dep.DeepCopy()
@@ -811,6 +823,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			kept.readinessPeriod = keptPeriod
 			kept.startupPeriod = keptStartup
 			kept.diskNode = keptNode
+			kept.diskMove = keptMove
 			kept.healthProbeImage = keptProbeImage
 			kept.drainCheck = keptDrainCheck
 			kept.livenessGrace = keptLivenessGrace
@@ -899,7 +912,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	}
 	// The persistent disk, when one is attached: its volume and mount, plus the
 	// Recreate strategy and eviction guard a shared volume forces (see disk.go).
-	applyDiskProjection(dep, &container, app)
+	applyDiskProjection(dep, &container, app, p.diskMove)
 	// A disk App's grace is the 30-second default whatever its spec or a
 	// rolled-back release holds: Render does not let a disk service change its
 	// shutdown delay, and under Recreate every second of it is downtime.

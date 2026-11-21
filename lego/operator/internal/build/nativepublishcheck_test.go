@@ -41,7 +41,7 @@ func publishCheckOptions(publishPath string) Options {
 // have no check.
 func TestNativeStaticBuildChecksThePublishDirectory(t *testing.T) {
 	o := publishCheckOptions("dist")
-	run := shellJSON(nativeEnvLoaderPrefix + nativeStaticInstallStep + "bex_publish_dir='dist'\n" + nativePublishCheck + o.BuildCommand)
+	run := shellJSON(nativeEnvLoaderPrefix + nativeStaticInstallStep + "bex_publish_dir='dist'\n" + nativePublishCheck(NativeWorkdir) + o.BuildCommand)
 	if df := nativeDockerfile(o); !strings.Contains(df, run) {
 		t.Fatalf("static build step lacks the publish check before its command:\n%s", df)
 	}
@@ -81,7 +81,7 @@ func TestNativePublishCheckRunsAfterTheCommand(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := t.TempDir()
-			script := strings.ReplaceAll(nativePublishCheckStep(publishCheckOptions(tc.dir)), nativeWorkdir, src) + tc.command
+			script := strings.ReplaceAll(nativePublishCheckStep(publishCheckOptions(tc.dir)), NativeWorkdir, src) + tc.command
 			cmd := exec.Command("/bin/bash", "-c", script)
 			cmd.Dir = src
 			out, err := cmd.CombinedOutput()
@@ -101,16 +101,19 @@ func TestNativePublishCheckRunsAfterTheCommand(t *testing.T) {
 
 // A build step that failed its publish check ends the log with Render's line,
 // with no exit-code verdict about a command that succeeded, and the failure
-// reason names the publish directory step with that sentence alone.
+// reason names the publish directory step with that sentence alone, whichever
+// directory the check looks from (w6/m558).
 func TestNativeBuildLogNamesAMissingPublishDirectory(t *testing.T) {
-	o := publishCheckOptions("nope")
-	o.BuildCommand = "mkdir -p out"
-	script := nativeEnvLoaderPrefix + nativeStaticInstallStep + nativePublishCheckStep(o) + o.BuildCommand
-	header := `#23 [stage-0 11/12] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c","` +
-		strings.ReplaceAll(script, "\n", `\n`) + `"]`
-	process := strconv.Quote("/bin/bash -c " + script)
-	verdict := " did not complete successfully: exit code: " + nativePublishCheckExit
-	transcript := header + `
+	for _, rootDir := range []string{"", "apps/web"} {
+		t.Run("root directory "+rootDir, func(t *testing.T) {
+			o := publishCheckOptions("nope")
+			o.BuildCommand, o.RootDir = "mkdir -p out", rootDir
+			script := nativeEnvLoaderPrefix + nativeStaticInstallStep + nativePublishCheckStep(o) + o.BuildCommand
+			header := `#23 [stage-0 11/12] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c","` +
+				strings.ReplaceAll(script, "\n", `\n`) + `"]`
+			process := strconv.Quote("/bin/bash -c " + script)
+			verdict := " did not complete successfully: exit code: " + nativePublishCheckExit
+			transcript := header + `
 #23 1.204 ==> Publish directory nope does not exist!
 #23 ERROR: process ` + process + verdict + `
 ------
@@ -119,16 +122,18 @@ func TestNativeBuildLogNamesAMissingPublishDirectory(t *testing.T) {
 ------
 error: failed to solve: process ` + process + verdict + `
 `
-	log, message, exit := runBuildkit(t, o, transcript, 1)
-	if exit != ExitTenantError {
-		t.Fatalf("exit %d, want the tenant-error class %d; log:\n%s", exit, ExitTenantError, log)
-	}
-	if want := "==> Running build command 'mkdir -p out'...\n==> Publish directory nope does not exist!\n"; log != want {
-		t.Errorf("log:\n%q\nwant:\n%q", log, want)
-	}
-	obs := failedBuildkit(t, o, exit, message)
-	if obs.FailedStep != nativePublishStep || obs.Tail != "Publish directory nope does not exist!" {
-		t.Errorf("FailedStep, Tail = %q, %q; want %q and Render's sentence", obs.FailedStep, obs.Tail, nativePublishStep)
+			log, message, exit := runBuildkit(t, o, transcript, 1)
+			if exit != ExitTenantError {
+				t.Fatalf("exit %d, want the tenant-error class %d; log:\n%s", exit, ExitTenantError, log)
+			}
+			if want := "==> Running build command 'mkdir -p out'...\n==> Publish directory nope does not exist!\n"; log != want {
+				t.Errorf("log:\n%q\nwant:\n%q", log, want)
+			}
+			obs := failedBuildkit(t, o, exit, message)
+			if obs.FailedStep != nativePublishStep || obs.Tail != "Publish directory nope does not exist!" {
+				t.Errorf("FailedStep, Tail = %q, %q; want %q and Render's sentence", obs.FailedStep, obs.Tail, nativePublishStep)
+			}
+		})
 	}
 }
 
@@ -138,13 +143,18 @@ error: failed to solve: process ` + process + verdict + `
 func TestNativeStaticBuildCommandFailureIsNotAPublishFailure(t *testing.T) {
 	for _, code := range []string{"3", nativePublishCheckExit} {
 		o := publishCheckOptions("out")
-		o.BuildCommand = "npm run build && exit " + code
+		o.BuildCommand, o.RootDir = "npm run build && exit "+code, "apps/web"
 		script := nativeEnvLoaderPrefix + nativeStaticInstallStep + nativePublishCheckStep(o) + o.BuildCommand
 		process := strconv.Quote("/bin/bash -c " + script)
-		msg := "#23 ERROR: process " + process + " did not complete successfully: exit code: " + code + "\n"
+		header := `#23 [stage-0 11/12] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c","` +
+			strings.ReplaceAll(script, "\n", `\n`) + `"]` + "\n"
+		msg := header + "#23 ERROR: process " + process + " did not complete successfully: exit code: " + code + "\n"
 		got, step := nativeCommandFailure(msg)
 		want := "build command '" + o.BuildCommand + "' exited with code " + code
-		if step != nativeBuildCommandStep || !strings.Contains(got, want) || strings.Contains(got, nativePublishCheckVar) {
+		// The step header names the command alone, behind a check that
+		// looks from the root directory (w6/m558).
+		if step != nativeBuildCommandStep || !strings.Contains(got, want) || strings.Contains(got, nativePublishCheckVar) ||
+			!strings.Contains(got, "#23 [stage-0 11/12] "+nativeCommandStep+o.BuildCommand+"'\n") {
 			t.Errorf("exit %s: step %q, message %q; want %q naming %q", code, step, got, nativeBuildCommandStep, want)
 		}
 	}

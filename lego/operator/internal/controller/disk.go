@@ -21,8 +21,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"path"
 	"slices"
 	"strconv"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +39,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -88,6 +91,13 @@ const (
 	// bex-operator-pod-labels admission policy admits this one annotation on a
 	// pod mounting a disk.
 	annotDiskResizeRequested = "app.bex.co/disk-resize-requested"
+	// annotDiskLayout marks a disk claim made since a native service runs from
+	// its root directory (w6/m558), with diskLayoutRootDirectory, its only
+	// value. A claim without it was made before, when every native service
+	// but Go ran from /opt/render/project/src itself, so a path under it named
+	// a place in the service's own tree (diskMountPaths).
+	annotDiskLayout         = "app.bex.co/disk-layout"
+	diskLayoutRootDirectory = "root-directory"
 )
 
 // diskPVCName and diskLUKSSecretName are this package's names for the disk's
@@ -101,8 +111,9 @@ func diskLUKSSecretName(appName string) string { return appv1alpha1.DiskLUKSSecr
 // applyDiskProjection writes the disk's half of the pod template. Like every
 // other field applyDeploymentSpec sets, it is rebuilt from the App each pass, so
 // detaching a disk restores rolling deploys and re-admits the pod to autoscaler
-// consolidation instead of leaving both pinned forever.
-func applyDiskProjection(dep *appsv1.Deployment, container *corev1.Container, app *appv1alpha1.App) {
+// consolidation instead of leaving both pinned forever. move is where a disk
+// made before w6/m558 is in the service's tree now (diskMountPaths).
+func applyDiskProjection(dep *appsv1.Deployment, container *corev1.Container, app *appv1alpha1.App, move diskMove) {
 	if app.Spec.Disk == nil {
 		// Touch the strategy only when a disk previously set it. A service that
 		// never had one keeps whatever the API server defaulted, so its stored
@@ -124,10 +135,12 @@ func applyDiskProjection(dep *appsv1.Deployment, container *corev1.Container, ap
 	}
 	dep.Spec.Template.Annotations[diskSafeToEvictAnnotation] = "false"
 
-	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-		Name:      diskVolumeName,
-		MountPath: app.Spec.Disk.MountPath,
-	})
+	for _, mountPath := range diskMountPaths(app.Spec.Disk.MountPath, move) {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      diskVolumeName,
+			MountPath: mountPath,
+		})
+	}
 	dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: diskVolumeName,
 		VolumeSource: corev1.VolumeSource{
@@ -136,6 +149,104 @@ func applyDiskProjection(dep *appsv1.Deployment, container *corev1.Container, ap
 			},
 		},
 	})
+}
+
+// diskMove is where a disk made before w6/m558 is in its service's tree now,
+// and whether its own path would hide that tree (movedDiskMount); the zero
+// value for a disk that stays where it is.
+type diskMove struct {
+	path  string
+	hides bool
+}
+
+// diskMountPaths is where the container mounts a disk at mountPath: there,
+// and where move puts it. Until w6/m558 a native service other than Go ran
+// from /opt/render/project/src, holding its root directory's contents, so a
+// disk at /opt/render/project/src/uploads held what it wrote to uploads/. It
+// now runs from /opt/render/project/src/<root directory>, as on Render, so a
+// disk made before is also mounted at /opt/render/project/src/<root
+// directory>/uploads, and keeps both the relative and the absolute path it
+// had. A path that is the new directory or one of its parents would hide the
+// service's source, so that disk is mounted only at its new place.
+func diskMountPaths(mountPath string, move diskMove) []string {
+	switch {
+	case move.path == "":
+		return []string{mountPath}
+	case move.hides:
+		return []string{move.path}
+	}
+	return []string{mountPath, move.path}
+}
+
+// movedDiskMount is where mountPath, read as before w6/m558, is in the tree
+// of a service running source's build now. ok is false when that service's
+// working directory did not move (no root directory, Go, a Docker or prebuilt
+// image) or the path names no place in its old tree. A path already in the
+// root directory is where Render puts it, and stays.
+func movedDiskMount(source appv1alpha1.AppSpec, mountPath string) (move diskMove, ok bool) {
+	if effectiveBuilder(source) != build.BuilderNative {
+		return diskMove{}, false
+	}
+	rootDir, found := strings.CutPrefix(build.NativeSourceDir(source.Runtime, source.Repo, source.RootDir), build.NativeWorkdir+"/")
+	if !found {
+		return diskMove{}, false
+	}
+	rel, found := strings.CutPrefix(path.Clean(mountPath), build.NativeWorkdir+"/")
+	if !found || strings.HasPrefix(rel, rootDir+"/") {
+		return diskMove{}, false
+	}
+	return diskMove{
+		path:  build.NativeWorkdir + "/" + rootDir + "/" + rel,
+		hides: rel == rootDir || strings.HasPrefix(rootDir, rel+"/"),
+	}, true
+}
+
+// earlierDiskMove is where app's disk moves (movedDiskMount) when its claim
+// predates w6/m558, which a claim without annotDiskLayout does; the zero value
+// otherwise, and for a disk with no claim yet, which is a new one. A service
+// linked to a build source runs the source's build, so its directory is the
+// source's.
+func (r *AppReconciler) earlierDiskMove(ctx context.Context, app *appv1alpha1.App) (diskMove, error) {
+	if app.Spec.Disk == nil {
+		return diskMove{}, nil
+	}
+	source := app.Spec
+	if app.Spec.BuildSource != nil {
+		carrier, err := r.linkedCarrier(ctx, app)
+		if err != nil {
+			// No source to read is no build to run, and nothing to mount in it.
+			return diskMove{}, nil
+		}
+		source = carrier.Spec
+	}
+	move, ok := movedDiskMount(source, app.Spec.Disk.MountPath)
+	if !ok {
+		return diskMove{}, nil
+	}
+	var pvc corev1.PersistentVolumeClaim
+	switch err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskPVCName(app.Name)}, &pvc); {
+	case apierrors.IsNotFound(err):
+		return diskMove{}, nil
+	case err != nil:
+		return diskMove{}, fmt.Errorf("read the disk claim: %w", err)
+	}
+	if pvc.Annotations[annotDiskLayout] == diskLayoutRootDirectory {
+		return diskMove{}, nil
+	}
+	return move, nil
+}
+
+// storedDiskMountPaths is every path a stored pod spec mounts the disk at.
+func storedDiskMountPaths(spec corev1.PodSpec) []string {
+	var paths []string
+	for _, c := range spec.Containers {
+		for _, m := range c.VolumeMounts {
+			if m.Name == diskVolumeName {
+				paths = append(paths, m.MountPath)
+			}
+		}
+	}
+	return paths
 }
 
 // preferDiskNode asks the scheduler to start a disk-bearing App's next
@@ -340,9 +451,10 @@ func (r *AppReconciler) createDiskPVC(ctx context.Context, app *appv1alpha1.App)
 	sizeGB := max(app.Spec.Disk.SizeGB, diskAllocatedGB(app))
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      diskPVCName(app.Name),
-			Namespace: app.Namespace,
-			Labels:    map[string]string{labelApp: app.Name},
+			Name:        diskPVCName(app.Name),
+			Namespace:   app.Namespace,
+			Labels:      map[string]string{labelApp: app.Name},
+			Annotations: map[string]string{annotDiskLayout: diskLayoutRootDirectory},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},

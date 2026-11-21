@@ -90,6 +90,9 @@ var filePatches = map[string][]rule{
 	// native runtime has as on Render (w6/m549), is the transfer to name.
 	"render-disks/SKILL.md": {
 		r(`a currently supported transfer method such as SCP with SSH or Magic-Wormhole\.`, disksTransfer),
+		// Upstream's example has no root directory; with one, the service
+		// runs in it, on Render and on bex alike (w6/m558).
+		r(`(?m)^Fetch the current disk documentation`, disksRootDirectory+"\n\nFetch the current disk documentation"),
 	},
 	"render-migrate-from-heroku/references/service-mapping.md": {
 		r(`- \*\*Heroku Pipelines\*\* → [^\n]*`, "- **Heroku Pipelines** → separate bex services or projects per stage, promoted manually (bex has no preview environments)"),
@@ -111,6 +114,12 @@ const postgresLogicalReplication = "## Logical Replication\n\n" +
 const disksTransfer = "Magic-Wormhole, which every native runtime has: run `wormhole send <file>` in the service's Shell or SSH session, " +
 	"then `wormhole receive <code>` on the receiving machine with the code it prints (reverse the two to bring a file in). " +
 	"bex SSH does not support SCP. A Docker-runtime service has `wormhole` only if its image installs it."
+
+// disksRootDirectory is where the pack's disk skill puts a disk for a
+// service with a root directory.
+const disksRootDirectory = "A service with a root directory (`rootDir`) runs from it: with `rootDir: backend`, mount the disk at " +
+	"`/opt/render/project/src/backend/uploads` to keep what the app writes to `uploads/`. " +
+	"A path under `/opt/render/project/src` outside the root directory is outside the service's own files."
 
 // cliCommands are the CLI's top-level commands a skill names; only these turn
 // `render <command>` into `bex <command>`, so prose ("render the page") stays.

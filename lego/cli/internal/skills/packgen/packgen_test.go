@@ -172,11 +172,15 @@ func TestPostgresSkillKeepsLogicalReplication(t *testing.T) {
 	}
 }
 
+// disksUpstream carries the upstream disk skill's lines its patches rewrite:
+// a patch that no longer matches fails the generation.
+const disksUpstream = "```\n\nFetch the current disk documentation and Blueprint specification through `references/persistent-disks.md`.\n\n" +
+	"Move backup files off the service with a currently supported transfer method such as SCP with SSH or Magic-Wormhole. Snapshot restores replace the entire disk.\n"
+
 // bex SSH has no SCP (ADR035), so the disk skill names the transfer every
 // native runtime has, Magic-Wormhole, and the checked-in pack says so (w6/m549).
 func TestDisksSkillMovesFilesWithWormhole(t *testing.T) {
-	upstream := "Move backup files off the service with a currently supported transfer method such as SCP with SSH or Magic-Wormhole. Snapshot restores replace the entire disk.\n"
-	_, out, keep, err := Rewrite("render-disks/SKILL.md", []byte(upstream))
+	_, out, keep, err := Rewrite("render-disks/SKILL.md", []byte(disksUpstream))
 	if err != nil || !keep {
 		t.Fatalf("Rewrite = %v, %v", keep, err)
 	}
@@ -189,5 +193,24 @@ func TestDisksSkillMovesFilesWithWormhole(t *testing.T) {
 	}
 	if !strings.Contains(string(pack), disksTransfer) || strings.Contains(string(pack), "SCP with SSH") {
 		t.Error("the checked-in bex-disks skill does not carry the generated wormhole transfer")
+	}
+}
+
+// A service with a root directory runs from it (w6/m558), so the disk skill
+// says where its disk goes, after upstream's example, which has none.
+func TestDisksSkillPlacesARootDirectorysDisk(t *testing.T) {
+	_, out, keep, err := Rewrite("render-disks/SKILL.md", []byte(disksUpstream))
+	if err != nil || !keep {
+		t.Fatalf("Rewrite = %v, %v", keep, err)
+	}
+	if !strings.Contains(string(out), "```\n\n"+disksRootDirectory+"\n\nFetch the current disk documentation") {
+		t.Fatalf("the root-directory placement is not after the example:\n%s", out)
+	}
+	pack, err := os.ReadFile("../pack/skills/bex-disks/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pack), disksRootDirectory) {
+		t.Error("the checked-in bex-disks skill lacks the generated root-directory placement")
 	}
 }

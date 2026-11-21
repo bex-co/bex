@@ -758,6 +758,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		params.healthProbeImage = r.BackupHelperImage
 		// The node the disk's volume is on, which a rolling pass prefers.
 		params.diskNode = r.diskNode(ctx, runtime)
+		if params.diskMove, err = r.earlierDiskMove(ctx, runtime); err != nil {
+			return err
+		}
 	} else {
 		recordManagedOIDCOf(app, *restore)
 	}
