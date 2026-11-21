@@ -4,7 +4,7 @@
 
 ## Milestones
 
-- [ ] **m541** — [A Pro-workspace Postgres with at least 10 GB publishes to an external subscriber once logical replication is enabled, as Render enables it](m541/README.md) (12 tasks) ← from `/pm-brainstorm` for one aspect of render parity (Postgres logical replication), 2026-11-20, item 1
+- [ ] **m541** — **BLOCKED (clears by itself, nothing is needed from the user: pin must carry `a2c7040f4` (the w34/m541 commit), then switch `bex-canary` to Pro under the user's 2026-10-31 permission, walk t008 (DoD 1–5) on production with the runbook's `/api postgres-logical-replication` and an external PostgreSQL 18 subscriber, switch it back to Hobby, delete the fixtures and close with t012)** — [A Pro-workspace Postgres with at least 10 GB publishes to an external subscriber once logical replication is enabled, as Render enables it](blocked/m541/README.md) (12 tasks) ← from `/pm-brainstorm` for one aspect of render parity (Postgres logical replication), 2026-11-20, item 1. t001–t007 and t009–t011 done 2026-11-21 (`a2c7040f4`): the spec field, the operator's projection, the operators' verb, the runbook, the dashboard note and the agent skill, tested on real PostgreSQL 17 and 18 with a real subscription; no dev stack exists for w34, so the cluster walk is on production
 - [ ] **m542** — [A bex Postgres subscribes to another bex database or one outside bex once it is enabled as a subscriber, as on Render](m542/README.md) (10 tasks) ← same brainstorm, item 2; builds on m541
 - [ ] **m543** — [Logical replication survives failover, switchover, restarts, suspend and major-version upgrades](m543/README.md) (10 tasks) ← same brainstorm, item 3; builds on m541
 
