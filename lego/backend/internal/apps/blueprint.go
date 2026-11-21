@@ -432,12 +432,18 @@ func blueprintFetchFailure(err error, repo, requestedPath, branch string) error 
 // and sync history carry.
 func blueprintCreateFetchError(err error, repo, requestedPath, branch string) error {
 	reason, message := classifyBlueprintFetchError(err, repo, requestedPath, branch)
+	return blueprintFetchRefusal(reason, message, nil)
+}
+
+// blueprintFetchRefusal is a classified Blueprint read failure as a create
+// answers it, coded with its reason.
+func blueprintFetchRefusal(reason BlueprintPreviewReason, message string, params map[string]any) error {
 	// The 503 set is RetryableBlueprintFetch's, by name: a new retryable
 	// reason must stay a 503 here without a second edit.
 	if RetryableBlueprintFetch(reason) {
-		return core.NewUnavailableError(string(reason), message, nil)
+		return core.NewUnavailableError(string(reason), message, params)
 	}
-	return core.NewBadRequestError(string(reason), message, nil)
+	return core.NewBadRequestError(string(reason), message, params)
 }
 
 // approvedBlueprintPath keeps Blueprint discovery from becoming an arbitrary
@@ -1387,7 +1393,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, fmt.Errorf("%w: resourceSuffix is four lowercase letters or digits and applies only to existingResources create_new", core.ErrBadRequest)
 	}
 	if req.Branch, err = s.blueprintBranch(ctx, tenantID, req.Repo, req.Branch); err != nil {
-		return BlueprintView{}, err
+		return BlueprintView{}, blueprintBranchError(err, req.Repo)
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Repo, req.Branch, req.Path)
 	if err != nil {
@@ -2752,4 +2758,22 @@ func blueprintBranchRefusal(err error, repo string) (BlueprintPreviewReason, str
 		return BlueprintFetchRepoNotFound, blueprintWordingFor(repo).repoNotFound, true
 	}
 	return "", "", false
+}
+
+// blueprintBranchError is a failed default-branch lookup as a create answers
+// it: the preview's reason and sentence, coded as a read with a branch codes
+// them, not the service create's uncoded wording the lookup returns
+// (w32/070). A rate limit keeps its Retry-After. An error the preview does not
+// classify, errBlueprintBranchRequired among them, is returned as it is.
+func blueprintBranchError(err error, repo string) error {
+	reason, message, ok := blueprintBranchRefusal(err, repo)
+	if !ok {
+		return err
+	}
+	var params map[string]any
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		params = coded.Params
+	}
+	return blueprintFetchRefusal(reason, message, params)
 }

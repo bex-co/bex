@@ -160,3 +160,85 @@ func TestBlueprintWithoutBranchNamesTheRepositoryHost(t *testing.T) {
 		}
 	}
 }
+
+// w32/070: with no branch, both creates answered a missing repository with
+// the default-branch lookup's own error, the service create's uncoded 400
+// ("repository is not accessible through this workspace's GitHub connections
+// …"), where the preview and a create with a branch answer 400
+// repo_not_found_or_no_access. A lookup failure the preview classifies is now
+// the preview's reason and sentence on both creates, coded as a read with a
+// branch codes them; with a branch nothing changes.
+func TestBlueprintCreateWithoutBranchAnswersAFailedLookupAsThePreviewDoes(t *testing.T) {
+	const githubRepo = "https://github.com/octocat/qa-no-such-repo"
+	for _, tc := range []struct {
+		name, repo    string
+		lookup, fetch error
+		status        error
+		reason        BlueprintPreviewReason
+		want          string
+	}{
+		{"a missing GitHub repository", githubRepo,
+			fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest),
+			fmt.Errorf("%w: %w", github.ErrRepoNotFoundOrNoAccess, &github.APIError{Status: 404}),
+			core.ErrBadRequest, BlueprintFetchRepoNotFound, "Repository not found, or bex's GitHub app cannot access it."},
+		{"a missing GitLab repository", gitlabBlueprintRepo,
+			fmt.Errorf("%w: repository is not accessible as public Git; check its URL, or use a public repository", core.ErrBadRequest),
+			fmt.Errorf("%w: gitlab.com has no public Git repository at this URL", github.ErrRepoNotFoundOrNoAccess),
+			core.ErrBadRequest, BlueprintFetchRepoNotFound, "Repository not found on gitlab.com, or it is not public. bex reads a Blueprint there from a public repository."},
+		{"a GitHub rate limit", githubRepo,
+			core.NewUnavailableError(github.CodeGitHubRateLimited, "GitHub is rate-limiting bex right now. Try again in a few minutes.", map[string]any{"retryAfterSeconds": 30}),
+			fmt.Errorf("github: limited: %w", &github.APIError{Status: 429}),
+			core.ErrUnavailable, BlueprintFetchRateLimited, "GitHub is rate-limiting bex right now. Try again in a few minutes."},
+	} {
+		for _, branch := range []string{"", "main"} {
+			t.Run(fmt.Sprintf("%s, branch %q", tc.name, branch), func(t *testing.T) {
+				svc, st, ctx := newOnboardingService(t, onboardingManifest)
+				gh := &fakeCloneTokens{validateErr: tc.lookup}
+				svc.GitHub = gh
+				if branch != "" {
+					svc.GitFetcher = fakeBlueprintFetcher{err: tc.fetch}
+				}
+				p, err := svc.PreviewBlueprint(ctx, "tea-a", tc.repo, branch, "", "")
+				if err != nil || p.Found || p.Reason != tc.reason || p.Error != tc.want {
+					t.Fatalf("preview = %q %q, %v; want %q %q", p.Reason, p.Error, err, tc.reason, tc.want)
+				}
+				var sourceBranch *string
+				if branch != "" {
+					sourceBranch = &branch
+				}
+				for name, create := range map[string]func() error{
+					"CreateBlueprint": func() error {
+						_, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: tc.repo, Branch: branch, Name: "bp"})
+						return err
+					},
+					"CreatePlannedBlueprint": func() error {
+						_, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "bp", OwnerID: "tea-a",
+							Source: RenderBlueprintSource{Repo: tc.repo, Branch: sourceBranch}})
+						return err
+					},
+				} {
+					err := create()
+					var c *core.CodedError
+					if !errors.Is(err, tc.status) || !errors.As(err, &c) || c.Code != string(tc.reason) || err.Error() != tc.want {
+						t.Errorf("%s = %v, want %v %s %q, as the preview answers", name, err, tc.status, tc.reason, tc.want)
+						continue
+					}
+					// GitHub's Retry-After survives the lookup's answer.
+					wantRetry := any(nil)
+					if branch == "" && tc.reason == BlueprintFetchRateLimited {
+						wantRetry = 30
+					}
+					if got := c.Params["retryAfterSeconds"]; got != wantRetry {
+						t.Errorf("%s retryAfterSeconds = %v, want %v", name, got, wantRetry)
+					}
+				}
+				if branch != "" && gh.validateCalls != 0 {
+					t.Errorf("looked up the default branch %d times with a branch, want none", gh.validateCalls)
+				}
+				if len(st.blueprints) != 0 {
+					t.Errorf("a refused create saved %d Blueprints, want none", len(st.blueprints))
+				}
+			})
+		}
+	}
+}

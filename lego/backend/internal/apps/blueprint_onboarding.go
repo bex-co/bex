@@ -206,7 +206,7 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 		case errors.Is(err, errBlueprintBranchRequired):
 			branch = DefaultBlueprintBranch
 		default:
-			return BlueprintPlanResult{}, err
+			return BlueprintPlanResult{}, blueprintBranchError(err, req.Source.Repo)
 		}
 	}
 	path := ""
