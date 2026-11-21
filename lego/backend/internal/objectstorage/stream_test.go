@@ -401,15 +401,34 @@ func TestValidateLifecycleRefusesWhatTheSweepWouldNotRun(t *testing.T) {
 	if err := objectstorage.ValidateLifecycle([]objectstorage.LifecycleRule{age("a", 1), age("b", 0)}); err != nil {
 		t.Fatalf("valid rules: %v", err)
 	}
-	for name, rules := range map[string][]objectstorage.LifecycleRule{
-		"duplicate id": {age("a", 1), age("a", 2)},
-		"empty id":     {age("", 1)},
-		"no action":    {{ID: "a", Enabled: true}},
-		"huge age":     {age("a", objectstorage.MaxLifecycleAgeSeconds+1)},
-		"control char": {func() objectstorage.LifecycleRule { r := age("a", 1); r.Conditions.Prefix = "a\x01"; return r }()},
+	// Each refusal reaches an S3 client as it is, so it names the S3 element the
+	// client sent, never the stored field.
+	for name, c := range map[string]struct {
+		rules []objectstorage.LifecycleRule
+		names string
+	}{
+		"duplicate id": {[]objectstorage.LifecycleRule{age("a", 1), age("a", 2)}, `lifecycle rule 2: ID "a"`},
+		"empty id":     {[]objectstorage.LifecycleRule{age("", 1)}, "ID must be"},
+		"no action":    {[]objectstorage.LifecycleRule{{ID: "a", Enabled: true}}, "Expiration or an AbortIncompleteMultipartUpload"},
+		"huge age":     {[]objectstorage.LifecycleRule{age("a", objectstorage.MaxLifecycleAgeSeconds+1)}, "Expiration"},
+		"control char": {[]objectstorage.LifecycleRule{func() objectstorage.LifecycleRule { r := age("a", 1); r.Conditions.Prefix = "a\x01"; return r }()}, "Prefix"},
+		"abort with no age": {[]objectstorage.LifecycleRule{{ID: "a", Enabled: true,
+			AbortMultipartUploadsTransition: json.RawMessage(`{"condition":{"type":"Age"}}`)}}, "AbortIncompleteMultipartUpload"},
+		"abort not an object": {[]objectstorage.LifecycleRule{{ID: "a", Enabled: true,
+			AbortMultipartUploadsTransition: json.RawMessage(`"soon"`)}}, "AbortIncompleteMultipartUpload"},
 	} {
-		if err := objectstorage.ValidateLifecycle(rules); !errors.Is(err, objectstorage.ErrInvalidLifecycle) {
+		err := objectstorage.ValidateLifecycle(c.rules)
+		if !errors.Is(err, objectstorage.ErrInvalidLifecycle) {
 			t.Errorf("%s: %v, want ErrInvalidLifecycle", name, err)
+			continue
+		}
+		if !strings.Contains(err.Error(), c.names) {
+			t.Errorf("%s: %q does not name %s", name, err, c.names)
+		}
+		for _, field := range []string{"deleteObjectsTransition", "abortMultipartUploadsTransition", "conditions.", "maxAge", "id must", "id \""} {
+			if strings.Contains(err.Error(), field) {
+				t.Errorf("%s: %q names the stored field %s", name, err, field)
+			}
 		}
 	}
 	ia := age("a", 1)

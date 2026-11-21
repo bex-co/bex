@@ -58,22 +58,36 @@ func TestValidateCORSAcceptsTheStoredShape(t *testing.T) {
 func TestValidateCORSRefusesWhatBreaksTheShapeOrTheCaps(t *testing.T) {
 	neg := int64(-1)
 	huge := int64(objectstorage.MaxCORSMaxAgeSeconds + 1)
-	for name, rules := range map[string][]objectstorage.CORSRule{
-		"no origin":         {rule(nil, []string{"GET"})},
-		"no method":         {rule([]string{"*"}, nil)},
-		"unknown method":    {rule([]string{"*"}, []string{"PATCH"})},
-		"lower-case method": {rule([]string{"*"}, []string{"get"})},
-		"origin with path":  {rule([]string{"https://example.com/a"}, []string{"GET"})},
-		"origin no scheme":  {rule([]string{"example.com"}, []string{"GET"})},
-		"two wildcards":     {rule([]string{"https://*.*.example.com"}, []string{"GET"})},
-		"space in header":   {{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}, Headers: []string{"X A"}}}},
-		"empty expose":      {{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}}, ExposeHeaders: []string{""}}},
-		"negative max age":  {{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}}, MaxAgeSeconds: &neg}},
-		"huge max age":      {{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}}, MaxAgeSeconds: &huge}},
+	// Each refusal reaches an S3 client as it is, so it names the S3 element the
+	// client sent, never the stored field.
+	for name, c := range map[string]struct {
+		rules []objectstorage.CORSRule
+		names string
+	}{
+		"no origin":         {[]objectstorage.CORSRule{rule(nil, []string{"GET"})}, "AllowedOrigin"},
+		"no method":         {[]objectstorage.CORSRule{rule([]string{"*"}, nil)}, "AllowedMethod"},
+		"unknown method":    {[]objectstorage.CORSRule{rule([]string{"*"}, []string{"PATCH"})}, `AllowedMethod "PATCH"`},
+		"lower-case method": {[]objectstorage.CORSRule{rule([]string{"*"}, []string{"get"})}, `AllowedMethod "get"`},
+		"origin with path":  {[]objectstorage.CORSRule{rule([]string{"https://example.com/a"}, []string{"GET"})}, `AllowedOrigin "https://example.com/a"`},
+		"origin no scheme":  {[]objectstorage.CORSRule{rule([]string{"example.com"}, []string{"GET"})}, `AllowedOrigin "example.com"`},
+		"two wildcards":     {[]objectstorage.CORSRule{rule([]string{"https://*.*.example.com"}, []string{"GET"})}, "AllowedOrigin"},
+		"space in header":   {[]objectstorage.CORSRule{{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}, Headers: []string{"X A"}}}}, `AllowedHeader "X A"`},
+		"empty expose":      {[]objectstorage.CORSRule{{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}}, ExposeHeaders: []string{""}}}, `ExposeHeader ""`},
+		"negative max age":  {[]objectstorage.CORSRule{{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}}, MaxAgeSeconds: &neg}}, "MaxAgeSeconds"},
+		"huge max age":      {[]objectstorage.CORSRule{{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET"}}, MaxAgeSeconds: &huge}}, "MaxAgeSeconds"},
 	} {
-		err := objectstorage.ValidateCORS(rules)
+		err := objectstorage.ValidateCORS(c.rules)
 		if err == nil || errors.Is(err, objectstorage.ErrCORSOverCap) {
 			t.Errorf("%s: %v, want a malformed-rule error", name, err)
+			continue
+		}
+		if !strings.Contains(err.Error(), c.names) {
+			t.Errorf("%s: %q does not name %s", name, err, c.names)
+		}
+		for _, field := range []string{"allowed.", "maxAgeSeconds", "exposeHeaders"} {
+			if strings.Contains(err.Error(), field) {
+				t.Errorf("%s: %q names the stored field %s", name, err, field)
+			}
 		}
 	}
 	// 86400 seconds is the cap, inclusive.

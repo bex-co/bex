@@ -77,6 +77,11 @@ func ParseCORS(raw json.RawMessage) ([]CORSRule, error) {
 // method, origins that are "*" or a scheme and host, known methods, header
 // names without spaces, and a max age of 0 to 86400 seconds. A breach of a limit is
 // ErrCORSOverCap; anything else malformed is an ErrInvalidCORS naming the rule.
+//
+// The S3 gateway is the only caller and hands the message to the client as it
+// is, so it names the elements of the S3 document the client sent
+// (AllowedOrigin, AllowedMethod, AllowedHeader, ExposeHeader, MaxAgeSeconds),
+// never the stored fields.
 func ValidateCORS(rules []CORSRule) error {
 	if len(rules) > MaxCORSRules {
 		return fmt.Errorf("%w: %d rules, at most %d", ErrCORSOverCap, len(rules), MaxCORSRules)
@@ -89,28 +94,33 @@ func ValidateCORS(rules []CORSRule) error {
 			return fmt.Errorf("%w: CORS rule %d: %s", ErrInvalidCORS, i+1, fmt.Sprintf(format, args...))
 		}
 		if len(rule.Allowed.Origins) == 0 {
-			return at("allowed.origins needs at least one origin")
+			return at("a CORSRule needs at least one AllowedOrigin")
 		}
 		for _, o := range rule.Allowed.Origins {
-			if err := validOrigin(o); err != nil {
-				return at("%v", err)
+			if !validOrigin(o) {
+				return at("AllowedOrigin %q must be * or a scheme and host such as https://example.com", o)
 			}
 		}
 		if len(rule.Allowed.Methods) == 0 {
-			return at("allowed.methods needs at least one method")
+			return at("a CORSRule needs at least one AllowedMethod")
 		}
 		for _, m := range rule.Allowed.Methods {
 			if !slices.Contains(CORSMethods, m) {
-				return at("method %q is not one of %s", m, strings.Join(CORSMethods, ", "))
+				return at("AllowedMethod %q is not one of %s", m, strings.Join(CORSMethods, ", "))
 			}
 		}
-		for _, h := range slices.Concat(rule.Allowed.Headers, rule.ExposeHeaders) {
-			if h == "" || len(h) > maxCORSTokenBytes || strings.ContainsAny(h, " \t\r\n,") {
-				return at("header name %q is not valid", h)
+		for _, h := range rule.Allowed.Headers {
+			if !validHeader(h) {
+				return at("AllowedHeader %q is not a valid header name", h)
+			}
+		}
+		for _, h := range rule.ExposeHeaders {
+			if !validHeader(h) {
+				return at("ExposeHeader %q is not a valid header name", h)
 			}
 		}
 		if rule.MaxAgeSeconds != nil && (*rule.MaxAgeSeconds < 0 || *rule.MaxAgeSeconds > MaxCORSMaxAgeSeconds) {
-			return at("maxAgeSeconds must be between 0 and %d", MaxCORSMaxAgeSeconds)
+			return at("MaxAgeSeconds must be between 0 and %d", MaxCORSMaxAgeSeconds)
 		}
 	}
 	return nil
@@ -118,16 +128,18 @@ func ValidateCORS(rules []CORSRule) error {
 
 // validOrigin accepts "*" or a scheme, a host and an optional port, with at
 // most one "*" (a leading subdomain wildcard such as https://*.example.com).
-func validOrigin(o string) error {
+func validOrigin(o string) bool {
 	if o == "*" {
-		return nil
+		return true
 	}
 	rest, ok := strings.CutPrefix(o, "https://")
 	if !ok {
 		rest, ok = strings.CutPrefix(o, "http://")
 	}
-	if !ok || rest == "" || len(o) > maxCORSTokenBytes || strings.ContainsAny(rest, "/ \t\r\n?#") || strings.Count(o, "*") > 1 {
-		return fmt.Errorf("origin %q must be * or a scheme and host such as https://example.com", o)
-	}
-	return nil
+	return ok && rest != "" && len(o) <= maxCORSTokenBytes && !strings.ContainsAny(rest, "/ \t\r\n?#") && strings.Count(o, "*") <= 1
+}
+
+// validHeader accepts a header name of 1 to 256 bytes with no space or comma.
+func validHeader(h string) bool {
+	return h != "" && len(h) <= maxCORSTokenBytes && !strings.ContainsAny(h, " \t\r\n,")
 }

@@ -332,6 +332,65 @@ func TestALifecycleRuleRoundTripsAndEachLimitIsRefused(t *testing.T) {
 	}
 }
 
+// A refused rule names the element of the S3 document the client sent, never the field
+// of the stored shape (Cloudflare R2's, which no client sends since Contract B went):
+// "a rule needs deleteObjectsTransition" left every S3 client with nothing to change.
+func TestARefusedRuleNamesTheS3ElementNotTheStoredField(t *testing.T) {
+	p := newPGRig(t)
+	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
+	p.call(k, "PUT", "/rules", "")
+	storedFields := []string{"deleteObjectsTransition", "conditions.", "allowed.", "abortMultipartUploadsTransition", "maxAge", "storageClassTransitions"}
+	refuse := func(name, target, body string, code string, names ...string) {
+		t.Helper()
+		rec, doc := p.call(k, "PUT", target, body)
+		if rec.Code != 400 || doc.Code != code {
+			t.Errorf("%s = %d %q %s, want 400 %s", name, rec.Code, doc.Code, doc.Message, code)
+		}
+		for _, n := range names {
+			if !strings.Contains(doc.Message, n) {
+				t.Errorf("%s: %q does not name %s", name, doc.Message, n)
+			}
+		}
+		for _, f := range storedFields {
+			if strings.Contains(doc.Message, f) {
+				t.Errorf("%s: %q names the stored field %s", name, doc.Message, f)
+			}
+		}
+	}
+	lifecycle := func(rules ...string) string {
+		return `<LifecycleConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">` + strings.Join(rules, "") + `</LifecycleConfiguration>`
+	}
+	rule := func(id, status, prefix, action string) string {
+		return `<Rule><ID>` + id + `</ID><Status>` + status + `</Status><Filter><Prefix>` + prefix + `</Prefix></Filter>` + action + `</Rule>`
+	}
+	expire := `<Expiration><Days>1</Days></Expiration>`
+	refuse("an enabled rule with no action", "/rules?lifecycle", lifecycle(rule("d", "Enabled", "x/", "")), "InvalidRequest", "lifecycle rule 1", "Expiration", "AbortIncompleteMultipartUpload")
+	refuse("a disabled rule with no action", "/rules?lifecycle", lifecycle(rule("d", "Disabled", "x/", "")), "InvalidRequest", "lifecycle rule 1", "Expiration", "AbortIncompleteMultipartUpload")
+	refuse("a 256-byte ID", "/rules?lifecycle", lifecycle(rule("a", "Enabled", "", expire), rule(strings.Repeat("i", 256), "Enabled", "", expire)), "InvalidRequest", "lifecycle rule 2", "ID must be 1 to 255 bytes")
+	refuse("a duplicate ID", "/rules?lifecycle", lifecycle(rule("a", "Enabled", "", expire), rule("a", "Enabled", "", expire)), "InvalidRequest", "lifecycle rule 2", `ID "a"`)
+	refuse("a tab in the Filter prefix", "/rules?lifecycle", lifecycle(rule("t", "Enabled", "x\t/", expire)), "InvalidRequest", "lifecycle rule 1", "Prefix")
+	refuse("a newline in the legacy prefix", "/rules?lifecycle", lifecycle(`<Rule><ID>n</ID><Status>Enabled</Status><Prefix>x
+/</Prefix>`+expire+`</Rule>`), "InvalidRequest", "lifecycle rule 1", "Prefix")
+
+	cors := func(inner string) string {
+		return `<CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><CORSRule>` + inner + `</CORSRule></CORSConfiguration>`
+	}
+	refuse("a CORS rule with no origin", "/rules?cors", cors(`<AllowedMethod>GET</AllowedMethod>`), "InvalidRequest", "CORS rule 1", "AllowedOrigin")
+	refuse("a CORS rule with no method", "/rules?cors", cors(`<AllowedOrigin>*</AllowedOrigin>`), "InvalidRequest", "CORS rule 1", "AllowedMethod")
+	refuse("a max age of -1", "/rules?cors", cors(`<AllowedOrigin>*</AllowedOrigin><AllowedMethod>GET</AllowedMethod><MaxAgeSeconds>-1</MaxAgeSeconds>`), "InvalidRequest", "CORS rule 1", "MaxAgeSeconds")
+	refuse("an origin that is no origin", "/rules?cors", cors(`<AllowedOrigin>example.com</AllowedOrigin><AllowedMethod>GET</AllowedMethod>`), "InvalidRequest", `AllowedOrigin "example.com"`)
+	refuse("a method outside the five", "/rules?cors", cors(`<AllowedOrigin>*</AllowedOrigin><AllowedMethod>PATCH</AllowedMethod>`), "InvalidRequest", `AllowedMethod "PATCH"`)
+	refuse("an allowed header with a space", "/rules?cors", cors(`<AllowedOrigin>*</AllowedOrigin><AllowedMethod>GET</AllowedMethod><AllowedHeader>x a</AllowedHeader>`), "InvalidRequest", `AllowedHeader "x a"`)
+	refuse("an empty expose header", "/rules?cors", cors(`<AllowedOrigin>*</AllowedOrigin><AllowedMethod>GET</AllowedMethod><ExposeHeader></ExposeHeader>`), "InvalidRequest", `ExposeHeader ""`)
+
+	// Nothing refused was stored.
+	for _, target := range []string{"/rules?lifecycle", "/rules?cors"} {
+		if rec, _ := p.call(k, "GET", target, ""); rec.Code != 404 {
+			t.Errorf("GET %s after refusals = %d %s, want 404", target, rec.Code, rec.Body)
+		}
+	}
+}
+
 func TestThePreflightIsRoutedByTheKeyIdOfAPresignedURLAndEveryRefusalLooksTheSame(t *testing.T) {
 	p := newPGRig(t)
 	k := p.newKey(objectstorage.KeyPermissionRead, 0)

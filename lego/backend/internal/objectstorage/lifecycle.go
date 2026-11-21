@@ -102,6 +102,10 @@ const maxLifecycleIDBytes = 255
 // ErrLifecycleOverCap; anything else is an ErrInvalidLifecycle naming the rule.
 // An expiry is judged by Validate, the check the sweep makes before it runs a
 // rule, so a rule that is stored is a rule that runs.
+//
+// The S3 gateway is the only caller and hands the message to the client as it
+// is, so it names the elements of the S3 document the client sent (ID, Prefix,
+// Expiration, AbortIncompleteMultipartUpload), never the stored fields.
 func ValidateLifecycle(rules []LifecycleRule) error {
 	if len(rules) > MaxLifecycleRules {
 		return fmt.Errorf("%w: %d rules, at most %d", ErrLifecycleOverCap, len(rules), MaxLifecycleRules)
@@ -112,32 +116,30 @@ func ValidateLifecycle(rules []LifecycleRule) error {
 			return fmt.Errorf("%w: lifecycle rule %d: %s", ErrInvalidLifecycle, i+1, fmt.Sprintf(format, args...))
 		}
 		if rule.ID == "" || len(rule.ID) > maxLifecycleIDBytes {
-			return bad("id must be 1 to %d bytes", maxLifecycleIDBytes)
+			return bad("ID must be 1 to %d bytes", maxLifecycleIDBytes)
 		}
 		if seen[rule.ID] {
-			return bad("id %q is used by more than one rule", rule.ID)
+			return bad("ID %q is used by more than one rule", rule.ID)
 		}
 		seen[rule.ID] = true
 		if len(rule.Conditions.Prefix) > MaxKeyBytes || strings.ContainsFunc(rule.Conditions.Prefix, unicode.IsControl) {
-			return bad("conditions.prefix is not valid")
+			return bad("Prefix must be at most %d bytes with no control character", MaxKeyBytes)
 		}
 		if hasTransitions(rule.StorageClassTransitions) {
 			return fmt.Errorf("%w: lifecycle rule %q moves objects to another storage class, and bex has one", ErrLifecycleStorageClass, rule.ID)
 		}
 		abort, err := abortTransition(rule)
+		if err == nil && abort != nil {
+			err = (LifecycleRule{ID: rule.ID, DeleteObjectsTransition: abort}).Validate()
+		}
 		if err != nil {
-			return bad("abortMultipartUploadsTransition is not valid: %v", err)
+			return bad("AbortIncompleteMultipartUpload needs a valid DaysAfterInitiation")
 		}
 		if rule.DeleteObjectsTransition == nil && abort == nil {
-			return bad("a rule needs deleteObjectsTransition")
+			return bad("a rule needs an Expiration or an AbortIncompleteMultipartUpload")
 		}
-		if err := rule.Validate(); err != nil {
-			return err
-		}
-		if abort != nil {
-			if err := (LifecycleRule{ID: rule.ID, DeleteObjectsTransition: abort}).Validate(); err != nil {
-				return bad("abortMultipartUploadsTransition: %v", err)
-			}
+		if rule.Validate() != nil {
+			return bad("Expiration needs a valid Days or Date")
 		}
 	}
 	return nil
