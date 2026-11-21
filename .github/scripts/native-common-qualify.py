@@ -62,7 +62,7 @@ PROFILES = {
                       ("3.7", "3.8"), 110, 140),
     "ruby": ("TestCommonRubyGeneratedImages", "BEX_NATIVE_TEST_RUBY_PROFILE",
              ("ruby30", "ruby31", "ruby32", "ruby33", "ruby34", "ruby40",
-              "ruby344-creation-default", "node-static-ruby34"), 75, 105),
+              "ruby344-creation-default", "ruby320-locked-bullseye", "node-static-ruby34"), 75, 105),
     "go-rust": ("TestNativeGoRustGeneratedImages", "BEX_NATIVE_TEST_GORUST_PROFILE",
                 ("go", "rust"), 75, 105),
     "elixir": ("TestCommonElixirOfflineQualification", "BEX_NATIVE_ELIXIR_INTEGRATION",

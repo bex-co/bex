@@ -92,8 +92,10 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 			return strings.Contains(choice.Image, variant+"@")
 		})
 	case strings.Contains(choice.Image, "-bullseye@"):
+		// Ruby takes bullseye for its 3.0 line and for an exact release that
+		// predates its line's bookworm images (3.2.0, w9/133).
 		choice.legacySource = (runtime == nativePythonRuntime && strings.HasPrefix(version, "3.7.")) ||
-			(runtime == nativeRubyRuntime && strings.HasPrefix(version, "3.0."))
+			runtime == nativeRubyRuntime
 	}
 	return choice, nil
 }
@@ -147,9 +149,10 @@ func commonRuntimeProvenance(choice NativeChoice) string {
 	return "COPY --link --from=" + choice.primaryImage + " /usr/share/bex-node-brotli /usr/share/bex-node-brotli\n"
 }
 
-// Only the three existing legacy families may use their old runtime tree on
-// Bookworm. Their distinct libssl1.1/libffi7 SONAMEs are genuine coinstalled
-// packages in the common factory; libc and current headers are never copied.
+// Only the three legacy families (Node's older variants, Python 3.7 and
+// bullseye Ruby) may use their old runtime tree on Bookworm. Their distinct
+// libssl1.1/libffi7 SONAMEs are genuine coinstalled packages in the common
+// factory; libc and current headers are never copied.
 func nativeCommonSourceGuard(source string, legacy, reset bool) string {
 	compatible := `[ "$primary_os" = "$VERSION_CODENAME" ]`
 	if legacy {

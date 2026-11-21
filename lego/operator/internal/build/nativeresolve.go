@@ -476,12 +476,12 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 	}
 	digest, found, err := exact.ResolveTag(ctx, repo, tag)
 	if err == nil && !found {
-		if donor, ok := olderNodeDonor(ctx, exact, repo, tag); ok {
+		if donor, ok := olderVariantImage(ctx, exact, repo, tag); ok {
 			donorRef, _, _ := strings.Cut(donor, "@")
 			if nativeCommonBase != "" {
 				// The common base takes its runtime from the selected image,
 				// so the older-variant image is the exact primary itself.
-				choice.note = fmt.Sprintf("==> %s:%s does not exist; using Node %s from %s", repo, tag, choice.Exact, donorRef)
+				choice.note = fmt.Sprintf("==> %s:%s does not exist; using %s %s from %s", repo, tag, choice.Label, choice.Exact, donorRef)
 				choice.Image = donor
 			} else {
 				choice.note = fmt.Sprintf("==> %s:%s does not exist; copying Node %s from %s onto the %s %s image", repo, tag, choice.Exact, donorRef, choice.Label, choice.Line)
@@ -569,16 +569,31 @@ func newestTagRelease(tags []string, suffix string, constraint *semver.Constrain
 // release older than its line's bookworm images is published in, newest first.
 var nodeOlderVariants = []string{"-bullseye", "-buster"}
 
-// olderNodeDonor is the digest-pinned official image of a Node release whose
+// olderVariants are the older Debian variants an exact release whose bookworm
+// tag does not exist may come from. The node binary is the same nodejs.org
+// build in every variant (glibc 2.17 baseline), so it runs on bookworm
+// (w8/309). Ruby's links bullseye's libssl1.1 and libffi7, which only the
+// common base carries beside bookworm's, as it does for the 3.0 line; a buster
+// Ruby would need libffi6, so Ruby stops at bullseye (w9/133: 3.1.0 to 3.1.3,
+// 3.2.0 and 3.2.1 have bullseye images only).
+func olderVariants(repo string) []string {
+	switch {
+	case repo == nativeNodeRuntime:
+		return nodeOlderVariants
+	case repo == nativeRubyRuntime && nativeCommonBase != "":
+		return []string{"-bullseye"}
+	}
+	return nil
+}
+
+// olderVariantImage is the digest-pinned official image of a release whose
 // bookworm tag does not exist, in the newest older Debian variant that has it.
-// The node binary is the same nodejs.org build in every variant (glibc 2.17
-// baseline), so it runs on the line's bookworm image (w8/309).
-func olderNodeDonor(ctx context.Context, exact ExactImageResolver, repo, tag string) (string, bool) {
+func olderVariantImage(ctx context.Context, exact ExactImageResolver, repo, tag string) (string, bool) {
 	release, ok := strings.CutSuffix(tag, "-bookworm")
-	if repo != nativeNodeRuntime || !ok {
+	if !ok {
 		return "", false
 	}
-	for _, variant := range nodeOlderVariants {
+	for _, variant := range olderVariants(repo) {
 		if digest, found, err := exact.ResolveTag(ctx, repo, release+variant); err == nil && found {
 			return repo + ":" + release + variant + "@" + digest, true
 		}

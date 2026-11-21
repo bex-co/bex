@@ -35,7 +35,14 @@ type nativeRubyQualificationCase struct {
 	name, line, version string
 	created             time.Time
 	static              bool
+	// locked pins version in the Gemfile and its lockfile's RUBY VERSION, as
+	// render-examples/sidekiq does, instead of naming a line (w9/133).
+	locked bool
 }
+
+// nativeRubyBullseyeRelease predates its line's bookworm images, so its tree
+// comes from the bullseye image (w9/133).
+const nativeRubyBullseyeRelease = "3.2.0"
 
 func nativeRubyQualificationCases() []nativeRubyQualificationCase {
 	var cases []nativeRubyQualificationCase
@@ -45,6 +52,7 @@ func nativeRubyQualificationCases() []nativeRubyQualificationCase {
 	ruby, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
 	return append(cases,
 		nativeRubyQualificationCase{name: "ruby344-creation-default", version: rubyDefaultVersion, created: rubyDefaultCutoff.Add(time.Second)},
+		nativeRubyQualificationCase{name: "ruby320-locked-bullseye", version: nativeRubyBullseyeRelease, locked: true},
 		nativeRubyQualificationCase{name: "node-static-ruby34", line: ruby.line, version: ruby.version, static: true})
 }
 
@@ -69,6 +77,11 @@ func nativeRubyQualificationFixture(t *testing.T, tc nativeRubyQualificationCase
 	files[".node-version"] = "24\n"
 	if tc.line != "" {
 		files[".ruby-version"] = tc.line + "\n"
+	}
+	if tc.locked {
+		// Bundler then refuses any other patch, offline as online.
+		files["Gemfile"] += "ruby '" + tc.version + "'\n"
+		files["Gemfile.lock"] += "\nRUBY VERSION\n   ruby " + tc.version + "p0\n"
 	}
 	node, _ := nativeToolchains[nativeNodeRuntime].find("24")
 	o := nativeOptions()
@@ -220,8 +233,8 @@ func TestCommonRubyQualificationCanonicalRecipes(t *testing.T) {
 	t.Cleanup(func() { nativeCommonBase = original })
 	nativeCommonBase = commonFixtureImage
 	cases := nativeRubyQualificationCases()
-	if len(cases) != len(nativeToolchains[nativeRubyRuntime].lines)+2 {
-		t.Fatal("profile must cover every reviewed Ruby line, creation default and static companion")
+	if len(cases) != len(nativeToolchains[nativeRubyRuntime].lines)+3 {
+		t.Fatal("profile must cover every reviewed Ruby line, creation default, static companion and locked bullseye release")
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -234,10 +247,15 @@ func TestCommonRubyQualificationCanonicalRecipes(t *testing.T) {
 				}
 			}
 			var primary string
-			if tc.line != "" {
+			switch {
+			case tc.line != "":
 				line, _ := nativeToolchains[nativeRubyRuntime].find(tc.line)
 				primary = line.image
-			} else {
+			case tc.locked:
+				primary = "ruby:" + tc.version + "-bullseye@" + exactDigest
+				fake.digests["ruby:"+tc.version+"-bullseye"] = exactDigest
+				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + tc.version, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bullseye")}
+			default:
 				primary = "ruby:" + rubyDefaultVersion + "-bookworm@" + exactDigest
 				fake.digests["ruby:"+rubyDefaultVersion+"-bookworm"] = exactDigest
 				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + rubyDefaultVersion, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bookworm")}
@@ -283,8 +301,12 @@ func assertRubyQualificationRecipe(t *testing.T, tc nativeRubyQualificationCase,
 	if choices[0].Image != ruby || choices[1].Image != node.image || !strings.Contains(recipe, o.StartCommand) || !strings.Contains(recipe, "ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH="+nativeRubyGems) {
 		t.Fatalf("primary Ruby defaults, Node companion or runtime command lost: %+v\n%s", choices, recipe)
 	}
-	if tc.line == "" && (choices[0].Line != rubyDefaultVersion || !strings.Contains(choices[0].Narration(), "(default)")) {
+	if tc.line == "" && !tc.locked && (choices[0].Line != rubyDefaultVersion || !strings.Contains(choices[0].Narration(), "(default)")) {
 		t.Fatalf("creation default was replaced by a reviewed-line patch: %+v", choices)
+	}
+	if tc.locked && (choices[0].Line != tc.version || !strings.HasPrefix(choices[0].Narration(), "==> Using Ruby "+tc.version+" (from Gemfile.lock)\n") ||
+		!strings.Contains(recipe, `[ "$primary_os" = bullseye ] && [ "$VERSION_CODENAME" = bookworm ]`)) {
+		t.Fatalf("locked release lost its bullseye tree or narration: %+v\n%s", choices, recipe)
 	}
 }
 

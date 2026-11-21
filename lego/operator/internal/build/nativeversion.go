@@ -128,8 +128,8 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 //	go      default (Render offers no Go selection)
 //	rust    the one line; RUSTUP_TOOLCHAIN → rust-toolchain → rust-toolchain.toml name the toolchain rustup applies (w8/327)
 //
-// A plain version maps onto its line by major.minor (major for Node) — a
-// requested patch is not reproduced, a recorded divergence from Render. A
+// A plain version maps onto its line by major.minor (major for Node), and a
+// fully qualified one is then installed exactly (exactRequest, w8/175). A
 // range (Node engines, Ruby requirements) resolves to the highest line whose
 // pinned toolchain satisfies it. env is the build's effective environment;
 // readFile reads a file relative to the service's root directory.
@@ -769,17 +769,26 @@ func (r resolver) fromLockedRuby() (string, string, bool, error) {
 		if !ok {
 			continue
 		}
-		m := lockedRuby.FindStringSubmatch(string(raw))
-		if m == nil {
+		version, recorded := lockedRubyVersion(raw)
+		if !recorded {
 			continue
 		}
-		version := rubyPatchlevel.ReplaceAllString(m[1], "")
 		if line, ok := r.minorLine(version); ok && plainVersion.MatchString(version) {
 			return line, name, true, nil
 		}
 		return "", "", false, nil
 	}
 	return "", "", false, nil
+}
+
+// lockedRubyVersion is the Ruby a lockfile's RUBY VERSION block records,
+// without the patchlevel; recorded is false when it has no such block.
+func lockedRubyVersion(raw []byte) (version string, recorded bool) {
+	m := lockedRuby.FindSubmatch(raw)
+	if m == nil {
+		return "", false
+	}
+	return rubyPatchlevel.ReplaceAllString(string(m[1]), ""), true
 }
 
 // fromToolVersions honors a tool's line in an asdf/mise .tool-versions file
@@ -791,25 +800,30 @@ func (r resolver) fromToolVersions(tool string, match func(string) (string, bool
 		if !ok {
 			return "", "", false, nil
 		}
-		for line := range strings.SplitSeq(string(raw), "\n") {
-			if comment := strings.IndexByte(line, '#'); comment >= 0 {
-				line = line[:comment]
-			}
-			fields := strings.Fields(strings.TrimPrefix(line, "\ufeff"))
-			if len(fields) < 2 || fields[0] != tool {
-				continue
-			}
-			if fields[1] == "system" {
-				return "", "", false, nil // asdf manages no version here
-			}
-			version, ok := match(fields[1])
-			if !ok {
-				return "", "", false, r.unsupported(fmt.Sprintf(".tool-versions %s %q", tool, fields[1]))
-			}
-			return version, ".tool-versions", true, nil
+		request := toolVersion(raw, tool)
+		if request == "" || request == "system" {
+			return "", "", false, nil // no entry, or asdf manages no version here
 		}
-		return "", "", false, nil
+		version, ok := match(request)
+		if !ok {
+			return "", "", false, r.unsupported(fmt.Sprintf(".tool-versions %s %q", tool, request))
+		}
+		return version, ".tool-versions", true, nil
 	}
+}
+
+// toolVersion is the first version a .tool-versions file lists for tool, or
+// "" when the file has no line for it.
+func toolVersion(raw []byte, tool string) string {
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		if comment := strings.IndexByte(line, '#'); comment >= 0 {
+			line = line[:comment]
+		}
+		if fields := strings.Fields(strings.TrimPrefix(line, "\ufeff")); len(fields) >= 2 && fields[0] == tool {
+			return fields[1]
+		}
+	}
+	return ""
 }
 
 // fromGemfile honors a Gemfile `ruby "3.3.0"` / `ruby "~> 3.3"` directive.
@@ -819,20 +833,31 @@ func (r resolver) fromGemfile() (string, string, bool, error) {
 	if !ok {
 		return "", "", false, nil
 	}
-	m := gemfileRuby.FindStringSubmatch(string(raw))
-	if m == nil {
+	reqs := gemfileRubyRequirements(raw)
+	if reqs == nil {
 		return "", "", false, nil
 	}
-	reqs := []string{m[2]}
-	for _, extra := range regexp.MustCompile(`['"]([^'"]+)['"]`).FindAllStringSubmatch(m[3], -1) {
-		reqs = append(reqs, extra[1])
-	}
-	request := strings.Join(reqs, ", ")
 	line, ok := r.rubyRequirement(reqs)
 	if !ok {
-		return "", "", false, r.unsupported(fmt.Sprintf("Gemfile ruby %q", request))
+		return "", "", false, r.unsupported(fmt.Sprintf("Gemfile ruby %q", strings.Join(reqs, ", ")))
 	}
 	return line, "Gemfile", true, nil
+}
+
+var quotedRequirement = regexp.MustCompile(`['"]([^'"]+)['"]`)
+
+// gemfileRubyRequirements are the requirements of a Gemfile's `ruby`
+// directive, or nil when it has none with a literal.
+func gemfileRubyRequirements(raw []byte) []string {
+	m := gemfileRuby.FindStringSubmatch(string(raw))
+	if m == nil {
+		return nil
+	}
+	reqs := []string{m[2]}
+	for _, extra := range quotedRequirement.FindAllStringSubmatch(m[3], -1) {
+		reqs = append(reqs, extra[1])
+	}
+	return reqs
 }
 
 func (r resolver) rubyFileLine(request string) (string, bool) {
@@ -953,21 +978,13 @@ func packageEnginesNode(readFile func(string) ([]byte, bool)) string {
 }
 
 // exactRequest returns the fully qualified version a service pinned within the
-// chosen line when it differs from the line's reviewed patch, else "". Only a
-// plain version signal counts (an env var or a single-version file); a range,
-// an alias or a lockfile keeps resolving to the line's reviewed patch.
+// chosen line when it differs from the line's reviewed patch, else "". A plain
+// version counts wherever the signal holds one: an env var, a single-version
+// file, and Ruby's lockfile RUBY VERSION, .tool-versions entry and Gemfile
+// `ruby "3.2.0"`, which Bundler refuses any other patch for (w9/133). A range
+// or an alias keeps resolving to the line's reviewed patch.
 func exactRequest(t nativeToolchain, choice NativeChoice, readFile func(string) ([]byte, bool)) string {
-	signal, _, _ := strings.Cut(choice.Source, ", ")
-	var raw string
-	if key, value, isEnv := strings.Cut(signal, "="); isEnv {
-		if !strings.HasSuffix(key, "_VERSION") || key == "ERLANG_VERSION" {
-			return ""
-		}
-		raw = value
-	} else if strings.HasPrefix(signal, ".") && !strings.Contains(signal, "/") {
-		raw = firstLine(readFile, signal)
-	}
-	version := strings.ToLower(strings.TrimSpace(raw))
+	version := strings.ToLower(strings.TrimSpace(requestedVersion(choice.Source, readFile)))
 	for _, prefix := range []string{"python-", "ruby-", "bun-", "v"} {
 		version = strings.TrimPrefix(version, prefix)
 	}
@@ -976,6 +993,37 @@ func exactRequest(t nativeToolchain, choice NativeChoice, readFile func(string) 
 		return ""
 	}
 	return version
+}
+
+// requestedVersion is the version text behind a choice's first signal, as the
+// service wrote it, or "" when that signal names none.
+func requestedVersion(source string, readFile func(string) ([]byte, bool)) string {
+	signal, _, _ := strings.Cut(source, ", ")
+	if key, value, isEnv := strings.Cut(signal, "="); isEnv {
+		if !strings.HasSuffix(key, "_VERSION") || key == "ERLANG_VERSION" {
+			return ""
+		}
+		return value
+	}
+	switch signal {
+	case "Gemfile.lock", "gems.locked":
+		raw, _ := readFile(signal)
+		version, _ := lockedRubyVersion(raw)
+		return version
+	case ".tool-versions":
+		raw, _ := readFile(signal)
+		return toolVersion(raw, "ruby")
+	case "Gemfile":
+		raw, _ := readFile(signal)
+		if reqs := gemfileRubyRequirements(raw); len(reqs) == 1 {
+			return reqs[0]
+		}
+		return ""
+	}
+	if strings.HasPrefix(signal, ".") && !strings.Contains(signal, "/") {
+		return firstLine(readFile, signal)
+	}
+	return ""
 }
 
 // exactImage names the official tag for an exact version: the line's tag with

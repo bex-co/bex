@@ -143,6 +143,64 @@ func TestResolveNativeVersion(t *testing.T) {
 	}
 }
 
+// sidekiqLock is render-examples/sidekiq's Gemfile.lock at 73f3ab4 (w9/133):
+// its Gemfile pins ruby '3.2.0', which Bundler enforces, and the lockfile
+// records that run.
+const sidekiqLock = `PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  puma (~> 6)
+
+RUBY VERSION
+   ruby 3.2.0p0
+
+BUNDLED WITH
+   2.4.1
+`
+
+// TestRubyExactSignalsPinTheirPatch: every Ruby signal that names a fully
+// qualified version asks for exactly that release, as Render installs it and
+// as Bundler requires when the Gemfile pins it (w9/133). Before, only
+// .ruby-version did, so render-examples/sidekiq built on 3.2.11 and Bundler
+// refused it.
+func TestRubyExactSignalsPinTheirPatch(t *testing.T) {
+	reviewed, _ := nativeToolchains[nativeRubyRuntime].find("3.2")
+	cases := []struct {
+		name         string
+		files        map[string]string
+		source, want string
+	}{
+		{"sidekiq lockfile and Gemfile", map[string]string{"Gemfile.lock": sidekiqLock, "Gemfile": "source 'https://rubygems.org'\nruby '3.2.0'\n"}, "Gemfile.lock", "3.2.0"},
+		{"lockfile with a patchlevel", map[string]string{"Gemfile.lock": discourseLock}, "Gemfile.lock", "3.4.7"},
+		{"gems.locked", map[string]string{"gems.locked": discourseLock}, "gems.locked", "3.4.7"},
+		{"Bundler 4 lockfile, CRLF", map[string]string{"Gemfile.lock": "RUBY VERSION\r\n  ruby 3.3.6\r\n"}, "Gemfile.lock", "3.3.6"},
+		{"lockfile beats a ranged Gemfile", map[string]string{"Gemfile.lock": sidekiqLock, "Gemfile": "ruby '~> 3.2'"}, "Gemfile.lock", "3.2.0"},
+		{"Gemfile alone", map[string]string{"Gemfile": "source 'https://rubygems.org'\nruby '3.2.0'\n"}, "Gemfile", "3.2.0"},
+		{"Gemfile with a ruby- prefix", map[string]string{"Gemfile": `ruby "ruby-3.3.1"`}, "Gemfile", "3.3.1"},
+		{"stale unsupported lock defers to the Gemfile's patch", map[string]string{"Gemfile.lock": "RUBY VERSION\n   ruby 2.7.8p225\n", "Gemfile": "ruby '3.2.0'"}, "Gemfile", "3.2.0"},
+		{".tool-versions after another tool", map[string]string{".tool-versions": "# pinned\nnodejs 24.1.0\nruby 3.3.6 3.4.7 # fallback\n"}, ".tool-versions", "3.3.6"},
+		{".ruby-version, as before", map[string]string{".ruby-version": "ruby-3.2.0\n"}, ".ruby-version", "3.2.0"},
+		// A requirement Bundler meets with the line's patch keeps it.
+		{"pessimistic Gemfile", map[string]string{"Gemfile": `ruby "~> 3.2.0"`}, "Gemfile", ""},
+		{"two-sided Gemfile", map[string]string{"Gemfile": `ruby ">= 3.2.0", "< 3.3"`}, "Gemfile", ""},
+		{"Gemfile names only the line", map[string]string{"Gemfile": `ruby "3.2"`}, "Gemfile", ""},
+		{"lockfile records the reviewed patch", map[string]string{"Gemfile.lock": "RUBY VERSION\n   ruby " + reviewed.version + "p100\n"}, "Gemfile.lock", ""},
+		{".tool-versions names only the line", map[string]string{".tool-versions": "ruby 3.2\n"}, ".tool-versions", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ResolveNativeVersion(nativeRubyRuntime, nil, files(tc.files))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Source != tc.source || got.Exact != tc.want {
+				t.Fatalf("got exact %q from %q, want %q from %q", got.Exact, got.Source, tc.want, tc.source)
+			}
+		})
+	}
+}
+
 func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 	cases := []struct {
 		runtime    string

@@ -175,6 +175,10 @@ func TestExactVersionPinsTheRequestedPatch(t *testing.T) {
 		{"nvmrc", "node", nil, map[string]string{".nvmrc": "v20.1.0\n"}, "node:20.1.0-bookworm", []string{"NODE_VERSION=20.1.0"}},
 		{"python file", "python", nil, map[string]string{".python-version": "3.12.1\n"}, "python:3.12.1-bookworm", []string{"PYTHON_VERSION=3.12.1"}},
 		{"ruby file", "ruby", nil, map[string]string{".ruby-version": "3.3.1\n"}, "ruby:3.3.1-bookworm", []string{"RUBY_VERSION=3.3.1"}},
+		// Bundler refuses any other patch than the one these name (w9/133).
+		{"ruby lockfile", "ruby", nil, map[string]string{"Gemfile.lock": "RUBY VERSION\n   ruby 3.3.1p55\n", "Gemfile": "ruby '3.3.1'"}, "ruby:3.3.1-bookworm", []string{"RUBY_VERSION=3.3.1"}},
+		{"ruby Gemfile", "ruby", nil, map[string]string{"Gemfile": "ruby '3.3.1'"}, "ruby:3.3.1-bookworm", []string{"RUBY_VERSION=3.3.1"}},
+		{"ruby .tool-versions", "ruby", nil, map[string]string{".tool-versions": "nodejs 24.1.0\nruby 3.3.1\n"}, "ruby:3.3.1-bookworm", []string{"RUBY_VERSION=3.3.1"}},
 		{"elixir env", "elixir", map[string]string{"ELIXIR_VERSION": "1.17.0"}, nil, "elixir:1.17.0", []string{"ELIXIR_VERSION=v1.17.0", "OTP_VERSION=27.0"}},
 	}
 	for _, tc := range cases {
@@ -678,6 +682,49 @@ func TestNodeReleaseFallsBackToBuster(t *testing.T) {
 		if !strings.Contains(dockerfile, want) {
 			t.Errorf("Dockerfile lacks %q:\n%s", want, dockerfile)
 		}
+	}
+}
+
+// w9/133: Ruby's bookworm images start at 3.1.4 and 3.2.2. An older release,
+// such as render-examples/sidekiq's locked 3.2.0, takes its tree from its
+// bullseye image onto the common base, which carries that image's libssl1.1
+// and libffi7 for the 3.0 line; the log says so. With no image in either variant the build keeps the
+// reviewed patch and says that instead, as every exact path does.
+func TestRubyReleaseOlderThanBookwormComesFromBullseye(t *testing.T) {
+	const donor = "ruby:3.2.0-bullseye@" + exactDigest
+	sidekiq := map[string]string{"Gemfile.lock": sidekiqLock, "Gemfile": "source 'https://rubygems.org'\nruby '3.2.0'\n"}
+	line, _ := nativeToolchains[nativeRubyRuntime].find("3.2")
+	fake := &fakeExact{digests: map[string]string{"ruby:3.2.0-bullseye": exactDigest, "ruby:3.2.0-buster": exactDigest}}
+	choices, dockerfile := resolveExact(t, fake, nativeRubyRuntime, nil, sidekiq)
+	want := "==> Using Ruby 3.2.0 (from Gemfile.lock)\n==> ruby:3.2.0-bookworm does not exist; using Ruby 3.2.0 from ruby:3.2.0-bullseye"
+	if choices[0].Image != donor || choices[0].Line != "3.2.0" || choices[0].Narration() != want {
+		t.Fatalf("choice %+v, narration %q; want %s and %q", choices[0], choices[0].Narration(), donor, want)
+	}
+	if slices.Contains(fake.asked, "ruby:3.2.0-buster") {
+		t.Errorf("a buster Ruby needs libffi6, which no base carries; asked %v", fake.asked)
+	}
+	// The final base stays the common bookworm image. Its guard admits exactly
+	// a bullseye primary on it, and the build checks the interpreter before
+	// any authored command.
+	for _, w := range []string{
+		"\nFROM " + nativeCommonBase + "\n",
+		"COPY --link --from=" + donor + " /usr/local/ /usr/local/\n",
+		`[ "$primary_os" = bullseye ] && [ "$VERSION_CODENAME" = bookworm ]`,
+		`ENV RUBY_VERSION="3.2.0"`,
+		`[ "$(/usr/local/bin/ruby -e 'puts RUBY_VERSION')" = 3.2.0 ]`,
+	} {
+		if !strings.Contains(dockerfile, w) {
+			t.Errorf("Dockerfile lacks %q:\n%s", w, dockerfile)
+		}
+	}
+	if strings.Contains(dockerfile, "COPY --link --from="+line.image+" /usr/local/ /usr/local/") {
+		t.Errorf("the reviewed %s tree is still copied:\n%s", line.version, dockerfile)
+	}
+
+	missing, _ := resolveExact(t, &fakeExact{digests: map[string]string{}}, nativeRubyRuntime, nil, sidekiq)
+	want = "==> Using Ruby " + line.version + " (from Gemfile.lock)\n==> No official image ruby:3.2.0-bookworm; using the reviewed Ruby 3.2 image"
+	if missing[0].Image != line.image || missing[0].Narration() != want {
+		t.Errorf("no image in any variant: %+v narration %q, want %q", missing[0], missing[0].Narration(), want)
 	}
 }
 
