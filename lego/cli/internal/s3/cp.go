@@ -251,8 +251,8 @@ func (r *run) cpDown(src, dst location, o *transferOptions) error {
 		return r.fail(r.streamTo(r.ctx, r.out, src.Bucket, src.Key))
 	}
 	if !o.recursive {
-		if src.Key == "" {
-			return usageError("%q names a bucket: name an object (s3://%s/key), or add --recursive for a prefix", src.String(), src.Bucket)
+		if err := needObject(src); err != nil {
+			return err
 		}
 		info, err := r.head(r.ctx, src.Bucket, src.Key)
 		if err != nil {
@@ -318,6 +318,14 @@ func (r *run) downloadJob(src location, dest string, info remoteInfo, o *transfe
 	}}
 }
 
+// needObject refuses a bucket where a single transfer needs an object.
+func needObject(loc location) error {
+	if loc.Key == "" {
+		return usageError("%q names a bucket: name an object (s3://%s/key), or add --recursive for a prefix", loc.String(), loc.Bucket)
+	}
+	return nil
+}
+
 // isDir reports whether path is an existing directory.
 func isDir(path string) bool {
 	info, err := os.Stat(path)
@@ -328,8 +336,8 @@ func isDir(path string) bool {
 
 func (r *run) cpRemote(src, dst location, o *transferOptions) error {
 	if !o.recursive {
-		if src.Key == "" {
-			return usageError("%q names a bucket: name an object (s3://%s/key), or add --recursive for a prefix", src.String(), src.Bucket)
+		if err := needObject(src); err != nil {
+			return err
 		}
 		to := location{Remote: true, Bucket: dst.Bucket, Key: destinationKey(dst.Key, baseName(src.Key))}
 		if src.Bucket == to.Bucket && src.Key == to.Key {

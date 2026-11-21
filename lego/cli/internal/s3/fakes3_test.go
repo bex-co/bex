@@ -66,6 +66,8 @@ type fakeS3 struct {
 	now            func() time.Time
 	auth           []string // every Authorization header and presigned credential seen
 	agents         []string // every User-Agent
+	// protected keys are refused by a batch delete, each with its own error.
+	protected map[string]bool
 }
 
 type fakeBucket struct {
@@ -459,13 +461,18 @@ func (f *fakeS3) deleteObjects(w http.ResponseWriter, r *http.Request, b *fakeBu
 		f.fail(w, r, http.StatusBadRequest, "MalformedXML", "The XML you provided was not well-formed")
 		return
 	}
+	var refused strings.Builder
 	f.mu.Lock()
 	for _, o := range req.Objects {
+		if f.protected[o.Key] {
+			fmt.Fprintf(&refused, "<Error><Key>%s</Key><Code>AccessDenied</Code><Message>this key is protected</Message></Error>", xmlEscape(o.Key))
+			continue
+		}
 		delete(b.objects, o.Key)
 	}
 	f.mu.Unlock()
 	w.Header().Set("Content-Type", "application/xml")
-	_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?><DeleteResult></DeleteResult>`)
+	_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?><DeleteResult>`+refused.String()+`</DeleteResult>`)
 }
 
 func (f *fakeS3) objectOp(w http.ResponseWriter, r *http.Request, bucket, key string, q url.Values) {
