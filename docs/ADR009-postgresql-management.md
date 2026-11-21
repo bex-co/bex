@@ -506,7 +506,7 @@ Render's logical-replication page says nothing about failover, major-version upg
   - The publisher's slot has already confirmed past that position, so the walsender starts from the slot (`… has been already streamed, forwarding to …` in the publisher's log). The transactions in between are never applied, and none is applied twice.
   - A failover requested on a healthy primary is a switchover, which shuts the old primary down cleanly: the standby receives everything first, and nothing is lost, matching Render's "a manual failover with a healthy primary instance almost never causes any loss of data".
   - The verb's answer to an HA subscriber's enable says so on every major, as does the runbook. After an automatic failover, a subscription whose tables must match the publisher exactly is re-created over emptied tables, which copies them again.
-  - This matches Render's documented HA, so it is not a divergence and needs no sign-off. Making an HA subscriber's standby synchronous would be stricter than Render and is filed as [w34/005](../.pm/w34/005.md).
+  - This matches Render's documented HA, so it is not a divergence and needs no sign-off. Making an HA subscriber's standby synchronous would be stricter than Render and is filed as [w34/005](../.pm/w34/blocked/005.md).
   - Checked locally on 2026-11-21 with PostgreSQL 18.7: a publisher, a subscriber and its streaming standby. 1,000 rows were applied on the subscriber while its standby was behind, then the primary was lost, and 1,000 more rows followed on the new primary:
 
     | Subscriber's standby | Subscription `synchronous_commit` | Event | Rows of 3,000 on the new primary |
