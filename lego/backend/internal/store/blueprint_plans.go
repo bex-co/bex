@@ -166,8 +166,9 @@ func (s *PGStore) LatestBlueprintPlan(ctx context.Context, blueprintID string) (
 // plan is superseded (approval applies the newest plan, and the newest needs
 // nothing), and a Blueprint still `created` is in sync with manifest — its
 // resources already match the file, which on Render needs no approval — so it
-// leaves `created`, takes manifest as its stored file and stamps last_sync_at.
-// A Blueprint in any other status keeps it. It returns the Blueprint as it
+// leaves `created` (for `paused` when auto-sync is off, as a completed sync
+// does), takes manifest as its stored file and stamps last_sync_at. A
+// Blueprint in any other status keeps it. It returns the Blueprint as it
 // now stands.
 func (s *PGStore) SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID, manifest string) (Blueprint, error) {
 	tx, err := s.Pool.Begin(ctx)
@@ -183,7 +184,8 @@ func (s *PGStore) SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID
 		return Blueprint{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE blueprints SET status = 'in_sync', manifest = $3, last_sync_at = now(), updated_at = now()
+		UPDATE blueprints SET status = CASE WHEN auto_sync THEN 'in_sync' ELSE 'paused' END,
+			manifest = $3, last_sync_at = now(), updated_at = now()
 		WHERE id = $1 AND tenant_id = $2 AND status = 'created' AND active_run_id IS NULL`, blueprintID, tenantID, manifest); err != nil {
 		return Blueprint{}, err
 	}

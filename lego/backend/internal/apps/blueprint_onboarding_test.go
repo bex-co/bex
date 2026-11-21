@@ -131,7 +131,7 @@ func (f *fakeBlueprintStore) SettleNoChangesPlan(_ context.Context, blueprintID,
 	}
 	if b.Status == store.BlueprintStatusCreated && b.ActiveRunID == "" {
 		now := time.Now()
-		b.Status, b.Manifest, b.LastSyncAt = store.BlueprintStatusInSync, manifest, &now
+		b.Status, b.Manifest, b.LastSyncAt = fakeProjectStatus(store.BlueprintSyncStateSuccess, b.AutoSync), manifest, &now
 		f.blueprints[blueprintID] = b
 	}
 	return b, nil

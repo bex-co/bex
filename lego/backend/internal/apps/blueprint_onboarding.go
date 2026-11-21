@@ -221,6 +221,14 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if req.AutoSync != nil {
 		autoSync = *req.AutoSync
 	}
+	// Auto-sync runs only on pushes bex receives, so a repo whose pushes can't
+	// reach bex is created without it, as the legacy create is (w10/m375
+	// t003). An explicit true is answered with a warning rather than refused:
+	// the pinned CLI sends autoSync: true on every create (w32/069).
+	warnAutoSyncOff := false
+	if autoSync && s.repoPushesUnreachable(ctx, tenantID, req.Source.Repo) {
+		autoSync, warnAutoSyncOff = false, req.AutoSync != nil
+	}
 	// Always a new Blueprint with its own id (w8/m153; Render: "You can create
 	// multiple Blueprints from a single YAML file. Each Blueprint creates and
 	// manages a completely independent set of resources."). Whether its
@@ -248,6 +256,9 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	s.RecordAllowedWrite(ctx, "apps.CreatePlannedBlueprint", core.RelCanCreate, cmp.Or(b.TenantID, core.DefaultTenant),
 		core.BlueprintTarget(ids.BlueprintPublicID(b.ID)), b.Name)
 	result.Blueprint = &bp
+	if warnAutoSyncOff {
+		result.Notices = append(result.Notices, BlueprintNotice{Severity: "warning", Message: autoSyncOffNotice})
+	}
 	return result, nil
 }
 

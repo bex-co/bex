@@ -275,9 +275,9 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 // TestBlueprintPlanConnectionAndNoChangesPG pins w2/m256 t014's storage: a
 // Blueprint created after another on the same source was deleted has no plan
 // of its own yet (the deleted one's applied plan does not answer), and a
-// no_changes plan
-// supersedes a waiting plan and takes a created Blueprint to in_sync — while
-// a Blueprint in any other status keeps it.
+// no_changes plan supersedes a waiting plan and takes a created Blueprint to
+// in_sync, or to paused when its auto-sync is off (w32/069) — while a
+// Blueprint in any other status keeps it.
 func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -347,7 +347,7 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	deleted := b
-	b, err = st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	b, err = st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true})
 	if err != nil || b.ID == deleted.ID {
 		t.Fatalf("create after the delete = %+v err=%v, want a new Blueprint, not %s", b, err, deleted.ID)
 	}
@@ -362,5 +362,16 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	own := plan(b.ID)
 	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != own.ID {
 		t.Fatalf("latest plan = %+v err=%v, want this connection's %s", latest, err, own.ID)
+	}
+
+	// Without auto-sync, the same settle leaves created for paused, as a
+	// completed sync of such a Blueprint does.
+	manual, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "manual", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	settled, err = st.SettleNoChangesPlan(ctx, manual.ID, ws.ID, manifest)
+	if err != nil || settled.Status != store.BlueprintStatusPaused || settled.AutoSync || settled.LastSyncAt == nil || settled.Manifest != manifest {
+		t.Fatalf("settle on created without auto-sync = %+v err=%v, want paused with last_sync_at and the manifest", settled, err)
 	}
 }

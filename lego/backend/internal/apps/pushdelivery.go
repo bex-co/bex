@@ -175,11 +175,19 @@ func (s *Service) pushDeliveryMethod(ctx context.Context, a *appv1alpha1.App) st
 	return method
 }
 
-// errAutoSyncUnreachable refuses turning Blueprint auto-sync on for a repo
-// whose pushes cannot reach bex: auto-sync runs only on pushes bex receives
-// (ADR026 § 8).
+// autoSyncUnreachableReason is why a repo whose pushes cannot reach bex gets
+// no Blueprint auto-sync, and the way out: auto-sync runs only on pushes bex
+// receives (ADR026 § 8).
+const autoSyncUnreachableReason = "bex doesn't receive this repo's pushes. Sync the Blueprint manually, or connect the repo through the GitHub app"
+
+// autoSyncOffNotice is the planned create's warning when it was asked for
+// auto-sync on such a repo and stored it off (w32/069).
+const autoSyncOffNotice = "autoSync is off: " + autoSyncUnreachableReason
+
+// errAutoSyncUnreachable refuses turning Blueprint auto-sync on for such a
+// repo.
 func errAutoSyncUnreachable() error {
-	return fmt.Errorf("%w: autoSync needs a connected Git provider: bex doesn't receive this repo's pushes. Sync the Blueprint manually, or connect the repo through the GitHub app", core.ErrBadRequest)
+	return fmt.Errorf("%w: autoSync needs a connected Git provider: %s", core.ErrBadRequest, autoSyncUnreachableReason)
 }
 
 // repoPushesUnreachable reports whether no git push to repo, in tenantID's
