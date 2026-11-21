@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -61,12 +62,12 @@ func (s *Service) NameAvailable(ctx context.Context, name string) (NameAvailabil
 	return NameAvailability{Suggestion: nextFreeName(name, taken)}, nil
 }
 
-// tenantNames lists the public names of every App in the caller's resolved
-// workspace, or — store off / unbound caller — every App in the namespace,
-// the single flat scope that mode has always had. publicName reads
-// LabelServiceName when set (a store-managed App's object name is
-// CRName(tenant, name), not its public name, w4/m19), falling back to the
-// object name for hand-applied or pre-migration Apps.
+// tenantNames lists the names every App in the caller's resolved workspace
+// is shown as, or — store off / unbound caller — every App in the namespace,
+// the single flat scope that mode has always had. An unlabelled App shows its
+// public name, which reads LabelServiceName when set (a store-managed App's
+// object name is CRName(tenant, name), not its public name, w4/m19), falling
+// back to the object name for hand-applied or pre-migration Apps.
 func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 	var list appv1alpha1.AppList
 	if tenantID, ok := s.Tenant(ctx); ok {
@@ -88,12 +89,10 @@ func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 		if !list.Items[i].DeletionTimestamp.IsZero() {
 			continue
 		}
-		names[core.AppPublicName(&list.Items[i])] = true
-		// A name a service is displayed as is taken too (w8/m47): the store
-		// refuses it on create and rename alike.
-		if dn := list.Items[i].Spec.DisplayName; dn != "" {
-			names[dn] = true
-		}
+		// The name a service is shown as is what is taken (w8/m47, w8/367):
+		// a renamed service's creation name is free, and a create under it
+		// takes a suffixed resource name.
+		names[core.DisplayedAppName(&list.Items[i])] = true
 	}
 	return names, nil
 }
@@ -114,7 +113,19 @@ func nextFreeName(base string, taken map[string]bool) string {
 // exceeds ValidResourceName's length cap — a suggestion must itself be a valid
 // name, never just the taken one with a tail bolted on regardless of length.
 func suffixedName(base string, n int) string {
-	suffix := "-" + strconv.Itoa(n)
+	return withNameSuffix(base, "-"+strconv.Itoa(n))
+}
+
+// suffixedResourceName is the resource name a create takes when name is kept
+// by another service (w8/367): name plus a random "-xxxx", the shape a taken
+// subdomain gets.
+func suffixedResourceName(name string) string {
+	return withNameSuffix(name, "-"+store.NewNameSuffix())
+}
+
+// withNameSuffix joins base and suffix, truncating base so the result fits
+// the resource-name cap.
+func withNameSuffix(base, suffix string) string {
 	if maxBase := appv1alpha1.MaxResourceNameLength - len(suffix); len(base) > maxBase {
 		base = base[:maxBase]
 	}

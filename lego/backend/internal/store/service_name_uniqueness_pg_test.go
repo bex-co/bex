@@ -90,3 +90,61 @@ func TestServiceNamesStayUniqueAcrossCreateAndRename(t *testing.T) {
 		}
 	}
 }
+
+// w8/367: a renamed service kept its creation name reserved, so no other
+// service could be created or renamed to a name no service showed. Names are
+// the ones services are shown as, as on Render; the creation name stays the
+// renamed service's resource name, which the unique index still holds.
+func TestARenamedServicesCreationNameIsFreeToShow(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	tenant, err := st.CreateTenant(ctx, "renamed-"+uniqueMachineRun(), PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	create := func(name string) (App, error) {
+		return st.CreateApp(ctx, App{TenantID: tenant.ID, Name: name, Type: "web_service", Image: "test/image", Branch: "main", Port: 8080, Replicas: 1, Tier: "free"})
+	}
+	renamed, err := create("api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	third, err := create("worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetAppDisplayName(ctx, renamed.ID, "api-old"); err != nil {
+		t.Fatalf("rename api: %v", err)
+	}
+	if taken, err := st.ServiceNameTaken(ctx, tenant.ID, "", "api"); err != nil || taken {
+		t.Fatalf("ServiceNameTaken(api) after its rename = %v, %v; want free", taken, err)
+	}
+	if taken, err := st.ServiceNameTaken(ctx, tenant.ID, "", "api-old"); err != nil || !taken {
+		t.Fatalf("ServiceNameTaken(api-old) = %v, %v; want taken", taken, err)
+	}
+	if _, err := create("api"); !errors.Is(err, ErrConflict) {
+		t.Fatalf("create as the resource name api = %v, want the unique index's ErrConflict", err)
+	}
+	newcomer, err := create("api-x7k2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetAppDisplayName(ctx, newcomer.ID, "api"); err != nil {
+		t.Fatalf("label the newcomer api: %v", err)
+	}
+	// While the newcomer shows "api", nobody else may: not a third service,
+	// not the renamed one taking it back, not a clear that would show it.
+	for _, tc := range []struct {
+		id, name string
+	}{{third.ID, "api"}, {renamed.ID, "api"}, {renamed.ID, ""}} {
+		if err := st.SetAppDisplayName(ctx, tc.id, tc.name); !errors.Is(err, ErrConflict) {
+			t.Errorf("SetAppDisplayName(%s, %q) while the newcomer shows api = %v, want ErrConflict", tc.id, tc.name, err)
+		}
+	}
+	if err := st.DeleteApp(ctx, newcomer.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetAppDisplayName(ctx, third.ID, "api"); err != nil {
+		t.Fatalf("rename a third service to api once the newcomer is gone: %v", err)
+	}
+}

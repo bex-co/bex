@@ -339,9 +339,9 @@ func TestLifecycleWritesOnADeletingServiceAre404(t *testing.T) {
 // TestRESTBlankRenameClearsLikeGraphQL is w4/359: the REST/MCP patch table's
 // preflight probed ServiceNameTaken with "", which the store's query matches
 // for every service with no display name, so a blank rename answered "409 name
-// \"\" is already in use" while GraphQL cleared. The preflight now skips what
-// the write skips (store.DisplayNameNeedsUniqueness). A real collision still
-// conflicts.
+// \"\" is already in use" while GraphQL cleared. The preflight now probes the
+// name the write checks, the creation name a clear shows
+// (store.ShownServiceName). A real collision still conflicts.
 func TestRESTBlankRenameClearsLikeGraphQL(t *testing.T) {
 	// Mirrors the store's probe: "" matches every default-named service.
 	rec := &recordingStore{takenDisplayNames: map[string]bool{"": true, "hello-go": true}}

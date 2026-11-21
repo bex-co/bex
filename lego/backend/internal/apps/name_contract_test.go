@@ -188,16 +188,17 @@ func TestImmutableNameAddressesButDisplayLabelDoesNot(t *testing.T) {
 	}
 }
 
-// TestListFilterMatchesBothNameSpellings guards DoD bullet 4: the list `name=`
-// filter keeps matching a service by EITHER its immutable name or its display
-// label (rest.go accepts a.Name or renderServiceName(a)); the name-contract
-// change must not narrow it.
-func TestListFilterMatchesBothNameSpellings(t *testing.T) {
+// TestListFilterMatchesTheShownNameOnly: the list `name=` filter matches the
+// name a service is shown as, Render's service.name (w8/367). w6/m115 kept the
+// immutable name matching too, so after a rename `?name=web` still listed the
+// service shown as "renamed-label", and with a newcomer shown as "web" the
+// CLI's name lookup found two services.
+func TestListFilterMatchesTheShownNameOnly(t *testing.T) {
 	svc, _ := newService(nil, renamedApp("web", appv1alpha1.TypeWebService, "renamed-label"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	for _, spelling := range []string{"web", "renamed-label"} {
+	for spelling, want := range map[string]int{"web": 0, "renamed-label": 1} {
 		rec := httptest.NewRecorder()
 		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?name="+spelling, nil))
 		if rec.Code != http.StatusOK {
@@ -211,8 +212,8 @@ func TestListFilterMatchesBothNameSpellings(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 			t.Fatalf("decode list: %v", err)
 		}
-		if len(page) != 1 || page[0].Service.ImmutableName != "web" {
-			t.Errorf("list ?name=%s matched %d services, want the one immutable=web", spelling, len(page))
+		if len(page) != want || want == 1 && page[0].Service.ImmutableName != "web" {
+			t.Errorf("list ?name=%s matched %v, want %d (immutable=web)", spelling, page, want)
 		}
 	}
 }

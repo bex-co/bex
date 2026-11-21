@@ -2415,12 +2415,12 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 	return nil
 }
 
-// DisplayNameNeedsUniqueness reports whether writing displayName over a
-// service created as name must clear the workspace's name uniqueness: a blank
-// value clears the display name and the creation name is the service's own,
-// so neither can collide (w8/m47, w4/359). The patch preflight asks the same.
-func DisplayNameNeedsUniqueness(displayName, name string) bool {
-	return displayName != "" && displayName != name
+// ShownServiceName is the name a service created as name is shown as once
+// displayName is written over it: displayName, or its creation name when the
+// value clears the label. That is the name the workspace's uniqueness rule
+// holds (w8/367); the patch preflight asks for the same one.
+func ShownServiceName(displayName, name string) string {
+	return cmp.Or(displayName, name)
 }
 
 // SetAppDisplayName mirrors spec.displayName onto the row. Empty means never
@@ -2436,16 +2436,17 @@ func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName 
 		if err := tx.QueryRow(ctx, `SELECT tenant_id, name, type FROM apps WHERE id = $1`, id).Scan(&tenantID, &name, &appType); err != nil {
 			return err
 		}
-		// A rename is a name like any other (w8/m47): unique in the workspace
-		// against every other service's creation AND displayed name, checked
-		// and written under the same lock CreateApp takes, so two concurrent
-		// renames (or a rename racing a create) cannot both land.
+		// A rename is a name like any other (w8/m47): the name the service is
+		// shown as afterwards, its creation name when the label is cleared, is
+		// unique in the workspace against every other service's shown name,
+		// checked and written under the same lock CreateApp takes, so two
+		// concurrent renames (or a rename racing a create) cannot both land.
 		// A build source's name is not a service name (w2/m254).
-		if appType != TypeBuildSource && DisplayNameNeedsUniqueness(displayName, name) {
+		if appType != TypeBuildSource {
 			if err := lockServiceNames(ctx, tx, tenantID); err != nil {
 				return err
 			}
-			if err := refuseTakenServiceName(ctx, tx, tenantID, id, displayName); err != nil {
+			if err := refuseTakenServiceName(ctx, tx, tenantID, id, ShownServiceName(displayName, name)); err != nil {
 				return err
 			}
 		}
@@ -2480,8 +2481,8 @@ func lockServiceNames(ctx context.Context, tx pgx.Tx, tenantID string) error {
 }
 
 // ServiceNameTaken reports whether another service in tenantID than selfID
-// ("" for one not created yet) was created as, or is displayed as, name: the
-// refusal CreateApp and SetAppDisplayName make under the workspace's name lock
+// ("" for one not created yet) is shown as name: the refusal CreateApp and
+// SetAppDisplayName make under the workspace's name lock
 // (refuseTakenServiceName), read ahead of them so a create's plan and a
 // patch's preflight meet it before anything is written (w5/m116).
 func (s *PGStore) ServiceNameTaken(ctx context.Context, tenantID, selfID, name string) (bool, error) {
@@ -2513,7 +2514,7 @@ func (s *PGStore) DomainHostsClaimed(ctx context.Context, hosts []string) ([]str
 }
 
 // refuseTakenServiceName is ErrConflict when another service in the workspace
-// (not selfID) was created as, or is displayed as, name.
+// (not selfID) is shown as name.
 func refuseTakenServiceName(ctx context.Context, tx pgx.Tx, tenantID, selfID, name string) error {
 	taken, err := serviceNameTaken(ctx, tx, tenantID, selfID, name)
 	if err != nil {
@@ -2556,11 +2557,17 @@ func refuseTakenBuildSourceName(ctx context.Context, tx pgx.Tx, tenantID, selfID
 }
 
 // serviceNameTaken is the one query behind refuseTakenServiceName and
-// ServiceNameTaken, on a transaction or the pool.
+// ServiceNameTaken, on a transaction or the pool. A service's name is the one
+// it is shown as, as on Render ("All of a workspace's services must have
+// unique names"): its display name when renamed, else its creation name. A
+// renamed service's creation name is free for another service to be shown as
+// (w8/367); the unique (tenant_id, name) index still keeps it as that
+// service's resource name, so a create under it takes a suffixed one
+// (apps.Service.Create).
 func serviceNameTaken(ctx context.Context, q queryRower, tenantID, selfID, name string) (bool, error) {
 	var taken bool
 	err := q.QueryRow(ctx,
-		`SELECT EXISTS (SELECT 1 FROM apps a WHERE a.tenant_id = $1 AND a.id <> $2 AND (a.name = $3 OR a.display_name = $3) AND `+serviceAppsOnly+`)`,
+		`SELECT EXISTS (SELECT 1 FROM apps a WHERE a.tenant_id = $1 AND a.id <> $2 AND COALESCE(NULLIF(a.display_name, ''), a.name) = $3 AND `+serviceAppsOnly+`)`,
 		tenantID, selfID, name).Scan(&taken)
 	return taken, err
 }

@@ -2032,6 +2032,10 @@ type CreateRequest struct {
 	// grants it, read by Create's repository check (w10/m490): the row and the
 	// App carry it from the start, so the first push already matches by it.
 	githubRepoID int64
+	// label is the name Create labels the new service with when it is not
+	// Name: a free-form name, or a name whose resource name another service
+	// keeps (w8/367). The create's plan refuses it as it refuses Name.
+	label string
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
 	// initialSeedEnv is a new Blueprint service's env-store content, written
@@ -2291,6 +2295,17 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	if label != "" {
 		req.Name = blueprintResourceSlug(label)
 	}
+	// Uniqueness holds the names services are shown as (w8/367): a renamed
+	// service's creation name is free, as on Render, though it stays that
+	// service's resource name. A create under it takes a suffixed resource
+	// name and is labelled with the name typed, as a free-form name is.
+	shown := cmp.Or(label, req.Name)
+	if hidden, err := s.resourceNameHidden(ctx, req.Name, shown); err != nil {
+		return AppView{}, err
+	} else if hidden {
+		label, req.Name = shown, suffixedResourceName(req.Name)
+	}
+	req.label = label
 	v, err := s.create(ctx, req)
 	if err != nil && label != "" && err.Error() == errServiceNameInUse(req.Name).Error() {
 		// Name what the user typed as well as the resource name it maps to.
@@ -2564,12 +2579,19 @@ func suffixedObjectName(objectName, tenantID, name string) string {
 func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, seed createSeed) error {
 	managed := s.Store != nil && tenantID != ""
 	if managed {
-		taken, err := s.Store.ServiceNameTaken(ctx, tenantID, "", req.Name)
-		if err != nil {
-			return fmt.Errorf("checking service name: %w", err)
-		}
-		if taken {
-			return errServiceNameInUse(req.Name)
+		// The label too: it is written right after the create, and refused
+		// then would leave the service behind under its resource name.
+		for _, name := range []string{req.Name, req.label} {
+			if name == "" {
+				continue
+			}
+			taken, err := s.Store.ServiceNameTaken(ctx, tenantID, "", name)
+			if err != nil {
+				return fmt.Errorf("checking service name: %w", err)
+			}
+			if taken {
+				return errServiceNameInUse(name)
+			}
 		}
 	}
 	if err := s.previewHostsClaimable(ctx, a, req.Name); err != nil {
@@ -2719,6 +2741,26 @@ func (s *Service) nameHolder(ctx context.Context, tenantID, name string) (*appv1
 		return holder, err
 	}
 	return s.LiveSuccessor(ctx, tenantID, name, holder)
+}
+
+// resourceNameHidden reports whether resource name name is a live service's
+// creation name, hidden since a rename (w8/367): that service is shown as
+// neither name nor shown (the name the create is to show), and no live
+// service is shown as shown. A deleted holder's name is free at once anyway
+// (w2/m365).
+func (s *Service) resourceNameHidden(ctx context.Context, name, shown string) (bool, error) {
+	tenantID, _ := s.Tenant(ctx)
+	holder, err := s.nameHolder(ctx, tenantID, name)
+	if err != nil || holder == nil || !holder.DeletionTimestamp.IsZero() {
+		return false, err
+	}
+	if displayed := core.DisplayedAppName(holder); displayed == name || displayed == shown {
+		return false, nil
+	}
+	// Under a suffixed resource name the create meets no holder, so a name
+	// another service is shown as is refused here, with the store off too.
+	taken, err := s.tenantNames(ctx)
+	return !taken[shown], err
 }
 
 func (s *Service) nameObjectHolder(ctx context.Context, tenantID, name string) (*appv1alpha1.App, error) {
@@ -5973,10 +6015,11 @@ func (s *Service) setDisplayName(ctx context.Context, name, displayName string, 
 	previous := a.Spec.DisplayName
 	view, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error {
-			// The store refuses a name another service in the workspace was
-			// created as or is displayed as (w8/m47) — create's rule and answer.
+			// The store refuses a name another service in the workspace is
+			// shown as (w8/m47, w8/367) — create's rule and answer, naming the
+			// name the service would show (its own for a cleared label).
 			if err := s.Store.SetAppDisplayName(ctx, id, trimmed); errors.Is(err, store.ErrConflict) {
-				return errServiceNameInUse(trimmed)
+				return errServiceNameInUse(store.ShownServiceName(trimmed, core.AppPublicName(a)))
 			} else if err != nil {
 				return err
 			}

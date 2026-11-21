@@ -919,8 +919,11 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		// name filters by exact name, OR'd across repeated ?name= values (Render's
 		// documented "Filter by name" — the official CLI resolves a bare
 		// name/id argument to a service id by calling this with ?name=, and
-		// requires it to narrow to exactly one match). environmentId and Render's
-		// serviceType enum (type=, w2/m52) OR the same way.
+		// requires it to narrow to exactly one match). The name is the one each
+		// service is shown as, Render's service.name: a renamed service's
+		// creation name no longer finds it (w8/367), so a newcomer shown under
+		// that name is the one match. environmentId and Render's serviceType
+		// enum (type=, w2/m52) OR the same way.
 		names := core.QueryNameList(r.URL, "name")
 		types := core.QueryList(q, "type")
 		// Render ORs repeated suspension, runtime (deprecated env alias), and
@@ -944,7 +947,7 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 			return nil, err
 		}
 		apps = core.Filter(apps, func(a AppView) bool {
-			return (len(names) == 0 || slices.Contains(names, a.Name) || slices.Contains(names, renderServiceName(a))) &&
+			return (len(names) == 0 || slices.Contains(names, renderServiceName(a))) &&
 				(len(environmentIDs) == 0 || slices.Contains(environmentIDs, a.EnvironmentID)) &&
 				(len(types) == 0 || slices.Contains(types, effectiveType(a.Type))) &&
 				(len(suspended) == 0 || slices.Contains(suspended, core.SuspendedEnum(a.Suspended))) &&
