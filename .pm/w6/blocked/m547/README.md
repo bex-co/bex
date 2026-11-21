@@ -58,7 +58,7 @@
 - **Rolled:** `82d55f40d` set `rolloutAfter` on `bex-tenant-0`. All six of its new nodes sync node status every 2 s. The first surge waited 6 min on Hetzner's shared-core limit (78 of 80 in use).
 - **Measured (t005, production pin `cce6c749f6ff`):** with a named port, same-node restarts took 5.74–6.25 s and code deploys 7.25–9.0 s, against 15.8–23.3 s in t001. A move took 34.24 s, against 39.8–46.8 s. All ten unforced runs stayed on the volume's node. The startup probe passed 0.5–1.0 s after start, and the kubelet's sync gate was at most 1.96 s.
 - **Why it does not hold:**
-  - One same-node swap in ten (D1, 31.75 s) detached and reattached the volume, because the node's 2 s sync reported it free before the new pod was bound: [w6/161](../../161.md).
+  - One same-node swap in ten (D1, 31.75 s) detached and reattached the volume, because the node's 2 s sync reported it free before the new pod was bound: [w6/161](../../done/161.md).
   - A web image service that names no port waited 25 s after Ready on each image deploy (37.0 and 44.0 s): [w6/162](../../162.md).
   - The rest of the excess over "about 5 s" is the code deploy's pull (0.6–2.2 s, [w6/160](../../160.md)) and the publish's LUKS open (about 2.2 s).
 - **Gate:** w6/161 and w6/162 ship. Then t011 re-measures on production once it runs their commits, and t009 closes.

@@ -154,7 +154,7 @@ The bound excludes:
 
 Two terms are still open, so m547 is parked:
 
-- One same-node swap in ten detached and reattached the volume (+25.6 s): the controller checked the volume as the old pod was deleted, after the node's 2 s sync had already reported it free, and 50 ms before the new pod was bound to the same node ([w6/161](../.pm/w6/161.md)).
+- One same-node swap in ten detached and reattached the volume (+25.6 s): the controller checked the volume as the old pod was deleted, after the node's 2 s sync had already reported it free, and 50 ms before the new pod was bound to the same node ([w6/161](../.pm/w6/done/161.md)).
 - A web image service that names no port waits 25 s after Ready on each image deploy while its HTTP port is rediscovered ([w6/162](../.pm/w6/162.md)).
 
 The operator creates the PVC itself (not via a claim template): `ReadWriteOnce`, `<sizeGB>Gi`, ownerReference → the App CR (Kubernetes GC deletes the PVC on App deletion; the StorageClass's `reclaimPolicy: Delete` then deletes the Hetzner volume, which is what stops Hetzner billing). This needs two mechanical grants that the ADR calls out because they are today deliberately absent: `persistentvolumeclaims` **create/delete** in the App controller's RBAC markers, and a `CREATE`/`DELETE` rule for PVCs in `operator-workload-admission.yaml` (which currently admits PVC `UPDATE` only, minted for the KeyValue expander).

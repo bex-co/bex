@@ -619,7 +619,7 @@ A service with a persistent disk cannot run two instances on one volume, so Rend
 
 Measured on production on 2026-11-21: restarts took 5.7–6.3 s and code deploys 7.25–9.0 s on the volume's node, against 15.8–23.3 s before. A move to another node took 34 s. Still open:
 
-- the attach/detach controller sometimes detaches the volume between the two pods on the same node ([w6/161](../.pm/w6/161.md));
+- the attach/detach controller sometimes detaches the volume between the two pods on the same node ([w6/161](../.pm/w6/done/161.md));
 - a web image service that names no port waits 25 s while its HTTP port is rediscovered ([w6/162](../.pm/w6/162.md)).
 
 ## Gotchas
