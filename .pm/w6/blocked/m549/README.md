@@ -1,6 +1,6 @@
 # w6 · m549 — Every native runtime has magic-wormhole, so disk files move in and out through Shell, as on Render
 
-**Worker:** worker6 **Goal:** `wormhole` is installed on every native runtime image, as Render documents ("The `magic-wormhole` library is pre-installed on all Render native runtimes"), so a tenant can send a file from a disk-bearing service's Shell or SSH session to their own machine and back, the transfer path Render's disk docs give besides SCP. **Status:** todo (t001–t003 and t005–t007 done; t004 waits for production to carry the pin)
+**Worker:** worker6 **Goal:** `wormhole` is installed on every native runtime image, as Render documents ("The `magic-wormhole` library is pre-installed on all Render native runtimes"), so a tenant can send a file from a disk-bearing service's Shell or SSH session to their own machine and back, the transfer path Render's disk docs give besides SCP. **Status:** blocked (t001–t003 and t005–t007 done; t004 waits for production to carry `0f4ab445b`, the pin adoption)
 
 ## Tasks (in order)
 
