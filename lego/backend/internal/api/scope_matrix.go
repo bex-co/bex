@@ -85,8 +85,11 @@ func classifiedClass(op string) string {
 
 // requireScopeClass is the one shared checker the three surfaces call. An API
 // key is held to its grant (requireKeyGrant); other exempt identities
-// (sessions, platform clients without a granular grant) pass. Refusals are
-// audited; allows are not (volume).
+// (sessions and machine credentials, per CapabilityExempt) pass. A platform
+// OAuth client is held to the granular matrix like any other human delegation:
+// a platform client without a granular grant is refused, not passed
+// (TestScopeClassExemptions pins the 403). Refusals are audited; allows are
+// not (volume).
 func (s *Server) requireScopeClass(ctx context.Context, op string) error {
 	if op == "" {
 		return nil
