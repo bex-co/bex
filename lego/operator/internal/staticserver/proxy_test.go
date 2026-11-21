@@ -161,8 +161,9 @@ func TestExternalRewriteRefusesLoops(t *testing.T) {
 	}
 }
 
-// ADR103 F1: the edge's own X-Forwarded-Server (a Traefik pod name) never
-// reaches a destination; the visitor's forwarding headers still do.
+// ADR103 F1: the edge's own X-Forwarded-Server (a Traefik pod name) and its
+// no-Accept-Encoding marker (w8/363) never reach a destination; the visitor's
+// forwarding headers still do.
 func TestExternalRewriteDropsPlatformInternalHeaders(t *testing.T) {
 	seen := make(chan http.Header, 1)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +176,7 @@ func TestExternalRewriteDropsPlatformInternalHeaders(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "https://site.onbex.co/api/x", nil)
 	req.Header.Set("X-Forwarded-Server", "traefik-7d9c5b8f6-abcde")
 	req.Header.Set("X-Forwarded-For", "203.0.113.7")
+	req.Header.Set(noAcceptEncodingHeader, "1")
 	h.ServeHTTP(httptest.NewRecorder(), req)
 
 	var got http.Header
@@ -185,6 +187,9 @@ func TestExternalRewriteDropsPlatformInternalHeaders(t *testing.T) {
 	}
 	if v := got.Get("X-Forwarded-Server"); v != "" {
 		t.Errorf("X-Forwarded-Server = %q reached the destination", v)
+	}
+	if v := got.Get(noAcceptEncodingHeader); v != "" {
+		t.Errorf("%s = %q reached the destination", noAcceptEncodingHeader, v)
 	}
 	if v := got.Get("X-Forwarded-For"); v != "203.0.113.7" {
 		t.Errorf("X-Forwarded-For = %q, want the visitor's", v)

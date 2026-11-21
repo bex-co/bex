@@ -41,6 +41,11 @@
 // A third, configured with httpsRedirect, leads every tenant host's route
 // and the unknown-host fallback (w8/357): it redirects plain HTTP to HTTPS
 // with Render's status codes, which Traefik's own redirectScheme cannot send.
+//
+// A fourth, configured with staticSite, sits in each static site's route
+// (w8/363): it tells the static server which requests came with no
+// Accept-Encoding, which Traefik's forwarder otherwise hides by asking for
+// gzip itself.
 package bex_client_ip_headers
 
 import (
@@ -91,6 +96,9 @@ type Config struct {
 	// HTTPSRedirect makes this instance a route's HTTP-to-HTTPS redirect
 	// (w8/357) instead.
 	HTTPSRedirect bool `json:"httpsRedirect,omitempty"`
+	// StaticSite makes this instance a static site's no-Accept-Encoding
+	// marker (w8/363) instead.
+	StaticSite bool `json:"staticSite,omitempty"`
 }
 
 func CreateConfig() *Config { return &Config{} }
@@ -106,6 +114,9 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 	}
 	if config != nil && config.OriginServer {
 		return &originServer{next: next}, nil
+	}
+	if config != nil && config.StaticSite {
+		return &staticSite{next: next}, nil
 	}
 	s := &sanitizer{next: next}
 	for _, cidr := range cloudflareRanges {
@@ -233,6 +244,28 @@ func plainHTTP(r *http.Request) bool {
 		return false
 	}
 	return r.TLS == nil
+}
+
+// noAcceptEncodingHeader marks a static-site request whose client sent no
+// Accept-Encoding. It must equal lego/operator/internal/staticserver's
+// noAcceptEncodingHeader; scripts/gitops-validate.sh fails when the two drift.
+const noAcceptEncodingHeader = "X-Bex-No-Accept-Encoding"
+
+// staticSite marks a request with no Accept-Encoding for the static server,
+// and drops a caller's own marker. Traefik's forwarder, Go's http.Transport,
+// asks for gzip on a GET with no Accept-Encoding and no Range and decodes the
+// answer itself, so the static server sees a gzip client. On Render such a
+// client gets an icon identity with its strong tag, Content-Length and
+// Accept-Ranges (captured 2026-11-21, w8/363), and the static server needs
+// the marker to answer it that way.
+type staticSite struct{ next http.Handler }
+
+func (s *staticSite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Header.Del(noAcceptEncodingHeader)
+	if r.Header.Get("Accept-Encoding") == "" {
+		r.Header.Set(noAcceptEncodingHeader, "1")
+	}
+	s.next.ServeHTTP(w, r)
 }
 
 // originServerHeader is where Render's edge puts a web service's own Server

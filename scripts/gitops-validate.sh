@@ -1441,6 +1441,15 @@ if ! diff <(cidrs lego/backend/internal/core/proxiedhosts.go) <(cidrs deploy/git
   echo "FAIL: the client-identity plugin's Cloudflare ranges differ from lego/backend/internal/core/proxiedhosts.go's cloudflareRanges — update both together" >&2
   fail=1
 fi
+# The plugin's staticSite instance marks a request with no Accept-Encoding for
+# the static server (w8/363); a renamed marker on one side alone would leave
+# every icon's header-less GET on the decoded gzip body.
+marker() { grep -oE '^const noAcceptEncodingHeader = "[^"]+"' "$1"; }
+if [ -z "$(marker lego/operator/internal/staticserver/encoding.go)" ] ||
+  [ "$(marker lego/operator/internal/staticserver/encoding.go)" != "$(marker deploy/gitops/charts/traefik-plugins/clientipheaders/clientipheaders.go)" ]; then
+  echo "FAIL: the client-identity plugin's noAcceptEncodingHeader differs from lego/operator/internal/staticserver/encoding.go's — update both together" >&2
+  fail=1
+fi
 
 # The single hostNetwork edge (base) owns its node's :80/:443, so a surge pod
 # could never bind them and a rolling update would stall with the old pod

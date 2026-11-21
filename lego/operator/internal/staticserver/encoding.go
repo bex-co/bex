@@ -104,41 +104,65 @@ func brotliVariantKey(key string) string { return variantKey(codingBrotli, key) 
 // variantKey names the cached variant of key in coding (same NUL-prefix rule).
 func variantKey(coding, key string) string { return "\x00" + coding + "\x00" + key }
 
-// encodingCandidate reports whether the response being prepared in hdr could be
-// served encoded: an eligible media type, at most maxBrotliBytes, no authored
-// Content-Encoding (a precompressed asset is served exactly as published, w4/204)
-// and no Cache-Control: no-transform.
-func encodingCandidate(hdr http.Header, size int) bool {
+// compression is where Render compresses a media type, which decides its tag
+// strength and its ranges (captured 2026-11-21, w8/361, w8/362, w8/363).
+type compression int
+
+const (
+	// uncompressed: one representation, one strong tag, ranges in every coding
+	// (PNG, woff, woff2, PDF).
+	uncompressed compression = iota
+	// originCompressed: Render's origin encodes it, and its edge decodes br for
+	// other clients. The tag is strong on br only (encodeBody).
+	originCompressed
+	// edgeCompressed: Render's origin serves it identity and the Cloudflare
+	// edge in front encodes it for a br or gzip client. The tag is weak on
+	// those bodies only, and a Range gets the identity bytes (encodeBody).
+	edgeCompressed
+)
+
+// encodingCandidate reports how the response being prepared in hdr can be
+// encoded: by its media type's compression, when it is at most maxBrotliBytes
+// with no authored Content-Encoding (a precompressed asset is served exactly
+// as published, w4/204) and no Cache-Control: no-transform.
+func encodingCandidate(hdr http.Header, size int) compression {
 	if size > maxBrotliBytes {
-		return false
+		return uncompressed
 	}
 	if _, authored := hdr["Content-Encoding"]; authored {
-		return false
+		return uncompressed
 	}
 	if httpguts.HeaderValuesContainsToken(hdr.Values("Cache-Control"), "no-transform") {
-		return false
+		return uncompressed
 	}
-	return compressibleType(hdr.Get("Content-Type"))
+	return compressionOf(hdr.Get("Content-Type"))
 }
 
-// compressibleType reports whether a media type is text-like enough for Brotli
-// to help. Already-compressed formats (images, video, archives, woff2) are not.
-func compressibleType(contentType string) bool {
+// compressionOf is where Render compresses a media type. Measured read-only
+// on Render static sites (w8/363, 2026-11-21): the icon types are edge
+// compressed on six sites. Origin compressed are text, JS, JSON, XML and SVG
+// (w8/361), font/ttf for .ttf and .otf files, vnd.ms-fontobject and wasm
+// (three sites). image/bmp, application/yaml and the x-font types had no
+// Render sample and stay origin compressed. Already-compressed formats
+// (images, video, archives, woff, woff2, PDF) are uncompressed.
+func compressionOf(contentType string) compression {
 	mediaType, _, _ := strings.Cut(contentType, ";")
 	mediaType = strings.ToLower(strings.TrimSpace(mediaType))
 	if strings.HasPrefix(mediaType, "text/") ||
 		strings.HasSuffix(mediaType, "+json") || strings.HasSuffix(mediaType, "+xml") {
-		return true
+		return originCompressed
 	}
 	switch mediaType {
 	case "application/javascript", "application/x-javascript", "application/ecmascript",
 		"application/json", "application/xml", "application/wasm", "application/yaml",
-		"image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon", "image/bmp",
+		"image/svg+xml", "image/bmp",
 		"font/ttf", "font/otf", "application/vnd.ms-fontobject",
 		"application/x-font-ttf", "application/x-font-otf":
-		return true
+		return originCompressed
+	case "image/x-icon", "image/vnd.microsoft.icon":
+		return edgeCompressed
 	}
-	return false
+	return uncompressed
 }
 
 // negotiateCoding picks the content coding for the request's Accept-Encoding
@@ -216,30 +240,53 @@ func weakenETag(hdr http.Header) {
 // variant within budget is identity. release returns the encoded body's
 // live-body lease once the response is written.
 //
-// A candidate's strong tag belongs to its br representation, and its identity
-// and gzip bodies send the weak form, as Render's edge sends them (captured
-// 2026-11-21 on three sites, w8/361). So one strong validator never describes
-// two byte sequences (RFC 9110 §8.8.1): If-None-Match, a weak comparison,
-// matches either form on any coding, and If-Range holds only on br. A
-// non-candidate has one representation and keeps its tag.
+// A compressed file's strong tag names one of its bodies and its other bodies
+// send the weak form, as Render's edge sends them. So one strong validator
+// never describes two byte sequences (RFC 9110 §8.8.1), and If-None-Match, a
+// weak comparison, matches either form on any coding. An uncompressed file
+// has one representation and keeps its tag.
 //
-// ranged reports whether a Range addresses out, as on Render's edge (captured
-// 2026-11-21 on seven sites, w8/362): always on a non-candidate, and on a
-// candidate only for a br body of at most maxRangedBrotliBytes. Its identity
-// and gzip bodies and a larger br body answer a Range with the whole body.
+//   - An origin-compressed file's strong tag belongs to its br body, and its
+//     identity and gzip bodies send the weak form, as Render's edge sends them
+//     (captured 2026-11-21 on three sites, w8/361). A Range addresses only a
+//     br body of at most maxRangedBrotliBytes (seven sites, w8/362): the
+//     identity and gzip bodies and a larger br body answer it with the whole
+//     body.
+//   - An edge-compressed file's strong tag belongs to its identity body, and
+//     its br and gzip bodies send the weak form (six sites, w8/363). A
+//     request with a Range gets the identity bytes in every coding, as does a
+//     client that sent no Accept-Encoding (noAcceptEncodingHeader).
+//
+// ranged reports whether a Range addresses out.
 func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, ranged bool, release func()) {
-	if !encodingCandidate(hdr, len(body)) {
+	class := encodingCandidate(hdr, len(body))
+	if class == uncompressed ||
+		class == edgeCompressed && (r.Header.Get("Range") != "" || r.Header.Get(noAcceptEncodingHeader) != "") {
 		return body, true, func() {}
 	}
 	out, coding, release := h.negotiatedBody(r, site, servedPath, body, gzipOK)
 	if coding != "" {
 		hdr.Set("Content-Encoding", coding)
 	}
+	if class == edgeCompressed {
+		if coding != "" {
+			weakenETag(hdr)
+		}
+		return out, coding == "", release
+	}
 	if coding != codingBrotli {
 		weakenETag(hdr)
 	}
 	return out, coding == codingBrotli && len(out) <= maxRangedBrotliBytes, release
 }
+
+// noAcceptEncodingHeader marks a request whose client sent no
+// Accept-Encoding. The edge plugin's staticSite instance sets it on every
+// static site's route (deploy/gitops/charts/traefik-plugins/clientipheaders,
+// w8/363): Traefik's forwarder asks for gzip on such a request and decodes the
+// answer itself, so the server would otherwise take that client for a gzip
+// one. A forged marker only gets its sender the identity body.
+const noAcceptEncodingHeader = "X-Bex-No-Accept-Encoding"
 
 // negotiatedBody is encodeBody's choice of bytes for a candidate: the cached
 // variant in the coding the request negotiates, or body and "" for identity.
@@ -364,8 +411,10 @@ func (b *cappedBuffer) Write(p []byte) (int, error) {
 //   - A 304 carries notModifiedETag, the tag before encodeBody weakened it,
 //     whatever the coding: Render's edge answers every revalidation with the
 //     strong tag (captured 2026-11-21, w8/361).
-//   - A body no Range addresses (ranged false) sends no Accept-Ranges, which
-//     ServeContent sets on every 200, as Render's edge sends none (w8/362).
+//   - Accept-Ranges, which ServeContent sets on every 200 and 206, goes only
+//     on a 200 whose body a Range addresses (ranged), as on Render's edge:
+//     none on the other 200s (w8/362) and none on a 206 (captured 2026-11-21
+//     on an icon, PNG, woff, PDF, JSON, XML and text, w8/363).
 type fileResponseWriter struct {
 	http.ResponseWriter
 	size            int
@@ -375,7 +424,7 @@ type fileResponseWriter struct {
 
 func (w *fileResponseWriter) WriteHeader(code int) {
 	hdr := w.Header()
-	if !w.ranged {
+	if !w.ranged || code == http.StatusPartialContent {
 		hdr.Del("Accept-Ranges")
 	}
 	switch code {

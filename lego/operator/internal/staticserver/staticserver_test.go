@@ -831,8 +831,8 @@ func TestContentTypeForUntypedObjects(t *testing.T) {
 		t.Error("the ETag ignores the served type")
 	}
 	for _, ct := range []string{"font/ttf", "font/otf", "application/json", "application/yaml"} {
-		if !compressibleType(ct) {
-			t.Errorf("%s is not compressible", ct)
+		if compressionOf(ct) != originCompressed {
+			t.Errorf("%s is not origin compressed", ct)
 		}
 	}
 }

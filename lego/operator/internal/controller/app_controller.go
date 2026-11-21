@@ -3565,7 +3565,7 @@ func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.Ap
 		if onActivator, err := r.ingressRoutesToActivator(ctx, app); err != nil || !onActivator {
 			return err
 		}
-		mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+		mwNames, err := r.reconcileStaticSiteMiddlewares(ctx, app, hosts)
 		if err != nil {
 			return err
 		}
@@ -3590,7 +3590,7 @@ func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.Ap
 	if static {
 		// A static site's own middleware set, so the handover to the
 		// static-server removes no middleware the Ingress still names.
-		mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+		mwNames, err := r.reconcileStaticSiteMiddlewares(ctx, app, hosts)
 		if err != nil {
 			return err
 		}
@@ -5235,7 +5235,7 @@ func (r *AppReconciler) convergeStaticRouting(ctx context.Context, app *appv1alp
 		}
 		return "", nil
 	}
-	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	mwNames, err := r.reconcileStaticSiteMiddlewares(ctx, app, hosts)
 	if err != nil {
 		return reasonMiddlewareFailed, err
 	}
@@ -5244,6 +5244,31 @@ func (r *AppReconciler) convergeStaticRouting(ctx context.Context, app *appv1alp
 	}
 	return r.reconcileStaticIngress(ctx, app, hosts, mwNames)
 }
+
+// reconcileStaticSiteMiddlewares converges a static site's own middleware
+// chain and returns it in router order: its IP allow-list layers, then the
+// edge plugin's static-site instance (staticSiteSpec) while it has hosts.
+func (r *AppReconciler) reconcileStaticSiteMiddlewares(ctx context.Context, app *appv1alpha1.App, hosts []string) ([]string, error) {
+	names, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	marker, err := r.reconcileOwnedMiddleware(ctx, app, app.Name+"-static-site", staticSiteSpec, len(hosts) > 0)
+	if err != nil || marker == "" {
+		return names, err
+	}
+	return append(names, marker), nil
+}
+
+// staticSiteSpec is the edge plugin's per-static-site instance (w8/363). It
+// marks a request whose client sent no Accept-Encoding, which Traefik's
+// forwarder hides from the static server by asking for gzip itself, so an
+// icon reaches that client identity under its strong tag, as on Render
+// (deploy/gitops/charts/traefik-plugins/clientipheaders). It only edits the
+// request, so no compiled middleware after it loses Flush.
+var staticSiteSpec = map[string]any{traefikPluginKey: map[string]any{
+	"bexClientIPHeaders": map[string]any{"staticSite": true},
+}}
 
 // staticServerPort is the static-server Service port, defaulting to 8080.
 func (r *AppReconciler) staticServerPort() int {

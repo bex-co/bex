@@ -793,16 +793,22 @@ func TestNegotiateCoding(t *testing.T) {
 	}
 }
 
-func TestCompressibleType(t *testing.T) {
-	for ct, want := range map[string]bool{
-		"text/html; charset=utf-8": true, "TEXT/CSS": true, "text/javascript": true, "application/javascript": true,
-		"application/json": true, "application/manifest+json": true, "image/svg+xml": true, "application/wasm": true,
-		"font/ttf": true, "application/xml": true,
-		"image/png": false, "image/webp": false, "font/woff2": false, "application/zip": false,
-		"application/octet-stream": false, "video/mp4": false, "": false,
+// TestCompressionOf pins each media type to where Render compresses it
+// (captured 2026-11-21, w8/363).
+func TestCompressionOf(t *testing.T) {
+	for ct, want := range map[string]compression{
+		"text/html; charset=utf-8": originCompressed, "TEXT/CSS": originCompressed, "text/javascript": originCompressed,
+		"application/javascript": originCompressed, "application/json": originCompressed,
+		"application/manifest+json": originCompressed, "image/svg+xml": originCompressed,
+		"application/wasm": originCompressed, "font/ttf": originCompressed, "font/otf": originCompressed,
+		"application/vnd.ms-fontobject": originCompressed, "application/xml": originCompressed,
+		"image/vnd.microsoft.icon": edgeCompressed, "IMAGE/X-ICON": edgeCompressed,
+		"image/png": uncompressed, "image/webp": uncompressed, "font/woff": uncompressed, "font/woff2": uncompressed,
+		"application/pdf": uncompressed, "application/zip": uncompressed,
+		"application/octet-stream": uncompressed, "video/mp4": uncompressed, "": uncompressed,
 	} {
-		if got := compressibleType(ct); got != want {
-			t.Errorf("compressibleType(%q) = %v, want %v", ct, got, want)
+		if got := compressionOf(ct); got != want {
+			t.Errorf("compressionOf(%q) = %v, want %v", ct, got, want)
 		}
 	}
 }

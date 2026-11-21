@@ -137,3 +137,56 @@ func TestOriginServerMiddlewareIsWebServiceOnly(t *testing.T) {
 		t.Fatalf("static site middlewares = %q, want no origin-server instance", got)
 	}
 }
+
+// w8/363: a static site's route to the static server ends with the edge
+// plugin's static-site instance, which marks a request whose client sent no
+// Accept-Encoding. It follows the site's hosts, and a web service's route
+// never carries one.
+func TestStaticSiteMarkerMiddlewareIsStaticSiteOnly(t *testing.T) {
+	scheme := newIPAllowListScheme()
+	web := appWithAllowList("mkweb", nil, appv1alpha1.TypeWebService)
+	static := appWithAllowList("mkstatic", []string{"203.0.113.0/24"}, appv1alpha1.TypeStaticSite)
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(web, static).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co",
+		ClusterIssuer: "letsencrypt-prod", StaticServerService: "bex-static-server", HTTPSRedirect: true}
+	ctx := context.Background()
+	if _, err := r.reconcileIngressWithMiddlewares(ctx, web, []string{"mkweb.onbex.co"}, "mkweb", 8080); err != nil {
+		t.Fatal(err)
+	}
+	if reason, err := r.convergeStaticRouting(ctx, static, []string{"mkstatic.onbex.co"}); err != nil {
+		t.Fatalf("%s: %v", reason, err)
+	}
+	mw := &unstructured.Unstructured{}
+	mw.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+	marker := types.NamespacedName{Name: "mkstatic-static-site", Namespace: "default"}
+	if err := cl.Get(ctx, marker, mw); err != nil {
+		t.Fatal(err)
+	}
+	enabled, _, _ := unstructured.NestedBool(mw.Object, "spec", "plugin", "bexClientIPHeaders", "staticSite")
+	if owners := mw.GetOwnerReferences(); !enabled || len(owners) != 1 || owners[0].Name != "mkstatic" {
+		t.Fatalf("static-site middleware = %v owners %+v, want the plugin's staticSite instance owned by the App", mw.Object["spec"], owners)
+	}
+	ing := &networkingv1.Ingress{}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "mkstatic", Namespace: "default"}, ing); err != nil {
+		t.Fatal(err)
+	}
+	want := "default-mkstatic-https@kubernetescrd,default-mkstatic-ip-allow@kubernetescrd,default-mkstatic-static-site@kubernetescrd"
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != want {
+		t.Fatalf("static site middlewares = %q, want %q", got, want)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "mkweb-static-site", Namespace: "default"}, mw); !apierrors.IsNotFound(err) {
+		t.Fatalf("web service static-site middleware: %v, want none", err)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "mkweb", Namespace: "default"}, ing); err != nil {
+		t.Fatal(err)
+	}
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; strings.Contains(got, "static-site") {
+		t.Fatalf("web service middlewares = %q, want no static-site instance", got)
+	}
+	if _, err := r.convergeStaticRouting(ctx, static, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, marker, mw); !apierrors.IsNotFound(err) {
+		t.Fatalf("static-site middleware with no hosts: %v, want it removed", err)
+	}
+}

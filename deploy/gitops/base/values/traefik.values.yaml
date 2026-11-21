@@ -19,7 +19,7 @@ deployment:
     - name: bex-client-ip-headers-plugin
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
-        name: bex-client-ip-headers-plugin-b6fdd247mc
+        name: bex-client-ip-headers-plugin-9dg4gd6h78
     - name: bex-s3-metadata-case-plugin
       configMap:
         # Content-hashed like the two above (w21/113): the S3 gateway's route

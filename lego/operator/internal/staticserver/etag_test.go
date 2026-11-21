@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"golang.org/x/sync/semaphore"
@@ -111,6 +112,86 @@ func TestETagStrengthFollowsRender(t *testing.T) {
 		if rec := doWith(h, http.MethodGet, "/logo.png", offerHeader(offer, "If-None-Match", image)); rec.Code != http.StatusNotModified || rec.Header().Get("ETag") != image {
 			t.Errorf("PNG offered %q revalidation => %d ETag %q, want 304 with %s", offer, rec.Code, rec.Header().Get("ETag"), image)
 		}
+	}
+}
+
+// favicon is a 15,004-byte icon, the w8/363 acceptance fixture's size.
+func favicon() []byte {
+	return append([]byte{0, 0, 1, 0}, make([]byte, 15000)...)
+}
+
+// TestIconTagsFollowRendersEdgeCompression (captured 2026-11-21 on six
+// Render sites, w8/363): Render's origin serves an icon identity and the
+// Cloudflare edge compresses it, the other way round to text. A br or gzip
+// body sends the weak tag and no Accept-Ranges. Identity, HEAD and a GET
+// with no Accept-Encoding send the strong tag with Content-Length and
+// Accept-Ranges: bytes. Every 304 carries the strong tag.
+func TestIconTagsFollowRendersEdgeCompression(t *testing.T) {
+	ico := favicon()
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("favicon.ico"): {Body: ico, ContentType: "image/vnd.microsoft.icon"},
+	})
+	strong := contentETag(ico, contentType("/favicon.ico", "image/vnd.microsoft.icon"))
+	// The edge marks a request whose client sent no Accept-Encoding, and its
+	// forwarder then asks for gzip itself (noAcceptEncodingHeader).
+	headerless := []string{noAcceptEncodingHeader, "1"}
+	for _, tc := range []struct {
+		method, offer string
+		kv            []string
+		coding        string // "" for identity
+	}{
+		{http.MethodGet, "br", nil, "br"},
+		{http.MethodGet, "gzip, br", nil, "br"},
+		{http.MethodGet, "gzip", nil, "gzip"},
+		{http.MethodHead, "br", nil, "br"},
+		{http.MethodGet, "identity", nil, ""},
+		{http.MethodGet, "", nil, ""},
+		{http.MethodHead, "", nil, ""},
+		{http.MethodGet, "gzip", headerless, ""},
+	} {
+		label := fmt.Sprintf("%s offered %q %v", tc.method, tc.offer, tc.kv)
+		rec := doWith(h, tc.method, "/favicon.ico", offerHeader(tc.offer, tc.kv...))
+		hdr := rec.Header()
+		wantTag, wantRanges, wantLength := "W/"+strong, "", ""
+		if tc.coding == "" {
+			wantTag, wantRanges, wantLength = strong, "bytes", strconv.Itoa(len(ico))
+		}
+		if rec.Code != http.StatusOK || hdr.Get("Content-Encoding") != tc.coding || hdr.Get("ETag") != wantTag ||
+			hdr.Get("Accept-Ranges") != wantRanges || wantLength != "" && hdr.Get("Content-Length") != wantLength ||
+			!hasVaryAcceptEncoding(hdr) {
+			t.Errorf("%s => %d CE %q ETag %q Accept-Ranges %q Content-Length %q, want 200 CE %q ETag %s Accept-Ranges %q",
+				label, rec.Code, hdr.Get("Content-Encoding"), hdr.Get("ETag"), hdr.Get("Accept-Ranges"), hdr.Get("Content-Length"),
+				tc.coding, wantTag, wantRanges)
+		}
+		body := rec.Body.Bytes()
+		if tc.method == http.MethodGet && tc.coding != "" {
+			body = decodeBody(t, tc.coding, body)
+		}
+		if tc.method == http.MethodGet && !bytes.Equal(body, ico) {
+			t.Errorf("%s body does not decode to the icon", label)
+		}
+		for _, inm := range []string{strong, "W/" + strong} {
+			rec := doWith(h, tc.method, "/favicon.ico", offerHeader(tc.offer, append([]string{"If-None-Match", inm}, tc.kv...)...))
+			if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("ETag") != strong ||
+				rec.Header().Get("Content-Encoding") != "" {
+				t.Errorf("%s If-None-Match %s => %d (%d bytes) ETag %q CE %q, want a bodyless 304 with ETag %s",
+					label, inm, rec.Code, rec.Body.Len(), rec.Header().Get("ETag"), rec.Header().Get("Content-Encoding"), strong)
+			}
+		}
+	}
+}
+
+// TestNoAcceptEncodingMarkerLeavesTextToTheEdgesDecoder: on a text file the
+// marker changes nothing. Its gzip body goes to the edge's forwarder, which
+// decodes it, so the client gets the weak tag and no Content-Length, as
+// Render sends a client with no Accept-Encoding (w8/359, w8/361).
+func TestNoAcceptEncodingMarkerLeavesTextToTheEdgesDecoder(t *testing.T) {
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("app.js"): {Body: repeated("console.log('etag');\n"), ContentType: "text/javascript"},
+	})
+	rec := doWith(h, http.MethodGet, "/app.js", offerHeader("gzip", noAcceptEncodingHeader, "1"))
+	if rec.Header().Get("Content-Encoding") != "gzip" || !strings.HasPrefix(rec.Header().Get("ETag"), "W/") {
+		t.Errorf("marked gzip request => CE %q ETag %q, want the weak gzip body", rec.Header().Get("Content-Encoding"), rec.Header().Get("ETag"))
 	}
 }
 

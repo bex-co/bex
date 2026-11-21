@@ -130,6 +130,52 @@ func TestRangesAndIfMatchFollowRendersEdge(t *testing.T) {
 	}
 }
 
+// TestIconRangesGetTheIdentityBytes (captured 2026-11-21 on six Render sites,
+// w8/363): an icon, which Render's edge compresses, answers a Range with a
+// 206 of its identity bytes in every coding, under the strong tag, with no
+// Content-Encoding and, like every 206 there, no Accept-Ranges. An If-Range
+// holds with the strong tag and gets the whole icon with the weak one. A
+// 206 of a PNG or a small br script carries no Accept-Ranges either.
+func TestIconRangesGetTheIdentityBytes(t *testing.T) {
+	ico := favicon()
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("favicon.ico"): {Body: ico, ContentType: "image/vnd.microsoft.icon"},
+		key("small.js"):    {Body: repeated("console.log('small');\n"), ContentType: "text/javascript"},
+		key("logo.png"):    {Body: repeated("\x89PNG\r\n"), ContentType: "image/png"},
+	})
+	strong := contentETag(ico, contentType("/favicon.ico", "image/vnd.microsoft.icon"))
+	wantRange := "bytes 0-9/" + strconv.Itoa(len(ico))
+	for _, offer := range []string{"br", "gzip, br", "gzip", ""} {
+		for _, kv := range [][]string{
+			{"Range", "bytes=0-9"},
+			{"Range", "bytes=0-9", "If-Range", strong},
+			{"Range", "bytes=0-9", noAcceptEncodingHeader, "1"},
+		} {
+			label := fmt.Sprintf("offered %q %v", offer, kv)
+			rec := doWith(h, http.MethodGet, "/favicon.ico", offerHeader(offer, kv...))
+			hdr := rec.Header()
+			if rec.Code != http.StatusPartialContent || hdr.Get("Content-Range") != wantRange || hdr.Get("ETag") != strong ||
+				hdr.Get("Content-Encoding") != "" || hdr.Get("Accept-Ranges") != "" || !bytes.Equal(rec.Body.Bytes(), ico[:10]) {
+				t.Errorf("%s => %d Content-Range %q ETag %q CE %q Accept-Ranges %q (%d bytes), want 206 %q of the identity bytes under %s",
+					label, rec.Code, hdr.Get("Content-Range"), hdr.Get("ETag"), hdr.Get("Content-Encoding"), hdr.Get("Accept-Ranges"),
+					rec.Body.Len(), wantRange, strong)
+			}
+		}
+		rec := doWith(h, http.MethodGet, "/favicon.ico", offerHeader(offer, "Range", "bytes=0-9", "If-Range", "W/"+strong))
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != "" || rec.Body.Len() != len(ico) {
+			t.Errorf("offered %q If-Range with the weak tag => %d CE %q (%d bytes), want 200 with the identity icon",
+				offer, rec.Code, rec.Header().Get("Content-Encoding"), rec.Body.Len())
+		}
+	}
+	for _, tc := range []struct{ path, offer string }{{"/logo.png", ""}, {"/logo.png", "br"}, {"/small.js", "br"}} {
+		rec := doWith(h, http.MethodGet, tc.path, offerHeader(tc.offer, "Range", "bytes=0-9"))
+		if rec.Code != http.StatusPartialContent || rec.Header().Get("Accept-Ranges") != "" {
+			t.Errorf("%s offered %q Range => %d Accept-Ranges %q, want 206 without Accept-Ranges",
+				tc.path, tc.offer, rec.Code, rec.Header().Get("Accept-Ranges"))
+		}
+	}
+}
+
 // TestIfMatchNeverHidesIfNoneMatch: with If-Match ignored, a matching
 // If-None-Match still gets its bodyless 304 under the strong tag (w8/361),
 // whatever If-Match says.

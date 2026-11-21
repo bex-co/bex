@@ -137,6 +137,7 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 	}
 	stripHopByHop(out.Header)
 	out.Header.Del("X-Forwarded-Server") // the edge's pod name, not the visitor's (ADR103 F1)
+	out.Header.Del(noAcceptEncodingHeader)
 	out.Host = target.Host
 	out.Header.Set(proxyHopHeader, "1")
 	out.Header.Set("X-Forwarded-Host", r.Host)
