@@ -1,6 +1,6 @@
 # w21 · m540 — `bex s3` speaks S3 itself: a native client with no other tool to install, then `bex-cli` v0.9.0
 
-**Worker:** worker21 **Goal:** `bex s3 ls`, `cp`, `mv`, `rm`, `sync`, `mb`, `rb`, `presign`, `cors`, `lifecycle` and `info` work on a machine with nothing else installed, no code path runs another program and no document says it does, and the release `bex-cli` v0.9.0 carries it. **Status:** todo (t001 to t012 done)
+**Worker:** worker21 **Goal:** `bex s3 ls`, `cp`, `mv`, `rm`, `sync`, `mb`, `rb`, `presign`, `cors`, `lifecycle` and `info` work on a machine with nothing else installed, no code path runs another program and no document says it does, and the release `bex-cli` v0.9.0 carries it. **Status:** done
 
 ## Tasks (in order)
 
@@ -18,8 +18,8 @@
 | [t010](done/t010.md) | Render parity | 30m | t009 — **DONE** |
 | [t011](done/t011.md) | Simplify | 20m | t010 — **DONE** |
 | [t012](done/t012.md) | Test coverage | 45m | t010, t011 — **DONE** |
-| [t013](t013.md) | Release `bex-cli` v0.9.0 and verify every channel | 45m | t012 |
-| [t014](t014.md) | Closeout | 10m | t013 |
+| [t013](done/t013.md) | Release `bex-cli` v0.9.0 and verify every channel | 45m | t012 — **DONE** |
+| [t014](done/t014.md) | Closeout | 10m | t013 — **DONE** |
 
 ## Definition of done
 
