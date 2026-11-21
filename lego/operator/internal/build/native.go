@@ -180,7 +180,10 @@ const (
 // line from the service's own version signal (nativeversion.go); nothing
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
-	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
+	// Any other Elixir release Elixir's compatibility table covers, from
+	// Render's minimum 1.12.0 on, installs from hexpm's build on a compatible
+	// Erlang/OTP (elixirOTP, w8/373).
+	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", anyRelease: nativeElixirAnyRelease, lines: []nativeLine{
 		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:08879d1eff5207a26ecab32ac7a7c5df610fce532b791eccbae7288a4e4b27b3", debian: "bookworm"},
 		{line: "1.18", version: "1.18.6", otp: "28", image: "elixir:1.18@sha256:16382709b3765b946748714575d8748ea7dcb7cb9a4849730bcdc56533503691", debian: "trixie"},
 		{line: "1.19", version: "1.19.7", otp: "28", image: "elixir:1.19@sha256:7e27df3e4a684163e4a18e618eede53badb70e97e0c92a1845ab22e2e1d96da2", debian: "trixie"},
@@ -237,7 +240,7 @@ var nativeToolchains = map[string]nativeToolchain{
 // out of the pinned image, so build, pre-deploy and start all run with it.
 // Any other Bun release a service names exactly is installed from its own
 // official image (anyRelease, w8/372).
-var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", floating: nativeBunCanary, anyRelease: true, lines: []nativeLine{
+var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", floating: nativeBunCanary, anyRelease: "any other Bun release installs when named exactly (such as 1.1.38)", lines: []nativeLine{
 	{line: "1.2", version: "1.2.23", image: "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74"},
 	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
 	{line: "1.4", version: "1.4.4", image: "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d"},
@@ -251,10 +254,12 @@ type nativeToolchain struct {
 	// line (Bun's canary): it resolves to the default line's pinned image with
 	// Exact set to the tag, which the build then pins to that tag's digest.
 	floating string
-	// anyRelease: an exact release on no reviewed line starts on the default
-	// line's pinned image, which the resolve phase swaps for that release's
-	// own or fails by name (Bun: Render installs any Bun release, w8/372).
-	anyRelease bool
+	// anyRelease, when set, says what a refusal adds: an exact release on no
+	// reviewed line starts on the default line's pinned image, which the
+	// resolve phase swaps for that release's own or fails by name (Bun:
+	// Render installs any Bun release, w8/372; Elixir: any compatible pair
+	// from Render's minimums, w8/373).
+	anyRelease string
 	lines      []nativeLine
 }
 

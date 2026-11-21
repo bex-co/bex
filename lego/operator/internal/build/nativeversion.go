@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -128,7 +129,7 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 //	python  PYTHON_VERSION → .python-version → default
 //	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
 //	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
-//	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major; a minor or patch is installed exactly, w8/197); with neither, Render's dated default Elixir on its default OTP (w8/333)
+//	elixir  ELIXIR_VERSION (→ line, or any release from 1.12.0 on no line, w8/373), ERLANG_VERSION (any Erlang/OTP from 24.3.4 Elixir's table pairs with it; one the line's image does not carry is installed exactly, w8/197, w8/373); with neither, Render's dated default Elixir on its default OTP (w8/333)
 //	go      default (Render offers no Go selection)
 //	rust    the one line; RUSTUP_TOOLCHAIN → rust-toolchain → rust-toolchain.toml name the toolchain rustup applies (w8/327)
 //
@@ -195,22 +196,25 @@ var (
 // created, whose creation date picks the default line where Render's does.
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	choice, err := resolveNativeLine(created, runtime, env, readFile)
-	if err == nil {
-		if line, ok := nativeToolchains[runtime].find(choice.Line); ok {
-			choice.lineVersion = line.version
-		}
-		choice.Exact = exactRequest(nativeToolchains[runtime], choice, readFile)
-		if choice.Exact == "" {
-			choice.Exact = defaultExact(created, runtime, choice)
-		}
-		if choice.Exact == "" && runtime == nativeNodeRuntime {
-			choice.rangeRequest = excludedNodeRange(choice, readFile)
-		}
-		if runtime == nativeElixirRuntime && choice.Source == "" {
-			choice.erlang = defaultErlang(created, choice)
-		}
+	if err != nil {
+		return choice, err
 	}
-	return choice, err
+	if line, ok := nativeToolchains[runtime].find(choice.Line); ok {
+		choice.lineVersion = line.version
+	}
+	if choice.Exact == "" { // an Elixir release no line carries is already exact
+		choice.Exact = exactRequest(nativeToolchains[runtime], choice, readFile)
+	}
+	if choice.Exact == "" {
+		choice.Exact = defaultExact(created, runtime, choice)
+	}
+	if choice.Exact == "" && runtime == nativeNodeRuntime {
+		choice.rangeRequest = excludedNodeRange(choice, readFile)
+	}
+	if runtime == nativeElixirRuntime {
+		return pairElixirOTP(created, choice, env)
+	}
+	return choice, nil
 }
 
 // erlangDefaultCutoff: Render's default Erlang/OTP for services created since
@@ -606,7 +610,7 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 		return c, err
 	}
 	l, ok := r.t.find(line)
-	if !ok && r.t.anyRelease && fullVersion.MatchString(line) {
+	if !ok && r.t.anyRelease != "" && fullVersion.MatchString(line) {
 		c, err := r.choice(r.t.defaultLine, source)
 		c.Exact, c.unreviewed = line, true
 		return c, err
@@ -622,8 +626,8 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 func (r resolver) unsupported(what string) error {
 	msg := fmt.Sprintf("%s is not a supported %s version; supported %s lines are %s",
 		boundedRequest(what), r.t.label, r.t.label, r.t.supportedLines())
-	if r.t.anyRelease {
-		msg += ", and any other " + r.t.label + " release installs when named exactly (such as 1.1.38)"
+	if r.t.anyRelease != "" {
+		msg += ", and " + r.t.anyRelease
 	}
 	return &UnsupportedVersionError{msg: msg}
 }
@@ -969,14 +973,11 @@ func (r resolver) rubyRequirement(reqs []string) (string, bool) {
 // (28), a minor (28.3) or a patch (28.3.3, 28.5.0.6).
 var otpRelease = regexp.MustCompile(`^\d{1,3}(\.\d{1,4}){0,3}$`)
 
-// elixir honors ELIXIR_VERSION (line by major.minor) and checks ERLANG_VERSION
-// against the chosen line's OTP major — an Erlang the line's image does not
-// carry is refused by name rather than silently ignored. A release more exact
-// than the major is carried in Erlang: the line's image has whatever OTP it
-// was built with, so the resolve phase finds an image with the requested one
-// (w8/197).
+// elixir honors ELIXIR_VERSION (a line by major.minor, or a release no line
+// carries, elixirRequest) and records an ERLANG_VERSION release for
+// pairElixirOTP, which checks the pair once the exact Elixir is known.
 func (r resolver) elixir() (NativeChoice, error) {
-	choice, err := r.first(r.fromEnv("ELIXIR_VERSION", r.minorLine))
+	choice, err := r.first(r.fromEnv("ELIXIR_VERSION", r.elixirRequest))
 	if err != nil {
 		return NativeChoice{}, err
 	}
@@ -989,16 +990,128 @@ func (r resolver) elixir() (NativeChoice, error) {
 		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
 			"%s is not an Erlang/OTP release; set ERLANG_VERSION to a release such as 28 or 28.3", boundedRequest("ERLANG_VERSION="+erlang))}
 	}
-	line, _ := r.t.find(choice.Line)
-	if major, _, _ := strings.Cut(release, "."); major != line.otp {
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
-			"ERLANG_VERSION=%q is not available with Elixir %s, which runs on Erlang/OTP %s; set ERLANG_VERSION to an OTP %s release or choose another ELIXIR_VERSION",
-			erlang, line.line, line.otp, line.otp)}
-	}
-	if strings.Contains(release, ".") {
-		choice.erlang = release
-	}
+	choice.erlang = release
 	choice.Source = strings.TrimPrefix(choice.Source+", ERLANG_VERSION="+erlang, ", ")
+	return choice, nil
+}
+
+// Render's minimum Elixir and Erlang/OTP: "Render services cannot use
+// versions of certain languages earlier than those listed below"
+// (render.com/docs/language-support and
+// render.com/docs/elixir-erlang-versions, read 2026-11-21).
+const (
+	elixirMinimum = "1.12.0"
+	erlangMinimum = "24.3.4"
+)
+
+// nativeElixirAnyRelease is what an Elixir refusal adds about the releases no
+// line carries.
+var nativeElixirAnyRelease = "any other Elixir release from " + elixirMinimum + " (Render's minimum) to " +
+	elixirOTP[len(elixirOTP)-1].minor + " installs on a compatible Erlang/OTP"
+
+// elixirOTP is Elixir's compatibility table: the Erlang/OTP majors lo to hi
+// each Elixir minor supports, and hi+1 from the patch named in next
+// (hexdocs.pm/elixir/1.18.4/compatibility-and-deprecations.html; 1.19 and
+// 1.20 from the 1.20.5 page, read 2026-11-21). Render builds any compatible
+// pair from its minimums on, and an incompatible one fails: "Your Elixir
+// version must be compatible with your Erlang/OTP version!"
+// (render.com/docs/elixir-erlang-versions). final is the last release of a
+// minor no line carries, which a bare minor (ELIXIR_VERSION=1.16) installs:
+// each of those minors has stopped receiving releases.
+var elixirOTP = []struct {
+	minor, next, final string
+	lo, hi             int
+}{
+	{"1.12", "", "1.12.3", 22, 24},
+	{"1.13", "1.13.4", "1.13.4", 22, 24},
+	{"1.14", "1.14.5", "1.14.5", 23, 25},
+	{"1.15", "", "1.15.8", 24, 26},
+	{"1.16", "", "1.16.3", 24, 26},
+	{"1.17", "", "", 25, 27},
+	{"1.18", "1.18.4", "", 25, 27},
+	{"1.19", "", "", 26, 28},
+	{"1.20", "", "", 27, 29},
+}
+
+// elixirOTPMajors is the Erlang/OTP majors an Elixir release supports by
+// Elixir's table; ok is false for a version the table does not cover.
+func elixirOTPMajors(version string) (lo, hi int, ok bool) {
+	v, err := semver.NewVersion(version)
+	if err != nil || !fullVersion.MatchString(version) {
+		return 0, 0, false
+	}
+	minor := fmt.Sprintf("%d.%d", v.Major(), v.Minor())
+	for _, row := range elixirOTP {
+		if row.minor != minor {
+			continue
+		}
+		if row.next != "" && !v.LessThan(semver.MustParse(row.next)) {
+			return row.lo, row.hi + 1, true
+		}
+		return row.lo, row.hi, true
+	}
+	return 0, 0, false
+}
+
+// elixirRequest maps ELIXIR_VERSION onto its line by major.minor. A release of
+// a minor no line carries, from Render's minimum on, is returned as itself (a
+// bare minor as its final release): r.choice starts it on the default line's
+// image, and the resolve phase installs hexpm's build of it on a compatible
+// Erlang/OTP (w8/373).
+func (r resolver) elixirRequest(request string) (string, bool) {
+	if line, ok := r.minorLine(request); ok {
+		return line, true
+	}
+	version := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(request)), "v")
+	for _, row := range elixirOTP {
+		if version == row.minor && row.final != "" {
+			version = row.final
+		}
+	}
+	if _, _, ok := elixirOTPMajors(version); !ok {
+		return "", false // the table starts at Render's minimum
+	}
+	return version, true
+}
+
+// pairElixirOTP checks the Erlang/OTP an Elixir choice runs on against Elixir's
+// table and Render's minimum, and records the OTP the resolve phase installs:
+// a requested release the line's image does not carry (anything finer than a
+// major, w8/197, or another major, w8/373); for a release no line carries,
+// the newest major it supports; with no signal, Render's default (w8/333).
+// An incompatible pair is refused by name, as Render's build fails on it.
+func pairElixirOTP(created time.Time, choice NativeChoice, env map[string]string) (NativeChoice, error) {
+	elixir := cmp.Or(choice.Exact, choice.lineVersion)
+	lo, hi, _ := elixirOTPMajors(elixir) // every line's and accepted release's minor has a row (TestElixirOTPTable)
+	if choice.erlang == "" {
+		switch {
+		case choice.unreviewed:
+			choice.erlang = strconv.Itoa(hi)
+		case choice.Source == "":
+			choice.erlang = defaultErlang(created, choice)
+		}
+		return choice, nil
+	}
+	request := strings.TrimSpace(env["ERLANG_VERSION"])
+	parts := otpParts(choice.erlang)
+	n := strings.Count(choice.erlang, ".") + 1
+	if slices.Compare(parts[:n], otpParts(erlangMinimum)[:n]) < 0 {
+		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"ERLANG_VERSION=%q is earlier than Erlang/OTP %s, the oldest Render supports; set ERLANG_VERSION to %s or a later release",
+			request, erlangMinimum, erlangMinimum)}
+	}
+	if parts[0] < lo || parts[0] > hi {
+		with := "Elixir " + elixir
+		if !strings.Contains(choice.Source, "ELIXIR_VERSION=") {
+			with += " (the default)"
+		}
+		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"ERLANG_VERSION=%q is not compatible with %s, which supports Erlang/OTP %d to %d; set ERLANG_VERSION to a compatible release or choose another ELIXIR_VERSION",
+			request, with, lo, hi)}
+	}
+	if line, _ := nativeToolchains[nativeElixirRuntime].find(choice.Line); !choice.unreviewed && choice.erlang == line.otp {
+		choice.erlang = "" // the line's own image carries that major
+	}
 	return choice, nil
 }
 

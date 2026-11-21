@@ -1212,6 +1212,15 @@ func TestNativeImageRunsJSToolsBesidePrimaries(t *testing.T) {
 	cases = append(cases, tc{"elixir-1.19.5-otp-28.3", "elixir",
 		`elixir=$(elixir -e 'IO.write System.version()') otp=$(cat "$(erl -noshell -eval 'io:put_chars(code:root_dir()), halt().')/releases/28/OTP_VERSION") mix=$(mix --version | tail -1 | cut -d' ' -f2) rebar3=$(rebar3 version | cut -d' ' -f2)`,
 		"elixir=1.19.5 otp=28.3.", map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.3"}, nil})
+	// An Elixir no line carries builds on the newest OTP major it supports,
+	// and a line's Elixir on another major than the line's (w8/373).
+	elixirCompiled := `elixir=$(elixir -e 'IO.write System.version()') otp=$(erl -noshell -eval 'io:put_chars(erlang:system_info(otp_release)), halt().') $(elixir --version | tail -1)`
+	cases = append(cases,
+		tc{"elixir-1.16.3", "elixir", elixirCompiled, "elixir=1.16.3 otp=26 Elixir 1.16.3 (compiled with Erlang/OTP 26)", map[string]string{"ELIXIR_VERSION": "1.16.3"}, nil},
+		tc{"elixir-1.12", "elixir", elixirCompiled, "elixir=1.12.3 otp=24 Elixir 1.12.3 (compiled with Erlang/OTP 24)", map[string]string{"ELIXIR_VERSION": "1.12"}, nil},
+		tc{"elixir-1.18.4-otp-27.3", "elixir",
+			`elixir=$(elixir -e 'IO.write System.version()') otp=$(cat "$(erl -noshell -eval 'io:put_chars(code:root_dir()), halt().')/releases/27/OTP_VERSION")`,
+			"elixir=1.18.4 otp=27.3.", map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "27.3"}, nil})
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			o := nativeOptions()

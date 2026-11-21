@@ -43,6 +43,11 @@ var hexpmTags = []string{
 	"1.19.5-erlang-28.30.1-debian-trixie-20260824",
 	"1.19.5-erlang-28.5.0.6-debian-trixie-20260824",
 	"1.18.4-erlang-28.3.3-debian-bookworm-20260824",
+	// w8/373: an Elixir no line carries and another OTP major than the line's.
+	"1.16.3-erlang-26.2.5.20-debian-bookworm-20260610",
+	"1.16.3-erlang-26.2.5.20-debian-trixie-20261104",
+	"1.12.3-erlang-24.3.4.17-debian-bookworm-20260610",
+	"1.18.4-erlang-27.3.4.16-debian-bookworm-20260824",
 }
 
 const otherDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000002"
@@ -98,6 +103,20 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 		{"default Elixir line", map[string]string{"ERLANG_VERSION": "28.3"},
 			[]string{"28.3.3.0"}, "28.3.3.0", "1.18.4-erlang-28.3.3-debian-bookworm-20260824",
 			"==> Using Elixir 1.18.4 on Erlang/OTP 28.3.3 (from ERLANG_VERSION=28.3)"},
+		// w8/373: an Elixir no line carries builds on the newest OTP major it
+		// supports, at the newest release hexpm built it on.
+		{"an Elixir no line carries", map[string]string{"ELIXIR_VERSION": "1.16.3"},
+			[]string{"26.2.5.21", "26.2.5.20", "26.2.4.0", "27.3.4.19"}, "26.2.5.20", "1.16.3-erlang-26.2.5.20-debian-trixie-20261104",
+			"==> Using Elixir 1.16.3 on Erlang/OTP 26.2.5.20 (from ELIXIR_VERSION=1.16.3)"},
+		{"a bare minor no line carries", map[string]string{"ELIXIR_VERSION": "1.12", "ERLANG_VERSION": "24.3.4"},
+			[]string{"24.3.4.17", "24.3.4.0", "24.3.3.0"}, "24.3.4.17", "1.12.3-erlang-24.3.4.17-debian-bookworm-20260610",
+			"==> Using Elixir 1.12.3 on Erlang/OTP 24.3.4.17 (from ELIXIR_VERSION=1.12, ERLANG_VERSION=24.3.4)"},
+		{"another OTP major than the line's", map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "27.3"},
+			[]string{"27.3.4.19", "27.3.4.18", "27.3.4.16", "27.3.0.0"}, "27.3.4.16", "1.18.4-erlang-27.3.4.16-debian-bookworm-20260824",
+			"==> Using Elixir 1.18.4 on Erlang/OTP 27.3.4.16 (from ELIXIR_VERSION=1.18.4, ERLANG_VERSION=27.3)"},
+		{"another OTP major alone", map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "27"},
+			[]string{"27.3.4.19", "27.3.4.16", "26.2.5.21"}, "27.3.4.16", "1.18.4-erlang-27.3.4.16-debian-bookworm-20260824",
+			"==> Using Elixir 1.18.4 on Erlang/OTP 27.3.4.16 (from ELIXIR_VERSION=1.18.4, ERLANG_VERSION=27)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -157,6 +176,11 @@ func TestExactErlangUnavailableFailsByName(t *testing.T) {
 			"no published image carries Elixir 1.19.5 on Erlang/OTP 28.3.3"},
 		"no hexpm build of that Elixir": {map[string]string{"ELIXIR_VERSION": "1.19.4", "ERLANG_VERSION": "28.3"}, []string{"28.3.3.0"},
 			"ERLANG_VERSION=28.3 is not available with Elixir 1.19.4"},
+		// w8/373: an Elixir no line carries never builds on another Elixir.
+		"no such Elixir": {map[string]string{"ELIXIR_VERSION": "1.16.9"}, []string{"26.2.5.20"},
+			"ELIXIR_VERSION=1.16.9 is not available: no published image carries Elixir 1.16.9 on Erlang/OTP 26, the newest it supports"},
+		"another major without a build": {map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "26"}, []string{"26.2.5.20"},
+			"ERLANG_VERSION=26 is not available with Elixir 1.18.4: no published image carries Elixir 1.18.4 on Erlang/OTP 26; set ERLANG_VERSION to another OTP 26 release or choose another ELIXIR_VERSION"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			o := nativeOptions()
@@ -330,13 +354,18 @@ func TestDockerHubResolverListsTagsByPrefix(t *testing.T) {
 	}
 }
 
-func TestExactErlangTagPartitionAvoidsUnusablePages(t *testing.T) {
-	const broad = "1.18.4-erlang-28.0"
-	const base = broad + "-debian-"
-	const descendants = broad + "."
-	const selected = "1.18.4-erlang-28.0.2-debian-bookworm-20260824"
-	for _, failed := range []string{"", base, descendants} {
-		name := "complete partition"
+// w8/373: a partial request's candidates come from the official erlang
+// repository, newest first, and each is probed for hexpm's builds of that one
+// release. An old Elixir and OTP minor has more hexpm builds than a listing
+// reads, so no hexpm search spans more than one release; a release hexpm never
+// built is passed over, and a failed listing stays a lookup failure.
+func TestExactErlangCandidatesComeFromTheOfficialRepository(t *testing.T) {
+	const official = "28.0."
+	const missing = "1.18.4-erlang-28.0.3-debian-"
+	const built = "1.18.4-erlang-28.0.2-debian-"
+	const selected = built + "bookworm-20260824"
+	for _, failed := range []string{"", official, built} {
+		name := "complete lookup"
 		if failed != "" {
 			name = "listing failure " + failed
 		}
@@ -344,34 +373,21 @@ func TestExactErlangTagPartitionAvoidsUnusablePages(t *testing.T) {
 			queries := make(chan string, 32)
 			heads := make(chan string, 4)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var names []string
 				switch r.URL.Path {
-				case "/v2/repositories/hexpm/elixir/tags":
+				case "/v2/repositories/library/erlang/tags", "/v2/repositories/hexpm/elixir/tags":
 					search := r.URL.Query().Get("name")
 					queries <- search
-					if search == failed && failed != "" {
+					if search == failed {
 						w.WriteHeader(http.StatusServiceUnavailable)
 						return
 					}
-					page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-					if r.URL.Query().Get("page_size") != "100" {
-						t.Error("tag search changed its existing page bound")
-					}
-					var names []string
-					var next *string
 					switch search {
-					case broad:
-						// Reproduce the old walk through unusable RC/OS pages.
-						if page == 11 {
-							w.WriteHeader(http.StatusForbidden)
-							return
-						}
-						names = []string{broad + "-rc." + strconv.Itoa(page) + "-alpine-3.22"}
-						n := "next"
-						next = &n
-					case base:
-						names = []string{base + "bookworm-20260610", base + "bookworm-20260824"}
-					case descendants:
-						names = []string{broad + ".1-debian-bookworm-20260610", broad + ".2-debian-bookworm-20260610", selected, broad + ".2-alpine-3.22"}
+					case official:
+						names = []string{"28.0", "28.0.0", "28.0.0.0", "28.0.2", "28.0.2.0", "28.0.2.0-slim", "28.0.3.0", "28.0.10.0-alpine"}
+					case missing:
+					case built:
+						names = []string{built + "bookworm-20260610", selected, selected + "-slim", built + "trixie-20260610"}
 					default:
 						t.Errorf("unexpected tag query %q", search)
 						w.WriteHeader(http.StatusBadRequest)
@@ -381,7 +397,7 @@ func TestExactErlangTagPartitionAvoidsUnusablePages(t *testing.T) {
 					for _, tag := range names {
 						results = append(results, map[string]string{"name": tag})
 					}
-					must(t, json.NewEncoder(w).Encode(map[string]any{"next": next, "results": results}))
+					must(t, json.NewEncoder(w).Encode(map[string]any{"results": results}))
 				case "/token":
 					must(t, json.NewEncoder(w).Encode(map[string]string{"token": "public-test-token"}))
 				case "/v2/library/erlang/manifests/28.0.2.0":
@@ -397,25 +413,26 @@ func TestExactErlangTagPartitionAvoidsUnusablePages(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 			resolver := &DockerHubResolver{Client: server.Client(), AuthURL: server.URL + "/token", RegistryURL: server.URL, HubURL: server.URL}
-			choice, err := pinErlangVersion(t.Context(), resolver, NativeChoice{Exact: "1.18.4", erlang: "28.0"})
+			choice, err := pinErlangVersion(t.Context(), resolver, NativeChoice{Exact: "1.18.4", erlang: "28.0", Source: "ERLANG_VERSION=28.0"})
 			if failed != "" {
-				if err == nil || !strings.Contains(err.Error(), "tag listing answered 503") || choice.Image != "" || len(heads) != 0 {
-					t.Fatalf("failed required partition did not remain a lookup failure: choice=%+v err=%v", choice, err)
+				var unsupported *UnsupportedVersionError
+				if err == nil || errors.As(err, &unsupported) || !strings.Contains(err.Error(), "tag listing answered 503") || choice.Image != "" || len(heads) != 0 {
+					t.Fatalf("a failed listing did not remain a lookup failure: choice=%+v err=%v", choice, err)
 				}
 				return
 			}
 			must(t, err)
 			if choice.otp != "28.0.2" || choice.Image != "erlang:28.0.2.0@"+exactDigest || choice.elixirImage != hexpmElixirRepo+":"+selected+"@"+otherDigest {
-				t.Fatalf("partition changed newest shared OTP/build selection: %+v", choice)
+				t.Fatalf("lookup changed the newest shared OTP/build selection: %+v", choice)
 			}
-			if len(queries) != 2 || <-queries != base || <-queries != descendants || len(heads) != 2 {
-				t.Fatal("lookup scanned unrelated pages or bypassed selected image digest lookups")
+			if len(queries) != 3 || <-queries != official || <-queries != missing || <-queries != built || len(heads) != 2 {
+				t.Fatal("lookup searched beyond one release at a time or bypassed the selected image digest lookups")
 			}
 		})
 	}
 }
 
-func TestExactErlangTagPartitionPreservesMaintenanceSelection(t *testing.T) {
+func TestExactErlangPreservesMaintenanceSelection(t *testing.T) {
 	catalog := []string{
 		"1.18.4-erlang-28.0-debian-bookworm-20260610",
 		"1.18.4-erlang-28.0-debian-bookworm-20260824",

@@ -23,10 +23,12 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -216,7 +218,24 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<14"}}`}, `package.json engines.node "<14"`},
 		{"ruby", nil, map[string]string{"Gemfile": `ruby "2.7.8"`}, `Gemfile ruby "2.7.8"`},
 		{"ruby", nil, map[string]string{".tool-versions": "ruby 2.7.8\n"}, `.tool-versions ruby "2.7.8"`},
-		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "26.2"}, nil, "runs on Erlang/OTP 28"},
+		// w8/373: Render builds any compatible pair from Elixir 1.12.0 and
+		// Erlang/OTP 24.3.4, and an incompatible one fails.
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.16.3", "ERLANG_VERSION": "28.0"}, nil,
+			`ERLANG_VERSION="28.0" is not compatible with Elixir 1.16.3, which supports Erlang/OTP 24 to 26; set ERLANG_VERSION to a compatible release or choose another ELIXIR_VERSION`},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.12.3", "ERLANG_VERSION": "25"}, nil, `ERLANG_VERSION="25" is not compatible with Elixir 1.12.3, which supports Erlang/OTP 22 to 24`},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.13.3", "ERLANG_VERSION": "25.3"}, nil, "Elixir 1.13.3, which supports Erlang/OTP 22 to 24"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18.2", "ERLANG_VERSION": "28.1"}, nil, "Elixir 1.18.2, which supports Erlang/OTP 25 to 27"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "24.3.4"}, nil, "Elixir 1.18.6, which supports Erlang/OTP 25 to 28"},
+		{"elixir", map[string]string{"ERLANG_VERSION": "29"}, nil, `ERLANG_VERSION="29" is not compatible with Elixir 1.18.6 (the default), which supports Erlang/OTP 25 to 28`},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.12.3", "ERLANG_VERSION": "24.2"}, nil,
+			`ERLANG_VERSION="24.2" is earlier than Erlang/OTP 24.3.4, the oldest Render supports; set ERLANG_VERSION to 24.3.4 or a later release`},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.12.3", "ERLANG_VERSION": "OTP-24.3.3.9"}, nil, `ERLANG_VERSION="OTP-24.3.3.9" is earlier than Erlang/OTP 24.3.4`},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.12.3", "ERLANG_VERSION": "23"}, nil, "is earlier than Erlang/OTP 24.3.4"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.11.4"}, nil,
+			"ELIXIR_VERSION=1.11.4 is not a supported Elixir version; supported Elixir lines are 1.17, 1.18, 1.19, 1.20, and any other Elixir release from 1.12.0 (Render's minimum) to 1.20 installs on a compatible Erlang/OTP"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.21.0"}, nil, "ELIXIR_VERSION=1.21.0 is not a supported Elixir version"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.16.3-rc.0"}, nil, "ELIXIR_VERSION=1.16.3-rc.0 is not a supported Elixir version"},
+		{"elixir", map[string]string{"ELIXIR_VERSION": "1.17.x"}, nil, "ELIXIR_VERSION=1.17.x is not a supported Elixir version"},
 		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "28.x"}, nil, "ERLANG_VERSION=28.x is not an Erlang/OTP release"},
 	}
 	for _, tc := range cases {
@@ -1073,4 +1092,77 @@ func TestNativeResolverCarriesServiceCreationTime(t *testing.T) {
 		}
 	}
 	t.Errorf("resolver env = %v, want %s", c.Env, NativeServiceCreatedEnv)
+}
+
+// w8/373: Render sets Elixir and Erlang/OTP independently and builds any
+// compatible pair from Elixir 1.12.0 and Erlang/OTP 24.3.4
+// (render.com/docs/elixir-erlang-versions). A release no line carries is
+// installed exactly, on the newest OTP major it supports unless ERLANG_VERSION
+// names one; a requested OTP the line's own image does not carry is installed
+// exactly; one it does carry keeps the line's image.
+func TestElixirOTPPairs(t *testing.T) {
+	created := renderElixirDefault20250612.Add(time.Hour)
+	for _, tc := range []struct {
+		env                         map[string]string
+		line, exact, erlang, source string
+		unreviewed                  bool
+	}{
+		{map[string]string{"ELIXIR_VERSION": "1.16.3"}, "1.18", "1.16.3", "26", "ELIXIR_VERSION=1.16.3", true},
+		{map[string]string{"ELIXIR_VERSION": "1.16"}, "1.18", "1.16.3", "26", "ELIXIR_VERSION=1.16", true},
+		{map[string]string{"ELIXIR_VERSION": "v1.12.0"}, "1.18", "1.12.0", "24", "ELIXIR_VERSION=v1.12.0", true},
+		{map[string]string{"ELIXIR_VERSION": "1.13.3"}, "1.18", "1.13.3", "24", "ELIXIR_VERSION=1.13.3", true},
+		{map[string]string{"ELIXIR_VERSION": "1.13.4"}, "1.18", "1.13.4", "25", "ELIXIR_VERSION=1.13.4", true},
+		{map[string]string{"ELIXIR_VERSION": "1.14.4"}, "1.18", "1.14.4", "25", "ELIXIR_VERSION=1.14.4", true},
+		{map[string]string{"ELIXIR_VERSION": "1.14"}, "1.18", "1.14.5", "26", "ELIXIR_VERSION=1.14", true},
+		{map[string]string{"ELIXIR_VERSION": "1.15.8", "ERLANG_VERSION": "24.3"}, "1.18", "1.15.8", "24.3", "ELIXIR_VERSION=1.15.8, ERLANG_VERSION=24.3", true},
+		{map[string]string{"ELIXIR_VERSION": "1.16.3", "ERLANG_VERSION": "26"}, "1.18", "1.16.3", "26", "ELIXIR_VERSION=1.16.3, ERLANG_VERSION=26", true},
+		{map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "27.3"}, "1.18", "1.18.4", "27.3", "ELIXIR_VERSION=1.18.4, ERLANG_VERSION=27.3", false},
+		{map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "26"}, "1.18", "", "26", "ELIXIR_VERSION=1.18, ERLANG_VERSION=26", false},
+		{map[string]string{"ELIXIR_VERSION": "1.17.3", "ERLANG_VERSION": "25.3"}, "1.17", "", "25.3", "ELIXIR_VERSION=1.17.3, ERLANG_VERSION=25.3", false},
+		{map[string]string{"ERLANG_VERSION": "27.3"}, "1.18", "1.18.4", "27.3", "ERLANG_VERSION=27.3", false},
+		// The line's own major keeps the line's image; a finer release of it
+		// is installed exactly (w8/197).
+		{map[string]string{"ELIXIR_VERSION": "1.19", "ERLANG_VERSION": "28"}, "1.19", "", "", "ELIXIR_VERSION=1.19, ERLANG_VERSION=28", false},
+		{map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.3"}, "1.19", "1.19.5", "28.3", "ELIXIR_VERSION=1.19.5, ERLANG_VERSION=28.3", false},
+		{map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "28"}, "1.18", "1.18.4", "", "ELIXIR_VERSION=1.18.4, ERLANG_VERSION=28", false},
+	} {
+		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, tc.env, files(nil))
+		if err != nil {
+			t.Errorf("%v: %v", tc.env, err)
+			continue
+		}
+		if choice.Line != tc.line || choice.Exact != tc.exact || choice.erlang != tc.erlang || choice.Source != tc.source || choice.unreviewed != tc.unreviewed {
+			t.Errorf("%v: line %q exact %q erlang %q source %q unreviewed %v, want %q %q %q %q %v", tc.env,
+				choice.Line, choice.Exact, choice.erlang, choice.Source, choice.unreviewed, tc.line, tc.exact, tc.erlang, tc.source, tc.unreviewed)
+		}
+		if line, _ := nativeToolchains[nativeElixirRuntime].find(tc.line); choice.Image != line.image {
+			t.Errorf("%v: starts on %s, want the %s line's image", tc.env, choice.Image, tc.line)
+		}
+	}
+}
+
+// TestElixirOTPTable keeps Elixir's compatibility table consistent with the
+// reviewed lines and Render's minimum.
+func TestElixirOTPTable(t *testing.T) {
+	if first := elixirOTP[0].minor + ".0"; first != elixirMinimum {
+		t.Errorf("table starts at %s, Render's minimum is %s", first, elixirMinimum)
+	}
+	for i, row := range elixirOTP {
+		if i > 0 && !semver.MustParse(elixirOTP[i-1].minor+".0").LessThan(semver.MustParse(row.minor+".0")) {
+			t.Errorf("rows out of order at %s", row.minor)
+		}
+		if row.lo > row.hi || row.hi < otpParts(erlangMinimum)[0] {
+			t.Errorf("%s supports no Erlang/OTP from Render's minimum: %d to %d", row.minor, row.lo, row.hi)
+		}
+		_, onLine := nativeToolchains[nativeElixirRuntime].find(row.minor)
+		if onLine == (row.final != "") || row.final != "" && !strings.HasPrefix(row.final, row.minor+".") {
+			t.Errorf("%s: a final release belongs to exactly the minors no line carries, got %q", row.minor, row.final)
+		}
+	}
+	for _, line := range nativeToolchains[nativeElixirRuntime].lines {
+		lo, hi, ok := elixirOTPMajors(line.version)
+		if otp, _ := strconv.Atoi(line.otp); !ok || otp < lo || otp > hi {
+			t.Errorf("line %s's image pairs Elixir %s with Erlang/OTP %s, outside the table's %d to %d", line.line, line.version, line.otp, lo, hi)
+		}
+	}
 }

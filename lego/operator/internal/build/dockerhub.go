@@ -272,8 +272,10 @@ func (d *DockerHubResolver) ImageMetadata(ctx context.Context, image string) (en
 
 const (
 	// tagPageSize is the Hub API's largest page; maxTagPages bounds a listing.
-	// A prefix as narrow as an Elixir and OTP release (1.19.5-erlang-28.3)
-	// names a few hundred hexpm builds across every OS and build date.
+	// An Elixir and OTP minor (1.16.3-erlang-26.2.) names over 3,000 hexpm
+	// builds across every OS and build date, so pinErlangVersion lists the
+	// official erlang releases (a few hundred tags a major) and one release's
+	// Debian builds at a time (w8/373).
 	tagPageSize  = 100
 	maxTagPages  = 30
 	maxPageBytes = 4 << 20

@@ -39,13 +39,29 @@ import (
 //
 // A minor (28.3) takes its newest patch both repositories publish. When none
 // exists the build fails by name; it never builds on another OTP, and the log
-// names the OTP the image installs.
+// names the OTP the image installs. An Erlang/OTP major other than the line's
+// (Elixir 1.18.4 on 27), and an Elixir no line carries (1.16.3, on the newest
+// major it supports unless ERLANG_VERSION names one), build the same way: a
+// major takes its newest release both repositories publish (w8/373).
 
 // hexpmElixirTag is a hexpm Debian build: <elixir>-erlang-<otp>-debian-<os>-<date>.
 var hexpmElixirTag = regexp.MustCompile(`^(\d+\.\d+\.\d+)-erlang-(\d+(?:\.\d+){1,3})-debian-[a-z]+-(\d{8}(?:\.\d+)?)$`)
 
+// maxOTPCandidates bounds the official releases a partial ERLANG_VERSION
+// probes, newest first, for hexpm's build of the Elixir. hexpm trails the
+// official images by a few maintenance patches: on 2026-11-21 Elixir 1.18.4's
+// newest OTP 27 build was 27.3.4.16, three releases behind erlang:27.3.4.19.
+const maxOTPCandidates = 12
+
+// otpFourPart is an official erlang tag that names exactly one release.
+var otpFourPart = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+$`)
+
 // pinErlangVersion swaps an Elixir choice's image for the official erlang image
 // of the requested OTP release, with Elixir from hexpm's build on that release.
+// The candidates are the official releases the request names, newest first
+// (otpReleases); each is probed for hexpm's Debian builds of that one release.
+// hexpm's own listing is no candidate source: an old Elixir and OTP minor
+// (1.16.3 on 26.2) has more builds than a listing reads (w8/373).
 func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice NativeChoice) (NativeChoice, error) {
 	elixir := choice.Exact
 	if elixir == "" {
@@ -53,42 +69,28 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 		elixir = line.version
 	}
 	request := choice.erlang
-	prefix := elixir + "-erlang-" + otpName(request)
-	// Separate the base release's Debian builds from its numeric descendants.
-	// Both can match a partial request; RCs and the base release's other OS
-	// families cannot, and need not consume Hub's paginated search budget.
-	prefixes := []string{prefix + "-debian-"}
-	if strings.Count(request, ".") < 3 {
-		prefixes = append(prefixes, prefix+".")
+	releases, err := otpReleases(ctx, exact, request)
+	if err != nil {
+		return NativeChoice{}, fmt.Errorf("look up Elixir %s on Erlang/OTP %s: %w", elixir, request, err)
 	}
-	var tags []string
-	for _, search := range prefixes {
-		matching, err := exact.ListTags(ctx, hexpmElixirRepo, search)
+	for _, release := range releases {
+		otp := otpName(release)
+		tags, err := exact.ListTags(ctx, hexpmElixirRepo, elixir+"-erlang-"+otp+"-debian-")
 		if err != nil {
 			return NativeChoice{}, fmt.Errorf("look up Elixir %s on Erlang/OTP %s: %w", elixir, request, err)
 		}
-		tags = append(tags, matching...)
-	}
-	// The newest hexpm build of each OTP release the request names.
-	type build struct{ date, tag string }
-	builds := map[string]build{}
-	for _, tag := range tags {
-		m := hexpmElixirTag.FindStringSubmatch(tag)
-		if m == nil || m[1] != elixir || !otpMatches(m[2], request) {
+		// The newest build wins; the tag breaks a tie, so the choice is stable.
+		elixirTag, date := "", ""
+		for _, tag := range tags {
+			m := hexpmElixirTag.FindStringSubmatch(tag)
+			if m != nil && m[1] == elixir && m[2] == otp && (m[3] > date || m[3] == date && tag > elixirTag) {
+				elixirTag, date = tag, m[3]
+			}
+		}
+		if elixirTag == "" {
 			continue
 		}
-		// The newest date wins; the tag breaks a tie, so the choice is stable.
-		if b, ok := builds[m[2]]; !ok || m[3] > b.date || m[3] == b.date && tag > b.tag {
-			builds[m[2]] = build{m[3], tag}
-		}
-	}
-	releases := make([]string, 0, len(builds))
-	for otp := range builds {
-		releases = append(releases, otp)
-	}
-	slices.SortFunc(releases, func(a, b string) int { return slices.Compare(otpParts(b), otpParts(a)) })
-	for _, otp := range releases {
-		erlangTag := otpTag(otp)
+		erlangTag := otpTag(release)
 		erlangDigest, found, err := exact.ResolveTag(ctx, erlangRepo, erlangTag)
 		if err != nil {
 			return NativeChoice{}, fmt.Errorf("look up %s:%s: %w", erlangRepo, erlangTag, err)
@@ -96,7 +98,6 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 		if !found {
 			continue
 		}
-		elixirTag := builds[otp].tag
 		elixirDigest, found, err := exact.ResolveTag(ctx, hexpmElixirRepo, elixirTag)
 		if err != nil {
 			return NativeChoice{}, fmt.Errorf("look up %s:%s: %w", hexpmElixirRepo, elixirTag, err)
@@ -109,9 +110,38 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 		choice.Line, choice.otp = elixir, otp
 		return choice, nil
 	}
+	major := otpParts(request)[0]
+	if !strings.Contains(choice.Source, "ERLANG_VERSION=") {
+		// No ERLANG_VERSION: the OTP is the newest major an Elixir no line
+		// carries supports (w8/373).
+		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"%s is not available: no published image carries Elixir %s on Erlang/OTP %d, the newest it supports; set ELIXIR_VERSION to a published Elixir release, or ERLANG_VERSION to another compatible release",
+			boundedRequest(choice.Source), elixir, major)}
+	}
+	hint := ""
+	if line, _ := nativeToolchains[nativeElixirRuntime].find(choice.Line); !choice.unreviewed && strconv.Itoa(major) == line.otp {
+		hint = fmt.Sprintf(" (or %d for the line's own)", major)
+	}
 	return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
-		"ERLANG_VERSION=%[1]s is not available with Elixir %[2]s: no published image carries Elixir %[2]s on Erlang/OTP %[1]s; set ERLANG_VERSION to another OTP %[3]d release (or %[3]d for the line's own) or choose another ELIXIR_VERSION",
-		request, elixir, otpParts(request)[0])}
+		"ERLANG_VERSION=%[1]s is not available with Elixir %[2]s: no published image carries Elixir %[2]s on Erlang/OTP %[1]s; set ERLANG_VERSION to another OTP %[3]d release%[4]s or choose another ELIXIR_VERSION",
+		request, elixir, major, hint)}
+}
+
+// otpReleases is the official erlang releases a request names, newest first
+// and at most maxOTPCandidates: a four-part release names itself, and anything
+// shorter its four-part tags (28.3: 28.3.3.0, 28.3.1.0, 28.3.0.0). The official
+// repository has a few hundred tags per major.
+func otpReleases(ctx context.Context, exact ExactImageResolver, request string) ([]string, error) {
+	if strings.Count(request, ".") == 3 {
+		return []string{request}, nil
+	}
+	tags, err := exact.ListTags(ctx, erlangRepo, otpName(request)+".")
+	if err != nil {
+		return nil, err
+	}
+	releases := slices.DeleteFunc(tags, func(tag string) bool { return !otpFourPart.MatchString(tag) || !otpMatches(tag, request) })
+	slices.SortFunc(releases, func(a, b string) int { return slices.Compare(otpParts(b), otpParts(a)) })
+	return releases[:min(len(releases), maxOTPCandidates)], nil
 }
 
 // pinDefaultErlang installs Render's default OTP under the default Elixir
