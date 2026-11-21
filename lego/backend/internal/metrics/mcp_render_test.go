@@ -19,6 +19,7 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -161,4 +162,118 @@ func TestMCPGetMetricsStatusCodeBreakdownIsRESTs(t *testing.T) {
 			t.Errorf("series labels = %+v, want statusCode and no code", s.Labels)
 		}
 	}
+}
+
+// breakdownSource answers every request read, count or latency, in the shape
+// its group-by asks for (one series per status code or host, else one total),
+// and records each read it is asked for.
+func breakdownSource(asked *[]RequestMetricsRequest) RequestMetricsSource {
+	return func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		*asked = append(*asked, req)
+		point := []MetricPoint{{Timestamp: "2026-09-14T19:56:00Z", Value: 1}}
+		var out []MetricSeries
+		switch req.GroupBy {
+		case groupByStatus:
+			for _, code := range []string{"200", "500"} {
+				out = append(out, MetricSeries{Labels: map[string]string{sourceStatusCodeLabel: code}, Points: point})
+			}
+		case groupByHost:
+			for _, host := range []string{"a.example", "b.example"} {
+				out = append(out, MetricSeries{Labels: map[string]string{groupByHost: host}, Points: point})
+			}
+		default:
+			out = append(out, MetricSeries{Labels: map[string]string{}, Points: point})
+		}
+		return out, nil
+	}
+}
+
+// TestMCPGetMetricsScopesEachArgumentToRendersReads (w3/096): Render's MCP
+// server sends aggregateHttpRequestCountsBy to its request-count read only, and
+// httpHost/httpPath to its request-count and latency reads only
+// (render-mcp-server pkg/metrics/repo.go, commit c6b8bb1). A call that also asks
+// for cpu, memory and latency therefore breaks down http_request_count alone,
+// and every other type answers what it answers alone. REST reads one metric per
+// request and keeps refusing the breakdown and the filters by name elsewhere.
+func TestMCPGetMetricsScopesEachArgumentToRendersReads(t *testing.T) {
+	mixedTypes := []string{"cpu_usage", "memory_usage", "http_request_count", "http_latency"}
+	newSvc := func() (*Service, *[]RequestMetricsRequest) {
+		var asked []RequestMetricsRequest
+		svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
+			webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},
+		}), breakdownSource(&asked), sampleApp("web"), podWithLimits(webInst))
+		svc.RequestLogMetrics = breakdownSource(&asked)
+		return svc, &asked
+	}
+	call := func(t *testing.T, cs *mcp.ClientSession, args map[string]any) renderMetricsResponse {
+		t.Helper()
+		args["resourceId"] = "web"
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: args})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return decodeGetMetrics(t, res)
+	}
+	// alone is each type's answer in a call that names it and nothing else.
+	alone := func(t *testing.T, cs *mcp.ClientSession, metricType string) []renderMetricSeries {
+		t.Helper()
+		return call(t, cs, map[string]any{"metricTypes": []string{metricType}}).Metrics[0].Data
+	}
+
+	for _, by := range []string{"host", "statusCode"} {
+		t.Run("aggregateHttpRequestCountsBy="+by, func(t *testing.T) {
+			svc, asked := newSvc()
+			cs := mcpSession(t, svc)
+			got := call(t, cs, map[string]any{"metricTypes": mixedTypes, "aggregateHttpRequestCountsBy": by})
+			if len(got.Metrics) != len(mixedTypes) {
+				t.Fatalf("metrics = %+v, want one entry per type", got.Metrics)
+			}
+			for _, req := range *asked {
+				if wantGroup := req.Metric == MetricHTTPRequests; (req.GroupBy != "") != wantGroup {
+					t.Errorf("%s read carried GroupBy %q; only the request count is broken down", req.Metric, req.GroupBy)
+				}
+			}
+			rest := seriesFrom(t, serveREST(svc, "/v1/metrics/http-requests?resource=web&aggregateBy="+by).Body.Bytes())
+			if len(rest) != 2 || !reflect.DeepEqual(got.Metrics[2].Data, rest) {
+				t.Errorf("http_request_count = %+v, want REST's breakdown %+v", got.Metrics[2].Data, rest)
+			}
+			for _, i := range []int{0, 1, 3} {
+				if want := alone(t, cs, mixedTypes[i]); len(want) == 0 || !reflect.DeepEqual(got.Metrics[i].Data, want) {
+					t.Errorf("%s = %+v, want its answer alone %+v", mixedTypes[i], got.Metrics[i].Data, want)
+				}
+			}
+		})
+	}
+
+	t.Run("httpHost and httpPath", func(t *testing.T) {
+		svc, asked := newSvc()
+		cs := mcpSession(t, svc)
+		got := call(t, cs, map[string]any{"metricTypes": mixedTypes, "httpHost": "a.example", "httpPath": "/x"})
+		filtered := map[string]bool{}
+		for _, req := range *asked {
+			if reflect.DeepEqual(req.Hosts, []string{"a.example"}) && reflect.DeepEqual(req.Paths, []string{"/x"}) {
+				filtered[req.Metric] = true
+			}
+		}
+		if !filtered[MetricHTTPRequests] || !filtered[MetricHTTPLatency] {
+			t.Errorf("filtered reads = %v, want the request count and the latency", filtered)
+		}
+		for _, i := range []int{0, 1} {
+			if want := alone(t, cs, mixedTypes[i]); len(want) == 0 || !reflect.DeepEqual(got.Metrics[i].Data, want) {
+				t.Errorf("%s = %+v, want its answer alone %+v", mixedTypes[i], got.Metrics[i].Data, want)
+			}
+		}
+	})
+
+	t.Run("REST still refuses them on cpu", func(t *testing.T) {
+		svc, _ := newSvc()
+		for _, query := range []string{"aggregateBy=host", "host=a.example", "path=/x"} {
+			if rec := serveREST(svc, "/v1/metrics/cpu?resource=web&"+query); rec.Code != http.StatusBadRequest {
+				t.Errorf("REST cpu %s = %d %s, want 400", query, rec.Code, rec.Body)
+			}
+		}
+		if rec := serveREST(svc, "/v1/metrics/http-latency?resource=web&aggregateBy=host"); rec.Code != http.StatusBadRequest {
+			t.Errorf("REST latency aggregateBy=host = %d, want 400", rec.Code)
+		}
+	})
 }

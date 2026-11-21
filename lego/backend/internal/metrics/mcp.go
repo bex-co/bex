@@ -50,9 +50,9 @@ type getMetricsArgs struct {
 	Quantiles           []float64 `json:"quantiles,omitempty" jsonschema:"http_latency percentiles 0..1 to read together — the percentile 'All' overlay (e.g. [0.5,0.9,0.99]); each returned series carries a quantile label so the overlaid percentiles stay distinct"`
 	Percentage          bool      `json:"percentage,omitempty" jsonschema:"report cpu/memory as a percentage of the pod limit"`
 	// HTTPHost/HTTPPath are Render's spellings; Host/Path are legacy bex aliases.
-	HTTPHost string `json:"httpHost,omitempty" jsonschema:"filter http_requests/http_latency to one request Host — Render's MCP spelling; served from the request-log store (Loki)"`
+	HTTPHost string `json:"httpHost,omitempty" jsonschema:"filter http_requests/http_latency to one request Host — Render's MCP spelling; served from the request-log store (Loki). Other metric types in the same call are read unfiltered"`
 	Host     string `json:"host,omitempty" jsonschema:"legacy bex alias of httpHost; ignored when httpHost is also set"`
-	HTTPPath string `json:"httpPath,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — Render's MCP spelling; served from the request-log store (Loki)"`
+	HTTPPath string `json:"httpPath,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — Render's MCP spelling; served from the request-log store (Loki). Other metric types in the same call are read unfiltered"`
 	Path     string `json:"path,omitempty" jsonschema:"legacy bex alias of httpPath; ignored when httpPath is also set"`
 	// CPUUsageAggregationMethod is Render's interval aggregation for CPU usage,
 	// passed through to REST aggregationMethod as Render's own MCP server does
@@ -60,8 +60,9 @@ type getMetricsArgs struct {
 	// only; other types in the same call are read unaggregated.
 	CPUUsageAggregationMethod string `json:"cpuUsageAggregationMethod,omitempty" jsonschema:"Method for aggregating CPU usage over each resolution interval: AVG (default), MAX or MIN. Only applies to the cpu metric type."`
 	// AggregateHTTPRequestCountsBy groups http_requests by statusCode or by
-	// request host (the host breakdown reads the request-log store).
-	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"Field to aggregate http_requests by: host (one series per request host) or statusCode. When not specified, returns total request counts."`
+	// request host (the host breakdown reads the request-log store). Like the
+	// cpu aggregation, it reaches that one read only (mcpReadScope).
+	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"Field to aggregate http_requests by: host (one series per request host) or statusCode. When not specified, returns total request counts. Only applies to the http_requests metric type; other types in the same call are read unaggregated."`
 	// Instance is a bex extension (w5/m89): public instance ids from m87. Omit
 	// for all instances; unresolved ids yield an empty series, never a broaden.
 	Instance []string `json:"instance,omitempty" jsonschema:"public service instance ids to keep (canonical srv-…-… ids from metricsFilters INSTANCE / serviceInstances); omit for all"`
@@ -181,6 +182,33 @@ func metricIDFor(metricType string) string {
 	return metricType
 }
 
+// mcpReadScope holds the get_metrics arguments Render's MCP server sends to
+// some reads only (render-mcp-server pkg/metrics/repo.go, commit c6b8bb1):
+// cpuUsageAggregationMethod to the cpu read, aggregateHttpRequestCountsBy to
+// the request-count read, and httpHost/httpPath to the request-count and
+// latency reads. Every other metric type in the same call reads as it would
+// alone (w3/096). REST names one metric per request, so it keeps refusing them
+// on any other metric.
+type mcpReadScope struct {
+	cpuAggregation string
+	groupBy        string
+	hosts, paths   []string
+}
+
+// forMetric is q with the arguments that reach metric's read.
+func (sc mcpReadScope) forMetric(q MetricQuery, metric string) MetricQuery {
+	q.Metric = metric
+	q.CPUAggregation = cpuAggregationFor(metric, sc.cpuAggregation)
+	q.GroupBy, q.Hosts, q.Paths = "", nil, nil
+	switch metric {
+	case MetricHTTPRequests:
+		q.GroupBy, q.Hosts, q.Paths = sc.groupBy, sc.hosts, sc.paths
+	case MetricHTTPLatency:
+		q.Hosts, q.Paths = sc.hosts, sc.paths
+	}
+	return q
+}
+
 // RegisterMCP adds the get_metrics tool to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -199,13 +227,16 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, nil, err
 		}
+		scope := mcpReadScope{
+			cpuAggregation: cpuAgg,
+			groupBy:        groupBy,
+			hosts:          singleValue(in.host()),
+			paths:          singleValue(in.path()),
+		}
 		q := MetricQuery{
 			Quantile:   in.quantile(),
 			Quantiles:  in.Quantiles,
 			Percentage: in.Percentage,
-			Hosts:      singleValue(in.host()),
-			Paths:      singleValue(in.path()),
-			GroupBy:    groupBy,
 			Resolution: time.Duration(in.resolutionSeconds()) * time.Second,
 			Instances:  in.Instance,
 		}
@@ -243,23 +274,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			}
 			for _, metricType := range in.MetricTypes {
 				var series []MetricSeries
+				read := scope.forMetric(q, metricIDFor(metricType))
 				if metricType == renderActiveConnections {
 					series, err = s.activeConnections(ctx, id, q.Start, q.End, q.Resolution)
 				} else if core.IsDatastoreResource(id) {
-					dq := q
-					dq.Metric = metricIDFor(metricType)
-					dq.CPUAggregation = cpuAggregationFor(dq.Metric, cpuAgg)
-					series, err = s.datastoreAppMetric(ctx, dq, id)
+					series, err = s.datastoreAppMetric(ctx, read, id)
 				} else {
-					q.App, q.Metric = id, metricIDFor(metricType)
-					// Render's MCP passes the aggregation to its cpu read only.
-					q.CPUAggregation = cpuAggregationFor(q.Metric, cpuAgg)
+					read.App = id
 					// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
 					// percentile "All" overlay), tagging each series with its quantile.
 					var withQuantiles []QuantileSeries
-					withQuantiles, err = s.MetricsWithQuantiles(ctx, q)
+					withQuantiles, err = s.MetricsWithQuantiles(ctx, read)
 					for i := range withQuantiles {
-						series = append(series, restStatusCode(withQuantiles[i].MetricSeries, q.GroupBy))
+						series = append(series, restStatusCode(withQuantiles[i].MetricSeries, read.GroupBy))
 					}
 				}
 				if err != nil {
