@@ -89,15 +89,19 @@ type NativeChoice struct {
 	// lineVersion is the chosen line's reviewed patch: what the build runs
 	// when no exact version replaces it, so the log names it (w4/668).
 	lineVersion string
+	// requested is the Node range or alias the service asked for, as it wrote
+	// it, which Render's log echoes before the version line (w9/141).
+	requested string
 }
 
 // Narration is NarrationIn for a service whose source sits at NativeWorkdir,
 // one with no root directory.
 func (c NativeChoice) Narration() string { return c.NarrationIn(NativeWorkdir) }
 
-// NarrationIn is the build-log line that names the choice and its source. dir
-// is the service's source directory in the image, which Render's line names a
-// version file under (NativeSourceDir).
+// NarrationIn is the build-log lines that name the choice and its source, in
+// Render's order: the Node request, the version line, the runtime's docs line,
+// then bex's note. dir is the service's source directory in the image, which
+// Render's line names a version file under (NativeSourceDir).
 func (c NativeChoice) NarrationIn(dir string) string {
 	if c.declined != "" {
 		return fmt.Sprintf("==> Not adding %s: %s", c.Label, c.declined)
@@ -114,10 +118,34 @@ func (c NativeChoice) NarrationIn(dir string) string {
 	if !ok {
 		line = c.bexNarration(version)
 	}
-	if c.note != "" {
-		line += "\n" + c.note
+	var lines []string
+	if c.requested != "" {
+		lines = append(lines, "==> Requesting Node.js version "+c.requested)
 	}
-	return line
+	lines = append(lines, line)
+	if docs := renderDocs[c.Label]; docs != "" {
+		lines = append(lines, "==> Docs on specifying "+docs)
+	}
+	if c.note != "" {
+		lines = append(lines, c.note)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// renderDocs is the page Render's build log points to after each runtime's
+// version line, `==> Docs on specifying a Ruby version:
+// https://render.com/docs/ruby-version` (w9/141; the logs are quoted in
+// docs/render-artifacts/native-version-narration.md). The line follows the
+// runtime's version line whatever the signal, so it follows bex's own lines
+// too. Render's Go line has none, and no Rust line is on record.
+var renderDocs = map[string]string{
+	"Node":   "a Node.js version: https://render.com/docs/node-version",
+	"Python": "a Python version: https://render.com/docs/python-version",
+	"Ruby":   "a Ruby version: https://render.com/docs/ruby-version",
+	"Elixir": "Elixir and Erlang versions: https://render.com/docs/elixir-erlang-versions",
+	"Bun":    "a Bun version: https://render.com/docs/bun-version",
+	"Poetry": "a Poetry version: https://render.com/docs/poetry-version",
+	"uv":     "a uv version: https://render.com/docs/uv-version",
 }
 
 // renderSignalFrom is how Render's build log says where a version came from.
@@ -253,8 +281,12 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 	if choice.Exact == "" {
 		choice.Exact = defaultExact(created, runtime, choice)
 	}
-	if choice.Exact == "" && runtime == nativeNodeRuntime {
-		choice.rangeRequest = excludedNodeRange(choice, readFile)
+	if runtime == nativeNodeRuntime {
+		request := nodeRequestText(choice.Source, readFile)
+		if choice.Exact == "" {
+			choice.rangeRequest = excludedNodeRange(choice, request)
+		}
+		choice.requested = renderNodeRequest(request)
 	}
 	if runtime == nativeElixirRuntime {
 		return pairElixirOTP(created, choice, env)
@@ -1120,17 +1152,8 @@ var fullVersion = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 // range its line's reviewed patch does not satisfy, else "". A partial version
 // (`18.17`) is a range too, as node-version-alias reads it; a fully qualified
 // one is exactRequest's, and an alias (lts/*, a codename) names no range.
-func excludedNodeRange(choice NativeChoice, readFile func(string) ([]byte, bool)) string {
-	var raw string
-	switch signal := choice.Source; {
-	case strings.HasPrefix(signal, "NODE_VERSION="):
-		raw = strings.TrimPrefix(signal, "NODE_VERSION=")
-	case signal == ".node-version" || signal == ".nvmrc":
-		raw = firstLine(readFile, signal)
-	case signal == "package.json engines.node":
-		raw = packageEnginesNode(readFile)
-	}
-	request := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(raw)), "v")
+func excludedNodeRange(choice NativeChoice, raw string) string {
+	request := strings.TrimPrefix(strings.ToLower(raw), "v")
 	if request == "" || fullVersion.MatchString(request) {
 		return ""
 	}
@@ -1146,6 +1169,31 @@ func excludedNodeRange(choice NativeChoice, readFile func(string) ([]byte, bool)
 		return ""
 	}
 	return request
+}
+
+// nodeRequestText is the Node request behind a choice's signal, as the
+// service wrote it, or "" for the default.
+func nodeRequestText(source string, readFile func(string) ([]byte, bool)) string {
+	switch {
+	case strings.HasPrefix(source, "NODE_VERSION="):
+		return strings.TrimPrefix(source, "NODE_VERSION=")
+	case source == ".node-version" || source == ".nvmrc":
+		return firstLine(readFile, source)
+	case source == "package.json engines.node":
+		return strings.TrimSpace(packageEnginesNode(readFile))
+	}
+	return ""
+}
+
+// renderNodeRequest is the request Render's log echoes before a Node version
+// line, `==> Requesting Node.js version >= 20.4.0`: a range or an alias, as the
+// service wrote it (w9/141). Render echoes none for an exact version. Whether
+// it echoes a partial one (`22`) is unmeasured, so bex echoes no plain version.
+func renderNodeRequest(request string) string {
+	if request == "" || plainVersion.MatchString(strings.ToLower(request)) {
+		return ""
+	}
+	return toolchains.BoundedRequest(request)
 }
 
 // packageEnginesNode is package.json's engines.node, or "" when there is none.

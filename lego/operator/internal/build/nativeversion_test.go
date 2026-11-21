@@ -289,12 +289,26 @@ func TestNodeLTSCoversTheReviewedLines(t *testing.T) {
 	}
 }
 
+// Render's docs lines, which its build logs print after each runtime's version
+// line (w9/141; docs/render-artifacts/native-version-narration.md quotes them).
+const (
+	nodeDocs   = "\n==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
+	pythonDocs = "\n==> Docs on specifying a Python version: https://render.com/docs/python-version"
+	rubyDocs   = "\n==> Docs on specifying a Ruby version: https://render.com/docs/ruby-version"
+	elixirDocs = "\n==> Docs on specifying Elixir and Erlang versions: https://render.com/docs/elixir-erlang-versions"
+	bunDocs    = "\n==> Docs on specifying a Bun version: https://render.com/docs/bun-version"
+	poetryDocs = "\n==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version"
+	uvDocs     = "\n==> Docs on specifying a uv version: https://render.com/docs/uv-version"
+)
+
 // w9/139: each runtime's line reads as Render's build log has it for every
 // signal a Render log shows (docs/render-artifacts/native-version-narration.md):
 // `version`, the environment variable by name, a version file by its path in
 // the image, `(default)` when nothing names a version. A signal no Render log
 // shows keeps bex's line. Before the resolve phase swaps in an exact image the
-// line names the line's reviewed patch (w4/668).
+// line names the line's reviewed patch (w4/668). w9/141: Render's docs line
+// follows each runtime's version line whatever the signal (none for Go or
+// Rust), and a Node range or alias is echoed first, as the service wrote it.
 func TestNativeChoiceNarration(t *testing.T) {
 	reviewed := func(runtime, line string) string {
 		t.Helper()
@@ -322,6 +336,9 @@ func TestNativeChoiceNarration(t *testing.T) {
 	poetry := func(env map[string]string) func() (NativeChoice, error) {
 		return func() (NativeChoice, error) { return ResolveNativePoetry(env) }
 	}
+	fixed := func(c NativeChoice) func() (NativeChoice, error) {
+		return func() (NativeChoice, error) { return c, nil }
+	}
 	const src = "/opt/render/project/src/"
 	for _, tc := range []struct {
 		name    string
@@ -329,49 +346,72 @@ func TestNativeChoiceNarration(t *testing.T) {
 		want    string
 	}{
 		{"python env", primary("python", map[string]string{"PYTHON_VERSION": "3.11.9"}, nil),
-			"==> Using Python version " + reviewed("python", "3.11") + " via environment variable PYTHON_VERSION"},
+			"==> Using Python version " + reviewed("python", "3.11") + " via environment variable PYTHON_VERSION" + pythonDocs},
 		{"python file", primary("python", nil, map[string]string{".python-version": "3.12\n"}),
-			"==> Using Python version " + reviewed("python", "3.12") + " via " + src + ".python-version"},
+			"==> Using Python version " + reviewed("python", "3.12") + " via " + src + ".python-version" + pythonDocs},
 		{"python default", primary("python", nil, nil),
-			"==> Using Python version " + reviewed("python", "3.13") + " (default)"},
+			"==> Using Python version " + reviewed("python", "3.13") + " (default)" + pythonDocs},
+		// A partial or exact version is not echoed: Render echoes no exact
+		// one, and its partial one is unmeasured.
 		{"node env", primary("node", map[string]string{"NODE_VERSION": "22"}, nil),
-			"==> Using Node.js version " + reviewed("node", "22") + " via environment variable NODE_VERSION"},
+			"==> Using Node.js version " + reviewed("node", "22") + " via environment variable NODE_VERSION" + nodeDocs},
+		{"node env exact", primary("node", map[string]string{"NODE_VERSION": reviewed("node", "22")}, nil),
+			"==> Using Node.js version " + reviewed("node", "22") + " via environment variable NODE_VERSION" + nodeDocs},
+		{"node env range", primary("node", map[string]string{"NODE_VERSION": "20.x"}, nil),
+			"==> Requesting Node.js version 20.x\n==> Using Node.js version " + reviewed("node", "20") + " via environment variable NODE_VERSION" + nodeDocs},
 		{"node .node-version", primary("node", nil, map[string]string{".node-version": "20\n"}),
-			"==> Using Node.js version " + reviewed("node", "20") + " via " + src + ".node-version"},
+			"==> Using Node.js version " + reviewed("node", "20") + " via " + src + ".node-version" + nodeDocs},
 		{"node .nvmrc", primary("node", nil, map[string]string{".nvmrc": "18\n"}),
-			"==> Using Node.js version " + reviewed("node", "18") + " via " + src + ".nvmrc"},
+			"==> Using Node.js version " + reviewed("node", "18") + " via " + src + ".nvmrc" + nodeDocs},
+		{"node .nvmrc alias", primary("node", nil, map[string]string{".nvmrc": "lts/hydrogen\n"}),
+			"==> Requesting Node.js version lts/hydrogen\n==> Using Node.js version " + reviewed("node", "18") + " via " + src + ".nvmrc" + nodeDocs},
 		{"node engines", primary("node", nil, map[string]string{"package.json": `{"engines":{"node":"^20"}}`}),
-			"==> Using Node.js version " + reviewed("node", "20") + " via " + src + "package.json"},
+			"==> Requesting Node.js version ^20\n==> Using Node.js version " + reviewed("node", "20") + " via " + src + "package.json" + nodeDocs},
+		{"node engines as written", primary("node", nil, map[string]string{"package.json": `{"engines":{"node":" >= 20.4.0 <21 "}}`}),
+			"==> Requesting Node.js version >= 20.4.0 <21\n==> Using Node.js version " + reviewed("node", "20") + " via " + src + "package.json" + nodeDocs},
 		{"node default", primary("node", nil, nil),
-			"==> Using Node.js version " + reviewed("node", "24") + " (default)"},
+			"==> Using Node.js version " + reviewed("node", "24") + " (default)" + nodeDocs},
 		{"ruby Gemfile.lock", primary("ruby", nil, map[string]string{"Gemfile.lock": "RUBY VERSION\n   ruby 3.3.0p0\n"}),
-			"==> Using Ruby version " + reviewed("ruby", "3.3") + " via " + src + "Gemfile.lock"},
+			"==> Using Ruby version " + reviewed("ruby", "3.3") + " via " + src + "Gemfile.lock" + rubyDocs},
 		{"ruby .ruby-version", primary("ruby", nil, map[string]string{".ruby-version": "3.2\n"}),
-			"==> Using Ruby version " + reviewed("ruby", "3.2") + " via " + src + ".ruby-version"},
+			"==> Using Ruby version " + reviewed("ruby", "3.2") + " via " + src + ".ruby-version" + rubyDocs},
 		{"ruby Gemfile", primary("ruby", nil, map[string]string{"Gemfile": "ruby \"~> 3.1.0\"\n"}),
-			"==> Using Ruby version " + reviewed("ruby", "3.1") + " via " + src + "Gemfile"},
+			"==> Using Ruby version " + reviewed("ruby", "3.1") + " via " + src + "Gemfile" + rubyDocs},
 		{"ruby default", primary("ruby", nil, nil),
-			"==> Using Ruby version " + reviewed("ruby", "3.4") + " (default)"},
+			"==> Using Ruby version " + reviewed("ruby", "3.4") + " (default)" + rubyDocs},
 		{"elixir default", primary("elixir", nil, nil),
-			"==> Using Elixir version " + reviewed("elixir", "1.18") + " (default)"},
+			"==> Using Elixir version " + reviewed("elixir", "1.18") + " (default)" + elixirDocs},
+		// Render names the default Erlang on a line of its own, before Elixir,
+		// and points to one page for the pair.
+		{"elixir on Render's Erlang", fixed(NativeChoice{Label: "Elixir", Line: "1.18.4", otp: "28.0.2"}),
+			"==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)" + elixirDocs},
 		{"bun lockfile", bun(nil, map[string]string{"bun.lock": "{}"}),
-			"==> Using Bun version " + nativeBun.lines[len(nativeBun.lines)-1].version + " (default)"},
+			"==> Using Bun version " + nativeBun.lines[len(nativeBun.lines)-1].version + " (default)" + bunDocs},
 		{"bun binary lockfile", bun(nil, map[string]string{"bun.lockb": "\x00"}),
-			"==> Using Bun version " + nativeBun.lines[len(nativeBun.lines)-1].version + " (default)"},
-		{"poetry default", poetry(nil), "==> Using Poetry version " + defaultPoetryVersion + " (default)"},
-		{"uv lockfile", uv(nil), "==> Using uv version " + legacyUVVersion + " (default)"},
+			"==> Using Bun version " + nativeBun.lines[len(nativeBun.lines)-1].version + " (default)" + bunDocs},
+		{"poetry default", poetry(nil), "==> Using Poetry version " + defaultPoetryVersion + " (default)" + poetryDocs},
+		{"uv lockfile", uv(nil), "==> Using uv version " + legacyUVVersion + " (default)" + uvDocs},
+		// bex's own note about the image comes after Render's lines, where
+		// Render's install line would be.
+		{"note", fixed(NativeChoice{Label: "Node", Line: "22.1.5", note: "==> No official image node:22.1.5-bookworm; using the reviewed Node 22 image"}),
+			"==> Using Node.js version 22.1.5 (default)" + nodeDocs + "\n==> No official image node:22.1.5-bookworm; using the reviewed Node 22 image"},
+		{"declined companion", fixed(NativeChoice{Label: "Ruby", declined: "Gemfile asks for 2.7"}), "==> Not adding Ruby: Gemfile asks for 2.7"},
 
-		// No Render log on record for these signals: bex's own line stays.
+		// No Render log on record for these signals: bex's own line stays,
+		// with the runtime's docs line after it.
 		{"ruby .tool-versions", primary("ruby", nil, map[string]string{".tool-versions": "ruby 3.0.7\n"}),
-			"==> Using Ruby " + reviewed("ruby", "3.0") + " (from .tool-versions)"},
+			"==> Using Ruby " + reviewed("ruby", "3.0") + " (from .tool-versions)" + rubyDocs},
 		{"ruby gems.locked", primary("ruby", nil, map[string]string{"gems.locked": "RUBY VERSION\n   ruby 3.3.0p0\n"}),
-			"==> Using Ruby " + reviewed("ruby", "3.3") + " (from gems.locked)"},
+			"==> Using Ruby " + reviewed("ruby", "3.3") + " (from gems.locked)" + rubyDocs},
 		{"elixir env", primary("elixir", map[string]string{"ELIXIR_VERSION": "1.19"}, nil),
-			"==> Using Elixir " + reviewed("elixir", "1.19") + " (from ELIXIR_VERSION=1.19)"},
-		{"bun env", bun(map[string]string{"BUN_VERSION": "1.3"}, nil), "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)"},
-		{"bun file", bun(nil, map[string]string{".bun-version": "1.3\n"}), "==> Using Bun 1.3.14 (from .bun-version)"},
-		{"poetry env", poetry(map[string]string{"POETRY_VERSION": "1.8.4"}), "==> Using Poetry 1.8.4 (from POETRY_VERSION=1.8.4)"},
-		{"uv env", uv(map[string]string{"UV_VERSION": "0.9.0"}), "==> Using uv 0.9.0 (from UV_VERSION=0.9.0)"},
+			"==> Using Elixir " + reviewed("elixir", "1.19") + " (from ELIXIR_VERSION=1.19)" + elixirDocs},
+		{"elixir ERLANG_VERSION", fixed(NativeChoice{Label: "Elixir", Line: "1.18.4", otp: "28.0.2", Source: "ERLANG_VERSION=28.0", erlang: "28.0"}),
+			"==> Using Elixir 1.18.4 on Erlang/OTP 28.0.2 (from ERLANG_VERSION=28.0)" + elixirDocs},
+		{"bun env", bun(map[string]string{"BUN_VERSION": "1.3"}, nil), "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)" + bunDocs},
+		{"bun file", bun(nil, map[string]string{".bun-version": "1.3\n"}), "==> Using Bun 1.3.14 (from .bun-version)" + bunDocs},
+		{"poetry env", poetry(map[string]string{"POETRY_VERSION": "1.8.4"}), "==> Using Poetry 1.8.4 (from POETRY_VERSION=1.8.4)" + poetryDocs},
+		{"uv env", uv(map[string]string{"UV_VERSION": "0.9.0"}), "==> Using uv 0.9.0 (from UV_VERSION=0.9.0)" + uvDocs},
+		// Render's Go line has no docs line after it; no Rust line is on record.
 		{"go", primary("go", nil, nil), "==> Using Go 1.27 (default)"},
 		{"rust", primary("rust", nil, nil), "==> Using Rust " + reviewed("rust", "1") + " (default)"},
 	} {
@@ -389,21 +429,12 @@ func TestNativeChoiceNarration(t *testing.T) {
 	// Render names a version file under the service's root directory
 	// ("…/backend/.python-version"); a variable has no path.
 	c, _ := ResolveNativeVersion("node", nil, files(map[string]string{".nvmrc": "18\n"}))
-	if got, want := c.NarrationIn(src+"apps/web"), "==> Using Node.js version "+reviewed("node", "18")+" via "+src+"apps/web/.nvmrc"; got != want {
+	if got, want := c.NarrationIn(src+"apps/web"), "==> Using Node.js version "+reviewed("node", "18")+" via "+src+"apps/web/.nvmrc"+nodeDocs; got != want {
 		t.Errorf("root directory narration = %q, want %q", got, want)
 	}
 	c, _ = ResolveNativeVersion("node", map[string]string{"NODE_VERSION": "18"}, files(nil))
-	if got := c.NarrationIn(src + "apps/web"); !strings.HasSuffix(got, " via environment variable NODE_VERSION") {
+	if got := c.NarrationIn(src + "apps/web"); !strings.HasSuffix(got, " via environment variable NODE_VERSION"+nodeDocs) {
 		t.Errorf("root directory env narration = %q", got)
-	}
-	// Render names the default Erlang on a line of its own, before Elixir.
-	elixir := NativeChoice{Label: "Elixir", Line: "1.18.4", otp: "28.0.2"}
-	if got, want := elixir.Narration(), "==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)"; got != want {
-		t.Errorf("Erlang narration = %q, want %q", got, want)
-	}
-	elixir.Source, elixir.erlang = "ERLANG_VERSION=28.0", "28.0"
-	if got, want := elixir.Narration(), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.2 (from ERLANG_VERSION=28.0)"; got != want {
-		t.Errorf("Erlang narration = %q, want %q", got, want)
 	}
 }
 
@@ -736,7 +767,7 @@ func TestResolveNativeBun(t *testing.T) {
 		t.Errorf("canary choice = %+v, want the reviewed default image with Exact canary", canary)
 	}
 	choice, _, _ := ResolveNativeBun(time.Time{}, map[string]string{"BUN_VERSION": "1.3"}, func(string) ([]byte, bool) { return nil, false })
-	if got := choice.Narration(); got != "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)" {
+	if got := choice.Narration(); got != "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
 }
@@ -840,7 +871,7 @@ func TestResolveNativeBuildPinsAnExactBun(t *testing.T) {
 	if err != nil || len(choices) != 2 || choices[1].Line != "1.3.0" || choices[1].Image != "oven/bun:1.3.0@"+exactDigest {
 		t.Fatalf("choices = %+v, %v; want Bun 1.3.0 pinned to its digest", choices, err)
 	}
-	if got := choices[1].Narration(); got != "==> Using Bun 1.3.0 (from BUN_VERSION=1.3.0)" {
+	if got := choices[1].Narration(); got != "==> Using Bun 1.3.0 (from BUN_VERSION=1.3.0)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
 	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.3.0@"+exactDigest+" /usr/local/bin/bun") {
@@ -881,8 +912,8 @@ func TestResolveNativeBuildInstallsAnyBunRelease(t *testing.T) {
 			if err != nil || len(choices) != 2 || choices[1].Line != tc.release || choices[1].Image != image {
 				t.Fatalf("choices = %+v, %v; want Bun %s pinned to its digest", choices, err, tc.release)
 			}
-			if got := choices[1].Narration(); got != tc.log {
-				t.Errorf("narration = %q, want %q", got, tc.log)
+			if got := choices[1].Narration(); got != tc.log+bunDocs {
+				t.Errorf("narration = %q, want %q", got, tc.log+bunDocs)
 			}
 			if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from="+image+" /usr/local/bin/bun /usr/local/bin/bun\n") {
 				t.Fatalf("Dockerfile does not copy Bun %s:\n%s", tc.release, df)
@@ -971,8 +1002,8 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 			if reviewed, _ := nativeBun.find(tc.line); choice.Image != reviewed.image {
 				t.Errorf("image = %q, want the reviewed %s line's %q", choice.Image, tc.line, reviewed.image)
 			}
-			if tc.log != "" && choice.Narration() != tc.log {
-				t.Errorf("narration = %q, want %q", choice.Narration(), tc.log)
+			if tc.log != "" && choice.Narration() != tc.log+bunDocs {
+				t.Errorf("narration = %q, want %q", choice.Narration(), tc.log+bunDocs)
 			}
 		})
 	}
@@ -992,7 +1023,7 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 		t.Fatalf("choices = %+v, %v; want Bun 1.4.5 pinned to its digest", choices, err)
 	}
 	// The lockfile names no version, so Render's line says its default (w9/139).
-	if got := choices[1].Narration(); got != "==> Using Bun version 1.4.5 (default)" {
+	if got := choices[1].Narration(); got != "==> Using Bun version 1.4.5 (default)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
 	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.4.5@"+exactDigest+" /usr/local/bin/bun") {
@@ -1003,7 +1034,7 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, created, "node", bundle, dockerfile, src)
 	reviewed, _ := nativeBun.find("1.4")
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
-		choices[1].Narration() != "==> Using Bun version 1.4.4 (default)\n==> No official image oven/bun:1.4.5; using the reviewed Bun 1.4 image" {
+		choices[1].Narration() != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.4.5; using the reviewed Bun 1.4 image" {
 		t.Fatalf("missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
 	}
 
@@ -1012,13 +1043,13 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	old := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{digests: map[string]string{bunRepo + ":1.1.0": exactDigest}}, old, "node", bundle, dockerfile, src)
-	if err != nil || len(choices) != 2 || choices[1].Image != "oven/bun:1.1.0@"+exactDigest || choices[1].Narration() != "==> Using Bun version 1.1.0 (default)" {
+	if err != nil || len(choices) != 2 || choices[1].Image != "oven/bun:1.1.0@"+exactDigest || choices[1].Narration() != "==> Using Bun version 1.1.0 (default)"+bunDocs {
 		t.Fatalf("pre-2025-08-18 choices = %+v, %v; want Bun 1.1.0 pinned to its digest", choices, err)
 	}
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, old, "node", bundle, dockerfile, src)
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
-		choices[1].Narration() != "==> Using Bun version 1.4.4 (default)\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
+		choices[1].Narration() != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
 		t.Fatalf("pre-2025-08-18 missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
 	}
 }
@@ -1053,7 +1084,7 @@ func TestResolveNativePoetry(t *testing.T) {
 		})
 	}
 	choice, _ := ResolveNativePoetry(map[string]string{"POETRY_VERSION": "2.1.3"})
-	if got := choice.Narration(); got != "==> Using Poetry 2.1.3 (from POETRY_VERSION=2.1.3)" {
+	if got := choice.Narration(); got != "==> Using Poetry 2.1.3 (from POETRY_VERSION=2.1.3)"+poetryDocs {
 		t.Errorf("narration = %q", got)
 	}
 }

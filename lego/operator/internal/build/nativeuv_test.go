@@ -119,7 +119,7 @@ func TestResolveNativeUV(t *testing.T) {
 	choice, _, _ := ResolveNativeUV(newService, nil, func(string) ([]byte, bool) { return nil, true })
 	// uv.lock opts in without naming a version: Render's line says its
 	// default (w9/139).
-	if got := choice.Narration(); got != "==> Using uv version 0.13.7 (default)" {
+	if got := choice.Narration(); got != "==> Using uv version 0.13.7 (default)"+uvDocs {
 		t.Errorf("narration = %q", got)
 	}
 }

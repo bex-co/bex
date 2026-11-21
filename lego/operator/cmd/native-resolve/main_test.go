@@ -91,7 +91,11 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
 	const wantPython = "==> Using Python version 3.11.9 via environment variable PYTHON_VERSION\n" +
-		"==> Using Poetry version 2.1.3 (default)\n==> Using Node.js version 24.22.3 (default)"
+		"==> Docs on specifying a Python version: https://render.com/docs/python-version\n" +
+		"==> Using Poetry version 2.1.3 (default)\n" +
+		"==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version\n" +
+		"==> Using Node.js version 24.22.3 (default)\n" +
+		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
 	if got := strings.TrimSpace(out.String()); got != wantPython {
 		t.Errorf("narration = %q", got)
 	}
@@ -131,7 +135,10 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	if code := run(time.Time{}, "node", dir, build.NativeWorkdir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node.js version 24.22.3 (default)\n==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)"
+	const want = "==> Using Node.js version 24.22.3 (default)\n" +
+		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version\n" +
+		"==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)\n" +
+		"==> Docs on specifying a Bun version: https://render.com/docs/bun-version"
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q", got)
 	}
@@ -155,7 +162,35 @@ func TestRunNamesAVersionFileUnderTheProjectDir(t *testing.T) {
 	if code := run(time.Time{}, "node", dir, projectDir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node.js version 22.23.5 via /opt/render/project/src/apps/web/.nvmrc"
+	const want = "==> Using Node.js version 22.23.5 via /opt/render/project/src/apps/web/.nvmrc\n" +
+		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
+	if got := strings.TrimSpace(out.String()); got != want {
+		t.Errorf("narration = %q, want %q", got, want)
+	}
+}
+
+// A Node range is echoed as the service wrote it before the version line, and
+// Render's docs line follows it, as Render's log reads (w9/141):
+// "==> Requesting Node.js version >=22.12.0".
+func TestRunEchoesANodeRangeBeforeItsVersion(t *testing.T) {
+	dir := t.TempDir()
+	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
+	base := "# syntax=docker/dockerfile:1.7\n" +
+		"FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496\n" +
+		"RUN true\n"
+	const pkg = `{"engines":{"node":">=22.12.0 <23"}}`
+	for name, content := range map[string]string{"Dockerfile": base, "render-env": "", "package.json": pkg} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var out, errOut bytes.Buffer
+	if code := run(time.Time{}, "node", dir, build.NativeWorkdir, bundle, dockerfile, &out, &errOut); code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut.String())
+	}
+	const want = "==> Requesting Node.js version >=22.12.0 <23\n" +
+		"==> Using Node.js version 22.23.5 via /opt/render/project/src/package.json\n" +
+		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q, want %q", got, want)
 	}
