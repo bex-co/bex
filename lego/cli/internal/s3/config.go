@@ -26,6 +26,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -70,9 +72,12 @@ type lifecycleFilter struct {
 	Prefix *string `json:"Prefix,omitempty"`
 }
 
+// lifecycleExpiration's Date is text, not a time, so that set can take a bare
+// date as well as RFC 3339 and refuse anything else in a sentence
+// (parseLifecycleDate).
 type lifecycleExpiration struct {
-	Days *int32     `json:"Days,omitempty"`
-	Date *time.Time `json:"Date,omitempty"`
+	Days *int32  `json:"Days,omitempty"`
+	Date *string `json:"Date,omitempty"`
 }
 
 type lifecycleAbort struct {
@@ -89,6 +94,15 @@ var unknownField = regexp.MustCompile(`unknown field "([^"]*)"`)
 // decodeDoc reads a JSON document into v, naming the line of the first thing
 // wrong with it. A field bex does not store is refused with what is stored.
 func decodeDoc(name string, data []byte, v any) error {
+	// The decoder would read bytes that are not UTF-8 as U+FFFD, and the
+	// rules sent would then differ from the file.
+	for i := 0; i < len(data); {
+		r, size := utf8.DecodeRune(data[i:])
+		if r == utf8.RuneError && size == 1 {
+			return fmt.Errorf("%s: line %d: the file is not UTF-8", name, 1+bytes.Count(data[:i], []byte("\n")))
+		}
+		i += size
+	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	err := dec.Decode(v)
@@ -171,8 +185,9 @@ func lifecycleCommand(d deps, g *globals) *cobra.Command {
 			`              "Expiration": {"Days": 7},` + "\n" +
 			`              "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 3}}]}` + "\n\n" +
 			"bex runs the rules hourly. It stores a prefix filter, a status, an expiry of 1 to\n" +
-			"36,500 days or a date, and the abort of unfinished uploads, up to 1,000 rules;\n" +
-			"transitions, versions and the tag and size filters are not stored.",
+			"36,500 days or a date (2027-01-01 is midnight UTC), and the abort of unfinished\n" +
+			"uploads, up to 1,000 rules; transitions, versions and the tag and size filters\n" +
+			"are not stored.",
 		Example:      "  bex s3 lifecycle set photos --file lifecycle.json\n  bex s3 lifecycle get photos -o json\n  bex s3 lifecycle delete photos",
 		SilenceUsage: true,
 		Args:         usage.SubcommandArgs,
@@ -280,12 +295,13 @@ func lifecycleGet(d deps, g *globals) *cobra.Command {
 				}
 				expires, abort := "", ""
 				if e := rule.Expiration; e != nil && e.Days != nil {
-					expires = fmt.Sprintf("after %d days", *e.Days)
+					expires = afterDays(*e.Days)
 				} else if e != nil && e.Date != nil {
-					expires = "on " + e.Date.UTC().Format("2006-01-02")
+					day, _, _ := strings.Cut(*e.Date, "T") // RFC 3339 in UTC (lifecycleRuleOf)
+					expires = "on " + day
 				}
 				if a := rule.AbortIncompleteMultipartUpload; a != nil && a.DaysAfterInitiation != nil {
-					abort = fmt.Sprintf("after %d days", *a.DaysAfterInitiation)
+					abort = afterDays(*a.DaysAfterInitiation)
 				}
 				_, _ = fmt.Fprintf(t, "%s\t%s\t%s\t%s\t%s\n", rule.ID, rule.Status, prefix, expires, abort)
 			}
@@ -301,7 +317,10 @@ func lifecycleRuleOf(rule types.LifecycleRule) lifecycleRule {
 		out.Filter = &lifecycleFilter{Prefix: rule.Filter.Prefix}
 	}
 	if e := rule.Expiration; e != nil && (e.Days != nil || e.Date != nil) {
-		out.Expiration = &lifecycleExpiration{Days: e.Days, Date: e.Date}
+		out.Expiration = &lifecycleExpiration{Days: e.Days}
+		if e.Date != nil {
+			out.Expiration.Date = aws.String(e.Date.UTC().Format(time.RFC3339))
+		}
 	}
 	if a := rule.AbortIncompleteMultipartUpload; a != nil && a.DaysAfterInitiation != nil {
 		out.AbortIncompleteMultipartUpload = &lifecycleAbort{DaysAfterInitiation: a.DaysAfterInitiation}
@@ -377,16 +396,39 @@ func parseLifecycle(name string, data []byte) (int, func(*run, string) error, er
 		return 0, nil, usageError("%s: line 1: the document has no Rules (a document is {\"Rules\": [ … ]}); `bex s3 lifecycle delete` removes the rules", name)
 	}
 	rules := make([]types.LifecycleRule, 0, len(doc.Rules))
-	for _, rule := range doc.Rules {
+	for i, rule := range doc.Rules {
+		// A refusal names the rule by position, as the gateway does, and by ID.
+		refuse := func(format string, args ...any) error {
+			which := fmt.Sprintf("lifecycle rule %d", i+1)
+			if rule.ID != "" {
+				which += fmt.Sprintf(" (%q)", rule.ID)
+			}
+			return usageError("%s: %s: %s", name, which, fmt.Sprintf(format, args...))
+		}
 		out := types.LifecycleRule{Status: types.ExpirationStatus(rule.Status), Prefix: rule.Prefix} //nolint:staticcheck // the gateway takes the legacy prefix as well as Filter.Prefix (ADR112 D3)
 		if rule.ID != "" {
 			out.ID = aws.String(rule.ID)
 		}
 		if rule.Filter != nil && rule.Filter.Prefix != nil {
 			out.Filter = &types.LifecycleRuleFilter{Prefix: rule.Filter.Prefix}
+			if problem := prefixProblem(*rule.Filter.Prefix); problem != "" {
+				return 0, nil, refuse("Filter.Prefix %q %s (%s)", *rule.Filter.Prefix, problem, prefixRule)
+			}
+		}
+		if rule.Prefix != nil {
+			if problem := prefixProblem(*rule.Prefix); problem != "" {
+				return 0, nil, refuse("Prefix %q %s (%s)", *rule.Prefix, problem, prefixRule)
+			}
 		}
 		if e := rule.Expiration; e != nil {
-			out.Expiration = &types.LifecycleExpiration{Days: e.Days, Date: e.Date}
+			out.Expiration = &types.LifecycleExpiration{Days: e.Days}
+			if e.Date != nil {
+				date, ok := parseLifecycleDate(*e.Date)
+				if !ok {
+					return 0, nil, refuse("Expiration.Date %q must be a date such as 2027-01-01 or 2027-01-01T00:00:00Z", *e.Date)
+				}
+				out.Expiration.Date = &date
+			}
 		}
 		if a := rule.AbortIncompleteMultipartUpload; a != nil {
 			out.AbortIncompleteMultipartUpload = &types.AbortIncompleteMultipartUpload{DaysAfterInitiation: a.DaysAfterInitiation}
@@ -399,6 +441,44 @@ func parseLifecycle(name string, data []byte) (int, func(*run, string) error, er
 		})
 		return err
 	}, nil
+}
+
+// prefixRule is the gateway's rule for a lifecycle prefix in words.
+const prefixRule = "a lifecycle prefix is at most 1,024 bytes with no control character"
+
+// prefixProblem says what breaks the gateway's rule for a lifecycle prefix
+// (objectstorage.ValidateLifecycle in lego/backend, which this module cannot
+// import), or "" when nothing does. It is checked before the rule is sent
+// because the SDK's XML encoder replaces most control characters with U+FFFD
+// rather than refuse them, and the gateway would store a prefix that real keys
+// match in place of the one the file names (w32/067).
+func prefixProblem(prefix string) string {
+	switch {
+	case len(prefix) > maxKeyBytes:
+		return fmt.Sprintf("is %d bytes long", len(prefix))
+	case strings.ContainsFunc(prefix, unicode.IsControl):
+		return "has a control character"
+	}
+	return ""
+}
+
+// parseLifecycleDate reads an Expiration's Date: RFC 3339, as S3's JSON writes
+// it, or a bare date, which is midnight UTC as bex stores it.
+func parseLifecycleDate(s string) (time.Time, bool) {
+	for _, layout := range []string{time.RFC3339, time.DateOnly} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
+// afterDays is a rule's age in the lifecycle table.
+func afterDays(n int32) string {
+	if n == 1 {
+		return "after 1 day"
+	}
+	return fmt.Sprintf("after %d days", n)
 }
 
 // configSet is `set <bucket> --file rules.json` for one kind of rules.
