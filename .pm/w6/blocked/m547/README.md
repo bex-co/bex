@@ -1,6 +1,6 @@
 # w6 · m547 — A disk-bearing service is unavailable for a few seconds on a deploy, as on Render
 
-**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** todo (t001–t004, t007, t008 and t010 done)
+**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** blocked (t001–t004, t007, t008 and t010 done; t005 waits for the production pin)
 
 ## Tasks (in order)
 
@@ -36,3 +36,14 @@
 - **Expected outcome:** each deploy of a disk service costs seconds of downtime, not tens of seconds or minutes.
 - **Why now:** it touches every deploy, restart and plan change of every disk service; t001 measures first, so the fixes ship only where the numbers ask for them. Independent of m548, which bounds the stop side.
 - **Render parity task omitted:** operator mechanism only; no REST, GraphQL, MCP or dashboard change.
+
+## BLOCKED — 2026-11-21: t005 waits for the production pin
+
+- **Shipped:**
+  - `e0b731eba` makes a disk-bearing App's next instance prefer its volume's node and run its startup probe every 1 s, with the same 15-minute budget. Both are adopted lazily, so the upgrade Recreates no disk service.
+  - The same commit sets the four tenant KubeadmConfigTemplates to sync node status every 2 s. Existing nodes keep 10 s until Cluster API replaces them. No roll was forced, because a forced roll would Recreate every disk service and other workers' live fixtures.
+- **Measured before (t001, production, 2026-11-21):** 15.8–23.3 s on the same node and 39.8–46.8 s across nodes. The time went to node moves (27–32 s each), the 10 s startup period (7–9 s) and the kubelet's 10 s sync (1.7–8.6 s on the same node). LUKS `cryptsetup open` (2.1–2.3 s) is a floor the operator cannot move.
+- **Expected after:** about 6–9 s on the volume's node: stop 0.5 s, a sync of at most 2 s, LUKS 2.2 s, mount 0.8 s, pull 0.6–2.2 s, start 0.3 s, a 1 s probe and Ready 0.4 s. That is above the definition of done's "about 5 s". t005 names the excess phase if the measurement agrees, and t006 records the measured bound.
+- **Gate (clears by itself): pin must carry `e0b731eba`.** Then t005 runs its steps: a tenant node at 2 s (roll `bex-tenant-0` with `rolloutAfter` if none), the fixture, and the runs.
+- **Filed on the way:** [w6/159](../../159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/160](../../160.md) (pre-pull for large images).
+
