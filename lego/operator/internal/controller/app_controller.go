@@ -3700,6 +3700,7 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	}
 
 	app.Status.Image = image
+	settleDetectedPort(app)
 	setServingURLs(app, hosts)
 	app.Status.ObservedGeneration = app.Generation
 	if err := r.markRunning(ctx, app, dep, replicas, "app running (kubernetes)",

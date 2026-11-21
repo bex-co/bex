@@ -1381,6 +1381,18 @@ spec:
                 maximum: 65535
                 minimum: 0
                 type: integer
+              detectedPortSource:
+                description: |-
+                  DetectedPortSource is the source of the release DetectedPort was found
+                  on: a prebuilt image ("image") or a Git build ("build"). A release from
+                  the other source runs another program, so it is probed on its own port
+                  first, as a new service is, and it drops the detection once it serves
+                  (w32/065). Empty for a detection recorded before w32/065 or on a Restart
+                  or rollback, which every release keeps.
+                enum:
+                - image
+                - build
+                type: string
               disk:
                 description: |-
                   Disk is the observed state of the attached persistent disk; nil when

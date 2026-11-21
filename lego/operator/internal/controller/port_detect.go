@@ -96,11 +96,11 @@ func explicitServingPort(app *appv1alpha1.App) bool {
 // and clears a stale detection.
 func detectedServingPort(app *appv1alpha1.App, port int) int {
 	if explicitServingPort(app) {
-		app.Status.DetectedPort = 0
+		app.Status.DetectedPort, app.Status.DetectedPortSource = 0, ""
 		return port
 	}
-	if app.Status.DetectedPort > 0 {
-		return int(app.Status.DetectedPort)
+	if detected := carriedDetectedPort(app); detected > 0 {
+		return int(detected)
 	}
 	return port
 }
@@ -108,7 +108,49 @@ func detectedServingPort(app *appv1alpha1.App, port int) int {
 // servingPortDetected reports whether port, the serving port, was found by
 // port detection rather than named by the service (detectedServingPort).
 func servingPortDetected(app *appv1alpha1.App, port int) bool {
-	return !explicitServingPort(app) && app.Status.DetectedPort > 0 && int(app.Status.DetectedPort) == port
+	detected := carriedDetectedPort(app)
+	return !explicitServingPort(app) && detected > 0 && int(detected) == port
+}
+
+// releaseSource is where the release this pass runs comes from: a prebuilt
+// image or a Git build (appv1alpha1.DetectedPortSource*). It is empty when the
+// pass runs another release than its spec names: a Restart, rollback or image
+// override runs its selection, and a settling cancel the release that served.
+func releaseSource(app *appv1alpha1.App) string {
+	switch {
+	case app.ActiveReleaseConfig() != nil || canceledOverServed(app):
+		return ""
+	case app.Spec.Image != "":
+		return appv1alpha1.DetectedPortSourceImage
+	default:
+		return appv1alpha1.DetectedPortSourceBuild
+	}
+}
+
+// carriedDetectedPort is the detected port this pass's release starts from:
+// none when the port was found on a release from the other source. A service
+// switched between a prebuilt image and a Git build runs another program, so,
+// as on Render, which scans each deploy for the port its process binds, it is
+// probed on its own port first rather than on the one the other program bound
+// (w32/065). A release from the same source keeps the port (w8/177), and a
+// detection from before sources were recorded applies to every release.
+func carriedDetectedPort(app *appv1alpha1.App) int32 {
+	found, current := app.Status.DetectedPortSource, releaseSource(app)
+	if found != "" && current != "" && found != current {
+		return 0
+	}
+	return app.Status.DetectedPort
+}
+
+// settleDetectedPort runs as a release goes live: a detection it did not carry,
+// found on a release from the other source, is dropped, so every surface names
+// the port it serves on and its deploy names no detected port. The drop waits
+// for the release to serve: until then the release that bound the detected
+// port still serves, and a failed or canceled switch keeps serving on it.
+func settleDetectedPort(app *appv1alpha1.App) {
+	if app.Status.DetectedPort > 0 && carriedDetectedPort(app) == 0 {
+		app.Status.DetectedPort, app.Status.DetectedPortSource = 0, ""
+	}
 }
 
 // processPort is the PORT the process is given. It is the serving port, the
@@ -216,15 +258,17 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 
 // adoptListener makes candidate, the listener a scan chose, the App's detected
 // port once the scan before it chose the same one.
+// A detection from the other source counts as none: this release's own process
+// may bind the same port, and it is recorded for this release's source.
 func (r *AppReconciler) adoptListener(ctx context.Context, app *appv1alpha1.App, key string, port, candidate int) string {
-	if app.Status.DetectedPort == int32(candidate) {
+	if carriedDetectedPort(app) == int32(candidate) {
 		return ""
 	}
 	if !r.candidateConfirmed(key, candidate) {
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListening, portParam(int32(candidate)))
 	}
 	logf.FromContext(ctx).Info("detected the port the process listens on", "app", app.Name, "port", candidate, "was", port)
-	app.Status.DetectedPort = int32(candidate)
+	app.Status.DetectedPort, app.Status.DetectedPortSource = int32(candidate), releaseSource(app)
 	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningAdopted, portParam(int32(candidate)))
 }
 

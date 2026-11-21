@@ -263,6 +263,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"PriorServingNetwork":        "port discovery; read by service views, not recorded",
 		"EnvPort":                    "port discovery; read by service views, not recorded",
 		"DetectedPort":               "port discovery; read by service views, not recorded",
+		"DetectedPortSource":         "port discovery; operator bookkeeping",
 		"RuntimePorts":               "port scan every 2 minutes; read by service views, not recorded",
 		"ImageRevision":              "read at a deploy's close, which a phase or release change kicks",
 		"Image":                      "read at a deploy's close, which a phase or release change kicks",

@@ -44,6 +44,13 @@ const (
 	ReasonHTTPPortDiscovery = "HTTPPortDiscovery"
 )
 
+// AppStatus.DetectedPortSource values: the source of the release a listener
+// was detected on (w32/065).
+const (
+	DetectedPortSourceImage = "image"
+	DetectedPortSourceBuild = "build"
+)
+
 // MaxImagePorts bounds a private service's TCP port set; it mirrors the
 // MaxItems marker on ImageNetworkStatus.Ports, which must stay a literal.
 const MaxImagePorts = 75

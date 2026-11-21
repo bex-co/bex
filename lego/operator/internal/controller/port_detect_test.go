@@ -588,3 +588,135 @@ func TestARolledBackPrivateServiceServesItsNativePortAgain(t *testing.T) {
 		t.Fatalf("PORT = %d, want 10000", got)
 	}
 }
+
+// sourced sets the service's source and the detection it holds: a prebuilt
+// image when image is set, else a Git build.
+func sourced(image string, detected int32, found string) func(*appv1alpha1.App, *corev1.Pod) {
+	return func(a *appv1alpha1.App, _ *corev1.Pod) {
+		a.Spec.Image, a.Spec.Repo = image, ""
+		if image == "" {
+			a.Spec.Repo = "https://github.com/bex-co/bex"
+		}
+		a.Status.DetectedPort, a.Status.DetectedPortSource = detected, found
+	}
+}
+
+// restarted makes the App's release a Restart of generation 2, whose image the
+// selection names whatever the saved source is.
+func restarted(a *appv1alpha1.App) {
+	a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, SourceGeneration: 2, Image: "zot.test:5000/tea-a/web:gen-2"}
+	a.Status.ReleaseGeneration, a.Status.SelectedReleaseGeneration = 3, 3
+}
+
+// w32/065: a web service that went live on nginx's detected 80 and was switched
+// back to its native build was probed on 80 first: its startup probe failed,
+// detection found 10000 and the second roll went live 50 s later. A release
+// from the other source runs another program, so it starts on its own port,
+// as Render's per-deploy port scan does, in both directions. A release from
+// the same source, a Restart and a detection recorded before sources were keep
+// the port, and the detection itself stays while the release it belongs to
+// still serves.
+func TestASwitchedReleaseIsProbedOnItsOwnPortFirst(t *testing.T) {
+	const nginx = "docker.io/library/nginx:alpine"
+	for name, tc := range map[string]struct {
+		release func(*appv1alpha1.App, *corev1.Pod)
+		restart bool
+		want    int
+	}{
+		"an image's port, then a build":        {release: sourced("", 80, appv1alpha1.DetectedPortSourceImage), want: appv1alpha1.DefaultPort},
+		"a build's port, then an image":        {release: sourced(nginx, 8000, appv1alpha1.DetectedPortSourceBuild), want: appv1alpha1.DefaultPort},
+		"a build's port, then a build":         {release: sourced("", 8000, appv1alpha1.DetectedPortSourceBuild), want: 8000},
+		"an image's port, then an image":       {release: sourced(nginx, 80, appv1alpha1.DetectedPortSourceImage), want: 80},
+		"a port recorded before sources were":  {release: sourced("", 80, ""), want: 80},
+		"a Restart over a pending switch":      {release: sourced("", 80, appv1alpha1.DetectedPortSourceImage), restart: true, want: 80},
+		"a Restart of a build's detected port": {release: sourced(nginx, 8000, appv1alpha1.DetectedPortSourceBuild), restart: true, want: 8000},
+	} {
+		t.Run(name, func(t *testing.T) {
+			app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Port: appv1alpha1.DefaultPort}}
+			tc.release(app, nil)
+			if tc.restart {
+				restarted(app)
+			}
+			detected := app.Status.DetectedPort
+			if got := detectedServingPort(app, appv1alpha1.DefaultPort); got != tc.want {
+				t.Fatalf("probed on %d, want %d", got, tc.want)
+			}
+			if app.Status.DetectedPort != detected {
+				t.Fatalf("DetectedPort = %d, want the serving release's %d kept until this one serves", app.Status.DetectedPort, detected)
+			}
+			if got := processPort(app, tc.want); got != appv1alpha1.DefaultPort {
+				t.Fatalf("PORT = %d, want 10000", got)
+			}
+		})
+	}
+}
+
+// The release a switch rolls out may bind the very port the other program
+// did, or move from it (w8/177): either way the scan of its unready instance
+// adopts what it binds, for its own source, and it is then probed there.
+func TestASwitchedReleaseAdoptsThePortItBinds(t *testing.T) {
+	web := httpListenerPort(t)
+	for name, held := range map[string]func(*appv1alpha1.App, *corev1.Pod){
+		"the image's port, bound by the build":         sourced("", int32(web), appv1alpha1.DetectedPortSourceImage),
+		"another port than the build's last detection": sourced("", 8000, appv1alpha1.DetectedPortSourceBuild),
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{web}}, func(a *appv1alpha1.App, p *corev1.Pod) {
+				held(a, p)
+				onLoopback(a, p)
+			})
+			probed := detectedServingPort(app, appv1alpha1.DefaultPort)
+			for range 2 {
+				r.detectBoundPort(t.Context(), app, dep, probed)
+				time.Sleep(time.Millisecond)
+			}
+			if app.Status.DetectedPort != int32(web) || app.Status.DetectedPortSource != appv1alpha1.DetectedPortSourceBuild {
+				t.Fatalf("detected %d from %q, want %d from the build", app.Status.DetectedPort, app.Status.DetectedPortSource, web)
+			}
+			if got := detectedServingPort(app, appv1alpha1.DefaultPort); got != web {
+				t.Fatalf("probed on %d after the scan, want %d", got, web)
+			}
+		})
+	}
+}
+
+// Once the switched release serves on its own port, the other program's
+// detection goes, so every surface reads the port it serves on and its deploy
+// names no detected port. Until then, and for a release that keeps the port,
+// the detection stays.
+func TestAServingReleaseDropsTheOtherSourcesDetection(t *testing.T) {
+	const nginx = "docker.io/library/nginx:alpine"
+	for name, tc := range map[string]struct {
+		release func(*appv1alpha1.App, *corev1.Pod)
+		restart bool
+		kept    bool
+	}{
+		"a build serving after an image's 80":    {release: sourced("", 80, appv1alpha1.DetectedPortSourceImage)},
+		"an image serving after a build's 8000":  {release: sourced(nginx, 8000, appv1alpha1.DetectedPortSourceBuild)},
+		"the build that bound it":                {release: sourced("", 8000, appv1alpha1.DetectedPortSourceBuild), kept: true},
+		"a detection from before sources were":   {release: sourced("", 80, ""), kept: true},
+		"a Restart of the release that bound it": {release: sourced("", 80, appv1alpha1.DetectedPortSourceImage), restart: true, kept: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Port: appv1alpha1.DefaultPort}}
+			tc.release(app, nil)
+			if tc.restart {
+				restarted(app)
+			}
+			want := app.Status
+			settleDetectedPort(app)
+			if tc.kept {
+				if app.Status.DetectedPort != want.DetectedPort || app.Status.DetectedPortSource != want.DetectedPortSource {
+					t.Fatalf("detection %d from %q, want %d from %q kept", app.Status.DetectedPort, app.Status.DetectedPortSource, want.DetectedPort, want.DetectedPortSource)
+				}
+				return
+			}
+			if app.Status.DetectedPort != 0 || app.Status.DetectedPortSource != "" {
+				t.Fatalf("detection %d from %q, want it dropped", app.Status.DetectedPort, app.Status.DetectedPortSource)
+			}
+			if app.ServingPort() != appv1alpha1.DefaultPort || app.ServingPortDetected() {
+				t.Fatalf("serving %d (detected %v), want its own 10000", app.ServingPort(), app.ServingPortDetected())
+			}
+		})
+	}
+}

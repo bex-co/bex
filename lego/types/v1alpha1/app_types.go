@@ -1959,6 +1959,16 @@ type AppStatus struct {
 	// +kubebuilder:validation:Maximum=65535
 	DetectedPort int32 `json:"detectedPort,omitempty"`
 
+	// DetectedPortSource is the source of the release DetectedPort was found
+	// on: a prebuilt image ("image") or a Git build ("build"). A release from
+	// the other source runs another program, so it is probed on its own port
+	// first, as a new service is, and it drops the detection once it serves
+	// (w32/065). Empty for a detection recorded before w32/065 or on a Restart
+	// or rollback, which every release keeps.
+	// +optional
+	// +kubebuilder:validation:Enum=image;build
+	DetectedPortSource string `json:"detectedPortSource,omitempty"`
+
 	// RuntimePorts is the TCP listeners a web or private service's instances
 	// were found accepting connections on, from outside the pod (Render
 	// publishes any port a service binds on its private network; w3/m273,
