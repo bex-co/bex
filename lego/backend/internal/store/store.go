@@ -3083,14 +3083,24 @@ func (s *PGStore) SetOverlappingDeployPolicy(ctx context.Context, workspaceID, p
 	return nil
 }
 
-// OverlappingDeployPolicy is workspaceID's Overlapping Deploy Policy (w4/653).
-func (s *PGStore) OverlappingDeployPolicy(ctx context.Context, workspaceID string) (string, error) {
-	var policy string
-	err := s.Pool.QueryRow(ctx, `SELECT overlapping_deploy_policy FROM tenants WHERE id = $1`, workspaceID).Scan(&policy)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", fmt.Errorf("workspace: %w", ErrNotFound)
+// OverlappingDeployPolicies reads the Overlapping Deploy Policy (w4/653) of
+// each of workspaceIDs that exists, in one query: a workspaces list reads the
+// whole list's at once.
+func (s *PGStore) OverlappingDeployPolicies(ctx context.Context, workspaceIDs []string) (map[string]string, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT id, overlapping_deploy_policy FROM tenants WHERE id = ANY($1)`, workspaceIDs)
+	if err != nil {
+		return nil, err
 	}
-	return policy, err
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, policy string
+		if err := rows.Scan(&id, &policy); err != nil {
+			return nil, err
+		}
+		out[id] = policy
+	}
+	return out, rows.Err()
 }
 
 // cancelPendingDeploys coalesces overlapping triggers into one latest-pending

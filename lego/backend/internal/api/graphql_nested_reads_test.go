@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // TestGraphQLNestedReadsAreBounded: the env-var, secret-file and outbound-IP
@@ -126,5 +127,110 @@ func TestGraphQLNestedReadsAreBounded(t *testing.T) {
 		if result, _, _ := run(doc); limited(result) > 0 {
 			t.Errorf("%s: %d reads refused", doc, limited(result))
 		}
+	}
+}
+
+// settingsStore is fakeWSStore plus the inbound IP rules and the Overlapping
+// Deploy Policy, counting the store reads of either.
+type settingsStore struct {
+	*fakeWSStore
+	reads atomic.Int64
+}
+
+func (s *settingsStore) WorkspaceIPAllowList(ctx context.Context, id string) ([]core.IPAllowListEntry, bool, error) {
+	lists, err := s.WorkspaceIPAllowLists(ctx, []string{id})
+	entries, ok := lists[id]
+	return entries, ok, err
+}
+
+func (s *settingsStore) WorkspaceIPAllowLists(context.Context, []string) (map[string][]core.IPAllowListEntry, error) {
+	s.reads.Add(1)
+	return map[string][]core.IPAllowListEntry{}, nil
+}
+
+func (s *settingsStore) SetWorkspaceIPAllowList(context.Context, string, []core.IPAllowListEntry) error {
+	return nil
+}
+
+func (s *settingsStore) OverlappingDeployPolicies(_ context.Context, ids []string) (map[string]string, error) {
+	s.reads.Add(1)
+	out := map[string]string{}
+	for _, id := range ids {
+		out[id] = store.OverlapWait
+	}
+	return out, nil
+}
+
+func (s *settingsStore) SetOverlappingDeployPolicy(context.Context, string, string) error { return nil }
+
+// TestGraphQLWorkspaceSettingsAreReadOncePerList: Workspace's ipAllowList and
+// overlappingDeployPolicy each read the store, and under workspaces they
+// read it once a workspace and again for each alias. A document the cost gate
+// admits, 11 copies of the list with each field aliased 10 times, made 42
+// reads a membership: 42,000 store queries and 4 s against a real Postgres for
+// a caller in 1,000 workspaces, which an org Owner creates at no fee. Each
+// list now reads each setting once for all its rows.
+func TestGraphQLWorkspaceSettingsAreReadOncePerList(t *testing.T) {
+	const memberships = 100
+	st := &settingsStore{fakeWSStore: newFakeWSStore()}
+	for i := range memberships {
+		mustCreate(t, st.fakeWSStore, fmt.Sprintf("ws%03d", i), "pro", "client-1")
+	}
+	srv := NewServer(serverBase(t, st), Deps{WorkspaceStore: st})
+	schema, err := srv.newSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.schema = schema
+
+	lists := gqlMaxAliasesPerField + 1
+	var doc strings.Builder
+	doc.WriteString("{ ")
+	for l := range lists {
+		if l > 0 {
+			fmt.Fprintf(&doc, "w%d: ", l)
+		}
+		doc.WriteString("workspaces { id ipAllowList { cidrBlock } overlappingDeployPolicy ")
+		if l == 0 {
+			for i := 1; i <= gqlMaxAliasesPerField; i++ {
+				fmt.Fprintf(&doc, "a%d: ipAllowList { cidrBlock } p%d: overlappingDeployPolicy ", i, i)
+			}
+		}
+		doc.WriteString("} ")
+	}
+	doc.WriteString("}")
+	if err := validateGraphQLComplexity(doc.String()); err != nil {
+		t.Fatalf("the cost gate refuses the document (%v); it no longer shows what the bound adds", err)
+	}
+
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1"})
+	var result *graphql.Result
+	finishesWithin(t, "workspaces settings", func() {
+		_, _, _, result = srv.executeGraphQL(ctx, graphqlRequestBody{Query: doc.String()}, &gqlBudget{})
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("errors: %v", result.Errors)
+	}
+	if got, want := st.reads.Load(), int64(2*lists); got != want {
+		t.Errorf("%d store reads for %d workspaces, want %d: one a setting a list", got, memberships, want)
+	}
+	// Every row still answers every alias.
+	rows, _ := result.Data.(map[string]any)["workspaces"].([]any)
+	if len(rows) != memberships {
+		t.Fatalf("%d workspaces listed, want %d", len(rows), memberships)
+	}
+	for _, r := range rows {
+		row := r.(map[string]any)
+		for i := 1; i <= gqlMaxAliasesPerField; i++ {
+			if rules, _ := row[fmt.Sprintf("a%d", i)].([]any); len(rules) == 0 || row[fmt.Sprintf("p%d", i)] != store.OverlapWait {
+				t.Fatalf("row %v: a%d = %v, p%d = %v; want the default rules and wait", row["id"], i, row[fmt.Sprintf("a%d", i)], i, row[fmt.Sprintf("p%d", i)])
+			}
+		}
+	}
+
+	// The polled list selects neither and reads neither.
+	st.reads.Store(0)
+	if _, _, _, result = srv.executeGraphQL(ctx, graphqlRequestBody{Query: "{ workspaces { id name plan } }"}, &gqlBudget{}); len(result.Errors) > 0 || st.reads.Load() != 0 {
+		t.Errorf("the plain list: errors %v, %d settings reads; want none", result.Errors, st.reads.Load())
 	}
 }

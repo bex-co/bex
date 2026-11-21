@@ -18,6 +18,7 @@ package workspaces
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -33,14 +34,15 @@ import (
 // Every member reads it, as on the settings page; Admins change it.
 
 type deployPolicyStore interface {
-	OverlappingDeployPolicy(ctx context.Context, workspaceID string) (string, error)
+	// OverlappingDeployPolicies reads the policy of each of workspaceIDs that
+	// exists, in one query.
+	OverlappingDeployPolicies(ctx context.Context, workspaceIDs []string) (map[string]string, error)
 	SetOverlappingDeployPolicy(ctx context.Context, workspaceID, policy string) error
 }
 
 // overlappingDeployPolicy is w's policy, read only when a surface selects
 // it, and refused, as the inbound IP rules are, to a member the workspace's
-// 2FA requirement blocks. A store without the setting runs Wait, as bex did
-// before it.
+// 2FA requirement blocks.
 func (s *Service) overlappingDeployPolicy(ctx context.Context, w WorkspaceView) (string, error) {
 	// Like the inbound IP rules, this is workspace configuration the 2FA-exempt
 	// workspaces list must not hand a member the workspace blocks (w22/m402).
@@ -49,15 +51,42 @@ func (s *Service) overlappingDeployPolicy(ctx context.Context, w WorkspaceView) 
 			return "", err
 		}
 	}
-	if w.OverlappingDeployPolicy != "" {
-		return w.OverlappingDeployPolicy, nil
+	if w.OverlappingDeployPolicy == "" {
+		views, err := s.withOverlappingDeployPolicies(ctx, []WorkspaceView{w})
+		if err != nil {
+			return "", err
+		}
+		w = views[0]
 	}
+	if w.OverlappingDeployPolicy == "" {
+		return "", mapStoreErr(fmt.Errorf("workspace: %w", store.ErrNotFound))
+	}
+	return w.OverlappingDeployPolicy, nil
+}
+
+// withOverlappingDeployPolicies fills each view's OverlappingDeployPolicy
+// with one store read, leaving it empty for a workspace that no longer
+// exists. A store without the setting runs Wait, as bex did before it.
+func (s *Service) withOverlappingDeployPolicies(ctx context.Context, views []WorkspaceView) ([]WorkspaceView, error) {
 	st, ok := s.Store.(deployPolicyStore)
 	if !ok {
-		return store.OverlapWait, nil
+		for i := range views {
+			views[i].OverlappingDeployPolicy = store.OverlapWait
+		}
+		return views, nil
 	}
-	policy, err := st.OverlappingDeployPolicy(ctx, w.ID)
-	return policy, mapStoreErr(err)
+	ids := make([]string, len(views))
+	for i, v := range views {
+		ids[i] = v.ID
+	}
+	policies, err := st.OverlappingDeployPolicies(ctx, ids)
+	if err != nil {
+		return nil, mapStoreErr(err)
+	}
+	for i := range views {
+		views[i].OverlappingDeployPolicy = policies[views[i].ID]
+	}
+	return views, nil
 }
 
 // SetOverlappingDeployPolicy sets a workspace's Overlapping Deploy Policy,

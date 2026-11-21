@@ -31,14 +31,17 @@ func TestPGOverridePolicyStartsTheNewDeployAtOnce(t *testing.T) {
 	ctx := context.Background()
 	st := openLifecyclePG(t)
 	row, executing := deferredRestartApp(t, st)
-	if policy, err := st.OverlappingDeployPolicy(ctx, row.TenantID); err != nil || policy != OverlapWait {
-		t.Fatalf("default policy = %q (err %v), want wait", policy, err)
+	if policies, err := st.OverlappingDeployPolicies(ctx, []string{row.TenantID, "tea-absent"}); err != nil || len(policies) != 1 || policies[row.TenantID] != OverlapWait {
+		t.Fatalf("default policies = %v (err %v), want wait for the workspace and nothing for an absent one", policies, err)
 	}
 	if err := st.SetOverlappingDeployPolicy(ctx, row.TenantID, OverlapOverride); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.SetOverlappingDeployPolicy(ctx, row.TenantID, "newest"); err == nil {
 		t.Fatal("an unknown policy was stored")
+	}
+	if policies, err := st.OverlappingDeployPolicies(ctx, []string{row.TenantID}); err != nil || policies[row.TenantID] != OverlapOverride {
+		t.Fatalf("policies after the set = %v (err %v), want override", policies, err)
 	}
 
 	started, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, "", executing.Generation+1, CommitInfo{}, "")

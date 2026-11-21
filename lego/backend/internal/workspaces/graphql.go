@@ -259,11 +259,37 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return fields
 }
 
+// withSelectedSettings reads the inbound IP rules and the Overlapping Deploy
+// Policy for a whole workspaces list at once, one store read each, when the
+// query selects them. Read per workspace by the field resolvers, a document
+// the cost gate admits (11 copies of the list, each field aliased 10 times)
+// made 42 store reads a membership: 42,000 and 4 s for a caller in 1,000
+// workspaces, which an org Owner creates at no fee (2026-11-20). The polled
+// switcher list selects neither, so it still pays for neither.
+func (s *Service) withSelectedSettings(p graphql.ResolveParams, views []WorkspaceView) ([]WorkspaceView, error) {
+	var err error
+	if gqlutil.Selects(p, "ipAllowList") {
+		if views, err = s.withIPAllowLists(p.Context, views); err != nil {
+			return nil, err
+		}
+	}
+	if gqlutil.Selects(p, "overlappingDeployPolicy") {
+		return s.withOverlappingDeployPolicies(p.Context, views)
+	}
+	return views, nil
+}
+
 func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"workspaces": &graphql.Field{
-			Type:    graphql.NewList(s.workspaceType()),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context) },
+			Type: graphql.NewList(s.workspaceType()),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				views, err := s.List(p.Context)
+				if err != nil {
+					return nil, err
+				}
+				return s.withSelectedSettings(p, views)
+			},
 		},
 		// workspace is one workspace the caller belongs to (can_view), Render's
 		// GET /v1/owners/{ownerId}: what Workspace Settings reads the inbound IP

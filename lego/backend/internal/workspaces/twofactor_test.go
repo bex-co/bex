@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -641,6 +642,27 @@ func TestAWorkspacesIPRulesAreNotReadByABlockedMember(t *testing.T) {
 	policy := f.svc.workspaceType().Fields()["overlappingDeployPolicy"]
 	if _, err := policy.Resolve(graphql.ResolveParams{Source: WorkspaceView{ID: f.workspace, RequireTwoFactor: true}, Context: ctx}); !isCoded(err, core.ErrForbidden, core.CodeWorkspaceTwoFactorRequired) {
 		t.Errorf("overlappingDeployPolicy for a blocked member = %v, want the coded 403 (w4/653)", err)
+	}
+	// So does the workspaces list, which reads both for all its rows before
+	// their fields resolve.
+	required := f.store.tenants[f.workspace]
+	required.RequireTwoFactor = true
+	f.store.tenants[f.workspace] = required
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: f.svc.GraphQLQuery()})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"ipAllowList { cidrBlock }", "overlappingDeployPolicy"} {
+		res := graphql.Do(graphql.Params{Schema: schema, RequestString: "{ workspaces { id " + field + " } }", Context: ctxAs("admin-1")})
+		var orig error
+		if len(res.Errors) == 1 {
+			if wrapped, ok := res.Errors[0].OriginalError().(*gqlerrors.Error); ok {
+				orig = wrapped.OriginalError
+			}
+		}
+		if !isCoded(orig, core.ErrForbidden, core.CodeWorkspaceTwoFactorRequired) {
+			t.Errorf("workspaces { %s } for a blocked member: data %v, errors %v; want the coded 403", field, res.Data, res.Errors)
+		}
 	}
 
 	// A workspace that did not opt in is read as before, even with the gate refusing.

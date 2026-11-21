@@ -17,6 +17,7 @@ limitations under the License.
 package workspaces
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -36,13 +37,14 @@ type policyStore struct {
 	policies map[string]string
 }
 
-func (s *policyStore) OverlappingDeployPolicy(_ context.Context, id string) (string, error) {
+func (s *policyStore) OverlappingDeployPolicies(_ context.Context, ids []string) (map[string]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if p, ok := s.policies[id]; ok {
-		return p, nil
+	out := map[string]string{}
+	for _, id := range ids {
+		out[id] = cmp.Or(s.policies[id], store.OverlapWait)
 	}
-	return store.OverlapWait, nil
+	return out, nil
 }
 
 func (s *policyStore) SetOverlappingDeployPolicy(_ context.Context, id, policy string) error {
