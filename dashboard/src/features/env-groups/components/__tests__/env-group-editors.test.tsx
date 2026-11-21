@@ -164,9 +164,6 @@ describe("EnvGroupEditors restored-draft row identity (w4/139)", () => {
 
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
     const initialKeys = screen.getAllByRole("textbox", { name: "Key" });
     await user.type(initialKeys[initialKeys.length - 1]!, "QA_FIRST");
 
@@ -175,9 +172,6 @@ describe("EnvGroupEditors restored-draft row identity (w4/139)", () => {
     expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
     const keys = screen.getAllByRole("textbox", { name: "Key" });
     await user.type(keys[keys.length - 1]!, "QA_SECOND");
 
@@ -199,9 +193,6 @@ describe("EnvGroupEditors value rules (w21/047)", () => {
     renderEditors();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
     const keys = screen.getAllByRole("textbox", { name: "Key" });
     await user.type(keys[keys.length - 1]!, "PORT");
     const value = screen.getByRole("textbox", { name: "Value for PORT" });
@@ -643,7 +634,9 @@ describe("EnvGroupEditors generated secret names (w4/286)", () => {
     const existing = screen.getByDisplayValue("NEW_SECRET");
     await user.clear(existing);
     await user.type(existing, " NEW_SECRET ");
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Generated secret" }),
     );

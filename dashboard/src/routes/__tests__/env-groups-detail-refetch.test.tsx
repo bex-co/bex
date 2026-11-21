@@ -169,9 +169,6 @@ describe("EnvGroupDetailPage editor across an EnvGroup poll (w1/m153 t003)", () 
     expect(edit).toBeEnabled();
     await user.click(edit);
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
 
     const keyInputs = screen.getAllByRole("textbox", { name: "Key" });
     expect(keyInputs).toHaveLength(2);

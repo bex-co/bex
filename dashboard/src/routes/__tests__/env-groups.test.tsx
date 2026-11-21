@@ -489,7 +489,9 @@ describe("EnvGroupDetailPage", () => {
     renderDetail();
 
     await user.click(await screen.findByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Generated secret" }),
     );

@@ -945,7 +945,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.secretFilesDescription": {
     message:
-      "인증서, 자격 증명처럼 비밀 내용을 담은 파일을 저장하면 배포 시 이 서비스에 마운트됩니다.",
+      "개인 키나 .env 파일처럼 비밀 내용을 담은 파일을 저장합니다. 다음 배포 후 서비스는 각 파일을 /etc/secrets/<파일 이름>에서 읽습니다.",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5664,7 +5664,7 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageDescription": {
-    message: "서비스 전용 변수, 시크릿 파일, 연결된 환경 그룹을 관리합니다.",
+    message: "이 서비스가 실행 중에 읽는 모든 값입니다. 값은 직접 표시하기 전까지 가려집니다.",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5720,7 +5720,7 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "저장되지 않은 환경 변경 사항",
+    message: "저장되지 않은 변경 사항",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5739,12 +5739,12 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "변수 작업 {count}건",
+    message: "변수 {count}개 변경됨",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "파일 작업 {count}건",
+    message: "파일 {count}개 변경됨",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
@@ -6056,8 +6056,7 @@ const koServices: Record<string, TranslationEntry> = {
       "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
   },
   "services.envGroupsScopeError": {
-    message:
-      "이 서비스의 환경을 불러오지 못해 연결할 그룹을 표시하지 않습니다.",
+    message: "이 서비스에 연결할 수 있는 그룹을 확인하지 못했습니다.",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6154,6 +6153,26 @@ const koServices: Record<string, TranslationEntry> = {
     message: "토요일",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "환경 편집 중",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "아직 변경 사항이 없습니다.",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "변수를 추가하는 다른 방법",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message: "위에서 다시 시도하면 변수와 함께 다시 불러옵니다.",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

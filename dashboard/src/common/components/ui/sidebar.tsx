@@ -492,10 +492,15 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
       onDoubleClick={toggleSidebar}
       onKeyDown={handleKeyDown}
       className={cn(
-        "absolute inset-y-0 -right-1 z-20 hidden w-2 cursor-col-resize touch-none select-none sm:block",
-        "[[data-side=right]_&]:right-auto [[data-side=right]_&]:-left-1",
-        "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-transparent after:transition-colors after:content-['']",
-        "hover:after:bg-sidebar-border focus-visible:outline-none focus-visible:after:bg-sidebar-accent-foreground",
+        // A 24px handle (WCAG 2.5.8): 8px over the sidebar's edge and 16px
+        // over the content's gutter, where there is nothing else to hit; its
+        // line stays on the edge itself.
+        "absolute inset-y-0 -right-4 z-20 hidden w-6 cursor-col-resize touch-none select-none sm:block",
+        "[[data-side=right]_&]:right-auto [[data-side=right]_&]:-left-4",
+        "after:absolute after:inset-y-0 after:left-2 after:w-px after:-translate-x-1/2 after:bg-transparent after:transition-colors after:content-['']",
+        "[[data-side=right]_&]:after:right-2 [[data-side=right]_&]:after:left-auto [[data-side=right]_&]:after:translate-x-1/2",
+        // Focus draws the line 2px wide, not the hover's 1px.
+        "hover:after:bg-sidebar-border focus-visible:outline-none focus-visible:after:w-0.5 focus-visible:after:bg-sidebar-accent-foreground",
         "data-[dragging=true]:after:w-0.5 data-[dragging=true]:after:bg-sidebar-accent-foreground",
         className,
       )}

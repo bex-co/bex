@@ -101,7 +101,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
             <Link
               to="/project/$projectId"
               params={{ projectId }}
-              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="relative flex items-center gap-1 text-xs font-medium text-muted-foreground after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:text-foreground"
             >
               <ChevronLeft className="size-3.5" />
               {t("common.navBackToProject")}
@@ -109,7 +109,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           ) : (
             <Link
               to="/"
-              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="relative flex items-center gap-1 text-xs font-medium text-muted-foreground after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:text-foreground"
             >
               <ChevronLeft className="size-3.5" />
               {t("common.navBackToDashboard")}

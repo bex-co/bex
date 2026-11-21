@@ -952,7 +952,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.secretFilesDescription": {
     message:
-      "Храните файлы с секретным содержимым (сертификаты, учётные данные), которые монтируются в этот сервис при деплое.",
+      "Храните файлы с секретным содержимым, например закрытый ключ или файл .env. После следующего деплоя сервис читает каждый из них по пути /etc/secrets/<имя-файла>.",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5734,7 +5734,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.environmentPageDescription": {
     message:
-      "Управляйте переменными сервиса, секретными файлами и подключёнными группами окружения.",
+      "Всё, что этот сервис читает во время работы. Значения скрыты, пока вы их не покажете.",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5790,7 +5790,7 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "Несохранённые изменения окружения",
+    message: "Несохранённые изменения",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5809,42 +5809,42 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_one": {
-    message: "{count} операция с переменными",
+    message: "Изменена {count} переменная",
     description:
       "Draft variable-operation count, composed with the file count at the call site (singular)",
   },
   "services.environmentUnsavedVariables_few": {
-    message: "{count} операции с переменными",
+    message: "Изменены {count} переменные",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedVariables_many": {
-    message: "{count} операций с переменными",
+    message: "Изменено {count} переменных",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "{count} операции с переменными",
+    message: "Изменено {count} переменной",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_one": {
-    message: "{count} операция с файлами",
+    message: "Изменён {count} файл",
     description:
       "Draft file-operation count, composed with the variable count at the call site (singular)",
   },
   "services.environmentUnsavedFiles_few": {
-    message: "{count} операции с файлами",
+    message: "Изменены {count} файла",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_many": {
-    message: "{count} операций с файлами",
+    message: "Изменено {count} файлов",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "{count} операции с файлами",
+    message: "Изменено {count} файла",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
@@ -6171,7 +6171,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.envGroupsScopeError": {
     message:
-      "Не удалось загрузить окружение этого сервиса, поэтому группы для подключения не предлагаются.",
+      "Не удалось проверить, какие группы можно подключить к этому сервису.",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6268,6 +6268,27 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "суббота",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "Редактирование окружения",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "Изменений пока нет.",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "Другие способы добавить переменную",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message:
+      "Они загрузятся вместе с переменными, когда вы повторите попытку выше.",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

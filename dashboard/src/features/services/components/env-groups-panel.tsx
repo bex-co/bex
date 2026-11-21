@@ -6,6 +6,7 @@ import {
   Loader2,
   Link2,
   Link2Off,
+  RotateCw,
 } from "lucide-react";
 import {
   Card,
@@ -36,6 +37,13 @@ import {
   serviceMatchesGroupScope,
 } from "@/features/env-groups/lib/scope";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import {
+  ENV_CARD_ACTION_CLASS,
+  ENV_CARD_DESCRIPTION_CLASS,
+  ENV_CARD_HEADER_CLASS,
+} from "@/features/services/components/env-rows-skeleton";
+import { cn } from "@/common/lib/utils/utils";
+import { SectionErrorNotice } from "@/features/services/components/section-error-notice";
 
 /**
  * The service Environment tab's Environment Groups section (Render dashboard
@@ -44,15 +52,7 @@ import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group
  * bex-api's env-groups GraphQL. A group is a reusable bundle shared across
  * services, so the list is service-independent; only membership is per-service.
  */
-export function EnvGroupsPanel({
-  serviceId,
-  createOpen: createOpenProp,
-  onCreateOpenChange,
-}: {
-  serviceId: string;
-  createOpen?: boolean;
-  onCreateOpenChange?: (open: boolean) => void;
-}) {
+export function EnvGroupsPanel({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const { groups, loading, error, refetch } = useEnvGroups();
   const {
@@ -151,9 +151,7 @@ export function EnvGroupsPanel({
     scope.retry();
     void readOrder();
   };
-  const [internalCreateOpen, setInternalCreateOpen] = useState(false);
-  const createOpen = createOpenProp ?? internalCreateOpen;
-  const setCreateOpen = onCreateOpenChange ?? setInternalCreateOpen;
+  const [createOpen, setCreateOpen] = useState(false);
 
   const errorKind = classifySecretStoreError(error);
   const initialLoading = loading && groups.length === 0 && !error;
@@ -271,21 +269,24 @@ export function EnvGroupsPanel({
 
   return (
     <Card>
-      <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
+      <CardHeader className={ENV_CARD_HEADER_CLASS}>
         {/* Title and description share one cell, as in the variables and
             secret-files cards above: as two grid items, the card header's
             action column put the description beside the title on a phone,
             three words to a line. */}
         <div>
-          <CardTitle>{t("services.envGroupsLinkedTitle")}</CardTitle>
-          <CardDescription className="mt-1.5">
+          {/* Under the tab's h2, as the variables and secret-files cards. */}
+          <CardTitle as="h3">{t("services.envGroupsLinkedTitle")}</CardTitle>
+          <CardDescription className={ENV_CARD_DESCRIPTION_CLASS}>
             {t("services.envGroupsDescription")}
           </CardDescription>
         </div>
-        <CardAction className="col-start-1 row-start-2 mt-2 justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
+        <CardAction className={cn(ENV_CARD_ACTION_CLASS, "justify-self-start")}>
           <Button
             variant="outline"
             size="sm"
+            aria-haspopup="dialog"
+            aria-expanded={createOpen}
             disabled={gated || busy}
             onClick={() => setCreateOpen(true)}
           >
@@ -295,20 +296,23 @@ export function EnvGroupsPanel({
       </CardHeader>
       <CardContent>
         {errorKind ? (
-          <StatePanel kind={errorKind} />
+          <StatePanel
+            kind={errorKind}
+            onRetry={() => void refreshMembership().catch(() => undefined)}
+          />
         ) : initialLoading ? (
           <ListSkeleton />
         ) : (
           <div className="space-y-6">
             <section className="space-y-2">
-              <h3 className="text-sm font-medium">
+              <h4 className="text-sm font-medium">
                 {t("services.envGroupsLinkedCount", {
                   count: linkedGroups.length,
                 })}
-              </h3>
+              </h4>
               {orderRead !== "settled" && linkedGroups.length > 1 ? (
                 <div
-                  className="flex flex-wrap items-center gap-2 text-sm"
+                  className="flex flex-wrap items-center gap-2 text-sm max-md:text-base"
                   role={orderRead === "failed" ? "alert" : "status"}
                 >
                   <p
@@ -336,7 +340,7 @@ export function EnvGroupsPanel({
                 </div>
               ) : null}
               {linkedGroups.length === 0 ? (
-                <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
+                <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm max-md:text-base">
                   {t("services.envGroupsNoneLinked")}
                 </p>
               ) : (
@@ -360,45 +364,36 @@ export function EnvGroupsPanel({
               )}
             </section>
             <section className="space-y-2">
-              <h3 className="text-sm font-medium">
+              <h4 className="text-sm font-medium">
                 {compatibilityReady
                   ? t("services.envGroupsAvailableCount", {
                       count: available.length,
                     })
                   : t("services.envGroupsAvailableTitle")}
-              </h3>
-              {!compatibilityReady ? (
-                <div
-                  className="space-y-2 rounded-md border border-dashed p-4 text-sm"
-                  role={compatibilityError ? "alert" : "status"}
+              </h4>
+              {!compatibilityReady && compatibilityError ? (
+                // The page's one inline error shape, as the variables and
+                // secret-files cards use for a failed read.
+                <SectionErrorNotice
+                  error={{
+                    kind: "generic",
+                    title: t(
+                      scope.error || relationFailed
+                        ? "services.envGroupsScopeError"
+                        : "services.envGroupsScopeEnvironmentMissing",
+                    ),
+                    onRetry: retryCompatibility,
+                  }}
+                />
+              ) : !compatibilityReady ? (
+                <p
+                  className="text-muted-foreground rounded-md border border-dashed p-4 text-sm max-md:text-base"
+                  role="status"
                 >
-                  <p
-                    className={
-                      compatibilityError
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {t(
-                      !compatibilityError
-                        ? "services.envGroupsScopeLoading"
-                        : scope.error || relationFailed
-                          ? "services.envGroupsScopeError"
-                          : "services.envGroupsScopeEnvironmentMissing",
-                    )}
-                  </p>
-                  {compatibilityError ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={retryCompatibility}
-                    >
-                      {t("common.tryAgain")}
-                    </Button>
-                  ) : null}
-                </div>
+                  {t("services.envGroupsScopeLoading")}
+                </p>
               ) : available.length === 0 ? (
-                <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
+                <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm max-md:text-base">
                   {groups.length === 0
                     ? t("services.envGroupsNoneAvailableCreate")
                     : unlinked.length > 0
@@ -520,13 +515,16 @@ function EnvGroupItem({
   };
 
   return (
-    <li className="flex flex-col items-stretch gap-4 py-4 first:pt-4 last:pb-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0 space-y-2">
-        <div className="flex items-center gap-2">
+    // Link/Unlink shares the first line with the name it acts on, at every
+    // width (on a phone it took a row of its own); the group's keys and notes
+    // run the full width under both.
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-4 first:pt-4 last:pb-4">
+      <div className="contents">
+        <div className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 self-center">
           <Button
             asChild
             variant="link"
-            className="h-auto min-w-0 justify-start p-0 font-medium"
+            className="h-auto min-h-6 min-w-0 justify-start p-0 font-medium"
           >
             <a href={`/env-groups/${group.id}`}>
               <span className="break-all">{group.name}</span>
@@ -537,15 +535,17 @@ function EnvGroupItem({
           )}
         </div>
         {outOfScopeNotice ? (
-          <p className="text-destructive text-xs">{outOfScopeNotice}</p>
+          <p className="text-destructive col-span-2 text-sm max-md:text-base">
+            {outOfScopeNotice}
+          </p>
         ) : null}
         {group.envVarKeys.length === 0 && group.secretFileNames.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground col-span-2 text-sm max-md:text-base">
             {t("services.envGroupEmptyContents")}
           </p>
         ) : (
           <>
-            <div className="flex flex-wrap gap-1">
+            <div className="col-span-2 flex flex-wrap gap-1">
               {group.envVarKeys.map((key) => {
                 const reason = keyShadow(key);
                 return reason ? (
@@ -592,14 +592,14 @@ function EnvGroupItem({
               })}
             </div>
             {overridden.length > 0 && (
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground col-span-2 text-sm text-pretty max-md:text-base">
                 {t("services.envGroupOverriddenNote")}
               </p>
             )}
           </>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
+      <div className="col-start-2 row-start-1 flex shrink-0 items-center gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -648,8 +648,19 @@ function ListSkeleton() {
   );
 }
 
-/** The unavailable (503) / forbidden (403) / generic error states. */
-function StatePanel({ kind }: { kind: RefusalKind }) {
+/**
+ * The unavailable (503) / forbidden (403) / generic error states, in the same
+ * centred shape as the variables and secret-files cards' errors. Only a
+ * generic failure offers Try again: a refusal or an unconfigured store does
+ * not change by asking twice.
+ */
+function StatePanel({
+  kind,
+  onRetry,
+}: {
+  kind: RefusalKind;
+  onRetry: () => void;
+}) {
   const { t } = useTranslations();
   const copy = {
     unavailable: {
@@ -669,6 +680,19 @@ function StatePanel({ kind }: { kind: RefusalKind }) {
     },
   }[kind];
   return (
-    <PanelCenteredState icon={copy.icon} title={copy.title} body={copy.body} />
+    <div role="alert">
+      <PanelCenteredState
+        icon={copy.icon}
+        title={copy.title}
+        body={copy.body}
+        action={
+          kind === "generic" ? (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              <RotateCw /> {t("common.tryAgain")}
+            </Button>
+          ) : undefined
+        }
+      />
+    </div>
   );
 }

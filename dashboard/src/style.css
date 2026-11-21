@@ -584,3 +584,20 @@
     min-height: 2.75rem;
   }
 }
+
+/* Reduced motion. With `prefers-reduced-motion: reduce` a menu, dialog,
+   popover or toast appears in place instead of zooming and sliding in, a
+   skeleton stops pulsing, and smooth scrolling jumps. Durations collapse to
+   0.01ms rather than `none`, so Radix still receives the animationend that
+   unmounts a closing layer. A spinner (`animate-spin`) keeps turning: it is
+   the only sign that work is in flight. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin),
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

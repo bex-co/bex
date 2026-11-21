@@ -2,9 +2,10 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
-  Clipboard,
+  Copy,
   Download,
   Eye,
   EyeOff,
@@ -15,10 +16,14 @@ import {
   Pencil,
   Plus,
   RotateCw,
+  ShieldAlert,
   Sparkles,
   Trash2,
   Undo2,
 } from "lucide-react";
+import { cn } from "@/common/lib/utils/utils";
+import { PanelCenteredState } from "@/common/components/panel-states";
+import { SectionErrorNotice } from "@/features/services/components/section-error-notice";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -45,8 +50,16 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import {
+  ENV_CARD_ACTION_CLASS,
+  ENV_CARD_DESCRIPTION_CLASS,
+  ENV_CARD_HEADER_CLASS,
+  ENV_LIST_CLASS,
+  ENV_LIST_FULL_ROW_CLASS,
   ENV_ROW_ACTIONS_CLASS,
   ENV_ROW_CLASS,
+  ENV_ROW_NAME_CLASS,
+  ENV_ROW_VALUE_CLASS,
+  EnvListHead,
   EnvRowsSkeleton,
 } from "@/features/services/components/env-rows-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -120,6 +133,22 @@ const ENV_ERROR_COPY: Record<RefusalKind, { title: string; body: string }> = {
     body: "services.envUnavailableBody",
   },
 };
+// The Secret Files card says what failed in its own words: a refused or
+// unconfigured store names files, not variables.
+const FILES_ERROR_COPY: Record<RefusalKind, { title: string; body: string }> = {
+  generic: {
+    title: "services.secretFilesErrorTitle",
+    body: "services.secretFilesErrorBody",
+  },
+  forbidden: {
+    title: "services.envForbiddenTitle",
+    body: "services.secretFilesForbiddenBody",
+  },
+  unavailable: {
+    title: "services.secretFilesUnavailableTitle",
+    body: "services.envUnavailableBody",
+  },
+};
 
 export function ServiceEnvironmentEditor({
   serviceId,
@@ -156,6 +185,8 @@ export function ServiceEnvironmentEditor({
     <EnvironmentEditor
       // A draft belongs to one service: another service starts a fresh editor.
       key={serviceId}
+      // The tab's name is the layout's h2; its cards sit under it.
+      headingLevel="h3"
       resourceId={serviceId}
       copy={
         dockerBuild
@@ -185,6 +216,11 @@ export function ServiceEnvironmentEditor({
         classifySecretStoreError(env.error) ??
         classifySecretStoreError(files.error)
       }
+      // Both lists read again; a refusal that persists keeps its state.
+      onRetry={() => {
+        void env.refetch().catch(() => undefined);
+        void files.refetch().catch(() => undefined);
+      }}
       revealEnv={revealEnv}
       revealFile={revealFile}
       saving={saving}
@@ -247,6 +283,8 @@ export interface EnvironmentEditorProps {
   secretFileNames: Array<{ id: string; name: string }>;
   loading: boolean;
   errorKind: RefusalKind | null;
+  /** Read the lists again after a failed read; offered beside the error. */
+  onRetry?: () => void;
   revealEnv: (key: string) => Promise<string>;
   revealFile: (name: string) => Promise<string>;
   /**
@@ -274,6 +312,11 @@ export interface EnvironmentEditorProps {
   /** Override section copy when the editor is hosted outside a service (w4/067). */
   copy?: EnvironmentEditorCopy;
   /**
+   * The cards' heading level: h2 under a page's h1 (an environment group),
+   * h3 under a service tab's own h2.
+   */
+  headingLevel?: "h2" | "h3";
+  /**
    * Why the deploying save modes cannot run now — a suspended service
    * (w4/m234). Save only becomes the primary action, and the two deploying
    * items stay disabled with this reason.
@@ -294,6 +337,7 @@ export function EnvironmentEditor({
   secretFileNames,
   loading,
   errorKind,
+  onRetry,
   revealEnv,
   revealFile,
   revision,
@@ -302,6 +346,7 @@ export function EnvironmentEditor({
   saving,
   generateOnServer = false,
   copy,
+  headingLevel = "h2",
   deployBlockedReason,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
@@ -396,8 +441,13 @@ export function EnvironmentEditor({
   const dirty = patch.envVars.length > 0 || patch.secretFiles.length > 0;
   const busy = saving;
   // Menu items mirror their trigger's disabled state; see AddVariableMenu.
+  // Nothing to export is not an export: an empty list disables it too.
   const exportDisabled =
-    loading || Boolean(errorKind) || exporting || sensitiveDenied;
+    loading ||
+    Boolean(errorKind) ||
+    exporting ||
+    sensitiveDenied ||
+    envKeys.length === 0;
   const saveDisabled =
     !dirty || !isDraftValid(validation) || busy || createDenied;
   const blocker = useBlocker({
@@ -480,34 +530,36 @@ export function EnvironmentEditor({
     );
   }
 
-  function addVariable(generated = false) {
-    if (!draft || createDenied) return;
-    // Trimmed, as validation and the save patch compare keys: a padded
-    // " NEW_SECRET " already holds the name (w4/286).
-    const existing = new Set(draft.envVars.map((row) => row.key.trim()));
-    let key = generated ? "NEW_SECRET" : "";
-    let suffix = 2;
-    while (key && existing.has(key)) key = `NEW_SECRET_${suffix++}`;
+  // `entering`: called in the same click as beginEdit, before the draft it
+  // starts has rendered, so the row is added to whatever draft is current.
+  function addVariable(generated = false, entering = false) {
+    if ((!draft && !entering) || createDenied) return;
     const id = `new-env:${nextID.current++}`;
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            envVars: [
-              ...current.envVars,
-              {
-                id,
-                originalKey: null,
-                key,
-                value: generated && !generateOnServer ? generateEnvValue() : "",
-                valueChanged: true,
-                generateValue: generated && generateOnServer,
-                deleted: false,
-              },
-            ],
-          }
-        : current,
-    );
+    const value = generated && !generateOnServer ? generateEnvValue() : "";
+    setDraft((current) => {
+      if (!current) return current;
+      // Trimmed, as validation and the save patch compare keys: a padded
+      // " NEW_SECRET " already holds the name (w4/286).
+      const existing = new Set(current.envVars.map((row) => row.key.trim()));
+      let key = generated ? "NEW_SECRET" : "";
+      let suffix = 2;
+      while (key && existing.has(key)) key = `NEW_SECRET_${suffix++}`;
+      return {
+        ...current,
+        envVars: [
+          ...current.envVars,
+          {
+            id,
+            originalKey: null,
+            key,
+            value,
+            valueChanged: true,
+            generateValue: generated && generateOnServer,
+            deleted: false,
+          },
+        ],
+      };
+    });
   }
 
   function importVariables(entries: DotenvEntry[]) {
@@ -740,15 +792,6 @@ export function EnvironmentEditor({
         </Alert>
       ) : null}
 
-      {errorKind ? (
-        <Alert variant="destructive">
-          <AlertTitle>{t(ENV_ERROR_COPY[errorKind].title)}</AlertTitle>
-          <AlertDescription>
-            {t(ENV_ERROR_COPY[errorKind].body)}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       {restoredDraft && draft ? (
         <Alert>
           <Undo2 />
@@ -780,11 +823,42 @@ export function EnvironmentEditor({
       ) : null}
 
       <EnvironmentSection
+        headingLevel={headingLevel}
         title={envTitle}
         description={envDescription}
         empty={{
           title: envEmptyTitle,
           body: envEmptyBody,
+          // Read mode's way in, as the Secret Files card's empty state has:
+          // Edit with one blank row already added.
+          action: !draft ? (
+            <PermissionTooltip reason={createReason}>
+              <Button
+                size="sm"
+                disabled={editUnavailable}
+                onClick={() => {
+                  beginEdit();
+                  addVariable(false, true);
+                }}
+              >
+                <Plus /> {t("services.envAddVariable")}
+              </Button>
+            </PermissionTooltip>
+          ) : undefined,
+        }}
+        error={
+          errorKind
+            ? {
+                kind: errorKind,
+                title: t(ENV_ERROR_COPY[errorKind].title),
+                body: t(ENV_ERROR_COPY[errorKind].body),
+                onRetry,
+              }
+            : undefined
+        }
+        head={{
+          name: t("services.envColKey"),
+          value: t("services.envColValue"),
         }}
         loading={loading}
         action={
@@ -808,7 +882,7 @@ export function EnvironmentEditor({
                   disabled={exportDisabled}
                   onSelect={() => void exportEnvironment("copy")}
                 >
-                  <Clipboard /> {t("services.envCopy")}
+                  <Copy /> {t("services.envCopy")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={exportDisabled}
@@ -822,6 +896,10 @@ export function EnvironmentEditor({
               <PermissionTooltip reason={createReason}>
                 <Button
                   size="sm"
+                  // Neutral, as Render's is: the header's Manual Deploy is the
+                  // screen's filled action, and while editing Save is. With
+                  // no variables the empty state's Add variable is filled.
+                  variant="outline"
                   disabled={editUnavailable}
                   onClick={beginEdit}
                 >
@@ -870,6 +948,8 @@ export function EnvironmentEditor({
       </EnvironmentSection>
 
       <EnvironmentSection
+        headingLevel={headingLevel}
+        skeletonRows={1}
         title={secretFilesTitle}
         description={secretFilesDescription}
         empty={{
@@ -894,6 +974,25 @@ export function EnvironmentEditor({
             </PermissionTooltip>
           ) : undefined,
         }}
+        error={
+          errorKind
+            ? {
+                kind: errorKind,
+                title: t(FILES_ERROR_COPY[errorKind].title),
+                // The variables card's Try again reloads both lists; a second
+                // button here would retry the same thing (generic failures).
+                body:
+                  errorKind === "generic"
+                    ? t("services.secretFilesReloadWithVariables")
+                    : t(FILES_ERROR_COPY[errorKind].body),
+                compact: true,
+              }
+            : undefined
+        }
+        head={{
+          name: t("services.secretFileColName"),
+          value: t("services.secretFileColContent"),
+        }}
         loading={loading}
         notice={
           editor.uploadSkipped.length ? (
@@ -901,7 +1000,25 @@ export function EnvironmentEditor({
           ) : null
         }
         action={
-          draft ? (
+          // Read mode: the card names its own way to add a file, as Render's
+          // does, instead of leaving it behind the Variables card's Edit. An
+          // empty list's state carries the same control, so it shows here
+          // only beside existing files.
+          !draft && (loading || secretFileNames.length > 0) && !errorKind ? (
+            <PermissionTooltip reason={createReason}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={editUnavailable}
+                onClick={() => {
+                  beginEdit();
+                  addSecretFile();
+                }}
+              >
+                <FilePlus2 /> {t("services.secretFileAdd")}
+              </Button>
+            </PermissionTooltip>
+          ) : draft ? (
             <>
               <PermissionTooltip reason={createReason}>
                 <Button
@@ -972,23 +1089,44 @@ export function EnvironmentEditor({
       </EnvironmentSection>
 
       {draft ? (
-        <Card className="sticky bottom-3 z-20 gap-4 py-4 shadow-lg">
-          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="sticky bottom-3 z-20 gap-3 py-3 shadow-lg @2xl/page:py-4">
+          <CardContent className="flex flex-col gap-3 @2xl/page:flex-row @2xl/page:items-center @2xl/page:justify-between">
             <div className="min-w-0">
-              <p className="font-medium">
-                {t("services.environmentUnsavedTitle")}
+              {/* Until something changes the bar says the draft is open and
+                  empty; it never claims unsaved changes it does not hold. */}
+              {/* On a narrow page the status line under it says enough; the
+                  title stays for screen readers and the bar keeps one line. */}
+              <p className="font-medium @max-2xl/page:sr-only">
+                {t(
+                  dirty
+                    ? "services.environmentUnsavedTitle"
+                    : "services.environmentEditingTitle",
+                )}
               </p>
-              <p className="text-muted-foreground text-sm" aria-live="polite">
+              <p
+                className="text-muted-foreground text-sm max-md:text-base"
+                aria-live="polite"
+              >
                 {/* Two counts, two plural decisions — one i18next `count` can
                     only drive one, so the sentence is two pluralized halves
-                    composed here (w6/062). */}
-                {t("services.environmentUnsavedVariables", {
-                  count: patch.envVars.length,
-                })}
-                {" · "}
-                {t("services.environmentUnsavedFiles", {
-                  count: patch.secretFiles.length,
-                })}
+                    composed here (w6/062). A half with nothing in it is left
+                    out. */}
+                {dirty
+                  ? [
+                      patch.envVars.length
+                        ? t("services.environmentUnsavedVariables", {
+                            count: patch.envVars.length,
+                          })
+                        : null,
+                      patch.secretFiles.length
+                        ? t("services.environmentUnsavedFiles", {
+                            count: patch.secretFiles.length,
+                          })
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : t("services.environmentNoChanges")}
               </p>
               {saveError ? (
                 <p className="text-destructive text-sm" role="alert">
@@ -996,7 +1134,9 @@ export function EnvironmentEditor({
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            {/* One row at every width: on a phone the two stacked buttons
+                took a fifth of the screen from the rows being edited. */}
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 disabled={busy}
@@ -1006,9 +1146,9 @@ export function EnvironmentEditor({
               </Button>
               <DropdownMenu>
                 <PermissionTooltip reason={createReason}>
-                  <div className="flex">
+                  <div className="flex flex-1 @2xl/page:flex-none">
                     <Button
-                      className="flex-1 rounded-r-none sm:flex-none"
+                      className="flex-1 rounded-r-none @2xl/page:flex-none"
                       disabled={saveDisabled}
                       onClick={() =>
                         void commit(deployBlockedReason ? "only" : "deploy")
@@ -1117,34 +1257,60 @@ export function EnvironmentEditor({
  * only in their copy and which rows they render.
  */
 function EnvironmentSection({
+  headingLevel,
+  skeletonRows = 2,
   title,
   description,
   action,
   notice,
   loading,
+  error,
+  head,
   isEmpty,
   empty,
   children,
 }: {
+  headingLevel: "h2" | "h3";
+  /** Rows the loading frame draws: the ready list's usual length. */
+  skeletonRows?: number;
   title: string;
   description: string;
   action?: React.ReactNode;
   notice?: React.ReactNode;
   loading: boolean;
+  /**
+   * A failed read: the card says so in place of its list, with a retry,
+   * instead of an empty list that would read as "nothing is configured".
+   */
+  error?: {
+    kind: RefusalKind;
+    title: string;
+    body: string;
+    onRetry?: () => void;
+    /** A one-line notice instead of the centred panel. */
+    compact?: boolean;
+  };
+  /** The column labels, shown over the rows on a wide page. */
+  head: { name: string; value: string };
   isEmpty: boolean;
   empty: { title: string; body: string; action?: React.ReactNode };
   children: React.ReactNode;
 }) {
+  const { t } = useTranslations();
   return (
     <Card>
-      <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
+      <CardHeader className={ENV_CARD_HEADER_CLASS}>
         <div>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription className="mt-1.5">{description}</CardDescription>
+          <CardTitle as={headingLevel}>{title}</CardTitle>
+          <CardDescription className={ENV_CARD_DESCRIPTION_CLASS}>
+            {description}
+          </CardDescription>
         </div>
         {action ? (
-          <CardAction className="col-start-1 row-start-2 mt-2 justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-            <div className="flex flex-wrap gap-2 sm:justify-end">{action}</div>
+          <CardAction className={ENV_CARD_ACTION_CLASS}>
+            <div className="flex flex-wrap gap-2 @2xl/page:justify-end">
+              {action}
+            </div>
           </CardAction>
         ) : null}
       </CardHeader>
@@ -1155,18 +1321,46 @@ function EnvironmentSection({
           </div>
         ) : null}
         {loading ? (
-          <EnvRowsSkeleton />
-        ) : (
-          <div className="divide-y">
-            {children}
-            {isEmpty ? (
-              <EmptyCopy
-                title={empty.title}
-                body={empty.body}
-                action={empty.action}
-              />
-            ) : null}
+          <EnvRowsSkeleton rows={skeletonRows} />
+        ) : error && isEmpty && !error.compact ? (
+          // Nothing loaded: the card says what failed in place of a list,
+          // never "No environment variables".
+          <div role="alert">
+            <PanelCenteredState
+              icon={
+                error.kind === "forbidden" ? <ShieldAlert /> : <AlertTriangle />
+              }
+              title={error.title}
+              body={error.body}
+              action={
+                error.kind === "generic" && error.onRetry ? (
+                  <Button variant="outline" size="sm" onClick={error.onRetry}>
+                    <RotateCw /> {t("common.tryAgain")}
+                  </Button>
+                ) : undefined
+              }
+            />
           </div>
+        ) : error && isEmpty ? (
+          <SectionErrorNotice error={error} />
+        ) : (
+          <>
+            {/* A failed refresh over rows already on screen (or a draft)
+                says so above them and keeps them: replacing them would lose
+                what the user was reading or editing. */}
+            {error ? <SectionErrorNotice error={error} spaced /> : null}
+            <div className={ENV_LIST_CLASS}>
+              {isEmpty ? null : <EnvListHead {...head} />}
+              {children}
+              {isEmpty ? (
+                <EmptyCopy
+                  title={empty.title}
+                  body={empty.body}
+                  action={empty.action}
+                />
+              ) : null}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -1187,7 +1381,7 @@ function ManifestManagedNote() {
         <FileCode2 aria-hidden="true" className="size-3" />
         {t("services.envManifestManaged")}
       </Badge>
-      <p className="text-muted-foreground w-full text-xs">
+      <p className="text-muted-foreground w-full text-sm max-md:text-base">
         {t("services.envManifestManagedBody")}
       </p>
     </>
@@ -1219,12 +1413,26 @@ function SensitiveViewItem({
   return (
     <div className={ENV_ROW_CLASS}>
       {readOnlyNote ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <code className="min-w-0 break-all text-sm font-medium">{name}</code>
+        <div
+          className={cn(
+            "flex min-w-0 flex-wrap items-center gap-2",
+            ENV_ROW_NAME_CLASS,
+          )}
+        >
+          <code className="min-w-0 text-sm font-medium wrap-anywhere">
+            {name}
+          </code>
           <ManifestManagedNote />
         </div>
       ) : (
-        <code className="min-w-0 break-all text-sm font-medium">{name}</code>
+        <code
+          className={cn(
+            "min-w-0 text-sm font-medium wrap-anywhere",
+            ENV_ROW_NAME_CLASS,
+          )}
+        >
+          {name}
+        </code>
       )}
       {/* whitespace-pre-wrap, because a secret FILE is a file: a PEM key, a
           service-account JSON, a certificate chain. The default `normal`
@@ -1235,12 +1443,14 @@ function SensitiveViewItem({
           runs, and the height is bounded so a 40-line PEM scrolls inside its
           row instead of pushing the page. Env VALUES share this component and
           have supported line breaks since w2/m95, so they gain it too. */}
-      <code
-        className="block max-h-48 min-w-0 overflow-auto whitespace-pre-wrap break-all text-sm"
-        aria-label={visible ? value : t("services.environmentMaskedValue")}
-      >
-        {visible ? value : MASKED_VALUE}
-      </code>
+      <div className={ENV_ROW_VALUE_CLASS}>
+        <code
+          className="block max-h-48 min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-all text-sm"
+          aria-label={visible ? value : t("services.environmentMaskedValue")}
+        >
+          {visible ? value : MASKED_VALUE}
+        </code>
+      </div>
       <div className={ENV_ROW_ACTIONS_CLASS}>
         <PermissionTooltip
           reason={!visible && revealDisabled ? revealReason : undefined}
@@ -1264,7 +1474,17 @@ function SensitiveViewItem({
             ) : (
               <Eye />
             )}
-            {visible ? t("services.envHide") : t("services.envReveal")}
+            {/* Both labels occupy the same cell and the hidden one keeps its
+                width, so toggling never moves the value field beside it. The
+                button's name comes from aria-label. */}
+            <span className="grid [&>*]:col-start-1 [&>*]:row-start-1">
+              <span className={cn(visible && "invisible")}>
+                {t("services.envReveal")}
+              </span>
+              <span className={cn(!visible && "invisible")}>
+                {t("services.envHide")}
+              </span>
+            </span>
           </Button>
         </PermissionTooltip>
         <PermissionTooltip reason={revealDisabled ? revealReason : undefined}>
@@ -1275,7 +1495,7 @@ function SensitiveViewItem({
             aria-label={t("services.envCopyOne", { name })}
             onClick={() => void onCopy()}
           >
-            <Clipboard />
+            <Copy />
           </Button>
         </PermissionTooltip>
       </div>
@@ -1299,8 +1519,13 @@ function StagedDeleteRow({
 }) {
   const { t } = useTranslations();
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-      <code className="min-w-0 break-all text-sm line-through opacity-60">
+    <div
+      className={cn(
+        "flex min-w-0 items-center justify-between gap-3 py-4 first:pt-0 last:pb-0 @2xl/page:py-3",
+        ENV_LIST_FULL_ROW_CLASS,
+      )}
+    >
+      <code className="min-w-0 text-sm line-through opacity-60 wrap-anywhere">
         {label}
       </code>
       <div className="flex items-center gap-2">
@@ -1360,19 +1585,21 @@ function EnvDraftItem({
   // reintroduced by mistake could not produce a write.
   if (row.readOnly) {
     return (
-      <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-start">
+      <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 @2xl/page:col-span-full @2xl/page:grid-cols-subgrid @2xl/page:items-start @2xl/page:py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <code className="min-w-0 break-all text-sm font-medium">
+          <code className="min-w-0 text-sm font-medium wrap-anywhere">
             {row.key}
           </code>
           <ManifestManagedNote />
         </div>
-        <code
-          className="min-w-0 break-all text-sm"
-          aria-label={t("services.environmentMaskedValue")}
-        >
-          {MASKED_VALUE}
-        </code>
+        <div className={ENV_ROW_VALUE_CLASS}>
+          <code
+            className="min-w-0 break-all text-sm"
+            aria-label={t("services.environmentMaskedValue")}
+          >
+            {MASKED_VALUE}
+          </code>
+        </div>
       </div>
     );
   }
@@ -1382,7 +1609,9 @@ function EnvDraftItem({
     !valueRule &&
     (touched || row.key !== "" || !isNewDraftRow(row));
   return (
-    <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start">
+    // Narrow: the key with its delete beside it, the value under both (two
+    // lines, not three with a lone delete). Wide: the table's columns.
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-4 first:pt-0 last:pb-0 @2xl/page:col-span-full @2xl/page:grid-cols-subgrid @2xl/page:items-start @2xl/page:gap-y-0 @2xl/page:py-3">
       <div className="min-w-0 space-y-1">
         <Input
           value={row.key}
@@ -1414,7 +1643,7 @@ function EnvDraftItem({
           </p>
         ) : null}
       </div>
-      <div className="min-w-0 space-y-1">
+      <div className="col-span-2 row-start-2 min-w-0 space-y-1 @2xl/page:col-span-1 @2xl/page:row-start-auto">
         <AutoTextarea
           value={row.value ?? ""}
           disabled={disabled}
@@ -1462,6 +1691,7 @@ function EnvDraftItem({
       <Button
         size="icon"
         variant="ghost"
+        className="col-start-2 row-start-1 @2xl/page:col-start-auto @2xl/page:row-start-auto"
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}
         aria-label={
@@ -1509,7 +1739,9 @@ function FileDraftItem({
   }
   const showError = Boolean(error) && (touched || row.name !== "");
   return (
-    <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-start">
+    // Narrow: the name with its delete beside it, then the contents control.
+    // Wide: the table's columns, the contents control under "Contents".
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-4 first:pt-0 last:pb-0 @2xl/page:col-span-full @2xl/page:grid-cols-subgrid @2xl/page:items-start @2xl/page:gap-y-0 @2xl/page:py-3">
       <div className="min-w-0 space-y-1">
         <Input
           value={row.name}
@@ -1541,6 +1773,7 @@ function FileDraftItem({
       </div>
       <Button
         variant="outline"
+        className="col-span-2 row-start-2 justify-self-start @2xl/page:col-span-1 @2xl/page:row-start-auto"
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}
         aria-label={
@@ -1556,7 +1789,7 @@ function FileDraftItem({
         }
         onClick={onContent}
       >
-        <Pencil />
+        {row.contentChanged ? <Pencil /> : <Eye />}
         {row.contentChanged
           ? t("services.secretFileEditContent")
           : t("services.secretFileViewContent")}
@@ -1564,6 +1797,7 @@ function FileDraftItem({
       <Button
         size="icon"
         variant="ghost"
+        className="col-start-2 row-start-1 @2xl/page:col-start-auto @2xl/page:row-start-auto"
         disabled={disabled}
         aria-describedby={disabled ? permissionDescriptionID : undefined}
         aria-label={
@@ -1579,11 +1813,15 @@ function FileDraftItem({
   );
 }
 
-// The root sits outside the reason tooltip: PermissionTooltip changes its
-// child's tree position when a reason comes and goes (e.g. a capability
-// refresh passing through "checking"), and a remounted root drops its open
-// state (w4/260). Only the trigger moves; the open menu stays, its items
-// disabled while the trigger is.
+/**
+ * Render's add control: "Add variable" adds a blank row in one click, and the
+ * adjacent menu holds the other ways in — a generated secret, a .env import.
+ * The menu's root sits outside the reason tooltip: PermissionTooltip changes
+ * its child's tree position when a reason comes and goes (e.g. a capability
+ * refresh passing through "checking"), and a remounted root drops its open
+ * state (w4/260). Only the trigger moves; the open menu stays, its items
+ * disabled while the trigger is.
+ */
 function AddVariableMenu({
   disabled,
   reason,
@@ -1599,27 +1837,42 @@ function AddVariableMenu({
 }) {
   const { t } = useTranslations();
   return (
-    <DropdownMenu>
+    <div className="flex">
       <PermissionTooltip reason={reason}>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" disabled={disabled}>
-            <Plus /> {t("services.envAdd")} <ChevronDown />
-          </Button>
-        </DropdownMenuTrigger>
-      </PermissionTooltip>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={disabled} onSelect={onAdd}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-r-none"
+          disabled={disabled}
+          onClick={onAdd}
+        >
           <Plus /> {t("services.envAddVariable")}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={disabled} onSelect={onGenerate}>
-          <Sparkles /> {t("services.envAddGenerated")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={disabled} onSelect={onImport}>
-          <FileUp /> {t("services.envImport")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </Button>
+      </PermissionTooltip>
+      <DropdownMenu>
+        <PermissionTooltip reason={reason}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-l-none border-l-0 px-2"
+              disabled={disabled}
+              aria-label={t("services.envAddOptions")}
+            >
+              <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+        </PermissionTooltip>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem disabled={disabled} onSelect={onGenerate}>
+            <Sparkles /> {t("services.envAddGenerated")}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={disabled} onSelect={onImport}>
+            <FileUp /> {t("services.envImport")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -1633,9 +1886,11 @@ function EmptyCopy({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="py-6 text-center">
+    <div className={cn("py-6 text-center", ENV_LIST_FULL_ROW_CLASS)}>
       <p className="font-medium">{title}</p>
-      <p className="text-muted-foreground mt-1 text-sm">{body}</p>
+      <p className="text-muted-foreground mt-1 text-sm text-pretty max-md:text-base">
+        {body}
+      </p>
       {action ? <div className="mt-3 flex justify-center">{action}</div> : null}
     </div>
   );

@@ -501,9 +501,6 @@ describe("ServiceEnvironmentEditor", () => {
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     for (let i = 0; i < 2; i++) {
       await user.click(screen.getByRole("button", { name: "Add variable" }));
-      await user.click(
-        await screen.findByRole("menuitem", { name: "Add variable" }),
-      );
     }
     const keys = screen.getAllByRole("textbox", { name: "Key" });
     const key = keys[keys.length - 1];
@@ -547,9 +544,6 @@ describe("ServiceEnvironmentEditor", () => {
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
     const keys = screen.getAllByRole("textbox", { name: "Key" });
     await user.type(keys[keys.length - 1], "PORT");
     await user.type(
@@ -589,9 +583,6 @@ describe("ServiceEnvironmentEditor", () => {
       renderEditor();
       await user.click(await screen.findByRole("button", { name: "Edit" }));
       await user.click(screen.getByRole("button", { name: "Add variable" }));
-      await user.click(
-        await screen.findByRole("menuitem", { name: "Add variable" }),
-      );
       const keys = screen.getAllByRole("textbox", { name: "Key" });
       await user.type(keys[keys.length - 1], name);
       const field = screen.getByRole("textbox", { name: `Value for ${name}` });
@@ -642,7 +633,9 @@ describe("ServiceEnvironmentEditor", () => {
     const user = userEvent.setup();
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Import from .env" }),
     );
@@ -664,7 +657,9 @@ describe("ServiceEnvironmentEditor", () => {
     const { container } = renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
 
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Import from .env" }),
     );
@@ -676,7 +671,9 @@ describe("ServiceEnvironmentEditor", () => {
     expect(screen.getByDisplayValue("IMPORTED")).toBeInTheDocument();
     expect(screen.getByDisplayValue("from-file")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Generated secret" }),
     );
@@ -866,9 +863,6 @@ describe("ServiceEnvironmentEditor", () => {
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
     expect(
       screen.getByRole("textbox", { name: /^Value$/ }),
     ).toBeInTheDocument();
@@ -992,7 +986,9 @@ describe("ServiceEnvironmentEditor", () => {
     await user.click(await screen.findByRole("button", { name: "Edit" }));
 
     // A .env import naming the manifest key must not smuggle the write in.
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Import from .env" }),
     );
@@ -1103,9 +1099,6 @@ describe("ServiceEnvironmentEditor restored-draft row identity (w4/139)", () => 
 
   async function addVariable(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Add variable" }),
-    );
   }
 
   it("keeps a restored variable independent of one added afterwards", async () => {
@@ -1309,7 +1302,9 @@ describe("ServiceEnvironmentEditor menus across a capability refresh (w4/260)", 
       name: /Value for /,
       hidden: true,
     }).length;
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await expectSurvivesChecking("Generated secret");
     expect(
       screen.getAllByRole("textbox", { name: /Value for /, hidden: true }),
@@ -1622,7 +1617,9 @@ describe("ServiceEnvironmentEditor uploaded file contents (w4/285)", () => {
 // disabled Save.
 describe("ServiceEnvironmentEditor generated secret names (w4/286)", () => {
   async function generate(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      screen.getByRole("button", { name: "More ways to add a variable" }),
+    );
     await user.click(
       await screen.findByRole("menuitem", { name: "Generated secret" }),
     );

@@ -804,7 +804,7 @@ describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
     render(<EnvGroupsPanel serviceId="web" />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Couldn't load this service's environment",
+      "Couldn't check which groups this service can link",
     );
     expect(screen.queryByText("evg-clone")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Try again" }));

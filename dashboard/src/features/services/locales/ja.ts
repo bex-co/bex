@@ -954,7 +954,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.secretFilesDescription": {
     message:
-      "シークレットの内容を持つファイル（証明書、認証情報など）を保存し、デプロイ時にこのサービスにマウントします。",
+      "秘密鍵や .env ファイルなど、シークレットの内容を持つファイルを保存します。次のデプロイ後、サービスは各ファイルを /etc/secrets/<ファイル名> で読み取れます。",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5704,8 +5704,7 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageDescription": {
-    message:
-      "サービス固有の変数、シークレットファイル、リンクされた環境グループを管理します。",
+    message: "このサービスが実行時に読み込むすべての値です。値は表示するまで伏せられます。",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5761,7 +5760,7 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "未保存の環境の変更",
+    message: "未保存の変更",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5780,12 +5779,12 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "変数の操作 {count} 件",
+    message: "変数 {count} 件を変更",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "ファイルの操作 {count} 件",
+    message: "ファイル {count} 件を変更",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
@@ -6097,8 +6096,7 @@ const jaServices: Record<string, TranslationEntry> = {
       "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
   },
   "services.envGroupsScopeError": {
-    message:
-      "このサービスの環境を読み込めなかったため、リンクできるグループを表示できません。",
+    message: "このサービスにリンクできるグループを確認できませんでした。",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6195,6 +6193,26 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "土曜日",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "環境を編集中",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "まだ変更はありません。",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "変数を追加するその他の方法",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message: "上で再試行すると、変数とあわせて再読み込みされます。",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

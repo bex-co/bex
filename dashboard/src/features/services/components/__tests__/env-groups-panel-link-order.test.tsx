@@ -202,7 +202,7 @@ const loserTitle = (winner: string) =>
 
 function linkedSection() {
   return screen
-    .getByRole("heading", { name: /Linked/, level: 3 })
+    .getByRole("heading", { name: /Linked/, level: 4 })
     .closest("section")!;
 }
 

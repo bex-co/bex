@@ -947,7 +947,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.secretFilesDescription": {
     message:
-      "Store files with secret contents (certificates, credentials) mounted into this service at deploy time.",
+      "Store files with secret contents, such as a private key or a .env file. After the next deploy, your service reads each one at /etc/secrets/<filename>.",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5674,7 +5674,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.environmentPageDescription": {
     message:
-      "Manage service-specific variables, secret files, and linked environment groups.",
+      "Everything this service reads at runtime. Values stay masked until you reveal one.",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5730,7 +5730,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "Unsaved environment changes",
+    message: "Unsaved changes",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5749,22 +5749,22 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_one": {
-    message: "{count} variable operation",
+    message: "{count} variable changed",
     description:
       "Draft variable-operation count, composed with the file count at the call site (singular)",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "{count} variable operations",
+    message: "{count} variables changed",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_one": {
-    message: "{count} file operation",
+    message: "{count} file changed",
     description:
       "Draft file-operation count, composed with the variable count at the call site (singular)",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "{count} file operations",
+    message: "{count} files changed",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
@@ -6081,8 +6081,7 @@ const enServices: Record<string, TranslationEntry> = {
       "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
   },
   "services.envGroupsScopeError": {
-    message:
-      "Couldn't load this service's environment, so no groups are offered to link.",
+    message: "Couldn't check which groups this service can link.",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6179,6 +6178,26 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Saturday",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "Editing environment",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "No changes yet.",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "More ways to add a variable",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message: "They reload with the variables when you try again above.",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

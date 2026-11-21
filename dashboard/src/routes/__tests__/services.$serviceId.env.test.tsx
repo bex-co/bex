@@ -66,7 +66,7 @@ describe("ServiceEnvPage heading structure", () => {
     ).toBeNull();
     expect(
       screen.getByText(
-        "Manage service-specific variables, secret files, and linked environment groups.",
+        "Everything this service reads at runtime. Values stay masked until you reveal one.",
       ),
     ).toBeInTheDocument();
     expect(container.querySelectorAll("h1")).toHaveLength(0);
@@ -92,14 +92,18 @@ describe("ServiceEnvPage group creation", () => {
     });
   });
 
-  it.each([
-    { button: "toolbar", index: 0, resolveBeforeOpen: true },
-    { button: "panel", index: 1, resolveBeforeOpen: true },
-    { button: "toolbar", index: 0, resolveBeforeOpen: false },
-    { button: "panel", index: 1, resolveBeforeOpen: false },
-  ])(
-    "first $button opening uses the resolved scope (resolve before open: $resolveBeforeOpen)",
-    async ({ index, resolveBeforeOpen }) => {
+  // The groups card holds the page's one Create group; a second one above the
+  // variables was removed so they lead on a phone.
+  it("offers Create group once, in the groups card", () => {
+    render(<ServiceEnvPage serviceId="srv-1" />);
+    expect(
+      screen.getAllByRole("button", { name: "Create group" }),
+    ).toHaveLength(1);
+  });
+
+  it.each([{ resolveBeforeOpen: true }, { resolveBeforeOpen: false }])(
+    "the first opening uses the resolved scope (resolve before open: $resolveBeforeOpen)",
+    async ({ resolveBeforeOpen }) => {
       const user = userEvent.setup();
       const { rerender } = render(<ServiceEnvPage serviceId="srv-1" />);
       const resolveScope = () => {
@@ -110,9 +114,7 @@ describe("ServiceEnvPage group creation", () => {
         rerender(<ServiceEnvPage serviceId="srv-1" />);
       };
       if (resolveBeforeOpen) resolveScope();
-      await user.click(
-        screen.getAllByRole("button", { name: "Create group" })[index],
-      );
+      await user.click(screen.getByRole("button", { name: "Create group" }));
       if (!resolveBeforeOpen) {
         expect(
           screen.getByRole("button", { name: "Create Environment Group" }),
@@ -150,15 +152,11 @@ describe("ServiceEnvPage group creation", () => {
       refetch,
     });
     render(<ServiceEnvPage serviceId="srv-1" />);
-    await user.click(
-      screen.getAllByRole("button", { name: "Create group" })[0],
-    );
+    await user.click(screen.getByRole("button", { name: "Create group" }));
     await user.type(screen.getByLabelText("Group name"), "discarded");
     await user.click(screen.getByRole("checkbox", { name: /qa-service/ }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    await user.click(
-      screen.getAllByRole("button", { name: "Create group" })[1],
-    );
+    await user.click(screen.getByRole("button", { name: "Create group" }));
     expect(screen.getByLabelText("Group name")).toHaveValue("");
     expect(
       screen.getByRole("combobox", { name: "Environment" }),
@@ -178,9 +176,7 @@ describe("ServiceEnvPage group creation", () => {
     scopeState.loading = false;
     scopeState.error = new Error("forbidden");
     const { rerender } = render(<ServiceEnvPage serviceId="srv-1" />);
-    await user.click(
-      screen.getAllByRole("button", { name: "Create group" })[0],
-    );
+    await user.click(screen.getByRole("button", { name: "Create group" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load");
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Try again" }));

@@ -31,7 +31,9 @@ export function PanelCenteredState({
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="text-muted-foreground/50 mb-3 [&_svg]:size-8">{icon}</div>
       <p className="mb-1 font-medium">{title}</p>
-      <p className="text-muted-foreground text-sm">{body}</p>
+      <p className="text-muted-foreground text-sm text-pretty max-md:text-base">
+        {body}
+      </p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

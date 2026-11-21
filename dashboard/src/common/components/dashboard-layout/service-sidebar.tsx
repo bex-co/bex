@@ -51,7 +51,7 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
         <div className="flex flex-col gap-2 px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
           <Link
             to="/"
-            className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            className="relative flex items-center gap-1 text-xs font-medium text-muted-foreground after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:text-foreground"
           >
             <ChevronLeft className="size-3.5" />
             {t("common.navBackToDashboard")}

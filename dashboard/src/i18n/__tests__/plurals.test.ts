@@ -42,14 +42,12 @@ describe("pluralization convention (native _one/_other)", () => {
   });
 
   it("a two-count sentence is composed from two pluralized halves", () => {
-    // "{a} variable operations · {b} file operations" cannot be one key — a
+    // "{a} variables changed · {b} files changed" cannot be one key — a
     // single i18next `count` drives one plural decision. Split it and compose
     // at the call site (service-environment-editor.tsx is the reference).
     const vars = i18n.t("services.environmentUnsavedVariables", { count: 1 });
-    const files = i18n.t("services.environmentUnsavedFiles", { count: 0 });
-    expect(`${vars} · ${files}`).toBe(
-      "1 variable operation · 0 file operations",
-    );
+    const files = i18n.t("services.environmentUnsavedFiles", { count: 2 });
+    expect(`${vars} · ${files}`).toBe("1 variable changed · 2 files changed");
   });
 });
 

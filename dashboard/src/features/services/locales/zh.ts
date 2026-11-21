@@ -924,7 +924,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Environment tab secret-files section title",
   },
   "services.secretFilesDescription": {
-    message: "存放包含机密内容（证书、凭据）的文件，部署时挂载到此服务中。",
+    message: "存放包含机密内容的文件，例如私钥或 .env 文件。下次部署后，服务可在 /etc/secrets/<文件名> 读取每个文件。",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5548,7 +5548,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageDescription": {
-    message: "管理此服务的环境变量、机密文件和已关联的环境组。",
+    message: "此服务运行时读取的全部内容。在你显示之前，值一直保持隐藏。",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5603,7 +5603,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "未保存的环境更改",
+    message: "未保存的更改",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5621,12 +5621,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "{count} 个变量操作",
+    message: "已更改 {count} 个变量",
     description:
       "Draft variable-operation count, composed with the file count at the call site",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "{count} 个文件操作",
+    message: "已更改 {count} 个文件",
     description:
       "Draft file-operation count, composed with the variable count at the call site",
   },
@@ -5932,7 +5932,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
   },
   "services.envGroupsScopeError": {
-    message: "无法加载此服务的环境，因此暂不提供可关联的环境组。",
+    message: "无法确认此服务可以关联哪些环境组。",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6029,6 +6029,26 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "周六",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "正在编辑环境",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "还没有更改。",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "添加变量的更多方式",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message: "在上方重试时，它们会和变量一起重新加载。",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

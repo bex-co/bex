@@ -1,10 +1,6 @@
-import { cn } from "@/common/lib/utils/utils";
-import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
+import { ServiceTabDescription } from "@/features/services/components/service-tab-description";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
-import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ServiceEnvironmentEditor } from "@/features/services/components/service-environment-editor";
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
@@ -26,43 +22,25 @@ function RouteComponent() {
 // The Environment tab (w4/m6.5): a Render-style environment surface over bex-api.
 // Three stacked sections — env vars (keys list + per-key reveal + CRUD), secret
 // files (per-service, same reveal/CRUD shape), and environment groups (reusable
-// bundles linked to this service).
+// bundles linked to this service). Creating a group lives in the groups card,
+// beside the groups it adds to; a second Create group above the variables
+// pushed them below the first screen on a phone.
 export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
-  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   // Reads the detail layout's cached document; the layout owns polling.
   const { service } = useServer(serviceId, { poll: false });
   return (
     <div className="space-y-6">
-      {/* The tab's description and page action, under the layout's heading. */}
-      <div
-        className={cn(
-          "flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between",
-          SERVICE_TAB_DESCRIPTION_OFFSET,
-        )}
-      >
-        <p className="text-muted-foreground text-sm">
-          {t("services.environmentPageDescription")}
-        </p>
-        <Button
-          variant="outline"
-          aria-haspopup="dialog"
-          aria-expanded={createGroupOpen}
-          onClick={() => setCreateGroupOpen(true)}
-        >
-          <Plus /> {t("services.envGroupCreate")}
-        </Button>
-      </div>
+      {/* The tab's description, under the layout's heading. */}
+      <ServiceTabDescription>
+        {t("services.environmentPageDescription")}
+      </ServiceTabDescription>
       <ServiceEnvironmentEditor
         serviceId={serviceId}
         suspended={service?.suspended ?? false}
         dockerBuild={!!service && isDockerBuild(service)}
       />
-      <EnvGroupsPanel
-        serviceId={serviceId}
-        createOpen={createGroupOpen}
-        onCreateOpenChange={setCreateGroupOpen}
-      />
+      <EnvGroupsPanel serviceId={serviceId} />
     </div>
   );
 }

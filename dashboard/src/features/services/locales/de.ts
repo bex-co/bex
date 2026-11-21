@@ -959,7 +959,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.secretFilesDescription": {
     message:
-      "Speichere Dateien mit geheimen Inhalten (Zertifikate, Zugangsdaten), die beim Deployment in diesen Service eingebunden werden.",
+      "Speichere Dateien mit geheimen Inhalten, etwa einen privaten Schlüssel oder eine .env-Datei. Nach dem nächsten Deployment liest dein Service jede unter /etc/secrets/<dateiname>.",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5757,7 +5757,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.environmentPageDescription": {
     message:
-      "Verwalte service-spezifische Variablen, Secret-Dateien und verknüpfte Umgebungsgruppen.",
+      "Alles, was dieser Service zur Laufzeit liest. Werte bleiben verdeckt, bis du einen anzeigst.",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5813,7 +5813,7 @@ const deServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "Nicht gespeicherte Umgebungsänderungen",
+    message: "Nicht gespeicherte Änderungen",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5832,22 +5832,22 @@ const deServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_one": {
-    message: "{count} Variablenoperation",
+    message: "{count} Variable geändert",
     description:
       "Draft variable-operation count, composed with the file count at the call site (singular)",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "{count} Variablenoperationen",
+    message: "{count} Variablen geändert",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_one": {
-    message: "{count} Dateioperation",
+    message: "{count} Datei geändert",
     description:
       "Draft file-operation count, composed with the variable count at the call site (singular)",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "{count} Dateioperationen",
+    message: "{count} Dateien geändert",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
@@ -6170,7 +6170,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.envGroupsScopeError": {
     message:
-      "Die Umgebung dieses Services konnte nicht geladen werden, daher werden keine Gruppen zum Verknüpfen angeboten.",
+      "Es ließ sich nicht prüfen, welche Gruppen dieser Service verknüpfen kann.",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6267,6 +6267,27 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Samstag",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "Umgebung wird bearbeitet",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "Noch keine Änderungen.",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "Weitere Wege, eine Variable hinzuzufügen",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message:
+      "Sie werden mit den Variablen neu geladen, wenn du es oben erneut versuchst.",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

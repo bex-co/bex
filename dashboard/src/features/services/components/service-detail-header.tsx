@@ -35,6 +35,8 @@ import {
 } from "@/common/hooks/use-translations";
 import { safeHttpHref } from "@/common/lib/external-url";
 import { cn } from "@/common/lib/utils/utils";
+import { useEnvironments } from "@/features/environments/hooks/use-environments";
+import { useProjects } from "@/features/projects/hooks/use-projects";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { ResumeServiceButton } from "@/features/services/components/resume-service-button";
@@ -151,9 +153,10 @@ export function ServiceDetailHeader({
           on instead of in a far corner of a wide screen. */}
       <div className="mx-auto max-w-7xl space-y-2 max-sm:space-y-1.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
-            <TypeIcon className="size-3.5" />
-            {t(SERVICE_TYPE_LABEL[typeKey])}
+          <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+            <TypeIcon className="size-3.5 shrink-0" />
+            <span className="shrink-0">{t(SERVICE_TYPE_LABEL[typeKey])}</span>
+            <ServiceScopeLabel serviceId={service.id} />
           </div>
         </div>
 
@@ -179,11 +182,16 @@ export function ServiceDetailHeader({
                       typeof t
                     >[0],
                   )}`}
-                  className="relative flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-3 max-md:after:content-['']"
+                  // A 30px target from `md` (the badge is 22px), 46px on a
+                  // phone where the rows have room.
+                  className="relative flex items-center gap-1.5 rounded-md after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:after:-inset-y-3"
                 >
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("services.headerLatestDeploy")}
                   </span>
+                  {/* The space keeps the visible words apart ("Latest deploy
+                      Live"), so the link's name contains its label (WCAG
+                      2.5.3); a flex container does not render it. */}{" "}
                   <Badge variant={deployStatusVariant(latestDeploy.status)}>
                     {t(
                       deployStatusKey(latestDeploy.status) as Parameters<
@@ -429,6 +437,32 @@ export function ServiceDetailHeader({
 }
 
 /**
+ * Where the service lives — "storefront / Production" — beside its type, below
+ * `lg`. From `lg` the top bar's breadcrumbs name the project and environment;
+ * narrower bars keep only the service crumb, so without this a phone showed no
+ * sign of which environment's secrets were on screen. Reads the breadcrumbs'
+ * own cached queries; nothing renders until the project is known.
+ */
+function ServiceScopeLabel({ serviceId }: { serviceId: string }) {
+  const { projects } = useProjects({ poll: false });
+  const project = projects.find((item) => item.serviceIds.includes(serviceId));
+  const { environments } = useEnvironments(project?.id ?? null, {
+    poll: false,
+  });
+  const environment = environments.find((item) =>
+    item.serviceIds.includes(serviceId),
+  );
+  if (!project) return null;
+  return (
+    <span className="min-w-0 truncate tracking-normal normal-case lg:hidden">
+      <span aria-hidden="true">· </span>
+      {project.name}
+      {environment ? ` / ${environment.name}` : null}
+    </span>
+  );
+}
+
+/**
  * A header fact that is a link. On a phone the rows stay close together and
  * the link's touch area reaches past its text instead (the truncation lives
  * on the inner span, since `overflow: hidden` would clip that area).
@@ -437,6 +471,8 @@ function headerLinkClass(tone: string, reach: "up" | "down") {
   return cn(
     tone,
     "relative flex min-w-0 hover:underline max-sm:py-1.5 max-sm:after:absolute max-sm:after:inset-x-0 max-sm:after:content-['']",
+    // From `sm` the 20px line takes a 24px target (WCAG 2.5.8).
+    "sm:after:absolute sm:after:inset-x-0 sm:after:-inset-y-0.5 sm:after:content-['']",
     // The repository and URL rows touch, so one area reaches up and the
     // other down, and neither takes from the other.
     reach === "up"

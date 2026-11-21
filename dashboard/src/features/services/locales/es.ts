@@ -958,7 +958,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.secretFilesDescription": {
     message:
-      "Almacena archivos con contenido secreto (certificados, credenciales) que se montan en este servicio al desplegar.",
+      "Guarda archivos con contenido secreto, como una clave privada o un archivo .env. Tras el próximo despliegue, tu servicio lee cada uno en /etc/secrets/<nombre-de-archivo>.",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -5753,7 +5753,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.environmentPageDescription": {
     message:
-      "Gestiona las variables específicas del servicio, los archivos secretos y los grupos de entorno vinculados.",
+      "Todo lo que este servicio lee en tiempo de ejecución. Los valores permanecen ocultos hasta que muestras uno.",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -5809,7 +5809,7 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Undo a staged environment deletion",
   },
   "services.environmentUnsavedTitle": {
-    message: "Cambios de entorno sin guardar",
+    message: "Cambios sin guardar",
     description: "Combined draft save bar heading",
   },
   "services.environmentRestoredTitle": {
@@ -5828,32 +5828,32 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Button that throws away a recovered env draft",
   },
   "services.environmentUnsavedVariables_one": {
-    message: "{count} operación de variable",
+    message: "{count} variable modificada",
     description:
       "Draft variable-operation count, composed with the file count at the call site (singular)",
   },
   "services.environmentUnsavedVariables_many": {
-    message: "{count} de operaciones de variable",
+    message: "{count} de variables modificadas",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedVariables_other": {
-    message: "{count} operaciones de variable",
+    message: "{count} variables modificadas",
     description:
       "Draft variable-operation count, composed with the file count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_one": {
-    message: "{count} operación de archivo",
+    message: "{count} archivo modificado",
     description:
       "Draft file-operation count, composed with the variable count at the call site (singular)",
   },
   "services.environmentUnsavedFiles_many": {
-    message: "{count} de operaciones de archivo",
+    message: "{count} de archivos modificados",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
   "services.environmentUnsavedFiles_other": {
-    message: "{count} operaciones de archivo",
+    message: "{count} archivos modificados",
     description:
       "Draft file-operation count, composed with the variable count at the call site (plural)",
   },
@@ -6174,8 +6174,7 @@ const esServices: Record<string, TranslationEntry> = {
       "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
   },
   "services.envGroupsScopeError": {
-    message:
-      "No se pudo cargar el entorno de este servicio, por lo que no se ofrece ningún grupo para vincular.",
+    message: "No se pudo comprobar qué grupos puede vincular este servicio.",
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
@@ -6273,6 +6272,27 @@ const esServices: Record<string, TranslationEntry> = {
     message: "sábado",
     description:
       "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.environmentEditingTitle": {
+    message: "Editando el entorno",
+    description:
+      "Edit bar title while the environment draft is open and holds no change yet (the bar says Unsaved changes once it does)",
+  },
+  "services.environmentNoChanges": {
+    message: "Aún no hay cambios.",
+    description:
+      "Edit bar line while the open environment draft holds no change: what to do next",
+  },
+  "services.envAddOptions": {
+    message: "Más formas de añadir una variable",
+    description:
+      "Accessible name of the chevron beside Add variable that opens the other ways to add (generated secret, .env import)",
+  },
+  "services.secretFilesReloadWithVariables": {
+    message:
+      "Se vuelven a cargar con las variables cuando lo intentas de nuevo arriba.",
+    description:
+      "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
   },
 };
 

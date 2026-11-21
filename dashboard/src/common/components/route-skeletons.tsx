@@ -109,7 +109,11 @@ import {
   LOG_SELECT_WIDTH_CLASS,
 } from "@/features/logs/components/log-toolbar-layout";
 import { useOpenDocked } from "@/features/logs/hooks/use-open-docked";
-import { EnvRowsSkeleton } from "@/features/services/components/env-rows-skeleton";
+import {
+  ENV_CARD_ACTION_CLASS,
+  ENV_CARD_HEADER_CLASS,
+  EnvRowsSkeleton,
+} from "@/features/services/components/env-rows-skeleton";
 import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
@@ -2690,41 +2694,41 @@ export function ServiceMetricsSkeleton({
 export function ServiceEnvironmentSkeleton() {
   return (
     <PendingFrame route="service-environment" className="space-y-6">
-      {/* The tab's name is the layout's heading; this row is its
-          description and page action. */}
+      {/* The tab's name is the layout's heading; this is its description
+          (two lines at a phone's 16px). */}
       <Region
         name="page-header"
-        className={cn(
-          "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
-          SERVICE_TAB_DESCRIPTION_OFFSET,
-        )}
+        className={cn("space-y-1", SERVICE_TAB_DESCRIPTION_OFFSET)}
       >
-        <div className="w-full space-y-1 sm:w-auto">
-          <Skeleton className="h-4 w-96 max-w-full" />
-          <Skeleton className="h-5 w-3/4 sm:hidden" />
-        </div>
-        <Skeleton className="h-9 w-36" />
+        <Skeleton className="h-4 w-96 max-w-full max-md:h-5" />
+        <Skeleton className="h-5 w-3/4 md:hidden" />
       </Region>
       <Region name="environment-editor" className="space-y-6">
-        {/* Variables (two rows), then Secret Files (one row, no header
-            actions), on the loaded rows' grid: key, value, then Reveal and
-            copy — beside the key on a phone. */}
-        {[2, 1].map((rows, index) => (
+        {/* Variables (Export and Edit, two rows), then Secret Files (Add
+            secret file, one row), on the loaded cards' geometry: the actions
+            beside the title on a wide page and under it before that, and
+            the rows' table with its column labels. */}
+        {[
+          { rows: 2, actions: ["w-24", "w-16"] },
+          { rows: 1, actions: ["w-36"] },
+        ].map(({ rows, actions }, index) => (
           <Card key={index}>
-            <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
+            <CardHeader className={ENV_CARD_HEADER_CLASS}>
               <div className="space-y-2">
                 <Skeleton className="h-5 w-40" />
                 <div className="space-y-1">
-                  <Skeleton className="h-4 w-72 max-w-full" />
-                  <Skeleton className="h-4 w-2/3 sm:hidden" />
+                  <Skeleton className="h-4 w-72 max-w-full max-md:h-5" />
+                  <Skeleton className="h-4 w-2/3 max-md:h-5 @2xl/page:hidden" />
                 </div>
               </div>
-              {index === 0 ? (
-                <div className="col-start-1 row-start-2 mt-2 flex gap-2 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0">
-                  <Skeleton className="h-8 w-24 max-lg:h-11 pointer-coarse:h-11" />
-                  <Skeleton className="h-8 w-16 max-lg:h-11 pointer-coarse:h-11" />
-                </div>
-              ) : null}
+              <div className={cn(ENV_CARD_ACTION_CLASS, "flex gap-2")}>
+                {actions.map((width) => (
+                  <Skeleton
+                    key={width}
+                    className={cn("h-8 max-lg:h-11 pointer-coarse:h-11", width)}
+                  />
+                ))}
+              </div>
             </CardHeader>
             <CardContent>
               <EnvRowsSkeleton rows={rows} />
@@ -2734,21 +2738,28 @@ export function ServiceEnvironmentSkeleton() {
       </Region>
       <Region name="environment-groups">
         <Card>
-          <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
+          <CardHeader className={ENV_CARD_HEADER_CLASS}>
             <div className="space-y-2">
               <Skeleton className="h-5 w-48" />
               <div className="space-y-1">
-                <Skeleton className="h-4 w-4/5" />
-                <Skeleton className="h-4 w-full sm:hidden" />
+                <Skeleton className="h-4 w-4/5 max-md:h-5" />
+                <Skeleton className="h-4 w-full max-md:h-5 @2xl/page:hidden" />
               </div>
             </div>
-            <Skeleton className="col-start-1 row-start-2 mt-2 h-8 w-32 max-lg:h-11 pointer-coarse:h-11 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0" />
+            <Skeleton
+              className={cn(
+                ENV_CARD_ACTION_CLASS,
+                "h-8 w-32 justify-self-start max-lg:h-11 pointer-coarse:h-11",
+              )}
+            />
           </CardHeader>
           {/* "Linked (n)" and one group card, then "Available to link"
               and its box. */}
           <CardContent className="space-y-3">
             <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-[7.25rem] w-full rounded-lg sm:h-[6.75rem]" />
+            {/* The linked group as it loads at each width: its name and
+                Unlink, its keys, and the override note at 16px on a phone. */}
+            <Skeleton className="h-[7.75rem] w-full rounded-lg max-md:h-[13.375rem] md:@max-2xl/page:h-[9.75rem]" />
             <Skeleton className="mt-6 h-5 w-28" />
             <Skeleton className="h-24 w-full rounded-lg" />
           </CardContent>

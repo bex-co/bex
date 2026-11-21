@@ -194,6 +194,27 @@ const SWITCH_OFF_EDGE: Pair = {
   },
 };
 
+// A form field's edge is what identifies it (WCAG 1.4.11): muted-foreground at
+// 70%, as the off switch's, on a card and on the page. The default --input
+// border measured 1.43:1 on a card.
+const fieldEdge = (surface: "card" | "background"): Pair => ({
+  name: `form field edge (--muted-foreground/70 on --${surface})`,
+  min: 3,
+  colours: (tokens) => {
+    const bg = token(tokens, surface).rgb;
+    const edge = { ...token(tokens, "muted-foreground"), alpha: 0.7 };
+    return { fg: over(edge, bg), bg };
+  },
+});
+const FIELD_EDGES = [fieldEdge("card"), fieldEdge("background")];
+const FIELD_SOURCES = [
+  "input",
+  "textarea",
+  "auto-textarea",
+  "select",
+  "checkbox",
+].map((name) => `src/common/components/ui/${name}.tsx`);
+
 // A status colour is a Tailwind palette entry, with `dark:` naming the entry
 // the dark theme uses. `files` are the sources that carry the classes: the test
 // fails when one stops containing them, so a change of colour there comes back
@@ -377,7 +398,12 @@ function failures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
       if (ratio < min)
         found.push({ theme, pair, ratio: Math.round(ratio * 100) / 100, min });
     };
-    for (const pair of [...TOKEN_PAIRS, LOG_META, SWITCH_OFF_EDGE]) {
+    for (const pair of [
+      ...TOKEN_PAIRS,
+      LOG_META,
+      SWITCH_OFF_EDGE,
+      ...FIELD_EDGES,
+    ]) {
       const { fg, bg } = pair.colours(tokens);
       check(pair.name, pair.min, fg, bg);
     }
@@ -443,6 +469,12 @@ describe("the contrast calculation", () => {
   it("blends a translucent colour over its page in sRGB", () => {
     const blended = over({ rgb: oklch(0, 0, 0), alpha: 0.5 }, oklch(1, 0, 0));
     expect(blended[0]).toBeCloseTo(0.5, 2);
+  });
+});
+
+describe("form field edges", () => {
+  it.each(FIELD_SOURCES)("%s draws the edge the table checks", (path) => {
+    expect(read(path)).toContain("border-muted-foreground/70");
   });
 });
 

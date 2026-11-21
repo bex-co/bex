@@ -152,7 +152,7 @@ export function ServiceDetailLayout({
     content = (
       <DashboardLayout>
         <div
-          className="min-h-0 flex-1 overflow-auto"
+          className="relative min-h-0 flex-1 overflow-auto"
           data-route-skeleton={
             base === "/static" ? "static-active-tab" : "service-active-tab"
           }
@@ -164,10 +164,15 @@ export function ServiceDetailLayout({
   } else {
     content = (
       <DashboardLayout>
+        {/* `relative` makes the scroller the containing block of every
+            absolutely positioned descendant (a badge's screen-reader text, a
+            hit-area overlay), so it clips them. Without it they were placed
+            against the document and stretched it past the shell: on a phone
+            the window itself scrolled 400px into a blank band. */}
         <div
           data-page-scroll=""
           data-touch-region=""
-          className="min-h-0 flex-1 overflow-auto"
+          className="relative min-h-0 flex-1 overflow-auto"
         >
           {shownService ? (
             <ServiceDetailHeader

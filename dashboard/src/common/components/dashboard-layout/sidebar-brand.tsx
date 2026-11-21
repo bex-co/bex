@@ -35,7 +35,9 @@ export function SidebarBrand() {
           <WorkspaceSwitcher />
         </div>
       </div>
-      <SidebarTrigger className="shrink-0 group-data-[collapsible=icon]:mx-auto" />
+      {/* A 44px target on a touch screen; the 28px button keeps the
+          header's 48px row. */}
+      <SidebarTrigger className="relative shrink-0 group-data-[collapsible=icon]:mx-auto pointer-coarse:after:absolute pointer-coarse:after:-inset-2 pointer-coarse:after:content-['']" />
     </div>
   );
 }

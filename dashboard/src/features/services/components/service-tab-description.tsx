@@ -12,7 +12,8 @@ export function ServiceTabDescription({ children }: { children: ReactNode }) {
   return (
     <p
       className={cn(
-        "text-muted-foreground text-sm",
+        // 16px on a phone, where it is body text, not a caption.
+        "text-muted-foreground max-w-prose text-sm text-pretty max-md:text-base",
         SERVICE_TAB_DESCRIPTION_OFFSET,
       )}
     >

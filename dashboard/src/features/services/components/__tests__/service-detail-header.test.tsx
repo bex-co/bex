@@ -40,6 +40,21 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
       id === "starter" ? STARTER : undefined,
   }),
 }));
+// Where the service lives, which the header names below `lg` (the top bar's
+// breadcrumbs carry it from `lg`).
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({
+    projects: [{ id: "prj-1", name: "storefront", serviceIds: ["app"] }],
+  }),
+}));
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: (projectId: string | null) => ({
+    environments:
+      projectId === "prj-1"
+        ? [{ id: "env-1", name: "Production", serviceIds: ["app"] }]
+        : [],
+  }),
+}));
 const triggerDeploy = vi.fn(async () => {});
 const restartServer = vi.fn(async () => null);
 vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
@@ -203,6 +218,13 @@ describe("ServiceDetailHeader", () => {
     expect(
       screen.getByRole("link", { name: "https://app.onbex.co" }),
     ).toHaveAttribute("href", "https://app.onbex.co");
+  });
+
+  it("names the project and environment beside the type below lg", async () => {
+    renderHeader(svc());
+    const scope = await screen.findByText(/storefront \/ Production/);
+    // From `lg` the breadcrumbs say it; the header's copy hides there.
+    expect(scope).toHaveClass("lg:hidden");
   });
 
   // w3/m81: a deleting service's route/certificate are withdrawn, so its URL is
