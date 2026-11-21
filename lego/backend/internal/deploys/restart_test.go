@@ -164,10 +164,11 @@ func TestRestartFallsBackToTheBuildCommitPin(t *testing.T) {
 	}
 }
 
-// An image-backed service has no commit: restart redeploys its configured image
-// and needs no prior live deploy.
+// An image-backed service has no commit: a live release recorded without a
+// resolved image (the legacy fallback) restarts on the configured image.
 func TestRestartImageBackedKeepsItsImage(t *testing.T) {
 	ds := newFakeStore()
+	seedDeploys(ds, store.Deploy{ID: "dep-live", Status: store.DeployLive, Image: "web:v1"})
 	svc, cl := newService(ds, sampleApp("web", "srv-1"))
 
 	d, err := svc.Restart(context.Background(), "web")
@@ -180,6 +181,48 @@ func TestRestartImageBackedKeepsItsImage(t *testing.T) {
 	}
 	if app.Spec.RestartedAt == "" || d.ID == "" {
 		t.Errorf("image-backed restart must roll a release and open a row: restartedAt %q, deploy %+v", app.Spec.RestartedAt, d)
+	}
+}
+
+// w8/379: an image service with nothing live has no running release either.
+// Restart deployed its saved image instead, so a save-only image change went
+// live through a "restart". It is refused like a repo-backed one, on the verb
+// REST, GraphQL restartServer, MCP restart_service and the dashboard share.
+func TestRestartImageBackedWithoutALiveDeployIsRefused(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		first string
+	}{
+		{"first deploy failed", store.DeployUpdateFailed},
+		{"first deploy in flight", store.DeployUpdateInProgress},
+		{"first deploy canceled", store.DeployCanceled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// The Wait-policy store, so a restart during the first deploy
+			// takes deferRestart's path as on PGStore.
+			ds := newDeferringStore()
+			seedDeploys(ds.fakeStore, store.Deploy{ID: "dep-first", Status: tc.first, Image: "web:missing"})
+			app := sampleApp("web", "srv-1")
+			app.Spec.Image = "web:saved" // saved after the first deploy, never deployed
+			svc, cl := newService(ds, app)
+			before := getApp(t, cl, "web")
+
+			_, err := svc.Restart(context.Background(), "web")
+			if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), `service "web" has no live deploy to restart; deploy it first`) {
+				t.Fatalf("Restart = %v, want the 409 no-live refusal", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: testSchema(t, svc), Context: context.Background(),
+				RequestString: `mutation { restartServer(serviceId: "web") { id } }`})
+			if len(res.Errors) != 1 || !strings.Contains(res.Errors[0].Message, "has no live deploy to restart") {
+				t.Fatalf("restartServer errors = %v, want the no-live refusal", res.Errors)
+			}
+			if after := getApp(t, cl, "web"); after.ResourceVersion != before.ResourceVersion {
+				t.Errorf("refused restart changed the App: %+v", after.Spec)
+			}
+			if rows := ds.byApp["srv-1"]; len(rows) != 1 || rows[0].Status != tc.first {
+				t.Errorf("refused restart touched deploy history: %+v", rows)
+			}
+		})
 	}
 }
 

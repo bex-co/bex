@@ -19,8 +19,10 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -76,9 +78,24 @@ func TestRestartRunsTheWiredDeployVerb(t *testing.T) {
 		t.Errorf("apps patched spec.restartedAt = %q itself; the deploy verb owns the restart", got)
 	}
 
-	refused := errors.New("no live deploy")
+	// w8/379: the deploy verb's no-live refusal, whatever the source type,
+	// reaches REST as its 409 and MCP restart_service as a tool error, with
+	// the same reason and nothing patched.
+	refused := fmt.Errorf("%w: service %q has no live deploy to restart; deploy it first", core.ErrConflict, "web")
 	svc.RestartDeploy = func(context.Context, string) error { return refused }
 	if _, err := svc.Restart(context.Background(), "web"); !errors.Is(err, refused) {
 		t.Errorf("Restart error = %v, want the deploy verb's refusal", err)
+	}
+	rec = httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services/web/restart", nil))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "has no live deploy to restart; deploy it first") {
+		t.Errorf("refused POST restart = %d %s, want the 409 no-live refusal", rec.Code, rec.Body)
+	}
+	res := callMCPTool(t, svc, "restart_service", map[string]any{"serviceId": "web"})
+	if !res.IsError || !strings.Contains(mcpResultText(res), "has no live deploy to restart; deploy it first") {
+		t.Errorf("refused MCP restart_service = %s, want the no-live refusal", mcpResultText(res))
+	}
+	if got := getApp(t, cl, "web").Spec.RestartedAt; got != "" {
+		t.Errorf("refused restart patched spec.restartedAt = %q", got)
 	}
 }

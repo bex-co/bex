@@ -690,29 +690,32 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 // restartNow restarts the release serving now: Restart's path once no deploy
 // is in flight, and the deferred-deploy worker's when one has settled.
 func (s *Service) restartNow(ctx context.Context, service string, a *appv1alpha1.App) (DeployView, error) {
-	var err error
 	if selected, err := s.restartSelectedRelease(ctx, service, a); selected != nil || err != nil {
 		if err != nil {
 			return DeployView{}, err
 		}
 		return *selected, nil
 	}
+	// Every source type needs a live release: without one, an image service
+	// would deploy its saved image, never deployed before (w8/379).
+	commit, err := s.liveCommit(ctx, service, a)
+	if err != nil {
+		return DeployView{}, err
+	}
 	p := TriggerParams{restart: true}
 	if a.Spec.Repo != "" {
-		if p.CommitID, err = s.liveCommit(ctx, service, a); err != nil {
-			return DeployView{}, err
-		}
+		p.CommitID = commit
 	}
 	return s.triggerFetched(ctx, service, a, p, store.TriggerRestart)
 }
 
-// liveCommit is the commit a repo-backed service's live release was built
-// from. A service with no live deploy — its first deploy is still building, or
-// every deploy failed — has no running release to restart, so it is refused
-// rather than silently deploying the branch head. A live deploy whose commit
-// was never resolved (no GitHub connection) falls back to spec.buildCommit,
-// the ref the last build was pinned to; empty means that build used the
-// branch head, which is then all a restart can rebuild.
+// liveCommit is the commit a service's live release was built from. A service
+// with no live deploy — its first deploy is still in flight, or every deploy
+// failed — has no running release to restart, so it is refused rather than
+// silently deploying the branch head or the saved image. A live deploy whose
+// commit was never resolved (no GitHub connection) falls back to
+// spec.buildCommit, the ref the last build was pinned to; empty means that
+// build used the branch head, which is then all a restart can rebuild.
 func (s *Service) liveCommit(ctx context.Context, service string, a *appv1alpha1.App) (string, error) {
 	if s.Store == nil {
 		return "", core.ErrDeploysUnavailable

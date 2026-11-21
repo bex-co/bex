@@ -391,7 +391,8 @@ func TestEveryDeployStatusFilterMatchesEverySurface(t *testing.T) {
 func testSchema(t *testing.T, s *Service) graphql.Schema {
 	t.Helper()
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: s.GraphQLQuery()}),
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: s.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: s.GraphQLMutation()}),
 	})
 	if err != nil {
 		t.Fatalf("schema: %v", err)
