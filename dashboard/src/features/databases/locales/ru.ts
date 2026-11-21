@@ -555,6 +555,17 @@ const ruDatabases: Record<string, TranslationEntry> = {
     message: "Скрыть данные подключения",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "Логическая репликация",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "По умолчанию выключена. В рабочем пространстве Pro и выше база данных с хранилищем не меньше 10 ГБ может публиковать изменения для подписчиков внутри bex и за его пределами. Чтобы включить её, обратитесь в поддержку и укажите ID этой базы данных, учётные данные, с которыми подключаются подписчики, схемы, которые они читают, и нужно ли публиковать все таблицы. Затем создавайте публикации командой CREATE PUBLICATION … FOR TABLE от имени пользователя этой базы данных и подключайте подписчиков к внешнему URL, а не к URL пулера.",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "Пароль",
     description: "Connection-info field label (database password)",

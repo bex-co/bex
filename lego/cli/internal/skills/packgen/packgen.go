@@ -80,11 +80,25 @@ var filePatches = map[string][]rule{
 			"        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2\n"+
 			"      - name: Install bex CLI\n"),
 	},
+	// Render's logical-replication guidance (render.com/docs/postgresql-logical-replication,
+	// read 2026-11-20), which upstream's Postgres skill lacks; bex enables it
+	// on request the same way (w34/m541).
+	"render-postgres/SKILL.md": {
+		r(`\n## Useful MCP Commands\n`, "\n"+postgresLogicalReplication+"## Useful MCP Commands\n"),
+	},
 	"render-migrate-from-heroku/references/service-mapping.md": {
 		r(`- \*\*Heroku Pipelines\*\* → [^\n]*`, "- **Heroku Pipelines** → separate bex services or projects per stage, promoted manually (bex has no preview environments)"),
 		r(`- \*\*Review Apps\*\* → [^\n]*`, "- **Review Apps** → no bex equivalent (bex has no pull request previews)"),
 	},
 }
+
+// postgresLogicalReplication is the pack's Logical Replication section.
+const postgresLogicalReplication = "## Logical Replication\n\n" +
+	"Logical replication is **off by default** and enabled on request, as on Render:\n\n" +
+	"- Requires a **Pro** workspace or higher and at least **10 GB** of storage.\n" +
+	"- To enable it, contact bex support with the database ID (`dpg-…`), the credential subscribers connect as (Render recommends a dedicated read-only user, not the default one), the schemas they read, and whether to publish all tables.\n" +
+	"- `CREATE PUBLICATION … FOR ALL TABLES` needs a superuser, so support creates it as `bex_all_tables`. Create `CREATE PUBLICATION … FOR TABLE …` publications yourself as the database's user.\n" +
+	"- Subscribers connect to the **external** URL over TLS, never the pooled URL (PgBouncer cannot carry replication). Create the subscriber's tables first: logical replication does not copy DDL.\n\n"
 
 // cliCommands are the CLI's top-level commands a skill names; only these turn
 // `render <command>` into `bex <command>`, so prose ("render the page") stays.

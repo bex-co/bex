@@ -22,6 +22,7 @@ import { CopyButton } from "@/common/components/copy-button";
 import { ConnectionField } from "@/common/components/connection-field";
 import type { ConnectionInfoView } from "@/features/databases/types";
 import { maskSecret } from "@/features/databases/lib/mask-secret";
+import { LogicalReplicationNote } from "@/features/databases/components/logical-replication-note";
 
 /**
  * Render's "Connections" panel. The connection strings + password are fetched
@@ -71,6 +72,7 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
             </Button>
           </PermissionTooltip>
         )}
+        <LogicalReplicationNote />
       </CardContent>
     </Card>
   );

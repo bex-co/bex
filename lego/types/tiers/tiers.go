@@ -339,6 +339,11 @@ const (
 	PostgresReadReplicaMinCPU             = "0.5"
 	PostgresMaxReadReplicas               = 5
 	PostgresReadReplicaMinStorageGB int32 = 10
+	// PostgresLogicalReplicationMinStorageGB is Render's floor for a
+	// logical-replication publisher: "Your database must have at least 10 GB
+	// of storage" (render.com/docs/postgresql-logical-replication, read
+	// 2026-11-20; w34/m541).
+	PostgresLogicalReplicationMinStorageGB int32 = 10
 )
 
 var readReplicaMinCPU = resource.MustParse(PostgresReadReplicaMinCPU)

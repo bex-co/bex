@@ -115,34 +115,49 @@ func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, d
 	if db.Spec.Suspended {
 		return
 	}
-	condition := extensionsCondition(child, db.Generation)
-	switch {
-	case err == nil:
-	case transientAPIError(err):
-		// A conflict or a busy API server is retried on the next pass, not
-		// reported as a failure that would mark a new database unavailable.
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, reasonExtensionsPending, "retrying the application database"
-	default:
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, reasonExtensionsApplyError, err.Error()
-	}
-	meta.SetStatusCondition(&db.Status.Conditions, condition)
+	meta.SetStatusCondition(&db.Status.Conditions, extensionsVerdict.condition(child, db.Generation, err))
 }
 
-// extensionsCondition reads CNPG's verdict. CNPG advances observedGeneration
-// only on success, so a failure (applied false with a message) is reported
-// whatever generation it names; a success counts only for the current one.
-func extensionsCondition(child *unstructured.Unstructured, generation int64) metav1.Condition {
-	condition := metav1.Condition{Type: conditionExtensionsReady, ObservedGeneration: generation}
+// cnpgChildVerdict is how a condition reads CloudNativePG's verdict on one of
+// its declarative children (the application database, the all-tables
+// publication): its type, its reasons and its fixed messages.
+type cnpgChildVerdict struct {
+	conditionType                                string
+	applied, pending, applyFailed, applyError    string
+	appliedMessage, pendingMessage, retryMessage string
+}
+
+var extensionsVerdict = cnpgChildVerdict{
+	conditionType: conditionExtensionsReady,
+	applied:       reasonExtensionsApplied, pending: reasonExtensionsPending,
+	applyFailed: reasonExtensionsApplyFailed, applyError: reasonExtensionsApplyError,
+	appliedMessage: "vector is installed in the application database",
+	pendingMessage: "waiting for CloudNativePG to apply the application database",
+	retryMessage:   "retrying the application database",
+}
+
+// condition reads the verdict on child after a write that returned err. A
+// conflict or a busy API server is retried on the next pass, not reported as
+// a failure that would mark a new database unavailable. CNPG advances
+// observedGeneration only on success, so a failure (applied false with a
+// message) is reported whatever generation it names; a success counts only
+// for the current one.
+func (v cnpgChildVerdict) condition(child *unstructured.Unstructured, generation int64, err error) metav1.Condition {
+	condition := metav1.Condition{Type: v.conditionType, ObservedGeneration: generation}
 	applied, found, _ := unstructured.NestedBool(child.Object, "status", "applied")
 	observed, _, _ := unstructured.NestedInt64(child.Object, "status", "observedGeneration")
 	message, _, _ := unstructured.NestedString(child.Object, "status", "message")
 	switch {
+	case err != nil && transientAPIError(err):
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, v.pending, v.retryMessage
+	case err != nil:
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, v.applyError, err.Error()
 	case found && !applied && message != "":
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, reasonExtensionsApplyFailed, message
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, v.applyFailed, message
 	case found && applied && observed == child.GetGeneration():
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionTrue, reasonExtensionsApplied, "vector is installed in the application database"
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionTrue, v.applied, v.appliedMessage
 	default:
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, reasonExtensionsPending, "waiting for CloudNativePG to apply the application database"
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, v.pending, v.pendingMessage
 	}
 	return condition
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package packgen
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -147,5 +148,26 @@ func TestBexTextSendsTheAPIKeyAsTheBearer(t *testing.T) {
 				t.Errorf("%s contains %q", path, word)
 			}
 		}
+	}
+}
+
+// bex's Logical Replication section rides a patch on upstream's Postgres
+// skill, so regenerating the pack keeps it, and the checked-in pack carries
+// the same text (w34/m541).
+func TestPostgresSkillKeepsLogicalReplication(t *testing.T) {
+	upstream := "## Read Replicas\n\n- Up to **5 read replicas** per database.\n\n## Useful MCP Commands\n\nUse the Render MCP tools.\n"
+	_, out, keep, err := Rewrite("render-postgres/SKILL.md", []byte(upstream))
+	if err != nil || !keep {
+		t.Fatalf("Rewrite = %v, %v", keep, err)
+	}
+	if !strings.Contains(string(out), "\n"+postgresLogicalReplication+"## Useful MCP Commands\n") {
+		t.Fatalf("the Logical Replication section is not before Useful MCP Commands:\n%s", out)
+	}
+	pack, err := os.ReadFile("../pack/skills/bex-postgres/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pack), postgresLogicalReplication) {
+		t.Error("the checked-in bex-postgres skill lacks the generated Logical Replication section")
 	}
 }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
+import { DatastoreConnectionsPreview } from "@/common/components/datastore-overview-previews";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { ConnectionInfoView } from "@/features/databases/types";
@@ -38,6 +39,33 @@ describe("ConnectionInfoPanel", () => {
     // Nothing sensitive is rendered before reveal.
     expect(screen.queryByText("Password")).not.toBeInTheDocument();
     expect(reveal).not.toHaveBeenCalled();
+  });
+
+  // Render's logical-replication rules (w34/m541): off by default, enabled
+  // on request, subscribers on the external URL. Shown before and after a
+  // reveal, and by the route-pending preview, so the card never changes height.
+  it("says logical replication is enabled on request, before and after a reveal", () => {
+    const { rerender } = render(<ConnectionInfoPanel id="db" />);
+    expect(screen.getByText("Logical replication")).toBeInTheDocument();
+    const note = screen.getByText(/off by default/i);
+    for (const rule of [
+      /pro workspace/i,
+      /10 gb/i,
+      /contact support/i,
+      /create publication … for table/i,
+      /external url, never the pooled one/i,
+    ]) {
+      expect(note.textContent).toMatch(rule);
+    }
+    state.info = {
+      password: "pw",
+      internalConnectionString: "postgresql://u:pw@h/db",
+      psqlCommand: "psql postgresql://u:pw@h/db",
+    } as ConnectionInfoView;
+    rerender(<ConnectionInfoPanel id="db" />);
+    expect(screen.getByText("Logical replication")).toBeInTheDocument();
+    render(<DatastoreConnectionsPreview kind="postgres" />);
+    expect(screen.getAllByText("Logical replication")).toHaveLength(2);
   });
 
   it("calls reveal on click", async () => {

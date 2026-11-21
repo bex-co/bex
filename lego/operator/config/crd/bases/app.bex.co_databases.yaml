@@ -189,6 +189,43 @@ spec:
                   - cidr
                   type: object
                 type: array
+              logicalReplication:
+                description: |-
+                  LogicalReplication, when set, makes the database a logical-replication
+                  publisher, as Render's support team enables one
+                  (render.com/docs/postgresql-logical-replication; w34/m541). Only bex's
+                  operators write it, through bex-api's cluster-internal verb: Render has
+                  no API field for it. The operator gives PublisherRole the REPLICATION
+                  attribute, bounds the WAL a replication slot may retain
+                  (max_slot_wal_keep_size), and with AllTables declares the
+                  LogicalReplicationAllTablesPublication. Absent: none of that, as before.
+                properties:
+                  allTables:
+                    description: |-
+                      AllTables declares LogicalReplicationAllTablesPublication in the
+                      database's primary database.
+                    type: boolean
+                  publisherRole:
+                    description: |-
+                      PublisherRole is the credential subscribers connect as: the database's
+                      owner or one of Users. It alone gets the REPLICATION attribute.
+                    maxLength: 63
+                    pattern: ^[a-z_][a-z0-9_]{0,62}$
+                    type: string
+                  schemas:
+                    description: |-
+                      Schemas are the schemas subscribers read. bex-api granted PublisherRole
+                      USAGE and SELECT on them when it enabled the publisher; the operator
+                      does not read them.
+                    items:
+                      maxLength: 63
+                      minLength: 1
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: set
+                required:
+                - publisherRole
+                type: object
               name:
                 description: |-
                   Name is the required mutable, user-facing database name. metadata.name is

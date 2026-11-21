@@ -226,6 +226,10 @@ type clusterParams struct {
 	// serverAltDNSNames alongside them, so they supersede it.
 	serverTLSSecret string
 	serverCASecret  string
+	// logicalReplication is Database.spec.logicalReplication: its publisher
+	// role gets REPLICATION and the cluster bounds the WAL a slot may retain
+	// (database_publication.go). nil projects neither.
+	logicalReplication *appv1alpha1.DatabaseLogicalReplication
 }
 
 func versionedBackupServerName(name, version string) string {
@@ -621,7 +625,8 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	}
 	for k, v := range p.parameters {
 		name := strings.ToLower(strings.TrimSpace(k))
-		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) {
+		publisherBound := p.logicalReplication != nil && name == paramMaxSlotWALKeepSize
+		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) && !publisherBound {
 			pgParams[k] = v
 		}
 	}
@@ -633,6 +638,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// which CNPG rolls. PostgreSQL's default is 100, every current plan's, so
 	// an existing cluster adopts the setting on a reload, without one.
 	pgParams["max_connections"] = strconv.Itoa(int(p.plan.MaxConnections))
+	// A publisher's replication slots may hold back at most a share of the
+	// disk (slotWALKeepSize); the merge above drops a legacy declared value of
+	// any spelling while it publishes. It is reloadable, and without a
+	// publisher bex withdraws its value.
+	if p.logicalReplication != nil {
+		pgParams[paramMaxSlotWALKeepSize] = slotWALKeepSize(p.storageGB)
+	}
 	preload := []any{"pg_stat_statements"}
 	// A bex operand's extension allowlist (ADR092 D3) is only projected with
 	// the image that carries it: on any other image these libraries do not
@@ -663,6 +675,9 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		spec["plugins"] = []any{barmanCloudPlugin(p.backupServerName, true)}
 	}
 	if roles := managedRoles(p.owner, p.users, p.deletedUsers); roles != nil {
+		if p.logicalReplication != nil {
+			markPublisherRole(roles, p.logicalReplication.PublisherRole)
+		}
 		spec["managed"] = map[string]any{"roles": roles}
 	}
 	return spec
@@ -873,7 +888,7 @@ func (r *DatabaseReconciler) secretClient() client.Client {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
-// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers;databases,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers;databases;publications,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // reconcileTenantBackupStore reads the GitOps-installed ObjectStore in the apps
 // namespace and projects it into each tenant namespace (ADR043 D8.4). Without
@@ -1000,12 +1015,13 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
 		backupServerName: backups.targetServerName,
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
-		deletedUsers:      db.Spec.DeletedUsers,
-		highAvailability:  db.Spec.HighAvailability,
-		parameters:        db.Spec.Parameters,
-		serverAltDNSNames: publicNames,
-		serverTLSSecret:   serverTLSSecret,
-		serverCASecret:    serverCASecret,
+		deletedUsers:       db.Spec.DeletedUsers,
+		highAvailability:   db.Spec.HighAvailability,
+		parameters:         db.Spec.Parameters,
+		serverAltDNSNames:  publicNames,
+		serverTLSSecret:    serverTLSSecret,
+		serverCASecret:     serverCASecret,
+		logicalReplication: db.Spec.LogicalReplication,
 	}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
 	}
@@ -1014,6 +1030,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 	r.reconcileApplicationDatabase(ctx, &db, dbname, owner)
+	r.reconcileLogicalReplication(ctx, &db, dbname)
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelNetworkIsolation], "-environment-ingress", map[string]string{cnpgClusterLabel: db.Name}, &metav1.LabelSelector{MatchLabels: map[string]string{logicalExportDBLabel: db.Name}}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
@@ -2155,6 +2172,8 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	owned.SetGroupVersionKind(cnpgClusterGVK)
 	application := &unstructured.Unstructured{}
 	application.SetGroupVersionKind(cnpgDatabaseGVK)
+	publication := &unstructured.Unstructured{}
+	publication.SetGroupVersionKind(cnpgPublicationGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.Database{}, builder.WithPredicates(generationDeletionOrFinalizerPredicate{})).
 		// CNPG reports readiness and major-upgrade progress through Cluster status
@@ -2165,6 +2184,8 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// status update too; without this an existing Ready database would
 		// report it only on an unrelated Cluster change.
 		Owns(application, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		// The all-tables publication's verdict likewise (w34/m541).
+		Owns(publication, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		// Job status updates do not change metadata.generation, so use resource
 		// version here; otherwise completed/failed exports would never settle.
 		Owns(&batchv1.Job{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).

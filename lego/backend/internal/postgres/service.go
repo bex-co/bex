@@ -1703,6 +1703,10 @@ var operatorManagedParameters = map[string]bool{
 	// sets it from the plan and ignores a declared value, so a recovery does
 	// not carry one in as a declaration that never applies.
 	"max_connections": true,
+	// A logical-replication publisher's retained-WAL bound (w34/m541): the
+	// operator sets it from the disk while the database publishes, and a
+	// carried value would lift it.
+	"max_slot_wal_keep_size": true,
 }
 
 // operatorManagedParameterPrefixes match whole families, so a knob the exact

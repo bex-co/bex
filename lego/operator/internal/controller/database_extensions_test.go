@@ -113,7 +113,7 @@ func TestExtensionsCondition(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var conditions []metav1.Condition
-			meta.SetStatusCondition(&conditions, extensionsCondition(tc.child, 7))
+			meta.SetStatusCondition(&conditions, extensionsVerdict.condition(tc.child, 7, nil))
 			got := meta.FindStatusCondition(conditions, conditionExtensionsReady)
 			if got.Status != tc.status || got.Reason != tc.reason || got.ObservedGeneration != 7 {
 				t.Errorf("condition = %+v, want %s/%s at generation 7", got, tc.status, tc.reason)

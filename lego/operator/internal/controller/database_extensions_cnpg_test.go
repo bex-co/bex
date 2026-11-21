@@ -90,7 +90,7 @@ func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 					if err := cl.Get(ctx, client.ObjectKeyFromObject(fresh), fresh); err != nil {
 						return false
 					}
-					return extensionsCondition(fresh, 1).Status == metav1.ConditionTrue
+					return extensionsVerdict.condition(fresh, 1, nil).Status == metav1.ConditionTrue
 				})
 			}
 			applyChild()
@@ -141,7 +141,7 @@ func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 				if err := cl.Get(ctx, client.ObjectKeyFromObject(broken), broken); err != nil {
 					return false
 				}
-				condition := extensionsCondition(broken, 1)
+				condition := extensionsVerdict.condition(broken, 1, nil)
 				return condition.Status == metav1.ConditionFalse && condition.Message != ""
 			})
 			// Re-adopting an existing database with vector installed changes nothing.

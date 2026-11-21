@@ -316,6 +316,54 @@ type DatabaseSpec struct {
 	// and max_connections is always the plan's connection limit.
 	// +optional
 	Parameters map[string]string `json:"parameters,omitempty"`
+
+	// LogicalReplication, when set, makes the database a logical-replication
+	// publisher, as Render's support team enables one
+	// (render.com/docs/postgresql-logical-replication; w34/m541). Only bex's
+	// operators write it, through bex-api's cluster-internal verb: Render has
+	// no API field for it. The operator gives PublisherRole the REPLICATION
+	// attribute, bounds the WAL a replication slot may retain
+	// (max_slot_wal_keep_size), and with AllTables declares the
+	// LogicalReplicationAllTablesPublication. Absent: none of that, as before.
+	// +optional
+	LogicalReplication *DatabaseLogicalReplication `json:"logicalReplication,omitempty"`
+}
+
+// LogicalReplicationAllTablesPublication is the `FOR ALL TABLES` publication
+// the operator declares for DatabaseLogicalReplication.AllTables. Creating
+// one needs a superuser, which the database's users are not, so CNPG creates
+// it; subscribers name it in CREATE SUBSCRIPTION.
+const LogicalReplicationAllTablesPublication = "bex_all_tables"
+
+// ConditionLogicalReplication reports a publisher's state on the Database:
+// True once the all-tables publication (when requested) is applied, False
+// with CNPG's message when it failed. Absent while LogicalReplication is not
+// set. It never affects Ready.
+const ConditionLogicalReplication = "LogicalReplication"
+
+// DatabaseLogicalReplication is a database's publisher settings: Render's
+// request inputs, minus the database id.
+type DatabaseLogicalReplication struct {
+	// PublisherRole is the credential subscribers connect as: the database's
+	// owner or one of Users. It alone gets the REPLICATION attribute.
+	// +required
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
+	PublisherRole string `json:"publisherRole"`
+
+	// Schemas are the schemas subscribers read. bex-api granted PublisherRole
+	// USAGE and SELECT on them when it enabled the publisher; the operator
+	// does not read them.
+	// +optional
+	// +listType=set
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:items:MaxLength=63
+	Schemas []string `json:"schemas,omitempty"`
+
+	// AllTables declares LogicalReplicationAllTablesPublication in the
+	// database's primary database.
+	// +optional
+	AllTables bool `json:"allTables,omitempty"`
 }
 
 // DatabaseReadReplica declares one named read replica of a Database: its own

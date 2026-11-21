@@ -1,23 +1,30 @@
 # w34 · m541 — A Pro-workspace Postgres with at least 10 GB publishes to an external subscriber once logical replication is enabled, as Render enables it
 
-**Worker:** worker34 **Goal:** a bex Postgres on a Pro (or higher) workspace with at least 10 GB of storage can be enabled for logical replication the way Render's support team enables it, after which an external PostgreSQL subscribes to it through its external URL and receives every change. **Status:** todo
+**Worker:** worker34 **Goal:** a bex Postgres on a Pro (or higher) workspace with at least 10 GB of storage can be enabled for logical replication the way Render's support team enables it, after which an external PostgreSQL subscribes to it through its external URL and receives every change. **Status:** blocked (t001–t007, t009–t011 done; t008 and t012 wait for the production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Reproduce today's refusal on dev-N; write ADR009 § Logical replication and the ADR018 row | 45m | — |
-| [t002](t002.md) | `Database.spec.logicalReplication` in `lego/types`, with CRD codegen | 30m | t001 |
-| [t003](t003.md) | Operator: the named role has CNPG `replication: true` only while enabled | 1h | t002 |
-| [t004](t004.md) | Operator: `allTables` is a CNPG `Publication` (`FOR ALL TABLES`); RBAC; status | 1h | t002 |
-| [t005](t005.md) | Retained WAL is bounded: `max_slot_wal_keep_size` follows the disk while enabled | 45m | t003 |
-| [t006](t006.md) | Ops-only enable/disable verb with Render's prerequisites, schema grants, audit and runbook | 1h15m | t003, t004 |
-| [t007](t007.md) | The database page and the CLI skill pack say logical replication is enabled on request | 30m | t006 |
+| [t001](done/t001.md) | Reproduce today's refusal on dev-N; write ADR009 § Logical replication and the ADR018 row — **DONE** | 45m | — |
+| [t002](done/t002.md) | `Database.spec.logicalReplication` in `lego/types`, with CRD codegen — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | Operator: the named role has CNPG `replication: true` only while enabled — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Operator: `allTables` is a CNPG `Publication` (`FOR ALL TABLES`); RBAC; status — **DONE** | 1h | t002 |
+| [t005](done/t005.md) | Retained WAL is bounded: `max_slot_wal_keep_size` follows the disk while enabled — **DONE** | 45m | t003 |
+| [t006](done/t006.md) | Ops-only enable/disable verb with Render's prerequisites, schema grants, audit and runbook — **DONE** | 1h15m | t003, t004 |
+| [t007](done/t007.md) | The database page and the CLI skill pack say logical replication is enabled on request — **DONE** | 30m | t006 |
 | [t008](t008.md) | Live check on dev-N: an external PostgreSQL 18 subscriber through `pg-sni-proxy` | 1h | t005, t006 |
-| [t009](t009.md) | Render parity | 30m | t007, t008 |
-| [t010](t010.md) | Simplify | 15m | t009 |
-| [t011](t011.md) | Test coverage | 45m | t009 |
+| [t009](done/t009.md) | Render parity — **DONE** | 30m | t007, t008 |
+| [t010](done/t010.md) | Simplify — **DONE** | 15m | t009 |
+| [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009 |
 | [t012](t012.md) | Closeout (live replay on production) | 45m | t010, t011 |
+
+## Progress (2026-11-21, loopx w34)
+
+- **Shipped:** the spec field, the operator's projection (the publisher role's `REPLICATION`, the `bex_all_tables` CloudNativePG `Publication`, the `max_slot_wal_keep_size` bound of a fifth of the disk), the operators' verb `/api postgres-logical-replication` with Render's prerequisites, schema grants, slot cleanup on disable and audit rows, the runbook, the dashboard note and the agent-skill section. Design and evidence: [ADR009 § Logical replication](../../../docs/ADR009-postgresql-management.md#logical-replication-w34m541); the ADR018 row "Logical replication (publisher)" is ◐ with its owners.
+- **t001's checks** ran on a local PostgreSQL 18 publisher shaped like a bex tenant, because no cluster can run here (t008): `wal_level` `logical`; the default user's `FOR TABLE` publication succeeds and its `FOR ALL TABLES` is superuser-only; an external subscriber as the default user is refused with `permission denied to start WAL sender`. DoD item 3 quotes PostgreSQL 15's wording of that refusal; PostgreSQL 16 and later, bex's default 18 included, say `permission denied to start WAL sender` (SQLSTATE 42501 in both), and the replay should expect that.
+- **Verified off-cluster:** the verb end to end on real PostgreSQL 17 (CI's) and 18 with a real subscription (copy, insert, update, delete), the default user's `FOR TABLE` publication decoding for the publisher, the refusals writing nothing, and disable dropping both slots while the subscription kept reconnecting; a local PostgreSQL 18 pair over TLS replicated both publications to an external subscriber. That local run found that a single terminate-then-drop loses the slot to the subscriber's reconnect within a second, so disable drops each slot in a loop.
+- **Left:** t008 (DoD 1–5 on a real cluster) has to run on production, since no dev stack is available to w34; it and t012 follow once the production pin carries this milestone's commits, with `bex-canary` on Pro for the walk under the user's 2026-10-31 permission and back to Hobby afterwards.
 
 ## Definition of done
 

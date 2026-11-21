@@ -542,6 +542,17 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "隐藏连接信息",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "逻辑复制",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "默认关闭。在 Pro 及以上的工作区中，存储至少 10 GB 的数据库可以向 bex 内外的订阅端发布变更。如需开启，请联系支持团队，并提供此数据库的 ID、订阅端连接所用的凭据、订阅端读取的 schema，以及是否发布所有表。之后以此数据库的用户身份用 CREATE PUBLICATION … FOR TABLE 创建发布，并让订阅端连接外部 URL，而不是连接池 URL。",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "密码",
     description: "Connection-info field label (database password)",

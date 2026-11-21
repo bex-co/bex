@@ -68,6 +68,11 @@ const (
 	// below Pro the trigger variable is an ordinary variable, no token is
 	// mounted, and the deploy log says why.
 	FeatureManagedOIDC PlanFeature = "Managed OIDC"
+	// FeatureLogicalReplication is a Postgres publishing to logical-replication
+	// subscribers (w34/m541): "Your workspace must be on a Pro plan or higher"
+	// (render.com/docs/postgresql-logical-replication, read 2026-11-20). Only
+	// the operators' internal verb checks it, as only Render's support enables it.
+	FeatureLogicalReplication PlanFeature = "logical replication"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
@@ -94,6 +99,7 @@ var planFeatures = map[PlanFeature]struct {
 	FeatureGoogleLoginEnforcement: {minimum: planPro, key: "googleLoginEnforcement", singular: true},
 	FeatureOrganizations:          {minimum: planScale, key: "organizations"},
 	FeatureManagedOIDC:            {minimum: planPro, key: "managedOIDC", singular: true},
+	FeatureLogicalReplication:     {minimum: planPro, key: "logicalReplication", singular: true},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's

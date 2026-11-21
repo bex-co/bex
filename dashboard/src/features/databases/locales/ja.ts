@@ -555,6 +555,17 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "接続情報を非表示",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "論理レプリケーション",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "デフォルトでは無効です。Pro 以上のワークスペースでは、ストレージが 10 GB 以上のデータベースが、bex の内外のサブスクライバーに変更を公開できます。有効にするには、このデータベースの ID、サブスクライバーが接続に使う認証情報、読み取るスキーマ、すべてのテーブルを公開するかどうかを添えてサポートに連絡してください。その後、このデータベースのユーザーとして CREATE PUBLICATION … FOR TABLE でパブリケーションを作成し、サブスクライバーはプール URL ではなく外部 URL に接続してください。",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "パスワード",
     description: "Connection-info field label (database password)",

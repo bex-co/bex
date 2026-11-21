@@ -561,6 +561,17 @@ const deDatabases: Record<string, TranslationEntry> = {
     message: "Verbindungsinfos ausblenden",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "Logische Replikation",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "Standardmäßig aus. Ab einem Pro-Workspace kann eine Datenbank mit mindestens 10 GB Speicher ihre Änderungen an Subscriber innerhalb oder außerhalb von bex veröffentlichen. Zum Aktivieren wende dich an den Support und nenne die ID dieser Datenbank, die Zugangsdaten, mit denen sich Subscriber verbinden, die Schemas, die sie lesen, und ob alle Tabellen veröffentlicht werden sollen. Erstelle danach Publikationen mit CREATE PUBLICATION … FOR TABLE als Benutzer dieser Datenbank und verbinde Subscriber mit der externen URL, nie mit der Pooler-URL.",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "Passwort",
     description: "Connection-info field label (database password)",

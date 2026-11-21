@@ -1242,6 +1242,14 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "PlatformRebuild" {
 		return false
 	}
+	// Enabling a Postgres as a logical-replication publisher
+	// (`/api postgres-logical-replication`, w34/m541) is Render support's
+	// action, served only on the :8091 listener behind the control-plane
+	// bearer: no caller identity to authorize. Its bearer, prerequisite and
+	// SQL contracts live in postgres/logical_replication_test.go.
+	if recv == reflect.TypeFor[*postgres.Service]() && m.Name == "SetLogicalReplication" {
+		return false
+	}
 	// The agent's share verb (ADR095 D6) is reached only through the internal
 	// :8091 share handler, whose gateway HMAC envelope names a session the
 	// gateway verified from the sandbox Pod; it has no caller identity to

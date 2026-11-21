@@ -200,6 +200,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == platformRebuildCommand {
 		os.Exit(runPlatformRebuild(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
 	}
+	if len(os.Args) > 1 && os.Args[1] == logicalReplicationCommand {
+		os.Exit(runLogicalReplication(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
+	}
 	if len(os.Args) > 1 && os.Args[1] == revokeOAuthGrantCommand {
 		os.Exit(runRevokeOAuthGrant(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
 	}
@@ -361,6 +364,7 @@ func main() {
 	deps.OpsWorkspaceID = cfg.OpsWorkspace
 	opsRole := opsRoleHandler(cfg, authzChecker, deps.Identities)
 	platformRebuild := &lateHandler{}
+	logicalReplication := &lateHandler{}
 	shareFiles := &lateHandler{}
 	agentResults := &lateHandler{}
 	agentSpawns := &lateHandler{}
@@ -470,7 +474,7 @@ func main() {
 		// ADR112 D4: the public bucket gateway's two verbs, mounted on :8091 when
 		// BEX_OBJECT_STORAGE_GATEWAY_TOKEN is set.
 		objectGateway := (&objectgw.Verbs{Token: cfg.ObjectGatewayToken, Service: deps.ObjectStorage, BaseDomain: cfg.BaseDomain}).Handler()
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, settingsGuardHandler(cfg, st, deps.Identities), platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, settingsGuardHandler(cfg, st, deps.Identities), platformRebuild, logicalReplication, shareFiles, agentResults, agentSpawns, objectGateway, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -518,6 +522,7 @@ func main() {
 	wireDiskSnapshots(&deps, cfg)
 	srv := api.NewServer(base, deps)
 	platformRebuild.set(deploys.PlatformRebuildHandler(srv.Deploys, cfg.CPToken))
+	logicalReplication.set(postgres.LogicalReplicationHandler(srv.Postgres, cfg.CPToken))
 	if srv.AgentSessions != nil && st != nil && cfg.SandboxExecSecret != "" {
 		shareFiles.set(&agentsession.ShareFileHandler{Secret: []byte(cfg.SandboxExecSecret), Files: srv.AgentSessions, Nonce: st})
 		agentResults.set(&agentsession.ResultHandler{Secret: []byte(cfg.SandboxExecSecret), Results: srv.AgentSessions, Nonce: st})
@@ -1334,7 +1339,7 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, settingsGuard *settingsguard.Handler, platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, settingsGuard *settingsguard.Handler, platformRebuild, logicalReplication, shareFiles, agentResults, agentSpawns, objectGateway http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1493,6 +1498,10 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	// The fleet rebuild verb (platform-rebuild) shares this listener and the
 	// control-plane bearer: like the projection API it writes across tenants.
 	internalRoot.Handle("POST "+deploys.PlatformRebuildPath, platformRebuild)
+	// The operators' logical-replication verb (w34/m541): Render's support
+	// enables a publisher on request, so it is no tenant surface. Same
+	// listener and bearer as the fleet rebuild.
+	internalRoot.Handle("POST "+postgres.LogicalReplicationPath, logicalReplication)
 	internalRoot.Handle("/", internal.Handler())
 	cpAddr := cfg.CPAddr
 	// Metered as surface="internal": the projection/mint/ops-role verbs are not

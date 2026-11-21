@@ -94,7 +94,8 @@ up() {
   fga_image=$(pin 'openfga/openfga:[^ @]+')
   bao_image=$(pin 'quay.io/openbao/openbao:[^ @]+')
   loki_image=$(pin 'grafana/loki:[^ @]+')
-  start "$prefix-postgres" "$pg_image" -e POSTGRES_PASSWORD=pw -p 127.0.0.1::5432
+  # wal_level=logical as in CI and on CloudNativePG (w34/m541).
+  start "$prefix-postgres" "$pg_image" -e POSTGRES_PASSWORD=pw -p 127.0.0.1::5432 -- -c wal_level=logical
   start "$prefix-openbao" "$bao_image" -e BAO_DEV_ROOT_TOKEN_ID=$bao_token -p 127.0.0.1::8200 \
     -- server -dev -dev-listen-address=0.0.0.0:8200
   start "$prefix-openfga" "$fga_image" -e OPENFGA_DATASTORE_ENGINE=memory -p 127.0.0.1::8080 -- run

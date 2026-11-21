@@ -559,6 +559,17 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Hide connection info",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "Logical replication",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "Off by default. On a Pro workspace or higher, a database with at least 10 GB of storage can publish its changes to subscribers inside or outside bex. To enable it, contact support with this database's ID, the credential subscribers connect as, the schemas they read, and whether to publish all tables. Then create publications with CREATE PUBLICATION … FOR TABLE as this database's user, and connect subscribers to the external URL, never the pooled one.",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "Password",
     description: "Connection-info field label (database password)",

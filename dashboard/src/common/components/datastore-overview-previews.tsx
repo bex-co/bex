@@ -11,6 +11,7 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRowPreview } from "@/features/services/components/editable-field-row";
+import { LogicalReplicationNote } from "@/features/databases/components/logical-replication-note";
 import type { en } from "@/i18n";
 
 type Key = keyof typeof en;
@@ -120,8 +121,9 @@ const CONNECTION_COPY = {
 >;
 
 /**
- * The masked Connections card: title, the static description and the
- * disabled 36px Reveal button. Connection values are never part of a preview.
+ * The masked Connections card: title, the static description, the disabled
+ * 36px Reveal button and, for Postgres, the static logical-replication note.
+ * Connection values are never part of a preview.
  */
 export function DatastoreConnectionsPreview({ kind }: { kind: DatastoreKind }) {
   const { t } = useTranslations();
@@ -148,6 +150,7 @@ export function DatastoreConnectionsPreview({ kind }: { kind: DatastoreKind }) {
           <Eye />
           {t(copy.reveal)}
         </Button>
+        {kind === "postgres" ? <LogicalReplicationNote /> : null}
       </CardContent>
     </Card>
   );

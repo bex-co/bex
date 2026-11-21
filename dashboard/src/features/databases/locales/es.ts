@@ -558,6 +558,17 @@ const esDatabases: Record<string, TranslationEntry> = {
     message: "Ocultar información de conexión",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "Replicación lógica",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "Desactivada de forma predeterminada. En un workspace Pro o superior, una base de datos con al menos 10 GB de almacenamiento puede publicar sus cambios a suscriptores dentro o fuera de bex. Para activarla, contacta con soporte indicando el ID de esta base de datos, la credencial con la que se conectan los suscriptores, los esquemas que leen y si se publican todas las tablas. Después crea publicaciones con CREATE PUBLICATION … FOR TABLE como usuario de esta base de datos y conecta los suscriptores a la URL externa, nunca a la del pooler.",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "Contraseña",
     description: "Connection-info field label (database password)",

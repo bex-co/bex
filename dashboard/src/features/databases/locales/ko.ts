@@ -550,6 +550,17 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "연결 정보 숨기기",
     description: "Button that clears the revealed connection info",
   },
+  "databases.connLogicalReplicationTitle": {
+    message: "논리 복제",
+    description:
+      "Heading of the logical-replication note on the Connections card",
+  },
+  "databases.connLogicalReplicationBody": {
+    message:
+      "기본적으로 꺼져 있습니다. Pro 이상 워크스페이스에서는 스토리지가 10GB 이상인 데이터베이스가 bex 안팎의 구독자에게 변경 사항을 게시할 수 있습니다. 사용하려면 이 데이터베이스의 ID, 구독자가 연결할 자격 증명, 읽을 스키마, 모든 테이블을 게시할지 여부를 지원팀에 알려 주세요. 그런 다음 이 데이터베이스의 사용자로 CREATE PUBLICATION … FOR TABLE로 게시를 만들고, 구독자는 풀링 URL이 아닌 외부 URL에 연결하세요.",
+    description:
+      "Logical-replication note on the Connections card: off by default, enabled on request (Render's rules)",
+  },
   "databases.connPassword": {
     message: "비밀번호",
     description: "Connection-info field label (database password)",

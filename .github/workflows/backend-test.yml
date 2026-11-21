@@ -163,13 +163,17 @@ jobs:
       # Pinned to the linux/arm64/v8 manifest, not the multi-arch index: this
       # job runs on ubuntu-24.04-arm, and a services: pull once resolved the
       # index to a wrong-arch binary (entrypoint exec EINVAL).
+      # wal_level=logical is what CloudNativePG runs every tenant database
+      # with; the logical-replication verb's tests create and drop logical
+      # slots (w34/m541).
       - name: start Postgres
         run: |
           docker rm -f backend-test-postgres >/dev/null 2>&1 || true
           docker run -d --name backend-test-postgres \
             -e POSTGRES_PASSWORD=pw \
             -p 127.0.0.1:5432:5432 \
-            postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
+            postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296 \
+            -c wal_level=logical
           timeout 90 bash -c 'until docker exec backend-test-postgres pg_isready -U postgres -h 127.0.0.1; do sleep 2; done'
       # TestLokiRequestMetricsClipToWindowOnLoki runs the request-metrics LogQL in
       # the pinned Loki engine (w4/m175; 3.6.7 is production's version). Started

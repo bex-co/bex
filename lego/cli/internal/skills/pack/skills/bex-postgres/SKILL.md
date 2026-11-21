@@ -91,6 +91,15 @@ HA eligibility and plan-change behavior depend on the Postgres compute plan and 
 
 Always treat `readReplicas` as **authoritative** desired state, not additive-only.
 
+## Logical Replication
+
+Logical replication is **off by default** and enabled on request, as on Render:
+
+- Requires a **Pro** workspace or higher and at least **10 GB** of storage.
+- To enable it, contact bex support with the database ID (`dpg-…`), the credential subscribers connect as (Render recommends a dedicated read-only user, not the default one), the schemas they read, and whether to publish all tables.
+- `CREATE PUBLICATION … FOR ALL TABLES` needs a superuser, so support creates it as `bex_all_tables`. Create `CREATE PUBLICATION … FOR TABLE …` publications yourself as the database's user.
+- Subscribers connect to the **external** URL over TLS, never the pooled URL (PgBouncer cannot carry replication). Create the subscriber's tables first: logical replication does not copy DDL.
+
 ## Useful MCP Commands
 
 Use the bex MCP tools (names may vary slightly by integration; align with your server’s tool list):

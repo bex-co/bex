@@ -91,38 +91,48 @@ func runPlatformRebuild(ctx context.Context, cfg *Config, args []string, out, er
 		fmt.Fprintln(errOut, err)
 		return 2
 	}
+	_, code := postControlPlaneVerb(ctx, cfg, platformRebuildCommand, deploys.PlatformRebuildPath, req, 10*time.Minute, out, errOut)
+	return code
+}
+
+// postControlPlaneVerb posts req as JSON to path on the pod's own :8091
+// listener with the control-plane bearer, the transport of every in-pod
+// operator command, and copies the answer to out. code is 0 for a 200, 1 for
+// a refusal or a transport failure, and 2 for missing configuration.
+func postControlPlaneVerb(ctx context.Context, cfg *Config, command, path string, req any, timeout time.Duration, out, errOut io.Writer) (answer []byte, code int) {
 	if cfg.CPToken == "" {
 		fmt.Fprintln(errOut, "BEX_CP_TOKEN is required: the verb is served by the control plane")
-		return 2
+		return nil, 2
 	}
 	base, err := loopbackURL(cfg.CPAddr)
 	if err != nil {
 		fmt.Fprintln(errOut, err)
-		return 2
+		return nil, 2
 	}
 	body, _ := json.Marshal(req)
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, base+deploys.PlatformRebuildPath, bytes.NewReader(body))
+	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, base+path, bytes.NewReader(body))
 	if err != nil {
 		fmt.Fprintln(errOut, err)
-		return 1
+		return nil, 1
 	}
 	hr.Header.Set("Authorization", "Bearer "+cfg.CPToken)
 	hr.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(hr)
 	if err != nil {
 		fmt.Fprintln(errOut, err)
-		return 1
+		return nil, 1
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if _, err := io.Copy(out, resp.Body); err != nil {
+	if answer, err = io.ReadAll(resp.Body); err != nil {
 		fmt.Fprintln(errOut, err)
-		return 1
+		return nil, 1
 	}
+	_, _ = out.Write(answer)
 	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(errOut, "%s: %s\n", platformRebuildCommand, resp.Status)
-		return 1
+		fmt.Fprintf(errOut, "%s: %s\n", command, resp.Status)
+		return answer, 1
 	}
-	return 0
+	return answer, 0
 }
