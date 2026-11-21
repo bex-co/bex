@@ -17,19 +17,12 @@ limitations under the License.
 package agentsession
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // The pull-request comment verb (ADR047 D11) lets the agent answer the PR
@@ -65,12 +58,6 @@ const (
 	// its pull request.
 	PullRequestNoPullRequest = "no_pull_request"
 )
-
-var pullRequestCommentMACDomain = []byte(PullRequestCommentKind + "\n")
-
-func pullRequestCommentMACInput(envelope []byte) []byte {
-	return append(append([]byte{}, pullRequestCommentMACDomain...), envelope...)
-}
 
 // commentNoOtherRoute ends every comment hint, as noOtherRoute does the PR
 // verb's.
@@ -132,34 +119,13 @@ type PullRequestCommentResponse struct {
 	Number int    `json:"number"`
 }
 
-// decodePullRequestCommentRequest reads exactly a comment envelope: its kind,
-// no unknown field, one JSON value.
-func decodePullRequestCommentRequest(raw []byte) (PullRequestCommentRequest, bool) {
-	var req PullRequestCommentRequest
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil || decoder.More() {
-		return PullRequestCommentRequest{}, false
-	}
-	return req, req.Kind == PullRequestCommentKind
-}
+func (r PullRequestCommentRequest) verbKind() string { return r.Kind }
 
 // Comment posts the agent's comment on the session's own pull request, with a
 // footer naming the bex agent session. Every refusal is a *PullRequestError.
 func (p *PullRequester) Comment(ctx context.Context, req PullRequestCommentRequest) (response PullRequestCommentResponse, err error) {
 	auditRepository := ""
-	defer func() {
-		outcome := core.AuditAllowed
-		if err != nil {
-			outcome = core.AuditDenied
-			log.Printf("agent-session pull request comment refused (session=%s repo=%s): %v", req.SessionID, auditRepository, err)
-		}
-		core.RecordAuditEvent(ctx, p.Audit, core.AuditEvent{
-			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbPullRequestComment,
-			Resource: core.WorkspaceObject(req.Workspace), Target: "agent-session:" + req.SessionID,
-			TargetName: auditRepository, Outcome: outcome, At: p.now(),
-		})
-	}()
+	defer func() { p.audit(ctx, AuditVerbPullRequestComment, req.MintRequest, auditRepository, err) }()
 	if p.GitHub == nil || p.Connections == nil || p.Sessions == nil {
 		return PullRequestCommentResponse{}, NewPullRequestCommentError(PullRequestUnavailable, "pull request comments are not configured")
 	}
@@ -204,46 +170,11 @@ type PullRequestCommentHandler struct {
 }
 
 func (h *PullRequestCommentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
+	var run func(context.Context, PullRequestCommentRequest) (PullRequestCommentResponse, error)
+	if h.PullRequests != nil {
+		run = h.PullRequests.Comment
 	}
-	if len(h.Secret) == 0 || h.PullRequests == nil || h.Nonce == nil {
-		WritePullRequestError(w, NewPullRequestCommentError(PullRequestUnavailable, "pull request comments are not configured"))
-		return
-	}
-	now := time.Now()
-	if h.Now != nil {
-		now = h.Now()
-	}
-	raw, err := io.ReadAll(io.LimitReader(r.Body, maxPullRequestInternalBody+1))
-	if err != nil || len(raw) == 0 || len(raw) > maxPullRequestInternalBody {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if err := Verify(h.Secret, pullRequestCommentMACInput(raw), r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, mintClockSkew); err != nil {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	req, ok := decodePullRequestCommentRequest(raw)
-	if !ok {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if !claimNonce(r.Context(), h.Nonce, req.Nonce, now) {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	response, err := h.PullRequests.Comment(r.Context(), req)
-	if err != nil {
-		var typed *PullRequestError
-		if !errors.As(err, &typed) {
-			typed = NewPullRequestCommentError(PullRequestUpstreamError, "the comment could not be posted")
-		}
-		WritePullRequestError(w, typed)
-		return
-	}
-	WriteNoStoreJSON(w, http.StatusOK, response)
+	serveKindedVerb(w, r, h.Secret, h.Nonce, h.Now, PullRequestCommentKind, NewPullRequestCommentError, run)
 }
 
 // PullRequestCommentClient is the gateway's HMAC-authenticated caller for the
@@ -258,32 +189,10 @@ type PullRequestCommentClient struct {
 // Comment forwards a Pod-verified comment. Every failure is a
 // *PullRequestError safe to relay to the sandbox.
 func (c *PullRequestCommentClient) Comment(ctx context.Context, req PullRequestCommentRequest) (PullRequestCommentResponse, error) {
-	req.Kind = PullRequestCommentKind
-	req.Nonce = newNonce()
-	raw, err := json.Marshal(req)
-	if err != nil {
-		return PullRequestCommentResponse{}, NewPullRequestCommentError(PullRequestUnavailable, "the comment request could not be built")
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL, bytes.NewReader(raw))
-	if err != nil {
-		return PullRequestCommentResponse{}, NewPullRequestCommentError(PullRequestUnavailable, "the comment request could not be built")
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	now := time.Now()
-	if c.Now != nil {
-		now = c.Now()
-	}
-	signHeaders(httpReq.Header, c.Secret, pullRequestCommentMACInput(raw), now)
-	client := c.HTTP
-	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
-	}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return PullRequestCommentResponse{}, NewPullRequestCommentError(PullRequestUnavailable, "the pull-request service is unreachable")
-	}
+	req.Kind, req.Nonce = PullRequestCommentKind, newNonce()
 	var out PullRequestCommentResponse
-	if refusal := readPullRequestReply(resp, NewPullRequestCommentError, &out, func() bool { return out.URL != "" && out.Number > 0 }); refusal != nil {
+	if refusal := postKindedVerb(ctx, c.URL, c.Secret, c.Now, c.HTTP, PullRequestCommentKind, req, NewPullRequestCommentError, &out,
+		func() bool { return out.URL != "" && out.Number > 0 }); refusal != nil {
 		return PullRequestCommentResponse{}, refusal
 	}
 	return out, nil

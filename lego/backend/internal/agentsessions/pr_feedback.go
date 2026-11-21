@@ -29,6 +29,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -618,24 +619,17 @@ func checkDecided(conclusion string) bool {
 // cause it.
 func ciFailureBody(headSHA string, failed []github.CheckRun, base string, onBase map[string]string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "CI failed on your head commit %s:", shortSHA(headSHA))
+	fmt.Fprintf(&b, "CI failed on your head commit %s:", agentsession.ShortSHA(headSHA))
 	for _, run := range failed {
 		fmt.Fprintf(&b, "\n\n- %q (%s) %s", run.Name, run.Conclusion, run.URL)
 		if sha, ok := onBase[run.Name]; ok {
-			fmt.Fprintf(&b, "\n  It also fails on %s at %s, so your change did not cause it: leave it unless your task covers it.", base, shortSHA(sha))
+			fmt.Fprintf(&b, "\n  It also fails on %s at %s, so your change did not cause it: leave it unless your task covers it.", base, agentsession.ShortSHA(sha))
 		}
 		if summary := strings.TrimSpace(run.Output.Title + "\n" + run.Output.Summary); summary != "" {
 			b.WriteString("\n" + quoteFeedback(summary))
 		}
 	}
 	return b.String()
-}
-
-func shortSHA(sha string) string {
-	if len(sha) > 12 {
-		return sha[:12]
-	}
-	return sha
 }
 
 // suiteCoversPR: a suite that names its pull requests must name the session's.

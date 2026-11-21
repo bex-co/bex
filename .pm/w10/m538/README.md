@@ -1,19 +1,19 @@
 # w10 · m538 — An agent session marks its own pull request ready and merges it when its task asks, as Devin does
 
-**Worker:** worker10 **Goal:** a task such as "fix the flaky test and merge once CI is green" ends with the session's pull request merged, not with a draft a person has to undraft and merge. Two `bex` MCP tools mark the session's own recorded pull request ready and merge it, using the merge method the repository allows. Each call goes through the Pod-bound gateway hop and a bex-api verb, with no token in the sandbox. Branch protection still decides whether a merge is allowed, and an App's approval stays refused, so a session cannot satisfy required reviews by itself. **Status:** todo
+**Worker:** worker10 **Goal:** a task such as "fix the flaky test and merge once CI is green" ends with the session's pull request merged, not with a draft a person has to undraft and merge. Two `bex` MCP tools mark the session's own recorded pull request ready and merge it, using the merge method the repository allows. Each call goes through the Pod-bound gateway hop and a bex-api verb, with no token in the sandbox. Branch protection still decides whether a merge is allowed, and an App's approval stays refused, so a session cannot satisfy required reviews by itself. **Status:** in progress (t001–t004 and t006–t008 done; t005 live check and t009 closeout open)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: the tools' shape, merge method and head pin, the token, GitHub's refusals, a taken-over PR; ADR090 and ADR047 amended | 1h | — |
-| [t002](t002.md) | Backend: GitHub client and bex-api verbs that mark the session's recorded PR ready and merge it, recording `prState: merged` at once | 2h | t001 |
-| [t003](t003.md) | Gateway: the `pull-request/ready` and `pull-request/merge` routes on the session's Git proxy path | 1h | t002 |
-| [t004](t004.md) | Driver: the `bex` MCP tools, the overlay's "only when asked" rule, and the `gh pr ready`/`gh pr merge` refusal naming them | 1h15m | t001, t003 |
+| [t001](done/t001.md) | Design: the tools' shape, merge method and head pin, the token, GitHub's refusals, a taken-over PR; ADR090 and ADR047 amended — **DONE** | 1h | — |
+| [t002](done/t002.md) | Backend: GitHub client and bex-api verbs that mark the session's recorded PR ready and merge it, recording `prState: merged` at once — **DONE** | 2h | t001 |
+| [t003](done/t003.md) | Gateway: the `pull-request/ready` and `pull-request/merge` routes on the session's Git proxy path — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Driver: the `bex` MCP tools, the overlay's "only when asked" rule, and the `gh pr ready`/`gh pr merge` refusal naming them — **DONE** | 1h15m | t001, t003 |
 | [t005](t005.md) | Live check on production: a session told to merge once CI is green merges its own PR, and GitHub's refusals reach the agent | 45m | t003, t004 |
-| [t006](t006.md) | Render parity (Devin) | 30m | t005 |
-| [t007](t007.md) | Simplify | 20m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 7h45m**.
@@ -47,6 +47,71 @@ Total: **9 tasks, about 7h45m**.
 - **Expected outcome:** an automation such as `beancount-rt-flaky-test-fixer` can be told to merge once its fix is green and finish the job unattended. A person who asks a session to merge sees it merged, or sees GitHub's reason it could not be.
 - **Why now:** since w10/m522 and w10/033, opening the pull request, marking it ready and merging it are the only parts of Devin's PR workflow a session cannot do. Every other GitHub write is already admitted, and the PR state the merge records already shows on every surface.
 - **Render parity included (reference product: Devin):** the `bex` MCP tools and the session's `prState` are cloud coding-agent surfaces. t006 walks the tools and their refusals against Devin's behavior above. It also checks two adjacent differences and files each as its own item if it matters: Devin opens a regular pull request by default (6 of 200 Devin-authored pull requests created since 2026-11-13 were drafts on 2026-11-20), while ADR090 D3 always opens a draft; and GitHub auto-merge (`gh pr merge --auto`).
+
+## Design record (t001, 2026-11-20)
+
+Settled on `e6191e804` and implemented in the same change; [ADR090 D3](../../../docs/ADR090-agent-owned-delivery.md#d3--the-pull-request-verb) (the w10/m538 amendment) is the contract.
+
+- **Tools and paths.** `mark_pull_request_ready({})` and `merge_pull_request({method?, commitTitle?, commitMessage?})` in the `bex` MCP server, listed only when the driver has `BEX_PR_READY_ENDPOINT` / `BEX_PR_MERGE_ENDPOINT` (repo sessions: `<Git proxy URL>/pull-request/ready` and `…/pull-request/merge`). The gateway serves both through `admitPullRequestVerb` (POST, JSON, no query, Pod source IP, label digests, limiter, Git budget, 64 KiB body) and strict-decodes the body: ready takes `{}`, merge at most the three fields. bex-api's `:8091` verbs are `/v1/agent-session-pull-request-ready` and `/v1/agent-session-pull-request-merges`, kinds `pull-request-ready` and `pull-request-merge` (each its own MAC domain, nonce required), audit verbs `agentsessions.PullRequestReady` and `agentsessions.PullRequestMerge`. The gateway URLs override with `BEX_AGENT_PULL_REQUEST_READY_API_URL` and `BEX_AGENT_PULL_REQUEST_MERGE_API_URL`.
+- **Undrafting is GraphQL-only.** GitHub's REST reference lists only `title`, `body`, `state`, `base` and `maintainer_can_modify` for `PATCH …/pulls/{n}` ([Pulls](https://docs.github.com/en/rest/pulls/pulls), read 2026-11-20), and the recorded gh 2.105.0 `gh pr ready` sends `markPullRequestReadyForReview(input: {pullRequestId})` (`testdata/gh-2.105.0-requests.json`). bex-api reads the node id from `GET …/pulls/{n}` (`node_id`).
+- **Merge call: the synchronous REST merge.** `PUT …/pulls/{n}/merge` answers 200 merged, 405 not mergeable, 409 when `sha` does not match the head, 422 invalid ([Pulls](https://docs.github.com/en/rest/pulls/pulls), read 2026-11-20). GitHub now recommends `PUT …/pulls/{n}/merge-async`, which answers 202 with a UUID to poll (`GET …/merge-async/{uuid}`, kept 24 h) and is required for merge queues and stacked pull requests. The sync call answers within the tool call, so the agent hears GitHub's reason at once; a repository that requires a merge queue gets GitHub's refusal, and the queue and auto-merge are filed as [w10/039](../039.md).
+- **Head pin.** `sha` = the session's recorded `headSha`. bex-api refuses `head_changed` before calling GitHub when the pull request's head differs from it (or nothing is recorded), and maps GitHub's 409 to the same code.
+- **Method.** Named, or the first of merge, squash, rebase allowed by the repository settings (`allow_merge_commit`, `allow_squash_merge`, `allow_rebase_merge`; "To view merge-related settings, you must have the contents:read and contents:write permissions", [Repositories](https://docs.github.com/en/rest/repos/repos#get-a-repository), read 2026-11-20) and by the base branch's active rules (`GET …/rules/branches/{branch}`: `pull_request.parameters.allowed_merge_methods`, and `required_linear_history` drops merge commits; [Rules](https://docs.github.com/en/rest/repos/rules#get-rules-for-a-branch), read 2026-11-20). Unreadable rules leave the choice to the settings; GitHub then reports a rule's refusal.
+- **Token permissions.** Pull requests read to read the PR back; Contents and Pull requests write to undraft (GitHub's reference names none for the mutation, and third-party reports show installations with Pull requests write alone refused it with "Resource not accessible by integration" until Contents write was added); Contents, Pull requests and Workflows write to merge (GitHub lists Contents write for both merge endpoints, [permissions for GitHub Apps](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps), read 2026-11-20; Workflows write for a pull request that changes `.github/workflows/`, falling back to the set without it on 422 as w10/014's push token does). A mint the installation cannot grant is `not_permitted`. Production's App already holds Contents and Pull requests write (the session push token and the D3 verb use them).
+- **Refusal table.**
+
+  | Code | Status | When | Hint |
+  | --- | --- | --- | --- |
+  | `no_pull_request` | 409 | no `prNumber` yet | push and call `open_or_update_draft_pr` first |
+  | `pull_request_closed` | 409 | closed, or merged already (recorded merged) | nothing to do; tell the user |
+  | `pull_request_draft` | 409 | merge of a draft | call `mark_pull_request_ready` first |
+  | `head_changed` | 409 | recorded head ≠ PR head, or GitHub 409 | push, call `open_or_update_draft_pr`, wait for checks, try once |
+  | `merge_blocked` | 409 | GitHub 405 (checks pending or failing, required review, conflict, behind, a rule), or a 422 not about the method | per cause: `gh pr checks --watch`; fix and push; stop and tell the user (you cannot approve); merge the base; never loop |
+  | `merge_method_not_allowed` | 422 | named method the settings or rules refuse, or GitHub's "… are not allowed" words | retry with a listed method or none |
+  | `not_permitted` | 403 | GitHub 403, or a token the installation cannot mint | do not retry; a person has to do it |
+  | `rate_limited`, `upstream_error`, `forbidden`, `invalid_request`, `too_large`, `unavailable` | as the PR verb | | as the PR verb |
+
+  Every message carries GitHub's own words (`message` plus `errors[].message`, one line, ≤1000 characters, prefixed `GitHub: `), and every hint ends naming the two tools as the only route.
+
+- **Takeover decision.** A takeover session may mark ready or merge the person's pull request it took over, when the `/bex` comment or a later message asks, at the head its fast-forward recorded. The commenter has write access and could merge it themselves, and Devin's `/devin` session on a pull request acts on that pull request with the same App credentials. The overlay says the pull request's state belongs to the person who opened it unless asked.
+- **The state.** A merge calls `RecordAgentSessionPRState(merged, next: nil)` in the request; a failed write is logged and the poller records it later.
+- **Delivery check.** The merge tool marks the driver's `pull-request.json` merged at the merged head, so a branch GitHub deletes after the merge does not make the post-turn check call the merged commits unpushed.
+
+## Render parity (Devin) record (t006, 2026-11-20)
+
+Walked against Devin's docs ([GitHub integration](https://docs.devin.ai/integrations/gh), [SDLC integration](https://docs.devin.ai/essential-guidelines/sdlc-integration), [Devin Review](https://docs.devin.ai/work-with-devin/devin-review), all read 2026-11-20) and the observed pull requests in § Reference product. The live run (t005) can still add findings.
+
+| Behavior | Devin | bex (w10/m538) | Verdict |
+| --- | --- | --- | --- |
+| Undraft its pull request | `ready_for_review` by `devin-ai-integration[bot]` before the merge | `mark_pull_request_ready`, as the App's bot | match |
+| Merge its pull request when asked | merged by `devin-ai-integration[bot]`; "merge only on explicit request" | `merge_pull_request`; overlay and descriptions say only when asked | match |
+| Branch protection decides | "subject to the exact same branch protections … as any human engineer" | GitHub decides; `bypass_rules` never sent; `APPROVE` refused on every path | match |
+| Why a merge was refused | GitHub's answer to its `gh` / App call | GitHub's message under a typed code with a what-to-do hint | match (bex adds the hint) |
+| Merge method | the repository's settings | named, or the first the settings and the base branch's rules allow | match |
+| Merged state on the session | `pr_state` | `prState: merged` at once on REST, GraphQL, MCP, dashboard | match |
+| GitHub auto-merge, merge queue | Devin Review toggles auto-merge and the queue; `gh pr merge --auto` | refused naming the tool; sync merge only | gap → [w10/039](../039.md) |
+| Draft by default | 6 of 200 recent Devin pull requests were drafts | always a draft (ADR090 D3) | gap → [w10/040](../040.md) |
+| Act on another pull request of the repository | its App credentials can | the session's recorded pull request only | divergence without sign-off → [w10/041](../041.md) |
+| A switch that stops agents merging | none documented; branch protection is the control | none (the `gh` switch does not reach these tools) | not filed: no Devin counterpart, and branch protection already gates every merge |
+
+The ADR018 bex-native agent rows gained this milestone's row with the three open gaps.
+
+## Test coverage record (t008, 2026-11-20)
+
+Tests: `lego/backend/internal/github/merge_test.go` (token scopes and the Workflows fallback, the method rule from settings and rules, the pinned `sha`, GitHub's message extraction, the GraphQL undraft and its errors), `lego/backend/internal/agentsession/pullrequest_merge_test.go` (both verbs' success, every refusal code, another session's or a stale Pod's call, a closed, merged, draft or foreign pull request, a takeover, a failed state record, the signed hop's MAC domains, replay and a numbered envelope), `pullrequest_pg_test.go` (the merged state on the real row and the `prState` filter), `lego/backend/internal/sshgateway/agentcred/pullrequest_merge_test.go` (Pod binding, body validation, relayed refusals, the shared budget), `githubapi_test.go` (`gh pr ready`/`gh pr merge` replayed from the gh 2.105.0 fixture are refused naming the tools), and the driver's `test/merge-pr.test.ts`, `overlay.test.ts`, `github-cli.test.ts` and `delivery-check.test.ts`.
+
+| Mutant | Killed by |
+| --- | --- |
+| Drop the head pre-check (`session.HeadSHA` vs the PR's head) | `TestPullRequestMergeTypedRefusals/head_moved_past_the_record` |
+| Drop `SHA` from the merge options | `TestPullRequestMergeMergesAtTheRecordedHeadAndRecordsMerged`, `TestPullRequestMergeOfATakenOverPR` |
+| Drop `sha` from GitHub's merge body | `TestMergePullRequestPinsTheHeadWithTheFirstAllowedMethod` |
+| Accept unknown fields (a PR number) on the signed hop | `TestPullRequestReadyAndMergeHandlersAndClientsRoundTrip` |
+| Accept unknown fields (a PR number) at the gateway | `TestPullRequestReadyAndMergeRoutesValidateTheBody/merge_names_a_PR` |
+| Skip the merged-state record | `TestPullRequestMergeMergesAtTheRecordedHeadAndRecordsMerged` (and `TestPGPullRequestVerbRecordsThePRMidTurn`) |
+| List `merge_pull_request` without its endpoint (a repo-less session) | `only repo sessions list the ready and merge tools, saying to use them only when asked` |
+| Drop "only when … asks" from the tool description | the same driver test |
+| Replace the overlay's "Leave the pull request as a draft … unless … asks" | `the repo overlay names the branch, base, tool and authorization` |
+| Ignore the merged head in the delivery check | `work merged by merge_pull_request counts as delivered after GitHub deletes the branch` |
 
 ## Direction for t001
 

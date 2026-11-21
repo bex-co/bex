@@ -203,7 +203,9 @@ func (c *Client) BranchCheckHistory(ctx context.Context, installationID int64, o
 // session's PR verb read of one pull request: its state, head and base.
 type PullRequestDetail struct {
 	PullRequest
-	Title string
+	// NodeID is the pull request's GraphQL id, which undrafting it needs.
+	NodeID string
+	Title  string
 	// Merged is set on a merged pull request, whose State is closed.
 	Merged  bool
 	HeadRef string
@@ -214,12 +216,15 @@ type PullRequestDetail struct {
 	HeadRepo      string
 	BaseRepo      string
 	DefaultBranch string
+	// BaseRef is the branch the pull request merges into.
+	BaseRef string
 }
 
 // GetPullRequest reads pull request number of owner/repo.
 func (c *Client) GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (PullRequestDetail, error) {
 	var out struct {
 		ghPull
+		NodeID string `json:"node_id"`
 		Title  string `json:"title"`
 		Merged bool   `json:"merged"`
 		Head   struct {
@@ -228,6 +233,7 @@ func (c *Client) GetPullRequest(ctx context.Context, installationID int64, owner
 			Repo *ghRepo `json:"repo"`
 		} `json:"head"`
 		Base struct {
+			Ref  string `json:"ref"`
 			Repo ghRepo `json:"repo"`
 		} `json:"base"`
 	}
@@ -237,8 +243,9 @@ func (c *Client) GetPullRequest(ctx context.Context, installationID int64, owner
 		return PullRequestDetail{}, err
 	}
 	detail := PullRequestDetail{
-		PullRequest: out.export(), Title: out.Title, Merged: out.Merged,
+		PullRequest: out.export(), NodeID: out.NodeID, Title: out.Title, Merged: out.Merged,
 		HeadRef: out.Head.Ref, HeadSHA: out.Head.SHA, BaseRepo: out.Base.Repo.FullName, DefaultBranch: out.Base.Repo.DefaultBranch,
+		BaseRef: out.Base.Ref,
 	}
 	if out.Head.Repo != nil {
 		detail.HeadRepo = out.Head.Repo.FullName

@@ -1395,6 +1395,19 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 				PullRequests: pullRequests,
 				Nonce:        st,
 			})
+			// w10/m538: the agent marks its own PR ready and merges it, when
+			// its task asks. Each has its own MAC domain; the PR number and
+			// the pinned head come from the durable session, never the request.
+			internalRoot.Handle(agentsession.InternalPullRequestReadyPath, &agentsession.PullRequestReadyHandler{
+				Secret:       []byte(cfg.SandboxExecSecret),
+				PullRequests: pullRequests,
+				Nonce:        st,
+			})
+			internalRoot.Handle(agentsession.InternalPullRequestMergePath, &agentsession.PullRequestMergeHandler{
+				Secret:       []byte(cfg.SandboxExecSecret),
+				PullRequests: pullRequests,
+				Nonce:        st,
+			})
 		}
 		// w2/m168: native public-key SSH never passes the auth middleware, so the
 		// gateway asks here whether a key owner's email is verified. Unwired

@@ -373,6 +373,17 @@ func main() {
 			URL:    env.Or("BEX_AGENT_PULL_REQUEST_COMMENT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestCommentPath),
 			Secret: []byte(secret),
 		}
+		// w10/m538: the agent marks its own PR ready and merges it through
+		// the `pull-request/ready` and `pull-request/merge` tails; bex-api
+		// fixes the PR number and the pinned head from the durable session.
+		credentials.PullRequestReady = &agentsession.PullRequestReadyClient{
+			URL:    env.Or("BEX_AGENT_PULL_REQUEST_READY_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestReadyPath),
+			Secret: []byte(secret),
+		}
+		credentials.PullRequestMerges = &agentsession.PullRequestMergeClient{
+			URL:    env.Or("BEX_AGENT_PULL_REQUEST_MERGE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestMergePath),
+			Secret: []byte(secret),
+		}
 		// ADR095 D6: the agent shares output files through its Pod-bound share
 		// URL; bex-api stores them as the session's output attachments.
 		credentials.Files = &agentsession.ShareFileClient{

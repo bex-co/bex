@@ -78,7 +78,7 @@ const (
 // so no token exists for the call.
 const githubCLIOffRefusal = "bex: gh is turned off for this workspace's agent sessions (the agent environment's GitHub CLI setting, githubCliEnabled). " +
 	"A workspace admin turns it back on in Settings → Agents or with `bex agent env set --github-cli on`. " +
-	"Pushes to your session branch and the bex MCP tools open_or_update_draft_pr and reply_on_pull_request still work."
+	"Pushes to your session branch and the bex MCP tools open_or_update_draft_pr, reply_on_pull_request, mark_pull_request_ready and merge_pull_request still work."
 
 // githubAPIRequestHeaders are the sandbox's request headers forwarded
 // upstream. Authorization is never among them: it carries gh's placeholder.
@@ -336,6 +336,9 @@ func githubAPIRequestRefusal(method, apiPath, rawQuery, repository string) (gith
 	if ownRepository {
 		write = matchGitHubAPIWrite(method, segments[3:])
 	}
+	if write == nil && ownRepository && method == http.MethodPut && len(segments) == 6 && segments[3] == "pulls" && segments[5] == "merge" {
+		return githubAPIAccess{}, http.StatusForbidden, pullRequestStateRefusal(repository)
+	}
 	if write == nil {
 		return githubAPIAccess{}, http.StatusForbidden, writeRefusal(repository)
 	}
@@ -536,7 +539,25 @@ func writeRefusal(repository string) string {
 	return "bex: gh in this session reads " + repository + " and writes to it only to comment and reply, review without approving, " +
 		"label, assign, request reviewers, open, edit and close issues, re-run or cancel Actions runs, and dispatch a workflow on your session branch. " +
 		"Open or update the pull request with the open_or_update_draft_pr tool of the bex MCP server, reply on it with reply_on_pull_request, " +
+		"mark it ready with mark_pull_request_ready and merge it with merge_pull_request when your task or a person asks, " +
 		"and change code only by pushing your session branch."
+}
+
+// pullRequestStateRefusal answers gh pr ready and gh pr merge (w10/m538): the
+// session's pull request changes state only through the bex tools, which
+// act on that one pull request at the head bex recorded, then what else gh
+// can write here.
+func pullRequestStateRefusal(repository string) string {
+	return "bex: gh pr ready and gh pr merge do not work in this session; call the mark_pull_request_ready and merge_pull_request tools of the bex MCP server instead, " +
+		"only when your task or a person asks. " + strings.TrimPrefix(writeRefusal(repository), "bex: ")
+}
+
+// pullRequestStateMutations are the GraphQL mutations of gh pr ready, gh pr
+// merge (with --auto and the merge queue too) and their undo, all refused
+// with pullRequestStateRefusal.
+var pullRequestStateMutations = map[string]bool{
+	"markPullRequestReadyForReview": true, "convertPullRequestToDraft": true, "mergePullRequest": true,
+	"enablePullRequestAutoMerge": true, "disablePullRequestAutoMerge": true, "enqueuePullRequest": true, "dequeuePullRequest": true,
 }
 
 // dispatchRefusal answers a workflow dispatch whose body is not one on the
@@ -598,6 +619,9 @@ func graphQLRefusal(raw []byte, repository string) (bool, int, string) {
 				write = true
 				for _, selection := range definition.SelectionSet.Selections {
 					field, ok := selection.(*ast.Field)
+					if ok && pullRequestStateMutations[field.Name.Value] {
+						return false, http.StatusForbidden, pullRequestStateRefusal(repository)
+					}
 					if !ok || !graphQLMutationAllowed(field, request.Variables, defaults) {
 						return false, http.StatusForbidden, writeRefusal(repository)
 					}

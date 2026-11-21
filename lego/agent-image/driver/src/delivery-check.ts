@@ -89,9 +89,12 @@ async function prLacksPushedHead(
   }
 }
 
+// readPrRecord reads what the bex MCP tools recorded this turn: the pull
+// request, and the head merge_pull_request merged (mergedHead "" unless it
+// merged).
 async function readPrRecord(
   recordPath: string,
-): Promise<{ url: string; number: number | null }> {
+): Promise<{ url: string; number: number | null; mergedHead: string }> {
   try {
     const record = JSON.parse(await readFile(recordPath, "utf8")) as Record<
       string,
@@ -100,9 +103,13 @@ async function readPrRecord(
     return {
       url: typeof record.url === "string" ? record.url : "",
       number: typeof record.number === "number" ? record.number : null,
+      mergedHead:
+        record.merged === true && typeof record.headSha === "string"
+          ? record.headSha
+          : "",
     };
   } catch {
-    return { url: "", number: null };
+    return { url: "", number: null, mergedHead: "" };
   }
 }
 
@@ -168,10 +175,17 @@ export async function readGitFacts(
     readPrRecord(config.prRecordPath),
   ]);
   // Commits the remote branch does not have yet. Measured against the remote
-  // head when it is present locally, otherwise against the setup-time base.
+  // head when it is present locally, then against the head this turn merged
+  // (GitHub may have deleted the merged branch, w10/m538), otherwise against
+  // the setup-time base.
   let exclude = "";
   if (await hasCommit(cwd, remoteHead)) {
     exclude = remoteHead;
+  } else if (
+    recorded.mergedHead &&
+    (await hasCommit(cwd, recorded.mergedHead))
+  ) {
+    exclude = recorded.mergedHead;
   } else if (baseline && (await hasCommit(cwd, baseline.baseOid))) {
     exclude = baseline.baseOid;
   }

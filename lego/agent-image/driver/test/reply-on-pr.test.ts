@@ -162,6 +162,8 @@ test("only repo sessions get reply_on_pull_request, beside the PR tool", async (
   assert.deepEqual(names(env), [
     "open_or_update_draft_pr",
     "reply_on_pull_request",
+    "mark_pull_request_ready",
+    "merge_pull_request",
   ]);
   // A repo-less session has no pull request to reply on.
   const [scratch] = bexMcpServers({

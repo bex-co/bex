@@ -34,12 +34,34 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-// prForge stands in for GitHub behind bex-api's real PullRequester.
+// prForge stands in for GitHub behind bex-api's real PullRequester. pr is
+// the session's pull request the mark-ready and merge verbs read back;
+// readied and merged record what they asked of GitHub.
 type prForge struct {
 	mu       sync.Mutex
 	calls    int
 	heads    []string
 	comments []int
+	pr       github.PullRequestDetail
+	readied  []string
+	merged   []github.MergeOptions
+}
+
+func (f *prForge) MarkPullRequestReady(_ context.Context, _ int64, _, nodeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.readied = append(f.readied, nodeID)
+	f.pr.Draft = false
+	return nil
+}
+
+func (f *prForge) MergePullRequest(_ context.Context, _ int64, _, _ string, _ int, opts github.MergeOptions) (github.MergeResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.merged = append(f.merged, opts)
+	return github.MergeResult{SHA: "fedcba9876543210fedcba9876543210fedcba98", Method: github.MergeMethodMerge}, nil
 }
 
 func (f *prForge) CreateIssueComment(_ context.Context, _ int64, owner, repo string, number int, _ string) (string, error) {
@@ -50,10 +72,16 @@ func (f *prForge) CreateIssueComment(_ context.Context, _ int64, owner, repo str
 	return "https://github.com/" + owner + "/" + repo + "/pull/" + strconv.Itoa(number) + "#issuecomment-1", nil
 }
 
-// GetPullRequest and FastForwardBranch serve only takeover sessions, which
-// these gateway tests do not run; reaching them is a test failure.
-func (f *prForge) GetPullRequest(context.Context, int64, string, string, int) (github.PullRequestDetail, error) {
-	return github.PullRequestDetail{}, errors.New("no taken-over pull request in the gateway tests")
+// GetPullRequest reads back the session's pull request for the mark-ready
+// and merge verbs; FastForwardBranch serves only takeover sessions, which
+// these gateway tests do not run, so reaching it is a test failure.
+func (f *prForge) GetPullRequest(_ context.Context, _ int64, _, _ string, number int) (github.PullRequestDetail, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.pr.Number == 0 || number != f.pr.Number {
+		return github.PullRequestDetail{}, errors.New("no such pull request in the gateway tests")
+	}
+	return f.pr, nil
 }
 
 func (f *prForge) FastForwardBranch(context.Context, int64, string, string, string, string) (string, error) {

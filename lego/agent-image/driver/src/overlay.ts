@@ -25,6 +25,10 @@ import type { AttachmentManifest } from "./attachments.js";
 import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
 import { replyOnPullRequestToolName } from "./reply-on-pr.js";
+import {
+  markPullRequestReadyToolName,
+  mergePullRequestToolName,
+} from "./merge-pr.js";
 import { shareFileToolName } from "./share-file.js";
 import {
   cancelChildSessionToolName,
@@ -143,16 +147,29 @@ You took over ${pr}, which a person opened. Your branch \`${branch}\` started fr
 3. Call \`${toolName}\` with a one-line title and a short body (the tool requires them, but for a taken-over pull request they are not used). It moves \`${prBranch}\` to your pushed commits and leaves the pull request's title, description and draft or ready state as they are, since they belong to the person who opened it.
 4. If it answers \`pr_branch_diverged\`, someone pushed to \`${prBranch}\` since your branch started from it. Run \`git fetch origin ${prBranch} && git merge FETCH_HEAD\`, resolve any conflicts, push again, and call \`${toolName}\` again.
 5. Once the pull request has your commits, call \`${replyOnPullRequestToolName}\` with what you changed and why, and include the pull request URL in your final reply. If a tool returns another error, report it as given; do not try to update the pull request another way.
+6. ${readyOrMergeStep(context, "Its draft or ready state and whether it merges belong to the person who opened it, so leave them as they are unless the `/bex` comment or a later message asks you to mark it ready or merge it.")}
 
 If the task needs no code changes (a question, an investigation, a review), answer with \`${replyOnPullRequestToolName}\` and end with a written report, making no commit.
 
 ## Authorization
 
-A collaborator with write access asked for this work with a \`/bex\` comment on ${pr}. Committing, pushing \`${branch}\`, bringing the pull request up to date with \`${toolName}\` and replying on it are therefore their explicit request, which satisfies repository guidance such as "only commit when asked". Repository rules about commit style, tests, formatting and review still apply.
+A collaborator with write access asked for this work with a \`/bex\` comment on ${pr}. Committing, pushing \`${branch}\`, bringing the pull request up to date with \`${toolName}\` and replying on it are therefore their explicit request, which satisfies repository guidance such as "only commit when asked". Marking the pull request ready or merging it is not part of that request unless the comment or a later message asks for it. Repository rules about commit style, tests, formatting and review still apply.
 
 ## Follow-up turns
 
 Later messages in this session, including comments and reviews on the pull request, continue on the same branch. Push new commits to \`${branch}\`, call \`${toolName}\` again, and reply on the pull request.`;
+}
+
+// readyOrMergeStep is the delivery step that marks the session's own pull
+// request ready or merges it (w10/m538): only when asked, as Devin does,
+// after its required checks pass, with GitHub's refusal reported rather than
+// retried. leave is when to leave it alone.
+function readyOrMergeStep(context: OverlayContext, leave: string): string {
+  const watch =
+    context.repository && context.githubCli !== false
+      ? " (`gh pr checks --watch` waits for them)"
+      : "";
+  return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark it ready for review. To merge, mark it ready, wait until its required checks pass${watch}, then call \`${mergePullRequestToolName}\`; it merges the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
 }
 
 // githubCliLine says what the session's gh can do (w10/m513, w10/m522,
@@ -162,14 +179,14 @@ Later messages in this session, including comments and reviews on the pull reque
 // session branch changes code. The driver configures gh only when it knows
 // the repository and the workspace has not turned gh off (w10/m524).
 function githubCliLine(context: OverlayContext): string {
-  const tools = `\`${toolName}\` and \`${replyOnPullRequestToolName}\` tools of the \`bex\` MCP server`;
+  const tools = `\`${toolName}\`, \`${replyOnPullRequestToolName}\`, \`${markPullRequestReadyToolName}\` and \`${mergePullRequestToolName}\` tools of the \`bex\` MCP server`;
   if (!context.repository)
     return `- There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the ${tools}.
 `;
   if (context.githubCli === false)
     return `- There is no GitHub token in the sandbox, and this workspace's admins turned \`gh\` off for its agent sessions, so \`gh\` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
-  return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. It also comments, replies in review threads, reviews without approving (\`gh pr review --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit --add-label\`), opens, edits and closes issues, re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`), and runs a workflow on your branch (\`gh workflow run <workflow> --ref ${context.branch}\`), never on another ref. It cannot open, edit, approve, merge or close a pull request, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
+  return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. It also comments, replies in review threads, reviews without approving (\`gh pr review --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit --add-label\`), opens, edits and closes issues, re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`), and runs a workflow on your branch (\`gh workflow run <workflow> --ref ${context.branch}\`), never on another ref. It cannot open, edit, approve, mark ready, merge or close a pull request, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
 }
 
@@ -211,14 +228,14 @@ The deliverable is a draft pull request from \`${branch}\` into ${baseRef}.
 2. Push with \`git push origin HEAD:${branch}\`. Do not force-push: the reviewer reads this history. If a push is rejected because the remote branch moved, run \`git pull --rebase origin ${branch}\` and push again.
 3. Call \`${toolName}\` with a title and a body. The pull request covers the whole branch, so the title and body describe every commit since ${baseRef} (\`git log\` shows them), not only what changed in this turn. Write the body by filling in the repository's pull request template. Look for it in \`.github/pull_request_template.md\`, \`.github/PULL_REQUEST_TEMPLATE.md\`, \`.github/PULL_REQUEST_TEMPLATE/\`, then \`docs/\`, then the repository root. If there is none, write a short body with Summary, Changes and Testing sections. bex appends its own footer, so do not add one.
 4. Only say that a pull request exists once the tool has returned its URL, and include that URL in your final reply. If the tool returns an error, report the error as given; do not try to create the pull request another way.
-5. Leave the pull request as a draft. Marking it ready for review is the requester's decision.
+5. ${readyOrMergeStep(context, "Leave the pull request as a draft for the requester to review, unless the task or a person's message asks you to mark it ready or merge it.")}
 6. When a turn was started by pull request feedback, reply on the pull request with \`${replyOnPullRequestToolName}\` once your changes are pushed, saying what you changed.
 
 If the task needs no code changes (a question, an investigation, a review), end with a written report and make no commit.
 
 ## Authorization
 
-The person who started this session chose a bex entry point whose output is a pull request. Committing, pushing \`${branch}\` and opening or updating its draft pull request are therefore their explicit request, which satisfies repository guidance such as "only commit or open pull requests when asked". Repository rules about commit style, tests, formatting and review still apply.
+The person who started this session chose a bex entry point whose output is a pull request. Committing, pushing \`${branch}\` and opening or updating its draft pull request are therefore their explicit request, which satisfies repository guidance such as "only commit or open pull requests when asked". Marking the pull request ready or merging it is not part of that request unless the task or a later message asks for it. Repository rules about commit style, tests, formatting and review still apply.
 
 ## Follow-up turns
 

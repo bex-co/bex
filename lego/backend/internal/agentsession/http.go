@@ -242,12 +242,23 @@ var errBrokerUnavailable = errors.New("agent credential broker unavailable")
 // single-use: bex-api runs at most one of the two, and a replay it refuses as
 // seen (401) is reported unavailable, as the first attempt was.
 func signedPost(ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req any) (*http.Response, error) {
+	return signedPostDomain(ctx, url, secret, "", now, httpClient, req)
+}
+
+// signedPostDomain is signedPost for a kind-tagged verb: the MAC covers the
+// body behind the verb's domain (kindMACInput), so its signature verifies
+// nowhere else. kind "" signs the bare body.
+func signedPostDomain(ctx context.Context, url string, secret []byte, kind string, now time.Time, httpClient *http.Client, req any) (*http.Response, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 	header := http.Header{"Content-Type": {"application/json"}}
-	signHeaders(header, secret, body, now)
+	signed := body
+	if kind != "" {
+		signed = kindMACInput(kind, body)
+	}
+	signHeaders(header, secret, signed, now)
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
 	}

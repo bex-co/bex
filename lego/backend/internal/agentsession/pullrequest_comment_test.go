@@ -204,19 +204,19 @@ func TestPullRequestCommentHandlerAndClientRoundTrip(t *testing.T) {
 		t.Fatalf("bare-body MAC status = %d, want 401", r.StatusCode)
 	}
 	// This verb's signed envelope is refused by the PR verb.
-	if r := postSigned(t, api.URL+InternalPullRequestPath, secret, raw, pullRequestCommentMACInput(raw)); r.StatusCode == http.StatusOK {
+	if r := postSigned(t, api.URL+InternalPullRequestPath, secret, raw, kindMACInput(PullRequestCommentKind, raw)); r.StatusCode == http.StatusOK {
 		t.Fatal("the PR verb accepted a comment envelope")
 	}
 	// A correctly signed envelope posts once; its replay is refused.
-	if r := postSigned(t, client.URL, secret, raw, pullRequestCommentMACInput(raw)); r.StatusCode != http.StatusOK {
+	if r := postSigned(t, client.URL, secret, raw, kindMACInput(PullRequestCommentKind, raw)); r.StatusCode != http.StatusOK {
 		t.Fatalf("signed envelope status = %d", r.StatusCode)
 	}
-	if r := postSigned(t, client.URL, secret, raw, pullRequestCommentMACInput(raw)); r.StatusCode != http.StatusUnauthorized {
+	if r := postSigned(t, client.URL, secret, raw, kindMACInput(PullRequestCommentKind, raw)); r.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("replay status = %d, want 401", r.StatusCode)
 	}
 	// An envelope naming a PR number is not this verb's shape.
 	numbered := bytes.Replace(raw, []byte(`"body":`), []byte(`"number":8,"body":`), 1)
-	if r := postSigned(t, client.URL, secret, numbered, pullRequestCommentMACInput(numbered)); r.StatusCode != http.StatusBadRequest {
+	if r := postSigned(t, client.URL, secret, numbered, kindMACInput(PullRequestCommentKind, numbered)); r.StatusCode != http.StatusBadRequest {
 		t.Fatalf("numbered envelope status = %d, want 400", r.StatusCode)
 	}
 	if forge.calls != calls+1 || len(forge.comments) != 2 {

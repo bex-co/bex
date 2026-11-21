@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -46,6 +47,10 @@ func (s commentSessions) GetAgentSession(ctx context.Context, id string) (store.
 
 func (commentSessions) RecordAgentSessionPullRequest(context.Context, string, string, int, string) error {
 	return nil
+}
+
+func (commentSessions) RecordAgentSessionPRState(context.Context, string, string, time.Time, *time.Time) (bool, error) {
+	return true, nil
 }
 
 // commentHarness is prHarness with the comment verb wired as well, over the

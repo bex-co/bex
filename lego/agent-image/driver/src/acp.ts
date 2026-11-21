@@ -108,9 +108,10 @@ export function bexMcpServerScript(): string {
 }
 
 // bexMcpServers registers the `bex` stdio MCP server when the session has at
-// least one of its endpoints: open_or_update_draft_pr and reply_on_pull_request
-// for repo sessions (the Pod-bound Git proxy path plus /pull-request and
-// /pull-request/comment) and share_file when the
+// least one of its endpoints: open_or_update_draft_pr, reply_on_pull_request,
+// mark_pull_request_ready and merge_pull_request for repo sessions (the
+// Pod-bound Git proxy path plus /pull-request, /pull-request/comment,
+// /pull-request/ready and /pull-request/merge) and share_file when the
 // deployment stores attachments (the Pod-bound share URL, ADR095 D6) and
 // submit_result when the turn carries an outputSchema (the Pod-bound result
 // URL, ADR094 D5) and spawn_session, get_child_session and the coordinator
@@ -136,6 +137,8 @@ export function bexMcpServers(
       { name: "BEX_PR_ENDPOINT", value: pullRequest },
       { name: "BEX_PR_RECORD_PATH", value: config.prRecordPath },
       { name: "BEX_PR_COMMENT_ENDPOINT", value: `${pullRequest}/comment` },
+      { name: "BEX_PR_READY_ENDPOINT", value: `${pullRequest}/ready` },
+      { name: "BEX_PR_MERGE_ENDPOINT", value: `${pullRequest}/merge` },
     );
   }
   if (config.shareUrl) {

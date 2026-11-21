@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -547,7 +548,7 @@ func TestPRFeedbackCIFailureReadsPastABaseHeadWhoseCheckHasNotFinished(t *testin
 				t.Fatalf("queued=%d err=%v; the steer is sent whatever the base says", n, err)
 			}
 			item := st.queued[0]
-			noted := strings.Contains(item.Body, "It also fails on main at "+shortSHA(tc.want)+", so your change did not cause it")
+			noted := strings.Contains(item.Body, "It also fails on main at "+agentsession.ShortSHA(tc.want)+", so your change did not cause it")
 			if tc.want == "" {
 				noted = strings.Contains(item.Body, "also fails on")
 			}

@@ -79,6 +79,9 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **036** — [A model added to the platform catalog starts on in a workspace whose admins narrowed its model list](036.md) ← w10/m527 t007 (Devin comparison), 2026-11-20
 - [ ] **037** — [A workspace admin cannot allow the platform catalog's models by provider](037.md) ← w10/m527 t007 (Devin comparison), 2026-11-20
 - [ ] **038** — [A JVM HTTP client that installs no `java.net.Authenticator` gets 407 from the egress proxy on a `full`-tier session](038.md) ← w10/032 (its remaining gap), 2026-11-20
+- [ ] **039** — [`merge_pull_request` cannot enable GitHub auto-merge or add the pull request to a merge queue](039.md) ← w10/m538 t006 (Devin comparison), 2026-11-20
+- [ ] **040** — [A session always opens its pull request as a draft, while Devin opens a regular pull request by default](040.md) ← w10/m538 t006 (Devin comparison), 2026-11-20
+- [ ] **041** — [A session can mark ready or merge only its own pull request, while Devin's credentials can merge any pull request in the repository](041.md) ← w10/m538 t006 (Devin comparison), 2026-11-20
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 

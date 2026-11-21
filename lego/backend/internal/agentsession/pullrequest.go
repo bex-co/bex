@@ -208,20 +208,23 @@ type PullRequestResponse struct {
 }
 
 // PullRequestGitHub opens or updates the draft PR, brings a taken-over one up
-// to date, and comments on it (*github.Client).
+// to date, comments on it, marks it ready and merges it (*github.Client).
 type PullRequestGitHub interface {
 	SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error)
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
 	FastForwardBranch(ctx context.Context, installationID int64, owner, repo, branch, from string) (string, error)
 	BranchProtected(ctx context.Context, installationID int64, owner, repo, branch string) (bool, error)
 	CreateIssueComment(ctx context.Context, installationID int64, owner, repo string, number int, body string) (string, error)
+	MarkPullRequestReady(ctx context.Context, installationID int64, repo, nodeID string) error
+	MergePullRequest(ctx context.Context, installationID int64, owner, repo string, number int, opts github.MergeOptions) (github.MergeResult, error)
 }
 
 // PullRequestSessionStore reads the durable session and records the PR on it
-// mid-turn (*store.PGStore).
+// mid-turn, and a merge's state at once (*store.PGStore).
 type PullRequestSessionStore interface {
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	RecordAgentSessionPullRequest(ctx context.Context, id, prURL string, prNumber int, headSHA string) error
+	RecordAgentSessionPRState(ctx context.Context, sessionID, state string, at time.Time, next *time.Time) (bool, error)
 }
 
 // PullRequester is bex-api's internal-only PR verb. It trusts only a request
@@ -242,18 +245,7 @@ type PullRequester struct {
 // *PullRequestError.
 func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (response PullRequestResponse, err error) {
 	auditRepository := ""
-	defer func() {
-		outcome := core.AuditAllowed
-		if err != nil {
-			outcome = core.AuditDenied
-			log.Printf("agent-session pull request refused (session=%s repo=%s): %v", req.SessionID, auditRepository, err)
-		}
-		core.RecordAuditEvent(ctx, p.Audit, core.AuditEvent{
-			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbPullRequest,
-			Resource: core.WorkspaceObject(req.Workspace), Target: "agent-session:" + req.SessionID,
-			TargetName: auditRepository, Outcome: outcome, At: p.now(),
-		})
-	}()
+	defer func() { p.audit(ctx, AuditVerbPullRequest, req.MintRequest, auditRepository, err) }()
 	if p.GitHub == nil || p.Connections == nil || p.Sessions == nil {
 		return PullRequestResponse{}, NewPullRequestError(PullRequestUnavailable, "pull requests are not configured")
 	}
@@ -412,6 +404,21 @@ func sessionLink(sessionURL, sessionID string) string {
 		return "session `" + sessionID + "`"
 	}
 	return "[view session](" + sessionURL + ")"
+}
+
+// audit records one PR-side verb decision on bex-api's hop, allowed or
+// denied, naming the repository once it is known.
+func (p *PullRequester) audit(ctx context.Context, verb string, req MintRequest, repository string, err error) {
+	outcome := core.AuditAllowed
+	if err != nil {
+		outcome = core.AuditDenied
+		log.Printf("agent-session %s refused (session=%s repo=%s): %v", verb, req.SessionID, repository, err)
+	}
+	core.RecordAuditEvent(ctx, p.Audit, core.AuditEvent{
+		Caller: req.PodName, CallerMethod: "sandbox", Verb: verb,
+		Resource: core.WorkspaceObject(req.Workspace), Target: "agent-session:" + req.SessionID,
+		TargetName: repository, Outcome: outcome, At: p.now(),
+	})
 }
 
 func (p *PullRequester) now() time.Time {

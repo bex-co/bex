@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
@@ -58,6 +59,47 @@ type fakeForge struct {
 	protectErr    error
 	reads         int
 	moved         []string
+	// readied records the node ids marked ready, and readyErr fails that
+	// call; merges records each merge, and mergeErr fails it.
+	readied    []string
+	readyErr   error
+	merges     []forgeMerge
+	mergeErr   error
+	mergeCalls int
+}
+
+// forgeMerge is one merge the merge verb asked for.
+type forgeMerge struct {
+	installation int64
+	owner, repo  string
+	number       int
+	opts         github.MergeOptions
+}
+
+func (f *fakeForge) MarkPullRequestReady(_ context.Context, _ int64, _, nodeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.readyErr != nil {
+		return f.readyErr
+	}
+	f.readied = append(f.readied, nodeID)
+	f.existing.Draft = false
+	return nil
+}
+
+func (f *fakeForge) MergePullRequest(_ context.Context, installation int64, owner, repo string, number int, opts github.MergeOptions) (github.MergeResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.mergeCalls++
+	if f.mergeErr != nil {
+		return github.MergeResult{}, f.mergeErr
+	}
+	f.merges = append(f.merges, forgeMerge{installation: installation, owner: owner, repo: repo, number: number, opts: opts})
+	method := opts.Method
+	if method == "" {
+		method = github.MergeMethodSquash
+	}
+	return github.MergeResult{SHA: "fedcba9876543210fedcba9876543210fedcba98", Method: method}, nil
 }
 
 func (f *fakeForge) GetPullRequest(_ context.Context, _ int64, _, _ string, number int) (github.PullRequestDetail, error) {
@@ -145,6 +187,24 @@ type prSessions struct {
 	mu       sync.Mutex
 	session  store.AgentSession
 	recorded int
+	// states records each pull request state written, and stateErr fails it.
+	states   []string
+	stateErr error
+}
+
+func (s *prSessions) RecordAgentSessionPRState(_ context.Context, id, state string, _ time.Time, next *time.Time) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stateErr != nil {
+		return false, s.stateErr
+	}
+	if id != s.session.ID || next != nil {
+		return false, store.ErrNotFound
+	}
+	s.states = append(s.states, state)
+	changed := s.session.PRState != state
+	s.session.PRState = state
+	return changed, nil
 }
 
 func (s *prSessions) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {

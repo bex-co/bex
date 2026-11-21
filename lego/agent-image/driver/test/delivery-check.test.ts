@@ -15,7 +15,7 @@
  */
 
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { readGitFacts, undeliveredFacts } from "../src/delivery-check.js";
@@ -276,4 +276,38 @@ test("a takeover that pushed but did not bring its pull request up to date is nu
   const facts = await readGitFacts(config);
   assert.equal(facts.prBehind, false);
   assert.deepEqual(undeliveredFacts(facts, config), []);
+});
+
+// w10/m538: GitHub may delete a branch once its pull request merges. The
+// merged work is delivered, so counting it against the setup-time base
+// would ask the agent to push it again.
+test("work merged by merge_pull_request counts as delivered after GitHub deletes the branch", async () => {
+  const { config, remote } = await repoSession("none");
+  await writeFile(path.join(config.cwd, "merged.txt"), "merged\n");
+  git(config.cwd, ["add", "merged.txt"]);
+  git(config.cwd, ["commit", "-m", "merged change"]);
+  git(config.cwd, ["push", "origin", `HEAD:${branch}`]);
+  const head = git(config.cwd, ["rev-parse", "HEAD"]);
+  git(remote, ["update-ref", "-d", `refs/heads/${branch}`]);
+  await writeFile(
+    config.prRecordPath,
+    JSON.stringify({ url: "https://github.com/acme/widgets/pull/7", number: 7, headSha: head }),
+  );
+  const unmerged = await readGitFacts(config);
+  assert.equal(unmerged.unpushedCommits, 1, "without the merge record the commit reads as unpushed");
+
+  await writeFile(
+    config.prRecordPath,
+    JSON.stringify({ url: "https://github.com/acme/widgets/pull/7", number: 7, headSha: head, merged: true, mergeSha: "f".repeat(40) }),
+  );
+  const facts = await readGitFacts(config);
+  assert.equal(facts.remoteHead, "");
+  assert.equal(facts.unpushedCommits, 0);
+  assert.deepEqual(undeliveredFacts(facts, config), []);
+
+  // A commit made after the merge is still undelivered.
+  await writeFile(path.join(config.cwd, "later.txt"), "later\n");
+  git(config.cwd, ["add", "later.txt"]);
+  git(config.cwd, ["commit", "-m", "after the merge"]);
+  assert.equal((await readGitFacts(config)).unpushedCommits, 1);
 });

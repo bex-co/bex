@@ -55,6 +55,10 @@ func (credentialSessions) RecordAgentSessionPullRequest(context.Context, string,
 	return nil
 }
 
+func (credentialSessions) RecordAgentSessionPRState(context.Context, string, string, time.Time, *time.Time) (bool, error) {
+	return true, nil
+}
+
 type credentialGitHub struct{ calls, apiCalls, apiWriteCalls int }
 
 func (g *credentialGitHub) MintRepositoryAPIWriteToken(context.Context, int64, string) (github.InstallationToken, error) {

@@ -233,9 +233,15 @@ func assertWriteRefusal(t *testing.T, label string, rec *httptest.ResponseRecord
 		return
 	}
 	msg := githubAPIMessage(t, rec)
-	for _, want := range []string{"open_or_update_draft_pr", "reply_on_pull_request", "re-run or cancel Actions runs", "review without approving", "session branch"} {
+	for _, want := range []string{"open_or_update_draft_pr", "reply_on_pull_request", "mark_pull_request_ready", "merge_pull_request", "re-run or cancel Actions runs", "review without approving", "session branch"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("%s refusal lacks %q: %q", label, want, msg)
+		}
+	}
+	// w10/m538: gh pr ready and gh pr merge are told which tool does it.
+	if strings.HasPrefix(label, "gh pr ready") || strings.HasPrefix(label, "gh pr merge") {
+		if !strings.HasPrefix(msg, "bex: gh pr ready and gh pr merge do not work in this session; call the mark_pull_request_ready and merge_pull_request tools") {
+			t.Errorf("%s refusal does not lead with the bex tools: %q", label, msg)
 		}
 	}
 }
@@ -793,7 +799,7 @@ func TestGitHubAPIRouteRefusesEveryCallWhileGitHubCLIIsOff(t *testing.T) {
 			t.Fatalf("%s %s with gh off = %d %q, want 403", call.method, call.path, rec.Code, rec.Body.String())
 		}
 		message := githubAPIMessage(t, rec)
-		for _, want := range []string{"gh is turned off for this workspace's agent sessions", "githubCliEnabled", "Settings → Agents", "bex agent env set --github-cli on", "session branch", "open_or_update_draft_pr"} {
+		for _, want := range []string{"gh is turned off for this workspace's agent sessions", "githubCliEnabled", "Settings → Agents", "bex agent env set --github-cli on", "session branch", "open_or_update_draft_pr", "merge_pull_request"} {
 			if !strings.Contains(message, want) {
 				t.Fatalf("%s %s refusal %q does not say %q", call.method, call.path, message, want)
 			}

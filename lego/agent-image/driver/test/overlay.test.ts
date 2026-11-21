@@ -80,6 +80,20 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
   );
   assert.match(text, /only commit or open pull requests when asked/);
   assert.match(text, /same branch and the same pull request/);
+  // w10/m538: marking ready and merging happen only when asked, as Devin
+  // does, after the checks pass, and a refusal is reported, not retried.
+  assert.match(
+    text,
+    /Leave the pull request as a draft for the requester to review, unless the task or a person's message asks you to mark it ready or merge it\. When asked, call `mark_pull_request_ready`/,
+  );
+  assert.match(
+    text,
+    /To merge, mark it ready, wait until its required checks pass \(`gh pr checks --watch` waits for them\), then call `merge_pull_request`; it merges the head you last pushed and recorded with `open_or_update_draft_pr`/,
+  );
+  assert.match(text, /you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop/);
+  assert.match(text, /include the merge commit in your final reply/);
+  assert.match(text, /Marking the pull request ready or merging it is not part of that request unless the task or a later message asks for it/);
+  assert.doesNotMatch(text, /requester's decision/);
   // Direct guidance, not shouted imperatives (they make models over-trigger).
   assert.doesNotMatch(text, /\b(MUST|NEVER|ALWAYS|IMPORTANT|CRITICAL)\b/);
 });
@@ -131,6 +145,12 @@ test("a takeover pushes its own branch and fast-forwards the person's PR with th
   );
   assert.match(text, /call `reply_on_pull_request` with what you changed/);
   assert.match(text, /a `\/bex` comment on pull request #7/);
+  // The person's pull request is marked ready or merged only when asked.
+  assert.match(
+    text,
+    /6\. Its draft or ready state and whether it merges belong to the person who opened it, so leave them as they are unless the `\/bex` comment or a later message asks you to mark it ready or merge it\. When asked, call `mark_pull_request_ready`/,
+  );
+  assert.match(text, /Marking the pull request ready or merging it is not part of that request unless the comment or a later message asks for it/);
   assert.doesNotMatch(text, /The deliverable is a draft pull request/);
   assert.doesNotMatch(text, /Leave the pull request as a draft/);
   assert.doesNotMatch(text, /already opened draft pull request/);
@@ -358,6 +378,14 @@ test("repo sessions register the bex stdio MCP server on session/new and session
         name: "BEX_PR_COMMENT_ENDPOINT",
         value:
           "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo/pull-request/comment",
+      },
+      {
+        name: "BEX_PR_READY_ENDPOINT",
+        value: "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo/pull-request/ready",
+      },
+      {
+        name: "BEX_PR_MERGE_ENDPOINT",
+        value: "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo/pull-request/merge",
       },
     ]);
   }

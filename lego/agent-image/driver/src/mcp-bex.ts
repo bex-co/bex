@@ -24,6 +24,10 @@
 //   - reply_on_pull_request (repo sessions, ADR047 D11) forwards to the
 //     gateway's pull-request/comment verb on the same path: one comment on the
 //     session's own pull request, whose number is fixed server-side.
+//   - mark_pull_request_ready and merge_pull_request (repo sessions,
+//     w10/m538) forward to the gateway's pull-request/ready and
+//     pull-request/merge verbs on the same path: they undraft and merge the
+//     session's own pull request, only when the task or a person asks.
 //   - share_file (when the deployment stores attachments) posts a file to the
 //     session's Pod-bound share URL.
 //   - submit_result (when the turn carries an outputSchema, ADR094 D5)
@@ -78,6 +82,14 @@ import {
   replyOnPullRequestToolDefinition,
   replyOnPullRequestToolName,
 } from "./reply-on-pr.js";
+import {
+  markPullRequestReady,
+  markPullRequestReadyToolDefinition,
+  markPullRequestReadyToolName,
+  mergePullRequest,
+  mergePullRequestToolDefinition,
+  mergePullRequestToolName,
+} from "./merge-pr.js";
 
 export const toolName = "open_or_update_draft_pr";
 export const maxTitleRunes = 256;
@@ -267,6 +279,8 @@ export function availableTools(
   if (env.BEX_PR_COMMENT_ENDPOINT) {
     tools.push(replyOnPullRequestToolDefinition);
   }
+  if (env.BEX_PR_READY_ENDPOINT) tools.push(markPullRequestReadyToolDefinition);
+  if (env.BEX_PR_MERGE_ENDPOINT) tools.push(mergePullRequestToolDefinition);
   if (env.BEX_SHARE_ENDPOINT) tools.push(shareFileToolDefinition);
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
     tools.push(submitResultToolDefinition);
@@ -293,6 +307,11 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   if (env.BEX_PR_COMMENT_ENDPOINT) {
     lines.push(
       `Use ${replyOnPullRequestToolName} to answer pull request feedback on the session's pull request.`,
+    );
+  }
+  if (env.BEX_PR_READY_ENDPOINT && env.BEX_PR_MERGE_ENDPOINT) {
+    lines.push(
+      `Use ${markPullRequestReadyToolName} and ${mergePullRequestToolName} to mark the session's pull request ready and merge it, only when the task or a person's message asks.`,
     );
   }
   if (env.BEX_SHARE_ENDPOINT) {
@@ -329,6 +348,8 @@ const toolHandlers: Record<string, ToolHandler> = {
   [messageChildSessionToolName]: messageChildSession,
   [cancelChildSessionToolName]: cancelChildSession,
   [replyOnPullRequestToolName]: replyOnPullRequest,
+  [markPullRequestReadyToolName]: markPullRequestReady,
+  [mergePullRequestToolName]: mergePullRequest,
 };
 
 interface JsonRpcMessage {

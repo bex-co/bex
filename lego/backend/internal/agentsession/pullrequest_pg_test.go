@@ -25,6 +25,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
@@ -103,6 +104,34 @@ func TestPGPullRequestVerbRecordsThePRMidTurn(t *testing.T) {
 	final := forge.bodies[created.Number]
 	if strings.Count(final, PullRequestFooterMarker) != 1 || !strings.HasSuffix(final, "[view session](https://dashboard.bex.co/agents/"+session.ID+")") {
 		t.Fatalf("final body = %q", final)
+	}
+
+	// w10/m538: marked ready and merged at the head the verb recorded, the
+	// row reads merged in the same request, so the prState filter REST,
+	// GraphQL and MCP share finds it without the PR-state poller.
+	if row, err = pg.GetAgentSession(ctx, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	forge.existing = github.PullRequestDetail{
+		PullRequest: github.PullRequest{Number: created.Number, HTMLURL: created.URL, State: "open", Draft: true},
+		NodeID:      "PR_node", HeadRef: "bex-agent/task-1", HeadSHA: row.HeadSHA, HeadRepo: "octo/repo", BaseRepo: "octo/repo", BaseRef: "main",
+	}
+	identity := request("", "").MintRequest
+	if _, err := p.MarkReady(ctx, PullRequestReadyRequest{MintRequest: identity}); err != nil {
+		t.Fatal(err)
+	}
+	if merged, err := p.Merge(ctx, PullRequestMergeRequest{MintRequest: identity}); err != nil || !merged.Merged {
+		t.Fatalf("merge = %+v err=%v", merged, err)
+	}
+	if row, err = pg.GetAgentSession(ctx, session.ID); err != nil || row.PRState != store.PRStateMerged || row.PRStateAt == nil || row.Phase != "running" {
+		t.Fatalf("merged row = %+v err=%v, want prState merged mid-turn", row, err)
+	}
+	listed, err := pg.ListAgentSessions(ctx, tenant.ID, store.AgentSessionListQuery{PRStates: []string{store.PRStateMerged}, Limit: 50})
+	if err != nil || len(listed) != 1 || listed[0].ID != session.ID {
+		t.Fatalf("merged filter = %+v err=%v", listed, err)
+	}
+	if forge.merges[0].opts.SHA != row.HeadSHA {
+		t.Fatalf("merge pinned %q, want the recorded head %q", forge.merges[0].opts.SHA, row.HeadSHA)
 	}
 
 	// Once the turn is terminal the verb refuses and the record is not touched.

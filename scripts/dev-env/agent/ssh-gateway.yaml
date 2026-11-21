@@ -154,6 +154,12 @@ spec:
             # `pull-request/comment` tail of the same URL).
             - name: BEX_AGENT_PULL_REQUEST_COMMENT_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-request-comments
+            # w10/m538: the agent marks its own PR ready and merges it (the
+            # `pull-request/ready` and `pull-request/merge` tails).
+            - name: BEX_AGENT_PULL_REQUEST_READY_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-request-ready
+            - name: BEX_AGENT_PULL_REQUEST_MERGE_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-request-merges
             # w10/m513: the read-only credential of the sandbox gh's
             # `github-api` route (the same URL's tail).
             - name: BEX_AGENT_GITHUB_READ_API_URL

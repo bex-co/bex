@@ -364,7 +364,7 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
   );
   assert.match(
     text,
-    /It cannot open, edit, approve, merge or close a pull request, or change code, branches or settings, and it reaches no other repository\. Your pull request itself stays with the `open_or_update_draft_pr` and `reply_on_pull_request` tools/,
+    /It cannot open, edit, approve, mark ready, merge or close a pull request, or change code, branches or settings, and it reaches no other repository\. Your pull request itself stays with the `open_or_update_draft_pr`, `reply_on_pull_request`, `mark_pull_request_ready` and `merge_pull_request` tools/,
   );
   assert.doesNotMatch(text, /cannot write/);
   assert.doesNotMatch(text, /not authenticated/);
@@ -432,8 +432,11 @@ test("the overlay of a repo session with gh off says gh is turned off and pull r
   );
   assert.match(
     text,
-    /Your pull request goes through the `open_or_update_draft_pr` and `reply_on_pull_request` tools of the `bex` MCP server, and code reaches GitHub only through your pushes to your branch/,
+    /Your pull request goes through the `open_or_update_draft_pr`, `reply_on_pull_request`, `mark_pull_request_ready` and `merge_pull_request` tools of the `bex` MCP server, and code reaches GitHub only through your pushes to your branch/,
   );
   assert.doesNotMatch(text, /`gh` works on/);
   assert.doesNotMatch(text, /`gh run/);
+  // Without gh the merge step does not point at `gh pr checks`.
+  assert.match(text, /wait until its required checks pass, then call `merge_pull_request`/);
+  assert.doesNotMatch(text, /`gh pr checks/);
 });

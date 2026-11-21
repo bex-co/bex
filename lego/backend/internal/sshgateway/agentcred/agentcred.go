@@ -108,6 +108,11 @@ type Broker struct {
 	// PullRequestComments is the bex-api comment verb (ADR047 D11) behind the
 	// path tail `pull-request/comment`. nil answers that route 503.
 	PullRequestComments *agentsession.PullRequestCommentClient
+	// PullRequestReady and PullRequestMerges are the bex-api mark-ready and
+	// merge verbs (w10/m538) behind the path tails `pull-request/ready` and
+	// `pull-request/merge`. nil answers that route 503.
+	PullRequestReady  *agentsession.PullRequestReadyClient
+	PullRequestMerges *agentsession.PullRequestMergeClient
 	// Files is the bex-api share verb (ADR095 D6) behind ShareFileProxyPath.
 	// nil ⇒ the route answers unavailable.
 	Files *agentsession.ShareFileClient
@@ -297,6 +302,14 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil && service == agentsession.PullRequestCommentProxySegment {
 		b.servePullRequestComment(w, r, namespace, mintRequest)
+		return
+	}
+	if err == nil && service == agentsession.PullRequestReadyProxySegment {
+		b.servePullRequestReady(w, r, namespace, mintRequest)
+		return
+	}
+	if err == nil && service == agentsession.PullRequestMergeProxySegment {
+		b.servePullRequestMerge(w, r, namespace, mintRequest)
 		return
 	}
 	if err == nil && service == agentsession.GitHubAPIProxySegment {
@@ -527,7 +540,8 @@ func parseProxyPath(path string) (string, agentsession.MintRequest, string, erro
 	switch parts[4] {
 	case "info/refs":
 		service = "info/refs"
-	case "git-upload-pack", "git-receive-pack", agentsession.PullRequestProxySegment, agentsession.PullRequestCommentProxySegment:
+	case "git-upload-pack", "git-receive-pack", agentsession.PullRequestProxySegment, agentsession.PullRequestCommentProxySegment,
+		agentsession.PullRequestReadyProxySegment, agentsession.PullRequestMergeProxySegment:
 		service = parts[4]
 	default:
 		// The github-api route (w10/m513) carries a GitHub API path after its

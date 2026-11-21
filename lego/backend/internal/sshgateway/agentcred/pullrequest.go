@@ -88,6 +88,58 @@ func (b *Broker) servePullRequestComment(w http.ResponseWriter, r *http.Request,
 	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestComment, agentsession.NewPullRequestCommentError, response, err)
 }
 
+// servePullRequestReady is the mark-ready twin of servePullRequestComment
+// (w10/m538): the same gate, then one signed call to bex-api. The sandbox
+// sends an empty JSON object; bex-api undrafts the session's recorded pull
+// request, so a request naming a number, a repository or any field is
+// refused here.
+func (b *Broker) servePullRequestReady(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
+	if b.PullRequestReady == nil {
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestUnavailable, "marking pull requests ready is not available on this gateway"))
+		return
+	}
+	admitted, raw, ok := b.admitPullRequestVerb(w, r, namespace, claimed, agentsession.NewPullRequestMergeError,
+		"this sandbox may only mark its own session's pull request ready")
+	if !ok {
+		return
+	}
+	defer admitted.release()
+	var content struct{}
+	if err := core.UnmarshalJSON(core.WithStrictJSONDecoding(admitted.r.Context()), raw, &content); err != nil {
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be an empty JSON object"))
+		return
+	}
+	response, err := b.PullRequestReady.MarkReady(admitted.r.Context(), agentsession.PullRequestReadyRequest{MintRequest: admitted.verified})
+	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestReady, agentsession.NewPullRequestMergeError, response, err)
+}
+
+// servePullRequestMerge is the merge twin (w10/m538). The sandbox supplies
+// at most {method, commitTitle, commitMessage}; bex-api merges the session's
+// recorded pull request at its recorded head.
+func (b *Broker) servePullRequestMerge(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
+	if b.PullRequestMerges == nil {
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestUnavailable, "merging pull requests is not available on this gateway"))
+		return
+	}
+	admitted, raw, ok := b.admitPullRequestVerb(w, r, namespace, claimed, agentsession.NewPullRequestMergeError,
+		"this sandbox may only merge its own session's pull request")
+	if !ok {
+		return
+	}
+	defer admitted.release()
+	var content agentsession.PullRequestMergeContent
+	if err := core.UnmarshalJSON(core.WithStrictJSONDecoding(admitted.r.Context()), raw, &content); err != nil {
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"method\", \"commitTitle\" and \"commitMessage\""))
+		return
+	}
+	if invalid := content.Validate(); invalid != nil {
+		agentsession.WritePullRequestError(w, invalid)
+		return
+	}
+	response, err := b.PullRequestMerges.Merge(admitted.r.Context(), agentsession.PullRequestMergeRequest{MintRequest: admitted.verified, PullRequestMergeContent: content})
+	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestMerge, agentsession.NewPullRequestMergeError, response, err)
+}
+
 // admitPullRequestVerb is the front half both PR-side verbs share: a JSON POST,
 // the admit gate with its refusals in the verb's vocabulary (refuse), and the
 // bounded request body. On refusal it has answered and reports false; on
