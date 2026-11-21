@@ -358,11 +358,13 @@ type EstimatedCost struct {
 	// those lines show, the same drift MonthlyEstimate already sums away.
 	// Always present; "0.00" for empty or all-free usage.
 	TotalUSD string `json:"totalUsd"`
-	// Meters breaks the total down by (kind × tier × resourceKind). Entries
-	// whose rounded cost is less than $0.01 are omitted. Only cents that
-	// survive per-line rounding reach the total, so accumulating sub-cent
-	// dust across lines never mints a cent no line shows. Always a non-nil
-	// slice (empty when there is no billable usage).
+	// Meters breaks the total down by (kind × tier × resourceKind). Each
+	// entry is the sum of the displayed resource charges' rounded cents
+	// for that dimension, so the meter lines add to the total exactly.
+	// Dimensions whose rounded share is less than $0.01 are omitted: only
+	// cents that survive per-line rounding reach the total, so accumulating
+	// sub-cent dust across lines never mints a cent no line shows. Always
+	// a non-nil slice (empty when there is no billable usage).
 	Meters []MeterEstimate `json:"meters"`
 	// Resources breaks the same total down by the resource that incurred it,
 	// so a bill can answer "which service costs me money" — Meters aggregates
@@ -516,9 +518,8 @@ func IncludedForWorkspace(ctx context.Context, plans PlanReader, workspaceID str
 // much of its quantity it covered.
 func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Included) EstimatedCost {
 	rows, covered := applyIncluded(rows, included)
-	type key struct{ kind, tier, resourceKind string }
-	byKey := map[key]int64{}
-	var order []key
+	var order []meterKey
+	seen := map[meterKey]bool{}
 	sandboxUsage := false
 	for _, r := range rows {
 		if r.ResourceKind == store.ResourceKindSandbox && r.Total != 0 {
@@ -530,36 +531,34 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 		if r.Unbilled {
 			continue // shown on its resource's lines, never part of a total
 		}
-		k := key{r.Kind, r.Tier, r.ResourceKind}
-		if _, seen := byKey[k]; !seen {
+		k := meterKey{r.Kind, r.Tier, r.ResourceKind}
+		if !seen[k] {
+			seen[k] = true
 			order = append(order, k)
 		}
-		byKey[k] += r.Total
 	}
 	billedFrom := ""
 	if from := s.SandboxUsageBilledFrom(); sandboxUsage && !from.IsZero() {
 		billedFrom = from.UTC().Format(time.RFC3339)
 	}
 
-	meters := make([]MeterEstimate, 0)
+	resources, meterCents, totalCents := s.resourceEstimates(rows, covered)
+	meters := make([]MeterEstimate, 0, len(order))
 	for _, k := range order {
-		qty := byKey[k]
-		if qty == 0 {
-			continue
-		}
-		rate := s.rateFor(k.kind, k.tier, k.resourceKind)
-		cost := rate * float64(qty)
-		if math.Round(cost*100) == 0 {
+		// Each entry is the sum of the displayed resource charges'
+		// rounded cents for that dimension, so the meter lines add to the
+		// total exactly: rounding the meter's raw aggregate instead can
+		// drift a cent from what the resource lines sum to.
+		if meterCents[k] == 0 {
 			continue // sub-cent contribution: skip meter entry
 		}
 		meters = append(meters, MeterEstimate{
 			Kind:         k.kind,
 			Tier:         k.tier,
 			ResourceKind: k.resourceKind,
-			CostUSD:      FormatUSD(cost),
+			CostUSD:      FormatUSD(float64(meterCents[k]) / 100),
 		})
 	}
-	resources, totalCents := s.resourceEstimates(rows, covered)
 	return EstimatedCost{
 		// The total is the sum of the per-resource figures' rounded cents,
 		// not the rounded raw float sum, so the bill always adds up.
@@ -602,13 +601,20 @@ func applyIncluded(rows []store.UsageSummaryRow, included Included) ([]store.Usa
 	return charged, covered
 }
 
+// meterKey is one meter dimension: the Meters breakdown's grouping, a subset
+// of a resource line's identity (which also carries the resource and whether
+// the row is unbilled).
+type meterKey struct{ kind, tier, resourceKind string }
+
 // resourceEstimates breaks the same rows down by resource instead of by meter
 // dimension. Rows are grouped by (serviceID × resourceKind) and, within a
 // resource, by (kind × tier) — both in first-seen order, so the result is
-// deterministic for a deterministic query. It also returns the sum of the
+// deterministic for a deterministic query. It also returns the per-meter
+// dimension's share of those same rounded cents, and the sum of the
 // per-resource rounded cents, which is the estimate's TotalUSD, so the total
-// is exactly what a reader gets adding the resource figures.
-func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[coveredKey]int64) ([]ResourceEstimate, int64) {
+// is exactly what a reader gets adding the resource figures — and the meter
+// lines add to it exactly too.
+func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[coveredKey]int64) ([]ResourceEstimate, map[meterKey]int64, int64) {
 	type resKey struct{ serviceID, resourceKind string }
 	type lineKey struct {
 		kind, tier string
@@ -635,6 +641,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 	}
 
 	out := make([]ResourceEstimate, 0, len(resOrder))
+	meterCents := map[meterKey]int64{}
 	var totalCents int64
 	for _, rk := range resOrder {
 		// The figure sums the displayed charges' rounded cents, so the
@@ -649,7 +656,11 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 				rate = 0
 			}
 			cost := rate * float64(qty)
-			resCents += int64(math.Round(cost * 100))
+			// One rounding site feeds the resource figure, the meter
+			// entry, and the total, so all three always agree.
+			c := int64(math.Round(cost * 100))
+			resCents += c
+			meterCents[meterKey{lk.kind, lk.tier, rk.resourceKind}] += c
 			unit := unitFor(lk.kind)
 			line := ChargeLine{
 				Kind:     lk.kind,
@@ -676,7 +687,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 		})
 		totalCents += resCents
 	}
-	return out, totalCents
+	return out, meterCents, totalCents
 }
 
 // meterUnit is the human-scale unit one meter kind is billed in, and how many
