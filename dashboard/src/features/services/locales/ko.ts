@@ -1358,6 +1358,16 @@ const koServices: Record<string, TranslationEntry> = {
       "SIGTERM 이후 프로세스를 강제 종료하기 전에 1~300초 동안 기다립니다(기본값 30).",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message: "영구 디스크가 있는 서비스는 종료 지연 시간을 변경할 수 없습니다.",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "디스크 보기",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "최대 종료 지연 시간 편집",
     description: "Accessible label for the shutdown-delay edit button",

@@ -169,6 +169,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     ipAllowListEntries: null,
     ipAllowListProxiedDomains: null,
     outboundIps: null,
+    disk: null,
     ...overrides,
   };
 }
@@ -363,6 +364,20 @@ describe("toServiceView", () => {
     expect(v.schedule).toBeNull();
     expect(v.command).toBeNull();
     expect(v.runs).toEqual([]);
+  });
+
+  // w6/m548: a service with a disk keeps the default shutdown delay, so
+  // Settings reads whether it has one; a list node does not select it.
+  it("reads whether a server node has a disk", () => {
+    expect(toServiceView(server()).hasDisk).toBe(false);
+    expect(
+      toServiceView(
+        server({
+          disk: { __typename: "ServiceDisk", mountPath: "/var/data" },
+        }),
+      ).hasDisk,
+    ).toBe(true);
+    expect(toServiceView(node()).hasDisk).toBeUndefined();
   });
 
   it("maps a build-from-git server node's source and build settings", () => {

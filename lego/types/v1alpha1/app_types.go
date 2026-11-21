@@ -851,7 +851,9 @@ type AppSpec struct {
 	// pod template's terminationGracePeriodSeconds. Render allows 1-300 seconds
 	// and defaults to 30; nil deliberately leaves Kubernetes' identical 30-second
 	// default untouched so existing Apps reconcile byte-identically. Applies to
-	// web_service, private_service, and background_worker only.
+	// web_service, private_service, and background_worker only, and never to a
+	// service with a disk, which keeps the 30-second default as on Render
+	// (ShutdownDelaySeconds).
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=300
@@ -1122,6 +1124,21 @@ func (s AppSpec) EffectivePort() int32 {
 		return DefaultPort
 	}
 	return s.Port
+}
+
+// ShutdownDelaySeconds is the maxShutdownDelaySeconds the service runs with:
+// nil, Kubernetes' and Render's 30-second default, for a service with a disk,
+// whatever spec.maxShutdownDelaySeconds holds. Render: "You can't change the
+// shutdown delay for a service with a persistent disk"
+// (docs/ADR082-persistent-disks.md). A disk service deploys stop-then-start,
+// so a longer delay is that much more downtime. The operator's pod grace and
+// bex-api's reads apply it alike, so a value left in the spec by a release
+// recorded before the disk, or written past bex-api, changes nothing.
+func (s AppSpec) ShutdownDelaySeconds() *int32 {
+	if s.Disk != nil {
+		return nil
+	}
+	return s.MaxShutdownDelaySeconds
 }
 
 // InternallyAddressable reports whether this service type owns a

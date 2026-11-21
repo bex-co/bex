@@ -260,9 +260,10 @@ func applyBlueprintServiceSpecFieldSet(t *testing.T) map[string]bool {
 	for _, policy := range BlueprintServiceFieldPolicies {
 		allFields[policy.Name] = BlueprintField{}
 	}
-	// A disk cannot sit beside autoscaling or a second instance, and the
-	// sync refuses that shape (w8/279): the scaling probe carries no disk,
-	// and the manual probe carries the disk on one instance.
+	// A disk cannot sit beside autoscaling, a second instance (w8/279) or a
+	// declared shutdown delay (w6/m548), and the sync refuses that shape: the
+	// scaling probe carries no disk, and the manual probe carries the disk on
+	// one instance without the delay, which the scaling probe covers.
 	scaled := want
 	scaled.Disk = nil
 	var withScaling appv1alpha1.AppSpec
@@ -271,7 +272,7 @@ func applyBlueprintServiceSpecFieldSet(t *testing.T) map[string]bool {
 	}
 	withoutScaling := map[string]BlueprintField{}
 	for name := range allFields {
-		if name != "scaling" {
+		if name != "scaling" && name != "maxShutdownDelaySeconds" {
 			withoutScaling[name] = BlueprintField{}
 		}
 	}

@@ -122,6 +122,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "maxShutdownDelaySeconds" in s
         ? (s.maxShutdownDelaySeconds ?? null)
         : null,
+    hasDisk: "disk" in s ? s.disk != null : undefined,
     preDeployCommand:
       "preDeployCommand" in s ? (s.preDeployCommand ?? null) : null,
     publishPath: "publishPath" in s ? (s.publishPath ?? null) : null,

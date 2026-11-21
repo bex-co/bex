@@ -1367,6 +1367,17 @@ const ruServices: Record<string, TranslationEntry> = {
       "Ждать от 1 до 300 секунд после SIGTERM, прежде чем принудительно остановить процесс (по умолчанию 30).",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message:
+      "Задержку остановки нельзя изменить для сервиса с постоянным диском.",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "Открыть диск",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "Изменить макс. задержку остановки",
     description: "Accessible label for the shutdown-delay edit button",

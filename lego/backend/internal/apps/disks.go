@@ -27,6 +27,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"k8s.io/utils/ptr"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
@@ -132,8 +133,14 @@ func (s *Service) AddDisk(ctx context.Context, serviceID, name, mountPath string
 	if err != nil {
 		return DiskView{}, store.MapError(err)
 	}
+	// A service with a disk keeps the default shutdown delay, as on Render, so
+	// a custom one returns to 30 s in the same write that attaches the disk.
+	// Render documents the rule, not what attaching does to a delay already
+	// set: the reset is bex's choice (w6/m548 t001).
+	delayReset := ptr.Deref(a.Spec.MaxShutdownDelaySeconds, defaultMaxShutdownDelaySeconds) != defaultMaxShutdownDelaySeconds
 	if _, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: name, MountPath: mountPath, SizeGB: sizeGB}
+		a.Spec.MaxShutdownDelaySeconds = nil
 	}); err != nil {
 		// The row is the source of truth and the projector converges the CR on
 		// its next pass, so a failed patch is not a lost disk — but the caller
@@ -141,6 +148,9 @@ func (s *Service) AddDisk(ctx context.Context, serviceID, name, mountPath string
 		return DiskView{}, fmt.Errorf("attach disk: %w", err)
 	}
 	s.RecordDiskChanged(ctx, a, core.AuditVerbAddDisk, disk.ID, nil, &disk.SizeGB)
+	if delayReset {
+		s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetMaxShutdownDelay)
+	}
 	return diskView(disk), nil
 }
 
@@ -309,6 +319,10 @@ func errDisksUnavailable() error {
 const (
 	diskPaidPlanRefusal        = "disks require a paid compute plan"
 	diskWithAutoscalingRefusal = "a service with a disk cannot use autoscaling"
+	// diskShutdownDelayRefusal is Render's Blueprint validator's own sentence
+	// (w6/m548 t001): "You can't change the shutdown delay for a service with
+	// a persistent disk" (render.com/docs/disks).
+	diskShutdownDelayRefusal = "max shutdown delay is not supported for services with a disk"
 )
 
 func diskInstancesRefusal(replicas int32) string {
@@ -721,7 +735,8 @@ func (s *Service) registerDiskTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "add_disk",
 		Description: "Attach a persistent disk to a paid web service, private service, or background worker. " +
-			"The service is redeployed, loses zero-downtime deploys, and can no longer run more than one instance.",
+			"The service is redeployed, loses zero-downtime deploys, and can no longer run more than one instance. " +
+			"A custom maxShutdownDelaySeconds returns to the default 30, which a service with a disk keeps, as on Render.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in addDiskArgs) (*mcp.CallToolResult, DiskView, error) {
 		return diskResult(s.AddDisk(ctx, in.ServiceID, in.Name, in.MountPath, in.SizeGB))
 	})

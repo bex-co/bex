@@ -711,7 +711,9 @@ spec:
                   pod template's terminationGracePeriodSeconds. Render allows 1-300 seconds
                   and defaults to 30; nil deliberately leaves Kubernetes' identical 30-second
                   default untouched so existing Apps reconcile byte-identically. Applies to
-                  web_service, private_service, and background_worker only.
+                  web_service, private_service, and background_worker only, and never to a
+                  service with a disk, which keeps the 30-second default as on Render
+                  (ShutdownDelaySeconds).
                 format: int32
                 maximum: 300
                 minimum: 1

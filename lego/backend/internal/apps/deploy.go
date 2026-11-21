@@ -3292,7 +3292,8 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 
 // validateManifestServiceFields rejects a services[] entry with no name or
 // with a manifest field bex does not accept (environmentId, secretFiles,
-// builder, image.creds), each with a manifest-shaped message.
+// builder, image.creds, maxShutdownDelaySeconds beside a disk), each with a
+// manifest-shaped message.
 func validateManifestServiceFields(a bexService) error {
 	if a.Name == "" {
 		return fmt.Errorf("%w: a service entry is missing its name", core.ErrBadRequest)
@@ -3305,6 +3306,11 @@ func validateManifestServiceFields(a bexService) error {
 	}
 	if a.Builder != "" {
 		return fmt.Errorf("%w: service %q uses retired Blueprint field builder; move it to x-bex.builder", core.ErrBadRequest, a.Name)
+	}
+	// Render's validator refuses the field beside a disk at any value, 30
+	// included, at services[i].maxShutdownDelaySeconds (w6/m548 t001).
+	if a.Disk != nil && a.MaxShutdownDelaySeconds != nil {
+		return fmt.Errorf("%w: service %q: %s", core.ErrBadRequest, a.Name, diskShutdownDelayRefusal)
 	}
 	return nil
 }

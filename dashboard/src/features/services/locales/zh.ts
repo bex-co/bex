@@ -1329,6 +1329,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "收到 SIGTERM 后等待 1–300 秒再强制停止进程（默认 30 秒）。",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message: "挂载了持久磁盘的服务无法更改关闭延迟。",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "查看磁盘",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "编辑最大关闭延迟",
     description: "Accessible label for the shutdown-delay edit button",

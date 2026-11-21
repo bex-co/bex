@@ -1374,6 +1374,17 @@ const ptServices: Record<string, TranslationEntry> = {
       "Aguarde de 1 a 300 segundos após o SIGTERM antes de forçar a parada do processo (padrão 30).",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message:
+      "Não é possível alterar o atraso de desligamento de um serviço com disco persistente.",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "Ver disco",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "Editar atraso máximo de desligamento",
     description: "Accessible label for the shutdown-delay edit button",

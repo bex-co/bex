@@ -160,6 +160,12 @@ query Server($id: String!) {
     # Graceful window after SIGTERM before SIGKILL. Render/Kubernetes default 30;
     # only web/private/background-worker services expose it.
     maxShutdownDelaySeconds
+    # The attached persistent disk, null without one: a service with a disk
+    # keeps the default shutdown delay, so Settings shows that row read-only
+    # (w6/m548).
+    disk {
+      mountPath
+    }
     # preDeployCommand is Render's Pre-Deploy Command (w1/m33) — the Build &
     # Deploy section reads it; empty means no pre-deploy step.
     preDeployCommand

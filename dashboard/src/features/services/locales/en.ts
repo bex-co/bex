@@ -1361,6 +1361,17 @@ const enServices: Record<string, TranslationEntry> = {
       "Wait 1–300 seconds after SIGTERM before force-stopping the process (default 30).",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message:
+      "You can't change the shutdown delay for a service with a persistent disk.",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "View disk",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "Edit max shutdown delay",
     description: "Accessible label for the shutdown-delay edit button",

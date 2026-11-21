@@ -495,6 +495,22 @@ func TestTerminationGracePeriod(t *testing.T) {
 			t.Errorf("web grace = %d; want %d + 60", got, drainSeconds)
 		}
 	})
+
+	// w6/m548: Render does not let a disk service change its shutdown delay, and
+	// a disk App deploys stop-then-start, so a custom delay left in its spec (by
+	// a CR written past bex-api, or a rollback to a release recorded before the
+	// disk) would be that much downtime. It never drains, so its grace is the
+	// default alone.
+	t.Run("a disk App keeps the default delay whatever its spec holds", func(t *testing.T) {
+		withDisk := func(a *appv1alpha1.App) {
+			a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+		}
+		for _, p := range []deploymentParams{webParams(), workerParams()} {
+			if got := grace(project(projectionApp(withDisk, withDelay(300)), p)); got != defaultTerminationGracePeriodSeconds {
+				t.Errorf("worker=%v: disk App grace = %d; want the default %d", p.worker, got, defaultTerminationGracePeriodSeconds)
+			}
+		}
+	})
 }
 
 // TestTrafficServingPodsDrainBeforeSIGTERM pins w1/m154: a web or private pod

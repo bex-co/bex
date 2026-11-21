@@ -208,6 +208,7 @@ const link = new ApolloLink(
                 type: "shared",
                 ips: [],
               },
+              disk: null,
             },
           },
         };

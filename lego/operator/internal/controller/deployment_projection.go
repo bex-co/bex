@@ -900,7 +900,10 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// The persistent disk, when one is attached: its volume and mount, plus the
 	// Recreate strategy and eviction guard a shared volume forces (see disk.go).
 	applyDiskProjection(dep, &container, app)
-	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain, p.drainCheck && p.usesHealthProbeBinary(app), p.livenessGrace)
+	// A disk App's grace is the 30-second default whatever its spec or a
+	// rolled-back release holds: Render does not let a disk service change its
+	// shutdown delay, and under Recreate every second of it is downtime.
+	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.ShutdownDelaySeconds(), drain, p.drainCheck && p.usesHealthProbeBinary(app), p.livenessGrace)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	withManagedOIDCPod(&dep.Spec.Template, app, p.managedOIDC)
 	dep.Spec.Template.Spec.InitContainers = nil

@@ -125,6 +125,7 @@ function serverData(id: string) {
     ipAllowListEntries: [],
     ipAllowListProxiedDomains: [],
     outboundIps: { __typename: "OutboundIPs", type: "shared", ips: [] },
+    disk: null,
   };
 }
 

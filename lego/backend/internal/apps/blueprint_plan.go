@@ -266,6 +266,10 @@ var blueprintServiceFieldAppliers = []struct {
 		// remounts.
 		next := *want.Disk
 		dst.Disk = &next
+		// A service with a disk keeps the default shutdown delay, so a custom
+		// one returns to 30 s, as AddDisk does (w6/m548). The file cannot also
+		// declare one (validateManifestServiceFields).
+		dst.MaxShutdownDelaySeconds = nil
 	}},
 	{names: []string{"maxShutdownDelaySeconds"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
@@ -499,6 +503,12 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 			}
 			*dst = before
 			return false, &BlueprintFieldConflictError{Path: field, Message: message}
+		}
+		// A disk attached outside the Blueprint meets a delay the file
+		// declares: refused as Render refuses the two in one file.
+		if dst.Disk != nil && present("maxShutdownDelaySeconds") {
+			*dst = before
+			return false, &BlueprintFieldConflictError{Path: "maxShutdownDelaySeconds", Message: diskShutdownDelayRefusal}
 		}
 	}
 

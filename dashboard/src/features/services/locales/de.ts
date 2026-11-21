@@ -1382,6 +1382,17 @@ const deServices: Record<string, TranslationEntry> = {
       "Warte 1–300 Sekunden nach SIGTERM, bevor der Prozess zwangsweise beendet wird (Standard 30).",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message:
+      "Die Shutdown-Verzögerung eines Service mit persistenter Disk kann nicht geändert werden.",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "Disk anzeigen",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "Max. Shutdown-Verzögerung bearbeiten",
     description: "Accessible label for the shutdown-delay edit button",

@@ -85,6 +85,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     ipAllowListEntries: null,
     ipAllowListProxiedDomains: null,
     outboundIps: null,
+    disk: null,
   };
 }
 

@@ -1369,6 +1369,16 @@ const jaServices: Record<string, TranslationEntry> = {
       "SIGTERM の後、プロセスを強制停止するまで 1 〜 300 秒待機します（デフォルトは 30）。",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message: "永続ディスクがあるサービスのシャットダウン遅延は変更できません。",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "ディスクを表示",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "最大シャットダウン遅延を編集",
     description: "Accessible label for the shutdown-delay edit button",

@@ -1134,6 +1134,36 @@ describe("ServiceSettingsPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w6/m548: a service with a disk keeps the default shutdown delay, as on
+  // Render, and the row links to the Disk tab.
+  it("shows Max shutdown delay read-only at 30 for a service with a disk", async () => {
+    serverState.service = svc({
+      type: "web_service",
+      hasDisk: true,
+      maxShutdownDelaySeconds: 30,
+    });
+    const { unmount } = renderSettings();
+
+    const input = await screen.findByRole("spinbutton", {
+      name: "Max shutdown delay",
+    });
+    expect(input).toHaveValue(30);
+    expect(
+      screen.queryByRole("button", { name: "Edit max shutdown delay" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View disk" })).toHaveAttribute(
+      "href",
+      "/services/app/disk",
+    );
+    unmount();
+
+    serverState.service = svc({ type: "web_service", hasDisk: false });
+    renderSettings();
+    expect(
+      await screen.findByRole("button", { name: "Edit max shutdown delay" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows a Deploy section (schedule + command), hides Custom Domains, Idle timeout, and instance count for a cron job", async () => {
     serverState.service = svc({
       type: "cron_job",

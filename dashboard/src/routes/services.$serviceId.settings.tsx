@@ -174,6 +174,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                     <MaxShutdownDelayRow
                       serviceId={serviceId}
                       maxShutdownDelaySeconds={service.maxShutdownDelaySeconds}
+                      hasDisk={service.hasDisk}
                       onChanged={() => void refetch()}
                       live={hasServed(service)}
                     />

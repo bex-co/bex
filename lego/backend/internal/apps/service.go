@@ -753,7 +753,9 @@ type AppView struct {
 	// MaxShutdownDelaySeconds is the effective SIGTERM grace window for a
 	// long-running service. Existing CRs leave the underlying pointer unset, so
 	// view() reports Render/Kubernetes' shared 30-second default without mutating
-	// their spec. Zero means not applicable (cron_job/static_site).
+	// their spec; a service with a disk reports that default whatever its spec
+	// holds, as the operator runs it (w6/m548). Zero means not applicable
+	// (cron_job/static_site).
 	MaxShutdownDelaySeconds int32 `json:"maxShutdownDelaySeconds,omitempty"`
 	// CacheProfile is a web service's edge caching profile (Render's
 	// serviceDetails.cache.profile; "no-cache" when unset, w5/m151).
@@ -1275,7 +1277,7 @@ func view(a *appv1alpha1.App) AppView {
 		RenderSubdomainPolicy:       subdomainPolicy,
 		HealthCheckPath:             a.Spec.HealthCheckPath,
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
-			svcType, a.Spec.MaxShutdownDelaySeconds,
+			svcType, a.Spec.ShutdownDelaySeconds(),
 		),
 		PreDeployCommand:  a.Spec.PreDeployCommand,
 		InitialDeployHook: a.Annotations[initialDeployHookAnnotation],
@@ -3685,8 +3687,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Tier:            tier,
 		HealthCheckPath: healthCheckPath,
 		Disk:            disk,
-		MaxShutdownDelaySeconds: clonePtr(
-			req.MaxShutdownDelaySeconds,
+		MaxShutdownDelaySeconds: storedMaxShutdownDelaySeconds(
+			disk != nil, req.MaxShutdownDelaySeconds,
 		),
 		// A copy: a Blueprint sync plans, then applies, one parsed request,
 		// and an in-place edit of this spec's env must not reach the next
@@ -3770,7 +3772,7 @@ func validateCreateSource(req CreateRequest) error {
 // rejected (ADR029; Render parity) — with publish/edge fields required for it
 // and rejected for every other type.
 func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
-	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
+	if err := validateMaxShutdownDelaySeconds(svcType, req.Disk != nil, req.MaxShutdownDelaySeconds); err != nil {
 		return err
 	}
 	// The update checks' applicability rules (settings_check.go), so create
@@ -4111,17 +4113,38 @@ func supportsMaxShutdownDelay(serviceType string) bool {
 	}
 }
 
-func validateMaxShutdownDelaySeconds(serviceType string, seconds *int32) error {
+// validateMaxShutdownDelaySeconds refuses a delay the service cannot take. A
+// service with a disk keeps the 30-second default, as on Render ("You can't
+// change the shutdown delay for a service with a persistent disk"), so it
+// takes only that value, which changes nothing (storedMaxShutdownDelaySeconds):
+// bex reports 30 for it, and a client writing back what it read is not
+// refused for a value it cannot change. A Blueprint refuses the field at any
+// value, as Render's validator does (validateManifestServiceFields).
+func validateMaxShutdownDelaySeconds(serviceType string, hasDisk bool, seconds *int32) error {
 	if seconds == nil {
 		return nil
 	}
 	if !supportsMaxShutdownDelay(serviceType) {
 		return fmt.Errorf("%w: maxShutdownDelaySeconds is not applicable to a %s", core.ErrBadRequest, serviceType)
 	}
+	if hasDisk && *seconds != defaultMaxShutdownDelaySeconds {
+		return fmt.Errorf("%w: %s", core.ErrBadRequest, diskShutdownDelayRefusal)
+	}
 	if *seconds < minMaxShutdownDelaySeconds || *seconds > maxMaxShutdownDelaySeconds {
 		return fmt.Errorf("%w: maxShutdownDelaySeconds must be %d-%d", core.ErrBadRequest, minMaxShutdownDelaySeconds, maxMaxShutdownDelaySeconds)
 	}
 	return nil
+}
+
+// storedMaxShutdownDelaySeconds is the spec value an accepted delay is saved
+// as: none for a service with a disk, which runs the default whatever it holds
+// (AppSpec.ShutdownDelaySeconds), so its spec and a Blueprint exported from it
+// never carry the field.
+func storedMaxShutdownDelaySeconds(hasDisk bool, seconds *int32) *int32 {
+	if hasDisk {
+		return nil
+	}
+	return clonePtr(seconds)
 }
 
 func effectiveMaxShutdownDelaySeconds(serviceType string, seconds *int32) int32 {
@@ -5600,16 +5623,24 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 // process to exit after SIGTERM before SIGKILL. It is a direct CR patch because
 // the control-plane row does not own this field. Kubernetes rolls the Deployment
 // when the pod template's terminationGracePeriodSeconds changes.
+//
+// A service with a disk takes only the default (validateMaxShutdownDelaySeconds)
+// and stores none: a value it still holds from before the rule is cleared, and
+// otherwise nothing is written.
 func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds int32) (AppView, error) {
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := validateMaxShutdownDelaySeconds(a.Spec.Type, &seconds); err != nil {
+	hasDisk := a.Spec.Disk != nil
+	if err := validateMaxShutdownDelaySeconds(a.Spec.Type, hasDisk, &seconds); err != nil {
 		return AppView{}, err
 	}
+	if hasDisk && a.Spec.MaxShutdownDelaySeconds == nil {
+		return s.view(a), nil
+	}
 	return s.recordedPatch(ctx, core.AuditVerbSetMaxShutdownDelay, a, func(a *appv1alpha1.App) {
-		a.Spec.MaxShutdownDelaySeconds = clonePtr(&seconds)
+		a.Spec.MaxShutdownDelaySeconds = storedMaxShutdownDelaySeconds(hasDisk, &seconds)
 	})
 }
 

@@ -279,6 +279,11 @@ export interface ServiceView {
    */
   maxShutdownDelaySeconds: number | null;
   /**
+   * The service has a persistent disk, so it keeps the 30-second shutdown
+   * delay (w6/m548). Optional: only the by-id read selects the disk.
+   */
+  hasDisk?: boolean;
+  /**
    * Render's Pre-Deploy Command (`spec.preDeployCommand`, w1/m33): a command run
    * to completion against the new image before it serves traffic (typically a DB
    * migration). null/empty means no pre-deploy step; null when not selected (list

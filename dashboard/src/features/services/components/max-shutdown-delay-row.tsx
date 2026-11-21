@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useMaxShutdownDelay } from "@/features/services/hooks/use-max-shutdown-delay";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
@@ -9,6 +10,11 @@ export interface MaxShutdownDelayRowProps {
   onChanged?: () => void;
   /** A release has gone live; false means nothing keeps serving (w4/548). */
   live?: boolean;
+  /**
+   * The service has a persistent disk, so it keeps the 30-second default and
+   * the row is read-only, as on Render (w6/m548).
+   */
+  hasDisk?: boolean;
 }
 
 const MIN_DELAY = 1;
@@ -23,21 +29,43 @@ function parseDelay(draft: string): number | null {
     : null;
 }
 
-/** Render-style edit-in-place row for the graceful-shutdown window (1–300s). */
+/**
+ * Render-style edit-in-place row for the graceful-shutdown window (1–300s).
+ * On a service with a disk it reads 30 and cannot be edited: Render says why
+ * in the hint's place ("You can't change the shutdown delay for a service with
+ * a persistent disk"), so the row keeps its shape and the settings skeleton's
+ * height still holds.
+ */
 export function MaxShutdownDelayRow({
   serviceId,
   maxShutdownDelaySeconds,
   onChanged,
   live = true,
+  hasDisk = false,
 }: MaxShutdownDelayRowProps) {
   const { t } = useTranslations();
   const { setMaxShutdownDelay, busy } = useMaxShutdownDelay();
-  const current = maxShutdownDelaySeconds ?? 30;
+  const current = hasDisk ? 30 : (maxShutdownDelaySeconds ?? 30);
+  const hint = hasDisk ? (
+    <>
+      {t("services.maxShutdownDelayDiskReason")}{" "}
+      <Link
+        to="/services/$serviceId/disk"
+        params={{ serviceId }}
+        className="text-primary font-medium underline-offset-4 hover:underline"
+      >
+        {t("services.maxShutdownDelayDiskLink")}
+      </Link>
+    </>
+  ) : (
+    t("services.settingsMaxShutdownDelayHint")
+  );
 
   return (
     <EditableFieldRow
       label={t("services.settingsMaxShutdownDelay")}
-      hint={t("services.settingsMaxShutdownDelayHint")}
+      hint={hint}
+      disabled={hasDisk}
       value={String(current)}
       editLabel={t("services.maxShutdownDelayEdit")}
       type="number"

@@ -442,8 +442,10 @@ func (s *Service) generateServiceEntry(ctx context.Context, a, carrier *appv1alp
 	if headers := staticHeaderViews(a.Spec.Headers); static && len(headers) > 0 {
 		entry["headers"] = headers
 	}
-	if a.Spec.MaxShutdownDelaySeconds != nil {
-		entry["maxShutdownDelaySeconds"] = *a.Spec.MaxShutdownDelaySeconds
+	// ShutdownDelaySeconds is none for a disk service: Render's validator
+	// refuses the field beside a disk, so the export would not re-import.
+	if delay := a.Spec.ShutdownDelaySeconds(); delay != nil {
+		entry["maxShutdownDelaySeconds"] = *delay
 	}
 	if m := a.Spec.MaintenanceMode; m != nil {
 		entry["maintenanceMode"] = maintenanceModeView(m)

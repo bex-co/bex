@@ -319,10 +319,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.MaxShutdownDelaySeconds != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			if err := validateMaxShutdownDelaySeconds(probe.Spec.Type, p.MaxShutdownDelaySeconds); err != nil {
+			hasDisk := probe.Spec.Disk != nil
+			if err := validateMaxShutdownDelaySeconds(probe.Spec.Type, hasDisk, p.MaxShutdownDelaySeconds); err != nil {
 				return err
 			}
-			probe.Spec.MaxShutdownDelaySeconds = clonePtr(p.MaxShutdownDelaySeconds)
+			probe.Spec.MaxShutdownDelaySeconds = storedMaxShutdownDelaySeconds(hasDisk, p.MaxShutdownDelaySeconds)
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {

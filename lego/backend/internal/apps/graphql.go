@@ -1883,7 +1883,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// cron_job/background_worker (no HTTP port).
 		"setHealthCheckPath": gqlutil.ArgMutation(serviceGQLType, "path", s.SetHealthCheckPath),
 		// setMaxShutdownDelay changes Render's per-service SIGTERM grace window.
-		// The shared service verb enforces 1-300 and rejects cron/static services.
+		// The shared service verb enforces 1-300, rejects cron/static services,
+		// and takes only the default 30 on a service with a disk (w6/m548).
 		"setMaxShutdownDelay": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{

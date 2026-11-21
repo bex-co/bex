@@ -1374,6 +1374,17 @@ const esServices: Record<string, TranslationEntry> = {
       "Espera de 1 a 300 segundos tras SIGTERM antes de forzar la detención del proceso (por defecto 30).",
     description: "Settings row help for the shutdown-delay range",
   },
+  "services.maxShutdownDelayDiskReason": {
+    message:
+      "No puedes cambiar el retraso de apagado de un servicio con un disco persistente.",
+    description:
+      "Settings hint replacing the range on a service with a disk (Render's rule, render.com/docs/disks); a link to the Disk tab follows",
+  },
+  "services.maxShutdownDelayDiskLink": {
+    message: "Ver disco",
+    description:
+      "Link after maxShutdownDelayDiskReason to the service's Disk tab",
+  },
   "services.maxShutdownDelayEdit": {
     message: "Editar retraso máximo de apagado",
     description: "Accessible label for the shutdown-delay edit button",
