@@ -257,7 +257,7 @@ func syncCommand(d deps, g *globals) *cobra.Command {
 			if src.Remote && dst.Remote && src.Bucket == dst.Bucket && (strings.HasPrefix(src.Key, dst.Key) || strings.HasPrefix(dst.Key, src.Key)) {
 				return usageError("%s and %s overlap: a sync cannot read what it is writing", src, dst)
 			}
-			if deleteExtra && !o.dryrun && !d.confirmBulkDelete(c, yes, "what is in '"+dst.String()+"' and not in '"+src.String()+"'") {
+			if deleteExtra && !o.dryrun && !d.confirmDelete(c, yes, "what is in '"+dst.String()+"' and not in '"+src.String()+"'") {
 				return nil
 			}
 			r, err := d.open(c, g, o.concurrency, o.noProgress)

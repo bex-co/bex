@@ -115,9 +115,9 @@ func newCommands(d deps) []*cobra.Command {
 			"Keys and other tools:\n" +
 			"  env                          the endpoint and a key, as variables for another S3 client\n" +
 			"  keys create|list|revoke      persistent keys for CI and long transfers\n\n" +
-			"Deleting in bulk asks first. `rm --recursive`, `rb --force` and `sync --delete` ask\n" +
-			"\"Are you sure?\" in a terminal, as `bex ea objects delete` does; --yes (-y) or the\n" +
-			"global --confirm skips the question, and a pipe, a script or CI is never asked.\n\n" +
+			"A delete asks first. `rm`, `rb --force` and `sync --delete` ask \"Are you sure?\" in a\n" +
+			"terminal, as `bex ea objects delete` does; --yes (-y) or the global --confirm skips\n" +
+			"the question, and a pipe, a script or CI is never asked. `mv` does not ask.\n\n" +
 			"A command given an access key in BEX_S3_ACCESS_KEY_ID and BEX_S3_SECRET_ACCESS_KEY\n" +
 			"uses it instead of making one, which is how CI, with no sign-in, uses `bex s3`.\n" +
 			"An object is at most 5 GiB. A key that expires during a transfer fails the transfer:\n" +

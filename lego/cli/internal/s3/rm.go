@@ -42,8 +42,8 @@ func rmCommand(d deps, g *globals) *cobra.Command {
 			"1,000. --include and --exclude pick among them by a glob over the path below the\n" +
 			"prefix, the last matching one deciding; --dryrun prints what would be deleted and\n" +
 			"deletes nothing. A key that does not exist is not an error, as on S3.\n\n" +
-			"--recursive asks \"Are you sure?\" in a terminal, as `bex ea objects delete` does;\n" +
-			"--yes or --confirm skips the question, and a pipe, a script or CI is never asked.",
+			"A delete (not --dryrun) asks \"Are you sure?\" in a terminal, as `bex ea objects delete`\n" +
+			"does; --yes or --confirm skips the question, and a pipe, a script or CI is never asked.",
 		Example: "  bex s3 rm s3://photos/cat.jpg\n  bex s3 rm s3://photos/tmp --recursive\n  bex s3 rm s3://photos/ --recursive --exclude '*' --include '*.tmp' --dryrun",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -60,13 +60,18 @@ func rmCommand(d deps, g *globals) *cobra.Command {
 			if err := checkConcurrency(concurrency); err != nil {
 				return err
 			}
-			if recursive && !dryrun {
-				prefix := location{Remote: true, Bucket: loc.Bucket, Key: asDir(loc.Key)}
-				what := "every object under '" + prefix.String() + "'"
-				if len(rules) > 0 {
-					what = "the objects under '" + prefix.String() + "' that --include and --exclude pick"
+			if !dryrun {
+				// One object is named by its URL, where `ea objects delete`, which has
+				// no buckets, names the key.
+				what := "object '" + loc.String() + "'"
+				if recursive {
+					prefix := location{Remote: true, Bucket: loc.Bucket, Key: asDir(loc.Key)}
+					what = "every object under '" + prefix.String() + "'"
+					if len(rules) > 0 {
+						what = "the objects under '" + prefix.String() + "' that --include and --exclude pick"
+					}
 				}
-				if !d.confirmBulkDelete(c, yes, what) {
+				if !d.confirmDelete(c, yes, what) {
 					return nil
 				}
 			}

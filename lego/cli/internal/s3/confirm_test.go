@@ -56,8 +56,9 @@ func (g *rig) bexRun(terminal bool, answer string, args ...string) (stdout, stde
 	return out.String(), errOut.String(), err
 }
 
-// bulkDelete is one of the three commands that delete in bulk.
-type bulkDelete struct {
+// askingDelete is one of the four deletes that ask: `rm` of one object, and the
+// three that delete in bulk.
+type askingDelete struct {
 	name string
 	// prepare stores what the command deletes and returns its arguments and the
 	// question a terminal is asked.
@@ -68,9 +69,20 @@ type bulkDelete struct {
 	dryrun string
 }
 
-func bulkDeletes() []bulkDelete {
+func askingDeletes() []askingDelete {
 	const ending = "? This cannot be undone. [y/N]: "
-	return []bulkDelete{
+	return []askingDelete{
+		{
+			name: "rm",
+			prepare: func(t *testing.T, g *rig) ([]string, string) {
+				for _, key := range []string{"t/a", "t/b"} {
+					g.s3.put("photos", key, []byte("x"), testNow)
+				}
+				return []string{"rm", "s3://photos/t/a"}, "Are you sure you want to delete object 's3://photos/t/a'" + ending
+			},
+			deleted: func(g *rig) bool { return !slices.Contains(g.s3.keys("photos"), "t/a") },
+			dryrun:  "--dryrun",
+		},
 		{
 			name: "rm --recursive",
 			prepare: func(t *testing.T, g *rig) ([]string, string) {
@@ -104,12 +116,12 @@ func bulkDeletes() []bulkDelete {
 	}
 }
 
-// TestABulkDeleteAsksOnATerminalAndWaitsForTheAnswer: on a terminal the three
-// bulk deletes print `bex ea objects delete`'s question and do nothing, not
-// even make a key, until it is answered; only y or yes goes on, and anything
-// else, or the end of the input, cancels with exit 0.
-func TestABulkDeleteAsksOnATerminalAndWaitsForTheAnswer(t *testing.T) {
-	for _, verb := range bulkDeletes() {
+// TestADeleteAsksOnATerminalAndWaitsForTheAnswer: on a terminal `rm` of an
+// object and the three bulk deletes print `bex ea objects delete`'s question
+// and do nothing, not even make a key, until it is answered; only y or yes goes
+// on, and anything else, or the end of the input, cancels with exit 0.
+func TestADeleteAsksOnATerminalAndWaitsForTheAnswer(t *testing.T) {
+	for _, verb := range askingDeletes() {
 		t.Run(verb.name, func(t *testing.T) {
 			for _, answer := range []string{"y\n", "yes\n", " Y \n", "YES\n"} {
 				g := newRig(t)
@@ -150,7 +162,7 @@ func TestABulkDeleteAsksOnATerminalAndWaitsForTheAnswer(t *testing.T) {
 // TestYesAndConfirmSkipTheQuestion: --yes, its short form -y and the global
 // --confirm each delete without asking, even on a terminal with nothing typed.
 func TestYesAndConfirmSkipTheQuestion(t *testing.T) {
-	for _, verb := range bulkDeletes() {
+	for _, verb := range askingDeletes() {
 		t.Run(verb.name, func(t *testing.T) {
 			for _, flag := range []string{"--yes", "-y", "--confirm"} {
 				g := newRig(t)
@@ -170,11 +182,11 @@ func TestYesAndConfirmSkipTheQuestion(t *testing.T) {
 	}
 }
 
-// TestABulkDeleteNeverAsksOffATerminal: a pipe, a script or CI, which the root
+// TestADeleteNeverAsksOffATerminal: a pipe, a script or CI, which the root
 // resolves to a text or machine format, is never asked and deletes, as
 // `bex ea objects delete` does.
-func TestABulkDeleteNeverAsksOffATerminal(t *testing.T) {
-	for _, verb := range bulkDeletes() {
+func TestADeleteNeverAsksOffATerminal(t *testing.T) {
+	for _, verb := range askingDeletes() {
 		t.Run(verb.name, func(t *testing.T) {
 			g := newRig(t)
 			args, _ := verb.prepare(t, g)
@@ -190,18 +202,18 @@ func TestABulkDeleteNeverAsksOffATerminal(t *testing.T) {
 	// A bare command, with no root to say what the run is (the case of every other
 	// test in this package), is not a terminal either.
 	g := newRig(t)
-	args, _ := bulkDeletes()[0].prepare(t, g)
+	args, _ := askingDeletes()[0].prepare(t, g)
 	g.must(args...)
-	if !bulkDeletes()[0].deleted(g) {
+	if !askingDeletes()[0].deleted(g) {
 		t.Error("a command run without a root did not delete")
 	}
 }
 
 // TestADryrunAndAnUnforcedRemovalNeverAsk: asking is for a delete that is about
-// to happen in bulk. --dryrun deletes nothing, and `rb` without --force removes
-// an empty bucket and nothing else.
+// to happen. --dryrun deletes nothing, and `rb` without --force removes an empty
+// bucket and nothing else.
 func TestADryrunAndAnUnforcedRemovalNeverAsk(t *testing.T) {
-	for _, verb := range bulkDeletes() {
+	for _, verb := range askingDeletes() {
 		if verb.dryrun == "" {
 			continue
 		}
@@ -241,5 +253,22 @@ func TestTheQuestionOfARecursiveRemoveNamesItsFilters(t *testing.T) {
 	}
 	if got := g.s3.keys("photos"); !slices.Equal(got, []string{"t/b.jpg"}) {
 		t.Errorf("keys left = %v, want only the excluded one kept", got)
+	}
+}
+
+// TestMvNeverAsks: the source of a move is deleted, but its bytes survive at the
+// destination, so `mv` does not ask on a terminal.
+func TestMvNeverAsks(t *testing.T) {
+	g := newRig(t)
+	g.s3.put("photos", "t/a", []byte("x"), testNow)
+	stdout, stderr, err := g.bexRun(true, "", "mv", "s3://photos/t/a", "s3://photos/t/c")
+	if err != nil {
+		t.Fatalf("%v\n%s", err, stderr)
+	}
+	if strings.Contains(stdout, "Are you sure") || strings.Contains(stdout, "canceled") {
+		t.Errorf("mv asked: %q", stdout)
+	}
+	if got := g.s3.keys("photos"); !slices.Equal(got, []string{"t/c"}) {
+		t.Errorf("keys after the move = %v, want only t/c", got)
 	}
 }

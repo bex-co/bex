@@ -98,7 +98,7 @@ func rbCommand(d deps, g *globals) *cobra.Command {
 			if err := checkConcurrency(concurrency); err != nil {
 				return err
 			}
-			if force && !d.confirmBulkDelete(c, yes, "the bucket '"+loc.String()+"' and every object in it") {
+			if force && !d.confirmDelete(c, yes, "the bucket '"+loc.String()+"' and every object in it") {
 				return nil
 			}
 			r, err := d.open(c, g, concurrency, true)

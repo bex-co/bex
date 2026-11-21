@@ -25,15 +25,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// yesFlag adds --yes (-y) to a command that deletes in bulk, with the name and
-// help text of the flag on `bex ea objects delete`.
+// yesFlag adds --yes (-y) to a command that asks before it deletes, with the
+// name and help text of the flag on `bex ea objects delete`.
 func yesFlag(c *cobra.Command, yes *bool) {
 	c.Flags().BoolVarP(yes, "yes", "y", false, "Skip confirmation prompt")
 }
 
-// confirmBulkDelete asks before a delete that removes many objects, in the
-// words and with the rules of `bex ea objects delete`, and says whether to go
-// on. `what` completes "Are you sure you want to delete ...?".
+// confirmDelete asks before a delete (one object, or many), in the words and
+// with the rules of `bex ea objects delete`, and says whether to go on. `what`
+// completes "Are you sure you want to delete ...?".
 //
 // It asks only when the command is interactive, which is the root command's
 // own reading of the run (every one of stdin, stdout and stderr is a terminal,
@@ -43,7 +43,7 @@ func yesFlag(c *cobra.Command, yes *bool) {
 // not y or yes, and an end of input, cancel: "Delete canceled." is printed and
 // the command succeeds having done nothing. A command run with no root (the
 // unit tests') has no format and never asks.
-func (d deps) confirmBulkDelete(c *cobra.Command, yes bool, what string) bool {
+func (d deps) confirmDelete(c *cobra.Command, yes bool, what string) bool {
 	ctx := commandContext(c)
 	if yes || command.GetConfirmFromContext(ctx) {
 		return true

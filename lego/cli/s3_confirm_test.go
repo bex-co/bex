@@ -16,11 +16,11 @@ limitations under the License.
 
 package main_test
 
-// The confirmation of `bex s3`'s bulk deletes (w21/115), against the built
-// binary and a real pseudo-terminal, so the root command's own reading of "this
-// is a terminal" (stdin, stdout and stderr all terminals, TERM not dumb, no CI,
-// no -o) decides, exactly as it does for `bex ea objects delete`, whose prompt
-// is the reference.
+// The confirmation of `bex s3`'s deletes (w21/115 for the bulk ones, w21/116 for
+// one object), against the built binary and a real pseudo-terminal, so the root
+// command's own reading of "this is a terminal" (stdin, stdout and stderr all
+// terminals, TERM not dumb, no CI, no -o) decides, exactly as it does for
+// `bex ea objects delete`, whose prompt is the reference.
 
 import (
 	"bytes"
@@ -39,6 +39,13 @@ import (
 )
 
 const promptEnding = "? This cannot be undone. [y/N]: "
+
+// objectQuestion is `bex ea objects delete`'s question about one object, with
+// the object it names filled in. The reference subtest below pins it to what the
+// pinned `ea objects delete` prints, and `bex s3 rm` of one object asks it.
+func objectQuestion(object string) string {
+	return "Are you sure you want to delete object '" + object + "'" + promptEnding
+}
 
 // runAtPrompt runs command with a pseudo-terminal for each of stdin, stdout and
 // stderr that the caller left nil, types answer when the prompt shows, and
@@ -119,9 +126,9 @@ func runAtPrompt(t *testing.T, command *exec.Cmd, answer string) (transcript str
 	}
 }
 
-// bulkDeleteRun is one `bex s3` command that deletes in bulk, against the fake
-// S3 of s3_contract_test.go (an empty bucket), with its question.
-type bulkDeleteRun struct {
+// deleteRun is one `bex s3` command that deletes and asks first, against the
+// fake S3 of s3_contract_test.go (an empty bucket), with its question.
+type deleteRun struct {
 	name     string
 	args     func(dir string) []string
 	question func(dir string) string
@@ -129,7 +136,13 @@ type bulkDeleteRun struct {
 	dryrun string
 }
 
-var bulkDeleteRuns = []bulkDeleteRun{
+var deleteRuns = []deleteRun{
+	{
+		name:     "rm",
+		args:     func(string) []string { return []string{"s3", "rm", "s3://launch-contract-bucket/p/one.txt"} },
+		question: func(string) string { return objectQuestion("s3://launch-contract-bucket/p/one.txt") },
+		dryrun:   "--dryrun",
+	},
 	{
 		name: "rm --recursive",
 		args: func(string) []string { return []string{"s3", "rm", "s3://launch-contract-bucket/p", "--recursive"} },
@@ -193,11 +206,10 @@ func (s *telemetryStub) askedForAKey() bool {
 	return slices.ContainsFunc(s.headers, func(h string) bool { return strings.Contains(h, "/access-keys") })
 }
 
-// TestBexS3BulkDeletesAskOnATerminalLikeEaObjectsDelete: the question has the
-// words of `bex ea objects delete`, waits for the answer before any request is
-// made, goes on only for y or yes, and a "no" ends with "Delete canceled." and
-// exit 0.
-func TestBexS3BulkDeletesAskOnATerminalLikeEaObjectsDelete(t *testing.T) {
+// TestBexS3DeletesAskOnATerminalLikeEaObjectsDelete: the question has the words
+// of `bex ea objects delete`, waits for the answer before any request is made,
+// goes on only for y or yes, and a "no" ends with "Delete canceled." and exit 0.
+func TestBexS3DeletesAskOnATerminalLikeEaObjectsDelete(t *testing.T) {
 	t.Parallel()
 	t.Run("the reference", func(t *testing.T) {
 		t.Parallel()
@@ -210,11 +222,11 @@ func TestBexS3BulkDeletesAskOnATerminalLikeEaObjectsDelete(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ea objects delete answered n: %v\n%s", err, transcript)
 		}
-		if want := "Are you sure you want to delete object 'a/b'" + promptEnding + "n\nDelete canceled.\n"; transcript != want {
+		if want := objectQuestion("a/b") + "n\nDelete canceled.\n"; transcript != want {
 			t.Fatalf("ea objects delete showed %q, want %q (the reference these prompts follow changed)", transcript, want)
 		}
 	})
-	for _, verb := range bulkDeleteRuns {
+	for _, verb := range deleteRuns {
 		t.Run(verb.name, func(t *testing.T) {
 			t.Parallel()
 			for answer, goesOn := range map[string]bool{"n\n": false, "\n": false, "y\n": true, "yes\n": true} {
@@ -238,13 +250,13 @@ func TestBexS3BulkDeletesAskOnATerminalLikeEaObjectsDelete(t *testing.T) {
 	}
 }
 
-// TestBexS3BulkDeletesSkipTheQuestionWithYesOrConfirmAndNeverAskElsewhere: --yes,
+// TestBexS3DeletesSkipTheQuestionWithYesOrConfirmAndNeverAskElsewhere: --yes,
 // -y and the global --confirm skip it on a terminal, and so does everything the
 // root does not read as a terminal: -o json, CI, and a pipe for any of the three
 // streams. A dry run deletes nothing and is never asked.
-func TestBexS3BulkDeletesSkipTheQuestionWithYesOrConfirmAndNeverAskElsewhere(t *testing.T) {
+func TestBexS3DeletesSkipTheQuestionWithYesOrConfirmAndNeverAskElsewhere(t *testing.T) {
 	t.Parallel()
-	for _, verb := range bulkDeleteRuns {
+	for _, verb := range deleteRuns {
 		t.Run(verb.name, func(t *testing.T) {
 			t.Parallel()
 			type variant struct {
@@ -308,7 +320,7 @@ func TestBexS3BulkDeletesSkipTheQuestionWithYesOrConfirmAndNeverAskElsewhere(t *
 // stream, nothing typed, and the delete just happens.
 func TestBexS3WithoutAnyTerminalNeverAsks(t *testing.T) {
 	t.Parallel()
-	for _, verb := range bulkDeleteRuns {
+	for _, verb := range deleteRuns {
 		t.Run(verb.name, func(t *testing.T) {
 			t.Parallel()
 			s := newS3Terminal(t, verb.args)
