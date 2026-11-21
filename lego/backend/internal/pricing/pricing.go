@@ -352,11 +352,16 @@ func (s *Sheet) WorkspaceUSDPerMonth(plan string) (usd float64, listed bool) {
 
 // EstimatedCost is the workspace-level cost estimate for a period.
 type EstimatedCost struct {
-	// TotalUSD is the sum of all meter costs, formatted to the nearest cent
-	// (e.g. "1.23"). Always present; "0.00" for empty or all-free usage.
+	// TotalUSD is the sum of the per-resource figures, formatted to the
+	// nearest cent (e.g. "1.23"): what a reader gets adding the Resources
+	// lines. Rounding the raw float sum instead can drift a cent from what
+	// those lines show, the same drift MonthlyEstimate already sums away.
+	// Always present; "0.00" for empty or all-free usage.
 	TotalUSD string `json:"totalUsd"`
 	// Meters breaks the total down by (kind × tier × resourceKind). Entries
-	// whose rounded cost is less than $0.01 are omitted. Always a non-nil
+	// whose rounded cost is less than $0.01 are omitted. Only cents that
+	// survive per-line rounding reach the total, so accumulating sub-cent
+	// dust across lines never mints a cent no line shows. Always a non-nil
 	// slice (empty when there is no billable usage).
 	Meters []MeterEstimate `json:"meters"`
 	// Resources breaks the same total down by the resource that incurred it,
@@ -442,8 +447,9 @@ type MeterEstimate struct {
 // Estimate computes a dollar estimate for the given usage rows by applying the
 // price sheet. Rows are aggregated by (kind × tier × resourceKind) across all
 // services before pricing. An unknown tier is treated as $0 (not an error).
-// Meters whose rounded cost is below $0.01 are omitted from the breakdown but
-// still counted toward TotalUSD. Meters is always a non-nil slice.
+// Meters whose rounded cost is below $0.01 are omitted from the breakdown;
+// TotalUSD is the sum of the per-resource figures, so only cents that survive
+// per-line rounding appear in it. Meters is always a non-nil slice.
 func (s *Sheet) Estimate(rows []store.UsageSummaryRow) EstimatedCost {
 	return s.EstimateIncluding(rows, nil)
 }
@@ -535,7 +541,6 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 		billedFrom = from.UTC().Format(time.RFC3339)
 	}
 
-	var totalRaw float64
 	meters := make([]MeterEstimate, 0)
 	for _, k := range order {
 		qty := byKey[k]
@@ -544,9 +549,8 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 		}
 		rate := s.rateFor(k.kind, k.tier, k.resourceKind)
 		cost := rate * float64(qty)
-		totalRaw += cost
 		if math.Round(cost*100) == 0 {
-			continue // sub-cent contribution: skip meter entry, still counts toward total
+			continue // sub-cent contribution: skip meter entry
 		}
 		meters = append(meters, MeterEstimate{
 			Kind:         k.kind,
@@ -555,10 +559,13 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 			CostUSD:      FormatUSD(cost),
 		})
 	}
+	resources, totalCents := s.resourceEstimates(rows, covered)
 	return EstimatedCost{
-		TotalUSD:  FormatUSD(totalRaw),
+		// The total is the sum of the per-resource figures' rounded cents,
+		// not the rounded raw float sum, so the bill always adds up.
+		TotalUSD:  FormatUSD(float64(totalCents) / 100),
 		Meters:    meters,
-		Resources: s.resourceEstimates(rows, covered),
+		Resources: resources,
 
 		SandboxUsageBilledFrom: billedFrom,
 	}
@@ -598,8 +605,10 @@ func applyIncluded(rows []store.UsageSummaryRow, included Included) ([]store.Usa
 // resourceEstimates breaks the same rows down by resource instead of by meter
 // dimension. Rows are grouped by (serviceID × resourceKind) and, within a
 // resource, by (kind × tier) — both in first-seen order, so the result is
-// deterministic for a deterministic query.
-func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[coveredKey]int64) []ResourceEstimate {
+// deterministic for a deterministic query. It also returns the sum of the
+// per-resource rounded cents, which is the estimate's TotalUSD, so the total
+// is exactly what a reader gets adding the resource figures.
+func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[coveredKey]int64) ([]ResourceEstimate, int64) {
 	type resKey struct{ serviceID, resourceKind string }
 	type lineKey struct {
 		kind, tier string
@@ -626,6 +635,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 	}
 
 	out := make([]ResourceEstimate, 0, len(resOrder))
+	var totalCents int64
 	for _, rk := range resOrder {
 		// The figure sums the displayed charges' rounded cents, so the
 		// resource always adds up: rounding the raw float sum can drift a
@@ -664,8 +674,9 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 			CostUSD:      FormatUSD(float64(resCents) / 100),
 			Charges:      charges,
 		})
+		totalCents += resCents
 	}
-	return out
+	return out, totalCents
 }
 
 // meterUnit is the human-scale unit one meter kind is billed in, and how many
