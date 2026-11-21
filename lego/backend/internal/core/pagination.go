@@ -214,15 +214,25 @@ func ValidateQueryRange(start, end time.Time) error {
 }
 
 // CheckQueryWindow validates the range and enforces a BEX_MAX_QUERY_HOURS-style cap on a query's
-// start–end range — shared by the logs, events, and metrics services so the
-// window budget cannot drift per feature (w9/004 → codex r7 #13). maxHours
+// start–end range — the metrics service's (w9/004 → codex r7 #13). maxHours
 // <= 0 disables the cap; an open start is unbounded history and passes; an
-// open end is measured against now.
+// open end is measured against now. Log reads clamp a start past the cap
+// instead of refusing it, as Render documents no range limit (logs
+// renderWindow, w8/374).
 func CheckQueryWindow(maxHours int, now func() time.Time, start, end time.Time) error {
 	if err := ValidateQueryRange(start, end); err != nil {
 		return err
 	}
-	return checkWindowCap(maxHours, now, start, end)
+	if maxHours <= 0 || start.IsZero() {
+		return nil
+	}
+	if end.IsZero() {
+		end = now()
+	}
+	if end.Sub(start) > time.Duration(maxHours)*time.Hour {
+		return fmt.Errorf("%w: query range exceeds %d hours", ErrBadRequest, maxHours)
+	}
+	return nil
 }
 
 // ValidateInclusiveQueryRange is ValidateQueryRange for an inclusive
@@ -232,27 +242,6 @@ func CheckQueryWindow(maxHours int, now func() time.Time, start, end time.Time) 
 func ValidateInclusiveQueryRange(start, end time.Time) error {
 	if !start.IsZero() && !end.IsZero() && start.After(end) {
 		return fmt.Errorf("%w: startTime must be before or equal to endTime", ErrBadRequest)
-	}
-	return nil
-}
-
-// CheckInclusiveQueryWindow is CheckQueryWindow over an inclusive window.
-func CheckInclusiveQueryWindow(maxHours int, now func() time.Time, start, end time.Time) error {
-	if err := ValidateInclusiveQueryRange(start, end); err != nil {
-		return err
-	}
-	return checkWindowCap(maxHours, now, start, end)
-}
-
-func checkWindowCap(maxHours int, now func() time.Time, start, end time.Time) error {
-	if maxHours <= 0 || start.IsZero() {
-		return nil
-	}
-	if end.IsZero() {
-		end = now()
-	}
-	if end.Sub(start) > time.Duration(maxHours)*time.Hour {
-		return fmt.Errorf("%w: query range exceeds %d hours", ErrBadRequest, maxHours)
 	}
 	return nil
 }

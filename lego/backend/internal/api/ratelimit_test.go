@@ -367,7 +367,10 @@ func TestBodyLimitDisabledWhenZero(t *testing.T) {
 
 // ---- Log query-range cap ----
 
-func TestLogQueryRangeCapRejects(t *testing.T) {
+// A log window wider than the cap is clamped to it, never refused (w8/374):
+// Render's List logs documents no range limit. The page's cursor names the
+// clamped start.
+func TestLogQueryRangeCapClamps(t *testing.T) {
 	svc := &logs.Service{
 		Base:          &core.Base{Client: fakeClient(sampleApp("app"))},
 		MaxQueryHours: 24,
@@ -392,12 +395,21 @@ func TestLogQueryRangeCapRejects(t *testing.T) {
 		t.Fatalf("Handler: %v", err)
 	}
 
-	start := time.Now().Add(-30 * 24 * time.Hour) // 30-day window > 24h cap
-	end := time.Now()
+	end := time.Now().Truncate(time.Second)
+	start := end.Add(-30 * 24 * time.Hour) // 30-day window > 24h cap
 	path := "/v1/logs?resource=myapp&startTime=" + start.Format(time.RFC3339) + "&endTime=" + end.Format(time.RFC3339)
 	w := do(t, h, "GET", path, testToken, "")
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("out-of-range log query: want 400, got %d: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("over-wide log query: want 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var page struct {
+		NextStartTime string `json:"nextStartTime"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	if want := end.Add(-24 * time.Hour).UTC().Format(time.RFC3339); page.NextStartTime != want {
+		t.Errorf("nextStartTime = %q, want the clamped start %q", page.NextStartTime, want)
 	}
 }
 

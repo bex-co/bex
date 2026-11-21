@@ -682,23 +682,6 @@ func TestRESTRequestLogsAndDiscovery(t *testing.T) {
 	}
 }
 
-// BEX_MAX_QUERY_HOURS bounds every REST log read — the historical query AND label
-// discovery, which takes the same time range and would otherwise let a caller scan
-// the whole store.
-func TestRESTMaxQueryHoursBoundsBothReads(t *testing.T) {
-	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z hi"}},
-		sampleApp("web"), podFor("web", "web-1"))
-	svc.MaxQueryHours = 24
-
-	wide := "startTime=2020-01-01T00:00:00Z&endTime=2026-01-01T00:00:00Z"
-	if got := serveREST(svc, "GET", "/v1/logs?resource=web&"+wide).Code; got != 400 {
-		t.Errorf("an over-wide query range => 400, got %d", got)
-	}
-	if got := serveREST(svc, "GET", "/v1/logs/values?resource=web&label=level&"+wide).Code; got != 400 {
-		t.Errorf("discovery must honor the same window cap => 400, got %d", got)
-	}
-}
-
 func TestRESTLogsUnavailableWithoutSource(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(sampleApp("web")).Build()
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}} // no PodLogs
@@ -1159,76 +1142,6 @@ func TestGraphQLLogsMalformedTimeErrors(t *testing.T) {
 		}
 		if !strings.Contains(res.Errors[0].Message, tc.field+":") {
 			t.Errorf("malformed %s error = %q, want it to name the field", tc.field, res.Errors[0].Message)
-		}
-	}
-}
-
-// TestGraphQLLogsMaxQueryHoursBounds covers w9/m1/t008: BEX_MAX_QUERY_HOURS
-// bounds GraphQL's logs/logLabelValues exactly as it bounds REST's (rest.go's
-// checkWindow, now called from both resolvers, graphql.go) — an over-wide
-// window is a 400-shaped resolver error on every surface, never unbounded on
-// one and capped on another.
-func TestGraphQLLogsMaxQueryHoursBounds(t *testing.T) {
-	svc := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
-		sampleApp("web"), podFor("web", webInst))
-	svc.MaxQueryHours = 24
-	schema, err := gqlSchema(svc)
-	if err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-	wide := `startTime:"2020-01-01T00:00:00Z", endTime:"2026-01-01T00:00:00Z"`
-	for _, q := range []string{
-		`{ logs(resource:"web", ` + wide + `) { logs { message } } }`,
-		`{ logLabelValues(resource:"web", label:"level", ` + wide + `) }`,
-	} {
-		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
-		if len(res.Errors) == 0 {
-			t.Errorf("%s: an over-wide window => resolver error, got none", q)
-		}
-	}
-}
-
-// TestMCPLogsMaxQueryHoursBounds covers w9/004: BEX_MAX_QUERY_HOURS bounds
-// MCP's list_logs/list_log_label_values exactly as it bounds REST and GraphQL
-// (rest.go's checkWindow) — before this, MCP was the one surface that could
-// scan an unbounded startTime..endTime range.
-func TestMCPLogsMaxQueryHoursBounds(t *testing.T) {
-	svc := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
-		sampleApp("web"), podFor("web", webInst))
-	svc.MaxQueryHours = 24
-
-	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-	svc.RegisterMCP(srv)
-	serverT, clientT := mcp.NewInMemoryTransports()
-	ctx := context.Background()
-	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
-		t.Fatalf("server connect: %v", err)
-	}
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatalf("client connect: %v", err)
-	}
-	t.Cleanup(func() { cs.Close() })
-
-	wide := map[string]any{
-		"resource":  []string{"web"},
-		"startTime": "2020-01-01T00:00:00Z",
-		"endTime":   "2026-01-01T00:00:00Z",
-	}
-	for _, tool := range []string{"list_logs", "list_log_label_values"} {
-		args := map[string]any{}
-		for k, v := range wide {
-			args[k] = v
-		}
-		if tool == "list_log_label_values" {
-			args["label"] = "level"
-		}
-		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
-		if err != nil {
-			t.Fatalf("%s: transport error: %v", tool, err)
-		}
-		if !res.IsError {
-			t.Errorf("%s: an over-wide window => tool error, got success", tool)
 		}
 	}
 }

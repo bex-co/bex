@@ -59,8 +59,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // and list_log_label_values as "Defaults to 1 hour ago" (w5/197).
 const renderLookback = time.Hour
 
-// renderWindow resolves a read's window on Render's logs surfaces and enforces
-// BEX_MAX_QUERY_HOURS on it. Every REST log read goes through it — the
+// renderWindow resolves a read's window on Render's logs surfaces and bounds
+// it by BEX_MAX_QUERY_HOURS. Every REST log read goes through it — the
 // historical query AND label discovery — and so do GraphQL's
 // `logs`/`logLabelValues` (graphql.go, w9/m1/t002) and MCP's
 // `list_logs`/`list_log_label_values` (mcp.go, w9/004).
@@ -71,25 +71,29 @@ const renderLookback = time.Hour
 // (w8/120). Setting it here, before the read, is what makes the store, the
 // pod-log fallback and the page cursors all name that one hour.
 //
-// The cap measures the part of the window that can hold lines, up to now: no
-// line is stamped after it (w8/123), and a window that has not begun holds
-// none (w8/120).
+// A start more than the cap before the part of the window that can hold
+// lines, which ends at now (w8/123), is clamped to the cap, never refused:
+// Render's List logs documents no range limit, so `--start 30d` or a start a
+// year back reads what is kept (w8/374). The default cap, 720 hours, is the
+// longest plan window and the store's retention, so the clamp hides no kept
+// line; the plan's own floor narrows the read further (floorAt). Only an
+// inverted window is refused, and one that has not begun stays as asked: it
+// holds no lines yet (w8/120).
 func (s *Service) renderWindow(q *LogQuery) error {
-	now := time.Now()
+	end := time.Now()
+	if !q.End.IsZero() {
+		end = earlier(q.End, end)
+	}
 	if q.Since.IsZero() {
-		end := now
-		if !q.End.IsZero() {
-			end = earlier(q.End, now)
-		}
 		q.Since = end.Add(-renderLookback)
 	}
 	if err := core.ValidateInclusiveQueryRange(q.Since, q.End); err != nil {
 		return err
 	}
-	if q.Since.After(now) {
-		return nil
+	if s.MaxQueryHours > 0 {
+		q.Since = later(q.Since, end.Add(-time.Duration(s.MaxQueryHours)*time.Hour))
 	}
-	return core.CheckInclusiveQueryWindow(s.MaxQueryHours, func() time.Time { return now }, q.Since, earlier(q.End, now))
+	return nil
 }
 
 // logsValues serves GET /v1/logs/values — Render's filter-value discovery: the
