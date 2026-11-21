@@ -1,6 +1,6 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009, t012 and t013 done; walk 3 on pin `f797f525f5df` passed the agent composer row's disconnect and reconnect; t010 waits only for the user's GitHub sudo-mode 2FA for the first install, or their sign-off to skip that cell)
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** done — t001–t009 shipped in `67e156851`, t012 in `210793c9b` and t013 in `3391d36cc`; t010 walked on production in four walks, the last on pin `f797f525f5df` (2026-11-21), with the first install on `cuckoo-network` as walk 4; t011 closed the milestone
 
 ## Tasks (in order)
 
@@ -17,8 +17,8 @@
 | t009 | Test coverage — **DONE** | 60m | t007 |
 | t012 | Agent composer: a workspace without GitHub offers the connect action once the person reaches for a repository — **DONE** | 45m | t009 |
 | t013 | Agent composer: the repo list and GitHub readiness follow the connection set while the composer is open — **DONE** | 45m | t012 |
-| t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point | 2h | t008, t009, t012, t013 |
-| t011 | Closeout | 15m | t010 |
+| t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point — **DONE** | 2h | t008, t009, t012, t013 |
+| t011 | Closeout — **DONE** | 15m | t010 |
 
 ## Definition of done
 
@@ -190,3 +190,31 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
   1. be at the walk browser to complete Confirm access (GitHub Mobile, a passkey, an authenticator code or an emailed code) when the worker clicks Install & Authorize for `cuckoo-network` with only `stable-diffusion-miner-docker` selected;
   2. or sign off skipping that cell. t010's acceptance criteria allow an exception the user explicitly accepts.
 - **Next:** after either answer, a worker finishes t010 (the first-install cell, or the recorded sign-off) and then runs t011.
+
+## Unblock (2026-11-21, the user's decision on the first install)
+
+- **Affected:** t010 (the "install on a new account" column), then t011.
+- **Source:** an explicit user decision. Offered the walk 3 park's two choices, the user replied on 2026-11-21 "ok, 1": choice 1, be present for GitHub's sudo-mode **Confirm access** during the first install.
+- **Chosen behavior.** The first install runs live with the user at hand, as the 2026-11-21 unblock planned:
+  - from `bex-canary`'s chooser, "Install on another GitHub account" → `cuckoo-network` → Only select repositories → `stable-diffusion-miner-docker`;
+  - the user completes Confirm access;
+  - the walker checks that the binding lands in `bex-canary` and its repo appears, then disconnects it.
+
+  Because GitHub sudo mode is bound to the user, the `/loopx w1` orchestrator session walked this cell itself, live with the user. t010 records it as walk 4, performed by the orchestrator, not by a worker.
+- **Rationale.** Choice 1 checks the cell instead of skipping it, so no DoD point changes. Render connects an account without the App the same way: GitHub's own install picker, then a return that binds the account.
+- **Remaining gates:** none. With sudo mode active, the user's presence also let the test installations be uninstalled afterwards. Nothing was left on `cuckoo-network`.
+- **Next:** record walk 4 in t010, then run t011.
+
+## Closeout (2026-11-21)
+
+Every point of the definition of done holds on production pin `f797f525f5df` (pin commit `4c41a69d7`), which carries `67e156851` (t001–t009), `210793c9b` (t012) and `3391d36cc` (t013):
+
+1. **One connect action at every starting point.** Walks 1 and 3 cover connecting an installed account and reconnecting it at every starting point, with no reinstall and no Configure dead end. Walk 4 covers installing on and connecting a new account (`cuckoo-network`). Every starting point's new install goes through the chooser's "Install on another GitHub account" (`useConnectGit()` has one caller, `AccountChooser` in `connect-github-card.tsx`), so the one live install covers each row. When the state had expired, GitHub installed the App but bex bound nothing, and the user was sent back to `/settings` with a recoverable alert, not left on github.com.
+2. **The chooser** listed every administered installed account, marked the connected ones, offered "Install on another GitHub account", and closed with a toast once a choice bound (walks 1–4).
+3. **Unsaved input** was kept, and the new account's repos appeared without a reload, on every source-picker host (walk 1) and in the agent composer (walks 2 and 3).
+4. **Disconnect** removed only that account's repos, and reconnecting worked, at every starting point (walks 1 and 3).
+5. **`setup_action`.** A redirect that carries `setup_action` and no `installation_id` is never handled as a claim, and `setup_action=request` answers `install_requested`. Tests cover both (t003). The non-owner request was not walked live, because it would notify third-party org owners (t010 step 7).
+6. **Focus and settings link.** Opening the Credentials menu put focus on "Connect another account" every time (walks 1 and 2). The composer's "GitHub settings" link lands on `/settings#integrations` (walk 2).
+7. **t010's matrix** records a pass in every cell on the production pins that carry these commits (t010 § Final matrix).
+
+Follow-up: [w1/146](../../146.md). An expired connect state after GitHub has installed the App should say that the account is waiting in the chooser.
