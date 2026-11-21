@@ -39,7 +39,7 @@ kubectl -n bex-system get pods -l app.bex.co/component=objectgw   # none
 
 ## The S3 API switch
 
-`bex-system/bex-s3gw` serves `objects.<base domain>` for stock S3 clients (`aws`, `rclone`, `boto3`, `bex s3`), authenticated with an access key, and streams their bytes through the same shared Wasabi account. It has its own switch for the same reason as the gateway above: Argo CD syncs production from `lego/operator/config/prod/kustomization.yaml` with `selfHeal`, so `kubectl scale` is reverted within seconds and is not a kill switch.
+`bex-system/bex-s3gw` serves `objects.<base domain>` for S3 clients (`bex s3`, and third-party ones such as `aws`, `rclone` and `boto3`), authenticated with an access key, and streams their bytes through the same shared Wasabi account. It has its own switch for the same reason as the gateway above: Argo CD syncs production from `lego/operator/config/prod/kustomization.yaml` with `selfHeal`, so `kubectl scale` is reverted within seconds and is not a kill switch.
 
 **Use it when** `ObjectStoragePublicEgressCritical` fires or Wasabi warns, and the Billing and metering board shows the egress leaving through S3: "S3 bytes in and out" (`direction="out"`) is the growing part while "Public gateway bytes out by origin" is flat; or `S3ListingBytesHigh` and `S3EgressBudgetRefusals` fire together. The per-workspace pacing (8 MiB/s a workspace on each replica) and the monthly egress budget (the larger of the bytes a workspace stores and 5 GiB) are what bound one workspace; this switch bounds the sum, which only a person decides to do.
 
@@ -66,7 +66,7 @@ kubectl -n bex-system get pods -l app.bex.co/component=s3gw   # none
 
 **A client sees** Traefik's own `503` with the plain body `no available server` for every request on `objects.<base domain>`, which serves S3 only. S3 SDKs retry a 503 and then fail with their service-unavailable error, which is the message an operator wants a customer to read during an egress incident; nothing is lost, because the keys, buckets and objects are untouched. **Not affected:** `bex-objectgw` and every `pub-` host, Contract A's routes in bex-api (`/v1/objects`), the hourly usage sweep, the shadow meters and every access key (rows and OpenBao secrets).
 
-**Restore** by setting the value back to `2`, merging, and checking `kubectl -n bex-system rollout status deploy/bex-s3gw`. After it, `bex_s3gw_requests_total{code="OK"}` rises on the "S3 requests by code" panel and `ServiceUnavailable` does not, and `aws s3 ls` with a key answers. Restore only when the egress source is understood: a workspace's key revoked, or its loop stopped.
+**Restore** by setting the value back to `2`, merging, and checking `kubectl -n bex-system rollout status deploy/bex-s3gw`. After it, `bex_s3gw_requests_total{code="OK"}` rises on the "S3 requests by code" panel and `ServiceUnavailable` does not, and `bex s3 ls` with a key answers. Restore only when the egress source is understood: a workspace's key revoked, or its loop stopped.
 
 ## What a visitor sees
 

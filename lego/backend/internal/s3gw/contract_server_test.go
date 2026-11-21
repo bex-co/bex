@@ -43,8 +43,8 @@ import (
 )
 
 // The server half of scripts/s3-contract.sh (ADR112 D11, layer 3). The script runs the
-// pinned aws-cli v2, rclone and boto3 against this gateway over TLS (the clients' framing
-// differs over plain HTTP, where they sign the payload instead of sending a trailer), on
+// pinned aws-cli v2, rclone and boto3, and a bex built from lego/cli, against this gateway over
+// TLS (the clients' framing differs over plain HTTP, where they sign the payload instead of sending a trailer), on
 // real Postgres and a fake Wasabi. This test only serves: it writes where it listens and
 // the key to use, logs what each client sent and what bex answered, and when the script is
 // done it checks that no client was answered with a 5xx and writes the report of the
@@ -111,8 +111,27 @@ func clientOf(userAgent string) string {
 		return "boto3"
 	case strings.HasPrefix(ua, "rclone/"):
 		return "rclone"
+	case strings.Contains(ua, "app/bex-cli"):
+		return "bex"
 	}
 	return "other"
+}
+
+// TestClientOfNamesTheFourClients: bex's own client is told apart by the application id its
+// requests carry, so its 5xx answers fail the run and its defaults are in the report.
+func TestClientOfNamesTheFourClients(t *testing.T) {
+	for ua, want := range map[string]string{
+		"aws-cli/2.39.5 md/awscrt#0.28 ua/2.1 os/linux#6.8 md/arch#arm64 lang/python#3.13 md/pyimpl#CPython cfg/retry-mode#standard md/installer#exe md/prompt#off md/command#s3.cp": "aws-cli",
+		"Boto3/1.43.125 md/Botocore#1.43.125 ua/2.1 os/linux#6.8 lang/python#3.12 api/s3#1.43.125 Boto3/1.43.125":                                                                    "boto3",
+		"rclone/v1.75.2": "rclone",
+		"aws-sdk-go-v2/1.48.0 ua/2.1 os/linux lang/go#1.27.3 md/GOOS#linux md/GOARCH#arm64 api/s3#1.116.0 app/bex-cli m/E,Z,e": "bex",
+		"aws-sdk-go-v2/1.48.0 ua/2.1 os/linux lang/go#1.27.3 api/s3#1.116.0":                                                   "other",
+		"curl/8.5.0": "other",
+	} {
+		if got := clientOf(ua); got != want {
+			t.Errorf("clientOf(%q) = %q, want %q", ua, got, want)
+		}
+	}
 }
 
 // payloadMode is x-amz-content-sha256 without a digest, which names the mode.
@@ -355,7 +374,7 @@ func TestContractReportFailsOnA5xxAndListsA501(t *testing.T) {
 	add("rclone", "rclone", 501, "versioning")
 	add("refused", "aws-cli", 501, "versioning")
 	add("probe", "aws-cli", 501)
-	add("other", "other", 500) // not one of the three clients
+	add("other", "other", 500) // not one of the four clients
 	report, problems := l.report("objects.localhost:1")
 	if len(problems) != 0 {
 		t.Fatalf("problems = %v, want none for a 501 the client tolerates", problems)
@@ -367,8 +386,9 @@ func TestContractReportFailsOnA5xxAndListsA501(t *testing.T) {
 	add("aws", "aws-cli", 500)
 	add("boto3", "boto3", 502)
 	add("boto3", "boto3", 503) // SlowDown: clients retry it
-	if _, problems = l.report("objects.localhost:1"); len(problems) != 2 {
-		t.Errorf("problems = %v, want the 500 and the 502 only", problems)
+	add("bex", "bex", 500)
+	if _, problems = l.report("objects.localhost:1"); len(problems) != 3 {
+		t.Errorf("problems = %v, want the 500 and the 502 of the stock clients and the 500 of bex", problems)
 	}
 	add("aws", "aws-cli", 200)
 	l.rows[len(l.rows)-1].Host = "photos.objects.localhost:1"

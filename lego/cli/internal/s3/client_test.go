@@ -19,8 +19,10 @@ package s3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,6 +82,11 @@ func TestRequestsAreSignedWithTheCachedKeyAndSentToTheEndpointOnly(t *testing.T)
 		}
 		if strings.Contains(auth, "AKIATHEIRS") {
 			t.Errorf("a request was signed with the person's own key: %q", auth)
+		}
+	}
+	for _, agent := range g.s3.agents {
+		if !strings.Contains(agent, "app/bex-cli") {
+			t.Errorf("a request carried the User-Agent %q, want bex-cli named in it", agent)
 		}
 	}
 	if g.api.mintCount() != 1 {
@@ -272,5 +279,17 @@ func TestSlowDownIsRetriedBeforeItIsReported(t *testing.T) {
 	}
 	if got := g.s3.count("list-type=2"); got < 2 {
 		t.Errorf("%d list requests, want the SlowDown retried", got)
+	}
+}
+
+// TestAnUnreachableEndpointIsNamedNotTheSDKsAttempts: the SDK's account of five
+// failed attempts says nothing a person can act on; where the request was going
+// does, and a query string (a signature) never reaches the message.
+func TestAnUnreachableEndpointIsNamedNotTheSDKsAttempts(t *testing.T) {
+	err := explain(fmt.Errorf("operation error S3: ListBuckets, exceeded maximum number of attempts, 5: %w",
+		&url.Error{Op: "Get", URL: "https://objects.example.test/?X-Amz-Signature=secret&x-id=ListBuckets", Err: errors.New("dial tcp 192.0.2.1:443: connect: connection refused")}))
+	msg := err.Error()
+	if !strings.HasPrefix(msg, "could not reach objects.example.test: dial tcp") || strings.Contains(msg, "secret") || strings.Contains(msg, "attempts") {
+		t.Errorf("message = %q", msg)
 	}
 }

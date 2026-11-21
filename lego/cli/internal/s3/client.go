@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -58,7 +59,9 @@ func (d deps) newClient(s session, concurrency int) *sdk.Client {
 		transport = d.httpClient()
 	}
 	cfg := aws.Config{
-		Region:      s.Region,
+		Region: s.Region,
+		// AppID names bex in the User-Agent the gateway logs (and the contract suite reads).
+		AppID:       "bex-cli",
 		Credentials: credentials.NewStaticCredentialsProvider(s.AccessKeyID, s.Secret, ""),
 		HTTPClient:  newLimitedClient(transport, concurrency),
 		Retryer: func() aws.Retryer {
@@ -196,6 +199,16 @@ func explain(err error) error {
 	}
 	f, ok := faultOf(err)
 	if !ok {
+		// A request that never got an answer: say where it was going, not the
+		// SDK's account of its attempts.
+		var sent *url.Error
+		if errors.As(err, &sent) {
+			host := sent.URL
+			if u, perr := url.Parse(sent.URL); perr == nil && u.Host != "" {
+				host = u.Host
+			}
+			return &explained{msg: "could not reach " + host + ": " + sent.Err.Error(), err: err}
+		}
 		return err
 	}
 	detail := f.Code

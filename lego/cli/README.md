@@ -69,7 +69,7 @@ BEX_API_KEY=<key> bex services -o json
   run: bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
 ```
 
-The launcher sends the first of these that is set: `RENDER_API_KEY`, `BEX_API_KEY`, `BEX_ACCESS_TOKEN`, then the stored login. `BEX_ACCESS_TOKEN` still works, for an OAuth access token or a key. `BEX_API_KEY` needs a `bex` newer than v0.7.0 (`bex --version`): v0.7.0 and older ignore it and ask for `bex login`. With those, `BEX_ACCESS_TOKEN=<key>` (or `RENDER_API_KEY=<key>`) does the same thing, because each is sent as the bearer. A caller that wants a 15-minute token can still exchange the key's id and secret (`client_credentials`); see [CI and automation](../../docs/bex-cli.md#ci-and-automation).
+The launcher sends the first of these that is set: `RENDER_API_KEY`, `BEX_API_KEY`, `BEX_ACCESS_TOKEN`, then the stored login. `BEX_ACCESS_TOKEN` still works, for an OAuth access token or a key. `BEX_API_KEY` works since `bex` v0.8.0 (`bex --version`): v0.7.0 and older ignore it and ask for `bex login`. With those, `BEX_ACCESS_TOKEN=<key>` (or `RENDER_API_KEY=<key>`) does the same thing, because each is sent as the bearer. A caller that wants a 15-minute token can still exchange the key's id and secret (`client_credentials`); see [CI and automation](../../docs/bex-cli.md#ci-and-automation).
 
 The login uses Bex's device-verification flow. It persists the upstream YAML schema under `~/.bex/cli.yaml` with mode `0600`; it does not touch `~/.render/cli.yaml` in normal use.
 

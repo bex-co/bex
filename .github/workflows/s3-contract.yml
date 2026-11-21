@@ -3,7 +3,8 @@ name: s3 contract
 # bex serves the S3 API for stock clients (ADR112 D11, w21/m499 t004). The clients
 # are other people's software and change their defaults in releases (checksum
 # algorithm, payload framing, addressing), so this runs the pinned aws-cli v2,
-# rclone and boto3 of scripts/s3-contract.sh against bex's own gateway, over TLS,
+# rclone and boto3 of scripts/s3-contract.sh, and a `bex` built from lego/cli in
+# the commit (w21/m540: the native `bex s3` is one more client), against bex's own gateway, over TLS,
 # behind the edge's Traefik with the S3 route's plugin (w21/113: the clients read
 # user metadata names in lowercase, as S3 gives them), on real Postgres and a fake
 # Wasabi, every week and when anything that decides what
@@ -20,6 +21,9 @@ on:
     paths:
       - "lego/backend/internal/s3gw/**"
       - "lego/backend/internal/objectstorage/**"
+      - "lego/cli/internal/s3/**"
+      - "lego/cli/go.mod"
+      - "lego/cli/go.sum"
       - "scripts/s3-contract.sh"
       - "scripts/s3-contract-boto3.py"
       - "scripts/ci-fetch-verified.sh"
@@ -41,7 +45,8 @@ jobs:
     env:
       # GOWORK=off, same as backend-test.yml: setup-go installs the Go line of
       # lego/backend/go.mod and pins GOTOOLCHAIN=local, while lego/go.work declares
-      # the cli's newer line, so the workspace would not load.
+      # the cli's newer line, so the workspace would not load. The script builds bex
+      # with the toolchain of lego/cli/go.mod itself (GOTOOLCHAIN=go<version>).
       GOWORK: "off"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,6 +62,7 @@ jobs:
           go-version-file: lego/backend/go.mod
           cache-dependency-path: |
             lego/backend/go.sum
-      - name: Run aws-cli, rclone and boto3 against the S3 gateway
+            lego/cli/go.sum
+      - name: Run aws-cli, rclone, boto3 and bex against the S3 gateway
         # The script starts its own Postgres (the digest backend-test.yml pins) with Docker.
         run: bash scripts/s3-contract.sh

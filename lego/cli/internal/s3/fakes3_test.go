@@ -65,6 +65,7 @@ type fakeS3 struct {
 	requestCount   atomic.Int32
 	now            func() time.Time
 	auth           []string // every Authorization header and presigned credential seen
+	agents         []string // every User-Agent
 }
 
 type fakeBucket struct {
@@ -209,6 +210,7 @@ func (f *fakeS3) serve(w http.ResponseWriter, r *http.Request) {
 		auth = "query:" + r.URL.Query().Get("X-Amz-Credential")
 	}
 	f.auth = append(f.auth, auth)
+	f.agents = append(f.agents, r.UserAgent())
 	f.mu.Unlock()
 	if f.hold > 0 && r.URL.Path != "/" {
 		time.Sleep(f.hold)

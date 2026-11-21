@@ -3,19 +3,23 @@
 # (ADR112 D11, layer 3, w21/m499 t004).
 #
 # bex serves the S3 API at objects.<base domain> for any client that speaks it,
-# and `bex s3` runs the AWS CLI against it. The clients are other people's
+# and `bex s3` is bex's own client of it. The other clients are other people's
 # software and change their defaults in releases (checksum algorithms, payload
 # framing, addressing), so this installs the pinned releases below into a
 # throwaway directory and drives them over TLS against the real gateway
 # (lego/backend/internal/s3gw, TestS3ContractServer) on real Postgres and a
-# fake Wasabi:
+# fake Wasabi, beside a `bex` built from lego/cli in this tree:
 #
 #   aws-cli v2   s3 mb|cp|mv|rm|sync|ls|presign|rb, and s3api for each bucket
 #                configuration call, a multipart upload and a batch delete, with
-#                the config `bex s3` gives it (path-style addressing)
+#                a config of path-style addressing (what `bex s3 env` says to set)
 #   rclone       mkdir, copy, copyto, sync, lsf, check, cat, moveto, delete, purge
 #   boto3        create_bucket, upload_file and download_file of 20 MiB, copy,
 #                listing, a presigned-URL upload, CORS and lifecycle
+#   bex s3       mb, ls, cp of 0 B, 1 B and 20 MiB, mv, sync (up, down, between
+#                prefixes, --delete), rm --recursive, presign, cors, lifecycle, rb,
+#                on a PATH with no other program, with a persistent key from the
+#                environment, trusting the harness CA through SSL_CERT_FILE
 #
 # They reach the gateway the way a customer's do, through the edge: Traefik, the
 # release the cluster runs, with the plugin of the S3 route (bexS3MetadataCase,
@@ -31,7 +35,8 @@
 # asks for a bucket's versioning and goes on without it), and the run fails on
 # any 5xx and on any command that fails. Terraform's AWS provider is not tested.
 #
-# Needs bash, curl, go, python3 (3.10 or later, or uv to fetch one), unzip, and
+# Needs bash, curl, go (the Go line of lego/cli/go.mod is fetched as a toolchain
+# when the installed one is older), python3 (3.10 or later, or uv to fetch one), unzip, and
 # Docker for the throwaway Postgres unless BEX_TEST_DB_URI names one. Nothing
 # here touches a real bex deployment, Wasabi or an AWS account.
 #
@@ -117,7 +122,7 @@ fetch() { # <url> <sha256> <file>
 }
 
 # --- the clients ---------------------------------------------------------------
-echo "s3-contract: installing aws-cli $AWSCLI_VERSION, rclone v$RCLONE_VERSION, boto3 $BOTO3_VERSION and Traefik v$TRAEFIK_VERSION"
+echo "s3-contract: installing aws-cli $AWSCLI_VERSION, rclone v$RCLONE_VERSION, boto3 $BOTO3_VERSION and Traefik v$TRAEFIK_VERSION, and building bex from lego/cli"
 grep -qE "^\s+tag: v$TRAEFIK_VERSION@sha256:" "$root/deploy/gitops/base/values/traefik.values.yaml" ||
   die "Traefik v$TRAEFIK_VERSION is not the release deploy/gitops/base/values/traefik.values.yaml pins: move the pins together"
 mkdir -p "$work/dl" "$work/bin"
@@ -137,6 +142,10 @@ unzip -q -j "$work/dl/$rclone_file" '*/rclone' -d "$work/bin"
 chmod +x "$work/bin/rclone"
 fetch "$traefik_base/$traefik_file" "$traefik_sha" "$work/dl/$traefik_file"
 tar -xzf "$work/dl/$traefik_file" -C "$work/bin" traefik
+# bex, as a customer's release is built (scripts/bex-cli-build.sh): static, from the tree.
+cli_go=$(sed -n 's/^go //p' "$root/lego/cli/go.mod")
+(cd "$root/lego/cli" && GOWORK=off GOTOOLCHAIN="go$cli_go" CGO_ENABLED=0 go build -trimpath -o "$work/bin/bex" .) ||
+  die "could not build bex from lego/cli"
 
 python=""
 for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
@@ -159,6 +168,7 @@ else
 fi
 PATH="$work/bin:$PATH"
 aws --version
+BEX_NO_UPDATE_NOTIFIER=1 BEX_CLI_DISABLE_ANALYTICS=1 "$work/bin/bex" --version | head -1
 rclone version | head -1
 traefik version | sed -n 1p
 "$work/venv/bin/python" -c 'import boto3; print("boto3", boto3.__version__)'
@@ -301,8 +311,9 @@ boto3_() {
     S3_REGION="$S3_REGION" AWS_CA_BUNDLE="$state/ca.pem" AWS_EC2_METADATA_DISABLED=true "$work/venv/bin/python" "$root/scripts/s3-contract-boto3.py" "$@"
 }
 # --- aws-cli -------------------------------------------------------------------
-# What `bex s3` gives the AWS CLI: the endpoint last on the command line, a key
-# in the environment, and a config of bex's own with path-style addressing.
+# The settings `bex s3 env` prints for any other S3 client, and the path-style
+# addressing it says to configure: the endpoint on the command line, a key in the
+# environment, and a config file with path-style addressing.
 : >"$work/aws-credentials"
 printf '[default]\ns3 =\n    addressing_style = path\n' >"$work/aws-config"
 : >"$work/aws-config-empty"
@@ -421,6 +432,57 @@ step "boto3: upload_file of 20 MiB, copy, listing, presigned URL, configuration"
 phase boto3
 boto3_
 
+# --- bex s3 --------------------------------------------------------------------
+# The bex built above, run the way CI and a customer with no other tool run it: a
+# persistent key in the environment (no sign-in and no bex-api), the endpoint, a PATH
+# with no program on it, and the harness CA, which Go reads from SSL_CERT_FILE.
+step "bex s3: buckets, objects, multipart, move, sync, presign, CORS, lifecycle"
+phase bex
+mkdir -p "$work/nopath" "$work/bex-home"
+bex_() {
+  env -i HOME="$work/bex-home" PATH="$work/nopath" SSL_CERT_FILE="$state/ca.pem" BEX_S3_ENDPOINT="$S3_ENDPOINT" \
+    BEX_S3_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" BEX_S3_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
+    BEX_CLI_DISABLE_ANALYTICS=1 BEX_NO_UPDATE_NOTIFIER=1 DO_NOT_TRACK=1 "$work/bin/bex" s3 "$@"
+}
+bucket=contract-bex
+bex_ mb "s3://$bucket" --region frankfurt
+bex_ ls | grep "$bucket" >/dev/null || die "bex: ls does not list the bucket"
+for name in zero one big; do bex_ cp "$data/$name" "s3://$bucket/up/$name"; done
+for name in zero one big; do
+  bex_ cp "s3://$bucket/up/$name" "$work/bex-down-$name"
+  expect_same "bex cp $name" "$data/$name" "$work/bex-down-$name"
+done
+bex_ ls "s3://$bucket/up/" --summarize | grep 'Total Objects: 3' >/dev/null || die "bex: ls --summarize does not count three objects"
+bex_ cp "s3://$bucket/up/big" "s3://$bucket/copy/big"
+bex_ mv "s3://$bucket/copy/big" "s3://$bucket/moved/big"
+bex_ cp "s3://$bucket/moved/big" "$work/bex-down-moved"
+expect_same "bex cp, mv" "$data/big" "$work/bex-down-moved"
+bex_ rm "s3://$bucket/moved/big"
+cp -R "$data/tree" "$work/bex-tree"
+bex_ sync "$work/bex-tree" "s3://$bucket/tree"
+[ -z "$(bex_ sync "$work/bex-tree" "s3://$bucket/tree")" ] || die "bex: a second sync up had something to do"
+bex_ sync "s3://$bucket/tree" "$work/bex-tree-down"
+diff -r "$work/bex-tree" "$work/bex-tree-down" || die "bex: the synced tree differs"
+[ -z "$(bex_ sync "s3://$bucket/tree" "$work/bex-tree-down")" ] || die "bex: a second sync down had something to do"
+bex_ sync "s3://$bucket/tree" "s3://$bucket/tree-copy"
+[ -z "$(bex_ sync "s3://$bucket/tree" "s3://$bucket/tree-copy")" ] || die "bex: a second sync between prefixes had something to do"
+rm "$work/bex-tree/a.txt"
+bex_ sync "$work/bex-tree" "s3://$bucket/tree" --delete | grep 'delete: ' >/dev/null || die "bex: sync --delete deleted nothing"
+bex_ rm "s3://$bucket/tree-copy" --recursive | grep -c 'delete: ' | grep -qx 4 || die "bex: rm --recursive did not delete the four objects of tree-copy/"
+[ -z "$(bex_ ls "s3://$bucket/tree-copy/" --recursive)" ] || die "bex: tree-copy/ still has objects"
+url=$(bex_ presign "s3://$bucket/up/one" --expires-in 300)
+[ "$(curl -sS --cacert "$state/ca.pem" "$url")" = x ] || die "bex: the presigned URL did not return the object"
+printf '{"CORSRules":[{"AllowedOrigins":["https://example.com"],"AllowedMethods":["GET"],"AllowedHeaders":["*"],"MaxAgeSeconds":600}]}' >"$work/bex-cors.json"
+bex_ cors set "$bucket" --file "$work/bex-cors.json"
+bex_ cors get "$bucket" -o json | grep example.com >/dev/null || die "bex: CORS did not round trip"
+bex_ cors delete "$bucket"
+[ "$(bex_ cors get "$bucket")" = "no CORS rules" ] || die "bex: cors get after delete did not say there are no rules"
+printf '{"Rules":[{"ID":"logs","Status":"Enabled","Filter":{"Prefix":"logs/"},"Expiration":{"Days":7},"AbortIncompleteMultipartUpload":{"DaysAfterInitiation":3}}]}' >"$work/bex-lifecycle.json"
+bex_ lifecycle set "$bucket" --file "$work/bex-lifecycle.json"
+bex_ lifecycle get "$bucket" -o json | grep logs >/dev/null || die "bex: lifecycle did not round trip"
+bex_ lifecycle delete "$bucket"
+bex_ rb "s3://$bucket" --force
+
 # --- the verdict -----------------------------------------------------------------
 phase finished
 touch "$state/stop"
@@ -428,7 +490,7 @@ rc=0
 wait "$server_pid" || rc=$?
 server_pid=""
 echo
-echo "s3-contract: the defaults each client used (clients' requests by phase; aws-cli $AWSCLI_VERSION, rclone v$RCLONE_VERSION, boto3 $BOTO3_VERSION)"
+echo "s3-contract: the defaults each client used (clients' requests by phase; aws-cli $AWSCLI_VERSION, rclone v$RCLONE_VERSION, boto3 $BOTO3_VERSION, bex from this tree)"
 cat "$state/report.txt" 2>/dev/null || true
 if [ "$rc" -ne 0 ]; then
   grep -E '^\s+contract_server_test|--- FAIL|was answered' "$work/server.log" >&2 || cat "$work/server.log" >&2
