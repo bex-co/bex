@@ -1,6 +1,6 @@
 # w5 · m520 — A text search over a day of a busy service answers in a few seconds: Loki drops the lines that cannot match before bex-api reads them
 
-**Worker:** worker5 **Goal:** a `text` search over a day of the busiest service answers in a few seconds with its whole answer, instead of reading every raw line of the window into bex-api and stopping at the 18 s scan budget with a partial page. **Status:** blocked (t001 to t007 done and shipped in `c3d4c075e`, which bex-api has run since 04:26:49Z on 2026-11-20; t008 reads that day's text searches once it ends at 04:27Z on 2026-11-21, and its first 21.6 h already meet the bar)
+**Worker:** worker5 **Goal:** a `text` search over a day of the busiest service answers in a few seconds with its whole answer, instead of reading every raw line of the window into bex-api and stopping at the 18 s scan budget with a partial page. **Status:** done (t001 to t007 shipped in `c3d4c075e`; t008's full-day reading on production, 2026-11-20T04:26:49Z to 2026-11-21T04:27Z, met the bar)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
-| [t008](t008.md) | Closeout (24 h production reading) | 15m | t007 |
+| [t008](done/t008.md) | Closeout (24 h production reading) — **DONE** | 15m | t007 |
 
 Total: **8 tasks, about 6h**.
 
@@ -120,3 +120,46 @@ No page of any shape took over 5 s. The slowest shapes were `1h, app, label, bac
 **`BexApiLogsReadSlow` stayed quiet.** The rule is loaded (`/etc/rules/alerting_rules.yml`, health `ok`, state inactive). The window holds no `ALERTS` or `ALERTS_FOR_STATE` series for it, and Alertmanager holds none. Prometheus reloaded its rules at 18:20:26Z on 2026-11-20, after `ba85c6972`, so the rule has matched `le="5.0"` and could fire since then. Before that it read nothing. The corrected expression, evaluated over the whole window at 1-minute steps, never rose above 0, because no read took over 5 s. Its floor of 20 reads in 30 minutes was met (up to 348), so the rule was in a position to fire.
 
 **Who read.** 796 of the 833 edge reads came from the Render CLI (2.36.0 and 2.35.0). curl sent 30, browsers 3 and a QA client 3. Only 46 reads came after 18:10Z on 2026-11-20, so the reading rests on 832 reads, most of them in the morning CLI bursts m503 recorded.
+
+### 2026-11-21 — unblock: the date gate holds (loopx w5)
+
+- **Affected:** w5/m520 t008. **Source:** verified evidence; no user decision was needed.
+- **Finding:** the date gate 2026-11-21T04:27Z had passed when checked at 04:27:35Z. Production's newest pin `f797f525f5df` (`4c41a69d7`, 02:20Z on 2026-11-21) also carries `c3d4c075e`. Every bex-api pod kube-state-metrics listed during the day ran one of the five pins that carry it (`3e53abbe3bc3`, `12716d1d7097`, `11b1e8f85f06`, `820edf28d22d`, `f797f525f5df`, matched by image digest against each pin commit), and no `api` container restarted. So summing each pod's counter at its highest counts the day once.
+- **Next:** read the whole day and close the milestone (below).
+
+### 2026-11-21 — t008: the full day after the fix (loopx w5, read-only)
+
+**How it was read.** The same method as the 21.6 h reading below, over the whole day: `sum by (…) (max_over_time(<series>[86411s]))` at `time=2026-11-21T04:27:00Z`, which spans 2026-11-20T04:26:49Z to 2026-11-21T04:27Z, with buckets matched as `le=~"5|5\\.0"`.
+
+| REST `GET /v1/logs`, 24 h | value |
+| --- | --- |
+| reads | 836: 833 × 200, two 400, one 404, no 5xx |
+| over 5 s | 0 (0%) |
+| over 1 s | 1, the same 2.32 s read the 21.6 h reading found, still the slowest |
+| p50 / p95 / p99 | 0.05 s / 0.19 s / 0.32 s, interpolated from the buckets |
+
+The edge's access log holds 837 lines for the day, with none over 5 s. The extra line is the same 401 the auth layer answered. The last 2.4 h added 4 reads, all 200.
+
+**`bex_api_logs_page_duration_seconds{filter="text"}` by shape.** 128 text pages of 1,471 logs pages, all `ok`, none over 0.25 s. The p95 over all text pages is 0.14 s: 1 h windows had 86 pages at p95 0.16 s, and 1 d windows 42 pages at p95 0.10 s.
+
+| window, type, direction | pages | p95 |
+| --- | --- | --- |
+| 1h, default, backward | 54 | 0.17 s |
+| 1d, build, backward | 24 | 0.09 s |
+| 1h, app, backward | 14 | 0.20 s |
+| 1d, default, backward | 11 | 0.21 s |
+| 1h, app, forward | 8 | 0.08 s |
+| 1h, build, forward | 6 | 0.09 s |
+| 1d, app, forward | 4 | 0.05 s |
+| 1h, request, backward | 3 | 0.02 s |
+| 1d, build, forward | 2 | 0.10 s |
+| 1h, build, backward | 1 | 0.05 s |
+| 1d, app, backward | 1 | 0.10 s |
+
+No logs page of any filter took over 5 s. Production still sent no text search over 7 days (its only 7 d pages were 2 unfiltered ones at p95 0.10 s), so the shape t004 left above 5 s, a no-match search over a week of the busiest service, went unexercised. It still answers a partial page with `hasMore` and the cursor at the scan edge.
+
+**`BexApiLogsReadSlow` stayed quiet.** The rule is loaded (health `ok`, state inactive) with the corrected `le=~"5|5\\.0"` expression since Prometheus reloaded it at 18:20:26Z on 2026-11-20. The day holds no `ALERTS` or `ALERTS_FOR_STATE` series for it, and Alertmanager holds none. The corrected expression, evaluated over the whole day at 1-minute steps, never rose above 0. Its floor of 20 reads in 30 minutes was met (up to 346), so the rule was in a position to fire.
+
+**Who read.** 796 of the 837 edge reads came from the Render CLI (792 on 2.36.0, 4 on 2.35.0). curl sent 30, browsers 7, a QA client 3, and one read had no user agent.
+
+**Verdict.** Over the full day, DoD 1's production half holds (text p95 0.14 s, every shape under 0.25 s), and so does DoD 4 (the alert stayed quiet with no read over 5 s). DoD 1's timing half and DoD 2, 3 and 5 held at t004 to t007. The milestone is closed.
