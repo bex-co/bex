@@ -208,6 +208,80 @@ const zhProjects: Record<string, TranslationEntry> = {
     description:
       "Bulk action that moves selected resources to another Environment",
   },
+  "projects.bulkResume": {
+    message: "恢复",
+    description:
+      "Selection toolbar action that resumes every selected suspended resource (Render's bulk Resume, w4/m550)",
+  },
+  "projects.bulkSuspend": {
+    message: "暂停",
+    description:
+      "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
+  },
+  "projects.bulkAdminOnly": {
+    message: "此操作仅限管理员执行。",
+    description:
+      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
+  },
+  "projects.bulkSuspendTitle": {
+    message: "暂停服务",
+    description: "Title of the bulk Suspend dialog",
+  },
+  "projects.bulkSuspendBody": {
+    message: "以下服务将被暂停并立即停止运行。恢复这些服务即可撤销此操作。",
+    description:
+      "Body of the bulk Suspend dialog, above the list of resources it suspends",
+  },
+  "projects.bulkSuspendConfirm": {
+    message: "暂停服务",
+    description: "Confirm button of the bulk Suspend dialog",
+  },
+  "projects.bulkResumeTitle": {
+    message: "恢复服务",
+    description: "Title of the bulk Resume dialog",
+  },
+  "projects.bulkResumeBody": {
+    message: "以下服务将被恢复：",
+    description:
+      "Body of the bulk Resume dialog, above the list of resources it resumes",
+  },
+  "projects.bulkResumeConfirm": {
+    message: "恢复服务",
+    description: "Confirm button of the bulk Resume dialog",
+  },
+  "projects.bulkRetry": {
+    message: "重试",
+    description:
+      "Button on a bulk Suspend/Resume row whose call failed; runs that row again",
+  },
+  "projects.bulkRetryRow": {
+    message: "重试 {name}",
+    description:
+      "Accessible label of a row's Retry button ({name} = the resource)",
+  },
+  "projects.bulkRowSuspending": {
+    message: "正在暂停",
+    description:
+      "Screen-reader state of a bulk Suspend row whose call is in flight",
+  },
+  "projects.bulkRowSuspended": {
+    message: "已暂停",
+    description: "Screen-reader state of a bulk Suspend row that succeeded",
+  },
+  "projects.bulkRowResuming": {
+    message: "正在恢复",
+    description:
+      "Screen-reader state of a bulk Resume row whose call is in flight",
+  },
+  "projects.bulkRowResumed": {
+    message: "已恢复",
+    description: "Screen-reader state of a bulk Resume row that succeeded",
+  },
+  "projects.bulkRowError": {
+    message: "请求失败，请重试。",
+    description:
+      "Fallback reason on a bulk Suspend/Resume row whose call failed without a server reason",
+  },
   "projects.newProjectButton": {
     message: "新建项目",
     description: "Button that opens the new-project dialog",

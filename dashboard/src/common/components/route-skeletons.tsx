@@ -587,8 +587,9 @@ export function OverviewEmptySkeleton() {
 /**
  * The Overview resource list at the size this workspace last had: one card per
  * project plus the "New project" card (98px; alone, the new-project card is
- * 86px), then, when there were ungrouped resources, the borderless resource
- * table (36px header, 49px rows — 63px below `sm`, where cells wrap).
+ * 86px), then, when there were ungrouped resources, the 36px selection toolbar
+ * and the borderless resource table (36px header, 49px rows — 63px below
+ * `sm`, where cells wrap).
  */
 export function OverviewPopulatedSkeleton({
   projects,
@@ -621,6 +622,15 @@ export function OverviewPopulatedSkeleton({
         <Region name="resources" className="space-y-3">
           <div className="flex h-5 items-center">
             <Skeleton className="h-3.5 w-36" />
+          </div>
+          {/* The selection toolbar (w4/m550): count, Move picker, Move. */}
+          <div
+            data-skeleton-item="selection-toolbar"
+            className="flex h-9 items-center gap-2"
+          >
+            <Skeleton className="h-3.5 w-20" />
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-8 w-16" />
           </div>
           <div>
             <div className="flex h-9 items-center border-b">
@@ -1292,7 +1302,15 @@ export function ProjectEnvironmentCardSkeleton() {
           <Skeleton className="h-9 min-w-0 flex-1" />
           <Skeleton className="h-9 w-full sm:w-36" />
         </div>
-        <TableRowsSkeleton rows={3} columns={5} />
+        <div className="space-y-3">
+          {/* The selection toolbar (w4/m550): count, Move picker, Move. */}
+          <div className="flex h-9 items-center gap-2">
+            <Skeleton className="h-3.5 w-20" />
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+          <TableRowsSkeleton rows={3} columns={5} />
+        </div>
       </CardContent>
     </Card>
   );

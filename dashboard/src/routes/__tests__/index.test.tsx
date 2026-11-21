@@ -17,6 +17,7 @@ import type {
 } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
+import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { memoryStorage } from "@/test/mocks/storage";
 
 // The Overview page (Render parity: dashboard.render.com's workspace
@@ -262,6 +263,31 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
   }),
 }));
 
+// The ungrouped list's selection toolbar (w4/m550): its Move writes through
+// the four environment setters and lists the workspace's environments from a
+// watched query, so both are stubbed here as the environment card's tests do.
+const setServices = vi.fn();
+const setDatabases = vi.fn();
+const setKeyValues = vi.fn();
+vi.mock("@/features/environments/hooks/use-set-environment-services", () => ({
+  useSetEnvironmentServices: () => ({ setServices, busyId: null }),
+}));
+vi.mock("@/features/environments/hooks/use-set-environment-databases", () => ({
+  useSetEnvironmentDatabases: () => ({ setDatabases, busyId: null }),
+}));
+vi.mock("@/features/environments/hooks/use-set-environment-keyvalues", () => ({
+  useSetEnvironmentKeyValues: () => ({ setKeyValues, busyId: null }),
+}));
+vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
+  useSetEnvironmentEnvGroups: () => ({ setEnvGroups: vi.fn(), busyId: null }),
+}));
+const moveTargets = vi.hoisted(() => ({
+  current: [] as Array<{ environment: EnvironmentView; label: string }>,
+}));
+vi.mock("@/features/projects/hooks/use-workspace-move-targets", () => ({
+  useWorkspaceMoveTargets: () => moveTargets.current,
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
@@ -392,6 +418,11 @@ beforeEach(() => {
   });
   createProject.mockResolvedValue("prj-returned-id");
   run.mockReset();
+  moveTargets.current = [];
+  for (const set of [setServices, setDatabases, setKeyValues]) {
+    set.mockReset();
+    set.mockResolvedValue(true);
+  }
 });
 
 afterEach(() => {
@@ -442,6 +473,69 @@ describe("HomePage", () => {
     expect(
       new Set(triggers.map((b) => b.getAttribute("aria-label"))).size,
     ).toBe(3);
+  });
+
+  // w4/m550: Render moves ungrouped services in bulk from the workspace's
+  // service list. Two services and a database land in the chosen environment,
+  // each kind in one write that keeps the environment's existing members.
+  it("moves selected ungrouped resources into a workspace environment", async () => {
+    servicesState.services = [
+      svc({ id: "api", name: "api" }),
+      svc({ id: "worker", name: "worker", type: "background_worker" }),
+      svc({ id: "docs", name: "docs" }),
+    ];
+    databasesState.databases = [db({ id: "shop-db", name: "shop-db" })];
+    const production: EnvironmentView = {
+      id: "env-prod",
+      projectId: "prj-shop",
+      name: "Production",
+      ownerId: "tea-test",
+      createdAt: null,
+      serviceIds: ["already-there"],
+      databaseIds: [],
+      keyValueIds: [],
+      envGroupIds: [],
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowListEntries: [],
+    };
+    moveTargets.current = [
+      { environment: production, label: "Shop / Production" },
+    ];
+    const user = userEvent.setup();
+    renderHomePage();
+
+    const table = await screen.findByRole("table");
+    await user.click(
+      within(table).getByRole("checkbox", { name: "Select api" }),
+    );
+    await user.click(
+      within(table).getByRole("checkbox", { name: "Select worker" }),
+    );
+    await user.click(
+      within(table).getByRole("checkbox", { name: "Select shop-db" }),
+    );
+    expect(screen.getByText("Selected: 3")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "Shop / Production" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setServices).toHaveBeenCalledWith("env-prod", "Production", [
+      "already-there",
+      "api",
+      "worker",
+    ]);
+    expect(setDatabases).toHaveBeenCalledWith("env-prod", "Production", [
+      "shop-db",
+    ]);
+    expect(setKeyValues).not.toHaveBeenCalled();
+    expect(screen.getByText("Selected: 0")).toBeInTheDocument();
   });
 
   it("renders a project card linking to the project's own page", async () => {

@@ -33,7 +33,11 @@ import {
 } from "@/common/components/ui/alert.tsx";
 import { NewServiceMenuItems } from "@/features/services/components/new-service-menu-items";
 import { useServices } from "@/features/services/hooks/use-services";
-import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import {
+  useServiceLifecycle,
+  type PendingLifecycle,
+  type RunServiceAction,
+} from "@/features/services/hooks/use-service-lifecycle";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { computeStats as computeDatabaseStats } from "@/features/databases/lib/status";
 import { CreateDatabaseDialog } from "@/features/databases/components/create-database-dialog";
@@ -42,6 +46,10 @@ import { computeStats as computeKeyValueStats } from "@/features/keyvalue/lib/st
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
 import { ResourceTable } from "@/features/projects/components/resource-table";
+import { BulkResourceToolbar } from "@/features/projects/components/bulk-resource-toolbar";
+import { useResourceSelection } from "@/features/projects/hooks/use-resource-selection";
+import { useWorkspaceMoveTargets } from "@/features/projects/hooks/use-workspace-move-targets";
+import type { ResourceRow } from "@/features/projects/types";
 import { NewProjectDialog } from "@/features/projects/components/new-project-dialog";
 import { NewSandboxGroupDialog } from "@/features/sandbox-groups/components/new-sandbox-group-dialog";
 import { ProjectCard } from "@/features/projects/components/project-card";
@@ -353,18 +361,12 @@ export function HomePage() {
             </section>
 
             {ungrouped.length > 0 && (
-              <section className="space-y-3">
-                <h2 className="text-sm font-semibold">
-                  {t("projects.ungroupedHeading")}
-                </h2>
-                <ResourceTable
-                  rows={ungrouped}
-                  servicePending={pending}
-                  onRunServiceAction={run}
-                  onDatabaseDeleted={refetchAll}
-                  onKeyValueDeleted={refetchAll}
-                />
-              </section>
+              <UngroupedResources
+                rows={ungrouped}
+                servicePending={pending}
+                onRunServiceAction={run}
+                onDeleted={refetchAll}
+              />
             )}
           </>
         )}
@@ -399,5 +401,43 @@ export function HomePage() {
         onOpenChange={setNewSandboxGroupOpen}
       />
     </DashboardLayout>
+  );
+}
+
+/**
+ * The workspace's ungrouped resources (Render's "Ungrouped Services"): row
+ * checkboxes and the shared selection toolbar, so they move into any
+ * environment, or suspend and resume, in bulk as on Render (w4/m550).
+ */
+function UngroupedResources({
+  rows,
+  servicePending,
+  onRunServiceAction,
+  onDeleted,
+}: {
+  rows: ResourceRow[];
+  servicePending: PendingLifecycle | null;
+  onRunServiceAction: RunServiceAction;
+  onDeleted: () => void;
+}) {
+  const { t } = useTranslations();
+  const selection = useResourceSelection(rows);
+  const moveTargets = useWorkspaceMoveTargets();
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold">
+        {t("projects.ungroupedHeading")}
+      </h2>
+      <BulkResourceToolbar selection={selection} moveTargets={moveTargets} />
+      <ResourceTable
+        rows={rows}
+        servicePending={servicePending}
+        onRunServiceAction={onRunServiceAction}
+        onDatabaseDeleted={onDeleted}
+        onKeyValueDeleted={onDeleted}
+        selectedKeys={selection.selected}
+        onSelectedKeysChange={selection.setSelected}
+      />
+    </section>
   );
 }

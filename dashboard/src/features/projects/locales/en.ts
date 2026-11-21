@@ -217,6 +217,81 @@ const enProjects: Record<string, TranslationEntry> = {
     description:
       "Bulk action that moves selected resources to another Environment",
   },
+  "projects.bulkResume": {
+    message: "Resume",
+    description:
+      "Selection toolbar action that resumes every selected suspended resource (Render's bulk Resume, w4/m550)",
+  },
+  "projects.bulkSuspend": {
+    message: "Suspend",
+    description:
+      "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
+  },
+  "projects.bulkAdminOnly": {
+    message: "This action is limited to admins.",
+    description:
+      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
+  },
+  "projects.bulkSuspendTitle": {
+    message: "Suspend services",
+    description: "Title of the bulk Suspend dialog",
+  },
+  "projects.bulkSuspendBody": {
+    message:
+      "The following services will be suspended and stop working immediately. This action can be undone by resuming the services.",
+    description:
+      "Body of the bulk Suspend dialog, above the list of resources it suspends",
+  },
+  "projects.bulkSuspendConfirm": {
+    message: "Suspend services",
+    description: "Confirm button of the bulk Suspend dialog",
+  },
+  "projects.bulkResumeTitle": {
+    message: "Resume services",
+    description: "Title of the bulk Resume dialog",
+  },
+  "projects.bulkResumeBody": {
+    message: "The following services will be resumed:",
+    description:
+      "Body of the bulk Resume dialog, above the list of resources it resumes",
+  },
+  "projects.bulkResumeConfirm": {
+    message: "Resume services",
+    description: "Confirm button of the bulk Resume dialog",
+  },
+  "projects.bulkRetry": {
+    message: "Retry",
+    description:
+      "Button on a bulk Suspend/Resume row whose call failed; runs that row again",
+  },
+  "projects.bulkRetryRow": {
+    message: "Retry {name}",
+    description:
+      "Accessible label of a row's Retry button ({name} = the resource)",
+  },
+  "projects.bulkRowSuspending": {
+    message: "Suspending",
+    description:
+      "Screen-reader state of a bulk Suspend row whose call is in flight",
+  },
+  "projects.bulkRowSuspended": {
+    message: "Suspended",
+    description: "Screen-reader state of a bulk Suspend row that succeeded",
+  },
+  "projects.bulkRowResuming": {
+    message: "Resuming",
+    description:
+      "Screen-reader state of a bulk Resume row whose call is in flight",
+  },
+  "projects.bulkRowResumed": {
+    message: "Resumed",
+    description: "Screen-reader state of a bulk Resume row that succeeded",
+  },
+  "projects.bulkRowError": {
+    message: "The request failed. Try again.",
+    description:
+      "Fallback reason on a bulk Suspend/Resume row whose call failed without a server reason",
+  },
   "projects.newProjectButton": {
     message: "New Project",
     description: "Button that opens the new-project dialog",

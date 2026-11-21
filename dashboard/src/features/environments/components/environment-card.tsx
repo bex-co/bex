@@ -48,16 +48,15 @@ import {
   type UnreadResources,
 } from "@/features/environments/lib/unread-resources";
 import { ResourceTable } from "@/features/projects/components/resource-table";
+import { BulkResourceToolbar } from "@/features/projects/components/bulk-resource-toolbar";
+import { useResourceSelection } from "@/features/projects/hooks/use-resource-selection";
 import {
   toDatabaseRow,
   toEnvGroupRow,
   toKeyValueRow,
   toServiceRow,
 } from "@/features/projects/hooks/use-grouped-resources";
-import {
-  resourceSelectionKey,
-  type ResourceRow,
-} from "@/features/projects/types";
+import type { ResourceRow } from "@/features/projects/types";
 import { useRenameEnvironment } from "@/features/environments/hooks/use-rename-environment";
 import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-environment";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -78,26 +77,8 @@ import {
   filterProjectResources,
   type ProjectResourceFilterState,
 } from "@/features/projects/lib/resource-filter";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/common/components/ui/select";
-import { useSetEnvironmentServices } from "@/features/environments/hooks/use-set-environment-services";
-import { useSetEnvironmentDatabases } from "@/features/environments/hooks/use-set-environment-databases";
-import { useSetEnvironmentKeyValues } from "@/features/environments/hooks/use-set-environment-keyvalues";
-import { useSetEnvironmentEnvGroups } from "@/features/environments/hooks/use-set-environment-env-groups";
-import { toast } from "sonner";
-import { useStrandedLinkGuard } from "@/features/env-groups/hooks/use-stranded-link-guard";
 import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { strandedPromptItems } from "@/features/env-groups/lib/stranded";
-import {
-  StrandedGroupsConfirmDialog,
-  type StrandedGroupPromptItem,
-} from "@/features/environments/components/stranded-groups-confirm-dialog";
 
 export interface EnvironmentCardProps {
   environment: EnvironmentView;
@@ -156,22 +137,6 @@ export function EnvironmentCard({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [moveTargetId, setMoveTargetId] = useState("");
-  const { setServices, busyId: servicesBusyId } = useSetEnvironmentServices();
-  const { setDatabases, busyId: databasesBusyId } =
-    useSetEnvironmentDatabases();
-  const { setKeyValues, busyId: keyValuesBusyId } =
-    useSetEnvironmentKeyValues();
-  const { setEnvGroups, busyId: envGroupsBusyId } =
-    useSetEnvironmentEnvGroups();
-  const guard = useStrandedLinkGuard();
-  const [strandedPrompt, setStrandedPrompt] = useState<{
-    targetId: string;
-    items: StrandedGroupPromptItem[];
-  } | null>(null);
 
   // Deleting an environment deletes its services, databases and key value
   // stores, as Render's dashboard deletes all its services (w4/m264, w6/m290).
@@ -213,16 +178,9 @@ export function EnvironmentCard({
     envGroups,
   ]);
   const visibleRows = filterProjectResources(rows, resourceFilter);
-  // A selection only counts while its resource is still in this environment:
-  // a move that failed partway, or timed out after it was applied, leaves keys
-  // for rows that are gone (w4/m206). Judged against the whole membership, so
-  // a row merely hidden by the search stays selected; and derived, not
-  // deleted, so a list that is momentarily unread loses nothing.
-  const selectedHere = useMemo(() => {
-    const here = new Set(rows.map(resourceSelectionKey));
-    const kept = [...selectedKeys].filter((key) => here.has(key));
-    return kept.length === selectedKeys.size ? selectedKeys : new Set(kept);
-  }, [rows, selectedKeys]);
+  // Judged against the whole membership, so a row merely hidden by the search
+  // stays selected (useResourceSelection).
+  const selection = useResourceSelection(rows);
   // Families this environment has members of whose list has not answered:
   // their rows are unknown, so neither they nor the total can read as zero.
   const memberIds = environmentMemberIds(environment);
@@ -240,12 +198,6 @@ export function EnvironmentCard({
   const placementReason = placement.restricts(environment)
     ? placement.reason
     : undefined;
-  const moving = [
-    servicesBusyId,
-    databasesBusyId,
-    keyValuesBusyId,
-    envGroupsBusyId,
-  ].some((id) => id === moveTargetId);
 
   function openRename() {
     setRenameValue(environment.name);
@@ -267,116 +219,6 @@ export function EnvironmentCard({
   async function handleDelete() {
     const ok = await remove(environment.id, environment.name);
     if (ok) setDeleteOpen(false);
-  }
-
-  async function handleMove() {
-    const target = moveTargets.find(
-      (candidate) => candidate.id === moveTargetId,
-    );
-    if (!target || selectedHere.size === 0) return;
-
-    const selectedRows = rows.filter((row) =>
-      selectedHere.has(resourceSelectionKey(row)),
-    );
-    // w4/m238: a move that would leave a service linked to a group scoped
-    // elsewhere asks first; with no stranded link the move is exactly the
-    // single write it is today.
-    const movingServiceIds = selectedRows
-      .filter((row) => row.kind === "service")
-      .map((row) => row.id);
-    if (movingServiceIds.length > 0) {
-      if (!guard.ready) {
-        toast.error(t("environments.strandedScopeUnknown"));
-        return;
-      }
-      // A group selected with its services moves with them (w4/564).
-      const movingGroupIds = selectedRows
-        .filter((row) => row.kind === "envgroup")
-        .map((row) => row.id);
-      const stranded = guard.strandedFor(movingServiceIds, target.id, {
-        groupIds: movingGroupIds,
-        destinationServiceIds: target.serviceIds,
-      });
-      if (stranded.length > 0) {
-        setStrandedPrompt({
-          targetId: target.id,
-          items: strandedPromptItems(stranded, guard.scopeNameFor),
-        });
-        return;
-      }
-    }
-    await performMove(target, selectedRows);
-  }
-
-  async function performMove(
-    target: EnvironmentView,
-    selectedRows: ResourceRow[],
-  ) {
-    // One entry per resource kind: which of the target's ids that kind already
-    // holds, and the setter that replaces them. All four setters share the same
-    // (id, name, ids) => Promise<boolean> shape, so the move is one loop.
-    const kinds: Array<{
-      kind: ResourceRow["kind"];
-      current: string[];
-      set: (id: string, name: string, ids: string[]) => Promise<boolean>;
-    }> = [
-      { kind: "service", current: target.serviceIds, set: setServices },
-      { kind: "database", current: target.databaseIds, set: setDatabases },
-      { kind: "keyvalue", current: target.keyValueIds, set: setKeyValues },
-      { kind: "envgroup", current: target.envGroupIds, set: setEnvGroups },
-    ];
-    const operations = kinds.flatMap(({ kind, current, set }) => {
-      const moving = selectedRows.filter((row) => row.kind === kind);
-      if (moving.length === 0) return [];
-      return [
-        {
-          kind,
-          keys: moving.map(resourceSelectionKey),
-          run: () =>
-            set(
-              target.id,
-              target.name,
-              mergeIds(
-                current,
-                moving.map((row) => row.id),
-              ),
-            ),
-        },
-      ];
-    });
-
-    // Groups move after the services: bex-api refuses a group whose linked
-    // services are still elsewhere (ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES), so
-    // a service moving with its group must land first, and a group whose
-    // services did not move is not sent to be refused (w4/564).
-    const settle = (batch: typeof operations) =>
-      Promise.all(
-        batch.map(async (operation) => ({
-          keys: operation.keys,
-          succeeded: await operation.run(),
-        })),
-      );
-    const serviceResults = await settle(
-      operations.filter((op) => op.kind === "service"),
-    );
-    const servicesMoved = serviceResults.every((result) => result.succeeded);
-    const results = [
-      ...serviceResults,
-      ...(await settle(
-        operations.filter(
-          (op) =>
-            op.kind !== "service" && (servicesMoved || op.kind !== "envgroup"),
-        ),
-      )),
-    ];
-    const succeeded = new Set(
-      results
-        .filter((result) => result.succeeded)
-        .flatMap((result) => result.keys),
-    );
-    setSelectedKeys(
-      new Set([...selectedHere].filter((key) => !succeeded.has(key))),
-    );
   }
 
   return (
@@ -465,60 +307,15 @@ export function EnvironmentCard({
           </div>
         ) : (
           <div className="space-y-3">
-            <div
-              className="flex flex-wrap items-center gap-2"
-              aria-live="polite"
-            >
-              <span className="text-sm text-muted-foreground">
-                {t("projects.selectedCount", { count: selectedHere.size })}
-              </span>
-              <Select value={moveTargetId} onValueChange={setMoveTargetId}>
-                <SelectTrigger
-                  className="w-48"
-                  aria-label={t("projects.moveTargetLabel")}
-                  disabled={
-                    moveTargets.length === 0 ||
-                    moving ||
-                    placementReason !== undefined
-                  }
-                >
-                  <SelectValue
-                    placeholder={t("projects.moveTargetPlaceholder")}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {moveTargets.map((target) =>
-                    placement.restricts(target) ? (
-                      <SelectItem key={target.id} value={target.id} disabled>
-                        {t("environments.protectedOptionAdminOnly", {
-                          environment: target.name,
-                        })}
-                      </SelectItem>
-                    ) : (
-                      <SelectItem key={target.id} value={target.id}>
-                        {target.name}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-              <PermissionTooltip reason={placementReason}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    selectedHere.size === 0 ||
-                    !moveTargetId ||
-                    moving ||
-                    placementReason !== undefined
-                  }
-                  onClick={() => void handleMove()}
-                >
-                  {moving ? <Loader2 className="animate-spin" /> : null}
-                  {t("projects.moveSelected")}
-                </Button>
-              </PermissionTooltip>
-            </div>
+            <BulkResourceToolbar
+              selection={selection}
+              moveTargets={moveTargets.map((target) => ({
+                environment: target,
+                label: target.name,
+              }))}
+              moveReason={placementReason}
+              protectedEnvironment={environment.protectedStatus === "protected"}
+            />
             <ResourceTable
               rows={visibleRows}
               servicePending={servicePending}
@@ -526,8 +323,8 @@ export function EnvironmentCard({
               onDatabaseDeleted={onDatabaseDeleted}
               onKeyValueDeleted={onKeyValueDeleted}
               projectMetadata
-              selectedKeys={selectedHere}
-              onSelectedKeysChange={setSelectedKeys}
+              selectedKeys={selection.selected}
+              onSelectedKeysChange={selection.setSelected}
             />
           </div>
         )}
@@ -613,25 +410,6 @@ export function EnvironmentCard({
         onConfirm={() => void handleDelete()}
       />
 
-      <StrandedGroupsConfirmDialog
-        open={strandedPrompt != null}
-        onOpenChange={(next) => {
-          if (!next) setStrandedPrompt(null);
-        }}
-        items={strandedPrompt?.items ?? []}
-        onConfirm={() => {
-          const target = moveTargets.find(
-            (candidate) => candidate.id === strandedPrompt?.targetId,
-          );
-          setStrandedPrompt(null);
-          if (!target) return;
-          const selectedRows = rows.filter((row) =>
-            selectedHere.has(resourceSelectionKey(row)),
-          );
-          void performMove(target, selectedRows);
-        }}
-      />
-
       <ManageResourcesDialog
         environment={environment}
         services={services}
@@ -648,8 +426,4 @@ export function EnvironmentCard({
       />
     </Card>
   );
-}
-
-function mergeIds(existing: string[], additions: string[]): string[] {
-  return [...new Set([...existing, ...additions])];
 }

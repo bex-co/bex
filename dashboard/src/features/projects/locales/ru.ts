@@ -239,6 +239,81 @@ const ruProjects: Record<string, TranslationEntry> = {
     description:
       "Bulk action that moves selected resources to another Environment",
   },
+  "projects.bulkResume": {
+    message: "Возобновить",
+    description:
+      "Selection toolbar action that resumes every selected suspended resource (Render's bulk Resume, w4/m550)",
+  },
+  "projects.bulkSuspend": {
+    message: "Приостановить",
+    description:
+      "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
+  },
+  "projects.bulkAdminOnly": {
+    message: "Это действие доступно только администраторам.",
+    description:
+      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
+  },
+  "projects.bulkSuspendTitle": {
+    message: "Приостановить сервисы",
+    description: "Title of the bulk Suspend dialog",
+  },
+  "projects.bulkSuspendBody": {
+    message:
+      "Следующие сервисы будут приостановлены и сразу перестанут работать. Это можно отменить, возобновив сервисы.",
+    description:
+      "Body of the bulk Suspend dialog, above the list of resources it suspends",
+  },
+  "projects.bulkSuspendConfirm": {
+    message: "Приостановить сервисы",
+    description: "Confirm button of the bulk Suspend dialog",
+  },
+  "projects.bulkResumeTitle": {
+    message: "Возобновить сервисы",
+    description: "Title of the bulk Resume dialog",
+  },
+  "projects.bulkResumeBody": {
+    message: "Следующие сервисы будут возобновлены:",
+    description:
+      "Body of the bulk Resume dialog, above the list of resources it resumes",
+  },
+  "projects.bulkResumeConfirm": {
+    message: "Возобновить сервисы",
+    description: "Confirm button of the bulk Resume dialog",
+  },
+  "projects.bulkRetry": {
+    message: "Повторить",
+    description:
+      "Button on a bulk Suspend/Resume row whose call failed; runs that row again",
+  },
+  "projects.bulkRetryRow": {
+    message: "Повторить для {name}",
+    description:
+      "Accessible label of a row's Retry button ({name} = the resource)",
+  },
+  "projects.bulkRowSuspending": {
+    message: "Приостанавливается",
+    description:
+      "Screen-reader state of a bulk Suspend row whose call is in flight",
+  },
+  "projects.bulkRowSuspended": {
+    message: "Приостановлен",
+    description: "Screen-reader state of a bulk Suspend row that succeeded",
+  },
+  "projects.bulkRowResuming": {
+    message: "Возобновляется",
+    description:
+      "Screen-reader state of a bulk Resume row whose call is in flight",
+  },
+  "projects.bulkRowResumed": {
+    message: "Возобновлён",
+    description: "Screen-reader state of a bulk Resume row that succeeded",
+  },
+  "projects.bulkRowError": {
+    message: "Запрос не выполнен. Повторите попытку.",
+    description:
+      "Fallback reason on a bulk Suspend/Resume row whose call failed without a server reason",
+  },
   "projects.newProjectButton": {
     message: "Новый проект",
     description: "Button that opens the new-project dialog",
