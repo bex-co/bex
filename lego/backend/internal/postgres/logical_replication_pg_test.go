@@ -314,6 +314,10 @@ func TestLogicalReplicationIntegration(t *testing.T) {
 	const contents = `SELECT (SELECT string_agg(id || ':' || note, ',' ORDER BY id) FROM public.orders) || '|' || (SELECT string_agg(id::text, ',' ORDER BY id) FROM sales.items)`
 	want := "1:changed,2:new|2"
 	waitForSQL(t, 30*time.Second, f.subscriber, contents, want)
+	// A table still in its initial sync (sales.later has no rows to wait for)
+	// holds a pg_<sub>_sync_<rel>_<sysid> slot on the reader, which disable
+	// would drop and report too.
+	waitForSQL(t, 30*time.Second, f.subscriber, `SELECT bool_and(srsubstate = 'r')::text FROM pg_subscription_rel`, "true")
 	if !queryBool(t, f.reader, `SELECT count(*) >= 2 FROM pg_logical_slot_peek_binary_changes('lr_peek', NULL, NULL, 'proto_version', '1', 'publication_names', 'mine')`) {
 		t.Error("the reader decoded nothing through the owner's FOR TABLE publication")
 	}
