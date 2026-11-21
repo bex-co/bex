@@ -21,6 +21,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,9 +49,9 @@ func TestMissServes404HTMLWithStatus404(t *testing.T) {
 			t.Errorf("GET %s => %d %q, want 404 custom 404", p, rec.Code, rec.Body)
 		}
 		// The page goes out with a published file's headers, as on Render
-		// (w8/322), its own ETag included (w8/360).
+		// (w8/322), its own ETag included (w8/360), weak on identity (w8/361).
 		hdr := rec.Header()
-		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != contentETag([]byte("custom 404"), "text/html") || hdr.Get("Cache-Control") != renderCacheControl ||
+		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != "W/"+contentETag([]byte("custom 404"), "text/html") || hdr.Get("Cache-Control") != renderCacheControl ||
 			hdr.Get("Strict-Transport-Security") != defaultStrictTransportSecurity || hdr.Get("X-Content-Type-Options") != "nosniff" {
 			t.Errorf("GET %s headers = %v, want the site's rules, HSTS, the cache policy, nosniff and the page's ETag", p, hdr)
 		}
@@ -83,8 +84,9 @@ func TestThe404PageTakesTheSitesRulesAsAFileDoes(t *testing.T) {
 		hdr.Get("Strict-Transport-Security") != "max-age=60" || hdr.Get("Content-Type") != "text/plain; charset=utf-8" || hdr.Get("Content-Length") != "10" {
 		t.Fatalf("miss = %d %q %v, want the page with the rules' cache policy, HSTS and type, and its own length", rec.Code, rec.Body, hdr)
 	}
-	// Its tag follows the rule's type, as the file's does (w5/182, w8/360).
-	retyped := retypedETag(contentETag([]byte("custom 404"), "text/html"), "text/plain; charset=utf-8")
+	// Its tag follows the rule's type, as the file's does (w5/182, w8/360),
+	// in the weak form identity sends (w8/361).
+	retyped := "W/" + retypedETag(contentETag([]byte("custom 404"), "text/html"), "text/plain; charset=utf-8")
 	if file := do(h, http.MethodGet, "/404.html"); hdr.Get("Etag") != retyped || file.Header().Get("Etag") != retyped {
 		t.Fatalf("miss ETag %q, file ETag %q, want both the retyped tag %q", hdr.Get("Etag"), file.Header().Get("Etag"), retyped)
 	}
@@ -104,6 +106,10 @@ func TestThe404PageSendsItsOwnETagAndStaysA404(t *testing.T) {
 		tag, coding := file.Header().Get("Etag"), file.Header().Get("Content-Encoding")
 		if file.Code != http.StatusOK || tag == "" {
 			t.Fatalf("GET /404.html offered %q => %d ETag %q, want 200 with a tag", fileOffer, file.Code, tag)
+		}
+		// Render's page tag is strong on br and weak otherwise (w8/360, w8/361).
+		if weak := strings.HasPrefix(tag, "W/"); weak == (coding == codingBrotli) {
+			t.Fatalf("GET /404.html offered %q ETag %q with coding %q, want strong on br and weak otherwise", fileOffer, tag, coding)
 		}
 		for name, cond := range map[string]http.Header{
 			"plain":                  {},

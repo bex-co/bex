@@ -40,6 +40,8 @@ import (
 const (
 	// brotliQuality trades ratio for encode speed. 5 is the usual on-the-fly
 	// sweet spot (most of quality 11's ratio at a fraction of the CPU).
+	// Changing it, the window or the library re-encodes br bodies under their
+	// unchanged strong ETag (w8/361), which only a resumed br range notices.
 	brotliQuality = 5
 	// brotliWindowBits is the encoder's LZ window (1 MiB). The library default
 	// (4 MiB) roughly triples encoder memory for little gain on web assets.
@@ -196,11 +198,7 @@ func varyAcceptEncoding(hdr http.Header) {
 	hdr.Add("Vary", "Accept-Encoding")
 }
 
-// weakenETag marks a strong ETag, generated or authored, weak on the br
-// representation: the encoded bytes differ from the identity bytes, so one
-// strong validator must not describe both (RFC 9110 §8.8.1). Revalidation
-// (weak comparison) keeps working; If-Match/If-Range, which demand strong
-// equality, fail closed.
+// weakenETag marks a strong ETag, generated or authored, weak.
 func weakenETag(hdr http.Header) {
 	if tag := hdr.Get("Etag"); strings.HasPrefix(tag, `"`) {
 		hdr.Set("Etag", "W/"+tag)
@@ -209,22 +207,41 @@ func weakenETag(hdr http.Header) {
 
 // encodeBody picks the bytes a file response sends for body, whose headers so
 // far are in hdr: br for a client that prefers it, at any size; gzip, when
-// gzipOK, from minGzipBytes up; else identity. An encoded body sets
-// Content-Encoding and weakens the ETag. Anything short of a ready variant
-// within budget is identity. release returns the encoded body's live-body
-// lease once the response is written.
-func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, encoded bool, release func()) {
-	release = func() {}
+// gzipOK, from minGzipBytes up; else identity. Anything short of a ready
+// variant within budget is identity. release returns the encoded body's
+// live-body lease once the response is written.
+//
+// A candidate's strong tag belongs to its br representation, and its identity
+// and gzip bodies send the weak form, as Render's edge sends them (captured
+// 2026-11-21 on three sites, w8/361). So one strong validator never describes
+// two byte sequences (RFC 9110 §8.8.1): If-None-Match, a weak comparison,
+// matches either form on any coding, and If-Match and If-Range hold only on
+// br. A non-candidate has one representation and keeps its tag.
+func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, release func()) {
 	if !encodingCandidate(hdr, len(body)) {
-		return body, false, release
+		return body, func() {}
 	}
-	coding := negotiateCoding(r.Header)
+	out, coding, release := h.negotiatedBody(r, site, servedPath, body, gzipOK)
+	if coding != "" {
+		hdr.Set("Content-Encoding", coding)
+	}
+	if coding != codingBrotli {
+		weakenETag(hdr)
+	}
+	return out, release
+}
+
+// negotiatedBody is encodeBody's choice of bytes for a candidate: the cached
+// variant in the coding the request negotiates, or body and "" for identity.
+func (h *Handler) negotiatedBody(r *http.Request, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, coding string, release func()) {
+	release = func() {}
+	coding = negotiateCoding(r.Header)
 	if coding == "" || coding == codingGzip && (!gzipOK || len(body) < minGzipBytes) {
-		return body, false, release
+		return body, "", release
 	}
 	enc, ok := h.encodedVariant(coding, site.AppID, site.cacheKey(servedPath), body)
 	if !ok {
-		return body, false, release
+		return body, "", release
 	}
 	// The encoded body leases its own bytes on top of the identity lease (the
 	// identity body stays referenced); HEAD writes none. Without room, serve
@@ -234,11 +251,9 @@ func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, served
 		lease = 0
 	}
 	if !h.liveBodies.TryAcquire(lease) {
-		return body, false, release
+		return body, "", release
 	}
-	hdr.Set("Content-Encoding", coding)
-	weakenETag(hdr)
-	return enc, true, func() { h.liveBodies.Release(lease) }
+	return enc, coding, func() { h.liveBodies.Release(lease) }
 }
 
 // encodedVariant returns the coding encoding of the identity body stored
@@ -329,24 +344,34 @@ func (b *cappedBuffer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// encodedResponseWriter frames a br or gzip body that http.ServeContent serves.
-// ServeContent omits Content-Length on a full response whenever
-// Content-Encoding is set (it assumes an on-the-fly compressing wrapper); this
-// body is fully encoded up front, so the exact length is known and sent. A
-// status other than 200/206 carries no encoded body, so the coding is dropped (304
-// and 416 already strip it; this covers the bodyless 412).
-type encodedResponseWriter struct {
+// fileResponseWriter finishes the file response http.ServeContent writes for
+// the size-byte body encodeBody chose.
+//   - A 200 sends the exact length. ServeContent omits Content-Length on a full
+//     response whenever Content-Encoding is set (it assumes an on-the-fly
+//     compressing wrapper), but an encoded body here is encoded up front.
+//   - A status other than 200/206 carries no encoded body, so the coding is
+//     dropped (304 and 416 already strip it; this covers the bodyless 412).
+//   - A 304 carries notModifiedETag, the tag before encodeBody weakened it,
+//     whatever the coding: Render's edge answers every revalidation with the
+//     strong tag (captured 2026-11-21, w8/361).
+type fileResponseWriter struct {
 	http.ResponseWriter
-	size int
+	size            int
+	notModifiedETag string
 }
 
-func (w *encodedResponseWriter) WriteHeader(code int) {
+func (w *fileResponseWriter) WriteHeader(code int) {
 	hdr := w.Header()
 	switch code {
 	case http.StatusOK:
 		hdr.Set("Content-Length", strconv.Itoa(w.size))
 	case http.StatusPartialContent:
 		// ServeContent sets the range's own Content-Length.
+	case http.StatusNotModified:
+		if w.notModifiedETag != "" {
+			hdr.Set("Etag", w.notModifiedETag)
+		}
+		fallthrough
 	default:
 		hdr.Del("Content-Encoding")
 	}
@@ -354,4 +379,4 @@ func (w *encodedResponseWriter) WriteHeader(code int) {
 }
 
 // Unwrap exposes the underlying writer to http.ResponseController.
-func (w *encodedResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *fileResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }

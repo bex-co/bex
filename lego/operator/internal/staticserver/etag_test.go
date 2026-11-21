@@ -17,7 +17,11 @@ limitations under the License.
 package staticserver
 
 import (
+	"bytes"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"golang.org/x/sync/semaphore"
@@ -27,12 +31,15 @@ import (
 
 // w4/341: the m160 default makes browsers revalidate every view, but with no
 // validator a revalidation could never be a 304, so each one re-downloaded
-// (and billed) the whole file. Every successful response now carries a strong
-// tag over the bytes it represents.
+// (and billed) the whole file. Every successful response now carries a tag
+// over the bytes it represents: strong on br and on a file with one
+// representation, weak on a compressible file's identity and gzip bodies, as
+// on Render (w8/361).
 
 // TestEveryServePathCarriesTheGeneratedETag covers the three serveObject
 // callers: a direct object, a rewrite target and the SPA fallback. Each tags
-// the bytes it served and answers its own tag with a bodyless 304.
+// the bytes it served and answers its own tag with a bodyless 304 that
+// carries the strong form.
 func TestEveryServePathCarriesTheGeneratedETag(t *testing.T) {
 	h, _ := newTestHandler(t, Site{
 		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/app", Destination: "/app.html"}},
@@ -47,37 +54,62 @@ func TestEveryServePathCarriesTheGeneratedETag(t *testing.T) {
 		{"/dashboard/settings", "<h1>spa</h1>", "text/html"},
 	} {
 		rec := do(h, http.MethodGet, tc.path)
-		want := contentETag([]byte(tc.served), tc.servedType)
-		if rec.Code != http.StatusOK || rec.Body.String() != tc.served || rec.Header().Get("ETag") != want {
-			t.Fatalf("GET %s => %d %q ETag %q, want 200 %q ETag %q", tc.path, rec.Code, rec.Body, rec.Header().Get("ETag"), tc.served, want)
+		strong := contentETag([]byte(tc.served), tc.servedType)
+		if rec.Code != http.StatusOK || rec.Body.String() != tc.served || rec.Header().Get("ETag") != "W/"+strong {
+			t.Fatalf("GET %s => %d %q ETag %q, want 200 %q ETag W/%s", tc.path, rec.Code, rec.Body, rec.Header().Get("ETag"), tc.served, strong)
 		}
 		// Render's 304 repeats the default policy (w8/358), as RFC 9110 asks.
-		if again := doWith(h, http.MethodGet, tc.path, http.Header{"If-None-Match": {want}}); again.Code != http.StatusNotModified || again.Body.Len() != 0 ||
-			again.Header().Get("Cache-Control") != renderCacheControl {
-			t.Errorf("GET %s If-None-Match => %d (%d bytes) Cache-Control %q, want bodyless 304 with %q", tc.path, again.Code, again.Body.Len(), again.Header().Get("Cache-Control"), renderCacheControl)
+		if again := doWith(h, http.MethodGet, tc.path, http.Header{"If-None-Match": {rec.Header().Get("ETag")}}); again.Code != http.StatusNotModified || again.Body.Len() != 0 ||
+			again.Header().Get("Cache-Control") != renderCacheControl || again.Header().Get("ETag") != strong {
+			t.Errorf("GET %s If-None-Match => %d (%d bytes) Cache-Control %q ETag %q, want bodyless 304 with %q and %s",
+				tc.path, again.Code, again.Body.Len(), again.Header().Get("Cache-Control"), again.Header().Get("ETag"), renderCacheControl, strong)
 		}
 	}
 }
 
-// TestBrotliAndIdentityValidateAgainstEachOther: the br representation carries
-// the weak form of the identity tag, and If-None-Match uses weak comparison,
-// so either tag revalidates either representation.
-func TestBrotliAndIdentityValidateAgainstEachOther(t *testing.T) {
-	body := repeated("console.log('etag');\n")
-	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
-	strong := contentETag(body, contentType("/app.js", "text/javascript"))
-
-	br := doWith(h, http.MethodGet, "/app.js", brHeader("br"))
-	assertBrotli(t, "br", br, body)
-	if got := br.Header().Get("ETag"); got != "W/"+strong {
-		t.Fatalf("br ETag = %q, want W/%s", got, strong)
-	}
-	for label, header := range map[string]http.Header{
-		"br with identity tag": {"Accept-Encoding": {"br"}, "If-None-Match": {strong}},
-		"identity with br tag": {"If-None-Match": {"W/" + strong}},
+// TestETagStrengthFollowsRender (w8/361): Render's edge sends a compressible
+// file's tag strong with br and weak (W/) with gzip, identity, no
+// Accept-Encoding and HEAD, keeps an image's tag strong for every client, and
+// answers each revalidation, in any coding and with either form, with a
+// bodyless 304 carrying the strong tag (captured 2026-11-21 on
+// sveltekit-static, mentorship-guide and buzz-docs).
+func TestETagStrengthFollowsRender(t *testing.T) {
+	js := repeated("console.log('etag');\n")
+	png := []byte("\x89PNG\r\n\x1a\nnot a real picture")
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("app.js"):   {Body: js, ContentType: "text/javascript"},
+		key("logo.png"): {Body: png, ContentType: "image/png"},
+	})
+	strong := contentETag(js, contentType("/app.js", "text/javascript"))
+	for _, tc := range []struct{ method, offer, want string }{
+		{http.MethodGet, "br", strong},
+		{http.MethodGet, "gzip, br", strong},
+		{http.MethodHead, "br", strong},
+		{http.MethodGet, "gzip", "W/" + strong},
+		{http.MethodGet, "identity", "W/" + strong},
+		{http.MethodGet, "", "W/" + strong},
+		{http.MethodHead, "", "W/" + strong},
 	} {
-		if rec := doWith(h, http.MethodGet, "/app.js", header); rec.Code != http.StatusNotModified {
-			t.Errorf("%s => %d, want 304", label, rec.Code)
+		label := tc.method + " offered " + strconv.Quote(tc.offer)
+		if rec := doWith(h, tc.method, "/app.js", offerHeader(tc.offer)); rec.Code != http.StatusOK || rec.Header().Get("ETag") != tc.want {
+			t.Errorf("%s => %d ETag %q, want 200 ETag %s", label, rec.Code, rec.Header().Get("ETag"), tc.want)
+		}
+		for _, inm := range []string{strong, "W/" + strong} {
+			rec := doWith(h, tc.method, "/app.js", offerHeader(tc.offer, "If-None-Match", inm))
+			if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("ETag") != strong ||
+				rec.Header().Get("Content-Encoding") != "" || !hasVaryAcceptEncoding(rec.Header()) {
+				t.Errorf("%s If-None-Match %s => %d (%d bytes) ETag %q CE %q Vary %v, want a bodyless 304 with Vary and ETag %s",
+					label, inm, rec.Code, rec.Body.Len(), rec.Header().Get("ETag"), rec.Header().Get("Content-Encoding"), rec.Header().Values("Vary"), strong)
+			}
+		}
+	}
+	image := contentETag(png, contentType("/logo.png", "image/png"))
+	for _, offer := range []string{"br", "gzip", ""} {
+		if got := doWith(h, http.MethodGet, "/logo.png", offerHeader(offer)).Header().Get("ETag"); got != image {
+			t.Errorf("PNG offered %q ETag = %q, want the strong %s", offer, got, image)
+		}
+		if rec := doWith(h, http.MethodGet, "/logo.png", offerHeader(offer, "If-None-Match", image)); rec.Code != http.StatusNotModified || rec.Header().Get("ETag") != image {
+			t.Errorf("PNG offered %q revalidation => %d ETag %q, want 304 with %s", offer, rec.Code, rec.Header().Get("ETag"), image)
 		}
 	}
 }
@@ -107,26 +139,42 @@ func TestRepublishChangesTheTagOnlyWhenBytesChange(t *testing.T) {
 	}
 }
 
-// TestRangeResumeUsesTheGeneratedETag: If-Range with the current tag resumes
-// the identity bytes; a stale tag gets the whole file. The br representation's
-// weak tag never satisfies If-Range's strong comparison, so encoded bytes are
-// never spliced onto identity bytes.
-func TestRangeResumeUsesTheGeneratedETag(t *testing.T) {
-	body := repeated("console.log('resume');\n")
-	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
-	tag := contentETag(body, contentType("/app.js", "text/javascript"))
+// TestRangeResumeFollowsTheTagsStrength: If-Range needs a strong tag (RFC 9110
+// §13.1.5), so a resume holds where the tag is strong, on a file with one
+// representation and on br (Render sends a 206 of the br bytes, captured
+// 2026-11-21, w8/361), and a stale tag gets the whole file. A compressible
+// file's identity body sends the weak form, so If-Range with either form gets
+// the whole identity file, and br bytes are never spliced onto identity bytes.
+func TestRangeResumeFollowsTheTagsStrength(t *testing.T) {
+	js := repeated("console.log('resume');\n")
+	bin := repeated("\x00\x01resume")
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("app.js"):   {Body: js, ContentType: "text/javascript"},
+		key("data.bin"): {Body: bin, ContentType: "application/octet-stream"},
+	})
+	resume := func(path, offer, ifRange string) *httptest.ResponseRecorder {
+		return doWith(h, http.MethodGet, path, http.Header{"Accept-Encoding": {offer}, "Range": {"bytes=0-9"}, "If-Range": {ifRange}})
+	}
 
-	if rec := doWith(h, http.MethodGet, "/app.js", http.Header{"Range": {"bytes=0-9"}, "If-Range": {tag}}); rec.Code != http.StatusPartialContent || rec.Body.String() != string(body[:10]) {
+	binTag := contentETag(bin, contentType("/data.bin", "application/octet-stream"))
+	if rec := resume("/data.bin", "br", binTag); rec.Code != http.StatusPartialContent || rec.Body.String() != string(bin[:10]) {
 		t.Errorf("If-Range current tag => %d %q, want 206 of the first 10 bytes", rec.Code, rec.Body)
 	}
-	if rec := doWith(h, http.MethodGet, "/app.js", http.Header{"Range": {"bytes=0-9"}, "If-Range": {`"stale"`}}); rec.Code != http.StatusOK || rec.Body.Len() != len(body) {
+	if rec := resume("/data.bin", "br", `"stale"`); rec.Code != http.StatusOK || rec.Body.Len() != len(bin) {
 		t.Errorf("If-Range stale tag => %d (%d bytes), want 200 with the whole file", rec.Code, rec.Body.Len())
 	}
-	br := doWith(h, http.MethodGet, "/app.js", http.Header{"Accept-Encoding": {"br"}, "Range": {"bytes=0-9"}, "If-Range": {tag}})
-	if br.Code != http.StatusOK {
-		t.Fatalf("br If-Range identity tag => %d, want a full 200", br.Code)
+
+	jsTag := contentETag(js, contentType("/app.js", "text/javascript"))
+	full := doWith(h, http.MethodGet, "/app.js", brHeader("br"))
+	part := resume("/app.js", "br", jsTag)
+	if part.Code != http.StatusPartialContent || part.Header().Get("Content-Encoding") != codingBrotli ||
+		!bytes.Equal(part.Body.Bytes(), full.Body.Bytes()[:10]) || part.Header().Get("Content-Range") != fmt.Sprintf("bytes 0-9/%d", full.Body.Len()) {
+		t.Errorf("br If-Range br tag => %d CE %q Content-Range %q, want 206 of the first 10 br bytes",
+			part.Code, part.Header().Get("Content-Encoding"), part.Header().Get("Content-Range"))
 	}
-	assertBrotli(t, "br If-Range", br, body)
+	for _, ifRange := range []string{jsTag, "W/" + jsTag} {
+		assertIdentity(t, "identity If-Range "+ifRange, resume("/app.js", "identity", ifRange), js)
+	}
 }
 
 // TestShedResponsesCarryNoGeneratedETag: an unsatisfiable range and a request

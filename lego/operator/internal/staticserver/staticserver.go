@@ -471,7 +471,7 @@ func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Sit
 	setFileHeaders(hdr, site, requestPath, contentType("/404.html", obj.ContentType), obj.etag)
 	// Render sends the page br to a br client but identity to a gzip one
 	// (captured 2026-11-20, w8/359).
-	body, _, release := h.encodeBody(r, hdr, site, "/404.html", obj.Body, false)
+	body, release := h.encodeBody(r, hdr, site, "/404.html", obj.Body, false)
 	defer release()
 	hdr.Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusNotFound)
@@ -577,13 +577,12 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	setFileHeaders(hdr, site, requestPath, servedType, obj.etag)
 
 	// Automatic Brotli and gzip (w8/m79, w8/m132, w8/359). The representation
-	// is chosen before ServeContent, so its preconditions and byte ranges
-	// apply to the bytes actually sent.
-	body, encoded, release := h.encodeBody(r, hdr, site, servedPath, obj.Body, true)
+	// and its tag (w8/361) are chosen before ServeContent, so its
+	// preconditions and byte ranges apply to the bytes actually sent.
+	tag := hdr.Get("Etag")
+	body, release := h.encodeBody(r, hdr, site, servedPath, obj.Body, true)
 	defer release()
-	if encoded {
-		w = &encodedResponseWriter{ResponseWriter: w, size: len(body)}
-	}
+	w = &fileResponseWriter{ResponseWriter: w, size: len(body), notModifiedETag: tag}
 
 	// ServeContent evaluates the request against the ETag (304 for a matching
 	// If-None-Match, 412 for a failed If-Match — RFC 9110 §13) and serves byte

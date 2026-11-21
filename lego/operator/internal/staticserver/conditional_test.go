@@ -20,7 +20,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -65,7 +64,7 @@ func TestSavedETagPreconditions(t *testing.T) {
 		{"If-None-Match list member", "If-None-Match", `"other", ` + savedETag, http.StatusNotModified},
 		{"If-None-Match wildcard", "If-None-Match", "*", http.StatusNotModified},
 		{"mismatching If-None-Match", "If-None-Match", `"other"`, http.StatusOK},
-		{"matching If-Match", "If-Match", savedETag, http.StatusOK},
+		{"If-Match with the saved tag against identity's weak form", "If-Match", savedETag, http.StatusPreconditionFailed},
 		{"mismatching If-Match", "If-Match", `"other"`, http.StatusPreconditionFailed},
 		{"weak If-Match against strong tag", "If-Match", "W/" + savedETag, http.StatusPreconditionFailed},
 	}
@@ -93,9 +92,15 @@ func TestSavedETagPreconditions(t *testing.T) {
 					continue
 				}
 				// The validator and the owner's freshness policy describe a
-				// 304 as much as a 200 (RFC 9110 §15.4.5).
-				if got := rec.Header().Get("ETag"); got != savedETag {
-					t.Errorf("%s ETag = %q, want %q", label, got, savedETag)
+				// 304 as much as a 200 (RFC 9110 §15.4.5). The text file's
+				// identity body sends the saved tag's weak form and the 304
+				// the saved tag, as Render does (w8/361).
+				wantTag := "W/" + savedETag
+				if tc.want == http.StatusNotModified {
+					wantTag = savedETag
+				}
+				if got := rec.Header().Get("ETag"); got != wantTag {
+					t.Errorf("%s ETag = %q, want %q", label, got, wantTag)
 				}
 				if got := rec.Header().Get("Cache-Control"); got != savedCache {
 					t.Errorf("%s Cache-Control = %q, want %q", label, got, savedCache)
@@ -109,29 +114,30 @@ func TestSavedETagPreconditions(t *testing.T) {
 }
 
 // Without a saved ETag the server generates a strong one over the object's
-// bytes (w4/341), so a browser's revalidation can be a bodyless 304. A tag the
-// object does not carry still gets the full 200, and the wildcard still
-// matches any existing object and no miss.
+// bytes (w4/341), so a browser's revalidation can be a bodyless 304. The text
+// file's identity body sends its weak form and the 304 the strong one (w8/361).
+// A tag the object does not carry still gets the full 200, and the wildcard
+// still matches any existing object and no miss.
 func TestGeneratedETagValidatesWithoutASavedRule(t *testing.T) {
 	h, _ := newTestHandler(t, Site{}, map[string]Object{
 		key("version.txt"): {Body: []byte(versionBytes), ContentType: "text/plain"},
 	})
 	first := do(h, http.MethodGet, "/version.txt")
-	tag := first.Header().Get("ETag")
-	if first.Code != http.StatusOK || tag != contentETag([]byte(versionBytes), "text/plain") || strings.HasPrefix(tag, "W/") {
-		t.Fatalf("GET => %d ETag %q, want 200 with the strong content tag", first.Code, tag)
+	tag, strong := first.Header().Get("ETag"), contentETag([]byte(versionBytes), "text/plain")
+	if first.Code != http.StatusOK || tag != "W/"+strong {
+		t.Fatalf("GET => %d ETag %q, want 200 with the content tag's weak form W/%s", first.Code, tag, strong)
 	}
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		rec := doWith(h, method, "/version.txt", http.Header{"If-None-Match": {tag}})
-		if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("ETag") != tag {
-			t.Errorf("%s If-None-Match <tag> => %d (%d bytes, ETag %q), want bodyless 304 with the tag", method, rec.Code, rec.Body.Len(), rec.Header().Get("ETag"))
+		if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("ETag") != strong {
+			t.Errorf("%s If-None-Match <tag> => %d (%d bytes, ETag %q), want bodyless 304 with the strong tag", method, rec.Code, rec.Body.Len(), rec.Header().Get("ETag"))
 		}
 	}
 	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-None-Match": {`"qa-v1"`}}); rec.Code != http.StatusOK || rec.Body.String() != versionBytes {
 		t.Errorf("foreign If-None-Match => %d %q, want 200 body", rec.Code, rec.Body)
 	}
-	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-Match": {tag}}); rec.Code != http.StatusOK || rec.Body.String() != versionBytes {
-		t.Errorf("matching If-Match => %d %q, want 200 body", rec.Code, rec.Body)
+	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"Accept-Encoding": {"br"}, "If-Match": {strong}}); rec.Code != http.StatusOK || rec.Header().Get("ETag") != strong {
+		t.Errorf("br If-Match <strong tag> => %d ETag %q, want 200 under the strong tag", rec.Code, rec.Header().Get("ETag"))
 	}
 	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-None-Match": {"*"}}); rec.Code != http.StatusNotModified {
 		t.Errorf("If-None-Match * on existing object => %d, want 304", rec.Code)
@@ -202,8 +208,10 @@ func TestAContentTypeRuleChangesTheGeneratedETag(t *testing.T) {
 	typed, _ := newTestHandler(t, Site{Headers: []appv1alpha1.StaticHeader{rule}}, objects)
 	got := do(typed, http.MethodGet, "/module.dat")
 	tag := got.Header().Get("ETag")
-	if got.Header().Get("Content-Type") != "application/wasm" || tag == "" || tag == old || strings.HasPrefix(tag, "W/") {
-		t.Fatalf("with the rule: Content-Type %q ETag %q, want application/wasm under a new strong tag (old %q)", got.Header().Get("Content-Type"), tag, old)
+	// wasm is compressible, so its identity body sends the new tag's weak form
+	// (w8/361).
+	if got.Header().Get("Content-Type") != "application/wasm" || tag != "W/"+retypedETag(old, "application/wasm") || tag == "W/"+old {
+		t.Fatalf("with the rule: Content-Type %q ETag %q, want application/wasm under a new tag's weak form (old %q)", got.Header().Get("Content-Type"), tag, old)
 	}
 	if rec := doWith(typed, http.MethodGet, "/module.dat", http.Header{"If-None-Match": {old}}); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/wasm" {
 		t.Errorf("revalidating with the old tag => %d %q, want 200 with the new type", rec.Code, rec.Header().Get("Content-Type"))

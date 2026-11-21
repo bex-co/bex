@@ -82,8 +82,9 @@ func decodeBody(t *testing.T, coding string, encoded []byte) []byte {
 }
 
 // assertEncoded checks a coding response decodes to want, varies by
-// Accept-Encoding, carries a weak validator and is honestly framed, whatever
-// its size against identity's (w8/359).
+// Accept-Encoding, is honestly framed whatever its size against identity's
+// (w8/359), and carries a strong tag on br and a weak one on gzip, as Render's
+// edge sends them (w8/361).
 func assertEncoded(t *testing.T, label string, rec *httptest.ResponseRecorder, coding string, want []byte) {
 	t.Helper()
 	if rec.Code != http.StatusOK {
@@ -101,8 +102,12 @@ func assertEncoded(t *testing.T, label string, rec *httptest.ResponseRecorder, c
 	if !bytes.Equal(decodeBody(t, coding, rec.Body.Bytes()), want) {
 		t.Fatalf("%s %s body does not decode to the published bytes", label, coding)
 	}
-	if tag := rec.Header().Get("Etag"); !strings.HasPrefix(tag, "W/") {
-		t.Fatalf("%s Etag = %q, want a weak validator on the encoded bytes", label, tag)
+	wantTag := `W/"`
+	if coding == codingBrotli {
+		wantTag = `"`
+	}
+	if tag := rec.Header().Get("Etag"); !strings.HasPrefix(tag, wantTag) {
+		t.Fatalf("%s Etag = %q, want a %s… tag on %s", label, tag, wantTag, coding)
 	}
 }
 
@@ -131,6 +136,19 @@ func assertIdentity(t *testing.T, label string, rec *httptest.ResponseRecorder, 
 }
 
 func brHeader(offer string) http.Header { return http.Header{"Accept-Encoding": {offer}} }
+
+// offerHeader is an Accept-Encoding offer, none when offer is empty, plus the
+// given header name/value pairs.
+func offerHeader(offer string, kv ...string) http.Header {
+	hdr := http.Header{}
+	if offer != "" {
+		hdr.Set("Accept-Encoding", offer)
+	}
+	for i := 0; i < len(kv); i += 2 {
+		hdr.Set(kv[i], kv[i+1])
+	}
+	return hdr
+}
 
 // holdSiteEncode takes the test site's only encode slot, as a concurrent encode
 // would; the returned func gives it back.
@@ -259,23 +277,27 @@ func TestSmallBodiesAreEncodedAsOnRender(t *testing.T) {
 }
 
 // TestSmallBodyValidatorsHold: the w4/341 rules hold below the old 1 KiB
-// floor too. The br variant is weak and identity strong, and either tag
-// revalidates the other representation with a bodyless 304 that keeps Vary.
+// floor too. The br variant carries the strong tag and identity its weak form
+// (w8/361), and either tag revalidates either representation with a bodyless
+// 304 that keeps Vary and carries the strong tag.
 func TestSmallBodyValidatorsHold(t *testing.T) {
 	h, _ := newTestHandler(t, Site{}, map[string]Object{
 		key("robots.txt"): {Body: []byte(renderRobots), ContentType: "text/plain"},
 	})
 	br := doWith(h, http.MethodGet, "/robots.txt", brHeader("br"))
 	identity := doWith(h, http.MethodGet, "/robots.txt", nil)
-	weak, strong := br.Header().Get("Etag"), identity.Header().Get("Etag")
+	strong, weak := br.Header().Get("Etag"), identity.Header().Get("Etag")
 	if !strings.HasPrefix(strong, `"`) || weak != "W/"+strong {
-		t.Fatalf("br ETag %q, identity ETag %q, want the weak form of a strong tag", weak, strong)
+		t.Fatalf("br ETag %q, identity ETag %q, want a strong tag and its weak form", strong, weak)
 	}
-	for _, tc := range []struct{ offer, tag string }{{"br", strong}, {"br", weak}, {"", weak}, {"gzip", strong}} {
-		rec := doWith(h, http.MethodGet, "/robots.txt", http.Header{"Accept-Encoding": {tc.offer}, "If-None-Match": {tc.tag}})
-		if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("Content-Encoding") != "" || !hasVaryAcceptEncoding(rec.Header()) {
-			t.Fatalf("offer %q If-None-Match %s => %d %d bytes CE %q Vary %v, want a bodyless 304 with Vary",
-				tc.offer, tc.tag, rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"), rec.Header().Values("Vary"))
+	for _, offer := range []string{"br", "", "gzip"} {
+		for _, tag := range []string{strong, weak} {
+			rec := doWith(h, http.MethodGet, "/robots.txt", http.Header{"Accept-Encoding": {offer}, "If-None-Match": {tag}})
+			if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("Content-Encoding") != "" ||
+				!hasVaryAcceptEncoding(rec.Header()) || rec.Header().Get("Etag") != strong {
+				t.Fatalf("offer %q If-None-Match %s => %d %d bytes CE %q Vary %v ETag %q, want a bodyless 304 with Vary and %s",
+					offer, tag, rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"), rec.Header().Values("Vary"), rec.Header().Get("Etag"), strong)
+			}
 		}
 	}
 }
@@ -635,35 +657,29 @@ func TestBrotliVariantKeyIsNotAddressable(t *testing.T) {
 	}
 }
 
-// TestBrotliPreconditionsAndHead: the br representation carries a weak form of
-// the saved ETag, so revalidation still yields a bodyless 304 while a strong
-// If-Match is refused with a bodyless 412 that claims no coding. HEAD reports
-// the same representation metadata as GET.
+// TestBrotliPreconditionsAndHead: the br representation carries the saved
+// ETag as it was authored, strong (w8/361), so revalidation yields a bodyless
+// 304, a matching If-Match holds, and a failed one gets a bodyless 412 that
+// claims no coding. HEAD reports the same representation metadata as GET.
+// Identity sends the saved tag's weak form, which no If-Match matches.
 func TestBrotliPreconditionsAndHead(t *testing.T) {
 	body := repeated(versionBytes)
 	h, _ := newTestHandler(t, Site{Headers: []appv1alpha1.StaticHeader{{Path: "/*", Name: "ETag", Value: savedETag}}},
 		map[string]Object{key("version.txt"): {Body: body, ContentType: "text/plain"}})
-	with := func(offer string, kv ...string) http.Header {
-		hdr := brHeader(offer)
-		for i := 0; i < len(kv); i += 2 {
-			hdr.Set(kv[i], kv[i+1])
-		}
-		return hdr
-	}
 
-	get := doWith(h, http.MethodGet, "/version.txt", with("br"))
+	get := doWith(h, http.MethodGet, "/version.txt", offerHeader("br"))
 	assertBrotli(t, "GET", get, body)
-	if got := get.Header().Get("ETag"); got != "W/"+savedETag {
-		t.Fatalf("br ETag = %q, want weak %q", got, "W/"+savedETag)
+	if got := get.Header().Get("ETag"); got != savedETag {
+		t.Fatalf("br ETag = %q, want %q", got, savedETag)
 	}
-	head := doWith(h, http.MethodHead, "/version.txt", with("br"))
+	head := doWith(h, http.MethodHead, "/version.txt", offerHeader("br"))
 	if head.Code != http.StatusOK || head.Body.Len() != 0 || head.Header().Get("Content-Encoding") != "br" ||
-		head.Header().Get("Content-Length") != get.Header().Get("Content-Length") || head.Header().Get("ETag") != "W/"+savedETag {
+		head.Header().Get("Content-Length") != get.Header().Get("Content-Length") || head.Header().Get("ETag") != savedETag {
 		t.Fatalf("HEAD br = %d %d bytes %v, want GET's metadata without a body", head.Code, head.Body.Len(), head.Header())
 	}
 
 	for _, inm := range []string{savedETag, "W/" + savedETag, "*"} {
-		rec := doWith(h, http.MethodGet, "/version.txt", with("br", "If-None-Match", inm))
+		rec := doWith(h, http.MethodGet, "/version.txt", offerHeader("br", "If-None-Match", inm))
 		if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("Content-Encoding") != "" {
 			t.Fatalf("br If-None-Match %s => %d %d bytes CE %q, want bodyless 304", inm, rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"))
 		}
@@ -671,16 +687,19 @@ func TestBrotliPreconditionsAndHead(t *testing.T) {
 			t.Fatalf("br 304 lacks Vary: %v", rec.Header())
 		}
 	}
-	rec := doWith(h, http.MethodGet, "/version.txt", with("br", "If-Match", savedETag))
+	assertBrotli(t, "br If-Match", doWith(h, http.MethodGet, "/version.txt", offerHeader("br", "If-Match", savedETag)), body)
+	rec := doWith(h, http.MethodGet, "/version.txt", offerHeader("br", "If-Match", `"other"`))
 	if rec.Code != http.StatusPreconditionFailed || rec.Body.Len() != 0 || rec.Header().Get("Content-Encoding") != "" {
-		t.Fatalf("br If-Match => %d %d bytes CE %q, want bodyless 412 with no coding", rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"))
+		t.Fatalf("br failed If-Match => %d %d bytes CE %q, want bodyless 412 with no coding", rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"))
 	}
 
-	// The identity representation keeps the saved strong validator exactly.
-	rec = doWith(h, http.MethodGet, "/version.txt", with("identity", "If-Match", savedETag))
-	assertIdentity(t, "identity If-Match", rec, body)
-	if rec.Header().Get("ETag") != savedETag {
-		t.Fatalf("identity ETag = %q, want %q", rec.Header().Get("ETag"), savedETag)
+	identity := doWith(h, http.MethodGet, "/version.txt", offerHeader("identity"))
+	assertIdentity(t, "identity", identity, body)
+	if identity.Header().Get("ETag") != "W/"+savedETag {
+		t.Fatalf("identity ETag = %q, want W/%s", identity.Header().Get("ETag"), savedETag)
+	}
+	if rec := doWith(h, http.MethodGet, "/version.txt", offerHeader("identity", "If-Match", savedETag)); rec.Code != http.StatusPreconditionFailed {
+		t.Fatalf("identity If-Match %s => %d, want 412 against the weak form", savedETag, rec.Code)
 	}
 }
 
