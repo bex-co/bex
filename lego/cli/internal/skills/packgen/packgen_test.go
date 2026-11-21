@@ -171,3 +171,23 @@ func TestPostgresSkillKeepsLogicalReplication(t *testing.T) {
 		t.Error("the checked-in bex-postgres skill lacks the generated Logical Replication section")
 	}
 }
+
+// bex SSH has no SCP (ADR035), so the disk skill names the transfer every
+// native runtime has, Magic-Wormhole, and the checked-in pack says so (w6/m549).
+func TestDisksSkillMovesFilesWithWormhole(t *testing.T) {
+	upstream := "Move backup files off the service with a currently supported transfer method such as SCP with SSH or Magic-Wormhole. Snapshot restores replace the entire disk.\n"
+	_, out, keep, err := Rewrite("render-disks/SKILL.md", []byte(upstream))
+	if err != nil || !keep {
+		t.Fatalf("Rewrite = %v, %v", keep, err)
+	}
+	if !strings.Contains(string(out), "off the service with "+disksTransfer+" Snapshot") || strings.Contains(string(out), "SCP with SSH") {
+		t.Fatalf("the disk skill still offers SCP or lost the wormhole transfer:\n%s", out)
+	}
+	pack, err := os.ReadFile("../pack/skills/bex-disks/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pack), disksTransfer) || strings.Contains(string(pack), "SCP with SSH") {
+		t.Error("the checked-in bex-disks skill does not carry the generated wormhole transfer")
+	}
+}

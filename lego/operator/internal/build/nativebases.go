@@ -28,9 +28,9 @@ import (
 // (2026-10-29): every native build's final stage starts from it, with the
 // selected runtime copied on top. Pin only a digest that one
 // native-common-image.yml families run published and passed on every family
-// case; this one is run 43900534897 (w8/335, the first with Python 3.15
-// packaging; w8/m91 t008 adopted run 43883107194's).
-var nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:4b8096008241cf0a6de70ed5c9ab2597ae649f3d9c054ccf8af8b56159371147"
+// case; this one is run 44906752907 (w6/m549, the first with magic-wormhole;
+// w8/335 adopted run 43900534897's, w8/m91 t008 run 43883107194's).
+var nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:49dbbd727e03549a766053bf39556105be99561fff5b2377fb7ac3ba37341266"
 
 // nativeRuntimeArtifacts reuses approved runtime TREES, never their final
 // system base. Keys are exact selected upstream identities; a line artifact

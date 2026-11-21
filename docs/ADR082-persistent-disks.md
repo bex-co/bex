@@ -97,7 +97,7 @@ Behavior table (Render → bex):
 | Delete disk | all data lost immediately | same; bex additionally deletes the disk's snapshots (Render leaves this undocumented; bex chooses the private option) |
 | Snapshots | automatic daily, ≥7 days, full-disk restore, restore restarts, keys expire 24 h, free | same semantics, file-level mechanism (§ D5), same 7-day retention, same 24 h key expiry, not billed |
 | Encrypted at rest | yes | yes: LUKS StorageClass for the volume + age-encrypted snapshots (§ D3) |
-| File transfer | SSH + `scp`/Magic-Wormhole | **divergence**: ADR035's no-SFTP/no-SCP ban on `srv-` SSH stands; transfer via instance shell + app-level tooling |
+| File transfer | SSH + `scp`/Magic-Wormhole; "the `magic-wormhole` library is pre-installed on all Render native runtimes" | **Magic-Wormhole: same** (w6/m549): every native runtime image carries its suite's Debian `magic-wormhole`, so `wormhole send <file>` in the Shell or an SSH session and `wormhole receive <code>` on the other machine move a disk file either way through the public relay. A Docker-runtime service has it only if its image installs it, as on Render. **SCP/SFTP: divergence**: ADR035's no-SFTP/no-SCP ban on `srv-` SSH stands |
 | API | `/v1/disks` CRUD + snapshots, `dsk-` ids | same routes/shapes, `id.Disk` (`dsk` prefix) minted via `internal/id` |
 | CLI | no disk commands | nothing to do (checklist note only) |
 | Previews | preview services get a fresh empty disk | n/a — PR previews remain a bex non-goal (unchanged) |

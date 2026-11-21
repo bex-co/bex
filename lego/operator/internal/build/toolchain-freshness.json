@@ -552,9 +552,9 @@
       "id": "native-common-bookworm",
       "kind": "native-base",
       "upstream": "ghcr.io/bex-co/bex-cnb-run:native-common-bookworm",
-      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:4b8096008241cf0a6de70ed5c9ab2597ae649f3d9c054ccf8af8b56159371147",
-      "resolved_at": "2026-11-16T16:05:00Z",
-      "source": "native-common-image.yml families run 43900534897 on 93b1d057b: published, scanned and signed by native-base-image.yml, then the complete AMD64 utility cohort and all 37 family cases, including modern-python 3.15, passed on this digest (w8/335; its SPDX names the same 864 packages and versions as w8/m91 t008's sha256:5d6b8139). A newer native-common-bookworm tag is a candidate for the next families run, not an adoption.",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:49dbbd727e03549a766053bf39556105be99561fff5b2377fb7ac3ba37341266",
+      "resolved_at": "2026-11-21T13:12:00Z",
+      "source": "native-common-image.yml families run 44906752907 on c64b14cfd: published, scanned and signed by native-base-image.yml, passed its network-off magic-wormhole round trip, then the complete AMD64 utility cohort and all 39 family cases (ruby/ruby40 on its re-run after Docker Hub answered 429), each generated image also running the Shell wormhole probe (w6/m549; adds Debian's magic-wormhole 0.12.0-1.1 and its Python closure to w8/335's sha256:4b809600). A newer native-common-bookworm tag is a candidate for the next families run, not an adoption.",
       "files": [
         "lego/operator/internal/build/nativebases.go"
       ]

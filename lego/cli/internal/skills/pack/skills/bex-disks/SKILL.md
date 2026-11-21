@@ -60,7 +60,7 @@ Fetch the current disk documentation and Blueprint specification through `refere
 
 ## Database Backups and File Recovery
 
-Do not use a disk snapshot to recover a self-managed database such as MySQL: a filesystem snapshot can restore an inconsistent or corrupted database state. Use database-native backups such as `mysqldump` and test their restore procedure. Move backup files off the service with a currently supported transfer method such as SCP with SSH or Magic-Wormhole. Snapshot restores replace the entire disk and permanently discard changes made after the selected snapshot.
+Do not use a disk snapshot to recover a self-managed database such as MySQL: a filesystem snapshot can restore an inconsistent or corrupted database state. Use database-native backups such as `mysqldump` and test their restore procedure. Move backup files off the service with Magic-Wormhole, which every native runtime has: run `wormhole send <file>` in the service's Shell or SSH session, then `wormhole receive <code>` on the receiving machine with the code it prints (reverse the two to bring a file in). bex SSH does not support SCP. A Docker-runtime service has `wormhole` only if its image installs it. Snapshot restores replace the entire disk and permanently discard changes made after the selected snapshot.
 
 ## References
 

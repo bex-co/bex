@@ -86,6 +86,11 @@ var filePatches = map[string][]rule{
 	"render-postgres/SKILL.md": {
 		r(`\n## Useful MCP Commands\n`, "\n"+postgresLogicalReplication+"## Useful MCP Commands\n"),
 	},
+	// bex SSH carries no SCP (ADR035), so Magic-Wormhole, which every
+	// native runtime has as on Render (w6/m549), is the transfer to name.
+	"render-disks/SKILL.md": {
+		r(`a currently supported transfer method such as SCP with SSH or Magic-Wormhole\.`, disksTransfer),
+	},
 	"render-migrate-from-heroku/references/service-mapping.md": {
 		r(`- \*\*Heroku Pipelines\*\* → [^\n]*`, "- **Heroku Pipelines** → separate bex services or projects per stage, promoted manually (bex has no preview environments)"),
 		r(`- \*\*Review Apps\*\* → [^\n]*`, "- **Review Apps** → no bex equivalent (bex has no pull request previews)"),
@@ -101,6 +106,11 @@ const postgresLogicalReplication = "## Logical Replication\n\n" +
 	"- Subscribers connect to the **external** URL over TLS, never the pooled URL (PgBouncer cannot carry replication). Create the subscriber's tables first: logical replication does not copy DDL.\n" +
 	"- A bex Postgres can also be a **subscriber**, copying another database (on Render, bex or anywhere else) and following it until cutover. Ask support the same way, naming the credential that will create subscriptions (use the database's own user: it owns the tables the subscription writes). Then create the tables and run `CREATE SUBSCRIPTION … CONNECTION '…password=…' PUBLICATION …` as that user; sequences are not replicated, so copy them at cutover. On PostgreSQL 15 and older only a superuser can, so support creates the subscription from the publisher's URL and publication.\n" +
 	"- **Through failovers, upgrades and recovery:** on a publisher with high availability running PostgreSQL 17 or later, create each subscription `WITH (failover = true)` (from a 17+ subscriber) so it keeps its place through a failover; on 13–16 a failover loses the slots and subscribers must be re-created. A major-version upgrade is refused (`POSTGRES_UPGRADE_LOGICAL_SLOTS_BEHIND`, naming the slots) until every subscriber has caught up; from 13–16 it is accepted but drops the slots, which the answer's `upgradeNotice` names. A subscriber with high availability has an asynchronous standby, as on Render: an automatic failover can lose the changes it applied in its last seconds, which its publisher does not send again (a failover you request on a healthy primary loses nothing), so re-create a subscription over emptied tables after one when they must match the publisher exactly. A database recovered to a point in time starts with logical replication off.\n\n"
+
+// disksTransfer is how the pack's disk skill moves a file off a service.
+const disksTransfer = "Magic-Wormhole, which every native runtime has: run `wormhole send <file>` in the service's Shell or SSH session, " +
+	"then `wormhole receive <code>` on the receiving machine with the code it prints (reverse the two to bring a file in). " +
+	"bex SSH does not support SCP. A Docker-runtime service has `wormhole` only if its image installs it."
 
 // cliCommands are the CLI's top-level commands a skill names; only these turn
 // `render <command>` into `bex <command>`, so prose ("render the page") stays.
