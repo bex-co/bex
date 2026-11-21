@@ -180,8 +180,8 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
     - [-] `--datadog-site <string>` — deliberate non-goal; named 400
     - [x] `--workspace <id|name>`
-    - [~] `--project <id|name>` — flag parsed; needs an existing project
-    - [x] `--environment <id|name>` — discovered canonical ID and name+project controls passed on dev-2 (w2/m165); legacy API links remain valid
+    - [x] `--project <id|name>` — walked live on production on 2026-11-21 (w32/079, routine `cli-qa`, released `bex` v0.9.0 at Render CLI v2.36.0, pin `7e481dece7ac`), on projects made outside the CLI, which has no project create. It ran in workspace `tea-da2isimlm39c739m4ofg` because `bex-canary`'s one free Postgres slot was taken. On a two-environment project the CLI refuses before any request, names both environments and asks for `--environment`. On a one-environment project a `--plan free` create lands in that environment with `environmentId` and `projectId` set and reaches `available`, and a second free create answers 400 `FREE_INSTANCE_LIMIT`. Scoped `list`, `get`, `update`, `suspend`, `resume` and `delete` resolve in scope and refuse out of scope with exit 1 and a named error, and after a REST move to another project's environment every scoped lookup follows the database. The fixtures were deleted (404).
+    - [x] `--environment <id|name>` — discovered canonical ID and name+project controls passed on dev-2 (w2/m165); legacy API links remain valid. Walked live on production on 2026-11-21 (w32/079, the `--project` walk above): a create on a two-environment project without it is refused before any request and asks for it, scoped lookups resolve by `--environment` as ID or name, and `list --environment production`, a name two projects share, exits 1 and asks for the ID.
   - [x] `postgres list` — resolves through the RC3 cursor envelope
   - [x] `postgres get <id|name>` — resolves by name; every field intact; `-o text` renders Workspace/Region; v2.26.0's detail output also shows the connection-pool mode, which bex returns as the `connectionPool` enum (`pgbouncer`/`none`); after suspend, `status` is `suspended` (w5/061) so text Status stays truthful when the renderer omits the `suspended` field
   - [x] `postgres update <id|name>`
@@ -195,8 +195,8 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--clear-ip-allow-list` — clears rules and disables primary/pooler/replica external routes after convergence (w2/m166); internal access remains available
     - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
     - [-] `--datadog-site <string>` — deliberate non-goal; named 400
-    - [~] `--project <id|name>` — flag parsed; needs an existing project
-    - [~] `--environment <id|name>` — shared canonical-ID resolver covered by w2/m165 source/regression checks; update variant not separately live-tested
+    - [x] `--project <id|name>` — narrows the name lookup only, as the pinned client documents (a database's project is immutable). Walked live on production on 2026-11-21 (w32/079, the create `--project` walk above): `update --name` resolves in scope by `--project`, alone or with `--environment`, exits 1 with a named error out of scope, and follows the database after a REST move to another project's environment.
+    - [x] `--environment <id|name>` — narrows the name lookup only; the shared canonical-ID resolver is covered by w2/m165's source and regression checks. Walked live on production on 2026-11-21 (w32/079, the create `--project` walk above): `update --name` resolves in scope by `--environment` as ID or name, alone or with `--project`, and exits 1 with a named error out of scope.
   - [x] `postgres suspend <id|name>`
   - [x] `postgres resume <id|name>`
   - [x] `postgres delete <id|name>` — unchanged CLI contract; backup purge is terminally observed (w2/m61)
