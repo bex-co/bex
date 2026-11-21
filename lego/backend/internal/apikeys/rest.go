@@ -19,6 +19,7 @@ package apikeys
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -46,8 +47,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, key)
 	})
+	// The caller's own keys; ?allMembers=true is an Admin's view of every
+	// key in the workspace (w9/m539).
 	mux.HandleFunc("GET /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
-		keys, err := s.ListAPIKeys(r.Context(), r.URL.Query().Get("ownerId"))
+		q := r.URL.Query()
+		allMembers := false
+		if raw := q.Get("allMembers"); raw != "" {
+			var err error
+			if allMembers, err = strconv.ParseBool(raw); err != nil {
+				core.WriteErr(w, fmt.Errorf("%w: allMembers must be true or false", core.ErrBadRequest))
+				return
+			}
+		}
+		keys, err := s.ListAPIKeys(r.Context(), q.Get("ownerId"), allMembers)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

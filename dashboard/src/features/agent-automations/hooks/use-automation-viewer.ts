@@ -1,8 +1,6 @@
 import { useMemo } from "react";
-import { useQuery } from "@apollo/client/react";
-import { WorkspaceMembersDocument } from "@/graphql/definitions";
+import { useSelfSubjects } from "@/common/hooks/use-self-subjects";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   automationActions,
   type AutomationActions,
@@ -27,19 +25,7 @@ export interface AutomationViewer {
  */
 export function useAutomationViewer(): AutomationViewer {
   const { canCreate, canManage, loaded } = useCapabilities();
-  const { currentWorkspaceId } = useWorkspace();
-  const { data, loading } = useQuery(WorkspaceMembersDocument, {
-    variables: { workspaceId: currentWorkspaceId ?? "" },
-    skip: !currentWorkspaceId,
-    fetchPolicy: "cache-first",
-    errorPolicy: "all",
-  });
-  const identities = useMemo(() => {
-    const self = (data?.workspaceMembers ?? []).find((m) => m?.isSelf);
-    return new Set(
-      [self?.subject, self?.userId].filter((v): v is string => !!v),
-    );
-  }, [data]);
+  const { subjects: identities, resolving } = useSelfSubjects();
 
   return useMemo(() => {
     const isCreator = (createdBy: string) =>
@@ -48,7 +34,7 @@ export function useAutomationViewer(): AutomationViewer {
       canCreate,
       canManage,
       identities,
-      resolving: !loaded || (loading && data == null),
+      resolving: !loaded || resolving,
       isCreator,
       actionsFor: (createdBy) =>
         automationActions({
@@ -57,5 +43,5 @@ export function useAutomationViewer(): AutomationViewer {
           isCreator: isCreator(createdBy),
         }),
     };
-  }, [canCreate, canManage, identities, loaded, loading, data]);
+  }, [canCreate, canManage, identities, loaded, resolving]);
 }

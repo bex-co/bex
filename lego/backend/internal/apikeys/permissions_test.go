@@ -133,7 +133,7 @@ func TestMintRecordsTheChosenGrantAndListsIt(t *testing.T) {
 	if !slices.Equal(binder.grants[key.ID].Entries(), want) {
 		t.Fatalf("recorded grant = %v", binder.grants[key.ID].Entries())
 	}
-	listed, err := svc.ListAPIKeys(ctx, "")
+	listed, err := svc.ListAPIKeys(ctx, "", false)
 	if err != nil || len(listed) != 1 || !slices.Equal(listed[0].Permissions.Entries(), want) {
 		t.Fatalf("listed = %+v (%v)", listed, err)
 	}
@@ -148,7 +148,7 @@ func TestMintWithoutPermissionsIsAll(t *testing.T) {
 	if !key.Permissions.All || binder.setCalls != 0 {
 		t.Fatalf("an unnamed grant = %+v with %d writes, want All and none", key.Permissions, binder.setCalls)
 	}
-	listed, _ := svc.ListAPIKeys(asPerson("dev"), "")
+	listed, _ := svc.ListAPIKeys(asPerson("dev"), "", false)
 	if len(listed) != 1 || !listed[0].Permissions.All {
 		t.Fatalf("listed = %+v, want All", listed)
 	}
@@ -250,23 +250,27 @@ func TestEditNarrowsAndWidensWithinTheCreatorsRole(t *testing.T) {
 		t.Fatalf("back to All: %v", err)
 	}
 
-	// An Admin may change someone else's key, but only within that key's
-	// creator's role: the key acts under the creator, whoever edits it.
-	if _, err := svc.UpdateAPIKeyPermissions(asPerson("boss"), "", key.ID, *grantEntries("workspaces:read_write")); codeOf(err) != core.KeyPermissionAboveRoleCode {
-		t.Fatalf("Admin widening a Developer's key past the Developer = %v, want refused", err)
+	// Only the creator edits it, as Render's gear is on their own Account
+	// Settings (w9/m539): an Admin is refused with the editor code, another
+	// Developer with the 403 any other member's key answers.
+	for _, grant := range []*core.KeyGrant{grantEntries("services:read"), grantEntries("workspaces:read_write")} {
+		if _, err := svc.UpdateAPIKeyPermissions(asPerson("boss"), "", key.ID, *grant); codeOf(err) != KeyEditorForbiddenCode {
+			t.Fatalf("Admin edits a Developer's key to %v = %v, want %s", grant.Entries(), err, KeyEditorForbiddenCode)
+		}
 	}
-	if _, err := svc.UpdateAPIKeyPermissions(asPerson("boss"), "", key.ID, *grantEntries("services:read")); err != nil {
-		t.Fatalf("Admin narrowing a Developer's key: %v", err)
+	if _, err := svc.UpdateAPIKeyPermissions(asPerson("dev2"), "", key.ID, *grantEntries()); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("another Developer's edit = %v, want 403", err)
 	}
-	// Another Developer may not.
-	if _, err := svc.UpdateAPIKeyPermissions(asPerson("dev2"), "", key.ID, *grantEntries()); codeOf(err) != KeyEditorForbiddenCode {
-		t.Fatalf("another Developer's edit = %v, want %s", err, KeyEditorForbiddenCode)
+	if !binder.grants[key.ID].All {
+		t.Fatalf("a refused edit changed the grant to %v", binder.grants[key.ID].Entries())
 	}
 	if _, err := svc.UpdateAPIKeyPermissions(asPerson("dev"), "", key.ID, core.KeyGrant{Grants: []core.KeyGrantEntry{{Permission: "nope", Level: core.KeyLevelRead}}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("unknown permission = %v, want 400", err)
 	}
-	if _, err := svc.UpdateAPIKeyPermissions(asPerson("dev"), "", "key-nope", *grantEntries()); !errors.Is(err, core.ErrNotFound) {
-		t.Fatalf("unknown key = %v, want 404", err)
+	// An unknown key is no one's own: a Developer is refused it as they are
+	// any key but their own, so the answer does not tell them it is missing.
+	if _, err := svc.UpdateAPIKeyPermissions(asPerson("dev"), "", "key-nope", *grantEntries()); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("unknown key = %v, want 403", err)
 	}
 }
 

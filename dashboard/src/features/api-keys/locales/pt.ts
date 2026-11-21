@@ -7,13 +7,27 @@ const ptApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciais de máquina para scripts e agentes. Cada chave só pode usar as permissões escolhidas para ela, nunca mais do que o papel de membro atual de quem a criou permite, e apenas neste workspace. Cada membro vê e gerencia as chaves que criou; Developers e Admins veem todas as chaves do workspace.",
+      "Credenciais de máquina para scripts e agentes. Cada chave só pode usar as permissões escolhidas para ela, nunca mais do que o papel de membro atual de quem a criou permite, e apenas neste workspace. Você vê e gerencia as chaves que criou; um Admin também pode ver e revogar as chaves de todos os membros.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "Configure a CLI.",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "Quais chaves de API mostrar",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "Suas chaves",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "Chaves de todos os membros",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "Nome",
@@ -196,6 +210,12 @@ const ptApiKeys: Record<string, TranslationEntry> = {
     message:
       "Tudo que se autentica com esta chave deixará de funcionar imediatamente. Esta ação não pode ser desfeita.",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "{creator} criou esta chave. Tudo que se autentica com ela deixará de funcionar imediatamente. Esta ação não pode ser desfeita.",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "Cancelar",

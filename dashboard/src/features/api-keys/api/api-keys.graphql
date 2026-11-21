@@ -1,6 +1,6 @@
 # bex-api's API-key surface (backend/internal/apikeys/graphql.go,
-# docs/ADR012-auth.md §8e). A key is a workspace-shared machine credential, not
-# per-user, and it is one string: `key` (`bex_<id>_<secret>`) is sent as
+# docs/ADR012-auth.md §8e). A key is a machine credential bound to one
+# workspace and minted by one member, and it is one string: `key` (`bex_<id>_<secret>`) is sent as
 # `Authorization: Bearer <key>`, as on Render (w7/m426). The same credential is
 # also an OAuth2 client: `id` and `secret` are its client_id and client_secret
 # for the optional client_credentials exchange.
@@ -17,8 +17,12 @@
 # permissions (w9/m496): what the key may do, as Render's scoped keys carry.
 # `all` is every permission its creator's role allows (and follows the role);
 # otherwise exactly `grants`, each a catalog permission at one of its levels.
-query ApiKeys($ownerId: String) {
-  apiKeys(ownerId: $ownerId) {
+#
+# allMembers (w9/m539): the list is the caller's own keys, as on Render's
+# Account Settings; `true` is a workspace Admin's view of every member's keys
+# (403 for any other role).
+query ApiKeys($ownerId: String, $allMembers: Boolean) {
+  apiKeys(ownerId: $ownerId, allMembers: $allMembers) {
     id
     name
     createdAt
@@ -50,8 +54,8 @@ mutation CreateApiKey(
 }
 
 # The gear on a key's row (Render: "Change your key's permissions, then click
-# Save changes"). Only the key's creator or a workspace Admin may change it
-# (403 api_key_permissions_editor_forbidden), and never past the creator's
+# Save changes"). Only the key's creator may change it (anyone else gets 403,
+# an Admin 403 api_key_permissions_editor_forbidden), and never past their
 # role (403 api_key_permission_above_role).
 mutation UpdateApiKeyPermissions(
   $id: String!

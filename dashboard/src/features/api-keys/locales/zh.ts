@@ -7,13 +7,27 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "供脚本和智能体使用的机器凭证。每个密钥只能使用为它选择的权限，绝不超出其创建者当前成员角色允许的范围，且仅在此工作区内有效。每位成员都能查看和管理自己创建的密钥；Developer 和 Admin 能看到工作区中的所有密钥。",
+      "供脚本和智能体使用的机器凭证。每个密钥只能使用为它选择的权限，绝不超出其创建者当前成员角色允许的范围，且仅在此工作区内有效。你可以查看和管理自己创建的密钥；Admin 还可以查看和撤销所有成员的密钥。",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "设置 CLI。",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "要显示的 API 密钥",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "你的密钥",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "所有成员的密钥",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "名称",
@@ -194,6 +208,12 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.revokeConfirmBody": {
     message: "任何使用此密钥进行身份验证的操作都会立即失效，且无法撤回此操作。",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "此密钥由 {creator} 创建。任何使用它进行身份验证的操作都会立即失效，且无法撤回此操作。",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "取消",

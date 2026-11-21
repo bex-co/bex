@@ -140,16 +140,19 @@ var apiKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // GraphQLQuery returns the apiKeys list query. ownerId (w6/m18) names the
-// workspace to list; omitted means the caller's default workspace.
+// workspace to list; omitted means the caller's default workspace. The list
+// is the caller's own keys; allMembers: true is an Admin's view of every key
+// in the workspace (w9/m539).
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"apiKeys": &graphql.Field{
 			Type: graphql.NewList(apiKeyGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId": gqlutil.Arg(graphql.String),
+				"ownerId":    gqlutil.Arg(graphql.String),
+				"allMembers": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListAPIKeys(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				return s.ListAPIKeys(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Bool(p.Args, "allMembers"))
 			},
 		},
 		// apiKeyPermissionCatalog is the permission picker's catalog, each

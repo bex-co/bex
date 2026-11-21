@@ -4998,6 +4998,7 @@ export type QueryApiKeyPermissionCatalogArgs = {
 
 
 export type QueryApiKeysArgs = {
+  allMembers?: InputMaybe<Scalars['Boolean']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

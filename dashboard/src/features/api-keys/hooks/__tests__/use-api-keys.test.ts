@@ -139,4 +139,25 @@ describe("useApiKeys", () => {
     // list page doesn't flash an empty state before the selection resolves.
     expect(result.current.loading).toBe(true);
   });
+
+  it("asks for every member's keys only when allMembers is set (w9/m539)", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    renderHook(() => useApiKeys());
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ variables: { ownerId: "tea-1" } }),
+    );
+    renderHook(() => useApiKeys(true));
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: { ownerId: "tea-1", allMembers: true },
+      }),
+    );
+  });
 });

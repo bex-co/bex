@@ -343,11 +343,10 @@ var capabilityProjectionVerbs = map[string]string{
 	"*deploys.Service.ActionCapabilities":  core.RelCanView,
 	"*postgres.Service.ActionCapabilities": core.RelCanView,
 	"*keyvalue.Service.ActionCapabilities": core.RelCanView,
-	// Every member lists and mints their own API keys (w9/m514): the list
-	// probes can_manage_keys to choose the workspace-wide view over the
-	// caller's own keys, and the permission catalog probes each level's
-	// relations to mark what the caller may grant.
-	"*apikeys.Service.ListAPIKeys":       core.RelCanManageSSHKeys,
+	// Every member mints their own API keys (w9/m514): the permission
+	// catalog probes each level's relations to mark what the caller may
+	// grant. ListAPIKeys probes nothing since w9/m539: its own list gates on
+	// can_manage_ssh_keys, and allMembers on can_manage.
 	"*apikeys.Service.PermissionCatalog": core.RelCanManageSSHKeys,
 }
 

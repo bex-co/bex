@@ -2508,7 +2508,7 @@ type Query {
   agentSkillVersions(cursor: String, id: String!, limit: Int, ownerId: String): AgentSkillVersionList!
   agentSkills(ownerId: String): AgentSkillList!
   apiKeyPermissionCatalog(ownerId: String): [ApiKeyPermissionArea!]!
-  apiKeys(ownerId: String): [ApiKey]
+  apiKeys(allMembers: Boolean, ownerId: String): [ApiKey]
   auditLogs(cursor: String, direction: String, endTime: String, limit: Int, ownerId: String!, startTime: String): [AuditLog]
   autoscalingConfig(id: String!): Autoscaling
   blueprint(id: String!, ownerId: String): Blueprint

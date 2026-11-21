@@ -163,6 +163,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **134** — [A private Key Value has no external connection string, where Render answers one for every store](134.md) ← from w9/m521 t007 (Render parity) 2026-11-19
 - [ ] **135** — [Every Key Value proxy roll refuses new internal connections for about a second](135.md) ← from w9/m521 t001 (dev-9 check) 2026-11-19
 - [ ] **136** — [A canceled native build's Managed OIDC tokens stay until the next build ends](136.md) ← from w9/124 (loopx result) 2026-11-19
+- [ ] **137** — [Sign off, drop or widen the Admin's view of every member's API keys](137.md) ← from w9/m539 t007 (Render parity) 2026-11-20 — needs the user's decision (`/unblock w9`)
 - [ ] **m539** — [Every member's API keys list shows their own keys, as on Render; an Admin opts into the workspace's to revoke a demoted member's or a creator-less key](m539/README.md) (10 tasks) ← promoted from w9/131 2026-11-20
 
 ## Approved queue (priority order, 2026-09-08)

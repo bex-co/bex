@@ -46,6 +46,7 @@ import (
 // refused the rest with the same answer (I9); the role caps a chosen grant;
 // the key follows its creator up, down and out; and a member below Developer
 // lists, edits and revokes the keys they minted and no other (I10).
+// TestEveryRoleListsItsOwnAPIKeysE2E carries I10 to every role (w9/m539).
 //
 //	BEX_TEST_DB_URI=postgres://…/postgres?sslmode=disable \
 //	BEX_TEST_OPENFGA_URL=http://127.0.0.1:58085 \
@@ -151,6 +152,20 @@ func TestBelowDeveloperAPIKeysE2E(t *testing.T) {
 		var out []apikeys.APIKey
 		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &out) != nil {
 			t.Fatalf("%s lists keys: %d %s", id.Subject, rec.Code, rec.Body)
+		}
+		ids := []string{}
+		for _, k := range out {
+			ids = append(ids, k.ID)
+		}
+		slices.Sort(ids)
+		return ids
+	}
+	listedAll := func(id core.Identity) []string {
+		t.Helper()
+		rec := rest(id, http.MethodGet, "/v1/api-keys?allMembers=true&ownerId="+ws.ID, "")
+		var out []apikeys.APIKey
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &out) != nil {
+			t.Fatalf("%s lists every key: %d %s", id.Subject, rec.Code, rec.Body)
 		}
 		ids := []string{}
 		for _, k := range out {
@@ -286,11 +301,16 @@ func TestBelowDeveloperAPIKeysE2E(t *testing.T) {
 		strings.Contains(mcpText(res), keyOfRole["contributor"]) || !strings.Contains(mcpText(res), readOnly) {
 		t.Errorf("Viewer's MCP list_api_keys = %s", mcpText(res))
 	}
+	// Since w9/m539 a Developer's and an Admin's list is their own too, and
+	// only the Admin asks for every key (TestEveryRoleListsItsOwnAPIKeysE2E).
 	every := sorted(keyOfRole["viewer"], readOnly, keyOfRole["contributor"], keyOfRole["billing"])
 	for _, who := range []string{dev, admin} {
-		if got := listed(session(who)); !slices.Equal(got, every) {
-			t.Errorf("%s lists %v, want every key %v", who, got, every)
+		if got := listed(session(who)); len(got) != 0 {
+			t.Errorf("%s, who minted no key, lists %v", who, got)
 		}
+	}
+	if got := listedAll(session(admin)); !slices.Equal(got, every) {
+		t.Errorf("the Admin's allMembers list = %v, want every key %v", got, every)
 	}
 
 	// The Viewer edits their own key's grant and is refused another

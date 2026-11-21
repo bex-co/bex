@@ -54,6 +54,10 @@ type listAPIKeyPermissionsResult struct {
 	Areas []PermissionArea `json:"areas"`
 }
 
+type listAPIKeysArgs struct {
+	AllMembers bool `json:"allMembers,omitempty" jsonschema:"list every member's keys in the workspace, not only yours; a workspace Admin only"`
+}
+
 type listAPIKeysResult struct {
 	APIKeys []APIKey `json:"apiKeys"`
 }
@@ -83,7 +87,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_api_key_permissions",
-		Description: "Change an API key's permissions, replacing its grant, as Render's gear icon does. Only the key's creator or a workspace Admin may, within the creator's role; the change applies on the key's next request. bex extension over Render's MCP.",
+		Description: "Change an API key's permissions, replacing its grant, as Render's gear icon does. Only the key's creator may, within their role; the change applies on the key's next request. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateAPIKeyPermissionsArgs) (*mcp.CallToolResult, APIKey, error) {
 		key, err := s.UpdateAPIKeyPermissions(ctx, core.NamedWorkspace(ctx), in.KeyID, in.Permissions.grant())
 		return nil, key, err
@@ -99,15 +103,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_api_keys",
-		Description: "List the platform API's machine credentials (secrets never included): every key in the workspace for a Developer or Admin, the keys you created for any other member. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listAPIKeysResult, error) {
-		keys, err := s.ListAPIKeys(ctx, core.NamedWorkspace(ctx))
+		Description: "List the API keys you created in the workspace (secrets never included). A workspace Admin may set allMembers to list every member's keys. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listAPIKeysArgs) (*mcp.CallToolResult, listAPIKeysResult, error) {
+		keys, err := s.ListAPIKeys(ctx, core.NamedWorkspace(ctx), in.AllMembers)
 		return nil, listAPIKeysResult{APIKeys: keys}, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "revoke_api_key",
-		Description: "Revoke a machine credential by keyId; its tokens stop working. Any member revokes the keys they created; a Developer or Admin revokes any key in the workspace. bex extension over Render's MCP.",
+		Description: "Revoke an API key by keyId; its tokens stop working. Any member revokes the keys they created; a workspace Admin revokes any key in the workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeAPIKeyArgs) (*mcp.CallToolResult, revokeAPIKeyResult, error) {
 		err := s.RevokeAPIKey(ctx, core.NamedWorkspace(ctx), in.KeyID)
 		return nil, revokeAPIKeyResult{Revoked: err == nil}, err

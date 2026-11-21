@@ -3,6 +3,7 @@
 - **Status**: Accepted (2026-11-19, w9/m514)
 - **Trigger**: w9/m514 widens who may hold a credential. Every member role now mints an API key in its workspace, as on Render, and a member below Developer lists, edits and revokes the keys they minted ([ADR024 § Every member mints and manages their own API keys](ADR024-members.md#every-member-mints-and-manages-their-own-api-keys-w9m514)).
 - **Lineage**: a focused pass after [ADR117](ADR117-security-review-api-key-roles.md) and [ADR118](ADR118-security-review-scoped-api-keys.md), whose invariants I1–I8 it keeps, reviewing the two this change adds: I9 (minting widens who holds a key, never what a key may do) and I10 (a member below Developer reaches only the keys they minted).
+- **Amended**: 2026-11-20, w9/m539 ([§ Amendment](#amendment-2026-11-20-w9m539-every-role-lists-its-own-keys)): I10 holds for every role, and I14 leaves another member's key and a creator-less key to an Admin alone.
 
 ## Scope
 
@@ -35,5 +36,22 @@ Every new guard was reverted once and a test above failed: the list filter, the 
 
 ## Residual risk
 
-- **Shared workspace quotas.** The active-key quota (20 keys) and the mint rate (a burst of 5, then 20 a minute) are per workspace, so a member below Developer can now spend them, which only a Developer or an Admin could before. The cost is a refused mint (`409 API_KEY_ACTIVE_LIMIT`, `API_KEY_CREATION_RATE_LIMIT`), never access. Owner: the workspace Admin, who sees and revokes every key and whose removal of a member revokes theirs; each mint is in the audit log. Revisit with a per-member share if a workspace reports it.
+- **Shared workspace quotas.** The active-key quota (20 keys) and the mint rate (a burst of 5, then 20 a minute) are per workspace, so a member below Developer can now spend them, which only a Developer or an Admin could before. The cost is a refused mint (`409 API_KEY_ACTIVE_LIMIT`, `API_KEY_CREATION_RATE_LIMIT`), never access. Owner: the workspace Admin, who sees and revokes every key (since w9/m539 through the opt-in all-members view, below) and whose removal of a member revokes theirs; each mint is in the audit log. Revisit with a per-member share if a workspace reports it.
 - **ADR117's and ADR118's residuals stand** for these keys: a read on another replica may use a 30 s cached positive. An open gateway stream no longer outlives a grant narrowing: it ends within one revalidation tick ([w9/125](../.pm/w9/done/125.md), ADR118 verdict 20); a below-Developer key can open no such stream (verdict 2).
+
+## Amendment (2026-11-20, w9/m539): every role lists its own keys
+
+w9/m539 narrows the reach this review accepted for a Developer and an Admin ([ADR024 § Every member mints and manages their own API keys](ADR024-members.md#every-member-mints-and-manages-their-own-api-keys-w9m514)). Every caller's default list is the keys they minted; only an Admin asks for every key in the workspace (`allMembers`) and revokes another member's key or a creator-less key (I14); editing a grant is its creator's alone. Reviewed as an attacker holding a Developer membership and a Developer's key, and as an Admin.
+
+| # | Attack | Verdict | Evidence |
+| --- | --- | --- | --- |
+| 14 | A Developer lists, edits or revokes another member's key, or a creator-less one | Blocked | `keyRelation` decides any key the caller did not mint with `can_manage` (Admin), so the answer is a 403 audited once against `can_manage`; the default list filters to the caller's own keys for every role (`TestEveryMemberListsOnlyTheirOwnKeys`, `TestOnlyTheCreatorEditsAndOnlyAnAdminRevokesAnothersKey`, the property test `TestOnlyAnAdminsAllMembersListHoldsOthersKeysOverRandomHistories`, and on REST, GraphQL and MCP in the e2e `TestEveryRoleListsItsOwnAPIKeysE2E`) |
+| 15 | A member below Admin asks for the workspace-wide list | Blocked | `allMembers` replaces the list's own-keys relation with one `Authorize` against `can_manage`: a Developer, Contributor, Viewer or Billing member gets 403, the denial audited once. A delegated third-party token needs a write scope for `can_manage`, so a `bex.read` token is refused too |
+| 16 | A Developer's key revokes another key, or lists every key | Blocked | a key is capped by its creator (I1), who lacks `can_manage`; a key owns no key, so its default list is empty (`TestAKeyRevokesAnotherKeyOnlyAsAnAdmin`; the e2e refuses the Developer's key `allMembers` on all three surfaces and its revoke of the Viewer's key). An Admin's All key reaches what its Admin does |
+| 17 | An Admin changes another member's key's grant | Blocked | `UpdateAPIKeyPermissions` refuses anyone but the creator with `403 api_key_permissions_editor_forbidden`; the creator-less key's "records no creator" 400 still comes first for a scoped grant. The Admin revokes instead |
+| 18 | A Developer tells an unknown key id from another member's by the answer | Not a gap | both are decided with `can_manage`, so a Developer gets 403 for either; only an Admin, who sees every key, gets the unbound key's 404 |
+| 19 | The narrowing breaks the CLI's logout with a key | Not a gap | a key revoking itself keeps the gate it had, `can_manage_keys`, so a Developer's key still logs out and a Viewer's still cannot (`TestAKeyRevokesAnotherKeyOnlyAsAnAdmin`, `TestAKeyOwnsNoKey`) |
+
+Each new guard was reverted once and a test above failed: the list filter (every role's list), `keyRelation`'s `can_manage` (the Developer's revoke of another member's key), the creator-only edit (the Admin's edit), and the self-revoke case (the Developer's key's logout).
+
+**Residual risk.** The Admin's all-members view is a bex addition Render does not have, kept so a demoted member's keys and creator-less keys stay revocable ([ADR018](ADR018-render-parity.md) records it as pending the user's sign-off). It exposes nothing an Admin could not reach before (key names, ids, creators and grants, never a secret), and every exit from a workspace already revokes its member's keys (w2/m163).

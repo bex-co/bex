@@ -297,8 +297,9 @@ func (s *Service) activeKeyQuota() int {
 // own SSH keys, because on Render each person creates, edits and revokes
 // their keys on their own Account Settings. Minting, the permission catalog
 // and listing, editing or revoking the keys one minted gate on it; another
-// member's key stays core.RelCanManageKeys (Developer or Admin). What a key
-// may do is unchanged: its creator's current role, and its grant (I9).
+// member's key, and the workspace-wide list, are an Admin's alone
+// (core.RelCanManage, w9/m539, I14). What a key may do is unchanged: its
+// creator's current role, and its grant (I9).
 const relOwnKeys = core.RelCanManageSSHKeys
 
 // CreateAPIKey mints a new machine credential. The returned Secret, and the Key
@@ -536,16 +537,24 @@ func (s *Service) TouchAPIKey(id string) {
 }
 
 // ListAPIKeys returns ownerID's machine credentials (secrets omitted); ""
-// means the caller's default workspace (w6/m18). A caller who may manage the
-// workspace's keys (Developer or Admin) sees every one; any other member sees
-// only the keys they minted (w9/m514, I10). With the store off (Binding nil),
-// keys mint unbound and the list is not scoped to a workspace — the legacy
-// single-tenant mode. With the store on, a caller who resolves to no tenant
-// sees an empty list rather than every workspace's keys (the same pattern
-// apps.List uses).
-func (s *Service) ListAPIKeys(ctx context.Context, ownerID string) ([]APIKey, error) {
+// means the caller's default workspace (w6/m18). By default every caller,
+// whatever their role, sees only the keys they minted there, as each person
+// does on Render's Account Settings (w9/m539, I10); a machine caller owns
+// nothing, so a key's own list is empty. allMembers asks for every key bound
+// to the workspace, which only an Admin may (I14): its one Authorize is
+// can_manage instead of the own-keys relation, so a demoted member's keys and
+// keys with no recorded creator stay reachable for revoke. With the store off
+// (Binding nil), keys mint unbound and the list is not scoped to a workspace
+// — the legacy single-tenant mode. With the store on, a caller who resolves
+// to no tenant sees an empty list rather than every workspace's keys (the
+// same pattern apps.List uses).
+func (s *Service) ListAPIKeys(ctx context.Context, ownerID string, allMembers bool) ([]APIKey, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, relOwnKeys); err != nil {
+	relation := relOwnKeys
+	if allMembers {
+		relation = core.RelCanManage
+	}
+	if err := s.Authorize(ctx, relation); err != nil {
 		return nil, err
 	}
 	if s.APIKeys == nil {
@@ -555,9 +564,7 @@ func (s *Service) ListAPIKeys(ctx context.Context, ownerID string) ([]APIKey, er
 	if err != nil {
 		return nil, err
 	}
-	// The view, not a gate: Can is audit-silent and fails closed, so a check
-	// that cannot answer shows only the caller's own keys.
-	if !s.Can(ctx, core.RelCanManageKeys) {
+	if !allMembers {
 		keys = slices.DeleteFunc(keys, func(k APIKey) bool { return !mintedByCaller(ctx, k) })
 	}
 	tenantID, scoped := s.boundTenant(ctx)
@@ -611,8 +618,8 @@ func (s *Service) boundTenant(ctx context.Context) (tenantID string, scoped bool
 // revoke another workspace's (the same cross-workspace gate w6/m14 gave
 // Apps/Databases/KeyValues, applied here since a key has no AuthorizeApp-style
 // CRD to fetch through). With the store on it also drops the tenant binding +
-// FGA tuple. Its minter revokes it whatever their role; anyone else needs
-// can_manage_keys (keyRelation, w9/m514).
+// FGA tuple. Its minter revokes it whatever their role; anyone else's key, or
+// one with no recorded creator, needs a workspace Admin (keyRelation, w9/m539).
 //
 // SECURITY (codex round-16 #13): unbind BEFORE Hydra delete, and never discard
 // UnbindKey errors. Binding + FGA are what still authorize an already-minted
@@ -652,27 +659,38 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 }
 
 // keyRelation reads key id and names the relation a verb on it is decided
-// with (w9/m514, I10): relOwnKeys for the person who minted it, which every
-// member role holds, and core.RelCanManageKeys (Developer or Admin) for
-// anyone else, the gate every key verb had before. It only picks the
+// with: relOwnKeys for the person who minted it, which every member role
+// holds (w9/m514, I10), and core.RelCanManage (Admin) for anyone else's key,
+// a key with no recorded creator and an unknown key (w9/m539, I14), so a
+// Developer reaches no key but their own, as on Render. A key acting on
+// itself (the CLI's logout with a key, cliauth) is decided as before, with
+// core.RelCanManageKeys: a machine caller owns no key, and this change
+// narrows only what a member reaches of someone else's. It only picks the
 // relation: the verb's one Authorize decides it and writes the audit row, and
-// requireKeyIn still holds the key to the workspace the request acts in. An
-// unknown key is no one's own, so it is decided as before and answers as
-// before. key is the registry's copy (secret omitted), zero when unknown.
+// requireKeyIn still holds the key to the workspace the request acts in. key
+// is the registry's copy (secret omitted), zero when unknown.
 func (s *Service) keyRelation(ctx context.Context, id string) (relation string, key APIKey, err error) {
 	if s.APIKeys == nil {
-		return core.RelCanManageKeys, APIKey{}, nil
+		return core.RelCanManage, APIKey{}, nil
 	}
 	key, err = s.boundKey(ctx, id)
 	switch {
 	case errors.Is(err, core.ErrNotFound):
-		return core.RelCanManageKeys, APIKey{}, nil
+		return core.RelCanManage, APIKey{}, nil
 	case err != nil:
 		return "", APIKey{}, err
 	case mintedByCaller(ctx, key):
 		return relOwnKeys, key, nil
+	case isCallerKey(ctx, id):
+		return core.RelCanManageKeys, key, nil
 	}
-	return core.RelCanManageKeys, key, nil
+	return core.RelCanManage, key, nil
+}
+
+// isCallerKey reports whether the caller is API key id itself.
+func isCallerKey(ctx context.Context, id string) bool {
+	caller, ok := core.IdentityFrom(ctx)
+	return ok && caller.IsAPIKey() && caller.KeyClientID() == id
 }
 
 // mintedByCaller reports whether the caller is the person who minted key. A
@@ -709,11 +727,13 @@ func (s *Service) requireKeyIn(ctx context.Context, tenantID, id string) error {
 // "Change your key's permissions, then click Save changes"
 // (render.com/docs/api-keys). It is a human verb, like minting (I8: a key
 // never widens its own grant or another's), scoped as RevokeAPIKey is to the
-// key's own workspace, and open to the key's creator, whatever their role
-// (w9/m514), or a workspace Admin.
-// The grant is validated against the key's CREATOR's current role, uncached,
-// since the key acts under that role whoever edits it. The dispatch gate reads
-// the grant uncached, so the change applies on the key's next request.
+// key's own workspace, and open only to the key's creator, whatever their
+// role (w9/m514), as Render's gear is on its creator's own Account Settings
+// (w9/m539): another member's key is refused 403 by keyRelation's Authorize
+// below an Admin and with KeyEditorForbiddenCode for an Admin, who revokes it
+// instead. The grant is validated against the creator's current role,
+// uncached. The dispatch gate reads the grant uncached, so the change applies
+// on the key's next request.
 func (s *Service) UpdateAPIKeyPermissions(ctx context.Context, ownerID, id string, permissions core.KeyGrant) (APIKey, error) {
 	if err := s.AuthorizeMintClass(ctx); err != nil {
 		return APIKey{}, err
@@ -750,20 +770,12 @@ func (s *Service) UpdateAPIKeyPermissions(ctx context.Context, ownerID, id strin
 	if key.CreatedBy == "" && !grant.All {
 		return APIKey{}, fmt.Errorf("%w: permissions: this key records no creator, so its permissions cannot be chosen; create a new key", core.ErrBadRequest)
 	}
-	if caller := core.SubjectFrom(ctx); caller != key.CreatedBy {
-		admin, err := s.HoldsFresh(ctx, core.RelCanManage, core.WorkspaceObject(tenantID))
-		if err != nil {
-			return APIKey{}, err
-		}
-		if !admin {
-			return APIKey{}, core.NewForbiddenError(KeyEditorForbiddenCode,
-				"only the key's creator or a workspace Admin may change its permissions", nil)
-		}
+	if !mintedByCaller(ctx, key) {
+		return APIKey{}, core.NewForbiddenError(KeyEditorForbiddenCode,
+			"only the key's creator may change its permissions; a workspace Admin may revoke it", nil)
 	}
-	if key.CreatedBy != "" {
-		if err := s.RequireGrantableKeyGrant(ctx, key.CreatedBy, tenantID, grant); err != nil {
-			return APIKey{}, err
-		}
+	if err := s.RequireGrantableKeyGrant(ctx, key.CreatedBy, tenantID, grant); err != nil {
+		return APIKey{}, err
 	}
 	if err := grants.SetKeyGrant(ctx, id, grant); err != nil {
 		return APIKey{}, fmt.Errorf("record api key permissions: %w", err)
@@ -772,8 +784,8 @@ func (s *Service) UpdateAPIKeyPermissions(ctx context.Context, ownerID, id strin
 	return key, nil
 }
 
-// KeyEditorForbiddenCode refuses a grant edit by someone who is neither the
-// key's creator nor a workspace Admin.
+// KeyEditorForbiddenCode refuses a grant edit by anyone but the key's
+// creator, a workspace Admin included (w9/m539).
 const KeyEditorForbiddenCode = "api_key_permissions_editor_forbidden"
 
 // keyGetter reads one key from the registry; hydraAPIKeys implements it with

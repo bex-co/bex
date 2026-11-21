@@ -149,10 +149,11 @@ func TestCreateAnswersTheBearerKeyOnEverySurface(t *testing.T) {
 		}
 	}
 
+	// No caller minted them, so they are in the workspace-wide list only.
 	reads := map[string]string{
-		"REST":    serveREST(svc, "GET", "/v1/api-keys", "").Body.String(),
-		"GraphQL": runGraphQL(`{ apiKeys { id name secret key createdAt } }`, "apiKeys"),
-		"MCP":     callTool("list_api_keys", map[string]any{}),
+		"REST":    serveREST(svc, "GET", "/v1/api-keys?allMembers=true", "").Body.String(),
+		"GraphQL": runGraphQL(`{ apiKeys(allMembers: true) { id name secret key createdAt } }`, "apiKeys"),
+		"MCP":     callTool("list_api_keys", map[string]any{"allMembers": true}),
 	}
 	for surface, body := range reads {
 		if !strings.Contains(body, "key-1") || !strings.Contains(body, "key-3") {

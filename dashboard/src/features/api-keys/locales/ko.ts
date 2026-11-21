@@ -7,13 +7,27 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 선택된 권한만 사용할 수 있으며, 만든 사람의 현재 멤버 역할이 허용하는 범위를 넘지 않고, 이 워크스페이스에서만 동작합니다. 모든 멤버는 자신이 만든 키를 보고 관리할 수 있으며, Developer와 Admin은 워크스페이스의 모든 키를 볼 수 있습니다.",
+      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 선택된 권한만 사용할 수 있으며, 만든 사람의 현재 멤버 역할이 허용하는 범위를 넘지 않고, 이 워크스페이스에서만 동작합니다. 자신이 만든 키를 보고 관리할 수 있으며, Admin은 모든 멤버의 키를 보고 취소할 수도 있습니다.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "CLI 설정하기.",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "표시할 API 키",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "내 키",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "모든 멤버의 키",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "이름",
@@ -195,6 +209,12 @@ const koApiKeys: Record<string, TranslationEntry> = {
     message:
       "이 키로 인증하는 모든 항목이 즉시 작동을 멈춥니다. 이 작업은 되돌릴 수 없습니다.",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "{creator} 님이 만든 키입니다. 이 키로 인증하는 모든 항목이 즉시 작동을 멈춥니다. 이 작업은 되돌릴 수 없습니다.",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "취소",

@@ -7,13 +7,27 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "スクリプトやエージェント向けのマシン認証情報です。各キーは選択された権限だけを使え、作成したメンバーの現在のロールで許可される範囲を超えることはなく、このワークスペースでのみ動作します。各メンバーは自分が作成したキーを確認・管理でき、Developer と Admin はワークスペースのすべてのキーを確認できます。",
+      "スクリプトやエージェント向けのマシン認証情報です。各キーは選択された権限だけを使え、作成したメンバーの現在のロールで許可される範囲を超えることはなく、このワークスペースでのみ動作します。自分が作成したキーを確認・管理でき、Admin はすべてのメンバーのキーを確認して失効させることもできます。",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "CLI をセットアップする。",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "表示する API キー",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "自分のキー",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "全メンバーのキー",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "名前",
@@ -195,6 +209,12 @@ const jaApiKeys: Record<string, TranslationEntry> = {
     message:
       "このキーで認証しているものはすべて、直ちに動作しなくなります。この操作は元に戻せません。",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "このキーは {creator} が作成しました。このキーで認証しているものはすべて、直ちに動作しなくなります。この操作は元に戻せません。",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "キャンセル",

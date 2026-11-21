@@ -41,18 +41,21 @@ export interface UseApiKeysResult {
 }
 
 /**
- * Reads bex-api's `apiKeys` — the workspace's bex-minted machine credentials:
- * every key for a session with `can_manage_keys`, the caller's own keys for any
- * other member (w9/m514, docs/ADR024-members.md). Neither a key nor its secret is ever requested
+ * Reads bex-api's `apiKeys` — the bex-minted machine credentials the caller
+ * created in the workspace, whatever their role, as on Render's Account
+ * Settings; `allMembers` asks for every member's keys, a workspace Admin's
+ * view (w9/m539, docs/ADR024-members.md). Neither a key nor its secret is ever requested
  * here (see the feature's `.graphql` file); only the create mutation returns them.
  * Scoped to the switcher's selected workspace (w6/m18): skipped until the
  * selection resolves to an id, mirroring useServices.
  */
-export function useApiKeys(): UseApiKeysResult {
+export function useApiKeys(allMembers = false): UseApiKeysResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(ApiKeysDocument, {
-    variables: { ownerId: currentWorkspaceId },
+    variables: allMembers
+      ? { ownerId: currentWorkspaceId, allMembers: true }
+      : { ownerId: currentWorkspaceId },
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",

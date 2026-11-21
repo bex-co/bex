@@ -1,20 +1,20 @@
 # w9 · m539 — Every member's API keys list shows their own keys, as on Render; an Admin opts into the workspace's to revoke a demoted member's or a creator-less key
 
-**Worker:** worker9 **Goal:** the API keys list on REST, GraphQL, MCP and the dashboard's Account Settings panel shows every caller the keys they minted, whatever their role, as Render's Account Settings does; a Developer lists, edits and revokes only their own keys; editing a key's grant is its creator's verb alone; and an Admin keeps one explicit, opt-in view of every key in the workspace, with revoke, so a demoted member's keys and keys with no recorded creator stay reachable. **Status:** todo
+**Worker:** worker9 **Goal:** the API keys list on REST, GraphQL, MCP and the dashboard's Account Settings panel shows every caller the keys they minted, whatever their role, as Render's Account Settings does; a Developer lists, edits and revokes only their own keys; editing a key's grant is its creator's verb alone; and an Admin keeps one explicit, opt-in view of every key in the workspace, with revoke, so a demoted member's keys and keys with no recorded creator stay reachable. **Status:** todo (t001–t005 and t007–t009 done; t006 waits for production to carry the code, then t010)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design and docs: the own-keys rule for every role, the Admin's opt-in view, the invariants; ADR024 and ADR119 amended | 40m | — |
-| [t002](t002.md) | Service: `ListAPIKeys` own by default, `allMembers` for an Admin; revoking another's key needs an Admin; editing a grant is the creator's alone | 1h | t001 |
-| [t003](t003.md) | Adapters: REST `?allMembers=true`, GraphQL `allMembers`, MCP `allMembers`; the real-DB e2e on all three surfaces | 1h30m | t002 |
-| [t004](t004.md) | Scripts that read a workspace-wide key list ask for it, and still clean up what they mint | 45m | t003 |
-| [t005](t005.md) | Dashboard: the panel lists the caller's keys; an Admin switches to every member's keys and revokes there | 1h30m | t003 |
+| [t001](done/t001.md) | Design and docs: the own-keys rule for every role, the Admin's opt-in view, the invariants; ADR024 and ADR119 amended — **DONE** | 40m | — |
+| [t002](done/t002.md) | Service: `ListAPIKeys` own by default, `allMembers` for an Admin; revoking another's key needs an Admin; editing a grant is the creator's alone — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Adapters: REST `?allMembers=true`, GraphQL `allMembers`, MCP `allMembers`; the real-DB e2e on all three surfaces — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | Scripts that read a workspace-wide key list ask for it, and still clean up what they mint — **DONE** | 45m | t003 |
+| [t005](done/t005.md) | Dashboard: the panel lists the caller's keys; an Admin switches to every member's keys and revokes there — **DONE** | 1h30m | t003 |
 | [t006](t006.md) | Live check on dev-9 (every role) and on production (the QA user, an Admin) | 1h | t004, t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 7h45m**.

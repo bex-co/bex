@@ -126,7 +126,10 @@ key_token="$(token_for "$key_id" "$key_secret")"
 [ -n "$key_token" ] || fail "no access_token for the minted key"
 request GET /v1/services "$key_token" "";                        assert_code 200 "minted key's token authenticates REST"
 
-request GET /v1/api-keys "$boot_token" ""
+# A machine caller owns no key, so its own list is empty (w9/m539); the
+# workspace-wide view is an Admin's, which the bootstrap is (authorization is
+# still off here, so it is allowed).
+request GET "/v1/api-keys?allMembers=true" "$boot_token" ""
 assert_code 200 "list api keys"
 printf '%s' "$LAST_BODY" | yq -e ".[] | select(.id == \"$key_id\") | (.secret // \"\") == \"\"" - >/dev/null 2>&1 \
   || fail "list must contain $key_id without its secret"

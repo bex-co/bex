@@ -7,13 +7,27 @@ const deApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Maschinen-Zugangsdaten für Skripte und Agents. Jeder Schlüssel darf nur die für ihn gewählten Berechtigungen nutzen, nie mehr, als die aktuelle Mitgliedsrolle der Person erlaubt, die ihn erstellt hat, und nur in diesem Workspace. Jedes Mitglied sieht und verwaltet die Schlüssel, die es erstellt hat; Developer und Admins sehen jeden Schlüssel im Workspace.",
+      "Maschinen-Zugangsdaten für Skripte und Agents. Jeder Schlüssel darf nur die für ihn gewählten Berechtigungen nutzen, nie mehr, als die aktuelle Mitgliedsrolle der Person erlaubt, die ihn erstellt hat, und nur in diesem Workspace. Du siehst und verwaltest die Schlüssel, die du erstellt hast; ein Admin kann außerdem die Schlüssel aller Mitglieder sehen und widerrufen.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "Die CLI einrichten.",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "Welche API-Schlüssel angezeigt werden",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "Deine Schlüssel",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "Schlüssel aller Mitglieder",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "Name",
@@ -199,6 +213,12 @@ const deApiKeys: Record<string, TranslationEntry> = {
     message:
       "Alles, was sich mit diesem Schlüssel authentifiziert, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen.",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "{creator} hat diesen Schlüssel erstellt. Alles, was sich mit ihm authentifiziert, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen.",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "Abbrechen",

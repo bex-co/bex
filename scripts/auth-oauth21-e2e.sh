@@ -548,13 +548,15 @@ with_bearer() {
   shift 2
   curl -s -o "$TMP/key.$name" -w '%{http_code}' -H "Authorization: Bearer $bearer" "$@"
 }
-# surfaces <bearer> -> "REST=<status> GraphQL=<status> MCP=<status>", each reading the key list
+# surfaces <bearer> -> "REST=<status> GraphQL=<status> MCP=<status>", each reading the key list.
+# A key owns no key, so its own list is empty (w9/m539): it reads the workspace's
+# list (allMembers), which its creator, the workspace's Admin, may.
 surfaces() {
   local rest gql mcp
-  rest="$(with_bearer rest "$1" "$API/v1/api-keys")"
-  gql="$(with_bearer gql "$1" -H 'Content-Type: application/json' -d '{"query":"{ apiKeys { id } }"}' "$API/graphql")"
+  rest="$(with_bearer rest "$1" "$API/v1/api-keys?allMembers=true")"
+  gql="$(with_bearer gql "$1" -H 'Content-Type: application/json' -d '{"query":"{ apiKeys(allMembers: true) { id } }"}' "$API/graphql")"
   mcp="$(with_bearer mcp "$1" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_api_keys","arguments":{}}}' "$API/mcp")"
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_api_keys","arguments":{"allMembers":true}}}' "$API/mcp")"
   echo "REST=$rest GraphQL=$gql MCP=$mcp"
 }
 # A person mints the key (a machine credential cannot). Their session comes

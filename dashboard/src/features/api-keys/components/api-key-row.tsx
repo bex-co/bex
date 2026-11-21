@@ -13,6 +13,13 @@ import type {
 
 export interface ApiKeyRowProps {
   entry: ApiKeyView;
+  /**
+   * The caller created this key: only then does the row carry the gear (a
+   * grant is its creator's to change, w9/m539). An Admin's every-member view
+   * passes false for anyone else's key, whose revoke confirmation then names
+   * its creator.
+   */
+  own?: boolean;
   onRevoke: (id: string, name: string) => Promise<boolean>;
   /** True while this row's revoke is in flight — disables its own control. */
   revoking: boolean;
@@ -20,10 +27,15 @@ export interface ApiKeyRowProps {
 
 /**
  * One API Keys row: name, permissions with the gear that changes them
- * (w9/m496, Render's "Read-Only ⚙"), client id, provenance, usage ages, and
- * revoke.
+ * (w9/m496, Render's "Read-Only ⚙") on the caller's own key, client id,
+ * provenance, usage ages, and revoke.
  */
-export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
+export function ApiKeyRow({
+  entry,
+  own = true,
+  onRevoke,
+  revoking,
+}: ApiKeyRowProps) {
   const { t } = useTranslations();
   const createdBy = useWorkspaceSubjectLabel(entry.createdBy ?? "");
 
@@ -33,7 +45,7 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
       <TableCell className="text-sm whitespace-nowrap">
         <div className="flex items-center gap-1">
           <PermissionsSummary permissions={entry.permissions} />
-          <EditApiKeyPermissionsDialog entry={entry} />
+          {own ? <EditApiKeyPermissionsDialog entry={entry} /> : null}
         </div>
       </TableCell>
       <TableCell className="font-mono text-sm">
@@ -65,7 +77,11 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
         <RevokeIconButton
           label={t("apiKeys.revokeNamed", { name: entry.name })}
           confirmTitle={t("apiKeys.revokeConfirmTitle", { name: entry.name })}
-          confirmBody={t("apiKeys.revokeConfirmBody")}
+          confirmBody={
+            !own && entry.createdBy
+              ? t("apiKeys.revokeConfirmBodyOther", { creator: createdBy })
+              : t("apiKeys.revokeConfirmBody")
+          }
           cancelLabel={t("apiKeys.revokeCancel")}
           confirmLabel={t("apiKeys.revoke")}
           pending={revoking}

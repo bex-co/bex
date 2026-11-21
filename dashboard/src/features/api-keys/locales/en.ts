@@ -7,13 +7,27 @@ const enApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Machine credentials for scripts and agents. Each key can use only the permissions chosen for it, never more than its creator's current member role allows, and only in this workspace. Every member sees and manages the keys they created; Developers and Admins see every key in the workspace.",
+      "Machine credentials for scripts and agents. Each key can use only the permissions chosen for it, never more than its creator's current member role allows, and only in this workspace. You see and manage the keys you created; an Admin can also view and revoke every member's keys.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "Set up the CLI.",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "Which API keys to show",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "Your keys",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "All members' keys",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "Name",
@@ -195,6 +209,12 @@ const enApiKeys: Record<string, TranslationEntry> = {
     message:
       "Anything authenticating with this key will stop working immediately. This can't be undone.",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "{creator} created this key. Anything authenticating with it will stop working immediately. This can't be undone.",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "Cancel",

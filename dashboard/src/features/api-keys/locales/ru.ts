@@ -7,13 +7,27 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Машинные учётные данные для скриптов и агентов. Каждый ключ может использовать только выбранные для него разрешения, не больше, чем допускает текущая роль участника, который его создал, и только в этом рабочем пространстве. Каждый участник видит созданные им ключи и управляет ими; Developer и Admin видят все ключи рабочего пространства.",
+      "Машинные учётные данные для скриптов и агентов. Каждый ключ может использовать только выбранные для него разрешения, не больше, чем допускает текущая роль участника, который его создал, и только в этом рабочем пространстве. Вы видите созданные вами ключи и управляете ими; Admin также может просматривать и отзывать ключи всех участников.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "Настройте CLI.",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "Какие API-ключи показать",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "Ваши ключи",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "Ключи всех участников",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "Название",
@@ -196,6 +210,12 @@ const ruApiKeys: Record<string, TranslationEntry> = {
     message:
       "Всё, что аутентифицируется с этим ключом, немедленно перестанет работать. Это действие нельзя отменить.",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "Этот ключ создал(а) {creator}. Всё, что аутентифицируется с ним, немедленно перестанет работать. Это действие нельзя отменить.",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "Отменить",

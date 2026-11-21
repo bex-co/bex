@@ -13,8 +13,26 @@ const apiKeysState: {
   error: Error | undefined;
 } = { keys: [], loading: false, error: undefined };
 const refetch = vi.fn();
+// Each render's allMembers argument, newest last (w9/m539).
+const listCalls: boolean[] = [];
+const allMembersKeys: { keys: ApiKeyView[] } = { keys: [] };
 vi.mock("@/features/api-keys/hooks/use-api-keys", () => ({
-  useApiKeys: () => ({ ...apiKeysState, refetch }),
+  useApiKeys: (allMembers = false) => {
+    listCalls.push(allMembers);
+    return allMembers
+      ? { ...apiKeysState, keys: allMembersKeys.keys, refetch }
+      : { ...apiKeysState, refetch };
+  },
+}));
+
+// The caller's role as the capability check last answered: null is unknown.
+let admin: boolean | null = null;
+vi.mock("@/features/api-keys/hooks/use-workspace-admin", () => ({
+  useWorkspaceAdmin: () => admin,
+}));
+
+vi.mock("@/common/hooks/use-self-subjects", () => ({
+  useSelfSubjects: () => ({ subjects: new Set(["admin-1"]), resolving: false }),
 }));
 
 const revoke = vi.fn();
@@ -34,9 +52,30 @@ beforeEach(() => {
   apiKeysState.keys = [];
   apiKeysState.loading = false;
   apiKeysState.error = undefined;
+  allMembersKeys.keys = [];
+  listCalls.length = 0;
+  admin = null;
   refetch.mockReset();
   revoke.mockReset();
 });
+
+/** The card body's markup, Radix's per-mount ids blanked. */
+function cardContent(container: HTMLElement): string | undefined {
+  return container
+    .querySelector("[data-slot='card-content']")
+    ?.innerHTML.replace(/radix-[^"]*?-trigger/g, "radix-trigger");
+}
+
+function key(id: string, name: string, createdBy: string | null): ApiKeyView {
+  return {
+    id,
+    name,
+    createdAt: null,
+    createdBy,
+    lastUsedAt: null,
+    permissions: { all: true, grants: [] },
+  };
+}
 
 describe("ApiKeysPanel", () => {
   it("links API key setup to the CLI guide", () => {
@@ -79,9 +118,9 @@ describe("ApiKeysPanel", () => {
     expect(screen.getByText("key-2")).toBeInTheDocument();
   });
 
-  it("tells every role who sees which keys, in the panel and in its skeleton alike (w9/m514)", () => {
+  it("tells every role who sees which keys, in the panel and in its skeleton alike (w9/m539)", () => {
     const description =
-      "Every member sees and manages the keys they created; Developers and Admins see every key in the workspace.";
+      "You see and manage the keys you created; an Admin can also view and revoke every member's keys.";
     const ready = render(<ApiKeysPanel />);
     expect(ready.container).toHaveTextContent(description);
     ready.unmount();
@@ -110,7 +149,9 @@ describe("ApiKeysPanel", () => {
     expect(screen.queryByText("Not authorized")).not.toBeInTheDocument();
     expect(screen.getByText("status-page")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Change permissions for status-page" }),
+      screen.getByRole("button", {
+        name: "Change permissions for status-page",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Revoke API key status-page" }),
@@ -249,5 +290,101 @@ describe("ApiKeysPanel", () => {
     const { container } = render(<ApiKeysPanelSkeleton />);
     expect(tableHeaders(container)).toEqual(readyHeaders);
     expect(container.querySelector("tbody")?.innerHTML).toBe(loadingRow);
+  });
+
+  it("shows a member who is not an Admin only their own keys, with no switch (w9/m539)", () => {
+    admin = false;
+    apiKeysState.keys = [key("key-mine", "ci", "dev-1")];
+    render(<ApiKeysPanel />);
+
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(listCalls.every((all) => !all)).toBe(true);
+    expect(screen.getByText("ci")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change permissions for ci" }),
+    ).toBeInTheDocument();
+  });
+
+  it("holds the Admin's switch, disabled, while the role is unknown", () => {
+    render(<ApiKeysPanel />);
+    const tabs = within(screen.getByRole("tablist"));
+    expect(tabs.getByRole("tab", { name: "Your keys" })).toBeDisabled();
+    expect(tabs.getByRole("tab", { name: "All members' keys" })).toBeDisabled();
+    expect(listCalls.every((all) => !all)).toBe(true);
+  });
+
+  it("lets an Admin switch to every member's keys: each names its creator, only their own carries the gear, and another's revoke names its creator (w9/m539)", async () => {
+    admin = true;
+    apiKeysState.keys = [key("key-own", "mine", "admin-1")];
+    allMembersKeys.keys = [
+      key("key-own", "mine", "admin-1"),
+      key("key-dev", "dev-ci", "dev-1"),
+      key("key-legacy", "legacy", null),
+    ];
+    revoke.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<ApiKeysPanel />);
+
+    // The default is the Admin's own keys, as on Render.
+    expect(screen.getByRole("tab", { name: "Your keys" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByText("dev-ci")).not.toBeInTheDocument();
+    expect(listCalls.at(-1)).toBe(false);
+
+    await user.click(screen.getByRole("tab", { name: "All members' keys" }));
+    expect(listCalls.at(-1)).toBe(true);
+    expect(screen.getByText("dev-ci")).toBeInTheDocument();
+    expect(screen.getByText("dev-1")).toBeInTheDocument();
+    expect(screen.getByText("legacy")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change permissions for mine" }),
+    ).toBeInTheDocument();
+    for (const name of ["dev-ci", "legacy"]) {
+      expect(
+        screen.queryByRole("button", {
+          name: `Change permissions for ${name}`,
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: `Revoke API key ${name}` }),
+      ).toBeInTheDocument();
+    }
+
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key dev-ci" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("dev-1 created this key.");
+    await user.click(
+      within(dialog).getAllByRole("button", { name: "Revoke" })[0],
+    );
+    expect(revoke).toHaveBeenCalledWith("key-dev", "dev-ci");
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("draws the skeleton as the panel draws the caller's role: the switch for an Admin or an unknown role, none for anyone else", () => {
+    for (const role of [true, null, false]) {
+      admin = role;
+      apiKeysState.keys = [];
+      apiKeysState.loading = true;
+      const loading = render(<ApiKeysPanel />);
+      const loadingTabs = loading.container.querySelector("[role='tablist']");
+      const loadingBody = cardContent(loading.container);
+      loading.unmount();
+
+      const { container, unmount } = render(<ApiKeysPanelSkeleton />);
+      expect(container.querySelector("[role='tablist']") !== null).toBe(
+        role !== false,
+      );
+      expect(loadingTabs !== null).toBe(role !== false);
+      // The same switch (disabled until the role is known) over the same
+      // loading table.
+      if (role !== true) {
+        expect(cardContent(container)).toBe(loadingBody);
+      }
+      unmount();
+    }
   });
 });

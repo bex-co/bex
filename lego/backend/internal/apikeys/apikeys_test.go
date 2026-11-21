@@ -454,7 +454,7 @@ func TestListAPIKeysScopedToTargetWorkspace(t *testing.T) {
 		t.Fatalf("create agent-b: %v", err)
 	}
 
-	listA, err := svc.ListAPIKeys(ctx, "")
+	listA, err := svc.ListAPIKeys(ctx, "", false)
 	if err != nil {
 		t.Fatalf("list default: %v", err)
 	}
@@ -462,7 +462,7 @@ func TestListAPIKeysScopedToTargetWorkspace(t *testing.T) {
 		t.Errorf("list default (tea-a) = %+v, want exactly [%s]", listA, keyA.ID)
 	}
 
-	listB, err := svc.ListAPIKeys(ctx, "tea-b")
+	listB, err := svc.ListAPIKeys(ctx, "tea-b", false)
 	if err != nil {
 		t.Fatalf("list tea-b: %v", err)
 	}
@@ -634,7 +634,12 @@ func TestAPIKeyVerbs(t *testing.T) {
 	if err != nil || created.ID == "" || created.Secret == "" {
 		t.Fatalf("create must return id+secret: %v %+v", err, created)
 	}
-	listed, _ := svc.ListAPIKeys(ctx, "")
+	// No caller identity minted it, so it is no one's own: the default list
+	// is empty, and the workspace-wide one holds it (authorization off).
+	if own, err := svc.ListAPIKeys(ctx, "", false); err != nil || len(own) != 0 {
+		t.Fatalf("an anonymous caller's own list = %+v, %v; want empty", own, err)
+	}
+	listed, _ := svc.ListAPIKeys(ctx, "", true)
 	if len(listed) != 1 || listed[0].Secret != "" {
 		t.Fatalf("list must omit secrets: %+v", listed)
 	}
@@ -661,7 +666,7 @@ func TestAPIKeyVerbs(t *testing.T) {
 	}
 	// nil store => ErrAPIKeysUnavailable on every verb.
 	nostore := newService(nil)
-	if _, err := nostore.ListAPIKeys(ctx, ""); !errors.Is(err, core.ErrAPIKeysUnavailable) {
+	if _, err := nostore.ListAPIKeys(ctx, "", false); !errors.Is(err, core.ErrAPIKeysUnavailable) {
 		t.Errorf("nil store => ErrAPIKeysUnavailable, got %v", err)
 	}
 }
@@ -696,8 +701,17 @@ func TestRESTAPIKeyLifecycle(t *testing.T) {
 	}
 	var listed []APIKey
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/api-keys", "").Body.Bytes(), &listed)
+	if len(listed) != 0 {
+		t.Fatalf("an anonymous caller's own list = %+v, want empty", listed)
+	}
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/api-keys?allMembers=true", "").Body.Bytes(), &listed)
 	if len(listed) != 1 || listed[0].Secret != "" {
 		t.Fatalf("list omits secrets: %+v", listed)
+	}
+	for _, bad := range []string{"yes", "1x", "%20"} {
+		if w := serveREST(svc, "GET", "/v1/api-keys?allMembers="+bad, ""); w.Code != 400 {
+			t.Errorf("allMembers=%s => %d, want 400", bad, w.Code)
+		}
 	}
 	if serveREST(svc, "DELETE", "/v1/api-keys/"+created.ID, "").Code != 204 {
 		t.Error("revoke => 204")
@@ -742,7 +756,10 @@ func TestGraphQLAPIKeys(t *testing.T) {
 	if key["secret"] == "" {
 		t.Fatalf("createApiKey must return secret: %+v", key)
 	}
-	keys := run(`{ apiKeys { id secret } }`)["apiKeys"].([]any)
+	if own := run(`{ apiKeys { id } }`)["apiKeys"].([]any); len(own) != 0 {
+		t.Fatalf("an anonymous caller's own apiKeys = %+v, want empty", own)
+	}
+	keys := run(`{ apiKeys(allMembers: true) { id secret } }`)["apiKeys"].([]any)
 	if len(keys) != 1 || keys[0].(map[string]any)["secret"] != "" {
 		t.Fatalf("apiKeys must omit secrets: %+v", keys)
 	}

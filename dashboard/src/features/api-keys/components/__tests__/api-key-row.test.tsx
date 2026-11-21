@@ -243,3 +243,54 @@ describe("ApiKeyRow — permissions summary and gear (w9/m496)", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("ApiKeyRow — another member's key in an Admin's every-member view (w9/m539)", () => {
+  it("carries no gear, and its revoke confirmation names the creator", async () => {
+    const user = userEvent.setup();
+    render(
+      <table>
+        <tbody>
+          <ApiKeyRow
+            entry={entry}
+            own={false}
+            onRevoke={vi.fn()}
+            revoking={false}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: "Change permissions for deploy-agent",
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "user:minter created this key.",
+    );
+  });
+
+  it("keeps the plain confirmation for a key with no recorded creator", async () => {
+    const user = userEvent.setup();
+    render(
+      <table>
+        <tbody>
+          <ApiKeyRow
+            entry={{ ...entry, createdBy: null }}
+            own={false}
+            onRevoke={vi.fn()}
+            revoking={false}
+          />
+        </tbody>
+      </table>,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    );
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "Anything authenticating with this key will stop working immediately.",
+    );
+  });
+});

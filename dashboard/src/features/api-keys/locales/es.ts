@@ -7,13 +7,27 @@ const esApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciales de máquina para scripts y agentes. Cada clave solo puede usar los permisos elegidos para ella, nunca más de lo que permite el rol de miembro actual de quien la creó, y solo en este espacio de trabajo. Cada miembro ve y administra las claves que creó; los Developers y Admins ven todas las claves del espacio de trabajo.",
+      "Credenciales de máquina para scripts y agentes. Cada clave solo puede usar los permisos elegidos para ella, nunca más de lo que permite el rol de miembro actual de quien la creó, y solo en este espacio de trabajo. Ves y administras las claves que creaste; un Admin también puede ver y revocar las claves de todos los miembros.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, as on Render's Account Settings, and an Admin every member's too (w9/m539)",
   },
   "apiKeys.cliGuide": {
     message: "Configura la CLI.",
     description: "Link from the API Keys card to the bex CLI setup guide",
+  },
+  "apiKeys.scopeLabel": {
+    message: "Qué claves de API mostrar",
+    description:
+      "Accessible name of an Admin's switch between their own API keys and every member's (w9/m539)",
+  },
+  "apiKeys.scopeOwn": {
+    message: "Tus claves",
+    description: "API Keys switch option: the keys the caller created",
+  },
+  "apiKeys.scopeAll": {
+    message: "Claves de todos los miembros",
+    description:
+      "API Keys switch option, an Admin's only: every member's keys in the workspace",
   },
   "apiKeys.colName": {
     message: "Nombre",
@@ -196,6 +210,12 @@ const esApiKeys: Record<string, TranslationEntry> = {
     message:
       "Todo lo que se autentique con esta clave dejará de funcionar de inmediato. Esta acción no se puede deshacer.",
     description: "Revoke-confirmation dialog body",
+  },
+  "apiKeys.revokeConfirmBodyOther": {
+    message:
+      "{creator} creó esta clave. Todo lo que se autentique con ella dejará de funcionar de inmediato. Esta acción no se puede deshacer.",
+    description:
+      "Revoke-confirmation dialog body for another member's key in an Admin's every-member view; {creator} is who created it",
   },
   "apiKeys.revokeCancel": {
     message: "Cancelar",
