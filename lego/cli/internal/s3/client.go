@@ -70,6 +70,9 @@ func (d deps) newClient(s session, concurrency int) *sdk.Client {
 				// A throttled request is retried however many were before it: the
 				// default quota would stop a long transfer's retries early.
 				o.RateLimiter = ratelimit.None
+				if d.backoff != nil {
+					o.Backoff = d.backoff
+				}
 			})
 		},
 	}
@@ -189,8 +192,10 @@ type explained struct {
 func (e *explained) Error() string { return e.msg }
 func (e *explained) Unwrap() error { return e.err }
 
-// explain turns an SDK error into bex's message.
-func explain(err error) error {
+// explain turns an SDK error into bex's message. takesConcurrency is whether
+// the command has --concurrency: only then does a busy server's message suggest
+// lowering it, since following the advice elsewhere is an unknown flag.
+func explain(err error, takesConcurrency bool) error {
 	if err == nil {
 		return nil
 	}
@@ -230,7 +235,11 @@ func explain(err error) error {
 	case f.Code == "NotImplemented":
 		msg = "bex object storage does not serve this operation (" + detail + ")"
 	case f.Code == "SlowDown" || f.Code == "ServiceUnavailable":
-		msg = "bex object storage is busy (" + detail + "); wait a moment, or run with a lower --concurrency"
+		advice := "wait a moment and run it again"
+		if takesConcurrency {
+			advice = "wait a moment, or run with a lower --concurrency"
+		}
+		msg = "bex object storage is busy (" + detail + "); " + advice
 	}
 	return &explained{msg: msg, err: err}
 }

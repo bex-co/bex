@@ -27,8 +27,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/spf13/cobra"
 )
 
@@ -55,6 +57,9 @@ func newRig(t *testing.T) *rig {
 		return v, ok
 	}
 	g.d.httpClient = func() aws.HTTPClient { return s3.srv.Client() }
+	// A retried request is retried at once, so a fault every attempt meets
+	// fails the command in milliseconds instead of the SDK's seconds of backoff.
+	g.d.backoff = retry.BackoffDelayerFunc(func(int, error) (time.Duration, error) { return 0, nil })
 	g.d.stdin = g.stdin
 	return g
 }

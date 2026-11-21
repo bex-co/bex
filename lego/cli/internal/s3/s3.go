@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/render-oss/cli/pkg/cfg"
 	"github.com/render-oss/cli/pkg/config"
@@ -54,7 +55,10 @@ type deps struct {
 	hostname  func() string
 	// httpClient is what S3 requests are sent with; nil is the SDK's default.
 	httpClient func() aws.HTTPClient
-	stdin      io.Reader
+	// backoff is how long a request waits before it is retried; nil is the
+	// SDK's exponential backoff.
+	backoff retry.BackoffDelayer
+	stdin   io.Reader
 	// isTerminal says whether the progress line may be drawn on a stream.
 	isTerminal func(io.Writer) bool
 }
@@ -169,6 +173,9 @@ type run struct {
 	// concurrency is the most requests in flight, and the most files and parts
 	// a transfer works on at once.
 	concurrency int
+	// takesConcurrency is whether the command has a --concurrency flag a person
+	// could lower when the server is busy.
+	takesConcurrency bool
 }
 
 // open resolves the output format and a key and builds the client. Callers
@@ -190,8 +197,8 @@ func (d deps) open(c *cobra.Command, g *globals, concurrency int, noProgress boo
 	prog := newProgress(errOut, f == formatText && !noProgress && d.isTerminal != nil && d.isTerminal(errOut))
 	r := &run{
 		d: d, ctx: ctx, cancel: cancel, sess: sess, client: d.newClient(sess, concurrency), concurrency: concurrency,
-		format: f, out: out, errOut: errOut, prog: prog,
-		rep: &reporter{out: out, format: f, prog: prog},
+		format: f, out: out, errOut: errOut, prog: prog, rep: &reporter{out: out, format: f, prog: prog},
+		takesConcurrency: c.Flags().Lookup("concurrency") != nil,
 	}
 	prog.start()
 	return r, nil
@@ -212,7 +219,7 @@ func (r *run) fail(err error) error {
 	if f, ok := faultOf(err); ok && keyGone(f) && r.sess.CachePath != "" {
 		_ = os.Remove(r.sess.CachePath)
 	}
-	return explain(err)
+	return explain(err, r.takesConcurrency)
 }
 
 // concurrencyFlag adds --concurrency to a command.

@@ -282,12 +282,88 @@ func TestSlowDownIsRetriedBeforeItIsReported(t *testing.T) {
 	}
 }
 
+// TestABusyServerSuggestsConcurrencyOnlyWhereTheCommandTakesIt: a SlowDown the
+// retries do not outlast keeps the gateway's own words, and the advice names
+// --concurrency only on a command that has the flag. Elsewhere following it
+// would be an unknown flag (w32/068).
+func TestABusyServerSuggestsConcurrencyOnlyWhereTheCommandTakesIt(t *testing.T) {
+	// The gateway's answer to a sixth listing in a second (s3gw handlers_list.go).
+	const listingCap = "Too many listings from this workspace; Wasabi counts what a listing reads, so they are capped. Retry shortly."
+	dir := t.TempDir()
+	writeBytes(t, dir, "site/a.txt", []byte("a"))
+	writeBytes(t, dir, "cors.json", []byte(corsFile))
+	writeBytes(t, dir, "lifecycle.json", []byte(lifecycleFile))
+	upload := filepath.Join(dir, "site", "a.txt")
+
+	for _, tc := range []struct {
+		name   string
+		args   []string
+		flag   bool
+		noBody bool // a HEAD answer carries no code or message, only the 503
+	}{
+		{name: "ls", args: []string{"ls"}},
+		{name: "ls objects", args: []string{"ls", "s3://photos/"}},
+		{name: "info object", args: []string{"info", "s3://photos/k"}, noBody: true},
+		{name: "mb", args: []string{"mb", "s3://fresh"}},
+		{name: "cors get", args: []string{"cors", "get", "photos"}},
+		{name: "cors set", args: []string{"cors", "set", "photos", "--file", filepath.Join(dir, "cors.json")}},
+		{name: "cors delete", args: []string{"cors", "delete", "photos"}},
+		{name: "lifecycle get", args: []string{"lifecycle", "get", "photos"}},
+		{name: "lifecycle set", args: []string{"lifecycle", "set", "photos", "--file", filepath.Join(dir, "lifecycle.json")}},
+		{name: "lifecycle delete", args: []string{"lifecycle", "delete", "photos"}},
+
+		{name: "cp up", args: []string{"cp", upload, "s3://photos/a.txt"}, flag: true},
+		{name: "cp down", args: []string{"cp", "s3://photos/k", filepath.Join(dir, "k")}, flag: true, noBody: true},
+		{name: "mv", args: []string{"mv", upload, "s3://photos/a.txt"}, flag: true},
+		{name: "rm", args: []string{"rm", "s3://photos/k"}, flag: true},
+		{name: "rm recursive", args: []string{"rm", "s3://photos/t/", "--recursive"}, flag: true},
+		{name: "sync", args: []string{"sync", filepath.Join(dir, "site"), "s3://photos/site"}, flag: true},
+		{name: "rb", args: []string{"rb", "s3://photos"}, flag: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newRig(t)
+			g.s3.intercept = func(*http.Request, int) (int, string, string, bool) {
+				return http.StatusServiceUnavailable, "SlowDown", listingCap, true
+			}
+			_, _, err := g.bex(tc.args...)
+			if err == nil {
+				t.Fatal("succeeded against a server that is always busy")
+			}
+			msg := err.Error()
+			if code := exitCode(err); code != 1 {
+				t.Errorf("exit %d, want 1: %s", code, msg)
+			}
+			if sent := len(g.s3.requests("")); sent < maxAttempts {
+				t.Errorf("%d requests, want the SlowDown retried %d times first", sent, maxAttempts)
+			}
+			want := []string{"bex object storage is busy (SlowDown: " + listingCap + " (request REQ0001))"}
+			if tc.noBody {
+				want = []string{"bex object storage is busy (ServiceUnavailable", "(request REQ0001))"}
+			}
+			for _, w := range want {
+				if !strings.Contains(msg, w) {
+					t.Errorf("message %q does not say %q", msg, w)
+				}
+			}
+			if tc.flag {
+				if !strings.HasSuffix(msg, "; wait a moment, or run with a lower --concurrency") {
+					t.Errorf("message %q does not suggest a lower --concurrency, which this command takes", msg)
+				}
+				return
+			}
+			if strings.Contains(msg, "--concurrency") || !strings.HasSuffix(msg, "; wait a moment and run it again") {
+				t.Errorf("message %q, want it to say to run it again and never name --concurrency, a flag this command refuses", msg)
+			}
+		})
+	}
+}
+
 // TestAnUnreachableEndpointIsNamedNotTheSDKsAttempts: the SDK's account of five
 // failed attempts says nothing a person can act on; where the request was going
 // does, and a query string (a signature) never reaches the message.
 func TestAnUnreachableEndpointIsNamedNotTheSDKsAttempts(t *testing.T) {
 	err := explain(fmt.Errorf("operation error S3: ListBuckets, exceeded maximum number of attempts, 5: %w",
-		&url.Error{Op: "Get", URL: "https://objects.example.test/?X-Amz-Signature=secret&x-id=ListBuckets", Err: errors.New("dial tcp 192.0.2.1:443: connect: connection refused")}))
+		&url.Error{Op: "Get", URL: "https://objects.example.test/?X-Amz-Signature=secret&x-id=ListBuckets", Err: errors.New("dial tcp 192.0.2.1:443: connect: connection refused")}), false)
 	msg := err.Error()
 	if !strings.HasPrefix(msg, "could not reach objects.example.test: dial tcp") || strings.Contains(msg, "secret") || strings.Contains(msg, "attempts") {
 		t.Errorf("message = %q", msg)
