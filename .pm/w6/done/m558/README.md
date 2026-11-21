@@ -1,6 +1,6 @@
 # w6 · m558 — A native service with a root directory runs from Render's `/opt/render/project/src/<rootDir>`, so a disk mounted at Render's path keeps its data
 
-**Worker:** worker6 **Goal:** a Node, Python, Ruby, Elixir or Rust service with a root directory runs every process (start command, pre-deploy, cron run, Shell, SSH) in `/opt/render/project/src/<rootDir>`, as on Render, so a disk mounted at `/opt/render/project/src/<rootDir>/<dir>` holds what the app writes to `<dir>/`; the virtualenv and dependency caches sit where Render keeps them; and an existing service's disk under `/opt/render/project/src/…` still lands in its tree after its next deploy. **Status:** blocked (t001–t003 and t005–t007 done; t004 waits for production to carry `120b64616`, the operator change, then t008)
+**Worker:** worker6 **Goal:** a Node, Python, Ruby, Elixir or Rust service with a root directory runs every process (start command, pre-deploy, cron run, Shell, SSH) in `/opt/render/project/src/<rootDir>`, as on Render, so a disk mounted at `/opt/render/project/src/<rootDir>/<dir>` holds what the app writes to `<dir>/`; the virtualenv and dependency caches sit where Render keeps them; and an existing service's disk under `/opt/render/project/src/…` still lands in its tree after its next deploy. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | [Record where Render runs a service with a root directory, and decide the layout and how existing disks follow](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Every native runtime builds and runs in `/opt/render/project/src/<rootDir>`](done/t002.md) — **DONE** | 60m | t001 |
 | t003 | [An existing service's disk under `/opt/render/project/src/…` keeps landing in its tree; the old-layout fixture on production](done/t003.md) — **DONE** | 60m | t002 |
-| [t004](t004.md) | Ship and verify on production | 45m | t003 |
+| t004 | [Ship and verify on production](done/t004.md) — **DONE** | 45m | t003 |
 | t005 | [Record the path in ADR060, ADR082, ADR018 and the `bex-disks` skill](done/t005.md) — **DONE** | 15m | t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 Total: **8 tasks, about 4h40m**.
 
@@ -57,6 +57,12 @@ Total: **8 tasks, about 4h40m**.
   - **Known limit:** a deploy that rolls the pre-change image (a rollback, or a release-only change before the next build) gets the second mount too. That is harmless when the path is outside the root directory. In the hiding case it moves the disk out of that old image's tree until the next build.
 - **Measured on production's runtime (15:35Z):** pod `w6-m558-double-mount` in `bex-canary` mounted claim `w6-m558-double` (`hcloud-volumes`) at `/opt/render/project/src/uploads` and `/opt/render/project/src/backend/uploads`. `/proc/self/mountinfo` showed volume `scsi-0HC_Volume_107566087` at both paths, and a file written through one read back through the other. The pod and the claim were deleted afterwards.
 - **No follow-up:** the mount-path denylist matches Render's exact list, and the dashboard's placeholder is `/var/data`. Neither names the source path.
+
+## Unblock record (2026-11-21T23:09Z)
+
+- **Affected:** w6/m558 t004, t008. **Source:** verified evidence, the gate that cleared by itself.
+- **Finding:** the newest pin on `origin/main`, `772009a909` (`chore(deploy): pin platform images to ad799a7cf32b`), carries `120b64616` (`git merge-base --is-ancestor 120b64616 ad799a7cf32b`). Every `bex-system` Deployment (`bex-controller-manager`, `bex-api`, `bex-ssh-gateway` and the rest) runs that pin's `bex-operator@sha256:df3984baf30b…`.
+- **Next:** t004 on production as the QA user in `bex-canary`, as its steps say, then t008. No gate is left.
 
 ## Source + Goal linkage
 
