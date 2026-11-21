@@ -365,6 +365,127 @@ func TestSandboxGroupCredentialsE2E(t *testing.T) {
 		t.Fatalf("OpenBao still holds credentials after delete: keys=%v err=%v", keysLeft, err)
 	}
 
+	// 8b. Real-DB + OpenBao + OpenFGA cross-surface parity on GraphQL and MCP
+	// (including ownerId / per-call workspaceId, split RBAC, scoped API keys,
+	// version history + restore, and write-only secret redaction — w2/m533 t003).
+	gqlSecret1 := "sk-gql-secret-v1-" + run
+	gqlSecret2 := "sk-gql-secret-v2-" + run
+	gqlOut := graphqlDo(t, srv, session(admin), fmt.Sprintf(`mutation {
+		createSandboxGroupCredential(
+			sandboxGroupId: %q,
+			ownerId: %q,
+			input: {
+				id: "gql-cred",
+				domain: "API.Stripe.com",
+				value: %q,
+				methods: ["post"],
+				paths: ["/v1/charges"],
+				injection: { type: "header", name: "Authorization", template: "Bearer ${SECRET}" }
+			}
+		) { id domain enabled methods paths injection { type name template } version { id updatedBy fingerprint restoredFromVersionId } }
+	}`, group.ID, ws.ID, gqlSecret1))
+	if code := graphqlCode(gqlOut); code != "" {
+		t.Fatalf("GraphQL admin create failed: %v", gqlOut)
+	}
+	if raw, _ := json.Marshal(gqlOut); strings.Contains(string(raw), gqlSecret1) {
+		t.Fatalf("GraphQL create leaked secret: %s", raw)
+	}
+	// GraphQL scoped API keys: historyKey reads, refused on write; devCredKey updates enabled, refused on domain/value.
+	gqlList := graphqlDo(t, srv, historyKey, fmt.Sprintf(`{ sandboxGroupCredentials(sandboxGroupId: %q, ownerId: %q) { id domain enabled version { id } } }`, group.ID, ws.ID))
+	if errs, _ := gqlList["errors"].([]any); len(errs) != 0 {
+		t.Fatalf("GraphQL historyKey list failed: %v", gqlList)
+	}
+	gqlHistoryWrite := graphqlDo(t, srv, historyKey, fmt.Sprintf(`mutation { updateSandboxGroupCredential(sandboxGroupId: %q, id: "gql-cred", ownerId: %q, input: { enabled: false }) { id } }`, group.ID, ws.ID))
+	if got := graphqlCode(gqlHistoryWrite); got != core.KeyPermissionDeniedCode {
+		t.Fatalf("GraphQL historyKey write code = %q (%v), want %s", got, gqlHistoryWrite, core.KeyPermissionDeniedCode)
+	}
+	gqlDevUpdate := graphqlDo(t, srv, devCredKey, fmt.Sprintf(`mutation { updateSandboxGroupCredential(sandboxGroupId: %q, id: "gql-cred", ownerId: %q, input: { enabled: false, methods: [] }) { id enabled methods version { id } } }`, group.ID, ws.ID))
+	if code := graphqlCode(gqlDevUpdate); code != "" {
+		t.Fatalf("GraphQL devCredKey allowed update failed: %v", gqlDevUpdate)
+	}
+	gqlDevDomain := graphqlDo(t, srv, devCredKey, fmt.Sprintf(`mutation { updateSandboxGroupCredential(sandboxGroupId: %q, id: "gql-cred", ownerId: %q, input: { domain: "api.github.com" }) { id } }`, group.ID, ws.ID))
+	if errs, _ := gqlDevDomain["errors"].([]any); len(errs) == 0 {
+		t.Fatalf("GraphQL devCredKey domain update succeeded, want forbidden: %v", gqlDevDomain)
+	}
+
+	// MCP surface with explicit workspaceId + scoped API keys + version restore + delete.
+	mcpSecret := "sk-mcp-secret-v1-" + run
+	mcpRes := mcpCall(t, srv, historyKey, "create_sandbox_group_credential", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"id":             "mcp-cred",
+		"domain":         "api.openai.com",
+		"value":          mcpSecret,
+		"injection":      map[string]any{"type": "header", "name": "Authorization"},
+	})
+	if !mcpRes.IsError || !strings.Contains(mcpText(mcpRes), core.KeyPermissionDeniedCode) {
+		t.Fatalf("MCP historyKey create = error=%v %q, want %s", mcpRes.IsError, mcpText(mcpRes), core.KeyPermissionDeniedCode)
+	}
+	mcpRes = mcpCall(t, srv, adminCredKey, "create_sandbox_group_credential", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"id":             "mcp-cred",
+		"domain":         "api.openai.com",
+		"value":          mcpSecret,
+		"injection":      map[string]any{"type": "header", "name": "Authorization", "template": "Bearer ${SECRET}"},
+	})
+	if mcpRes.IsError || strings.Contains(mcpText(mcpRes), mcpSecret) {
+		t.Fatalf("MCP admin create = error=%v %q", mcpRes.IsError, mcpText(mcpRes))
+	}
+	// MCP devCredKey can update enabled/paths, cannot rotate value; admin rotates then restores v1.
+	mcpRes = mcpCall(t, srv, devCredKey, "update_sandbox_group_credential", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"credentialId":   "mcp-cred",
+		"enabled":        false,
+		"paths":          []string{"/v1/*"},
+	})
+	if mcpRes.IsError {
+		t.Fatalf("MCP devCredKey allowed update = %q", mcpText(mcpRes))
+	}
+	mcpRes = mcpCall(t, srv, devCredKey, "update_sandbox_group_credential", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"credentialId":   "mcp-cred",
+		"value":          gqlSecret2,
+	})
+	if !mcpRes.IsError {
+		t.Fatalf("MCP devCredKey value update succeeded, want forbidden: %q", mcpText(mcpRes))
+	}
+	mcpRes = mcpCall(t, srv, adminCredKey, "restore_sandbox_group_credential", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"credentialId":   "mcp-cred",
+		"versionId":      1,
+	})
+	if mcpRes.IsError || !strings.Contains(mcpText(mcpRes), `"restoredFromVersionId":1`) || strings.Contains(mcpText(mcpRes), mcpSecret) {
+		t.Fatalf("MCP restore = error=%v %q", mcpRes.IsError, mcpText(mcpRes))
+	}
+	mcpVers := mcpCall(t, srv, historyKey, "list_sandbox_group_credential_versions", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"credentialId":   "mcp-cred",
+	})
+	if mcpVers.IsError || strings.Contains(mcpText(mcpVers), mcpSecret) {
+		t.Fatalf("MCP versions = error=%v %q", mcpVers.IsError, mcpText(mcpVers))
+	}
+	// Clean up both credentials via GraphQL & MCP delete and confirm OpenBao is empty.
+	gqlDel := graphqlDo(t, srv, adminCredKey, fmt.Sprintf(`mutation { deleteSandboxGroupCredential(sandboxGroupId: %q, id: "gql-cred", ownerId: %q) }`, group.ID, ws.ID))
+	if code := graphqlCode(gqlDel); code != "" {
+		t.Fatalf("GraphQL delete failed: %v", gqlDel)
+	}
+	mcpDel := mcpCall(t, srv, adminCredKey, "delete_sandbox_group_credential", map[string]any{
+		"workspaceId":    ws.ID,
+		"sandboxGroupId": group.ID,
+		"credentialId":   "mcp-cred",
+	})
+	if mcpDel.IsError {
+		t.Fatalf("MCP delete failed: %q", mcpText(mcpDel))
+	}
+	if keysLeft, err := baoStore.List(secrets.WithTenant(ctx, ws.ID), "sandbox-groups/"+group.ID+"/credentials"); err != nil || len(keysLeft) != 0 {
+		t.Fatalf("OpenBao still holds credentials after GQL/MCP delete: keys=%v err=%v", keysLeft, err)
+	}
+
 	// 9. Sandbox group delete purges credential secrets from OpenBao.
 	rec = call(session(admin), http.MethodPost, "/v1/sandbox-groups/"+secondGroup.ID+"/credentials",
 		`{"id":"group-del-key","domain":"api.stripe.com","value":"sk-group-del","injection":{"type":"header","name":"Authorization"}}`)
@@ -394,7 +515,7 @@ func TestSandboxGroupCredentialsE2E(t *testing.T) {
 
 	// 11. Audit events never contain any secret value.
 	auditBytes, _ := json.Marshal(auditSink.events)
-	for _, sec := range []string{secret1, "sk-group-del", "ghp-ws-del", "sk-dev-attempt"} {
+	for _, sec := range []string{secret1, gqlSecret1, gqlSecret2, mcpSecret, "sk-group-del", "ghp-ws-del", "sk-dev-attempt"} {
 		if strings.Contains(string(auditBytes), sec) {
 			t.Fatalf("audit log leaked secret %q", sec)
 		}

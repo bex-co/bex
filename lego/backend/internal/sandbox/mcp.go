@@ -144,6 +144,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			return nil, listExecutionsResult{Executions: out}, err
 		})
 	s.registerGroupMCP(server)
+	s.registerCredentialMCP(server)
 	s.registerImageMCP(server)
 	s.registerSnapshotMCP(server)
 	addTool(s, server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},

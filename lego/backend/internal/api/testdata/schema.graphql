@@ -1127,6 +1127,16 @@ type ChargeLine {
   unit: String
 }
 
+input CreateSandboxGroupCredentialInput {
+  domain: String!
+  enabled: Boolean
+  id: String!
+  injection: SandboxGroupCredentialInjectionInput!
+  methods: [String!]
+  paths: [String!]
+  value: String!
+}
+
 type CreatedObjectAccessKey {
   createdAt: String!
   createdBy: String!
@@ -1982,6 +1992,7 @@ type Mutation {
   createSSHKey(name: String!, publicKey: String!): SSHKey
   createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, snapshotId: String, snapshotName: String, template: String, timeoutSeconds: Int): Sandbox
   createSandboxGroup(environmentId: String, name: String!, ownerId: String, region: String): SandboxGroup
+  createSandboxGroupCredential(input: CreateSandboxGroupCredentialInput!, ownerId: String, sandboxGroupId: String!): SandboxGroupCredential
   createSandboxSnapshot(expiresAt: String, kind: String, name: String, ownerId: String, sandboxId: String!, ttlSeconds: Int): SandboxSnapshot
   createSavedSearch(filters: JSONObject, name: String!, projectId: String!, type: SavedSearchType!): SavedSearch
   createService(autoDeploy: Boolean, autoDeployTrigger: String, branch: String, buildCommand: String, buildFilter: BuildFilterInput, builder: String, command: String, dockerContext: String, dockerfilePath: String, dryRun: Boolean, envVars: [EnvVarInput], environmentId: String, headers: [StaticHeaderInput], healthCheckPath: String, image: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maintenanceMode: MaintenanceModeInput, maxShutdownDelaySeconds: Int, name: String!, notifyOnFail: String, ownerId: String, plan: String, port: Int, preDeployCommand: String, publishPath: String, region: String, registryCredentialId: String, replicas: Int, repo: String, rootDir: String, routes: [StaticRouteInput], runtime: String, schedule: String, secretFiles: [SecretFileInput], startCommand: String, type: String): Service
@@ -2013,6 +2024,7 @@ type Mutation {
   deleteRouterKey(id: String!, ownerId: String!): Boolean
   deleteSSHKey(id: String!): Boolean!
   deleteSandboxGroup(id: String!, ownerId: String): Boolean!
+  deleteSandboxGroupCredential(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
   deleteSandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
   deleteSandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
   deleteSavedSearch(id: String!): String
@@ -2065,6 +2077,7 @@ type Mutation {
   restartDatabase(id: String!): Database
   restartServer(serviceId: String!): Deploy
   restoreDiskSnapshot(id: String!, snapshotKey: String!): Disk
+  restoreSandboxGroupCredential(id: String!, ownerId: String, sandboxGroupId: String!, versionId: Int!): SandboxGroupCredential
   resumeAgentAutomation(id: String!, ownerId: String): AgentAutomation!
   resumeAgentSession(id: String!): AgentSession
   resumeDatabase(id: String!): Database
@@ -2180,6 +2193,7 @@ type Mutation {
   updateRegistryCredential(authToken: String, expiresAt: String, id: String!, name: String, ownerId: String, username: String): RegistryCredential
   updateRouterKey(allowCredentials: Boolean!, allowHeaders: String!, allowMethods: String!, allowOrigin: String!, id: String!, name: String!, ownerId: String!): Boolean
   updateSandboxGroup(concurrencyLimit: Int!, id: String!, ownerId: String): SandboxGroup
+  updateSandboxGroupCredential(id: String!, input: UpdateSandboxGroupCredentialInput!, ownerId: String, sandboxGroupId: String!): SandboxGroupCredential
   updateSavedSearch(filters: JSONObject, id: String!, name: String, type: SavedSearchType): SavedSearch
   updateServicePlan(confirm: String, dryRun: Boolean, id: String!, plan: String!): Service
   updateUserLogThemeSetting(id: String!, logThemeSetting: LogThemeSetting!): User
@@ -2612,6 +2626,9 @@ type Query {
   sandboxExecution(executionId: String!, id: String!, ownerId: String): SandboxExecution
   sandboxExecutions(cursor: String, id: String!, limit: Int, ownerId: String): [SandboxExecution]
   sandboxGroup(id: String!, ownerId: String): SandboxGroup
+  sandboxGroupCredential(id: String!, ownerId: String, sandboxGroupId: String!): SandboxGroupCredential
+  sandboxGroupCredentialVersions(id: String!, ownerId: String, sandboxGroupId: String!): [SandboxGroupCredentialVersion!]
+  sandboxGroupCredentials(ownerId: String, sandboxGroupId: String!): [SandboxGroupCredential!]
   sandboxGroups(cursor: String, limit: Int, ownerId: String): [SandboxGroup]
   sandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): SandboxImage
   sandboxImages(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxImage]
@@ -2805,6 +2822,36 @@ type SandboxGroup {
   ownerId: String!
   region: String!
   updatedAt: String
+}
+
+type SandboxGroupCredential {
+  domain: String!
+  enabled: Boolean!
+  id: String!
+  injection: SandboxGroupCredentialInjection!
+  methods: [String!]!
+  paths: [String!]!
+  version: SandboxGroupCredentialVersion!
+}
+
+type SandboxGroupCredentialInjection {
+  name: String
+  template: String
+  type: String!
+}
+
+input SandboxGroupCredentialInjectionInput {
+  name: String
+  template: String
+  type: String!
+}
+
+type SandboxGroupCredentialVersion {
+  fingerprint: String!
+  id: Int!
+  restoredFromVersionId: Int
+  updatedAt: String
+  updatedBy: String!
 }
 
 type SandboxImage {
@@ -3157,6 +3204,15 @@ enum ThemeSetting {
   LIGHT_HIGH_CONTRAST
   SYSTEM
   SYSTEM_HIGH_CONTRAST
+}
+
+input UpdateSandboxGroupCredentialInput {
+  domain: String
+  enabled: Boolean
+  injection: SandboxGroupCredentialInjectionInput
+  methods: [String!]
+  paths: [String!]
+  value: String
 }
 
 type UsageCoverage {
