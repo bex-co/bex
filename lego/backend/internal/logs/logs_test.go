@@ -1069,6 +1069,20 @@ func TestTerminalLinesAppendFailureReason(t *testing.T) {
 	}) {
 		t.Fatalf("multi-line reason = %v", got)
 	}
+	// A native build's tail quotes bex's own narration lines (w8/369): each
+	// keeps a single marker, and a line that is only a marker drops out.
+	if got := terminalLines("build_failed", "web_service",
+		"build failed in the build command step:\n==> Installing Bundler 2.5.23 (from Gemfile.lock)\n==>\n==> ==> nested\nerror: build command 'bundle install' exited with code 5"); !slices.Equal(got, []string{
+		"==> Build failed: build failed in the build command step:",
+		"==> Installing Bundler 2.5.23 (from Gemfile.lock)",
+		"==> nested",
+		"==> error: build command 'bundle install' exited with code 5",
+	}) {
+		t.Fatalf("marked tail = %v", got)
+	}
+	if got := terminalLines("update_failed", "web_service", "==> rollout stalled"); !slices.Equal(got, []string{"==> Deploy failed: rollout stalled"}) {
+		t.Fatalf("marked first line = %v", got)
+	}
 	if got := terminalLines("live", "web_service", "should-not-appear"); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
 		t.Fatalf("success must ignore a stray reason: %v", got)
 	}

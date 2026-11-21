@@ -488,16 +488,29 @@ func terminalLines(status, serviceType, reason string) []string {
 	}
 	parts := strings.Split(reason, "\n")
 	out := make([]string, 0, len(parts))
-	first := strings.TrimSpace(parts[0])
-	out = append(out, base+": "+first)
+	if first := unmarked(parts[0]); first != "" {
+		out = append(out, base+": "+first)
+	} else {
+		out = append(out, base)
+	}
 	for _, part := range parts[1:] {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
+		if part = unmarked(part); part != "" {
+			out = append(out, "==> "+part)
 		}
-		out = append(out, "==> "+part)
 	}
 	return out
+}
+
+// unmarked trims a reason line and drops any "==>" markers it already opens
+// with: a native build's failure tail quotes bex's own narration lines
+// ("==> Installing Bundler …"), and the marker terminalLines adds must be the
+// line's only one (w8/369).
+func unmarked(line string) string {
+	line = strings.TrimSpace(line)
+	for strings.HasPrefix(line, "==>") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, "==>"))
+	}
+	return line
 }
 
 // terminalLine maps a terminal deploy status to its closing line; "" for the
