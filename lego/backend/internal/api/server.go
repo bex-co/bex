@@ -148,6 +148,11 @@ type Server struct {
 	// PostgresExpiry expires and deletes free Postgres databases (ADR009
 	// §Free-plan expiry, w8/m126). main.go starts it with the serve context.
 	PostgresExpiry *postgres.FreeExpirySweeper
+	// StandbySlots drops the logical slots an HA publisher's standby kept from
+	// its time as the primary, so its slot synchronization runs again (ADR009
+	// § Logical replication › Lifecycle, w34/008). main.go starts it with the
+	// serve context.
+	StandbySlots *postgres.StandbySlotSweeper
 	// FreeHours suspends Free web services once a workspace has used its
 	// monthly Free instance hours (w8/m139). main.go starts it with the serve
 	// context.
@@ -1316,6 +1321,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AgentSessions:         agentSessionsSvc,
 		BlueprintRecovery:     &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:        &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
+		StandbySlots:          &postgres.StandbySlotSweeper{Service: pg},
 		FreeHours:             newFreeHours(appsSvc, d, notificationsSvc),
 		BuildMinutes:          newBuildMinutes(appsSvc, d, notificationsSvc),
 		Bandwidth:             newBandwidth(appsSvc, d, notificationsSvc),

@@ -642,6 +642,9 @@ func main() {
 	// Free Postgres expiry (w8/m126): warn, suspend at expiresAt, delete after
 	// the grace period.
 	go srv.PostgresExpiry.Run(ctx)
+	// An HA publisher's standby that was the primary keeps its logical slots,
+	// which stop slot synchronization until dropped (w34/008).
+	go srv.StandbySlots.Run(ctx)
 	// Monthly Free instance hours (w8/m139): warn at 80%, suspend Free web
 	// services when spent, resume at the month boundary.
 	go srv.FreeHours.Run(ctx)
