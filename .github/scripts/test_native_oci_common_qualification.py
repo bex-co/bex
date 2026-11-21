@@ -1326,7 +1326,7 @@ class ProfileRoutingControls(unittest.TestCase):
 
     def test_all_routes_are_exact_single_cases_and_bounds_are_fixed(self):
         expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "node-donors": (8, 90, 120), "modern-python": (6, 110, 140),
-                    "legacy-python": (2, 110, 140), "ruby": (9, 75, 105),
+                    "legacy-python": (2, 110, 140), "ruby": (10, 75, 105),
                     "go-rust": (2, 75, 105), "elixir": (5, 90, 120), "native-init": (1, 60, 90)}
         self.assertEqual(set(qualification.PROFILES), set(expected))
         for profile, (test, flag, cases, minutes, job_minutes) in qualification.PROFILES.items():
@@ -1473,7 +1473,7 @@ class ProfileRoutingControls(unittest.TestCase):
                 self.assertEqual({c for p, c in legs if p == "node"}, {"node-22", "node-26"})
                 self.assertEqual({c for p, c in legs if p == "node-addon"},
                                  {"common-node14-primary", "common-node16-primary", "common-python313-node16"})
-                self.assertEqual(len(legs), 38)
+                self.assertEqual(len(legs), 39)
                 for leg in actual["matrix"]:
                     selected = qualification.profile_selection(leg["profile"], leg["case"])
                     self.assertEqual(leg["job_minutes"], int(selected["job_minutes"]))
