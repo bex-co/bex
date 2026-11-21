@@ -10,7 +10,7 @@ on:
       # Whole trees gitops-validate.sh greps, which scripts/ci_test_inputs.py
       # cannot resolve: the onbex DNS-01 token may appear nowhere in deploy,
       # lego, scripts or .github but its renewal path (ADR093 D3), the
-      # BEX_ONBEX_TLS_ check greps every workflow, and
+      # hand-issued onbex TLS check (ADR093 D4) greps every workflow, and
       # platform-deprecations-validate.sh greps lego/backend and lego/operator
       # for retired code.
       - "deploy/**"
@@ -33,7 +33,7 @@ on:
       # Whole trees gitops-validate.sh greps, which scripts/ci_test_inputs.py
       # cannot resolve: the onbex DNS-01 token may appear nowhere in deploy,
       # lego, scripts or .github but its renewal path (ADR093 D3), the
-      # BEX_ONBEX_TLS_ check greps every workflow, and
+      # hand-issued onbex TLS check (ADR093 D4) greps every workflow, and
       # platform-deprecations-validate.sh greps lego/backend and lego/operator
       # for retired code.
       - "deploy/**"
