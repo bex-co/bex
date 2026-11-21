@@ -1,6 +1,6 @@
 # w6 · m557 — A disk grow reaches the instance within seconds, as on Render
 
-**Worker:** worker6 **Goal:** as Render documents ("Increasing size causes no downtime, and the added storage is available within a few seconds"), a larger `sizeGB` on a running service's disk shows in `df` inside the instance within seconds on every surface, and nothing says it waits for a restart. **Status:** blocked (t001, t002 and t004–t006 done; t003 waits for production to carry `7e481dece`, the operator change)
+**Worker:** worker6 **Goal:** as Render documents ("Increasing size causes no downtime, and the added storage is available within a few seconds"), a larger `sizeGB` on a running service's disk shows in `df` inside the instance within seconds on every surface, and nothing says it waits for a restart. **Status:** done
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | [The operator starts the kubelet's pod sync when a disk claim waits for the node, and DiskReady follows the claim](done/t001.md) — **DONE** | 75m | — |
 | t002 | [The dashboard's grow hint says what Render says](done/t002.md) — **DONE** | 20m | — |
-| t003 | [Production: three grows reach `df` within seconds, then the gap leaves ADR018 and ADR082](t003.md) | 45m | t001, t002 |
+| t003 | [Production: three grows reach `df` within seconds, then the gap leaves ADR018 and ADR082](done/t003.md) — **DONE** | 45m | t001, t002 |
 | t004 | [Render parity](done/t004.md) — **DONE** | 20m | t001, t002 |
 | t005 | [Simplify](done/t005.md) — **DONE** | 15m | t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE** | 30m | t004 |
-| t007 | [Closeout](t007.md) | 10m | t003, t005, t006 |
+| t007 | [Closeout](done/t007.md) — **DONE** | 10m | t003, t005, t006 |
 
 ## Definition of done
 
@@ -30,3 +30,13 @@
 - **Why now:** w6/157 found the gap while removing the divergence text; it is the last disk-resize difference ADR082 records.
 - **Rejected alternative:** lowering tenant kubelets' `syncFrequency` to a few seconds would resync every pod on dense tenant nodes that often, and rolls every tenant node, to speed up a rare event; nudging the one pod costs one patch per grow.
 - **Render parity task included:** the dashboard copy changes, and REST, GraphQL, MCP and Blueprint sync all reach this operator path.
+
+## Unblock (2026-11-21)
+
+- **Affected:** t003, then t007.
+- **Source:** verified evidence, not a user decision. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `a4db56cd97`, pinning `7e481dece7ac`, which is t001's commit `7e481dece`. Every `bex-system` Deployment, the controller manager included, runs `ghcr.io/bex-co/bex-operator@sha256:7eb9bbb7…`, the digest `deploy/gitops/base/bex.yaml` pins, and the live `bex-operator-pod-labels` policy carries the `diskGrow` variable that admits `app.bex.co/disk-resize-requested`.
+- **Remaining gates:** none. **Next:** t003's three production grows, then t007.
+
+## Closed (2026-11-21)
+
+On production pin `7e481dece7ac`, three grows of a Starter worker's 10 GB LUKS disk in `bex-canary` reached `df` inside the instance 4.8, 3.8 and 3.9 s after `PATCH /v1/disks/{id}`, with one pod (same UID, 0 restarts) throughout. The pod carried `app.bex.co/disk-resize-requested` each time, and `DiskReady` was True 0.10–0.17 s after the claim's capacity reached the request. The fixture was deleted by id with its PV and Hetzner volume, ADR018 and ADR082 no longer record a growth gap, and the times are in [t003](done/t003.md).
