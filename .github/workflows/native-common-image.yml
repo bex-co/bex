@@ -63,6 +63,7 @@ jobs:
             /lego/operator/internal/identity/**
             /lego/operator/internal/publish/**
             /lego/operator/internal/registry/**
+            /lego/types/deploybudgets/**
             /lego/types/k8sname/**
             /lego/types/netutil/**
             /lego/types/v1alpha1/**
@@ -162,6 +163,7 @@ jobs:
             /lego/operator/internal/identity/**
             /lego/operator/internal/publish/**
             /lego/operator/internal/registry/**
+            /lego/types/deploybudgets/**
             /lego/types/k8sname/**
             /lego/types/netutil/**
             /lego/types/v1alpha1/**
@@ -333,6 +335,7 @@ jobs:
             /lego/operator/internal/identity/**
             /lego/operator/internal/publish/**
             /lego/operator/internal/registry/**
+            /lego/types/deploybudgets/**
             /lego/types/k8sname/**
             /lego/types/netutil/**
             /lego/types/v1alpha1/**

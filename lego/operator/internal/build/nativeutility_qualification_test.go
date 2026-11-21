@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	gobuild "go/build"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
@@ -95,6 +97,100 @@ func TestNativeCommonQualificationTracksActualGeneratorAndFixtureChanges(t *test
 	}
 	if publications != 1 {
 		t.Fatalf("common workflow has %d publication calls, want one", publications)
+	}
+}
+
+// The qualify jobs compile this package (GOWORK=off) from a closed sparse
+// checkout, and qualification-source.json records the qualifier's
+// SOURCE_PACKAGES. A local package this package or its tests reach, directly
+// or through another local package, that either list omits fails `go test
+// ./internal/build` with "no required module provides package" before any case
+// runs: 020e4198c's lego/types/deploybudgets import did, and this workflow
+// only triggers on native*.go, so operator-test is where that has to show up.
+func TestNativeCommonQualificationChecksOutEveryLocalPackageTheBuildCompiles(t *testing.T) {
+	const module = "github.com/bex-co/bex/"
+	repo := filepath.Join("..", "..", "..", "..")
+	platform := gobuild.Default
+	platform.GOOS, platform.GOARCH = "linux", "amd64" // the qualify job's platform
+	local := map[string]bool{}
+	var walk func(dir string, tests bool)
+	walk = func(dir string, tests bool) {
+		pkg, err := platform.ImportDir(filepath.Join(repo, filepath.FromSlash(dir)), 0)
+		must(t, err)
+		imports := slices.Clone(pkg.Imports)
+		if tests {
+			imports = append(append(imports, pkg.TestImports...), pkg.XTestImports...)
+		}
+		for _, imported := range imports {
+			if rel, ok := strings.CutPrefix(imported, module); ok && !local[rel] {
+				local[rel] = true
+				walk(rel, false)
+			}
+		}
+	}
+	walk("lego/operator/internal/build", true)
+	walk("lego/operator/cmd/native-init", false)
+	if !local["lego/types/v1alpha1"] {
+		t.Fatal("import walk missed lego/types/v1alpha1; it is not reading the build package")
+	}
+
+	helper, err := os.ReadFile(filepath.Join(repo, ".github", "scripts", "native-common-qualify.py"))
+	must(t, err)
+	declared := regexp.MustCompile(`(?s)\nSOURCE_PACKAGES = \((.*?)\n\)`).FindSubmatch(helper)
+	if declared == nil {
+		t.Fatal("native-common-qualify.py no longer declares SOURCE_PACKAGES")
+	}
+	recorded := map[string]bool{}
+	for _, name := range regexp.MustCompile(`"([^"]+)"`).FindAllSubmatch(declared[1], -1) {
+		recorded["lego/"+string(name[1])] = true
+	}
+
+	raw, err := os.ReadFile(filepath.Join(repo, ".github", "workflows", "native-common-image.yml"))
+	must(t, err)
+	var workflow struct {
+		Jobs map[string]struct {
+			Steps []struct {
+				Uses string
+				With map[string]any
+			}
+		}
+	}
+	must(t, yaml.Unmarshal(raw, &workflow))
+	closed := map[string][]string{}
+	for name, job := range workflow.Jobs {
+		for _, step := range job.Steps {
+			sparse, _ := step.With["sparse-checkout"].(string)
+			rules := strings.Fields(sparse)
+			// Open checkouts ("/*" then "!/.pm/") already carry the whole tree.
+			if strings.HasPrefix(step.Uses, "actions/checkout@") && len(rules) > 0 && rules[0] == "!/**" {
+				closed[name] = rules
+			}
+		}
+	}
+	checkouts := slices.Sorted(maps.Keys(closed))
+	if len(checkouts) == 0 {
+		t.Fatal("native-common-image.yml has no closed sparse checkout left to check")
+	}
+	selects := func(rules []string, dir string) bool {
+		for _, rule := range rules {
+			if prefix, ok := strings.CutSuffix(rule, "**"); ok && !strings.HasPrefix(rule, "!") && strings.HasPrefix("/"+dir+"/", prefix) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, dir := range slices.Sorted(maps.Keys(local)) {
+		if strings.HasPrefix(dir+"/", "lego/operator/internal/build/") {
+			continue // the build tree is recorded and checked out whole
+		}
+		if !recorded[dir] {
+			t.Errorf("native-common-qualify.py SOURCE_PACKAGES omits %s, which the build package compiles", strings.TrimPrefix(dir, "lego/"))
+		}
+		for _, job := range checkouts {
+			if !selects(closed[job], dir) {
+				t.Errorf("native-common-image.yml job %s's sparse checkout omits /%s/**, which the build package compiles", job, dir)
+			}
+		}
 	}
 }
 
