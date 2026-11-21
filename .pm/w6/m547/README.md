@@ -1,19 +1,20 @@
 # w6 · m547 — A disk-bearing service is unavailable for a few seconds on a deploy, as on Render
 
-**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** todo
+**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** todo (t001–t004, t007, t008 and t010 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Measure a disk service's unavailable window on production, phase by phase](t001.md) | 60m | — |
-| t002 | [The new instance starts on the volume's node](t002.md) | 60m | t001 |
-| t003 | [A `Recreate` rollout probes startup and readiness every second](t003.md) | 45m | t001 |
-| t004 | [The new image is on the node before the old instance stops](t004.md) | 75m | t002 |
-| t005 | [Ship and re-measure on production](t005.md) | 45m | t003, t004 |
+| t001 | [Measure a disk service's unavailable window on production, phase by phase](done/t001.md) — **DONE** | 60m | — |
+| t002 | [The new instance starts on the volume's node](done/t002.md) — **DONE** | 60m | t001 |
+| t003 | [A `Recreate` rollout probes startup and readiness every second](done/t003.md) — **DONE** (startup only; readiness not needed, t001) | 45m | t001 |
+| t004 | [The new image is on the node before the old instance stops](done/t004.md) — **DONE** (not needed, t001; large images are w6/160) | 75m | t002 |
+| t010 | [Tenant kubelets sync node status every 2 s](done/t010.md) — **DONE** | 30m | t001 |
+| t005 | [Ship and re-measure on production](t005.md) | 45m | t003, t004, t010 |
 | t006 | [Record the measured bound in ADR082, ADR004 and ADR018](t006.md) | 20m | t005 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
 
 ## Definition of done

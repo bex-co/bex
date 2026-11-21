@@ -139,6 +139,15 @@ const (
 	// budget cannot drift away from progressDeadlineSeconds.
 	healthCheckStartupFailureThreshold = rolloutBudgetSeconds / healthCheckPeriodSeconds
 
+	// diskStartupPeriodSeconds is a disk-bearing service's startup probe
+	// period. Under Recreate no instance serves while the new one starts, so
+	// every second between the server listening and the first passing check
+	// is downtime: at 10s, production's disk deploys spent 7-9s of their
+	// window there (w6/m547 t001). Readiness keeps its 5s period, because the
+	// kubelet runs it as soon as startup passes. Liveness keeps 10s. The
+	// threshold derives from the same 15-minute budget, like the others.
+	diskStartupPeriodSeconds int32 = 1
+
 	// livenessRestartWindowSeconds is Render's restart stage: a check that
 	// keeps failing for 60 seconds gets the instance restarted.
 	livenessRestartWindowSeconds int32 = 60
@@ -150,6 +159,15 @@ const (
 	// Kubernetes' default threshold of 3 (30s), half the documented window.
 	healthCheckLivenessFailureThreshold = livenessRestartWindowSeconds / healthCheckPeriodSeconds
 )
+
+// startupPeriodFor is the startup probe period an App's pods get: 1s for a
+// disk-bearing service (Recreate), 10s for every other one.
+func startupPeriodFor(app *appv1alpha1.App) int32 {
+	if app.Spec.Disk != nil {
+		return diskStartupPeriodSeconds
+	}
+	return healthCheckPeriodSeconds
+}
 
 // deploymentParams bundles the inputs the Deployment projection needs beyond
 // the App itself — the reconcile-time decisions (which image won, how many
@@ -194,6 +212,12 @@ type deploymentParams struct {
 	// readinessPeriod overrides the readiness probe period while a stored
 	// template still carries its previous one (applyDeploymentSpec); 0 = current.
 	readinessPeriod int32
+	// startupPeriod overrides the startup probe period the same way
+	// (startupPeriodFor); 0 = current.
+	startupPeriod int32
+	// diskNode is the node a disk-bearing App's volume is attached to, which
+	// its next instance prefers (preferDiskNode); "" for none known.
+	diskNode string
 	// openPortCheck is a first web image release whose template must not
 	// depend on the HTTP port discovery chooses (checksAnyOpenPort, w4/m350).
 	openPortCheck bool
@@ -464,11 +488,12 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 			container.VolumeMounts = append(container.VolumeMounts,
 				corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true})
 		}
+		startupPeriod := cmp.Or(p.startupPeriod, startupPeriodFor(app))
 		container.StartupProbe = &corev1.Probe{
 			ProbeHandler:     handler,
 			TimeoutSeconds:   healthCheckTimeoutSeconds,
-			PeriodSeconds:    healthCheckPeriodSeconds,
-			FailureThreshold: healthCheckStartupFailureThreshold,
+			PeriodSeconds:    startupPeriod,
+			FailureThreshold: rolloutBudgetSeconds / startupPeriod,
 		}
 		container.ReadinessProbe = &corev1.Probe{
 			ProbeHandler:     handler,
@@ -645,6 +670,15 @@ func storedReadinessPeriod(spec corev1.PodSpec) int32 {
 	return spec.Containers[0].ReadinessProbe.PeriodSeconds
 }
 
+// storedStartupPeriod is the startup probe period a stored pod spec carries,
+// 0 for none.
+func storedStartupPeriod(spec corev1.PodSpec) int32 {
+	if len(spec.Containers) == 0 || spec.Containers[0].StartupProbe == nil {
+		return 0
+	}
+	return spec.Containers[0].StartupProbe.PeriodSeconds
+}
+
 // applyDrain sets the container's preStop drain and the pod's grace period
 // together, so they cannot drift apart. With checked, the drain is an exec of
 // the health-probe helper running the container's own liveness check
@@ -756,12 +790,27 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		// change for another reason.
 		keptCache := keptEdgeCache(stored)
 		cacheStale := keptCache != nil
-		if drainStale || periodStale || probeStale || cacheStale {
+		// A disk-bearing App's 1s startup period (w6/m547) is adopted the
+		// same way, so the operator upgrade that ships it costs no disk
+		// service a Recreate. So is its node preference, which follows the
+		// volume only on a pass that rolls anyway: a hint that changed the
+		// template by itself would roll the instance it describes. With no
+		// instance on a node to read, the stored preference stands.
+		keptStartup := storedStartupPeriod(stored.Spec)
+		startupStale := !p.worker && keptStartup != startupPeriodFor(app)
+		keptNode := storedDiskNode(stored.Spec)
+		if p.diskNode == "" {
+			p.diskNode = keptNode
+		}
+		nodeStale := app.Spec.Disk != nil && keptNode != p.diskNode
+		if drainStale || periodStale || probeStale || cacheStale || startupStale || nodeStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
 			unchanged := dep.DeepCopy()
 			kept := p
 			kept.readinessPeriod = keptPeriod
+			kept.startupPeriod = keptStartup
+			kept.diskNode = keptNode
 			kept.healthProbeImage = keptProbeImage
 			kept.drainCheck = keptDrainCheck
 			kept.livenessGrace = keptLivenessGrace
@@ -884,6 +933,8 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// A tier no standard serving node can hold runs on its dedicated pool
 	// (w2/m250); every other tier keeps no toleration/affinity at all.
 	execution.PlaceOnServingPool(&dep.Spec.Template.Spec, tiers.Compute.ServingPool(app.Spec.Tier))
+	// A disk-bearing App's next instance prefers its volume's node (disk.go).
+	preferDiskNode(&dep.Spec.Template.Spec, app, p.diskNode)
 	// Last, always: above is what bex chooses, this is what Kubernetes would have
 	// chosen for the rest. See server_defaults.go.
 	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)

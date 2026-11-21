@@ -109,6 +109,12 @@ spec:
             # here; the separately tainted bex.co/pool=platform pool is never
             # eligible for them.
             node-labels: bex.co/pool=tenant
+            # Sync node status every 2s, not the default 10s: the kubelet mounts an
+            # attachable volume only once a sync has reported it in use, and the
+            # attach/detach controller detaches one only after a sync reports it
+            # free, so a disk-bearing service's Recreate waited up to 10s twice
+            # (w6/m547 t001). Status is computed every 2s but patched only on change.
+            node-status-update-frequency: "2s"
             read-only-port: "0"
             resolv-conf: /etc/kubernetes/resolv.conf
             rotate-server-certificates: "true"
@@ -293,6 +299,12 @@ spec:
             # here; the separately tainted bex.co/pool=platform pool is never
             # eligible for them.
             node-labels: bex.co/pool=tenant
+            # Sync node status every 2s, not the default 10s: the kubelet mounts an
+            # attachable volume only once a sync has reported it in use, and the
+            # attach/detach controller detaches one only after a sync reports it
+            # free, so a disk-bearing service's Recreate waited up to 10s twice
+            # (w6/m547 t001). Status is computed every 2s but patched only on change.
+            node-status-update-frequency: "2s"
             read-only-port: "0"
             resolv-conf: /etc/kubernetes/resolv.conf
             rotate-server-certificates: "true"
@@ -478,6 +490,12 @@ spec:
             # eligible for them. bex.co/serving-pool=xl is what the large
             # tiers' required node affinity selects.
             node-labels: bex.co/pool=tenant,bex.co/serving-pool=xl
+            # Sync node status every 2s, not the default 10s: the kubelet mounts an
+            # attachable volume only once a sync has reported it in use, and the
+            # attach/detach controller detaches one only after a sync reports it
+            # free, so a disk-bearing service's Recreate waited up to 10s twice
+            # (w6/m547 t001). Status is computed every 2s but patched only on change.
+            node-status-update-frequency: "2s"
             read-only-port: "0"
             resolv-conf: /etc/kubernetes/resolv.conf
             rotate-server-certificates: "true"
@@ -663,6 +681,12 @@ spec:
             # eligible for them. bex.co/serving-pool=xxl is what the large
             # tiers' required node affinity selects.
             node-labels: bex.co/pool=tenant,bex.co/serving-pool=xxl
+            # Sync node status every 2s, not the default 10s: the kubelet mounts an
+            # attachable volume only once a sync has reported it in use, and the
+            # attach/detach controller detaches one only after a sync reports it
+            # free, so a disk-bearing service's Recreate waited up to 10s twice
+            # (w6/m547 t001). Status is computed every 2s but patched only on change.
+            node-status-update-frequency: "2s"
             read-only-port: "0"
             resolv-conf: /etc/kubernetes/resolv.conf
             rotate-server-certificates: "true"

@@ -124,6 +124,86 @@ func applyDiskProjection(dep *appsv1.Deployment, container *corev1.Container, ap
 	})
 }
 
+// preferDiskNode asks the scheduler to start a disk-bearing App's next
+// instance on node, the one its volume is attached to (w6/m547). Hetzner
+// volumes are bound to a location, not a node, so the scheduler is otherwise
+// free to choose any node there, and on production it chose another node in
+// half the rollouts measured. Each move cost 27-32s of Recreate downtime: the
+// old node reporting the volume free, a 9s detach and a 15s attach. A
+// preference, never a requirement: a node that is cordoned, draining, full or
+// gone is skipped and the volume moves, as before. node is "" on a first
+// deploy, which has no volume to follow.
+//
+// It must run after execution.PlaceOnServingPool, which resets the affinity,
+// and adds to the serving pool's required term rather than replacing it.
+func preferDiskNode(spec *corev1.PodSpec, app *appv1alpha1.App, node string) {
+	if app.Spec.Disk == nil || node == "" {
+		return
+	}
+	if spec.Affinity == nil {
+		spec.Affinity = &corev1.Affinity{}
+	}
+	if spec.Affinity.NodeAffinity == nil {
+		spec.Affinity.NodeAffinity = &corev1.NodeAffinity{}
+	}
+	spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution = []corev1.PreferredSchedulingTerm{{
+		Weight: 100,
+		Preference: corev1.NodeSelectorTerm{MatchFields: []corev1.NodeSelectorRequirement{{
+			Key:      diskNodeField,
+			Operator: corev1.NodeSelectorOpIn,
+			Values:   []string{node},
+		}}},
+	}}
+}
+
+// diskNodeField is the node field preferDiskNode matches on: the Node's own
+// name, which a hostname label need not equal.
+const diskNodeField = "metadata.name"
+
+// storedDiskNode is the node a stored pod spec prefers (preferDiskNode), ""
+// for none.
+func storedDiskNode(spec corev1.PodSpec) string {
+	if spec.Affinity == nil || spec.Affinity.NodeAffinity == nil {
+		return ""
+	}
+	for _, term := range spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+		for _, field := range term.Preference.MatchFields {
+			if field.Key == diskNodeField && field.Operator == corev1.NodeSelectorOpIn && len(field.Values) == 1 {
+				return field.Values[0]
+			}
+		}
+	}
+	return ""
+}
+
+// diskNode is the node a disk-bearing App's volume is on: the node of its
+// serving instance, or, mid-rollout, of the instance being replaced. "" when
+// no instance has a node or the lookup fails. The preference is a hint, never
+// worth failing a reconcile over, and applyDeploymentSpec falls back to the
+// node the stored template already prefers.
+func (r *AppReconciler) diskNode(ctx context.Context, app *appv1alpha1.App) string {
+	if app.Spec.Disk == nil {
+		return ""
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
+		return ""
+	}
+	node := ""
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		owner := metav1.GetControllerOf(pod)
+		if pod.Spec.NodeName == "" || owner == nil || owner.Kind != kindReplicaSet {
+			continue
+		}
+		if pod.DeletionTimestamp == nil && pod.Status.Phase == corev1.PodRunning {
+			return pod.Spec.NodeName
+		}
+		node = pod.Spec.NodeName
+	}
+	return node
+}
+
 // reconcileDisk converges the App's disk: the passphrase Secret, then the PVC —
 // created at spec size, grown (never shrunk) when the spec asks for more.
 //

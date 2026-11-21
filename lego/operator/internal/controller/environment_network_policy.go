@@ -114,7 +114,7 @@ func appTemplateEnvironmentLabels(app *appv1alpha1.App) map[string]string {
 func (r *AppReconciler) relabelAppPods(ctx context.Context, app *appv1alpha1.App) error {
 	return relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelApp: app.Name}, app.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
 		switch owner.Kind {
-		case "ReplicaSet":
+		case kindReplicaSet:
 			return true
 		case "Job":
 			component := pod.Labels[execution.LabelComponent]

@@ -195,6 +195,9 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 // canonical key in lego/types (v1alpha1), which the backend also reads.
 const labelApp = appv1alpha1.LabelApp
 
+// kindReplicaSet is the owner kind of a Deployment's pods.
+const kindReplicaSet = "ReplicaSet"
+
 // createContainerConfigError is the kubelet pod-condition reason the stuck-pod
 // classifier surfaces as its own App condition (a referenced Secret/ConfigMap
 // that cannot be resolved). Named once: it is matched and re-emitted.

@@ -756,6 +756,8 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		// Cached on app's status, which this pass persists; runtime is a view.
 		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
 		params.healthProbeImage = r.BackupHelperImage
+		// The node the disk's volume is on, which a rolling pass prefers.
+		params.diskNode = r.diskNode(ctx, runtime)
 	} else {
 		recordManagedOIDCOf(app, *restore)
 	}

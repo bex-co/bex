@@ -107,7 +107,7 @@ func (r *AppReconciler) evacuatedNodeClear(ctx context.Context, dep *appsv1.Depl
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		owner := metav1.GetControllerOf(pod)
-		if owner == nil || owner.Kind != "ReplicaSet" {
+		if owner == nil || owner.Kind != kindReplicaSet {
 			continue
 		}
 		rsPods++

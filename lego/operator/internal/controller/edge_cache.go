@@ -176,7 +176,7 @@ func (r *AppReconciler) reconcileEdgeCacheTier(ctx context.Context, app *appv1al
 	// The tier's environment labels move in place, as the App's own pods'
 	// do (relabelAppPods): a toggle or a move rolls no tier pod either.
 	if err := relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelEdgeCacheTier: app.Name}, app.Labels,
-		func(_ *corev1.Pod, owner *metav1.OwnerReference) bool { return owner.Kind == "ReplicaSet" }); err != nil {
+		func(_ *corev1.Pod, owner *metav1.OwnerReference) bool { return owner.Kind == kindReplicaSet }); err != nil {
 		return err
 	}
 	return r.annotateEdgeCacheTierPods(ctx, app, dep.Annotations[edgecache.RevisionAnnotation])

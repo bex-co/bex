@@ -135,7 +135,7 @@ func (r *KeyValueReconciler) syncKeyValuePodIsolation(ctx context.Context, kv *a
 	// Proxy pods belong to the Deployment's ReplicaSets, which select them by the
 	// proxy label (never the isolation label), so a relabel keeps them owned.
 	return relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValueInternalProxy: kv.Name}, kv.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
-		return owner.Kind == "ReplicaSet"
+		return owner.Kind == kindReplicaSet
 	})
 }
 
