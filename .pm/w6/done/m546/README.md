@@ -1,6 +1,6 @@
 # w6 · m546 — A native Go service runs from Render's Go source path, so a disk mounted where Render's docs say keeps its data
 
-**Worker:** worker6 **Goal:** a native Go service's working directory is Render's `/opt/render/project/go/src/github.com/<owner>/<repo>`, so a disk mounted at Render's documented Go example path (`…/<repo>/data`) holds the files the app writes to `data/`, and an existing Go service's paths and mounts keep resolving. **Status:** blocked (t001–t004 and t006–t008 done; t005 waits for the first pin carrying `35ac61c80`)
+**Worker:** worker6 **Goal:** a native Go service's working directory is Render's `/opt/render/project/go/src/github.com/<owner>/<repo>`, so a disk mounted at Render's documented Go example path (`…/<repo>/data`) holds the files the app writes to `data/`, and an existing Go service's paths and mounts keep resolving. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [A Go image builds and runs in Render's Go source path](done/t002.md) — **DONE** | 60m | t001 |
 | t003 | [Every process of a Go service starts there: start command, pre-deploy, cron run, Shell and SSH](done/t003.md) — **DONE** | 60m | t002 |
 | t004 | [Tests: a disk at Render's Go example path keeps relative writes; an existing service keeps its mounts](done/t004.md) — **DONE** | 45m | t003 |
-| t005 | [Ship and verify on production](t005.md) | 45m | t004 |
+| t005 | [Ship and verify on production](done/t005.md) — **DONE** | 45m | t004 |
 | t006 | [Record the path in ADR060, ADR082 and ADR018](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -49,3 +49,10 @@
 - **Why now:** the failure is silent data loss, the worst outcome of the disk items; disks reopened three months ago (ADR082), so the fewer Go services exist on the old path, the cheaper the move.
 - **Open decision (recommendation, not a user decision):** t001 records the proposal's recommendation: every Go service in every workspace moves (ADR008: no allowlist without a widen task), with `/opt/render/project/src` kept as a symlink to the new directory so old absolute paths and mounts resolve; non-GitHub repositories use `<host>/<owner>/<repo>` from the repository URL, which Render does not document (unverified).
 - **Render parity task omitted:** the working directory is runtime mechanism; no REST, GraphQL, MCP or dashboard field changes. If t001 finds the Go source root must join the mount-path denylist (a REST/UI change), it files that as a follow-up note instead of widening this milestone.
+
+## Unblock record (2026-11-21)
+
+- **Affected:** w6/m546 t005, then t009.
+- **Source:** verified evidence. The gate was ``pin must carry `35ac61c80` ``. The newest pin commit on `origin/main` is `b32b3ff43` (`chore(deploy): pin platform images to cce6c749f6ff`), and `git merge-base --is-ancestor 35ac61c80 cce6c749f6ff` holds. Every `bex-system` Deployment on production (`bex-controller-manager`, `bex-api`, `bex-ssh-gateway`, …) runs `ghcr.io/bex-co/bex-operator@sha256:e14f8ee487ea…`, the digest that pin commit writes.
+- **Scope:** unchanged. No gate remains.
+- **Next:** t005 on production as its steps say, then t009.
