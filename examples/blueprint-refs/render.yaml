@@ -1,0 +1,71 @@
+# render.yaml — Blueprint references end to end, on free services only (w8/375).
+# blueprint-refs-app's GET / reports what each reference resolved to (see
+# README.md). Free web services and a static site only: a worker, private
+# service or cron job is paid, and fromService host/port/hostport naming a free
+# web service is refused by design (w8/m130), so the web-to-web link is an
+# envVarKey copy and the host comes from the static site.
+envVarGroups:
+  - name: blueprint-refs-group
+    envVars:
+      - key: GROUP_MARKER
+        value: group-marker-ok
+
+services:
+  - type: web
+    name: blueprint-refs-app
+    runtime: docker
+    plan: free
+    repo: https://github.com/bex-co/bex
+    branch: main
+    rootDir: examples/blueprint-refs/app
+    # Paths are relative to the repository root, not to rootDir. A change
+    # outside the app directory, or to a Markdown file inside it, does not
+    # redeploy the service.
+    buildFilter:
+      paths:
+        - examples/blueprint-refs/app/**
+      ignoredPaths:
+        - examples/blueprint-refs/app/**/*.md
+    envVars:
+      - fromGroup: blueprint-refs-group
+      - key: PEER_MARKER
+        fromService:
+          type: web
+          name: blueprint-refs-peer
+          envVarKey: PEER_MARKER
+      - key: SITE_HOST
+        fromService:
+          type: web
+          name: blueprint-refs-site
+          property: host
+      - key: GENERATED_SECRET
+        generateValue: true
+      - key: MANUAL_SECRET
+        sync: false
+
+  # The envVarKey source. It runs the same app, so its own report shows its
+  # PEER_MARKER and every other reference unset.
+  - type: web
+    name: blueprint-refs-peer
+    runtime: docker
+    plan: free
+    repo: https://github.com/bex-co/bex
+    branch: main
+    rootDir: examples/blueprint-refs/app
+    buildFilter:
+      paths:
+        - examples/blueprint-refs/app/**
+      ignoredPaths:
+        - examples/blueprint-refs/app/**/*.md
+    envVars:
+      - key: PEER_MARKER
+        value: peer-marker-ok
+
+  # A static site takes no plan: it is free on Render and bex alike.
+  - type: web
+    name: blueprint-refs-site
+    runtime: static
+    repo: https://github.com/bex-co/bex
+    branch: main
+    rootDir: examples/blueprint-refs/site
+    staticPublishPath: .
