@@ -112,11 +112,19 @@ jobs:
           TAG: ${{ github.ref_name }}
         # Idempotent so a failed later step (e.g. the tap push) can be fixed
         # by re-running the job instead of leaving the release half-published.
+        # The body is rendered, not auto-generated: scripts/bex-cli-release-notes.sh
+        # lists only the CLI's own user-facing changes since the previous
+        # bex-cli/v* release (the monorepo's other churn is never a CLI
+        # change), so a re-run refreshes the notes rather than keeping a stale
+        # body. The workflow owns the body — hand edits are overwritten.
         run: |
+          VERSION="${TAG#bex-cli/v}"
+          VERSION="$VERSION" bash scripts/bex-cli-release-notes.sh > "$RUNNER_TEMP/notes.md"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --clobber
+            gh release edit "$TAG" --title "bex CLI $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
           else
-            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --title "bex CLI $VERSION" --generate-notes
+            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --title "bex CLI $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
           fi
       - name: publish Homebrew formula
         # BEX_TAP_PUSH_KEY is the write deploy key of bex-co/homebrew-tap —
@@ -146,7 +154,11 @@ jobs:
           git config user.name "bex-release-bot"
           git config user.email "noreply@bex.co"
           git add Formula/bex.rb
-          git diff --cached --quiet || git commit -m "bex $VERSION"
+          # The tap commit carries the same polished highlights as the GitHub
+          # release body, so `brew` users see what changed without following a
+          # link. The subject stays `bex $VERSION` for automation.
+          VERSION="$VERSION" bash "$GITHUB_WORKSPACE/scripts/bex-cli-release-notes.sh" --tap > "$RUNNER_TEMP/tap-msg.txt"
+          git diff --cached --quiet || git commit -F "$RUNNER_TEMP/tap-msg.txt"
           git push origin main || { git pull --rebase origin main && git push origin main; }
 
       - name: scrub tap credentials

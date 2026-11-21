@@ -199,6 +199,11 @@ jobs:
       # w6/112 (#111): a release tag left off main by a rewrite counts from its copy.
       - name: CLI release staleness self-test
         run: bash scripts/cli-release-staleness.test.sh
+      # The CLI release body lists only the CLI's own user-facing changes
+      # since the previous bex-cli release — never backend churn, never a
+      # wrong-prefix tag as the base — for GitHub releases and the tap commit.
+      - name: CLI release notes renderer self-test
+        run: bash scripts/bex-cli-release-notes.test.sh
       # w3/m173 t006 (ADR079 F1): .env loaders refuse a group/world-readable file.
       - name: .env permission guard self-test
         run: bash scripts/env-file.test.sh
@@ -369,6 +374,7 @@ jobs:
           scripts/lib/canary-api.sh scripts/tenant-view-liveness.sh scripts/tenant-view-liveness.test.sh
           scripts/lib/verify-bootstrap-secret.sh scripts/verify-bootstrap-secret.test.sh
           scripts/cli-release-staleness.sh scripts/cli-release-staleness.test.sh
+          scripts/bex-cli-release-notes.sh scripts/bex-cli-release-notes.test.sh
           scripts/deploy-canary.sh
           scripts/funnel-counters.sh
       - name: Local cluster lock and kubeconfig publication contracts

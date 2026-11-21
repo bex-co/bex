@@ -16,7 +16,7 @@ Or via Homebrew: `brew install bex-co/tap/bex` — the formula in [bex-co/homebr
 
 Both end with the CLI's one-time [usage-telemetry notice](#cli-usage-telemetry): the installer prints it and records it as shown, and Homebrew shows it as caveats.
 
-Both channels consume the `bex-cli/v*` GitHub releases: when such a tag is published, CI creates Linux and macOS archives, `checksums.txt`, and a keyless cosign signature bundle over the checksums (GitHub-OIDC signed; no key custody). To verify a download's provenance manually (cosign v2.4.2 or newer):
+Both channels consume the `bex-cli/v*` GitHub releases: when such a tag is published, CI creates Linux and macOS archives, `checksums.txt`, and a keyless cosign signature bundle over the checksums (GitHub-OIDC signed; no key custody). Each release's notes list only the CLI's own user-facing changes since the previous `bex-cli/v*` release — the monorepo's other churn is never a CLI change — with install, upgrade, and verify guidance; the Homebrew tap commit carries the same highlights. To verify a download's provenance manually (cosign v2.4.2 or newer):
 
 ```bash
 cosign verify-blob checksums.txt \
