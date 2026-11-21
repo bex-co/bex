@@ -39,7 +39,7 @@
   <text x="48" y="188" class="s">Render CLI and SDKs · presigned URLs (D2)</text>
   <text x="48" y="212" class="m">bex s3 … · aws · rclone · boto3</text>
   <text x="48" y="228" class="s">S3 client, access key, path style (D3)</text>
-  <text x="48" y="262" class="t">bex s3 runs aws with the key set</text>
+  <text x="48" y="262" class="t">bex s3 is a native S3 client</text>
   <text x="48" y="278" class="s">bex ea objects passes through (D2)</text>
   <text x="48" y="304" class="t">Not here (D10)</text>
   <text x="48" y="320" class="s">virtual-hosted style · per-bucket keys</text>
