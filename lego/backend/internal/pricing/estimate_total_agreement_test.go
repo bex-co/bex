@@ -52,6 +52,29 @@ func TestEstimateTotalEqualsSumOfResources(t *testing.T) {
 	}
 }
 
+// The meter breakdown shows the same total: it is the other reader-visible
+// decomposition of TotalUSD, so its lines must add to it exactly like the
+// resource figures do. Rounding each meter's aggregate can drift a cent from
+// the total the resource lines sum to: the stack below meters at $4.49 for a
+// $4.48 total (the two agent-model rows meter $1.91 together but $0.71 and
+// $1.19 apart).
+func TestEstimateMetersEqualTotal(t *testing.T) {
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "b", Kind: store.UsageKindCronMinimumMicroUSD, ResourceKind: store.ResourceKindService, Total: 1934401},
+		{ServiceID: "a", Kind: store.UsageKindAgentModelCostMicroUSD, ResourceKind: store.ResourceKindAgentSession, Total: 714612},
+		{ServiceID: "c", Kind: store.UsageKindAgentModelCostMicroUSD, ResourceKind: store.ResourceKindAgentSession, Total: 1191896},
+		{ServiceID: "c", Kind: store.UsageKindBuildSeconds, ResourceKind: store.ResourceKindService, Total: 11145},
+	}
+	got := Default.Estimate(rows)
+	var sum int64
+	for _, m := range got.Meters {
+		sum += monthlyCents(t, m.CostUSD)
+	}
+	if total := monthlyCents(t, got.TotalUSD); total != sum {
+		t.Errorf("TotalUSD %s != sum of meter lines (%d cents): %+v", got.TotalUSD, sum, got.Meters)
+	}
+}
+
 // The total is the sum of the displayed resource figures, to the cent, with
 // and without plan allowances: a fixed-seed sweep over meter kinds,
 // resources, and quantities.
@@ -98,6 +121,55 @@ func TestEstimateTotalEqualsSumOfResourcesProperty(t *testing.T) {
 		}
 		if total := monthlyCents(t, got.TotalUSD); total != sum {
 			t.Fatalf("iter %d: total %s != resources sum %d cents\nrows=%+v\nres=%+v", iter, got.TotalUSD, sum, rows, got.Resources)
+		}
+	}
+}
+
+// The meter lines add to the same total, to the cent, with and without plan
+// allowances: the same fixed-seed sweep, asserting the second decomposition.
+func TestEstimateMetersEqualTotalProperty(t *testing.T) {
+	kinds := []struct {
+		kind, tier, rk string
+		maxQty         int64
+	}{
+		{store.UsageKindInstanceSeconds, "starter", store.ResourceKindService, 2_628_000},
+		{store.UsageKindInstanceSeconds, "standard", store.ResourceKindService, 2_628_000},
+		{store.UsageKindEgressBytes, "", store.ResourceKindService, 50 * 1 << 30},
+		{store.UsageKindBuildSeconds, "", store.ResourceKindService, 36000},
+		{store.UsageKindStorageGBSeconds, "", store.ResourceKindPostgres, 100 * MonthSeconds},
+		{store.UsageKindDiskGBSeconds, "", store.ResourceKindService, 100 * MonthSeconds},
+		{store.UsageKindAgentModelCostMicroUSD, "", store.ResourceKindAgentSession, 2000000},
+		{store.UsageKindCronMinimumMicroUSD, "", store.ResourceKindService, 2000000},
+		{store.UsageKindCustomDomainSeconds, "", store.ResourceKindCustomDomains, 3 * MonthSeconds},
+	}
+	allowance := Included{
+		store.UsageKindBuildSeconds: Default.IncludedFor(store.PlanHobby)[store.UsageKindBuildSeconds],
+		store.UsageKindEgressBytes:  Default.IncludedFor(store.PlanHobby)[store.UsageKindEgressBytes],
+	}
+	rng := rand.New(rand.NewSource(2))
+	for iter := 0; iter < 5000; iter++ {
+		var rows []store.UsageSummaryRow
+		for i, n := 0, 1+rng.Intn(4); i < n; i++ {
+			k := kinds[rng.Intn(len(kinds))]
+			rows = append(rows, store.UsageSummaryRow{
+				ServiceID:    string(rune('a' + rng.Intn(3))),
+				Kind:         k.kind,
+				Tier:         k.tier,
+				ResourceKind: k.rk,
+				Total:        rng.Int63n(k.maxQty + 1),
+			})
+		}
+		included := Included(nil)
+		if iter%2 == 0 {
+			included = allowance
+		}
+		got := Default.EstimateIncluding(rows, included)
+		var sum int64
+		for _, m := range got.Meters {
+			sum += monthlyCents(t, m.CostUSD)
+		}
+		if total := monthlyCents(t, got.TotalUSD); total != sum {
+			t.Fatalf("iter %d: total %s != meters sum %d cents\nrows=%+v\nmeters=%+v", iter, got.TotalUSD, sum, rows, got.Meters)
 		}
 	}
 }
