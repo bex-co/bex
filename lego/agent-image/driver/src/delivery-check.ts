@@ -67,20 +67,18 @@ export interface DeliveryCheckConfig {
   deliveryBaseline?: DeliveryBaseline;
 }
 
-// prLacksPushedHead reports whether a taken-over pull request's branch does
-// not contain the session branch's pushed head. Unknown (a failed probe, or a
-// branch that moved to a commit not fetched here) reads as not lacking it, so
-// the agent is never nudged on a guess.
+// prLacksPushedHead reports whether a taken-over pull request's branch (the
+// base branch, whose head is prHead) does not contain the session branch's
+// pushed head. Unknown (a failed probe, or a branch that moved to a commit not
+// fetched here) reads as not lacking it, so the agent is never nudged on a
+// guess.
 async function prLacksPushedHead(
   config: DeliveryCheckConfig,
   remoteHead: string,
+  prHead: string,
 ): Promise<boolean> {
-  const prBranch = config.deliveryBaseline?.baseBranch || config.baseBranch;
-  if (!config.prTakeover || !prBranch || !remoteHead) return false;
-  const prHead = await remoteOid(config.cwd, config.repoUrl, prBranch, {
-    retry: false,
-  }).catch(() => "");
-  if (!prHead || prHead === remoteHead) return false;
+  if (!config.prTakeover || !remoteHead || !prHead || prHead === remoteHead)
+    return false;
   if (!(await hasCommit(config.cwd, prHead))) return false;
   if (!(await hasCommit(config.cwd, remoteHead))) return false;
   try {
@@ -108,6 +106,28 @@ async function readPrRecord(
   }
 }
 
+// baseHeads lists the base branch heads this checkout holds: the live one
+// when the checkout has it, and its own origin/<base>, which an agent's
+// `git fetch` or `git pull` moves and which still names what it fetched after
+// the live branch moved on.
+async function baseHeads(
+  cwd: string,
+  baseBranch: string,
+  liveHead: string,
+): Promise<string[]> {
+  if (!baseBranch) return [];
+  const [live, tracked] = await Promise.all([
+    hasCommit(cwd, liveHead),
+    git(cwd, [
+      "rev-parse",
+      "--verify",
+      "--quiet",
+      `refs/remotes/origin/${baseBranch}^{commit}`,
+    ]).catch(() => ""),
+  ]);
+  return [live ? liveHead : "", tracked].filter(Boolean);
+}
+
 async function countCommits(cwd: string, range: string[]): Promise<number> {
   try {
     return Number(await git(cwd, ["rev-list", "--count", ...range])) || 0;
@@ -121,7 +141,8 @@ export async function readGitFacts(
 ): Promise<GitFacts> {
   const cwd = config.cwd;
   const baseline = config.deliveryBaseline;
-  const [dirty, remoteHead, recorded] = await Promise.all([
+  const baseBranch = baseline?.baseBranch || config.baseBranch;
+  const [dirty, remoteHead, baseHead, recorded] = await Promise.all([
     git(cwd, ["status", "--porcelain"]).then(
       (output) => output !== "",
       (error) => {
@@ -139,6 +160,11 @@ export async function readGitFacts(
         return "";
       },
     ),
+    baseBranch
+      ? remoteOid(cwd, config.repoUrl, baseBranch, { retry: false }).catch(
+          () => "",
+        )
+      : "",
     readPrRecord(config.prRecordPath),
   ]);
   // Commits the remote branch does not have yet. Measured against the remote
@@ -149,9 +175,17 @@ export async function readGitFacts(
   } else if (baseline && (await hasCommit(cwd, baseline.baseOid))) {
     exclude = baseline.baseOid;
   }
-  const unpushedCommits = exclude
-    ? await countCommits(cwd, ["HEAD", `^${exclude}`])
-    : 0;
+  // A commit the base branch has is on origin too, so an agent that moved
+  // onto a newer base (a pull, or a reset to origin/main) has nothing
+  // undelivered in the base's own commits.
+  let unpushedCommits = 0;
+  if (exclude) {
+    const onBase = await baseHeads(cwd, baseBranch, baseHead);
+    unpushedCommits = await countCommits(cwd, [
+      "HEAD",
+      ...[exclude, ...onBase].map((oid) => `^${oid}`),
+    ]);
+  }
   // This turn's tool result wins; otherwise the PR an earlier turn opened.
   const record = recorded.url
     ? recorded
@@ -163,11 +197,11 @@ export async function readGitFacts(
     dirty,
     unpushedCommits,
     remoteHead,
-    baseBranch: baseline?.baseBranch || config.baseBranch,
+    baseBranch,
     prRecorded: record.url !== "",
     prUrl: record.url,
     prNumber: record.number,
-    prBehind: await prLacksPushedHead(config, remoteHead),
+    prBehind: await prLacksPushedHead(config, remoteHead, baseHead),
   };
 }
 

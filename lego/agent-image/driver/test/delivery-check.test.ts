@@ -195,6 +195,48 @@ test("unpushed local commits are counted against the remote branch", async () =>
   assert.equal(result.git?.unpushedCommits, 1);
 });
 
+// advanceMain lands one commit on the remote's main from the seed clone and
+// returns the new head.
+function advanceMain(root: string, remote: string, name: string): string {
+  const seed = path.join(root, "seed");
+  git(seed, ["pull", "--ff-only", remote, "main"]);
+  git(seed, ["commit", "--allow-empty", "-m", name]);
+  git(seed, ["push", remote, "main"]);
+  return git(remote, ["rev-parse", "main"]);
+}
+
+test("commits the base branch gained are on origin, not undelivered", async () => {
+  const { config, remote } = await repoSession("none");
+  advanceMain(config.root, remote, "main 1");
+  advanceMain(config.root, remote, "main 2");
+  // The agent moves onto the newer base and leaves it there: the checkout
+  // holds exactly origin/main, two commits past the session's base.
+  git(config.cwd, ["fetch", "origin", "main"]);
+  git(config.cwd, ["reset", "--hard", "origin/main"]);
+  let facts = await readGitFacts(config);
+  assert.equal(facts.unpushedCommits, 0);
+  assert.deepEqual(undeliveredFacts(facts, config), []);
+
+  // Its own commit on top is still undelivered.
+  git(config.cwd, ["commit", "--allow-empty", "-m", "agent fix"]);
+  assert.equal((await readGitFacts(config)).unpushedCommits, 1);
+
+  // main moves on after the agent's last fetch: the checkout's origin/main
+  // still names the base commits it already has.
+  const head = advanceMain(config.root, remote, "main 3");
+  assert.equal((await readGitFacts(config)).unpushedCommits, 1);
+
+  // With no origin/main to go by, the live head counts once the checkout
+  // has it.
+  git(config.cwd, ["fetch", remote, head]);
+  git(config.cwd, ["update-ref", "-d", "refs/remotes/origin/main"]);
+  facts = await readGitFacts(config);
+  assert.equal(facts.unpushedCommits, 1);
+  assert.deepEqual(undeliveredFacts(facts, config), [
+    "1 local commit is not on origin/bex-agent/ags-test",
+  ]);
+});
+
 test("a steering turn's pushed commits count as delivered when an earlier turn opened the PR", async () => {
   const { config, promptsLog } = await repoSession("push-no-pr");
   config.existingPrUrl = "https://github.com/acme/widgets/pull/7";
