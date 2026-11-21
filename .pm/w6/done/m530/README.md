@@ -1,6 +1,6 @@
 # w6 · m530 — The operator reads a pod's listeners on its node instead of connecting to every port, so its sweeps stop filling the Cilium conntrack tables
 
-**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** blocked (t001–t006, t008 and t009 done; date gate: 2026-11-21T22:46Z, then t007 reads the day and t010 closes)
+**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | [Prove it on the local cluster](done/t004.md) — **DONE** | 1h30m | t003 |
 | t005 | [Record it in ADR089, ADR018 and the operator guide](done/t005.md) — **DONE** | 45m | t003 |
 | t006 | [Ship and verify on production](done/t006.md) — **DONE** | 1h30m | t004, t005 |
-| t007 | [Read a day of conntrack GC on the operator's node and every tenant node](t007.md) | 30m | t006 |
+| t007 | [Read a day of conntrack GC on the operator's node and every tenant node](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t006 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t006 |
-| t010 | [Closeout](t010.md) | 10m | t007, t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t007, t008, t009 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w6/156](../../done/156.md), filed by w6/153 2026-11-20, promoted by `/loopx w6` the same day. w6/149's probes ([blocked/149.md](../149.md), "Finding: the operator's port sweeps evict a tenant pod's idle conntrack entries") showed the same fill on the swept pod's node, so the definition of done covers tenant nodes as well as the operator's.
+- **Source:** inbox note [w6/156](../../done/156.md), filed by w6/153 2026-11-20, promoted by `/loopx w6` the same day. w6/149's probes ([blocked/149.md](../../blocked/149.md), "Finding: the operator's port sweeps evict a tenant pod's idle conntrack entries") showed the same fill on the swept pod's node, so the definition of done covers tenant nodes as well as the operator's.
 - **Goal linkage:** Render parity and platform reliability. Render "scans the running container for an HTTP listener on 0.0.0.0" (w8/177); reading the container's own socket table is that scan. Every pod on an affected node pays for the sweeps today: on the operator's node bex-api, bex-db, Kratos, Hydra, OpenFGA, the SSH gateway and Argo CD; on a tenant node every tenant pod. An idle pooled connection to a Service with several backends is reset at its next use (w6/153), and a tenant client that only receives, a `SUBSCRIBE`, a `LISTEN` or server-sent events without keepalive, hears nothing more and gets no error (w6/149).
 - **Expected outcome:** sweeps add a few conntrack entries per scan (one HTTP request to the node's reader, plus the HTTP check of the ports found) instead of up to 65,535. Detection gets a complete answer at once, where a sweep of a pod that drops probes to closed ports never finishes in its 15 s budget.
 - **Why now:** measured on production at 18:29Z 2026-11-20, over the previous 6 h of each Cilium agent's log: the operator's node `dpjxh` ran 408 GC passes, 105 of them deleting at least half of its 131,072-entry TCP table; tenant nodes `hbkdk` 212 and 49, `59ksr` 181 and 31; `jfc55`, a platform node with no operator, none. One `hbkdk` pass at 18:28:08Z deleted 0.997 of the table after a 6m45s interval. Only 22 web and 4 private services (plus 3 of the default type) are swept. The gateway's retry (w6/153, `dfcd4e23c`) covers one client; every other client on those nodes is still exposed.
@@ -65,3 +65,21 @@ The note offered three directions. This milestone takes direction 1.
 - **t006 done on production** ([record](done/t006.md#record-production-2026-11-20)). The reader has run on all eight nodes egress-meter runs on since 22:45Z. Every private service and three web services read through it the same ports their `openPorts` list. A `bex-canary` web fixture went live on its bound 8000 with `PORT` 10000 and listed its undeclared 12345, never its loopback 7000. Over the hour from 22:46Z the operator read only through readers, with no sweep and no failed read. The operator's node `ct4_global` pressure went from 0.758 at 22:28Z to 0.018.
 - **t008 and t009 done:** `0e7d0dec6` (the `/simplify` pass), and the loopback rule's mutation run ([t009](done/t009.md)).
 - **Gate:** t007 is a day's read from 2026-11-21T22:46Z back to 22:46Z the day before, so `date gate: 2026-11-21T22:46Z`. Then t007 reads every agent's GC lines, spot pressure, and the operator's fallbacks in Loki, as its context says. The next pin, at about 04:08Z or later, rolls the operator and the readers inside that day and carries `0e7d0dec6`. Then t010 closes the milestone if the definition of done holds.
+
+## Unblocked 2026-11-21: the date gate passed
+
+- **Affects:** t007 and t010.
+- **Source: verified evidence, no user decision.** `date gate: 2026-11-21T22:46Z` had passed when the read began at 22:52Z, and the gate names no pin. Nothing else gated the two tasks.
+- **Next:** t007 reads the day, and t010 closes the milestone if the definition of done holds.
+
+## Closed 2026-11-21: the definition of done holds
+
+- **Conntrack ([t007](done/t007.md#record-production-read-2026-11-21-2252z-to-2301z)).**
+  - **Every node read was clean.** Across the day from 2026-11-20T22:46Z, no GC pass on the operator's node or on any tenant node that could be read deleted half a table, and no pass there deleted even a quarter.
+  - **Operator's node.** `dpjxh` held the whole day: 153 passes, at most 0.049 logged, against 105 of 408 passes at or above 0.5 in the 6 h before the switch.
+  - **Tenant nodes.** The six `tenant-0` nodes left after w6/m547's pool roll were read from their joins, about 12 h each, with at most 0.044. So was the new sandbox node.
+  - **Pressure.** `ct4_global` read at most 0.095 on any node at 22:57Z, and 0.031 on the operator's node.
+  - **Nodes that left with their logs.** The old pool's first 12 h, nine short-lived nodes and the replaced sandbox node took their agents' logs with them. For those, the operator's own log stands in: Loki shows no sweep of any pod on any node all day.
+  - **The one pass at or above 0.5.** It was on the control plane `ff5b6`, which runs no operator and no tenant pod. It is most likely CoreDNS lookups expiring after the pool roll, and it is recorded in t007.
+- **Fallbacks.** There were no sweeps. Two reads failed, both at a pin's roll, through a reader the DaemonSet was deleting. Each kept the last record and swept nothing. They are filed as w6/166.
+- **Listeners still found as before.** This was checked on production in t006: every private service listed the same ports through the reader, and the web fixture went live on its bound port, listed its undeclared port, and never its loopback-only one. The suites pass. ADR089, ADR018, the operator guide and `scripts/gitops-validate.sh` were updated in t005.
