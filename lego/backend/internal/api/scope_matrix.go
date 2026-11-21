@@ -88,9 +88,8 @@ func classifiedClass(op string) string {
 // (sessions and machine credentials, per CapabilityExempt) pass. A platform
 // OAuth client is held to the granular matrix like any other human delegation:
 // a platform client without a granular grant is refused, not passed
-// (TestScopeClassExemptions pins the 403; the ADR012 exemption stays Deferred
-// in the rt-fix-logic-bugs ledger until an ADR decision lands). Refusals are
-// audited; allows are not (volume).
+// (TestScopeClassExemptions pins the 403). Refusals are audited; allows are
+// not (volume).
 func (s *Server) requireScopeClass(ctx context.Context, op string) error {
 	if op == "" {
 		return nil
