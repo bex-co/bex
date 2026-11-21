@@ -18,6 +18,7 @@ package s3
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -236,6 +237,44 @@ func TestALifecycleDateMayBeABareDate(t *testing.T) {
 	}
 	if strings.Contains(table, "1 days") {
 		t.Errorf("the table counts one day as days:\n%s", table)
+	}
+}
+
+// TestSetCountsOneRuleAsARule: `set` reports how many rules it stored, and a
+// one-rule document is "(1 rule)", not "(1 rules)" (w32/072). With -o json the
+// count is in the same result's target.
+func TestSetCountsOneRuleAsARule(t *testing.T) {
+	g := newRig(t)
+	g.must("mb", "s3://photos")
+	dir := t.TempDir()
+	cors := `{"AllowedOrigins": ["*"], "AllowedMethods": ["GET"]}`
+	lifecycle := `{"Status": "Enabled", "Filter": {"Prefix": "tmp/"}, "Expiration": {"Days": 1}}`
+	for _, tc := range []struct {
+		group, one, two string
+	}{
+		{"cors", `{"CORSRules": [` + cors + `]}`, `{"CORSRules": [` + cors + `, ` + cors + `]}`},
+		{"lifecycle", `{"Rules": [` + lifecycle + `]}`, `{"Rules": [` + lifecycle + `, ` + lifecycle + `]}`},
+	} {
+		for _, doc := range []struct{ name, content, target string }{
+			{"one.json", tc.one, "photos (1 rule)"},
+			{"two.json", tc.two, "photos (2 rules)"},
+		} {
+			path := filepath.Join(dir, tc.group+"-"+doc.name)
+			writeBytes(t, dir, tc.group+"-"+doc.name, []byte(doc.content))
+			if out, want := strings.TrimSpace(g.must(tc.group, "set", "photos", "--file", path)), "put_"+tc.group+": "+doc.target; out != want {
+				t.Errorf("%s set %s printed %q, want %q", tc.group, doc.name, out, want)
+			}
+			var report struct {
+				Results []map[string]any `json:"results"`
+			}
+			if err := json.Unmarshal([]byte(g.must(tc.group, "set", "photos", "--file", path, "-o", "json")), &report); err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]any{"action": "put_" + tc.group, "target": doc.target}
+			if len(report.Results) != 1 || !maps.Equal(report.Results[0], want) {
+				t.Errorf("%s set %s -o json = %v, want one result %v", tc.group, doc.name, report.Results, want)
+			}
+		}
 	}
 }
 

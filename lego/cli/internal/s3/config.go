@@ -475,10 +475,15 @@ func parseLifecycleDate(s string) (time.Time, bool) {
 
 // afterDays is a rule's age in the lifecycle table.
 func afterDays(n int32) string {
+	return "after " + counted(int(n), "day")
+}
+
+// counted is n of a noun, singular for one: "1 rule", "2 rules".
+func counted(n int, noun string) string {
 	if n == 1 {
-		return "after 1 day"
+		return "1 " + noun
 	}
-	return fmt.Sprintf("after %d days", n)
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // configSet is `set <bucket> --file rules.json` for one kind of rules.
@@ -515,7 +520,7 @@ func configSet(d deps, g *globals, rs ruleSet) *cobra.Command {
 			if err := send(r, bucket); err != nil {
 				return bucketFault(bucket, r.fail(err))
 			}
-			r.rep.add(result{Action: "put_" + rs.verb, Target: fmt.Sprintf("%s (%d rules)", bucket, count)})
+			r.rep.add(result{Action: "put_" + rs.verb, Target: bucket + " (" + counted(count, "rule") + ")"})
 			return r.rep.finish()
 		},
 	}
