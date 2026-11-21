@@ -31,6 +31,15 @@
 # annotations file, so a manual purge, a successful deploy or a profile switch
 # reaches it without restarting it. They change nothing the kubelet runs;
 # removing one is still denied, and every other rule still holds for that pod.
+#
+# The disk grow nudge is the last exception (w6/m557): on a pod mounting a
+# persistent disk (a volume named disk backed by a claim), the operator may set
+# or change app.bex.co/disk-resize-requested (annotDiskResizeRequested). The
+# kubelet grows a mounted volume only when it syncs the volume's pod, so a grow
+# waited up to the default one-minute sync on production (w6/157); the
+# annotation starts that sync at once, like zot's reload stamp. It changes
+# nothing the kubelet runs; removing it is still denied, and every other rule
+# still holds for that pod.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -67,11 +76,15 @@ spec:
       expression: >-
         object.spec.containers.exists(c, c.name == 'edge-cache')
         ? ['app.bex.co/cache-purged-at', 'app.bex.co/cache-profile', 'app.bex.co/cache-revision'] : []
+    - name: diskGrow
+      expression: >-
+        object.spec.?volumes.orValue([]).exists(v, v.name == 'disk' && has(v.persistentVolumeClaim))
+        ? ['app.bex.co/disk-resize-requested'] : []
   validations:
     - expression: object.spec == oldObject.spec
       message: the operator may relabel a pod but never change its spec
     - expression: >-
-        variables.annotations.all(k, k in variables.zotReload || k in variables.edgeCacheControl ||
+        variables.annotations.all(k, k in variables.zotReload || k in variables.edgeCacheControl || k in variables.diskGrow ||
           (k in variables.oldAnnotations && variables.oldAnnotations[k] == variables.annotations[k])) &&
         variables.oldAnnotations.all(k, k in variables.annotations) &&
         object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([]) && object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([])

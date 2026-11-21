@@ -21,16 +21,21 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -74,6 +79,15 @@ const (
 	annotDiskProvisioned = "app.bex.co/disk-provisioned"
 	// diskProvisionedMarker is the only value annotDiskProvisioned ever carries.
 	diskProvisionedMarker = "true"
+	// annotDiskResizeRequested carries the size, in GB, of the last grow the
+	// node was asked to finish, stamped on each running instance mounting the
+	// disk (w6/m557). The kubelet grows a mounted volume only when it syncs the
+	// volume's pod, about once a minute by default, so a claim waiting for the
+	// node sat there 7.5-63.7 s on production (w6/157). Any pod update starts
+	// that sync: the filesystem grew 0.35 s after one. The
+	// bex-operator-pod-labels admission policy admits this one annotation on a
+	// pod mounting a disk.
+	annotDiskResizeRequested = "app.bex.co/disk-resize-requested"
 )
 
 // diskPVCName and diskLUKSSecretName are this package's names for the disk's
@@ -400,15 +414,21 @@ func (r *AppReconciler) growDiskPVC(ctx context.Context, app *appv1alpha1.App, p
 		}
 	}
 	setDiskStatus(app, allocatedGB, capacityGB)
+	if targetGB := diskNodeExpansionTarget(pvc); targetGB > 0 {
+		r.nudgeDiskPods(ctx, app, targetGB)
+	}
 
 	// The capacity lagging the request is the normal middle of a grow, not a
-	// fault: the hcloud CSI driver's maintainers do not claim online expansion,
-	// so the filesystem step can land only when the pod next restarts. Say so
-	// rather than reporting a disk that is quietly the wrong size.
+	// fault: the volume grows first, then the node grows the mounted
+	// filesystem, both online. Only a node that reported it could not is left
+	// to the restart, which mounts the volume afresh.
 	if capacityGB > 0 && capacityGB < allocatedGB {
-		setDiskCondition(app, false, "DiskResizePending", fmt.Sprintf(
-			"volume expanded to %dGB; the filesystem still reports %dGB and finishes growing on the next restart",
-			allocatedGB, capacityGB))
+		message := fmt.Sprintf("growing the disk online to %dGB; the filesystem reports %dGB so far", allocatedGB, capacityGB)
+		if diskNodeExpansionFailed(pvc) {
+			message = fmt.Sprintf("the node could not grow the filesystem online past %dGB; it reaches %dGB on the next restart",
+				capacityGB, allocatedGB)
+		}
+		setDiskCondition(app, false, "DiskResizePending", message)
 		return nil
 	}
 	if pvc.Status.Phase != corev1.ClaimBound {
@@ -452,6 +472,78 @@ func (r *AppReconciler) expandDiskPVC(ctx context.Context, app *appv1alpha1.App,
 	return false, nil
 }
 
+// diskNodeExpansionTarget is the size, in GB, the node is to grow the claim's
+// mounted filesystem to, or 0 while the claim does not wait for the node. It is
+// the volume's allocated size, not the request: a grow requested while the
+// node still owes the previous one must not mark that newer size as handed
+// over before the volume reaches it.
+func diskNodeExpansionTarget(pvc *corev1.PersistentVolumeClaim) int32 {
+	if pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage] != corev1.PersistentVolumeClaimNodeResizePending &&
+		!pvcFileSystemResizePending(pvc) {
+		return 0
+	}
+	if allocated := quantityGiCeil(pvc.Status.AllocatedResources[corev1.ResourceStorage]); allocated > 0 {
+		return allocated
+	}
+	return pvcRequestedStorageGB(pvc)
+}
+
+// diskNodeExpansionFailed reports a node that tried to grow the mounted
+// filesystem and could not.
+func diskNodeExpansionFailed(pvc *corev1.PersistentVolumeClaim) bool {
+	if pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage] == corev1.PersistentVolumeClaimNodeResizeInfeasible {
+		return true
+	}
+	return slices.ContainsFunc(pvc.Status.Conditions, func(c corev1.PersistentVolumeClaimCondition) bool {
+		return c.Type == corev1.PersistentVolumeClaimNodeResizeError && c.Status == corev1.ConditionTrue
+	})
+}
+
+// nudgeDiskPods starts the kubelet's sync of each running instance mounting
+// the App's disk, once per size, so the node grows the filesystem now rather
+// than on its next periodic sync (annotDiskResizeRequested). It patches the
+// pod, never the Deployment's template, so nothing rolls. A failure is only
+// logged: the periodic sync still finishes the grow.
+func (r *AppReconciler) nudgeDiskPods(ctx context.Context, app *appv1alpha1.App, sizeGB int32) {
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
+		logf.FromContext(ctx).Error(err, "listing the disk's instances to grow it failed", "app", app.Name)
+		return
+	}
+	want, claim := strconv.Itoa(int(sizeGB)), diskPVCName(app.Name)
+	mountsDisk := func(v corev1.Volume) bool {
+		return v.PersistentVolumeClaim != nil && v.PersistentVolumeClaim.ClaimName == claim
+	}
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		owner := metav1.GetControllerOf(pod)
+		serving := owner != nil && owner.Kind == kindReplicaSet &&
+			pod.Status.Phase == corev1.PodRunning && pod.DeletionTimestamp.IsZero()
+		if !serving || pod.Annotations[annotDiskResizeRequested] == want || !slices.ContainsFunc(pod.Spec.Volumes, mountsDisk) {
+			continue
+		}
+		patch := client.MergeFrom(pod.DeepCopy())
+		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, annotDiskResizeRequested, want)
+		if err := client.IgnoreNotFound(r.Patch(ctx, pod, patch)); err != nil {
+			logf.FromContext(ctx).Error(err, "asking the node to grow the disk failed", "app", app.Name, "pod", pod.Name)
+		}
+	}
+}
+
+// diskClaimStatusChanged passes a disk claim's status changes: its capacity,
+// allocated size, resize state and conditions are how a grow advances. Without
+// them DiskReady waited for an unrelated event, up to 30 s after the
+// filesystem had grown (w6/157), and nudgeDiskPods could not run the moment the
+// claim began to wait for the node. Spec and metadata edits are the operator's
+// own and need no pass.
+var diskClaimStatusChanged = predicate.Funcs{
+	UpdateFunc: func(e event.UpdateEvent) bool {
+		before, ok := e.ObjectOld.(*corev1.PersistentVolumeClaim)
+		after, okAfter := e.ObjectNew.(*corev1.PersistentVolumeClaim)
+		return ok && okAfter && !equality.Semantic.DeepEqual(before.Status, after.Status)
+	},
+}
+
 // cleanupDisk removes the volume and its passphrase when spec.disk is cleared.
 // Detaching a disk is destructive by definition — the API surface that offers it
 // is where the confirmation lives; by the time a cleared spec reaches the
@@ -459,16 +551,15 @@ func (r *AppReconciler) expandDiskPVC(ctx context.Context, app *appv1alpha1.App,
 func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) error {
 	if app.Annotations[annotDiskProvisioned] == "" {
 		// Never had a disk — every stateless App in the fleet, on every pass.
-		// The marker means this costs nothing: no API call, and no PVC informer
-		// started in a manager that has no other reason to watch them.
+		// The marker means this costs nothing: no API call.
 		return nil
 	}
 	if done, err := r.reconcileDiskSnapshotCleanup(ctx, app); err != nil || !done {
 		return err
 	}
 	// Blind deletes rather than the usual get-then-delete: this path runs a
-	// handful of times per detach, so one round trip each beats populating a
-	// cluster-wide PVC cache to check.
+	// handful of times per detach, and a delete that finds nothing is already
+	// the outcome it wants.
 	//
 	// The Secret goes through the uncached client for the same reason it was
 	// created with one: it lives in the App's own namespace, outside the Secret

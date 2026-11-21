@@ -117,6 +117,15 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 					Resources: []string{"serviceaccounts"},
 					Verbs:     []string{"get", "list", "watch", "delete"},
 				},
+				{
+					// The App controller watches its disk claims (w6/m557), so
+					// without this read grant the claim informer never syncs and
+					// the controller never starts. The operator's ClusterRole
+					// carries it already.
+					APIGroups: []string{""},
+					Resources: []string{"persistentvolumeclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
 			},
 		}
 		Expect(admin.Create(ctx, clusterRole)).To(Succeed())

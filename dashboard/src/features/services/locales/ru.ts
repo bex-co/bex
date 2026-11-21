@@ -4468,8 +4468,8 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "Увеличение размера применяется без простоя; на некоторых томах файловая система дорастёт при следующем перезапуске. Уменьшить диск нельзя.",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "Увеличение размера не вызывает простоя, а добавленное место становится доступно в течение нескольких секунд. Уменьшить диск нельзя.",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "Размер диска увеличен.",

@@ -28,11 +28,13 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -189,6 +191,42 @@ func TestDiskGrowIsNotARelease(t *testing.T) {
 
 	if desiredAppReleaseIdentity(base).release != desiredAppReleaseIdentity(grown).release {
 		t.Fatal("growing a disk changed the release identity; an online resize would redeploy the service")
+	}
+}
+
+// The claim watch wakes the App for the claim's status alone (w6/m557): that is
+// where a grow advances. The operator's own spec and metadata writes to the
+// claim must not wake it a second time.
+func TestDiskClaimWatchPassesOnlyStatusChanges(t *testing.T) {
+	claim := &corev1.PersistentVolumeClaim{}
+	claim.Name = "disk-web"
+	claim.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("10Gi")}
+	claim.Status.Capacity = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("10Gi")}
+	for name, tc := range map[string]struct {
+		change func(*corev1.PersistentVolumeClaim)
+		want   bool
+	}{
+		"capacity": {func(c *corev1.PersistentVolumeClaim) {
+			c.Status.Capacity = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("11Gi")}
+		}, true},
+		"waits for the node": {func(c *corev1.PersistentVolumeClaim) {
+			c.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
+				corev1.ResourceStorage: corev1.PersistentVolumeClaimNodeResizePending}
+		}, true},
+		"condition": {func(c *corev1.PersistentVolumeClaim) {
+			c.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{
+				Type: corev1.PersistentVolumeClaimNodeResizeError, Status: corev1.ConditionTrue}}
+		}, true},
+		"request": {func(c *corev1.PersistentVolumeClaim) {
+			c.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("11Gi")}
+		}, false},
+		"label": {func(c *corev1.PersistentVolumeClaim) { c.Labels = map[string]string{"x": "y"} }, false},
+	} {
+		after := claim.DeepCopy()
+		tc.change(after)
+		if got := diskClaimStatusChanged.Update(event.UpdateEvent{ObjectOld: claim, ObjectNew: after}); got != tc.want {
+			t.Errorf("%s: passed=%v, want %v", name, got, tc.want)
+		}
 	}
 }
 

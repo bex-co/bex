@@ -4495,8 +4495,8 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "Aumentar el tamaño surte efecto sin tiempo de inactividad; en algunos volúmenes el sistema de archivos termina de crecer en el siguiente reinicio. Un disco nunca se puede reducir.",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "Aumentar el tamaño no causa tiempo de inactividad, y el almacenamiento añadido está disponible en pocos segundos. Un disco nunca se puede reducir.",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "Tamaño del disco aumentado.",

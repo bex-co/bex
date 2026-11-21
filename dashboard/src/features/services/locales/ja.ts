@@ -4464,8 +4464,8 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "サイズの増加はダウンタイムなしで反映されます。一部のボリュームでは、ファイルシステムの拡張が次回の再起動時に完了します。ディスクを小さくすることはできません。",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "サイズを増やしてもダウンタイムは発生せず、追加したストレージは数秒以内に利用可能になります。ディスクを小さくすることはできません。",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "ディスクのサイズを増やしました。",

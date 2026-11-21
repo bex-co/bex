@@ -238,6 +238,55 @@ var _ = Describe("Operator pod label admission", func() {
 		}
 	})
 
+	// w6/m557: a disk grow reaches the filesystem when the kubelet syncs the
+	// pod, so the operator stamps the running instance (nudgeDiskPods). The
+	// policy let it change no pod annotation, so on production that stamp
+	// would have been refused and the grow left to the one-minute sync.
+	It("admits the disk grow stamp on a pod mounting a disk, and nothing more", func() {
+		admin, operator := startOperatorPodAdmission()
+
+		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "srv-podlabeldisk", Namespace: "default"},
+			Spec: appv1alpha1.AppSpec{Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}}}
+		owner := []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: kindReplicaSet, Name: app.Name + "-abc", UID: "rs-uid", Controller: new(true)}}
+		pod := func(name string, volumes []corev1.Volume) *corev1.Pod {
+			p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace,
+				Labels: map[string]string{labelApp: app.Name}, OwnerReferences: owner},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Image: "registry.example/app:1"}}, Volumes: volumes}}
+			Expect(admin.Create(ctx, p)).To(Succeed())
+			p.Status.Phase = corev1.PodRunning
+			Expect(admin.Status().Update(ctx, p)).To(Succeed())
+			return p
+		}
+		serving := pod(app.Name+"-abc-1", []corev1.Volume{{Name: diskVolumeName, VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: diskPVCName(app.Name)}}}})
+		plain := pod("srv-podlabelplain-abc-1", []corev1.Volume{{Name: diskVolumeName, VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{}}}})
+		awaitOperatorPodAdmission(operator, serving)
+
+		r := &AppReconciler{Client: operator, Scheme: admin.Scheme()}
+		r.nudgeDiskPods(ctx, app, 11)
+		r.nudgeDiskPods(ctx, app, 12)
+		got := &corev1.Pod{}
+		Expect(admin.Get(ctx, client.ObjectKeyFromObject(serving), got)).To(Succeed())
+		Expect(got.Annotations).To(HaveKeyWithValue(annotDiskResizeRequested, "12"), "a grow and the next one")
+
+		stamp := func(target *corev1.Pod, patch string) error {
+			return operator.Patch(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: target.Name, Namespace: target.Namespace}},
+				client.RawPatch(types.MergePatchType, []byte(patch)))
+		}
+		for name, err := range map[string]error{
+			"other annotation on a disk pod": stamp(serving, `{"metadata":{"annotations":{"x":"y"}}}`),
+			"grow stamp removed":             stamp(serving, `{"metadata":{"annotations":{"`+annotDiskResizeRequested+`":null}}}`),
+			"grow stamp on a pod without a disk claim": stamp(plain,
+				`{"metadata":{"annotations":{"`+annotDiskResizeRequested+`":"12"}}}`),
+			"image": operator.Patch(ctx, serving, client.RawPatch(types.StrategicMergePatchType,
+				[]byte(`{"spec":{"containers":[{"name":"`+appContainerName+`","image":"evil/app:1"}]}}`))),
+		} {
+			Expect(err).To(HaveOccurred(), name)
+			Expect(err.Error()).To(ContainSubstring("bex-operator-pod-labels"), name)
+		}
+	})
+
 	// w6/m456 t006: production refused the Key Value client-limit pass's record
 	// of the limit it applied, because it was a pod annotation, so a settled
 	// store was dialed again on every pass. The record lives on the

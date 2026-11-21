@@ -313,7 +313,7 @@ var _ = Describe("Persistent disk reconcile", func() {
 			Expect(condition.Status).To(Equal(metav1.ConditionTrue))
 
 			// 5 → 20: past the volume, so the claim grows and the filesystem
-			// catches up on the next restart.
+			// catches up online.
 			app.Spec.Disk.SizeGB = 20
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())
 			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
@@ -340,11 +340,132 @@ var _ = Describe("Persistent disk reconcile", func() {
 			Expect(app.Status.Disk.AllocatedSizeGB).To(BeEquivalentTo(25))
 
 			// The volume is 25GB but the filesystem still reports 10GB: the
-			// honest state while a grow finishes, not a healthy disk.
+			// honest state while a grow finishes, not a healthy disk. It grows
+			// online, so nothing promises a restart (w6/m557).
 			condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
 			Expect(condition).NotTo(BeNil())
 			Expect(condition.Reason).To(Equal("DiskResizePending"))
 			Expect(condition.Status).To(Equal(metav1.ConditionFalse))
+			Expect(condition.Message).To(Equal("growing the disk online to 25GB; the filesystem reports 10GB so far"))
+		})
+
+		// w6/157: after the volume grew, the claim sat in NodeResizePending until
+		// the kubelet's next sync of the pod, up to a minute. One pod update
+		// starts that sync, so the operator stamps each running instance once
+		// per size (w6/m557).
+		It("asks the node to grow the filesystem once per size, through the running instance only", func() {
+			app := newApp("disk-nudge")
+			defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			bind(app, "10Gi")
+
+			rs := metav1.OwnerReference{APIVersion: "apps/v1", Kind: kindReplicaSet, Name: app.Name + "-abc", UID: "rs-uid", Controller: new(true)}
+			pod := func(name string, owner *metav1.OwnerReference, claim string, phase corev1.PodPhase) *corev1.Pod {
+				p := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}},
+					Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Image: "nginx:1"}}},
+				}
+				if owner != nil {
+					p.OwnerReferences = []metav1.OwnerReference{*owner}
+				}
+				if claim != "" {
+					p.Spec.Volumes = []corev1.Volume{{Name: diskVolumeName, VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: claim}}}}
+				}
+				Expect(k8sClient.Create(ctx, p)).To(Succeed())
+				DeferCleanup(func() { Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, p))).To(Succeed()) })
+				p.Status.Phase = phase
+				Expect(k8sClient.Status().Update(ctx, p)).To(Succeed())
+				return p
+			}
+			serving := pod(app.Name+"-abc-1", &rs, diskPVCName(app.Name), corev1.PodRunning)
+			starting := pod(app.Name+"-abc-2", &rs, diskPVCName(app.Name), corev1.PodPending)
+			job := &metav1.OwnerReference{APIVersion: "batch/v1", Kind: "Job", Name: "dskbak-" + app.Name, UID: "job-uid", Controller: new(true)}
+			backup := pod("dskbak-"+app.Name+"-1", job, diskPVCName(app.Name), corev1.PodRunning)
+			unmounted := pod(app.Name+"-abc-3", &rs, "", corev1.PodRunning)
+			annotation := func(p *corev1.Pod) (string, string) {
+				got := &corev1.Pod{}
+				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(p), got)).To(Succeed())
+				return got.Annotations[annotDiskResizeRequested], got.ResourceVersion
+			}
+
+			app.Spec.Disk.SizeGB = 11
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			value, _ := annotation(serving)
+			Expect(value).To(BeEmpty(), "the volume itself has not grown yet, so the node has nothing to do")
+
+			// The controller step is done: the volume holds 11GB, the node owes
+			// the filesystem.
+			waitForNode := func(allocated string) {
+				pvc, err := getPVC(app)
+				Expect(err).NotTo(HaveOccurred())
+				pvc.Status.AllocatedResources = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(allocated)}
+				pvc.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
+					corev1.ResourceStorage: corev1.PersistentVolumeClaimNodeResizePending}
+				Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+			}
+			waitForNode("11Gi")
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			value, version := annotation(serving)
+			Expect(value).To(Equal("11"))
+			for _, other := range []*corev1.Pod{starting, backup, unmounted} {
+				value, _ := annotation(other)
+				Expect(value).To(BeEmpty(), other.Name)
+			}
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			_, again := annotation(serving)
+			Expect(again).To(Equal(version), "a second pass must not patch the pod again")
+
+			// A grow asked for while the node still owes 11GB: the stamp follows
+			// the volume, so 12GB is handed over only once the volume holds it.
+			app.Spec.Disk.SizeGB = 12
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			value, _ = annotation(serving)
+			Expect(value).To(Equal("11"))
+			waitForNode("12Gi")
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			value, _ = annotation(serving)
+			Expect(value).To(Equal("12"))
+
+			condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+			Expect(condition.Reason).To(Equal("DiskResizePending"))
+			Expect(condition.Message).NotTo(ContainSubstring("restart"))
+		})
+
+		// The restart stays the fallback, and the only time it is mentioned:
+		// a node that reports it could not grow the mounted filesystem.
+		It("leaves the grow to a restart only when the node reports it failed", func() {
+			app := newApp("disk-node-failed")
+			defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+			bind(app, "10Gi")
+			app.Spec.Disk.SizeGB = 11
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+
+			for name, fail := range map[string]func(*corev1.PersistentVolumeClaim){
+				"NodeResizeError condition": func(pvc *corev1.PersistentVolumeClaim) {
+					pvc.Status.AllocatedResourceStatuses = nil
+					pvc.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{
+						Type: corev1.PersistentVolumeClaimNodeResizeError, Status: corev1.ConditionTrue}}
+				},
+				"NodeResizeInfeasible status": func(pvc *corev1.PersistentVolumeClaim) {
+					pvc.Status.Conditions = nil
+					pvc.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
+						corev1.ResourceStorage: corev1.PersistentVolumeClaimNodeResizeInfeasible}
+				},
+			} {
+				pvc, err := getPVC(app)
+				Expect(err).NotTo(HaveOccurred())
+				fail(pvc)
+				Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+				Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
+				condition := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionDiskReady)
+				Expect(condition.Reason).To(Equal("DiskResizePending"), name)
+				Expect(condition.Message).To(Equal("the node could not grow the filesystem online past 10GB; it reaches 11GB on the next restart"), name)
+			}
 		})
 
 		It("reports a ready disk once the filesystem has caught up", func() {

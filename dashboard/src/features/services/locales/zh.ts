@@ -4326,8 +4326,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "增加容量无需停机即可生效；在部分卷上，文件系统会在下次重启时完成扩展。磁盘永远无法缩小。",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "增加容量不会造成停机，新增的存储空间会在几秒内可用。磁盘永远无法缩小。",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "磁盘容量已增加。",

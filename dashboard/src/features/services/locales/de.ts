@@ -4504,8 +4504,8 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "Die Vergrößerung wirkt ohne Downtime; bei manchen Volumes ist das Dateisystem erst nach dem nächsten Neustart vollständig gewachsen. Eine Disk kann nie verkleinert werden.",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "Die Vergrößerung verursacht keine Downtime, und der zusätzliche Speicher steht innerhalb weniger Sekunden zur Verfügung. Eine Disk kann nie verkleinert werden.",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "Disk-Größe erhöht.",

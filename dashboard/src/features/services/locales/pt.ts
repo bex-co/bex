@@ -4489,8 +4489,8 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "O aumento de tamanho tem efeito sem downtime; em alguns volumes, o sistema de arquivos termina de crescer na próxima reinicialização. Um disco nunca pode ser reduzido.",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "O aumento de tamanho não causa downtime, e o armazenamento adicional fica disponível em poucos segundos. Um disco nunca pode ser reduzido.",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "Tamanho do disco aumentado.",

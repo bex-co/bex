@@ -1,17 +1,17 @@
 # w6 · m557 — A disk grow reaches the instance within seconds, as on Render
 
-**Worker:** worker6 **Goal:** as Render documents ("Increasing size causes no downtime, and the added storage is available within a few seconds"), a larger `sizeGB` on a running service's disk shows in `df` inside the instance within seconds on every surface, and nothing says it waits for a restart. **Status:** todo
+**Worker:** worker6 **Goal:** as Render documents ("Increasing size causes no downtime, and the added storage is available within a few seconds"), a larger `sizeGB` on a running service's disk shows in `df` inside the instance within seconds on every surface, and nothing says it waits for a restart. **Status:** todo (t001, t002 and t004–t006 done; t003 waits for production to carry t001)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The operator starts the kubelet's pod sync when a disk claim waits for the node, and DiskReady follows the claim](t001.md) | 75m | — |
-| t002 | [The dashboard's grow hint says what Render says](t002.md) | 20m | — |
+| t001 | [The operator starts the kubelet's pod sync when a disk claim waits for the node, and DiskReady follows the claim](done/t001.md) — **DONE** | 75m | — |
+| t002 | [The dashboard's grow hint says what Render says](done/t002.md) — **DONE** | 20m | — |
 | t003 | [Production: three grows reach `df` within seconds, then the gap leaves ADR018 and ADR082](t003.md) | 45m | t001, t002 |
-| t004 | [Render parity](t004.md) | 20m | t001, t002 |
-| t005 | [Simplify](t005.md) | 15m | t004 |
-| t006 | [Test coverage](t006.md) | 30m | t004 |
+| t004 | [Render parity](done/t004.md) — **DONE** | 20m | t001, t002 |
+| t005 | [Simplify](done/t005.md) — **DONE** | 15m | t004 |
+| t006 | [Test coverage](done/t006.md) — **DONE** | 30m | t004 |
 | t007 | [Closeout](t007.md) | 10m | t003, t005, t006 |
 
 ## Definition of done

@@ -212,8 +212,9 @@ const ConditionReady = "Ready"
 // with no headroom (reason StorageBlockedByQuota) and a StorageClass that
 // cannot expand (reason StorageClassNotExpandable). Absent when spec.disk is
 // unset. A grow whose filesystem has not caught up yet reports reason
-// DiskResizePending: the Hetzner CSI driver does not guarantee online
-// expansion, so the last step can land on the next restart.
+// DiskResizePending while the volume and then the node grow it online, within
+// seconds; only a node that reports it could not leaves the last step to the
+// next restart.
 const ConditionDiskReady = "DiskReady"
 
 // ConditionAutoscalingMetricsAvailable reports an autoscaled service whose

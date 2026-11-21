@@ -4421,8 +4421,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "Increasing the size causes no downtime, and the added storage is available within a few seconds. A disk can never be made smaller.",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "Disk size increased.",

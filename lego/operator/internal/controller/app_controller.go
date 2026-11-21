@@ -8366,6 +8366,8 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}, crbuilder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(appPodRequests),
 			crbuilder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		// A disk grow advances in the claim's status (w6/m557).
+		Owns(&corev1.PersistentVolumeClaim{}, crbuilder.WithPredicates(diskClaimStatusChanged)).
 		Owns(&networkingv1.Ingress{}, crbuilder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&networkingv1.NetworkPolicy{}, crbuilder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&batchv1.CronJob{}, crbuilder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).

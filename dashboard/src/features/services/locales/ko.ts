@@ -4433,8 +4433,8 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.diskGrowHint": {
     message:
-      "크기를 늘려도 다운타임 없이 적용되며, 일부 볼륨에서는 다음 재시작 시 파일 시스템 확장이 완료됩니다. 디스크는 절대 줄일 수 없습니다.",
-    description: "Grow helper text, including bex's honest CSI caveat",
+      "크기를 늘려도 다운타임이 발생하지 않으며, 추가된 스토리지는 몇 초 안에 사용할 수 있습니다. 디스크는 절대 줄일 수 없습니다.",
+    description: "Grow helper text in Render's wording",
   },
   "services.diskResizeSuccess": {
     message: "디스크 크기를 늘렸습니다.",
