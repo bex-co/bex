@@ -27,6 +27,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math/big"
@@ -140,6 +141,15 @@ func NewCA(certPEM, keyPEM []byte, opts CAOptions) (*CA, error) {
 		lru:        list.New(),
 		entries:    make(map[string]*list.Element),
 	}, nil
+}
+
+// CertPEM returns the PEM-encoded public CA certificate (never the private
+// key), suitable for distribution to bex-api and sandbox Pod trust stores.
+func (c *CA) CertPEM() []byte {
+	if c == nil || c.caCert == nil || len(c.caCert.Raw) == 0 {
+		return nil
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.caCert.Raw})
 }
 
 // CertForHost returns a cached or freshly minted short-lived ECDSA P-256 TLS

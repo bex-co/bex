@@ -1680,6 +1680,22 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 		deps.SandboxSessionEgress = egress
 		// Render allow-list sandboxes (w32/m283) share the same policy client.
 		deps.SandboxEgress = &sessionegress.SandboxManager{Client: cl}
+		// Sandbox group credential broker Pod wiring (w2/m535, ADR122 D6).
+		if cfg.SandboxBrokerURL != "" {
+			broker := &sandbox.BrokerConfig{
+				ProxyURL:   cfg.SandboxBrokerURL,
+				CACertPath: cfg.SandboxBrokerCACertPath,
+				CACertURL:  cfg.SandboxBrokerCACertURL,
+			}
+			// Fail closed at startup when a local CA cert path is explicitly
+			// configured and unreadable, malformed, or contains a private key.
+			if broker.CACertPath != "" {
+				if _, err := broker.ResolveCAPEM(ctx); err != nil {
+					log.Fatalf("bex-api: BEX_SANDBOX_BROKER_CA_CERT_PATH: %v", err)
+				}
+			}
+			deps.SandboxBroker = broker
+		}
 		deps.AgentRegistryHosts = egress.RegistryDomains()
 		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
 		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH

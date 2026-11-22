@@ -513,6 +513,15 @@ spec:
                   optional: true
             - name: BEX_SANDBOX_EXEC_URL
               value: http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec
+            # Sandbox group credential broker wiring (w2/m535, ADR122 D6).
+            # bex-api injects HTTPS_PROXY and the public-only Sandbox Broker CA
+            # certificate (fetched from ssh-gateway's internal :8081 listener)
+            # into allow-all and allow-list /v1/sandboxes Pods. bex-api never
+            # mounts or reads the bex-sandbox-broker-ca private key Secret.
+            - name: BEX_SANDBOX_BROKER_URL
+              value: http://bex-ssh-gateway.bex-system.svc.cluster.local:8086
+            - name: BEX_SANDBOX_BROKER_CA_CERT_URL
+              value: http://bex-ssh-gateway.bex-system.svc:8081/sandbox-broker-ca.crt
             # Disk-snapshot LISTING (ADR082 D5/D6). bex-api only ever LISTS:
             # it never writes, never decrypts, and never holds the age key —
             # which is why these come from a separate, READ-ONLY identity

@@ -894,8 +894,9 @@ func TestSandboxBrokerNon443PassthroughAndQueryErrorScrubbing(t *testing.T) {
 }
 
 type upstreamPair struct {
-	srvA *httptest.Server
-	srvB *httptest.Server
+	srvA    *httptest.Server
+	srvB    *httptest.Server
+	rootPEM []byte
 }
 
 func makeUpstreamRootWithServers(t *testing.T, handlerA, handlerB http.Handler) (upstreamPair, *x509.CertPool) {
@@ -956,7 +957,8 @@ func makeUpstreamRootWithServers(t *testing.T, handlerA, handlerB http.Handler) 
 	pool := x509.NewCertPool()
 	pool.AddCert(caCert)
 	return upstreamPair{
-		srvA: startServer(501, []string{"api.example.com", "uncred.example.com", "overlap.example.com", "live.example.com"}, handlerA),
-		srvB: startServer(502, []string{"redirect-target.example.com"}, handlerB),
+		srvA:    startServer(501, []string{"api.example.com", "uncred.example.com", "overlap.example.com", "live.example.com"}, handlerA),
+		srvB:    startServer(502, []string{"redirect-target.example.com"}, handlerB),
+		rootPEM: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER}),
 	}, pool
 }

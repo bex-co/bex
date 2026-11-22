@@ -32,6 +32,15 @@ spec:
         (request.operation != 'CREATE' || !has(object.spec.nodeName) || object.spec.nodeName == '')
       reason: Forbidden
       message: sandbox Pods must retain the gVisor runtime, scheduler-enforced sandbox placement, regime identity, and disabled ServiceAccount token
+    - expression: >-
+        (object.metadata.?labels['bex.co/sandbox-group'].orValue('') == '' ||
+         (object.metadata.?labels['bex.co/sandbox-group'].orValue('').matches('^sbg-[0-9a-v]{20}$') &&
+          object.metadata.?labels['bex.co/agent-session'].orValue('') == '')) &&
+        (request.operation != 'UPDATE' ||
+         oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('') == '' ||
+         object.metadata.?labels['bex.co/sandbox-group'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-group'].orValue(''))
+      reason: Forbidden
+      message: sandbox Pod bex.co/sandbox-group label must be a valid sbg- id, absent on agent-session Pods, and immutable once set
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

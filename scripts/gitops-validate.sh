@@ -1120,12 +1120,13 @@ if [ "$ssh_namespace" != 'default' ] || [ "$ssh_namespaced_rules" != $'app.bex.c
 fi
 # Traefik reaches 2222 (native SSH) + 8080 (Browser Web Shell); monitoring
 # scrapes 9090; sandbox-regime namespaces reach only ADR047/ADR062's source-Pod-
-# bound Git/model credential listeners on 8082/8084 and the full-tier egress
-# proxy on 8085 (w10/m19). Enumerate every port per rule so a stray added port
-# can't slip past a ports[0]-only check.
+# bound Git/model credential listeners on 8082/8084, the full-tier egress proxy
+# on 8085 (w10/m19), and the sandbox credential broker on 8086 (w2/m535).
+# Enumerate every port per rule so a stray added port can't slip past a
+# ports[0]-only check.
 ssh_ingress="$(yq -N '.spec.ingress[] | [(.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" // .from[0].namespaceSelector.matchLabels."app.bex.co/regime"), (.ports | map(.port | tostring) | join(","))] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
-if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082,8084,8085' ]; then
-  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox Git/model credential + egress-proxy hops only" >&2
+if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082,8084,8085,8086' ]; then
+  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox Git/model credential + egress-proxy + sandbox-broker hops only" >&2
   fail=1
 fi
 ssh_rendered="$(kubectl kustomize lego/operator/config/default)"
@@ -2352,6 +2353,100 @@ if [ -f "$EGRESS" ]; then
   [ "$credential_gateway_deny_ports" = "8082,8084,8085" ] \
     || { echo "FAIL: agent credential-gateway deny ports drifted: '$credential_gateway_deny_ports'" >&2; fail=1; }
 
+  # Sandbox credential broker egress & gateway ingress (w2/m535, ADR122 D6):
+  # ONLY allow-all and allow-list /v1/sandboxes Pods carrying bex.co/sandbox-group
+  # (never deny-all, never agent-session Pods) reach bex-ssh-gateway:8086 and
+  # CoreDNS for bex-ssh-gateway.bex-system.svc.cluster.local.
+  broker_egress_shape="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-credential-broker-egress") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/regime",
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/egress") | .operator + ":" + ((.values // []) | sort | join(","))),
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/agent-session") | .operator),
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/sandbox-group") | .operator),
+       (.spec.egress | length | tostring),
+       .spec.egress[0].toEndpoints[0].matchLabels."k8s:k8s-app",
+       .spec.egress[0].toPorts[0].ports[0].port,
+       (.spec.egress[0].toPorts[0].rules.dns | map(.matchName) | join(",")),
+       .spec.egress[1].toEndpoints[0].matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.egress[1].toEndpoints[0].matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.egress[1].toEndpoints[0].matchLabels."k8s:app.kubernetes.io/name",
+       .spec.egress[1].toPorts[0].ports[0].protocol,
+       .spec.egress[1].toPorts[0].ports[0].port] | join("|")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$broker_egress_shape" = "sandbox|In:allow-all,allow-list|DoesNotExist|Exists|2|kube-dns|53|bex-ssh-gateway.bex-system.svc.cluster.local|bex-system|bex-ssh-gateway|bex-ssh-gateway|TCP|8086" ] \
+    || { echo "FAIL: sandbox-credential-broker-egress shape drifted: '$broker_egress_shape'" >&2; fail=1; }
+  if yq -e \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-credential-broker-egress") |
+      .spec.egress[] | select(has("toEntities") or has("toServices") or has("toCIDR") or has("toCIDRSet") or has("toFQDNs"))' \
+    "$EGRESS" >/dev/null 2>&1; then
+    echo "FAIL: sandbox-credential-broker-egress carries a non-endpoint egress rule" >&2
+    fail=1
+  fi
+
+  broker_gateway_ingress="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-credential-broker-gateway-ingress") |
+      [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.endpointSelector.matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
+       (.spec.ingressDeny | length | tostring),
+       .spec.ingress[0].fromEndpoints[0].matchLabels."app.bex.co/regime",
+       (.spec.ingress[0].fromEndpoints[0].matchExpressions[] | select(.key == "bex.co/egress") | .operator + ":" + ((.values // []) | sort | join(","))),
+       (.spec.ingress[0].fromEndpoints[0].matchExpressions[] | select(.key == "bex.co/agent-session") | .operator),
+       (.spec.ingress[0].fromEndpoints[0].matchExpressions[] | select(.key == "bex.co/sandbox-group") | .operator),
+       (.spec.ingress[0].toPorts[0].ports | map(.protocol + ":" + .port) | join(","))] | join("|")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$broker_gateway_ingress" = "bex-system|bex-ssh-gateway|bex-ssh-gateway|5|sandbox|In:allow-all,allow-list|DoesNotExist|Exists|TCP:8086" ] \
+    || { echo "FAIL: sandbox-credential-broker-gateway-ingress drifted: '$broker_gateway_ingress'" >&2; fail=1; }
+  broker_gateway_deny_keys="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-credential-broker-gateway-ingress") |
+      .spec.ingressDeny[].fromEndpoints[]?.matchExpressions[]?.key' "$EGRESS" | LC_ALL=C sort | paste -sd, -)"
+  [ "$broker_gateway_deny_keys" = "app.bex.co/regime,bex.co/agent-session,bex.co/egress,bex.co/sandbox-group" ] \
+    || { echo "FAIL: sandbox-credential-broker-gateway-ingress deny keys drifted: '$broker_gateway_deny_keys'" >&2; fail=1; }
+  broker_gateway_deny_ports="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-credential-broker-gateway-ingress") |
+      .spec.ingressDeny[].toPorts[].ports[].port' "$EGRESS" | sort -u | paste -sd, -)"
+  [ "$broker_gateway_deny_ports" = "8086" ] \
+    || { echo "FAIL: sandbox-credential-broker-gateway-ingress deny ports drifted: '$broker_gateway_deny_ports'" >&2; fail=1; }
+
+  # Sandbox Broker CA private key custody (w2/m535 t001): cert-manager issues
+  # bex-sandbox-broker-ca in bex-system and ONLY bex-ssh-gateway mounts it;
+  # bex-api, operator, and sandbox templates must never reference that Secret,
+  # and port 8086 must never be exposed on any external Ingress/IngressRoute.
+  echo "==> Sandbox Broker CA custody and cluster-internal broker port (w2/m535)"
+  for cfg_dir in lego/operator/config/default lego/operator/config/prod; do
+    broker_render="$(kubectl kustomize "$cfg_dir")"
+    broker_ca_cert="$(yq -N \
+      'select(.kind == "Certificate" and .metadata.name == "bex-sandbox-broker-ca") |
+        [.metadata.namespace, (.spec.isCA | tostring), .spec.secretName, .spec.issuerRef.name, .spec.privateKey.algorithm] | join(":")' \
+      - <<<"$broker_render" | tr -d '\n')"
+    [ "$broker_ca_cert" = "bex-system:true:bex-sandbox-broker-ca:bex-selfsigned-issuer:ECDSA" ] \
+      || { echo "FAIL: $cfg_dir bex-sandbox-broker-ca Certificate drifted: '$broker_ca_cert'" >&2; fail=1; }
+    broker_ca_mounters="$(yq -N \
+      'select((.kind == "Deployment" or .kind == "DaemonSet" or .kind == "StatefulSet") and
+        ((.spec.template.spec.volumes[]?.secret.secretName == "bex-sandbox-broker-ca") or
+         (.spec.template.spec.containers[]?.env[]?.valueFrom.secretKeyRef.name == "bex-sandbox-broker-ca"))) |
+        .metadata.name' - <<<"$broker_render" | sed '/^$/d' | sort | paste -sd, -)"
+    [ "$broker_ca_mounters" = "bex-ssh-gateway" ] \
+      || { echo "FAIL: $cfg_dir bex-sandbox-broker-ca Secret must be mounted ONLY in bex-ssh-gateway, found: '$broker_ca_mounters'" >&2; fail=1; }
+    broker_svc_port="$(yq -N \
+      'select(.kind == "Service" and .metadata.name == "bex-ssh-gateway") |
+        .spec.ports[] | select(.name == "sandbox-broker") | (.port | tostring) + ":" + .targetPort + ":" + .protocol' \
+      - <<<"$broker_render" | tr -d '\n')"
+    [ "$broker_svc_port" = "8086:sandbox-broker:TCP" ] \
+      || { echo "FAIL: $cfg_dir bex-ssh-gateway Service sandbox-broker port drifted: '$broker_svc_port'" >&2; fail=1; }
+    if yq -e \
+      'select(.kind == "Ingress" or .kind == "IngressRoute" or .kind == "IngressRouteTCP") |
+        .. | select(. == 8086 or . == "8086" or . == "sandbox-broker")' \
+      - <<<"$broker_render" >/dev/null 2>&1; then
+      echo "FAIL: $cfg_dir exposes sandbox-broker port 8086 on an external Ingress/IngressRoute" >&2
+      fail=1
+    fi
+  done
+  if grep -qF 'bex-sandbox-broker-ca' deploy/opensandbox/batchsandbox-template.yaml lego/operator/config/api/rbac.yaml deploy/gitops/base/tenant-namespace-clusterroles.yaml; then
+    echo "FAIL: bex-sandbox-broker-ca private key Secret must never appear in sandbox templates or tenant/API RBAC" >&2
+    fail=1
+  fi
+
   server_selector="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
       [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
@@ -2374,6 +2469,8 @@ if [ -f "$EGRESS" ]; then
       (.metadata.name == "sandbox-egress-default-deny" or
        .metadata.name == "sandbox-egress-legacy-allowlist" or
        .metadata.name == "sandbox-egress-allow-all" or
+       .metadata.name == "sandbox-credential-broker-egress" or
+       .metadata.name == "sandbox-credential-broker-gateway-ingress" or
        .metadata.name == "sandbox-execd-ingress" or
        .metadata.name == "opensandbox-server-ingress" or
        .metadata.name == "sandbox-exec-gateway-ingress" or
@@ -2760,7 +2857,10 @@ for required_guard in \
   "object.spec.runtimeClassName == 'gvisor'" \
   "object.spec.automountServiceAccountToken == false" \
   "object.spec.nodeSelector['bex.co/pool'] == 'sandbox'" \
-  "request.operation != 'CREATE' || !has(object.spec.nodeName)"; do
+  "request.operation != 'CREATE' || !has(object.spec.nodeName)" \
+  "object.metadata.?labels['bex.co/sandbox-group'].orValue('').matches('^sbg-[0-9a-v]{20}\$')" \
+  "object.metadata.?labels['bex.co/agent-session'].orValue('') == ''" \
+  "object.metadata.?labels['bex.co/sandbox-group'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('')"; do
   grep -qF "$required_guard" deploy/gitops/base/sandbox-pod-admission.yaml \
     || { echo "FAIL: sandbox Pod admission guard lost: $required_guard" >&2; fail=1; }
 done

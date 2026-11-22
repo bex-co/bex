@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -52,6 +53,7 @@ type fakeBox struct {
 	expires     *time.Time // BatchSandbox spec.expireTime; nil = no timeout
 	image       string     // the create's image URI
 	env         map[string]string
+	entrypoint  []string
 }
 
 // fakeOpenSandbox is a stateful OpenSandbox lifecycle server for the idle
@@ -186,7 +188,7 @@ func (f *fakeOpenSandbox) create(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	f.nextID++
 	id := fmt.Sprintf("os-new-%d", f.nextID)
-	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now(), image: body.Image.URI, env: maps.Clone(body.Env)}
+	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now(), image: body.Image.URI, env: maps.Clone(body.Env), entrypoint: slices.Clone(body.Entrypoint)}
 	f.calls = append(f.calls, "create "+id)
 	f.mu.Unlock()
 	w.WriteHeader(http.StatusCreated)
@@ -1056,5 +1058,30 @@ func TestLifetimeStampFailureRefusesTheTransition(t *testing.T) {
 	}
 	if calls := f.os.lifecycleCalls(); len(calls) != 0 {
 		t.Fatalf("lifecycle calls = %v, want none", calls)
+	}
+}
+
+// TestWakeOnExecStampsSandboxGroupOnSuspendedBox verifies w2/m535 t002/t005:
+// waking a suspended sandbox via exec patches bex.co/sandbox-group before the
+// substrate recreates the Pod, so Pod-bound credential brokering works right
+// after idle resume (including for sandboxes suspended before m535).
+func TestWakeOnExecStampsSandboxGroupOnSuspendedBox(t *testing.T) {
+	f := newIdleFixture(t)
+	groupID := "sbg-0123456789abcdefghij"
+	f.svc.Groups = &fakeGroupStore{
+		defaultGroup: store.SandboxGroup{ID: groupID, WorkspaceID: "tea-a", Name: "default", IsDefault: true, ConcurrencyLimit: 100},
+		groups: map[string]store.SandboxGroup{
+			groupID: {ID: groupID, WorkspaceID: "tea-a", Name: "default", IsDefault: true, ConcurrencyLimit: 100},
+		},
+		members: map[string]store.SandboxGroupMember{
+			"os-1": {GroupID: groupID},
+		},
+	}
+	f.os.add("os-1", "Paused", f.now.Add(-time.Hour), "900", nil)
+	if _, err := f.svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "true"}); err != nil {
+		t.Fatalf("wake-on-exec failed: %v", err)
+	}
+	if got := f.os.box("os-1").metadata[sessionegress.SandboxGroupLabel]; got != groupID {
+		t.Fatalf("resumed box %s = %q, want %q", sessionegress.SandboxGroupLabel, got, groupID)
 	}
 }

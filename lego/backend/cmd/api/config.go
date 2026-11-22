@@ -260,12 +260,15 @@ type Config struct {
 	// proxy origin full-tier sandboxes use (w10/m19); empty uses the in-cluster
 	// default on :8085. EgressProxyPort is derived from it so the session
 	// policy and the sandbox's HTTPS_PROXY always agree on the port.
-	AgentEgressProxyURL  string
-	EgressProxyPort      uint16
-	SandboxImage         string
-	AgentSessionImage    string
-	AgentSetupRegistries string
-	SandboxExecURL       string
+	AgentEgressProxyURL     string
+	EgressProxyPort         uint16
+	SandboxImage            string
+	AgentSessionImage       string
+	AgentSetupRegistries    string
+	SandboxExecURL          string
+	SandboxBrokerURL        string
+	SandboxBrokerCACertPath string
+	SandboxBrokerCACertURL  string
 
 	ShellTicketSecret      string
 	ShellWSURL             string
@@ -642,6 +645,23 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		cfg.AgentSessionImage = p.str("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox@sha256:4faafb4ad14e6d76be076fecffe1b02c06d21ec23d9ce1bba780da2af37c698a")
 		cfg.AgentSetupRegistries = getenv("BEX_AGENT_SETUP_REGISTRIES")
 		cfg.SandboxExecURL = getenv("BEX_SANDBOX_EXEC_URL")
+		brokerURL, err := sandbox.ValidateBrokerProxyURL(getenv("BEX_SANDBOX_BROKER_URL"))
+		p.err(err)
+		cfg.SandboxBrokerURL = brokerURL
+		cfg.SandboxBrokerCACertPath = strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_CA_CERT_PATH"))
+		cfg.SandboxBrokerCACertURL = strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_CA_CERT_URL"))
+		if cfg.SandboxBrokerCACertURL != "" {
+			if u, parseErr := url.Parse(cfg.SandboxBrokerCACertURL); parseErr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+				p.err(fmt.Errorf("BEX_SANDBOX_BROKER_CA_CERT_URL=%q must be a valid http(s) URL", cfg.SandboxBrokerCACertURL))
+			}
+		}
+		if cfg.SandboxBrokerURL != "" && cfg.SandboxBrokerCACertPath == "" && cfg.SandboxBrokerCACertURL == "" && cfg.SandboxExecURL != "" {
+			if u, parseErr := url.Parse(cfg.SandboxExecURL); parseErr == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+				u.Path, u.RawPath = sandbox.GatewayBrokerCACertPath, ""
+				u.RawQuery, u.Fragment = "", ""
+				cfg.SandboxBrokerCACertURL = u.String()
+			}
+		}
 		port, err := modelProxyPort(cfg.AgentModelProxyURL)
 		p.err(err)
 		cfg.ModelProxyPort = port

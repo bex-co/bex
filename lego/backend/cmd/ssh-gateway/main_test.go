@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
@@ -374,5 +375,28 @@ func TestBuildSandboxBrokerConfig(t *testing.T) {
 	}
 	if broker == nil || !broker.Enabled() || addr != ":8086" {
 		t.Fatalf("valid config = (enabled=%v, addr=%q), want (true, \":8086\")", broker != nil && broker.Enabled(), addr)
+	}
+
+	// 4. Public-only CA endpoint serves ONLY the CERTIFICATE PEM (never the key)
+	// when enabled, and 404 when disabled.
+	disabledRec := httptest.NewRecorder()
+	sandboxBrokerCACertHandler(nil).ServeHTTP(disabledRec, httptest.NewRequest(http.MethodGet, sandboxBrokerCACertPath, nil))
+	if disabledRec.Code != http.StatusNotFound {
+		t.Fatalf("disabled CA endpoint = %d, want 404", disabledRec.Code)
+	}
+
+	enabledRec := httptest.NewRecorder()
+	sandboxBrokerCACertHandler(broker).ServeHTTP(enabledRec, httptest.NewRequest(http.MethodGet, sandboxBrokerCACertPath, nil))
+	if enabledRec.Code != http.StatusOK {
+		t.Fatalf("enabled CA endpoint = %d, want 200", enabledRec.Code)
+	}
+	if ct := enabledRec.Header().Get("Content-Type"); ct != "application/x-pem-file" {
+		t.Errorf("Content-Type = %q, want application/x-pem-file", ct)
+	}
+	if strings.Contains(enabledRec.Body.String(), "PRIVATE KEY") {
+		t.Fatalf("CA endpoint leaked private key material")
+	}
+	if _, err := sandbox.ValidatePublicBrokerCAPEM(enabledRec.Body.Bytes(), time.Now()); err != nil {
+		t.Fatalf("served CA PEM failed ValidatePublicBrokerCAPEM: %v", err)
 	}
 }

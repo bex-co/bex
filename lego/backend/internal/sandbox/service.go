@@ -74,6 +74,7 @@ const (
 	// mapping table to drift (ADR042 D4). Absent ⇒ a legacy (pre-w9/m94) or
 	// agent-session sandbox, whose canonical id stays the substrate id.
 	metadataPublicID     = "bex.co/sandbox-id"
+	metadataSandboxGroup = sessionegress.SandboxGroupLabel
 	metadataAgentSession = agentsession.LabelSession
 )
 
@@ -209,6 +210,10 @@ type Service struct {
 	// in OpenBao. Either nil answers the credential routes 503.
 	Credentials     CredentialStore
 	CredentialVault *CredentialVault
+	// Broker injects HTTPS_PROXY and the public Sandbox Broker CA trust bundle
+	// into allow-all and allow-list /v1/sandboxes Pods (w2/m535, ADR122 D6).
+	// nil or empty ProxyURL leaves Pods unwired (no-op).
+	Broker *BrokerConfig
 	// MaxGroupConcurrency is the ceiling and default of a group's concurrencyLimit
 	// (Render: 1,000; 0 = no ceiling). A higher requested value is capped to it.
 	MaxGroupConcurrency int
@@ -907,7 +912,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err != nil {
 		return Sandbox{}, err
 	}
-	box, err := s.launch(ctx, req, ws, publicID, name, tmpl, plan, timeout, idle, policy)
+	box, err := s.launch(ctx, req, ws, publicID, group.ID, name, tmpl, plan, timeout, idle, policy)
 	if err != nil {
 		s.releaseFailedCreate(ctx, ws, publicID, err)
 		return Sandbox{}, err
@@ -921,14 +926,14 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 }
 
 // launch records the sandbox's name, then creates it under the public id.
-func (s *Service) launch(ctx context.Context, req CreateRequest, ws, publicID, name string, tmpl Template, plan Plan, timeout, idle int, policy *NetworkPolicy) (Sandbox, error) {
+func (s *Service) launch(ctx context.Context, req CreateRequest, ws, publicID, groupID, name string, tmpl Template, plan Plan, timeout, idle int, policy *NetworkPolicy) (Sandbox, error) {
 	if req.Name != "" {
 		// Written first, under the id about to be created, so a listed sandbox
 		// never appears without its name; a failed create removes it.
 		if err := s.Names.SetSandboxName(ctx, ws, publicID, req.Name); err != nil {
 			return Sandbox{}, err
 		}
-		box, err := s.createWithID(ctx, ws, publicID, name, tmpl, plan, timeout, idle, policy, req.Env)
+		box, err := s.createWithID(ctx, ws, publicID, groupID, name, tmpl, plan, timeout, idle, policy, req.Env)
 		if err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 			defer cancel()
@@ -940,16 +945,20 @@ func (s *Service) launch(ctx context.Context, req CreateRequest, ws, publicID, n
 		box.Name = &req.Name
 		return box, nil
 	}
-	return s.createWithID(ctx, ws, publicID, name, tmpl, plan, timeout, idle, policy, req.Env)
+	return s.createWithID(ctx, ws, publicID, groupID, name, tmpl, plan, timeout, idle, policy, req.Env)
 }
 
 // createWithID creates the sandbox under the public id bex minted for it.
-func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, tmpl Template, plan Plan, timeout, idle int, policy *NetworkPolicy, env map[string]string) (Sandbox, error) {
+func (s *Service) createWithID(ctx context.Context, ws, publicID, groupID, name string, tmpl Template, plan Plan, timeout, idle int, policy *NetworkPolicy, env map[string]string) (Sandbox, error) {
 	extra := map[string]string{
 		metadataPublicID:    publicID,
 		metadataIdleTimeout: strconv.Itoa(idle),
 		metadataEgress:      string(policy.Default),
 	}
+	if groupID != "" {
+		extra[metadataSandboxGroup] = groupID
+	}
+	tmpl.Entrypoint, env = s.Broker.Inject(ctx, policy, tmpl, env)
 	if policy.Default != NetworkPolicyAllowList {
 		return s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra, nil)
 	}
@@ -1983,10 +1992,11 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		}
 		// A resume needs a free slot in the sandbox's group, like the implicit one
 		// an exec starts (resumeForActivity).
-		if undoAdmission, err = s.admitResume(ctx, key, ws, raw); err != nil {
+		var groupID string
+		if groupID, undoAdmission, err = s.admitResume(ctx, key, ws, raw); err != nil {
 			return err
 		}
-		if err := s.beforeResume(ctx, key, raw); err != nil {
+		if err := s.beforeResume(ctx, key, raw, groupID); err != nil {
 			undoAdmission()
 			return err
 		}

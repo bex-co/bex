@@ -34,6 +34,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -849,5 +850,68 @@ func TestSnapshotSurfacesAgree(t *testing.T) {
 		t.Errorf("MCP restore = %+v", out)
 	} else if res, _ := out.Raw["result"].(map[string]any); res["image"] != ready.ID {
 		t.Errorf("MCP restore = %v, want image %s", res, ready.ID)
+	}
+}
+
+// TestSnapshotRestorePreservesBrokerWiringWithZeroSecrets verifies w2/m535 t005:
+// capturing a filesystem snapshot from a broker-wired sandbox and restoring it
+// preserves bex.co/sandbox-group, HTTPS_PROXY, and Broker CA trust (while
+// omitting broker wiring when restored under deny-all), and persists zero
+// credential secret material in snapshot metadata or Pod env/metadata.
+func TestSnapshotRestorePreservesBrokerWiringWithZeroSecrets(t *testing.T) {
+	f := newSnapshotFixture(t)
+	now := time.Now().UTC()
+	caPEM, _, _, _ := generateTestCA(t, "snapshot-broker-ca", true, now.Add(-time.Hour), now.Add(24*time.Hour))
+	const proxyURL = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8086"
+	f.svc.Broker = &BrokerConfig{ProxyURL: proxyURL, CACertPEM: caPEM}
+	f.svc.Templates["base"] = Template{
+		Image:      "bash:5.3",
+		Entrypoint: []string{"/bin/sh", "-c", "exec sleep infinity"},
+		Env:        map[string]string{"HOME": "/home/render"},
+		CPU:        "500m",
+		Memory:     "512Mi",
+	}
+
+	const sentinelSecret = "sk-live-never-in-snapshot-or-pod"
+	source := f.sandbox(t, `"networkPolicy":{"type":"allow-all"}`)
+	srcBox := f.os.box(f.os.idOf(source.ID))
+	if srcBox.metadata[sessionegress.SandboxGroupLabel] != f.group.ID {
+		t.Fatalf("source %s = %q, want %q", sessionegress.SandboxGroupLabel, srcBox.metadata[sessionegress.SandboxGroupLabel], f.group.ID)
+	}
+	if srcBox.env["HTTPS_PROXY"] != proxyURL || srcBox.env["SSL_CERT_FILE"] != SandboxBrokerCABundleFile {
+		t.Fatalf("source env missing broker wiring: %v", srcBox.env)
+	}
+
+	snap, _ := f.available(t, source.ID, `{"kind":"filesystem","name":"brokered-snap"}`)
+	// Verify snapshot row contains zero secret material.
+	rowJSON, _ := json.Marshal(f.row(t, snap.ID))
+	if strings.Contains(string(rowJSON), sentinelSecret) || strings.Contains(string(rowJSON), "PRIVATE KEY") {
+		t.Fatalf("snapshot row leaked secret/key material: %s", string(rowJSON))
+	}
+
+	// Restore under inherited allow-all policy: preserves group label + broker wiring.
+	restored := f.sandbox(t, fmt.Sprintf(`"snapshotId":%q`, snap.ID))
+	restoredBox := f.os.box(f.os.idOf(restored.ID))
+	if restoredBox.metadata[sessionegress.SandboxGroupLabel] != f.group.ID {
+		t.Fatalf("restored %s = %q, want %q", sessionegress.SandboxGroupLabel, restoredBox.metadata[sessionegress.SandboxGroupLabel], f.group.ID)
+	}
+	if restoredBox.env["HTTPS_PROXY"] != proxyURL || restoredBox.env["REQUESTS_CA_BUNDLE"] != SandboxBrokerCABundleFile || restoredBox.env["NODE_EXTRA_CA_CERTS"] != SandboxBrokerCACertFile {
+		t.Fatalf("restored env missing broker wiring: %v", restoredBox.env)
+	}
+	if !strings.Contains(strings.Join(restoredBox.entrypoint, " "), "sandbox-broker-ca") {
+		t.Fatalf("restored entrypoint missing broker CA bootstrap: %v", restoredBox.entrypoint)
+	}
+
+	// Restore with deny-all override: keeps group label, receives ZERO broker proxy or CA wiring.
+	sealed := f.sandbox(t, fmt.Sprintf(`"snapshotId":%q,"networkPolicy":{"type":"deny-all"}`, snap.ID))
+	sealedBox := f.os.box(f.os.idOf(sealed.ID))
+	if sealedBox.metadata[sessionegress.SandboxGroupLabel] != f.group.ID {
+		t.Fatalf("sealed restored %s = %q, want %q", sessionegress.SandboxGroupLabel, sealedBox.metadata[sessionegress.SandboxGroupLabel], f.group.ID)
+	}
+	if _, ok := sealedBox.env["HTTPS_PROXY"]; ok {
+		t.Fatalf("deny-all restored sandbox must not receive HTTPS_PROXY: %v", sealedBox.env)
+	}
+	if strings.Contains(strings.Join(sealedBox.entrypoint, " "), "sandbox-broker-ca") {
+		t.Fatalf("deny-all restored sandbox must not receive broker CA bootstrap: %v", sealedBox.entrypoint)
 	}
 }

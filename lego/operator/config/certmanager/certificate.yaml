@@ -28,3 +28,30 @@ spec:
     kind: Issuer
     name: selfsigned-issuer
   secretName: webhook-server-cert
+---
+# Cluster-private Sandbox Broker CA (w2/m535, docs/ADR122-sandbox-credential-brokering.md D6).
+# Signs short-lived (1h) exact-hostname ECDSA P-256 leaf certificates in memory
+# inside bex-ssh-gateway for selectively intercepted credentialed HTTPS hosts.
+# The Secret (`bex-sandbox-broker-ca`) stays exclusively in bex-system and is
+# mounted ONLY into bex-ssh-gateway — never into bex-api or any tenant namespace.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sandbox-broker-ca
+  namespace: system
+spec:
+  isCA: true
+  commonName: bex-sandbox-credential-broker-ca
+  duration: 87600h
+  renewBefore: 8760h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - cert sign
+    - crl sign
+    - digital signature
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: bex-sandbox-broker-ca

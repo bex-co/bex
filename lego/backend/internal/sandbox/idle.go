@@ -338,11 +338,11 @@ func (s *Service) resumeForActivity(ctx context.Context, key, ws string, raw osS
 	}
 	// The implicit resume needs a free slot in the sandbox's group, exactly as the
 	// explicit one does: a group at its concurrency limit answers 429 here too.
-	undoAdmission, err := s.admitResume(ctx, key, ws, raw)
+	groupID, undoAdmission, err := s.admitResume(ctx, key, ws, raw)
 	if err != nil {
 		return err
 	}
-	if err := s.beforeResume(ctx, key, raw); err != nil {
+	if err := s.beforeResume(ctx, key, raw, groupID); err != nil {
 		undoAdmission()
 		return err
 	}

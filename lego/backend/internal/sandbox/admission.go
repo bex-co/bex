@@ -265,34 +265,34 @@ func (s *Service) admitCreate(ctx context.Context, workspace, groupID, sandboxID
 // fails (a no-op when nothing was newly taken). A sandbox that is not a Render
 // sandbox (an agent-session one) and a deployment with no group store pass
 // through.
-func (s *Service) admitResume(ctx context.Context, key, workspace string, raw osSandbox) (release func(), err error) {
+func (s *Service) admitResume(ctx context.Context, key, workspace string, raw osSandbox) (groupID string, release func(), err error) {
 	release = func() {}
 	if s.Groups == nil || !idleTracked(raw) {
-		return release, nil
+		return "", release, nil
 	}
 	id := canonicalID(raw)
 	defaultGroup, err := s.defaultGroup(ctx, workspace)
 	if err != nil {
-		return release, err
+		return "", release, err
 	}
 	members, err := s.Groups.SandboxGroupMembers(ctx, workspace)
 	if err != nil {
-		return release, store.MapError(err)
+		return "", release, store.MapError(err)
 	}
 	group := defaultGroup
 	if m, bound := members[id]; bound && m.GroupID != defaultGroup.ID {
 		if group, err = s.Groups.SandboxGroup(ctx, workspace, m.GroupID); err != nil {
-			return release, store.MapError(err)
+			return "", release, store.MapError(err)
 		}
 	}
 	acquired, err := s.admit(ctx, key, workspace, group, defaultGroup, id, "resume", settleLease)
 	if err != nil {
-		return release, err
+		return "", release, err
 	}
 	if acquired {
 		release = func() { s.clearSlotLease(ctx, workspace, id) }
 	}
-	return release, nil
+	return group.ID, release, nil
 }
 
 // slotWrite runs one slot bookkeeping write on a context that survives the

@@ -543,6 +543,12 @@ func main() {
 		fileHandler := files.Handler()
 		execMux.Handle("PUT "+sandboxfiles.GatewayPath, fileHandler)
 		execMux.Handle("GET "+sandboxfiles.GatewayPath, fileHandler)
+		// Public-only Sandbox Broker CA certificate for bex-api (w2/m535).
+		// Exposed solely on this :8081 internal listener (Cilium
+		// sandbox-exec-gateway-ingress restricts :8081 to bex-system/bex-api)
+		// so bex-api never mounts or reads the bex-sandbox-broker-ca private
+		// key Secret.
+		execMux.Handle("GET "+sandboxBrokerCACertPath, sandboxBrokerCACertHandler(sandboxBroker))
 		drainers = append(drainers, startAuxListener("sandbox-exec", "sandbox exec", env.Or("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, sessionCtx, stop, metrics))
 	}
 
@@ -1103,4 +1109,29 @@ func buildSandboxBroker(getenv func(string) string, execSecret string, clientset
 		MaxDuration:  durationEnv("BEX_SANDBOX_BROKER_MAX_DURATION", time.Hour),
 	}
 	return broker, addr, nil
+}
+
+// sandboxBrokerCACertPath aliases sandbox.GatewayBrokerCACertPath at package
+// scope because main() has a local variable named sandbox.
+const sandboxBrokerCACertPath = sandbox.GatewayBrokerCACertPath
+
+// sandboxBrokerCACertHandler serves ONLY the public PEM certificate of the
+// Sandbox Broker CA on the internal :8081 (bex-api-only) listener. Returns 404
+// when the broker is not enabled.
+func sandboxBrokerCACertHandler(broker *sandboxbroker.Broker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if broker == nil || !broker.Enabled() || broker.CA == nil {
+			http.NotFound(w, r)
+			return
+		}
+		certPEM := broker.CA.CertPEM()
+		if len(certPEM) == 0 {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/x-pem-file")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(certPEM)
+	})
 }

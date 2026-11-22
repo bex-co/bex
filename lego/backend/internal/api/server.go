@@ -454,6 +454,9 @@ type Deps struct {
 	// SandboxCredentials holds Render's sandbox group credentials metadata and
 	// version history (w2/m532, ADR122); nil answers the credential routes 503.
 	SandboxCredentials sandbox.CredentialStore
+	// SandboxBroker wires allow-all and allow-list /v1/sandboxes Pods to
+	// bex-ssh-gateway's credential broker (w2/m535, ADR122 D6); nil is a no-op.
+	SandboxBroker *sandbox.BrokerConfig
 	// SandboxMaxGroups caps a workspace's groups (BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE,
 	// Render's 10; 0 = uncapped), SandboxMaxGroupConcurrency is the ceiling and
 	// default of a group's concurrencyLimit (BEX_SANDBOX_MAX_GROUP_CONCURRENCY,
@@ -1493,6 +1496,7 @@ func sandboxService(base *core.Base, d Deps, resolver core.EnvironmentResolver) 
 		Snapshots:           d.SandboxSnapshots,
 		Credentials:         d.SandboxCredentials,
 		CredentialVault:     sandbox.NewCredentialVault(d.Secrets),
+		Broker:              d.SandboxBroker,
 		MaxGroups:           d.SandboxMaxGroups,
 		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,
 		MaxActive:           d.SandboxMaxActive,

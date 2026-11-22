@@ -923,3 +923,45 @@ func TestLoadConfigOIDCIssuer(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadConfigSandboxBroker(t *testing.T) {
+	base := map[string]string{
+		"BEX_OPENSANDBOX_URL":  "http://opensandbox.opensandbox-system.svc:8077",
+		"BEX_SANDBOX_EXEC_URL": "http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec",
+	}
+	// Unset -> disabled cleanly.
+	cfg, _, err := loadFor(t, base)
+	if err != nil || cfg.SandboxBrokerURL != "" || cfg.SandboxBrokerCACertURL != "" {
+		t.Fatalf("unset broker = (%q, %q, %v)", cfg.SandboxBrokerURL, cfg.SandboxBrokerCACertURL, err)
+	}
+	// Broker URL set without CA path or URL -> derives CA cert URL from BEX_SANDBOX_EXEC_URL.
+	envWithBroker := map[string]string{
+		"BEX_OPENSANDBOX_URL":    base["BEX_OPENSANDBOX_URL"],
+		"BEX_SANDBOX_EXEC_URL":   base["BEX_SANDBOX_EXEC_URL"],
+		"BEX_SANDBOX_BROKER_URL": "http://bex-ssh-gateway.bex-system.svc.cluster.local:8086",
+	}
+	cfg, _, err = loadFor(t, envWithBroker)
+	if err != nil {
+		t.Fatalf("valid broker config failed: %v", err)
+	}
+	if cfg.SandboxBrokerURL != "http://bex-ssh-gateway.bex-system.svc.cluster.local:8086" {
+		t.Errorf("SandboxBrokerURL = %q", cfg.SandboxBrokerURL)
+	}
+	if cfg.SandboxBrokerCACertURL != "http://bex-ssh-gateway.bex-system.svc:8081/sandbox-broker-ca.crt" {
+		t.Errorf("derived SandboxBrokerCACertURL = %q", cfg.SandboxBrokerCACertURL)
+	}
+	// Invalid broker URL or CA cert URL refuses startup.
+	if _, _, err := loadFor(t, map[string]string{
+		"BEX_OPENSANDBOX_URL":    base["BEX_OPENSANDBOX_URL"],
+		"BEX_SANDBOX_BROKER_URL": "https://bex-ssh-gateway.bex-system.svc.cluster.local:8086",
+	}); err == nil || !strings.Contains(err.Error(), "BEX_SANDBOX_BROKER_URL") {
+		t.Errorf("https broker URL err = %v, want BEX_SANDBOX_BROKER_URL refusal", err)
+	}
+	if _, _, err := loadFor(t, map[string]string{
+		"BEX_OPENSANDBOX_URL":            base["BEX_OPENSANDBOX_URL"],
+		"BEX_SANDBOX_BROKER_URL":         "http://bex-ssh-gateway.bex-system.svc.cluster.local:8086",
+		"BEX_SANDBOX_BROKER_CA_CERT_URL": "ftp://invalid",
+	}); err == nil || !strings.Contains(err.Error(), "BEX_SANDBOX_BROKER_CA_CERT_URL") {
+		t.Errorf("bad CA cert URL err = %v, want BEX_SANDBOX_BROKER_CA_CERT_URL refusal", err)
+	}
+}

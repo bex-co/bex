@@ -187,6 +187,25 @@ spec:
               value: "256"
             - name: BEX_AGENT_EGRESS_MAX_CONNS_PER_POD
               value: "32"
+            # Pod-bound outbound HTTPS credential broker for /v1/sandboxes Pods
+            # (w2/m534-m535, docs/ADR122-sandbox-credential-brokering.md D6).
+            # Cluster-internal only (:8086); authenticates callers strictly by
+            # direct source Pod IP + immutable sandbox labels, passes
+            # uncredentialed TLS through untouched, and terminates TLS using
+            # short-lived exact-host leaf certs signed by the cluster-private
+            # Sandbox Broker CA mounted exclusively into this Deployment.
+            - name: BEX_SANDBOX_BROKER_ADDR
+              value: ":8086"
+            - name: BEX_SANDBOX_BROKER_CA_CERT_PATH
+              value: /var/run/bex-sandbox-broker-ca/tls.crt
+            - name: BEX_SANDBOX_BROKER_CA_KEY_PATH
+              value: /var/run/bex-sandbox-broker-ca/tls.key
+            - name: BEX_SANDBOX_BROKER_API_URL
+              value: http://bex-api.bex-system.svc:8091/v1/sandbox-credential-broker/lookup
+            - name: BEX_SANDBOX_BROKER_MAX_CONNS
+              value: "256"
+            - name: BEX_SANDBOX_BROKER_MAX_CONNS_PER_POD
+              value: "32"
             # Agent-session conversation transport (ADR047 D9, w3/m43). A
             # browser-facing plain-HTTP SSE listener Traefik terminates TLS onto:
             # the edge path-routes api.bex.co/v1/agent-sessions/{id}/stream here
@@ -230,6 +249,9 @@ spec:
             - name: agent-egress
               containerPort: 8085
               protocol: TCP
+            - name: sandbox-broker
+              containerPort: 8086
+              protocol: TCP
           # /readyz fails from SIGTERM on, so a terminating pod is no Service
           # endpoint at all while it still accepts for BEX_SSH_ACCEPT_WINDOW;
           # /healthz stays OK while it drains.
@@ -262,8 +284,15 @@ spec:
             - name: host-key
               mountPath: /var/run/bex-ssh-host-key
               readOnly: true
+            - name: sandbox-broker-ca
+              mountPath: /var/run/bex-sandbox-broker-ca
+              readOnly: true
       volumes:
         - name: host-key
           secret:
             secretName: bex-ssh-host-key
+            defaultMode: 0440
+        - name: sandbox-broker-ca
+          secret:
+            secretName: bex-sandbox-broker-ca
             defaultMode: 0440

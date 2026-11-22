@@ -54,3 +54,9 @@ spec:
       port: 8085
       targetPort: agent-egress
       protocol: TCP
+    # Pod-bound outbound HTTPS credential broker for /v1/sandboxes Pods
+    # (w2/m534-m535, ADR122 D6). Cluster-internal only; no edge route.
+    - name: sandbox-broker
+      port: 8086
+      targetPort: sandbox-broker
+      protocol: TCP

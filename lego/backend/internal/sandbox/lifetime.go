@@ -231,12 +231,18 @@ func (s *Service) afterSuspend(ctx context.Context, raw osSandbox) {
 
 // beforeResume stamps the resume of an ordinary suspended sandbox ahead of
 // the call, so the reconcile never reads a resumed sandbox's timeout from an
-// older start. A failed stamp refuses the resume.
-func (s *Service) beforeResume(ctx context.Context, key string, raw osSandbox) error {
+// older start, and ensures the immutable bex.co/sandbox-group label is present
+// (w2/m535) even for sandboxes suspended before it was stamped at create.
+// A failed stamp refuses the resume.
+func (s *Service) beforeResume(ctx context.Context, key string, raw osSandbox, groupID string) error {
 	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusSuspended {
 		return nil
 	}
-	if err := s.Client.PatchMetadata(ctx, key, raw.ID, map[string]string{metadataResumedAt: stampMetadataTime(s.Now())}); err != nil {
+	patch := map[string]string{metadataResumedAt: stampMetadataTime(s.Now())}
+	if raw.Metadata[metadataSandboxGroup] == "" && groupID != "" {
+		patch[metadataSandboxGroup] = groupID
+	}
+	if err := s.Client.PatchMetadata(ctx, key, raw.ID, patch); err != nil {
 		return fmt.Errorf("stamp sandbox resume: %w", err)
 	}
 	return nil

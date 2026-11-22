@@ -353,6 +353,51 @@ spec:
             - fe80::/10
             - ff00::/8
 ---
+# Outbound HTTPS credential broker egress path for /v1/sandboxes Pods
+# (w2/m535, docs/ADR122-sandbox-credential-brokering.md D6). Admits ONLY DNS
+# lookup of bex-ssh-gateway.bex-system.svc.cluster.local and TCP 8086 to the
+# exact bex-ssh-gateway ServiceAccount endpoint for allow-all and allow-list
+# /v1/sandboxes Pods carrying an immutable bex.co/sandbox-group label.
+# deny-all sandboxes and agent-session Pods are never selected, and
+# sandbox-egress-default-deny's platform floor denies stay completely untouched.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-credential-broker-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+    matchExpressions:
+      - key: bex.co/egress
+        operator: In
+        values: [allow-all, allow-list]
+      - key: bex.co/agent-session
+        operator: DoesNotExist
+      - key: bex.co/sandbox-group
+        operator: Exists
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchName: bex-ssh-gateway.bex-system.svc.cluster.local
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+            k8s:app.kubernetes.io/name: bex-ssh-gateway
+      toPorts:
+        - ports:
+            - port: "8086"
+              protocol: TCP
+---
 # Execd is the only inbound path to a sandbox Pod. Kubernetes NetworkPolicy
 # cannot match a ServiceAccount, so this identity check must stay Cilium-native:
 # a Pod that merely spoofs the server workload label is still denied.
@@ -535,6 +580,82 @@ spec:
             - port: "8084"
               protocol: TCP
             - port: "8085"
+              protocol: TCP
+---
+# Sandbox credential broker ingress (:8086, w2/m534-m535, ADR122 D6).
+# Cluster-internal and strictly confined to allow-all and allow-list
+# /v1/sandboxes Pods carrying bex.co/sandbox-group (never deny-all sandboxes,
+# agent-session Pods, tenant Apps, platform Pods, or external/host peers).
+# Explicit ingressDeny complements override every broader Kubernetes
+# NetworkPolicy allow on TCP 8086.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-credential-broker-gateway-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: bex-system
+      k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+      k8s:app.kubernetes.io/name: bex-ssh-gateway
+  ingressDeny:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.bex.co/regime
+              operator: NotIn
+              values: [sandbox]
+      toPorts:
+        - ports:
+            - port: "8086"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: bex.co/egress
+              operator: NotIn
+              values: [allow-all, allow-list]
+      toPorts:
+        - ports:
+            - port: "8086"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: bex.co/agent-session
+              operator: Exists
+      toPorts:
+        - ports:
+            - port: "8086"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: bex.co/sandbox-group
+              operator: DoesNotExist
+      toPorts:
+        - ports:
+            - port: "8086"
+              protocol: TCP
+    - fromEntities:
+        - world
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "8086"
+              protocol: TCP
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.bex.co/regime: sandbox
+          matchExpressions:
+            - key: bex.co/egress
+              operator: In
+              values: [allow-all, allow-list]
+            - key: bex.co/agent-session
+              operator: DoesNotExist
+            - key: bex.co/sandbox-group
+              operator: Exists
+      toPorts:
+        - ports:
+            - port: "8086"
               protocol: TCP
 ---
 # A lifecycle-server compromise must not turn its control-plane bearer into an
