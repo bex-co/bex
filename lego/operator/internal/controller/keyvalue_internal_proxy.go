@@ -125,8 +125,14 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 				// Secret exists only while the store is (or was) public.
 				corev1.EnvVar{Name: "BEX_KV_TLS_CERT_FILE", Value: kvTLSCertFile},
 				corev1.EnvVar{Name: "BEX_KV_TLS_KEY_FILE", Value: kvTLSKeyFile},
+				// The external clients the store's allow list refuses read
+				// Render's refusal inside TLS with the same certificate, from a
+				// listener that dials nothing (w8/m562).
+				corev1.EnvVar{Name: "BEX_KV_ALLOWLIST_REFUSAL_ADDR", Value: fmt.Sprintf(":%d", KeyValueAllowListRefusalPort)},
 			)
-			ports = append(ports, corev1.ContainerPort{Name: "valkey-tls", ContainerPort: kvTLSPort})
+			ports = append(ports,
+				corev1.ContainerPort{Name: "valkey-tls", ContainerPort: kvTLSPort},
+				corev1.ContainerPort{Name: kvAllowListRefusalPortName, ContainerPort: KeyValueAllowListRefusalPort})
 			mounts = []corev1.VolumeMount{{Name: kvTLSVolume, MountPath: kvTLSMountPath, ReadOnly: true}}
 			volumes = []corev1.Volume{{Name: kvTLSVolume, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{
 				SecretName: intent.tlsSecretName, Optional: new(true),

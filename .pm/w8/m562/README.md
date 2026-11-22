@@ -1,13 +1,13 @@
 # w8 · m562 — A Key Value client outside the IP allow list reads Render's "AUTH failed: Client IP address is not in the allowlist.", not a bare TLS EOF
 
-**Worker:** worker8 **Goal:** a client whose source the store's allow list refuses completes a TLS handshake under the store's own certificate and reads `-Client IP address is not in the allowlist.` for every command it sends, so `valkey-cli` and `bex kv-cli` print Render's documented `AUTH failed: Client IP address is not in the allowlist.` No byte from a refused source reaches Valkey, and an unknown hostname is still dropped before TLS. **Status:** todo (t001 done)
+**Worker:** worker8 **Goal:** a client whose source the store's allow list refuses completes a TLS handshake under the store's own certificate and reads `-Client IP address is not in the allowlist.` for every command it sends, so `valkey-cli` and `bex kv-cli` print Render's documented `AUTH failed: Client IP address is not in the allowlist.` No byte from a refused source reaches Valkey, and an unknown hostname is still dropped before TLS. **Status:** todo (t001–t002 done) (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | `kv-internal-proxy`: an allow-list refusal listener that ends TLS with the store's certificate and answers every command with Render's refusal, never dialing Valkey — **DONE** | 45m | — |
-| [t002](t002.md) | Operator: the proxy and the stable Service carry the refusal port; the held-template roll decision | 45m | t001 |
+| [t002](done/t002.md) | Operator: the proxy and the stable Service carry the refusal port; the held-template roll decision — **DONE** | 45m | t001 |
 | [t003](t003.md) | `kv-sni-proxy`: a refused source on a known store's name goes to the refusal port, inside the handshake caps and counted as a rejection | 45m | t002 |
 | [t004](t004.md) | Docs: ADR021 and the operator guide describe the refusal path | 20m | t003 |
 | [t005](t005.md) | Live check on production in `bex-canary` | 30m | t004 |

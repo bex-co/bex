@@ -98,7 +98,8 @@ func TestKeyValueInternalProxyCutoverPreservesServerAndRouting(t *testing.T) {
 	if err := cl.Get(ctx, key, service); err != nil {
 		t.Fatal(err)
 	}
-	if service.Spec.Selector[labelKeyValueInternalProxy] != kv.Name || len(service.Spec.Ports) != 2 {
+	// Plaintext, TLS and the allow-list refusal (w8/m562).
+	if service.Spec.Selector[labelKeyValueInternalProxy] != kv.Name || len(service.Spec.Ports) != 3 {
 		t.Fatalf("front selector/ports=%v/%v", service.Spec.Selector, service.Spec.Ports)
 	}
 	// Even if status lags or the front is rolling, routing must never oscillate
@@ -184,8 +185,8 @@ func TestKeyValueInternalAuthKeepsTheProxyRoute(t *testing.T) {
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(kv), service); err != nil {
 		t.Fatal(err)
 	}
-	if service.Spec.Selector[labelKeyValueInternalProxy] != kv.Name || service.Spec.Selector[labelKeyValue] != "" || len(service.Spec.Ports) != 2 {
-		t.Fatalf("an internal-auth store's <id> must select its proxy on both ports: %v %v", service.Spec.Selector, service.Spec.Ports)
+	if service.Spec.Selector[labelKeyValueInternalProxy] != kv.Name || service.Spec.Selector[labelKeyValue] != "" || len(service.Spec.Ports) != 3 {
+		t.Fatalf("an internal-auth store's <id> must select its proxy on every port: %v %v", service.Spec.Selector, service.Spec.Ports)
 	}
 	dep, env = proxyEnv(t, cl, kv)
 	if env["BEX_KV_INTERNAL_AUTH"] != "client" {
@@ -466,6 +467,68 @@ func TestKeyValueInternalProxyCarriesThePlansLimit(t *testing.T) {
 	}
 }
 
+// w8/m562: a proxy that forwards the TLS port also answers the external
+// clients the store's allow list refuses, on a port Valkey never listens on,
+// with the certificate the TLS listener mounts. Its -backend Service never
+// carries the port, since the refusal dials nothing, and the store's stable
+// Service carries it exactly while the store is public, when kv-sni-proxy
+// routes it.
+func TestKeyValueInternalProxyAnswersAllowListRefusalsWithTheTLSPort(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	if KeyValueAllowListRefusalPort == kvPort || KeyValueAllowListRefusalPort == kvTLSPort {
+		t.Fatal("Valkey listens on the refusal port, so a Service that still selects Valkey would reach it")
+	}
+	carries := func(svc *corev1.Service) bool {
+		return slices.ContainsFunc(svc.Spec.Ports, func(p corev1.ServicePort) bool {
+			return p.Port == KeyValueAllowListRefusalPort || p.TargetPort.IntValue() == KeyValueAllowListRefusalPort
+		})
+	}
+	for _, public := range []bool{false, true} {
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: "red-refusal", Namespace: "tea-test", UID: "test"},
+			Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Public: public},
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "bex@sha256:fixture"}
+		plan, _ := resolveKVPlan(kv.Spec)
+		intent := keyValueIntent{
+			plan: plan, authSecretName: "auth", public: public, tlsRuntime: public,
+			tlsSecretName: keyValueTLSName(kv), labels: map[string]string{labelKeyValue: kv.Name},
+		}
+		if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.reconcileKeyValueService(ctx, kv, intent); err != nil {
+			t.Fatal(err)
+		}
+		dep, env := proxyEnv(t, cl, kv)
+		listening := slices.ContainsFunc(dep.Spec.Template.Spec.Containers[0].Ports, func(p corev1.ContainerPort) bool {
+			return p.Name == kvAllowListRefusalPortName && p.ContainerPort == KeyValueAllowListRefusalPort
+		})
+		addr, set := env["BEX_KV_ALLOWLIST_REFUSAL_ADDR"]
+		if listening != public || set != public || public && addr != ":"+strconv.Itoa(KeyValueAllowListRefusalPort) {
+			t.Errorf("public=%v: refusal port %v, BEX_KV_ALLOWLIST_REFUSAL_ADDR %q (set %v)", public, listening, addr, set)
+		}
+		if public && (env["BEX_KV_TLS_CERT_FILE"] != kvTLSCertFile || env["BEX_KV_TLS_KEY_FILE"] != kvTLSKeyFile) {
+			t.Errorf("the refusal listener has no certificate: %v", env)
+		}
+		backend, stable := &corev1.Service{}, &corev1.Service{}
+		if err := cl.Get(ctx, client.ObjectKey{Name: keyValueInternalBackendName(kv), Namespace: kv.Namespace}, backend); err != nil {
+			t.Fatal(err)
+		}
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(kv), stable); err != nil {
+			t.Fatal(err)
+		}
+		if carries(backend) {
+			t.Errorf("public=%v: the -backend Service carries the refusal port: %v", public, backend.Spec.Ports)
+		}
+		if carries(stable) != public {
+			t.Errorf("public=%v: the stable Service's ports are %v", public, stable.Spec.Ports)
+		}
+	}
+}
+
 // w6/m512: every proxy drains on SIGTERM, and its pod's grace period outlasts
 // the drain, so the process closes what is left itself before SIGKILL.
 // w9/135: a deleted pod first keeps accepting through a preStop pause, while
@@ -632,13 +695,22 @@ func TestKeyValueCutsOnlyATerminatingProxyOfTheOldMode(t *testing.T) {
 // decision: let it wait for each store's next change, or bump
 // kvInternalProxyRollRevision. The roll inputs' digest is pinned too, because
 // changing how it is computed rolls every proxy at once.
+//
+// Decisions recorded here:
+//   - w8/m562 (2026-11-22) added the allow-list refusal listener to the TLS
+//     fixtures, with no bump. A held proxy has no refusal listener, so
+//     kv-sni-proxy's dial to its refusal port fails and a refused client reads
+//     the dropped connection it read before, until the store's own change
+//     rolls the proxy; a store created after the deploy has it at once. That
+//     is a parity gain arriving late, not a held template that stopped
+//     working, and a bump would close every store's held clients to deliver it.
 func TestKeyValueInternalProxyRenderingIsPinned(t *testing.T) {
 	type pin struct{ template, inputs string }
 	pinned := map[string]pin{
 		"plain":                    {"a0afff3997a08b04b307f04719f2f69dd70168d1645c08bdd0854f954a299a7c", "0fca5894756134f2066a3f319f0944c6ba5d79ecadf1403d15022605ed3234cf"},
 		"plain with internal auth": {"79aa97a1d1e0f83021e0c88e8d33e2ebe26de610d9f1425e1941c2dbd2437564", "a5ed0a396b6923205712277b8ac65e333d31ff6e4fc6759c444f28b53018f65d"},
-		"tls":                      {"5107c52a42507547dfa0ff90f41776651acd45254bbd978f01ce2b56559104e5", "2a6015ddfc05d2562a2d9f1b05f340859fc5d7b7113e73e8a84e09af63043ff4"},
-		"tls with internal auth":   {"4607f081a65f516825c7d67f4cb3db8d1c5ad17e5be5f64d403fa9f65bd9d84e", "1cbe9908277765efd6ea6497ef7aac33d969590ea3a8f61d1ec1994fbf1c8417"},
+		"tls":                      {"b3805c59230eb1fb2bfd71ecbe1e3e1e4e726537c5d45732a237e80a735f8424", "2a6015ddfc05d2562a2d9f1b05f340859fc5d7b7113e73e8a84e09af63043ff4"},
+		"tls with internal auth":   {"abf772a6a68cbc98203daf06b7a9e35bcb9ad3db0c4a9a69c3ccbf72532f8def", "1cbe9908277765efd6ea6497ef7aac33d969590ea3a8f61d1ec1994fbf1c8417"},
 	}
 	scheme := keyValueBackupTestScheme(t)
 	for name, want := range pinned {

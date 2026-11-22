@@ -79,6 +79,17 @@ const (
 	// kvPort preserves existing in-cluster redis:// clients while external
 	// rediss:// clients terminate end-to-end TLS inside Valkey.
 	kvTLSPort = 6380
+	// KeyValueAllowListRefusalPort is where a public store's stable Service
+	// and its kv-internal-proxy answer the external clients the store's allow
+	// list refuses (w8/m562): kv-sni-proxy forwards such a client's ClientHello
+	// there, and the proxy ends TLS with the store's certificate to answer
+	// each command with Render's refusal, never dialing Valkey. Valkey never
+	// listens on it, so a Service that still selects Valkey, or a held proxy
+	// template without the listener, refuses the dial, and the client reads
+	// the dropped connection it read before. kv-sni-proxy names it too.
+	KeyValueAllowListRefusalPort = 6381
+	// kvAllowListRefusalPortName names it on the proxy and the Service.
+	kvAllowListRefusalPortName = "ip-refusal"
 	// kvTLSVolume mounts the listener's certificate. Mounted required, it is
 	// how a reconcile knows an older store's template runs the static
 	// listener; mounted optional, the store switches TLS at runtime (w8/m134).
@@ -811,7 +822,14 @@ func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *a
 		}
 		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: keyValueContainerName}}
 		if intent.public {
-			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"})
+			svc.Spec.Ports = append(svc.Spec.Ports,
+				corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"},
+				// A Service port rolls nothing, so every public store has it at
+				// once; a proxy that does not listen on it yet refuses the dial.
+				corev1.ServicePort{
+					Port: KeyValueAllowListRefusalPort, TargetPort: intstr.FromInt(KeyValueAllowListRefusalPort),
+					Name: kvAllowListRefusalPortName,
+				})
 		}
 		applyServicePortServerDefaults(svc.Spec.Ports)
 		return controllerutil.SetControllerReference(kv, svc, r.Scheme)

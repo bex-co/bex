@@ -132,8 +132,9 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	if err := cl.Get(ctx, nn, &service); err != nil {
 		t.Fatal(err)
 	}
-	if len(service.Spec.Ports) != 2 || service.Spec.Ports[1].Port != kvTLSPort {
-		t.Fatalf("public Service ports = %#v, want plaintext %d + TLS %d", service.Spec.Ports, kvPort, kvTLSPort)
+	// w8/m562: and the allow-list refusal port (TestKeyValueInternalProxyAnswersAllowListRefusalsWithTheTLSPort).
+	if len(service.Spec.Ports) != 3 || service.Spec.Ports[1].Port != kvTLSPort {
+		t.Fatalf("public Service ports = %#v, want plaintext %d + TLS %d + allow-list refusal", service.Spec.Ports, kvPort, kvTLSPort)
 	}
 	var sts appsv1.StatefulSet
 	if err := cl.Get(ctx, nn, &sts); err != nil {
@@ -1327,8 +1328,8 @@ func TestKeyValueNewPrivateStoreMountsNoCertificateItNeverRequests(t *testing.T)
 		t.Fatal(err)
 	}
 	for _, port := range service.Spec.Ports {
-		if port.Port == kvTLSPort {
-			t.Fatalf("a private store's Service carries the TLS port: %#v", service.Spec.Ports)
+		if port.Port == kvTLSPort || port.Port == KeyValueAllowListRefusalPort {
+			t.Fatalf("a private store's Service carries an external port: %#v", service.Spec.Ports)
 		}
 	}
 

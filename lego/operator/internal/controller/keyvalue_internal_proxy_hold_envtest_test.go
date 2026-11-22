@@ -184,6 +184,43 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 		Expect(dep.Spec.Template.Spec.Volumes[0].Secret.SecretName).To(Equal(keyValueTLSName(kv)))
 	})
 
+	// w8/m562: the allow-list refusal reaches a running store at its next own
+	// change, not at the deploy. Until then its Service already carries the
+	// port, which rolls nothing, and kv-sni-proxy's dial to it fails on the
+	// held proxy, so a refused client reads the dropped connection it read
+	// before.
+	It("keeps a public store's template without the allow-list refusal, while its Service gains the port", func() {
+		intent.public, intent.tlsRuntime = true, true
+		DeferCleanup(func() {
+			_ = k8sClient.Delete(context.Background(), &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}})
+		})
+		reconcile(operator(imageA))
+		held := edit(func(dep *appsv1.Deployment) {
+			c := &dep.Spec.Template.Spec.Containers[0]
+			c.Env = slices.DeleteFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == "BEX_KV_ALLOWLIST_REFUSAL_ADDR" })
+			c.Ports = slices.DeleteFunc(c.Ports, func(p corev1.ContainerPort) bool { return p.Name == kvAllowListRefusalPortName })
+		})
+		Expect(env(held)).To(HaveKeyWithValue("BEX_KV_TLS_ADDR", ":6380"))
+		Expect(env(held)).NotTo(HaveKey("BEX_KV_ALLOWLIST_REFUSAL_ADDR"))
+		expectHeld(reconcile(operator(imageB)), held)
+
+		r := operator(imageB)
+		Expect(r.reconcileKeyValueService(ctx, kv, intent)).To(Succeed())
+		service := &corev1.Service{}
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(kv), service)).To(Succeed())
+		Expect(service.Spec.Ports).To(ContainElement(SatisfyAll(
+			HaveField("Name", kvAllowListRefusalPortName),
+			HaveField("Port", BeEquivalentTo(KeyValueAllowListRefusalPort)),
+			HaveField("TargetPort.IntVal", BeEquivalentTo(KeyValueAllowListRefusalPort)),
+		)))
+		expectHeld(reconcile(r), held)
+
+		// The store's own change brings it.
+		intent.credentialRevision = "rev-2"
+		rolled := reconcile(r)
+		Expect(env(rolled)).To(HaveKeyWithValue("BEX_KV_ALLOWLIST_REFUSAL_ADDR", fmt.Sprintf(":%d", KeyValueAllowListRefusalPort)))
+	})
+
 	It("takes the current rendering on resume", func() {
 		reconcile(operator(imageA))
 		held := edit(olderRendering)
