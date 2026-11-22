@@ -75,8 +75,9 @@ func TestCloneRefusesMissingSourcePaths(t *testing.T) {
 	}{
 		{Options{Builder: BuilderNative, RootDir: "examples/no-such-dir"}, `the root directory "examples/no-such-dir" does not exist in the repository at "e88c7e33"`},
 		{Options{Builder: BuilderDockerfile, RootDir: "examples/app", DockerContext: "nope"}, `the Docker build context "nope" does not exist`},
-		{Options{Builder: BuilderDockerfile, RootDir: "examples"}, `the Dockerfile "examples/Dockerfile" does not exist`},
-		{Options{Builder: BuilderDockerfile, RootDir: "examples/app", DockerfilePath: "Dockerfile.prod"}, `the Dockerfile "examples/app/Dockerfile.prod" does not exist`},
+		// A Dockerfile path that names a directory keeps bex's sentence: Render's
+		// log for it is only quoted with its path elided (w8/404).
+		{Options{Builder: BuilderDockerfile, RootDir: "examples", DockerfilePath: "app"}, `the Dockerfile "examples/app" does not exist`},
 		// Traversal stays inside the checkout: "../../etc" is the repo's "etc".
 		{Options{Builder: BuilderNative, RootDir: "../../etc"}, `the root directory "etc" does not exist`},
 	}
@@ -90,6 +91,50 @@ func TestCloneRefusesMissingSourcePaths(t *testing.T) {
 	for _, e := range sourcePathChecks(Options{Builder: BuilderBuildpack}) {
 		if e.Name == "BEX_DOCKERFILE" {
 			t.Error("buildpack build checks for a Dockerfile")
+		}
+	}
+}
+
+// w8/404: a missing Dockerfile fails the clone step as tenant input with the
+// lines Render's BuildKit logs for it (frayel/devagent#6, 2026-09-26), naming
+// the path as configured, so `./Dockerfile` reads `Dockerfile`
+// (Numbu-bit/TroSky#13). Render's log for a nested path is not observed; bex
+// names it as configured too.
+func TestCloneFailsAMissingDockerfileInRendersLines(t *testing.T) {
+	dir := t.TempDir()
+	must(t, os.MkdirAll(filepath.Join(dir, "examples", "app"), 0o755))
+	must(t, os.WriteFile(filepath.Join(dir, "examples", "app", "Dockerfile"), []byte("FROM x\n"), 0o644))
+	renders := func(name string) string {
+		return "#1 [internal] load build definition from " + name + "\n" +
+			"#1 transferring dockerfile: 2B done\n" +
+			"#1 DONE 0.0s\n" +
+			"error: failed to solve: failed to read dockerfile: open " + name + ": no such file or directory"
+	}
+	for _, tc := range []struct {
+		o    Options
+		name string
+	}{
+		{Options{Builder: BuilderDockerfile, RootDir: "examples"}, "Dockerfile"},
+		{Options{Builder: BuilderDockerfile, RootDir: "examples", DockerfilePath: "./Dockerfile"}, "Dockerfile"},
+		{Options{Builder: BuilderDockerfile, RootDir: "examples/app", DockerfilePath: "Dockerfile.prod"}, "Dockerfile.prod"},
+		{Options{Builder: BuilderDockerfile, RootDir: "examples/app", DockerfilePath: "./nope/Dockerfile"}, "nope/Dockerfile"},
+		{Options{Builder: BuilderDockerfile, DockerfilePath: "../../Nope"}, "Nope"},
+	} {
+		out, code := runSourceChecks(t, tc.o, dir)
+		if code != ExitTenantError || out != renders(tc.name) {
+			t.Errorf("rootDir %q dockerfilePath %q: exit %d\n%s\nwant ExitTenantError with\n%s", tc.o.RootDir, tc.o.DockerfilePath, code, out, renders(tc.name))
+		}
+		// The failure reason carries the same lines, BuildKit's verdict last.
+		if tail := failureTail(buildkitFailureSummary(out)); tail != renders(tc.name) {
+			t.Errorf("rootDir %q dockerfilePath %q: failure tail %q", tc.o.RootDir, tc.o.DockerfilePath, tail)
+		}
+	}
+	for _, o := range []Options{
+		{Builder: BuilderDockerfile, RootDir: "examples/app"},
+		{Builder: BuilderDockerfile, RootDir: "examples", DockerfilePath: "./app/Dockerfile"},
+	} {
+		if out, code := runSourceChecks(t, o, dir); code != 0 {
+			t.Errorf("rootDir %q dockerfilePath %q refused a Dockerfile that exists: %d %s", o.RootDir, o.DockerfilePath, code, out)
 		}
 	}
 }

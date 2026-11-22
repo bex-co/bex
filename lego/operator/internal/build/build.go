@@ -1807,7 +1807,8 @@ func cachePhase(o Options, name, image, script string, args []string, mounts ...
 
 // sourcePathChecks names the checkout paths the build will read, so the clone
 // step can refuse a missing one in the tenant's own terms (w8/053) instead of
-// BuildKit's "invalid local: resolve : lstat /source/…", and one that is a link
+// BuildKit's "invalid local: resolve : lstat /source/…" (a missing Dockerfile
+// in the lines Render's BuildKit logs for it, w8/404), and one that is a link
 // out of the checkout (w21/m411) before any later step enters it. Each pair is the
 // display path (repo-relative, as configured) and the bounded mount path the
 // build actually uses; both travel as env, never spliced into the script.
@@ -1825,6 +1826,9 @@ func sourcePathChecks(o Options) []corev1.EnvVar {
 	if o.Builder != BuilderNative && o.Builder != BuilderBuildpack {
 		dockerfile := cmp.Or(o.DockerfilePath, "Dockerfile")
 		add("BEX_DOCKERFILE", repoRelative(path.Join(o.RootDir, dockerfile)), boundedSourceDir(path.Join(o.RootDir, dockerfile)))
+		// The name Render's BuildKit log gives a missing one: the path as
+		// configured, so `./Dockerfile` reads `Dockerfile` (w8/404).
+		env = append(env, corev1.EnvVar{Name: "BEX_DOCKERFILE_NAME", Value: execution.KubernetesLiteral(repoRelative(dockerfile))})
 	}
 	return env
 }
@@ -1920,6 +1924,11 @@ if [ -n "${BEX_DOCKER_CONTEXT:-}" ]; then
   bex_contained "$BEX_DOCKER_CONTEXT_PATH" "Docker build context" "$BEX_DOCKER_CONTEXT"
 fi
 if [ -n "${BEX_DOCKERFILE:-}" ]; then
+  if [ ! -e "$BEX_DOCKERFILE_PATH" ]; then
+    printf '%s\n' "#1 [internal] load build definition from $BEX_DOCKERFILE_NAME" "#1 transferring dockerfile: 2B done" "#1 DONE 0.0s" \
+      "error: failed to solve: failed to read dockerfile: open $BEX_DOCKERFILE_NAME: no such file or directory" >&2
+    exit ` + fmt.Sprint(ExitTenantError) + `
+  fi
   bex_require -f "$BEX_DOCKERFILE_PATH" "Dockerfile" "$BEX_DOCKERFILE"
   bex_contained "$(dirname "$BEX_DOCKERFILE_PATH")" "Dockerfile" "$BEX_DOCKERFILE"
 fi
