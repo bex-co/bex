@@ -55,3 +55,27 @@ func TestIsBuildFailedReadsOnlyWhatFormatBuildFailedWrote(t *testing.T) {
 		}
 	}
 }
+
+// TestPublishOutputReadsOnlyThePublishStep is w8/395: the publish Job's output
+// never reaches the build log, so bex-api writes what its step said, and only
+// that step's; a build's own output is in the log already.
+func TestPublishOutputReadsOnlyThePublishStep(t *testing.T) {
+	const said = "Publish directory nope does not exist!"
+	reason := FormatBuildFailed(PublishStep, said)
+	if !IsBuildFailed(reason) {
+		t.Fatalf("IsBuildFailed(%q) = false, want true", reason)
+	}
+	if got, ok := PublishOutput(reason); !ok || got != said {
+		t.Fatalf("PublishOutput(%q) = %q, %v; want %q", reason, got, ok, said)
+	}
+	for _, other := range []string{
+		FormatBuildFailed("publish directory", said),
+		FormatBuildFailed("", said),
+		FormatBuildFailed(PublishStep, ""),
+		said,
+	} {
+		if got, ok := PublishOutput(other); ok {
+			t.Fatalf("PublishOutput(%q) = %q, true; want false", other, got)
+		}
+	}
+}

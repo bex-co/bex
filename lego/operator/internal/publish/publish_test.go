@@ -29,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func testOptions() Options {
@@ -727,17 +729,24 @@ func TestCloneStepsExplainTheirOwnFailures(t *testing.T) {
 		`fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }`,
 		`fetch -q --depth 1 origin -- "$REF" || fail 66`,
 		`checkout -q FETCH_HEAD || fail $?`,
-		`cd "/work/$SRC_DIR" || fail 66`,
+		`cd "/work/$ROOT_DIR" || fail 66`,
+		`cd "/work/$SRC_DIR" || fail 65`,
 		`cp -a . /out/ || fail $?`,
 	} {
 		if !strings.Contains(script, frag) {
 			t.Errorf("clone script missing %q:\n%s", frag, script)
 		}
 	}
-	// The publish-directory message must name the directory and the ref, since
-	// "it does not exist" is not actionable without saying where it was looked for.
-	if !strings.Contains(script, `the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\"`) {
-		t.Errorf("clone script does not explain a missing publish directory:\n%s", script)
+	// A missing publish directory reads as Render's sentence, naming the path
+	// as configured (w8/395); a missing root directory keeps bex's sentence,
+	// naming the directory and the ref.
+	for _, frag := range []string{
+		`fail 65 "Publish directory $PUBLISH_PATH does not exist!"`,
+		`the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\"`,
+	} {
+		if !strings.Contains(script, frag) {
+			t.Errorf("clone script does not explain a missing directory with %q:\n%s", frag, script)
+		}
 	}
 	// And it must stay on the default policy: a self-authored line is exactly
 	// what makes echoing git's output unnecessary here.
@@ -890,14 +899,22 @@ func addJobPod(t *testing.T, cl client.Client, job *batchv1.Job, name, node stri
 // w4/493: a missing publish directory is the tenant's own source error. It is
 // reported without the internal container name or exit code and flagged so the
 // deploy closes build_failed; a platform fault keeps its diagnostic prefix and
-// stays an update failure.
+// stays an update failure. Since w8/395 it reads as the build's own failure,
+// with Render's sentence as the publish step's output, so the deploy's log
+// closes as Render's does; the clone's other user-source failures keep their
+// bare sentence.
 func TestMissingPublishDirectoryIsAUserSourceError(t *testing.T) {
-	const said = `the publish directory "dist" does not exist in the repository at "ad13122c"`
+	const missing = "Publish directory dist does not exist!"
 	for _, container := range []string{cloneStep, "extract"} {
-		obs := failedPublishObservation(t, container, userSourceExit, said)
-		if !obs.UserError || obs.Message != said {
-			t.Errorf("%s: observation = %+v, want the bare message flagged as a user error", container, obs)
+		obs := failedPublishObservation(t, container, missingDirectoryExit, missing+"\n")
+		output, ok := appv1alpha1.PublishOutput(obs.Message)
+		if !obs.UserError || !appv1alpha1.IsBuildFailed(obs.Message) || !ok || output != missing {
+			t.Errorf("%s: observation = %+v, want the publish step's build failure saying %q, flagged as a user error", container, obs, missing)
 		}
+	}
+	const said = `the publish directory "nope/dist" does not exist in the repository at "ad13122c"`
+	if obs := failedPublishObservation(t, cloneStep, userSourceExit, said); !obs.UserError || obs.Message != said {
+		t.Errorf("missing root directory: observation = %+v, want the bare message flagged as a user error", obs)
 	}
 	upload := failedPublishObservation(t, "upload", 1, "")
 	if upload.UserError || !strings.HasPrefix(upload.Message, "upload: ") || !strings.Contains(upload.Message, "(exit 1)") {
@@ -980,7 +997,7 @@ func TestExtractStepFailsAUserErrorForAMissingPublishDirectory(t *testing.T) {
 	o := testOptions()
 	o.PublishPath = "/app/dist"
 	script := extractContainer(o).Command[2]
-	for _, frag := range []string{`[ ! -d "$PUBLISH_PATH" ]`, "/dev/termination-log", "exit 66", `cp -a "$PUBLISH_PATH"/.`} {
+	for _, frag := range []string{`[ ! -d "$PUBLISH_PATH" ]`, "/dev/termination-log", "exit 65", `cp -a "$PUBLISH_PATH"/.`} {
 		if !strings.Contains(script, frag) {
 			t.Errorf("extract script missing %q:\n%s", frag, script)
 		}

@@ -606,11 +606,21 @@ const (
 // troubleshooting line for a failure Render's logs confirm, and bex's own
 // terminalLines for the rest. Render's verdict names no cause; the deploy's
 // failureReason and its page's header carry it, as Render shows its own.
+//
+// A static site's publish Job writes nothing to the build log, so what its
+// failing step said comes first, as Render's log carries `==> Publish
+// directory <dir> does not exist!` before its verdict (EthanM32122/cloaket#1;
+// w8/395). A build's own output is in the log already.
 func closingLines(d DeployProgress, serviceType string) []string {
-	if verdict := rendersVerdict(d); verdict != "" {
-		return []string{verdict, troubleshootLine}
+	verdict := rendersVerdict(d)
+	if verdict == "" {
+		return terminalLines(d.Status, serviceType, d.FailureReason)
 	}
-	return terminalLines(d.Status, serviceType, d.FailureReason)
+	var out []string
+	if output, ok := appv1alpha1.PublishOutput(strings.TrimSpace(d.FailureReason)); ok && verdict == buildFailedLine {
+		out = narrated(strings.Split(output, "\n"))
+	}
+	return append(out, verdict, troubleshootLine)
 }
 
 // rendersVerdict is Render's verdict line for a failed deploy whose close
@@ -663,9 +673,15 @@ func terminalLines(status, serviceType, reason string) []string {
 	} else {
 		out = append(out, base)
 	}
-	for _, part := range parts[1:] {
-		if part = unmarked(part); part != "" {
-			out = append(out, "==> "+part)
+	return append(out, narrated(parts[1:])...)
+}
+
+// narrated is each non-empty line as one narration line, with one marker.
+func narrated(lines []string) []string {
+	var out []string
+	for _, line := range lines {
+		if line = unmarked(line); line != "" {
+			out = append(out, "==> "+line)
 		}
 	}
 	return out

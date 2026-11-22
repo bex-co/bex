@@ -1137,7 +1137,8 @@ func TestTerminalLinesCloseARolloutTimeoutAsRendersDo(t *testing.T) {
 // troubleshooting line and naming no cause. A failure whose Render close is
 // not observed keeps bex's line with its cause: a build that timed out, hit an
 // infrastructure fault or never started, a pre-deploy failure, an image pull
-// failure and an out-of-memory kill.
+// failure and an out-of-memory kill. A static site's publish Job writes no
+// build log, so its missing publish directory's line comes first (w8/395).
 func TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo(t *testing.T) {
 	exit := func(code int32) *int32 { return &code }
 	const troubleshoot = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
@@ -1161,6 +1162,14 @@ func TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo(t *testing.T) {
 			FailureReason: "build failed in the docker build step — check the build logs for the failing step's output"}, rendersBuildFailed},
 		{"a missing publish directory", DeployProgress{Status: "build_failed",
 			FailureReason: "build failed in the publish directory step:\nPublish directory nope does not exist!"}, rendersBuildFailed},
+		// w8/395: the publish Job's output is not in the build log, so its
+		// line comes first.
+		{"a publish with no publish directory", DeployProgress{Status: "build_failed",
+			FailureReason: "build failed in the publish step:\nPublish directory nope does not exist!"},
+			append([]string{"==> Publish directory nope does not exist!"}, rendersBuildFailed...)},
+		{"a publish's root directory that does not exist", DeployProgress{Status: "build_failed",
+			FailureReason: `the publish directory "nope/dist" does not exist in the repository at "main"`},
+			[]string{`==> Build failed: the publish directory "nope/dist" does not exist in the repository at "main"`}},
 		{"an infrastructure fault", DeployProgress{Status: "build_failed", FailureReason: infra}, []string{"==> Build failed: " + infra}},
 		{"the build's time limit", DeployProgress{Status: "build_failed", FailureReason: buildTime}, []string{"==> Build failed: " + buildTime}},
 		{"a build that never started", DeployProgress{Status: "build_failed", FailureReason: "the build never started: waiting"},
@@ -1182,6 +1191,45 @@ func TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo(t *testing.T) {
 				t.Fatalf("closing = %q, want %q", got, c.want)
 			}
 		})
+	}
+}
+
+// TestNoBuildPublishFailureReadsAsRendersLog is w8/395 through a read: a
+// static site with no build command whose publish directory does not exist
+// logs Render's cause line, then its verdict and troubleshooting line, oldest
+// first, all at the close. Render's log (EthanM32122/cloaket#1) ends
+// `==> Publish directory 1.0 does not exist!`, `==> Build failed 😞`, then the
+// troubleshooting line.
+func TestNoBuildPublishFailureReadsAsRendersLog(t *testing.T) {
+	app := sampleApp("site")
+	app.Spec.Type, app.Spec.Repo = appv1alpha1.TypeStaticSite, "https://github.com/x/site"
+	svc := newService(nil, app)
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
+	failed := inFlightDeploy()
+	failed.Status, failed.Built = "build_failed", true
+	failed.FailureReason = appv1alpha1.FormatBuildFailed(appv1alpha1.PublishStep, "Publish directory nope does not exist!")
+	failed.FinishedAt = failed.StartedAt.Add(20 * time.Second)
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{failed}, nil
+	}
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "site", Types: []string{LogTypeBuild},
+		Since: failed.CreatedAt, End: failed.FinishedAt})
+	if err != nil {
+		t.Fatalf("QueryLogs: %v", err)
+	}
+	want := []string{
+		"==> Build queued",
+		"==> Building from https://github.com/x/site@abc1234",
+		"==> Publish directory nope does not exist!",
+		"==> Build failed 😞",
+		"==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys",
+	}
+	got := make([]string, len(entries))
+	for i, e := range entries {
+		got[i] = e.Message
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("build log = %q, want %q", got, want)
 	}
 }
 

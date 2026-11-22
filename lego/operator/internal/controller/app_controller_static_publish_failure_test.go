@@ -160,7 +160,7 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 		reconcileN()
 		failedGen := releaseGeneration(get())
 		Expect(releaseRevision(get())).NotTo(Equal(servedRev))
-		settleJob(`the publish directory "examples/static-site/qa-missing-output" does not exist in the repository at "main"`, 66)
+		settleJob("Publish directory qa-missing-output does not exist!", 65)
 		reconcileN()
 		expectServingPrior(appv1alpha1.PhaseRunning, servedRev, servedPrefix)
 		ready := meta.FindStatusCondition(get().Status.Conditions, appv1alpha1.ConditionReady)
@@ -168,6 +168,13 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 		Expect(ready.Reason).To(Equal(reasonPriorReleaseServing))
 		Expect(ready.Message).To(ContainSubstring("the latest build failed"))
 		expectBuildVerdict(failedGen, "qa-missing-output")
+		// w8/395: the verdict reads as the publish step's build failure, which
+		// bex-api closes the log with as Render does, after Render's sentence.
+		build := meta.FindStatusCondition(get().Status.Conditions, appv1alpha1.ConditionBuild)
+		Expect(appv1alpha1.IsBuildFailed(build.Message)).To(BeTrue(), build.Message)
+		output, ok := appv1alpha1.PublishOutput(build.Message)
+		Expect(ok).To(BeTrue(), build.Message)
+		Expect(output).To(Equal("Publish directory qa-missing-output does not exist!"))
 
 		By("suspending while the latest publish is failed")
 		update(func(a *appv1alpha1.App) { a.Spec.Suspended = true })

@@ -19,6 +19,8 @@ package build
 import (
 	"path"
 	"strings"
+
+	"github.com/bex-co/bex/lego/operator/internal/publish"
 )
 
 // nativeStaticInstallPath is the bex-owned step a native Node static build
@@ -154,9 +156,9 @@ const (
 	// nativePublishCheckVar carries the path into the check.
 	nativePublishCheckVar = "bex_publish_dir"
 	// nativePublishMissing and nativePublishMissingEnd frame the sentence
-	// the check prints after the narration arrow.
-	nativePublishMissing    = "Publish directory "
-	nativePublishMissingEnd = " does not exist!"
+	// the check prints after the narration arrow, the publish Job's sentence.
+	nativePublishMissing    = publish.MissingDirectoryHead
+	nativePublishMissingEnd = publish.MissingDirectoryEnd
 	// nativePublishCheckHead and nativePublishCheckTail frame the directory
 	// the check looks from (nativePublishCheck).
 	nativePublishCheckHead = `bex_publish_check() { bex_status=$?; [ "$bex_status" -eq 0 ] || exit "$bex_status"; (cd `

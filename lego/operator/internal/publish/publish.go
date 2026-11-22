@@ -379,11 +379,26 @@ func cloneWindow(pods []corev1.Pod) (start, finish time.Time) {
 }
 
 // userSourceExit is the exit code a publish step uses when the tenant's own
-// source is the cause: a missing publish directory (w4/493), or a branch,
+// source is the cause: a missing root directory (w4/493), or a branch,
 // commit, submodule or repository the clone cannot fetch (w32/028). No tool the
 // steps run exits with it (EX_NOINPUT), so it cannot be mistaken for a platform
-// fault.
+// fault. A missing publish directory has its own code, missingDirectoryExit.
 const userSourceExit = 66
+
+// missingDirectoryExit is the exit code of a publish step that found no
+// publish directory: user source too, but worded as Render words it, so the
+// deploy's log closes as Render's does (w8/395). EX_DATAERR, which no tool the
+// steps run exits with either.
+const missingDirectoryExit = 65
+
+// Render's sentence for a static site's publish directory that does not
+// exist, naming the path as configured: `Publish directory <dir> does not
+// exist!`, after its build command (w8/291) or with none (w8/395). The publish
+// steps and the native build's check print it around the path.
+const (
+	MissingDirectoryHead = "Publish directory "
+	MissingDirectoryEnd  = " does not exist!"
+)
 
 // failUserSource is the clone script's fail() call for a user-source failure.
 var failUserSource = "fail " + strconv.Itoa(userSourceExit)
@@ -392,9 +407,11 @@ var failUserSource = "fail " + strconv.Itoa(userSourceExit)
 // the first container of the Job's pods that terminated non-zero, or "" when
 // nothing usable is recorded. A failure the tenant's source caused (exit
 // userSourceExit) returns just what the step said, with no container name or
-// exit code, and reports userErr. Best effort by construction: no pods (a
-// listing error, or pods already swept) leaves the caller on the Job-level
-// reason rather than failing the observation.
+// exit code, and reports userErr. A publish directory that does not exist
+// (exit missingDirectoryExit) reads as the build's own failure, with Render's
+// sentence as the publish step's output (w8/395). Best effort by construction:
+// no pods (a listing error, or pods already swept) leaves the caller on the
+// Job-level reason rather than failing the observation.
 func failedContainerDetail(pods []corev1.Pod) (detail string, userErr bool) {
 	for i := range pods {
 		statuses := append(
@@ -413,7 +430,10 @@ func failedContainerDetail(pods []corev1.Pod) (detail string, userErr bool) {
 			if len(said) > maxFailureDetail {
 				said = said[:maxFailureDetail] + "…"
 			}
-			if term.ExitCode == userSourceExit {
+			switch term.ExitCode {
+			case missingDirectoryExit:
+				return appv1alpha1.FormatBuildFailed(appv1alpha1.PublishStep, said), true
+			case userSourceExit:
 				return said, true
 			}
 			return fmt.Sprintf("%s: %s (exit %d)", cs.Name, said, term.ExitCode), false
@@ -649,13 +669,15 @@ aws s3 sync "$SOURCE_URI" ` + outMount + ` --endpoint-url "$ENDPOINT" --no-progr
 // copy PublishPath's contents into the shared emptyDir. PublishPath is passed
 // via env (not the command string) so a hostile spec.publishPath can't inject
 // shell. cp -a preserves the tree; the trailing /. copies contents, not the
-// dir itself.
+// dir itself. A directory the build left no such path for fails in Render's
+// sentence (w8/395): a native build checks it first (w8/291), so this is the
+// backstop for a command that skipped that check, and for a Dockerfile build.
 func extractContainer(o Options) corev1.Container {
 	return corev1.Container{
 		Name:  "extract",
 		Image: o.Image,
 		Command: []string{"sh", "-c", `set -e
-if [ ! -d "$PUBLISH_PATH" ]; then printf 'the publish directory "%s" does not exist in the built image\n' "$PUBLISH_PATH" > /dev/termination-log; exit ` + fmt.Sprint(userSourceExit) + `; fi
+if [ ! -d "$PUBLISH_PATH" ]; then printf '` + MissingDirectoryHead + `%s` + MissingDirectoryEnd + `\n' "$PUBLISH_PATH" > /dev/termination-log; exit ` + strconv.Itoa(missingDirectoryExit) + `; fi
 cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
 		Env: []corev1.EnvVar{{Name: "PUBLISH_PATH", Value: o.PublishPath}},
 		VolumeMounts: []corev1.VolumeMount{
@@ -692,6 +714,13 @@ var directSubmodules = execution.GitSubmoduleUpdate(
 // cloneStep names the direct publish's staging container, whose progress and
 // failures the reconciler reads off the pod.
 const cloneStep = "clone"
+
+// cloneDirectoryChecks enter the checkout's publish directory. A publish
+// directory that does not exist fails in Render's sentence, naming the path as
+// configured, not joined to the root directory (w8/395). A root directory that
+// does not exist keeps bex's sentence: Render's line for it is not observed.
+var cloneDirectoryChecks = `cd "/work/$ROOT_DIR" || ` + failUserSource + ` "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+cd "/work/$SRC_DIR" || fail ` + strconv.Itoa(missingDirectoryExit) + ` "` + MissingDirectoryHead + `$PUBLISH_PATH` + MissingDirectoryEnd + `"`
 
 // cloneContainer stages the site straight from the repository — the direct,
 // no-Dockerfile publish path (w9/010): shallow-fetch Repo@Ref, then copy
@@ -733,13 +762,15 @@ git remote add origin "$REPO"
 set -- ` + execution.GitHTTPSTransport + ` -c ` + execution.GitHubCredentialHelper + `
 git "$@" fetch -q --depth 1 origin -- "$REF" || ` + failUserSource + ` "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
 git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
-` + directSubmodules + `cd "/work/$SRC_DIR" || ` + failUserSource + ` "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+` + directSubmodules + cloneDirectoryChecks + `
 find . -name .git -prune -exec rm -rf -- {} + || fail $? "could not leave the repository's git metadata out of the upload"
 cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists but its contents could not be staged for upload"`
 	env := []corev1.EnvVar{
 		{Name: "REPO", Value: o.Repo},
 		{Name: "REF", Value: ref},
+		{Name: "ROOT_DIR", Value: o.RootDir},
 		{Name: "SRC_DIR", Value: o.srcDir()},
+		{Name: "PUBLISH_PATH", Value: o.PublishPath},
 	}
 	if o.CloneSecret != "" {
 		env = append(env, corev1.EnvVar{

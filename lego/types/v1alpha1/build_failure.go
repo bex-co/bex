@@ -41,6 +41,19 @@ func FormatBuildFailed(step, tail string) string {
 	return msg + ":\n" + tail
 }
 
+// PublishStep is the step FormatBuildFailed names for a static site's publish
+// Job: its checkout of a site with no build command, or its copy out of a
+// built image. That Job's output never reaches the build log, so bex-api
+// writes what the step said into the log before Render's verdict (w8/395).
+const PublishStep = "publish"
+
+// PublishOutput is what the publish Job's failing step said, from a reason
+// FormatBuildFailed(PublishStep, output) wrote; ok is false for any other
+// reason, a build's own failure included.
+func PublishOutput(reason string) (output string, ok bool) {
+	return strings.CutPrefix(reason, BuildFailedMessage+" in the "+PublishStep+" step:\n")
+}
+
 // IsBuildFailed reports a reason FormatBuildFailed wrote. A build that ran out
 // of its time limit, failed for an infrastructure fault, or never ran reads
 // otherwise, and so does any reason the control plane wrote.

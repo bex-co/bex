@@ -205,3 +205,57 @@ func TestDirectPublishOfAnUnfetchableRefIsAUserSourceError(t *testing.T) {
 		}
 	}
 }
+
+// w8/395: a direct publish whose publish directory does not exist fails in
+// Render's sentence, naming the path as configured, not joined to the root
+// directory, and reads as the publish step's build failure. A root directory
+// that does not exist keeps bex's sentence.
+func TestDirectPublishOfAMissingPublishDirectoryFailsInRendersWords(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	fixtureRepo(t, repo, "main", map[string]string{"site/index.html": "site\n"})
+
+	for _, tc := range []struct {
+		name, rootDir, publishPath string
+		code                       int
+		msg                        string
+	}{
+		{"missing publish directory", "site", "nope", missingDirectoryExit, "Publish directory nope does not exist!"},
+		{"missing publish directory at the root", "", "./nope", missingDirectoryExit, "Publish directory ./nope does not exist!"},
+		{"missing root directory", "gone", "dist", userSourceExit, `the publish directory "gone/dist" does not exist in the repository at "main"`},
+	} {
+		o := testOptions()
+		o.Image, o.Repo, o.Ref, o.RootDir, o.PublishPath = "", "file://"+repo, "main", tc.rootDir, tc.publishPath
+		run := filepath.Join(root, strings.ReplaceAll(tc.name, " ", "-"))
+		if err := os.MkdirAll(run, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		_, msg, code := runClone(t, run, o)
+		if code != tc.code || msg != tc.msg {
+			t.Errorf("%s: exit %d, message %q; want exit %d with %q", tc.name, code, msg, tc.code, tc.msg)
+		}
+	}
+}
+
+// w8/395: the extract step, the backstop for a build that left no publish
+// directory, fails in the same sentence and exit.
+func TestExtractOfAMissingPublishDirectoryFailsInRendersWords(t *testing.T) {
+	root := t.TempDir()
+	term, out := filepath.Join(root, "termination-log"), filepath.Join(root, "out")
+	o := testOptions()
+	o.PublishPath = "nope"
+	extract := extractContainer(o)
+	script := strings.NewReplacer(outMount, out, "/dev/termination-log", term).Replace(extract.Command[2])
+	cmd := exec.Command("sh", "-c", script)
+	cmd.Dir, cmd.Env = root, os.Environ()
+	for _, e := range extract.Env {
+		cmd.Env = append(cmd.Env, e.Name+"="+e.Value)
+	}
+	var exit *exec.ExitError
+	if err := cmd.Run(); !errors.As(err, &exit) || exit.ExitCode() != missingDirectoryExit {
+		t.Fatalf("extract = %v, want exit %d", err, missingDirectoryExit)
+	}
+	if raw, _ := os.ReadFile(term); strings.TrimSpace(string(raw)) != "Publish directory nope does not exist!" {
+		t.Fatalf("termination message = %q, want Render's sentence", raw)
+	}
+}
