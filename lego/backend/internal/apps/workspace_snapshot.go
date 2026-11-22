@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -62,6 +63,10 @@ type workspaceSnapshot struct {
 	// deleted still holds the slot until its deletion finishes (w6/m129).
 	databaseFreeSlots []core.FreeSlotInstance
 	keyValueList      *appv1alpha1.KeyValueList
+	// keyValueFreeSlots is the same KeyValue listing's one-free-slot view
+	// (w4/m241), taken before the deleting stores are dropped: one being
+	// deleted still holds the slot until its deletion finishes (w6/m129).
+	keyValueFreeSlots []core.FreeSlotInstance
 	// buildSourceMap is the workspace's build source carriers by name.
 	buildSourceMap map[string]*appv1alpha1.App
 	// deletingServices are the manifest-facing names of the workspace's
@@ -89,6 +94,7 @@ func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
 func (snap *workspaceSnapshot) forget() {
 	snap.rawApps, snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList, snap.buildSourceMap = nil, nil, nil, nil, nil, nil
 	snap.databaseFreeSlots = nil
+	snap.keyValueFreeSlots = nil
 	snap.deletingServices, snap.groupingRows = nil, nil
 }
 
@@ -267,10 +273,20 @@ func (snap *workspaceSnapshot) keyValues(ctx context.Context) (*appv1alpha1.KeyV
 		if err != nil {
 			return nil, err
 		}
+		snap.keyValueFreeSlots = keyvalue.FreeSlots(list.Items, snap.tenantID)
 		list.Items = slices.DeleteFunc(list.Items, func(kv appv1alpha1.KeyValue) bool { return !kv.DeletionTimestamp.IsZero() })
 		snap.keyValueList = list
 	}
 	return snap.keyValueList, nil
+}
+
+// freeKeyValueSlots is the workspace's stores as the one-free-slot rule sees
+// them, deleting ones included, from the snapshot's one KeyValue listing.
+func (snap *workspaceSnapshot) freeKeyValueSlots(ctx context.Context) ([]core.FreeSlotInstance, error) {
+	if _, err := snap.keyValues(ctx); err != nil {
+		return nil, err
+	}
+	return snap.keyValueFreeSlots, nil
 }
 
 // aliasLegacyResourceNames lets a Blueprint keep finding a service created

@@ -137,9 +137,10 @@ func TestValidateBlueprintRefusesPausedKeyValuePlan(t *testing.T) {
 // refused it. The paused check is a pure catalog judgment, so the plan judges
 // the apply's exact input, blueprintKeyValueGatePlan on a create (the declared
 // plan, or the create default a plan-less entry carries). The second-free
-// store limit stays out: it is workspace runtime state the plan cannot know,
-// judged by the preview's live CheckFreeLimit and enforced by the apply, the
-// same rule as the env-group count cap.
+// store limit is judged on the workspace the whole file leaves
+// (blueprintFreeKeyValueRefusals): a store the file moves off free frees the
+// slot for a create, whatever the file order, and the apply enforces the
+// same verdicts per write under the tenant lock.
 func TestBlueprintKeyValuePlanRefusesPausedCreate(t *testing.T) {
 	if !tiers.Valkey.Paused("pro_ultra") {
 		t.Skip("pro_ultra is no longer paused")
