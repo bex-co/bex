@@ -507,7 +507,6 @@ describe("settings skeleton parity", () => {
         "outbound-ips",
         "notifications",
         "port",
-        "health-checks",
         ...END,
       ],
     ],
@@ -521,7 +520,6 @@ describe("settings skeleton parity", () => {
         "registry-credential",
         "notifications",
         "port",
-        "health-checks",
         ...END,
       ],
     ],
@@ -710,6 +708,28 @@ describe("ServiceSettingsPage", () => {
       expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     },
   );
+
+  // w8/406: Render gives a private service only its default TCP check, so a
+  // Health Check Path is a web-service setting; bex-api refuses one elsewhere.
+  it("offers no Health Check Path to a private service, and keeps it for a web service", async () => {
+    serverState.service = svc({ type: "private_service", url: null });
+    const page = renderSettings();
+
+    expect(await sectionHrefs()).not.toContain("#health-checks");
+    expect(document.getElementById("health-checks")).toBeNull();
+    expect(screen.queryByText("Health Check Path")).toBeNull();
+    page.unmount();
+
+    serverState.service = svc({ healthCheckPath: "/healthz" });
+    renderSettings();
+
+    expect(await sectionHrefs()).toContain("#health-checks");
+    expect(
+      within(document.getElementById("health-checks")!).getByText(
+        "Health Check Path",
+      ),
+    ).toBeInTheDocument();
+  });
 
   // Edge caching is web_service only: bex-api's setCacheProfile refuses every
   // other type, so no other type gets the section or its navigation link.

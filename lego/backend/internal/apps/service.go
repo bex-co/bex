@@ -765,9 +765,10 @@ type AppView struct {
 	// Custom Domains section reads it and writes it via SetSubdomainPolicy.
 	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
 	// HealthCheckPath is the HTTP path the health probes GET (spec.healthCheckPath,
-	// Render's healthCheckPath). Empty selects the TCP default — the platform
-	// checks only that the process is listening. The Settings →
-	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
+	// Render's healthCheckPath), on a web service only. Empty selects the TCP
+	// default — the platform checks only that the process is listening. The
+	// Settings → Health Checks section reads/writes it via SetHealthCheckPath
+	// (w5/009).
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
 	// MaxShutdownDelaySeconds is the effective SIGTERM grace window for a
 	// long-running service. Existing CRs leave the underlying pointer unset, so
@@ -1294,7 +1295,9 @@ func view(a *appv1alpha1.App) AppView {
 		NotificationsToSend:         policy,
 		PreviewNotificationsEnabled: previewNotificationsEnabled(a.Spec),
 		RenderSubdomainPolicy:       subdomainPolicy,
-		HealthCheckPath:             a.Spec.HealthCheckPath,
+		// A path stored on a private service before w8/406 has no effect and
+		// is not read back: Render's private-service schema has no such field.
+		HealthCheckPath: a.Spec.HTTPHealthCheckPath(),
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
 			svcType, a.Spec.ShutdownDelaySeconds(),
 		),
@@ -3797,7 +3800,7 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	// The update checks' applicability rules (settings_check.go), so create
 	// refuses — by type, before any unrelated guard — what update refuses.
 	switch {
-	case strings.TrimSpace(req.HealthCheckPath) != "" && !healthCheckPathApplies(svcType):
+	case strings.TrimSpace(req.HealthCheckPath) != "" && !appv1alpha1.TypeHasHTTPHealthCheck(svcType):
 		return errHealthCheckPathNotApplicable(svcType)
 	case strings.TrimSpace(req.PreDeployCommand) != "" && !preDeployCommandApplies(svcType):
 		return errPreDeployCommandNotApplicable(svcType)
@@ -4207,7 +4210,9 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Port = want.Port
 	dst.Replicas = want.Replicas
 	dst.Tier = want.Tier
-	dst.HealthCheckPath = want.HealthCheckPath
+	if !blueprintDropsHealthCheckPath(want.Type) {
+		dst.HealthCheckPath = want.HealthCheckPath
+	}
 	dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy

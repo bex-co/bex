@@ -93,11 +93,14 @@ export function serviceSettingsSections(
     sections.push("registry-credential");
   }
   sections.push("notifications");
-  // web_service and private_service bind the port bex routes to and probe.
-  if (servesHttp(type)) sections.push("port", "health-checks");
-  // Edge caching and maintenance mode are web_service only, as bex-api's
-  // setCacheProfile and requireWebService (w1/m37) refuse every other type.
-  if (isWebServiceType(type)) sections.push("edge-caching", "maintenance");
+  // web_service and private_service bind the port bex routes to.
+  if (servesHttp(type)) sections.push("port");
+  // Health Checks, edge caching and maintenance mode are web_service only. A
+  // private service gets Render's default TCP check and has no path to set
+  // (w8/406); bex-api refuses a path, a cache profile and maintenance mode
+  // (w1/m37) on every other type.
+  if (isWebServiceType(type))
+    sections.push("health-checks", "edge-caching", "maintenance");
   // Every other type holds its Deploy Hook in its Deploy card; a cron job's
   // Deploy section is its schedule, so its hook stands alone.
   if (cron) sections.push("deploy-hook");

@@ -725,7 +725,7 @@
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter; a web service's only, as a pserv's or worker's has no effect on Render and is dropped (w8/406)"
     },
     "#/definitions/serverService/properties/image": {
       "state": "translated",

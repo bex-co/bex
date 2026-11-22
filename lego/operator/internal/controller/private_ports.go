@@ -354,7 +354,7 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 // rollout still in flight.
 func (r *AppReconciler) privatePrimaryRescueApplies(app *appv1alpha1.App, dep *appsv1.Deployment, port int) bool {
 	network := app.Status.ImageNetwork
-	if !r.readsListeners() || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" {
+	if !r.readsListeners() || !app.Spec.UsesImagePorts() || app.Spec.HTTPHealthCheckPath() != "" {
 		return false
 	}
 	if _, configured := app.ConfiguredImagePort(); configured {

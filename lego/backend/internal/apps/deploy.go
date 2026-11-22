@@ -3341,6 +3341,10 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if image != "" {
 		autoDeploy, checksPass = nil, nil
 	}
+	healthCheckPath := a.HealthCheckPath
+	if blueprintDropsHealthCheckPath(svcType) {
+		healthCheckPath = ""
+	}
 
 	literal, se, err := classifyServiceEnv(overrides, a)
 	if err != nil {
@@ -3370,7 +3374,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Port:                    0,
 		Replicas:                replicas,
 		Plan:                    plan,
-		HealthCheckPath:         a.HealthCheckPath,
+		HealthCheckPath:         healthCheckPath,
 		Disk:                    blueprintDisk(a.Disk),
 		Env:                     literal,
 		Hosts:                   hosts,
@@ -3389,6 +3393,16 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		blueprintBuildSource:    strings.TrimSpace(a.BuildSource),
 		startIsDockerCommand:    a.DockerCommand != "",
 	}, se, nil
+}
+
+// blueprintDropsHealthCheckPath reports a type whose Blueprint healthCheckPath
+// has no effect. Render's schema accepts the field on every server service, but
+// "Private services only support default TCP checks" and a worker has no health
+// check (render.com/docs/health-checks), so the parse drops a pserv's or a
+// worker's path and a sync leaves the one stored before w8/406 alone. A cron
+// job's or static site's schema has no such field.
+func blueprintDropsHealthCheckPath(svcType string) bool {
+	return svcType == appv1alpha1.TypePrivateService || svcType == appv1alpha1.TypeBackgroundWorker
 }
 
 // validateManifestServiceFields rejects a services[] entry with no name or

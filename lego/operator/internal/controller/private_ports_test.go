@@ -535,18 +535,23 @@ func TestDetectPrivatePrimary(t *testing.T) {
 			}
 		}
 	}
-	t.Run("an undeclared listener becomes the primary", func(t *testing.T) {
-		r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{8080}}, private(80, 80))
-		if hint := r.detectPrivatePrimary(t.Context(), app, dep, 80); app.Status.ImageNetwork.PrimaryPort != 80 || !strings.Contains(hint, "port 8080") {
-			t.Fatalf("first scan: primary=%d hint=%q, want only a candidate", app.Status.ImageNetwork.PrimaryPort, hint)
-		}
-		time.Sleep(time.Millisecond)
-		hint := r.detectPrivatePrimary(t.Context(), app, dep, 80)
-		network := app.Status.ImageNetwork
-		if network.PrimaryPort != 8080 || !slices.Equal(network.Ports, []int32{80, 8080}) || !strings.Contains(hint, "now uses") {
-			t.Fatalf("second scan: network=%+v hint=%q, want primary 8080 over [80 8080]", network, hint)
-		}
-	})
+	// A stored Health Check Path has no effect on a private service, whose
+	// check is TCP (w8/406), so it is rescued the same way.
+	storedPath := func(a *appv1alpha1.App, p *corev1.Pod) { private(80, 80)(a, p); a.Spec.HealthCheckPath = "/healthz" }
+	for name, mutate := range map[string]func(*appv1alpha1.App, *corev1.Pod){"": private(80, 80), " with a stored path": storedPath} {
+		t.Run("an undeclared listener becomes the primary"+name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{8080}}, mutate)
+			if hint := r.detectPrivatePrimary(t.Context(), app, dep, 80); app.Status.ImageNetwork.PrimaryPort != 80 || !strings.Contains(hint, "port 8080") {
+				t.Fatalf("first scan: primary=%d hint=%q, want only a candidate", app.Status.ImageNetwork.PrimaryPort, hint)
+			}
+			time.Sleep(time.Millisecond)
+			hint := r.detectPrivatePrimary(t.Context(), app, dep, 80)
+			network := app.Status.ImageNetwork
+			if network.PrimaryPort != 8080 || !slices.Equal(network.Ports, []int32{80, 8080}) || !strings.Contains(hint, "now uses") {
+				t.Fatalf("second scan: network=%+v hint=%q, want primary 8080 over [80 8080]", network, hint)
+			}
+		})
+	}
 	for name, tc := range map[string]struct {
 		open   []int
 		mutate func(*appv1alpha1.App, *corev1.Pod)
@@ -560,10 +565,6 @@ func TestDetectPrivatePrimary(t *testing.T) {
 		"a configured port": {open: []int{9090}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
 			private(80, 80)(a, p)
 			a.Spec.PortMode, a.Spec.Port = appv1alpha1.PortModeImageConfiguredV1, 80
-		}},
-		"an HTTP health check": {open: []int{8080}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
-			private(80, 80)(a, p)
-			a.Spec.HealthCheckPath = "/healthz"
 		}},
 		"a web image service": {open: []int{8080}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
 			private(80, 80)(a, p)

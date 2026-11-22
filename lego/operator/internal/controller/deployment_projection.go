@@ -209,6 +209,10 @@ type deploymentParams struct {
 	// healthProbeImage is the image the no-redirect health probe is installed
 	// from; "" probes with the kubelet's HTTP check instead (health_probe.go).
 	healthProbeImage string
+	// keptHealthPath is the HTTP path a template stored before w8/406 still
+	// probes on a private service, kept while nothing else about the template
+	// changes (applyDeploymentSpec); "" for none.
+	keptHealthPath string
 	// readinessPeriod overrides the readiness probe period while a stored
 	// template still carries its previous one (applyDeploymentSpec); 0 = current.
 	readinessPeriod int32
@@ -238,11 +242,19 @@ type deploymentParams struct {
 }
 
 // usesHealthProbeBinary reports whether the App's pods carry bex's
-// health-probe helper: a web or private service with a Health Check Path (the
+// health-probe helper: a web service with a Health Check Path (the
 // no-redirect HTTP check), one checking any open port, or one whose drain
 // checks its health first, on an operator that knows its own image.
 func (p deploymentParams) usesHealthProbeBinary(app *appv1alpha1.App) bool {
-	return !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck || p.drainCheck) && p.healthProbeImage != ""
+	return !p.worker && (p.healthPath(app) != "" || p.openPortCheck || p.drainCheck) && p.healthProbeImage != ""
+}
+
+// healthPath is the path the App's HTTP health check GETs: a web service's
+// Health Check Path, else a stored template's kept one, else "" for the TCP
+// check. A private service's stored path has no effect: Render gives it the
+// TCP check only (w8/406).
+func (p deploymentParams) healthPath(app *appv1alpha1.App) string {
+	return cmp.Or(app.Spec.HTTPHealthCheckPath(), p.keptHealthPath)
 }
 
 // usesOpenPortCheck reports the any-open-port check on an operator that can
@@ -266,7 +278,7 @@ func (p deploymentParams) usesOpenPortCheck(app *appv1alpha1.App) bool {
 // second time and start another instance. Later releases with a known port
 // keep the TCP probe on it.
 func checksAnyOpenPort(stored corev1.PodTemplateSpec, app *appv1alpha1.App, p deploymentParams) bool {
-	if p.worker || p.healthProbeImage == "" || app.Spec.HealthCheckPath != "" ||
+	if p.worker || p.healthProbeImage == "" || app.Spec.HTTPHealthCheckPath() != "" ||
 		!discoversWebImagePort(app) {
 		return false
 	}
@@ -470,7 +482,8 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	// mode does not have, at the price of a mode distinction Render users
 	// never have to learn.
 	if !p.worker {
-		path := app.Spec.HealthCheckPath
+		httpPath := p.healthPath(app)
+		path := httpPath
 		if path == "" && webImageHTTPSelectionGuardsServing(app) {
 			// Only without the helper image (checksAnyOpenPort covers the
 			// rest, w4/m320): a binary listener can pass TCP readiness and let
@@ -485,8 +498,8 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 			switch {
 			case p.usesOpenPortCheck(app):
 				handler = healthProbeOpenPortHandler()
-			case app.Spec.HealthCheckPath != "":
-				handler = healthProbeExecHandler(app.Spec.HealthCheckPath, p.port, probeHost)
+			case httpPath != "":
+				handler = healthProbeExecHandler(httpPath, p.port, probeHost)
 			}
 			container.VolumeMounts = append(container.VolumeMounts,
 				corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true})
@@ -787,7 +800,11 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		// running release keeps its HTTP probe, or the helper image it was
 		// installed from, until its template changes for another reason, so
 		// an operator upgrade never rolls the fleet.
-		probeStale := !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
+		probeStale := !p.worker && (app.Spec.HTTPHealthCheckPath() != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
+		// So is a private service's TCP check (w8/406): a release that
+		// still probes its stored path keeps that probe until the next roll.
+		keptPath := storedIneffectiveHealthPath(stored.Spec, app)
+		pathStale := keptPath != ""
 		// So is the edge-cache sidecar a template from before the cache
 		// tier carries (keptEdgeCache, w3/m489): it leaves with the next
 		// change for another reason.
@@ -815,7 +832,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			keptMove = diskMove{}
 		}
 		moveStale := keptMove != p.diskMove
-		if drainStale || periodStale || probeStale || cacheStale || startupStale || nodeStale || moveStale {
+		if drainStale || periodStale || probeStale || pathStale || cacheStale || startupStale || nodeStale || moveStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
 			unchanged := dep.DeepCopy()
@@ -825,6 +842,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			kept.diskNode = keptNode
 			kept.diskMove = keptMove
 			kept.healthProbeImage = keptProbeImage
+			kept.keptHealthPath = keptPath
 			kept.drainCheck = keptDrainCheck
 			kept.livenessGrace = keptLivenessGrace
 			kept.storedCache = keptCache
@@ -839,6 +857,24 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		}
 	}
 	projectDeployment(dep, app, p, drain, probeHost)
+}
+
+// storedIneffectiveHealthPath is the stored path a stored template still
+// probes over HTTP for an App whose type has no HTTP check (a private service
+// projected before w8/406), else "".
+func storedIneffectiveHealthPath(stored corev1.PodSpec, app *appv1alpha1.App) string {
+	if app.Spec.HealthCheckPath == "" || app.Spec.HTTPHealthCheckPath() != "" {
+		return ""
+	}
+	for _, c := range stored.Containers {
+		if c.Name != appContainerName {
+			continue
+		}
+		if path := probedHealthCheckPath(c); path != nil && *path == app.Spec.HealthCheckPath {
+			return *path
+		}
+	}
+	return ""
 }
 
 // heldReleaseStrategy surges a held release's whole instance count and keeps

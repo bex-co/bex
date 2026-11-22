@@ -116,8 +116,15 @@ func TestImagePortStallHint(t *testing.T) {
 	if got := terminalStallMessage(reasonHealthCheckFailing, msg); !strings.Contains(got, probeStallFailed) || !strings.Contains(got, "(8123, 9000, 9009)") {
 		t.Fatalf("terminal diagnosis lost the outcome or the ports: %q", got)
 	}
-	httpCheck := image.DeepCopy()
-	httpCheck.Spec.HealthCheckPath = "/ping"
+	// A private service's stored path has no effect (w8/406), so its TCP
+	// check keeps the hint; a web service's HTTP check gets none.
+	stored := image.DeepCopy()
+	stored.Spec.HealthCheckPath = "/ping"
+	if got := imagePortStallHint(stored, 8123); got != hint {
+		t.Errorf("private service with a stored path: hint %q, want %q", got, hint)
+	}
+	httpCheck := stored.DeepCopy()
+	httpCheck.Spec.Type, httpCheck.Spec.PortMode = appv1alpha1.TypeWebService, appv1alpha1.PortModeWebImageV1
 	configured := projectionApp(func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypePrivateService })
 	pending := image.DeepCopy()
 	pending.Status.ImageNetwork = nil

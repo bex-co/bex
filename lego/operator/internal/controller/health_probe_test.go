@@ -120,6 +120,56 @@ func TestNoRedirectProbeOnlyWhereItApplies(t *testing.T) {
 	}
 }
 
+// Render: "Private services only support default TCP checks"
+// (render.com/docs/health-checks). A private service whose stored Health Check
+// Path no route answers gets the TCP check on all three probes, with or without
+// the helper image; a web service with the same path keeps its HTTP check
+// (w8/406).
+func TestPrivateServiceHealthPathGetsTheTCPCheck(t *testing.T) {
+	missing := func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/missing" }
+	private := func(a *appv1alpha1.App) { a.Spec.Type, a.Spec.Expose = appv1alpha1.TypePrivateService, false }
+	for name, p := range map[string]deploymentParams{"helper image": execParams(), "no helper image": probeParams()} {
+		for i, probe := range probesOf(appContainerOf(t, project(httpHealthApp(missing, private), p))) {
+			if probe.TCPSocket == nil || probe.TCPSocket.Port.IntValue() != 8080 || probe.HTTPGet != nil || probe.Exec != nil {
+				t.Fatalf("%s: private service probe %d = %+v, want the TCP check on 8080", name, i, probe.ProbeHandler)
+			}
+		}
+		web := appContainerOf(t, project(httpHealthApp(missing), p))
+		if path, port, ok := probeGET(web.ReadinessProbe); !ok || path != "/missing" || port != "8080" {
+			t.Fatalf("%s: web service readiness = %+v, want its HTTP check of /missing", name, web.ReadinessProbe.ProbeHandler)
+		}
+	}
+}
+
+// A private service projected before w8/406 keeps probing its path until its
+// template changes for another reason, so the upgrade rolls none; the next
+// roll gives it the TCP check.
+func TestPrivateServiceTCPCheckIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
+	private := func(a *appv1alpha1.App) {
+		a.Spec.Type, a.Spec.Expose, a.Spec.HealthCheckPath = appv1alpha1.TypePrivateService, false, "/missing"
+	}
+	for name, p := range map[string]deploymentParams{"helper image": execParams(), "no helper image": probeParams()} {
+		app := httpHealthApp(private)
+		before := p
+		before.keptHealthPath = "/missing" // what an operator before w8/406 projected
+		legacy := project(app, before)
+		if path, _, ok := probeGET(appContainerOf(t, legacy).ReadinessProbe); !ok || path != "/missing" {
+			t.Fatalf("%s: the legacy template does not probe /missing", name)
+		}
+		upgraded := legacy.DeepCopy()
+		applyDeploymentSpec(upgraded, app, p)
+		if !equalPodTemplate(upgraded.Spec.Template, legacy.Spec.Template) {
+			t.Fatalf("%s: an operator upgrade rolled a private service", name)
+		}
+		restarted := httpHealthApp(private, func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-11-22T00:00:00Z" })
+		next := legacy.DeepCopy()
+		applyDeploymentSpec(next, restarted, p)
+		if probe := appContainerOf(t, next).ReadinessProbe; probe.TCPSocket == nil {
+			t.Fatalf("%s: the next roll must adopt the TCP check; readiness %+v", name, probe.ProbeHandler)
+		}
+	}
+}
+
 // A running release keeps its kubelet HTTP probe, and the helper image it was
 // installed from, until its template changes for another reason: an operator
 // upgrade must not roll the fleet.

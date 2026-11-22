@@ -47,13 +47,13 @@ import (
 // preflight share — so "nothing accepted is ignored" holds on every path
 // (w8/056: create used to store a setting update refuses).
 
-// healthCheckPathApplies: cron jobs and background workers are never probed.
-func healthCheckPathApplies(svcType string) bool {
-	return svcType != appv1alpha1.TypeCronJob && svcType != appv1alpha1.TypeBackgroundWorker
-}
-
+// errHealthCheckPathNotApplicable refuses a path where
+// appv1alpha1.TypeHasHTTPHealthCheck does not hold. Render's "Private services
+// only support default TCP checks", workers and cron jobs are never probed, and
+// its CLI refuses --health-check-path on every type but web_service (w8/406). A
+// Blueprint drops the path instead (blueprintDropsHealthCheckPath).
 func errHealthCheckPathNotApplicable(svcType string) error {
-	return fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, svcType)
+	return fmt.Errorf("%w: health check path is not applicable to a %s; only a web_service has an HTTP health check", core.ErrBadRequest, svcType)
 }
 
 // preDeployCommandApplies: cron jobs and static sites run no pre-deploy phase.
@@ -172,8 +172,10 @@ func checkIPAllowList(a *appv1alpha1.App, entries []core.IPAllowListEntry) error
 	return nil
 }
 
+// checkHealthCheckPath validates path for a; clearing stays allowed on any type
+// so a path stored before w8/406 (a private service's) can be removed.
 func checkHealthCheckPath(a *appv1alpha1.App, path string) (string, error) {
-	if !healthCheckPathApplies(a.Spec.Type) {
+	if strings.TrimSpace(path) != "" && !appv1alpha1.TypeHasHTTPHealthCheck(a.Spec.Type) {
 		return "", errHealthCheckPathNotApplicable(a.Spec.Type)
 	}
 	return normalizeHealthCheckPath(path)

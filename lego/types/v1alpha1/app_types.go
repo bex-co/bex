@@ -833,9 +833,9 @@ type AppSpec struct {
 	//           stricter check, for a service that can answer the question.
 	//
 	// Wired as both the startup and readiness probes (identical handler, see
-	// deployment_projection.go). Applies only to HTTP-serving service types
-	// (web/private) — workers and cron jobs expose no port, so it is unused
-	// there.
+	// deployment_projection.go). Applies only to a web service
+	// (HTTPHealthCheckPath): a private service gets the TCP check whatever is
+	// stored here, as on Render, and workers and cron jobs are never probed.
 	//
 	// Deliberately carries NO +kubebuilder:default. It used to default to "/",
 	// which forced the strict mode on every service and made an ordinary API —
@@ -1148,6 +1148,25 @@ func (s AppSpec) ShutdownDelaySeconds() *int32 {
 // not addressable (Render's own rule — docs/ADR041-service-addresses.md).
 func (s AppSpec) InternallyAddressable() bool {
 	return s.Type == "" || s.Type == TypeWebService || s.Type == TypePrivateService
+}
+
+// TypeHasHTTPHealthCheck reports whether a Health Check Path applies to the
+// service type: a web service only (including the empty-type default). On
+// Render "Private services only support default TCP checks", and a worker, a
+// cron job or a static site has no health check at all
+// (render.com/docs/health-checks; w8/406).
+func TypeHasHTTPHealthCheck(serviceType string) bool {
+	return serviceType == "" || serviceType == TypeWebService
+}
+
+// HTTPHealthCheckPath is the path the platform's HTTP health check GETs, or ""
+// for Render's default TCP check. A path stored on a type with no HTTP check (a
+// private service created before w8/406) has no effect.
+func (s AppSpec) HTTPHealthCheckPath() string {
+	if !TypeHasHTTPHealthCheck(s.Type) {
+		return ""
+	}
+	return s.HealthCheckPath
 }
 
 // ReceivesPrivateTraffic reports whether other services may dial the App's

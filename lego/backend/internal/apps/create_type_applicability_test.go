@@ -48,8 +48,8 @@ func TestCreateRefusesSettingsTheTypeCannotUse(t *testing.T) {
 	refused := map[string][]string{
 		appv1alpha1.TypeCronJob:          {"health check path", "pre-deploy command", "renderSubdomainPolicy", "ipAllowList"},
 		appv1alpha1.TypeBackgroundWorker: {"health check path", "renderSubdomainPolicy", "ipAllowList"},
-		appv1alpha1.TypePrivateService:   {"renderSubdomainPolicy", "ipAllowList"},
-		appv1alpha1.TypeStaticSite:       {"pre-deploy command"},
+		appv1alpha1.TypePrivateService:   {"health check path", "renderSubdomainPolicy", "ipAllowList"},
+		appv1alpha1.TypeStaticSite:       {"health check path", "pre-deploy command"},
 	}
 	for svcType, names := range refused {
 		for _, name := range names {
@@ -64,7 +64,7 @@ func TestCreateRefusesSettingsTheTypeCannotUse(t *testing.T) {
 	// Controls: each setting is accepted where it applies.
 	accepted := map[string][]string{
 		appv1alpha1.TypeWebService:       {"health check path", "pre-deploy command", "ipAllowList"},
-		appv1alpha1.TypePrivateService:   {"health check path", "pre-deploy command"},
+		appv1alpha1.TypePrivateService:   {"pre-deploy command"},
 		appv1alpha1.TypeBackgroundWorker: {"pre-deploy command"},
 		appv1alpha1.TypeStaticSite:       {"ipAllowList"},
 	}
@@ -95,19 +95,5 @@ func TestCreateAndUpdateShareTheTypeReasons(t *testing.T) {
 	}
 	if _, err := svc.SetIPAllowList(context.Background(), "nightly", nil); err != nil {
 		t.Fatalf("clearing a cron's ipAllowList = %v", err)
-	}
-}
-
-// A Blueprint worker declaring healthCheckPath is refused at that field.
-func TestBlueprintWorkerHealthCheckPathIsLocated(t *testing.T) {
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	const manifest = "services:\n  - type: worker\n    name: w1\n    runtime: image\n    image:\n      url: busybox:1.37\n    plan: starter\n    healthCheckPath: /h\n"
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if v.Valid || len(v.Errors) != 1 || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].healthCheckPath" ||
-		!strings.Contains(v.Errors[0].Error, "health check path is not applicable to a background_worker") {
-		t.Fatalf("validate = %+v", v)
 	}
 }

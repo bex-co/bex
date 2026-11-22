@@ -6645,7 +6645,7 @@ func imageStallNote(app *appv1alpha1.App, port int) string {
 // then calls it configured and lists only the others (w4/m243 t011).
 func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	network := app.Status.ImageNetwork
-	if !app.Spec.HasImagePorts() || app.Spec.HealthCheckPath != "" || network == nil || len(network.Ports) == 0 {
+	if !app.Spec.HasImagePorts() || app.Spec.HTTPHealthCheckPath() != "" || network == nil || len(network.Ports) == 0 {
 		return ""
 	}
 	env := app.Status.EnvPort > 0

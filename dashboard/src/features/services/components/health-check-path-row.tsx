@@ -14,8 +14,8 @@ export interface HealthCheckPathRowProps {
 /**
  * Settings row for the health-check path (w1/m23/t001) — what the platform
  * polls before routing traffic to the service. Uses the shared edit-in-place
- * row. Only shown for web_service and private_service; the settings page gates
- * it.
+ * row. Only shown for web_service: a private service gets Render's default TCP
+ * check (w8/406). The settings page gates it.
  *
  * Empty is a real, reachable state (w7/m80): it clears the path and selects a
  * TCP check that only verifies the process is listening. This row must not

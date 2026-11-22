@@ -538,9 +538,9 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		}
 	}
 	// healthCheckPath is required on Render's webServiceDetails, so a web
-	// service states an unset path as "" (w4/626); the other types that accept
-	// a path (private service, static site) report it when set.
-	if svcType == renderWebService || a.HealthCheckPath != "" {
+	// service states an unset path as "" (w4/626). No other type's details
+	// carry the field (w8/406).
+	if svcType == renderWebService {
 		details["healthCheckPath"] = a.HealthCheckPath
 	}
 	// Render's serviceDetails carries the public URL for web_service/static_site

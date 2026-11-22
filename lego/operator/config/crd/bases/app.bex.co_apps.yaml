@@ -561,9 +561,9 @@ spec:
                             stricter check, for a service that can answer the question.
 
                   Wired as both the startup and readiness probes (identical handler, see
-                  deployment_projection.go). Applies only to HTTP-serving service types
-                  (web/private) — workers and cron jobs expose no port, so it is unused
-                  there.
+                  deployment_projection.go). Applies only to a web service
+                  (HTTPHealthCheckPath): a private service gets the TCP check whatever is
+                  stored here, as on Render, and workers and cron jobs are never probed.
 
                   Deliberately carries NO +kubebuilder:default. It used to default to "/",
                   which forced the strict mode on every service and made an ordinary API —

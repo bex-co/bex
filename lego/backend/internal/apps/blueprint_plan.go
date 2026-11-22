@@ -257,7 +257,11 @@ var blueprintServiceFieldAppliers = []struct {
 		dst.RegistryCredentialID = clonePtr(want.RegistryCredentialID)
 	}},
 	{names: []string{"plan"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Tier = want.Tier }},
-	{names: []string{"healthCheckPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.HealthCheckPath = want.HealthCheckPath }},
+	{names: []string{"healthCheckPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		if !blueprintDropsHealthCheckPath(dst.Type) {
+			dst.HealthCheckPath = want.HealthCheckPath
+		}
+	}},
 	{names: []string{"disk"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		if want.Disk == nil {
 			return // omission preserves; see BlueprintServiceFieldPolicies

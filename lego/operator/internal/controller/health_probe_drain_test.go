@@ -64,8 +64,10 @@ func TestDrainRunsTheLivenessCheckFirst(t *testing.T) {
 		{"tcp-checked web service", projectionApp(), []string{"tcp", "--port", "8080", "--timeout", timeout}},
 		{"tcp-checked private service", projectionApp(func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypePrivateService }),
 			[]string{"tcp", "--port", "8080", "--timeout", timeout}},
+		// A private service's stored path has no effect: Render gives it the
+		// TCP check only (w8/406).
 		{"private service with a path", httpHealthApp(func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypePrivateService; a.Spec.Expose = false }),
-			[]string{"check", "--port", "8080", "--path", "/cgi-bin/health", "--timeout", timeout}},
+			[]string{"tcp", "--port", "8080", "--timeout", timeout}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dep := project(tc.app, execParams())
