@@ -248,19 +248,33 @@ func TestNodeCompanionInstallsANodeReleaseBefore14(t *testing.T) {
 	}
 }
 
-// A static site's Node installs such a release the same way.
+// A static site's Node installs such a release the same way, from
+// NODE_VERSION or from package.json.
 func TestStaticSiteInstallsANodeReleaseBefore14(t *testing.T) {
-	o := nativeOptions()
-	o.StaticSite, o.Runtime, o.StartCommand = true, "", ""
-	bundle, dockerfile, src := writeResolveFixture(t, o, nil, map[string]string{"package.json": enginesNode("^12.18.0")})
-	fake := &fakeExact{digests: map[string]string{"node:12.22.12-bullseye": exactDigest}}
-	choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, nativeRuntime(o), bundle, dockerfile, src)
-	if err != nil || choices[0].Line != "12.22.12" || !strings.Contains(choices[0].Narration(), "==> Using Node.js version 12.22.12 via /opt/render/project/src/package.json") {
-		t.Fatalf("choices %+v, %v; want the static site's Node 12.22.12", choices, err)
+	for _, tc := range []struct {
+		name, donor, log string
+		env, files       map[string]string
+	}{
+		{"NODE_VERSION", "node:12.18.3-buster", "==> Using Node.js version 12.18.3 via environment variable NODE_VERSION",
+			map[string]string{"NODE_VERSION": "12.18.3"}, nil},
+		{"engines range", "node:12.22.12-bullseye", "==> Using Node.js version 12.22.12 via /opt/render/project/src/package.json",
+			nil, map[string]string{"package.json": enginesNode("^12.18.0")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.StaticSite, o.Runtime, o.StartCommand = true, "", ""
+			bundle, dockerfile, src := writeResolveFixture(t, o, tc.env, tc.files)
+			fake := &fakeExact{digests: map[string]string{tc.donor: exactDigest}}
+			choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, nativeRuntime(o), bundle, dockerfile, src)
+			release := strings.TrimPrefix(strings.Split(tc.donor, "-")[0], "node:")
+			if err != nil || choices[0].Line != release || !strings.Contains(choices[0].Narration(), tc.log) {
+				t.Fatalf("choices %+v, %v; want the static site's Node %s from %s", choices, err, release, tc.donor)
+			}
+			out, _ := os.ReadFile(dockerfile)
+			reviewed, _ := nativeToolchains[nativeNodeRuntime].find("24")
+			assertExactNativePrimary(t, string(out), reviewed.image, tc.donor+"@"+exactDigest, []string{"NODE_VERSION=" + release})
+		})
 	}
-	out, _ := os.ReadFile(dockerfile)
-	reviewed, _ := nativeToolchains[nativeNodeRuntime].find("24")
-	assertExactNativePrimary(t, string(out), reviewed.image, "node:12.22.12-bullseye@"+exactDigest, []string{"NODE_VERSION=12.22.12"})
 }
 
 // A release before 14 no build can install fails at version selection by
