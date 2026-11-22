@@ -494,12 +494,12 @@ type appReleaseDecision struct {
 // While true, prepareAppReleaseDecision pins the release identity so a newer
 // trigger cannot abandon it, and its rollout is recorded in
 // status.activeRevision before the newer release counts (w8/m119; a prebuilt
-// image since w4/635; a Rollback, Restart or image override since w4/661). A
-// release that settles failed, parks asleep, or whose own deploy is canceled
-// leaves this state; one a newer trigger reaches before it was adopted never
-// entered it. Suspended and direct-static-publish releases never pin, and
-// neither does a selected one judged on a spec that no longer carries its
-// selection: only its adopted view (heldReleaseView) can render it.
+// image since w4/635; a Rollback, Restart or image override since w4/661; a
+// no-build static site's publish since w8/392). A release that settles failed,
+// parks asleep, or whose own deploy is canceled leaves this state; one a newer
+// trigger reaches before it was adopted never entered it. Suspended releases
+// never pin, and neither does a selected one judged on a spec that no longer
+// carries its selection: only its adopted view (heldReleaseView) can render it.
 func releaseInFlight(app *appv1alpha1.App) bool {
 	// Render's Override policy (w4/653): the newest release replaces the one
 	// in flight at once, so nothing is held.
@@ -566,15 +566,11 @@ func selectedRelease(app *appv1alpha1.App) bool {
 }
 
 // pinnableSourceRelease reports whether the App's release is a source build a
-// pin can carry through.
+// pin can carry through. A no-build static site's publish is one too: its
+// publish Job clones the commit and publishes the directory of the release's
+// adopted view, so a newer deploy waits for it as for a build (w8/392).
 func pinnableSourceRelease(app *appv1alpha1.App) bool {
-	if app.ActiveReleaseConfig() != nil {
-		return false
-	}
-	if app.Spec.Repo == "" || app.Spec.Image != "" || app.Spec.Suspended {
-		return false
-	}
-	return !directStaticPublish(app)
+	return app.ActiveReleaseConfig() == nil && app.Spec.Repo != "" && app.Spec.Image == "" && !app.Spec.Suspended
 }
 
 // pinnedReleaseDecision keeps the release in flight on its own identity, with

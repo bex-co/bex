@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"strconv"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -164,6 +166,131 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 		Expect(meta.FindStatusCondition(failed.Status.Conditions, appv1alpha1.ConditionRollout)).To(BeNil(),
 			"a clone failure is the build's verdict, not the rollout's")
 		expectPhase(nn, appv1alpha1.PhaseRunning, reasonPriorReleaseServing, "the latest build failed")
+	})
+
+	// deploy is bex deploys create of commit: bex-api writes the commit and a
+	// restart stamp, and stamps the release generation it writes. mutate is a
+	// setting the deploy ships with it.
+	deploy := func(nn types.NamespacedName, commit, at string, mutate func(*appv1alpha1.AppSpec)) int64 {
+		GinkgoHelper()
+		app := envtestApp(nn)
+		app.Spec.BuildCommit, app.Spec.RestartedAt = commit, at
+		if mutate != nil {
+			mutate(&app.Spec)
+		}
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(app.Generation+1, 10))
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		return envtestApp(nn).Generation
+	}
+	// cloneSource is the commit and directory a publish Job clones.
+	cloneSource := func(j *batchv1.Job) (ref, dir string) {
+		GinkgoHelper()
+		for _, c := range j.Spec.Template.Spec.InitContainers {
+			if c.Name == "clone" {
+				return envValue(c.Env, "REF"), envValue(c.Env, "SRC_DIR")
+			}
+		}
+		Fail("the publish Job has no clone step")
+		return "", ""
+	}
+	rev := func(gen int64) string { return "rev-" + strconv.FormatInt(gen, 10) }
+	jobAbsent := func(nn types.NamespacedName, gen int64) bool {
+		GinkgoHelper()
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: publish.JobName(nn.Name, rev(gen)), Namespace: ns}, &batchv1.Job{})
+		return apierrors.IsNotFound(err)
+	}
+	// publishFirst serves the site's first release.
+	publishFirst := func(nn types.NamespacedName) {
+		GinkgoHelper()
+		createSite(nn, "main")
+		reconcileN(nn)
+		first := job(nn)
+		endClone(placePod(first), 0, "", metav1.Now(), metav1.Now())
+		completeEnvtestJob(first, metav1.Now())
+		reconcileN(nn)
+		Expect(envtestApp(nn).Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+	}
+	const commitA, commitB = "1ca0898f8d0a4c2c5bd8b1e6e5d1ad7a0b3c9f21", "42c50892e22b8d1f0c3e6a4b7d9e2f5a1c8b3d60"
+
+	// w8/392: under Render's default Wait the deploy in progress finishes and
+	// then the newest deploy runs. A publish with no build command was never
+	// pinned, so a deploy written once the operator had adopted one replaced
+	// it: the first closed "Superseded by" and never served.
+	It("finishes a publish in flight on its own commit before a newer deploy publishes", func() {
+		site := types.NamespacedName{Name: "site-direct-wait", Namespace: ns}
+		publishFirst(site)
+
+		By("adopting a deploy of commit A, whose clone runs")
+		first := deploy(site, commitA, "2026-11-22T06:43:36Z", nil)
+		reconcileN(site)
+		firstJob := job(site)
+		Expect(firstJob.Name).To(Equal(publish.JobName(site.Name, rev(first))))
+		pod := placePod(firstJob)
+		reconcileN(site)
+		expectPhase(site, appv1alpha1.PhaseBuilding, reasonBuilding, "Building the site from "+repo)
+
+		By("holding a deploy of commit B with another publish directory behind it")
+		second := deploy(site, commitB, "2026-11-22T06:43:46Z", func(s *appv1alpha1.AppSpec) { s.PublishPath = "sub" })
+		reconcileN(site)
+		app := envtestApp(site)
+		Expect(app.Status.ReleaseGeneration).To(Equal(first), "the publish in flight keeps its release")
+		Expect(app.Status.PendingReleaseGeneration).To(Equal(second), "the newer deploy waits in the pending slot")
+		Expect(jobAbsent(site, second)).To(BeTrue(), "two releases never publish at once")
+		expectPhase(site, appv1alpha1.PhaseBuilding, reasonBuilding, "Building the site from "+repo)
+
+		By("recreating a lost publish Job from the release's own view, not the saved spec")
+		Expect(k8sClient.Delete(ctx, pod, client.GracePeriodSeconds(0))).To(Succeed())
+		Eventually(func() bool {
+			return apierrors.IsNotFound(k8sClient.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{}))
+		}, "10s", "100ms").Should(BeTrue())
+		background := metav1.DeletePropagationBackground
+		Expect(k8sClient.Delete(ctx, firstJob, &client.DeleteOptions{PropagationPolicy: &background})).To(Succeed())
+		Eventually(func() bool { return jobAbsent(site, first) }, "10s", "100ms").Should(BeTrue())
+		reconcileN(site)
+		firstJob = job(site)
+		ref, dir := cloneSource(firstJob)
+		Expect(ref).To(Equal(commitA))
+		Expect(dir).To(Equal("examples/static-site"))
+
+		By("serving commit A, then publishing commit B")
+		endClone(placePod(firstJob), 0, "", metav1.Now(), metav1.Now())
+		completeEnvtestJob(firstJob, metav1.Now())
+		reconcileN(site)
+		app = envtestApp(site)
+		Expect(app.Status.ActiveRevision).To(Equal(rev(first)), "status: %+v", app.Status)
+		Expect(app.Status.ReleaseGeneration).To(Equal(second), "the newer deploy proceeds once the first served")
+		Expect(app.Status.PendingReleaseGeneration).To(BeZero())
+		secondJob := job(site)
+		ref, dir = cloneSource(secondJob)
+		Expect(ref).To(Equal(commitB))
+		Expect(dir).To(Equal("examples/static-site/sub"))
+		endClone(placePod(secondJob), 0, "", metav1.Now(), metav1.Now())
+		completeEnvtestJob(secondJob, metav1.Now())
+		reconcileN(site)
+		app = envtestApp(site)
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.ActiveRevision).To(Equal(rev(second)))
+	})
+
+	// Render's Override cancels the deploy in progress and starts the new one
+	// (w4/653): the operator holds nothing for an App the projector labels so.
+	It("replaces the publish in flight at once under the Override policy", func() {
+		site := types.NamespacedName{Name: "site-direct-override", Namespace: ns}
+		publishFirst(site)
+		app := envtestApp(site)
+		app.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+
+		deploy(site, commitA, "2026-11-22T06:43:36Z", nil)
+		reconcileN(site)
+		placePod(job(site))
+		reconcileN(site)
+		second := deploy(site, commitB, "2026-11-22T06:43:46Z", nil)
+		reconcileN(site)
+		app = envtestApp(site)
+		Expect(app.Status.ReleaseGeneration).To(Equal(second))
+		ref, _ := cloneSource(job(site))
+		Expect(ref).To(Equal(commitB))
 	})
 
 	// w32/034: a reconcile of the App that comes later than the publish Job's

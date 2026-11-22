@@ -196,6 +196,86 @@ func TestImageReleaseRollingOutWaitsForTheNewerTrigger(t *testing.T) {
 	}
 }
 
+// staticOverlapApp is a no-build static site whose generation-2 publish is in
+// flight in phase, with a deploy of a newer commit (generation 3) requested
+// behind it.
+func staticOverlapApp(phase appv1alpha1.AppPhase, activeRevision string) *appv1alpha1.App {
+	executing := appv1alpha1.AppSpec{
+		Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/bex", Branch: "main",
+		RootDir: "examples/static-site", PublishPath: ".", BuildCommit: "1ca0898f8d", RestartedAt: "2026-11-22T06:43:36Z",
+	}
+	pinned := desiredAppReleaseIdentity(executing)
+	newer := executing
+	newer.BuildCommit, newer.RestartedAt = "42c50892e2", "2026-11-22T06:43:46Z"
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation:  3,
+			Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "3"},
+		},
+		Spec: newer,
+		Status: appv1alpha1.AppStatus{
+			Phase:                      phase,
+			ArtifactFingerprint:        pinned.artifact,
+			ReleaseArtifactFingerprint: pinned.artifact,
+			ReleaseFingerprint:         pinned.release,
+			ReleaseGeneration:          2,
+			ActiveRevision:             activeRevision,
+		},
+	}
+}
+
+// Render's Wait covers a static site with no build command too (w8/392): its
+// publish, a clone and an upload, finishes before a newer deploy starts. It
+// was never pinned, so a deploy written once the operator had adopted it
+// replaced it, and its row closed "Superseded by". Override still replaces it.
+func TestDirectStaticPublishInFlightWaitsForTheNewerDeploy(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		app    func() *appv1alpha1.App
+		pinned bool
+	}{
+		{"cloning over a served release", func() *appv1alpha1.App { return staticOverlapApp(appv1alpha1.PhaseBuilding, "rev-1") }, true},
+		{"uploading over a served release", func() *appv1alpha1.App { return staticOverlapApp(appv1alpha1.PhaseDeploying, "rev-1") }, true},
+		{"cloning a first release", func() *appv1alpha1.App { return staticOverlapApp(appv1alpha1.PhaseBuilding, "") }, true},
+		{"served", func() *appv1alpha1.App { return staticOverlapApp(appv1alpha1.PhaseRunning, "rev-2") }, false},
+		{"publish failed over the prior release", func() *appv1alpha1.App { return staticOverlapApp(appv1alpha1.PhaseRunning, "rev-1") }, false},
+		{"its own deploy canceled", func() *appv1alpha1.App {
+			app := staticOverlapApp(appv1alpha1.PhaseBuilding, "rev-1")
+			app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "2"
+			return app
+		}, false},
+		{"suspended", func() *appv1alpha1.App {
+			app := staticOverlapApp(appv1alpha1.PhaseBuilding, "rev-1")
+			app.Spec.Suspended = true
+			return app
+		}, false},
+		{"the workspace policy is Override", func() *appv1alpha1.App {
+			app := staticOverlapApp(appv1alpha1.PhaseBuilding, "rev-1")
+			app.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+			return app
+		}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := tc.app()
+			if !directStaticPublish(app) {
+				t.Fatal("precondition: the fixture is a no-build static site")
+			}
+			decision := prepareAppReleaseDecision(app, nil)
+			if tc.pinned {
+				if app.Status.ReleaseGeneration != 2 || app.Status.PendingReleaseGeneration != 3 || decision.releaseChanged || !decision.pinned {
+					t.Fatalf("release=%d pending=%d changed=%v pinned=%v, want release 2 pinned with 3 pending",
+						app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged, decision.pinned)
+				}
+				return
+			}
+			if app.Status.ReleaseGeneration != 3 || app.Status.PendingReleaseGeneration != 0 || !decision.releaseChanged {
+				t.Fatalf("release=%d pending=%d changed=%v, want release 3 adopted",
+					app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged)
+			}
+		})
+	}
+}
+
 // rollbackOverlapApp is a saved-image App whose generation-2 Rollback (a
 // release spec.releaseConfig selected) is in flight in phase, with a newer
 // deploy requested behind it that cleared the selection, as a git push, a
