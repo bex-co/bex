@@ -21,6 +21,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -134,5 +135,57 @@ func TestNodeSubdirectoryPackageJSONRefusalNamesIt(t *testing.T) {
 	var unsupported *UnsupportedVersionError
 	if !errors.As(err, &unsupported) || !strings.HasPrefix(unsupported.Error(), `backend/package.json engines.node "<14" is not a supported Node version`) {
 		t.Fatalf("err = %v, want a refusal naming backend/package.json", err)
+	}
+}
+
+// w8/400: another runtime's Node never fails its build on a request bex cannot
+// install. Render installs any Node release, 12.18.3 included (community
+// thread 15142), so a Python service with a stray docs/package.json asking for
+// 12.x builds there; bex builds it on the dated default, with a line naming
+// the request, whatever the signal. A Node service still refuses it (w8/398).
+func TestNodeCompanionFallsBackOnARequestBexCannotInstall(t *testing.T) {
+	const image = "node:24.22.1-bookworm@" + exactDigest
+	created := renderNodeDefault20261021.Add(time.Hour)
+	common := nativeCommonBase
+	t.Cleanup(func() { nativeCommonBase = common })
+	for name, tc := range map[string]struct{ env, files map[string]string }{
+		"nested package.json":   {files: map[string]string{"app.py": "", "docs/package.json": enginesNode("12.x")}},
+		"root package.json":     {files: map[string]string{"package.json": enginesNode("<14")}},
+		"NODE_VERSION":          {env: map[string]string{"NODE_VERSION": "12.22.12"}},
+		"release with no image": {files: map[string]string{".nvmrc": "99.99.99\n"}},
+	} {
+		fake := &fakeExact{digests: map[string]string{"node:24.22.1-bookworm": exactDigest}}
+		o := nativeOptions()
+		o.Runtime = nativeNodeRuntime
+		bundle, dockerfile, src := writeResolveFixture(t, o, tc.env, tc.files)
+		_, refusal := ResolveNativeBuildExact(context.Background(), fake, created, nativeNodeRuntime, bundle, dockerfile, src)
+		if _, tenant := errors.AsType[*UnsupportedVersionError](refusal); !tenant {
+			t.Fatalf("%s: a Node service resolved with err %v, want the w8/398 refusal", name, refusal)
+		}
+		want := "==> Using Node.js version 24.22.1 (default)" + nodeDocs + "\n==> " + refusal.Error() + "; using the default Node.js version instead"
+		for _, base := range []string{common, ""} {
+			nativeCommonBase = base
+			for runtime := range nativeJSCompanionRuntimes {
+				t.Run(name+"/"+runtime+"/common base "+boolName(base != ""), func(t *testing.T) {
+					choices, out := resolveExactAt(t, fake, created, runtime, tc.env, tc.files)
+					i := slices.IndexFunc(choices, func(c NativeChoice) bool { return c.Label == "Node" })
+					if i < 0 || choices[i].Image != image || choices[i].Source != "" || choices[i].Narration() != want || !strings.Contains(out, "COPY --link --from="+image+" ") {
+						t.Fatalf("choices %+v; want the default Node with %q\n%s", choices, want, out)
+					}
+				})
+			}
+		}
+	}
+}
+
+// An unreadable registry is still a platform error for the companion: no
+// fallback hides it.
+func TestNodeCompanionRegistryErrorStillFails(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = nativePythonRuntime
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "25.8.1"}, nil)
+	_, err := ResolveNativeBuildExact(context.Background(), &fakeExact{err: errors.New("registry down")}, time.Time{}, nativePythonRuntime, bundle, dockerfile, src)
+	if _, tenant := errors.AsType[*UnsupportedVersionError](err); err == nil || tenant || !strings.Contains(err.Error(), "registry down") {
+		t.Fatalf("err = %v, want the platform error", err)
 	}
 }

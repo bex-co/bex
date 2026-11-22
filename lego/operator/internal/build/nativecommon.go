@@ -18,6 +18,7 @@ package build
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -186,19 +187,22 @@ func commonNativeRubyToolLines(choice NativeChoice) string {
 // runtime created at created would be: Render's Python, Ruby, Go and Rust
 // builds name their Node's dated default, as its Node services do (w8/370),
 // and a Node companion reads the package.json a Node service would (w8/399).
+//
+// A Node request bex cannot install never fails the other runtime's build
+// (w8/400): Render installs releases bex refuses (12.18.3), so the build goes
+// on with the dated default and a line naming the request it left out. A Node
+// service still refuses it (w8/398).
 func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool), nodePackage string) (NativeChoice, string, error) {
-	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile, nodePackage)
+	choice, err := pickNativeCompanion(ctx, exact, created, runtime, env, readFile, nodePackage)
+	if unsupported, ok := errors.AsType[*UnsupportedVersionError](err); ok && runtime == nativeNodeRuntime {
+		noFiles := func(string) ([]byte, bool) { return nil, false }
+		if choice, err = pickNativeCompanion(ctx, exact, created, runtime, nil, noFiles, ""); err == nil {
+			warning := "==> " + unsupported.Error() + "; using the default Node.js version instead"
+			choice.note = strings.TrimSuffix(warning+"\n"+choice.note, "\n")
+		}
+	}
 	if err != nil {
 		return NativeChoice{}, "", err
-	}
-	// A companion Node takes an exact version, range or release no line
-	// carries like a primary does (w8/308, w8/398), on the common base or not,
-	// so the legacy-pnpm decision follows the release it pinned. A Ruby
-	// companion is pinned on the common base only.
-	if runtime == nativeNodeRuntime || nativeCommonBase != "" {
-		if choice, err = pinNativePrimary(ctx, exact, runtime, choice, readFile); err != nil {
-			return NativeChoice{}, "", err
-		}
 	}
 	if runtime == nativeRubyRuntime {
 		if nativeCommonBase != "" {
@@ -215,4 +219,17 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, creat
 		return choice, commonNativeJSToolLines(choice), nil
 	}
 	return choice, nativeJSToolLines(cmp.Or(choice.nodeDonor, choice.Image), choice.Line), nil
+}
+
+// pickNativeCompanion selects and pins a companion toolchain. A companion Node
+// takes an exact version, range or release no line carries like a primary
+// does (w8/308, w8/398), on the common base or not, so the legacy-pnpm
+// decision follows the release it pinned. A Ruby companion is pinned on the
+// common base only.
+func pickNativeCompanion(ctx context.Context, exact ExactImageResolver, created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool), nodePackage string) (NativeChoice, error) {
+	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile, nodePackage)
+	if err != nil || (runtime != nativeNodeRuntime && nativeCommonBase == "") {
+		return choice, err
+	}
+	return pinNativePrimary(ctx, exact, runtime, choice, readFile)
 }

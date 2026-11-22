@@ -1133,8 +1133,8 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 // Every non-Node native build carries Render's JavaScript tools (w8/m77
 // Ruby/Python, w4/m213 Go/Rust/Elixir): the selected Node line's node/npm,
 // Yarn and pnpm land between the primary FROM and the source/build on every
-// primary line, NODE_VERSION picks the Node line, a refused Node request
-// leaves the Dockerfile alone, and primary Node gains no second copy.
+// primary line, NODE_VERSION picks the Node line, a Node request bex refuses
+// takes the default Node (w8/400), and primary Node gains no second copy.
 func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 	for _, runtime := range []string{"ruby", "python", "go", "rust", "elixir"} {
 		o := nativeOptions()
@@ -1172,14 +1172,14 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 			t.Fatalf("%s NODE_VERSION=22: %+v, %v\n%s", runtime, choices, err, df)
 		}
 
+		// A Node request bex refuses builds on the default Node with a line
+		// naming it, where it once failed the build (w8/400).
 		bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "12"}, nil)
-		before, _ := os.ReadFile(dockerfile)
-		var unsupported *UnsupportedVersionError
-		if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); !errors.As(err, &unsupported) {
-			t.Fatalf("%s unsupported NODE_VERSION = %v", runtime, err)
-		}
-		if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
-			t.Errorf("%s: a refused Node request rewrote the Dockerfile", runtime)
+		choices, err = resolveNativeBuild(runtime, bundle, dockerfile, src)
+		if df, _ := os.ReadFile(dockerfile); err != nil || choices[len(choices)-1].Source != "" ||
+			!strings.Contains(choices[len(choices)-1].Narration(), "==> NODE_VERSION=12 is not a supported Node version;") ||
+			!strings.Contains(string(df), nativeJSToolLines(nativeToolchains["node"].defaultImage(), nativeToolchains["node"].defaultLine)) {
+			t.Fatalf("%s NODE_VERSION=12: %+v, %v\n%s", runtime, choices, err, df)
 		}
 	}
 	o := nativeOptions()
