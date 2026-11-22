@@ -51,6 +51,12 @@ func TestPlatformPullFailureReadsInProductTerms(t *testing.T) {
 			t.Errorf("message %q still prints %q", msg, leak)
 		}
 	}
+	// The rollout's sentences are pinned: the pre-deploy plane shares their
+	// cause, never their ending.
+	if want := "image pull is failing: the build this release runs on (ws-1/web:gen-8) is no longer stored, so its image cannot be pulled." +
+		" Only a service's recent builds are kept. Deploy the commit again to build it."; msg != want {
+		t.Errorf("missing build message = %q, want %q", msg, want)
+	}
 	// The terminal form swaps the same prefix every stall message uses.
 	if got := terminalStallMessage(imagePullBackOff, msg); !strings.HasPrefix(got, appv1alpha1.ImagePullStallFailed+": the build") {
 		t.Errorf("terminal message = %q", got)
@@ -61,6 +67,9 @@ func TestPlatformPullFailureReadsInProductTerms(t *testing.T) {
 	msg, own = r.platformPullFailure(build, `Back-off pulling image "`+build+`": dial tcp 10.0.0.1:5000: i/o timeout`)
 	if !own || !strings.Contains(msg, "could not pull this release's build (ws-1/web:gen-8)") || strings.Contains(msg, "zot.bex-registry.svc") || strings.Contains(msg, "dial tcp") {
 		t.Errorf("a transient build pull failure reads %q", msg)
+	}
+	if want := "image pull is failing: the platform could not pull this release's build (ws-1/web:gen-8). The pull is retried."; msg != want {
+		t.Errorf("transient build pull message = %q, want %q", msg, want)
 	}
 
 	// An image the user names keeps naming itself and the registry's answer.

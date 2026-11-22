@@ -1066,7 +1066,7 @@ func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1
 		logf.FromContext(ctx).Error(err, "read canceled release's pre-deploy Job", "app", app.Name, "job", pd.Job)
 		return childHealthRequeue
 	}
-	ended, ok := preDeployEnded(ctx, r.Client, job, *pd)
+	ended, ok := r.preDeployEnded(ctx, job, *pd)
 	if !ok {
 		return childHealthRequeue
 	}
@@ -7786,7 +7786,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 // reconcilePreDeploy.
 func (r *AppReconciler) settlePreDeployJob(ctx context.Context, app *appv1alpha1.App, job *batchv1.Job, gen int64, started string) (ctrl.Result, bool, error) {
 	running := runningStep(job.Name, gen, started)
-	if ended, ok := preDeployEnded(ctx, r.Client, job, running); ok {
+	if ended, ok := r.preDeployEnded(ctx, job, running); ok {
 		if ended.Status == appv1alpha1.PreDeployFailed {
 			return r.failPreDeploy(ctx, app, &ended)
 		}
@@ -7839,9 +7839,10 @@ func (r *AppReconciler) outOfBuildMinutes(ctx context.Context, app *appv1alpha1.
 // permanent pull error after the retry grace window. The Job is deleted
 // before the message is returned, so a late pull cannot run the command after
 // its failure is on record; a failed delete is an error, never a verdict it
-// cannot back.
+// cannot back. A build's failure is worded as the rollout words it, never
+// with the kubelet's line.
 func (r *AppReconciler) endedByPullFailure(ctx context.Context, job *batchv1.Job) (string, error) {
-	msg := predeploy.PullFailure(ctx, r.Client, job, time.Now())
+	msg := predeploy.PullFailure(ctx, r.Client, job, time.Now(), r.platformBuild)
 	if msg == "" {
 		return "", nil
 	}
@@ -7890,12 +7891,12 @@ func (r *AppReconciler) stepJobOptions(app *appv1alpha1.App, gen int64) predeplo
 
 // preDeployEnded is step settled to how its Job ended, dated by the Job's own
 // finish rather than by when a pass read it; ok is false while the Job runs.
-func preDeployEnded(ctx context.Context, cl client.Reader, job *batchv1.Job, step appv1alpha1.PreDeployStatus) (appv1alpha1.PreDeployStatus, bool) {
+func (r *AppReconciler) preDeployEnded(ctx context.Context, job *batchv1.Job, step appv1alpha1.PreDeployStatus) (appv1alpha1.PreDeployStatus, bool) {
 	switch predeploy.Observe(job) {
 	case predeploy.StateSucceeded:
 		step.Status = appv1alpha1.PreDeploySucceeded
 	case predeploy.StateFailed:
-		step.Status, step.Message = appv1alpha1.PreDeployFailed, predeploy.FailureMessage(ctx, cl, job)
+		step.Status, step.Message = appv1alpha1.PreDeployFailed, predeploy.FailureMessage(ctx, r.Client, job, r.platformBuild)
 	default:
 		return step, false
 	}

@@ -195,7 +195,7 @@ func TestHookFailureMessageNamesTheHook(t *testing.T) {
 			if tc.state != nil {
 				objs = append(objs, jobPod(jobUID, tc.job.Namespace, *tc.state))
 			}
-			got := FailureMessage(context.Background(), fakeClient(objs...), tc.job)
+			got := FailureMessage(context.Background(), fakeClient(objs...), tc.job, nil)
 			if strings.Contains(got, "pre-deploy") {
 				t.Fatalf("message %q still names the pre-deploy command", got)
 			}
@@ -214,7 +214,7 @@ func TestHookFailureMessageNamesTheHook(t *testing.T) {
 	job.Status.Conditions = nil
 	pod := jobPod(jobUID, job.Namespace, pullWaiting("ImagePullBackOff"))
 	pod.CreationTimestamp = metav1.NewTime(time.Now().Add(-10 * time.Minute))
-	if got := PullFailure(context.Background(), fakeClient(job, pod), job, time.Now()); got == "" || strings.Contains(got, "pre-deploy") {
+	if got := PullFailure(context.Background(), fakeClient(job, pod), job, time.Now(), nil); got == "" || strings.Contains(got, "pre-deploy") {
 		t.Fatalf("pending pull failure = %q, want it to name the hook", got)
 	}
 }

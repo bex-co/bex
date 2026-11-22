@@ -85,7 +85,7 @@ func (r *AppReconciler) observeInitialDeployHook(ctx context.Context, app *appv1
 		logf.FromContext(ctx).Error(err, "read the initial deploy hook's Job", "app", app.Name, "job", hook.Job)
 		return true
 	}
-	ended, ok := preDeployEnded(ctx, r.Client, job, *hook)
+	ended, ok := r.preDeployEnded(ctx, job, *hook)
 	if !ok {
 		// A pull that cannot succeed never runs the command: it ends the run
 		// now, as it ends a pre-deploy step.

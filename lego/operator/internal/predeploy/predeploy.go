@@ -412,8 +412,9 @@ func Observe(j *batchv1.Job) State {
 // Job failed once. Image failures name the cause instead of pointing to logs
 // for a command that never started. Its own sentences are worded from the
 // shared templates, which the dashboard words in its own language (w4/591).
-func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
-	return wordedFor(j, failureMessage(ctx, cl, j))
+// builds recognizes the platform's own builds, as for PullFailure.
+func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job, builds BuildImage) string {
+	return wordedFor(j, failureMessage(ctx, cl, j, builds))
 }
 
 // isHook reports a Job that runs the initial deploy hook.
@@ -438,11 +439,11 @@ func wordedFor(j *batchv1.Job, msg string) string {
 	return hookWording.Replace(msg)
 }
 
-func failureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
+func failureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job, builds BuildImage) string {
 	// A pod that never got its image never ran the command: no log to point
 	// at, and the deadline only measured the pull retries (w8/m44).
-	if w, _ := pullFailure(ctx, cl, j); w != nil {
-		return pullFailureMessage(w)
+	if w, image, _ := pullFailure(ctx, cl, j); w != nil {
+		return pullFailureMessage(w, image, builds)
 	}
 	if execution.JobFailedReason(j) == batchv1.JobReasonDeadlineExceeded {
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployWindowExceeded,
@@ -496,12 +497,14 @@ const imagePullGrace = 90 * time.Second
 // PullFailure explains a pending pre-deploy Job whose image cannot start.
 // Malformed references fail immediately; permanent pull errors wait through
 // imagePullGrace. Transient errors retain the Job and rollout deadlines.
-func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time.Time) string {
-	w, created := pullFailure(ctx, cl, j)
+// builds recognizes the platform's own builds, whose failure is worded in
+// product terms; nil treats every image as one the user supplied.
+func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time.Time, builds BuildImage) string {
+	w, image, created := pullFailure(ctx, cl, j)
 	if !PermanentPullFailure(w, created, now) {
 		return ""
 	}
-	return wordedFor(j, pullFailureMessage(w))
+	return wordedFor(j, pullFailureMessage(w, image, builds))
 }
 
 // PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Malformed
@@ -535,26 +538,63 @@ func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Tim
 	return false
 }
 
-// Image failures cannot be diagnosed from command logs: the command never ran.
-func pullFailureMessage(w *corev1.ContainerStateWaiting) string {
-	if w.Reason == "InvalidImageName" {
-		return "image reference is invalid: " + w.Message + "; the pre-deploy command never ran"
+// BuildImage recognizes an image in the platform's own registry: a build.
+// build is its short form, the repository and tag without the registry host
+// or digest; ok is false for an image the user supplied. Only the controller
+// knows the registry, so it supplies one.
+type BuildImage func(image string) (build string, ok bool)
+
+// BuildPullCause is why a pull of the platform's own build failed, in product
+// terms, for the rollout's stall text and the pre-deploy plane's verdict
+// alike. The kubelet's line only classifies the failure and is never printed:
+// it names the cluster-internal registry host, the digest and the runtime's
+// error, none of them the owner's to act on. advice is the step a missing
+// build needs, since retention removed it and no retry can find it; it is ""
+// for any other failure. Each caller words its own end: the rollout retries
+// the pull, a pre-deploy step has ended.
+func BuildPullCause(build, kubelet string) (cause, advice string) {
+	lower := strings.ToLower(kubelet)
+	if strings.Contains(lower, "not found") || strings.Contains(lower, "manifest unknown") {
+		return fmt.Sprintf("%s: the build this release runs on (%s) is no longer stored, so its image cannot be pulled", appv1alpha1.ImagePullStallWaiting, build),
+			"Only a service's recent builds are kept. Deploy the commit again to build it."
 	}
-	return "image pull is failing: " + w.Message + "; the pre-deploy command never ran"
+	return fmt.Sprintf("%s: the platform could not pull this release's build (%s)", appv1alpha1.ImagePullStallWaiting, build), ""
+}
+
+// Image failures cannot be diagnosed from command logs: the command never ran.
+// A build's pull failure reads as the rollout's does; an image the user
+// supplied keeps naming itself and the registry's answer, which are the
+// user's to fix. The tail keeps "the pre-deploy command" for hookWording.
+func pullFailureMessage(w *corev1.ContainerStateWaiting, image string, builds BuildImage) string {
+	const neverRan = "; the pre-deploy command never ran"
+	if w.Reason == "InvalidImageName" {
+		return "image reference is invalid: " + w.Message + neverRan
+	}
+	if builds != nil {
+		if build, ok := builds(image); ok {
+			cause, advice := BuildPullCause(build, w.Message)
+			if advice != "" {
+				advice = ". " + advice
+			}
+			return cause + neverRan + advice
+		}
+	}
+	return "image pull is failing: " + w.Message + neverRan
 }
 
 // pullFailure is the pre-deploy container's image-pull wait on the Job's pod,
-// with the pod's creation time, or nil when it is not waiting on a pull error.
-func pullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job) (*corev1.ContainerStateWaiting, time.Time) {
+// with the image it waits on and the pod's creation time, or nil when it is
+// not waiting on a pull error.
+func pullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job) (*corev1.ContainerStateWaiting, string, time.Time) {
 	for _, p := range jobPods(ctx, cl, j) {
 		for _, cs := range p.Status.ContainerStatuses {
 			if w := cs.State.Waiting; cs.Name == containerName && w != nil &&
 				(w.Reason == "ErrImagePull" || w.Reason == "ImagePullBackOff" || w.Reason == "InvalidImageName") {
-				return w, p.CreationTimestamp.Time
+				return w, cs.Image, p.CreationTimestamp.Time
 			}
 		}
 	}
-	return nil, time.Time{}
+	return nil, "", time.Time{}
 }
 
 // terminatedContainer is the pre-deploy container's terminated state on the

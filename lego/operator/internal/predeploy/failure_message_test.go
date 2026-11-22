@@ -66,7 +66,7 @@ func TestFailureMessageNamesTheExitCode(t *testing.T) {
 	job := failedJob("BackoffLimitExceeded")
 	cl := fakeClient(job, jobPod(jobUID, job.Namespace, terminated(3, "Error")))
 
-	got := FailureMessage(context.Background(), cl, job)
+	got := FailureMessage(context.Background(), cl, job, nil)
 	if want := "the pre-deploy command exited with code 3; check the pre-deploy logs"; got != want {
 		t.Fatalf("message = %q, want %q", got, want)
 	}
@@ -79,7 +79,7 @@ func TestFailureMessageOutOfMemory(t *testing.T) {
 	job := failedJob("BackoffLimitExceeded")
 	cl := fakeClient(job, jobPod(jobUID, job.Namespace, terminated(137, "OOMKilled")))
 
-	if got, want := FailureMessage(context.Background(), cl, job),
+	if got, want := FailureMessage(context.Background(), cl, job, nil),
 		"the pre-deploy command ran out of memory (exit code 137); check the pre-deploy logs"; got != want {
 		t.Fatalf("message = %q, want %q", got, want)
 	}
@@ -90,7 +90,7 @@ func TestFailureMessageDeadlineNamesTheWindow(t *testing.T) {
 	job := failedJob(batchv1.JobReasonDeadlineExceeded)
 	cl := fakeClient(job, jobPod(jobUID, job.Namespace, terminated(137, "Error")))
 
-	if got, want := FailureMessage(context.Background(), cl, job),
+	if got, want := FailureMessage(context.Background(), cl, job, nil),
 		"the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs"; got != want {
 		t.Fatalf("message = %q, want %q", got, want)
 	}
@@ -108,7 +108,7 @@ func TestFailureMessageWithoutATerminatedPod(t *testing.T) {
 		"other namespace":              fakeClient(job, jobPod(jobUID, "bex-build", terminated(3, "Error"))),
 		"same-named Job's earlier pod": fakeClient(job, jobPod("9f1e-earlier-run", job.Namespace, terminated(3, "Error"))),
 	} {
-		if got, want := FailureMessage(context.Background(), cl, job), "the pre-deploy command failed; check the pre-deploy logs"; got != want {
+		if got, want := FailureMessage(context.Background(), cl, job, nil), "the pre-deploy command failed; check the pre-deploy logs"; got != want {
 			t.Errorf("%s: message = %q, want %q", name, got, want)
 		}
 	}
@@ -127,7 +127,7 @@ func pullWaiting(reason string) corev1.ContainerState {
 func TestFailureMessageNamesAFailingImagePull(t *testing.T) {
 	for _, reason := range []string{"ImagePullBackOff", "ErrImagePull"} {
 		job := failedJob(batchv1.JobReasonDeadlineExceeded)
-		got := FailureMessage(context.Background(), fakeClient(job, jobPod(jobUID, job.Namespace, pullWaiting(reason))), job)
+		got := FailureMessage(context.Background(), fakeClient(job, jobPod(jobUID, job.Namespace, pullWaiting(reason))), job, nil)
 		if !strings.HasPrefix(got, "image pull is failing: rpc error") || !strings.Contains(got, "never ran") ||
 			strings.Contains(got, "check the pre-deploy logs") || strings.Contains(got, "did not finish") {
 			t.Errorf("%s: message = %q", reason, got)
@@ -159,7 +159,7 @@ func TestPullFailureAfterGrace(t *testing.T) {
 		"transient registry error":  {pod(corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ErrImagePull", Message: "503 Service Unavailable"}}, 5*time.Minute, jobUID), false},
 		"another Job's pod":         {pod(pullWaiting("ImagePullBackOff"), 5*time.Minute, "9f1e-earlier-run"), false},
 	} {
-		got := PullFailure(context.Background(), fakeClient(job, tc.pod), job, now)
+		got := PullFailure(context.Background(), fakeClient(job, tc.pod), job, now, nil)
 		if (got != "") != tc.fail {
 			t.Errorf("%s: PullFailure = %q, want fail=%v", name, got, tc.fail)
 		}
@@ -227,7 +227,7 @@ func TestInvalidImageNameFailsOnlyTheOwningPreDeployJob(t *testing.T) {
 			pod.CreationTimestamp = metav1.NewTime(tc.created)
 			pod.Status.ContainerStatuses[0].Name = tc.container
 			cl := fakeClient(job, pod)
-			got := PullFailure(context.Background(), cl, job, now)
+			got := PullFailure(context.Background(), cl, job, now, nil)
 			if !tc.fail {
 				if got != "" {
 					t.Fatalf("unrelated pod failed the Job: %q", got)
@@ -238,7 +238,7 @@ func TestInvalidImageNameFailsOnlyTheOwningPreDeployJob(t *testing.T) {
 			if got != want {
 				t.Fatalf("pending Job message = %q, want %q", got, want)
 			}
-			if got := FailureMessage(context.Background(), cl, job); got != want {
+			if got := FailureMessage(context.Background(), cl, job, nil); got != want {
 				t.Fatalf("failed Job message = %q, want %q", got, want)
 			}
 		})
@@ -255,7 +255,7 @@ func TestFailureMessageNamesTheProgramThatNeverStarted(t *testing.T) {
 	}}
 	cl := fakeClient(job, jobPod(jobUID, job.Namespace, state))
 
-	got := FailureMessage(context.Background(), cl, job)
+	got := FailureMessage(context.Background(), cl, job, nil)
 	if !strings.Contains(got, `"/bin/sh" does not exist in this image`) || strings.Contains(got, "check the pre-deploy logs") {
 		t.Fatalf("message = %q", got)
 	}
@@ -305,7 +305,7 @@ func TestFailureMessageParsesAsItsTemplate(t *testing.T) {
 		if tc.state != nil {
 			objs = append(objs, jobPod(jobUID, tc.job.Namespace, *tc.state))
 		}
-		got := FailureMessage(context.Background(), fakeClient(objs...), tc.job)
+		got := FailureMessage(context.Background(), fakeClient(objs...), tc.job, nil)
 		if got != tc.want {
 			t.Errorf("%s: message = %q, want %q", name, got, tc.want)
 		}

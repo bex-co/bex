@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -858,16 +859,29 @@ func imageRegistryHost(image string) string {
 // registry host and containerd error included, and for a missing manifest it
 // never said the one thing that matters: retention removed the build, so no
 // retry will find it (w8/m156). The registry keeps a bounded history; a
-// release whose build fell out of it has to be built again.
+// release whose build fell out of it has to be built again. The cause is
+// shared with the pre-deploy plane; the rollout's own end is that the pull is
+// retried, unless the build is gone.
 func (r *AppReconciler) platformPullFailure(image, kubelet string) (msg string, own bool) {
+	build, own := r.platformBuild(image)
+	if !own {
+		return "", false
+	}
+	cause, advice := predeploy.BuildPullCause(build, kubelet)
+	if advice == "" {
+		advice = "The pull is retried."
+	}
+	return cause + ". " + advice, true
+}
+
+// platformBuild is image's short form when it is a build in the platform's
+// own registry: the repository and tag, without the registry host or digest.
+// ok is false for any other image. It is the pre-deploy plane's
+// predeploy.BuildImage.
+func (r *AppReconciler) platformBuild(image string) (string, bool) {
 	if _, _, ok := r.platformRepoReference(image); !ok {
 		return "", false
 	}
 	build, _, _ := strings.Cut(strings.TrimPrefix(image, r.Registry+"/"), "@")
-	lower := strings.ToLower(kubelet)
-	if strings.Contains(lower, "not found") || strings.Contains(lower, "manifest unknown") {
-		return fmt.Sprintf("%s: the build this release runs on (%s) is no longer stored, so its image cannot be pulled."+
-			" Only a service's recent builds are kept. Deploy the commit again to build it.", appv1alpha1.ImagePullStallWaiting, build), true
-	}
-	return fmt.Sprintf("%s: the platform could not pull this release's build (%s). The pull is retried.", appv1alpha1.ImagePullStallWaiting, build), true
+	return build, true
 }
