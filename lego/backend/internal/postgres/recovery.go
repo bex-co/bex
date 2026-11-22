@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -270,7 +271,23 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 // recoveryWindow reads both authoritative bounds for the database's exact
 // Barman server identity. Empty or partial status is not an established window;
 // a failed source read remains an error rather than masquerading as empty.
+//
+// The plugin writes a server's window when its backup completes, but it drops
+// that write when another database's write to the namespace's shared
+// ObjectStore lands first: an optimistic-concurrency conflict it logs and skips
+// (plugin v0.13.0, still so in v0.16.0). Only its next retention pass, every 30
+// minutes, writes the window. Until then the window is the one the
+// generation's completed Backups span (w34/009).
 func (s *Service) recoveryWindow(ctx context.Context, d *appv1alpha1.Database) (recoveryWindowBounds, error) {
+	window, err := s.objectStoreWindow(ctx, d)
+	if err != nil || window.established() {
+		return window, err
+	}
+	return s.generationBackupWindow(ctx, d)
+}
+
+// objectStoreWindow is the plugin's recovery window for d's generation.
+func (s *Service) objectStoreWindow(ctx context.Context, d *appv1alpha1.Database) (recoveryWindowBounds, error) {
 	objectStore := &unstructured.Unstructured{}
 	objectStore.SetGroupVersionKind(barmanCloudObjectStoreGVK)
 	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: tenantBackupObjectStoreName}, objectStore); err != nil {
@@ -286,6 +303,69 @@ func (s *Service) recoveryWindow(ctx context.Context, d *appv1alpha1.Database) (
 	return window, nil
 }
 
+// generationBackupWindow is the window the completed base backups of d's
+// current archive generation span, from the end of the first to the end of the
+// last. The plugin computes its window the same way from the generation's
+// catalog (barman-cloud's GetFirstRecoverabilityPoint and
+// GetLastSuccessfulBackupTime read each backup's end, CNPG's status.stoppedAt).
+// No completed backup is no window.
+func (s *Service) generationBackupWindow(ctx context.Context, d *appv1alpha1.Database) (recoveryWindowBounds, error) {
+	list, err := s.clusterBackups(ctx, d.Namespace, d.Name)
+	if err != nil {
+		return recoveryWindowBounds{}, err
+	}
+	var first, last time.Time
+	for i := range list.Items {
+		backup := list.Items[i].Object
+		phase, _, _ := unstructured.NestedString(backup, "status", "phase")
+		stoppedAt, _, _ := unstructured.NestedString(backup, "status", "stoppedAt")
+		at, err := time.Parse(time.RFC3339, stoppedAt)
+		if phase != "completed" || err != nil || !inCurrentGeneration(backup, d) {
+			continue
+		}
+		if first.IsZero() || at.Before(first) {
+			first = at
+		}
+		if at.After(last) {
+			last = at
+		}
+	}
+	if first.IsZero() {
+		return recoveryWindowBounds{}, nil
+	}
+	return recoveryWindowBounds{earliest: first.UTC().Format(time.RFC3339), latest: last.UTC().Format(time.RFC3339)}, nil
+}
+
+// inCurrentGeneration reports whether a CNPG Backup belongs to d's current
+// archive generation. A Backup that names its server is judged by that name.
+// The Barman Cloud plugin never records one (v0.13.0 on production,
+// 2026-11-21), but CloudNativePG records the PostgreSQL major each Backup ran
+// on (status.majorVersion, since 1.26), and each generation is one major: an
+// upgrade, upward only, moves the database to <base>-pg<major>. So a backup
+// from before the last upgrade never counts. A Backup carrying neither field
+// predates both, and only a database's first generation under its bare name,
+// in the legacy apps namespace, can hold one.
+func inCurrentGeneration(backup map[string]any, d *appv1alpha1.Database) bool {
+	generation := effectiveBackupServerName(d)
+	if serverName, _, _ := unstructured.NestedString(backup, "status", "serverName"); serverName != "" {
+		return serverName == generation
+	}
+	if major, _, _ := unstructured.NestedInt64(backup, "status", "majorVersion"); major != 0 {
+		return strconv.FormatInt(major, 10) == currentPostgresVersion(d)
+	}
+	return generation == d.Name
+}
+
+// clusterBackups lists the CNPG Backups of the named cluster.
+func (s *Service) clusterBackups(ctx context.Context, namespace, name string) (*unstructured.UnstructuredList, error) {
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(cnpgBackupGVK)
+	if err := s.Client.List(ctx, list, client.InNamespace(namespace), client.MatchingLabels{labelCNPGCluster: name}); err != nil {
+		return nil, fmt.Errorf("list backups for %q: %w", name, err)
+	}
+	return list, nil
+}
+
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
 // BackupView, plus the completion instants (status.stoppedAt) of the completed
 // ones, which start a plan's window (flooredAt). A failed List is returned as an
@@ -293,11 +373,9 @@ func (s *Service) recoveryWindow(ctx context.Context, d *appv1alpha1.Database) (
 // no backups", not "I could not read them" (w6/m117). With CNPG installed and the
 // read RBAC granted, a database that genuinely has none simply lists zero items.
 func (s *Service) listBackups(ctx context.Context, namespace, name string) ([]BackupView, []time.Time, error) {
-	sel := client.MatchingLabels{labelCNPGCluster: name}
-	list := &unstructured.UnstructuredList{}
-	list.SetGroupVersionKind(cnpgBackupGVK)
-	if err := s.Client.List(ctx, list, client.InNamespace(namespace), sel); err != nil {
-		return nil, nil, fmt.Errorf("list backups for %q: %w", name, err)
+	list, err := s.clusterBackups(ctx, namespace, name)
+	if err != nil {
+		return nil, nil, err
 	}
 	out := make([]BackupView, 0, len(list.Items))
 	var completed []time.Time

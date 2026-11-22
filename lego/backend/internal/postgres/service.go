@@ -35,7 +35,6 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -1961,35 +1960,17 @@ func planRequiresUpgradeBackup(plan string) bool {
 }
 
 // hasCompletedBackup reports whether the database's current archive generation
-// holds a completed base backup. A Backup that names its serverName counts
-// when it names this generation's; older CNPG objects omit it when it
-// defaulted to the cluster name, so only that legacy generation may use the
-// empty value.
-//
-// The Barman Cloud plugin, which backs up every database in a workspace
-// namespace, never sets a Backup's serverName (plugin v0.13.0 on production,
-// 2026-11-21), and those databases archive under a namespace-scoped name, so
-// none of their Backups can match. The plugin records each server's completed
-// backups in the ObjectStore's recovery window instead, keyed by that same
-// name: a window read for this generation is the completed backup. A new
-// generation after an upgrade has no window until its own first backup
-// completes.
+// holds a completed base backup: a completed Backup of that generation
+// (inCurrentGeneration), or the window the Barman Cloud plugin recorded for it
+// in the ObjectStore. Either is enough: the plugin can drop its window write
+// (w34/009), and the window still vouches for a backup whose object lacks the
+// fields that place it. A new generation after an upgrade has neither until
+// its own first backup completes.
 func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Database) bool {
-	list := &unstructured.UnstructuredList{}
-	list.SetGroupVersionKind(cnpgBackupGVK)
-	if err := s.Client.List(ctx, list, client.InNamespace(d.Namespace), client.MatchingLabels{labelCNPGCluster: d.Name}); err != nil {
-		return false
+	if window, err := s.generationBackupWindow(ctx, d); err == nil && window.established() {
+		return true
 	}
-	serverName := effectiveBackupServerName(d)
-	for i := range list.Items {
-		backup := &list.Items[i]
-		phase, _, _ := unstructured.NestedString(backup.Object, "status", "phase")
-		backupServerName, _, _ := unstructured.NestedString(backup.Object, "status", "serverName")
-		if phase == "completed" && (backupServerName == serverName || (backupServerName == "" && serverName == d.Name)) {
-			return true
-		}
-	}
-	window, err := s.recoveryWindow(ctx, d)
+	window, err := s.objectStoreWindow(ctx, d)
 	return err == nil && window.established()
 }
 
