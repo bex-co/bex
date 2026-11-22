@@ -53,7 +53,7 @@ Total: **11 tasks, about 9h15m**.
   - **What a session keeps:** Git integration, but no direct GitHub API calls. Same here: Git, pushes and the `bex` tools keep working.
   - **When it applies:** Devin applies a change "for new sessions immediately, and for existing sessions the next time they resume". bex is the same for turning `gh` back on, and refuses a running session's next call when turning it off, which is stricter and is the safe direction.
   - **Where it binds:** Devin binds at enterprise, organization, automations default, automation and session. bex has the workspace (organization) level only.
-- **Filed:** [w10/035](../../035.md), turning `gh` off for an automation or a session (Devin's narrower bindings, with a mandatory workspace setting). No other gap users would miss: bex has no enterprise level above the workspace, and Devin's other profile controls (network policy, MCP allowlist, Git access level) are out of this milestone's scope.
+- **Filed:** [w10/035](../../done/035.md), turning `gh` off for an automation or a session (Devin's narrower bindings, with a mandatory workspace setting). No other gap users would miss: bex has no enterprise level above the workspace, and Devin's other profile controls (network policy, MCP allowlist, Git access level) are out of this milestone's scope.
 
 ## Live check (t007, production, 2026-11-20)
 
