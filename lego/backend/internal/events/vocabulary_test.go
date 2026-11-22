@@ -50,8 +50,10 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// eventTypes doc comment; the reason lives here so the guard fails loudly if
 	// someone deletes the entry rather than the rationale.
 	excusedVerbs := map[string]string{
-		"apps.Create":                   "its first deploy already appears as deploy_started with trigger.firstBuild",
-		"apps.SetRuntime":               "the runtime change rebuilds the service, and that deploy is the event (w5/m152)",
+		"apps.Create":     "its first deploy already appears as deploy_started with trigger.firstBuild",
+		"apps.SetRuntime": "the runtime change rebuilds the service, and that deploy is the event (w5/m152)",
+		// w4/m551: a database's admin app is created by apps.Create.
+		"apps.DeployPostgresAdminApp":   "its one write is apps.Create, whose first deploy is deploy_started with trigger.firstBuild; the database it reads has no events feed",
 		"secrets.RestoreEnvironment":    "only ever called inside deploys.Rollback, whose rollback deploy is the event; the env it restores also lands through PatchEnvironment's own config-change record",
 		"apps.Delete":                   "the service and its feed are gone; the row stays in the workspace audit log",
 		"apps.CreateBuildSource":        "a build source is not a service and has no service feed; the write is in the workspace audit log (w2/m254)",
