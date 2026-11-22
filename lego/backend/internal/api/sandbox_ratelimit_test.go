@@ -57,6 +57,23 @@ func (k keyCreators) APIKeyCreator(_ context.Context, clientID string) (string, 
 	return creator, ok, nil
 }
 
+// rateKeysHydra introspects each bearer of rateKeys as its API key.
+func rateKeysHydra(t *testing.T) string {
+	t.Helper()
+	hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		w.Header().Set("Content-Type", "application/json")
+		client, ok := rateKeys[r.PostFormValue("token")]
+		if r.URL.Path != "/admin/oauth2/introspect" || !ok {
+			_, _ = io.WriteString(w, `{"active":false}`)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"active": true, "sub": client, "client_id": client})
+	}))
+	t.Cleanup(hydra.Close)
+	return hydra.URL
+}
+
 // rateLimitedSandboxServer is the composed server over a fake OpenSandbox that
 // answers every create, read and terminate, with the general limiter at
 // generalPerMinute on a clock that does not move, so a bucket never refills
@@ -97,17 +114,6 @@ func rateLimitedSandboxServer(t *testing.T, generalPerMinute float64) (*Server, 
 		}
 	}))
 	t.Cleanup(upstream.Close)
-	hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = r.ParseForm()
-		w.Header().Set("Content-Type", "application/json")
-		client, ok := rateKeys[r.PostFormValue("token")]
-		if r.URL.Path != "/admin/oauth2/introspect" || !ok {
-			_, _ = io.WriteString(w, `{"active":false}`)
-			return
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"active": true, "sub": client, "client_id": client})
-	}))
-	t.Cleanup(hydra.Close)
 
 	workspace := fakeWorkspace{"key-a": "tea-a", "key-b": "tea-a", "key-c": "tea-a"}
 	srv := NewServer(&core.Base{
@@ -118,7 +124,7 @@ func rateLimitedSandboxServer(t *testing.T, generalPerMinute float64) (*Server, 
 		SandboxDefaultTemplate: "base",
 		SandboxDefaultPlan:     sandbox.PlanStarter,
 	})
-	srv.HydraAdminURL = hydra.URL
+	srv.HydraAdminURL = rateKeysHydra(t)
 	srv.RateLimiter = NewRateLimiter(generalPerMinute, 0)
 	if srv.RateLimiter != nil {
 		now := time.Date(2026, 11, 17, 12, 0, 0, 0, time.UTC)

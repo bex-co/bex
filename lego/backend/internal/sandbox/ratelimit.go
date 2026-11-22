@@ -266,29 +266,10 @@ func (l *RateLimits) now() time.Time {
 	return time.Now()
 }
 
-// user is the bucket key of the caller: the person behind a session, an
-// OAuth grant or an API key.
-func (l *RateLimits) user(ctx context.Context) string {
-	id, ok := core.IdentityFrom(ctx)
-	if !ok || id.Subject == "" {
-		return "local"
-	}
-	if !id.IsAPIKey() {
-		return "user:" + id.Subject
-	}
-	clientID := id.KeyClientID()
-	if l.Keys != nil {
-		if creator, _, err := l.Keys.APIKeyCreator(ctx, clientID); err == nil && creator != "" {
-			return "user:" + creator
-		}
-	}
-	return "key:" + clientID
-}
-
 // buckets are what one operation of class spends: the caller's class bucket
 // and, when the caller has a workspace bucket key, the workspace bound.
 func (l *RateLimits) buckets(ctx context.Context, class RateClass, workspace string) []*rate.Limiter {
-	out := []*rate.Limiter{l.classes[class].Bucket(l.user(ctx))}
+	out := []*rate.Limiter{l.classes[class].Bucket(core.RateLimitUser(ctx, l.Keys))}
 	if workspace != "" {
 		out = append(out, l.workspace.Bucket(workspace))
 	}
@@ -326,14 +307,7 @@ func (l *RateLimits) charge(ctx context.Context, class RateClass, code string, r
 	if refund {
 		scope.Refund(now)
 	}
-	buckets := l.buckets(ctx, class, scope.Workspace())
-	taken, wait := core.ReserveEach(now, 1, buckets...)
-	if wait == 0 {
-		return nil
-	}
-	seconds := core.SetRateLimitRefusal(scope.Header(), now, wait, buckets[:len(taken)]...)
-	return core.NewTooManyRequestsError(code, fmt.Sprintf("rate limit exceeded; retry in %d seconds", seconds),
-		map[string]any{"retryAfterSeconds": seconds})
+	return core.ChargeRateLimit(scope.Header(), now, code, l.buckets(ctx, class, scope.Workspace())...)
 }
 
 // handle mounts a REST sandbox route. The general limiter charges the route's

@@ -91,11 +91,17 @@ type OperationLimits interface {
 // Middleware returns an http.Handler wrapper that enforces the rate limit.
 // It must run inside the auth middleware so the caller Identity is in ctx.
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
+	return rl.middlewareWith(rl.Operations, next)
+}
+
+// middlewareWith is Middleware with ops in place of rl.Operations: the REST
+// mount adds Render's per-endpoint rows to the sandbox classes (w8/410).
+func (rl *RateLimiter) middlewareWith(ops OperationLimits, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		workspace := rl.workspaceKey(r)
 		var buckets []*rate.Limiter
-		if rl.Operations != nil {
-			buckets = rl.Operations.RequestBuckets(r, workspace)
+		if ops != nil {
+			buckets = ops.RequestBuckets(r, workspace)
 		}
 		classified := buckets != nil
 		if !classified {
@@ -104,7 +110,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		if !rl.reserve(w, r, 1, buckets) {
 			return
 		}
-		if !classified && rl.Operations != nil {
+		if !classified {
 			// A GraphQL field or an MCP tool with a budget of its own is only
 			// known once the body is read: it charges that budget and gives
 			// this token back.
@@ -112,6 +118,22 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// operationChain asks each OperationLimits in turn; the first that classifies
+// a request decides which buckets it spends.
+type operationChain []OperationLimits
+
+func (c operationChain) RequestBuckets(r *http.Request, workspace string) []*rate.Limiter {
+	for _, ops := range c {
+		if ops == nil {
+			continue
+		}
+		if buckets := ops.RequestBuckets(r, workspace); buckets != nil {
+			return buckets
+		}
+	}
+	return nil
 }
 
 // admit takes n more tokens from the caller's general bucket and, when it

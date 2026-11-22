@@ -2135,6 +2135,10 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// Sandbox operations are counted against Render's per-operation table
 	// instead (w22/m443); BEX_RATE_LIMIT=0 turns that off with the limiter.
 	srv.LimitSandboxOperations()
+	// So are the Render-contract REST operations and MCP tools, against
+	// Render's per-endpoint rows (w8/410), and deploy hooks against the deploy
+	// row's per-service bucket.
+	srv.LimitRenderOperations()
 
 	// Device-flow rate limiting (w4/m31/t002). BEX_DEVICE_RATE_LIMIT=0
 	// disables it. Set here, before Handler(), like every other cap: Handler()

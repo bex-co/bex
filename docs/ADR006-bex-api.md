@@ -310,7 +310,7 @@ The authenticated management shape is identical everywhere: REST `GET /v1/servic
 
 The open trigger accepts both `GET` and `POST /v1/deploy-hooks/{token}` and calls the same `deploys.Service` implementation as authenticated `triggerDeploy`: it bumps the App generation and opens a deploy-history row with trigger `deploy_hook`. Success mirrors Render's `200 {"deploy":{"id":"dep-…"}}`; suspended services return 409. Render's `ref` query parameter maps to the existing commit override. `imgURL` follows the same rule as the authenticated `imageUrl` (w8/042, Render's create-deploy contract): it is refused for repo-backed services, and for an image-backed service its registry host, repository and image name must match the saved `imagePath` (Docker Hub short forms normalized). Only the tag or digest may change. A mismatch is a named 400 that opens no deploy, so a leaked hook URL can deploy new versions of the service's own image but never a foreign one. Switching repositories is the authenticated, audited settings change (`PATCH image.imagePath`).
 
-**Rate limits:** an IP-keyed outer bucket (`BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT`, default 60/minute; burst 10) wraps the public prefix and sheds random-token floods before validation or Kubernetes lookup. After that, the open endpoint has its own per-token, in-process bucket: six requests/minute with a burst of two, then **429** plus `Retry-After`; this check also runs before the digest lookup. Neither consumes or depends on the authenticated `BEX_RATE_LIMIT` caller bucket. Both are replica-local.
+**Rate limits:** an IP-keyed outer bucket (`BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT`, default 60/minute; burst 10) wraps the public prefix and sheds random-token floods before validation or Kubernetes lookup. After that, the open endpoint has its own per-token, in-process bucket, which also runs before the digest lookup, and then spends its service's bucket of Render's deploy row (ten a minute per service, shared with the REST update, deploy, resume and suspend routes; § Rate limits). Both are ten a minute with a burst of ten since w8/410 (six a minute with a burst of two before), and a refusal is **429** plus `Retry-After`. None of them consumes the authenticated `BEX_RATE_LIMIT` caller bucket. All are replica-local.
 
 **Render parity and deliberate drift.** [Render's Deploy Hook documentation](https://render.com/docs/deploy-hooks) confirms the secret URL, GET/POST methods, `{deploy:{id}}` response, `ref`, rotation, and dashboard placement. Render spells its URL `/deploy/{serviceId}?key=…`, reports a bad key as 401, and exposes the credential only in its dashboard. bex uses an opaque-token-only path and 404 for malformed/unknown/stale credentials so it does not disclose whether any service id exists; it additionally exposes authenticated REST/GraphQL/MCP management surfaces, required for an AI-native control plane. bex models the overlapping deploy as a returned `queued` deploy object but does not mirror Render's optional deploy-hook-only `202` response without an id.
 
@@ -676,14 +676,32 @@ Running-instance SSH is deliberately not part of this process. The same image al
 
 ## Rate limits
 
-Render's documented API rate limit is **500 requests per minute per API key** (source: api-docs.render.com/reference/rate-limiting and Render's public OpenAPI spec — every endpoint marks a `429` response). A caller that exceeds the budget receives:
+**Amended (w8/410, 2026-11-22): Render's per-endpoint budgets.** This section used to say Render's limit was 500 requests a minute per API key. [api-docs.render.com/reference/rate-limiting](https://api-docs.render.com/reference/rate-limiting), read 2026-11-22, has no such figure: "Rate limits are shared for a set of endpoints … All but one of these rate limits apply for your user except for deploys which is per service." Its table, which bex applies with Render's figures and no environment variable:
+
+| Render row | Budget | Key |
+| --- | --- | --- |
+| `POST /v1/services` | 20 an hour | user |
+| `PATCH /v1/services/{serviceId}`, `POST …/deploys`, `POST …/resume`, `POST …/suspend`, deploy hooks | 10 a minute | service |
+| `POST …/custom-domains`, `POST …/custom-domains/{id}/verify` | 50 an hour | user |
+| `POST /v1/services/{serviceId}/jobs` | 100 a minute | user |
+| `GET /v1/logs`, `/v1/logs/subscribe`, `/v1/logs/values` | 30 a minute | user |
+| every other `POST`, `PATCH`, `PUT` and `DELETE` | 30 a minute | user |
+| every other `GET` (and `HEAD`) | 400 a minute | user |
+
+- **Which requests.** A REST request bex's mux routes to an operation of the pinned Render spec spends its row (`internal/api/render_ratelimit.go`), and so does a Render MCP tool, the row of the REST request `render-mcp-server` makes for it, since its tools call Render's public API with the caller's key (one call, one token; `trigger_deploy` spends its service's deploy row). A tool its row refuses answers a tool error coded `rate_limited`, with `Retry-After` on the HTTP response, as a sandbox tool does. A refused request counts: the limiter runs before validation, as before. A user's API keys and OAuth tokens share their rows through the key's recorded creator (`core.RateLimitUser`, the sandbox rows' keying). A `PUT` is a write, which Render's page does not name.
+- **What keeps the general budget below.** GraphQL, the dashboard's transport, which mirrors Render's dashboard operations, not its public API, whose page names no GraphQL limit. A Kratos session on REST, which is the dashboard's browser: its log tail (`/v1/logs/subscribe`), webhook edit and audit export must not be held to an API key's budget. bex-only REST routes and MCP tools, which have no Render row. Sandbox operations keep their own table (below), asked first.
+- **A workspace bound** of 10,000 a minute over every Render row of one workspace stays, as on the sandbox rows: it is bex's abuse bound for keys with no recorded creator, not a Render limit.
+- **The headers report the row.** `RateLimit-Limit` reads 400 on a GET, 30 on a write and 20 on a service create. Render's page calls `Ratelimit-Reset` a UTC epoch time, but its own example reads `45` and the pinned spec says "Seconds until the current rate limit window resets", so bex keeps the seconds.
+- **What it means for fixtures.** A script, CI job or QA routine that creates more than 20 services an hour as one user gets 429s with `Retry-After` (180 seconds for the next create). A Blueprint apply creates its services internally, not through `POST /v1/services`, and spends one request of its own route. A QA routine's REST probes stay well inside 400 GETs a minute.
+
+A caller that exceeds a budget receives:
 
 - **HTTP 429 Too Many Requests**
 - `Retry-After: <seconds>` header — the whole-seconds delay until the next token is available
 - Body: `{"id": "rate_limited", "message": "rate limit exceeded; see Retry-After header"}`
 - `RateLimit-Limit`, `RateLimit-Remaining` (`0`) and `RateLimit-Reset`, which every admitted response carries too, so a client can pace itself (w8/147). On bex's token buckets, Limit is the burst, Remaining is the whole tokens left, and Reset is the seconds until the bucket is full. The tighter of the caller and workspace buckets is reported.
 
-bex matches this contract with a per-caller token-bucket at the shared mux, keyed on the authenticated Identity (OAuth2 `client_id` / Kratos session id), falling back to remote IP for unauthenticated paths:
+Every other request spends bex's general budget, `BEX_RATE_LIMIT` (500 a minute, a figure of bex's own): a per-caller token-bucket at the shared mux, keyed on the authenticated Identity (OAuth2 `client_id` / Kratos session id), falling back to remote IP for unauthenticated paths, beside one bucket per workspace. The 429 is the same for both:
 
 | Surface | 429 form |
 | --- | --- |
@@ -693,7 +711,7 @@ bex matches this contract with a per-caller token-bucket at the shared mux, keye
 
 A GraphQL batch (a JSON array body) is charged one token per member, as if each were sent alone.
 
-Exemptions: `GET /healthz` (liveness), `POST /v1/webhooks/git` (HMAC-authed), and `/v1/deploy-hooks/{token}` (secret-URL-authed) are outside the authenticated rate-limit gate. Deploy hooks enforce their own fixed per-token budget of six/minute with a burst of two and the same 429 + `Retry-After` contract.
+Exemptions: `GET /healthz` (liveness), `POST /v1/webhooks/git` and `/v1/webhooks/stripe` (HMAC-authed, their own IP-keyed `BEX_WEBHOOK_RATE_LIMIT`), and `/v1/deploy-hooks/{token}` (secret-URL-authed) are outside the authenticated rate-limit gate. Deploy hooks spend a per-token bucket and their service's deploy row (ten a minute each, the same 429 + `Retry-After` contract). The internal listener on `:8091` (the SSH gateway's, Kratos's, the object gateway's and the operator-run verbs, each behind its own credential) has no rate limiter; the reconciler runs in process, and the operator never calls bex-api.
 
 **Pre-auth admission (w1/m67 F1).** The per-caller bucket above runs _inside_ the auth gate — it keys on the resolved Identity, so it structurally cannot bound the work of **resolving** an Identity. Inactive tokens are deliberately never cached (a negative cache would mask a revocation) and singleflight only coalesces _identical_ tokens, so before m67 every unique invalid bearer or session credential bought exactly one Hydra introspection or Kratos whoami, from an anonymous caller, with nothing in the request path able to stop it.
 
@@ -731,7 +749,7 @@ Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Ret
 - **The caps are counted in memory by each bex-api process.** Production runs two replicas (`lego/operator/config/prod/kustomization.yaml`, `/spec/replicas: 2`), so one subject's ceiling is up to twice the configured share, depending on how the load balancer spreads its connections.
 - **Measured 2026-09-15 on production** as the QA user, with twelve concurrent tails of one idle cron job: tails 1–10 were accepted and held open, and tails 11 and 12 got the 429.
 
-All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (per-plan differentiated budgets are a follow-up once real traffic data exists).
+All limits but Render's rows and the sandbox table are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely, those rows included (per-plan differentiated budgets are a follow-up once real traffic data exists).
 
 **Sandbox operations have their own budgets (w22/m443).** A `/v1/sandboxes` or `/v1/sandbox-groups` call, and the same operation as a GraphQL field or an MCP tool, spends one of Render's seven per-user, per-operation classes instead of the general budget above ([ADR104 D7 § API rate limits](ADR104-sandbox-render-parity.md#api-rate-limits-w22m443)). The rates are Render's and have no environment variable; `BEX_RATE_LIMIT=0` turns them off too. The public sandbox connect redeem routes take `BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT`'s figure per address, but only a token that does not redeem spends it.
 

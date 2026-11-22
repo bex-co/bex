@@ -18,6 +18,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -145,6 +146,29 @@ func (rl *KeyedRateLimiter[K]) Entries() int {
 	return len(rl.entries)
 }
 
+// RateLimitUser is the bucket key of the person behind a request, for a limit
+// Render applies "for your user": the subject of a session or an OAuth grant,
+// or the creator of an API key, so a user's keys share that user's buckets.
+// keys is the cached lookup that caps a key at its creator's role
+// (Base.KeyCreators); nil, or a key with no recorded creator, leaves the key
+// a caller of its own. A request with no identity is "local".
+func RateLimitUser(ctx context.Context, keys KeyCreatorResolver) string {
+	id, ok := IdentityFrom(ctx)
+	if !ok || id.Subject == "" {
+		return "local"
+	}
+	if !id.IsAPIKey() {
+		return "user:" + id.Subject
+	}
+	clientID := id.KeyClientID()
+	if keys != nil {
+		if creator, _, err := keys.APIKeyCreator(ctx, clientID); err == nil && creator != "" {
+			return "user:" + creator
+		}
+	}
+	return "key:" + clientID
+}
+
 // SetRateLimitHeaders writes Render's RateLimit-Limit, RateLimit-Remaining and
 // RateLimit-Reset for the tightest of buckets, after this request's token is
 // taken (w8/147). On a token bucket the limit is its burst, remaining is the
@@ -196,6 +220,20 @@ func ReserveEach(now time.Time, n int, buckets ...*rate.Limiter) (taken []*rate.
 		}
 	}
 	return taken, 0
+}
+
+// ChargeRateLimit takes one token from every bucket at now, or none. On a
+// refusal it writes the refusal's Retry-After and RateLimit headers to h (nil
+// writes nothing) and returns the surface's 429 coded code: what a GraphQL
+// field or an MCP tool with a budget of its own answers.
+func ChargeRateLimit(h http.Header, now time.Time, code string, buckets ...*rate.Limiter) error {
+	taken, wait := ReserveEach(now, 1, buckets...)
+	if wait == 0 {
+		return nil
+	}
+	seconds := SetRateLimitRefusal(h, now, wait, buckets[:len(taken)]...)
+	return NewTooManyRequestsError(code, fmt.Sprintf("rate limit exceeded; retry in %d seconds", seconds),
+		map[string]any{"retryAfterSeconds": seconds})
 }
 
 // SetRateLimitRefusal writes a refused request's Retry-After (whole seconds,

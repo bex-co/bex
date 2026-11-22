@@ -716,7 +716,7 @@ type renderRequestValidator struct {
 	contract *renderOpenAPIContract
 }
 
-func newRenderRequestValidator(next *http.ServeMux) (http.Handler, error) {
+func newRenderRequestValidator(next *http.ServeMux) (*renderRequestValidator, error) {
 	contract, err := renderContractOnce()
 	if err != nil {
 		return nil, err

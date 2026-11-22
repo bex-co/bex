@@ -273,6 +273,11 @@ type Service struct {
 	// hook endpoint. It is deliberately separate from api.RateLimiter, whose
 	// buckets are keyed by authenticated caller. Nil uses the fixed v1 default.
 	DeployHookLimiter *DeployHookRateLimiter
+	// ServiceDeployRate is Render's deploy row, ten a minute per service, keyed
+	// by srv- id (w8/410): a hook call spends its service's bucket, the one the
+	// REST update, deploy, resume and suspend routes spend. Nil when the API
+	// limiter is off (BEX_RATE_LIMIT=0); the per-token bucket still applies.
+	ServiceDeployRate *core.KeyedRateLimiter[string]
 	// BuildNamespace is BEX_BUILD_NAMESPACE — the namespace Cancel looks for a
 	// repo-backed App's in-flight build Job in (lego/operator's own build
 	// namespace, must match so the Job identity resolves); empty falls back to

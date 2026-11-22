@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/time/rate"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -53,11 +54,13 @@ const (
 	deployHookTokenPrefix      = "dhk-"
 	deployHookTokenBytes       = 32 // 256 bits; intentionally stronger than xid
 
-	// The v1 trigger budget is fixed and per token. A two-request burst tolerates
-	// one immediate CI retry; sustained calls refill at six per minute. This is
+	// The per-token budget is Render's deploy row, ten a minute per service
+	// (w8/410): a token names one service, so it never refuses what the
+	// service's bucket (Service.ServiceDeployRate) admits, and it bounds the
+	// lookups a leaked token can drive before the service is known. It is
 	// independent of BEX_RATE_LIMIT because hook requests have no caller identity.
-	DefaultDeployHookRPM   = 6.0
-	DefaultDeployHookBurst = 2
+	DefaultDeployHookRPM   = 10.0
+	DefaultDeployHookBurst = 10
 
 	deployHookLimiterIdle       = 10 * time.Minute
 	deployHookLimiterSweepEvery = 5 * time.Minute
@@ -314,8 +317,7 @@ func (rl *DeployHookRateLimiter) reserve(h http.Header, token string) (bool, tim
 	if rl == nil {
 		return true, 0
 	}
-	key := sha256.Sum256([]byte(token))
-	lim := rl.Bucket(key)
+	lim := rl.bucket(token)
 	res := lim.Reserve()
 	if delay := res.Delay(); delay > 0 {
 		res.Cancel()
@@ -324,6 +326,14 @@ func (rl *DeployHookRateLimiter) reserve(h http.Header, token string) (bool, tim
 	}
 	core.SetRateLimitHeaders(h, time.Now(), false, lim)
 	return true, 0
+}
+
+// bucket is the token's bucket, keyed by its digest; nil for a nil limiter.
+func (rl *DeployHookRateLimiter) bucket(token string) *rate.Limiter {
+	if rl == nil {
+		return nil
+	}
+	return rl.Bucket(sha256.Sum256([]byte(token)))
 }
 
 // DeployHookHandler serves the open credential-gated endpoint. It accepts GET
@@ -363,17 +373,15 @@ func (s *Service) DeployHookHandler() http.Handler {
 			return
 		}
 		if ok, retry := limiter.reserve(w.Header(), token); !ok {
-			seconds := max(1, int(math.Ceil(retry.Seconds())))
-			w.Header().Set("Retry-After", strconv.Itoa(seconds))
-			core.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
-				"id":      "rate_limited",
-				"message": "deploy hook rate limit exceeded; see Retry-After header",
-			})
+			writeDeployHookRateLimited(w, retry)
 			return
 		}
 		a, err := s.appForDeployHookToken(r.Context(), token)
 		if err != nil {
 			core.WriteErr(w, err)
+			return
+		}
+		if !s.reserveServiceDeploy(w, a, limiter.bucket(token)) {
 			return
 		}
 		// codex #6: enforce the same billing lifecycle gate as the authenticated
@@ -407,6 +415,40 @@ func (s *Service) DeployHookHandler() http.Handler {
 		core.WriteJSON(w, http.StatusOK, map[string]any{
 			"deploy": map[string]string{"id": d.ID},
 		})
+	})
+}
+
+// reserveServiceDeploy spends one token of the hook's service from Render's
+// deploy row, the bucket its REST deploys spend too, and answers the hook's
+// 429 when it is empty. The headers then report the tighter of that bucket and
+// the token's own, which reserve already spent.
+func (s *Service) reserveServiceDeploy(w http.ResponseWriter, a *appv1alpha1.App, token *rate.Limiter) bool {
+	bucket := s.ServiceDeployRate.Bucket(core.AppPublicID(a))
+	if bucket == nil {
+		return true
+	}
+	now := time.Now()
+	if _, wait := core.ReserveEach(now, 1, bucket); wait > 0 {
+		core.SetRateLimitHeaders(w.Header(), now, true, bucket)
+		writeDeployHookRateLimited(w, wait)
+		return false
+	}
+	buckets := []*rate.Limiter{bucket}
+	if token != nil {
+		buckets = append(buckets, token)
+	}
+	core.SetRateLimitHeaders(w.Header(), now, false, buckets...)
+	return true
+}
+
+// writeDeployHookRateLimited answers a refused hook call: Retry-After in whole
+// seconds, at least one, and the hook's 429 body.
+func writeDeployHookRateLimited(w http.ResponseWriter, retry time.Duration) {
+	seconds := max(1, int(math.Ceil(retry.Seconds())))
+	w.Header().Set("Retry-After", strconv.Itoa(seconds))
+	core.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
+		"id":      "rate_limited",
+		"message": "deploy hook rate limit exceeded; see Retry-After header",
 	})
 }
 

@@ -304,6 +304,10 @@ type Server struct {
 	// healthz endpoint is intentionally exempt; the webhook intakes get their own
 	// WebhookRateLimiter below (they mount outside this gate).
 	RateLimiter *RateLimiter
+	// RenderRateLimits, when set (LimitRenderOperations), charges the
+	// Render-contract REST operations and MCP tools to Render's per-endpoint
+	// rows instead of RateLimiter's general budget (w8/410).
+	RenderRateLimits *RenderRateLimits
 	// WebhookRateLimiter, when set, meters the two unauthenticated webhook intakes
 	// (POST /v1/webhooks/git, /v1/webhooks/stripe) with an IP-keyed token bucket so
 	// a flood sheds with 429 BEFORE the body read and HMAC/signature verification
@@ -1744,6 +1748,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	if err != nil {
 		return serverMuxes{}, err
 	}
+	restRL := s.restRateLimitMiddleware(restMux, rest.contract)
 	// bodyLimit is innermost: auth (bearer/cookie — never the body) and the
 	// identity-keyed rate limiter both admit the request before its body is
 	// buffered, so an unauthenticated or throttled caller is rejected without the
@@ -1754,7 +1759,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(s.MaxBodyBytes)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
+	mux.Handle(restMountPattern, auth(restRL(withValidQueryText(restBodyLimit(s.MaxBodyBytes)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies). Both carry the
@@ -2357,6 +2362,9 @@ func (s *Server) buildMCPServerFor(toolset map[string]struct{}) *mcp.Server {
 	}
 	srv.AddReceivingMiddleware(mcpArgumentValueRedaction)
 	srv.AddReceivingMiddleware(mcpWorkspaceMiddleware(base, s.requireMCPScope))
+	// Outside the workspace and scope gate, as the REST limiter is: a Render
+	// tool call spends its row whether or not the gate then refuses it.
+	srv.AddReceivingMiddleware(s.mcpRenderRateLimits)
 	// Added last => outermost (the SDK wraps the current handler), so a call the
 	// workspace/scope gate above refuses is still timed, as denied.
 	if s.OriginMetrics != nil {
