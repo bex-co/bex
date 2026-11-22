@@ -136,6 +136,36 @@ func TestBuildFailureClassesStayDistinct(t *testing.T) {
 	}
 }
 
+// TestBuildFailureMessageReadsBackAsTheBuildsOwnFailure is w8/393: bex-api
+// closes a failed build's log with Render's `==> Build failed 😞` only when
+// the reason says the build's own work failed. A tenant fault and an
+// unclassified one, with or without a tail, must read back that way; an
+// infrastructure fault, a platform fetch and a timeout must not.
+func TestBuildFailureMessageReadsBackAsTheBuildsOwnFailure(t *testing.T) {
+	for _, fault := range []build.Fault{build.FaultTenant, build.FaultNone} {
+		for _, obs := range []build.Observation{
+			{Fault: fault, FailedStep: "build command", Tail: "error: build command 'exit 3' exited with code 3"},
+			{Fault: fault, FailedStep: "docker build"},
+			{Fault: fault, Tail: "boom"},
+			{Fault: fault},
+		} {
+			if msg := buildFailureMessage(viewForBuildFault(fault), obs); !appv1alpha1.IsBuildFailed(msg) {
+				t.Errorf("%s: %q does not read back as the build's own failure", fault, msg)
+			}
+		}
+	}
+	fetch := build.PlatformFetch{Tool: "Hugo toolchain", Host: "github.com", Status: "504"}
+	for _, obs := range []build.Observation{
+		{Fault: build.FaultInfra, FailedStep: "image push", Tail: "error: 502"},
+		{Fault: build.FaultInfra, FailedStep: "docker build", PlatformFetch: &fetch},
+		{Fault: build.FaultTimeout},
+	} {
+		if msg := buildFailureMessage(viewForBuildFault(obs.Fault), obs); appv1alpha1.IsBuildFailed(msg) {
+			t.Errorf("%s: %q reads as the build's own failure", obs.Fault, msg)
+		}
+	}
+}
+
 // TestStampBuildRun pins the failure-path timing projection (w6/m123): a
 // reported window lands on the App status attributed to the release
 // generation; an unreported one (zero times) writes nothing, so bex-api leaves

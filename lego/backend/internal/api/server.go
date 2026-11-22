@@ -1018,7 +1018,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			for _, r := range rows {
 				out = append(out, logs.DeployProgress{ID: r.ID, Generation: r.Generation, Status: r.Status, Image: store.PublicImageRef(r.Image), Commit: r.Commit, FailureReason: r.FailureReason, DetectedHTTPPort: r.DetectedHTTPPort, CreatedAt: r.CreatedAt, Built: built[r.ID],
 					StartedAt: at(r.StartedAt), FinishedAt: at(r.FinishedAt), PortScanSince: at(r.PortScanSince), PortScanUntil: at(r.PortScanUntil),
-					PortScanFound: r.PortScanFound, PortScanFoundAt: at(r.PortScanFoundAt), TimedOut: r.TimedOutSeconds > 0, ReadAt: readAt})
+					PortScanFound: r.PortScanFound, PortScanFoundAt: at(r.PortScanFoundAt), TimedOut: r.End.TimedOutSeconds > 0, ExitCode: r.End.ExitCode, OOMKilled: r.End.OOMKilled, ReadAt: readAt})
 			}
 			return out, nil
 		}

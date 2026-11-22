@@ -1040,13 +1040,13 @@ func TestFollowBuildLogsEmitsTerminalLineOnce(t *testing.T) {
 }
 
 func TestTerminalLinesAppendFailureReason(t *testing.T) {
-	if got := terminalLines("update_failed", "web_service", "", false); !slices.Equal(got, []string{"==> Deploy failed"}) {
+	if got := terminalLines("update_failed", "web_service", ""); !slices.Equal(got, []string{"==> Deploy failed"}) {
 		t.Fatalf("empty reason = %v", got)
 	}
-	if got := terminalLines("update_failed", "web_service", `clone: missing "public"`, false); !slices.Equal(got, []string{`==> Deploy failed: clone: missing "public"`}) {
+	if got := terminalLines("update_failed", "web_service", `clone: missing "public"`); !slices.Equal(got, []string{`==> Deploy failed: clone: missing "public"`}) {
 		t.Fatalf("single-line reason = %v", got)
 	}
-	if got := terminalLines("pre_deploy_failed", "web_service", "exit 128\nfatal detail", false); !slices.Equal(got, []string{
+	if got := terminalLines("pre_deploy_failed", "web_service", "exit 128\nfatal detail"); !slices.Equal(got, []string{
 		"==> Pre-deploy failed: exit 128",
 		"==> fatal detail",
 	}) {
@@ -1055,7 +1055,7 @@ func TestTerminalLinesAppendFailureReason(t *testing.T) {
 	// A native build's tail quotes bex's own narration lines (w8/369): each
 	// keeps a single marker, and a line that is only a marker drops out.
 	if got := terminalLines("build_failed", "web_service",
-		"build failed in the build command step:\n==> Installing Bundler 2.5.23 (from Gemfile.lock)\n==>\n==> ==> nested\nerror: build command 'bundle install' exited with code 5", false); !slices.Equal(got, []string{
+		"build failed in the build command step:\n==> Installing Bundler 2.5.23 (from Gemfile.lock)\n==>\n==> ==> nested\nerror: build command 'bundle install' exited with code 5"); !slices.Equal(got, []string{
 		"==> Build failed: build failed in the build command step:",
 		"==> Installing Bundler 2.5.23 (from Gemfile.lock)",
 		"==> nested",
@@ -1063,10 +1063,10 @@ func TestTerminalLinesAppendFailureReason(t *testing.T) {
 	}) {
 		t.Fatalf("marked tail = %v", got)
 	}
-	if got := terminalLines("update_failed", "web_service", "==> rollout stalled", false); !slices.Equal(got, []string{"==> Deploy failed: rollout stalled"}) {
+	if got := terminalLines("update_failed", "web_service", "==> rollout stalled"); !slices.Equal(got, []string{"==> Deploy failed: rollout stalled"}) {
 		t.Fatalf("marked first line = %v", got)
 	}
-	if got := terminalLines("live", "web_service", "should-not-appear", false); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
+	if got := terminalLines("live", "web_service", "should-not-appear"); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
 		t.Fatalf("success must ignore a stray reason: %v", got)
 	}
 }
@@ -1095,7 +1095,61 @@ func TestTerminalLinesCloseARolloutTimeoutAsRendersDo(t *testing.T) {
 		{"live", "live", "", true, []string{"==> Your service is live 🎉"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			if got := terminalLines(c.status, "web_service", c.reason, c.timedOut); !slices.Equal(got, c.want) {
+			if got := closingLines(DeployProgress{Status: c.status, FailureReason: c.reason, TimedOut: c.timedOut}, "web_service"); !slices.Equal(got, c.want) {
+				t.Fatalf("closing = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo is w8/393: a build
+// whose own work failed closes with Render's `==> Build failed 😞`, and a start
+// command that exited with `==> Exited with status N`, each followed by the
+// troubleshooting line and naming no cause. A failure whose Render close is
+// not observed keeps bex's line with its cause: a build that timed out, hit an
+// infrastructure fault or never started, a pre-deploy failure, an image pull
+// failure and an out-of-memory kill.
+func TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo(t *testing.T) {
+	exit := func(code int32) *int32 { return &code }
+	const troubleshoot = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
+	rendersBuildFailed := []string{"==> Build failed 😞", troubleshoot}
+	exited := func(code string) []string { return []string{"==> Exited with status " + code, troubleshoot} }
+	const (
+		command   = "build failed in the build command step:\n==> Running build command 'exit 3'...\nerror: build command 'exit 3' exited with code 3"
+		crash     = "container exited shortly after start and its instance has stopped (last exit code 1) — check the service logs for the crash output."
+		infra     = "build failed for an infrastructure reason and was retried — this was not caused by a change in your code; trigger a new deploy to retry, and contact support if it keeps happening"
+		buildTime = "build exceeded its time limit (60 minutes) — reduce work done at build time, or enable the build cache so unchanged layers are reused"
+		pull      = "the image docker.io/library/nope:1 was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists"
+		oom       = "the instance ran out of memory during startup (512Mi limit on its compute plan; exit code 137) — reduce memory use or choose a larger compute plan"
+	)
+	for _, c := range []struct {
+		name string
+		d    DeployProgress
+		want []string
+	}{
+		{"the build command failed", DeployProgress{Status: "build_failed", FailureReason: command}, rendersBuildFailed},
+		{"a Dockerfile step failed with no tail", DeployProgress{Status: "build_failed",
+			FailureReason: "build failed in the docker build step — check the build logs for the failing step's output"}, rendersBuildFailed},
+		{"a missing publish directory", DeployProgress{Status: "build_failed",
+			FailureReason: "build failed in the publish directory step:\nPublish directory nope does not exist!"}, rendersBuildFailed},
+		{"an infrastructure fault", DeployProgress{Status: "build_failed", FailureReason: infra}, []string{"==> Build failed: " + infra}},
+		{"the build's time limit", DeployProgress{Status: "build_failed", FailureReason: buildTime}, []string{"==> Build failed: " + buildTime}},
+		{"a build that never started", DeployProgress{Status: "build_failed", FailureReason: "the build never started: waiting"},
+			[]string{"==> Build failed: the build never started: waiting"}},
+		{"a build with no reason", DeployProgress{Status: "build_failed"}, []string{"==> Build failed"}},
+		{"a start command that exited 1", DeployProgress{Status: "update_failed", FailureReason: crash, ExitCode: exit(1)}, exited("1")},
+		{"a start command that exited 2", DeployProgress{Status: "update_failed", FailureReason: crash, ExitCode: exit(2)}, exited("2")},
+		{"a start command that exited 0", DeployProgress{Status: "update_failed", FailureReason: crash, ExitCode: exit(0)}, exited("0")},
+		{"an exit and then the budget ran out", DeployProgress{Status: "update_failed", FailureReason: crash, ExitCode: exit(0), TimedOut: true}, rendersTimeout},
+		{"killed for memory", DeployProgress{Status: "update_failed", FailureReason: oom, ExitCode: exit(137), OOMKilled: true},
+			[]string{"==> Deploy failed: " + oom}},
+		{"an image pull failure", DeployProgress{Status: "update_failed", FailureReason: pull}, []string{"==> Deploy failed: " + pull}},
+		{"a pre-deploy command that exited", DeployProgress{Status: "pre_deploy_failed", FailureReason: "the pre-deploy command exited with code 3; check the pre-deploy logs", ExitCode: exit(3)},
+			[]string{"==> Pre-deploy failed: the pre-deploy command exited with code 3; check the pre-deploy logs"}},
+		{"a build failure's reason on a live deploy", DeployProgress{Status: "live", FailureReason: command, ExitCode: exit(1)}, []string{"==> Your service is live 🎉"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := closingLines(c.d, "web_service"); !slices.Equal(got, c.want) {
 				t.Fatalf("closing = %q, want %q", got, c.want)
 			}
 		})

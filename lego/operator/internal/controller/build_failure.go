@@ -40,7 +40,7 @@ var buildFaultViews = map[build.Fault]buildFaultView{
 	build.FaultTenant: {
 		outcome: buildOutcomeUserFailed,
 		reason:  appv1alpha1.ReasonBuildFailedUserError,
-		message: "build failed",
+		message: appv1alpha1.BuildFailedMessage,
 	},
 	build.FaultInfra: {
 		outcome: buildOutcomeInfraFailed,
@@ -61,7 +61,7 @@ var buildFaultViews = map[build.Fault]buildFaultView{
 var unclassifiedBuildFailure = buildFaultView{
 	outcome: buildOutcomeFailed,
 	reason:  appv1alpha1.ReasonBuildFailed,
-	message: "build failed",
+	message: appv1alpha1.BuildFailedMessage,
 }
 
 func viewForBuildFault(f build.Fault) buildFaultView {
@@ -96,14 +96,9 @@ func buildFailureMessage(v buildFaultView, obs build.Observation) string {
 	}
 	// FaultTenant and the unclassified fallback: quote the failing step's own
 	// output when the capture survived, otherwise point at the build logs.
-	step := ""
-	if obs.FailedStep != "" {
-		step = " in the " + obs.FailedStep + " step"
-	}
-	if obs.Tail == "" {
-		return fmt.Sprintf("%s%s — check the build logs for the failing step's output", v.message, step)
-	}
-	return fmt.Sprintf("%s%s:\n%s", v.message, step, obs.Tail)
+	// bex-api reads this wording back to close the build's log as Render's
+	// does (appv1alpha1.IsBuildFailed, w8/393).
+	return appv1alpha1.FormatBuildFailed(obs.FailedStep, obs.Tail)
 }
 
 // platformFetchMessage names a toolchain bex supplies that failed to arrive

@@ -87,7 +87,13 @@ type DeployProgress struct {
 	// its budget (the close's DeployEnd.TimedOutSeconds, w8/m146), which the
 	// log closes with Render's timeout lines (w8/391).
 	TimedOut bool
-	ReadAt   time.Time
+	// ExitCode is how the app container last exited, as the close recorded
+	// it (DeployEnd.ExitCode, w8/m146); nil when nothing exited. OOMKilled
+	// reports that the kernel killed it for memory. A start command that
+	// exited closes the log with Render's exit lines (w8/393).
+	ExitCode  *int32
+	OOMKilled bool
+	ReadAt    time.Time
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -417,7 +423,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			add(d.FinishedAt, "==> "+appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected,
 				appv1alpha1.DeployReasonParam{Name: "port", Value: fmt.Sprint(d.DetectedHTTPPort)}))
 		}
-		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason, d.TimedOut) {
+		for _, msg := range closingLines(d, pc.serviceType) {
 			add(d.FinishedAt, msg)
 		}
 	}
@@ -581,27 +587,61 @@ func hookEnd(d DeployProgress, h hookRun) time.Time {
 	return h.finishedAt.Add(time.Second)
 }
 
-// Render's closing lines for a deploy that ran out its rollout budget
-// (w8/391), from deploy logs users quoted in GitHub issues: since 2026-05 the
-// verdict carries no cause (vincentbellemare90-commits/Mon-bot#1,
-// frayel/devagent#38 and #62), and the troubleshooting line follows it in the
-// same instant (docs/ADR018-render-parity.md § Logs, Build logs).
+// Render's closing lines for a failed deploy, from deploy logs users quoted
+// in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): the
+// verdict carries no cause, and the troubleshooting line follows it in the
+// same instant. A deploy that ran out its rollout budget reads `==> Timed Out`
+// since 2026-05 (vincentbellemare90-commits/Mon-bot#1, frayel/devagent#38 and
+// #62; w8/391). A failed build reads `==> Build failed 😞` after its output
+// (thedimlebowski/soakup#35, thephm/the-beans#417, zerot-atomic/
+// TaskManagerDevOps#20), and a start command that exited `==> Exited with
+// status N` (rkendel1/freq#187 and #191, darthjee/ward#109; w8/393).
 const (
 	timedOutLine     = "==> Timed Out"
+	buildFailedLine  = "==> Build failed 😞"
 	troubleshootLine = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
 )
 
-// terminalLines maps a terminal deploy status to its closing line(s). An empty
-// reason keeps the historical bare line (w1/m48); a non-empty reason is
+// closingLines is a finished deploy's closing line(s): Render's verdict and
+// troubleshooting line for a failure Render's logs confirm, and bex's own
+// terminalLines for the rest. Render's verdict names no cause; the deploy's
+// failureReason and its page's header carry it, as Render shows its own.
+func closingLines(d DeployProgress, serviceType string) []string {
+	if verdict := rendersVerdict(d); verdict != "" {
+		return []string{verdict, troubleshootLine}
+	}
+	return terminalLines(d.Status, serviceType, d.FailureReason)
+}
+
+// rendersVerdict is Render's verdict line for a failed deploy whose close
+// Render's logs confirm, "" otherwise: a build whose own work failed (not one
+// that timed out, hit an infrastructure fault or never ran), a rollout that
+// ran out its budget, and a start command that exited, not one the kernel
+// killed for memory. Render's lines for a pre-deploy failure, an image pull
+// failure and an out-of-memory kill are not observed, so those keep bex's.
+func rendersVerdict(d DeployProgress) string {
+	switch d.Status {
+	case "build_failed":
+		if appv1alpha1.IsBuildFailed(strings.TrimSpace(d.FailureReason)) {
+			return buildFailedLine
+		}
+	case "update_failed":
+		switch {
+		case d.TimedOut:
+			return timedOutLine
+		case d.ExitCode != nil && !d.OOMKilled:
+			return fmt.Sprintf("==> Exited with status %d", *d.ExitCode)
+		}
+	}
+	return ""
+}
+
+// terminalLines maps a terminal deploy status to bex's closing line(s). An
+// empty reason keeps the historical bare line (w1/m48); a non-empty reason is
 // appended so the CLI's type=build narration carries the same cause the events
 // feed already exposes as failureReason (w5/064). Multi-line reasons become
-// one stream line per segment (the feed is line-oriented). A deploy that ran
-// out its rollout budget closes with Render's timeout lines instead, and its
-// cause stays on the deploy, where Render shows its own (w8/391).
-func terminalLines(status, serviceType, reason string, timedOut bool) []string {
-	if status == "update_failed" && timedOut {
-		return []string{timedOutLine, troubleshootLine}
-	}
+// one stream line per segment (the feed is line-oriented).
+func terminalLines(status, serviceType, reason string) []string {
 	base := terminalLine(status, serviceType)
 	if base == "" {
 		return nil

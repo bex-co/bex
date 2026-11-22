@@ -469,10 +469,12 @@ type Deploy struct {
 	// PortScanFoundAt when (w8/388). "" and nil are neither.
 	PortScanFound   appv1alpha1.PortScanFinding `json:"-"`
 	PortScanFoundAt *time.Time                  `json:"-"`
-	// TimedOutSeconds is the rollout budget a failed deploy ran out of, the
-	// DeployEnd its close recorded; zero for every other deploy. The deploy
-	// log closes such a deploy as Render's does (w8/391).
-	TimedOutSeconds int32 `json:"-"`
+	// End is the structured cause a failed deploy's close recorded (w8/m146):
+	// the app container's last exit, an OOM kill, the rollout budget it ran
+	// out of; the zero value for every other deploy. The deploy log closes a
+	// start command that exited and a spent budget as Render's does (w8/391,
+	// w8/393).
+	End DeployEnd `json:"-"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -3332,12 +3334,12 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_timed_out_seconds`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.TimedOutSeconds}, extra...)...)
+	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds}, extra...)...)
 	return d, err
 }
 

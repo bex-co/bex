@@ -137,12 +137,19 @@ func TestPGDeployEndReasonReachesEventReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.TimedOutSeconds != 900 || len(listed) != 1 || listed[0].TimedOutSeconds != 900 {
-		t.Fatalf("timed-out deploy reads %d by id and %+v listed, want 900", got.TimedOutSeconds, listed)
+	if got.End.TimedOutSeconds != 900 || got.End.ExitCode != nil || len(listed) != 1 || listed[0].End.TimedOutSeconds != 900 {
+		t.Fatalf("timed-out deploy reads %+v by id and %+v listed, want 900", got.End, listed)
 	}
-	for appID, id := range map[string]string{app.ID: app.FirstDeployID, clean.ID: clean.FirstDeployID} {
-		if d, err := st.GetDeploy(ctx, appID, id); err != nil || d.TimedOutSeconds != 0 {
-			t.Fatalf("deploy %s closed before its deadline reads (%d, %v), want 0", id, d.TimedOutSeconds, err)
+	// w8/393: the deploy reads carry the exit a crash's close recorded, so
+	// the deploy log closes it with Render's `==> Exited with status N`.
+	for _, c := range []struct {
+		appID, id string
+		exit      int32
+		oom       bool
+	}{{app.ID, app.FirstDeployID, 1, true}, {clean.ID, clean.FirstDeployID, 0, false}} {
+		d, err := st.GetDeploy(ctx, c.appID, c.id)
+		if err != nil || d.End.TimedOutSeconds != 0 || d.End.ExitCode == nil || *d.End.ExitCode != c.exit || d.End.OOMKilled != c.oom {
+			t.Fatalf("deploy %s closed before its deadline reads (%+v, %v), want exit %d, OOM %v, no budget", c.id, d.End, err, c.exit, c.oom)
 		}
 	}
 }
