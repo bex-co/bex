@@ -1,6 +1,6 @@
 # w6 · m559 — A disk service's volume stays on its node through a same-node deploy or restart
 
-**Worker:** worker6 **Goal:** when a deploy, restart or plan change of a disk-bearing service starts its new instance on the node its volume is attached to, the volume never leaves that node in between. A minimal holder pod keeps it in use there through the swap, so the attach/detach controller has no moment to detach it, and the kubelet keeps it mounted for the new instance. **Status:** blocked (t001–t004, t006 and t007 done; t005 waits for the production pin)
+**Worker:** worker6 **Goal:** when a deploy, restart or plan change of a disk-bearing service starts its new instance on the node its volume is attached to, the volume never leaves that node in between. A minimal holder pod keeps it in use there through the swap, so the attach/detach controller has no moment to detach it, and the kubelet keeps it mounted for the new instance. **Status:** blocked (t001–t004, t006 and t007 done; t005 waits for the pin that carries the holder's CPU fix)
 
 ## Tasks (in order)
 
@@ -42,7 +42,7 @@ The note offered two options. This milestone takes the first.
 - **2. Return to the 10 s sync: rejected.** It lowers the odds but does not close the race. A sync lands inside a 0.3–0.6 s gap on about 15–30 % of swaps at 2 s, and on about 3–6 % at 10 s. It would also bring back the mount wait t010 removed, 1.7–8.6 s on every same-node swap, and up to 8.1 s before a move's detach.
 - **The 2 s sync stays.** With the holder, a same-node swap no longer depends on the sync period, and 2 s still shortens a move: the old node reported a leaving volume free in 1.3 s in t005, against 1.0–8.1 s at 10 s in t001. t004 records this in ADR082. t005 confirms it, unless the measurement shows a cost from the 2 s sync.
 
-## BLOCKED — 2026-11-21: t005 waits for the production pin
+## Parked — 2026-11-21: t005 waited for the production pin (cleared 2026-11-22)
 
 - **Shipped (`dd8dfaaf00`):**
   - a disk-bearing App's `Recreate` rollout holds its volume on its node with the holder Job `dskhld-<app>`. The template is written once the holder's pod has the volume mounted, and the holder ends once the new instance has mounted it there, or at once when the new instance lands elsewhere. Every failure to hold rolls as before (t001, t002);
@@ -50,4 +50,15 @@ The note offered two options. This milestone takes the first.
   - ADR082 § D3, ADR004 and ADR018 record the holder and the 2 s sync decision (t004);
   - Simplify and Test coverage ran with the code (t006, t007);
   - [w6/165](../../165.md) files the one swap the holder does not cover, the restore of a served release after a failed rollout.
-- **Gate (clears by itself): pin must carry `dd8dfaaf00`.** Then t005 runs ten or more same-node deploys and restarts and a cordoned run of a disk-bearing Starter fixture in `bex-canary` on a `bex-tenant-0` node, as [m547 t005](../m547/done/t005.md) did. It checks that no `DetachVolume` appears and that no holder is left, records the phase table and the bound in ADR082, and deletes the fixture by id. t008 then closes, and m547's t011 re-measures.
+- **Gate (cleared 2026-11-22): the pin carried `dd8dfaaf00`.** Then t005 was to run ten or more same-node deploys and restarts and a cordoned run of a disk-bearing Starter fixture in `bex-canary` on a `bex-tenant-0` node, as [m547 t005](../m547/done/t005.md) did. It checks that no `DetachVolume` appears and that no holder is left, records the phase table and the bound in ADR082, and deletes the fixture by id. t008 then closes, and m547's t011 re-measures.
+
+## Gate cleared, and t005 found that no rollout held — 2026-11-22
+
+- **Unblock record (verified evidence, `/loopx w6`; affects t005 and t008).** The newest pin, `19fdb46f1758` (`5330be9f54`), carries `dd8dfaaf00` (`git merge-base --is-ancestor dd8dfaaf00 19fdb46f1758`). `bex-controller-manager` and `bex-api` ran that pin's digest, `sha256:7a7051cf219c`. The gate held, so t005 ran. Nothing the user decides is involved.
+- **Finding.** On that pin every holder timed out. Its 10m CPU limit is the quota runc starts the pod's sandbox and container under, and the pod took 24.7 s to start, past the 15 s mount bound. Both runs, a code deploy and a restart, therefore went on without a hold (`fallback_timeout`). Three pause pods of its shape started in 25.4 s at 10m, 2.4 s at 100m and 1.4 s at 500m. The record is in [t005](t005.md).
+- **Fix (`5ada5fbcdc`).** The holder's CPU limit is 500m, a Starter instance's CPU. `TestDiskHolderStartsWellWithinItsMountBound` fails at 10m. ADR082 § D3 records it, and t006 and t007 ran again over it.
+- **Render parity is unchanged.** Render stops the old instance before it starts the new one. The holder only keeps bex's same-node swap inside the few seconds that costs.
+
+## BLOCKED — 2026-11-22: t005 waits for the pin that carries the CPU fix
+
+- **Gate (clears by itself): pin must carry `5ada5fbcdc`.** Then t005 runs in full on a fresh fixture in `bex-canary` on a `bex-tenant-0` node: ten or more same-node deploys and restarts, then a cordoned run. Each same-node run should count `bex_disk_holds_total{result="held"}` and none `fallback_timeout`, the holder should start before the old instance's `SIGTERM`, and no `DetachVolume` should appear. t005 records the phase table and the bound in ADR082 and deletes the fixture by id. t008 then closes, and m547's t011 re-measures.
