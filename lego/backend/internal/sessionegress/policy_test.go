@@ -236,14 +236,26 @@ func TestReleaseAssetHostIsInEveryAllowlistBaseline(t *testing.T) {
 // w10/024: the image's toolchains build a repository with no setup, as on
 // Devin's base image, only if what they fetch is reachable: cargo's sparse
 // crates.io index, the Rust toolchain a rust-toolchain.toml names, the Node an
-// .nvmrc names, and the Gradle wrapper's distribution and plugin portal. Each
-// is in the default catalog, so every allowlist posture and phase, a
-// builder's included, admits it.
+// .nvmrc names, and the Gradle wrapper's distribution and plugin portal.
 func TestToolchainHostsAreInTheDefaultRegistryCatalog(t *testing.T) {
-	hosts := []string{
-		"index.crates.io", "static.rust-lang.org", "nodejs.org",
-		"services.gradle.org", "plugins.gradle.org", "plugins-artifacts.gradle.org",
-	}
+	requireCatalogAdmits(t, "index.crates.io", "static.rust-lang.org", "nodejs.org",
+		"services.gradle.org", "plugins.gradle.org", "plugins-artifacts.gradle.org")
+}
+
+// w4/m544: a pull from Docker Hub needs its token service, its registry and
+// the CDN host a blob read redirects to (production.cloudfront.docker.com,
+// the pull host Docker's allowlist names). The driver fetches an exact
+// PYTHON_VERSION patch from the official image that way, in a session and in
+// a snapshot build; on 2026-11-22 every production fetch failed at the DNS
+// lookup of that host, and the session fell back to the line's baked patch.
+func TestDockerHubPullHostsAreInTheDefaultRegistryCatalog(t *testing.T) {
+	requireCatalogAdmits(t, "auth.docker.io", "registry-1.docker.io", "production.cloudfront.docker.com")
+}
+
+// requireCatalogAdmits checks that each host is in the default catalog, so
+// every allowlist posture and phase, a builder's included, admits it.
+func requireCatalogAdmits(t *testing.T, hosts ...string) {
+	t.Helper()
 	m := &Manager{}
 	for _, tc := range []struct {
 		phase  Phase

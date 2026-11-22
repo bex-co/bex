@@ -609,7 +609,11 @@ var githubDomains = []string{
 // static.rust-lang.org serves the toolchain a rust-toolchain.toml names,
 // nodejs.org the Node an .nvmrc names (`nvm install`), and the Gradle hosts
 // the wrapper's distribution (which redirects to GitHub release assets) and
-// the plugin portal.
+// the plugin portal. Docker Hub answers a blob read with a redirect to its
+// CDN, production.cloudfront.docker.com, the host Docker's allowlist names
+// for pulls (docs.docker.com/desktop/setup/allow-list, read 2026-11-22);
+// without it no layer downloads, so a session could not fetch the exact
+// Python patch its PYTHON_VERSION names (w4/m544).
 var registryDomains = []string{
 	"auth.docker.io",
 	"crates.io",
@@ -621,6 +625,7 @@ var registryDomains = []string{
 	"plugins-artifacts.gradle.org",
 	"plugins.gradle.org",
 	"production.cloudflare.docker.com",
+	"production.cloudfront.docker.com",
 	"proxy.golang.org",
 	"pypi.org",
 	"registry-1.docker.io",
