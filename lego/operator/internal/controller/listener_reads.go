@@ -91,15 +91,9 @@ func (r *AppReconciler) readsListeners() bool {
 // and names no loopback port.
 func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep func(context.Context, string) ([]int, error)) (listeners.Answer, error) {
 	if r.Listeners != nil {
-		readCtx, cancel := context.WithTimeout(ctx, listenerReadTimeout)
-		read, readErr := r.Listeners.PodListeners(readCtx, pod)
-		cancel()
+		read, readErr := r.readerListeners(ctx, pod)
 		if !errors.Is(readErr, errNoListenerReader) {
-			listenerReads.WithLabelValues("reader", readerResult(readErr)).Inc()
-			if readErr != nil {
-				return listeners.Answer{}, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, readErr)
-			}
-			return read, nil
+			return read, readErr
 		}
 		r.noteListenerSweep(ctx, pod.Spec.NodeName)
 	}
@@ -111,6 +105,23 @@ func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep
 	open, err := sweep(scanCtx, pod.Status.PodIP)
 	listenerReads.WithLabelValues("sweep", sweepResult(err)).Inc()
 	return listeners.Answer{Ports: open}, err
+}
+
+// readerListeners is the answer of the reader on pod's node alone, never a
+// sweep: only a reader sees loopback (w8/388). errNoListenerReader when that
+// node runs no reader pod. The caller checks r.Listeners is set.
+func (r *AppReconciler) readerListeners(ctx context.Context, pod *corev1.Pod) (listeners.Answer, error) {
+	readCtx, cancel := context.WithTimeout(ctx, listenerReadTimeout)
+	read, err := r.Listeners.PodListeners(readCtx, pod)
+	cancel()
+	if errors.Is(err, errNoListenerReader) {
+		return listeners.Answer{}, err
+	}
+	listenerReads.WithLabelValues("reader", readerResult(err)).Inc()
+	if err != nil {
+		return listeners.Answer{}, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, err)
+	}
+	return read, nil
 }
 
 // fullSweep connects to every port of ip, for a node without a reader. It is a

@@ -6608,7 +6608,14 @@ func clampReplicas(app *appv1alpha1.App, n int32) int32 {
 func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (string, string) {
 	reason, msg := r.stuckPodMessage(ctx, dep, crashHintPort(app, port))
 	if reason == reasonHealthCheckFailing {
-		msg += imageStallNote(app, port)
+		// A process listening only on localhost serves, so a background
+		// worker is no alternative, and the localhost hint names the fix the
+		// image's port hint would: bind 0.0.0.0 on the port in PORT (w8/394).
+		if localhost := r.detectLocalhostAfterDiscovery(ctx, app, dep, port); localhost != "" {
+			msg += localhost + appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoHTTPDiscovered)
+		} else {
+			msg += imageStallNote(app, port)
+		}
 		msg += r.detectBoundPort(ctx, app, dep, port)
 		msg += r.detectPrivatePrimary(ctx, app, dep, port)
 	}

@@ -261,6 +261,32 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 	}
 }
 
+// detectLocalhostAfterDiscovery is the localhost finding of a web image service
+// whose HTTP discovery ended with no port (w8/394). Discovery names a listener
+// bound only to loopback while its window runs (http_port_localhost_only).
+// After it falls back, the release waits on the any-open-port check, and
+// detectBoundPort leaves an image's port alone, so the stall named only the
+// closed default port, and so did the failure reason at the budget. Only the
+// node's reader sees loopback, so a node without one adds nothing. Between
+// scans it replays the last scan's verdict, as detectBoundPort does.
+func (r *AppReconciler) detectLocalhostAfterDiscovery(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
+	network := app.Status.ImageNetwork
+	if r.Listeners == nil || !discoversWebImagePort(app) || network == nil || network.HTTPSelection != appv1alpha1.HTTPSelectionFallback {
+		return ""
+	}
+	key, pod := r.dueUnreadyScan(ctx, app, dep)
+	if pod == nil {
+		return r.replayPortHint(ctx, key, dep, port)
+	}
+	text := ""
+	if open, err := r.readerListeners(ctx, pod); err == nil && scanFinding(open, nil, false) == appv1alpha1.PortScanLocalhostOnly {
+		text = localhostOnlyMessage(app, port, open.Loopback)
+	} else if err != nil && !errors.Is(err, errNoListenerReader) {
+		logf.FromContext(ctx).Info("listener read failed", "app", app.Name, "error", err.Error())
+	}
+	return r.keepPortHint(key, pod, port, text)
+}
+
 // scanFinding is what a web service's scan found when no listener answers
 // HTTP, in the cases Render names (w8/388): open ports, candidates, that were
 // probed and answer no HTTP; nothing reachable but listeners on loopback;
