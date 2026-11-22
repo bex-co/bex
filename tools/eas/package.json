@@ -3,6 +3,6 @@
   "private": true,
   "description": "eas-cli for the mobile store release, locked by package-lock.json and installed with npm ci",
   "dependencies": {
-    "eas-cli": "24.11.0"
+    "eas-cli": "24.14.0"
   }
 }
