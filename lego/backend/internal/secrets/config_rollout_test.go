@@ -266,9 +266,12 @@ type deferringDeploys struct {
 	inFlight bool
 	waiting  []store.Deploy
 	canceled []string
+	// adopted is each CreateDeferredDeploy's store.AdoptedRelease.
+	adopted []int64
 }
 
-func (d *deferringDeploys) CreateDeferredDeploy(_ context.Context, row store.Deploy, _ store.DeferredRequest) (store.Deploy, bool, error) {
+func (d *deferringDeploys) CreateDeferredDeploy(ctx context.Context, row store.Deploy, _ store.DeferredRequest) (store.Deploy, bool, error) {
+	d.adopted = append(d.adopted, store.AdoptedRelease(ctx))
 	if !d.inFlight {
 		return store.Deploy{}, false, nil
 	}
@@ -302,6 +305,11 @@ func TestDeployingEnvironmentSaveWaitsForTheDeployInFlight(t *testing.T) {
 		return &a
 	}
 	before := getApp()
+	// The operator has adopted release 3 (w8/397).
+	before.Status.ReleaseGeneration = 3
+	if err := svc.Client.Update(ctx, before); err != nil {
+		t.Fatal(err)
+	}
 
 	res, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
 		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "new", ValueSet: true}}, SaveMode: SaveModeDeploy,
@@ -312,6 +320,11 @@ func TestDeployingEnvironmentSaveWaitsForTheDeployInFlight(t *testing.T) {
 	a := getApp()
 	if len(deploys.waiting) != 1 || deploys.waiting[0].Trigger != store.TriggerConfigChange || len(live.rows) != 0 {
 		t.Fatalf("waiting %+v, opened %+v; want one waiting configuration deploy and no release", deploys.waiting, live.rows)
+	}
+	// It waits behind a waiting deploy the operator adopted rather than
+	// replacing it (w8/396, w8/397).
+	if len(deploys.adopted) != 1 || deploys.adopted[0] != 3 {
+		t.Fatalf("waiting deploy opened under adopted releases %v, want [3]", deploys.adopted)
 	}
 	if a.Spec.ReleaseConfig != nil || a.Spec.RestartedAt != before.Spec.RestartedAt ||
 		a.Annotations[appv1alpha1.AnnotationReleaseGeneration] != before.Annotations[appv1alpha1.AnnotationReleaseGeneration] {

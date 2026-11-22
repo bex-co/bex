@@ -52,18 +52,19 @@ func openPGStore(t *testing.T) *store.PGStore {
 
 // adoptedWaiting is a source-built service whose deploy A served while B
 // waited behind it, and whose operator adopted B at once: the reconciler has
-// not yet freed B's pending slot.
+// not yet freed B's pending slot. With aheadRecorded false it has not recorded
+// A live either (w8/397), so A's row still reads executing.
 type adoptedWaiting struct {
 	st      *store.PGStore
 	svc     *Service
 	cl      client.Client
 	appID   string
-	b       store.Deploy
+	a, b    store.Deploy
 	trigger func(label string, want int) store.Deploy
 	get     func(d store.Deploy) store.Deploy
 }
 
-func newAdoptedWaiting(t *testing.T) adoptedWaiting {
+func newAdoptedWaiting(t *testing.T, aheadRecorded bool) adoptedWaiting {
 	t.Helper()
 	ctx := context.Background()
 	st := openPGStore(t)
@@ -122,15 +123,19 @@ func newAdoptedWaiting(t *testing.T) adoptedWaiting {
 		return got
 	}
 
-	a := f.trigger("A", http.StatusCreated)
-	adopt(a.Generation)
-	transition(a, store.DeployBuildInProgress)
+	f.a = f.trigger("A", http.StatusCreated)
+	adopt(f.a.Generation)
+	transition(f.a, store.DeployBuildInProgress)
 	f.b = f.trigger("B", http.StatusAccepted)
 	if !f.b.OverlapPending {
 		t.Fatalf("B = %+v, want it waiting in the pending slot behind A", f.b)
 	}
 	// A serves; the operator adopts B before the reconciler's next pass.
-	transition(a, store.DeployLive)
+	if aheadRecorded {
+		transition(f.a, store.DeployLive)
+	} else {
+		transition(f.a, store.DeployUpdateInProgress)
+	}
 	adopt(f.b.Generation)
 	return f
 }
@@ -168,7 +173,7 @@ func (f adoptedWaiting) inProgress(t *testing.T, when string) {
 // waits behind it. A waiting deploy the operator has not adopted is still
 // replaced (D replaces C).
 func TestRESTTriggerWaitsBehindAWaitingDeployTheOperatorAdopted(t *testing.T) {
-	f := newAdoptedWaiting(t)
+	f := newAdoptedWaiting(t, true)
 	c := f.trigger("C", http.StatusAccepted)
 	f.inProgress(t, "after C")
 	if c.Status != store.DeployQueued || !c.OverlapPending {
@@ -186,7 +191,7 @@ func TestRESTTriggerWaitsBehindAWaitingDeployTheOperatorAdopted(t *testing.T) {
 // with no App change (w5/m284): written to the App, its selection would
 // override B in the operator.
 func TestRestartWaitsBehindAWaitingDeployTheOperatorAdopted(t *testing.T) {
-	f := newAdoptedWaiting(t)
+	f := newAdoptedWaiting(t, true)
 	before := getApp(t, f.cl, "web")
 	r, err := f.svc.Restart(context.Background(), "web")
 	if err != nil {
@@ -199,4 +204,38 @@ func TestRestartWaitsBehindAWaitingDeployTheOperatorAdopted(t *testing.T) {
 		t.Fatal("a restart waiting behind B changed the App")
 	}
 	f.inProgress(t, "after the restart")
+}
+
+// w8/397: a trigger C after the operator adopted B, but before the reconciler
+// recorded A live, used to close B canceled ("Superseded by" C) while the
+// operator ran B to the end, and C then waited for B's whole publish. C now
+// kicks the reconciler, waits for the pass that records A, and answers 202
+// behind B, which keeps running. The pass here records A as the reconciler
+// would (TestPGDeployWaitsForThePassThatRecordsTheDeployAhead runs the
+// reconciler's own recording).
+func TestRESTTriggerWaitsForThePassThatRecordsTheDeployAhead(t *testing.T) {
+	f := newAdoptedWaiting(t, false)
+	passes := make(chan error, 4)
+	f.st.KickReconciler = func() {
+		go func() {
+			_, err := f.st.TransitionDeploy(context.Background(), f.a.ID, store.DeployLive, store.RanImage{}, "", "", "", nil)
+			passes <- err
+		}()
+	}
+	c := f.trigger("C", http.StatusAccepted)
+	select {
+	case err := <-passes:
+		if err != nil {
+			t.Fatalf("the kicked pass: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("C kicked no reconciler pass")
+	}
+	if got := f.get(f.a); got.Status != store.DeployLive {
+		t.Fatalf("A = %s, want live", got.Status)
+	}
+	f.inProgress(t, "after C")
+	if c.Status != store.DeployQueued || !c.OverlapPending {
+		t.Fatalf("C = %+v, want it waiting in the pending slot behind B", c)
+	}
 }

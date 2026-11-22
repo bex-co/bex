@@ -404,6 +404,9 @@ func main() {
 		// classifies a sole-member ops workspace blocked instead of delete.
 		st.OpsWorkspaceID = cfg.OpsWorkspace
 		rec = store.NewReconciler(cl, st)
+		// A deploy opened behind an adopted waiting deploy asks for the pass
+		// that records the deploy ahead (w8/397).
+		st.KickReconciler = rec.Kick
 		rec.ProductObserver = func(ctx context.Context, desired store.DesiredApp, app *appv1alpha1.App) {
 			apps.ObserveProductApp(ctx, st, cl, cfg.BaseDomain, desired, app)
 		}

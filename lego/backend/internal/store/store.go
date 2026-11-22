@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
 	mathrand "math/rand/v2"
 	"slices"
@@ -864,6 +865,12 @@ type PGStore struct {
 	// SandboxCredentialLockTimeout overrides the per-group write lock timeout
 	// for sandbox group credential mutations (default 2s).
 	SandboxCredentialLockTimeout time.Duration
+	// KickReconciler, when set, asks this process's Reconciler for a pass at
+	// once (Reconciler.Kick). A deploy opened behind an adopted waiting deploy
+	// waits for that pass to record the deploy ahead (awaitDeployAheadRecorded).
+	KickReconciler func()
+	// DeployAheadRecordWait bounds that wait (default 5s).
+	DeployAheadRecordWait time.Duration
 	// gitWebhookReplayInstance identifies this API process's signing-epoch
 	// leases. It is process-local and never exposed as a public resource id.
 	gitWebhookReplayInstance string
@@ -2728,6 +2735,9 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 // The app row lock serializes the lookup and insert with every deploy creator.
 func (s *PGStore) EnsureCheckedDeploy(ctx context.Context, appID string, generation int64, commit CommitInfo) (Deploy, error) {
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerNewCommit, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, Status: DeployCreated}
+	if err := s.awaitDeployAheadRecorded(ctx, appID); err != nil {
+		return Deploy{}, classify("checked deploy", err)
+	}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var lockedID string
 		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
@@ -2770,6 +2780,9 @@ func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string
 		return s.promoteDeferredDeploy(ctx, id, appID, image, generation, commit)
 	}
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, BuildID: commit.BuildID, TriggeredBy: triggeredBy, ClearCache: clearCache, Status: DeployCreated}
+	if err := s.awaitDeployAheadRecorded(ctx, appID); err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		return insertDeploy(ctx, tx, &d, replaced(d.ID))
 	})
@@ -2844,7 +2857,8 @@ func AdoptedRelease(ctx context.Context) int64 {
 // (releaseInFlight), so until that pass a newer deploy would cancel a deploy
 // that is running and find nothing to wait behind (w8/396). A deferred deploy
 // (generation 0) has no release yet. While another deploy is still recorded
-// executing, the slot stays as it is.
+// executing, the slot stays as it is: the writer first waits for the
+// reconciler to record that deploy (awaitDeployAheadRecorded, w8/397).
 func adoptWaitingDeploy(ctx context.Context, tx pgx.Tx, appID string) error {
 	adopted := AdoptedRelease(ctx)
 	if adopted <= 0 {
@@ -2856,6 +2870,74 @@ func adoptWaitingDeploy(ctx context.Context, tx pgx.Tx, appID string) error {
 		   AND NOT EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = $1 AND o.status = ANY($4) AND NOT o.overlap_pending)`,
 		appID, DeployQueued, adopted, openDeployStatuses)
 	return err
+}
+
+// defaultDeployAheadRecordWait bounds awaitDeployAheadRecorded. A kicked pass
+// records the deploy ahead within a second or so, and a git host's webhook
+// waits about 10s for its answer.
+const defaultDeployAheadRecordWait = 5 * time.Second
+
+// deployAheadRecordPoll is how often awaitDeployAheadRecorded re-reads.
+const deployAheadRecordPoll = 100 * time.Millisecond
+
+// awaitDeployAheadRecorded holds a deploy about to open under an adopted
+// release (WithAdoptedRelease) while the waiting deploy that release has
+// reached sits behind an older deploy still recorded executing (w8/397). The
+// operator adopts the waiting release as soon as the older one serves, but only
+// the reconciler's next pass records the older row's verdict (recordDeploy).
+// Until then the waiting row cannot leave the pending slot (one executing row
+// per app), so the new deploy would replace a deploy the operator runs to the
+// end. It kicks the reconciler and re-reads until that older row closes or
+// DeployAheadRecordWait passes. It never records a verdict itself and never
+// refuses the deploy: the row then opens as before, and adoptWaitingDeploy
+// frees the slot once nothing older executes. Override, whose new deploy
+// replaces the one in progress, does not wait.
+func (s *PGStore) awaitDeployAheadRecorded(ctx context.Context, appID string) error {
+	adopted := AdoptedRelease(ctx)
+	if adopted <= 0 {
+		return nil
+	}
+	behind, err := s.deployAheadUnrecorded(ctx, appID, adopted)
+	if err != nil || !behind {
+		return err
+	}
+	if s.KickReconciler != nil {
+		s.KickReconciler()
+	}
+	wait := cmp.Or(s.DeployAheadRecordWait, defaultDeployAheadRecordWait)
+	for deadline := time.Now().Add(wait); behind; {
+		if !time.Now().Before(deadline) {
+			log.Printf("store: the deploy ahead of %s's adopted waiting deploy was not recorded within %s; opening the deploy anyway", appID, wait)
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(deployAheadRecordPoll):
+		}
+		if behind, err = s.deployAheadUnrecorded(ctx, appID, adopted); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deployAheadUnrecorded reports awaitDeployAheadRecorded's condition for
+// appID under Wait: a waiting row the adopted release has reached, and an
+// older row still recorded executing whose release adopted has passed, which
+// the reconciler's next pass closes (supersededDeployStatus).
+func (s *PGStore) deployAheadUnrecorded(ctx context.Context, appID string, adopted int64) (bool, error) {
+	var behind bool
+	err := s.Pool.QueryRow(ctx,
+		`SELECT t.overlapping_deploy_policy = $5
+		    AND EXISTS (SELECT 1 FROM deploys w WHERE w.app_id = a.id AND w.overlap_pending AND w.status = $3 AND w.generation > 0 AND w.generation <= $2)
+		    AND EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = a.id AND o.status = ANY($4) AND NOT o.overlap_pending AND o.generation > 0 AND o.generation < $2)
+		 FROM apps a JOIN tenants t ON t.id = a.tenant_id WHERE a.id = $1`,
+		appID, adopted, DeployQueued, openDeployStatuses, OverlapWait).Scan(&behind)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return behind, err
 }
 
 // DeferredRequest is what a deferred deploy asks for beyond its row's own
@@ -2893,6 +2975,9 @@ func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req Deferr
 	replaced := supersededByReason(d.ID)
 	if d.Trigger == TriggerRestart {
 		replaced = restartCanceledReason(d.ID)
+	}
+	if err := s.awaitDeployAheadRecorded(ctx, d.AppID); err != nil {
+		return Deploy{}, false, classify("deploy", err)
 	}
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if err := lockApp(ctx, tx, d.AppID); err != nil {
@@ -3250,6 +3335,9 @@ func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollba
 		return s.promoteDeferredDeploy(ctx, id, appID, image, generation, commit)
 	}
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, BuildID: commit.BuildID, TriggeredBy: triggeredBy, Status: DeployCreated}
+	if err := s.awaitDeployAheadRecorded(ctx, appID); err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, supersededByReason(d.ID))
 		if err != nil {

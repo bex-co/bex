@@ -538,7 +538,9 @@ func (s *Service) deferServedBuildDeploy(ctx context.Context, a *appv1alpha1.App
 	if image, err := s.servedArtifact(ctx, a); err != nil || image == "" {
 		return "", err
 	}
-	d, deferred, err := deferrer.CreateDeferredDeploy(ctx,
+	// A waiting deploy the operator already adopted is in flight: this one
+	// waits behind it rather than replacing it (w8/396, w8/397).
+	d, deferred, err := deferrer.CreateDeferredDeploy(store.WithAdoptedRelease(ctx, a),
 		store.Deploy{AppID: appID, Trigger: store.TriggerConfigChange, TriggeredBy: core.SubjectFrom(ctx)},
 		store.DeferredRequest{})
 	if err != nil || !deferred {
