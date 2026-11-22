@@ -154,25 +154,113 @@ func TestMCPImageCreateRejectsEnabledAndInvalidAutoDeploy(t *testing.T) {
 	}
 }
 
-func TestDeployStackDisabledImageAutoDeploy(t *testing.T) {
-	for _, field := range []string{"autoDeploy: false", "autoDeployTrigger: off"} {
-		svc, cl := newService(nil)
-		raw := "services:\n  - name: image\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n    " + field + "\n"
-		if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: raw}); err != nil {
-			t.Fatal(err)
-		}
-		if getApp(t, cl, "image").Spec.AutoDeploy {
-			t.Fatal("Blueprint enabled image automation")
-		}
-		validation, err := svc.ValidateBlueprint(context.Background(), "", raw, "")
-		if err != nil || !validation.Valid || validation.Plan == nil || len(validation.Plan.Actions) != 1 {
-			t.Fatalf("existing-image plan: %+v, %v", validation, err)
-		}
-		if validation.Plan.Actions[0].Operation != BlueprintPlanNoop {
-			t.Fatalf("disabled image plan was not a no-op: %+v", validation.Plan)
-		}
-		if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: raw}); err != nil {
-			t.Fatalf("reapply disabled image: %v", err)
-		}
+// TestDeployStackImageAutoDeployHasNoEffect: Render's Blueprint spec says
+// autoDeployTrigger "has no effect for services that deploy a prebuilt Docker
+// image", and commit is "Equivalent to the deprecated setting autoDeploy:
+// true". Every spelling plans a create, applies with Auto-Deploy off, and a
+// re-plan under any of them is a no-op (w8/405).
+func TestDeployStackImageAutoDeployHasNoEffect(t *testing.T) {
+	fields := []string{"autoDeploy: false", "autoDeployTrigger: off", "autoDeploy: true",
+		"autoDeployTrigger: commit", "autoDeployTrigger: checksPass"}
+	manifest := func(field string) string {
+		return "services:\n  - name: image\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n    " + field + "\n"
+	}
+	for _, field := range fields {
+		t.Run(field, func(t *testing.T) {
+			svc, cl := newService(nil)
+			raw := manifest(field)
+			validation, err := svc.ValidateBlueprint(context.Background(), "", raw, "")
+			if err != nil || !validation.Valid || validation.Plan == nil || len(validation.Plan.Actions) != 1 ||
+				validation.Plan.Actions[0].Operation != BlueprintPlanCreate {
+				t.Fatalf("new-image plan: %+v, %v", validation, err)
+			}
+			if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: raw}); err != nil {
+				t.Fatal(err)
+			}
+			if spec := getApp(t, cl, "image").Spec; spec.AutoDeploy || spec.AutoDeployTrigger != "" {
+				t.Fatalf("Blueprint gave the image Auto-Deploy: autoDeploy=%v trigger=%q", spec.AutoDeploy, spec.AutoDeployTrigger)
+			}
+			for _, next := range fields {
+				validation, err := svc.ValidateBlueprint(context.Background(), "", manifest(next), "")
+				if err != nil || !validation.Valid || validation.Plan == nil || len(validation.Plan.Actions) != 1 {
+					t.Fatalf("existing-image plan with %q: %+v, %v", next, validation, err)
+				}
+				if validation.Plan.Actions[0].Operation != BlueprintPlanNoop {
+					t.Fatalf("image plan with %q was not a no-op: %+v", next, validation.Plan)
+				}
+			}
+			if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: raw}); err != nil {
+				t.Fatalf("reapply image: %v", err)
+			}
+			if getApp(t, cl, "image").Spec.AutoDeploy {
+				t.Fatal("reapply gave the image Auto-Deploy")
+			}
+		})
+	}
+}
+
+// TestValidateBlueprintImageAutoDeployOnEverySurface is w8/405's repro on
+// REST (what `blueprints validate` posts), GraphQL and MCP: every enabled
+// Auto-Deploy spelling beside an image validates, while an invalid enum and
+// the build inputs Render does not call no-ops stay refused at their paths.
+func TestValidateBlueprintImageAutoDeployOnEverySurface(t *testing.T) {
+	for _, tc := range []struct{ field, refusedAt string }{
+		{"autoDeployTrigger: checksPass", ""},
+		{"autoDeployTrigger: commit", ""},
+		{"autoDeploy: true", ""},
+		{"autoDeployTrigger: bogus", "services[0].autoDeployTrigger"},
+		{"buildCommand: make", "services[0].buildCommand"},
+		{"repo: https://github.com/render-examples/express-hello-world", "services[0].repo"},
+		{"dockerfilePath: ./Dockerfile", "services[0].dockerfilePath"},
+	} {
+		t.Run(tc.field, func(t *testing.T) {
+			manifest := "services:\n  - type: web\n    name: qa-w\n    runtime: image\n    plan: free\n    image:\n      url: docker.io/library/nginx:1.27\n    " + tc.field + "\n"
+			check := func(surface string, valid any, errors []any) {
+				t.Helper()
+				if tc.refusedAt == "" {
+					if valid != true || len(errors) != 0 {
+						t.Fatalf("%s: valid=%v errors=%+v", surface, valid, errors)
+					}
+					return
+				}
+				for _, e := range errors {
+					if e.(map[string]any)["path"] == tc.refusedAt {
+						return
+					}
+				}
+				t.Fatalf("%s: no refusal at %s: valid=%v errors=%+v", surface, tc.refusedAt, valid, errors)
+			}
+
+			svc, _ := newService(nil)
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			body, _ := json.Marshal(map[string]string{"bexYaml": manifest})
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(string(body))))
+			var rest struct {
+				Valid  any   `json:"valid"`
+				Errors []any `json:"errors"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
+				t.Fatalf("REST unmarshal: %v (%s)", err, rec.Body)
+			}
+			check("REST", rest.Valid, rest.Errors)
+
+			res := graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: context.Background(),
+				RequestString:  `query($y: String!) { validateBlueprint(bexYaml: $y) { valid errorDetails { path } } }`,
+				VariableValues: map[string]any{"y": manifest}})
+			if len(res.Errors) > 0 {
+				t.Fatalf("GraphQL: %v", res.Errors)
+			}
+			got := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
+			details, _ := got["errorDetails"].([]any)
+			check("GraphQL", got["valid"], details)
+
+			call, cleanup := appsMCPClient(t, svc)
+			defer cleanup()
+			out := call("validate_bex_yml", map[string]any{"bexYaml": manifest})
+			mcpErrors, _ := out["errors"].([]any)
+			check("MCP", out["valid"], mcpErrors)
+		})
 	}
 }

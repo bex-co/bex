@@ -423,11 +423,12 @@ type prebuiltImageSourceField struct {
 }
 
 // prebuiltImageSourceFields is the shared policy for settings that only have
-// meaning while a service builds from Git. The Blueprint compiler rejects enabled
-// automation and other declared build fields; the direct create API checks the subset it exposes.
+// meaning while a service builds from Git. The Blueprint compiler rejects the
+// declared build fields; the direct create API checks the subset it exposes.
 // An entry with no blueprintName is create-only: the compiler's loop finds no
 // such top-level field, and the Blueprint spelling (x-bex.builder) reaches the
-// create check through the parse.
+// create check through the parse. Auto-Deploy is create-only too: on a
+// Blueprint image entry it has no effect, and parseService drops it (w8/405).
 var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	{blueprintName: "repo", createName: "repo", declaredInCreate: func(req CreateRequest) bool { return req.Repo != "" }},
 	{blueprintName: "branch", createName: "branch", declaredInCreate: func(req CreateRequest) bool { return req.Branch != "" }},
@@ -435,8 +436,7 @@ var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	{blueprintName: "buildFilter", createName: "buildFilter", declaredInCreate: func(req CreateRequest) bool { return req.BuildFilter != nil }},
 	{blueprintName: "buildCommand", createName: "buildCommand", declaredInCreate: func(req CreateRequest) bool { return req.BuildCommand != "" }},
 	{blueprintName: "dockerfilePath", createName: "dockerfilePath", declaredInCreate: func(req CreateRequest) bool { return req.DockerfilePath != "" }},
-	{blueprintName: "autoDeploy", createName: "autoDeploy", declaredInCreate: func(req CreateRequest) bool { return req.AutoDeploy != nil && *req.AutoDeploy }},
-	{blueprintName: "autoDeployTrigger"},
+	{createName: "autoDeploy", declaredInCreate: func(req CreateRequest) bool { return req.AutoDeploy != nil && *req.AutoDeploy }},
 	// A prebuilt image builds nothing, so a builder other than the default is
 	// never used (w5/090).
 	{createName: "builder", declaredInCreate: func(req CreateRequest) bool {
@@ -491,19 +491,6 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 	for _, sourceField := range prebuiltImageSourceFields {
 		if _, declared := object[sourceField.blueprintName]; !declared {
 			continue
-		}
-		// Explicitly disabled automation is meaningful for image services too.
-		if sourceField.blueprintName == "autoDeploy" && object["autoDeploy"] == false {
-			continue
-		}
-		// Only an enabled trigger is incompatible. An invalid enum already has
-		// a more specific schema diagnosis at this same path; emitting both
-		// would make one edit look like two independently actionable errors.
-		if sourceField.blueprintName == "autoDeployTrigger" {
-			trigger, _ := object[sourceField.blueprintName].(string)
-			if trigger != "commit" && trigger != checksPassTrigger {
-				continue
-			}
 		}
 		fieldPath := append(append([]string(nil), path...), sourceField.blueprintName)
 		pointer := renderSchemaPointer(fieldPath)

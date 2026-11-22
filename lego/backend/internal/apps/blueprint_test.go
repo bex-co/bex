@@ -2176,7 +2176,7 @@ services:
     type: web
     runtime: image
     image: {url: nginx:latest}
-    autoDeployTrigger: checksPass
+    buildCommand: make
 `},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})

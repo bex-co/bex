@@ -353,6 +353,8 @@ services:
 	if err != nil || spec.AutoDeployTrigger != checksPassTrigger || !spec.AutoDeploy {
 		t.Fatalf("spec = trigger %q autoDeploy %v, %v", spec.AutoDeployTrigger, spec.AutoDeploy, err)
 	}
+	// On a prebuilt image it "has no effect" (Render's blueprint-spec): the
+	// file compiles and the parse drops the trigger (w8/405).
 	if _, problems := CompileBlueprintSource(`
 services:
   - type: web
@@ -360,7 +362,13 @@ services:
     runtime: image
     image: {url: nginx:1}
     autoDeployTrigger: checksPass
-`); findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_INCOMPATIBLE") == nil {
-		t.Errorf("checksPass on a prebuilt image = %+v, want incompatible", problems)
+`); len(problems) != 0 {
+		t.Errorf("checksPass on a prebuilt image = %+v, want accepted", problems)
+	}
+	req, _, err = parseService(blueprintParseOverrides{}, bexService{
+		Name: "img", Type: "web", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, AutoDeployTrigger: "checksPass",
+	})
+	if err != nil || req.AutoDeploy != nil || req.AutoDeployChecksPass != nil {
+		t.Errorf("image parse = autoDeploy %v checksPass %v, %v; want both dropped", req.AutoDeploy, req.AutoDeployChecksPass, err)
 	}
 }

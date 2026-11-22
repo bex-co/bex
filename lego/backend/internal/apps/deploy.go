@@ -3335,6 +3335,12 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
 	}
+	// Render: autoDeployTrigger "has no effect for services that deploy a
+	// prebuilt Docker image" (blueprint-spec), so an image entry's value is
+	// dropped and the service keeps its default, no Auto-Deploy (w8/405).
+	if image != "" {
+		autoDeploy, checksPass = nil, nil
+	}
 
 	literal, se, err := classifyServiceEnv(overrides, a)
 	if err != nil {

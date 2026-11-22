@@ -32,6 +32,9 @@ services:
       url: nginx:1.27
 `
 
+// Render's Blueprint spec: autoDeployTrigger "has no effect for services that
+// deploy a prebuilt Docker image", so every valid value (and the deprecated
+// autoDeploy) compiles on one; an invalid enum keeps its schema error (w8/405).
 func TestBlueprintCompilerImageAutoDeployPolicy(t *testing.T) {
 	for _, kind := range []string{"web", "pserv", "worker", "cron"} {
 		for _, tc := range []struct {
@@ -39,8 +42,8 @@ func TestBlueprintCompilerImageAutoDeployPolicy(t *testing.T) {
 			valid bool
 		}{
 			{"", true}, {"autoDeploy: false", true}, {"autoDeployTrigger: off", true},
-			{"autoDeploy: true", false}, {"autoDeployTrigger: commit", false},
-			{"autoDeployTrigger: checksPass", false}, {"autoDeployTrigger: invalid", false},
+			{"autoDeploy: true", true}, {"autoDeployTrigger: commit", true},
+			{"autoDeployTrigger: checksPass", true}, {"autoDeployTrigger: invalid", false},
 		} {
 			t.Run(kind+"/"+tc.field, func(t *testing.T) {
 				raw := "services:\n  - type: " + kind + "\n    name: image\n    runtime: image\n    image: {url: nginx:1.27}\n"
@@ -90,20 +93,23 @@ services:
     autoDeployTrigger: commit
 `)
 	want := map[string]bool{
-		"#/services/0/repo":              false,
-		"#/services/0/branch":            false,
-		"#/services/0/rootDir":           false,
-		"#/services/0/buildFilter":       false,
-		"#/services/0/buildCommand":      false,
-		"#/services/0/dockerfilePath":    false,
-		"#/services/0/autoDeploy":        false,
-		"#/services/0/autoDeployTrigger": false,
+		"#/services/0/repo":           false,
+		"#/services/0/branch":         false,
+		"#/services/0/rootDir":        false,
+		"#/services/0/buildFilter":    false,
+		"#/services/0/buildCommand":   false,
+		"#/services/0/dockerfilePath": false,
 	}
 	for _, problem := range problems {
 		if problem.Code == "BLUEPRINT_CAPABILITY_INCOMPATIBLE" {
 			if _, ok := want[problem.Path]; ok {
 				want[problem.Path] = true
 			}
+		}
+		// Auto-Deploy has no effect on an image service (w8/405), so it is
+		// not one of the incompatible build inputs.
+		if problem.Path == "#/services/0/autoDeploy" || problem.Path == "#/services/0/autoDeployTrigger" {
+			t.Errorf("Auto-Deploy refused beside image: %+v", problem)
 		}
 	}
 	for path, found := range want {
