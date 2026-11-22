@@ -157,6 +157,37 @@ func TestDiskHolderContainerRunsPauseRestrictedAndRequestsNothing(t *testing.T) 
 	}
 }
 
+// diskHolderStartCPU is the CPU time a pause pod shaped like the holder spends
+// starting, measured on a production tenant node (w6/m559 t005, 2026-11-22).
+// Under a 10m CPU limit its runc inits took 13.9 s for the sandbox and 11.4 s
+// for the container, 25.4 s at 1/100 of a CPU. It started in 2.4 s at 100m
+// and in 1.4 s at 500m.
+const diskHolderStartCPU = 254 * time.Millisecond
+
+// The holder's CPU limit is the CFS quota runc's init runs under, so it sets
+// how long the holder takes to start, and the rollout waits for that start
+// with the old instance still serving. At the 10m first shipped, every holder
+// on production took longer than diskHoldMountBound and every rollout went on
+// without a hold.
+func TestDiskHolderStartsWellWithinItsMountBound(t *testing.T) {
+	c := diskHolderFor(t, diskHoldApp(), "starter").Spec.Template.Spec.Containers[0]
+	limit, ok := c.Resources.Limits[corev1.ResourceCPU]
+	if !ok || limit.IsZero() {
+		t.Fatalf("cpu limit = %v (set %v); tenant-limits would give the holder a 2-CPU default", limit.String(), ok)
+	}
+	throttled := time.Duration(float64(diskHolderStartCPU) / limit.AsApproximateFloat64())
+	if throttled > time.Second {
+		t.Errorf("at a %s CPU limit the holder spends %v starting, want at most 1s of the %v bound: the wait delays every disk deploy", limit.String(), throttled.Round(10*time.Millisecond), diskHoldMountBound)
+	}
+	cpu, _, _, ok := tiers.Compute.Resources("starter")
+	if !ok {
+		t.Fatal("no starter tier")
+	}
+	if limit.Cmp(resource.MustParse(cpu)) > 0 {
+		t.Errorf("cpu limit = %s, want at most a Starter instance's %s, the least a disk service runs on", limit.String(), cpu)
+	}
+}
+
 func TestDiskHoldWritesTheTemplateOnlyOnceTheHolderHasTheVolume(t *testing.T) {
 	f := newDiskHoldFixture(t)
 	held := diskHoldCount(diskHoldHeld)

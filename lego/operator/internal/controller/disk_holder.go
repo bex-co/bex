@@ -214,6 +214,16 @@ func diskHolderJob(app *appv1alpha1.App, tier, node string, scheme *runtime.Sche
 // instance on a node packed to its last millicore (diskSnapshotResources does
 // the same), and limits what /pause could ever use. The explicit zeros keep
 // tenant-limits' default requests (100m, 128Mi, 1Gi) off it.
+//
+// The CPU limit decides how fast the holder starts, not what /pause uses. The
+// kubelet puts it on the pod's cgroup, so runc's init runs under that quota
+// for the sandbox and again for the container, about 0.25 s of CPU in all. At
+// 10m the holder took 24.7 s to start on production, past diskHoldMountBound,
+// so no rollout held (w6/m559 t005). 500m, a Starter instance's CPU and the
+// least any disk service runs on, starts it in about a second. A limit takes
+// no room on a node, and a workspace's limits.cpu quota is twice its
+// requests.cpu quota, which instances (whose limits equal their requests)
+// cannot fill.
 func diskHolderResources() corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
@@ -222,7 +232,7 @@ func diskHolderResources() corev1.ResourceRequirements {
 			corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:              resource.MustParse("10m"),
+			corev1.ResourceCPU:              resource.MustParse("500m"),
 			corev1.ResourceMemory:           resource.MustParse("32Mi"),
 			corev1.ResourceEphemeralStorage: resource.MustParse("16Mi"),
 		},
