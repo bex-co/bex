@@ -83,7 +83,11 @@ type DeployProgress struct {
 	// (w8/388). Lines from that moment on carry its wording.
 	PortScanFound   appv1alpha1.PortScanFinding
 	PortScanFoundAt time.Time
-	ReadAt          time.Time
+	// TimedOut reports that the deploy failed because its rollout ran out of
+	// its budget (the close's DeployEnd.TimedOutSeconds, w8/m146), which the
+	// log closes with Render's timeout lines (w8/391).
+	TimedOut bool
+	ReadAt   time.Time
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -413,7 +417,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			add(d.FinishedAt, "==> "+appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected,
 				appv1alpha1.DeployReasonParam{Name: "port", Value: fmt.Sprint(d.DetectedHTTPPort)}))
 		}
-		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason) {
+		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason, d.TimedOut) {
 			add(d.FinishedAt, msg)
 		}
 	}
@@ -577,12 +581,27 @@ func hookEnd(d DeployProgress, h hookRun) time.Time {
 	return h.finishedAt.Add(time.Second)
 }
 
+// Render's closing lines for a deploy that ran out its rollout budget
+// (w8/391), from deploy logs users quoted in GitHub issues: since 2026-05 the
+// verdict carries no cause (vincentbellemare90-commits/Mon-bot#1,
+// frayel/devagent#38 and #62), and the troubleshooting line follows it in the
+// same instant (docs/ADR018-render-parity.md § Logs, Build logs).
+const (
+	timedOutLine     = "==> Timed Out"
+	troubleshootLine = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
+)
+
 // terminalLines maps a terminal deploy status to its closing line(s). An empty
 // reason keeps the historical bare line (w1/m48); a non-empty reason is
 // appended so the CLI's type=build narration carries the same cause the events
 // feed already exposes as failureReason (w5/064). Multi-line reasons become
-// one stream line per segment (the feed is line-oriented).
-func terminalLines(status, serviceType, reason string) []string {
+// one stream line per segment (the feed is line-oriented). A deploy that ran
+// out its rollout budget closes with Render's timeout lines instead, and its
+// cause stays on the deploy, where Render shows its own (w8/391).
+func terminalLines(status, serviceType, reason string, timedOut bool) []string {
+	if status == "update_failed" && timedOut {
+		return []string{timedOutLine, troubleshootLine}
+	}
 	base := terminalLine(status, serviceType)
 	if base == "" {
 		return nil

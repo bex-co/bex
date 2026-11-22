@@ -1040,13 +1040,13 @@ func TestFollowBuildLogsEmitsTerminalLineOnce(t *testing.T) {
 }
 
 func TestTerminalLinesAppendFailureReason(t *testing.T) {
-	if got := terminalLines("update_failed", "web_service", ""); !slices.Equal(got, []string{"==> Deploy failed"}) {
+	if got := terminalLines("update_failed", "web_service", "", false); !slices.Equal(got, []string{"==> Deploy failed"}) {
 		t.Fatalf("empty reason = %v", got)
 	}
-	if got := terminalLines("update_failed", "web_service", `clone: missing "public"`); !slices.Equal(got, []string{`==> Deploy failed: clone: missing "public"`}) {
+	if got := terminalLines("update_failed", "web_service", `clone: missing "public"`, false); !slices.Equal(got, []string{`==> Deploy failed: clone: missing "public"`}) {
 		t.Fatalf("single-line reason = %v", got)
 	}
-	if got := terminalLines("pre_deploy_failed", "web_service", "exit 128\nfatal detail"); !slices.Equal(got, []string{
+	if got := terminalLines("pre_deploy_failed", "web_service", "exit 128\nfatal detail", false); !slices.Equal(got, []string{
 		"==> Pre-deploy failed: exit 128",
 		"==> fatal detail",
 	}) {
@@ -1055,7 +1055,7 @@ func TestTerminalLinesAppendFailureReason(t *testing.T) {
 	// A native build's tail quotes bex's own narration lines (w8/369): each
 	// keeps a single marker, and a line that is only a marker drops out.
 	if got := terminalLines("build_failed", "web_service",
-		"build failed in the build command step:\n==> Installing Bundler 2.5.23 (from Gemfile.lock)\n==>\n==> ==> nested\nerror: build command 'bundle install' exited with code 5"); !slices.Equal(got, []string{
+		"build failed in the build command step:\n==> Installing Bundler 2.5.23 (from Gemfile.lock)\n==>\n==> ==> nested\nerror: build command 'bundle install' exited with code 5", false); !slices.Equal(got, []string{
 		"==> Build failed: build failed in the build command step:",
 		"==> Installing Bundler 2.5.23 (from Gemfile.lock)",
 		"==> nested",
@@ -1063,11 +1063,42 @@ func TestTerminalLinesAppendFailureReason(t *testing.T) {
 	}) {
 		t.Fatalf("marked tail = %v", got)
 	}
-	if got := terminalLines("update_failed", "web_service", "==> rollout stalled"); !slices.Equal(got, []string{"==> Deploy failed: rollout stalled"}) {
+	if got := terminalLines("update_failed", "web_service", "==> rollout stalled", false); !slices.Equal(got, []string{"==> Deploy failed: rollout stalled"}) {
 		t.Fatalf("marked first line = %v", got)
 	}
-	if got := terminalLines("live", "web_service", "should-not-appear"); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
+	if got := terminalLines("live", "web_service", "should-not-appear", false); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
 		t.Fatalf("success must ignore a stray reason: %v", got)
+	}
+}
+
+// TestTerminalLinesCloseARolloutTimeoutAsRendersDo is w8/391: a deploy that
+// ran out its rollout budget closes with Render's `==> Timed Out` and its
+// troubleshooting line, with no cause, whatever the reason says. Every other
+// failure, the build and pre-deploy timeouts included, keeps its own line.
+func TestTerminalLinesCloseARolloutTimeoutAsRendersDo(t *testing.T) {
+	const probe = "the container is running but its startup health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance."
+	for _, c := range []struct {
+		name, status, reason string
+		timedOut             bool
+		want                 []string
+	}{
+		{"the rollout budget ran out", "update_failed", probe, true, rendersTimeout},
+		{"the budget ran out on a multi-line reason", "update_failed", "first\nsecond", true, rendersTimeout},
+		{"the budget ran out with no reason", "update_failed", "", true, rendersTimeout},
+		{"a rollout that failed before its budget", "update_failed", probe, false, []string{"==> Deploy failed: " + probe}},
+		{"the build window ran out", "build_failed", "the build did not finish within the build window; check the build logs", false,
+			[]string{"==> Build failed: the build did not finish within the build window; check the build logs"}},
+		{"a build failure is never a rollout timeout", "build_failed", "boom", true, []string{"==> Build failed: boom"}},
+		{"the pre-deploy window ran out", "pre_deploy_failed", "the pre-deploy command did not finish within its window; check the pre-deploy logs", true,
+			[]string{"==> Pre-deploy failed: the pre-deploy command did not finish within its window; check the pre-deploy logs"}},
+		{"canceled", "canceled", "", true, []string{"==> Deploy canceled"}},
+		{"live", "live", "", true, []string{"==> Your service is live 🎉"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := terminalLines(c.status, "web_service", c.reason, c.timedOut); !slices.Equal(got, c.want) {
+				t.Fatalf("closing = %q, want %q", got, c.want)
+			}
+		})
 	}
 }
 

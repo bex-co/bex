@@ -111,4 +111,38 @@ func TestPGDeployEndReasonReachesEventReads(t *testing.T) {
 	if len(ended) != 1 || ended[0].End.ExitCode == nil || *ended[0].End.ExitCode != 0 || ended[0].End.OOMKilled {
 		t.Fatalf("clean-exit ended rows = %+v, want one with exit 0", ended)
 	}
+
+	// w8/391: the deploy reads carry the rollout budget a deadline close ran
+	// out of, so the deploy log closes it with Render's `==> Timed Out`; a
+	// close before the deadline reads zero.
+	late, err := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "no-port", Image: "busybox:1.36", Type: "web_service",
+		Branch: "main", Port: 10000, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := st.TransitionDeploy(ctx, late.FirstDeployID, DeployUpdateInProgress, RanImage{}, "", "", "", nil); err != nil || !ok {
+		t.Fatalf("start no-port rollout = (%v, %v)", ok, err)
+	}
+	if ok, err := st.TransitionDeploy(ctx, late.FirstDeployID, DeployUpdateFailed, RanImage{}, "health check never succeeded", "", "", nil,
+		DeployEnd{TimedOutSeconds: 900}); err != nil || !ok {
+		t.Fatalf("fail no-port rollout = (%v, %v)", ok, err)
+	}
+	got, err := st.GetDeploy(ctx, late.ID, late.FirstDeployID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed, err := st.ListDeploys(ctx, late.ID, DeployFilter{Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.TimedOutSeconds != 900 || len(listed) != 1 || listed[0].TimedOutSeconds != 900 {
+		t.Fatalf("timed-out deploy reads %d by id and %+v listed, want 900", got.TimedOutSeconds, listed)
+	}
+	for appID, id := range map[string]string{app.ID: app.FirstDeployID, clean.ID: clean.FirstDeployID} {
+		if d, err := st.GetDeploy(ctx, appID, id); err != nil || d.TimedOutSeconds != 0 {
+			t.Fatalf("deploy %s closed before its deadline reads (%d, %v), want 0", id, d.TimedOutSeconds, err)
+		}
+	}
 }

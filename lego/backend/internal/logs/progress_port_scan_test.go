@@ -42,6 +42,13 @@ func scanRow(status string, finished, until, read time.Time) DeployProgress {
 	}
 }
 
+// rendersTimeout is how Render's log closes a deploy that ran out its rollout
+// budget (w8/391), restated so the tests pin the wire text.
+var rendersTimeout = []string{
+	"==> Timed Out",
+	"==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys",
+}
+
 // at is scanSince plus d, as a line's timestamp.
 func at(d time.Duration) string { return scanSince.Add(d).Format(time.RFC3339Nano) }
 
@@ -111,6 +118,11 @@ func TestPortScanLinesKeepRendersCadence(t *testing.T) {
 	open := func(read time.Duration) DeployProgress {
 		return scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(read))
 	}
+	// atBudget is d closed by its rollout budget.
+	atBudget := func(d DeployProgress) DeployProgress {
+		d.TimedOut = true
+		return d
+	}
 	for _, c := range []struct {
 		name string
 		row  DeployProgress
@@ -131,9 +143,11 @@ func TestPortScanLinesKeepRendersCadence(t *testing.T) {
 				said(7*time.Minute+10*time.Second, "==> Your service is live 🎉"))},
 		{"canceled while scanning", scanRow("canceled", scanSince.Add(2*time.Minute), time.Time{}, scanSince.Add(time.Hour)),
 			slices.Concat(scanPairs(plainScan, 0, 1), said(2*time.Minute, "==> Deploy canceled"))},
-		{"failed at the budget, scanning", failedScanning(14*time.Minute + 30*time.Second),
+		{"failed at the budget, scanning", atBudget(failedScanning(14*time.Minute + 30*time.Second)),
 			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute),
-				said(14*time.Minute+30*time.Second, "==> Deploy failed: "+failed))},
+				said(14*time.Minute+30*time.Second, rendersTimeout...))},
+		{"failed at the budget after the scan was over", atBudget(scanRow("update_failed", scanSince.Add(14*time.Minute+30*time.Second), scanSince.Add(30*time.Second), scanSince.Add(time.Hour))),
+			slices.Concat(scanPairs(plainScan, 0), said(14*time.Minute+30*time.Second, rendersTimeout...))},
 		{"failed scanning before the timeout was due", failedScanning(3*time.Minute + 30*time.Second),
 			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3), timedOut(plainScan, 3*time.Minute+30*time.Second),
 				said(3*time.Minute+30*time.Second, "==> Deploy failed: "+failed))},
