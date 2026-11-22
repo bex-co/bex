@@ -2815,6 +2815,11 @@ type DeferredRequest struct {
 	DeployMode        string `json:"deployMode,omitempty"`
 	ClearCache        string `json:"clearCache,omitempty"`
 	DisableAutoDeploy bool   `json:"disableAutoDeploy,omitempty"`
+	// Rebuild marks a waiting config_change deploy as "Save, rebuild, and
+	// deploy" (deploys.Service.Rebuild), which builds the latest commit; any
+	// other waiting config_change is an environment "Save and deploy" on the
+	// build serving (w4/667).
+	Rebuild bool `json:"rebuild,omitempty"`
 }
 
 // CreateDeferredDeploy records a deploy that waits for its app's deploy in

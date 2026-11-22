@@ -47,7 +47,9 @@ import (
 // restarting what serves once that deploy settles; a Rollback or an image
 // override waits behind any deploy, and any deploy this service opens waits
 // behind one of those (w4/652), which also covers a selection the operator has
-// not adopted yet. An environment "Save and deploy" of a Git-backed service
+// not adopted yet. A plain deploy waits here too while the deploy ahead of it
+// has not been adopted (w8/387), since written to the App it would replace
+// that deploy. An environment "Save and deploy" of a Git-backed service
 // selects the build serving when it runs, so it waits here too (w4/667;
 // secrets.Service.DeployServedBuild runs it). A git push, a configuration save,
 // a Blueprint sync and a build-source fan-out write through and wait behind the
@@ -83,7 +85,7 @@ var (
 // deferred=false means nothing is in flight, waits declined, or the deploy is
 // a deferred one already running (the worker's own call), and the caller
 // deploys now.
-func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.Deploy, req store.DeferredRequest, waits func(*appv1alpha1.App) bool) (DeployView, bool, error) {
+func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.Deploy, req store.DeferredRequest, waits func(*appv1alpha1.App) (bool, error)) (DeployView, bool, error) {
 	deferrer, ok := s.Store.(DeployDeferrer)
 	d.AppID = appStoreID(a)
 	if !ok || d.AppID == "" || store.DeferredDeployID(ctx) != "" {
@@ -94,7 +96,10 @@ func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.D
 		if err := core.RereadApp(ctx, s.Client, a); err != nil {
 			return err
 		}
-		if err := core.NotFoundIfDeleting(a); err != nil || !waits(a) {
+		if err := core.NotFoundIfDeleting(a); err != nil {
+			return err
+		}
+		if wait, err := waits(a); err != nil || !wait {
 			return err
 		}
 		var err error
@@ -109,7 +114,25 @@ func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.D
 
 // alwaysWaits is deferDeploy's rule for a deploy that selects its own release
 // (Restart, Rollback): it waits behind whatever is in flight.
-func alwaysWaits(*appv1alpha1.App) bool { return true }
+func alwaysWaits(*appv1alpha1.App) (bool, error) { return true, nil }
+
+// deployAheadUnadopted reports that the deploy executing for a carries a
+// release the operator has not adopted yet (w8/387). The operator holds a
+// release in flight only once it adopted it (releaseInFlight), so a release
+// written to the App before then replaces it, and the deploy a 201 named
+// never runs. A stale App read errs toward waiting.
+func (s *Service) deployAheadUnadopted(ctx context.Context, a *appv1alpha1.App) (bool, error) {
+	open, err := s.Store.ListDeploys(ctx, appStoreID(a), store.DeployFilter{Statuses: store.OpenDeployStatuses()})
+	if err != nil {
+		return false, err
+	}
+	for _, o := range open {
+		if !o.OverlapPending && o.Generation > a.Status.ReleaseGeneration {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // deferRestart records a Restart that waits for the deploy in flight.
 // deferred=false means nothing is in flight (or the service has never been
@@ -208,12 +231,12 @@ func (s *Service) runDeferredDeploy(ctx context.Context, queue DeferredDeployQue
 	ctx = store.WithDeferredDeploy(ctx, r.ID)
 	service := core.AppPublicName(a)
 	var err error
-	switch r.Trigger {
-	case store.TriggerRestart:
+	switch {
+	case r.Trigger == store.TriggerRestart:
 		_, err = s.restartNow(ctx, service, a)
-	case store.TriggerRollback:
+	case r.Trigger == store.TriggerRollback:
 		_, err = s.rollbackFetched(ctx, service, a, r.RollbackOf, RollbackOptions{DisableAutoDeploy: r.Request.DisableAutoDeploy})
-	case store.TriggerConfigChange:
+	case r.Trigger == store.TriggerConfigChange && !r.Request.Rebuild:
 		err = s.deployServedBuild(ctx, a, r)
 	default:
 		_, err = s.triggerFetched(ctx, service, a, TriggerParams{

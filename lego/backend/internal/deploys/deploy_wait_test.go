@@ -28,7 +28,7 @@ import (
 )
 
 // imageServiceRollingOut is an image-backed service whose first deploy went
-// live and whose second, dep-flight, is rolling out.
+// live and whose second, dep-flight, is rolling out: the operator adopted it.
 func imageServiceRollingOut(t *testing.T) (deferringStore, *Service, string) {
 	t.Helper()
 	ds := newDeferringStore()
@@ -42,6 +42,7 @@ func imageServiceRollingOut(t *testing.T) (deferringStore, *Service, string) {
 	app := sampleApp("web", "srv-1")
 	app.Spec.Image = "web:v2"
 	app.Generation = 2
+	app.Status.ReleaseGeneration = 2
 	svc := &Service{Base: &core.Base{Client: generationBumpingClient(app), Namespace: "default", Clock: fixedNow}, Store: ds}
 	return ds, svc, first.ID
 }
@@ -149,13 +150,14 @@ func TestImageOverrideDeployWaitsForTheDeployInFlight(t *testing.T) {
 }
 
 // w4/652: a selected release in flight is not one the operator pins, so a
-// plain deploy behind it waits too; behind a plain deploy, a plain deploy
-// still writes through and the operator's pin holds the one in flight.
+// plain deploy behind it waits too; behind a plain deploy the operator
+// adopted, a plain deploy still writes through and the operator's pin holds
+// the one in flight.
 func TestPlainDeployWaitsOnlyBehindASelectedRelease(t *testing.T) {
 	ds, svc, target := imageServiceRollingOut(t)
 	plain, err := svc.Trigger(context.Background(), "web", TriggerParams{})
 	if err != nil || plain.Status != store.DeployQueued || rowOf(t, ds, plain.ID).Deferred {
-		t.Fatalf("plain deploy behind a plain one = %+v (err %v), want a queued release written through", plain, err)
+		t.Fatalf("plain deploy behind an adopted plain one = %+v (err %v), want a queued release written through", plain, err)
 	}
 
 	settle(t, ds, svc, "dep-flight")
