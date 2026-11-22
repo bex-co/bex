@@ -97,6 +97,7 @@ execd_allowed_pod="${run_id}-execd-allowed"
 controller_probe_pod="${run_id}-controller"
 peer_service="${run_id}-peer"
 session_label="${run_id}-agent-session"
+session_pod="${run_id}-session"
 hold_selector="bex.co/verify-run=$run_id"
 
 sandbox_a_id=""
@@ -121,7 +122,6 @@ cr_b=""
 cr_c=""
 cr_d=""
 cr_agent=""
-hubble_agent_pod=""
 fixtures_started=false
 
 server_as='system:serviceaccount:opensandbox-system:opensandbox-server'
@@ -164,6 +164,7 @@ cleanup() {
   done
   [ -n "$group_leak_id" ] && api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes/$group_leak_id/terminate?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/cleanup-group-leak.json" >/dev/null
   kubectl -n "$BEX_WORKSPACE_A" delete pod "$hosting_pod" --ignore-not-found --wait=false >/dev/null 2>&1
+  kubectl -n "$namespace_a" delete pod "$session_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$platform_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$platform_allowed_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$gateway_spoof_pod" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -749,18 +750,20 @@ CGO_ENABLED=0 GOOS=linux GOARCH="$sandbox_arch" go build -trimpath -o "$probe_bi
 # Each install is one kubectl exec stream from the runner to the production
 # API server; a dropped stream (run 42481465883: `read tcp …:443: i/o
 # timeout`) is retried, since the write is idempotent.
-for tuple in "$pod_a:$container_a" "$pod_b:$container_b" "$pod_d:$container_d"; do
-  installed=false
+install_netprobe() {
+  local pod="$1" container="$2" binary="$3" attempt
   for attempt in 1 2 3; do
-    if kubectl -n "$namespace_a" exec -i "${tuple%%:*}" -c "${tuple#*:}" -- /bin/sh -c \
+    if kubectl -n "$namespace_a" exec -i "$pod" -c "$container" -- /bin/sh -c \
       'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
-      <"$probe_binary"; then
-      installed=true
-      break
+      <"$binary"; then
+      return 0
     fi
     sleep $((attempt * 5))
   done
-  [ "$installed" = true ] || fail "could not install the network probe in sandbox ${tuple%%:*}"
+  fail "could not install the network probe in sandbox $pod"
+}
+for tuple in "$pod_a:$container_a" "$pod_b:$container_b" "$pod_d:$container_d"; do
+  install_netprobe "${tuple%%:*}" "${tuple#*:}" "$probe_binary"
 done
 
 sandbox_workloads=("$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b" "$namespace_a:$pod_d:$container_d")
@@ -1027,7 +1030,8 @@ render_session_policy() { # <setup|agent>: the policy bex-api applies for this s
 
 # The exact writer shape must pass the bex-api admission boundary, while a CIDR
 # escape hatch must fail even in dry-run. Apply the real fixture as cluster
-# admin, then label the Pod so it atomically leaves the legacy allowlist.
+# admin before creating the session Pod, the way production stamps
+# bex.co/agent-session at CREATE; relabeling an existing sandbox Pod must fail.
 render_session_policy setup \
   | kubectl create --dry-run=server --as "$bex_api_as" -f - >/dev/null \
   || fail "bex-api admission rejected the exact session egress policy"
@@ -1039,7 +1043,89 @@ fi
 grep -Eq 'Forbidden|exact FQDN or approved endpoint rules' "$fixture_dir/session-cidr-deny.txt" \
   || fail "session CIDR policy failed without admission-boundary evidence"
 render_session_policy setup | kubectl apply -f - >/dev/null
-kubectl -n "$namespace_a" label pod "$pod_a" "bex.co/agent-session=$session_label" --overwrite >/dev/null
+
+if kubectl -n "$namespace_a" label pod "$pod_a" "bex.co/agent-session=$session_label" \
+  --overwrite --dry-run=server >"$fixture_dir/session-relabel-deny.txt" 2>&1; then
+  fail "sandbox Pod admission allowed relabeling an existing sandbox Pod into an agent session"
+fi
+grep -q 'bex-sandbox-pods' "$fixture_dir/session-relabel-deny.txt" \
+  && grep -q 'remain strictly immutable on UPDATE' "$fixture_dir/session-relabel-deny.txt" \
+  || fail "relabeling an existing sandbox Pod failed without bex-sandbox-pods immutability evidence: $(head -c 300 "$fixture_dir/session-relabel-deny.txt")"
+pass "bex-sandbox-pods refuses relabeling an existing sandbox Pod"
+
+session_image="$(kubectl -n "$namespace_a" get pod "$pod_a" -o json | jq -er --arg c "$container_a" \
+  'first(.spec.containers[] | select(.name == $c) | .image)')"
+kubectl create -f - >/dev/null <<YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  name: $session_pod
+  namespace: $namespace_a
+  labels:
+    app.bex.co/regime: sandbox
+    bex.co/workspace: $BEX_WORKSPACE_A
+    bex.co/agent-session: $session_label
+    app.bex.co/m35-fixture: $run_id
+spec:
+  runtimeClassName: gvisor
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: bex-snapshot-pull
+  nodeSelector:
+    bex.co/pool: sandbox
+  tolerations:
+    - key: bex.co/sandbox
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+  dnsConfig:
+    options:
+      - name: ndots
+        value: "1"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: probe
+      image: "$session_image"
+      command: ["/bin/sh", "-c", "sleep 600"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+          ephemeral-storage: 256Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+          ephemeral-storage: 1Gi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+YAML
+if ! kubectl -n "$namespace_a" wait --for=condition=Ready "pod/$session_pod" --timeout=180s >/dev/null; then
+  kubectl -n "$namespace_a" get pod "$session_pod" -o json 2>/dev/null \
+    | jq -c '{phase: .status.phase, conditions: .status.conditions, containers: .status.containerStatuses}' >&2 || true
+  fail "agent-session fixture Pod never reached Ready"
+fi
+session_node="$(kubectl -n "$namespace_a" get pod "$session_pod" -o jsonpath='{.spec.nodeName}')"
+session_arch="$(kubectl get node "$session_node" -o jsonpath='{.status.nodeInfo.architecture}')"
+session_probe_binary="$probe_binary"
+if [ "$session_arch" != "$sandbox_arch" ]; then
+  case "$session_arch" in
+    amd64 | arm64) ;;
+    *) fail "unsupported agent-session sandbox node architecture $session_arch" ;;
+  esac
+  session_probe_binary="$fixture_dir/m35-netprobe-$session_arch"
+  CGO_ENABLED=0 GOOS=linux GOARCH="$session_arch" go build -trimpath -o "$session_probe_binary" scripts/m35-netprobe.go \
+    || fail "could not build the sandbox network probe for $session_arch"
+fi
+install_netprobe "$session_pod" probe "$session_probe_binary"
+exec_session() { kubectl -n "$namespace_a" exec "$session_pod" -c probe -- "$@"; }
 
 expect_eventually() {
   local mode="$1" name="$2"
@@ -1055,21 +1141,21 @@ expect_eventually() {
   done
   fail "$name did not become $mode"
 }
-expect_eventually allowed "setup-phase package registry" exec_a /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
-expect_eventually allowed "tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
-expect_eventually denied "setup-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
+expect_eventually allowed "setup-phase package registry" exec_session /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
+expect_eventually allowed "tenant allowlisted destination" exec_session /tmp/m35-netprobe tls example.com 443 example.com
+expect_eventually denied "setup-phase non-allowlisted destination" exec_session /tmp/m35-netprobe tls www.github.com 443 www.github.com
 
 # ADR047 D5 amendment (2026-10-27): package registries stay open through the
 # agent phase so agents can install dependencies and run builds and tests.
 render_session_policy agent | kubectl apply -f - >/dev/null
-expect_eventually allowed "agent-phase package registry" exec_a /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
-expect_eventually allowed "agent-phase GitHub baseline" exec_a /tmp/m35-netprobe tls api.github.com 443 api.github.com
-expect_eventually allowed "agent-phase tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
-expect_eventually denied "agent-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
-expect_denied "agent-phase same-workspace cross-sandbox isolation" exec_a /tmp/m35-netprobe tcp "$pod_b_ip" 44772
-# Labeled into the session posture, A left allow-all: its DNS is filtered again,
-# and this unique query is the drop the Hubble evidence below looks for.
-expect_eventually denied "session-posture DNS-exfiltration query" exec_a /tmp/m35-netprobe resolve "${run_id}.attacker.test"
+expect_eventually allowed "agent-phase package registry" exec_session /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
+expect_eventually allowed "agent-phase GitHub baseline" exec_session /tmp/m35-netprobe tls api.github.com 443 api.github.com
+expect_eventually allowed "agent-phase tenant allowlisted destination" exec_session /tmp/m35-netprobe tls example.com 443 example.com
+expect_eventually denied "agent-phase non-allowlisted destination" exec_session /tmp/m35-netprobe tls www.github.com 443 www.github.com
+expect_denied "agent-phase same-workspace cross-sandbox isolation" exec_session /tmp/m35-netprobe tcp "$pod_b_ip" 44772
+# The session fixture carries bex.co/agent-session from CREATE so Cilium filters
+# its DNS to the session allowlist; this unique query is the drop Hubble checks.
+expect_eventually denied "session-posture DNS-exfiltration query" exec_session /tmp/m35-netprobe resolve "${run_id}.attacker.test"
 pass "agent phase keeps the exact baseline, the package registries and the prepared tenant widening"
 
 kubectl -n bex-system run "$platform_pod" --image "$python_image" --restart Never \
@@ -1451,30 +1537,37 @@ grep -Eq 'Forbidden|exact regime-specific tenant RoleBindings' "$fixture_dir/san
 pass "NamespaceReconciler admission denies platform/regime escalation and admits exact tenant projections"
 
 echo "==> require Hubble evidence for the denied flows"
-hubble_agent_pod="$(kubectl -n kube-system get pods -l k8s-app=cilium \
-  --field-selector "spec.nodeName=$sandbox_node" -o json | jq -er '
-    first(.items[] | select(any(.status.conditions[]?; .type == "Ready" and .status == "True")) | .metadata.name)')" \
-  || fail "no Ready Cilium agent is running on attacker node $sandbox_node"
-if command -v hubble >/dev/null 2>&1 \
-  && hubble status >/dev/null 2>&1 \
-  && hubble observe --from-pod "$namespace_a/$pod_a" \
-    --since "$started_at" --verdict DROPPED --output compact \
-    >"$fixture_dir/hubble-drops.txt"; then
-  : # Prefer an available relay because it includes cluster-wide flow context.
-else
-  kubectl -n kube-system exec "$hubble_agent_pod" -c cilium-agent -- \
-    hubble observe --server unix:///var/run/cilium/hubble.sock \
-      --from-pod "$namespace_a/$pod_a" \
+collect_hubble_drops() {
+  local node="$1" pod="$2" output="$3" agent_pod
+  if command -v hubble >/dev/null 2>&1 \
+    && hubble status >/dev/null 2>&1 \
+    && hubble observe --from-pod "$namespace_a/$pod" \
       --since "$started_at" --verdict DROPPED --output compact \
-      >"$fixture_dir/hubble-drops.txt" \
-    || fail "could not collect local Hubble flows from attacker node $sandbox_node"
-fi
+      >"$output"; then
+    return 0 # Prefer an available relay because it includes cluster-wide flow context.
+  fi
+  agent_pod="$(kubectl -n kube-system get pods -l k8s-app=cilium \
+    --field-selector "spec.nodeName=$node" -o json | jq -er '
+      first(.items[] | select(any(.status.conditions[]?; .type == "Ready" and .status == "True")) | .metadata.name)')" \
+    || fail "no Ready Cilium agent is running on node $node"
+  kubectl -n kube-system exec "$agent_pod" -c cilium-agent -- \
+    hubble observe --server unix:///var/run/cilium/hubble.sock \
+      --from-pod "$namespace_a/$pod" \
+      --since "$started_at" --verdict DROPPED --output compact \
+      >"$output" \
+    || fail "could not collect local Hubble flows from node $node"
+}
+collect_hubble_drops "$sandbox_node" "$pod_a" "$fixture_dir/hubble-drops.txt"
 [ -s "$fixture_dir/hubble-drops.txt" ] || fail "Hubble reported no dropped workspace-A sandbox flow"
 grep -q "$pod_a" "$fixture_dir/hubble-drops.txt" \
   || fail "Hubble drops do not identify the attacker sandbox Pod $pod_a"
-grep -q "${run_id}.attacker.test" "$fixture_dir/hubble-drops.txt" \
+collect_hubble_drops "$session_node" "$session_pod" "$fixture_dir/hubble-session-drops.txt"
+[ -s "$fixture_dir/hubble-session-drops.txt" ] || fail "Hubble reported no dropped agent-session sandbox flow"
+grep -q "$session_pod" "$fixture_dir/hubble-session-drops.txt" \
+  || fail "Hubble drops do not identify the agent-session sandbox Pod $session_pod"
+grep -q "${run_id}.attacker.test" "$fixture_dir/hubble-session-drops.txt" \
   || fail "Hubble drops do not contain the unique denied DNS-exfiltration query"
-pass "Hubble attributes policy drops to the attacker sandbox"
+pass "Hubble attributes policy drops to the attacker and agent-session sandboxes"
 
 # Sandbox groups, continued (w22/m311). Over REST only, after every cluster probe
 # above, so the extra sandboxes cannot disturb them.
