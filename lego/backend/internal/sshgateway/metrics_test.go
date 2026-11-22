@@ -37,6 +37,10 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	metrics.Reauthorization("accepted")
 	metrics.TwoFactorRefusal("not_enrolled")
 	metrics.GitProxyUpstreamFailure("refused")
+	metrics.SandboxBrokerRequest("injected")
+	metrics.SandboxBrokerOverlap()
+	metrics.SandboxBrokerLookupDuration(10 * time.Millisecond)
+	metrics.SandboxBrokerCache(true)
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -53,6 +57,10 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 		"bex_ssh_gateway_git_proxy_upstream_failures_total",
 		"bex_ssh_gateway_handshakes_total",
 		"bex_ssh_gateway_limit_rejections_total",
+		"bex_ssh_gateway_sandbox_broker_cache_total",
+		"bex_ssh_gateway_sandbox_broker_lookup_duration_seconds",
+		"bex_ssh_gateway_sandbox_broker_overlaps_total",
+		"bex_ssh_gateway_sandbox_broker_requests_total",
 		"bex_ssh_gateway_session_duration_seconds",
 		"bex_ssh_gateway_sessions_total",
 		"bex_ssh_gateway_two_factor_refusals_total",
@@ -62,7 +70,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 		got = append(got, family.GetName())
 		for _, metric := range family.Metric {
 			for _, label := range metric.Label {
-				if label.GetName() != "result" && label.GetName() != "scope" && label.GetName() != "cause" {
+				if label.GetName() != "result" && label.GetName() != "scope" && label.GetName() != "cause" && label.GetName() != "outcome" {
 					t.Fatalf("metric %s has privacy-unsafe/unbounded label %q", family.GetName(), label.GetName())
 				}
 			}

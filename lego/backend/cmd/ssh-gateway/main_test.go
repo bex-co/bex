@@ -18,25 +18,34 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 func TestAdmissionListenerRejectsSlowHeadersBeforeHandler(t *testing.T) {
@@ -280,5 +289,90 @@ func TestConnectionSourceKeysIPv6OnItsSlash64(t *testing.T) {
 	}
 	if a, b := connectionSource(tcp("203.0.113.1")), connectionSource(tcp("203.0.113.2")); a == b {
 		t.Errorf("two IPv4 addresses share a source: %q", a)
+	}
+}
+
+type fakeTenantLister []store.Tenant
+
+func (f fakeTenantLister) ListTenants(context.Context) ([]store.Tenant, error) { return f, nil }
+
+func TestBuildSandboxBrokerConfig(t *testing.T) {
+	metrics := sshgateway.NewMetrics(prometheus.NewRegistry())
+	k8s := fake.NewSimpleClientset()
+	tenants := fakeTenantLister{{ID: "tea-1"}}
+
+	// 1. Completely unconfigured -> skipped cleanly with no error.
+	envMap := func(m map[string]string) func(string) string {
+		return func(k string) string { return m[k] }
+	}
+	broker, addr, err := buildSandboxBroker(envMap(nil), "", k8s, tenants, metrics)
+	if err != nil || broker != nil || addr != "" {
+		t.Fatalf("unconfigured = (%v, %q, %v), want (nil, \"\", nil)", broker, addr, err)
+	}
+
+	// Write a valid test Broker CA keypair.
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "test-broker-ca"},
+		NotBefore:             now.Add(-time.Hour),
+		NotAfter:              now.Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	certPath := filepath.Join(dir, "ca.crt")
+	keyPath := filepath.Join(dir, "ca.key")
+	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// 2. Partial configs fail closed.
+	partials := []struct {
+		name   string
+		vars   map[string]string
+		secret string
+		st     tenantLister
+	}{
+		{"addr only without CA", map[string]string{"BEX_SANDBOX_BROKER_ADDR": ":8086"}, "sec", tenants},
+		{"cert without key", map[string]string{"BEX_SANDBOX_BROKER_CA_CERT_PATH": certPath}, "sec", tenants},
+		{"CA without exec secret", map[string]string{"BEX_SANDBOX_BROKER_CA_CERT_PATH": certPath, "BEX_SANDBOX_BROKER_CA_KEY_PATH": keyPath}, "", tenants},
+		{"CA without store", map[string]string{"BEX_SANDBOX_BROKER_CA_CERT_PATH": certPath, "BEX_SANDBOX_BROKER_CA_KEY_PATH": keyPath}, "sec", nil},
+		{"invalid cache ttl", map[string]string{"BEX_SANDBOX_BROKER_CA_CERT_PATH": certPath, "BEX_SANDBOX_BROKER_CA_KEY_PATH": keyPath, "BEX_SANDBOX_BROKER_CACHE_TTL": "-1s"}, "sec", tenants},
+	}
+	for _, tc := range partials {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, _, err := buildSandboxBroker(envMap(tc.vars), tc.secret, k8s, tc.st, metrics); err == nil {
+				t.Fatal("expected partial config to fail closed")
+			}
+		})
+	}
+
+	// 3. Complete config succeeds with default :8086 and Enabled() == true.
+	broker, addr, err = buildSandboxBroker(envMap(map[string]string{
+		"BEX_SANDBOX_BROKER_CA_CERT_PATH": certPath,
+		"BEX_SANDBOX_BROKER_CA_KEY_PATH":  keyPath,
+	}), "0123456789abcdef", k8s, tenants, metrics)
+	if err != nil {
+		t.Fatalf("valid config failed: %v", err)
+	}
+	if broker == nil || !broker.Enabled() || addr != ":8086" {
+		t.Fatalf("valid config = (enabled=%v, addr=%q), want (true, \":8086\")", broker != nil && broker.Enabled(), addr)
 	}
 }

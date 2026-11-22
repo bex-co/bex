@@ -47,6 +47,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/proxyproto"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
@@ -55,6 +56,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/egressproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxbroker"
 	sandboxfilegateway "github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
@@ -441,6 +443,18 @@ func main() {
 		egress.MaxConnectionsPerWorkspace = intEnvAllowZero("BEX_AGENT_EGRESS_MAX_CONNECTIONS_PER_WORKSPACE", 100000)
 		egress.MaxBytesPerSession = int64(intEnvAllowZero("BEX_AGENT_EGRESS_MAX_BYTES_PER_SESSION", 20<<30))
 	}
+	// Sandbox credential broker (w2/m534, ADR122 D6). Started only when
+	// configured; partial configuration fails closed at startup.
+	sandboxBroker, sandboxBrokerAddr, err := buildSandboxBroker(
+		os.Getenv,
+		os.Getenv("BEX_SANDBOX_EXEC_SECRET"),
+		clientset,
+		st,
+		metrics,
+	)
+	if err != nil {
+		log.Fatalf("ssh gateway: sandbox credential broker: %v", err)
+	}
 	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
 	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session
 	// tickets under the same key. The gateway dials the in-sandbox driver's
@@ -574,6 +588,18 @@ func main() {
 				// deadline after the hijack and run under their own idle and
 				// total timeouts.
 				server.ReadTimeout = durationEnv("BEX_AGENT_EGRESS_READ_TIMEOUT", 2*time.Minute)
+				server.IdleTimeout = 2 * time.Minute
+			}))
+	}
+	// Sandbox credential broker (w2/m534, ADR122 D6). Internal-only (sandbox
+	// Pod → gateway on :8086 by default → internet:443). Authenticates callers
+	// strictly by source Pod IP + immutable sandbox labels, passes uncredentialed
+	// TLS through untouched, and terminates TLS + injects group credentials only
+	// for credentialed domains.
+	if sandboxBroker != nil && sandboxBroker.Enabled() {
+		drainers = append(drainers, startAuxListener("sandbox credential broker", "sandbox credential broker", sandboxBrokerAddr, sandboxBroker.Handler(), sessionCtx, stop, metrics,
+			func(server *http.Server) {
+				server.ReadTimeout = durationEnv("BEX_SANDBOX_BROKER_READ_TIMEOUT", 2*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
 			}))
 	}
@@ -722,6 +748,9 @@ func startAuxListener(name, logName, addr string, handler http.Handler, sessionC
 		// broker's concurrent-tunnel limiter rather than below it.
 		global = intEnv("BEX_AGENT_EGRESS_MAX_PREAUTH_CONNS", 512)
 		perSource = intEnv("BEX_AGENT_EGRESS_MAX_PREAUTH_CONNS_PER_SOURCE", 64)
+	case "sandbox credential broker":
+		global = intEnv("BEX_SANDBOX_BROKER_MAX_PREAUTH_CONNS", 512)
+		perSource = intEnv("BEX_SANDBOX_BROKER_MAX_PREAUTH_CONNS_PER_SOURCE", 64)
 	}
 	listener = newAdmissionListener(listener, global, perSource, metrics)
 	go func() {
@@ -984,4 +1013,94 @@ func newCredentialMux(credentials *agentcred.Broker) *http.ServeMux {
 		mux.Handle(method+" "+agentsession.SpawnProxyPath, credentials.SpawnHandler())
 	}
 	return mux
+}
+
+type tenantLister interface {
+	ListTenants(ctx context.Context) ([]store.Tenant, error)
+}
+
+// buildSandboxBroker configures the Pod-bound outbound HTTPS credential broker
+// (w2/m534, ADR122 D6). Returns (nil, "", nil) when completely unconfigured so
+// deployments without the Broker CA skip the listener cleanly. Any partial
+// configuration fails closed with an error at startup.
+func buildSandboxBroker(getenv func(string) string, execSecret string, clientset kubernetes.Interface, tenants tenantLister, metrics *sshgateway.Metrics) (*sandboxbroker.Broker, string, error) {
+	addr := strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_ADDR"))
+	certPath := strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_CA_CERT_PATH"))
+	keyPath := strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_CA_KEY_PATH"))
+	apiURL := strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_API_URL"))
+
+	if addr == "" && certPath == "" && keyPath == "" && apiURL == "" {
+		return nil, "", nil
+	}
+	if certPath == "" || keyPath == "" {
+		return nil, "", errors.New("partial config: both BEX_SANDBOX_BROKER_CA_CERT_PATH and BEX_SANDBOX_BROKER_CA_KEY_PATH are required")
+	}
+	if strings.TrimSpace(execSecret) == "" {
+		return nil, "", errors.New("partial config: BEX_SANDBOX_EXEC_SECRET is required to authenticate broker lookups")
+	}
+	if clientset == nil {
+		return nil, "", errors.New("kubernetes client is required for sandbox Pod IP binding")
+	}
+	if tenants == nil {
+		return nil, "", errors.New("control-plane store is required to resolve sandbox namespaces")
+	}
+	ca, err := sandboxbroker.LoadCA(certPath, keyPath, sandboxbroker.CAOptions{})
+	if err != nil {
+		return nil, "", err
+	}
+	if addr == "" {
+		addr = ":8086"
+	}
+	if apiURL == "" {
+		apiURL = "http://bex-api.bex-system.svc:8091" + sandbox.InternalBrokerLookupPath
+	}
+
+	cacheTTL := sandbox.BrokerLookupMaxCacheTTL
+	if raw := strings.TrimSpace(getenv("BEX_SANDBOX_BROKER_CACHE_TTL")); raw != "" {
+		d, parseErr := time.ParseDuration(raw)
+		if parseErr != nil || d <= 0 {
+			return nil, "", fmt.Errorf("BEX_SANDBOX_BROKER_CACHE_TTL must be a positive duration")
+		}
+		cacheTTL = d
+	}
+
+	lookupClient := &sandbox.BrokerLookupClient{
+		URL:              apiURL,
+		Secret:           []byte(execSecret),
+		HTTP:             &http.Client{Timeout: 5 * time.Second},
+		CacheTTL:         cacheTTL,
+		OnCacheEvent:     metrics.SandboxBrokerCache,
+		OnLookupDuration: metrics.SandboxBrokerLookupDuration,
+	}
+	podResolver := &sandboxbroker.KubeSandboxPodResolver{
+		Client: clientset,
+		Namespaces: func(ctx context.Context) ([]string, error) {
+			list, listErr := tenants.ListTenants(ctx)
+			if listErr != nil {
+				return nil, listErr
+			}
+			out := make([]string, 0, len(list))
+			for _, t := range list {
+				if t.ID != "" {
+					out = append(out, store.SandboxNamespace(t.ID))
+				}
+			}
+			return out, nil
+		},
+	}
+
+	broker := &sandboxbroker.Broker{
+		Pods:    podResolver,
+		API:     lookupClient,
+		CA:      ca,
+		Metrics: metrics,
+		Limits: sshgateway.NewSessionLimiter(
+			intEnv("BEX_SANDBOX_BROKER_MAX_CONNS", 256),
+			intEnv("BEX_SANDBOX_BROKER_MAX_CONNS_PER_POD", 32),
+		),
+		DenyPrefixes: prefixesEnv("BEX_SANDBOX_BROKER_DENY_CIDRS"),
+		IdleTimeout:  durationEnv("BEX_SANDBOX_BROKER_IDLE_TIMEOUT", 5*time.Minute),
+		MaxDuration:  durationEnv("BEX_SANDBOX_BROKER_MAX_DURATION", time.Hour),
+	}
+	return broker, addr, nil
 }

@@ -46,6 +46,9 @@ const (
 	// SandboxIDLabel is the sandbox's public id (`sbx-…`), persisted by
 	// OpenSandbox as a Pod label; the allow-list policy selects on it.
 	SandboxIDLabel = "bex.co/sandbox-id"
+	// SandboxGroupLabel is the sandbox's immutable sandbox group id (`sbg-…`),
+	// persisted as a Pod label for Pod-bound credential brokering (w2/m534-m535).
+	SandboxGroupLabel = "bex.co/sandbox-group"
 	// EgressLabel names the enforced posture of a Render sandbox: allow-all,
 	// deny-all or allow-list. A sandbox Pod without it predates w32/m283 and
 	// keeps the legacy platform allowlist.

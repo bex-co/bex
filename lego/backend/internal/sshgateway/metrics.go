@@ -26,22 +26,26 @@ import (
 // instance ids, remote addresses, commands, and terminal content are
 // deliberately absent so observability cannot become a second audit stream.
 type Metrics struct {
-	handshakes      *prometheus.CounterVec
-	authentications *prometheus.CounterVec
-	activeSessions  prometheus.Gauge
-	sessions        *prometheus.CounterVec
-	durations       *prometheus.HistogramVec
-	limitRejections *prometheus.CounterVec
-	channels        prometheus.Counter
-	activeChannels  prometheus.Gauge
-	reauths         *prometheus.CounterVec
-	twoFactor       *prometheus.CounterVec
-	gitUpstream     *prometheus.CounterVec
-	modelUsage      *prometheus.CounterVec
-	egressConns     *prometheus.CounterVec
-	egressBytes     *prometheus.CounterVec
-	drainBuffered   prometheus.Gauge
-	drainFallbacks  prometheus.Counter
+	handshakes                 *prometheus.CounterVec
+	authentications            *prometheus.CounterVec
+	activeSessions             prometheus.Gauge
+	sessions                   *prometheus.CounterVec
+	durations                  *prometheus.HistogramVec
+	limitRejections            *prometheus.CounterVec
+	channels                   prometheus.Counter
+	activeChannels             prometheus.Gauge
+	reauths                    *prometheus.CounterVec
+	twoFactor                  *prometheus.CounterVec
+	gitUpstream                *prometheus.CounterVec
+	modelUsage                 *prometheus.CounterVec
+	egressConns                *prometheus.CounterVec
+	egressBytes                *prometheus.CounterVec
+	sandboxBrokerRequests      *prometheus.CounterVec
+	sandboxBrokerOverlaps      prometheus.Counter
+	sandboxBrokerLookupSeconds prometheus.Histogram
+	sandboxBrokerCache         *prometheus.CounterVec
+	drainBuffered              prometheus.Gauge
+	drainFallbacks             prometheus.Counter
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -113,6 +117,23 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "egress_proxy_bytes_total",
 			Help: "Bytes relayed by the agent-session egress proxy, by direction (upstream = sandbox to internet, downstream = internet to sandbox).",
 		}, []string{"direction"}),
+		sandboxBrokerRequests: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "sandbox_broker_requests_total",
+			Help: "Sandbox credential broker requests (w2/m534) by closed outcome: injected, passthrough, denied, or error. Zero host, path, secret, or sandbox labels.",
+		}, []string{"outcome"}),
+		sandboxBrokerOverlaps: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "sandbox_broker_overlaps_total",
+			Help: "Sandbox credential broker requests where multiple enabled credentials matched and the deterministic lexicographical-ID winner was injected.",
+		}),
+		sandboxBrokerLookupSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "sandbox_broker_lookup_duration_seconds",
+			Help:    "Latency of gateway->bex-api internal sandbox credential broker lookups.",
+			Buckets: prometheus.DefBuckets,
+		}),
+		sandboxBrokerCache: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "sandbox_broker_cache_total",
+			Help: "Sandbox credential broker lookup cache accesses by result: hit or miss.",
+		}, []string{"result"}),
 		// w6/101: the exec drain buffer (w6/099) holding output read ahead of
 		// a slow SSH client, and the writes that went straight through because
 		// the process-wide budget was spent, which is when kube-apiserver's
@@ -126,7 +147,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Help: "Exec output writes forwarded unbuffered because the process-wide drain budget was spent.",
 		}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.drainBuffered, m.drainFallbacks)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
 	return m
 }
 
@@ -245,6 +266,40 @@ func (m *Metrics) EgressProxyConnection(result string) {
 func (m *Metrics) EgressProxyBytes(direction string, n int64) {
 	if m != nil && n > 0 {
 		m.egressBytes.WithLabelValues(direction).Add(float64(n))
+	}
+}
+
+// SandboxBrokerRequest records one sandbox credential broker outcome
+// ("injected", "passthrough", "denied", or "error"). Closed labels only.
+func (m *Metrics) SandboxBrokerRequest(outcome string) {
+	if m != nil {
+		m.sandboxBrokerRequests.WithLabelValues(outcome).Inc()
+	}
+}
+
+// SandboxBrokerOverlap counts one request where multiple enabled group
+// credentials matched and deterministic tie-breaking selected one winner.
+func (m *Metrics) SandboxBrokerOverlap() {
+	if m != nil {
+		m.sandboxBrokerOverlaps.Inc()
+	}
+}
+
+// SandboxBrokerLookupDuration observes one bex-api internal broker lookup.
+func (m *Metrics) SandboxBrokerLookupDuration(d time.Duration) {
+	if m != nil {
+		m.sandboxBrokerLookupSeconds.Observe(d.Seconds())
+	}
+}
+
+// SandboxBrokerCache records one lookup cache "hit" or "miss".
+func (m *Metrics) SandboxBrokerCache(hit bool) {
+	if m != nil {
+		if hit {
+			m.sandboxBrokerCache.WithLabelValues("hit").Inc()
+		} else {
+			m.sandboxBrokerCache.WithLabelValues("miss").Inc()
+		}
 	}
 }
 

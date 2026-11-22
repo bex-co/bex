@@ -88,6 +88,20 @@ func (s *PGStore) ExpireSandboxRecords(ctx context.Context, now time.Time) error
 	return err
 }
 
+// GetSandboxRecord returns one sandbox's durable record (live or ended), or
+// ErrNotFound when no record exists for (workspaceID, sandboxID).
+func (s *PGStore) GetSandboxRecord(ctx context.Context, workspaceID, sandboxID string) (SandboxRecord, error) {
+	r := SandboxRecord{WorkspaceID: workspaceID, SandboxID: sandboxID}
+	err := s.Pool.QueryRow(ctx, `
+		SELECT owner, view, terminated_at, expires_at FROM sandbox_records
+		WHERE workspace_id = $1 AND sandbox_id = $2`, workspaceID, sandboxID).
+		Scan(&r.Owner, &r.View, &r.TerminatedAt, &r.ExpiresAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return SandboxRecord{}, ErrNotFound
+	}
+	return r, err
+}
+
 // EndedSandbox is one ended sandbox's record, or ErrNotFound when the sandbox
 // has none or has not ended.
 func (s *PGStore) EndedSandbox(ctx context.Context, workspaceID, sandboxID string) (SandboxRecord, error) {

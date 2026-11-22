@@ -1,20 +1,20 @@
 # w2 · m534 — Pod-bound outbound HTTPS credential broker on ssh-gateway
 
-**Worker:** worker2 **Goal:** Build the runtime data-plane credential broker inside `bex-ssh-gateway` and its internal `bex-api` lookup route so `/v1/sandboxes` Pods authenticate by source Pod IP alone, pass through non-credentialed TLS untouched, terminate TLS only for credentialed domains, enforce `networkPolicy` + SSRF protection, and inject `header`/`basic`/`cookie`/`query` secrets without ever exposing secret values to the sandbox. **Status:** todo
+**Worker:** worker2 **Goal:** Build the runtime data-plane credential broker inside `bex-ssh-gateway` and its internal `bex-api` lookup route so `/v1/sandboxes` Pods authenticate by source Pod IP alone, pass through non-credentialed TLS untouched, terminate TLS only for credentialed domains, enforce `networkPolicy` + SSRF protection, and inject `header`/`basic`/`cookie`/`query` secrets without ever exposing secret values to the sandbox. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Add internal control-plane broker lookup endpoint on `bex-api` (`:8091`) returning a sandbox's `networkPolicy` and active group credentials with OpenBao secrets and short-TTL cache invalidation | 1h | `w2/m532` |
-| t002 | Implement Sandbox Broker CA loader and bounded in-memory per-host short-lived leaf TLS certificate signer | 1h | t001 |
-| t003 | Implement Render request-matching and secret-injection engine (`domain`, `methods`, `*`/`**` `paths`, `${SECRET}` template, `header`/`basic`/`cookie`/`query`, single-match non-combination) | 1h | t001 |
-| t004 | Build `sshgateway/sandboxbroker` HTTP `CONNECT` proxy with Pod-IP auth, `networkPolicy` + resolve-once SSRF enforcement, pass-through TLS, selective MITM injection, and no redirect following | 1h30m | t002, t003 |
-| t005 | Wire dedicated broker listener in `cmd/ssh-gateway`, concurrency/timeout limits, secret-free error/log scrubbing, and Prometheus metrics + Grafana panel | 45m | t004 |
-| t006 | Add loopback end-to-end tests covering all 4 injection modes, pass-through TLS, `allow-list`/`deny-all`, SSRF/rebinding, 302 non-leakage, and live cutoff | 1h | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t001 | Add internal control-plane broker lookup endpoint on `bex-api` (`:8091`) returning a sandbox's `networkPolicy` and active group credentials with OpenBao secrets and short-TTL cache invalidation — **DONE** | 1h | `w2/m532` |
+| t002 | Implement Sandbox Broker CA loader and bounded in-memory per-host short-lived leaf TLS certificate signer — **DONE** | 1h | t001 |
+| t003 | Implement Render request-matching and secret-injection engine (`domain`, `methods`, `*`/`**` `paths`, `${SECRET}` template, `header`/`basic`/`cookie`/`query`, single-match non-combination) — **DONE** | 1h | t001 |
+| t004 | Build `sshgateway/sandboxbroker` HTTP `CONNECT` proxy with Pod-IP auth, `networkPolicy` + resolve-once SSRF enforcement, pass-through TLS, selective MITM injection, and no redirect following — **DONE** | 1h30m | t002, t003 |
+| t005 | Wire dedicated broker listener in `cmd/ssh-gateway`, concurrency/timeout limits, secret-free error/log scrubbing, and Prometheus metrics + Grafana panel — **DONE** | 45m | t004 |
+| t006 | Add loopback end-to-end tests covering all 4 injection modes, pass-through TLS, `allow-list`/`deny-all`, SSRF/rebinding, 302 non-leakage, and live cutoff — **DONE** | 1h | t005 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity for w2` (2026-11-18), materialized via `/pmx them all to w2`. Follows Render's OpenAPI credential matching/injection contract (`lego/backend/internal/api/openapi/render-public-api-1.json`) and reuses `ssh-gateway`'s Pod-bound proxy architecture (`lego/backend/internal/sshgateway/egressproxy/egressproxy.go`, `sessionpod.go`).
-- **Goal linkage:** Render parity first ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)) — delivers the core host-side secret injection mechanism of Render Sandbox credential brokering.
+- **Goal linkage:** Render parity first ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) — delivers the core host-side secret injection mechanism of Render Sandbox credential brokering.
 - **Expected outcome:** A self-contained, thoroughly tested host-side injection proxy inside `bex-ssh-gateway` ready for sandbox Pods to route through in `w2/m535`.
 - **Why now:** Without the data-plane broker, `w2/m532`'s stored credentials are inert metadata; keeping the proxy separate from cluster/Cilium Pod wiring (`w2/m535`) isolates risk and keeps each milestone reviewable.
 - **Render parity:** Omitted — internal gateway data plane and internal port-8091 broker lookup with no new public REST/GraphQL/MCP/UI wire schema; Render matching/injection semantics are verified by unit/loopback contract tests here and end-to-end on production in `w2/m536`.

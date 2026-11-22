@@ -349,6 +349,19 @@ func (s *PGStore) DeleteSandboxGroup(ctx context.Context, workspaceID, id string
 	return err
 }
 
+// GetSandboxGroupMember returns the group binding of one sandbox, or
+// ErrNotFound when no binding exists for (workspaceID, sandboxID).
+func (s *PGStore) GetSandboxGroupMember(ctx context.Context, workspaceID, sandboxID string) (SandboxGroupMember, error) {
+	var m SandboxGroupMember
+	err := s.Pool.QueryRow(ctx,
+		`SELECT group_id, lease_until FROM sandbox_group_members WHERE workspace_id = $1 AND sandbox_id = $2`,
+		workspaceID, sandboxID).Scan(&m.GroupID, &m.LeaseUntil)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return SandboxGroupMember{}, ErrNotFound
+	}
+	return m, err
+}
+
 // SandboxGroupMembers returns the group binding of every sandbox of one
 // workspace that has one, by public sandbox id.
 func (s *PGStore) SandboxGroupMembers(ctx context.Context, workspaceID string) (map[string]SandboxGroupMember, error) {

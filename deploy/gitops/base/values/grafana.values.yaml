@@ -5788,6 +5788,63 @@ dashboards:
                  "legendFormat": "partial pages"
                 }
               ]
+            },
+            {
+             "id": 43,
+             "type": "timeseries",
+             "title": "Sandbox credential broker requests & overlaps (15m)",
+             "description": "Pod-bound outbound HTTPS credential broker traffic on bex-ssh-gateway (w2/m534, ADR122 D6) by closed outcome (injected, passthrough, denied, error) plus deterministic overlap tie-breaks. Zero host, URL, secret, or sandbox labels.",
+             "gridPos": { "h": 9, "w": 12, "x": 0, "y": 188 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (outcome) (increase(bex_ssh_gateway_sandbox_broker_requests_total[15m]))",
+                 "legendFormat": "{{outcome}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum(increase(bex_ssh_gateway_sandbox_broker_overlaps_total[15m]))",
+                 "legendFormat": "overlaps"
+                }
+              ]
+            },
+            {
+             "id": 44,
+             "type": "timeseries",
+             "title": "Sandbox credential broker lookup p95 & cache hit ratio",
+             "description": "Internal gateway\u2192bex-api (:8091) broker lookup latency p95 on the left axis and in-memory <=5s lookup cache hit ratio on the right axis (w2/m534).",
+             "gridPos": { "h": 9, "w": 12, "x": 12, "y": 188 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "s", "min": 0 },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "B" },
+                   "properties": [
+                      { "id": "unit", "value": "percentunit" },
+                      { "id": "custom.axisPlacement", "value": "right" },
+                      { "id": "max", "value": 1 }
+                    ]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_ssh_gateway_sandbox_broker_lookup_duration_seconds_bucket[15m])))",
+                 "legendFormat": "lookup p95"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum(rate(bex_ssh_gateway_sandbox_broker_cache_total{result=\"hit\"}[15m])) / sum(rate(bex_ssh_gateway_sandbox_broker_cache_total[15m]))",
+                 "legendFormat": "cache hit ratio"
+                }
+              ]
             }
           ]
         }

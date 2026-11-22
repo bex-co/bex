@@ -183,4 +183,22 @@ func TestEndAbsentSandboxesEndsAnExpiredRecordAtItsDeadline(t *testing.T) {
 	if err := st.Pool.QueryRow(ctx, `SELECT expires_at FROM sandbox_records WHERE workspace_id = $1 AND sandbox_id = $2`, ws, expired).Scan(&expires); err != nil || expires == nil || !expires.Equal(deadline) {
 		t.Fatalf("ended record's deadline = %v (err %v), want unchanged %s", expires, err, deadline)
 	}
+
+	// GetSandboxRecord returns live records (TerminatedAt == nil), ended records,
+	// and ErrNotFound when absent.
+	liveID := fmt.Sprintf("sbx-liveget-%d", time.Now().UnixNano())
+	if err := st.RecordSandbox(ctx, SandboxRecord{WorkspaceID: ws, SandboxID: liveID, Owner: "u", View: []byte(`{"id":"` + liveID + `"}`), ExpiresAt: &future}); err != nil {
+		t.Fatal(err)
+	}
+	gotLive, err := st.GetSandboxRecord(ctx, ws, liveID)
+	if err != nil || gotLive.TerminatedAt != nil || gotLive.ExpiresAt == nil || !gotLive.ExpiresAt.Equal(future) {
+		t.Fatalf("GetSandboxRecord live = (%+v, %v)", gotLive, err)
+	}
+	gotEnded, err := st.GetSandboxRecord(ctx, ws, expired)
+	if err != nil || gotEnded.TerminatedAt == nil {
+		t.Fatalf("GetSandboxRecord ended = (%+v, %v)", gotEnded, err)
+	}
+	if _, err := st.GetSandboxRecord(ctx, ws, "sbx-nonexistent"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetSandboxRecord missing err = %v, want ErrNotFound", err)
+	}
 }

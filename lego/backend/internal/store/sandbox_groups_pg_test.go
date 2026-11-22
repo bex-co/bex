@@ -244,6 +244,13 @@ func TestSandboxGroupMembersPG(t *testing.T) {
 	if err != nil || len(members) != 2 || members[a].GroupID != g.ID || members[a].LeaseUntil == nil || !members[a].LeaseUntil.Equal(lease) {
 		t.Fatalf("members = %+v (%v), want a and b in %s with the lease", members, err, g.ID)
 	}
+	single, err := st.GetSandboxGroupMember(ctx, ws, a)
+	if err != nil || single.GroupID != g.ID || single.LeaseUntil == nil || !single.LeaseUntil.Equal(lease) {
+		t.Fatalf("GetSandboxGroupMember = (%+v, %v), want group %s", single, err, g.ID)
+	}
+	if _, err := st.GetSandboxGroupMember(ctx, ws, "sbx-missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetSandboxGroupMember missing err = %v, want ErrNotFound", err)
+	}
 
 	// A re-bind renews the lease and keeps the group.
 	later := lease.Add(time.Hour)

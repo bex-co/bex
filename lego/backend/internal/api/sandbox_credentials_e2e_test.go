@@ -520,4 +520,10 @@ func TestSandboxGroupCredentialsE2E(t *testing.T) {
 			t.Fatalf("audit log leaked secret %q", sec)
 		}
 	}
+
+	// 12. Internal broker lookup route (w2/m534) is NEVER mounted on the public :8090 API.
+	rec = call(session(admin), http.MethodPost, sandbox.InternalBrokerLookupPath, `{}`)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("public :8090 POST %s = %d, want 404", sandbox.InternalBrokerLookupPath, rec.Code)
+	}
 }

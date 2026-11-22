@@ -446,7 +446,7 @@ func (b *Broker) serveHTTP(w http.ResponseWriter, r *http.Request, usage *sessio
 	out := r.Clone(ctx)
 	out.RequestURI = ""
 	out.Host = r.URL.Host
-	removeHopHeaders(out.Header)
+	sshgateway.RemoveHopHeaders(out.Header)
 	if r.Body != nil && r.Body != http.NoBody {
 		out.Body = &countingReader{r: r.Body, usage: usage, broker: b, direction: "upstream"}
 	}
@@ -472,7 +472,7 @@ func (b *Broker) serveHTTP(w http.ResponseWriter, r *http.Request, usage *sessio
 	}
 	defer response.Body.Close()
 	b.Metrics.EgressProxyConnection("allowed")
-	removeHopHeaders(response.Header)
+	sshgateway.RemoveHopHeaders(response.Header)
 	for name, values := range response.Header {
 		w.Header()[name] = values
 	}
@@ -574,44 +574,10 @@ func blockedName(host string) bool {
 	return false
 }
 
-// deniedPrefixes are never reachable through the proxy: unspecified, private,
-// loopback, link-local (incl. the 169.254.169.254 metadata service), CGNAT,
-// IETF/benchmark/documentation, multicast and reserved space, IPv6 ULA,
-// link-local, multicast, NAT64, Teredo, 6to4 and discard prefixes (the
-// tunnelling prefixes embed an IPv4 address that could be private).
-var deniedPrefixes = func() []netip.Prefix {
-	var out []netip.Prefix
-	for _, raw := range []string{
-		"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
-		"172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24", "192.88.99.0/24", "192.168.0.0/16",
-		"198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4",
-		"::/128", "::1/128", "64:ff9b::/96", "64:ff9b:1::/48", "100::/64", "2001:db8::/32",
-		"2001::/32", "2002::/16", "fc00::/7", "fe80::/10", "ff00::/8",
-	} {
-		out = append(out, netip.MustParsePrefix(raw))
-	}
-	return out
-}()
-
-// blockedAddr reports an address in deniedPrefixes (which already covers every
-// netip loopback/private/link-local/multicast/unspecified class) or in the
-// deployment's DenyPrefixes.
+// blockedAddr reports an address in the shared gateway non-public/SSRF deny
+// prefixes or in the deployment's DenyPrefixes.
 func (b *Broker) blockedAddr(addr netip.Addr) bool {
-	addr = addr.Unmap()
-	if !addr.IsValid() {
-		return true
-	}
-	for _, prefix := range deniedPrefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	for _, prefix := range b.DenyPrefixes {
-		if prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
+	return sshgateway.BlockedEgressAddr(addr, b.DenyPrefixes)
 }
 
 func (b *Broker) sessionUsage(namespace string, verified agentsession.ModelMintRequest) *sessionUsage {
@@ -727,25 +693,6 @@ func durationOr(value, fallback time.Duration) time.Duration {
 		return value
 	}
 	return fallback
-}
-
-// hopHeaders never cross the proxy (RFC 9110 §7.6.1), plus the session claim.
-var hopHeaders = []string{
-	"Connection", "Proxy-Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy-Authorization",
-	"Te", "Trailer", "Transfer-Encoding", "Upgrade",
-}
-
-func removeHopHeaders(header http.Header) {
-	for _, field := range header.Values("Connection") {
-		for _, name := range strings.Split(field, ",") {
-			if name = strings.TrimSpace(name); name != "" {
-				header.Del(name)
-			}
-		}
-	}
-	for _, name := range hopHeaders {
-		header.Del(name)
-	}
 }
 
 // countingReader charges a plain-HTTP body against the session byte budget.
