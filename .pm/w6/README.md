@@ -40,7 +40,7 @@ Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus 
 1. **[m290](done/m290/README.md)** — **done** — deleting an environment or project handles its datastores and env groups as Render does (10 tasks).
 2. **[m291](done/m291/README.md)** — **done** — build toolchain digests are fresh again and #105 closes (7 tasks; #105 closed 2026-11-16, production build verified 2026-11-17).
 3. **[110](done/110.md)** — **done** — tenant-view probe detects an activator-held wake (#134).
-4. **[111](done/111.md)** — **done** — main-only branch policies on five production environments (#101), split from w3/blocked/m173 t005.
+4. **[111](done/111.md)** — **done** — main-only branch policies on five production environments (#101), split from w3/m173 t005.
 5. **[112](done/112.md)** — **done** — CLI staleness monitor counts from the rewritten release tag (#111).
 6. **[113](done/113.md)** — **done** — ADR018 rows 222 and 225 stale or unsigned claims.
 
@@ -367,7 +367,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 - [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](done/m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`
 - [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
 - [x] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](done/110.md) — done 2026-11-08 ← `/pm-brainstorm for w6` 2026-11-08 proposal 3
-- [x] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](done/111.md) — done 2026-11-08: drift script OK, #101 closes on run 42467710122 ← proposal 4; split from w3/blocked/m173 t005
+- [x] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](done/111.md) — done 2026-11-08: drift script OK, #101 closes on run 42467710122 ← proposal 4; split from w3/m173 t005
 - [x] **112** — [cli-release-staleness.sh counts from the rewritten copy of an off-main release tag (#111)](done/112.md) — done 2026-11-08 (11 real unreleased commits; `/release cli` still owed)
 - [x] **113** — [ADR018 rows 222 and 225 carry stale or unsigned claims](done/113.md) — done 2026-11-08: row 225 is updated by m290 t006; row 222 is now an open gap owned by 114
 - [ ] **114** — **BLOCKED (Hetzner/account owner: node capacity, the same gate as `w2/blocked/m250`; the user declined raising the dedicated-vCPU limit for now on 2026-11-16; plus Render's prices for the sizes)** — [Accept Render's larger compute plan IDs once bex can run them](blocked/114.md) ← from 113

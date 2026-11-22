@@ -1,6 +1,6 @@
 # w3 · m173 — Production credentials reach only main-branch production jobs
 
-**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** blocked — t001–t004, t006, t008, t009 done; release-tag policy fixed 2026-10-29; t005 needs the user to choose how the exact live secret values are sourced (A/B/C below); t007, t010 follow
+**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** done 2026-11-22 — every production-class secret is environment-scoped, and the repository scope holds none; a branch probe reads every name as empty; `main` stays green (t005, t007)
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | t002 | Decide the gate shape; amend ADR083 obligation 5 and ADR019 §Decision 5 — **DONE** | 30m | t001 |
 | t003 | Move every production-secret job into its environment — **DONE** | 45m | t002 |
 | t004 | Fail closed on a production secret outside a production environment; scheduled drift check — **DONE** | 1h | t003 |
-| t005 | Apply the GitHub settings: environments, branch policies, reviewers, secret scope (needs your authorization) | 45m | t003 |
+| t005 | Apply the GitHub settings: environments, branch policies, reviewers, secret scope (needs your authorization) — **DONE** | 45m | t003 |
 | t006 | Refuse a group- or world-readable `.env` in every loader — **DONE** | 40m | t002 |
-| t007 | Live proof: a branch probe sees no production secret; main stays green | 45m | t004, t005, t006 |
+| t007 | Live proof: a branch probe sees no production secret; main stays green — **DONE** | 45m | t004, t005, t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -57,3 +57,12 @@
 
 1. **Fixed — release tags.** `cli-release.yml` / `mobile-release.yml` run on `bex-cli/v*` / `bex-mobile/v*` tag pushes in `production-release`; a strict main-only policy would have refused every CLI and mobile release. `scripts/github-environments-drift.sh` now requires `production-release` = `main` + exactly those two tag rules (every other environment: exactly `main`), the self-test proves it and checks the allowed tags equal the workflows' `tags:` triggers, and ADR083 obligation 5 records the exception (their unprivileged `authorize` job already refuses a tag not on `main`). t005 step 2 therefore sets `production-release`'s policy to `main` + those two tag rules.
 2. **New gate — secret values.** GitHub secrets are write-only, and no local `.env` holds them all (names-only check, 2026-10-29): `ARGOCD_REPO_SSH_KEY` and `BEX_TAP_PUSH_KEY` exist in no `.env`; the rest are split across `bex3`/`bex5`/`bex6` and may be **stale** — e.g. the CP nodes were replaced 2026-10-29, so a local `BEX_SSH_KNOWN_HOSTS` can differ from the live one. An environment secret overrides the repository one of the same name, so pushing a stale value would break production jobs. Options needing the user's choice: **(A)** a temporary main-only `workflow_dispatch` workflow, one job per environment (passes check 9), encrypts the values it already sees to a one-off local public key, uploads them as a 1-day artifact, and is deleted right after; the values are decrypted locally and pushed with `gh secret set --env` — exact live values, never plaintext anywhere new; **(B)** the user supplies a complete, current `.env` (or `*_FILE` paths) and confirms it is current; **(C)** move only the secrets whose local value can be verified against the live cluster (hash comparison) and leave the rest at repository scope (DoD not met).
+
+## Closeout (2026-11-22)
+
+- **t005.** The user chose option A′ on 2026-11-21: copy the values inside a GitHub runner with a short-lived, environment-only token, so the values never leave GitHub. 46 placements were copied, and 7 that were already present were left untouched. Production workflows were proved green on `main`, and then the 37 repository copies were deleted. Repository scope now holds 0 secrets. No rotation, per D2.
+- **t007.**
+  - Branch probe run 45003934067: `readable=0 of 37`, and the environment job was refused.
+  - `deploy.yml` 45001198444, `deploy-canary.yml` 45004007457, `ssh-edge-liveness.yml` 44998109993, `openbao-restore-drill.yml` 44989163840 and drift 45004009517 are green.
+  - `isolation-matrix.yml` 45004293073's credential steps passed; its sandbox leg is red on a separate probe issue ([w2/085](../../../w2/085.md), #196).
+- Temporary branches, runs, token secrets and tokens are deleted.
