@@ -22,6 +22,10 @@ on:
       - ".gitleaks.toml"
       - ".github/**"
       - "skills-lock.json"
+      # github-actions-validate.test.sh checks the mobile release's eas-cli lock
+      # against the eas.json cli.version it must satisfy.
+      - "tools/eas/**"
+      - "mobile/eas.json"
       # Whole-tree reads scripts/ci_test_inputs.py cannot resolve: the image
       # digest-pin guard inventories every tracked Dockerfile, Go and YAML
       # file, the credential argv guard greps every shell script, and
@@ -53,6 +57,10 @@ on:
       - ".gitleaks.toml"
       - ".github/**"
       - "skills-lock.json"
+      # github-actions-validate.test.sh checks the mobile release's eas-cli lock
+      # against the eas.json cli.version it must satisfy.
+      - "tools/eas/**"
+      - "mobile/eas.json"
       # Whole-tree reads scripts/ci_test_inputs.py cannot resolve: the image
       # digest-pin guard inventories every tracked Dockerfile, Go and YAML
       # file, the credential argv guard greps every shell script, and

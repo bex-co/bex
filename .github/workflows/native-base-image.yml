@@ -119,6 +119,8 @@ jobs:
             /*
             !/.pm/
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
       - name: log in to GHCR with bounded transport retries
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

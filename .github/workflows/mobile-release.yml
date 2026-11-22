@@ -7,6 +7,10 @@ name: release (bex mobile)
 # so a release page never describes a binary the stores did not receive.
 # The tag carries the version; mobile/app.json must already match it
 # (`yarn bump`, landed through /ship) because the store binary reads it there.
+# eas-cli and its whole dependency graph come from tools/eas/package-lock.json
+# through `npm ci`, so a release never resolves a fresh npm graph next to
+# EXPO_TOKEN. The build job holds a read-only token; only the separate
+# `publish` job, which runs no repository or npm code, can write the release.
 
 on:
   push:
@@ -65,8 +69,9 @@ jobs:
     # Main-only deployment rule over environment-scoped credentials; no manual
     # gate (#ENV-REVIEWERS).
     environment: production-release
+    # Read-only: publishing the GitHub release is the `publish` job's.
     permissions:
-      contents: write
+      contents: read
     defaults:
       run:
         working-directory: mobile
@@ -80,6 +85,7 @@ jobs:
             /*
             !/.pm/
           ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
@@ -96,12 +102,18 @@ jobs:
             echo "tag $VERSION, app.json $APP_VERSION, package.json $PACKAGE_VERSION differ — run yarn bump and /ship first" >&2
             exit 1
           fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: install dependencies
         run: yarn install --frozen-lockfile
       # Store builds reach real users — never on red checks.
       - name: format, typecheck, lint, unit tests, Expo config
         run: yarn test
+      # The exact eas-cli graph tools/eas/package-lock.json records, each
+      # tarball checked against its integrity hash. --ignore-scripts: its only
+      # install scripts are protobufjs's version notice and the optional
+      # dtrace-provider build, which the CLI does not need.
+      - name: install the locked eas-cli
+        working-directory: tools/eas
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: build and submit to both stores
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -135,14 +147,25 @@ jobs:
           # --auto-submit submits each exact build once it finishes (server-side),
           # avoiding the `submit --latest` race. Waiting (no --no-wait) fails
           # this step when any build errors or any submission does not finish.
-          npx eas-cli@24.11.0 build --platform all --profile production \
-            --auto-submit --non-interactive
+          "$GITHUB_WORKSPACE/tools/eas/node_modules/.bin/eas" build --platform all \
+            --profile production --auto-submit --non-interactive
+
+  publish:
+    needs: release
+    runs-on: ubuntu-24.04-arm
+    # Only the GitHub API through the preinstalled gh: no checkout, no
+    # repository code and no npm package runs beside this write token.
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
       - name: publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         # Idempotent so a re-run after a late failure does not error out.
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "bex mobile $VERSION" --generate-notes
+          VERSION="${TAG#bex-mobile/v}"
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "bex mobile $VERSION" --generate-notes
           fi

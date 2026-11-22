@@ -1,6 +1,7 @@
 # Dependabot config (w7/m65). Keeps two dependency surfaces fresh with automated
-# PRs: the SHA-pinned GitHub Actions (t001), the dashboard's npm tree, and the
-# four Go modules under lego/. Go used to rely on the m62 govulncheck gate alone,
+# PRs: the SHA-pinned GitHub Actions (t001), the dashboard's npm tree, the
+# mobile release's locked eas-cli (tools/eas), and the four Go modules under
+# lego/. Go used to rely on the m62 govulncheck gate alone,
 # which reports but does not block deploys: reachable golang.org/x/net advisories
 # sat red on main for six days with no PR (w1/m174), so Go now gets the same
 # security lane as the other ecosystems.
@@ -72,6 +73,26 @@ updates:
         patterns:
           - "*"
       dashboard-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # The mobile store release's eas-cli (tools/eas/package-lock.json, installed
+  # with `npm ci` by mobile-release.yml). Same cadence as the dashboard; a bump
+  # must stay within mobile/eas.json's `cli.version`.
+  - package-ecosystem: "npm"
+    directory: "/tools/eas"
+    schedule:
+      interval: "quarterly"
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 30
+      semver-major-days: 90
+    groups:
+      eas-cli:
+        patterns:
+          - "*"
+      eas-cli-security:
         applies-to: security-updates
         patterns:
           - "*"

@@ -67,7 +67,16 @@
       "source": "Docker Hub moby/buildkit:v0.30.0 multi-arch index",
       "files": [
         "lego/operator/internal/build/build.go",
-        "deploy/gitops/base/build-image-prewarm.yaml"
+        "deploy/gitops/base/build-image-prewarm.yaml",
+        ".github/workflows/cnb-run-image.yml",
+        ".github/workflows/deploy.yml",
+        ".github/workflows/hcloud-csi-image.yml",
+        ".github/workflows/hugo-image.yml",
+        ".github/workflows/kubelet-artifact.yml",
+        ".github/workflows/log-shipper-image.yml",
+        ".github/workflows/native-base-image.yml",
+        ".github/workflows/native-common-image.yml",
+        ".github/workflows/pg-operand-image.yml"
       ]
     },
     {

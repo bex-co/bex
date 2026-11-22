@@ -80,11 +80,19 @@ API key (`EXPO_ASC_API_KEY_P8`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`) on the
 `production-release` environment. Without the ASC key a non-interactive build
 cannot regenerate an expired or outgrown provisioning profile.
 
-The same build runs from a logged-in checkout:
+The same build runs from a logged-in checkout. eas-cli is not a `mobile/`
+dependency: it lives in `tools/eas/`, whose `package-lock.json` locks it at
+exactly `24.11.0` with its whole dependency graph. Install it with `npm ci`,
+never `npx eas-cli@…`, which resolves a fresh graph each time. From `mobile/`:
 
 ```bash
-npx eas-cli@24.11.0 build --platform all --profile production --auto-submit --non-interactive
+npm ci --prefix ../tools/eas --ignore-scripts
+../tools/eas/node_modules/.bin/eas build --platform all --profile production --auto-submit --non-interactive
 ```
+
+Bump eas-cli by editing `tools/eas/package.json` and regenerating the lock
+(`npm install --package-lock-only` there), or through its Dependabot PR. Keep it
+within `eas.json`'s `cli.version` (`>= 22.2.0`).
 
 EAS archives a fresh clone of the whole repository and honors only committed
 ignore rules, so anything large and untracked must be in `.gitignore`, not just

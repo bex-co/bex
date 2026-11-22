@@ -389,6 +389,96 @@ assert "keyed restore with pinned age runtime passes" 0 "$(body "      - uses: $
 assert "dotenv restore unaffected" 0 "$(body "      - uses: $PINNED
       - run: bash scripts/restore-etcd.sh")"
 
+# --- check 12: no unlocked package fetch beside a credential -----------------
+# RED: the pre-lock mobile-release.yml shape — npx resolves eas-cli's whole
+# graph afresh next to EXPO_TOKEN.
+assert "credentialed job with npx foo@1.2.3 fails" 1 "$(job_body "$ARM" "      - env:
+          T: \${{ secrets.PRODUCTION_TOKEN }}
+        run: npx foo@1.2.3 build")" "job x: holds a credential but fetches an unlocked package"
+assert "environment job with npx --yes fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: %s\n    environment: production-release\n    steps:\n      - run: npx --yes prettier@3.4.2 --check .' "$ARM")" \
+  "fetches an unlocked package"
+assert "write-token job with npx fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: %s\n    permissions:\n      contents: write\n    steps:\n      - run: |\n          npx @scope/tool@2.0.0' "$ARM")" \
+  "ci.yml:8: job x"
+assert "workflow-level secret reaching an npx job fails" 1 "$(printf 'env:\n  T: ${{ secrets.PRODUCTION_TOKEN }}\n%s' "$(job_body "$ARM" "      - run: npm exec --yes foo@1")")" \
+  "fetches an unlocked package"
+assert "credentialed job with pnpm dlx fails" 1 "$(job_body "$ARM" "      - env:
+          T: \${{ secrets.PRODUCTION_TOKEN }}
+        run: pnpm dlx foo")" "fetches an unlocked package"
+# GREEN: docs.yml's uncredentialed prettier; a credentialed job running a
+# binary npm ci installed from a lockfile; a commented-out npx.
+assert "uncredentialed npx --yes prettier passes" 0 "$(job_body "$ARM" "      - run: npx --yes prettier@3.4.2 --check \"**/*.md\"")"
+assert "credentialed job running a locked binary passes" 0 "$(job_body "$ARM" "      - working-directory: tools/eas
+        run: npm ci --ignore-scripts
+      - env:
+          T: \${{ secrets.PRODUCTION_TOKEN }}
+        run: tools/eas/node_modules/.bin/eas build --non-interactive")"
+assert "commented npx in a credentialed job passes" 0 "$(job_body "$ARM" "      - env:
+          T: \${{ secrets.PRODUCTION_TOKEN }}
+        run: |
+          # was: npx eas-cli@24.11.0 build
+          ./build")"
+
+# --- check 13: every buildx builder boots the reviewed BuildKit pin ---------
+BUILDX='docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1'
+BUILDKIT_PIN="$(python3 -c 'import json, sys; print(next(r["committed"] for r in json.load(open(sys.argv[1]))["images"] if r["id"] == "helper-buildkit"))' \
+  "$root/lego/operator/internal/build/toolchain-freshness.json")"
+OTHER_DIGEST="moby/buildkit:v0.30.0@sha256:$(printf '%064d' 0)"
+buildx_with() { # <driver-opts value>
+  job_body "$ARM" "      - uses: $BUILDX
+        with:
+          driver-opts: $1"
+}
+# RED: no driver-opts boots buildx's moving default builder.
+assert "setup-buildx without driver-opts fails" 1 "$(job_body "$ARM" "      - uses: $BUILDX")" \
+  "ci.yml:5: job x: setup-buildx-action sets no driver-opts image="
+assert "setup-buildx with only other driver-opts fails" 1 "$(buildx_with "network=host")" \
+  "sets no driver-opts image="
+assert "tag-only BuildKit image fails" 1 "$(buildx_with "image=moby/buildkit:v0.30.0")" \
+  "image=moby/buildkit:v0.30.0 is not the helper-buildkit pin"
+assert "BuildKit digest other than helper-buildkit fails" 1 "$(buildx_with "image=$OTHER_DIGEST")" \
+  "is not the helper-buildkit pin"
+assert "any buildx-stable-1 mention fails" 1 "$(buildx_with "image=$BUILDKIT_PIN
+      # pre-pull moby/buildkit:buildx-stable-1")" "names the moving moby/buildkit:buildx-stable-1 tag"
+# GREEN: the literal pin, inline or in a block scalar beside other options.
+assert "pinned BuildKit digest passes" 0 "$(buildx_with "image=$BUILDKIT_PIN")"
+assert "pinned BuildKit in a driver-opts block passes" 0 "$(buildx_with "|
+            network=host
+            image=$BUILDKIT_PIN")"
+# GREEN: deploy.yml's shape — a pre-pull step carrying the pin hands the ref
+# that succeeded (Docker Hub or mirror) to setup-buildx.
+prepull() { # <pre-pull image> [order: before|after]
+  local pull="      - id: buildkit
+        env:
+          BUILDKIT_IMAGE: $1
+        run: docker pull \"\$BUILDKIT_IMAGE\" && echo \"image=\$BUILDKIT_IMAGE\" >>\"\$GITHUB_OUTPUT\""
+  local buildx="      - uses: $BUILDX
+        with:
+          driver-opts: image=\${{ steps.buildkit.outputs.image }}"
+  if [ "${2:-before}" = before ]; then
+    job_body "$ARM" "$pull
+$buildx"
+  else
+    job_body "$ARM" "$buildx
+$pull"
+  fi
+}
+assert "output of a pinned pre-pull passes" 0 "$(prepull "$BUILDKIT_PIN")"
+# GREEN: native-common-image.yml's qualify jobs — bootstrap reads the pin from
+# the inventory row itself.
+assert "native-common bootstrap output passes" 0 "$(job_body "$ARM" "      - id: buildkit
+        run: python3 .github/scripts/native-common-qualify.py bootstrap \"\$QUALIFICATION_ROOT\"
+      - id: buildx
+        uses: $BUILDX
+        with:
+          driver-opts: image=\${{ steps.buildkit.outputs.image }}")"
+# RED: the output of a step that pulls a tag, or of no earlier step.
+assert "output of a tag-only pre-pull fails" 1 "$(prepull "moby/buildkit:v0.30.0")" \
+  "comes from a step that does not pull the helper-buildkit pin"
+assert "output of a later step fails" 1 "$(prepull "$BUILDKIT_PIN" after)" \
+  "names no earlier step of this job"
+assert "output of another job's step fails" 1 "$(printf 'jobs:\n  a:\n    runs-on: %s\n    steps:\n      - id: buildkit\n        env:\n          BUILDKIT_IMAGE: %s\n        run: docker pull "$BUILDKIT_IMAGE"\n  b:\n    runs-on: %s\n    steps:\n      - uses: %s\n        with:\n          driver-opts: image=${{ steps.buildkit.outputs.image }}' "$ARM" "$BUILDKIT_PIN" "$ARM" "$BUILDX")" \
+  "job b: driver-opts image=\${{ steps.buildkit.outputs.image }} names no earlier step"
+
 # GREEN: the real canonical tree passes end-to-end (inventory + deploy wiring).
 if "$SCRIPT" >/dev/null 2>&1; then
   echo "ok: real tree passes"
@@ -499,12 +589,43 @@ dependabot="$root/.github/dependabot.yml"
 # own Dependabot directory; one missing means its advisories never get a PR
 # (w1/m174: reachable x/net advisories sat red for six days with none).
 go_dirs="$(yq -N '[.updates[] | select(."package-ecosystem" == "gomod") | .directories[]] | sort | join(",")' "$dependabot" 2>/dev/null || true)"
+# The locked eas-cli (tools/eas) gets its bumps as PRs like the dashboard.
+npm_dirs="$(yq -N '[.updates[] | select(."package-ecosystem" == "npm") | .directory] | sort | join(",")' "$dependabot" 2>/dev/null || true)"
 if grep -q 'package-ecosystem: *"\?github-actions' "$dependabot" 2>/dev/null \
-  && grep -q 'package-ecosystem: *"\?npm' "$dependabot" 2>/dev/null \
+  && [ "$npm_dirs" = "/dashboard,/tools/eas" ] \
   && [ "$go_dirs" = "/lego/backend,/lego/cli,/lego/operator,/lego/types" ]; then
-  echo "ok: dependabot.yml declares github-actions, npm and every lego/ Go module"
+  echo "ok: dependabot.yml declares github-actions, both npm trees and every lego/ Go module"
 else
-  echo "FAIL: .github/dependabot.yml missing github-actions, npm, or a lego/ Go module (gomod directories: '$go_dirs')" >&2
+  echo "FAIL: .github/dependabot.yml missing github-actions, an npm tree, or a lego/ Go module (npm directories: '$npm_dirs', gomod directories: '$go_dirs')" >&2
+  fails=$((fails + 1))
+fi
+
+# The mobile release installs eas-cli from tools/eas with npm ci (check 12):
+# package.json names one exact version, the lock records it with an integrity
+# hash for every package, the version satisfies mobile/eas.json's cli.version,
+# and the release job runs npm ci there.
+if eas_err="$(python3 - "$root" <<'PY' 2>&1
+import json, pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+pkg = json.loads((root / "tools/eas/package.json").read_text())
+lock = json.loads((root / "tools/eas/package-lock.json").read_text())
+cli = json.loads((root / "mobile/eas.json").read_text())["cli"]["version"]
+want = pkg["dependencies"]["eas-cli"]
+assert re.fullmatch(r"\d+\.\d+\.\d+", want), f"eas-cli must be one exact version, not {want!r}"
+assert lock["packages"][""]["dependencies"] == pkg["dependencies"], "package-lock.json is stale against package.json"
+assert lock["packages"]["node_modules/eas-cli"]["version"] == want, "package-lock.json locks another eas-cli"
+loose = [name for name, entry in lock["packages"].items() if name and not entry.get("integrity", "").startswith("sha512-")]
+assert not loose, f"lock entries without an integrity hash: {loose[:5]}"
+floor = re.fullmatch(r">=\s*(\d+)\.(\d+)\.(\d+)", cli)
+assert floor, f"unexpected eas.json cli.version {cli!r}"
+assert tuple(map(int, want.split("."))) >= tuple(map(int, floor.groups())), f"eas-cli {want} does not satisfy {cli}"
+release = (root / ".github/workflows/mobile-release.yml").read_text()
+assert "        working-directory: tools/eas\n        run: npm ci " in release, "mobile-release.yml no longer runs npm ci in tools/eas"
+PY
+)"; then
+  echo "ok: tools/eas locks one exact eas-cli that mobile/eas.json accepts, installed with npm ci"
+else
+  echo "FAIL: tools/eas eas-cli lock: $eas_err" >&2
   fails=$((fails + 1))
 fi
 

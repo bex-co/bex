@@ -36,6 +36,11 @@
 #     above `jobs:` (where it would reach every job). With every production-*
 #     environment main-only and the secrets in environment scope, a workflow on
 #     any other branch cannot obtain them.
+# 12. Locked tools: a credentialed job never fetches a package at run time
+#     (`npx <pkg>@…`, `npx --yes`, `pnpm dlx`, …); it runs a binary `npm ci`
+#     installed from a lockfile.
+# 13. Pinned BuildKit: every docker/setup-buildx-action step boots the
+#     `helper-buildkit` pin from the toolchain-freshness inventory.
 #
 # Setting WORKFLOWS_DIR overrides the scanned tree; the self-test
 # (github-actions-validate.test.sh) points it at fixtures to exercise the
@@ -667,10 +672,192 @@ if [ -n "$public_log_violations" ]; then
   exit 1
 fi
 
+# 12. Locked tools beside credentials. `npx <pkg>@<version>` (and `npx --yes`,
+# `npm exec`, `pnpm dlx`, `yarn dlx`, `bunx`) resolves and installs a fresh,
+# unlocked dependency graph on every run, install scripts included: the
+# version names only the top package, and on CI npx fetches whatever the
+# local tree lacks without asking. In a job holding a credential (a secret,
+# an environment or a write token) that graph runs next to it, so such a job
+# installs the tool from a lockfile with `npm ci` (tools/eas for
+# mobile-release.yml) and runs the installed binary. An uncredentialed job
+# (docs.yml's `npx --yes prettier@…`) may still use npx.
+#
+# 13. Pinned BuildKit. Every docker/setup-buildx-action step boots its builder
+# from `driver-opts: image=` set to the `helper-buildkit` pin in
+# lego/operator/internal/build/toolchain-freshness.json, either literally or as
+# `${{ steps.<id>.outputs.image }}` from an earlier step of the same job that
+# pulls that pin (a literal in the step, or native-common-qualify.py bootstrap,
+# which reads the inventory row itself). Without it buildx boots its default
+# `moby/buildkit:buildx-stable-1`, a moving tag, and builds every image with
+# whatever that tag names that day; no workflow may mention that tag.
+# lego/operator/.github is kubebuilder scaffolding GitHub never runs.
+tool_pin_violations() {
+  local files=() wf
+  for wf in $(collect_workflow_files); do
+    case "$wf" in
+      lego/operator/.github/*) continue ;;
+    esac
+    files+=("$wf")
+  done
+  [ "${#files[@]}" -gt 0 ] || return 0
+  python3 - lego/operator/internal/build/toolchain-freshness.json "${files[@]}" <<'PY'
+import json, re, sys
+
+inventory, files = sys.argv[1], sys.argv[2:]
+try:
+    rows = [r for r in json.load(open(inventory))["images"] if r.get("id") == "helper-buildkit"]
+except (OSError, ValueError, KeyError) as err:
+    print(f"{inventory}: cannot read the helper-buildkit pin: {err}")
+    sys.exit(0)
+if len(rows) != 1 or not re.fullmatch(r"moby/buildkit:v\d+\.\d+\.\d+@sha256:[0-9a-f]{64}", rows[0].get("committed", "")):
+    print(f"{inventory}: helper-buildkit must be exactly one moby/buildkit:vX.Y.Z@sha256:<digest> row")
+    sys.exit(0)
+PIN = rows[0]["committed"]
+
+SECRET = re.compile(r"\$\{\{[^}]*\bsecrets\b")
+HEADER_WRITE = re.compile(r"^  [A-Za-z0-9_-]+:\s*write\b|^permissions:\s*write-all\b")
+JOB_CREDENTIAL = re.compile(r"^    environment:|^      [A-Za-z0-9_-]+:\s*write\b|^    permissions:\s*write-all\b")
+FETCH = re.compile(r"(?<![\w./-])(?:npx|bunx|pnpm\s+dlx|yarn\s+dlx|npm\s+(?:exec|x))(?=\s|$)")
+OUTPUT_REF = re.compile(r"^\$\{\{\s*steps\.([A-Za-z0-9_-]+)\.outputs\.image\s*\}\}$")
+
+def indent(line):
+    return len(line) - len(line.lstrip(" "))
+
+def code(line):
+    """The line without a full-line comment (YAML or shell)."""
+    return "" if line.lstrip().startswith("#") else line
+
+def jobs(lines):
+    """(name, header line number, [(number, line)]) per job under `jobs:`."""
+    out, in_jobs, current = [], False, None
+    header = []
+    for number, line in enumerate(lines, 1):
+        if re.match(r"^jobs:\s*$", line):
+            in_jobs = True
+            continue
+        if not in_jobs:
+            header.append((number, line))
+            continue
+        if re.match(r"^\S", line):
+            in_jobs = False
+            continue
+        head = re.match(r"^  ([A-Za-z0-9_-]+):\s*(#.*)?$", line)
+        if head:
+            current = (head.group(1), number, [])
+            out.append(current)
+        elif current:
+            current[2].append((number, line))
+    return header, out
+
+def steps(body):
+    """[(start number, [(number, line)])] for each list item under `steps:`."""
+    out, step_indent, inside = [], None, False
+    for number, line in body:
+        if re.match(r"^    steps:\s*$", line):
+            inside, step_indent = True, None
+            continue
+        if not inside or not line.strip() or line.lstrip().startswith("#"):
+            if inside and out and line.strip():
+                out[-1][1].append((number, line))
+            continue
+        if step_indent is None and line.lstrip().startswith("- "):
+            step_indent = indent(line)
+        if step_indent is None or indent(line) < step_indent:
+            inside = False
+            continue
+        if indent(line) == step_indent and line.lstrip().startswith("- "):
+            out.append((number, [(number, line)]))
+        elif out:
+            out[-1][1].append((number, line))
+    return out
+
+def driver_images(step):
+    """Every image= value of the step's driver-opts (inline or block scalar)."""
+    values, collect = [], None
+    for _, line in step:
+        if collect is not None:
+            if line.strip() and indent(line) <= collect:
+                collect = None
+            else:
+                values.append(line)
+                continue
+        match = re.match(r"^(\s+)driver-opts:\s*(.*)$", code(line))
+        if match:
+            value = re.sub(r"\s+#.*$", "", match.group(2)).strip()
+            if value in ("", "|", "|-", ">", ">-"):
+                collect = len(match.group(1))
+            else:
+                values.append(value)
+    found = []
+    for value in values:
+        found += re.findall(r"image=(\$\{\{.*?\}\}|[^\s,\"']+)", value)
+    return found
+
+def step_id(step):
+    first_indent = indent(step[0][1]) + 2
+    for _, line in step:
+        match = re.match(r"^\s*(?:- )?id:\s*([A-Za-z0-9_-]+)\s*(#.*)?$", line)
+        if match and (line.lstrip().startswith("- ") or indent(line) == first_indent):
+            return match.group(1)
+    return None
+
+def pulls_pin(step):
+    text = "\n".join(code(line) for _, line in step)
+    return PIN in text or re.search(r"native-common-qualify\.py\s+bootstrap\b", text) is not None
+
+for path in files:
+    try:
+        lines = open(path, encoding="utf-8").read().splitlines()
+    except OSError as err:
+        print(f"{path}: cannot read: {err}")
+        continue
+    for number, line in enumerate(lines, 1):
+        if "buildx-stable-1" in line:
+            print(f"{path}:{number}: names the moving moby/buildkit:buildx-stable-1 tag; boot the helper-buildkit pin {PIN}")
+    header, parsed = jobs(lines)
+    header_credential = any(SECRET.search(code(l)) or HEADER_WRITE.match(l) for _, l in header)
+    for name, _, body in parsed:
+        credential = header_credential or any(
+            SECRET.search(code(l)) or JOB_CREDENTIAL.match(l) for _, l in body)
+        if credential:
+            for number, line in body:
+                if FETCH.search(code(line)):
+                    print(f"{path}:{number}: job {name}: holds a credential but fetches an unlocked package at run time; install it from a lockfile with npm ci and run the installed binary")
+        earlier = {}
+        for start, step in steps(body):
+            text = "\n".join(code(l) for _, l in step)
+            if re.search(r"uses:\s*docker/setup-buildx-action@", text):
+                images = driver_images(step)
+                if not images:
+                    print(f"{path}:{start}: job {name}: setup-buildx-action sets no driver-opts image=, so buildx boots its moving default builder; set image={PIN}")
+                for image in images:
+                    ref = OUTPUT_REF.match(image)
+                    if image == PIN:
+                        continue
+                    if ref:
+                        source = earlier.get(ref.group(1))
+                        if source is None:
+                            print(f"{path}:{start}: job {name}: driver-opts image={image} names no earlier step of this job")
+                        elif not pulls_pin(source):
+                            print(f"{path}:{start}: job {name}: driver-opts image={image} comes from a step that does not pull the helper-buildkit pin {PIN}")
+                        continue
+                    print(f"{path}:{start}: job {name}: driver-opts image={image} is not the helper-buildkit pin {PIN}")
+            ident = step_id(step)
+            if ident:
+                earlier[ident] = step
+PY
+}
+tool_pin_problems="$(tool_pin_violations)"
+if [ -n "$tool_pin_problems" ]; then
+  echo "FAIL: a credentialed job fetches an unlocked package, or a buildx builder is not the reviewed BuildKit pin (checks 12-13):" >&2
+  printf '%s\n' "$tool_pin_problems" >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
-  echo "PASS: third-party refs SHA-pinned, Node 20 absent, hosted-runner contract, credential boundary, public-fork isolation, production-secret confinement and bounded jobs (when requested) intact (fixture: $WORKFLOWS_DIR)"
+  echo "PASS: third-party refs SHA-pinned, Node 20 absent, hosted-runner contract, credential boundary, public-fork isolation, production-secret confinement, locked credentialed tools, pinned BuildKit and bounded jobs (when requested) intact (fixture: $WORKFLOWS_DIR)"
   exit 0
 fi
 
@@ -784,4 +971,4 @@ if [ "$(grep -RhE '^    runs-on: (ubuntu-24\.04-arm|ubuntu-latest)[[:space:]]*$'
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, GitHub-hosted runner contract, bounded uncredentialed jobs, credential boundary, public-fork isolation and production-secret confinement intact"
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, GitHub-hosted runner contract, bounded uncredentialed jobs, credential boundary, public-fork isolation, production-secret confinement, locked credentialed tools and pinned BuildKit intact"
