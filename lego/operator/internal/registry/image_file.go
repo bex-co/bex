@@ -77,7 +77,7 @@ func ImageFileSHA256(ctx context.Context, httpClient *http.Client, registryHost,
 	}
 	client := *httpClient
 	client.Timeout = imageFileTimeout
-	client.CheckRedirect = blobRedirectPolicy
+	client.CheckRedirect = redirectPolicy
 	resp, err := getBlob(ctx, &client, base+"blobs/"+layer.Digest)
 	if err != nil {
 		return "", err

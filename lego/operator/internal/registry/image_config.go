@@ -158,14 +158,21 @@ func imageRepoBase(registryHost, repo, reference, authorization string) (string,
 	return base + "/v2/" + repo + "/", nil
 }
 
-// maxBlobRedirects bounds the storage hops a config blob read may take.
-const maxBlobRedirects = 3
+// maxRedirects bounds the hops a manifest or blob read may take.
+const maxRedirects = 3
 
 // ReadImageConfig reads only the authorized repository, verifies both manifest
-// and config digests, and never downloads layers. Manifest redirects are
-// refused so the registry cannot redirect the operator's credentials or
-// fetches elsewhere; a config blob may follow https storage redirects without
-// the credential.
+// and config digests, and never downloads layers.
+//
+// Manifest and blob reads both follow a short https redirect chain
+// (redirectPolicy), credentialed or not. registry.k8s.io answers every
+// manifest read with a 307 to a regional Artifact Registry mirror (w32/080),
+// and the kubelet follows the same redirect when it pulls. Following protects
+// as much as refusing did: the credential is dropped on every hop and a
+// redirect target's 401 is never exchanged for a token, so the credential
+// stays on the registry the tenant named; the shared dialer's address refusals
+// apply to every hop; and the digest pinned is the sha256 of the bytes read,
+// which the kubelet verifies when it pulls by that digest.
 func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (ImageConfig, error) {
 	return readImageConfig(ctx, httpClient, registryHost, repo, reference, authorization, hostingPlatform)
 }
@@ -232,10 +239,12 @@ type layerDescriptor struct {
 	Size      int64  `json:"size"`
 }
 
-func fetchOnce(ctx context.Context, client *http.Client, target, authorization, bearer string) ([]byte, int, http.Header, error) {
+// fetchOnce GETs target under redirectPolicy. redirected reports that the
+// answer came from a redirect target rather than the registry itself.
+func fetchOnce(ctx context.Context, client *http.Client, target, authorization, bearer string) (data []byte, status int, header http.Header, redirected bool, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, 0, nil, false, err
 	}
 	req.Header.Set("Accept", manifestAccept)
 	if authorization != "" {
@@ -244,16 +253,27 @@ func fetchOnce(ctx context.Context, client *http.Client, target, authorization, 
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
 	}
-	resp, err := client.Do(req)
+	hops := *client
+	hops.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+		redirected = true
+		return redirectPolicy(next, via)
+	}
+	resp, err := hops.Do(req)
 	if err != nil {
-		return nil, 0, nil, &TransientError{err: err}
+		var hop *url.Error
+		if resp != nil && errors.As(err, &hop) {
+			// The policy refused a hop. A retry meets the same redirect, so the
+			// redirect is the registry's definitive answer.
+			return nil, resp.StatusCode, nil, true, &RefusedError{Status: resp.StatusCode, err: hop.Err}
+		}
+		return nil, 0, nil, redirected, &TransientError{err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, resp.StatusCode, resp.Header, nil
+		return nil, resp.StatusCode, resp.Header, redirected, nil
 	}
-	data, err := boundedhttp.ReadAll(resp.Body)
-	return data, resp.StatusCode, nil, err
+	data, err = boundedhttp.ReadAll(resp.Body)
+	return data, resp.StatusCode, nil, redirected, err
 }
 
 // bearerToken answers a registry's Bearer challenge: GET the realm with the
@@ -344,14 +364,15 @@ func isLoopbackRealmHost(host string) bool {
 	return host == "127.0.0.1" || host == "localhost" || host == "::1"
 }
 
-// blobRedirectPolicy bounds blob-storage redirects (w8/201): a short https
-// chain, and the registry credential never travels to the storage host.
-func blobRedirectPolicy(req *http.Request, via []*http.Request) error {
-	if len(via) > maxBlobRedirects {
-		return fmt.Errorf("image metadata blob redirected more than %d times", maxBlobRedirects)
+// redirectPolicy bounds the redirects of a registry read: blob storage
+// (w8/201) and manifest mirrors (w32/080). The chain is short and https, and
+// the registry credential never travels with it.
+func redirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) > maxRedirects {
+		return fmt.Errorf("image metadata redirected more than %d times", maxRedirects)
 	}
 	if req.URL.Scheme != "https" {
-		return errors.New("image metadata blob redirected to a non-https URL")
+		return errors.New("image metadata redirected to a non-https URL")
 	}
 	req.Header.Del("Authorization")
 	return nil
@@ -374,21 +395,19 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	if httpClient == nil {
 		httpClient = defaultHTTPClient
 	}
-	bounded := *httpClient
-	bounded.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	// Registries serve blobs from storage: Docker Hub, GHCR, ECR and GCR all
-	// answer a blob GET with a redirect to a CDN or presigned URL (w8/201).
-	// A blob is content-addressed and digest-verified below, so following an
-	// https redirect cannot substitute content; the registry credential never
-	// travels with it (presigned URLs carry their own authorization).
-	blobs := bounded
-	blobs.CheckRedirect = blobRedirectPolicy
+	// answer a blob GET with a redirect to a CDN or presigned URL (w8/201), and
+	// registry.k8s.io serves manifests from a regional mirror (w32/080).
+	// fetchOnce follows them under redirectPolicy, without the credential
+	// (presigned URLs carry their own authorization); the token request does not.
+	tokens := *httpClient
+	tokens.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	// One token serves every manifest and blob read of this repository.
 	bearer := ""
-	fetch := func(client *http.Client, path, expectedDigest string) ([]byte, string, error) {
+	fetch := func(path, expectedDigest string) ([]byte, string, error) {
 		exchanged := false
 		for {
-			data, status, header, err := fetchOnce(ctx, client, base+path, authorization, bearer)
+			data, status, header, redirected, err := fetchOnce(ctx, httpClient, base+path, authorization, bearer)
 			if err != nil {
 				return nil, "", err
 			}
@@ -402,10 +421,14 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 			// A registry may answer with a Bearer challenge: an anonymous read
 			// (w4/m243) fetches a token without credentials, a Basic-credentialed
 			// read (w6/095) exchanges its credential at the realm, then retries
-			// once. A registry that accepts Basic directly never challenges.
+			// once. A registry that accepts Basic directly never challenges. A
+			// redirect target's challenge is refused as it stands: its realm is
+			// the target's word, so exchanging there would hand a Basic
+			// credential to a host the tenant never named, and the token would
+			// never reach the target anyway (redirectPolicy drops it).
 			challenge := header.Get("WWW-Authenticate")
-			if status == http.StatusUnauthorized && !exchanged && exchangesForBearer(authorization, challenge) {
-				token, terr := bearerToken(ctx, &bounded, challenge, authorization)
+			if status == http.StatusUnauthorized && !exchanged && !redirected && exchangesForBearer(authorization, challenge) {
+				token, terr := bearerToken(ctx, &tokens, challenge, authorization)
 				if terr != nil {
 					return nil, "", terr
 				}
@@ -423,7 +446,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		if imageDigestPattern.MatchString(reference) {
 			expected = reference
 		}
-		body, digest, err := fetch(&bounded, "manifests/"+reference, expected)
+		body, digest, err := fetch("manifests/"+reference, expected)
 		if err != nil {
 			return "", "", imageConfigDocument{}, err
 		}
@@ -472,7 +495,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		if !imageDigestPattern.MatchString(manifest.Config.Digest) {
 			return "", "", imageConfigDocument{}, fmt.Errorf("invalid image config digest")
 		}
-		config, _, err := fetch(&blobs, "blobs/"+manifest.Config.Digest, manifest.Config.Digest)
+		config, _, err := fetch("blobs/"+manifest.Config.Digest, manifest.Config.Digest)
 		if err != nil {
 			return "", "", imageConfigDocument{}, err
 		}

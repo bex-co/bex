@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -155,18 +156,160 @@ func TestReadImageConfigFailsClosed(t *testing.T) {
 	}
 }
 
-func TestReadImageConfigRefusesRedirect(t *testing.T) {
-	visited := false
-	client := imageMetadataClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Host == "outside.test" {
-			visited = true
+// mirrorRegistry is registry.k8s.io's shape (w32/080): the registry answers
+// every manifest read with a 307 to target(path), a mirror on another host,
+// and serves blobs itself. The registry asks for want as Authorization (a
+// Bearer challenge when it is a token); mirror answers the mirror's reads.
+// seen records every Authorization header the mirror host received.
+func mirrorRegistry(want string, target func(path string) string, mirror http.HandlerFunc) (*http.Client, *[]string) {
+	seen := &[]string{}
+	return imageMetadataClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Host == "mirror.test" {
+			*seen = append(*seen, r.Header.Get("Authorization"))
+			mirror(w, r)
 			return
 		}
-		http.Redirect(w, r, "https://outside.test", http.StatusTemporaryRedirect)
+		if r.URL.Path == "/token" {
+			_, _ = w.Write([]byte(`{"token":"anonymous-token"}`))
+			return
+		}
+		if r.Header.Get("Authorization") != want {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="https://registry.test/token",service="registry.test"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/manifests/") {
+			http.Redirect(w, r, target(r.URL.Path), http.StatusTemporaryRedirect)
+			return
+		}
+		mirror(w, r)
+	})), seen
+}
+
+// The mirror path is Artifact Registry's, with the registry's request id.
+func artifactRegistryMirror(path string) string {
+	return "https://mirror.test/v2/k8s-artifacts-prod/images/" + strings.TrimPrefix(path, "/v2/") + "?rid=fixture"
+}
+
+// servesFixture answers a mirror or blob read from the fixture's routes, the
+// mirror's paths mapped back to the registry's.
+func servesFixture(routes map[string][]byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if rest, ok := strings.CutPrefix(path, "/v2/k8s-artifacts-prod/images/"); ok {
+			path = "/v2/" + rest
+		}
+		body, ok := routes[path]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write(body)
+	}
+}
+
+// registry.k8s.io serves every manifest from a regional Artifact Registry
+// mirror (w32/080): the read follows the redirect, pins the digest of the
+// bytes it read, and never carries the registry's credential to the mirror.
+func TestReadImageConfigFollowsManifestMirrorRedirect(t *testing.T) {
+	for _, scenario := range []string{"anonymous", "bearer", "credentialed", "index"} {
+		t.Run(scenario, func(t *testing.T) {
+			_, digest, routes := imageMetadataFixture(t)
+			auth, want := "", ""
+			switch scenario {
+			case "bearer":
+				want = "Bearer anonymous-token"
+			case "credentialed":
+				auth, want = "Basic fixture", "Basic fixture"
+			}
+			pinned, platform := digest, digest
+			if scenario == "index" {
+				index := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.list.v2+json","manifests":[{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, platform))
+				pinned = fmt.Sprintf("sha256:%x", sha256.Sum256(index))
+				routes["/v2/owned/clickhouse/manifests/gen-1"] = index
+			}
+			client, seen := mirrorRegistry(want, artifactRegistryMirror, servesFixture(routes))
+			result, err := ReadImageConfig(t.Context(), client, "https://registry.test", "owned/clickhouse", "gen-1", auth)
+			if err != nil || result.Digest != pinned || result.PlatformDigest != platform || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
+				t.Fatalf("metadata = %+v, %v; want digest %s platform %s", result, err, pinned, platform)
+			}
+			if len(*seen) == 0 {
+				t.Fatal("the read never reached the mirror")
+			}
+			for _, header := range *seen {
+				if header != "" {
+					t.Fatalf("the mirror received Authorization %q", header)
+				}
+			}
+		})
+	}
+}
+
+// A manifest redirect is followed only within redirectPolicy, and a redirect
+// target's own challenge is never exchanged: its realm would receive the
+// registry's Basic credential. Each refusal is the registry's definitive answer.
+func TestReadImageConfigRefusesUnsafeManifestRedirect(t *testing.T) {
+	for _, tc := range []struct {
+		name, scenario, auth string
+		status               int
+	}{
+		{"plaintext", "plaintext", "", http.StatusTemporaryRedirect},
+		{"loop", "loop", "", http.StatusTemporaryRedirect},
+		{"anonymous mirror challenge", "mirror challenge", "", http.StatusUnauthorized},
+		{"credentialed mirror challenge", "mirror challenge", "Basic fixture", http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, routes := imageMetadataFixture(t)
+			target := artifactRegistryMirror
+			switch tc.scenario {
+			case "plaintext":
+				target = func(path string) string { return "http://mirror.test" + path }
+			case "loop":
+				target = func(path string) string { return "https://registry.test" + path }
+			}
+			tokenRequested := false
+			client, seen := mirrorRegistry(tc.auth, target, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/token" {
+					tokenRequested = true
+					_, _ = w.Write([]byte(`{"token":"mirror-token"}`))
+					return
+				}
+				if r.URL.Host == "mirror.test" {
+					w.Header().Set("WWW-Authenticate", `Bearer realm="https://mirror.test/token",service="mirror.test"`)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				servesFixture(routes)(w, r)
+			})
+			result, err := ReadImageConfig(t.Context(), client, "https://registry.test", "owned/clickhouse", "gen-1", tc.auth)
+			var refused *RefusedError
+			if !errors.As(err, &refused) || refused.Status != tc.status || result.Digest != "" {
+				t.Fatalf("metadata = %+v, %v; want a refusal with status %d", result, err, tc.status)
+			}
+			if tokenRequested {
+				t.Fatal("the read exchanged a credential at the redirect target's realm")
+			}
+			for _, header := range *seen {
+				if header != "" {
+					t.Fatalf("the mirror received Authorization %q", header)
+				}
+			}
+		})
+	}
+}
+
+// Every hop of a redirect still dials through the shared transport's address
+// guard: a registry cannot redirect the operator to the metadata endpoint.
+func TestReadImageConfigRedirectKeepsTheDialGuard(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://169.254.169.254/latest/meta-data/", http.StatusTemporaryRedirect)
 	}))
-	_, err := ReadImageConfig(context.Background(), client, "https://registry.test", "owned/clickhouse", "gen-1", "Basic fixture")
-	if err == nil || visited {
-		t.Fatalf("redirect followed=%v, error=%v", visited, err)
+	defer srv.Close()
+	client := boundedhttp.New(boundedhttp.RequestTimeout)
+	client.Transport.(*http.Transport).TLSClientConfig = srv.Client().Transport.(*http.Transport).TLSClientConfig.Clone()
+	_, err := ReadImageConfig(t.Context(), client, srv.URL, "owned/clickhouse", "gen-1", "")
+	if err == nil || !strings.Contains(err.Error(), "blocked address") {
+		t.Fatalf("redirect to the metadata endpoint: %v, want the dial guard's refusal", err)
 	}
 }
 
@@ -230,6 +373,13 @@ func TestReadImageConfigFollowsBlobStorageRedirect(t *testing.T) {
 			case "storage", "anonymous", "bearer":
 				if err != nil || result.Digest != digest || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
 					t.Fatalf("metadata = %+v, %v", result, err)
+				}
+			case "plaintext", "loop":
+				// Definitive, since a retry meets the same redirect: a refused
+				// hop, or the registry's 401 to a hop without its credential.
+				var refused *RefusedError
+				if !errors.As(err, &refused) || result.Digest != "" {
+					t.Fatalf("failed-open metadata = %+v, %v; want a refusal", result, err)
 				}
 			default:
 				if err == nil || result.Digest != "" {
