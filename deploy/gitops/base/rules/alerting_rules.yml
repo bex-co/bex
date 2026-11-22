@@ -1180,12 +1180,15 @@ groups:
       # the scrape's keep list dropped it before Prometheus saw it, so a flood
       # that shed every other client would have been silent. A 5m rate stays above
       # zero for 5m after one stray rejection, so `for: 10m` fires only on
-      # shedding that continues for ten minutes.
+      # shedding that continues for ten minutes. The Key Value proxy also
+      # counts each client a store's own allow list refuses (reason=allowlist,
+      # w8/m562), which it answers with Render's refusal: that is the
+      # customer's rule at work, not shedding, so it is left out.
       - alert: DatastoreProxyShedding
         expr: |
           sum by (job, reason) (rate(bex_pg_proxy_connections_rejected_total[5m])) > 0
           or
-          sum by (job, reason) (rate(bex_kv_proxy_connections_rejected_total[5m])) > 0
+          sum by (job, reason) (rate(bex_kv_proxy_connections_rejected_total{reason!="allowlist"}[5m])) > 0
         for: 10m
         labels:
           severity: warning

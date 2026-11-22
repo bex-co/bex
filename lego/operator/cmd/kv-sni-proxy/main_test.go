@@ -51,11 +51,12 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	if err := router.set(kv); err != nil {
 		t.Fatal(err)
 	}
-	route, ok := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.9"))
-	if !ok {
+	route, verdict := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.9"))
+	if verdict != admitted {
 		t.Fatal("allowlisted client did not resolve")
 	}
-	if route.ResourceID != "kv-one" || route.Backend != "kv-one.default.svc.cluster.local:6380" {
+	if route.ResourceID != "kv-one" || route.Backend != "kv-one.default.svc.cluster.local:6380" ||
+		route.Refusal != "kv-one.default.svc.cluster.local:6381" {
 		t.Fatalf("route = %#v", route)
 	}
 	// A plan-less store is free (Render's 50), so its route admits 100; a plan
@@ -70,14 +71,17 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	if route, _ := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.9")); route.Capacity != 500 {
 		t.Fatalf("after the upgrade to starter the route admits %d, want twice its 250", route.Capacity)
 	}
-	if _, ok := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("198.51.100.9")); ok {
-		t.Fatal("non-allowlisted client resolved")
+	// A refused source on the store's own name is refused, with the store's
+	// refusal port to answer it (w8/m562); an unknown name stays unrouted.
+	if route, verdict := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("198.51.100.9")); verdict != refused ||
+		route.Refusal != "kv-one.default.svc.cluster.local:6381" {
+		t.Fatalf("non-allowlisted client: %v %#v, want refused at the store's refusal port", verdict, route)
 	}
-	if _, ok := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.20")); ok {
-		t.Fatal("client outside the environment allowlist resolved")
+	if _, verdict := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.20")); verdict != refused {
+		t.Fatalf("client outside the environment allowlist: %v, want refused", verdict)
 	}
-	if _, ok := router.resolve("other.kv.bex.co", netip.MustParseAddr("203.0.113.9")); ok {
-		t.Fatal("unknown SNI resolved")
+	if _, verdict := router.resolve("other.kv.bex.co", netip.MustParseAddr("203.0.113.9")); verdict != unrouted {
+		t.Fatalf("unknown SNI: %v, want unrouted", verdict)
 	}
 	for _, tc := range []struct {
 		source string
@@ -87,8 +91,9 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 		{"2001:db8:2::9", false},
 		{"2001:db9::9", false},
 	} {
-		if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(tc.source)); ok != tc.want {
-			t.Errorf("source %s resolved = %v, want %v", tc.source, ok, tc.want)
+		_, verdict := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(tc.source))
+		if (verdict == admitted) != tc.want {
+			t.Errorf("source %s resolved = %v, want admitted %v", tc.source, verdict, tc.want)
 		}
 	}
 
@@ -101,8 +106,8 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, source := range []string{"203.0.113.9", "2001:db8:1::9"} {
-		if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(source)); ok {
-			t.Fatalf("cleared external access still routes %s", source)
+		if _, verdict := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(source)); verdict != unrouted {
+			t.Fatalf("cleared external access still routes %s: %v", source, verdict)
 		}
 	}
 	kv.Spec.Public = true
@@ -111,7 +116,7 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, source := range []string{"203.0.113.9", "2001:db8:1::9"} {
-		if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(source)); !ok {
+		if _, verdict := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(source)); verdict != admitted {
 			t.Fatalf("restored external access did not route %s", source)
 		}
 	}
@@ -121,14 +126,14 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	if err := router.set(kv); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr("203.0.113.20")); ok {
+	if _, verdict := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr("203.0.113.20")); verdict == admitted {
 		t.Fatal("legacy empty resource layer bypassed the environment rule")
 	}
 	kv.Spec.EnvironmentIPAllowList = nil
 	if err := router.set(kv); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr("198.51.100.9")); !ok {
+	if _, verdict := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr("198.51.100.9")); verdict != admitted {
 		t.Fatal("legacy public/empty resource lost its unrestricted route")
 	}
 }
@@ -152,8 +157,8 @@ func TestRouterCarriesEachStoresCapacityFromThePlan(t *testing.T) {
 		if err := router.set(kv); err != nil {
 			t.Fatal(err)
 		}
-		route, ok := router.resolve("kv-one.kv.bex.co", source)
-		if !ok {
+		route, verdict := router.resolve("kv-one.kv.bex.co", source)
+		if verdict != admitted {
 			t.Fatalf("plan %q: the store did not resolve", plan)
 		}
 		if server := tiers.Valkey.Resolve(plan).ConnectionLimit; route.Capacity != sniproxy.RouteCapacity(server) {
@@ -187,8 +192,8 @@ func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T)
 			if err := router.set(kv); err != nil {
 				t.Fatal(err)
 			}
-			if _, ok := router.resolve(kv.Status.ExternalHost, source); ok != tc.want {
-				t.Errorf("resolve(%s) = %v, want %v", source, ok, tc.want)
+			if _, verdict := router.resolve(kv.Status.ExternalHost, source); (verdict == admitted) != tc.want {
+				t.Errorf("resolve(%s) = %v, want admitted %v", source, verdict, tc.want)
 			}
 		})
 	}
@@ -196,8 +201,8 @@ func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T)
 	if err := router.set(kv); err == nil || router.healthy() {
 		t.Fatalf("an invalid workspace CIDR must fail closed: err=%v healthy=%v", err, router.healthy())
 	}
-	if _, ok := router.resolve(kv.Status.ExternalHost, source); ok {
-		t.Fatal("a store with an invalid workspace layer still routes")
+	if _, verdict := router.resolve(kv.Status.ExternalHost, source); verdict != unrouted {
+		t.Fatalf("a store with an invalid workspace layer still routes: %v", verdict)
 	}
 }
 
@@ -209,7 +214,7 @@ func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	if err := router.set(pending); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := router.resolve("pending.kv.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
+	if _, verdict := router.resolve("pending.kv.bex.co", netip.MustParseAddr("1.1.1.1")); verdict != unrouted {
 		t.Fatal("public spec without an operator-published external host gained a route")
 	}
 	private := &sniproxy.KeyValue{}
@@ -217,7 +222,7 @@ func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	if err := router.set(private); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := router.resolve("private.kv.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
+	if _, verdict := router.resolve("private.kv.bex.co", netip.MustParseAddr("1.1.1.1")); verdict != unrouted {
 		t.Fatal("private KeyValue gained a route")
 	}
 	// w9/134: connection info answers a private store's external string over
@@ -228,7 +233,7 @@ func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	if err := router.set(private); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := router.resolve("private.kv.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
+	if _, verdict := router.resolve("private.kv.bex.co", netip.MustParseAddr("1.1.1.1")); verdict != unrouted {
 		t.Fatal("a private KeyValue whose status names its host gained a route")
 	}
 	private.Spec.Public = true

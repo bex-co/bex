@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/netip"
@@ -73,6 +74,15 @@ const (
 	// incident lever, and the drain bound never exceeds a set idle timeout.
 	idleTimeoutEnv = "BEX_KV_PROXY_IDLE_TIMEOUT"
 	maxLifetimeEnv = "BEX_KV_PROXY_MAX_LIFETIME"
+
+	// allowListRefusalPort is the port of a public store's stable Service
+	// where its kv-internal-proxy answers the sources the store's allow list
+	// refuses (w8/m562, controller.KeyValueAllowListRefusalPort).
+	allowListRefusalPort = 6381
+	// rejectAllowList counts a source a known store's allow list refused in
+	// bex_kv_proxy_connections_rejected_total. It is the customer's own rule,
+	// not a cap, so the shedding alert leaves it out.
+	rejectAllowList = "allowlist"
 )
 
 var scheme = runtime.NewScheme()
@@ -86,7 +96,9 @@ func init() { utilruntime.Must(sniproxy.AddToScheme(scheme)) }
 type kvRoute struct {
 	ResourceID string
 	Backend    string
-	Allow      sniproxy.AllowLayers
+	// Refusal is the same Service's allow-list refusal port (w8/m562).
+	Refusal string
+	Allow   sniproxy.AllowLayers
 	// Route and Capacity are the store's admission bucket and its size,
 	// twice its plan's connection limit (sniproxy.RouteCapacity).
 	Route    string
@@ -113,9 +125,11 @@ func (r *kvRouter) set(kv *sniproxy.KeyValue) error {
 	// Backend is the KeyValue's ClusterIP Service: its A record is the stable
 	// VIP, so CoreDNS caching cannot hand a dial a restarted pod's old IP or a
 	// cached NXDOMAIN (w1/m166 — it did while the Service was headless).
+	service := fmt.Sprintf("%s.%s.svc.cluster.local", kv.Name, kv.Namespace)
 	route := kvRoute{
 		ResourceID: kv.Name,
-		Backend:    fmt.Sprintf("%s.%s.svc.cluster.local:6380", kv.Name, kv.Namespace),
+		Backend:    service + ":6380",
+		Refusal:    fmt.Sprintf("%s:%d", service, allowListRefusalPort),
 		Route:      kv.Namespace + "/" + kv.Name,
 		Capacity:   sniproxy.RouteCapacity(connlimit.Valkey.Resolve(kv.Spec.Plan)),
 	}
@@ -149,21 +163,36 @@ func (r *kvRouter) healthy() bool {
 	return len(r.invalid) == 0
 }
 
-func (r *kvRouter) resolve(sni string, source netip.Addr) (kvRoute, bool) {
+// admission is what a ClientHello's name and the client's source resolve to.
+type admission int
+
+const (
+	// unrouted: no public store has the name. The client is closed after its
+	// ClientHello, before any handshake.
+	unrouted admission = iota
+	// admitted: the store's allow list admits the source, which is relayed
+	// to the store.
+	admitted
+	// refused: a public store has the name and its allow list refuses the
+	// source, which is relayed to the store's refusal port (w8/m562).
+	refused
+)
+
+func (r *kvRouter) resolve(sni string, source netip.Addr) (kvRoute, admission) {
 	base, ok := strings.CutSuffix(strings.ToLower(strings.TrimSuffix(sni, ".")), "."+r.domain)
 	if !ok || base == "" || strings.Contains(base, ".") {
-		return kvRoute{}, false
+		return kvRoute{}, unrouted
 	}
 	r.mu.RLock()
 	route, ok := r.table[base]
 	r.mu.RUnlock()
 	if !ok {
-		return kvRoute{}, false
+		return kvRoute{}, unrouted
 	}
 	if !route.Allow.Admits(source) {
-		return kvRoute{}, false
+		return route, refused
 	}
-	return route, true
+	return route, admitted
 }
 
 type kvWatcher struct {
@@ -346,13 +375,21 @@ func handleConn(
 		logger.Info("TLS ClientHello has no usable SNI", "err", err)
 		return
 	}
-	releaseHandshake()
-	_ = conn.SetReadDeadline(time.Time{})
-	route, ok := router.resolve(sni, source)
-	if !ok {
+	route, verdict := router.resolve(sni, source)
+	switch verdict {
+	case unrouted:
 		logger.Info("no allowed route", "sni", sni)
 		return
+	case refused:
+		// The refused client keeps its handshake slot for its whole life,
+		// which ends handshakeTimeout after accept, and takes no route slot.
+		meter.Reject(rejectAllowList)
+		logger.Info("connection refused by the allow list", "resource", route.ResourceID, "source", source.String())
+		refuseAllowList(conn, reader, record, route, start.Add(handshakeTimeout), logger)
+		return
 	}
+	releaseHandshake()
+	_ = conn.SetReadDeadline(time.Time{})
 	// The store's route admits twice its plan's limit, so the client past the
 	// limit reaches kv-internal-proxy and reads Valkey's refusal (w6/m457).
 	releaseRoute, ok := limiter.AcquireRoute(route.Route, route.Capacity)
@@ -375,4 +412,49 @@ func handleConn(
 	// No idle or lifetime bound by default (w6/149): the stream ends when the
 	// client, the edge load balancer or Valkey ends it.
 	sniproxy.CopyBidirectional(conn, backend, meter, route.ResourceID, "key_value", idle, maxLifetime)
+}
+
+// refuseAllowList relays a client the store's allow list refuses to the
+// store's refusal port, where its kv-internal-proxy ends TLS with the store's
+// certificate and answers each command with Render's "Client IP address is
+// not in the allowlist.", never dialing Valkey (w8/m562). Both sides end at
+// deadline. The bytes are no use of the store, so none is metered as its
+// egress. A dial that fails (a store whose held proxy template has no refusal
+// listener yet, or whose Service still selects Valkey, which never listens on
+// the port) closes the client, as every refused client was closed before.
+func refuseAllowList(
+	conn net.Conn, buffered io.Reader, hello []byte, route kvRoute, deadline time.Time,
+	logger interface {
+		Info(msg string, keysAndValues ...any)
+	},
+) {
+	refusal, err := (&net.Dialer{Deadline: deadline}).Dial("tcp", route.Refusal)
+	if err != nil {
+		logger.Info("allow-list refusal unreachable", "resource", route.ResourceID, "err", err)
+		return
+	}
+	defer func() { _ = refusal.Close() }()
+	if conn.SetDeadline(deadline) != nil || refusal.SetDeadline(deadline) != nil {
+		return
+	}
+	if _, err := refusal.Write(hello); err != nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// A client that half-closes after its last command still reads the
+		// replies to it.
+		if _, err := io.Copy(refusal, buffered); err == nil {
+			if tcp, ok := refusal.(*net.TCPConn); ok {
+				_ = tcp.CloseWrite()
+				return
+			}
+		}
+		_ = refusal.Close()
+	}()
+	_, _ = io.Copy(conn, refusal)
+	_ = conn.Close()
+	_ = refusal.Close()
+	<-done
 }
