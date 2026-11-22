@@ -1,6 +1,6 @@
 # w32 · m560 — A deploy log narrates its rollout as Render's does: `==> Deploying...`, the `WEB_CONCURRENCY` default and `==> Running '<start command>'`
 
-**Worker:** worker32 **Goal:** between a build's end and its verdict, a deploy's log (`bex logs --type build`, the deploy page, the live tail) shows the lines Render writes there, each at a moment the operator recorded. `==> Deploying...` comes when the release's rollout starts. `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` follows when its instance gets that default. On a native runtime, `==> Running '<start command>'` comes each time its app container starts. **Status:** todo (t001–t007, t010, t011 done)
+**Worker:** worker32 **Goal:** between a build's end and its verdict, a deploy's log (`bex logs --type build`, the deploy page, the live tail) shows the lines Render writes there, each at a moment the operator recorded. `==> Deploying...` comes when the release's rollout starts. `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` follows when its instance gets that default. On a native runtime, `==> Running '<start command>'` comes each time its app container starts. **Status:** blocked (t001–t007, t010, t011 done; t008's production walk, t009's surface walk and t012 wait for the pin)
 
 ## Tasks (in order)
 
@@ -32,8 +32,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w32/082](../done/082.md), filed 2026-11-22 from routine `cli-qa`'s follow-up (production pin `89642635b9ce`, released `bex` v0.9.0) and promoted the same day by `/loopx w32`.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log, the surface a user reads first when a deploy fails. Render's log names the deploy step and the start command it runs. bex's stays silent for up to a minute.
+- **Source:** inbox note [w32/082](../../done/082.md), filed 2026-11-22 from routine `cli-qa`'s follow-up (production pin `89642635b9ce`, released `bex` v0.9.0) and promoted the same day by `/loopx w32`.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log, the surface a user reads first when a deploy fails. Render's log names the deploy step and the start command it runs. bex's stays silent for up to a minute.
 - **Expected outcome:** a bex deploy log reads like Render's from the build's end to the verdict. The user sees which command ran and when the instance started, before a `==> Exited with status N`.
 - **Why now:** w8/393 gave bex Render's `==> Exited with status N` verdict, and w32/081 gave it Render's static-site verdict. The start command those verdicts refer to is still not in the log. The routine's own journey hit the gap on its first native service.
 - **Render parity task included:** the lines are a tenant-facing surface (REST, SSE, GraphQL and MCP log reads, the CLI and the dashboard's deploy page).
