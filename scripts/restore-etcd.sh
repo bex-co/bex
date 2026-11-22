@@ -13,7 +13,7 @@ usage() {
   cat <<'EOF'
 Usage:
   DRY_RUN=1 scripts/restore-etcd.sh [--snapshot latest|s3://bucket/key.db.gz] \
-    [--image registry.k8s.io/etcd:TAG] [--output-dir DIR]
+    [--image registry.k8s.io/etcd:TAG@sha256:DIGEST] [--output-dir DIR]
 
   scripts/restore-etcd.sh [same options] --output-dir DIR
 
@@ -28,7 +28,12 @@ EOF
 }
 
 SNAPSHOT="latest"
-IMAGE="registry.k8s.io/etcd:3.6.5-0"
+# The etcd-backup CronJob's reviewed pin
+# (deploy/gitops/charts/etcd-backup/cronjob.yaml). The decrypted snapshot is
+# read and served only by a digest-pinned image, like every recovery container
+# (scripts/lib/restore.sh); its etcd 3.6 etcdutl restores the cluster's 3.6
+# snapshots.
+IMAGE="registry.k8s.io/etcd:3.6.8-0@sha256:397189418d1a00e500c0605ad18d1baf3b541a1004d768448c367e48071622e5"
 OUTPUT_DIR=""
 APPLY_DIR=""
 TARGET_CONTEXT=""
@@ -93,7 +98,7 @@ for prefix in "${PREFIXES[@]}"; do
   [[ "$prefix" == /registry/*/ ]] || restore_die "--prefix must start /registry/ and end /"
   [[ "$prefix" != *$'\n'* ]] || restore_die "invalid registry prefix"
 done
-[[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid etcd image"
+restore_require_digest_image "$IMAGE" "etcd image"
 
 restore_load_dotenv "$REPO_ROOT"
 restore_prefer_reader_credential etcd

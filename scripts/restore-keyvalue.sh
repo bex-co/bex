@@ -13,7 +13,7 @@ usage() {
 Usage:
   DRY_RUN=1 scripts/restore-keyvalue.sh --id red-ID \
     --target-namespace restore-NAME --verify-key KEY [--expect VALUE] \
-    [--snapshot latest|s3://bucket/key.rdb.gz] [--image valkey/valkey:TAG]
+    [--snapshot latest|s3://bucket/key.rdb.gz] [--image valkey/valkey:TAG@sha256:DIGEST]
 
   scripts/restore-keyvalue.sh <same options> --confirm restore-NAME \
     [--teardown-on-success]
@@ -32,7 +32,11 @@ VERIFY_KEY=""
 EXPECT=""
 EXPECT_SET=0
 SNAPSHOT="latest"
-IMAGE="valkey/valkey:8-alpine"
+# The operator's default Key Value image (kvDefaultImage in
+# lego/operator/internal/controller/keyvalue_controller.go): the decrypted RDB
+# is checked and served only by a digest-pinned image, like every recovery
+# container (scripts/lib/restore.sh).
+IMAGE="valkey/valkey:8-alpine@sha256:a038175878d66b9d274fbf8be73c0305e93798b83917647f167e18cef3c71eec"
 CONFIRM=""
 TEARDOWN=""
 TEARDOWN_ON_SUCCESS=0
@@ -73,7 +77,7 @@ restore_validate_dns_label "$ID" "KeyValue id"
 [[ "$ID" == red-* ]] || restore_die "KeyValue id must start with red-"
 restore_require_throwaway_namespace "$TARGET_NAMESPACE"
 [[ "$VERIFY_KEY" != *$'\n'* ]] || restore_die "verification key must be one line"
-[[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid Valkey image"
+restore_require_digest_image "$IMAGE" "Valkey image"
 
 restore_load_dotenv "$REPO_ROOT"
 restore_prefer_reader_credential keyvalue

@@ -192,6 +192,30 @@ run_dry() {
 run_dry env DRY_RUN=1 "$HERE/restore-etcd.sh"
 ok "etcd DRY_RUN restores locally, extracts a CR, and does not mutate Kubernetes/S3"
 
+# The decrypted etcd snapshot is read only by the etcd-backup CronJob's reviewed
+# pin: the script's default is that exact reference, and every container the
+# DRY_RUN started ran it.
+etcd_pin="$(sed -nE 's/^[[:space:]]+image: (registry\.k8s\.io\/etcd:[^[:space:]@]+@sha256:[0-9a-f]{64}).*/\1/p' \
+  "$HERE/../deploy/gitops/charts/etcd-backup/cronjob.yaml")"
+[ -n "$etcd_pin" ] || fail "etcd-backup CronJob digest pin not found"
+grep -qxF "IMAGE=\"$etcd_pin\"" "$HERE/restore-etcd.sh" || \
+  fail "restore-etcd.sh default image differs from the etcd-backup CronJob pin $etcd_pin"
+grep -q "^docker run .*$etcd_pin" "$RESTORE_TEST_CALLS" || \
+  fail "etcd DRY_RUN did not run the reviewed digest"
+! grep '^docker run ' "$RESTORE_TEST_CALLS" | grep -vqF "$etcd_pin" || \
+  fail "etcd DRY_RUN ran a container other than the reviewed digest"
+ok "etcd DRY_RUN runs only the etcd-backup CronJob's reviewed digest"
+
+: >"$RESTORE_TEST_CALLS"
+if env DRY_RUN=1 "$HERE/restore-etcd.sh" --image registry.k8s.io/etcd:3.6.5-0 \
+  >"$TMP/output" 2>"$TMP/error"; then
+  fail "mutable etcd image override was accepted"
+fi
+grep -q 'etcd image must be pinned by an @sha256 digest' "$TMP/error" || \
+  fail "mutable etcd image failure was not specific"
+[ ! -s "$RESTORE_TEST_CALLS" ] || fail "a refused etcd image still reached S3 or docker"
+ok "etcd rejects tag-only image overrides before recovery"
+
 mkdir "$TMP/reviewed"
 cat >"$TMP/reviewed/app.json" <<'JSON'
 {"apiVersion":"app.bex.co/v1alpha1","kind":"App","metadata":{"name":"fixture-app","namespace":"default"},"spec":{"image":"example.invalid/fixture"}}
@@ -243,6 +267,41 @@ ok "Postgres DRY_RUN renders plugin PITR intent using read-only discovery"
 run_dry env DRY_RUN=1 "$HERE/restore-keyvalue.sh" \
   --id red-fixture --target-namespace restore-kv-test --verify-key fixture --expect value
 ok "KeyValue DRY_RUN checksum-validates the RDB and does not mutate Kubernetes/S3"
+
+# The decrypted RDB is checked and served only by the operator's default
+# Key Value image (kvDefaultImage), so a Valkey bump moves both.
+kv_pin="$(sed -nE 's/^[[:space:]]*kvDefaultImage[[:space:]]*=[[:space:]]*"([^"]+@sha256:[0-9a-f]{64})".*/\1/p' \
+  "$HERE/../lego/operator/internal/controller/keyvalue_controller.go")"
+[ -n "$kv_pin" ] || fail "operator kvDefaultImage digest pin not found"
+grep -qxF "IMAGE=\"$kv_pin\"" "$HERE/restore-keyvalue.sh" || \
+  fail "restore-keyvalue.sh default image differs from the operator's kvDefaultImage $kv_pin"
+grep -qxF "          image: $kv_pin" "$TMP/output" || \
+  fail "KeyValue DRY_RUN did not render the reviewed digest"
+grep -q "^docker run .*$kv_pin /restore/dump.rdb" "$RESTORE_TEST_CALLS" || \
+  fail "KeyValue RDB check did not run the reviewed digest"
+ok "KeyValue DRY_RUN renders and runs the operator's reviewed Valkey digest"
+
+: >"$RESTORE_TEST_CALLS"
+if env DRY_RUN=1 "$HERE/restore-keyvalue.sh" \
+  --id red-fixture --target-namespace restore-kv-test --verify-key fixture \
+  --image valkey/valkey:8-alpine >"$TMP/output" 2>"$TMP/error"; then
+  fail "mutable Valkey image override was accepted"
+fi
+grep -q 'Valkey image must be pinned by an @sha256 digest' "$TMP/error" || \
+  fail "mutable Valkey image failure was not specific"
+[ ! -s "$RESTORE_TEST_CALLS" ] || fail "a refused Valkey image still reached S3 or docker"
+ok "KeyValue rejects tag-only image overrides before recovery"
+
+# Every restore script that takes --image refuses a tag-only one the same way
+# (the defaults themselves are scanned by image-pin-validate.sh).
+for script in "$HERE"/restore-*.sh; do
+  case "$script" in */restore.test.sh) continue ;; esac
+  grep -q -- '--image)' "$script" || continue
+  # shellcheck disable=SC2016 # the call is matched literally, not expanded
+  grep -qF 'restore_require_digest_image "$IMAGE"' "$script" || \
+    fail "$(basename "$script") accepts --image without restore_require_digest_image"
+done
+ok "every restore script with --image requires an @sha256 digest"
 
 # ADR050 Tier A: an explicit .age snapshot is age-decrypted before the gzip check.
 run_dry env DRY_RUN=1 AGE_BACKUP_PRIVATE_KEY=AGE-SECRET-KEY-1TESTONLY \

@@ -54,10 +54,10 @@ expect_red() {
 }
 
 # --- fixture -----------------------------------------------------------------
-# One tree carrying all four syntaxes, every reference pinned. Each red case
+# One tree carrying all five syntaxes, every reference pinned. Each red case
 # below copies it and de-pins exactly one line, so a failure is attributable.
 green="$tmp/green"
-mkdir -p "$green/.github/workflows" "$green/svc"
+mkdir -p "$green/.github/workflows" "$green/svc" "$green/scripts"
 
 cat >"$green/Dockerfile" <<EOF
 FROM node:22-alpine@$DIGEST AS builder
@@ -109,6 +109,13 @@ jobs:
             openfga/openfga:latest@$DIGEST run
 EOF
 
+cat >"$green/scripts/restore-fixture.sh" <<EOF
+#!/usr/bin/env bash
+SNAPSHOT="latest"
+IMAGE="registry.example/recovery:1.0@$DIGEST"
+HELPER_IMAGE=registry.example/helper:2.0@$DIGEST # a second default
+EOF
+
 expect_green "pinned tree" "$green"
 
 # --- red: one syntax at a time ----------------------------------------------
@@ -153,6 +160,19 @@ expect_red "CI service container version-only tag" "$tmp/red-service" "postgres:
 depin dockerrun .github/workflows/test.yml "openfga/openfga:latest@$DIGEST" "openfga/openfga:latest"
 expect_red "CI docker run floating tag" "$tmp/red-dockerrun" "openfga/openfga:latest"
 
+# A restore script's IMAGE= default runs over a decrypted backup; a tag-only
+# default (the shape restore-etcd.sh and restore-keyvalue.sh once had) fails.
+depin restore scripts/restore-fixture.sh "registry.example/recovery:1.0@$DIGEST" "registry.example/recovery:1.0"
+expect_red "restore script IMAGE default floating tag" "$tmp/red-restore" "registry.example/recovery:1.0"
+
+depin restorehelper scripts/restore-fixture.sh "registry.example/helper:2.0@$DIGEST" "registry.example/helper:2.0"
+expect_red "restore script *_IMAGE default floating tag" "$tmp/red-restorehelper" "registry.example/helper:2.0"
+
+# A default the scan cannot read as a plain reference is reported, not skipped.
+# shellcheck disable=SC2016 # the shell expansion must remain literal
+depin restoreexpansion scripts/restore-fixture.sh "\"registry.example/recovery:1.0@$DIGEST\"" '"${RESTORE_IMAGE:-registry.example/recovery:1.0}"'
+expect_red "restore script expansion default is not skipped" "$tmp/red-restoreexpansion" 'RESTORE_IMAGE'
+
 # --- red: the fail-closed properties ----------------------------------------
 
 # An unresolvable reference must FAIL, not be skipped. A build ARG is the
@@ -179,8 +199,10 @@ mkdir -p "$canonical/scripts" "$canonical/deploy/native-common"
 cp "$guard" "$canonical/scripts/image-pin-validate.sh"
 # shellcheck disable=SC2016 # the Docker build argument must remain literal
 printf 'ARG COMMON_IMAGE\nFROM ${COMMON_IMAGE}\n' >"$canonical/deploy/native-common/check-local.Dockerfile"
+# The canonical scan requires at least one restore script (check 5's floor).
+cp "$green/scripts/restore-fixture.sh" "$canonical/scripts/restore-fixture.sh"
 git -C "$canonical" init -q
-git -C "$canonical" add scripts/image-pin-validate.sh deploy/native-common/check-local.Dockerfile
+git -C "$canonical" add scripts/image-pin-validate.sh scripts/restore-fixture.sh deploy/native-common/check-local.Dockerfile
 out="$(env -u IMAGE_PIN_TREE bash "$canonical/scripts/image-pin-validate.sh" --list 2>&1)" || {
   echo "FAIL [canonical common placeholder]: $out" >&2
   failures=$((failures + 1))
@@ -202,6 +224,16 @@ for variant in wrong-placeholder wrong-path; do
     failures=$((failures + 1))
   fi
 done
+
+# The canonical tree without any restore script means scan 5 matched nothing.
+git -C "$canonical" rm -q --cached scripts/restore-fixture.sh
+git -C "$canonical" rm -q --cached deploy/native-common/other.Dockerfile
+rc=0
+out="$(env -u IMAGE_PIN_TREE bash "$canonical/scripts/image-pin-validate.sh" 2>&1)" || rc=$?
+if [ "$rc" -eq 0 ] || [[ "$out" != *'restore-default scan (5) has gone vacuous'* ]]; then
+  echo "FAIL [restore scan floor]: $out" >&2
+  failures=$((failures + 1))
+fi
 
 # A scan that matches nothing is a broken scan, not a clean tree.
 mkdir -p "$tmp/empty"

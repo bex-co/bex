@@ -9,12 +9,14 @@
 # on every CI run, so a floating tag reintroduced anywhere turns the build red
 # instead of waiting for round seven.
 #
-# Four syntaxes, one policy — an image reference must carry `@sha256:<64hex>`:
+# Five syntaxes, one policy — an image reference must carry `@sha256:<64hex>`:
 #
 #   1. Dockerfile   `FROM <ref>`               (also `--from=<ref>` mounts)
 #   2. Go           string literals that are image references
 #   3. manifests    `image:`, kustomize `images:` edits, Helm `repository:`/`tag:`
 #   4. workflows    literal image references in `docker run`
+#   5. restore      the `*IMAGE=` defaults of scripts/restore-*.sh, which run
+#                   over decrypted backups (scripts/lib/restore.sh)
 #
 # Reviewed boundaries (w7/041, 2026-09-05): local fixture-only shell harnesses
 # stay outside this scan. Credential-custody helpers are not covered by that
@@ -359,10 +361,45 @@ scan_workflow_containers() {
   done < <(tracked '*.yml' '*.yaml')
 }
 
+# --- 5. restore-script image defaults ---------------------------------------
+# Each scripts/restore-*.sh hands a decrypted backup to the container its
+# top-level `IMAGE=` (or `*_IMAGE=`) default names, and refuses a tag-only
+# --image override with restore_require_digest_image. The default itself is
+# shell, outside the other four syntaxes, so it is read here: a new restore
+# script cannot start from a tag. A default that cannot be read as a plain
+# reference (an expansion) is reported, never skipped.
+restore_scripts() {
+  if [ "$canonical_tree" -eq 1 ]; then
+    git ls-files -z -- 'scripts/restore-*.sh' | tr '\0' '\n'
+    return
+  fi
+  find "$tree/scripts" -maxdepth 1 -type f -name 'restore-*.sh' 2>/dev/null | LC_ALL=C sort
+}
+
+restore_scripts_scanned=0
+scan_restore_defaults() {
+  local path ref
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    restore_scripts_scanned=$((restore_scripts_scanned + 1))
+    while IFS= read -r ref; do
+      [ -n "$ref" ] || continue
+      record "$path" "$ref" "restore script default"
+    done < <(sed -nE 's/^([A-Z0-9_]*_)?IMAGE=//p' "$path" |
+      sed -E 's/[[:space:]]+#.*$//; s/^["'"'"']//; s/["'"'"']$//' || true)
+  done < <(restore_scripts)
+}
+
 scan_dockerfiles
 scan_go
 scan_manifests
 scan_workflow_containers
+scan_restore_defaults
+
+if [ "$canonical_tree" -eq 1 ] && [ "$restore_scripts_scanned" -eq 0 ]; then
+  echo "FAIL: no scripts/restore-*.sh found — the restore-default scan (5) has gone vacuous" >&2
+  exit 1
+fi
 
 if [ "${#inventory[@]}" -eq 0 ]; then
   echo "FAIL: no image references found — the scan matched nothing, which is never true of this tree" >&2
