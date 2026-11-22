@@ -53,7 +53,9 @@ import (
 // "hexpm/elixir".
 type ExactImageResolver interface {
 	// ResolveTag returns the manifest digest ("sha256:…") of
-	// docker.io/<repo>:<tag>; ok is false when the tag does not exist.
+	// docker.io/<repo>:<tag>; ok is false when the tag does not exist, and
+	// the error wraps errV1Manifest when its only manifest is one no build
+	// can pull.
 	ResolveTag(ctx context.Context, repo, tag string) (digest string, ok bool, err error)
 	// ListTags returns the repo's tags that begin with prefix.
 	ListTags(ctx context.Context, repo, prefix string) ([]string, error)
@@ -192,6 +194,9 @@ func (d *DockerHubResolver) ResolveTag(ctx context.Context, repo, tag string) (s
 	defer func() { _ = resp.Body.Close() }()
 	switch resp.StatusCode {
 	case http.StatusOK:
+		if strings.HasPrefix(resp.Header.Get("Content-Type"), schema1MediaType) {
+			return "", false, fmt.Errorf("%s:%s: %w", repo, tag, errV1Manifest)
+		}
 		digest := resp.Header.Get("Docker-Content-Digest")
 		if !digestPattern.MatchString(digest) {
 			return "", false, errors.New("registry answered without a content digest")
@@ -205,6 +210,16 @@ func (d *DockerHubResolver) ResolveTag(ctx context.Context, repo, tag string) (s
 }
 
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// schema1MediaType prefixes Docker's retired v1 manifest types (signed or
+// not), which some official images from before 2017 still have as their only
+// form (node:6.0.0-wheezy). Docker Hub answers with one whatever Accept asks
+// for, and BuildKit no longer pulls it (w8/401).
+const schema1MediaType = "application/vnd.docker.distribution.manifest.v1+"
+
+// errV1Manifest is ResolveTag's answer for a tag whose only manifest is in
+// Docker's retired v1 format: the image exists, but no build can pull it.
+var errV1Manifest = errors.New("the image is in Docker's retired v1 manifest format, which the builder cannot pull")
 
 // imageMetadataAttempts bounds ImageMetadata's reads of one image;
 // imageMetadataRetryPause is the pause before the second, doubled before the

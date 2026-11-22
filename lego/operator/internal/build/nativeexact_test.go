@@ -34,7 +34,9 @@ import (
 )
 
 type fakeExact struct {
-	digests    map[string]string
+	digests map[string]string
+	// v1 are tags whose only manifest is in Docker's retired v1 format.
+	v1         map[string]bool
 	err        error
 	asked      []string
 	env        []string
@@ -98,6 +100,9 @@ func officialImageMetadata(image string) (env, history []string) {
 
 func (f *fakeExact) ResolveTag(_ context.Context, repo, tag string) (string, bool, error) {
 	f.asked = append(f.asked, repo+":"+tag)
+	if f.v1[repo+":"+tag] {
+		return "", false, fmt.Errorf("%s:%s: %w", repo, tag, errV1Manifest)
+	}
 	d, ok := f.digests[repo+":"+tag]
 	return d, ok, f.err
 }

@@ -79,10 +79,9 @@ func TestNodeRequestResolvesOddLinesLikeNodeVersionAlias(t *testing.T) {
 		env  map[string]string
 		want string
 	}{
-		{map[string]string{"NODE_VERSION": "12.22.12"}, "NODE_VERSION=12.22.12 is not a supported Node version; supported Node lines are 14, 16, 18, 20, 22, 24, 26, and " + nativeNodeAnyRelease},
-		{map[string]string{"NODE_VERSION": "27"}, "NODE_VERSION=27 is not a supported Node version"},
+		{map[string]string{"NODE_VERSION": "27"}, "NODE_VERSION=27 is not a supported Node version; supported Node lines are 14, 16, 18, 20, 22, 24, 26, and " + nativeNodeAnyRelease},
 		{map[string]string{"NODE_VERSION": ">=27"}, "NODE_VERSION=>=27 is not a supported Node version"},
-		{map[string]string{"NODE_VERSION": "<14"}, "NODE_VERSION=<14 is not a supported Node version"},
+		{map[string]string{"NODE_VERSION": "<0.10"}, "NODE_VERSION=<0.10 is not a supported Node version"},
 	} {
 		_, err := ResolveNativeVersion(nativeNodeRuntime, tc.env, files(nil))
 		if _, tenant := errors.AsType[*UnsupportedVersionError](err); !tenant || !strings.Contains(err.Error(), tc.want) {
@@ -91,14 +90,15 @@ func TestNodeRequestResolvesOddLinesLikeNodeVersionAlias(t *testing.T) {
 	}
 }
 
-// The odd lines' final releases are frozen facts of nodejs.org's index: each
-// is an odd major no reviewed line carries, and none moves.
-func TestNodeOddLinesAreFinalReleasesOfUnreviewedMajors(t *testing.T) {
+// The released lines' final releases are frozen facts of nodejs.org's index:
+// each is an odd line or a line before 14 (w8/401) that no reviewed line
+// carries, and none moves.
+func TestNodeReleasedLinesAreFinalReleasesOfUnreviewedLines(t *testing.T) {
 	node := nativeToolchains[nativeNodeRuntime]
 	for _, l := range node.released {
 		v, err := semver.StrictNewVersion(l.version)
-		if err != nil || v.Major()%2 == 0 || l.line != strings.Split(l.version, ".")[0] || l.image != "" {
-			t.Errorf("%+v is not an odd line at its final release", l)
+		if err != nil || (v.Major()%2 == 0 && v.Major() >= 14) || l.line != nodeLine(l.version) || l.image != "" {
+			t.Errorf("%+v is not an odd line or a line before 14 at its final release", l)
 		}
 		if _, reviewed := node.find(l.line); reviewed {
 			t.Errorf("line %s is reviewed and released both", l.line)

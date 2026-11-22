@@ -244,9 +244,9 @@ type UnsupportedVersionError = toolchains.UnsupportedVersionError
 // fully qualified one is then installed exactly (exactRequest, w8/175). A
 // range (Node engines, Ruby requirements) resolves to the highest line whose
 // pinned toolchain satisfies it. A Node request no reviewed line serves (an
-// odd line's, or a release from 14 on that no line carries) resolves to the
-// release Render's node-version-alias picks, which the resolve phase installs
-// or refuses by name (w8/398). env is the build's effective environment;
+// odd line's, a line's before 14, or a release no line carries) resolves to
+// the release Render's node-version-alias picks, which the resolve phase
+// installs or refuses by name (w8/398, w8/401). env is the build's effective environment;
 // readFile reads a file relative to the service's root directory, whose
 // package.json, if any, is Node's.
 func ResolveNativeVersion(runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
@@ -803,42 +803,59 @@ var plainVersion = regexp.MustCompile(`^v?\d+(\.\d+){0,2}$`)
 // `latest`, `current`; otherwise a semver range (highest satisfying line).
 // Render resolves a request to the newest Node release that satisfies it,
 // whatever its line (node-version-alias), so a request no reviewed line
-// serves is returned as the release to install (w8/398): a fully qualified
-// version from Node 14 on as itself, and one that reaches an odd line as
-// that line's final release when it allows it (`>=20 <22` → 21.7.3), else
-// as the line, whose newest release inside the request the resolve phase
-// lists. r.choice starts either on the default line's image until then.
+// serves is returned as the release to install (w8/398, w8/401): a fully
+// qualified version as itself, and one that reaches a released line (an odd
+// line, or one before 14) as that line's final release when it allows it
+// (`>=20 <22` → 21.7.3, `12` → 12.22.12), else as the line, whose newest
+// release inside the request the resolve phase lists. r.choice starts either
+// on the default line's image until then.
 func (r resolver) nodeRequest(request string) (string, bool) {
 	lower := strings.ToLower(strings.TrimSpace(request))
 	switch {
 	case lower == "lts" || lower == "lts/*":
 		return nodeLTSLineAt(time.Now()), true
 	case strings.HasPrefix(lower, "lts/"):
-		i := slices.IndexFunc(nodeLTS, func(r nodeLTSRelease) bool { return r.codename != "" && "lts/"+r.codename == lower })
-		if i < 0 {
-			return "", false
+		if i := slices.IndexFunc(nodeLTS, func(r nodeLTSRelease) bool { return r.codename != "" && "lts/"+r.codename == lower }); i >= 0 {
+			return nodeLTS[i].line, true
 		}
-		return nodeLTS[i].line, true
+		// An LTS line before 14 has ended: its codename names the line's
+		// final release, as node-version-alias resolves it (w8/401).
+		if line, ok := nodeReleasedLTS[strings.TrimPrefix(lower, "lts/")]; ok {
+			return r.releasedRequest(line, line)
+		}
+		return "", false
 	case lower == "node" || lower == "latest" || lower == "current" || lower == "stable":
 		return r.t.lines[len(r.t.lines)-1].line, true
 	case plainVersion.MatchString(lower):
 		version := strings.TrimPrefix(lower, "v")
-		major, _, _ := strings.Cut(version, ".")
-		if _, ok := r.t.find(major); ok {
-			return major, true
+		line := nodeLine(version)
+		if _, ok := r.t.find(line); ok {
+			return line, true
 		}
 		if fullVersion.MatchString(version) {
-			oldest, _ := strconv.Atoi(r.t.lines[0].line)
-			n, err := strconv.Atoi(major)
-			return version, err == nil && n >= oldest
+			return version, true // the resolve phase installs it or refuses it by name
 		}
-		return r.releasedRequest(major, version)
+		return r.releasedRequest(line, version)
 	}
 	line, ok := r.highestSatisfying(lower)
 	if !ok {
 		return "", false
 	}
 	return r.releasedRequest(line, lower)
+}
+
+// nodeReleasedLTS are the codenames of the LTS lines before 14, each the line
+// its `lts/<codename>` alias names (nodejs.org/dist/index.json, w8/401).
+var nodeReleasedLTS = map[string]string{"argon": "4", "boron": "6", "carbon": "8", "dubnium": "10", "erbium": "12"}
+
+// nodeLine is the Node line a version names: its major, or, before Node 4,
+// its 0.x minor (0.10, 0.12), which were Node's lines then (w8/401).
+func nodeLine(version string) string {
+	major, rest, _ := strings.Cut(version, ".")
+	if minor, _, _ := strings.Cut(rest, "."); major == "0" && minor != "" {
+		return "0." + minor
+	}
+	return major
 }
 
 // releasedRequest is a request that reached line, as nodeRequest returns it:

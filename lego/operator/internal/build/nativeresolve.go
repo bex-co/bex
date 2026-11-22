@@ -25,6 +25,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -579,9 +581,11 @@ func withOlderVariant(choice NativeChoice, repo, tag, donor string) NativeChoice
 // 25.8.1), or the newest release of the line a range reached that satisfies
 // it when that line's final release does not. It comes from its official
 // image, pinned by digest like the lines' images, or from an older Debian
-// variant's (Node 15, 17 and 19 have no bookworm images, w8/309). A release
-// with no image does not exist, and the build fails by name rather than on
-// another Node; so does a registry that cannot be read.
+// variant's (Node 15, 17 and 19 have no bookworm images, w8/309; a release
+// before 14 may come from stretch or wheezy, w8/401). A release with no image,
+// or only an image in Docker's retired v1 format, which the builder cannot
+// pull, fails by name rather than on another Node; so does a registry that
+// cannot be read.
 func pinNodeRelease(ctx context.Context, exact ExactImageResolver, choice NativeChoice, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	what := choice.Source
 	if !strings.Contains(what, "=") {
@@ -600,8 +604,8 @@ func pinNodeRelease(ctx context.Context, exact ExactImageResolver, choice Native
 		}
 		if release == "" {
 			return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
-				"%s matches no Node release: no official %s:%s.x image (bookworm, bullseye or buster) satisfies it; set a published Node release or a supported Node line (%s)",
-				what, repo, choice.releaseLine, supported)}
+				"%s matches no Node release: no official %s:%s.x image (bookworm, %s) satisfies it; set a published Node release or a supported Node line (%s)",
+				what, repo, choice.releaseLine, variantNames(nodeVariantsFor(choice.releaseLine)), supported)}
 		}
 		choice.Exact = release
 	}
@@ -609,10 +613,14 @@ func pinNodeRelease(ctx context.Context, exact ExactImageResolver, choice Native
 	if !tagPattern.MatchString(tag) {
 		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf("%s is not a Node release; set a published Node release or a supported Node line (%s)", what, supported)}
 	}
-	for _, variant := range append([]string{suffix}, nodeOlderVariants...) {
+	variants := nodeVariantsFor(choice.Exact)
+	v1Image := ""
+	for _, variant := range append([]string{suffix}, variants...) {
 		candidate := choice.Exact + variant
 		digest, found, err := exact.ResolveTag(ctx, repo, candidate)
 		switch {
+		case errors.Is(err, errV1Manifest):
+			v1Image = cmp.Or(v1Image, repo+":"+candidate)
 		case err != nil:
 			return NativeChoice{}, fmt.Errorf("look up Node %s (%s:%s): %w", choice.Exact, repo, candidate, err)
 		case found && variant == suffix:
@@ -623,9 +631,19 @@ func pinNodeRelease(ctx context.Context, exact ExactImageResolver, choice Native
 			return withOlderVariant(choice, repo, tag, repo+":"+candidate+"@"+digest), nil
 		}
 	}
+	if v1Image != "" {
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
+			"%s cannot be installed: Node %s's only official image, %s, is in Docker's retired v1 image format, which the builder cannot pull; set another Node release or a supported Node line (%s)",
+			what, choice.Exact, v1Image, supported)}
+	}
+	lead := "is not a Node release"
+	if nodeBefore14(choice.Exact) {
+		// nodejs.org has releases before 0.10.45 that no image carries.
+		lead = "cannot be installed"
+	}
 	return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
-		"%s is not a Node release: no official image %s:%s (or its bullseye or buster variant) exists; set a published Node release or a supported Node line (%s)",
-		what, repo, toolchains.BoundedRequest(tag), supported)}
+		"%s %s: no official image %s:%s (or its %s variant) exists; set a published Node release or a supported Node line (%s)",
+		what, lead, repo, toolchains.BoundedRequest(tag), variantNames(variants), supported)}
 }
 
 // newestNodeRelease is the newest official release of choice.releaseLine that
@@ -640,7 +658,7 @@ func newestNodeRelease(ctx context.Context, exact ExactImageResolver, choice Nat
 	if err != nil {
 		return "", fmt.Errorf("list Node %s releases (%s:%s.x) for %s: %w", choice.releaseLine, repo, choice.releaseLine, choice.rangeRequest, err)
 	}
-	for _, variant := range append([]string{suffix}, nodeOlderVariants...) {
+	for _, variant := range append([]string{suffix}, nodeVariantsFor(choice.releaseLine)...) {
 		if best := newestTagRelease(tags, variant, constraint); best != nil {
 			return best.Original(), nil
 		}
@@ -713,6 +731,40 @@ func newestTagRelease(tags []string, suffix string, constraint *semver.Constrain
 // nodeOlderVariants are the Debian variants an official Node image of a
 // release older than its line's bookworm images is published in, newest first.
 var nodeOlderVariants = []string{"-bullseye", "-buster"}
+
+// nodeLegacyVariants add, for a release before 14, the older Debian variants
+// its official image may be published in only: stretch (4.8.4 to 12.5.0) and
+// wheezy (0.10.45 to 8.2.0). Docker Hub, read 2026-11-22, has no Debian
+// image of an older release, and none whose only one is jessie (w8/401).
+var nodeLegacyVariants = slices.Concat(nodeOlderVariants, []string{"-stretch", "-wheezy"})
+
+// nodeVariantsFor are the older variants a Node release or released line's
+// image may be published in.
+func nodeVariantsFor(release string) []string {
+	if nodeBefore14(release) {
+		return nodeLegacyVariants
+	}
+	return nodeOlderVariants
+}
+
+// nodeBefore14 reports whether a Node release or line predates Node 14.
+func nodeBefore14(release string) bool {
+	major, _, _ := strings.Cut(release, ".")
+	n, err := strconv.Atoi(major)
+	return err == nil && n < 14
+}
+
+// variantNames lists variant suffixes for a message: "bullseye or buster".
+func variantNames(variants []string) string {
+	names := make([]string, len(variants))
+	for i, v := range variants {
+		names[i] = strings.TrimPrefix(v, "-")
+	}
+	if len(names) < 2 {
+		return strings.Join(names, "")
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " or " + names[len(names)-1]
+}
 
 // olderVariants are the older Debian variants an exact release whose bookworm
 // tag does not exist may come from. The node binary is the same nodejs.org

@@ -85,12 +85,13 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 		}
 		choice.runtimeCheck += lines
 	}
-	// The nodejs.org binary is one glibc 2.17 build in every Debian variant, so
-	// any older-variant Node image runs on Bookworm (Node 14, and an exact
-	// release with no bookworm image, w8/309).
+	// The nodejs.org binary is one build in every Debian variant, needing at
+	// most glibc 2.17 (none before Node 12 more than 2.9), so any older-variant
+	// Node image runs on Bookworm (Node 14, an exact release with no bookworm
+	// image, w8/309, and stretch and wheezy releases before 14, w8/401).
 	switch {
 	case runtime == nativeNodeRuntime:
-		choice.legacySource = slices.ContainsFunc(nodeOlderVariants, func(variant string) bool {
+		choice.legacySource = slices.ContainsFunc(nodeLegacyVariants, func(variant string) bool {
 			return strings.Contains(choice.Image, variant+"@")
 		})
 	case strings.Contains(choice.Image, "-bullseye@"):
@@ -157,15 +158,27 @@ func commonRuntimeProvenance(choice NativeChoice) string {
 // factory; libc and current headers are never copied.
 func nativeCommonSourceGuard(source string, legacy, reset bool) string {
 	compatible := `[ "$primary_os" = "$VERSION_CODENAME" ]`
+	release, codename := "/usr/lib/os-release", `[ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME"`
 	if legacy {
 		older := "bullseye"
-		if strings.Contains(source, "-buster@") {
-			older = "buster"
+		for _, suite := range []string{"buster", "stretch", "wheezy"} {
+			if strings.Contains(source, "-"+suite+"@") {
+				older = suite
+			}
 		}
 		compatible += ` || { [ "$primary_os" = ` + older + ` ] && [ "$VERSION_CODENAME" = bookworm ]; }`
+		if older == "stretch" || older == "wheezy" {
+			// An early stretch (9.9 in node:6.17.1-stretch) names no
+			// VERSION_CODENAME, only VERSION="9 (stretch)", and wheezy's file
+			// is /etc/os-release alone (Node images before 14, w8/401).
+			codename = `primary_os="${VERSION_CODENAME:-${VERSION#*(}}" && primary_os="${primary_os%)}"`
+			if older == "wheezy" {
+				release = "/etc/os-release"
+			}
+		}
 	}
-	lines := "COPY --link --from=" + source + " /usr/lib/os-release /opt/bex-primary-os-release\n" +
-		"RUN . /opt/bex-primary-os-release && [ -n \"$VERSION_CODENAME\" ] && primary_os=\"$VERSION_CODENAME\" && . /etc/os-release && [ -n \"$VERSION_CODENAME\" ] && " +
+	lines := "COPY --link --from=" + source + " " + release + " /opt/bex-primary-os-release\n" +
+		"RUN . /opt/bex-primary-os-release && " + codename + " && . /etc/os-release && [ -n \"$VERSION_CODENAME\" ] && " +
 		"{ " + compatible + " || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release"
 	if reset {
 		lines += " && rm -rf /usr/local && mkdir -p /usr/local"

@@ -130,31 +130,35 @@ func TestNodeReadsTheFirstSubdirectoryPackageJSON(t *testing.T) {
 // A refused request names the file it came from.
 func TestNodeSubdirectoryPackageJSONRefusalNamesIt(t *testing.T) {
 	o := nativeOptions()
-	bundle, dockerfile, src := writeResolveFixture(t, o, nil, map[string]string{"backend/package.json": enginesNode("<14")})
+	bundle, dockerfile, src := writeResolveFixture(t, o, nil, map[string]string{"backend/package.json": enginesNode(">=27")})
 	_, err := ResolveNativeBuildExact(context.Background(), &fakeExact{}, time.Time{}, nativeNodeRuntime, bundle, dockerfile, src)
 	var unsupported *UnsupportedVersionError
-	if !errors.As(err, &unsupported) || !strings.HasPrefix(unsupported.Error(), `backend/package.json engines.node "<14" is not a supported Node version`) {
+	if !errors.As(err, &unsupported) || !strings.HasPrefix(unsupported.Error(), `backend/package.json engines.node ">=27" is not a supported Node version`) {
 		t.Fatalf("err = %v, want a refusal naming backend/package.json", err)
 	}
 }
 
 // w8/400: another runtime's Node never fails its build on a request bex cannot
-// install. Render installs any Node release, 12.18.3 included (community
-// thread 15142), so a Python service with a stray docs/package.json asking for
-// 12.x builds there; bex builds it on the dated default, with a line naming
-// the request, whatever the signal. A Node service still refuses it (w8/398).
+// install, whatever the signal: a Python service with a stray docs/package.json
+// builds on the dated default, with a line naming the request. A Node service
+// still refuses it (w8/398). Since w8/401 a release before 14 with an official
+// image installs instead (TestNodeCompanionInstallsANodeReleaseBefore14), so
+// these are requests no build can install: a line with no release, a range or
+// release with no image, and a release whose only image is in Docker's retired
+// v1 format.
 func TestNodeCompanionFallsBackOnARequestBexCannotInstall(t *testing.T) {
 	const image = "node:24.22.1-bookworm@" + exactDigest
 	created := renderNodeDefault20261021.Add(time.Hour)
 	common := nativeCommonBase
 	t.Cleanup(func() { nativeCommonBase = common })
 	for name, tc := range map[string]struct{ env, files map[string]string }{
-		"nested package.json":   {files: map[string]string{"app.py": "", "docs/package.json": enginesNode("12.x")}},
-		"root package.json":     {files: map[string]string{"package.json": enginesNode("<14")}},
-		"NODE_VERSION":          {env: map[string]string{"NODE_VERSION": "12.22.12"}},
-		"release with no image": {files: map[string]string{".nvmrc": "99.99.99\n"}},
+		"nested package.json":        {files: map[string]string{"app.py": "", "docs/package.json": enginesNode(">=27")}},
+		"root package.json":          {files: map[string]string{"package.json": enginesNode("~21.6.5")}},
+		"NODE_VERSION with no image": {env: map[string]string{"NODE_VERSION": "0.8.6"}},
+		"v1 image only":              {env: map[string]string{"NODE_VERSION": "6.0.0"}},
+		"release with no image":      {files: map[string]string{".nvmrc": "99.99.99\n"}},
 	} {
-		fake := &fakeExact{digests: map[string]string{"node:24.22.1-bookworm": exactDigest}}
+		fake := &fakeExact{digests: map[string]string{"node:24.22.1-bookworm": exactDigest}, v1: map[string]bool{"node:6.0.0-wheezy": true}}
 		o := nativeOptions()
 		o.Runtime = nativeNodeRuntime
 		bundle, dockerfile, src := writeResolveFixture(t, o, tc.env, tc.files)

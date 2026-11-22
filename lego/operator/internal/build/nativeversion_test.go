@@ -215,9 +215,9 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		{"python", map[string]string{"PYTHON_VERSION": "3.16.0"}, nil, `PYTHON_VERSION=3.16.0 is not a supported Python version; supported Python lines are 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15`},
 		{"python", map[string]string{"PYTHON_VERSION": "3.6.15"}, nil, `PYTHON_VERSION=3.6.15 is not a supported Python version`},
 		{"python", nil, map[string]string{".python-version": "pypy3.10"}, `.python-version "pypy3.10"`},
-		{"node", map[string]string{"NODE_VERSION": "8"}, nil, "supported Node lines are 14, 16, 18, 20, 22, 24, 26"},
+		{"node", map[string]string{"NODE_VERSION": "3"}, nil, "supported Node lines are 14, 16, 18, 20, 22, 24, 26"},
 		{"node", map[string]string{"NODE_VERSION": "lts/notacodename"}, nil, "NODE_VERSION=lts/notacodename is not a supported Node version; supported Node lines are 14, 16, 18, 20, 22, 24, 26"},
-		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<14"}}`}, `package.json engines.node "<14"`},
+		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<0.10"}}`}, `package.json engines.node "<0.10"`},
 		{"ruby", nil, map[string]string{"Gemfile": `ruby "2.7.8"`}, `Gemfile ruby "2.7.8"`},
 		{"ruby", nil, map[string]string{".tool-versions": "ruby 2.7.8\n"}, `.tool-versions ruby "2.7.8"`},
 		// w8/373: Render builds any compatible pair from Elixir 1.12.0 and
@@ -1174,12 +1174,12 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 
 		// A Node request bex refuses builds on the default Node with a line
 		// naming it, where it once failed the build (w8/400).
-		bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "12"}, nil)
+		bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "27"}, nil)
 		choices, err = resolveNativeBuild(runtime, bundle, dockerfile, src)
 		if df, _ := os.ReadFile(dockerfile); err != nil || choices[len(choices)-1].Source != "" ||
-			!strings.Contains(choices[len(choices)-1].Narration(), "==> NODE_VERSION=12 is not a supported Node version;") ||
+			!strings.Contains(choices[len(choices)-1].Narration(), "==> NODE_VERSION=27 is not a supported Node version;") ||
 			!strings.Contains(string(df), nativeJSToolLines(nativeToolchains["node"].defaultImage(), nativeToolchains["node"].defaultLine)) {
-			t.Fatalf("%s NODE_VERSION=12: %+v, %v\n%s", runtime, choices, err, df)
+			t.Fatalf("%s NODE_VERSION=27: %+v, %v\n%s", runtime, choices, err, df)
 		}
 	}
 	o := nativeOptions()
