@@ -95,6 +95,11 @@ type blueprintActionResolver struct {
 	// creates on free or moves onto it that the workspace's one free slot
 	// cannot take, judged on the whole file (blueprintFreeDatabaseRefusals).
 	freeDatabaseRefusals map[string]error
+	// freeKeyValueRefusals is the databases' rule's Key Value twin: each
+	// store the file creates on free or moves onto it that the workspace's
+	// one free store slot cannot take, judged on the whole file
+	// (blueprintFreeKeyValueRefusals).
+	freeKeyValueRefusals map[string]error
 }
 
 func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
@@ -162,6 +167,13 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		}
 		resolver.keyValues[keyValue.Spec.Name] = keyValue
 	}
+	freeKeyValueSlots, err := snap.freeKeyValueSlots(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resolver.freeKeyValueRefusals = blueprintFreeKeyValueRefusals(parsed.keyValues, func(name string) *appv1alpha1.KeyValue {
+		return resolver.keyValues[name]
+	}, freeKeyValueSlots)
 	return resolver, nil
 }
 
@@ -278,6 +290,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			// update-only judgments on both sides, so a create judges neither
 			// here either.
 			if err := keyvalue.ErrPausedPlan(blueprintKeyValueGatePlan(kv, ""), ""); err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
+			}
+			// A free create meets the one-free rule the move onto free
+			// meets, judged on the workspace the whole file leaves.
+			if err := r.freeKeyValueRefusals[resource.Name]; err != nil {
 				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
 			}
 		}
@@ -445,6 +462,13 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return BlueprintPlanAction{}, fmt.Errorf("compiled key value is missing")
 		}
 		live := r.keyValues[resource.Name]
+		// A move onto the free plan meets the one-free rule the create
+		// meets, judged on the workspace the whole file leaves: the apply
+		// checks it again before its write, and the patch plan change
+		// checks it too.
+		if err := r.freeKeyValueRefusals[resource.Name]; err != nil {
+			return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
+		}
 		probe := live.Spec
 		if ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, keyValue.fields) {
 			if err := keyvalue.RefuseBlueprintExternalAccessRestart(live, probe.Public); err != nil {

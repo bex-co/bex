@@ -76,6 +76,80 @@ func blueprintFreeDatabaseRefusals(databases []parsedDatabase, live func(name st
 	return refusals
 }
 
+// blueprintKeyValuePlanAfter is the plan the apply leaves kv on: a create's
+// declared (or default) plan, an existing store's declared plan, or the plan
+// it has when its entry omits plan (ApplyBlueprintKeyValueSpec).
+func blueprintKeyValuePlanAfter(kv parsedKeyValue, live *appv1alpha1.KeyValue) string {
+	if live == nil {
+		return kv.spec.Plan
+	}
+	if _, declared := kv.fields["plan"]; declared {
+		return kv.spec.Plan
+	}
+	return live.Spec.Plan
+}
+
+// blueprintKeyValueVacatesFreeSlot reports whether the apply moves the
+// existing store live off the free plan.
+func blueprintKeyValueVacatesFreeSlot(kv parsedKeyValue, live *appv1alpha1.KeyValue) bool {
+	return live != nil && live.Spec.Plan == core.FreePlanID && blueprintKeyValuePlanAfter(kv, live) != core.FreePlanID
+}
+
+// blueprintFreeKeyValueRefusals judges the one-free-Key-Value rule (w4/m241)
+// on the workspace a Blueprint sync leaves, as Render's "only one Free Key
+// Value can be active for any given workspace" reads: every store the file
+// declares on the plan the apply leaves it on, every other one as it is. A
+// store the file creates on free or moves onto it claims the slot. A free
+// store that stays free holds it, so a claim beside it is refused; otherwise
+// the first claim in file order takes it and every later one is refused. A
+// store the file moves off free gives the slot up, so a file that hands it
+// from one store to another is admitted in either order. live finds the
+// existing store a declared name applies to; slots are the workspace's
+// stores, deleting ones included. It returns each refused claim's error by
+// declared name.
+func blueprintFreeKeyValueRefusals(keyValues []parsedKeyValue, live func(name string) *appv1alpha1.KeyValue, slots []core.FreeSlotInstance) map[string]error {
+	vacating := map[string]bool{}
+	var claims []string
+	for _, kv := range keyValues {
+		existing := live(kv.name)
+		switch {
+		case blueprintKeyValueVacatesFreeSlot(kv, existing):
+			vacating[existing.Name] = true
+		case blueprintKeyValuePlanAfter(kv, existing) == core.FreePlanID && (existing == nil || existing.Spec.Plan != core.FreePlanID):
+			claims = append(claims, kv.name)
+		}
+	}
+	if len(claims) == 0 {
+		return nil
+	}
+	refusals := map[string]error{}
+	for i, err := range core.RefuseFreeSlotClaims(slots, func(name string) bool { return vacating[name] }, claims, "Key Value store") {
+		if err != nil {
+			refusals[claims[i]] = err
+		}
+	}
+	return refusals
+}
+
+// blueprintKeyValueApplyOrder is the order the apply writes the file's
+// stores in, by index: each one the sync moves off the free plan first, then
+// the rest in file order. A sync that hands the free slot from one store to
+// another then frees it before it claims it, whatever the file order, so the
+// claim's own check under the tenant lock admits it, and the workspace never
+// holds two free stores mid-sync.
+func blueprintKeyValueApplyOrder(keyValues []parsedKeyValue, live func(name string) *appv1alpha1.KeyValue) []int {
+	order := make([]int, 0, len(keyValues))
+	var rest []int
+	for i, kv := range keyValues {
+		if blueprintKeyValueVacatesFreeSlot(kv, live(kv.name)) {
+			order = append(order, i)
+		} else {
+			rest = append(rest, i)
+		}
+	}
+	return append(order, rest...)
+}
+
 // blueprintDatabaseApplyOrder is the order the apply writes the file's
 // databases in, by index: each one the sync moves off the free plan first,
 // then the rest in file order. A sync that hands the free slot from one

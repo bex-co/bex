@@ -1218,19 +1218,43 @@ func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assi
 	if err := s.applyStackDatabases(ctx, st.databases, assignments, snap, dbRefs, res); err != nil {
 		return err
 	}
-	for _, kv := range st.keyValues {
+	return s.applyStackKeyValues(ctx, st.keyValues, assignments, snap, kvCRNames, res)
+}
+
+// applyStackKeyValues upserts the stack's key values in
+// blueprintKeyValueApplyOrder (each one the sync moves off the free plan
+// first), appending each applied view onto res in file order.
+func (s *Service) applyStackKeyValues(ctx context.Context, declared []parsedKeyValue, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, kvCRNames map[string]string, res *StackResult) error {
+	if len(declared) == 0 {
+		return nil
+	}
+	keyValues, err := snap.keyValues(ctx)
+	if err != nil {
+		return err
+	}
+	tenantID, scoped := s.Tenant(ctx)
+	order := blueprintKeyValueApplyOrder(declared, func(name string) *appv1alpha1.KeyValue {
+		existing, _ := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, name)
+		return existing
+	})
+	applied := make([]*StackKeyValueView, len(declared))
+	defer func() {
+		for _, v := range applied {
+			if v != nil {
+				res.KeyValues = append(res.KeyValues, *v)
+			}
+		}
+	}()
+	for _, i := range order {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return err
 		}
-		keyValues, err := snap.keyValues(ctx)
-		if err != nil {
-			return err
-		}
+		kv := declared[i]
 		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping], keyValues.Items)
 		if err != nil {
 			return err
 		}
-		res.KeyValues = append(res.KeyValues, v)
+		applied[i] = &v
 		kvCRNames[kv.name] = v.ID // CR name = Secret name (kv.Status.SecretName = kv.Name)
 	}
 	return nil
@@ -4838,7 +4862,19 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			existing.Spec.EnvironmentIPAllowList = core.ApplyGrouping(existing, assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
-		if err := s.Client.Patch(ctx, existing, base); err != nil {
+		// A move onto the free plan is checked here as the patch plan change
+		// checks it, under the tenant lock with the write: the plan judged
+		// the whole file, and this catches a free store another writer made
+		// since.
+		claimsFree := existing.Spec.Plan == core.FreePlanID && current != core.FreePlanID
+		if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, claimsFree, func() error {
+			if claimsFree {
+				if err := keyvalue.CheckFreeLimit(ctx, s.Base, tenantID, existing.Name, core.FreePlanID); err != nil {
+					return err
+				}
+			}
+			return s.Client.Patch(ctx, existing, base)
+		}); err != nil {
 			return StackKeyValueView{}, err
 		}
 		return stackKeyValueView(existing), nil

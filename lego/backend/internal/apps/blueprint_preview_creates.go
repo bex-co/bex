@@ -101,7 +101,7 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 	// membership (labels and an allow-list), which admission does not judge.
 	// The one-free-Postgres rule is the plan's: it judges a free create
 	// together with the file's moves onto free (blueprintFreeDatabaseRefusals).
-	tenantID, _ := s.Tenant(ctx)
+	tenantID, scoped := s.Tenant(ctx)
 	for _, db := range st.databases {
 		if !creates[BlueprintResourcePostgres][db.name] {
 			continue
@@ -114,24 +114,27 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 			return nil, fatal
 		}
 	}
-	plannedFreeKV := 0
-	plannedFreeKVName := ""
+	// The one-free-Key-Value rule is the plan's, judged on the workspace the
+	// whole file leaves (blueprintFreeKeyValueRefusals) — a store the file
+	// moves off free frees the slot for a create, whatever the file order,
+	// and every claim past the first is refused naming the holder.
+	liveKeyValues, err := snap.keyValues(ctx)
+	if err != nil {
+		return nil, err
+	}
+	freeKeyValueSlots, err := snap.freeKeyValueSlots(ctx)
+	if err != nil {
+		return nil, err
+	}
+	freeKeyValueRefusals := blueprintFreeKeyValueRefusals(st.keyValues, func(name string) *appv1alpha1.KeyValue {
+		existing, _ := uniqueKeyValueByDisplayName(liveKeyValues.Items, scoped, tenantID, name)
+		return existing
+	}, freeKeyValueSlots)
 	for _, kv := range st.keyValues {
 		if !creates[BlueprintResourceKeyValue][kv.name] {
 			continue
 		}
-		var err error
-		if kv.spec.Plan == core.FreePlanID {
-			if plannedFreeKV > 0 {
-				err = core.FreeInstanceLimitError("Key Value store", plannedFreeKVName, false)
-			} else {
-				err = keyvalue.CheckFreeLimit(ctx, s.Base, tenantID, "", kv.spec.Plan)
-			}
-			if plannedFreeKV == 0 {
-				plannedFreeKVName = kv.name
-			}
-			plannedFreeKV++
-		}
+		err := freeKeyValueRefusals[kv.name]
 		// A paused tier is refused here as the apply refuses it: without this
 		// the preview says valid and prices a store the create then rejects
 		// with INSTANCE_TYPE_UNAVAILABLE (compute's paused-tier rule).

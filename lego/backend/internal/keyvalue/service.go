@@ -591,12 +591,13 @@ func freeKeyValueSlots(ctx context.Context, b *core.Base, tenantID string) ([]co
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
 		return nil, fmt.Errorf("checking free Key Value limit: %w", err)
 	}
-	return collectFreeKeyValueSlots(list.Items, tenantID), nil
+	return FreeSlots(list.Items, tenantID), nil
 }
 
-// collectFreeKeyValueSlots projects listed stores onto the one-free-slot
-// rule, skipping other tenants' instances.
-func collectFreeKeyValueSlots(items []appv1alpha1.KeyValue, tenantID string) []core.FreeSlotInstance {
+// FreeSlots projects listed stores onto the one-free-slot rule, skipping
+// other tenants' instances. A Blueprint judges its whole sync on this view of
+// the workspace snapshot it already listed, deleting stores included.
+func FreeSlots(items []appv1alpha1.KeyValue, tenantID string) []core.FreeSlotInstance {
 	return core.CollectFreeSlots(items, func(kv appv1alpha1.KeyValue) (core.FreeSlotInstance, bool) {
 		if kv.Labels[core.LabelTenant] != tenantID {
 			return core.FreeSlotInstance{}, false
@@ -645,7 +646,7 @@ func rollbackSecondFreeKeyValueFor(ctx context.Context, b *core.Base, tenantID s
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
 		return nil
 	}
-	slots := collectFreeKeyValueSlots(list.Items, tenantID)
+	slots := FreeSlots(list.Items, tenantID)
 	keeper, mineKeeps := core.ResolveFreeSlotRace(slots, mine.Name)
 	if mineKeeps {
 		return nil
@@ -1126,10 +1127,26 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 			return KeyValueView{}, err
 		}
 	}
+	// A move onto the free plan runs the one-free check again under the tenant
+	// lock (core.WithFreeSlotLock), which every free-slot writer holds across
+	// its check and write: two plan changes, or a plan change and a free
+	// create, cannot both pass the pre-check above and then both write. A dry
+	// run writes nothing, so that pre-check is its whole answer.
+	claimsFree := !dryRun && plan == core.FreePlanID && kv.Spec.Plan != core.FreePlanID
 	from := kv.Spec.Plan
-	view, err := s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
-		kv.Spec.Plan = plan
-	}, dryRun)
+	var view KeyValueView
+	err = core.WithFreeSlotLock(ctx, s.Workspace, kv.Labels[core.LabelTenant], claimsFree, func() error {
+		if claimsFree {
+			if err := s.refuseSecondFreeKeyValue(ctx, kv.Labels[core.LabelTenant], kv.Name); err != nil {
+				return err
+			}
+		}
+		var err error
+		view, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+			kv.Spec.Plan = plan
+		}, dryRun)
+		return err
+	})
 	if err != nil || dryRun {
 		return view, err
 	}
@@ -1355,13 +1372,31 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 			return KeyValueView{}, err
 		}
 	}
+	// A move onto the free plan runs the one-free check again under the tenant
+	// lock with the write, as setPlan does: the pre-check above stays the dry
+	// run's whole answer, and the recheck below closes the race for the write.
+	plan := kv.Spec.Plan
+	if patch.Plan != nil {
+		plan = tiers.Valkey.CanonicalID(*patch.Plan)
+	}
+	claimsFree := !dryRun && plan == core.FreePlanID && kv.Spec.Plan != core.FreePlanID
 	var before appv1alpha1.KeyValueSpec
-	view, err := s.patchKeyValueLocked(ctx, kv, func(kv *appv1alpha1.KeyValue) {
-		read := kv.DeepCopy()
-		patch.apply(kv)
-		markRestartFree(read, kv)
-		before = read.Spec
-	}, dryRun)
+	var view KeyValueView
+	err = core.WithFreeSlotLock(ctx, s.Workspace, kv.Labels[core.LabelTenant], claimsFree, func() error {
+		if claimsFree {
+			if err := s.refuseSecondFreeKeyValue(ctx, kv.Labels[core.LabelTenant], kv.Name); err != nil {
+				return err
+			}
+		}
+		var err error
+		view, err = s.patchKeyValueLocked(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+			read := kv.DeepCopy()
+			patch.apply(kv)
+			markRestartFree(read, kv)
+			before = read.Spec
+		}, dryRun)
+		return err
+	})
 	if err != nil || dryRun {
 		return view, err
 	}
