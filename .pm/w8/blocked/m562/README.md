@@ -57,7 +57,7 @@ Total: **9 tasks, about 4h15m**.
   - with `REDISCLI_AUTH` and `--user`, the shape of `kv-cli`'s command, it prints `AUTH failed: Client IP address is not in the allowlist.` and then `(error) Client IP address is not in the allowlist.`.
   - Without a TTY it prints the same lines without `(error) `.
 - **DoD 3's last control moved.** Since w9/134 (`4eda96b34f`), a private store's connection info answers a `rediss://` URL over its reserved host, where it answered an empty `externalConnectionString`. The control becomes: a store cleared with `--clear-ip-allow-list` answers what w9/134 answers, and a client of its host is still dropped after the ClientHello, since the proxy routes no private store and a private store has no certificate.
-- **t006 partly done (2026-11-22).** No API or dashboard surface changed, and the skill pack's page matches what `valkey-cli` prints. A private store's reserved host still reads a bare EOF, filed as [w8/409](../../409.md). Comparing with t005's live output is left (t006's record).
+- **t006 partly done (2026-11-22).** No API or dashboard surface changed, and the skill pack's page matches what `valkey-cli` prints. A private store's reserved host still reads a bare EOF, filed as [w8/409](../../done/409.md). Comparing with t005's live output is left (t006's record).
 
 ## Test map (t008)
 
