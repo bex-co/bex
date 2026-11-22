@@ -24,6 +24,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -248,6 +249,149 @@ func TestASyncRecreatesADeletedEnvGroupOnce(t *testing.T) {
 	}
 	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != recreated.ID+"-env" {
 		t.Fatalf("web links %v, want only %s", got, recreated.ID)
+	}
+}
+
+// groupedEnvGroupResources is shared linked from web: the two move together
+// between environments, as Render's scoping rule links an environment's group
+// only to that environment's services (w8/179).
+const groupedEnvGroupResources = `envVarGroups:
+  - name: shared
+    envVars:
+      - {key: LOG_LEVEL, value: info}
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    envVars:
+      - fromGroup: shared
+`
+
+// groupedBlueprint is an approved Blueprint of groupedEnvGroupResources in
+// shop/staging over the real env-groups service plus the grouping store, as
+// the composition root wires them: claims, renames, placements and moves all
+// resolve, so a plan and a sync can move the group between environments.
+func groupedBlueprint(t *testing.T, resources string) (*Service, *envgroups.Service, *blueprintGroupingTestStore, context.Context, string) {
+	t.Helper()
+	gst := &blueprintGroupingTestStore{recordingStore: &recordingStore{}}
+	svc, _, ctx := newOnboardingService(t, resources)
+	svc.BlueprintGroups, svc.Environments = gst, gst
+	groups := &envgroups.Service{Base: svc.Base, Store: newMemKV(), Groups: envgroupstest.New()}
+	groups.Environments = gst
+	svc.EnvGroups = groups
+	svc.EnvGroupWritesOwed = envgroups.GroupWritesOwed(groups)
+	svc.EnvGroupRename = envgroups.GroupRename(groups)
+	svc.EnvGroupPlacements = envgroups.GroupPlacements(groups)
+	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	return svc, groups, gst, ctx, res.Blueprint.ID
+}
+
+// groupEnvironment is the public id of shop's environment in the grouping
+// store.
+func groupEnvironment(t *testing.T, gst *blueprintGroupingTestStore, name string) string {
+	t.Helper()
+	var shopID string
+	for _, p := range gst.projects {
+		if p.Name == "shop" {
+			shopID = p.ID
+		}
+	}
+	for _, e := range gst.environments {
+		if e.Name == name && e.ProjectID == shopID {
+			return ids.EnvironmentPublicID(e.ID)
+		}
+	}
+	t.Fatalf("no shop/%s environment in %+v", name, gst.environments)
+	return ""
+}
+
+// changedPaths is the action's changed-field paths in order.
+func changedPaths(action BlueprintPlanAction) []string {
+	var paths []string
+	for _, c := range action.ChangedFields {
+		paths = append(paths, c.Path)
+	}
+	return paths
+}
+
+// A group the file moves with its linked service: the plan names the
+// environment move and the sync moves both, so the same file then plans no
+// change. Until the group's move waited for the services, the apply moved
+// the group first and Render's scoping rule refused it while the service
+// still sat elsewhere — the sync failed although the plan promised the move.
+func TestASyncMovesAnEnvGroupWithItsService(t *testing.T) {
+	svc, groups, gst, ctx, bpID := groupedBlueprint(t, groupedResources(groupedEnvGroupResources, "shop", "staging"))
+	original := onlyGroup(t, groups, ctx)
+	svc.GitFetcher = fakeBlueprintFetcher{contents: groupedResources(groupedEnvGroupResources, "shop", "production")}
+
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := planAction(t, syncActions(t, plan), "shared")
+	if action.Operation != BlueprintPlanUpdate || action.ResourceID != original.ID {
+		t.Fatalf("moved group planned %+v, want an update on %s", action, original.ID)
+	}
+	if paths := changedPaths(action); !slices.Equal(paths, []string{"environment"}) {
+		t.Fatalf("moved group planned fields %q, want [environment]", paths)
+	}
+
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if moved := onlyGroup(t, groups, ctx); moved.ID != original.ID || moved.EnvironmentID != groupEnvironment(t, gst, "production") {
+		t.Fatalf("after the sync the group is %s in %q, want %s in shop/production", moved.ID, moved.EnvironmentID, original.ID)
+	}
+	if again, err := svc.PlanBlueprint(ctx, bpID, "tea-a"); err != nil || again.PlanningOutcome != PlanningNoChanges {
+		t.Fatalf("re-plan = %+v err=%v, want no_changes", again, err)
+	}
+}
+
+// A renamed group that also moves environment: the plan probes the placement
+// by the live name and names environment beside name, the sync renames the
+// group back before it moves it, and the same file then plans no change.
+func TestASyncRenamesItsEnvGroupBackAndMovesIt(t *testing.T) {
+	svc, groups, gst, ctx, bpID := groupedBlueprint(t, groupedResources(groupedEnvGroupResources, "shop", "staging"))
+	original := onlyGroup(t, groups, ctx)
+	if _, err := groups.RenameEnvGroup(ctx, original.ID, "renamed-outside"); err != nil {
+		t.Fatal(err)
+	}
+	svc.GitFetcher = fakeBlueprintFetcher{contents: groupedResources(groupedEnvGroupResources, "shop", "production")}
+
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := planAction(t, syncActions(t, plan), "shared")
+	if action.Operation != BlueprintPlanUpdate || action.ResourceID != original.ID {
+		t.Fatalf("renamed group that moved planned %+v, want an update on %s", action, original.ID)
+	}
+	if paths := changedPaths(action); !slices.Equal(paths, []string{"environment", "name"}) {
+		t.Fatalf("renamed group that moved planned fields %q, want [environment name]", paths)
+	}
+
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	moved := onlyGroup(t, groups, ctx)
+	if moved.ID != original.ID || moved.Name != "shared" {
+		t.Fatalf("after the sync the group is %s=%q, want %s=shared", moved.ID, moved.Name, original.ID)
+	}
+	if moved.EnvironmentID != groupEnvironment(t, gst, "production") {
+		t.Fatalf("after the sync the group is in %q, want shop/production", moved.EnvironmentID)
+	}
+	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != original.ID+"-env" {
+		t.Fatalf("after the sync web links %v, want only %s", got, original.ID)
+	}
+	if again, err := svc.PlanBlueprint(ctx, bpID, "tea-a"); err != nil || again.PlanningOutcome != PlanningNoChanges {
+		t.Fatalf("re-plan = %+v err=%v, want no_changes", again, err)
 	}
 }
 

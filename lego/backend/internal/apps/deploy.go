@@ -1039,7 +1039,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// changed by both gets one deploy (w4/633). It runs even when a later
 	// step fails: the group's values are already written.
 	ctx, deployed := withBlueprintDeploys(ctx)
-	rolls, err := s.applyStackEnvGroups(ctx, st.envGroups, envGroupRenames, assignments, &res)
+	rolls, groupMoves, err := s.applyStackEnvGroups(ctx, st.envGroups, envGroupRenames, assignments, &res)
 	defer func() {
 		for _, roll := range rolls {
 			if rollErr := roll(context.WithoutCancel(ctx), deployed); rollErr != nil && err == nil {
@@ -1106,6 +1106,11 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
+	// The groups move now that every linked service reads in its target
+	// environment (applyStackEnvGroups).
+	if err := s.applyStackEnvGroupMoves(ctx, groupMoves); err != nil {
+		return res, err
+	}
 	if err := s.stampServiceRefs(ctx, st, serviceApps, lookupTarget); err != nil {
 		return res, err
 	}
@@ -1125,38 +1130,44 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	return res, nil
 }
 
+// envGroupMove is an applied env group's deferred environment assignment,
+// placed after the services linked to it are.
+type envGroupMove struct {
+	name          string
+	environmentID string
+}
+
 // applyStackEnvGroups applies the stack's env groups, appending each applied
 // group's id+name view onto res (the applyStackDatastores contract, w6/064).
 // Env groups first: a service's fromGroup links one, which needs the group (and
-// its projection Secret) to exist before the service is patched.
-func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, renames map[string]blueprintEnvGroupRename, assignments map[string]core.EnvironmentAssignment, res *StackResult) (rolls []func(context.Context, map[string]bool) error, err error) {
+// its projection Secret) to exist before the service is patched. The group's
+// own move into its environment waits for applyStackEnvGroupMoves, after the
+// services are placed: Render's scoping rule refuses a group move while a
+// linked service sits elsewhere, so moving the group first strands a sync
+// that moves both — the plan it approved promised the move.
+func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, renames map[string]blueprintEnvGroupRename, assignments map[string]core.EnvironmentAssignment, res *StackResult) (rolls []func(context.Context, map[string]bool) error, moves []envGroupMove, err error) {
 	if len(envGroups) == 0 {
-		return nil, nil // nothing declared — and the EnvGroups seam may not be wired
+		return nil, nil, nil // nothing declared — and the EnvGroups seam may not be wired
 	}
 	for _, g := range envGroups {
 		if err := requireDeployAuthority(ctx, s); err != nil {
-			return rolls, err
+			return rolls, moves, err
 		}
 		if renamed, ok := renames[g.name]; ok {
 			if err := s.renameBlueprintEnvGroupBack(ctx, g.name, renamed); err != nil {
-				return rolls, err
+				return rolls, moves, err
 			}
 		}
 		roll, err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates)
 		if err != nil {
-			return rolls, fmt.Errorf("env group %q: %w", g.name, err)
+			return rolls, moves, fmt.Errorf("env group %q: %w", g.name, err)
 		}
 		if roll != nil {
 			rolls = append(rolls, roll)
 		}
 		if g.grouping != "" {
 			if assignment := assignments[g.grouping]; assignment.ID != "" {
-				if err := requireDeployAuthority(ctx, s); err != nil {
-					return rolls, err
-				}
-				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
-					return rolls, fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
-				}
+				moves = append(moves, envGroupMove{name: g.name, environmentID: assignment.ID})
 			}
 		}
 	}
@@ -1165,12 +1176,30 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 	// declared group has been applied.
 	ids, err := s.EnvGroups.GroupIDsByName(ctx)
 	if err != nil {
-		return rolls, fmt.Errorf("resolving applied env group ids: %w", err)
+		return rolls, moves, fmt.Errorf("resolving applied env group ids: %w", err)
 	}
 	for _, g := range envGroups {
 		res.EnvGroups = append(res.EnvGroups, StackEnvGroupView{ID: ids[g.name], Name: g.name})
 	}
-	return rolls, nil
+	return rolls, moves, nil
+}
+
+// applyStackEnvGroupMoves places each applied env group in its declared
+// environment, after the services (and build sources) are placed: a linked
+// service the sync moves along reads in its target environment by now, so
+// Render's scoping rule no longer strands the group's move. A service the
+// sync leaves elsewhere still refuses the move, as it must — the plan named
+// it, the services did not follow, and the error tells which to move next.
+func (s *Service) applyStackEnvGroupMoves(ctx context.Context, moves []envGroupMove) error {
+	for _, m := range moves {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
+		if err := s.EnvGroups.SetGroupEnvironment(ctx, m.name, m.environmentID); err != nil {
+			return fmt.Errorf("assigning env group %q to environment: %w", m.name, err)
+		}
+	}
+	return nil
 }
 
 // applyStackDatastores upserts the stack's databases and key values, appending
