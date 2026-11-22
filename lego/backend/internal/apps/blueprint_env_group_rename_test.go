@@ -147,6 +147,49 @@ func TestASyncRenamesItsEnvGroupBackInsteadOfMintingACopy(t *testing.T) {
 // A declared name another group took after the rename cannot be given back,
 // and adopting that group would link web to both: the plan and the sync
 // refuse, naming both groups, and nothing is written.
+// A renamed group whose declared variables also changed plans one update
+// naming name and envVars together: the sync renames the group back and
+// writes the changed value, and the same file then plans no change. Until
+// w8/382 the plan read `create`; until w8/376 it named every declared field.
+func TestASyncRenamesItsEnvGroupBackAndWritesItsChangedVars(t *testing.T) {
+	svc, groups, ctx, bpID := renamedGroupBlueprint(t)
+	original := onlyGroup(t, groups, ctx)
+	if _, err := groups.RenameEnvGroup(ctx, original.ID, "renamed-outside"); err != nil {
+		t.Fatal(err)
+	}
+	changed := strings.Replace(renamedGroupManifest, "value: info", "value: debug", 1)
+	svc.GitFetcher = fakeBlueprintFetcher{contents: changed}
+
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := planAction(t, syncActions(t, plan), "shared")
+	if action.Operation != BlueprintPlanUpdate || action.ResourceID != original.ID || action.Message != "" {
+		t.Fatalf("renamed group with changed vars planned %+v, want an update on %s with no message", action, original.ID)
+	}
+	var paths []string
+	for _, c := range action.ChangedFields {
+		paths = append(paths, c.Path)
+	}
+	if !slices.Equal(paths, []string{"envVars", "name"}) {
+		t.Fatalf("renamed group with changed vars planned fields %q, want [envVars name]", paths)
+	}
+
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := onlyGroup(t, groups, ctx); got.ID != original.ID || got.Name != "shared" {
+		t.Fatalf("after the sync the group is %s=%q, want %s=shared", got.ID, got.Name, original.ID)
+	}
+	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != original.ID+"-env" {
+		t.Fatalf("after the sync web links %v, want only %s", got, original.ID)
+	}
+	if again, err := svc.PlanBlueprint(ctx, bpID, "tea-a"); err != nil || again.PlanningOutcome != PlanningNoChanges {
+		t.Fatalf("re-plan = %+v err=%v, want no_changes", again, err)
+	}
+}
+
 func TestASyncRefusesWhenItsEnvGroupsNameWasTakenMeanwhile(t *testing.T) {
 	svc, groups, ctx, bpID := renamedGroupBlueprint(t)
 	original := onlyGroup(t, groups, ctx)
