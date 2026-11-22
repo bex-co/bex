@@ -284,6 +284,8 @@ func (m *memoryDomainClaimStore) ListPendingDomainClaims(_ context.Context, limi
 	return out, nil
 }
 
+// PromoteDomainClaim mirrors PGStore's: a claim that a verified claim of
+// another workspace overlaps through a wildcard is store.ErrDomainCovered.
 func (m *memoryDomainClaimStore) PromoteDomainClaim(_ context.Context, appID, id string, at time.Time) (store.Domain, bool, error) {
 	for host, claim := range m.claims {
 		if claim.AppID != appID || claim.ID != id {
@@ -291,6 +293,16 @@ func (m *memoryDomainClaimStore) PromoteDomainClaim(_ context.Context, appID, id
 		}
 		if claim.ClaimState == "verified" {
 			return claim, false, nil
+		}
+		verified := hostClaims{}
+		for h, other := range m.claims {
+			if other.ClaimState == "verified" {
+				verified[h] = hostClaim{claimant: "id:" + other.AppID, workspace: m.workspaces[other.AppID]}
+			}
+		}
+		owner := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{core.LabelAppID: appID}}}
+		if verified.coveredElsewhere(owner, m.workspaces[appID], host) {
+			return store.Domain{}, false, store.ErrDomainCovered
 		}
 		claim.ClaimState = "verified"
 		claim.VerifiedAt = &at
@@ -300,6 +312,17 @@ func (m *memoryDomainClaimStore) PromoteDomainClaim(_ context.Context, appID, id
 		return claim, true, nil
 	}
 	return store.Domain{}, false, store.ErrConflict
+}
+
+// ForeignWildcardCovers mirrors PGStore's over the fake's app->workspace
+// bindings.
+func (m *memoryDomainClaimStore) ForeignWildcardCovers(_ context.Context, workspaceID, host string) (bool, error) {
+	for h, claim := range m.claims {
+		if base, wild := wildcardBase(h); wild && m.workspaces[claim.AppID] != workspaceID && strings.HasSuffix(host, "."+base) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (m *memoryDomainClaimStore) ReplaceDomainClaims(_ context.Context, appID string, declarations []store.DomainDeclaration) ([]store.Domain, error) {

@@ -83,6 +83,8 @@ type allowDomainTraffic struct{}
 
 func (allowDomainTraffic) PointsAtService(context.Context, string, string) bool { return true }
 
+func (allowDomainTraffic) CNAMEsToService(context.Context, string, string) bool { return true }
+
 func (allowDomainTraffic) DelegatesChallenge(context.Context, string, string) bool { return true }
 
 func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {

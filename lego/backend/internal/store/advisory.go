@@ -56,6 +56,16 @@ func lockAgentSkills(ctx context.Context, tx pgx.Tx, workspaceID string) error {
 	return err
 }
 
+// lockDomainOverlap serializes, across bex-api replicas, the promotions of
+// custom domains that can overlap through a wildcard: each takes the lock of
+// host's overlap domain (domainOverlapDomain), which a wildcard shares with
+// every name under it.
+func lockDomainOverlap(ctx context.Context, tx pgx.Tx, host string) error {
+	_, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "domain-overlap:"+domainOverlapDomain(host))
+	return err
+}
+
 func refuseDeletingSubject(ctx context.Context, tx pgx.Tx, subject string) error {
 	var pending bool
 	if err := tx.QueryRow(ctx,

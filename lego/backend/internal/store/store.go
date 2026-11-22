@@ -1841,31 +1841,62 @@ func (s *PGStore) RecordDomainVerificationAttempt(ctx context.Context, appID, id
 // must not re-run promotion side effects like projection kicks or the
 // verified audit event). A concurrent delete/recreate cannot promote the new
 // row (the id changed) and is ErrConflict, as is an unknown id.
+//
+// A claim that a verified domain of another workspace overlaps through a
+// wildcard is ErrDomainCovered and stays pending (w4/m326). The check and the
+// write run in one transaction under the advisory lock of the claim's overlap
+// domain (lockDomainOverlap), so of two replicas promoting an overlapping
+// pair at once only the first verifies, whatever their host-claim indexes
+// held.
 func (s *PGStore) PromoteDomainClaim(ctx context.Context, appID, id string, at time.Time) (d Domain, promoted bool, err error) {
-	d, err = scanDomainClaim(s.Pool.QueryRow(ctx,
-		`UPDATE domains
-		 SET claim_state = 'verified', verified_at = $3,
-		     verification_attempts = verification_attempts + 1, last_verification_at = $3
-		 WHERE app_id = $1 AND id = $2 AND claim_state = 'pending'
-		 RETURNING `+domainClaimColumns, appID, id, at))
-	if err == nil {
-		return d, true, nil
+	read := func(tx pgx.Tx) (Domain, error) {
+		return scanDomainClaim(tx.QueryRow(ctx,
+			`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 AND id = $2`, appID, id))
 	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return Domain{}, false, err
-	}
-	d, err = scanDomainClaim(s.Pool.QueryRow(ctx,
-		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 AND id = $2`, appID, id))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Domain{}, false, ErrConflict
-	}
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		current, err := read(tx)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrConflict
+		}
+		if err != nil {
+			return err
+		}
+		if current.ClaimState == "verified" {
+			d = current
+			return nil
+		}
+		if err := lockDomainOverlap(ctx, tx, current.Host); err != nil {
+			return err
+		}
+		if covered, err := verifiedOverlapElsewhere(ctx, tx, appID, current.Host); err != nil {
+			return err
+		} else if covered {
+			return ErrDomainCovered
+		}
+		d, err = scanDomainClaim(tx.QueryRow(ctx,
+			`UPDATE domains
+			 SET claim_state = 'verified', verified_at = $3,
+			     verification_attempts = verification_attempts + 1, last_verification_at = $3
+			 WHERE app_id = $1 AND id = $2 AND claim_state = 'pending'
+			 RETURNING `+domainClaimColumns, appID, id, at))
+		if err == nil {
+			promoted = true
+			return nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		// Promoted or deleted by another replica while this one waited.
+		d, err = read(tx)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && d.ClaimState != "verified") {
+			return ErrConflict
+		}
+		return err
+	})
 	if err != nil {
 		return Domain{}, false, err
 	}
-	if d.ClaimState != "verified" {
-		return Domain{}, false, ErrConflict
-	}
-	return d, false, nil
+	return d, promoted, nil
 }
 
 // ReplaceDomainClaims atomically reconciles a declaration set while preserving

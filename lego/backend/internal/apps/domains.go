@@ -97,6 +97,14 @@ type challengeDelegation interface {
 	DelegatesChallenge(ctx context.Context, name, target string) bool
 }
 
+// cnameProof is the check a DomainTrafficChecker adds for the hosts that
+// verify only through a CNAME, as Render documents their records (w4/m326):
+// a wildcard, and a non-apex name under another workspace's wildcard. A
+// checker without it never verifies them.
+type cnameProof interface {
+	CNAMEsToService(ctx context.Context, host, platformHost string) bool
+}
+
 // DelegatesChallenge reports whether name's CNAME chain ends at target, which
 // the platform's wildcard record resolves directly.
 func (c systemDomainTrafficChecker) DelegatesChallenge(ctx context.Context, name, target string) bool {
@@ -111,6 +119,17 @@ func (c systemDomainTrafficChecker) DelegatesChallenge(ctx context.Context, name
 }
 
 func (c systemDomainTrafficChecker) PointsAtService(ctx context.Context, host, platformHost string) bool {
+	return c.pointsAt(ctx, host, platformHost, true)
+}
+
+// CNAMEsToService is PointsAtService without the address branch: host's
+// CNAME chain reaches platformHost. An answer of edge addresses, as an A
+// record, ALIAS or flattening gives, is not proof.
+func (c systemDomainTrafficChecker) CNAMEsToService(ctx context.Context, host, platformHost string) bool {
+	return c.pointsAt(ctx, host, platformHost, false)
+}
+
+func (c systemDomainTrafficChecker) pointsAt(ctx context.Context, host, platformHost string, addresses bool) bool {
 	host, platformHost = normalizeHostname(host), normalizeHostname(platformHost)
 	if host == "" || platformHost == "" || host == platformHost {
 		return false
@@ -148,6 +167,9 @@ func (c systemDomainTrafficChecker) PointsAtService(ctx context.Context, host, p
 	// edge"; the globally unique claim row binds the host to this service —
 	// Render's apex-A structure (ADR005 §Tenant workflow). A proxied record
 	// (Cloudflare anycast) satisfies neither branch, as on Render.
+	if !addresses {
+		return false
+	}
 	hostAddrs, err := resolver.LookupHost(lookupCtx, host)
 	if err != nil || len(hostAddrs) == 0 {
 		return false
@@ -206,22 +228,50 @@ func (s *Service) domainTrafficChecker() DomainTrafficChecker {
 }
 
 // domainPointsAtService is verification's DNS check. A concrete host's
-// traffic record points at the service. A wildcard's covers a name below its
-// base, here a fresh one so no resolver's negative cache answers for it, and
-// its `_acme-challenge` delegation is in place, as Render requires both
-// records of a wildcard (w4/m326).
+// traffic record points at the service. A wildcard's `*` record is a CNAME to
+// the service, checked on a fresh name below its base so no resolver's
+// negative cache answers for it, and its `_acme-challenge` delegation is in
+// place, as Render requires both records of a wildcard (w4/m326).
 func (s *Service) domainPointsAtService(ctx context.Context, app *appv1alpha1.App, host string) bool {
 	checker := s.domainTrafficChecker()
 	platformHost := s.platformHost(app)
+	cname, cnameOK := checker.(cnameProof)
 	base, wild := wildcardBase(host)
 	if !wild {
+		if s.verifiesOnlyThroughCNAME(ctx, app, host) {
+			return cnameOK && cname.CNAMEsToService(ctx, host, platformHost)
+		}
 		return checker.PointsAtService(ctx, host, platformHost)
 	}
 	delegation, ok := checker.(challengeDelegation)
 	target := s.challengeTarget(app)
-	return ok && target != "" &&
-		checker.PointsAtService(ctx, "bex-check-"+strings.ToLower(rand.Text()[:12])+"."+base, platformHost) &&
+	return ok && cnameOK && target != "" &&
+		cname.CNAMEsToService(ctx, "bex-check-"+strings.ToLower(rand.Text()[:12])+"."+base, platformHost) &&
 		delegation.DelegatesChallenge(ctx, acmeChallengeLabel+"."+base, target)
+}
+
+// foreignWildcardReader is the claim store's read of the wildcards other
+// workspaces hold, pending or verified (store.PGStore).
+type foreignWildcardReader interface {
+	ForeignWildcardCovers(ctx context.Context, workspaceID, host string) (bool, error)
+}
+
+// verifiesOnlyThroughCNAME reports whether host verifies only through a
+// CNAME to its own service, Render's record for it (w4/m326): a wildcard, or
+// a non-apex name under another workspace's wildcard, pending or verified.
+// Such a name then cannot verify on the edge addresses that wildcard's `*`
+// record answers with. A failed read requires the CNAME. Every other host
+// keeps the address proof an apex ALIAS or a flattened record gives.
+func (s *Service) verifiesOnlyThroughCNAME(ctx context.Context, app *appv1alpha1.App, host string) bool {
+	if appv1alpha1.IsWildcardHost(host) {
+		return true
+	}
+	wildcards, ok := s.Store.(foreignWildcardReader)
+	if !ok || isApex(host) {
+		return false
+	}
+	covered, err := wildcards.ForeignWildcardCovers(ctx, app.Labels[core.LabelTenant], host)
+	return covered || err != nil
 }
 
 // acmeChallengeLabel is the name ACME's DNS-01 challenge reads under a domain.
@@ -283,8 +333,11 @@ func (s *Service) requireDomainTraffic(ctx context.Context, app *appv1alpha1.App
 	}
 	record := dnsRecordFor(host, domainType(host), platformHost)
 	if challenge := s.challengeRecordFor(app, host); challenge != nil {
-		return fmt.Errorf("%w: domain is unverified; create %s %s with value %s and %s %s with value %s, and retry", core.ErrConflict,
+		return fmt.Errorf("%w: domain is unverified; a wildcard verifies only through CNAME records: create %s %s with value %s and %s %s with value %s, and retry", core.ErrConflict,
 			record.Type, record.Name, record.Value, challenge.Type, challenge.Name, challenge.Value)
+	}
+	if s.verifiesOnlyThroughCNAME(ctx, app, host) {
+		return fmt.Errorf("%w: domain is unverified; it verifies only through a CNAME: create %s %s with value %s and retry", core.ErrConflict, record.Type, record.Name, record.Value)
 	}
 	return fmt.Errorf("%w: domain is unverified; create %s %s with value %s and retry", core.ErrConflict, record.Type, record.Name, record.Value)
 }
@@ -1034,7 +1087,9 @@ func (s *Service) checkAndPromoteClaim(ctx context.Context, app *appv1alpha1.App
 	// A claim added while the claim it overlaps was still pending saw nothing
 	// to refuse. Whichever verifies second stays unverified, so another
 	// workspace's wildcard never captures a host, and a name under it never
-	// verifies on the wildcard's own record (w4/m326).
+	// verifies on the wildcard's own record (w4/m326). The index is the fast
+	// pre-check. The store checks again as it promotes, serialized across
+	// replicas, because this replica's index can predate another's promotion.
 	if covered, err := s.hostCoveredElsewhere(ctx, app, claim.Host); err != nil {
 		return claim, err
 	} else if covered {
@@ -1042,6 +1097,10 @@ func (s *Service) checkAndPromoteClaim(ctx context.Context, app *appv1alpha1.App
 		return claim, nil
 	}
 	promoted, didPromote, err := claims.PromoteDomainClaim(ctx, appID, claim.ID, s.Now())
+	if errors.Is(err, store.ErrDomainCovered) {
+		_ = claims.RecordDomainVerificationAttempt(ctx, appID, claim.ID, s.Now())
+		return claim, nil
+	}
 	if err == nil && !didPromote {
 		return promoted, nil // another replica promoted it; its side effects stand
 	}

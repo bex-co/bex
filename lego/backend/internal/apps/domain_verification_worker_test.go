@@ -20,23 +20,40 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// fakeDomainResolver scripts the two lookups the traffic predicate runs.
+// fakeDomainResolver scripts the two lookups the traffic predicate runs. A
+// "*.<base>" key answers for every name under base that has no entry of its
+// own, as a DNS wildcard record does.
 type fakeDomainResolver struct {
 	cnames map[string]string
 	addrs  map[string][]string
 	err    error
 }
 
+// zoneEntry is m's entry for host, its own or the nearest wildcard's above it.
+func zoneEntry[V any](m map[string]V, host string) (V, bool) {
+	if v, ok := m[host]; ok {
+		return v, true
+	}
+	for _, parent, ok := strings.Cut(host, "."); ok; _, parent, ok = strings.Cut(parent, ".") {
+		if v, ok := m["*."+parent]; ok {
+			return v, true
+		}
+	}
+	var zero V
+	return zero, false
+}
+
 func (f fakeDomainResolver) LookupCNAME(_ context.Context, host string) (string, error) {
 	if f.err != nil {
 		return "", f.err
 	}
-	if cname, ok := f.cnames[host]; ok {
+	if cname, ok := zoneEntry(f.cnames, host); ok {
 		return cname, nil
 	}
 	return host, nil
@@ -46,7 +63,8 @@ func (f fakeDomainResolver) LookupHost(_ context.Context, host string) ([]string
 	if f.err != nil {
 		return nil, f.err
 	}
-	return f.addrs[host], nil
+	addrs, _ := zoneEntry(f.addrs, host)
+	return addrs, nil
 }
 
 func TestTrafficPredicate(t *testing.T) {
@@ -174,6 +192,38 @@ func TestDelegatesChallengeFollowsTheChain(t *testing.T) {
 		checker := systemDomainTrafficChecker{resolver: tc.resolver}
 		if got := checker.DelegatesChallenge(context.Background(), name, target); got != tc.want {
 			t.Errorf("%s: DelegatesChallenge = %v, want %v", tc.label, got, tc.want)
+		}
+	}
+}
+
+// CNAMEsToService is the traffic predicate's CNAME branch alone: an answer
+// of edge addresses, which PointsAtService accepts, is no proof (w4/m326).
+func TestCNAMEProofRefusesAddresses(t *testing.T) {
+	const platform = "web.onbex.co"
+	edge := []string{"49.12.20.236"}
+	for _, tc := range []struct {
+		label, host   string
+		resolver      fakeDomainResolver
+		cname, points bool
+	}{
+		{"direct CNAME", "api.example.com", fakeDomainResolver{cnames: map[string]string{"api.example.com": platform + "."}}, true, true},
+		{"chain through the platform host", "api.example.com", fakeDomainResolver{cnames: map[string]string{
+			"api.example.com": "edge.onbex.co", platform: "edge.onbex.co",
+		}}, true, true},
+		{"a * CNAME answering for the name", "x.example.com", fakeDomainResolver{cnames: map[string]string{"*.example.com": platform}}, true, true},
+		{"edge addresses", "api.example.com", fakeDomainResolver{addrs: map[string][]string{"api.example.com": edge, platform: edge}}, false, true},
+		{"a * record answering with edge addresses", "x.example.com", fakeDomainResolver{addrs: map[string][]string{"*.example.com": edge, platform: edge}}, false, true},
+		{"CNAME to another service", "api.example.com", fakeDomainResolver{
+			cnames: map[string]string{"api.example.com": "other.onbex.co"},
+			addrs:  map[string][]string{"api.example.com": edge, platform: edge},
+		}, false, false},
+	} {
+		checker := systemDomainTrafficChecker{resolver: tc.resolver}
+		if got := checker.CNAMEsToService(context.Background(), tc.host, platform); got != tc.cname {
+			t.Errorf("%s: CNAMEsToService = %v, want %v", tc.label, got, tc.cname)
+		}
+		if got := checker.PointsAtService(context.Background(), tc.host, platform); got != tc.points {
+			t.Errorf("%s: PointsAtService = %v, want %v", tc.label, got, tc.points)
 		}
 	}
 }
