@@ -72,6 +72,13 @@ type DeployProgress struct {
 	CreatedAt  time.Time
 	StartedAt  time.Time // zero until the deploy starts
 	FinishedAt time.Time // zero until terminal
+	// PortScanSince is when the rollout's stall first said no port was open,
+	// PortScanUntil when a later stall said the scan was over; zero when not
+	// (w8/385). ReadAt is when the row was read: an open scan's lines run up
+	// to it.
+	PortScanSince time.Time
+	PortScanUntil time.Time
+	ReadAt        time.Time
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -395,6 +402,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			}
 		}
 	}
+	out = append(out, portScanLines(d)...)
 	if !d.FinishedAt.IsZero() {
 		if (d.Status == "live" || d.Status == "deactivated") && d.DetectedHTTPPort > 0 && d.DetectedHTTPPort <= 65535 {
 			add(d.FinishedAt, "==> "+appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected,
@@ -403,6 +411,56 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason) {
 			add(d.FinishedAt, msg)
 		}
+	}
+	return out
+}
+
+// Render's port-scan narration (w8/385). While a web service listens on no
+// port, Render's deploy log repeats the scan line about once a minute, five
+// times, then gives up with the timeout line; the docs line follows each. The
+// wording and the count are Render's own, read from deploy logs users quoted
+// in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs).
+const (
+	portScanLine        = "==> No open ports detected, continuing to scan..."
+	portScanDocsLine    = "==> Docs on specifying a port: https://render.com/docs/web-services#port-binding"
+	portScanTimeoutLine = "==> Port scan timeout reached, no open ports detected. Bind your service to at least one port. " +
+		"If you don't need to receive traffic on any port, create a background worker instead."
+	portScanInterval = time.Minute
+	portScanMaxLines = 5
+)
+
+// portScanLines are the scan lines d has earned: one when its stall first
+// said no port was open, then one a minute while the scan runs, at most five.
+// The scan ends when a stall says it is over or the deploy ends, and an open
+// one runs up to the read. The docs line follows only the first scan line, so
+// the narration never writes more than one line a minute. A deploy that
+// failed with its scan still running ends with Render's timeout line, at the
+// moment it failed, before the failure line.
+func portScanLines(d DeployProgress) []LogEntry {
+	since := d.PortScanSince
+	if since.IsZero() {
+		return nil
+	}
+	due := func(t time.Time) bool { return !t.After(d.ReadAt) }
+	switch {
+	case !d.PortScanUntil.IsZero():
+		due = func(t time.Time) bool { return t.Before(d.PortScanUntil) }
+	case !d.FinishedAt.IsZero():
+		due = func(t time.Time) bool { return t.Before(d.FinishedAt) }
+	}
+	var out []LogEntry
+	for i := range portScanMaxLines {
+		at := since.Add(time.Duration(i) * portScanInterval)
+		if !due(at) {
+			break
+		}
+		out = append(out, progressEntry(d.ID, at, portScanLine))
+		if i == 0 {
+			out = append(out, progressEntry(d.ID, at, portScanDocsLine))
+		}
+	}
+	if d.Status == "update_failed" && d.PortScanUntil.IsZero() && !d.FinishedAt.Before(since) {
+		out = append(out, progressEntry(d.ID, d.FinishedAt, portScanTimeoutLine), progressEntry(d.ID, d.FinishedAt, portScanDocsLine))
 	}
 	return out
 }

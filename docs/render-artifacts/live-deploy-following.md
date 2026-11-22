@@ -67,11 +67,14 @@ bex synthesizes from what its control plane actually observes — the deploy row
 | --- | --- | --- | --- |
 | row created | `created_at` | `==> Build queued` | `==> Deploy queued` |
 | `started_at` set | `started_at` | `==> Building from <repo>@<commit\|branch>` | `==> Deploying image <image>` |
+| rollout scans for a port (`port_scan_since`, w8/385) | `port_scan_since`, then each minute while the scan runs, five at most | `==> No open ports detected, continuing to scan...`; the first is followed by `==> Docs on specifying a port: https://render.com/docs/web-services#port-binding` | same |
 | terminal `live` / `deactivated` | `finished_at` | `==> Your service is live 🎉` | same |
 | terminal `build_failed` | `finished_at` | `==> Build failed` (+ `: <failureReason>` when set, w5/064) | same |
 | terminal `pre_deploy_failed` | `finished_at` | `==> Pre-deploy failed` (+ `: <failureReason>` when set, w5/064) | same |
 | terminal `update_failed` | `finished_at` | `==> Deploy failed` (+ `: <failureReason>` when set, w5/064) | same |
 | terminal `canceled` | `finished_at` | `==> Deploy canceled` | same |
+
+**The port scan (w8/385).** Render's deploy log narrates its port scan while a web service has no open port, about once a minute, five times, then `==> Port scan timeout reached, no open ports detected. Bind your service to at least one port. If you don't need to receive traffic on any port, create a background worker instead.` (wording and count from deploy logs quoted in GitHub issues; [ADR018](../ADR018-render-parity.md) § Logs, Build logs). The control plane stamps `port_scan_since` when the open rollout's stall first says no port is open (the operator's no-open-port hint, a stalled any-open-port check, or an image's HTTP discovery that finds nothing) and `port_scan_until` when a later stall says the scan is over (a port answers, the check passes, or the stall is about something else). The scan lines run from the first to the end of the scan or the deploy, and an open scan's up to the read. A deploy that fails still scanning gets the timeout line and the docs line at `finished_at`, before `==> Deploy failed`. The docs line follows only the first scan line, so the narration never writes more than one line a minute.
 
 Failure statuses append the deploy row's `failureReason` when present (`==> Deploy failed: …`, w5/064) so the CLI's `type=build` narration carries the same cause as `deploy_ended.details.failureReason`; multi-line reasons become one stream line per segment. Empty reasons keep the bare historical line.
 

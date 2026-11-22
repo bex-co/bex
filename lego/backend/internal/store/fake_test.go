@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
@@ -977,6 +979,17 @@ func (m *memStore) SetDeployStallReason(_ context.Context, id, reason string) er
 		return nil
 	}
 	d.StallReason = reason
+	now := time.Now()
+	switch appv1alpha1.PortScanOf(reason) {
+	case appv1alpha1.PortScanNoOpenPort:
+		if d.PortScanSince == nil {
+			d.PortScanSince = &now
+		}
+	case appv1alpha1.PortScanOver:
+		if d.PortScanSince != nil && d.PortScanUntil == nil {
+			d.PortScanUntil = &now
+		}
+	}
 	m.deploys[id] = d
 	return nil
 }

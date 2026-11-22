@@ -457,6 +457,12 @@ type Deploy struct {
 	// been reached yet. Unlike FailureReason this is a live observation, not a
 	// verdict — it must never be read as "this deploy failed".
 	StallReason string `json:"stallReason,omitempty"`
+	// PortScanSince is when the rollout's stall first said no port was open on
+	// the instance, and PortScanUntil when a later stall said the scan was over
+	// (w8/385, SetDeployStallReason). nil is no scan, or one still running.
+	// They time the deploy log's port-scan lines; not a Render deploy field.
+	PortScanSince *time.Time `json:"-"`
+	PortScanUntil *time.Time `json:"-"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -3259,10 +3265,21 @@ func clampPageLimit(n int) int {
 //     the row, not a transition of it; bumping the row's clock would churn
 //     every updated_at-keyed reader (the events feed, the deploy list's
 //     ordering) once per pass for as long as the stall lasts.
+//
+// The same write times the port scan the deploy log narrates (w8/385): the
+// first stall that says no port is open stamps port_scan_since, and the
+// first later one that says the scan is over stamps port_scan_until. A row
+// has one scan: a second no-open-port stretch after the first ended adds no
+// lines, so a line is only ever written for a moment the scan was running.
 func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) error {
+	scan := appv1alpha1.PortScanOf(reason)
 	_, err := s.Pool.Exec(ctx,
-		`UPDATE deploys SET stall_reason = $2
-		 WHERE id = $1 AND finished_at IS NULL AND stall_reason IS DISTINCT FROM $2`, id, reason)
+		`UPDATE deploys SET stall_reason = $2,
+		     port_scan_since = CASE WHEN $3 THEN COALESCE(port_scan_since, clock_timestamp()) ELSE port_scan_since END,
+		     port_scan_until = CASE WHEN $4 AND port_scan_since IS NOT NULL THEN COALESCE(port_scan_until, clock_timestamp())
+		                            ELSE port_scan_until END
+		 WHERE id = $1 AND finished_at IS NULL AND stall_reason IS DISTINCT FROM $2`,
+		id, reason, scan == appv1alpha1.PortScanNoOpenPort, scan == appv1alpha1.PortScanOver)
 	return classify("deploy stall reason", err)
 }
 
@@ -3290,12 +3307,12 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, detected_http_port, COALESCE(build_id, ''), restart_deferred`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, detected_http_port, COALESCE(build_id, ''), restart_deferred`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred}, extra...)...)
+	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred}, extra...)...)
 	return d, err
 }
 

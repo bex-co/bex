@@ -1004,15 +1004,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 				}
 			}
 			out := make([]logs.DeployProgress, 0, len(rows))
+			readAt := time.Now()
+			at := func(t *time.Time) time.Time {
+				if t == nil {
+					return time.Time{}
+				}
+				return *t
+			}
 			for _, r := range rows {
-				p := logs.DeployProgress{ID: r.ID, Generation: r.Generation, Status: r.Status, Image: store.PublicImageRef(r.Image), Commit: r.Commit, FailureReason: r.FailureReason, DetectedHTTPPort: r.DetectedHTTPPort, CreatedAt: r.CreatedAt, Built: built[r.ID]}
-				if r.StartedAt != nil {
-					p.StartedAt = *r.StartedAt
-				}
-				if r.FinishedAt != nil {
-					p.FinishedAt = *r.FinishedAt
-				}
-				out = append(out, p)
+				out = append(out, logs.DeployProgress{ID: r.ID, Generation: r.Generation, Status: r.Status, Image: store.PublicImageRef(r.Image), Commit: r.Commit, FailureReason: r.FailureReason, DetectedHTTPPort: r.DetectedHTTPPort, CreatedAt: r.CreatedAt, Built: built[r.ID],
+					StartedAt: at(r.StartedAt), FinishedAt: at(r.FinishedAt), PortScanSince: at(r.PortScanSince), PortScanUntil: at(r.PortScanUntil), ReadAt: readAt})
 			}
 			return out, nil
 		}
