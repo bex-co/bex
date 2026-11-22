@@ -79,3 +79,19 @@ if ! grep -q "lego/newmod run ./sub" "$lint_log"; then
   exit 1
 fi
 echo "PASS [dynamic Go module discovery]"
+
+# 6. Example and testdata fixtures do not trigger production Go linters.
+d6="$tmp/skip-fixtures"
+init_repo "$d6"
+mkdir -p "$d6/examples/demo" "$d6/lego/types/testdata/fix" "$d6/bin"
+printf 'module example.com/demo\n\ngo 1.24\n' >"$d6/examples/demo/go.mod"
+printf 'package demo\n\nconst   Bad =   1\n' >"$d6/examples/demo/main.go"
+printf 'package fix\n\nconst   Bad =   1\n' >"$d6/lego/types/testdata/fix/bad.go"
+cat >"$d6/bin/fail-lint" <<'LINT'
+#!/usr/bin/env bash
+echo "should not run on examples/testdata" >&2
+exit 1
+LINT
+chmod +x "$d6/bin/fail-lint"
+(cd "$d6" && BEX_GOLANGCI_LINT="$d6/bin/fail-lint" bash scripts/rt-pre-pr-check.sh main >/dev/null)
+echo "PASS [examples and testdata skipped by linter]"

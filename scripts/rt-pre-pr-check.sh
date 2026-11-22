@@ -41,6 +41,16 @@ find_nearest_root() {
   done
 }
 
+# Skip non-production example/fixture trees when dispatching per-module linters.
+is_non_prod_fixture() {
+  local p="$1"
+  local ex_prefix="examples"
+  case "$p" in
+    "$ex_prefix/"* | */testdata/* | testdata/* | */fixtures/* | fixtures/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 changed="$(collect_changed_files)"
 if [ -z "$changed" ]; then
   echo "rt-pre-pr-check: no changed files relative to $base — nothing to ship (valid empty run)." >&2
@@ -66,7 +76,11 @@ fail=0
 go_files=()
 while IFS= read -r path; do
   case "$path" in
-    *.go) [ -f "$path" ] && go_files+=("$path") ;;
+    *.go)
+      if [ -f "$path" ] && ! is_non_prod_fixture "$path"; then
+        go_files+=("$path")
+      fi
+      ;;
   esac
 done <<<"$changed"
 
@@ -124,7 +138,11 @@ fi
 js_files=()
 while IFS= read -r path; do
   case "$path" in
-    *.ts | *.tsx | *.js | *.jsx) [ -f "$path" ] && js_files+=("$path") ;;
+    *.ts | *.tsx | *.js | *.jsx)
+      if [ -f "$path" ] && ! is_non_prod_fixture "$path"; then
+        js_files+=("$path")
+      fi
+      ;;
   esac
 done <<<"$changed"
 

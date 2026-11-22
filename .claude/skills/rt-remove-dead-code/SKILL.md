@@ -12,7 +12,7 @@ Delete code that provably cannot run, and only that.
 
 Follow the shared contract in [`../../rt-shared-contract.md`](../../rt-shared-contract.md) (execution, tidy-routine value bar, batch cleanup & ≤15-line minimum threshold, **never opening ledger-only PRs**, board isolation, freshness check, `scripts/rt-pre-pr-check.sh` pre-PR fast gate, and report format).
 
-- **Scope:** parse `$ARGUMENTS` per Phase 1 (optional path or module/ecosystem filter). Empty = all discovered Go modules (`go.mod`) and JS/TS packages (`package.json`); batch all confirmed removals into one change and skip shipping if the entire sweep yields only one trivial ≤15-line deletion.
+- **Scope:** parse `$ARGUMENTS` per Phase 1 (optional path or ecosystem filter). Empty = all production code trees per the shared contract (excluding `examples/`, `**/testdata/**`, `**/fixtures/**`, `docs/`, `.pm/`); batch all confirmed removals into one change and skip shipping if the entire sweep yields only one trivial ≤15-line deletion.
 
 ## Phase 1 — Scope
 

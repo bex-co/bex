@@ -12,7 +12,7 @@ Indirection has to earn its keep. Flatten what doesn't.
 
 Follow the shared contract in [`../../rt-shared-contract.md`](../../rt-shared-contract.md) (execution, tidy-routine value bar, batch cleanup & ≤15-line minimum threshold, **never opening ledger-only PRs**, board isolation, freshness check, `scripts/rt-pre-pr-check.sh` pre-PR fast gate, and report format).
 
-- **Scope:** parse `$ARGUMENTS` per Phase 1. Empty = whole repo, discovering all Go modules (`go.mod`) and JS/TS packages (`package.json`) dynamically via parallel per-module agents.
+- **Scope:** parse `$ARGUMENTS` per Phase 1. Empty = all production code in the repo per the shared contract (excluding `examples/`, `**/testdata/**`, `**/fixtures/**`, `docs/`, `.pm/`, generated code) via parallel per-area agents.
 
 ## Phase 1 — Scope
 

@@ -1,7 +1,7 @@
 ---
 name: rt-fix-logic-bugs
 description: >-
-  Picks a tricky logic domain — billing and pricing math, OpenFGA authz scope decisions, blueprint plan diffs — models it explicitly with invariants, truth tables, and property tests, and fixes the real bugs the model surfaces with regression tests. Use when the user asks to run the rt-fix-logic-bugs routine, hunt for logic bugs, or property-test a subsystem.
+  Picks a tricky logic unit anywhere in the repository's production code — billing and pricing math, authz and scope decisions, preview-vs-execute agreement, state machines, UI/client logic, or operational scripts — models it explicitly with invariants, truth tables, and property tests, and fixes the real bugs the model surfaces with regression tests. Use when the user asks to run the rt-fix-logic-bugs routine, hunt for logic bugs, or property-test a subsystem.
 ---
 
 # Routine: Logic Bugfixer
@@ -20,30 +20,30 @@ Logic-bugfixer additions:
 
 ## Phase 1 — Scope
 
-Parse `$ARGUMENTS`: any path, module, package, or logic topic. Do not restrict discovery to a closed list of modules or domains — any module in the repository (`go.mod` / `package.json` trees, present or future) is eligible.
+Parse `$ARGUMENTS`: any path, directory, package, or logic topic. Scope is **all production code in the repository** (Go services/plugins, JS/TS apps and drivers, Python/shell scripts, and any future language or module) — exclude only non-production trees (`examples/`, `**/testdata/**`, `**/fixtures/**`, `docs/`, `.pm/`, `.internal/`, `external/`, generated files).
 
 When `$ARGUMENTS` is empty, discover the target dynamically:
 
-1. **Prefer recently changed non-test logic:** run `git log origin/main --since=7.days --name-only --diff-filter=AMCR` across the whole repo, filter to production source files (excluding tests, docs, generated files, and `.pm/`), group by package/feature directory, and pick the highest-risk logic package that was least recently audited in [`ledger.md`](ledger.md).
-2. **Fallback when quiet:** if no logic-bearing package changed in the past 7 days, discover modules from the repo layout (`go.mod` / `package.json`) and pick the least-recently-audited high-risk logic package.
-3. Announce the chosen package/invariant before modeling.
+1. **Prefer recently changed production logic:** run `git log origin/main --since=7.days --name-only --diff-filter=AMCR` across the whole repo, exclude tests and non-production trees above, group by package/feature directory, and pick the highest-risk logic unit that was least recently audited in [`ledger.md`](ledger.md).
+2. **Fallback when quiet:** if no logic-bearing production code changed in the past 7 days, survey the repo's production source trees (excluding non-production trees above) and pick the least-recently-audited high-risk logic unit.
+3. Announce the chosen target and invariant before modeling.
 
 High-value logic shapes to prioritize (examples, not a closed list):
 
 - **Agreement / preview-vs-execute pairs** — any place where one function predicts, validates, estimates, or previews what another performs, and the two must agree (plan vs apply, admission vs write, estimate vs spend/payment gate, client vs server rule).
 - **Billing, pricing, quotas & caps** — monotonicity, cent/rounding alignment across all output projections, proration, limits, and cooldown windows.
 - **Authz, scopes, credentials & tenant isolation** — deny-by-default matrices, grant/scope narrowing, expiry, redaction, and cross-tenant boundaries.
-- **State machines, lifecycle & scheduling** — deploy/rollback eligibility, session/automation scheduling and overlap policies, queues, retries, idempotence, and storage/ACL rules.
+- **State machines, lifecycle & scheduling** — deploy/rollback eligibility, session/automation scheduling and overlap policies, UI/mobile form and workflow state, queues, retries, idempotence, and storage/ACL rules.
 
-Within the chosen package, take one resource kind or one invariant per run, and check [`ledger.md`](ledger.md) for what earlier runs covered so each run digs somewhere new. Record what this run covered in the ledger's Skipped section (`<package>/<kind or invariant> — audited, holds`) **only when shipping a code or qualifying property-test change**; otherwise report it without committing.
+Within the chosen package/unit, take one resource kind or one invariant per run, and check [`ledger.md`](ledger.md) for what earlier runs covered so each run digs somewhere new. Record what this run covered in the ledger's Skipped section (`<path or unit>/<kind or invariant> — audited, holds`) **only when shipping a code or qualifying property-test change**; otherwise report it without committing.
 
 ## Phase 2 — Model the logic
 
-Before hunting bugs, state the intended invariants in the conversation: e.g. "pricing is monotonic in replica count and disk size", "scope checks are deny-by-default", "plan(apply(plan)) is empty", "compile is deterministic", "the plan refuses exactly what the apply refuses", "a plan that says update names every field the apply moves". Build truth tables for boolean decision functions. Read the governing ADRs (`docs/ADR030-pricing.md`, `docs/ADR012-auth.md`, `docs/ADR024-members.md`) — the model must capture intent, not implementation.
+Before hunting bugs, state the intended invariants in the conversation: e.g. "pricing is monotonic in replica count and disk size", "scope checks are deny-by-default", "plan(apply(plan)) is empty", "compile is deterministic", "the plan refuses exactly what the apply refuses", "a plan that says update names every field the apply moves", "client eligibility matches server enforcement". Build truth tables for boolean decision functions. Read the governing ADRs or specs — the model must capture intent, not implementation.
 
 ## Phase 3 — Encode the model as tests
 
-Write property/table tests in the package's `_test.go`: `testing/quick` or hand-rolled generators for pure functions; the full scope × role matrix for authz; plan/apply round-trips for blueprint-plan. These tests persist as durable coverage.
+Write property or table-driven tests beside the code using that tree's native test framework (e.g., `*_test.go` with `testing/quick` or hand-rolled generators for Go; `*.test.ts(x)` for JS/TS apps and drivers; `test_*.py` for Python; `*.test.sh` for shell scripts). These tests persist as durable coverage.
 
 ## Phase 4 — Judge each failure
 
