@@ -451,6 +451,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **390** — [A git push, a configuration roll, a Blueprint sync or a build-source fan-out still replaces a deploy the operator has not adopted yet, where Render's default Wait lets it finish](390.md) (~2h, minor, parity) ← follow-up from w8/387 2026-11-21
 - [ ] **389** — [The port-scan narration prints Render's docs line only once and its timeout line only at the 15-minute failure, where Render prints the docs line after every scan line and the timeout line about five minutes in](389.md) (~45m, minor, parity) ← follow-up from w8/385 2026-11-21
 - [ ] **388** — [A web service listening only on 127.0.0.1, or on ports that answer no HTTP, gets the plain `No open ports detected` scan line, where Render names the case it found](388.md) (~1h, minor, parity) ← follow-up from w8/385 2026-11-21
 - [ ] **387** — [Two back-to-back deploy triggers cancel the first deploy ("Superseded by …") before it starts, where Render's default Wait policy lets the first finish](387.md) (~1h30m, minor–major, parity) ← follow-up from the w8/378 live check 2026-11-21
