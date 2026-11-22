@@ -50,6 +50,10 @@ type NativeChoice struct {
 	// toolchain's), so the resolve phase installs it or refuses it by name;
 	// it never builds on another release (w8/372).
 	unreviewed bool
+	// releaseLine is the released line no reviewed image carries (Node 21)
+	// whose newest release inside rangeRequest the resolve phase installs,
+	// when that line's final release falls outside the range (w8/398).
+	releaseLine string
 	// erlang is the Erlang/OTP release an Elixir service pinned more exactly
 	// than its major (ERLANG_VERSION=28.3, w8/197); the resolve phase builds on
 	// an image carrying it, or fails by name.
@@ -235,7 +239,10 @@ type UnsupportedVersionError = toolchains.UnsupportedVersionError
 // A plain version maps onto its line by major.minor (major for Node), and a
 // fully qualified one is then installed exactly (exactRequest, w8/175). A
 // range (Node engines, Ruby requirements) resolves to the highest line whose
-// pinned toolchain satisfies it. env is the build's effective environment;
+// pinned toolchain satisfies it. A Node request no reviewed line serves (an
+// odd line's, or a release from 14 on that no line carries) resolves to the
+// release Render's node-version-alias picks, which the resolve phase installs
+// or refuses by name (w8/398). env is the build's effective environment;
 // readFile reads a file relative to the service's root directory.
 func ResolveNativeVersion(runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	return ResolveNativeVersionAt(time.Time{}, runtime, env, readFile)
@@ -275,7 +282,7 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 	if line, ok := nativeToolchains[runtime].find(choice.Line); ok {
 		choice.lineVersion = line.version
 	}
-	if choice.Exact == "" { // an Elixir release no line carries is already exact
+	if choice.Exact == "" && !choice.unreviewed { // a release no line carries is already exact, or a range's to list
 		choice.Exact = exactRequest(nativeToolchains[runtime], choice, readFile)
 	}
 	if choice.Exact == "" {
@@ -284,6 +291,9 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 	if runtime == nativeNodeRuntime {
 		request := nodeRequestText(choice.Source, readFile)
 		if choice.Exact == "" {
+			// A request left on an odd line (choice.releaseLine) is always
+			// one: no line's newest release met it, the default line's
+			// standing in for that line included (w8/398).
 			choice.rangeRequest = excludedNodeRange(choice, request)
 		}
 		choice.requested = renderNodeRequest(request)
@@ -659,6 +669,11 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 		c.Exact, c.unreviewed = line, true
 		return c, err
 	}
+	if _, released := r.t.findReleased(line); !ok && released {
+		c, err := r.choice(r.t.defaultLine, source)
+		c.releaseLine, c.unreviewed = line, true
+		return c, err
+	}
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("no %s line %q", r.t.label, line)
 	}
@@ -777,6 +792,13 @@ var plainVersion = regexp.MustCompile(`^v?\d+(\.\d+){0,2}$`)
 // nodeRequest maps NODE_VERSION / .node-version / .nvmrc values: a plain
 // version onto its major line; `lts`, `lts/*`, `lts/<codename>`, `node`,
 // `latest`, `current`; otherwise a semver range (highest satisfying line).
+// Render resolves a request to the newest Node release that satisfies it,
+// whatever its line (node-version-alias), so a request no reviewed line
+// serves is returned as the release to install (w8/398): a fully qualified
+// version from Node 14 on as itself, and one that reaches an odd line as
+// that line's final release when it allows it (`>=20 <22` → 21.7.3), else
+// as the line, whose newest release inside the request the resolve phase
+// lists. r.choice starts either on the default line's image until then.
 func (r resolver) nodeRequest(request string) (string, bool) {
 	lower := strings.ToLower(strings.TrimSpace(request))
 	switch {
@@ -791,29 +813,60 @@ func (r resolver) nodeRequest(request string) (string, bool) {
 	case lower == "node" || lower == "latest" || lower == "current" || lower == "stable":
 		return r.t.lines[len(r.t.lines)-1].line, true
 	case plainVersion.MatchString(lower):
-		major, _, _ := strings.Cut(strings.TrimPrefix(lower, "v"), ".")
-		_, ok := r.t.find(major)
-		return major, ok
+		version := strings.TrimPrefix(lower, "v")
+		major, _, _ := strings.Cut(version, ".")
+		if _, ok := r.t.find(major); ok {
+			return major, true
+		}
+		if fullVersion.MatchString(version) {
+			oldest, _ := strconv.Atoi(r.t.lines[0].line)
+			n, err := strconv.Atoi(major)
+			return version, err == nil && n >= oldest
+		}
+		return r.releasedRequest(major, version)
 	}
-	return r.highestSatisfying(lower)
+	line, ok := r.highestSatisfying(lower)
+	if !ok {
+		return "", false
+	}
+	return r.releasedRequest(line, lower)
+}
+
+// releasedRequest is a request that reached line, as nodeRequest returns it:
+// a reviewed line itself, a released line's final release when the request
+// allows it, else that released line; ok is false for no line at all.
+func (r resolver) releasedRequest(line, request string) (string, bool) {
+	if _, ok := r.t.find(line); ok {
+		return line, true
+	}
+	released, ok := r.t.findReleased(line)
+	if !ok {
+		return "", false
+	}
+	if c, err := semver.NewConstraint(request); err == nil && c.Check(semver.MustParse(released.version)) {
+		return released.version, true
+	}
+	return line, true
 }
 
 // highestSatisfying resolves a semver range against each line's pinned
-// toolchain version, preferring the newest line. A range the pinned patch
-// misses but another release of the line meets (`~16.13.0` against 16.20.2)
-// still selects that line: the pinned patch stands in for the requested one, as
-// it does for a plain version (w8/173).
+// toolchain version, preferring the newest line, released lines no reviewed
+// image carries included (w8/398). A range the pinned patch misses but
+// another release of the line meets (`~16.13.0` against 16.20.2) still
+// selects that line: the pinned patch stands in for the requested one, as it
+// does for a plain version (w8/173).
 func (r resolver) highestSatisfying(rng string) (string, bool) {
 	c, err := semver.NewConstraint(rng)
 	if err != nil {
 		return "", false
 	}
-	for _, l := range slices.Backward(r.t.lines) {
+	lines := r.t.rangeLines()
+	for _, l := range slices.Backward(lines) {
 		if v, err := semver.NewVersion(l.version); err == nil && c.Check(v) {
 			return l.line, true
 		}
 	}
-	for _, l := range slices.Backward(r.t.lines) {
+	for _, l := range slices.Backward(lines) {
 		if lineHasRelease(l, c) {
 			return l.line, true
 		}

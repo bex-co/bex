@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -198,7 +199,9 @@ var nativeToolchains = map[string]nativeToolchain{
 	"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{
 		{line: "1.27", image: "golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea"},
 	}},
-	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
+	// Any other Node release from 14 on installs from its own official image,
+	// as Render installs whatever node-version-alias resolves (w8/398).
+	nativeNodeRuntime: {label: "Node", defaultLine: "24", anyRelease: nativeNodeAnyRelease, released: nodeOddLines, lines: []nativeLine{
 		{line: "14", version: "14.21.3", image: "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"},
 		{line: "16", version: "16.20.2", image: "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6"},
 		{line: "18", version: "18.20.8", image: "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783"},
@@ -262,7 +265,23 @@ type nativeToolchain struct {
 	// Render installs any Bun release, w8/372; Elixir: any compatible pair
 	// from Render's minimums, w8/373).
 	anyRelease string
-	lines      []nativeLine
+	// released are the lines upstream published that no reviewed image
+	// carries, each at its final release, which a range resolves against
+	// beside the reviewed lines (Node's odd lines, w8/398).
+	released []nativeLine
+	lines    []nativeLine
+}
+
+// nativeNodeAnyRelease is what a Node refusal adds (w8/398).
+const nativeNodeAnyRelease = "any other Node release from 14 on installs (such as 25.8.1)"
+
+// nodeOddLines are the Node lines nodejs.org released that bex reviews no
+// image for, at each one's final release (nodejs.org/dist/index.json, read
+// 2026-11-22). Odd lines never reach LTS and every one has reached its end of
+// life, so these releases never move (w8/398).
+var nodeOddLines = []nativeLine{
+	{line: "15", version: "15.14.0"}, {line: "17", version: "17.9.1"}, {line: "19", version: "19.9.0"},
+	{line: "21", version: "21.7.3"}, {line: "23", version: "23.11.1"}, {line: "25", version: "25.9.0"},
 }
 
 // nativeLine is one pinned toolchain line. version is the exact toolchain the
@@ -283,6 +302,28 @@ func (t nativeToolchain) find(line string) (nativeLine, bool) {
 		}
 	}
 	return nativeLine{}, false
+}
+
+// findReleased is a released line no reviewed image carries.
+func (t nativeToolchain) findReleased(line string) (nativeLine, bool) {
+	i := slices.IndexFunc(t.released, func(l nativeLine) bool { return l.line == line })
+	if i < 0 {
+		return nativeLine{}, false
+	}
+	return t.released[i], true
+}
+
+// rangeLines are the lines a range resolves against, ascending by release:
+// the reviewed ones and the released ones no reviewed image carries.
+func (t nativeToolchain) rangeLines() []nativeLine {
+	if len(t.released) == 0 {
+		return t.lines
+	}
+	all := slices.Concat(t.lines, t.released)
+	slices.SortFunc(all, func(a, b nativeLine) int {
+		return semver.MustParse(a.version).Compare(semver.MustParse(b.version))
+	})
+	return all
 }
 
 // defaultImage is the line a build without a version signal runs on.

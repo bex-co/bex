@@ -83,10 +83,16 @@ func nativeDebianSuite(history []string) (string, error) {
 
 // pinNativePrimary keeps exact-version fallback behavior while collecting the
 // verified metadata needed to transplant that primary onto the common base.
-func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime string, reviewed NativeChoice) (NativeChoice, error) {
+// A Node release no reviewed line carries has no fallback: it installs or
+// fails by name (w8/398). readFile reads the service's version files.
+func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime string, reviewed NativeChoice, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	choice := reviewed
 	var err error
 	switch {
+	case runtime == nativeNodeRuntime && choice.unreviewed:
+		if choice, err = pinNodeRelease(ctx, exact, choice, readFile); err != nil {
+			return NativeChoice{}, err
+		}
 	case choice.erlang == "":
 		choice = pinExactVersion(ctx, exact, choice)
 	case choice.Source == "":

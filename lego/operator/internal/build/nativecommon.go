@@ -190,31 +190,28 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, creat
 	if err != nil {
 		return NativeChoice{}, "", err
 	}
-	// The caller prepends primaryStage before the final base; a Node 14/16
-	// companion's standalone pnpm stages ride with it (w8/226).
-	// A companion Node takes an exact version or range like a primary does
-	// (w8/308), so the legacy-pnpm decision follows the release it pinned.
-	if runtime == nativeNodeRuntime && nativeCommonBase == "" {
-		choice = pinExactVersion(ctx, exact, choice)
-	}
-	legacyPnpm := ""
-	if runtime == nativeNodeRuntime && nativeLegacyPnpmRelease(choice.Line) {
-		legacyPnpm = nativeLegacyPnpmStages()
-	}
-	if nativeCommonBase != "" {
-		pinned, err := pinNativePrimary(ctx, exact, runtime, choice)
-		if err != nil {
+	// A companion Node takes an exact version, range or release no line
+	// carries like a primary does (w8/308, w8/398), on the common base or not,
+	// so the legacy-pnpm decision follows the release it pinned. A Ruby
+	// companion is pinned on the common base only.
+	if runtime == nativeNodeRuntime || nativeCommonBase != "" {
+		if choice, err = pinNativePrimary(ctx, exact, runtime, choice, readFile); err != nil {
 			return NativeChoice{}, "", err
 		}
-		if runtime == nativeRubyRuntime {
-			return pinned, commonNativeRubyToolLines(pinned), nil
-		}
-		pinned.primaryStage += legacyPnpm
-		return pinned, commonNativeJSToolLines(pinned), nil
 	}
 	if runtime == nativeRubyRuntime {
+		if nativeCommonBase != "" {
+			return choice, commonNativeRubyToolLines(choice), nil
+		}
 		return choice, nativeRubyToolLines(choice.Image), nil
 	}
-	choice.primaryStage += legacyPnpm
+	// The caller prepends primaryStage before the final base; a Node 14/16
+	// companion's standalone pnpm stages ride with it (w8/226).
+	if nativeLegacyPnpmRelease(choice.Line) {
+		choice.primaryStage += nativeLegacyPnpmStages()
+	}
+	if nativeCommonBase != "" {
+		return choice, commonNativeJSToolLines(choice), nil
+	}
 	return choice, nativeJSToolLines(cmp.Or(choice.nodeDonor, choice.Image), choice.Line), nil
 }

@@ -72,7 +72,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		return nil, err
 	}
 	reviewed := choice
-	choice, err = pinNativePrimary(ctx, exact, runtime, reviewed)
+	choice, err = pinNativePrimary(ctx, exact, runtime, reviewed, readFile)
 	if err != nil {
 		return nil, err
 	}
@@ -497,18 +497,7 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 	digest, found, err := exact.ResolveTag(ctx, repo, tag)
 	if err == nil && !found {
 		if donor, ok := olderVariantImage(ctx, exact, repo, tag); ok {
-			donorRef, _, _ := strings.Cut(donor, "@")
-			if nativeCommonBase != "" {
-				// The common base takes its runtime from the selected image,
-				// so the older-variant image is the exact primary itself.
-				choice.note = fmt.Sprintf("==> %s:%s does not exist; using %s %s from %s", repo, tag, choice.Label, choice.Exact, donorRef)
-				choice.Image = donor
-			} else {
-				choice.note = fmt.Sprintf("==> %s:%s does not exist; copying Node %s from %s onto the %s %s image", repo, tag, choice.Exact, donorRef, choice.Label, choice.Line)
-				choice.nodeDonor = donor
-			}
-			choice.Line = choice.Exact
-			return choice
+			return withOlderVariant(choice, repo, tag, donor)
 		}
 	}
 	switch {
@@ -521,6 +510,98 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 		choice.Line = choice.Exact
 	}
 	return choice
+}
+
+// withOlderVariant installs choice's exact release from donor, its official
+// image in an older Debian variant, as repo:tag does not exist (w8/309).
+func withOlderVariant(choice NativeChoice, repo, tag, donor string) NativeChoice {
+	donorRef, _, _ := strings.Cut(donor, "@")
+	if nativeCommonBase != "" {
+		// The common base takes its runtime from the selected image, so the
+		// older-variant image is the exact primary itself.
+		choice.note = fmt.Sprintf("==> %s:%s does not exist; using %s %s from %s", repo, tag, choice.Label, choice.Exact, donorRef)
+		choice.Image = donor
+	} else {
+		choice.note = fmt.Sprintf("==> %s:%s does not exist; copying Node %s from %s onto the %s %s image", repo, tag, choice.Exact, donorRef, choice.Label, choice.Line)
+		choice.nodeDonor = donor
+	}
+	choice.Line = choice.Exact
+	return choice
+}
+
+// pinNodeRelease installs a Node release no reviewed line carries, as Render
+// installs the release node-version-alias resolves a request to
+// (render.com/docs/node-version, w8/398): the version itself (`.nvmrc`
+// 25.8.1), or the newest release of the line a range reached that satisfies
+// it when that line's final release does not. It comes from its official
+// image, pinned by digest like the lines' images, or from an older Debian
+// variant's (Node 15, 17 and 19 have no bookworm images, w8/309). A release
+// with no image does not exist, and the build fails by name rather than on
+// another Node; so does a registry that cannot be read.
+func pinNodeRelease(ctx context.Context, exact ExactImageResolver, choice NativeChoice, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
+	what := choice.Source
+	if !strings.Contains(what, "=") {
+		what = fmt.Sprintf("%s %q", what, nodeRequestText(choice.Source, readFile))
+	}
+	what = toolchains.BoundedRequest(what)
+	supported := nativeToolchains[nativeNodeRuntime].supportedLines()
+	repo, suffix, ok := lineImageVariant(choice)
+	if !ok {
+		return NativeChoice{}, fmt.Errorf("the default Node line's image %s names no variant", choice.Image)
+	}
+	if choice.Exact == "" {
+		release, err := newestNodeRelease(ctx, exact, choice, repo, suffix)
+		if err != nil {
+			return NativeChoice{}, err
+		}
+		if release == "" {
+			return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
+				"%s matches no Node release: no official %s:%s.x image (bookworm, bullseye or buster) satisfies it; set a published Node release or a supported Node line (%s)",
+				what, repo, choice.releaseLine, supported)}
+		}
+		choice.Exact = release
+	}
+	tag := choice.Exact + suffix
+	if !tagPattern.MatchString(tag) {
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf("%s is not a Node release; set a published Node release or a supported Node line (%s)", what, supported)}
+	}
+	for _, variant := range append([]string{suffix}, nodeOlderVariants...) {
+		candidate := choice.Exact + variant
+		digest, found, err := exact.ResolveTag(ctx, repo, candidate)
+		switch {
+		case err != nil:
+			return NativeChoice{}, fmt.Errorf("look up Node %s (%s:%s): %w", choice.Exact, repo, candidate, err)
+		case found && variant == suffix:
+			choice.Image = repo + ":" + tag + "@" + digest
+			choice.Line = choice.Exact
+			return choice, nil
+		case found:
+			return withOlderVariant(choice, repo, tag, repo+":"+candidate+"@"+digest), nil
+		}
+	}
+	return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
+		"%s is not a Node release: no official image %s:%s (or its bullseye or buster variant) exists; set a published Node release or a supported Node line (%s)",
+		what, repo, toolchains.BoundedRequest(tag), supported)}
+}
+
+// newestNodeRelease is the newest official release of choice.releaseLine that
+// satisfies choice.rangeRequest, bookworm images first as pinRangeRelease
+// takes them, or "" when no image of any variant does.
+func newestNodeRelease(ctx context.Context, exact ExactImageResolver, choice NativeChoice, repo, suffix string) (string, error) {
+	constraint, err := semver.NewConstraint(choice.rangeRequest)
+	if err != nil {
+		return "", fmt.Errorf("node range %q: %w", choice.rangeRequest, err)
+	}
+	tags, err := exact.ListTags(ctx, repo, choice.releaseLine+".")
+	if err != nil {
+		return "", fmt.Errorf("list Node %s releases (%s:%s.x) for %s: %w", choice.releaseLine, repo, choice.releaseLine, choice.rangeRequest, err)
+	}
+	for _, variant := range append([]string{suffix}, nodeOlderVariants...) {
+		if best := newestTagRelease(tags, variant, constraint); best != nil {
+			return best.Original(), nil
+		}
+	}
+	return "", nil
 }
 
 // pinRangeRelease sets choice.Exact to the newest official release of the

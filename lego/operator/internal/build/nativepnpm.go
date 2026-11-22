@@ -82,8 +82,9 @@ func nativeLegacyPnpmLine(line string) bool {
 }
 
 // nativeLegacyPnpmRelease reports whether a Node line or exact release needs
-// the legacy standalone pnpm: lines 14 and 16, and Node 18 before 18.12, which
-// pnpm 10 refuses (an exact release copied onto its line, w8/309).
+// the legacy standalone pnpm: lines 14 and 16, Node 15 and 17 (w8/398), and
+// Node 18 before 18.12, all of which pnpm 10 refuses (an exact release copied
+// onto its line, w8/309).
 func nativeLegacyPnpmRelease(version string) bool {
 	if nativeLegacyPnpmLine(version) {
 		return true
@@ -91,7 +92,7 @@ func nativeLegacyPnpmRelease(version string) bool {
 	major, rest, _ := strings.Cut(version, ".")
 	minor, _, _ := strings.Cut(rest, ".")
 	n, err := strconv.Atoi(minor)
-	return major == "18" && err == nil && n < 12
+	return major == "15" || major == "17" || (major == "18" && err == nil && n < 12)
 }
 
 // nativePnpmFor is the pnpm layers for the selected Node line or release.
