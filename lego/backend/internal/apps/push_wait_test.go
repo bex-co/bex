@@ -153,3 +153,52 @@ func TestABlueprintSyncWaitsForTheDeployAheadToBeAdopted(t *testing.T) {
 		t.Fatalf("the sync reached the App after %s with release %d adopted; want it after the operator adopted release 2", took, patchedAt.Load())
 	}
 }
+
+// w8/396: a push, a checked push and a Blueprint sync that write through name
+// the release the App reports adopted to the row they open, so the row waits
+// behind a waiting deploy the operator already runs instead of replacing it.
+func TestWritesThroughNameTheReleaseTheAppAdopted(t *testing.T) {
+	ctx := context.Background()
+	named := func(t *testing.T, rec *recordingStore, want int64) {
+		t.Helper()
+		if len(rec.adopted) != 1 || rec.adopted[0] != want {
+			t.Fatalf("adopted releases named = %v, want [%d]", rec.adopted, want)
+		}
+	}
+	t.Run("push", func(t *testing.T) {
+		rec := &recordingStore{}
+		a := manage(autoDeployApp("web", "https://github.com/acme/web"), "srv-web")
+		a.Status.ReleaseGeneration = 3
+		svc, cl := newService(rec, a)
+		if _, err := svc.redeployFetched(ctx, getApp(t, cl, "web"), store.CommitInfo{Hash: shaA}); err != nil {
+			t.Fatal(err)
+		}
+		named(t, rec, 3)
+	})
+	t.Run("checked push", func(t *testing.T) {
+		ls := &listingStore{recordingStore: &recordingStore{}}
+		a := checksApp("api", checksRepo, shaA)
+		a.Generation = 2
+		a.Labels = map[string]string{core.LabelAppID: "srv-check", store.LabelManagedBy: store.ManagedByValue}
+		a.Status.ReleaseGeneration = 2
+		svc, _ := newService(ls, a)
+		svc.Checks = &fakeChecks{permitted: true, runs: []github.CheckRun{run("completed", "success")}}
+		if err := (&CheckedDeployWorker{Svc: svc}).tick(ctx); err != nil {
+			t.Fatal(err)
+		}
+		named(t, ls.recordingStore, 2)
+	})
+	t.Run("blueprint sync", func(t *testing.T) {
+		ls := &listingStore{recordingStore: &recordingStore{}}
+		existing := managedApp("web", "srv-1")
+		existing.Spec.Image = "old:1"
+		existing.Generation = 2
+		existing.Status.ReleaseGeneration = 2
+		svc, _ := newService(ls, existing)
+		changed := "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"
+		if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: changed}); err != nil {
+			t.Fatalf("DeployStack: %v", err)
+		}
+		named(t, ls.recordingStore, 2)
+	})
+}

@@ -105,8 +105,10 @@ func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.D
 		if wait, err := waits(a); err != nil || !wait {
 			return err
 		}
+		// A waiting deploy the operator already adopted is in flight: this
+		// one waits behind it rather than replacing it (w8/396).
 		var err error
-		d, deferred, err = deferrer.CreateDeferredDeploy(ctx, d, req)
+		d, deferred, err = deferrer.CreateDeferredDeploy(store.WithAdoptedRelease(ctx, a), d, req)
 		return err
 	})
 	if err != nil || !deferred {

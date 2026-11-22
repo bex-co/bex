@@ -731,6 +731,8 @@ type recordingStore struct {
 	deleteCalls []string
 	appCreates  []store.App
 	deployCalls []store.Deploy
+	// adopted is each CreateDeploy's store.AdoptedRelease (w8/396).
+	adopted []int64
 	// priorCommit is what LatestDeployCommit returns — set in tests that assert
 	// config_change rows inherit the running release's provenance (w4/m100).
 	priorCommit  store.CommitInfo
@@ -819,7 +821,8 @@ func (r *recordingStore) DomainHostsClaimed(_ context.Context, hosts []string) (
 	return claimed, nil
 }
 
-func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
+func (r *recordingStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
+	r.adopted = append(r.adopted, store.AdoptedRelease(ctx))
 	if r.err != nil {
 		return store.Deploy{}, r.err
 	}

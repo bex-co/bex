@@ -222,7 +222,7 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 			a.Spec.AutoDeploy = false
 		}
 		return nil
-	}, func(release int64) (store.Deploy, error) {
+	}, func(ctx context.Context, release int64) (store.Deploy, error) {
 		// The restored release's build source build travels with its commit.
 		commit := target.CommitInfo()
 		commit.BuildID = target.BuildID

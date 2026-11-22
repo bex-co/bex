@@ -41,13 +41,16 @@ import (
 type fakeDeployStore struct {
 	prior   store.CommitInfo
 	created []store.Deploy
+	// adopted is each CreateDeploy's store.AdoptedRelease.
+	adopted []int64
 }
 
 func (f *fakeDeployStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
 	return f.prior, nil
 }
 
-func (f *fakeDeployStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
+func (f *fakeDeployStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
+	f.adopted = append(f.adopted, store.AdoptedRelease(ctx))
 	d := store.Deploy{
 		ID: "dep-recorded", AppID: appID, Trigger: trigger, Image: image, Generation: generation,
 		Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy,
@@ -85,6 +88,19 @@ func TestOpenCarriesPriorCommit(t *testing.T) {
 	}
 	if got.Trigger != store.TriggerConfigChange {
 		t.Errorf("trigger = %q, want %q", got.Trigger, store.TriggerConfigChange)
+	}
+}
+
+// w8/396: the row a saved change opens names the release the patched App
+// reports adopted, so it waits behind a waiting deploy the operator already
+// runs rather than replacing it.
+func TestOpenNamesTheReleaseTheAppAdopted(t *testing.T) {
+	ds := &fakeDeployStore{}
+	a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 4}, Spec: appv1alpha1.AppSpec{Image: "web:v1"}}
+	a.Status.ReleaseGeneration = 3
+	(&Tracker{Store: ds}).open(context.Background(), Snapshot{appID: "srv-web", generation: 3, rolls: true}, a, store.TriggerConfigChange)
+	if len(ds.adopted) != 1 || ds.adopted[0] != 3 {
+		t.Fatalf("adopted releases named = %v, want [3]", ds.adopted)
 	}
 }
 

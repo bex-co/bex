@@ -451,7 +451,7 @@ func (s *Service) finishCheckedDispatch(ctx context.Context, a *appv1alpha1.App)
 		if _, err := s.Store.ClearCheckedDeployImage(ctx, managedAppID(a), receipt.Repo, receipt.Branch, receipt.Image, receipt.RowVersion); err != nil {
 			return err
 		}
-		if _, err := s.Store.EnsureCheckedDeploy(ctx, managedAppID(a), receipt.Generation, receipt.Commit); err != nil {
+		if _, err := s.Store.EnsureCheckedDeploy(store.WithAdoptedRelease(ctx, a), managedAppID(a), receipt.Generation, receipt.Commit); err != nil {
 			return err
 		}
 	}

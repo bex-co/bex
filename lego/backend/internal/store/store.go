@@ -2817,6 +2817,47 @@ func DeferredDeployID(ctx context.Context) string {
 	return id
 }
 
+type adoptedReleaseKey struct{}
+
+// WithAdoptedRelease tells the deploy row opened under ctx which release the
+// operator reports adopted for a (status.releaseGeneration), read by the
+// writer after its App write (w8/396). The waiting row that release has
+// reached is already executing, so the new row waits behind it rather than
+// replacing it (adoptWaitingDeploy).
+func WithAdoptedRelease(ctx context.Context, a *appv1alpha1.App) context.Context {
+	if a == nil || a.Status.ReleaseGeneration <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, adoptedReleaseKey{}, a.Status.ReleaseGeneration)
+}
+
+// AdoptedRelease is the release generation WithAdoptedRelease named, or 0.
+func AdoptedRelease(ctx context.Context) int64 {
+	generation, _ := ctx.Value(adoptedReleaseKey{}).(int64)
+	return generation
+}
+
+// adoptWaitingDeploy frees appID's latest-pending slot once the operator has
+// adopted the release waiting in it, as the reconciler does on its next pass
+// (TransitionDeploy, "Free the pending slot"). When the deploy ahead serves,
+// the operator adopts the waiting release at once and holds it to the end
+// (releaseInFlight), so until that pass a newer deploy would cancel a deploy
+// that is running and find nothing to wait behind (w8/396). A deferred deploy
+// (generation 0) has no release yet. While another deploy is still recorded
+// executing, the slot stays as it is.
+func adoptWaitingDeploy(ctx context.Context, tx pgx.Tx, appID string) error {
+	adopted := AdoptedRelease(ctx)
+	if adopted <= 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx,
+		`UPDATE deploys SET overlap_pending = false
+		 WHERE app_id = $1 AND overlap_pending AND status = $2 AND generation > 0 AND generation <= $3
+		   AND NOT EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = $1 AND o.status = ANY($4) AND NOT o.overlap_pending)`,
+		appID, DeployQueued, adopted, openDeployStatuses)
+	return err
+}
+
 // DeferredRequest is what a deferred deploy asks for beyond its row's own
 // trigger, caller, image and rollback target (w4/652): the parameters its
 // deploy verb runs with once nothing is in flight.
@@ -2855,6 +2896,9 @@ func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req Deferr
 	}
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if err := lockApp(ctx, tx, d.AppID); err != nil {
+			return err
+		}
+		if err := adoptWaitingDeploy(ctx, tx, d.AppID); err != nil {
 			return err
 		}
 		var err error
@@ -3035,7 +3079,8 @@ func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitI
 // generations before choosing the visible initial status. A delayed request
 // for an older generation records itself canceled, naming the
 // higher-generation open row, without disturbing it. Otherwise the new generation replaces only the
-// previous overlap-pending row, which closes canceled with replacedReason. The
+// previous overlap-pending row, which closes canceled with replacedReason,
+// unless the operator already adopted it (adoptWaitingDeploy). The
 // new row starts queued while an active deploy is running, or created when the
 // active slot is free. Partial unique indexes are the final
 // one-active-plus-one-pending guard.
@@ -3054,6 +3099,9 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 		return DeployCanceled, supersededByReason(newer), nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", err
+	}
+	if err := adoptWaitingDeploy(ctx, tx, appID); err != nil {
 		return "", "", err
 	}
 	if err := cancelPendingDeploys(ctx, tx, appID, replacedReason); err != nil {

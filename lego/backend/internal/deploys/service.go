@@ -320,11 +320,14 @@ type Service struct {
 //   - the deploy row opens inside the same section with the generation the
 //     patch produced, so rows are ordered like releases and the newest one is
 //     the release the CR names — the reconciler's superseded-row close then
-//     cancels every earlier open row by that ordering.
+//     cancels every earlier open row by that ordering. open's ctx carries the
+//     release the patched App reports adopted (store.WithAdoptedRelease), so
+//     the row waits behind a waiting deploy the operator already runs
+//     (w8/396).
 //
 // a is updated in place with the patched CR.
 func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID string, rowWrite func() error,
-	mutate func(a *appv1alpha1.App, release int64) error, open func(release int64) (store.Deploy, error)) (store.Deploy, error) {
+	mutate func(a *appv1alpha1.App, release int64) error, open func(ctx context.Context, release int64) (store.Deploy, error)) (store.Deploy, error) {
 	var d store.Deploy
 	err := s.withTriggerLock(ctx, appID, func() error {
 		// Deleted and recreated under its name while the trigger waited for
@@ -358,7 +361,7 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 			return err
 		}
 		var err error
-		d, err = open(patchedGeneration(previous, a.Generation))
+		d, err = open(store.WithAdoptedRelease(ctx, a), patchedGeneration(previous, a.Generation))
 		return err
 	})
 	if err == nil {
@@ -1054,7 +1057,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: release, Image: p.ImageURL}
 		}
 		return nil
-	}, func(release int64) (store.Deploy, error) {
+	}, func(ctx context.Context, release int64) (store.Deploy, error) {
 		image := a.Spec.Image
 		if p.ImageURL != "" {
 			image = p.ImageURL

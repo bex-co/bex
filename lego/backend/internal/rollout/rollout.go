@@ -411,7 +411,9 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 			commit = live.CommitInfo()
 		}
 	}
-	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false); err != nil {
+	// A waiting deploy the patched App reports adopted is in flight, so this
+	// release waits behind it rather than replacing it (w8/396).
+	if _, err := t.Store.CreateDeploy(store.WithAdoptedRelease(ctx, a), snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false); err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
 	}
 }

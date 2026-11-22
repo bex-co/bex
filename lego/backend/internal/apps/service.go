@@ -4521,7 +4521,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 			// make the git host redeliver the push, re-bumping every matched App.
 			// The reconciler's superseded-row cancel is the backstop for the
 			// open row this row would have replaced.
-			if _, err := s.Store.CreateDeploy(ctx, appID, store.TriggerNewCommit, a.Spec.Image, releaseGeneration, commit, "", false); err != nil {
+			if _, err := s.Store.CreateDeploy(store.WithAdoptedRelease(ctx, a), appID, store.TriggerNewCommit, a.Spec.Image, releaseGeneration, commit, "", false); err != nil {
 				log.Printf("webhook: recording redeploy of %s: %v", a.Name, err)
 			}
 		}
