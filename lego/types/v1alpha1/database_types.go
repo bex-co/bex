@@ -818,6 +818,16 @@ type DatabaseStatus struct {
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
 
+	// ReservedExternalHost is the SNI hostname kept for this database's
+	// external endpoint whether or not it is public, wherever the platform has
+	// a database domain (w9/140). Render answers the external connection
+	// string for every database, including one whose IP allow list admits
+	// nothing, so a private database's connection info names this host.
+	// Nothing routes it: pg-sni-proxy routes only a Public database, and a
+	// private one requests no publicly trusted certificate.
+	// +optional
+	ReservedExternalHost string `json:"reservedExternalHost,omitempty"`
+
 	// ExternalCertificate reports which certificate the external endpoints
 	// present. Empty: CNPG's generated certificate (or no external endpoint);
 	// clients verify it only against the cluster's own CA. PubliclyTrusted: a

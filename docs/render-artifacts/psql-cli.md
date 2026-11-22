@@ -74,7 +74,9 @@ Confirmed against `lego/backend` HEAD:
 | resolve by id **and** name | `GET /v1/postgres/{id}` + `GET /v1/postgres?name=` (OR-matches `p.Name` and `p.ID`) | `internal/postgres/rest.go:118` |
 | `externalConnectionString` | populated iff `d.Status.ExternalHost != ""`, itself set iff `db.Spec.Public && BEX_DB_DOMAIN != ""` | `internal/postgres/service.go:574`; `operator/internal/controller/database_controller.go:800` |
 
-So the allow-list gate is enforced by the **CLI itself** on data bex already surfaces; the external string is gated exactly as Render gates a non-public database.
+So the allow-list gate is enforced by the **CLI itself** on data bex already surfaces.
+
+> **Corrected (w9/140, 2026-11-21).** The claim that ended this paragraph until then, that the external string "is gated exactly as Render gates a non-public database", was wrong: Render answers `externalConnectionString` for every database, including one whose allow list is empty (the Terraform provider's cassettes at `06af456`). Since w9/140 a private bex database answers it too, over a reserved host the edge refuses until a rule makes the database public ([ADR009 § Every database answers an external URL](../ADR009-postgresql-management.md#every-database-answers-an-external-url-w9140)). The CLI's own allow-list check still refuses before it reads the string, on Render and on bex alike.
 
 ## Hermetic regression (run 2026-07-18, PASS)
 

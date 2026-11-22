@@ -1167,20 +1167,31 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		PSQLCommand: fmt.Sprintf("PGPASSWORD=%s psql -h %s-rw.%s.svc -U %s %s",
 			pass, d.Name, d.Namespace, user, dbn),
 	}
-	if d.Status.ExternalHost != "" {
+	switch {
+	case d.Spec.Public && d.Status.ExternalHost != "":
 		info.ExternalConnectionString = fmt.Sprintf(
 			"postgresql://%s:%s@%s:5432/%s%s",
 			user, pass, d.Status.ExternalHost, dbn, tlsQuery)
 		if tlsQuery == "" {
-			// Render's psqlCommand shape for its public hosts.
-			info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql -h %s -U %s %s",
-				pass, d.Status.ExternalHost, user, dbn)
+			info.PSQLCommand = renderPSQLCommand(user, pass, d.Status.ExternalHost, dbn)
 		} else {
 			info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=verify-full'",
 				pass, d.Status.ExternalHost, dbn, user)
 		}
 		info.ServerCACertificate = serverCA
 		info.ExternalCertificate, info.ExternalCertificateReason = externalCertificateState(d)
+	case !d.Spec.Public && d.Status.ReservedExternalHost != "":
+		// Render answers the external string and a psql command over it for
+		// every database, one whose allow list admits nothing included
+		// (w9/140). The reserved host is the name the database is served on
+		// once public, and pg-sni-proxy routes no private database, so the
+		// edge refuses it from every source until a rule makes it public. No
+		// endpoint presents a certificate meanwhile, so the strings take
+		// Render's exact shape: the one production answers once the public
+		// certificate is issued.
+		info.ExternalConnectionString = fmt.Sprintf(
+			"postgresql://%s:%s@%s:5432/%s", user, pass, d.Status.ReservedExternalHost, dbn)
+		info.PSQLCommand = renderPSQLCommand(user, pass, d.Status.ReservedExternalHost, dbn)
 	}
 	// Pooled strings: same credentials, routed through the PgBouncer pooler.
 	// The hosts come straight from status (the operator's contract) — the backend
@@ -1192,7 +1203,10 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	}
 	// The external pooled string stays on 5432, the port the edge serves: the
 	// pooler is reached by its -pool host (a signed-off difference, ADR018).
-	if d.Status.PoolerExternalHost != "" {
+	// Like every routed host it is answered only while public, so a database
+	// turned private stops naming it before the operator's next pass clears
+	// it (w9/140).
+	if d.Spec.Public && d.Status.PoolerExternalHost != "" {
 		info.ExternalConnectionPoolString = fmt.Sprintf(
 			"postgresql://%s:%s@%s:5432/%s%s",
 			user, pass, d.Status.PoolerExternalHost, dbn, tlsQuery)
@@ -1207,7 +1221,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 				rc.InternalConnectionString = fmt.Sprintf(
 					"postgresql://%s:%s@%s:5432/%s", user, pass, rs.InternalHost, dbn)
 			}
-			if rs.ExternalHost != "" {
+			if d.Spec.Public && rs.ExternalHost != "" {
 				rc.ExternalConnectionString = fmt.Sprintf(
 					"postgresql://%s:%s@%s:5432/%s%s",
 					user, pass, rs.ExternalHost, dbn, tlsQuery)
@@ -1219,7 +1233,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 				rc.InternalConnectionPoolString = fmt.Sprintf(
 					"postgresql://%s:%s@%s:%d/%s", user, pass, rs.PoolerHost, appv1alpha1.PoolerPort, dbn)
 			}
-			if rs.PoolerExternalHost != "" {
+			if d.Spec.Public && rs.PoolerExternalHost != "" {
 				rc.ExternalConnectionPoolString = fmt.Sprintf(
 					"postgresql://%s:%s@%s:5432/%s%s",
 					user, pass, rs.PoolerExternalHost, dbn, tlsQuery)
@@ -1230,6 +1244,13 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	}
 	s.RecordSecretsViewed(ctx, core.AuditVerbViewConnectionInfo, d.Labels[core.LabelTenant], core.DatabaseTarget(d.Name), d.Spec.Name)
 	return info, nil
+}
+
+// renderPSQLCommand is Render's psqlCommand over an external host, as its
+// recorded connection-info reads spell it, port included (Terraform provider
+// cassettes at 06af456).
+func renderPSQLCommand(user, pass, host, dbn string) string {
+	return fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s %s", pass, host, user, dbn)
 }
 
 // externalURLQuery is the query every external connection string of d ends

@@ -100,7 +100,7 @@ func TestPubliclyTrustedDatabaseServesRenderShapedURLsWithoutCA(t *testing.T) {
 		"external":         "postgresql://" + user + ":s3cret@lets-db.db.bex.co:5432/" + db,
 		"external pool":    "postgresql://" + user + ":s3cret@lets-db-pool.db.bex.co:5432/" + db,
 		"external replica": "postgresql://" + user + ":s3cret@lets-db-ro-reader.db.bex.co:5432/" + db,
-		"psql":             "PGPASSWORD=s3cret psql -h lets-db.db.bex.co -U " + user + " " + db,
+		"psql":             "PGPASSWORD=s3cret psql -h lets-db.db.bex.co -p 5432 -U " + user + " " + db,
 	}
 	got := map[string]string{
 		"external":         ci.ExternalConnectionString,

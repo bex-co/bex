@@ -1360,39 +1360,99 @@ func TestMCPSetPostgresPlan(t *testing.T) {
 	}
 }
 
-// TestPrivatePostgresInternalAndPSQLHostsAgree is w6/m93's regression: with
-// public access off, the connection-info panel shows an internal connection
-// string and a psql command side by side, and they used to name the same
-// database by two different hosts — CNPG's 2-label "uri" spelling
-// ("<cluster>-rw.<ns>") versus the operator's canonical ".svc"-qualified
-// Status.Host. Both resolve in-cluster, so nothing was broken; the panel simply
-// contradicted itself about which host is canonical.
-//
-// A public database deliberately does NOT hold this property: psql switches to
-// the external host, because that is the endpoint a human copy-pasting it can
-// actually reach. TestRESTPostgresConnectionInfo covers that shape.
-func TestPrivatePostgresInternalAndPSQLHostsAgree(t *testing.T) {
-	// Public access off: no Status.ExternalHost, so psql keeps the internal host.
+// seedPrivateDatabase seeds a Ready private Database and its CNPG-style
+// "<name>-app" Secret, whose "uri" is CNPG's own 2-label spelling, with the
+// given status hosts.
+func seedPrivateDatabase(name string, status appv1alpha1.DatabaseStatus) (*appv1alpha1.Database, *corev1.Secret) {
+	dbn := appv1alpha1.DefaultPostgresDatabaseName(name)
+	status.Phase, status.Host, status.Port, status.SecretName = appv1alpha1.DBPhaseReady, name+"-rw.default.svc", 5432, name+"-app"
 	db := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: "priv-db", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Plan: "free"},
-		Status: appv1alpha1.DatabaseStatus{
-			Phase: appv1alpha1.DBPhaseReady, Host: "priv-db-rw.default.svc", Port: 5432,
-			SecretName: "priv-db-app",
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", Pooler: true, ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "reader"}}},
+		Status:     status,
 	}
-	dbn := appv1alpha1.DefaultPostgresDatabaseName("priv-db")
 	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "priv-db-app", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: name + "-app", Namespace: "default"},
 		Data: map[string][]byte{
 			"username": []byte(dbn + "_user"),
 			"password": []byte("s3cret"),
 			"dbname":   []byte(dbn),
-			// CNPG's own 2-label spelling — the value this fix must stop echoing.
-			"uri": []byte("postgresql://" + dbn + "_user:s3cret@priv-db-rw.default:5432/" + dbn),
+			"uri":      []byte("postgresql://" + dbn + "_user:s3cret@" + name + "-rw.default:5432/" + dbn),
 		},
 	}
-	svc, _ := newService(db, sec)
+	return db, sec
+}
+
+// TestPrivatePostgresAnswersRendersExternalStrings is w9/140's regression.
+// Render answers externalConnectionString and a psql command over its
+// external host for every database, including one created or patched with
+// ipAllowList: [] (the Terraform provider's cassettes at 06af456). A private
+// database whose operator reserved its host answers Render's exact shapes
+// over that host, on REST and GraphQL alike, and nothing of the public
+// edge's TLS state: no CA, no externalCertificate, no pooled or replica
+// external string. A database turned private before the operator's next pass
+// still carries its routed host and certificate state; it names the reserved
+// host and drops the rest.
+func TestPrivatePostgresAnswersRendersExternalStrings(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status appv1alpha1.DatabaseStatus
+	}{
+		{"private", appv1alpha1.DatabaseStatus{ReservedExternalHost: "priv-db.db.bex.co"}},
+		{"turned private", appv1alpha1.DatabaseStatus{
+			ReservedExternalHost: "priv-db.db.bex.co", ExternalHost: "priv-db.db.bex.co", PoolerExternalHost: "priv-db-pool.db.bex.co",
+			ExternalCertificate: appv1alpha1.DBExternalCertificatePubliclyTrusted,
+			ReadReplicaStatuses: []appv1alpha1.DatabaseReadReplicaStatus{{Name: "reader", ExternalHost: "priv-db-ro-reader.db.bex.co"}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newService(seedPrivateDatabase("priv-db", tc.status))
+			rec := serveREST(svc, http.MethodGet, "/v1/postgres/priv-db/connection-info", "")
+			if rec.Code != http.StatusOK {
+				t.Fatalf("connection-info => %d: %s", rec.Code, rec.Body.String())
+			}
+			for _, field := range []string{"serverCaCertificate", "externalCertificate", "externalConnectionPoolString"} {
+				if strings.Contains(rec.Body.String(), `"`+field+`"`) {
+					t.Errorf("a private database answers %s: %s", field, rec.Body.String())
+				}
+			}
+			var ci PostgresConnectionInfo
+			if err := json.Unmarshal(rec.Body.Bytes(), &ci); err != nil {
+				t.Fatal(err)
+			}
+			const user, dbn = "priv_db_user", "priv_db"
+			if want := "postgresql://" + user + ":s3cret@priv-db.db.bex.co:5432/" + dbn; ci.ExternalConnectionString != want {
+				t.Errorf("external = %q, want %q", ci.ExternalConnectionString, want)
+			}
+			if want := "PGPASSWORD=s3cret psql -h priv-db.db.bex.co -p 5432 -U " + user + " " + dbn; ci.PSQLCommand != want {
+				t.Errorf("psql = %q, want %q", ci.PSQLCommand, want)
+			}
+			if want := "postgresql://" + user + ":s3cret@priv-db-rw.default.svc:5432/" + dbn; ci.InternalConnectionString != want {
+				t.Errorf("internal = %q, want %q", ci.InternalConnectionString, want)
+			}
+			for _, rc := range ci.ReadReplicaConnectionStrings {
+				if rc.ExternalConnectionString != "" || rc.ExternalConnectionPoolString != "" {
+					t.Errorf("a private database answers replica %s external strings: %+v", rc.Name, rc)
+				}
+			}
+			gql := connectionInfoGraphQL(t, svc, "priv-db")
+			pool, _ := gql["externalConnectionPoolString"].(string)
+			ca, _ := gql["serverCaCertificate"].(string)
+			if gql["externalConnectionString"] != ci.ExternalConnectionString || gql["psqlCommand"] != ci.PSQLCommand || pool != "" || ca != "" {
+				t.Fatalf("GraphQL diverges from REST: %v", gql)
+			}
+		})
+	}
+}
+
+// TestPrivatePostgresWithNoReservedHostKeepsInternalPSQL covers a platform
+// with no database domain, where the operator reserves no host: there is no
+// external string, and the psql command names the same canonical internal
+// host as the internal string (w6/m93: CNPG's 2-label "uri" spelling
+// "<cluster>-rw.<ns>" and the operator's ".svc"-qualified Status.Host used to
+// disagree on one panel).
+func TestPrivatePostgresWithNoReservedHostKeepsInternalPSQL(t *testing.T) {
+	svc, _ := newService(seedPrivateDatabase("priv-db", appv1alpha1.DatabaseStatus{}))
 
 	var ci PostgresConnectionInfo
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres/priv-db/connection-info", "").Body.Bytes(), &ci)
@@ -1405,6 +1465,6 @@ func TestPrivatePostgresInternalAndPSQLHostsAgree(t *testing.T) {
 		t.Errorf("psql command does not use the canonical host %q: %q", host, ci.PSQLCommand)
 	}
 	if ci.ExternalConnectionString != "" {
-		t.Errorf("public access is off, so there must be no external string: %q", ci.ExternalConnectionString)
+		t.Errorf("no host is reserved, so there must be no external string: %q", ci.ExternalConnectionString)
 	}
 }

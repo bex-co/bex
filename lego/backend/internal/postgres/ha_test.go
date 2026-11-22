@@ -329,14 +329,16 @@ func TestFailoverREST(t *testing.T) {
 func TestReadReplicaConnectionInfo(t *testing.T) {
 	// PostgresConnectionInfo includes per-replica full connection strings when
 	// ReadReplicaStatuses are present in the Database status.
+	// Only a public database answers its replicas' external strings (w9/140).
 	svc, cl := newService()
+	seedDatabaseCA(t, cl, "rci-db")
 
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "rci-db", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Public: true},
 		Status: appv1alpha1.DatabaseStatus{
 			Phase:      appv1alpha1.DBPhaseReady,
-			SecretName: "rci-db-app",
+			SecretName: "rci-db-app", ExternalHost: "rci-db.db.bex.co",
 			ReadReplicaStatuses: []appv1alpha1.DatabaseReadReplicaStatus{
 				{Name: "reader-a", InternalHost: "rci-db-ro.default.svc", ExternalHost: "rci-db-ro-reader-a.db.bex.co"},
 				{Name: "reader-b", InternalHost: "rci-db-ro.default.svc"},

@@ -2171,9 +2171,14 @@ func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster 
 // replica eligibility keeps its name with no host.
 func (r *DatabaseReconciler) updateExternalAddressStatus(db *appv1alpha1.Database, replicasProvisioned bool) {
 	public := db.Spec.Public && r.DBDomain != ""
-	db.Status.ExternalHost, db.Status.PoolerExternalHost = "", ""
+	// Every database keeps its host, as every Render database answers an
+	// external string (w9/140); only a public one is routed and certified.
+	db.Status.ReservedExternalHost, db.Status.ExternalHost, db.Status.PoolerExternalHost = "", "", ""
+	if r.DBDomain != "" {
+		db.Status.ReservedExternalHost = fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
+	}
 	if public {
-		db.Status.ExternalHost = fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
+		db.Status.ExternalHost = db.Status.ReservedExternalHost
 		if db.Spec.Pooler {
 			db.Status.PoolerExternalHost = fmt.Sprintf("%s-pool.%s", db.Name, r.DBDomain)
 		}

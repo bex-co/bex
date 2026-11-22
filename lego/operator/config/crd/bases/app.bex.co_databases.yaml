@@ -914,6 +914,16 @@ spec:
                 x-kubernetes-list-map-keys:
                 - name
                 x-kubernetes-list-type: map
+              reservedExternalHost:
+                description: |-
+                  ReservedExternalHost is the SNI hostname kept for this database's
+                  external endpoint whether or not it is public, wherever the platform has
+                  a database domain (w9/140). Render answers the external connection
+                  string for every database, including one whose IP allow list admits
+                  nothing, so a private database's connection info names this host.
+                  Nothing routes it: pg-sni-proxy routes only a Public database, and a
+                  private one requests no publicly trusted certificate.
+                type: string
               secretName:
                 description: |-
                   SecretName is the CNPG-generated Secret holding the app credentials and the

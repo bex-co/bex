@@ -815,8 +815,9 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 	}
 	r := &DatabaseReconciler{DBDomain: "db.example.test"}
 	r.updateExternalAddressStatus(db, true)
-	if db.Status.ExternalHost != "orders.db.example.test" || db.Status.PoolerExternalHost != "orders-pool.db.example.test" {
-		t.Fatalf("public status hosts = %q / %q", db.Status.ExternalHost, db.Status.PoolerExternalHost)
+	if db.Status.ExternalHost != "orders.db.example.test" || db.Status.PoolerExternalHost != "orders-pool.db.example.test" ||
+		db.Status.ReservedExternalHost != db.Status.ExternalHost {
+		t.Fatalf("public status hosts = %q / %q, reserved %q", db.Status.ExternalHost, db.Status.PoolerExternalHost, db.Status.ReservedExternalHost)
 	}
 	// The replica's own instance and its own PgBouncer, inside and outside
 	// (w6/m467): never the primary Cluster's shared -ro Service.
@@ -842,6 +843,11 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 		db.Status.ReadReplicaStatuses[0].PoolerExternalHost != "" {
 		t.Fatal("external disable retained a primary, pooler or replica hostname")
 	}
+	// A private database keeps its reserved host, which its connection info
+	// names as Render's does (w9/140); nothing routes it.
+	if db.Status.ReservedExternalHost != "orders.db.example.test" {
+		t.Fatalf("private reserved host = %q, want the public one", db.Status.ReservedExternalHost)
+	}
 	if db.Status.Host != before.Status.Host || db.Status.Port != before.Status.Port || db.Status.SecretName != before.Status.SecretName ||
 		db.Status.PoolerHost != before.Status.PoolerHost || db.Status.ReadReplicaStatuses[0].InternalHost != before.Status.ReadReplicaStatuses[0].InternalHost ||
 		db.Status.ReadReplicaStatuses[0].PoolerHost != before.Status.ReadReplicaStatuses[0].PoolerHost {
@@ -852,5 +858,14 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 	r.updateExternalAddressStatus(db, true)
 	if got := db.Status.ReadReplicaStatuses[0]; got.PoolerHost != "" || got.PoolerExternalHost != "" || got.ExternalHost == "" {
 		t.Fatalf("unpooled read replica status = %#v, want its direct hosts only", got)
+	}
+	// A platform with no database domain reserves no host, public or not.
+	noDomain := &DatabaseReconciler{}
+	for _, public := range []bool{true, false} {
+		db.Spec.Public = public
+		noDomain.updateExternalAddressStatus(db, true)
+		if db.Status.ReservedExternalHost != "" || db.Status.ExternalHost != "" {
+			t.Fatalf("public=%v with no domain: reserved %q, external %q", public, db.Status.ReservedExternalHost, db.Status.ExternalHost)
+		}
 	}
 }
