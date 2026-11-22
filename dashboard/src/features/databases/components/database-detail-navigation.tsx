@@ -1,5 +1,6 @@
 import {
   Activity,
+  AppWindow,
   History,
   Info,
   Lightbulb,
@@ -36,6 +37,7 @@ export function DatabaseDetailNavigation({
       icon: Activity,
     },
     { href: "#plan", label: t("databases.planTitle"), icon: Package },
+    { href: "#apps", label: t("databases.adminAppsTitle"), icon: AppWindow },
     { href: "#insights", label: t("databases.insightsTitle"), icon: Lightbulb },
     { href: "#recovery", label: t("databases.recoveryTitle"), icon: History },
     {

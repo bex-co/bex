@@ -1990,6 +1990,142 @@ const ruDatabases: Record<string, TranslationEntry> = {
     message: "Основная версия PostgreSQL, на которой работает база данных.",
     description: "Create-Postgres version row description",
   },
+  // --- Apps: admin apps (Render's Postgres Apps page, w4/m551) ---
+  "databases.adminAppsTitle": {
+    message: "Приложения",
+    description:
+      "Database page Apps section title and navigation label (Render's Postgres Apps page)",
+  },
+  "databases.adminAppsDescription": {
+    message:
+      "Разверните приложение для администрирования как веб-сервис в регионе и окружении этой базы данных, подключённое к ней по частной сети.",
+    description: "Database page Apps section description",
+  },
+  "databases.adminAppsErrorTitle": {
+    message: "Не удалось загрузить приложения",
+    description: "Database Apps section load error title",
+  },
+  "databases.adminAppsErrorBody": {
+    message:
+      "При загрузке приложений этой базы данных что-то пошло не так. Повторите попытку чуть позже.",
+    description: "Database Apps section load error body",
+  },
+  "databases.adminAppPgAdminDescription": {
+    message:
+      "Универсальное администрирование PostgreSQL. Управляйте схемами, таблицами и индексами. Выполняйте разовые запросы и смотрите их планы.",
+    description: "pgAdmin card description (Render's copy)",
+  },
+  "databases.adminAppPgHeroDescription": {
+    message:
+      "Панель производительности вашей базы данных. Следите за использованием ресурсов, анализируйте активные подключения и изучайте недавние запросы, чтобы найти узкие места.",
+    description: "PgHero card description (Render's copy)",
+  },
+  "databases.adminAppDocs": {
+    message: "Документация",
+    description: "Admin app card link to the app's documentation",
+  },
+  "databases.adminAppDeploy": {
+    message: "Развернуть приложение",
+    description: "Admin app card button that opens the deploy dialog",
+  },
+  "databases.adminAppOpen": {
+    message: "Открыть приложение",
+    description:
+      "Deployed admin app card button that opens the app in a new tab",
+  },
+  "databases.adminAppManage": {
+    message: "Управлять",
+    description: "Deployed admin app card link to its service page",
+  },
+  "databases.adminAppDialogTitle": {
+    message: "Создать приложение {app}",
+    description: "Admin app deploy dialog title; {app} is pgAdmin or PgHero",
+  },
+  "databases.adminAppDialogDescription": {
+    message:
+      "Будет развёрнут новый веб-сервис в том же регионе и окружении, что и ваша база данных. Его можно настраивать как любой другой веб-сервис.",
+    description: "Admin app deploy dialog body",
+  },
+  "databases.adminAppAuthentication": {
+    message: "Аутентификация",
+    description: "Admin app deploy dialog login section heading",
+  },
+  "databases.adminAppAuthenticationHint": {
+    message:
+      "Мы автоматически сгенерировали имя пользователя и пароль для вашего экземпляра {app}. Их можно изменить ниже.",
+    description:
+      "Admin app deploy dialog login section text; {app} is the app name",
+  },
+  "databases.adminAppUsername": {
+    message: "Имя пользователя",
+    description: "Admin app deploy dialog username field label",
+  },
+  "databases.adminAppPassword": {
+    message: "Пароль",
+    description: "Admin app deploy dialog password field label",
+  },
+  "databases.adminAppShow": {
+    message: "Показать: {field}",
+    description:
+      "Accessible label of the button that unmasks a login field; {field} is its label",
+  },
+  "databases.adminAppHide": {
+    message: "Скрыть: {field}",
+    description:
+      "Accessible label of the button that masks a login field; {field} is its label",
+  },
+  "databases.adminAppMonthlyCharges": {
+    message: "Ежемесячные платежи",
+    description: "Admin app deploy dialog billing section heading",
+  },
+  "databases.adminAppMonthlyChargesHint": {
+    message:
+      "Экземпляры веб-сервисов оплачиваются пропорционально, посекундно. Ниже указаны только платежи за {app}.",
+    description:
+      "Admin app deploy dialog billing section text; {app} is the app name",
+  },
+  "databases.adminAppBillingStarter": {
+    message: "Веб-сервис — экземпляр Starter",
+    description:
+      "Admin app deploy dialog billing line for a Starter web service",
+  },
+  "databases.adminAppBillingFree": {
+    message: "Веб-сервис — экземпляр Free",
+    description: "Admin app deploy dialog billing line for a Free web service",
+  },
+  "databases.adminAppBillingDisk": {
+    message: "Диск — {size} ГБ",
+    description:
+      "Admin app deploy dialog billing line for its disk; {size} is in GB",
+  },
+  "databases.adminAppBillingPrice": {
+    message: "${usd} / мес.",
+    description:
+      "Admin app deploy dialog billing line price; {usd} is a dollar amount",
+  },
+  "databases.adminAppDeploySubmit": {
+    message: "Развернуть {app}",
+    description: "Admin app deploy dialog submit button; {app} is the app name",
+  },
+  "databases.adminAppDeployed": {
+    message: "{app} развёрнут как {service}.",
+    description:
+      "Toast after an admin app deploys; {service} is its new service's name",
+  },
+  "databases.adminAppDeployError": {
+    message: "Не удалось создать приложение. Повторить?",
+    description: "Admin app deploy dialog generic failure",
+  },
+  "databases.adminAppPaymentRequired": {
+    message:
+      "Добавьте способ оплаты в это рабочее пространство, чтобы развернуть {app}.",
+    description:
+      "Admin app deploy dialog message when billing onboarding was closed without a payment method",
+  },
+  "databases.adminAppErrorTitle": {
+    message: "Ошибка",
+    description: "Admin app deploy dialog error title",
+  },
 };
 
 export default ruDatabases;

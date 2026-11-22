@@ -531,3 +531,65 @@ mutation ExecuteDatabaseQuery(
     truncated
   }
 }
+
+# The database page's Apps section (Render's Postgres "Apps" page, w4/m551):
+# Render's admin-app catalog with each app's deployed service, beside the
+# database's placement, whose environment decides the protected-environment
+# rule. The service selection is the services list's, so a card reuses the
+# list's status badge.
+query PostgresAdminApps($databaseId: String!) {
+  database(id: $databaseId) {
+    id
+    projectId
+    environmentId
+  }
+  postgresAdminApps(databaseId: $databaseId) {
+    id
+    name
+    plan
+    diskSizeGB
+    monthlyUsd
+    diskMonthlyUsd
+    service {
+      id
+      name
+      immutableName
+      slug
+      displayName
+      type
+      suspended
+      dashboardUrl
+      url
+      createdAt
+      updatedAt
+      runtime
+      region
+      phase
+      replicas
+      revision
+      plan
+      idleTTLSeconds
+      repo
+      registryCredentialId
+    }
+  }
+}
+
+# Deploy app: bex-api builds the service from the database's connection, so
+# the browser never handles the connection string (ADR009 § Admin apps).
+mutation DeployPostgresAdminApp(
+  $databaseId: String!
+  $app: String!
+  $username: String
+  $password: String
+) {
+  deployPostgresAdminApp(
+    databaseId: $databaseId
+    app: $app
+    username: $username
+    password: $password
+  ) {
+    id
+    name
+  }
+}

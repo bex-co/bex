@@ -109,14 +109,18 @@ var scopeClassOverrides = map[string]string{
 	"REST GET /v1/key-value/{id}/connection-info":      core.OpClassSensitive,
 	"REST GET /v1/redis/{id}/connection-info":          core.OpClassSensitive,
 	"GQL Query.databaseConnectionInfo":                 core.OpClassSensitive,
-	"GQL Query.databaseExports":                        core.OpClassSensitive,
-	"GQL Query.databaseProcesses":                      core.OpClassSensitive,
-	"GQL Query.databaseTopQueries":                     core.OpClassSensitive,
-	"GQL Query.keyValueConnectionInfo":                 core.OpClassSensitive,
-	"MCP list_postgres_exports":                        core.OpClassSensitive,
-	"MCP list_postgres_processes":                      core.OpClassSensitive,
-	"MCP list_postgres_top_queries":                    core.OpClassSensitive,
-	"MCP query_render_postgres":                        core.OpClassSensitive,
+	// Deploying a database's admin app hands the new service the database's
+	// credential (w4/m551): sensitive here, and the create inside it is
+	// can_create at the verb.
+	"GQL Mutation.deployPostgresAdminApp": core.OpClassSensitive,
+	"GQL Query.databaseExports":           core.OpClassSensitive,
+	"GQL Query.databaseProcesses":         core.OpClassSensitive,
+	"GQL Query.databaseTopQueries":        core.OpClassSensitive,
+	"GQL Query.keyValueConnectionInfo":    core.OpClassSensitive,
+	"MCP list_postgres_exports":           core.OpClassSensitive,
+	"MCP list_postgres_processes":         core.OpClassSensitive,
+	"MCP list_postgres_top_queries":       core.OpClassSensitive,
+	"MCP query_render_postgres":           core.OpClassSensitive,
 
 	// Blueprint preview/generate can include env values.
 	"REST POST /v1/blueprints/preview":  core.OpClassSensitive,

@@ -1974,6 +1974,142 @@ const ptDatabases: Record<string, TranslationEntry> = {
     message: "A versão principal do PostgreSQL que o banco de dados executa.",
     description: "Create-Postgres version row description",
   },
+  // --- Apps: admin apps (Render's Postgres Apps page, w4/m551) ---
+  "databases.adminAppsTitle": {
+    message: "Apps",
+    description:
+      "Database page Apps section title and navigation label (Render's Postgres Apps page)",
+  },
+  "databases.adminAppsDescription": {
+    message:
+      "Implante um app de administração como serviço web na região e no ambiente deste banco de dados, conectado a ele pela rede privada.",
+    description: "Database page Apps section description",
+  },
+  "databases.adminAppsErrorTitle": {
+    message: "Não foi possível carregar os apps",
+    description: "Database Apps section load error title",
+  },
+  "databases.adminAppsErrorBody": {
+    message:
+      "Algo deu errado ao carregar os apps deste banco de dados. Tente novamente em instantes.",
+    description: "Database Apps section load error body",
+  },
+  "databases.adminAppPgAdminDescription": {
+    message:
+      "Administração geral do PostgreSQL. Gerencie schemas, tabelas e índices. Execute consultas avulsas e veja seus planos de consulta.",
+    description: "pgAdmin card description (Render's copy)",
+  },
+  "databases.adminAppPgHeroDescription": {
+    message:
+      "Um painel de desempenho para o seu banco de dados. Monitore o uso de recursos, analise conexões ativas e inspecione consultas recentes para identificar gargalos.",
+    description: "PgHero card description (Render's copy)",
+  },
+  "databases.adminAppDocs": {
+    message: "Ler a documentação",
+    description: "Admin app card link to the app's documentation",
+  },
+  "databases.adminAppDeploy": {
+    message: "Implantar app",
+    description: "Admin app card button that opens the deploy dialog",
+  },
+  "databases.adminAppOpen": {
+    message: "Abrir app",
+    description:
+      "Deployed admin app card button that opens the app in a new tab",
+  },
+  "databases.adminAppManage": {
+    message: "Gerenciar",
+    description: "Deployed admin app card link to its service page",
+  },
+  "databases.adminAppDialogTitle": {
+    message: "Criar um app {app}",
+    description: "Admin app deploy dialog title; {app} is pgAdmin or PgHero",
+  },
+  "databases.adminAppDialogDescription": {
+    message:
+      "Isso implantará um novo serviço web na mesma região e ambiente do seu banco de dados. Você pode configurá-lo como qualquer outro serviço web.",
+    description: "Admin app deploy dialog body",
+  },
+  "databases.adminAppAuthentication": {
+    message: "Autenticação",
+    description: "Admin app deploy dialog login section heading",
+  },
+  "databases.adminAppAuthenticationHint": {
+    message:
+      "Geramos automaticamente um nome de usuário e uma senha para a sua instância do {app}. Você pode personalizá-los abaixo.",
+    description:
+      "Admin app deploy dialog login section text; {app} is the app name",
+  },
+  "databases.adminAppUsername": {
+    message: "Nome de usuário",
+    description: "Admin app deploy dialog username field label",
+  },
+  "databases.adminAppPassword": {
+    message: "Senha",
+    description: "Admin app deploy dialog password field label",
+  },
+  "databases.adminAppShow": {
+    message: "Mostrar {field}",
+    description:
+      "Accessible label of the button that unmasks a login field; {field} is its label",
+  },
+  "databases.adminAppHide": {
+    message: "Ocultar {field}",
+    description:
+      "Accessible label of the button that masks a login field; {field} is its label",
+  },
+  "databases.adminAppMonthlyCharges": {
+    message: "Cobranças mensais",
+    description: "Admin app deploy dialog billing section heading",
+  },
+  "databases.adminAppMonthlyChargesHint": {
+    message:
+      "Instâncias de serviço web são cobradas proporcionalmente por segundo. As cobranças abaixo refletem apenas as do {app}.",
+    description:
+      "Admin app deploy dialog billing section text; {app} is the app name",
+  },
+  "databases.adminAppBillingStarter": {
+    message: "Serviço web - instância Starter",
+    description:
+      "Admin app deploy dialog billing line for a Starter web service",
+  },
+  "databases.adminAppBillingFree": {
+    message: "Serviço web - instância Free",
+    description: "Admin app deploy dialog billing line for a Free web service",
+  },
+  "databases.adminAppBillingDisk": {
+    message: "Disco - {size} GB",
+    description:
+      "Admin app deploy dialog billing line for its disk; {size} is in GB",
+  },
+  "databases.adminAppBillingPrice": {
+    message: "${usd} / mês",
+    description:
+      "Admin app deploy dialog billing line price; {usd} is a dollar amount",
+  },
+  "databases.adminAppDeploySubmit": {
+    message: "Implantar {app}",
+    description: "Admin app deploy dialog submit button; {app} is the app name",
+  },
+  "databases.adminAppDeployed": {
+    message: "{app} implantado em {service}.",
+    description:
+      "Toast after an admin app deploys; {service} is its new service's name",
+  },
+  "databases.adminAppDeployError": {
+    message: "Não foi possível criar o app. Tentar novamente?",
+    description: "Admin app deploy dialog generic failure",
+  },
+  "databases.adminAppPaymentRequired": {
+    message:
+      "Adicione um método de pagamento a este workspace para implantar o {app}.",
+    description:
+      "Admin app deploy dialog message when billing onboarding was closed without a payment method",
+  },
+  "databases.adminAppErrorTitle": {
+    message: "Erro",
+    description: "Admin app deploy dialog error title",
+  },
 };
 
 export default ptDatabases;

@@ -49,6 +49,7 @@ import "github.com/bex-co/bex/lego/backend/internal/core"
 // operation missing from it is refused (I7).
 var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Mutation.createObjectAccessKey":                                    {core.KeyNoGrant},
+	"GQL Mutation.deployPostgresAdminApp":                                   {core.KeyServicesManage, core.KeyServicesEnvSet, core.KeyPostgresCredentials},
 	"GQL Mutation.revokeObjectAccessKey":                                    {core.KeyNoGrant},
 	"GQL Mutation.setObjectBucketPublic":                                    {core.KeyObjectsManage},
 	"GQL Query.objectAccessKeys":                                            {core.KeyObjectsView},
@@ -415,6 +416,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.organizations":                                               {core.KeyNoGrant},
 	"GQL Query.ownerNotificationSettings":                                   {core.KeyWorkspaceNotifications},
 	"GQL Query.pipelineSettings":                                            {core.KeyWorkspaceSettings},
+	"GQL Query.postgresAdminApps":                                           {core.KeyPostgresView, core.KeyServicesView},
 	"GQL Query.project":                                                     {core.KeyProjectsView},
 	"GQL Query.projectMetrics":                                              {core.KeyMonitoringMetrics},
 	"GQL Query.projects":                                                    {core.KeyProjectsView},

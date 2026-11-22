@@ -1504,6 +1504,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	maps.Copy(fields, s.diskGQLQueryFields())
 	maps.Copy(fields, s.diskSnapshotGQLQueryFields())
 	maps.Copy(fields, s.buildSourceGQLQueryFields())
+	maps.Copy(fields, s.postgresAdminAppGQLQueryFields())
 	return fields
 }
 
@@ -2171,6 +2172,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	maps.Copy(fields, s.diskSnapshotGQLMutationFields())
 	maps.Copy(fields, s.onboardingGraphQLMutations())
 	maps.Copy(fields, s.buildSourceGQLMutationFields())
+	maps.Copy(fields, s.postgresAdminAppGQLMutationFields())
 	return fields
 }
 

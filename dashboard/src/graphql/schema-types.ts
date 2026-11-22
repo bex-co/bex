@@ -2392,6 +2392,7 @@ export type Mutation = {
   deleteService: Maybe<Scalars['Boolean']['output']>;
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
   deleteWorkspace: Maybe<Scalars['String']['output']>;
+  deployPostgresAdminApp: Maybe<Service>;
   disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
   disconnectBlueprint: Maybe<Scalars['Boolean']['output']>;
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
@@ -3215,6 +3216,14 @@ export type MutationDeleteWebhookEndpointArgs = {
 export type MutationDeleteWorkspaceArgs = {
   confirmation: Scalars['String']['input'];
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDeployPostgresAdminAppArgs = {
+  app: Scalars['String']['input'];
+  databaseId: Scalars['String']['input'];
+  password?: InputMaybe<Scalars['String']['input']>;
+  username?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4536,6 +4545,17 @@ export type PipelineSettings = {
   workspaceId: Scalars['String']['output'];
 };
 
+export type PostgresAdminApp = {
+  __typename: 'PostgresAdminApp';
+  diskMonthlyUsd: Maybe<Scalars['String']['output']>;
+  diskSizeGB: Maybe<Scalars['Int']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  monthlyUsd: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  plan: Maybe<Scalars['String']['output']>;
+  service: Maybe<Service>;
+};
+
 export type PostgresConnectionInfo = {
   __typename: 'PostgresConnectionInfo';
   externalCertificate: Maybe<Scalars['String']['output']>;
@@ -4832,6 +4852,7 @@ export type Query = {
   organizations: Array<Organization>;
   ownerNotificationSettings: OwnerNotificationSettings;
   pipelineSettings: Maybe<PipelineSettings>;
+  postgresAdminApps: Maybe<Array<Maybe<PostgresAdminApp>>>;
   project: Maybe<Project>;
   projectMetrics: Maybe<ProjectMetrics>;
   projects: Maybe<Array<Maybe<Project>>>;
@@ -5574,6 +5595,11 @@ export type QueryOwnerNotificationSettingsArgs = {
 
 export type QueryPipelineSettingsArgs = {
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type QueryPostgresAdminAppsArgs = {
+  databaseId: Scalars['String']['input'];
 };
 
 

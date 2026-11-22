@@ -37,6 +37,16 @@ func (s *Sheet) InstanceMonthlyUSD(tier, resourceKind string) (usd string, liste
 	return FormatUSD(rate * MonthSeconds), true
 }
 
+// DiskMonthlyUSD returns the monthly price of a service disk of sizeGB, which
+// bills provisioned capacity (ADR082 D8), to three significant digits
+// ("0.175" for 1 GB).
+func (s *Sheet) DiskMonthlyUSD(sizeGB int32) string {
+	if s == nil || sizeGB <= 0 {
+		return ""
+	}
+	return formatDecimal(float64(sizeGB)*s.disk*MonthSeconds, 3, 2)
+}
+
 // InstanceUSDPerMinute returns one catalog instance tier's rate per minute of
 // run time, to two significant digits ("0.00011"): the price of a cron job,
 // which is billed per second only while a run executes (w4/546, VariableCron),

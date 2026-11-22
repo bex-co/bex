@@ -2060,6 +2060,9 @@ type CreateRequest struct {
 	// Name: a free-form name, or a name whose resource name another service
 	// keeps (w8/367). The create's plan refuses it as it refuses Name.
 	label string
+	// adminApp links the new service to the database whose admin app it is
+	// (DeployPostgresAdminApp, w4/m551); never decoded from public input.
+	adminApp *postgresAdminAppLink
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
 	// initialSeedEnv is a new Blueprint service's env-store content, written
@@ -2507,6 +2510,7 @@ func (s *Service) createNamed(ctx context.Context, req CreateRequest, desired ap
 	a.Spec = *desired.DeepCopy()
 	resourcemeta.StampRegion(a, req.Region)
 	stampEnvironmentMembership(a, environment)
+	req.adminApp.stamp(a)
 	if err := s.stampWorkspaceLayer(ctx, a, tenantID); err != nil {
 		return AppView{}, err
 	}

@@ -233,11 +233,18 @@ var (
 // databaseSecret resolves a previously-authorized Database's CNPG application
 // Secret without performing a second, potentially drifting authorization check.
 func (s *Service) databaseSecret(ctx context.Context, db *appv1alpha1.Database) (*corev1.Secret, error) {
-	secretName := db.CurrentConnectionSecretName()
+	return ConnectionSecret(ctx, s.Client, db)
+}
+
+// ConnectionSecret reads the Secret carrying db's default credential (CNPG's
+// "<stable-id>-app", or the default-user Secret once a rotation applied), or
+// core.ErrNotFound before CNPG has generated it. Unauthorized: the caller has
+// already authorized a sensitive read of db.
+func ConnectionSecret(ctx context.Context, c client.Reader, db *appv1alpha1.Database) (*corev1.Secret, error) {
 	var sec corev1.Secret
 	// The connection Secret is created by CNPG beside its Cluster, so it lives
 	// in the Database CR's own namespace (ADR043 D8), not the shared one.
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: secretName}, &sec); err != nil {
+	if err := c.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: db.CurrentConnectionSecretName()}, &sec); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, core.ErrNotFound
 		}

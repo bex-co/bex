@@ -1957,6 +1957,141 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "The PostgreSQL major version the database runs.",
     description: "Create-Postgres version row description",
   },
+  // --- Apps: admin apps (Render's Postgres Apps page, w4/m551) ---
+  "databases.adminAppsTitle": {
+    message: "Apps",
+    description:
+      "Database page Apps section title and navigation label (Render's Postgres Apps page)",
+  },
+  "databases.adminAppsDescription": {
+    message:
+      "Deploy an admin app as a web service in this database's region and environment, connected to it over the private network.",
+    description: "Database page Apps section description",
+  },
+  "databases.adminAppsErrorTitle": {
+    message: "Couldn't load apps",
+    description: "Database Apps section load error title",
+  },
+  "databases.adminAppsErrorBody": {
+    message:
+      "Something went wrong loading this database's apps. Try again in a moment.",
+    description: "Database Apps section load error body",
+  },
+  "databases.adminAppPgAdminDescription": {
+    message:
+      "General-purpose PostgreSQL administration. Manage schemas, tables, and indexes. Run one-off queries and view their query plans.",
+    description: "pgAdmin card description (Render's copy)",
+  },
+  "databases.adminAppPgHeroDescription": {
+    message:
+      "A performance dashboard for your database. Monitor resource usage, analyze active connections, and inspect recent queries to identify bottlenecks.",
+    description: "PgHero card description (Render's copy)",
+  },
+  "databases.adminAppDocs": {
+    message: "Read the docs",
+    description: "Admin app card link to the app's documentation",
+  },
+  "databases.adminAppDeploy": {
+    message: "Deploy app",
+    description: "Admin app card button that opens the deploy dialog",
+  },
+  "databases.adminAppOpen": {
+    message: "Open app",
+    description:
+      "Deployed admin app card button that opens the app in a new tab",
+  },
+  "databases.adminAppManage": {
+    message: "Manage",
+    description: "Deployed admin app card link to its service page",
+  },
+  "databases.adminAppDialogTitle": {
+    message: "Create a {app} app",
+    description: "Admin app deploy dialog title; {app} is pgAdmin or PgHero",
+  },
+  "databases.adminAppDialogDescription": {
+    message:
+      "This will deploy a new web service to the same region and environment as your database. You can configure it like any other web service.",
+    description: "Admin app deploy dialog body",
+  },
+  "databases.adminAppAuthentication": {
+    message: "Authentication",
+    description: "Admin app deploy dialog login section heading",
+  },
+  "databases.adminAppAuthenticationHint": {
+    message:
+      "We've automatically generated a username and password for your {app} instance. You can customize these below.",
+    description:
+      "Admin app deploy dialog login section text; {app} is the app name",
+  },
+  "databases.adminAppUsername": {
+    message: "Username",
+    description: "Admin app deploy dialog username field label",
+  },
+  "databases.adminAppPassword": {
+    message: "Password",
+    description: "Admin app deploy dialog password field label",
+  },
+  "databases.adminAppShow": {
+    message: "Show {field}",
+    description:
+      "Accessible label of the button that unmasks a login field; {field} is its label",
+  },
+  "databases.adminAppHide": {
+    message: "Hide {field}",
+    description:
+      "Accessible label of the button that masks a login field; {field} is its label",
+  },
+  "databases.adminAppMonthlyCharges": {
+    message: "Monthly charges",
+    description: "Admin app deploy dialog billing section heading",
+  },
+  "databases.adminAppMonthlyChargesHint": {
+    message:
+      "Web service instances are billed and prorated by the second. The charges below only reflect the charges for {app}.",
+    description:
+      "Admin app deploy dialog billing section text; {app} is the app name",
+  },
+  "databases.adminAppBillingStarter": {
+    message: "Web service - Starter instance",
+    description:
+      "Admin app deploy dialog billing line for a Starter web service",
+  },
+  "databases.adminAppBillingFree": {
+    message: "Web service - Free instance",
+    description: "Admin app deploy dialog billing line for a Free web service",
+  },
+  "databases.adminAppBillingDisk": {
+    message: "Disk - {size}GB",
+    description:
+      "Admin app deploy dialog billing line for its disk; {size} is in GB",
+  },
+  "databases.adminAppBillingPrice": {
+    message: "${usd} / month",
+    description:
+      "Admin app deploy dialog billing line price; {usd} is a dollar amount",
+  },
+  "databases.adminAppDeploySubmit": {
+    message: "Deploy {app}",
+    description: "Admin app deploy dialog submit button; {app} is the app name",
+  },
+  "databases.adminAppDeployed": {
+    message: "{app} deployed to {service}.",
+    description:
+      "Toast after an admin app deploys; {service} is its new service's name",
+  },
+  "databases.adminAppDeployError": {
+    message: "Unable to create the app. Try again?",
+    description: "Admin app deploy dialog generic failure",
+  },
+  "databases.adminAppPaymentRequired": {
+    message: "Add a payment method to this workspace to deploy {app}.",
+    description:
+      "Admin app deploy dialog message when billing onboarding was closed without a payment method",
+  },
+  "databases.adminAppErrorTitle": {
+    message: "Error",
+    description: "Admin app deploy dialog error title",
+  },
 };
 
 export default enDatabases;

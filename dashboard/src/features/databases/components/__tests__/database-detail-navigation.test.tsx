@@ -18,6 +18,7 @@ describe("DatabaseDetailNavigation", () => {
       ["High Availability", "#high-availability"],
       ["Metrics", "#metrics"],
       ["Compute plan", "#plan"],
+      ["Apps", "#apps"],
       ["Insights", "#insights"],
       ["Recovery", "#recovery"],
       ["Access control", "#access-control"],

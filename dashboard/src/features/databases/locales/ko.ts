@@ -1922,6 +1922,141 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "데이터베이스가 실행할 PostgreSQL 메이저 버전입니다.",
     description: "Create-Postgres version row description",
   },
+  // --- Apps: admin apps (Render's Postgres Apps page, w4/m551) ---
+  "databases.adminAppsTitle": {
+    message: "앱",
+    description:
+      "Database page Apps section title and navigation label (Render's Postgres Apps page)",
+  },
+  "databases.adminAppsDescription": {
+    message:
+      "이 데이터베이스와 같은 리전과 환경에 관리 앱을 웹 서비스로 배포하고 프라이빗 네트워크로 연결합니다.",
+    description: "Database page Apps section description",
+  },
+  "databases.adminAppsErrorTitle": {
+    message: "앱을 불러올 수 없습니다",
+    description: "Database Apps section load error title",
+  },
+  "databases.adminAppsErrorBody": {
+    message:
+      "이 데이터베이스의 앱을 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도하세요.",
+    description: "Database Apps section load error body",
+  },
+  "databases.adminAppPgAdminDescription": {
+    message:
+      "범용 PostgreSQL 관리 도구입니다. 스키마, 테이블, 인덱스를 관리하고 일회성 쿼리를 실행해 쿼리 플랜을 확인할 수 있습니다.",
+    description: "pgAdmin card description (Render's copy)",
+  },
+  "databases.adminAppPgHeroDescription": {
+    message:
+      "데이터베이스 성능 대시보드입니다. 리소스 사용량을 모니터링하고 활성 연결을 분석하며 최근 쿼리를 살펴 병목 지점을 찾을 수 있습니다.",
+    description: "PgHero card description (Render's copy)",
+  },
+  "databases.adminAppDocs": {
+    message: "문서 보기",
+    description: "Admin app card link to the app's documentation",
+  },
+  "databases.adminAppDeploy": {
+    message: "앱 배포",
+    description: "Admin app card button that opens the deploy dialog",
+  },
+  "databases.adminAppOpen": {
+    message: "앱 열기",
+    description:
+      "Deployed admin app card button that opens the app in a new tab",
+  },
+  "databases.adminAppManage": {
+    message: "관리",
+    description: "Deployed admin app card link to its service page",
+  },
+  "databases.adminAppDialogTitle": {
+    message: "{app} 앱 만들기",
+    description: "Admin app deploy dialog title; {app} is pgAdmin or PgHero",
+  },
+  "databases.adminAppDialogDescription": {
+    message:
+      "데이터베이스와 같은 리전과 환경에 새 웹 서비스를 배포합니다. 다른 웹 서비스처럼 구성할 수 있습니다.",
+    description: "Admin app deploy dialog body",
+  },
+  "databases.adminAppAuthentication": {
+    message: "인증",
+    description: "Admin app deploy dialog login section heading",
+  },
+  "databases.adminAppAuthenticationHint": {
+    message:
+      "{app} 인스턴스의 사용자 이름과 비밀번호를 자동으로 생성했습니다. 아래에서 변경할 수 있습니다.",
+    description:
+      "Admin app deploy dialog login section text; {app} is the app name",
+  },
+  "databases.adminAppUsername": {
+    message: "사용자 이름",
+    description: "Admin app deploy dialog username field label",
+  },
+  "databases.adminAppPassword": {
+    message: "비밀번호",
+    description: "Admin app deploy dialog password field label",
+  },
+  "databases.adminAppShow": {
+    message: "{field} 표시",
+    description:
+      "Accessible label of the button that unmasks a login field; {field} is its label",
+  },
+  "databases.adminAppHide": {
+    message: "{field} 숨기기",
+    description:
+      "Accessible label of the button that masks a login field; {field} is its label",
+  },
+  "databases.adminAppMonthlyCharges": {
+    message: "월별 요금",
+    description: "Admin app deploy dialog billing section heading",
+  },
+  "databases.adminAppMonthlyChargesHint": {
+    message:
+      "웹 서비스 인스턴스는 초 단위로 일할 청구됩니다. 아래 요금은 {app}의 요금만 반영합니다.",
+    description:
+      "Admin app deploy dialog billing section text; {app} is the app name",
+  },
+  "databases.adminAppBillingStarter": {
+    message: "웹 서비스 - Starter 인스턴스",
+    description:
+      "Admin app deploy dialog billing line for a Starter web service",
+  },
+  "databases.adminAppBillingFree": {
+    message: "웹 서비스 - Free 인스턴스",
+    description: "Admin app deploy dialog billing line for a Free web service",
+  },
+  "databases.adminAppBillingDisk": {
+    message: "디스크 - {size}GB",
+    description:
+      "Admin app deploy dialog billing line for its disk; {size} is in GB",
+  },
+  "databases.adminAppBillingPrice": {
+    message: "${usd} / 월",
+    description:
+      "Admin app deploy dialog billing line price; {usd} is a dollar amount",
+  },
+  "databases.adminAppDeploySubmit": {
+    message: "{app} 배포",
+    description: "Admin app deploy dialog submit button; {app} is the app name",
+  },
+  "databases.adminAppDeployed": {
+    message: "{app}을(를) {service}(으)로 배포했습니다.",
+    description:
+      "Toast after an admin app deploys; {service} is its new service's name",
+  },
+  "databases.adminAppDeployError": {
+    message: "앱을 만들 수 없습니다. 다시 시도하시겠습니까?",
+    description: "Admin app deploy dialog generic failure",
+  },
+  "databases.adminAppPaymentRequired": {
+    message: "{app}을(를) 배포하려면 이 워크스페이스에 결제 수단을 추가하세요.",
+    description:
+      "Admin app deploy dialog message when billing onboarding was closed without a payment method",
+  },
+  "databases.adminAppErrorTitle": {
+    message: "오류",
+    description: "Admin app deploy dialog error title",
+  },
 };
 
 export default koDatabases;

@@ -24,6 +24,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
+import { AdminAppsPanelSkeleton } from "@/features/databases/components/admin-apps-panel-skeleton";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
@@ -91,6 +92,11 @@ const InsightsPanel = lazy(() =>
 const DatabasePlanSection = lazy(() =>
   import("@/features/databases/components/database-plan-section").then((m) => ({
     default: m.DatabasePlanSection,
+  })),
+);
+const AdminAppsPanel = lazy(() =>
+  import("@/features/databases/components/admin-apps-panel").then((m) => ({
+    default: m.AdminAppsPanel,
   })),
 );
 const SQLConsole = lazy(() =>
@@ -173,8 +179,7 @@ function DatabaseDetailPage() {
   // link resets the search, so one tab's range never leaks into the other.
   const metricsRange = {
     range: rangeFromSearch(metricsRangeSearch(search), DEFAULT_RANGE_PRESET),
-    onRangeChange: (range: RangeSelection) =>
-      writeSearch(rangeToSearch(range)),
+    onRangeChange: (range: RangeSelection) => writeSearch(rangeToSearch(range)),
   };
   const { database: loaded, loading, error, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
@@ -354,6 +359,15 @@ function DatabaseDetailPage() {
                         database={database}
                         onChanged={() => void refetch()}
                       />
+                    </Suspense>
+                  </DeferredMount>
+                </section>
+                {/* Render's Apps page, after Plan as in its navigation
+                    (w4/m551). */}
+                <section id="apps" className={SECTION_NAVIGATION_TARGET_CLASS}>
+                  <DeferredMount hashId="apps" minHeight={360}>
+                    <Suspense fallback={<AdminAppsPanelSkeleton />}>
+                      <AdminAppsPanel databaseId={database.id} />
                     </Suspense>
                   </DeferredMount>
                 </section>

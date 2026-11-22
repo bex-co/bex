@@ -1106,6 +1106,38 @@ func (s *Service) deleteDatabase(ctx context.Context, d *appv1alpha1.Database, o
 	return s.Client.Delete(ctx, d, opts...)
 }
 
+// InternalConnection is a database's default credential on its private
+// network address: what databaseConnectionInfo's internal string carries and
+// what the admin apps a database deploys connect with (ADR009 § Admin apps).
+type InternalConnection struct {
+	// Host is the operator's canonical in-cluster host (Status.Host), ""
+	// until the Database has reconciled.
+	Host     string
+	User     string
+	Password string
+	Database string
+}
+
+// Port is the port every database serves on its private address.
+const Port = 5432
+
+// InternalConnectionOf reads d's internal connection from its connection
+// Secret (ConnectionSecret).
+func InternalConnectionOf(d *appv1alpha1.Database, sec *corev1.Secret) InternalConnection {
+	return InternalConnection{
+		Host:     d.Status.Host,
+		User:     string(sec.Data["username"]),
+		Password: string(sec.Data["password"]),
+		Database: string(sec.Data["dbname"]),
+	}
+}
+
+// URL is the connection as a postgresql:// URI, Render's internal
+// connection string.
+func (c InternalConnection) URL() string {
+	return fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", c.User, c.Password, c.Host, Port, c.Database)
+}
+
 // PostgresConnectionInfo assembles the internal + external connection strings
 // from CNPG's generated "<id>-app" Secret (the only place the password is
 // surfaced, to an authenticated caller).
@@ -1140,9 +1172,8 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			return PostgresConnectionInfo{}, err
 		}
 	}
-	user := string(sec.Data["username"])
-	pass := string(sec.Data["password"])
-	dbn := string(sec.Data["dbname"])
+	conn := InternalConnectionOf(d, sec)
+	user, pass, dbn := conn.User, conn.Password, conn.Database
 	// Build the internal URI from the operator's canonical host rather than
 	// reusing CNPG's ready-made "uri", which spells the host 2-label
 	// ("<cluster>-rw.<ns>") while every other host on this same response —
@@ -1154,8 +1185,8 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	// An unreconciled Database with no Status.Host yet keeps CNPG's value, so a
 	// pre-reconcile read degrades to today's behavior instead of a hostless URI.
 	internal := string(sec.Data["uri"])
-	if d.Status.Host != "" {
-		internal = fmt.Sprintf("postgresql://%s:%s@%s:5432/%s", user, pass, d.Status.Host, dbn)
+	if conn.Host != "" {
+		internal = conn.URL()
 	}
 
 	info := PostgresConnectionInfo{

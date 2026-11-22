@@ -2032,6 +2032,7 @@ type Mutation {
   deleteService(confirm: String, id: String!): Boolean
   deleteWebhookEndpoint(id: String!, ownerId: String): Boolean
   deleteWorkspace(confirmation: String!, id: String!): String
+  deployPostgresAdminApp(app: String!, databaseId: String!, password: String, username: String): Service
   disableAutoscaling(id: String!): Boolean
   disconnectBlueprint(id: String!, ownerId: String): Boolean
   disconnectGit(installationId: Float, ownerId: String): Boolean
@@ -2341,6 +2342,16 @@ type PipelineSettings {
   workspaceId: String!
 }
 
+type PostgresAdminApp {
+  diskMonthlyUsd: String
+  diskSizeGB: Int
+  id: String
+  monthlyUsd: String
+  name: String
+  plan: String
+  service: Service
+}
+
 type PostgresConnectionInfo {
   externalCertificate: String
   externalCertificateReason: String
@@ -2609,6 +2620,7 @@ type Query {
   organizations: [Organization!]!
   ownerNotificationSettings(ownerId: String): OwnerNotificationSettings!
   pipelineSettings(workspaceId: String!): PipelineSettings
+  postgresAdminApps(databaseId: String!): [PostgresAdminApp]
   project(id: String!): Project
   projectMetrics(query: ProjectMetricsQueryInput!): ProjectMetrics
   projects(cursor: String, limit: Int, ownerId: String!): [Project]

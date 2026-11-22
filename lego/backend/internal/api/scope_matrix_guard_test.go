@@ -224,6 +224,9 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 		(strings.HasPrefix(op, "REST POST ") || strings.HasPrefix(op, "REST DELETE ")) ||
 		op == "GQL Mutation.createObjectAccessKey" || op == "GQL Mutation.revokeObjectAccessKey":
 		return core.OpClassMint, true
+	// A database's admin app is born with its credential (w4/m551).
+	case op == "GQL Mutation.deployPostgresAdminApp":
+		return core.OpClassSensitive, true
 	case strings.Contains(op, "shell-ticket") || strings.Contains(op, "createShellSession") ||
 		strings.Contains(op, "create_shell_session"):
 		return core.OpClassSensitive, true
