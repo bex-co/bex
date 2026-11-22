@@ -12,7 +12,7 @@ Two real risks remain explicitly accepted: the standing `onbex.co` Public Suffix
 
 | # | Finding | Report severity | Disposition |
 | --- | --- | --- | --- |
-| 1 | Shared tenant cookie scope on non-PSL `onbex.co` | medium | **Accepted residual** — standing `#PSL` decision; must close before open signup |
+| 1 | Shared tenant cookie scope on non-PSL `onbex.co` | medium | **Accepted residual** — standing `#PSL` decision; accepted through open signup (user decision 2026-11-21) |
 | 2 | Agent sandbox template lacks a security context | medium | **Rejected** — UID 10001 has no effective default capabilities and cannot rewrite the root-owned driver; read-only rootfs conflicts with workspace/snapshot semantics |
 | 3 | Developer can tear down protected-environment ACL state | medium | **Fixed** — fresh `can_manage` at shared ACL-bearing teardown/membership seams before mutation |
 | 4 | Delivery Git executes tenant repository hooks/config | medium | **Hardened** — finding lacks incremental privilege, but all delivery Git uses isolated config, disabled hooks/helpers, and `--no-verify` |
@@ -70,7 +70,7 @@ bex supports arbitrary self-hosted Git forges, so a fixed host allowlist would b
 
 ## Accepted residuals
 
-- **Finding 1 / `#PSL`**: real cross-tenant cookie injection remains accepted while signup is closed. Do not unset `BEX_BASE_DOMAIN`; reopen the PSL submission before open signup.
+- **Finding 1 / `#PSL`**: real cross-tenant cookie injection remains accepted. Until 2026-11-21 that held only while signup was closed; the user then accepted it through open signup, because a PSL submission needs a user count bex cannot reach without staying open. Do not unset `BEX_BASE_DOMAIN`; reopen the PSL submission when its requirements are met, chiefly the user count.
 - **Finding 5 / routine operations exec**: the scoped operator kubeconfig deliberately supports cluster-wide interactive debugging, recorded in ADR057. It is a trusted, short-lived operator credential, not a tenant role. Platform-namespace exec can be moved to break-glass later only as an explicit operations-policy change.
 
 ## Verification
