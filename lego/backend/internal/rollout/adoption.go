@@ -33,7 +33,9 @@ import (
 // status.releaseGeneration (releaseInFlight), so a release written to the App
 // before then replaces it, and the deploy ahead closes "Superseded by …"
 // without running. One rule covers every writer (w8/387, w8/390): a release
-// behind a deploy the operator has not adopted waits.
+// behind a deploy the operator has not adopted waits. Once the deploy ahead
+// has ended, that includes the deploy waiting in the latest-pending slot,
+// which is the one in progress then (w8/396).
 //
 //   - A deploy request (a trigger verb, the deploy hook, a git push, a
 //     build-source fan-out) waits at the row level: deploys.Service opens it
@@ -51,11 +53,15 @@ type DeployLister interface {
 	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 }
 
-// DeployAheadUnadopted reports that the deploy executing for a carries a
-// release the operator has not adopted yet. A deploy waiting in the
-// latest-pending slot is not executing, so a newer write replaces it, as
-// Render's newest pending deploy replaces an older one. A stale App read errs
-// toward waiting.
+// DeployAheadUnadopted reports that the deploy in progress for a carries a
+// release the operator has not adopted yet. That is the deploy executing, or,
+// once the deploy ahead of it has ended, the deploy waiting in the
+// latest-pending slot: under Render's Wait it is the one in progress then, and
+// the operator adopts it on its next pass (w8/396). The deploy ahead has ended
+// when no row is executing, or when the App reports the release of the one
+// still recorded executing served. A deploy waiting behind a release still in
+// flight is not in progress, so a newer write replaces it, as Render's newest
+// pending deploy replaces an older one. A stale App read errs toward waiting.
 func DeployAheadUnadopted(ctx context.Context, lister DeployLister, a *appv1alpha1.App) (bool, error) {
 	appID := a.Labels[store.LabelAppID]
 	if lister == nil || appID == "" {
@@ -65,12 +71,19 @@ func DeployAheadUnadopted(ctx context.Context, lister DeployLister, a *appv1alph
 	if err != nil {
 		return false, err
 	}
+	served, _ := appv1alpha1.RevisionGeneration(a.Status.ActiveRevision)
+	aheadEnded, waitingUnadopted := true, false
 	for _, o := range open {
-		if !o.OverlapPending && o.Generation > a.Status.ReleaseGeneration {
+		switch {
+		case o.OverlapPending:
+			waitingUnadopted = waitingUnadopted || o.Generation > a.Status.ReleaseGeneration
+		case o.Generation > a.Status.ReleaseGeneration:
 			return true, nil
+		case o.Generation <= 0 || o.Generation > served:
+			aheadEnded = false
 		}
 	}
-	return false, nil
+	return aheadEnded && waitingUnadopted, nil
 }
 
 // DefaultAdoptionWait bounds AwaitAdoption. The operator adopts a release

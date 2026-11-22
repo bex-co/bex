@@ -2863,43 +2863,57 @@ func DeferredDeployID(ctx context.Context) string {
 
 type adoptedReleaseKey struct{}
 
-// WithAdoptedRelease tells the deploy row opened under ctx which release the
-// operator reports adopted for a (status.releaseGeneration), read by the
-// writer after its App write (w8/396). The waiting row that release has
-// reached is already executing, so the new row waits behind it rather than
-// replacing it (adoptWaitingDeploy).
+// adoptedRelease is what the operator reported for an App when its writer
+// read it: the release it adopted (status.releaseGeneration) and the one that
+// serves (status.activeRevision).
+type adoptedRelease struct{ release, served int64 }
+
+// WithAdoptedRelease tells the deploy row opened under ctx what the operator
+// reports for a, read by the writer after its App write (w8/396): the release
+// it adopted and the release that serves. A deploy ahead that the App has
+// moved past or reports served is one the reconciler has still to record, so
+// the new row waits for that record (awaitDeployAheadRecorded).
 func WithAdoptedRelease(ctx context.Context, a *appv1alpha1.App) context.Context {
-	if a == nil || a.Status.ReleaseGeneration <= 0 {
+	if a == nil {
 		return ctx
 	}
-	return context.WithValue(ctx, adoptedReleaseKey{}, a.Status.ReleaseGeneration)
+	served, _ := appv1alpha1.RevisionGeneration(a.Status.ActiveRevision)
+	if a.Status.ReleaseGeneration <= 0 && served <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, adoptedReleaseKey{}, adoptedRelease{release: a.Status.ReleaseGeneration, served: served})
+}
+
+// reportedRelease is what WithAdoptedRelease recorded, or zero.
+func reportedRelease(ctx context.Context) adoptedRelease {
+	r, _ := ctx.Value(adoptedReleaseKey{}).(adoptedRelease)
+	return r
 }
 
 // AdoptedRelease is the release generation WithAdoptedRelease named, or 0.
-func AdoptedRelease(ctx context.Context) int64 {
-	generation, _ := ctx.Value(adoptedReleaseKey{}).(int64)
-	return generation
-}
+func AdoptedRelease(ctx context.Context) int64 { return reportedRelease(ctx).release }
 
-// adoptWaitingDeploy frees appID's latest-pending slot once the operator has
-// adopted the release waiting in it, as the reconciler does on its next pass
-// (TransitionDeploy, "Free the pending slot"). When the deploy ahead serves,
-// the operator adopts the waiting release at once and holds it to the end
-// (releaseInFlight), so until that pass a newer deploy would cancel a deploy
-// that is running and find nothing to wait behind (w8/396). A deferred deploy
-// (generation 0) has no release yet. While another deploy is still recorded
-// executing, the slot stays as it is: the writer first waits for the
-// reconciler to record that deploy (awaitDeployAheadRecorded, w8/397).
-func adoptWaitingDeploy(ctx context.Context, tx pgx.Tx, appID string) error {
-	adopted := AdoptedRelease(ctx)
-	if adopted <= 0 {
-		return nil
-	}
+// proceedToWaitingDeploy frees appID's latest-pending slot once nothing
+// executes ahead of the release waiting in it: under Render's Wait the deploy
+// in progress finished, so the waiting deploy is the one in progress now
+// ("proceed directly to the most recently triggered deploy",
+// render.com/docs/deploys). A newer deploy then waits behind it and never
+// replaces it, whichever release the operator reported when its writer read
+// the App: the operator may already run it from an earlier read of its own
+// (w8/396). It adopts it on its next pass; a release written to the App
+// before then would replace it there, so every writer waits for that adoption
+// first (rollout.DeployAheadUnadopted). A deferred deploy (generation 0) has
+// no release yet; the deferred-deploy worker runs it. While another deploy is
+// still recorded executing, the slot stays as it is: the writer first waits
+// for the reconciler to record that deploy when the App reports it served or
+// passed (awaitDeployAheadRecorded, w8/397). Under Override nothing waits.
+func proceedToWaitingDeploy(ctx context.Context, tx pgx.Tx, appID string) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE deploys SET overlap_pending = false
-		 WHERE app_id = $1 AND overlap_pending AND status = $2 AND generation > 0 AND generation <= $3
-		   AND NOT EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = $1 AND o.status = ANY($4) AND NOT o.overlap_pending)`,
-		appID, DeployQueued, adopted, openDeployStatuses)
+		 WHERE app_id = $1 AND overlap_pending AND status = $2 AND generation > 0
+		   AND NOT EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = $1 AND o.status = ANY($3) AND NOT o.overlap_pending)
+		   AND EXISTS (SELECT 1 FROM apps a JOIN tenants t ON t.id = a.tenant_id WHERE a.id = $1 AND t.overlapping_deploy_policy = $4)`,
+		appID, DeployQueued, openDeployStatuses, OverlapWait)
 	return err
 }
 
@@ -2911,24 +2925,25 @@ const defaultDeployAheadRecordWait = 5 * time.Second
 // deployAheadRecordPoll is how often awaitDeployAheadRecorded re-reads.
 const deployAheadRecordPoll = 100 * time.Millisecond
 
-// awaitDeployAheadRecorded holds a deploy about to open under an adopted
-// release (WithAdoptedRelease) while the waiting deploy that release has
-// reached sits behind an older deploy still recorded executing (w8/397). The
-// operator adopts the waiting release as soon as the older one serves, but only
-// the reconciler's next pass records the older row's verdict (recordDeploy).
-// Until then the waiting row cannot leave the pending slot (one executing row
-// per app), so the new deploy would replace a deploy the operator runs to the
-// end. It kicks the reconciler and re-reads until that older row closes or
-// DeployAheadRecordWait passes. It never records a verdict itself and never
-// refuses the deploy: the row then opens as before, and adoptWaitingDeploy
-// frees the slot once nothing older executes. Override, whose new deploy
-// replaces the one in progress, does not wait.
+// awaitDeployAheadRecorded holds a deploy about to open under the release
+// the operator reported (WithAdoptedRelease) while a deploy waits in the
+// pending slot behind an older one still recorded executing that the App
+// reports served, or has moved past to adopt the waiting one (w8/397). The
+// operator is done with that older release, so the waiting deploy is the one
+// in progress, but only the reconciler's next pass records the older row's
+// verdict (recordDeploy). Until then the waiting row cannot leave the pending
+// slot (one executing row per app), so the new deploy would replace a deploy
+// the operator runs next, or already runs. It kicks the reconciler and
+// re-reads until that older row closes or DeployAheadRecordWait passes; then
+// proceedToWaitingDeploy frees the slot. It never records a verdict itself and
+// never refuses the deploy: past the bound the row opens as before. Override,
+// whose new deploy replaces the one in progress, does not wait.
 func (s *PGStore) awaitDeployAheadRecorded(ctx context.Context, appID string) error {
-	adopted := AdoptedRelease(ctx)
-	if adopted <= 0 {
+	reported := reportedRelease(ctx)
+	if reported.release <= 0 && reported.served <= 0 {
 		return nil
 	}
-	behind, err := s.deployAheadUnrecorded(ctx, appID, adopted)
+	behind, err := s.deployAheadUnrecorded(ctx, appID, reported)
 	if err != nil || !behind {
 		return err
 	}
@@ -2938,7 +2953,7 @@ func (s *PGStore) awaitDeployAheadRecorded(ctx context.Context, appID string) er
 	wait := cmp.Or(s.DeployAheadRecordWait, defaultDeployAheadRecordWait)
 	for deadline := time.Now().Add(wait); behind; {
 		if !time.Now().Before(deadline) {
-			log.Printf("store: the deploy ahead of %s's adopted waiting deploy was not recorded within %s; opening the deploy anyway", appID, wait)
+			log.Printf("store: the deploy ahead of %s's waiting deploy was not recorded within %s; opening the deploy anyway", appID, wait)
 			return nil
 		}
 		select {
@@ -2946,7 +2961,7 @@ func (s *PGStore) awaitDeployAheadRecorded(ctx context.Context, appID string) er
 			return ctx.Err()
 		case <-time.After(deployAheadRecordPoll):
 		}
-		if behind, err = s.deployAheadUnrecorded(ctx, appID, adopted); err != nil {
+		if behind, err = s.deployAheadUnrecorded(ctx, appID, reported); err != nil {
 			return err
 		}
 	}
@@ -2954,17 +2969,18 @@ func (s *PGStore) awaitDeployAheadRecorded(ctx context.Context, appID string) er
 }
 
 // deployAheadUnrecorded reports awaitDeployAheadRecorded's condition for
-// appID under Wait: a waiting row the adopted release has reached, and an
-// older row still recorded executing whose release adopted has passed, which
-// the reconciler's next pass closes (supersededDeployStatus).
-func (s *PGStore) deployAheadUnrecorded(ctx context.Context, appID string, adopted int64) (bool, error) {
+// appID under Wait: a waiting row with a release, and an older row still
+// recorded executing whose release the App reports served or has passed,
+// which the reconciler's next pass closes (supersededDeployStatus).
+func (s *PGStore) deployAheadUnrecorded(ctx context.Context, appID string, reported adoptedRelease) (bool, error) {
 	var behind bool
 	err := s.Pool.QueryRow(ctx,
-		`SELECT t.overlapping_deploy_policy = $5
-		    AND EXISTS (SELECT 1 FROM deploys w WHERE w.app_id = a.id AND w.overlap_pending AND w.status = $3 AND w.generation > 0 AND w.generation <= $2)
-		    AND EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = a.id AND o.status = ANY($4) AND NOT o.overlap_pending AND o.generation > 0 AND o.generation < $2)
+		`SELECT t.overlapping_deploy_policy = $6
+		    AND EXISTS (SELECT 1 FROM deploys w WHERE w.app_id = a.id AND w.overlap_pending AND w.status = $4 AND w.generation > 0)
+		    AND EXISTS (SELECT 1 FROM deploys o WHERE o.app_id = a.id AND o.status = ANY($5) AND NOT o.overlap_pending AND o.generation > 0
+		                  AND (o.generation < $2 OR o.generation <= $3))
 		 FROM apps a JOIN tenants t ON t.id = a.tenant_id WHERE a.id = $1`,
-		appID, adopted, DeployQueued, openDeployStatuses, OverlapWait).Scan(&behind)
+		appID, reported.release, reported.served, DeployQueued, openDeployStatuses, OverlapWait).Scan(&behind)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -3014,7 +3030,7 @@ func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req Deferr
 		if err := lockApp(ctx, tx, d.AppID); err != nil {
 			return err
 		}
-		if err := adoptWaitingDeploy(ctx, tx, d.AppID); err != nil {
+		if err := proceedToWaitingDeploy(ctx, tx, d.AppID); err != nil {
 			return err
 		}
 		var err error
@@ -3196,7 +3212,7 @@ func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitI
 // for an older generation records itself canceled, naming the
 // higher-generation open row, without disturbing it. Otherwise the new generation replaces only the
 // previous overlap-pending row, which closes canceled with replacedReason,
-// unless the operator already adopted it (adoptWaitingDeploy). The
+// unless nothing executes ahead of it any more (proceedToWaitingDeploy). The
 // new row starts queued while an active deploy is running, or created when the
 // active slot is free. Partial unique indexes are the final
 // one-active-plus-one-pending guard.
@@ -3217,7 +3233,7 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return "", "", err
 	}
-	if err := adoptWaitingDeploy(ctx, tx, appID); err != nil {
+	if err := proceedToWaitingDeploy(ctx, tx, appID); err != nil {
 		return "", "", err
 	}
 	if err := cancelPendingDeploys(ctx, tx, appID, replacedReason); err != nil {

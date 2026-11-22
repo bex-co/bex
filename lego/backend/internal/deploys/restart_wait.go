@@ -105,8 +105,9 @@ func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.D
 		if wait, err := waits(a); err != nil || !wait {
 			return err
 		}
-		// A waiting deploy the operator already adopted is in flight: this
-		// one waits behind it rather than replacing it (w8/396).
+		// A waiting deploy whose deploy ahead has ended is the one in
+		// progress: this one waits behind it rather than replacing it
+		// (w8/396).
 		var err error
 		d, deferred, err = deferrer.CreateDeferredDeploy(store.WithAdoptedRelease(ctx, a), d, req)
 		return err
@@ -121,10 +122,11 @@ func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.D
 // (Restart, Rollback): it waits behind whatever is in flight.
 func alwaysWaits(*appv1alpha1.App) (bool, error) { return true, nil }
 
-// deployAheadUnadopted reports that the deploy executing for a carries a
-// release the operator has not adopted yet (w8/387): written to the App
-// before then, a release replaces it, and the deploy a 201 named never runs
-// (rollout.DeployAheadUnadopted, the rule every release writer shares).
+// deployAheadUnadopted reports that the deploy in progress for a carries a
+// release the operator has not adopted yet (w8/387): the deploy executing, or
+// the one waiting once the deploy ahead of it has ended (w8/396). Written to
+// the App before then, a release replaces it, and the deploy a 201 named never
+// runs (rollout.DeployAheadUnadopted, the rule every release writer shares).
 func (s *Service) deployAheadUnadopted(ctx context.Context, a *appv1alpha1.App) (bool, error) {
 	return rollout.DeployAheadUnadopted(ctx, s.Store, a)
 }

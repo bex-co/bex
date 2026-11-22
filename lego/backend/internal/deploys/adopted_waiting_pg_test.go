@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // openPGStore is the real control-plane store (BEX_TEST_DB_URI), migrated.
@@ -62,9 +63,19 @@ type adoptedWaiting struct {
 	a, b    store.Deploy
 	trigger func(label string, want int) store.Deploy
 	get     func(d store.Deploy) store.Deploy
+	// adopt is the operator adopting release generation g.
+	adopt func(g int64)
 }
 
 func newAdoptedWaiting(t *testing.T, aheadRecorded bool) adoptedWaiting {
+	t.Helper()
+	return newServedAhead(t, aheadRecorded, true)
+}
+
+// newServedAhead is adoptedWaiting with the operator's adoption of B in the
+// App or not yet (w8/396 on pin eaaa61506165): the App reports A served
+// either way.
+func newServedAhead(t *testing.T, aheadRecorded, adopted bool) adoptedWaiting {
 	t.Helper()
 	ctx := context.Background()
 	st := openPGStore(t)
@@ -97,8 +108,7 @@ func newAdoptedWaiting(t *testing.T, aheadRecorded bool) adoptedWaiting {
 	cl := generationBumpingClient(app)
 	f := adoptedWaiting{st: st, appID: row.ID, cl: cl, svc: &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: time.Now}, Store: st}}
 	do := newRESTHarness(t, f.svc)
-	// adopt is the operator adopting release generation g.
-	adopt := func(g int64) {
+	f.adopt = func(g int64) {
 		t.Helper()
 		a := getApp(t, cl, "web")
 		a.Status.ReleaseGeneration = g
@@ -106,6 +116,7 @@ func newAdoptedWaiting(t *testing.T, aheadRecorded bool) adoptedWaiting {
 			t.Fatal(err)
 		}
 	}
+	adopt := f.adopt
 	seen := map[string]bool{history[0].ID: true}
 	f.trigger = func(label string, want int) store.Deploy {
 		t.Helper()
@@ -136,7 +147,14 @@ func newAdoptedWaiting(t *testing.T, aheadRecorded bool) adoptedWaiting {
 	} else {
 		transition(f.a, store.DeployUpdateInProgress)
 	}
-	adopt(f.b.Generation)
+	served := getApp(t, cl, "web")
+	served.Status.ActiveRevision = fmt.Sprintf("rev-%d", f.a.Generation)
+	if err := cl.Update(ctx, served); err != nil {
+		t.Fatal(err)
+	}
+	if adopted {
+		adopt(f.b.Generation)
+	}
 	return f
 }
 
@@ -238,4 +256,96 @@ func TestRESTTriggerWaitsForThePassThatRecordsTheDeployAhead(t *testing.T) {
 	if c.Status != store.DeployQueued || !c.OverlapPending {
 		t.Fatalf("C = %+v, want it waiting in the pending slot behind B", c)
 	}
+}
+
+// waitsAtTheRowLevel fails unless c is a deploy waiting behind B with no App
+// change: queued and deferred in the pending slot, and the App still on B's
+// release, which the operator can then adopt.
+func (f adoptedWaiting) waitsAtTheRowLevel(t *testing.T, c store.Deploy, before *appv1alpha1.App) {
+	t.Helper()
+	if got := f.get(c); got.Status != store.DeployQueued || !got.OverlapPending || !got.Deferred {
+		t.Fatalf("C = %+v, want it waiting behind B at the row level (queued, deferred, in the pending slot)", got)
+	}
+	if got := getApp(t, f.cl, "web"); got.Generation != before.Generation || got.ResourceVersion != before.ResourceVersion {
+		t.Fatalf("C changed the App (generation %d → %d): written before the operator adopted B, it replaces B there", before.Generation, got.Generation)
+	}
+}
+
+// w8/396, live on pin eaaa61506165: A was recorded live and C came 0.59 s
+// later, before the operator's adoption of B reached the App. C answered 201
+// and closed B canceled (newDeploy → C) while the operator ran B's publish to
+// the end; C then waited for it. Now B is the deploy in progress once A is
+// recorded, and C waits behind it at the row level (202) without writing the
+// App, so the operator adopts B. B runs, then C: A, B and C go live in order.
+func TestRESTTriggerWaitsForTheWaitingDeployTheOperatorHasNotAdoptedYet(t *testing.T) {
+	f := newServedAhead(t, true, false)
+	time.Sleep(590 * time.Millisecond)
+	before := getApp(t, f.cl, "web")
+	c := f.trigger("C", http.StatusAccepted)
+	f.inProgress(t, "after C")
+	f.waitsAtTheRowLevel(t, c, before)
+
+	// The operator adopts B and serves it; then the waiting deploy runs C.
+	f.adopt(f.b.Generation)
+	if _, err := f.st.TransitionDeploy(context.Background(), f.b.ID, store.DeployLive, store.RanImage{}, "", "", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	// The deferred-deploy worker's run of C alone: a tick would also close
+	// other tests' waiting deploys in the shared database.
+	waiting, err := f.st.ListDeferredDeploys(context.Background(), 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready := false
+	for _, r := range waiting {
+		if r.ID == c.ID && r.Ready {
+			ready = true
+			f.svc.runDeferredDeploy(context.Background(), f.st, r)
+		}
+	}
+	if !ready {
+		t.Fatal("C is not ready to run once B served")
+	}
+	if got := getApp(t, f.cl, "web"); got.Generation <= before.Generation {
+		t.Fatalf("after B served the App is still on generation %d, want C's release written", got.Generation)
+	}
+	ran := f.get(c)
+	if ran.Status != store.DeployCreated || ran.Deferred || ran.Generation <= f.b.Generation {
+		t.Fatalf("C after B served = %+v, want it running as a release after B's", ran)
+	}
+	// A served before B, which now serves in its place.
+	for label, want := range map[store.Deploy]string{f.a: store.DeployDeactivated, f.b: store.DeployLive} {
+		if got := f.get(label); got.Status != want || got.CancelReason != "" {
+			t.Fatalf("%s = %s (%q), want %s and never canceled", label.ID, got.Status, got.CancelReason, want)
+		}
+	}
+}
+
+// w8/396: the same before the reconciler records A, while the App already
+// reports A served. C kicks the reconciler, waits for the pass that records A,
+// and waits behind B at the row level.
+func TestRESTTriggerWaitsForThePassThatRecordsTheServedDeployAhead(t *testing.T) {
+	f := newServedAhead(t, false, false)
+	passes := make(chan error, 4)
+	f.st.KickReconciler = func() {
+		go func() {
+			_, err := f.st.TransitionDeploy(context.Background(), f.a.ID, store.DeployLive, store.RanImage{}, "", "", "", nil)
+			passes <- err
+		}()
+	}
+	before := getApp(t, f.cl, "web")
+	c := f.trigger("C", http.StatusAccepted)
+	select {
+	case err := <-passes:
+		if err != nil {
+			t.Fatalf("the kicked pass: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("C kicked no reconciler pass")
+	}
+	if got := f.get(f.a); got.Status != store.DeployLive {
+		t.Fatalf("A = %s, want live", got.Status)
+	}
+	f.inProgress(t, "after C")
+	f.waitsAtTheRowLevel(t, c, before)
 }

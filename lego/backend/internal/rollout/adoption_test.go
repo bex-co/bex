@@ -119,9 +119,9 @@ func TestARollingWriteWaitsForTheDeployAheadToBeAdopted(t *testing.T) {
 // w8/390: the wait never refuses a save. One the operator does not adopt in
 // time writes through as before; Render's Override policy replaces the
 // deploy in flight at once; and a deploy the operator already adopted, a
-// deploy waiting in the latest-pending slot, or a first release (the
-// operator has adopted nothing yet, and its first release reads the saved
-// settings) does not hold it.
+// deploy waiting in the latest-pending slot behind a release in flight, or a
+// first release (the operator has adopted nothing yet, and its first release
+// reads the saved settings) does not hold it.
 func TestARollingWriteDoesNotWaitWhereNothingCanBeReplaced(t *testing.T) {
 	cases := map[string]struct {
 		labels   map[string]string
@@ -136,8 +136,10 @@ func TestARollingWriteDoesNotWaitWhereNothingCanBeReplaced(t *testing.T) {
 		"override policy": {labels: map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride},
 			adopted: 1, wait: 10 * time.Second, maxWait: 2 * time.Second, released: 1},
 		"already adopted": {adopted: 2, wait: 10 * time.Second, maxWait: 2 * time.Second, released: 2},
-		"only a pending deploy": {adopted: 1, open: []store.Deploy{{ID: "dep-pending", Status: store.DeployQueued, Generation: 2, OverlapPending: true}},
-			wait: 10 * time.Second, maxWait: 2 * time.Second, released: 1},
+		"a deploy pending behind one in flight": {adopted: 2, open: []store.Deploy{
+			{ID: "dep-ahead", Status: store.DeployBuildInProgress, Generation: 2},
+			{ID: "dep-pending", Status: store.DeployQueued, Generation: 3, OverlapPending: true},
+		}, wait: 10 * time.Second, maxWait: 2 * time.Second, released: 2},
 		"first release": {adopted: 0, wait: 10 * time.Second, maxWait: 2 * time.Second, released: 0},
 		"wait off":      {adopted: 1, wait: -1, maxWait: 2 * time.Second, released: 1},
 	}
@@ -160,6 +162,40 @@ func TestARollingWriteDoesNotWaitWhereNothingCanBeReplaced(t *testing.T) {
 			}
 			if len(ds.created) != 1 {
 				t.Fatalf("rows %d, want the save recorded once", len(ds.created))
+			}
+		})
+	}
+}
+
+// w8/396: once the deploy ahead has ended, the deploy waiting in the
+// latest-pending slot is the one in progress, and the operator adopts it on
+// its next pass. A save written before then replaced it in the operator,
+// although the deploy row had already moved on to it. The save waits for that
+// adoption whether the reconciler has recorded the deploy ahead (no row is
+// executing) or not yet (the App reports its release served).
+func TestARollingWriteWaitsForTheWaitingDeployOnceTheDeployAheadEnded(t *testing.T) {
+	cases := map[string][]store.Deploy{
+		"recorded": {{ID: "dep-waiting", Status: store.DeployQueued, Generation: 2, OverlapPending: true}},
+		"served, not yet recorded": {
+			{ID: "dep-ahead", Status: store.DeployUpdateInProgress, Generation: 1},
+			{ID: "dep-waiting", Status: store.DeployQueued, Generation: 2, OverlapPending: true},
+		},
+	}
+	for name, open := range cases {
+		t.Run(name, func(t *testing.T) {
+			cl, a, ds, patchedAt := adoptionFixture(t, nil)
+			a.Status.ActiveRevision = "rev-1"
+			if err := cl.Update(context.Background(), a); err != nil {
+				t.Fatal(err)
+			}
+			ds.open = open
+			adoptAfter(t, cl, a, 2, 300*time.Millisecond)
+			start := time.Now()
+			if err := (&Tracker{Store: ds, AdoptionWait: 10 * time.Second}).PatchLocked(context.Background(), cl, a, store.TriggerSettingsChange, healthCheck); err != nil {
+				t.Fatal(err)
+			}
+			if got := patchedAt.Load(); got != 2 || time.Since(start) < 250*time.Millisecond {
+				t.Fatalf("the save reached the App with release %d adopted after %s; want it after the operator adopted the waiting release 2", got, time.Since(start))
 			}
 		})
 	}

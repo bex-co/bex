@@ -95,11 +95,11 @@ func TestPGAdoptedWaitingDeployIsNotReplaced(t *testing.T) {
 	stillWaiting("after the control")
 }
 
-// w8/396: without the App's adopted release, or while the deploy ahead is
-// still recorded executing, the pending slot is left to the reconciler: two
-// executing rows would break the one-executing-deploy rule. w8/397: the wait
-// for the reconciler to record the deploy ahead is bounded, never records its
-// verdict itself, and then opens the deploy as before.
+// w8/396: while the deploy ahead is still recorded executing, the pending slot
+// is left to the reconciler: two executing rows would break the
+// one-executing-deploy rule. w8/397: the wait for the reconciler to record the
+// deploy ahead is bounded, never records its verdict itself, and then opens
+// the deploy as before.
 func TestPGWaitingDeployAdoptionNeedsAFreeSlot(t *testing.T) {
 	ctx := context.Background()
 	st := openLifecyclePG(t)
@@ -121,12 +121,11 @@ func TestPGWaitingDeployAdoptionNeedsAFreeSlot(t *testing.T) {
 		t.Fatalf("deploy recorded executing = %+v, want untouched", got)
 	}
 
-	if _, err := st.TransitionDeploy(ctx, first.ID, DeployLive, RanImage{}, "", "", "", nil); err != nil {
-		t.Fatal(err)
-	}
-	last, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, "", first.Generation+3, CommitInfo{}, "")
-	if err != nil || last.Status != DeployCreated {
-		t.Fatalf("deploy with no adopted release named = %+v (err %v), want it to replace the waiting one and start", last, err)
+	// The waiting deploy is still replaced while the one ahead of it is in
+	// flight: the App reports no release past it, and none served.
+	last, err := st.CreateDeploy(adoptedCtx(ctx, first.Generation), row.ID, TriggerAPI, "", first.Generation+3, CommitInfo{}, "")
+	if err != nil || last.Status != DeployQueued {
+		t.Fatalf("deploy behind the one in flight = %+v (err %v), want queued", last, err)
 	}
 	if got, _ := st.GetDeploy(ctx, row.ID, next.ID); got.Status != DeployCanceled || SupersedingDeployID(got.CancelReason) != last.ID {
 		t.Fatalf("waiting deploy = %s (%q), want replaced by %s", got.Status, got.CancelReason, last.ID)
@@ -254,5 +253,120 @@ func TestPGOverrideDeployDoesNotWaitForTheDeployAhead(t *testing.T) {
 	}
 	if got := f.get(t, f.b); got.Status != DeployCanceled || SupersedingDeployID(got.CancelReason) != c.ID {
 		t.Fatalf("B under Override = %s (%q), want replaced by %s", got.Status, got.CancelReason, c.ID)
+	}
+}
+
+// recordedAhead is w8/396's production timeline on pin eaaa61506165: deploy A
+// served and the reconciler recorded it live, while B, which waited behind
+// it, still holds the pending slot, since the reconciler frees that slot only
+// once it sees the operator adopt B. C came 0.59 s after A was recorded live.
+func recordedAhead(t *testing.T) (*PGStore, App, Deploy, Deploy) {
+	t.Helper()
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	row, a := deferredRestartApp(t, st)
+	if _, err := st.TransitionDeploy(ctx, a.ID, DeployUpdateInProgress, RanImage{}, "", "", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	b, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, "", a.Generation+1, CommitInfo{}, "")
+	if err != nil || !b.OverlapPending {
+		t.Fatalf("B = %+v (err %v), want it waiting in the pending slot behind A", b, err)
+	}
+	if _, err := st.TransitionDeploy(ctx, a.ID, DeployLive, RanImage{}, "", "", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(590 * time.Millisecond)
+	return st, row, a, b
+}
+
+// inProgress fails unless b is the deploy in progress: queued, out of the
+// pending slot, never canceled.
+func inProgress(t *testing.T, st *PGStore, b Deploy, when string) {
+	t.Helper()
+	got, err := st.GetDeploy(context.Background(), b.AppID, b.ID)
+	if err != nil || got.Status != DeployQueued || got.OverlapPending || got.CancelReason != "" {
+		t.Fatalf("%s: B = %+v (err %v), want it in progress (queued, out of the pending slot), never canceled", when, got, err)
+	}
+}
+
+// w8/396, live on pin eaaa61506165: once the deploy ahead is recorded live,
+// the deploy waiting behind it is the one in progress, whatever the App
+// reported when C's writer read it. C used to cancel B (newDeploy) when the
+// operator's adoption of B was not in the App yet, and start as 201 with
+// nothing to wait behind, while the operator ran B to the end.
+func TestPGWaitingDeployProceedsOnceTheDeployAheadIsRecorded(t *testing.T) {
+	reports := map[string]func(a, b Deploy) context.Context{
+		"adoption not in the App yet": func(a, _ Deploy) context.Context { return adoptedCtx(context.Background(), a.Generation) },
+		"adoption in the App":         func(_, b Deploy) context.Context { return adoptedCtx(context.Background(), b.Generation) },
+		"nothing reported":            func(Deploy, Deploy) context.Context { return context.Background() },
+	}
+	for name, reported := range reports {
+		t.Run(name, func(t *testing.T) {
+			st, row, a, b := recordedAhead(t)
+			c, err := st.CreateDeploy(reported(a, b), row.ID, TriggerAPI, "", b.Generation+1, CommitInfo{}, "")
+			if err != nil || c.Status != DeployQueued || !c.OverlapPending {
+				t.Fatalf("C = %+v (err %v), want it waiting in the pending slot behind B", c, err)
+			}
+			inProgress(t, st, b, "after C")
+		})
+	}
+	t.Run("a deploy that waits at the row level", func(t *testing.T) {
+		st, row, a, b := recordedAhead(t)
+		r, deferred, err := st.CreateDeferredDeploy(adoptedCtx(context.Background(), a.Generation), Deploy{AppID: row.ID, Trigger: TriggerRestart}, DeferredRequest{})
+		if err != nil || !deferred || !r.OverlapPending {
+			t.Fatalf("restart = %+v deferred=%v (err %v), want it waiting behind B", r, deferred, err)
+		}
+		inProgress(t, st, b, "after the restart")
+		if waiting, found := readyOf(t, st, r.ID); !found || waiting.Ready {
+			t.Fatalf("restart listed=%v ready=%v, want it waiting, not ready while B is in progress", found, waiting.Ready)
+		}
+	})
+}
+
+// w8/396: under Override the new deploy replaces the one in progress at once,
+// the waiting one included.
+func TestPGOverrideReplacesTheWaitingDeployOnceTheDeployAheadIsRecorded(t *testing.T) {
+	st, row, a, b := recordedAhead(t)
+	ctx := context.Background()
+	if err := st.SetOverlappingDeployPolicy(ctx, row.TenantID, OverlapOverride); err != nil {
+		t.Fatal(err)
+	}
+	c, err := st.CreateDeploy(adoptedCtx(ctx, a.Generation), row.ID, TriggerAPI, "", b.Generation+1, CommitInfo{}, "")
+	if err != nil || c.Status != DeployCreated {
+		t.Fatalf("C under Override = %+v (err %v), want it started", c, err)
+	}
+	if got, _ := st.GetDeploy(ctx, row.ID, b.ID); got.Status != DeployCanceled || SupersedingDeployID(got.CancelReason) != c.ID {
+		t.Fatalf("B under Override = %s (%q), want replaced by %s", got.Status, got.CancelReason, c.ID)
+	}
+}
+
+// w8/396: before the reconciler records the deploy ahead, an App that reports
+// its release served says the operator is done with it, so the deploy waiting
+// behind it is next even though the operator has not adopted it yet. A deploy
+// in that window waits for the kicked pass that records A, then waits behind
+// B, which is never canceled.
+func TestPGDeployWaitsForThePassThatRecordsTheServedDeployAhead(t *testing.T) {
+	opens := map[string]func(f aheadUnrecorded) (Deploy, error){
+		"deploy": func(f aheadUnrecorded) (Deploy, error) {
+			return f.st.CreateDeploy(WithAdoptedRelease(context.Background(), f.cr), f.row.ID, TriggerAPI, "", f.b.Generation+1, CommitInfo{}, "")
+		},
+		"deferred deploy": func(f aheadUnrecorded) (Deploy, error) {
+			d, deferred, err := f.st.CreateDeferredDeploy(WithAdoptedRelease(context.Background(), f.cr), Deploy{AppID: f.row.ID, Trigger: TriggerAPI}, DeferredRequest{})
+			if err == nil && !deferred {
+				err = fmt.Errorf("not deferred")
+			}
+			return d, err
+		},
+	}
+	for name, open := range opens {
+		t.Run(name, func(t *testing.T) {
+			f := newAheadUnrecorded(t)
+			f.cr.Status = appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ReleaseGeneration: f.a.Generation, ActiveRevision: fmt.Sprintf("rev-%d", f.a.Generation)}
+			c, err := open(f)
+			if err != nil || c.Status != DeployQueued || !c.OverlapPending {
+				t.Fatalf("C = %+v (err %v), want it waiting in the pending slot behind B", c, err)
+			}
+			f.recorded(t, "after C")
+		})
 	}
 }
