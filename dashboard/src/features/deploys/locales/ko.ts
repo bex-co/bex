@@ -508,6 +508,18 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
   },
+  "deploys.reason.http_port_localhost_only": {
+    message:
+      "0.0.0.0에서 열린 포트가 감지되지 않았지만 localhost에 열린 포트가 있습니다({ports}). 서버를 호스트 0.0.0.0에 바인딩하세요. 컨테이너가 시작되는 동안 계속 검색합니다",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_localhost_only, w8/388); params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.http_port_none_http": {
+    message:
+      "0.0.0.0에 열린 포트가 있지만({ports}) 아직 HTTP에 응답하는 포트가 없습니다. 컨테이너가 시작되는 동안 계속 검색합니다. 서비스가 공개 HTTP 트래픽을 받을 필요가 없다면 Private Service를 대신 만드세요",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_http, w8/388); params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
+  },
   "deploys.reason.image_not_found": {
     message:
       "레지스트리에서 {image} 이미지를 찾을 수 없습니다. 저장소 또는 태그가 존재하지 않습니다. 이미지 URL과 태그를 확인하거나, 존재하는 다이제스트로 배포하세요",
@@ -871,6 +883,18 @@ const koDeploys: Record<string, TranslationEntry> = {
       " 인스턴스에서 열린 포트가 감지되지 않았습니다. 서버는 서비스 포트({port})의 호스트 0.0.0.0에 바인딩해야 합니다.",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_localhost": {
+    message:
+      " 0.0.0.0에서 열린 포트가 감지되지 않았지만 localhost에 열린 포트가 있습니다({ports}). 서버는 PORT({port})에 지정된 포트의 호스트 0.0.0.0에 바인딩해야 합니다.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_localhost, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.hint_no_open_http_port": {
+    message:
+      " 0.0.0.0에 열린 포트가 있지만({ports}) HTTP에 응답하는 포트가 없습니다. 서버는 PORT({port})에 지정된 포트에서 HTTP를 제공해야 합니다. 서비스가 공개 HTTP 트래픽을 받을 필요가 없다면 Private Service를 대신 만드세요.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
   "deploys.reason.hint_crash_port_bind": {
     message:

@@ -42,16 +42,17 @@ import (
 
 // cannedListeners is a node reader's canned answer.
 type cannedListeners struct {
-	open  []int
-	err   error
-	calls atomic.Int32
-	pods  []types.UID
+	open     []int
+	loopback []int
+	err      error
+	calls    atomic.Int32
+	pods     []types.UID
 }
 
-func (c *cannedListeners) PodListeners(_ context.Context, pod *corev1.Pod) ([]int, error) {
+func (c *cannedListeners) PodListeners(_ context.Context, pod *corev1.Pod) (listeners.Answer, error) {
 	c.calls.Add(1)
 	c.pods = append(c.pods, pod.UID)
-	return c.open, c.err
+	return listeners.Answer{Ports: c.open, Loopback: c.loopback}, c.err
 }
 
 // A node with a Ready reader is read, never swept: the record is the reader's
@@ -160,7 +161,7 @@ func TestBoundPortDetectionNarrowsAReadersAnswerAsTheSweepDid(t *testing.T) {
 		r, _, _ := detectFixture(t, time.Minute, scanner, nil)
 		r.Listeners = &cannedListeners{open: tc.open}
 		got, err := r.boundPortListeners(t.Context(), &corev1.Pod{}, tc.also)
-		if err != nil || !slices.Equal(got, tc.want) || scanner.calls != 0 {
+		if err != nil || !slices.Equal(got.Ports, tc.want) || scanner.calls != 0 {
 			t.Fatalf("boundPortListeners(%v, also %d) = %v, %v (%d sweeps); want %v and no sweep", tc.open, tc.also, got, err, scanner.calls, tc.want)
 		}
 	}
@@ -201,6 +202,66 @@ func TestWebImageHTTPDiscoveryReadsTheReader(t *testing.T) {
 	}
 }
 
+// w8/388: when nothing answers HTTP yet, discovery names what the reader found,
+// as Render's scan does: a listener only on localhost ("No open ports detected
+// on 0.0.0.0"), or open ports that answer no HTTP ("No open HTTP ports
+// detected on 0.0.0.0"). With neither, or without a reader to tell, it stays
+// the plain wait.
+func TestWebImageHTTPDiscoveryNamesWhatItFound(t *testing.T) {
+	epmd, silent := epmdListenerPort(t), distributionListenerPort(t)
+	// A silent listener below one that answers HTTP: discovery waits on it
+	// within its window, and the scan is over, since an HTTP port answers.
+	web := httpListenerPort(t)
+	for range 64 {
+		if web > silent {
+			break
+		}
+		web = httpListenerPort(t)
+	}
+	if web < silent {
+		t.Fatalf("no HTTP listener above the silent port %d in 64 tries", silent)
+	}
+	for _, tc := range []struct {
+		name     string
+		reader   *cannedListeners
+		want     string
+		wantScan appv1alpha1.PortScan
+	}{
+		{"only localhost listens", &cannedListeners{loopback: []int{10000}},
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortLocalhostOnly, appv1alpha1.DeployReasonParam{Name: "ports", Value: "10000"}),
+			appv1alpha1.PortScanLocalhostOnly},
+		{"an open port answers no HTTP", &cannedListeners{open: []int{epmd}, loopback: []int{10000}},
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneHTTP, appv1alpha1.DeployReasonParam{Name: "ports", Value: strconv.Itoa(epmd)}),
+			appv1alpha1.PortScanNoHTTPPort},
+		{"an open port accepts and stays silent", &cannedListeners{open: []int{silent}},
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneHTTP, appv1alpha1.DeployReasonParam{Name: "ports", Value: strconv.Itoa(silent)}),
+			appv1alpha1.PortScanNoHTTPPort},
+		{"a silent port below one that answers HTTP", &cannedListeners{open: []int{silent, web}},
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNotAnswering, portParam(int32(silent))),
+			appv1alpha1.PortScanOver},
+		{"nothing listens", &cannedListeners{}, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneYet), appv1alpha1.PortScanNoOpenPort},
+		{"a reader read that failed", &cannedListeners{loopback: []int{10000}, err: listeners.ErrPodNotFound},
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneYet), appv1alpha1.PortScanNoOpenPort},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, &cannedScanner{}, func(a *appv1alpha1.App, pod *corev1.Pod) {
+				a.Spec.Type = appv1alpha1.TypeWebService
+				a.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+				a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "image", PrimaryPort: 1, Ports: []int32{1}}
+				pod.Status.PodIP = "127.0.0.1"
+			})
+			r.Listeners = tc.reader
+			waiting, got := r.selectWebImageHTTP(t.Context(), app, dep)
+			if !waiting || got != tc.want {
+				t.Fatalf("selectWebImageHTTP = (%v, %q), want (true, %q)", waiting, got, tc.want)
+			}
+			if scan := appv1alpha1.PortScanOf(got); scan != tc.wantScan {
+				t.Fatalf("PortScanOf(%q) = %d, want %d", got, scan, tc.wantScan)
+			}
+		})
+	}
+}
+
 // readerPod is a listener-reader pod on node.
 func readerPod(name, node, ip string, ready bool) *corev1.Pod {
 	status := corev1.ConditionFalse
@@ -222,7 +283,7 @@ func TestNodeListenerReaderAsksThePodsNode(t *testing.T) {
 	var asked atomic.Value
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		asked.Store(r.URL.Query().Get("pod") + "@" + r.URL.Query().Get("ip"))
-		_, _ = w.Write([]byte(`{"ports":[5432,50051]}`))
+		_, _ = w.Write([]byte(`{"ports":[5432,50051],"loopback":[9187]}`))
 	}))
 	defer server.Close()
 	_, portText, _ := net.SplitHostPort(strings.TrimPrefix(server.URL, "http://"))
@@ -238,8 +299,8 @@ func TestNodeListenerReaderAsksThePodsNode(t *testing.T) {
 	}
 
 	got, err := reader(readerPod("r-b", "tenant-b", "10.0.0.1", true), readerPod("r-a", "tenant-a", "127.0.0.1", true)).PodListeners(t.Context(), pod)
-	if err != nil || !slices.Equal(got, []int{5432, 50051}) {
-		t.Fatalf("PodListeners = %v, %v; want [5432 50051]", got, err)
+	if err != nil || !slices.Equal(got.Ports, []int{5432, 50051}) || !slices.Equal(got.Loopback, []int{9187}) {
+		t.Fatalf("PodListeners = %+v, %v; want [5432 50051] and loopback [9187]", got, err)
 	}
 	if want := string(pod.UID) + "@10.244.1.5"; asked.Load() != want {
 		t.Fatalf("reader asked for %v, want %s", asked.Load(), want)
@@ -253,7 +314,7 @@ func TestNodeListenerReaderAsksThePodsNode(t *testing.T) {
 	// A roll's surge: the old reader terminating, the new one not Ready yet.
 	terminating := readerPod("r-old", "tenant-a", "127.0.0.1", true)
 	terminating.DeletionTimestamp, terminating.Finalizers = &metav1.Time{Time: time.Now()}, []string{"test"}
-	if got, err := reader(terminating, readerPod("r-new", "tenant-a", "", false)).PodListeners(t.Context(), pod); err != nil || len(got) != 2 {
+	if got, err := reader(terminating, readerPod("r-new", "tenant-a", "", false)).PodListeners(t.Context(), pod); err != nil || len(got.Ports) != 2 {
 		t.Fatalf("a node mid-roll = %v, %v; want the Ready reader's answer", got, err)
 	}
 }

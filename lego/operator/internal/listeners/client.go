@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
 	"time"
 )
 
@@ -51,12 +52,12 @@ func NewClient() Client {
 // Read asks the reader at reader for the ports of the pod with podUID at
 // podIP. A 404 is ErrPodNotFound and a 409 ErrAddressMismatch, each wrapped;
 // any other failure is an error naming the reader's status.
-func (c Client) Read(ctx context.Context, reader netip.AddrPort, podUID, podIP string) ([]int, error) {
+func (c Client) Read(ctx context.Context, reader netip.AddrPort, podUID, podIP string) (Answer, error) {
 	target := url.URL{Scheme: "http", Host: reader.String(), Path: Path,
 		RawQuery: url.Values{"pod": {podUID}, "ip": {podIP}}.Encode()}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return nil, err
+		return Answer{}, err
 	}
 	httpClient := c.HTTP
 	if httpClient == nil {
@@ -64,7 +65,7 @@ func (c Client) Read(ctx context.Context, reader netip.AddrPort, podUID, podIP s
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return Answer{}, err
 	}
 	body := io.LimitReader(resp.Body, maxAnswerBytes)
 	defer func() {
@@ -75,20 +76,20 @@ func (c Client) Read(ctx context.Context, reader netip.AddrPort, podUID, podIP s
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("reader %s: %w", reader, ErrPodNotFound)
+		return Answer{}, fmt.Errorf("reader %s: %w", reader, ErrPodNotFound)
 	case http.StatusConflict:
-		return nil, fmt.Errorf("reader %s: %w", reader, ErrAddressMismatch)
+		return Answer{}, fmt.Errorf("reader %s: %w", reader, ErrAddressMismatch)
 	default:
-		return nil, fmt.Errorf("reader %s answered %s", reader, resp.Status)
+		return Answer{}, fmt.Errorf("reader %s answered %s", reader, resp.Status)
 	}
 	var answer Answer
 	if err := json.NewDecoder(body).Decode(&answer); err != nil {
-		return nil, fmt.Errorf("reader %s: decoding its answer: %w", reader, err)
+		return Answer{}, fmt.Errorf("reader %s: decoding its answer: %w", reader, err)
 	}
-	for _, port := range answer.Ports {
+	for _, port := range slices.Concat(answer.Ports, answer.Loopback) {
 		if port < 1 || port > 65535 {
-			return nil, fmt.Errorf("reader %s answered port %d", reader, port)
+			return Answer{}, fmt.Errorf("reader %s answered port %d", reader, port)
 		}
 	}
-	return answer.Ports, nil
+	return answer, nil
 }

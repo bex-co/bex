@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // scanSince is when the fixtures' stall first said no port was open.
@@ -177,5 +179,76 @@ func TestPortScanLineReadsTheSameOnRESTAndGraphQL(t *testing.T) {
 	slices.Sort(gql)
 	if !slices.Equal(rest, gql) {
 		t.Fatalf("GraphQL scan line ids %v, REST %v", gql, rest)
+	}
+}
+
+// TestPortScanLinesNameWhatTheScanFound is w8/388: Render words its scan for
+// a listener only on localhost and for open ports that answer no HTTP. Each
+// line carries the wording of what the scan had found by its moment, so the
+// lines before the finding keep the plain text; the no-HTTP lines carry no
+// docs line, as Render's do.
+func TestPortScanLinesNameWhatTheScanFound(t *testing.T) {
+	failedAt := scanSince.Add(14*time.Minute + 30*time.Second)
+	found := func(d DeployProgress, what appv1alpha1.PortScanFinding, foundAt time.Duration) DeployProgress {
+		d.PortScanFound, d.PortScanFoundAt = what, scanSince.Add(foundAt)
+		return d
+	}
+	failed := scanRow("update_failed", failedAt, time.Time{}, scanSince.Add(time.Hour))
+	local, noHTTP := portScanLocalhostLine, portScanNoHTTPLine
+	end := at(14*time.Minute + 30*time.Second)
+	for _, c := range []struct {
+		name string
+		row  DeployProgress
+		want []string
+	}{
+		{"localhost from the start, failed", found(failed, appv1alpha1.PortScanFoundLocalhost, 0), []string{
+			at(0) + " " + local, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + local, at(2*time.Minute) + " " + local,
+			at(3*time.Minute) + " " + local, at(4*time.Minute) + " " + local,
+			end + " " + portScanLocalhostTimeoutLine, end + " " + portScanDocsLine, end + " ==> Deploy failed"}},
+		{"no HTTP found 90 s in, failed", found(failed, appv1alpha1.PortScanFoundNoHTTP, 90*time.Second), []string{
+			at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine,
+			at(2*time.Minute) + " " + noHTTP, at(3*time.Minute) + " " + noHTTP, at(4*time.Minute) + " " + noHTTP,
+			end + " " + portScanNoHTTPTimeoutLine, end + " ==> Deploy failed"}},
+		{"no HTTP from the start, then a port answered", found(scanRow("live", scanSince.Add(3*time.Minute), scanSince.Add(170*time.Second), scanSince.Add(time.Hour)),
+			appv1alpha1.PortScanFoundNoHTTP, 0), []string{
+			at(0) + " " + noHTTP, at(time.Minute) + " " + noHTTP, at(2*time.Minute) + " " + noHTTP,
+			at(3*time.Minute) + " ==> Your service is live 🎉"}},
+		{"open, read before the finding's moment", found(scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(70*time.Second)),
+			appv1alpha1.PortScanFoundLocalhost, 2*time.Minute), []string{
+			at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := scanStory(c.row); !slices.Equal(got, c.want) {
+				t.Fatalf("narration:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(c.want, "\n"))
+			}
+		})
+	}
+}
+
+// A tail that read the plain lines before the scan found a localhost listener
+// keeps them, and the lines after carry Render's localhost wording: no line
+// is sent twice or reworded.
+func TestPortScanTailWordsTheLinesAfterTheFinding(t *testing.T) {
+	svc := newService(nil, sampleApp("web"))
+	read := scanSince.Add(-10 * time.Second)
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		d := scanRow("update_in_progress", time.Time{}, time.Time{}, read)
+		if foundAt := scanSince.Add(70 * time.Second); !read.Before(foundAt) {
+			d.PortScanFound, d.PortScanFoundAt = appv1alpha1.PortScanFoundLocalhost, foundAt
+		}
+		return []DeployProgress{d}, nil
+	}
+	follower := svc.newProgressFollower(LogQuery{App: "web", Types: []string{LogTypeBuild}, Since: scanSince.Add(-time.Second)}, "web", progressContext{})
+	var sent []string
+	emit := func(e LogEntry) error { sent = append(sent, e.Timestamp+" "+e.Message); return nil }
+	for ; read.Before(scanSince.Add(190 * time.Second)); read = read.Add(5 * time.Second) {
+		if err := follower.emitReached(t.Context(), emit); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine,
+		at(2*time.Minute) + " " + portScanLocalhostLine, at(3*time.Minute) + " " + portScanLocalhostLine}
+	if !slices.Equal(sent, want) {
+		t.Fatalf("tail sent:\n%s\nwant:\n%s", strings.Join(sent, "\n"), strings.Join(want, "\n"))
 	}
 }

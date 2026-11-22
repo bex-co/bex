@@ -42,9 +42,12 @@ const (
 	ReadTimeout = 5 * time.Second
 )
 
-// Answer is the reader's reply to a read: the pod's listening ports.
+// Answer is the reader's reply to a read: the pod's listening ports, and apart
+// those it listens on only at loopback (w8/388). A reader from before w8/388
+// leaves Loopback out, which reads as none.
 type Answer struct {
-	Ports []int `json:"ports"`
+	Ports    []int `json:"ports"`
+	Loopback []int `json:"loopback,omitempty"`
 }
 
 // Handler serves GET Path?pod=<uid>&ip=<address> for the pods of this node,
@@ -76,7 +79,7 @@ func Handler(procRoot string) http.Handler {
 			http.Error(w, "listener reader busy", http.StatusServiceUnavailable)
 			return
 		}
-		ports, err := Read(ctx, procRoot, query.Get("pod"), podIP)
+		answer, err := Read(ctx, procRoot, query.Get("pod"), podIP)
 		if err != nil {
 			status := statusOf(err)
 			if status == http.StatusInternalServerError {
@@ -85,11 +88,11 @@ func Handler(procRoot string) http.Handler {
 			http.Error(w, errorText(err), status)
 			return
 		}
-		if ports == nil {
-			ports = []int{}
+		if answer.Ports == nil {
+			answer.Ports = []int{}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(Answer{Ports: ports})
+		_ = json.NewEncoder(w).Encode(answer)
 	})
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

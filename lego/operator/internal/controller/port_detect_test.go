@@ -174,8 +174,9 @@ func TestDetectBoundPortAdoptsALoneListener(t *testing.T) {
 // instance. Port detection adopted epmd, the TCP check passed on it, the
 // deploy went live and every request answered 502. Render routes a web
 // service to an HTTP port only and keeps scanning ("No open HTTP ports
-// detected on 0.0.0.0, continuing to scan"), and so does bex now; once
-// Phoenix binds PORT the scan stands down.
+// detected on 0.0.0.0, continuing to scan"), and so does bex now, naming the
+// case in Render's terms (w8/388); once Phoenix binds PORT the scan stands
+// down.
 func TestDetectBoundPortNeverAdoptsAListenerThatDoesNotAnswerHTTP(t *testing.T) {
 	t.Parallel()
 	epmd, distribution := epmdListenerPort(t), distributionListenerPort(t)
@@ -192,8 +193,18 @@ func TestDetectBoundPortNeverAdoptsAListenerThatDoesNotAnswerHTTP(t *testing.T) 
 				if app.Status.DetectedPort != 0 {
 					t.Fatalf("scan %d adopted port %d, which does not answer HTTP", scan+1, app.Status.DetectedPort)
 				}
-				if want := noOpenPortMessage(app, 10000); hint != want {
+				sorted := slices.Sorted(slices.Values(open))
+				list := strconv.Itoa(sorted[0])
+				if len(sorted) == 2 {
+					list += ", " + strconv.Itoa(sorted[1])
+				}
+				want := " Ports are open on 0.0.0.0 (" + list + ") but none answers HTTP: the server must serve HTTP on the port in PORT (10000)." +
+					" If the service does not need to receive public HTTP traffic, create a private service instead."
+				if hint != want {
 					t.Fatalf("scan %d: hint = %q, want %q", scan+1, hint, want)
+				}
+				if got := appv1alpha1.PortScanOf(appv1alpha1.ProbeStallReason("startup", true, "", "10000", 0) + hint); got != appv1alpha1.PortScanNoHTTPPort {
+					t.Fatalf("scan %d: the stall reads as port scan %d, want no HTTP port", scan+1, got)
 				}
 				time.Sleep(time.Millisecond)
 			}
@@ -274,6 +285,31 @@ func TestDetectBoundPortNamesAnInstanceWithNoOpenPort(t *testing.T) {
 		if app.Status.DetectedPort != 0 {
 			t.Errorf("%s: DetectedPort = %d, want none", name, app.Status.DetectedPort)
 		}
+	}
+}
+
+// w8/388: a web service whose process listens only on localhost is told so,
+// as Render's "Detected open ports on localhost -- did you mean to bind one of
+// these to 0.0.0.0?" does, when the node's reader can see it; a sweep cannot,
+// and keeps the plain text.
+func TestDetectBoundPortNamesALocalhostOnlyListener(t *testing.T) {
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{}, nil)
+	r.Listeners = &cannedListeners{loopback: []int{8080, 10000}}
+	got := r.detectBoundPort(t.Context(), app, dep, 10000)
+	want := " No open port was detected on 0.0.0.0, but ports are open on localhost (8080, 10000): the server must bind host 0.0.0.0 on the port in PORT (10000)."
+	if got != want {
+		t.Fatalf("stall text = %q, want %q", got, want)
+	}
+	if scan := appv1alpha1.PortScanOf(appv1alpha1.OpenPortProbeStallReason("startup", 0) + got); scan != appv1alpha1.PortScanLocalhostOnly {
+		t.Fatalf("the stall reads as port scan %d, want localhost only", scan)
+	}
+	if app.Status.DetectedPort != 0 {
+		t.Fatalf("DetectedPort = %d, want none", app.Status.DetectedPort)
+	}
+
+	r, app, dep = detectFixture(t, time.Minute, &cannedScanner{}, nil)
+	if got := r.detectBoundPort(t.Context(), app, dep, 10000); got != noOpenPortMessage(app, 10000) {
+		t.Fatalf("a sweep's stall text = %q, want the plain %q", got, noOpenPortMessage(app, 10000))
 	}
 }
 

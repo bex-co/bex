@@ -980,12 +980,16 @@ func (m *memStore) SetDeployStallReason(_ context.Context, id, reason string) er
 	}
 	d.StallReason = reason
 	now := time.Now()
-	switch appv1alpha1.PortScanOf(reason) {
-	case appv1alpha1.PortScanNoOpenPort:
+	scan := appv1alpha1.PortScanOf(reason)
+	switch {
+	case scan.Scanning():
+		if found := scan.Found(); found != "" && d.PortScanUntil == nil && d.PortScanFound == "" {
+			d.PortScanFound, d.PortScanFoundAt = found, &now
+		}
 		if d.PortScanSince == nil {
 			d.PortScanSince = &now
 		}
-	case appv1alpha1.PortScanOver:
+	case scan == appv1alpha1.PortScanOver:
 		if d.PortScanSince != nil && d.PortScanUntil == nil {
 			d.PortScanUntil = &now
 		}

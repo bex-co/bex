@@ -78,7 +78,12 @@ type DeployProgress struct {
 	// to it.
 	PortScanSince time.Time
 	PortScanUntil time.Time
-	ReadAt        time.Time
+	// PortScanFound is the finding Render words apart from "no open ports"
+	// (appv1alpha1.PortScanFound*), recorded at PortScanFoundAt; "" when none
+	// (w8/388). Lines from that moment on carry its wording.
+	PortScanFound   appv1alpha1.PortScanFinding
+	PortScanFoundAt time.Time
+	ReadAt          time.Time
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -425,9 +430,50 @@ const (
 	portScanDocsLine    = "==> Docs on specifying a port: https://render.com/docs/web-services#port-binding"
 	portScanTimeoutLine = "==> Port scan timeout reached, no open ports detected. Bind your service to at least one port. " +
 		"If you don't need to receive traffic on any port, create a background worker instead."
+	// w8/388: Render's wording when the scan finds listeners only on
+	// localhost (rkendel1/freq#97, 2026-01) and when its open ports answer
+	// no HTTP (docusealco/docuseal#684, 2026-05; mx-space/core#2762,
+	// 2026-07). The no-HTTP lines carry no docs line (langflow-ai/langflow#3151).
+	portScanLocalhostLine        = "==> No open ports detected on 0.0.0.0, continuing to scan..."
+	portScanLocalhostTimeoutLine = "==> Port scan timeout reached, no open ports detected on 0.0.0.0. " +
+		"Detected open ports on localhost -- did you mean to bind one of these to 0.0.0.0?"
+	portScanNoHTTPLine        = "==> No open HTTP ports detected on 0.0.0.0, continuing to scan..."
+	portScanNoHTTPTimeoutLine = "==> Port scan timeout reached, no open HTTP ports detected. " +
+		"If you don't need to receive public HTTP traffic, create a private service instead."
 	portScanInterval = time.Minute
 	portScanMaxLines = 5
 )
+
+// portScanWording is one of Render's scan narrations: the line it repeats,
+// its timeout line, and the docs line that follows them ("" for none).
+type portScanWording struct{ scan, timeout, docs string }
+
+// entries is line at at, followed by w's docs line when docs and w has one.
+func (w portScanWording) entries(id string, at time.Time, line string, docs bool) []LogEntry {
+	out := []LogEntry{progressEntry(id, at, line)}
+	if docs && w.docs != "" {
+		out = append(out, progressEntry(id, at, w.docs))
+	}
+	return out
+}
+
+var (
+	portScanPlain    = portScanWording{portScanLine, portScanTimeoutLine, portScanDocsLine}
+	portScanWordings = map[appv1alpha1.PortScanFinding]portScanWording{
+		appv1alpha1.PortScanFoundLocalhost: {portScanLocalhostLine, portScanLocalhostTimeoutLine, portScanDocsLine},
+		appv1alpha1.PortScanFoundNoHTTP:    {portScanNoHTTPLine, portScanNoHTTPTimeoutLine, ""},
+	}
+)
+
+// portScanWordingAt is the narration of d's line at t: its scan's finding's
+// from the moment the finding was recorded, the plain one before, so a line
+// already read keeps its text.
+func portScanWordingAt(d DeployProgress, t time.Time) portScanWording {
+	if w, ok := portScanWordings[d.PortScanFound]; ok && !t.Before(d.PortScanFoundAt) {
+		return w
+	}
+	return portScanPlain
+}
 
 // portScanLines are the scan lines d has earned: one when its stall first
 // said no port was open, then one a minute while the scan runs, at most five.
@@ -435,7 +481,8 @@ const (
 // one runs up to the read. The docs line follows only the first scan line, so
 // the narration never writes more than one line a minute. A deploy that
 // failed with its scan still running ends with Render's timeout line, at the
-// moment it failed, before the failure line.
+// moment it failed, before the failure line. Each line is worded for what the
+// scan had found by its moment (portScanWordingAt).
 func portScanLines(d DeployProgress) []LogEntry {
 	since := d.PortScanSince
 	if since.IsZero() {
@@ -454,13 +501,12 @@ func portScanLines(d DeployProgress) []LogEntry {
 		if !due(at) {
 			break
 		}
-		out = append(out, progressEntry(d.ID, at, portScanLine))
-		if i == 0 {
-			out = append(out, progressEntry(d.ID, at, portScanDocsLine))
-		}
+		w := portScanWordingAt(d, at)
+		out = append(out, w.entries(d.ID, at, w.scan, i == 0)...)
 	}
 	if d.Status == "update_failed" && d.PortScanUntil.IsZero() && !d.FinishedAt.Before(since) {
-		out = append(out, progressEntry(d.ID, d.FinishedAt, portScanTimeoutLine), progressEntry(d.ID, d.FinishedAt, portScanDocsLine))
+		w := portScanWordingAt(d, d.FinishedAt)
+		out = append(out, w.entries(d.ID, d.FinishedAt, w.timeout, true)...)
 	}
 	return out
 }

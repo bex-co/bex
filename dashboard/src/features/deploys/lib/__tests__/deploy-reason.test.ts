@@ -146,6 +146,41 @@ describe("deployReasonText", () => {
         );
       });
 
+      // w8/388: the scan's localhost and no-HTTP findings name their ports,
+      // read the same in en and are worded in zh.
+      it("words the localhost and no-HTTP findings in zh", () => {
+        const port = { name: "port", value: "10000" };
+        const ports = { name: "ports", value: "8080, 10000" };
+        const localhost =
+          " No open port was detected on 0.0.0.0, but ports are open on localhost (8080, 10000): the server must bind host 0.0.0.0 on the port in PORT (10000).";
+        const noHTTP =
+          " Ports are open on 0.0.0.0 (8080, 10000) but none answers HTTP: the server must serve HTTP on the port in PORT (10000). If the service does not need to receive public HTTP traffic, create a private service instead.";
+        for (const [code, text, zh] of [
+          [
+            "hint_no_open_port_localhost",
+            localhost,
+            "在 0.0.0.0 上未检测到开放端口，但 localhost 上有开放端口（8080, 10000）：服务器必须绑定到 0.0.0.0，并监听 PORT 环境变量指定的端口（10000）。",
+          ],
+          [
+            "hint_no_open_http_port",
+            noHTTP,
+            "0.0.0.0 上有开放端口（8080, 10000），但都不响应 HTTP：服务器必须在 PORT 环境变量指定的端口（10000）上提供 HTTP 服务。如果服务不需要接收公网 HTTP 流量，请改为创建私有服务。",
+          ],
+        ]) {
+          const found = wire(
+            "probe_http_failed_restarted",
+            [...stallParams, { name: "hint", value: text }],
+            [{ code, params: [port, ports], text }],
+          );
+          expect(
+            deployReasonText(translator("en"), sentence + text, found),
+          ).toBe(sentence + text);
+          expect(
+            deployReasonText(translator("zh"), sentence + text, found),
+          ).toBe(zhSentence + zh);
+        }
+      });
+
       // A hint the dashboard does not word yet reads in bex-api's English,
       // and the tail no template words stays English after the worded ones.
       it("keeps an unworded hint and the remainder in English", () => {

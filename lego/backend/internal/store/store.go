@@ -463,6 +463,12 @@ type Deploy struct {
 	// They time the deploy log's port-scan lines; not a Render deploy field.
 	PortScanSince *time.Time `json:"-"`
 	PortScanUntil *time.Time `json:"-"`
+	// PortScanFound is the first finding Render names apart from "no open
+	// ports" that the running scan reported (appv1alpha1.PortScanFound*:
+	// a listener only on localhost, or open ports answering no HTTP), and
+	// PortScanFoundAt when (w8/388). "" and nil are neither.
+	PortScanFound   appv1alpha1.PortScanFinding `json:"-"`
+	PortScanFoundAt *time.Time                  `json:"-"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -3276,15 +3282,25 @@ func clampPageLimit(n int) int {
 // first later one that says the scan is over stamps port_scan_until. A row
 // has one scan: a second no-open-port stretch after the first ended adds no
 // lines, so a line is only ever written for a moment the scan was running.
+// The first stall of a running scan that names a finding (a listener only on
+// localhost, open ports answering no HTTP; w8/388) records it and its moment,
+// and nothing later changes it, so a scan line already read never rewords.
+// One clock reading stamps all three, so a scan that starts with a finding
+// finds it at its first line.
 func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) error {
 	scan := appv1alpha1.PortScanOf(reason)
 	_, err := s.Pool.Exec(ctx,
 		`UPDATE deploys SET stall_reason = $2,
-		     port_scan_since = CASE WHEN $3 THEN COALESCE(port_scan_since, clock_timestamp()) ELSE port_scan_since END,
-		     port_scan_until = CASE WHEN $4 AND port_scan_since IS NOT NULL THEN COALESCE(port_scan_until, clock_timestamp())
-		                            ELSE port_scan_until END
+		     port_scan_since = CASE WHEN $3 THEN COALESCE(port_scan_since, c.at) ELSE port_scan_since END,
+		     port_scan_until = CASE WHEN $4 AND port_scan_since IS NOT NULL THEN COALESCE(port_scan_until, c.at)
+		                            ELSE port_scan_until END,
+		     port_scan_found = CASE WHEN $5 <> '' AND port_scan_until IS NULL AND port_scan_found IS NULL THEN $5
+		                            ELSE port_scan_found END,
+		     port_scan_found_at = CASE WHEN $5 <> '' AND port_scan_until IS NULL AND port_scan_found IS NULL THEN c.at
+		                               ELSE port_scan_found_at END
+		 FROM (SELECT clock_timestamp() AS at) c
 		 WHERE id = $1 AND finished_at IS NULL AND stall_reason IS DISTINCT FROM $2`,
-		id, reason, scan == appv1alpha1.PortScanNoOpenPort, scan == appv1alpha1.PortScanOver)
+		id, reason, scan.Scanning(), scan == appv1alpha1.PortScanOver, scan.Found())
 	return classify("deploy stall reason", err)
 }
 
@@ -3312,12 +3328,12 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, detected_http_port, COALESCE(build_id, ''), restart_deferred`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred}, extra...)...)
+	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred}, extra...)...)
 	return d, err
 }
 

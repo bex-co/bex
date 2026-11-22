@@ -52,7 +52,7 @@ func TestHandlerAnswersEachOutcome(t *testing.T) {
 		status       int
 		body         string
 	}{
-		{"the pod's ports", readURL(podUID, podIP), http.StatusOK, `{"ports":[6379,10000,50051]}`},
+		{"the pod's ports", readURL(podUID, podIP), http.StatusOK, `{"ports":[6379,10000,50051],"loopback":[8124,9000,9001]}`},
 		{"another pod of the node", readURL(otherUID, "10.244.1.6"), http.StatusOK, `{"ports":[7777]}`},
 		{"not on this node", readURL("bb6c1d2e-8a4b-4c5d-9e0f-1a2b3c4d5e71", podIP), http.StatusNotFound, ErrPodNotFound.Error()},
 		{"another address", readURL(podUID, "10.244.1.77"), http.StatusConflict, ErrAddressMismatch.Error()},
@@ -72,11 +72,16 @@ func TestHandlerAnswersEachOutcome(t *testing.T) {
 }
 
 // An empty answer is an empty list, never null, so a client can tell "nothing
-// listens" from a malformed reply.
+// listens" from a malformed reply; a listener only on loopback is named apart.
 func TestHandlerAnswersAnEmptyListForNoListener(t *testing.T) {
 	p := podProcess("7", systemdCgroup(podUID, "besteffort"))
 	p.tcp, p.tcp6 = tcpTable("127.0.0.1:8124"), nil
 	rec := get(t, Handler(fakeProc(t, p)), http.MethodGet, readURL(podUID, podIP), nil)
+	if want := `{"ports":[],"loopback":[8124]}`; rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != want {
+		t.Fatalf("GET = %d %q, want 200 %s", rec.Code, rec.Body.String(), want)
+	}
+	p.tcp = tcpTable()
+	rec = get(t, Handler(fakeProc(t, p)), http.MethodGet, readURL(podUID, podIP), nil)
 	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"ports":[]}` {
 		t.Fatalf("GET = %d %q, want 200 {\"ports\":[]}", rec.Code, rec.Body.String())
 	}
@@ -126,16 +131,16 @@ func TestReadyzReadsTheProcessTable(t *testing.T) {
 	}
 }
 
-// The operator's client against the handler: ports on 200, and the two
-// refusals the operator acts on as their sentinels.
+// The operator's client against the handler: ports and loopback ports on 200,
+// and the two refusals the operator acts on as their sentinels.
 func TestClientReadsTheHandler(t *testing.T) {
 	server := httptest.NewServer(Handler(fakeProc(t, podProcess("200", systemdCgroup(podUID, "burstable")))))
 	t.Cleanup(server.Close)
 	reader := netip.MustParseAddrPort(strings.TrimPrefix(server.URL, "http://"))
 	client := NewClient()
 	got, err := client.Read(t.Context(), reader, podUID, podIP)
-	if err != nil || !slices.Equal(got, wantPorts) {
-		t.Fatalf("Read = %v, %v; want %v", got, err, wantPorts)
+	if err != nil || !slices.Equal(got.Ports, wantPorts) || !slices.Equal(got.Loopback, []int{8124, 9000, 9001}) {
+		t.Fatalf("Read = %+v, %v; want %v and loopback [8124 9000 9001]", got, err, wantPorts)
 	}
 	if _, err := client.Read(t.Context(), reader, otherUID, podIP); !errors.Is(err, ErrPodNotFound) {
 		t.Fatalf("Read of a pod elsewhere: %v, want ErrPodNotFound", err)
@@ -148,9 +153,19 @@ func TestClientReadsTheHandler(t *testing.T) {
 	}
 }
 
+// A reader from before w8/388 sends no loopback ports, which reads as none.
+func TestClientReadsAnAnswerWithoutLoopback(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `{"ports":[8080]}`) }))
+	t.Cleanup(server.Close)
+	got, err := NewClient().Read(t.Context(), netip.MustParseAddrPort(strings.TrimPrefix(server.URL, "http://")), podUID, podIP)
+	if err != nil || !slices.Equal(got.Ports, []int{8080}) || len(got.Loopback) != 0 {
+		t.Fatalf("Read = %+v, %v; want [8080] and no loopback port", got, err)
+	}
+}
+
 // A reply the reader would never send is a failure, not an answer.
 func TestClientRefusesAMalformedAnswer(t *testing.T) {
-	for _, body := range []string{`{"ports":[0]}`, `{"ports":[65536]}`, `not json`} {
+	for _, body := range []string{`{"ports":[0]}`, `{"ports":[65536]}`, `{"ports":[],"loopback":[70000]}`, `not json`} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, body) }))
 		_, err := NewClient().Read(t.Context(), netip.MustParseAddrPort(strings.TrimPrefix(server.URL, "http://")), podUID, podIP)
 		server.Close()

@@ -510,6 +510,18 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
   },
+  "deploys.reason.http_port_localhost_only": {
+    message:
+      "0.0.0.0 で開いているポートは検出されませんでしたが、localhost でポートが開いています ({ports})。サーバーをホスト 0.0.0.0 にバインドしてください。コンテナーの起動中はスキャンを続けます",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_localhost_only, w8/388); params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.http_port_none_http": {
+    message:
+      "0.0.0.0 でポートが開いています ({ports}) が、まだどれも HTTP に応答しません。コンテナーの起動中はスキャンを続けます。サービスが公開 HTTP トラフィックを受信する必要がない場合は、代わりに Private Service を作成してください",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_http, w8/388); params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
+  },
   "deploys.reason.image_not_found": {
     message:
       "イメージ {image} がレジストリに見つかりませんでした。リポジトリまたはタグが存在しません。イメージの URL とタグを確認するか、存在するダイジェストをデプロイしてください",
@@ -877,6 +889,18 @@ const jaDeploys: Record<string, TranslationEntry> = {
       " インスタンスで開いているポートが検出されませんでした。サーバーはサービスのポート ({port}) で、ホスト 0.0.0.0 にバインドする必要があります。",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_localhost": {
+    message:
+      " 0.0.0.0 で開いているポートは検出されませんでしたが、localhost でポートが開いています ({ports})。サーバーは PORT ({port}) のポートで、ホスト 0.0.0.0 にバインドする必要があります。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_localhost, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.hint_no_open_http_port": {
+    message:
+      " 0.0.0.0 でポートが開いています ({ports}) が、どれも HTTP に応答しません。サーバーは PORT ({port}) のポートで HTTP を提供する必要があります。サービスが公開 HTTP トラフィックを受信する必要がない場合は、代わりに Private Service を作成してください。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
   "deploys.reason.hint_crash_port_bind": {
     message:

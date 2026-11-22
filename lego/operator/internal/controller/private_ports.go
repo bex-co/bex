@@ -250,7 +250,7 @@ func (r *AppReconciler) sweepPrivatePorts(ctx context.Context, app *appv1alpha1.
 		logf.FromContext(ctx).Info("private network port scan failed; keeping the last listeners", "app", app.Name, "error", err.Error())
 		return nil
 	}
-	found := listenerSet(open)
+	found := listenerSet(open.Ports)
 	next := &appv1alpha1.RuntimePortsStatus{Revision: revision, Ports: found}
 	network := releaseNetwork(app, revision)
 	if partial {
@@ -374,7 +374,7 @@ func (r *AppReconciler) scanForPrivatePrimary(ctx context.Context, app *appv1alp
 		logf.FromContext(ctx).Info("private primary port scan failed", "app", app.Name, "error", err.Error())
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoOpenServicePort, portParam(int32(port)))
 	}
-	found := listenerSet(open)
+	found := listenerSet(open.Ports)
 	if len(found) == 0 || slices.Contains(found, network.PrimaryPort) {
 		return "" // nothing to choose, or the primary answers now and the check will pass
 	}

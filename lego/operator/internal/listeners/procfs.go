@@ -28,8 +28,10 @@ limitations under the License.
 // listener's local address, so "accepts a connection on the pod address" is
 // answered as the connect answered it: 0.0.0.0, ::, the pod address or another
 // non-loopback address count, 127.0.0.0/8, ::1 and ::ffff:127.0.0.0/104 do
-// not. The reader needs the node's PID namespace and nothing else: /proc/<pid>/
-// cgroup and net/* are world-readable, while environ and ns/* stay refused.
+// not. Those are answered apart: Render names a scan that finds a listener
+// only on localhost (w8/388). The reader needs the node's PID namespace and
+// nothing else: /proc/<pid>/cgroup and net/* are world-readable, while
+// environ and ns/* stay refused.
 //
 // This package is the node agent's half (Read, Handler, cmd/listener-reader)
 // and the operator's client of it (Client).
@@ -76,30 +78,31 @@ var podUIDPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 var errOtherProcess = errors.New("listeners: not the pod's process")
 
 // Read returns the TCP ports the pod with podUID listens on at an address other
-// than loopback, ascending, read under procRoot, the node's /proc. podIP is the
-// pod's address: the read refuses a namespace that does not hold it.
-func Read(ctx context.Context, procRoot, podUID string, podIP netip.Addr) ([]int, error) {
+// than loopback and, apart, those it listens on only at loopback, each
+// ascending, read under procRoot, the node's /proc. podIP is the pod's address:
+// the read refuses a namespace that does not hold it.
+func Read(ctx context.Context, procRoot, podUID string, podIP netip.Addr) (Answer, error) {
 	podIP = podIP.Unmap()
 	if !podUIDPattern.MatchString(podUID) || !podIP.IsValid() || podIP.IsLoopback() || podIP.IsUnspecified() {
-		return nil, ErrBadRequest
+		return Answer{}, ErrBadRequest
 	}
 	entries, err := os.ReadDir(procRoot)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrUnreadable, err)
+		return Answer{}, fmt.Errorf("%w: %w", ErrUnreadable, err)
 	}
 	match := cgroupMatcher(podUID)
 	found, mismatched := false, false
 	for _, entry := range entries {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return Answer{}, err
 		}
 		if !isPID(entry.Name()) {
 			continue
 		}
-		ports, err := readProcess(filepath.Join(procRoot, entry.Name()), match, podIP)
+		answer, err := readProcess(filepath.Join(procRoot, entry.Name()), match, podIP)
 		switch {
 		case err == nil:
-			return ports, nil
+			return answer, nil
 		case errors.Is(err, errOtherProcess):
 			continue
 		case errors.Is(err, ErrAddressMismatch):
@@ -110,11 +113,11 @@ func Read(ctx context.Context, procRoot, podUID string, podIP netip.Addr) ([]int
 	}
 	switch {
 	case mismatched:
-		return nil, ErrAddressMismatch
+		return Answer{}, ErrAddressMismatch
 	case found:
-		return nil, ErrUnreadable
+		return Answer{}, ErrUnreadable
 	}
-	return nil, ErrPodNotFound
+	return Answer{}, ErrPodNotFound
 }
 
 func isPID(name string) bool {
@@ -133,22 +136,22 @@ func isPID(name string) bool {
 // /proc/<pid> directory is opened once and every file read through that
 // handle: a handle on an exited process reads nothing, so a PID the kernel
 // hands to another process mid-read can never answer for the pod.
-func readProcess(dir string, inPod func([]byte) bool, podIP netip.Addr) ([]int, error) {
+func readProcess(dir string, inPod func([]byte) bool, podIP netip.Addr) (Answer, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
-		return nil, errOtherProcess
+		return Answer{}, errOtherProcess
 	}
 	defer func() { _ = root.Close() }()
 	cgroup, err := root.ReadFile("cgroup")
 	if err != nil || !inPod(cgroup) {
-		return nil, errOtherProcess
+		return Answer{}, errOtherProcess
 	}
 	local, err := holdsAddress(root, podIP)
 	if err != nil {
-		return nil, err
+		return Answer{}, err
 	}
 	if !local {
-		return nil, ErrAddressMismatch
+		return Answer{}, ErrAddressMismatch
 	}
 	return listening(root)
 }
@@ -237,27 +240,33 @@ func ifInet6Local(r io.Reader) []netip.Addr {
 	return local
 }
 
-// listening reads the namespace's two TCP tables and keeps the ports a
-// connection to the pod's address could reach: anything bound to an address
-// other than loopback. A missing tcp6 (IPv6 disabled) contributes nothing; a
-// missing tcp means the process went away.
-func listening(root *os.Root) ([]int, error) {
-	var ports []int
+// listening reads the namespace's two TCP tables: Ports are those a
+// connection to the pod's address could reach, anything bound to an address
+// other than loopback, and Loopback those bound only to loopback. A missing
+// tcp6 (IPv6 disabled) contributes nothing; a missing tcp means the process
+// went away.
+func listening(root *os.Root) (Answer, error) {
+	var ports, loopback []int
 	for _, name := range []string{"net/tcp", "net/tcp6"} {
 		f, err := root.Open(name)
 		if err != nil {
 			if name == "net/tcp6" && errors.Is(err, os.ErrNotExist) {
 				continue
 			}
-			return nil, fmt.Errorf("%w: %w", ErrUnreadable, err)
+			return Answer{}, fmt.Errorf("%w: %w", ErrUnreadable, err)
 		}
 		for _, socket := range procnet.Listening(f) {
-			if !socket.Addr.IsLoopback() { // netip unmaps a 4-in-6 address itself
+			if socket.Addr.IsLoopback() { // netip unmaps a 4-in-6 address itself
+				loopback = append(loopback, socket.Port)
+			} else {
 				ports = append(ports, socket.Port)
 			}
 		}
 		_ = f.Close()
 	}
 	slices.Sort(ports)
-	return slices.Compact(ports), nil
+	ports = slices.Compact(ports)
+	loopback = slices.DeleteFunc(loopback, func(p int) bool { _, reachable := slices.BinarySearch(ports, p); return reachable })
+	slices.Sort(loopback)
+	return Answer{Ports: ports, Loopback: slices.Compact(loopback)}, nil
 }

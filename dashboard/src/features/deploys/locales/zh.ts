@@ -498,6 +498,18 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
   },
+  "deploys.reason.http_port_localhost_only": {
+    message:
+      "在 0.0.0.0 上未检测到开放端口，但 localhost 上有开放端口（{ports}）；请将服务器绑定到 0.0.0.0。容器启动期间继续扫描",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_localhost_only, w8/388); params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.http_port_none_http": {
+    message:
+      "0.0.0.0 上有开放端口（{ports}），但都还没有响应 HTTP；容器启动期间继续扫描。如果服务不需要接收公网 HTTP 流量，请改为创建私有服务",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_http, w8/388); params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
+  },
   "deploys.reason.image_not_found": {
     message:
       "在镜像仓库中找不到镜像 {image}：仓库或标签不存在。请检查镜像 URL 和标签，或部署一个存在的镜像摘要",
@@ -851,6 +863,18 @@ const zhDeploys: Record<string, TranslationEntry> = {
       "实例上未检测到开放端口：服务器必须绑定到 0.0.0.0，并监听服务的端口（{port}）。",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_localhost": {
+    message:
+      "在 0.0.0.0 上未检测到开放端口，但 localhost 上有开放端口（{ports}）：服务器必须绑定到 0.0.0.0，并监听 PORT 环境变量指定的端口（{port}）。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_localhost, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.hint_no_open_http_port": {
+    message:
+      "0.0.0.0 上有开放端口（{ports}），但都不响应 HTTP：服务器必须在 PORT 环境变量指定的端口（{port}）上提供 HTTP 服务。如果服务不需要接收公网 HTTP 流量，请改为创建私有服务。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
   "deploys.reason.hint_crash_port_bind": {
     message: "如果崩溃源于端口绑定：进程必须监听 $PORT（{port}）。",

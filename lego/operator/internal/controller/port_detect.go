@@ -32,6 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/httpport"
+	"github.com/bex-co/bex/lego/operator/internal/listeners"
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -49,10 +50,12 @@ import (
 // without a reader, connects to the pod IP on every TCP port
 // (internal/portscan). A process bound only to loopback is in neither answer:
 // it never accepts on the pod's address, which is Render's own "0.0.0.0"
-// condition. Only a listener
-// that answers HTTP counts (internal/httpport): Render routes a web service to
-// one HTTP port and keeps scanning while none answers ("No open HTTP ports
-// detected on 0.0.0.0, continuing to scan"), so a binary listener a release
+// condition. The reader names such a listener apart, and the stall says so,
+// as Render's "Detected open ports on localhost" does (w8/388). Only a
+// listener that answers HTTP counts (internal/httpport): Render routes a web
+// service to one HTTP port and keeps scanning while none answers ("No open
+// HTTP ports detected on 0.0.0.0, continuing to scan"), and the stall names
+// that case too (w8/388), so a binary listener a release
 // opens first, such as the Erlang epmd (4369) and distribution ports a Phoenix
 // release starts long before Phoenix binds PORT on a small CPU share, is never
 // the service (w32/037). When exactly one HTTP port other than the configured
@@ -230,30 +233,47 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 		logf.FromContext(ctx).Info("port detection scan failed", "app", app.Name, "error", err.Error())
 		return noOpenPortMessage(app, port)
 	}
-	if slices.Contains(open, port) {
+	if slices.Contains(open.Ports, port) {
 		return "" // the configured port answers: the failing check is about the path, not the listener
 	}
 	if app.Spec.Type == appv1alpha1.TypePrivateService {
-		found := listenerSet(open)
+		found := listenerSet(open.Ports)
 		if len(found) == 0 {
 			return noOpenPortMessage(app, port)
 		}
 		return r.adoptListener(ctx, app, key, port, int(preferredPort(found)))
 	}
-	others := r.httpListeners(ctx, app, pod.Status.PodIP, open)
+	candidates := httpCandidates(open.Ports)
+	others, err := r.httpListeners(ctx, app, pod.Status.PodIP, candidates)
 	switch len(others) {
 	case 0:
+		switch scanFinding(open, candidates, err == nil) {
+		case appv1alpha1.PortScanLocalhostOnly:
+			return localhostOnlyMessage(app, port, open.Loopback)
+		case appv1alpha1.PortScanNoHTTPPort:
+			return noHTTPPortMessage(app, port, candidates)
+		}
 		return noOpenPortMessage(app, port)
 	case 1:
 		return r.adoptListener(ctx, app, key, port, others[0])
 	default:
-		list := make([]string, len(others))
-		for i, p := range others {
-			list[i] = strconv.Itoa(p)
-		}
-		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningPorts, portParam(int32(port)),
-			appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(list, ", ")})
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningPorts, portParam(int32(port)), portsParam(others))
 	}
+}
+
+// scanFinding is what a web service's scan found when no listener answers
+// HTTP, in the cases Render names (w8/388): open ports, candidates, that were
+// probed and answer no HTTP; nothing reachable but listeners on loopback;
+// else no open port. candidates come from open.Ports, so the first two never
+// both hold.
+func scanFinding(open listeners.Answer, candidates []int32, probed bool) appv1alpha1.PortScan {
+	switch {
+	case probed && len(candidates) > 0:
+		return appv1alpha1.PortScanNoHTTPPort
+	case len(open.Ports) == 0 && len(open.Loopback) > 0:
+		return appv1alpha1.PortScanLocalhostOnly
+	}
+	return appv1alpha1.PortScanNoOpenPort
 }
 
 // adoptListener makes candidate, the listener a scan chose, the App's detected
@@ -285,19 +305,20 @@ func (r *AppReconciler) candidateConfirmed(key string, candidate int) bool {
 	return false
 }
 
-// httpListeners is the ports among open that answer HTTP, lowest first. A
-// failed probe finds none, so the scan waits as it does for a closed port.
-func (r *AppReconciler) httpListeners(ctx context.Context, app *appv1alpha1.App, ip string, open []int) []int {
-	answering, err := httpport.Answering(ctx, ip, healthProbeHost(app, r.BaseDomain), httpCandidates(open))
+// httpListeners is the ports among candidates that answer HTTP, lowest first.
+// A failed probe finds none, so the scan waits as it does for a closed port,
+// and its error says the ports' HTTP answer is unknown.
+func (r *AppReconciler) httpListeners(ctx context.Context, app *appv1alpha1.App, ip string, candidates []int32) ([]int, error) {
+	answering, err := httpport.Answering(ctx, ip, healthProbeHost(app, r.BaseDomain), candidates)
 	if err != nil {
 		logf.FromContext(ctx).Info("port detection HTTP probe failed", "app", app.Name, "error", err.Error())
-		return nil
+		return nil, err
 	}
 	ports := make([]int, len(answering))
 	for i, p := range answering {
 		ports[i] = int(p)
 	}
-	return ports
+	return ports, nil
 }
 
 // noOpenPortMessage is the stall text for an instance with nothing listening
@@ -325,6 +346,36 @@ func noOpenPortMessage(app *appv1alpha1.App, port int) string {
 // port: it does not belong in a web or private service (w21/059).
 var backgroundWorkerHint = appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintBackgroundWorker)
 
+// localhostOnlyMessage is the stall text for a web service whose process
+// listens on nothing the platform can reach but on loopback, ports loopback:
+// Render's "No open ports detected on 0.0.0.0" and "Detected open ports on
+// localhost -- did you mean to bind one of these to 0.0.0.0?" (w8/388). The
+// process does serve, so a background worker is no alternative.
+func localhostOnlyMessage(app *appv1alpha1.App, port int, loopback []int) string {
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoOpenPortLocalhost,
+		portParam(int32(processPort(app, port))), portsParam(loopback))
+}
+
+// noHTTPPortMessage is the stall text for a web service whose open ports,
+// candidates, answer no HTTP: Render's "No open HTTP ports detected on
+// 0.0.0.0" and "If you don't need to receive public HTTP traffic, create a
+// private service instead" (w8/388).
+func noHTTPPortMessage(app *appv1alpha1.App, port int, candidates []int32) string {
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoOpenHTTPPort,
+		portParam(int32(processPort(app, port))), portsParam(candidates))
+}
+
+// portsParam is ports, ascending, as a deploy reason's {ports}: the first
+// MaxImagePorts, comma-separated. A tenant's process may listen on thousands
+// of loopback ports, and the stall text is an App condition's bounded message.
+func portsParam[P int | int32](ports []P) appv1alpha1.DeployReasonParam {
+	list := make([]string, 0, min(len(ports), appv1alpha1.MaxImagePorts))
+	for _, p := range ports[:cap(list)] {
+		list = append(list, strconv.Itoa(int(p)))
+	}
+	return appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(list, ", ")}
+}
+
 // commonHTTPPorts are probed first (w4/393): with dropped packets a full
 // 65k sweep cannot finish inside portDetectTimeout, but a verdict on the
 // ports HTTP servers actually bind lands in well under a second.
@@ -340,7 +391,7 @@ type portsScanner interface {
 // any of them listens, else all. That is what scanBoundPort's two phases
 // answer; a reader's complete answer is narrowed the same way, so detection
 // chooses as it did when it swept. Only a node without a reader is swept.
-func (r *AppReconciler) boundPortListeners(ctx context.Context, pod *corev1.Pod, also ...int) ([]int, error) {
+func (r *AppReconciler) boundPortListeners(ctx context.Context, pod *corev1.Pod, also ...int) (listeners.Answer, error) {
 	swept := false
 	open, err := r.podListeners(ctx, pod, func(ctx context.Context, ip string) ([]int, error) {
 		swept = true
@@ -350,8 +401,8 @@ func (r *AppReconciler) boundPortListeners(ctx context.Context, pod *corev1.Pod,
 		return open, err
 	}
 	likely := likelyPorts(also)
-	if common := slices.DeleteFunc(slices.Clone(open), func(p int) bool { return !slices.Contains(likely, p) }); len(common) > 0 {
-		return common, nil
+	if common := slices.DeleteFunc(slices.Clone(open.Ports), func(p int) bool { return !slices.Contains(likely, p) }); len(common) > 0 {
+		open.Ports = common
 	}
 	return open, nil
 }

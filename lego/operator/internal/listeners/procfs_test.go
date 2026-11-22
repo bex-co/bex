@@ -148,7 +148,7 @@ func podProcess(pid, cgroup string) process {
 		tcp6: tcpTable("::1:9000", "::ffff:127.0.0.1:9001", ":::50051")}
 }
 
-func read(t *testing.T, root string) ([]int, error) {
+func read(t *testing.T, root string) (Answer, error) {
 	t.Helper()
 	return Read(t.Context(), root, podUID, netip.MustParseAddr(podIP))
 }
@@ -175,7 +175,7 @@ func TestReadFindsThePodUnderEveryCgroupLayout(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := read(t, fakeProc(t, podProcess("4242", cgroup)))
-			if err != nil || !slices.Equal(got, wantPorts) {
+			if err != nil || !slices.Equal(got.Ports, wantPorts) {
 				t.Fatalf("Read = %v, %v; want %v", got, err, wantPorts)
 			}
 		})
@@ -184,18 +184,31 @@ func TestReadFindsThePodUnderEveryCgroupLayout(t *testing.T) {
 
 // Loopback listeners, IPv4, IPv6 and v4-mapped, are refused by a connection to
 // the pod address, so they are not listeners; a listener bound to the pod
-// address alone is. The established connection's port is never one.
+// address alone is. The established connection's port is never one. The
+// loopback ones are answered apart (w8/388), less any port also bound off
+// loopback.
 func TestReadKeepsOnlyListenersOffLoopback(t *testing.T) {
-	got, err := read(t, fakeProc(t, process{pid: "7", cgroup: systemdCgroup(podUID, "burstable"), fibTrie: fibTrie(podIP),
-		tcp:  tcpTable("127.0.0.1:8124", "127.0.0.53:53", podIP+":6379"),
-		tcp6: tcpTable("::1:9000", "::ffff:127.0.0.1:9001", "::ffff:"+podIP+":9002", "fd00::5:9003")}))
-	if want := []int{6379, 9002, 9003}; err != nil || !slices.Equal(got, want) {
-		t.Fatalf("Read = %v, %v; want %v", got, err, want)
+	readAll := func(p process) Answer {
+		t.Helper()
+		answer, err := read(t, fakeProc(t, p))
+		if err != nil {
+			t.Fatalf("Read: %v", err)
+		}
+		return answer
 	}
-	got, err = read(t, fakeProc(t, process{pid: "7", cgroup: systemdCgroup(podUID, "burstable"), fibTrie: fibTrie(podIP),
-		tcp: tcpTable("127.0.0.1:8124"), tcp6: tcpTable("::1:9000")}))
-	if err != nil || len(got) != 0 {
-		t.Fatalf("Read of a loopback-only pod = %v, %v; want no port and no error", got, err)
+	got := readAll(process{pid: "7", cgroup: systemdCgroup(podUID, "burstable"), fibTrie: fibTrie(podIP),
+		tcp:  tcpTable("127.0.0.1:8124", "127.0.0.53:53", podIP+":6379", "127.0.0.1:6379"),
+		tcp6: tcpTable("::1:9000", "::ffff:127.0.0.1:9001", "::ffff:"+podIP+":9002", "fd00::5:9003")})
+	if want := []int{6379, 9002, 9003}; !slices.Equal(got.Ports, want) {
+		t.Fatalf("Read's ports = %v; want %v", got.Ports, want)
+	}
+	if want := []int{53, 8124, 9000, 9001}; !slices.Equal(got.Loopback, want) {
+		t.Fatalf("Read's loopback ports = %v; want %v", got.Loopback, want)
+	}
+	got = readAll(process{pid: "7", cgroup: systemdCgroup(podUID, "burstable"), fibTrie: fibTrie(podIP),
+		tcp: tcpTable("127.0.0.1:8124"), tcp6: tcpTable("::1:9000", "::1:8124")})
+	if len(got.Ports) != 0 || !slices.Equal(got.Loopback, []int{8124, 9000}) {
+		t.Fatalf("Read of a loopback-only pod = %+v; want no port, and 8124 and 9000 on loopback", got)
 	}
 }
 
@@ -204,7 +217,7 @@ func TestReadWithoutTCP6(t *testing.T) {
 	p := podProcess("7", systemdCgroup(podUID, "besteffort"))
 	p.tcp6 = nil
 	got, err := read(t, fakeProc(t, p))
-	if want := []int{6379, 10000}; err != nil || !slices.Equal(got, want) {
+	if want := []int{6379, 10000}; err != nil || !slices.Equal(got.Ports, want) {
 		t.Fatalf("Read = %v, %v; want %v", got, err, want)
 	}
 }
@@ -216,7 +229,7 @@ func TestReadIgnoresOtherPods(t *testing.T) {
 		tcp: tcpTable("0.0.0.0:6379", "0.0.0.0:7777")}
 	host := process{pid: "1", cgroup: "0::/init.scope\n", fibTrie: fibTrie("172.22.0.6"), tcp: tcpTable("0.0.0.0:22")}
 	got, err := read(t, fakeProc(t, host, other, podProcess("200", systemdCgroup(podUID, "burstable"))))
-	if err != nil || !slices.Equal(got, wantPorts) {
+	if err != nil || !slices.Equal(got.Ports, wantPorts) {
 		t.Fatalf("Read = %v, %v; want %v", got, err, wantPorts)
 	}
 	if got, err := read(t, fakeProc(t, host, other)); !errors.Is(err, ErrPodNotFound) {
@@ -232,7 +245,7 @@ func TestReadAnswersFromAnyOfThePodsProcesses(t *testing.T) {
 	}
 	root := fakeProc(t, podProcess("300", cgroup("pause")), podProcess("301", cgroup("app")), podProcess("302", cgroup("sidecar")))
 	got, err := read(t, root)
-	if err != nil || !slices.Equal(got, wantPorts) {
+	if err != nil || !slices.Equal(got.Ports, wantPorts) {
 		t.Fatalf("Read = %v, %v; want %v", got, err, wantPorts)
 	}
 }
@@ -243,7 +256,7 @@ func TestReadAnswersFromAnyOfThePodsProcesses(t *testing.T) {
 func TestReadSkipsAProcessThatVanishedMidRead(t *testing.T) {
 	gone := process{pid: "400", cgroup: systemdCgroup(podUID, "burstable"), fibTrie: fibTrie(podIP)} // no net/tcp left
 	got, err := read(t, fakeProc(t, gone, podProcess("401", systemdCgroup(podUID, "burstable"))))
-	if err != nil || !slices.Equal(got, wantPorts) {
+	if err != nil || !slices.Equal(got.Ports, wantPorts) {
 		t.Fatalf("Read = %v, %v; want %v", got, err, wantPorts)
 	}
 	noTrie := process{pid: "402", cgroup: systemdCgroup(podUID, "burstable"), tcp: tcpTable("0.0.0.0:80")}
@@ -281,7 +294,7 @@ func TestReadChecksAnIPv6AddressInIfInet6(t *testing.T) {
 	p := podProcess("600", systemdCgroup(podUID, "besteffort"))
 	p.ifInet6 = inet6("::1", "fd00:10:244:1::5", "fe80::1")
 	got, err := Read(t.Context(), fakeProc(t, p), podUID, netip.MustParseAddr("fd00:10:244:1::5"))
-	if err != nil || !slices.Equal(got, wantPorts) {
+	if err != nil || !slices.Equal(got.Ports, wantPorts) {
 		t.Fatalf("Read = %v, %v; want %v", got, err, wantPorts)
 	}
 	if _, err := Read(t.Context(), fakeProc(t, p), podUID, netip.MustParseAddr("fd00:10:244:1::6")); !errors.Is(err, ErrAddressMismatch) {
@@ -362,8 +375,11 @@ func TestReadOnRealKernelOutput(t *testing.T) {
 	requireLittleEndianFixtures(t)
 	root := fakeProc(t, process{pid: "70275", cgroup: realCgroup, fibTrie: new(realFibTrie), tcp: new(realTCP), tcp6: new(realTCP6)})
 	got, err := Read(t.Context(), root, realPodUID, netip.MustParseAddr(realPodIP))
-	if want := []int{8123, 8126}; err != nil || !slices.Equal(got, want) {
+	if want := []int{8123, 8126}; err != nil || !slices.Equal(got.Ports, want) {
 		t.Fatalf("Read = %v, %v; want %v", got, err, want)
+	}
+	if want := []int{8124, 8125}; !slices.Equal(got.Loopback, want) {
+		t.Fatalf("Read's loopback ports = %v; want %v", got.Loopback, want)
 	}
 	if _, err := Read(t.Context(), root, realPodUID, netip.MustParseAddr("169.254.1.1")); !errors.Is(err, ErrAddressMismatch) {
 		t.Fatalf("Read as the link route's address: %v, want ErrAddressMismatch", err)

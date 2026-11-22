@@ -536,6 +536,18 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
   },
+  "deploys.reason.http_port_localhost_only": {
+    message:
+      "На 0.0.0.0 не обнаружено открытых портов, но на localhost порты открыты ({ports}); сервер должен слушать хост 0.0.0.0. Сканирование продолжается, пока запускается контейнер",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_localhost_only, w8/388); params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.http_port_none_http": {
+    message:
+      "На 0.0.0.0 открыты порты ({ports}), но ни один пока не отвечает по HTTP; сканирование продолжается, пока запускается контейнер. Если сервису не нужно принимать публичный HTTP-трафик, создайте вместо него Private Service",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_http, w8/388); params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
+  },
   "deploys.reason.image_not_found": {
     message:
       "образ {image} не найден в его реестре: репозиторий или тег не существует. Проверьте URL и тег образа или разверните существующий дайджест",
@@ -900,6 +912,18 @@ const ruDeploys: Record<string, TranslationEntry> = {
       " На инстансе не обнаружено открытых портов: сервер должен слушать хост 0.0.0.0 на порту сервиса ({port}).",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_localhost": {
+    message:
+      " На 0.0.0.0 не обнаружено открытых портов, но на localhost порты открыты ({ports}): сервер должен слушать хост 0.0.0.0 на порту из PORT ({port}).",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_localhost, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.hint_no_open_http_port": {
+    message:
+      " На 0.0.0.0 открыты порты ({ports}), но ни один не отвечает по HTTP: сервер должен отдавать HTTP на порту из PORT ({port}). Если сервису не нужно принимать публичный HTTP-трафик, создайте вместо него Private Service.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
   "deploys.reason.hint_crash_port_bind": {
     message:

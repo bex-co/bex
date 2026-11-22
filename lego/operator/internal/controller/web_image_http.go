@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/httpport"
+	"github.com/bex-co/bex/lego/operator/internal/listeners"
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -146,15 +147,19 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	network := app.Status.ImageNetwork
 	ip := pod.Status.PodIP
 	found, err := httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), network.Ports)
+	var open listeners.Answer
+	var candidates []int32
 	if found.Port == 0 && r.readsListeners() {
 		// Every listener of the pod, from its node's reader (w6/m530), or
 		// swept where the node has none.
-		open, scanErr := r.podListeners(ctx, pod, r.fullSweep)
+		var scanErr error
+		open, scanErr = r.podListeners(ctx, pod, r.fullSweep)
 		if errors.Is(scanErr, portscan.ErrPartial) {
-			logf.FromContext(ctx).Info("HTTP port scan ran out of time; probing the ports found so far", "app", app.Name, "open", open)
+			logf.FromContext(ctx).Info("HTTP port scan ran out of time; probing the ports found so far", "app", app.Name, "open", open.Ports)
 		}
-		if scanErr == nil || len(open) > 0 {
-			found, err = httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), httpCandidates(open))
+		if scanErr == nil || len(open.Ports) > 0 {
+			candidates = httpCandidates(open.Ports)
+			found, err = httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), candidates)
 		} else {
 			err = scanErr
 		}
@@ -182,7 +187,11 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 		return true, message // reproject probes and routing on the chosen port first
 	}
 	if inWindow {
-		if found.Unanswered > 0 {
+		// Waiting on a lower listener while a higher one answers HTTP, or on
+		// a declared port no listener read can put in context, names it. When
+		// the reader's every listener was probed and none answered, Render's
+		// "No open HTTP ports detected on 0.0.0.0" says it (w8/388).
+		if found.Unanswered > 0 && (found.Port > 0 || len(candidates) == 0) {
 			return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNotAnswering, portParam(found.Unanswered))
 		}
 		if err != nil {
@@ -190,6 +199,12 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 			// outside (noOpenPortMessage, w8/259): the product says what the
 			// user can act on and the log keeps the probe's own error.
 			logf.FromContext(ctx).Info("HTTP port probe failed", "app", app.Name, "error", err.Error())
+		}
+		switch scanFinding(open, candidates, err == nil) {
+		case appv1alpha1.PortScanNoHTTPPort:
+			return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneHTTP, portsParam(candidates))
+		case appv1alpha1.PortScanLocalhostOnly:
+			return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortLocalhostOnly, portsParam(open.Loopback))
 		}
 		return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneYet)
 	}

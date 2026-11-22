@@ -22,6 +22,7 @@ import "testing"
 // deploy log narrates, read from the sentences the operator writes.
 func TestPortScanOfTheOperatorsStalls(t *testing.T) {
 	port := DeployReasonParam{Name: "port", Value: "10000"}
+	ports := DeployReasonParam{Name: "ports", Value: "8000, 9000"}
 	hint := func(codes ...string) string {
 		out := ""
 		for _, code := range codes {
@@ -43,12 +44,18 @@ func TestPortScanOfTheOperatorsStalls(t *testing.T) {
 		{"image web: waiting to start", FormatDeployReason(DeployReasonHTTPPortWaiting), PortScanSilent},
 		{"image web: between two scans", FormatDeployReason(DeployReasonHTTPPortDetecting), PortScanSilent},
 		{"image web: fallback port", FormatDeployReason(DeployReasonHTTPPortFallback, port), PortScanSilent},
-		{"image web: a port accepted", FormatDeployReason(DeployReasonHTTPPortNotAnswering, port), PortScanOver},
+		{"image web: a port accepted, beside one that answers", FormatDeployReason(DeployReasonHTTPPortNotAnswering, port), PortScanOver},
+		{"image web: only localhost listens", FormatDeployReason(DeployReasonHTTPPortLocalhostOnly, ports), PortScanLocalhostOnly},
+		{"image web: open ports answer no HTTP", FormatDeployReason(DeployReasonHTTPPortNoneHTTP, ports), PortScanNoHTTPPort},
 		{"image web: detected", FormatDeployReason(DeployReasonHTTPPortDetected, port), PortScanOver},
 		{"native: TCP check before the first scan", tcp, PortScanOver},
 		{"native: no open port", tcp + hint(DeployReasonHintNoOpenPort, DeployReasonHintBackgroundWorker), PortScanNoOpenPort},
 		{"native: no open port, listened before", tcp + hint(DeployReasonHintNoOpenPortBefore, DeployReasonHintBackgroundWorker), PortScanNoOpenPort},
 		{"private: no open service port", tcp + hint(DeployReasonHintNoOpenServicePort), PortScanNoOpenPort},
+		{"native: only localhost listens", tcp + hint(DeployReasonHintNoOpenPortLocalhost), PortScanLocalhostOnly},
+		{"native: open ports answer no HTTP", tcp + hint(DeployReasonHintNoOpenHTTPPort), PortScanNoHTTPPort},
+		{"any-open-port check, only localhost listens", openPort + hint(DeployReasonHintNoOpenPortLocalhost), PortScanLocalhostOnly},
+		{"path check, open ports answer no HTTP", get + hint(DeployReasonHintNoOpenHTTPPort), PortScanNoHTTPPort},
 		{"native: listening elsewhere", tcp + hint(DeployReasonHintListening), PortScanOver},
 		{"native: listening port adopted", tcp + hint(DeployReasonHintListeningAdopted), PortScanOver},
 		{"native: several listeners", tcp + hint(DeployReasonHintListeningPorts), PortScanOver},
@@ -66,6 +73,29 @@ func TestPortScanOfTheOperatorsStalls(t *testing.T) {
 	} {
 		if got := PortScanOf(c.stall); got != c.want {
 			t.Errorf("%s: PortScanOf(%q) = %d, want %d", c.name, c.stall, got, c.want)
+		}
+	}
+}
+
+// w8/388: the scan's three running cases are each a scan, and the row records
+// the two Render names apart from the plain one.
+func TestPortScanFindings(t *testing.T) {
+	for _, c := range []struct {
+		scan     PortScan
+		scanning bool
+		found    PortScanFinding
+	}{
+		{PortScanSilent, false, ""},
+		{PortScanNoOpenPort, true, ""},
+		{PortScanLocalhostOnly, true, PortScanFoundLocalhost},
+		{PortScanNoHTTPPort, true, PortScanFoundNoHTTP},
+		{PortScanOver, false, ""},
+	} {
+		if got := c.scan.Scanning(); got != c.scanning {
+			t.Errorf("PortScan(%d).Scanning() = %v, want %v", c.scan, got, c.scanning)
+		}
+		if got := c.scan.Found(); got != c.found {
+			t.Errorf("PortScan(%d).Found() = %q, want %q", c.scan, got, c.found)
 		}
 	}
 }

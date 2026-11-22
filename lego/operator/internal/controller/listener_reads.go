@@ -46,9 +46,10 @@ import (
 // fails, the last record stands, and the next interval asks again.
 
 // ListenerSource reads the TCP ports a pod accepts connections on at its own
-// address. errNoListenerReader means the pod's node has no reader to ask.
+// address, and apart those it listens on only at loopback (w8/388).
+// errNoListenerReader means the pod's node has no reader to ask.
 type ListenerSource interface {
-	PodListeners(ctx context.Context, pod *corev1.Pod) ([]int, error)
+	PodListeners(ctx context.Context, pod *corev1.Pod) (listeners.Answer, error)
 }
 
 var (
@@ -86,8 +87,9 @@ func (r *AppReconciler) readsListeners() bool {
 
 // podListeners is the TCP ports pod listens on: the answer of the reader on
 // its node, complete, or, only when that node runs no reader pod, sweep's
-// answer for the pod's address, which may be partial (portscan.ErrPartial).
-func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep func(context.Context, string) ([]int, error)) ([]int, error) {
+// answer for the pod's address, which may be partial (portscan.ErrPartial)
+// and names no loopback port.
+func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep func(context.Context, string) ([]int, error)) (listeners.Answer, error) {
 	if r.Listeners != nil {
 		readCtx, cancel := context.WithTimeout(ctx, listenerReadTimeout)
 		read, readErr := r.Listeners.PodListeners(readCtx, pod)
@@ -95,20 +97,20 @@ func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep
 		if !errors.Is(readErr, errNoListenerReader) {
 			listenerReads.WithLabelValues("reader", readerResult(readErr)).Inc()
 			if readErr != nil {
-				return nil, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, readErr)
+				return listeners.Answer{}, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, readErr)
 			}
 			return read, nil
 		}
 		r.noteListenerSweep(ctx, pod.Spec.NodeName)
 	}
 	if r.PortScanner == nil {
-		return nil, errNoListenerSource
+		return listeners.Answer{}, errNoListenerSource
 	}
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
 	open, err := sweep(scanCtx, pod.Status.PodIP)
 	listenerReads.WithLabelValues("sweep", sweepResult(err)).Inc()
-	return open, err
+	return listeners.Answer{Ports: open}, err
 }
 
 // fullSweep connects to every port of ip, for a node without a reader. It is a
@@ -173,15 +175,15 @@ type NodeListenerReader struct {
 // PodListeners reads pod's listeners from its node's reader. A node with no
 // reader pod is errNoListenerReader; one whose reader pods are none Ready is
 // errListenerReaderNotReady.
-func (n *NodeListenerReader) PodListeners(ctx context.Context, pod *corev1.Pod) ([]int, error) {
+func (n *NodeListenerReader) PodListeners(ctx context.Context, pod *corev1.Pod) (listeners.Answer, error) {
 	node := pod.Spec.NodeName
 	if node == "" || pod.Status.PodIP == "" {
-		return nil, errors.New("the pod has no node or address yet")
+		return listeners.Answer{}, errors.New("the pod has no node or address yet")
 	}
 	var readers corev1.PodList
 	if err := n.Pods.List(ctx, &readers, client.InNamespace(n.Namespace),
 		client.MatchingLabels{appv1alpha1.LabelComponent: listenerReaderComponent}); err != nil {
-		return nil, fmt.Errorf("listing listener readers: %w", err)
+		return listeners.Answer{}, fmt.Errorf("listing listener readers: %w", err)
 	}
 	present := false
 	for i := range readers.Items {
@@ -201,7 +203,7 @@ func (n *NodeListenerReader) PodListeners(ctx context.Context, pod *corev1.Pod) 
 		return n.HTTP.Read(ctx, netip.AddrPortFrom(addr, port), string(pod.UID), pod.Status.PodIP)
 	}
 	if !present {
-		return nil, errNoListenerReader
+		return listeners.Answer{}, errNoListenerReader
 	}
-	return nil, errListenerReaderNotReady
+	return listeners.Answer{}, errListenerReaderNotReady
 }

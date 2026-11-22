@@ -43,6 +43,9 @@ const (
 	DeployReasonImageCredential      = "image_credential_refused"
 	DeployReasonImageAccess          = "image_access_refused"
 	DeployReasonImageRead            = "image_read_refused"
+	// w8/388: what HTTP discovery found when nothing answers HTTP yet.
+	DeployReasonHTTPPortLocalhostOnly = "http_port_localhost_only"
+	DeployReasonHTTPPortNoneHTTP      = "http_port_none_http"
 	// w4/692: the registry failed every read (a network error, 5xx or 429)
 	// for the deploy's whole rollout budget of {minutes} minutes.
 	DeployReasonImageRegistryUnreachable = "image_registry_unreachable"
@@ -141,6 +144,9 @@ const (
 	DeployReasonHintNoOpenPort             = "hint_no_open_port"
 	DeployReasonHintNoOpenPortBefore       = "hint_no_open_port_before"
 	DeployReasonHintNoOpenServicePort      = "hint_no_open_service_port"
+	// w8/388: Render's two other port-scan findings on a web service.
+	DeployReasonHintNoOpenPortLocalhost = "hint_no_open_port_localhost"
+	DeployReasonHintNoOpenHTTPPort      = "hint_no_open_http_port"
 	// w8/386: a startup crash's port advice, by how the process exited.
 	DeployReasonHintCrashPortBind = "hint_crash_port_bind"
 	DeployReasonHintEarlyExitPort = "hint_early_exit_port"
@@ -195,6 +201,8 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonHTTPPortNotAnswering:     "Port {port} accepted a connection but has not answered HTTP yet; continuing to scan while the container starts",
 	DeployReasonHTTPPortNoneYet:          "No port answers HTTP yet; continuing to scan while the container starts",
 	DeployReasonHTTPPortFallback:         "No port answered HTTP; using fallback port {port}. Set PORT to the HTTP listener if it binds elsewhere",
+	DeployReasonHTTPPortLocalhostOnly:    "No open port was detected on 0.0.0.0, but ports are open on localhost ({ports}); bind the server to host 0.0.0.0. Continuing to scan while the container starts",
+	DeployReasonHTTPPortNoneHTTP:         "Ports are open on 0.0.0.0 ({ports}) but none answers HTTP yet; continuing to scan while the container starts. " + hintPrivateService,
 	DeployReasonImageNotFound:            "the image {image} was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists",
 	DeployReasonImageCredential:          "{host} refused this service's registry credential for the image {image} (HTTP {status}). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously",
 	DeployReasonImageAccess:              "the registry refused access to the image {image}. If the image is private, add a registry credential for {host} to this service",
@@ -261,6 +269,9 @@ const (
 	hintNoOpenPort      = " No open port was detected on the instance: the server must bind host 0.0.0.0 on "
 	queuedCapacity      = "waiting for build capacity: "
 	queuedNoBuildNode   = "no build node has room for it yet"
+	// Render's no-HTTP timeout line: "If you don't need to receive public
+	// HTTP traffic, create a private service instead."
+	hintPrivateService = "If the service does not need to receive public HTTP traffic, create a private service instead"
 )
 
 // deployReasonPartTemplates are the tail sentences, {name} marking a
@@ -281,6 +292,8 @@ var deployReasonPartTemplates = map[string]string{
 	DeployReasonHintNoOpenPort:             hintNoOpenPort + "the port in PORT ({port}).",
 	DeployReasonHintNoOpenPortBefore:       hintNoOpenPort + "the port in PORT ({port}); it listened on port {previous} before.",
 	DeployReasonHintNoOpenServicePort:      hintNoOpenPort + "the service's port ({port}).",
+	DeployReasonHintNoOpenPortLocalhost:    " No open port was detected on 0.0.0.0, but ports are open on localhost ({ports}): the server must bind host 0.0.0.0 on the port in PORT ({port}).",
+	DeployReasonHintNoOpenHTTPPort:         " Ports are open on 0.0.0.0 ({ports}) but none answers HTTP: the server must serve HTTP on the port in PORT ({port}). " + hintPrivateService + ".",
 	DeployReasonHintCrashPortBind:          " If the crash is a port bind: the process must listen on $PORT ({port}).",
 	DeployReasonHintEarlyExitPort:          " The server must keep listening on $PORT ({port}) until it receives SIGTERM.",
 

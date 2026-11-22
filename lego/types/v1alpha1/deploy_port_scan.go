@@ -30,12 +30,44 @@ const (
 	PortScanSilent PortScan = iota
 	// PortScanNoOpenPort is a scan that found no open port on the instance.
 	PortScanNoOpenPort
+	// PortScanLocalhostOnly is a scan that found no open port on the instance's
+	// address but some on localhost, which Render names (w8/388): "No open
+	// ports detected on 0.0.0.0" and "Detected open ports on localhost".
+	PortScanLocalhostOnly
+	// PortScanNoHTTPPort is a web service's scan that found open ports, none
+	// answering HTTP: Render's "No open HTTP ports detected on 0.0.0.0".
+	PortScanNoHTTPPort
 	// PortScanOver ends a scan: a port was found, or the stall stopped saying
 	// that no port is open. The rollout moved on ("" is no stall), a check now
 	// fails with its port open (a Health Check Path that errors leaves the
 	// operator's port hint off), or the stall is about something else.
 	PortScanOver
 )
+
+// Scanning reports a stall that says the scan found no port to serve.
+func (s PortScan) Scanning() bool {
+	return s == PortScanNoOpenPort || s == PortScanLocalhostOnly || s == PortScanNoHTTPPort
+}
+
+// PortScanFinding is what a running scan found besides no port to serve, as
+// the deploy row records it (w8/388); "" is neither.
+type PortScanFinding string
+
+const (
+	PortScanFoundLocalhost PortScanFinding = "localhost"
+	PortScanFoundNoHTTP    PortScanFinding = "no_http"
+)
+
+// Found is s's finding as the deploy row records it.
+func (s PortScan) Found() PortScanFinding {
+	switch s {
+	case PortScanLocalhostOnly:
+		return PortScanFoundLocalhost
+	case PortScanNoHTTPPort:
+		return PortScanFoundNoHTTP
+	}
+	return ""
+}
 
 // noOpenPortHints are the stall hints that say the scan found no open port.
 var noOpenPortHints = []string{
@@ -58,7 +90,11 @@ var closedPortHints = []string{
 // scan. Render's default check, a TCP connect to any open port, stalls only
 // while no port is open, so its stall counts as no open port whatever its
 // hints. Any other check counts only with the operator's no-open-port hint
-// (port_detect.go), which a pass between two scans replays.
+// (port_detect.go), which a pass between two scans replays. The operator's
+// localhost and no-HTTP findings name their case whatever the check. HTTP
+// discovery waiting on a port that accepted without answering ends the scan,
+// as any found port does: it writes that only beside a port that answers, or
+// with no listener read to tell (selectWebImageHTTP).
 func PortScanOf(stall string) PortScan {
 	code, params, ok := ParseDeployReason(stall)
 	if !ok {
@@ -67,6 +103,10 @@ func PortScanOf(stall string) PortScan {
 	switch code {
 	case DeployReasonHTTPPortNoneYet:
 		return PortScanNoOpenPort
+	case DeployReasonHTTPPortLocalhostOnly:
+		return PortScanLocalhostOnly
+	case DeployReasonHTTPPortNoneHTTP:
+		return PortScanNoHTTPPort
 	case DeployReasonHTTPPortWaiting, DeployReasonHTTPPortDetecting, DeployReasonHTTPPortFallback:
 		return PortScanSilent
 	}
@@ -88,6 +128,10 @@ func PortScanOf(stall string) PortScan {
 	switch {
 	case anyOf(listeningHints):
 		return PortScanOver
+	case slices.Contains(hints, DeployReasonHintNoOpenPortLocalhost):
+		return PortScanLocalhostOnly
+	case slices.Contains(hints, DeployReasonHintNoOpenHTTPPort):
+		return PortScanNoHTTPPort
 	case anyOf(noOpenPortHints), slices.Contains(openPortProbeCodes, code):
 		return PortScanNoOpenPort
 	case anyOf(closedPortHints):

@@ -528,6 +528,18 @@ const ptDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
   },
+  "deploys.reason.http_port_localhost_only": {
+    message:
+      "Nenhuma porta aberta foi detectada em 0.0.0.0, mas há portas abertas em localhost ({ports}); faça o servidor escutar o host 0.0.0.0. Continuando a varredura enquanto o contêiner inicia",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_localhost_only, w8/388); params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.http_port_none_http": {
+    message:
+      "Há portas abertas em 0.0.0.0 ({ports}), mas nenhuma responde HTTP ainda; continuando a varredura enquanto o contêiner inicia. Se o serviço não precisa receber tráfego HTTP público, crie um Private Service",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_http, w8/388); params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
+  },
   "deploys.reason.image_not_found": {
     message:
       "a imagem {image} não foi encontrada no registry: o repositório ou a tag não existe. Verifique a URL e a tag da imagem, ou faça deploy de um digest que exista",
@@ -893,6 +905,18 @@ const ptDeploys: Record<string, TranslationEntry> = {
       " Nenhuma porta aberta foi detectada na instância: o servidor deve escutar o host 0.0.0.0 na porta do serviço ({port}).",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_localhost": {
+    message:
+      " Nenhuma porta aberta foi detectada em 0.0.0.0, mas há portas abertas em localhost ({ports}): o servidor deve escutar o host 0.0.0.0 na porta de PORT ({port}).",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_localhost, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of ports the process listens on only at localhost",
+  },
+  "deploys.reason.hint_no_open_http_port": {
+    message:
+      " Há portas abertas em 0.0.0.0 ({ports}), mas nenhuma responde HTTP: o servidor deve servir HTTP na porta de PORT ({port}). Se o serviço não precisa receber tráfego HTTP público, crie um Private Service.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
   "deploys.reason.hint_crash_port_bind": {
     message:
