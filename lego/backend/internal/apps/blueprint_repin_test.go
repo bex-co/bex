@@ -245,8 +245,34 @@ services:
 }
 
 // The re-pinned schema lets a project omit environments (so it can hold only
-// buildSources). bex builds a project from its environments, so an
-// environment-less project would apply as a silent no-op; it is refused.
+// buildSources), but blueprint-spec says "Each project must have at least one
+// environment". bex builds a project from its environments, so an
+// environment-less project would apply as a silent no-op; it is refused, and
+// an empty list is as environment-less as a missing key (w8/407).
 func TestBlueprintProjectWithoutEnvironmentsIsRefused(t *testing.T) {
+	const web = "services:\n  - type: web\n    name: web\n    runtime: image\n    plan: free\n    image: {url: nginx:1.27}\n"
+	const empty = "projects:\n  - name: p\n    environments: []\n"
 	requireOneProblem(t, "projects:\n  - name: p\n", "BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED", "#/projects/0", "at least one environment")
+	requireOneProblem(t, empty, "BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED", "#/projects/0/environments", "at least one environment")
+	requireOneProblem(t, empty+web, "BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED", "#/projects/0/environments", "at least one environment")
+
+	for name, manifest := range map[string]string{
+		"empty environment beside a service":      "projects:\n  - name: p\n    environments:\n      - name: production\n" + web,
+		"empty environments beside build sources": empty + "    buildSources:\n      - name: mono\n        image: {url: nginx:1}\n",
+	} {
+		if _, problems := CompileBlueprintSource(manifest); len(problems) != 0 {
+			t.Errorf("%s: problems = %+v, want none", name, problems)
+		}
+	}
+
+	// Validate (REST, GraphQL, MCP) and apply share the compiler: neither
+	// drops the project and reports success.
+	svc, _, ctx := newBuildSourceService(t)
+	v, err := svc.ValidateBlueprint(ctx, "tea-a", empty+web, "")
+	if err != nil || v.Valid || len(v.Errors) != 1 || v.Errors[0].Code != "BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED" || v.Errors[0].Path == nil || *v.Errors[0].Path != "projects[0].environments" || v.Errors[0].Line == nil {
+		t.Fatalf("validate = %+v, %v; want one located BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED at projects[0].environments", v, err)
+	}
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: empty + web}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "at least one environment") {
+		t.Fatalf("DeployStack = %v, want the environments refusal", err)
+	}
 }

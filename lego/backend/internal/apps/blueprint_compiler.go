@@ -304,21 +304,26 @@ func blueprintWholeEntryProblem(path []string, locations map[string]BlueprintSou
 
 // blueprintProjectEnvironmentsProblems keeps a project declaring at least one
 // environment. Render's 2026-10 schema stopped requiring projects[].environments
-// so a project can carry only buildSources, but the Blueprint spec still says a
-// project "defines one or more environments", and bex materializes a project
-// from its environments: an environment-less project would apply as a silent
-// no-op, the false success ADR049 exists to prevent.
+// so a project can carry only buildSources, but the Blueprint spec still says
+// "Each project must have at least one environment", and bex materializes a
+// project from its environments: an environment-less project would apply as a
+// silent no-op, the false success ADR049 exists to prevent. An empty list is
+// as environment-less as a missing key (w8/407).
 func blueprintProjectEnvironmentsProblems(object map[string]any, path []string, locations map[string]BlueprintSourceLocation, context blueprintCapabilityContext) []BlueprintSourceProblem {
 	if context.kind != blueprintCapabilityProject {
 		return nil
 	}
-	if _, declared := object["environments"]; declared {
-		return nil
+	environments, declared := object["environments"]
+	if list, isList := environments.([]any); declared && (!isList || len(list) > 0) {
+		return nil // a non-list value is the schema's refusal
 	}
 	// A project may hold only build sources (Render's 2026-10 schema); the
 	// apply creates the project itself for them (ADR097 § Blueprints).
 	if sources, _ := object["buildSources"].([]any); len(sources) > 0 {
 		return nil
+	}
+	if declared {
+		path = append(append([]string(nil), path...), "environments")
 	}
 	pointer := renderSchemaPointer(path)
 	location := lookupBlueprintLocation(pointer, locations)
