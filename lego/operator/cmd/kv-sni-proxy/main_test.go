@@ -220,6 +220,17 @@ func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	if _, ok := router.resolve("private.kv.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
 		t.Fatal("private KeyValue gained a route")
 	}
+	// w9/134: connection info answers a private store's external string over
+	// this host. The edge still refuses it from every source, even while its
+	// status names the host, as in the pass before the operator clears
+	// externalHost after access is turned off.
+	private.Status.ExternalHost = "private.kv.bex.co"
+	if err := router.set(private); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := router.resolve("private.kv.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
+		t.Fatal("a private KeyValue whose status names its host gained a route")
+	}
 	private.Spec.Public = true
 	private.Status.ExternalHost = "private.kv.bex.co"
 	private.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "broken"}}

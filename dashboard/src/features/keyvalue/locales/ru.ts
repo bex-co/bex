@@ -476,7 +476,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     message:
       "Не публично. Добавьте правило входящих IP в разделе «Сеть», чтобы включить внешний доступ.",
     description:
-      "Shown instead of the external URL when the store isn't public",
+      "Shown instead of the external URL and the CLI command when the store isn't public (w9/134)",
   },
   "keyvalue.connCli": {
     message: "Команда Valkey CLI",

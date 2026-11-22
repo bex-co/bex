@@ -167,6 +167,11 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	if kv.Status.ExternalHost != "" {
 		t.Fatalf("disabled resource retained external hostname %q", kv.Status.ExternalHost)
 	}
+	// w9/134: the host stays reserved, so connection info keeps answering the
+	// string a client copied, and a later rule reopens the same host.
+	if kv.Status.ReservedExternalHost != "acl-kv.kv.example.test" {
+		t.Fatalf("disabled resource reserved host = %q, want acl-kv.kv.example.test", kv.Status.ReservedExternalHost)
+	}
 	if err := cl.Get(ctx, nn, &service); err != nil {
 		t.Fatal(err)
 	}
@@ -1309,6 +1314,42 @@ func TestKeyValueNewPrivateStoreMountsNoCertificateItNeverRequests(t *testing.T)
 	}
 	if kv.Status.TLSListener || !kv.Status.TLSRuntimeSwitch {
 		t.Fatalf("status of a private newborn store: %+v", kv.Status)
+	}
+	// w9/134: the store keeps its external host from birth, as every Render
+	// store answers an external string, and nothing routes it: no externalHost
+	// for the edge, no Certificate (above) and no TLS port on its Service.
+	if kv.Status.ReservedExternalHost != "fresh-kv.kv.example.test" || kv.Status.ExternalHost != "" {
+		t.Fatalf("private newborn store: reserved host %q, routed host %q; want fresh-kv.kv.example.test and none",
+			kv.Status.ReservedExternalHost, kv.Status.ExternalHost)
+	}
+	var service corev1.Service
+	if err := cl.Get(ctx, nn, &service); err != nil {
+		t.Fatal(err)
+	}
+	for _, port := range service.Spec.Ports {
+		if port.Port == kvTLSPort {
+			t.Fatalf("a private store's Service carries the TLS port: %#v", service.Spec.Ports)
+		}
+	}
+
+	// Where the platform has no Key Value domain, no store has an external
+	// host to keep.
+	bare := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "bare-kv", Namespace: "default", UID: "kv-bare-test"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+	}
+	cl = fake.NewClientBuilder().WithScheme(scheme).WithObjects(bare).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r = &KeyValueReconciler{Client: cl, Scheme: scheme}
+	nn = types.NamespacedName{Name: "bare-kv", Namespace: "default"}
+	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+		t.Fatalf("reconcile without a domain: %v", err)
+	}
+	if err := cl.Get(ctx, nn, bare); err != nil {
+		t.Fatal(err)
+	}
+	if bare.Status.ReservedExternalHost != "" || bare.Status.ExternalHost != "" || bare.Status.Host == "" {
+		t.Fatalf("store reconciled without a domain: %+v", bare.Status)
 	}
 }
 

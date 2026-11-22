@@ -486,7 +486,7 @@ const deKeyValue: Record<string, TranslationEntry> = {
     message:
       "Nicht öffentlich. Füge unter Netzwerk eine eingehende IP-Regel hinzu, um den externen Zugriff zu aktivieren.",
     description:
-      "Shown instead of the external URL when the store isn't public",
+      "Shown instead of the external URL and the CLI command when the store isn't public (w9/134)",
   },
   "keyvalue.connCli": {
     message: "Valkey-CLI-Befehl",

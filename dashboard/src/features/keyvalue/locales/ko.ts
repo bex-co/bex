@@ -470,7 +470,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
     message:
       "공개되어 있지 않습니다. 외부 액세스를 활성화하려면 네트워킹에서 인바운드 IP 규칙을 추가하세요.",
     description:
-      "Shown instead of the external URL when the store isn't public",
+      "Shown instead of the external URL and the CLI command when the store isn't public (w9/134)",
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 명령",

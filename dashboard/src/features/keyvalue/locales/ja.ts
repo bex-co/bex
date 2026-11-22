@@ -477,7 +477,7 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     message:
       "パブリックではありません。外部アクセスを有効にするには、ネットワークで受信 IP ルールを追加してください。",
     description:
-      "Shown instead of the external URL when the store isn't public",
+      "Shown instead of the external URL and the CLI command when the store isn't public (w9/134)",
   },
   "keyvalue.connCli": {
     message: "Valkey CLI コマンド",

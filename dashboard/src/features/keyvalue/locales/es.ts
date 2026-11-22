@@ -482,7 +482,7 @@ const esKeyValue: Record<string, TranslationEntry> = {
     message:
       "No es público. Añade una regla de IP de entrada en Redes para habilitar el acceso externo.",
     description:
-      "Shown instead of the external URL when the store isn't public",
+      "Shown instead of the external URL and the CLI command when the store isn't public (w9/134)",
   },
   "keyvalue.connCli": {
     message: "Comando de Valkey CLI",

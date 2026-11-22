@@ -1158,9 +1158,15 @@ func (r *KeyValueReconciler) reconcileKeyValueBirth(ctx context.Context, kv *app
 // resource/environment IP allowlisting, TLS pass-through, and backend→client
 // accounting.
 func (r *KeyValueReconciler) reconcileKeyValueRuntime(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, platform *corev1.Secret, intent keyValueIntent) (pending bool) {
-	kv.Status.ExternalHost = ""
+	// Every store keeps its host, as every Render store answers an external
+	// string (w9/134); only a public one is routed, issued a Certificate and
+	// given a TLS port.
+	kv.Status.ReservedExternalHost, kv.Status.ExternalHost = "", ""
+	if r.KvDomain != "" {
+		kv.Status.ReservedExternalHost = fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
+	}
 	if intent.public {
-		kv.Status.ExternalHost = fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
+		kv.Status.ExternalHost = kv.Status.ReservedExternalHost
 	}
 	var tlsPending, policyPending bool
 	kv.Status.TLSListener, tlsPending = r.reconcileKeyValueTLSListener(ctx, kv, sts, platform, intent)

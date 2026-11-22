@@ -163,9 +163,10 @@ type KeyValueView struct {
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema, in
 // Render's shapes from the first read (w9/m521): the internal string
 // (redis://<id>:6379, with no credentials unless internal authentication is
-// on), the external TLS string of a public store, and a ready-to-run CLI
-// command. Every credentialed string names the store's id as its user once
-// the operator records that Valkey knows it, and the default user until then.
+// on), the external TLS string, which a private store answers too (w9/134),
+// and a ready-to-run CLI command over it. Every credentialed string names the
+// store's id as its user once the operator records that Valkey knows it, and
+// the default user until then.
 type KeyValueConnectionInfo struct {
 	InternalConnectionString string `json:"internalConnectionString"`
 	ExternalConnectionString string `json:"externalConnectionString"`
@@ -1508,10 +1509,9 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		// The external URL is answered as soon as the operator records its
 		// host, while the store is still creating, as Render's is (w9/m521,
 		// which replaced w8/237's withholding). externalCertificate says
-		// whether its TLS listener accepts connections yet. The operator
-		// clears externalHost a pass after access is turned off.
-		if kv.Spec.Public && kv.Status.ExternalHost != "" {
-			external = keyValueURI("rediss", user, password, kv.Status.ExternalHost, port)
+		// whether its TLS listener accepts connections yet.
+		if host := keyValueExternalHost(kv); host != "" {
+			external = keyValueURI("rediss", user, password, host, port)
 		}
 	}
 	credentialFree := kv.InternalURLCredentialFree()
@@ -1524,11 +1524,12 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		internalHost = kv.Name
 	}
 
-	// Render's cliCommand connects over the reachable endpoint: the external
-	// (TLS) one when public, otherwise the internal one.
+	// Render's cliCommand connects over the external (TLS) endpoint, which
+	// every store has. Only a store with no external host (no BEX_KV_DOMAIN)
+	// gets the internal form.
 	cli := keyValueCLI{user: user, password: password, host: internalHost, port: port, credentialFree: credentialFree}
 	if external != "" {
-		externalHost := kv.Status.ExternalHost
+		externalHost := keyValueExternalHost(kv)
 		if errs := validation.IsDNS1123Subdomain(externalHost); len(errs) != 0 {
 			// Keep the credential-bearing URI out of this error. A public Secret
 			// without matching operator status is an internal contract failure.
@@ -1545,6 +1546,18 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		ExternalCertificate:       certificate,
 		ExternalCertificateReason: certificateReason,
 	}, nil
+}
+
+// keyValueExternalHost is the host kv's external URL names: a public store's
+// routed host, and a private store's reserved one (w9/134). Render answers the
+// external string for every store, its endpoint admitting nothing while the
+// allow list is empty. bex's edge routes no private store, so that URL
+// connects only once a rule makes the store public, on the same host.
+func keyValueExternalHost(kv *appv1alpha1.KeyValue) string {
+	if kv.Spec.Public {
+		return kv.Status.ExternalHost
+	}
+	return kv.Status.ReservedExternalHost
 }
 
 // externalCertificateState is kv's externalCertificate and its reason, absent
@@ -1586,8 +1599,9 @@ type keyValueCLI struct {
 //
 // The external form adds --sni <host> before -p: valkey-cli sends a TLS server
 // name only with --sni, and bex's shared edge routes each store by it (ADR021).
-// A private store's form connects to the internal host, as its internal URL
-// does, with no AUTH while that URL is credential-free.
+// A store with no external host (no BEX_KV_DOMAIN) gets the internal form,
+// which connects as its internal URL does, with no AUTH while that URL is
+// credential-free.
 func (c keyValueCLI) command() string {
 	words := []string{""}
 	if !c.credentialFree {

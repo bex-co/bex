@@ -33,29 +33,42 @@ import (
 // w9/m521: connection info answers Render's three shapes for every state a
 // store can be in. The internal URL is credential-free exactly while the
 // Service routes through the auth-injecting proxy and internal auth is off,
-// and otherwise names the user and the store's id as its host. A public
-// store's external URL and Render's CLI command (with bex's --sni) are
-// answered whether or not its TLS listener is open, and a private store's
-// command connects to the internal host. Every credentialed string names the
+// and otherwise names the user and the store's id as its host. The external
+// URL and Render's CLI command (with bex's --sni) are answered whether or not
+// the TLS listener is open, and for a private store too, over the host its
+// endpoint keeps (w9/134), as Render answers them for a store whose allow
+// list admits nothing. Only a store with no external host (no BEX_KV_DOMAIN)
+// gets a command over the internal host. Every credentialed string names the
 // store's id only once status says Valkey knows it, and no string carries the
 // password while every string the store has could do without it.
 func TestKeyValueConnectionStringsTakeRendersShapes(t *testing.T) {
 	const password = "pa-ss_word-0123456789abcdefghijk" // base64url, like credpw's
+	const externalCLI = " REDISCLI_AUTH=" + password + " valkey-cli --user red-kv -h red-kv.kv.bex.co --sni red-kv.kv.bex.co -p 6379 --tls"
 	for _, tc := range []struct {
 		name                                  string
 		public, optional, internalAuth, named bool
-		listener                              bool
+		listener, noDomain                    bool
 		internal, external, cli               string
 	}{{
-		name: "private, routed through the proxy", optional: true,
+		name: "private, routed through the proxy, id user (w9/134)", optional: true, named: true,
+		internal: "redis://red-kv:6379",
+		external: "rediss://red-kv:" + password + "@red-kv.kv.bex.co:6379",
+		cli:      externalCLI,
+	}, {
+		name: "private, internal auth, id user (w9/134)", optional: true, internalAuth: true, named: true,
+		internal: "redis://red-kv:" + password + "@red-kv:6379",
+		external: "rediss://red-kv:" + password + "@red-kv.kv.bex.co:6379",
+		cli:      externalCLI,
+	}, {
+		name: "private, no Key Value domain, routed through the proxy", optional: true, noDomain: true,
 		internal: "redis://red-kv:6379",
 		cli:      " valkey-cli -h red-kv -p 6379",
 	}, {
-		name:     "private, Service not cut over yet (w8/204)",
+		name: "private, no Key Value domain, Service not cut over yet (w8/204)", noDomain: true,
 		internal: "redis://default:" + password + "@red-kv:6379",
 		cli:      " REDISCLI_AUTH=" + password + " valkey-cli --user default -h red-kv -p 6379",
 	}, {
-		name: "private, internal auth, id user", optional: true, internalAuth: true, named: true,
+		name: "private, no Key Value domain, internal auth, id user", optional: true, internalAuth: true, named: true, noDomain: true,
 		internal: "redis://red-kv:" + password + "@red-kv:6379",
 		cli:      " REDISCLI_AUTH=" + password + " valkey-cli --user red-kv -h red-kv -p 6379",
 	}, {
@@ -67,12 +80,12 @@ func TestKeyValueConnectionStringsTakeRendersShapes(t *testing.T) {
 		name: "public, listener open, id user", public: true, optional: true, named: true, listener: true,
 		internal: "redis://red-kv:6379",
 		external: "rediss://red-kv:" + password + "@red-kv.kv.bex.co:6379",
-		cli:      " REDISCLI_AUTH=" + password + " valkey-cli --user red-kv -h red-kv.kv.bex.co --sni red-kv.kv.bex.co -p 6379 --tls",
+		cli:      externalCLI,
 	}, {
 		name: "public, internal auth, id user", public: true, optional: true, internalAuth: true, named: true, listener: true,
 		internal: "redis://red-kv:" + password + "@red-kv:6379",
 		external: "rediss://red-kv:" + password + "@red-kv.kv.bex.co:6379",
-		cli:      " REDISCLI_AUTH=" + password + " valkey-cli --user red-kv -h red-kv.kv.bex.co --sni red-kv.kv.bex.co -p 6379 --tls",
+		cli:      externalCLI,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			kv := &appv1alpha1.KeyValue{
@@ -87,6 +100,9 @@ func TestKeyValueConnectionStringsTakeRendersShapes(t *testing.T) {
 			}
 			if tc.named {
 				kv.Status.Username = kv.Name
+			}
+			if !tc.noDomain {
+				kv.Status.ReservedExternalHost = "red-kv.kv.bex.co"
 			}
 			if tc.public {
 				kv.Status.ExternalHost = "red-kv.kv.bex.co"
@@ -103,7 +119,7 @@ func TestKeyValueConnectionStringsTakeRendersShapes(t *testing.T) {
 			if tc.cli[0] != ' ' || strings.Contains(tc.cli, "redis-cli") {
 				t.Fatalf("CLI command %q is not Render's shape", tc.cli)
 			}
-			if !tc.public && tc.optional && !tc.internalAuth && strings.Contains(fmt.Sprint(info), password) {
+			if tc.external == "" && tc.optional && !tc.internalAuth && strings.Contains(fmt.Sprint(info), password) {
 				t.Fatalf("a store with no credentialed string handed out its password: %+v", info)
 			}
 			wantCertificate := ""

@@ -42,8 +42,9 @@ export function ConnectionInfoPanel({
   name: string;
   internalAuth: boolean;
   /** Whether external access is enabled. The external URL is answered from
-   *  the create, as on Render (w9/m521); externalCertificate says whether its
-   *  TLS listener accepts connections yet. */
+   *  the create, as on Render (w9/m521), for a private store too (w9/134);
+   *  externalCertificate says whether its TLS listener accepts connections
+   *  yet. */
   isPublic: boolean;
 }) {
   const { t } = useTranslations();
@@ -157,13 +158,38 @@ function RevealedInfo({
   const { t } = useTranslations();
   const copiedText = t("keyvalue.copied");
   const copyErrorText = t("keyvalue.copyError");
+  const internal = (
+    <ConnectionField
+      label={t("keyvalue.connInternal")}
+      value={info.internalConnectionString}
+      copiedText={copiedText}
+      copyErrorText={copyErrorText}
+    />
+  );
+  // A private store's API answer carries the external URL and a CLI command
+  // over it, as Render's does (w9/134), but its endpoint admits nothing. Like
+  // Render's Connections section, both fields say so instead of offering a
+  // string that cannot connect.
+  if (!isPublic) {
+    const notAllowed = t("keyvalue.connExternalUnavailable");
+    return (
+      <div className="space-y-4">
+        {internal}
+        <UnavailableField
+          label={t("keyvalue.connExternal")}
+          note={notAllowed}
+        />
+        <UnavailableField label={t("keyvalue.connCli")} note={notAllowed} />
+      </div>
+    );
+  }
   // A public store's endpoint that is not open yet: its URL is shown with a
-  // note saying whether the certificate is still issuing or failed.
+  // note saying whether the certificate is still issuing or failed. An older
+  // bex-api withheld the URL until then (w8/237): the note stands alone.
   const notOpen =
-    isPublic &&
-    (info.externalCertificate === "pending" ||
-      info.externalCertificate === "failed" ||
-      !info.externalConnectionString);
+    info.externalCertificate === "pending" ||
+    info.externalCertificate === "failed" ||
+    !info.externalConnectionString;
   const notOpenNote = notOpen ? (
     <p className="text-sm text-muted-foreground">
       {t(
@@ -175,12 +201,7 @@ function RevealedInfo({
   ) : null;
   return (
     <div className="space-y-4">
-      <ConnectionField
-        label={t("keyvalue.connInternal")}
-        value={info.internalConnectionString}
-        copiedText={copiedText}
-        copyErrorText={copyErrorText}
-      />
+      {internal}
       {info.externalConnectionString ? (
         <div className="space-y-2">
           <ConnectionField
@@ -192,11 +213,7 @@ function RevealedInfo({
           {notOpenNote}
         </div>
       ) : (
-        (notOpenNote ?? (
-          <p className="text-sm text-muted-foreground">
-            {t("keyvalue.connExternalUnavailable")}
-          </p>
-        ))
+        notOpenNote
       )}
       <ConnectionField
         label={t("keyvalue.connCli")}
@@ -204,6 +221,16 @@ function RevealedInfo({
         copiedText={copiedText}
         copyErrorText={copyErrorText}
       />
+    </div>
+  );
+}
+
+// A connection field with no value to copy, only a note saying why.
+function UnavailableField({ label, note }: { label: string; note: string }) {
+  return (
+    <div className="space-y-1">
+      <span className="text-sm font-medium">{label}</span>
+      <p className="text-sm text-muted-foreground">{note}</p>
     </div>
   );
 }

@@ -109,11 +109,16 @@ describe("ConnectionInfoPanel", () => {
     ).toBeEnabled();
   });
 
-  it("shows the internal and CLI fields but omits the external field when not public", () => {
+  // w9/134: a private store's answer carries the external URL and a CLI
+  // command over it, as Render's does, but its endpoint admits nothing. As in
+  // Render's Connections section, both fields say external traffic is not
+  // allowed and where to add a rule, and neither string reaches the screen.
+  it("shows a private store's internal URL, and a note instead of its external URL and CLI command", () => {
     state.info = {
-      internalConnectionString: "redis://default:s3cr3t@kv.default.svc:6379",
-      externalConnectionString: "",
-      cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
+      internalConnectionString: "redis://kv:6379",
+      externalConnectionString: "rediss://kv:s3cr3t@kv.kv.bex.co:6379",
+      cliCommand:
+        " REDISCLI_AUTH=s3cr3t valkey-cli --user kv -h kv.kv.bex.co --sni kv.kv.bex.co -p 6379 --tls",
     };
     render(
       <ConnectionInfoPanel
@@ -125,20 +130,20 @@ describe("ConnectionInfoPanel", () => {
     );
 
     expect(screen.getByText("Internal Key Value URL")).toBeInTheDocument();
-    expect(
-      screen.getByText("redis://default:s3cr3t@kv.default.svc:6379"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("redis://kv:6379")).toBeInTheDocument();
+    expect(screen.getByText("External Key Value URL")).toBeInTheDocument();
     expect(screen.getByText("Valkey CLI command")).toBeInTheDocument();
-    // Not public: the external field is replaced by a note naming the control
-    // that actually publishes the store — adding an inbound IP rule under
-    // Networking (w4/m116). The old copy promised an "enable public access"
-    // control that did not exist anywhere in the UI.
+    // The note names the control that publishes the store: an inbound IP rule
+    // under Networking (w4/m116).
     expect(
-      screen.queryByText("External Key Value URL"),
+      screen.getAllByText(/Add an inbound IP rule under Networking/i),
+    ).toHaveLength(2);
+    expect(screen.queryByText(/rediss:\/\//)).not.toBeInTheDocument();
+    expect(screen.queryByText(/s3cr3t/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^copy /i })).toHaveLength(1);
+    expect(
+      screen.queryByText(/External access is being enabled/i),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Add an inbound IP rule under Networking/i),
-    ).toBeInTheDocument();
   });
 
   // w9/m521: the external URL is answered from the create, as on Render, and
@@ -166,9 +171,7 @@ describe("ConnectionInfoPanel", () => {
     expect(
       screen.getByText(/External access is being enabled/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/certificate failed/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/certificate failed/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Add an inbound IP rule under Networking/i),
     ).not.toBeInTheDocument();
@@ -226,9 +229,7 @@ describe("ConnectionInfoPanel", () => {
     expect(
       screen.queryByText(/External access is being enabled/i),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/certificate failed/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/certificate failed/i)).not.toBeInTheDocument();
   });
 
   // An older bex-api withheld the URL until the listener opened (w8/237).
@@ -251,27 +252,6 @@ describe("ConnectionInfoPanel", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByText(/External access is being enabled/i),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the external field only when the store is public", () => {
-    state.info = {
-      internalConnectionString: "redis://default:s3cr3t@kv.default.svc:6379",
-      externalConnectionString: "rediss://default:s3cr3t@kv.kv.bex.co:6379",
-      cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
-    };
-    render(
-      <ConnectionInfoPanel
-        id="kv"
-        name="cache"
-        internalAuth={false}
-        isPublic={false}
-      />,
-    );
-
-    expect(screen.getByText("External Key Value URL")).toBeInTheDocument();
-    expect(
-      screen.getByText("rediss://default:s3cr3t@kv.kv.bex.co:6379"),
     ).toBeInTheDocument();
   });
 

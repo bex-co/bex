@@ -45,67 +45,81 @@ import (
 //   - the internal URL with no credentials;
 //   - Render's CLI command over the external endpoint, with bex's --sni.
 //
+// w9/134: a private store answers the same three strings over the host its
+// endpoint keeps, as Render answers a store created with ipAllowList: []
+// (the provider's cassettes at pin 06af456), and no externalCertificate: it
+// has no Certificate, and the edge routes it only once a rule makes it public.
+//
 // MCP has no credential read, as Render's MCP server has none.
 func TestConnectionInfoServesAStoreWithNoRecordedRevision(t *testing.T) {
 	password := []byte("first-provision-password")
-	kv := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: "red-creating", Namespace: "default"},
-		Spec:       appv1alpha1.KeyValueSpec{Name: "creating", Public: true},
-		Status: appv1alpha1.KeyValueStatus{
-			Phase: appv1alpha1.KVPhaseProvisioning, Host: "red-creating.default.svc", Port: 6379,
-			SecretName: "red-creating", CredentialSecretName: "red-creating-auth",
-			InternalAuthOptional: true, Username: "red-creating",
-			// The external host is set on the first pass; its TLS listener
-			// opens once the certificate is issued.
-			ExternalHost: "red-creating.kv.bex.co",
-		},
-	}
-	auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "red-creating-auth", Namespace: "default"},
-		Data: map[string][]byte{"username": []byte("default"), "password": password}}
-	svc, _ := newService(kv, auth)
-	want := map[string]string{
-		"internalConnectionString": "redis://red-creating:6379",
-		"externalConnectionString": "rediss://red-creating:" + string(password) + "@red-creating.kv.bex.co:6379",
-		"cliCommand": " REDISCLI_AUTH=" + string(password) +
-			" valkey-cli --user red-creating -h red-creating.kv.bex.co --sni red-creating.kv.bex.co -p 6379 --tls",
-	}
-
-	for path, cliField := range map[string]string{
-		"/v1/key-value/red-creating/connection-info": "cliCommand",
-		"/v1/redis/red-creating/connection-info":     "redisCLICommand",
-	} {
-		rec := serveREST(svc, http.MethodGet, path, "")
-		if rec.Code != http.StatusOK {
-			t.Fatalf("GET %s => %d %s, want 200", path, rec.Code, rec.Body.String())
-		}
-		body := decodeMap(t, rec.Body.Bytes())
-		for field, value := range want {
-			if field == "cliCommand" {
-				field = cliField
+	for _, public := range []bool{true, false} {
+		t.Run(fmt.Sprintf("public=%v", public), func(t *testing.T) {
+			kv := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "red-creating", Namespace: "default"},
+				Spec:       appv1alpha1.KeyValueSpec{Name: "creating", Public: public},
+				Status: appv1alpha1.KeyValueStatus{
+					Phase: appv1alpha1.KVPhaseProvisioning, Host: "red-creating.default.svc", Port: 6379,
+					SecretName: "red-creating", CredentialSecretName: "red-creating-auth",
+					InternalAuthOptional: true, Username: "red-creating",
+					ReservedExternalHost: "red-creating.kv.bex.co",
+				},
 			}
-			if body[field] != value {
-				t.Errorf("GET %s %s = %q, want %q", path, field, body[field], value)
+			wantCertificate := ""
+			if public {
+				// The external host is set on the first pass; its TLS
+				// listener opens once the certificate is issued.
+				kv.Status.ExternalHost = "red-creating.kv.bex.co"
+				wantCertificate = core.ExternalCertificatePending
 			}
-		}
-		if path == "/v1/key-value/red-creating/connection-info" && body["externalCertificate"] != core.ExternalCertificatePending {
-			t.Errorf("GET %s externalCertificate = %v, want pending until the TLS listener opens", path, body["externalCertificate"])
-		}
-	}
+			auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "red-creating-auth", Namespace: "default"},
+				Data: map[string][]byte{"username": []byte("default"), "password": password}}
+			svc, _ := newService(kv, auth)
+			want := map[string]string{
+				"internalConnectionString": "redis://red-creating:6379",
+				"externalConnectionString": "rediss://red-creating:" + string(password) + "@red-creating.kv.bex.co:6379",
+				"cliCommand": " REDISCLI_AUTH=" + string(password) +
+					" valkey-cli --user red-creating -h red-creating.kv.bex.co --sni red-creating.kv.bex.co -p 6379 --tls",
+			}
 
-	schema, err := kvGQLSchema(svc)
-	if err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-	res := graphql.Do(graphql.Params{Schema: schema, Context: ctxAs("user-a"),
-		RequestString: `{ keyValueConnectionInfo(id: "red-creating") { internalConnectionString externalConnectionString cliCommand } }`})
-	if len(res.Errors) > 0 {
-		t.Fatalf("GraphQL errors: %v", res.Errors)
-	}
-	gql, _ := res.Data.(map[string]any)["keyValueConnectionInfo"].(map[string]any)
-	for field, value := range want {
-		if gql[field] != value {
-			t.Errorf("GraphQL %s = %q, want %q", field, gql[field], value)
-		}
+			for path, cliField := range map[string]string{
+				"/v1/key-value/red-creating/connection-info": "cliCommand",
+				"/v1/redis/red-creating/connection-info":     "redisCLICommand",
+			} {
+				rec := serveREST(svc, http.MethodGet, path, "")
+				if rec.Code != http.StatusOK {
+					t.Fatalf("GET %s => %d %s, want 200", path, rec.Code, rec.Body.String())
+				}
+				body := decodeMap(t, rec.Body.Bytes())
+				for field, value := range want {
+					if field == "cliCommand" {
+						field = cliField
+					}
+					if body[field] != value {
+						t.Errorf("GET %s %s = %q, want %q", path, field, body[field], value)
+					}
+				}
+				if got, _ := body["externalCertificate"].(string); path == "/v1/key-value/red-creating/connection-info" && got != wantCertificate {
+					t.Errorf("GET %s externalCertificate = %q, want %q", path, got, wantCertificate)
+				}
+			}
+
+			schema, err := kvGQLSchema(svc)
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctxAs("user-a"),
+				RequestString: `{ keyValueConnectionInfo(id: "red-creating") { internalConnectionString externalConnectionString cliCommand } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("GraphQL errors: %v", res.Errors)
+			}
+			gql, _ := res.Data.(map[string]any)["keyValueConnectionInfo"].(map[string]any)
+			for field, value := range want {
+				if gql[field] != value {
+					t.Errorf("GraphQL %s = %q, want %q", field, gql[field], value)
+				}
+			}
+		})
 	}
 }
 
@@ -133,6 +147,7 @@ func firstPass(cl client.Client, name string, public bool, password []byte) erro
 		Phase: appv1alpha1.KVPhaseProvisioning, Host: name + ".default.svc", Port: 6379,
 		SecretName: name, CredentialSecretName: name + "-auth",
 		InternalAuthOptional: true, Username: name,
+		ReservedExternalHost: name + ".kv.bex.co",
 	}
 	if public {
 		kv.Status.ExternalHost = name + ".kv.bex.co"
@@ -160,11 +175,11 @@ func TestConnectionInfoWaitsForTheFirstReconcile(t *testing.T) {
 			if passErr := <-passed; passErr != nil {
 				t.Fatalf("first pass: %v", passErr)
 			}
+			// A private store answers Render's external strings too (w9/134).
 			want := KeyValueConnectionInfo{InternalConnectionString: "redis://" + name + ":6379",
-				CLICommand: " valkey-cli -h " + name + " -p 6379"}
+				ExternalConnectionString: "rediss://" + name + ":" + string(password) + "@" + name + ".kv.bex.co:6379",
+				CLICommand:               " REDISCLI_AUTH=" + string(password) + " valkey-cli --user " + name + " -h " + name + ".kv.bex.co --sni " + name + ".kv.bex.co -p 6379 --tls"}
 			if public {
-				want.ExternalConnectionString = "rediss://" + name + ":" + string(password) + "@" + name + ".kv.bex.co:6379"
-				want.CLICommand = " REDISCLI_AUTH=" + string(password) + " valkey-cli --user " + name + " -h " + name + ".kv.bex.co --sni " + name + ".kv.bex.co -p 6379 --tls"
 				want.ExternalCertificate = core.ExternalCertificatePending
 			}
 			if err != nil || info != want {

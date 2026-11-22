@@ -470,7 +470,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.connExternalUnavailable": {
     message: "未公开。在「网络」中添加入站 IP 规则即可启用外部访问。",
     description:
-      "Shown instead of the external URL when the store isn't public",
+      "Shown instead of the external URL and the CLI command when the store isn't public (w9/134)",
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 命令",

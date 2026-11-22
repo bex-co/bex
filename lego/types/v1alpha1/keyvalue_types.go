@@ -300,6 +300,16 @@ type KeyValueStatus struct {
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
 
+	// ReservedExternalHost is the SNI hostname kept for this store's external
+	// endpoint whether or not it is public, wherever the platform has a Key
+	// Value domain (w9/134). Render answers the external connection string
+	// for every store, including one whose IP allow list admits nothing, so a
+	// private store's connection info names this host. Nothing routes it:
+	// the edge routes only a Public store whose ExternalHost equals it, and a
+	// private store has no Certificate and no TLS port.
+	// +optional
+	ReservedExternalHost string `json:"reservedExternalHost,omitempty"`
+
 	// TLSListener is true while the Valkey process runs the TLS listener
 	// external access is served on. On a store with TLSRuntimeSwitch it
 	// follows external access, switched at runtime. On an older store it is

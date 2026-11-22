@@ -342,6 +342,16 @@ spec:
                 description: Port the Valkey instance listens on.
                 format: int32
                 type: integer
+              reservedExternalHost:
+                description: |-
+                  ReservedExternalHost is the SNI hostname kept for this store's external
+                  endpoint whether or not it is public, wherever the platform has a Key
+                  Value domain (w9/134). Render answers the external connection string
+                  for every store, including one whose IP allow list admits nothing, so a
+                  private store's connection info names this host. Nothing routes it:
+                  the edge routes only a Public store whose ExternalHost equals it, and a
+                  private store has no Certificate and no TLS port.
+                type: string
               secretName:
                 description: |-
                   SecretName is the operator-generated Secret holding the connection

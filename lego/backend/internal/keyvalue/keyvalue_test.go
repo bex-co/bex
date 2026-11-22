@@ -792,7 +792,9 @@ func TestConnectionInfoGatesImmutableCredentialRevision(t *testing.T) {
 		t.Fatalf("converged connection info = %+v, %v", info, err)
 	}
 	// Access is off but the operator has not cleared externalHost yet (it stays
-	// Ready through that pass): the retired endpoint is not handed out.
+	// Ready through that pass), and has recorded no reserved host (an operator
+	// from before w9/134): a private store's external string names only the
+	// reserved host, so none is handed out.
 	if info.ExternalConnectionString != "" || strings.Contains(info.CLICommand, "--sni") {
 		t.Fatalf("a private store got an external endpoint: external %v, cli via SNI %v",
 			info.ExternalConnectionString != "", strings.Contains(info.CLICommand, "--sni"))
