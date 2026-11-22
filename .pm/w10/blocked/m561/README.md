@@ -1,6 +1,6 @@
 # w10 · m561 — An automation or a session can turn `gh` off for itself, and an admin can make the workspace's `gh` off mandatory, as Devin's security profiles bind per automation and per session
 
-**Worker:** worker10 **Goal:** `gh` access resolves through Devin's binding chain instead of one workspace switch. A session create and an automation template carry `agentConfig.githubCli`. The agent environment gains an automations default and a mandatory flag. The mints, the dispatch and the overlay use the most specific binding, unless the workspace's `gh` off is mandatory. A refusal names the level that turned `gh` off. REST, GraphQL, MCP, the CLI and the dashboard read and write each level. **Status:** todo (t001–t007 and t009–t011 done; t008's live check and t012 remain)
+**Worker:** worker10 **Goal:** `gh` access resolves through Devin's binding chain instead of one workspace switch. A session create and an automation template carry `agentConfig.githubCli`. The agent environment gains an automations default and a mandatory flag. The mints, the dispatch and the overlay use the most specific binding, unless the workspace's `gh` off is mandatory. A refusal names the level that turned `gh` off. REST, GraphQL, MCP, the CLI and the dashboard read and write each level. **Status:** blocked (t001–t007 and t009–t011 done, shipped in `ba013e3a75`; t008's live check runs once production's pin carries it, then t012 closes)
 
 ## Tasks (in order)
 
@@ -52,7 +52,7 @@ Total: **12 tasks, about 11h15m**.
 
 ## Design record (t001, 2026-11-22)
 
-Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-guides/security-profiles) (quoted under Source + Goal linkage) unless it says otherwise. The full text is in [ADR047 D2's w10/m561 amendment](../../../docs/ADR047-cloud-coding-agent-sessions.md#automations-and-sessions-bind-their-own-gh-over-a-mandatory-workspace-floor-amendment-w10m561-2026-11-22) and [ADR090 D4](../../../docs/ADR090-agent-owned-delivery.md#d4--agent-facing-tool-the-bex-stdio-mcp-server).
+Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-guides/security-profiles) (quoted under Source + Goal linkage) unless it says otherwise. The full text is in [ADR047 D2's w10/m561 amendment](../../../../docs/ADR047-cloud-coding-agent-sessions.md#automations-and-sessions-bind-their-own-gh-over-a-mandatory-workspace-floor-amendment-w10m561-2026-11-22) and [ADR090 D4](../../../../docs/ADR090-agent-owned-delivery.md#d4--agent-facing-tool-the-bex-stdio-mcp-server).
 
 - **Names.** As proposed, plus one flag:
   - `agentConfig.githubCli` (optional boolean) on a session create and an automation template, and on their reads. GraphQL `AgentSessionConfig(Input).githubCli` and `AgentAutomationAgentConfig(Input).githubCli`.
@@ -69,7 +69,7 @@ Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-gu
   - `true` needs an admin even when the inherited value is on. A pinned on outlives a later workspace off that is not mandatory, and that is a selection Devin reserves for the permission.
   - An automation update is checked only when the value changes to `true`, so its creator's save keeps an admin's on.
   - The environment's two fields are admin-only, like every environment field.
-  - **Divergence:** Devin gates every selection, an opt-out included. bex lets members turn `gh` off, which only removes access. The stricter variant is filed as [w10/044](../044.md).
+  - **Divergence:** Devin gates every selection, an opt-out included. bex lets members turn `gh` off, which only removes access. The stricter variant is filed as [w10/044](../../044.md).
 - **Where it resolves, and when a change applies.** One resolver serves both `gh` mints and every dispatch: `agentsession.LoadGitHubCLIChain` and `GitHubCLIChain.Resolve` in `lego/backend/internal/agentsession/githubcli.go`. It reads the environment row, the session's tree (at most three ancestors) and the root's automation's current template, live. So an automation or environment edit refuses a running session's next `gh` call and reaches the driver at its next turn.
   - An automation's session does not copy the template's value at fire time. The automation level therefore stays nameable, and an edit applies to its running sessions.
   - A deleted automation reads as inherit, and its sessions still take the automations default.
@@ -92,14 +92,14 @@ Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-gu
   - **Precedence:** "the most specific binding wins". **Match**: `TestGitHubCLIChainResolve` pins each pair in both directions.
   - **Mandatory floor:** "a floor that lower levels cannot escape", where they "can only tighten". **Match**: no lower level turns `gh` on, any lower level may turn it off, and a save that would loosen is refused.
   - **Child sessions:** "governed by the same chain as their parent". **Match**: a child resolves its tree's chain and can only turn `gh` off.
-  - **Who may select:** "Manage security profiles", and members "can't … select". **Partial**: `true` needs `can_manage`, as Devin's selection does, but a member may set `false`. That only removes access. The stricter variant is filed as [w10/044](../044.md).
+  - **Who may select:** "Manage security profiles", and members "can't … select". **Partial**: `true` needs `can_manage`, as Devin's selection does, but a member may set `false`. That only removes access. The stricter variant is filed as [w10/044](../../044.md).
   - **Where it is chosen:** the session start box's options menu, and the automation's editor or `security_profile`. **Match**: the composer's options, the automation form and the template field.
   - **When a change applies:** "new sessions immediately, and for existing sessions the next time they resume". **Match for an on, and sooner for an off**: a running session's next `gh` call is refused, as w10/m524 already decided for the workspace switch.
-- **Filed:** [w10/044](../044.md). No other gap users would miss: Devin's other profile controls (network policy, MCP allowlist, Git access level) and its enterprise level are out of scope.
+- **Filed:** [w10/044](../../044.md). No other gap users would miss: Devin's other profile controls (network policy, MCP allowlist, Git access level) and its enterprise level are out of scope.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/035](../done/035.md), filed by w10/m524's Devin comparison (t008) on 2026-11-19 and promoted by `/loopx w10` on 2026-11-22.
+- **Source:** inbox note [w10/035](../../done/035.md), filed by w10/m524's Devin comparison (t008) on 2026-11-19 and promoted by `/loopx w10` on 2026-11-22.
 - **Triage evidence (2026-11-22, `d417a1e70`):**
   - **The workspace switch is the only control.** The mints read only the workspace row (`Minter.githubCLIAllowed`, `lego/backend/internal/agentsession/mint.go:259`). `driverEnv` sets `BEX_AGENT_GITHUB_CLI=0` only from `workspaceEnv.GitHubCLIDisabled` (`lego/backend/internal/agentsessions/service.go:1908`).
   - **No level below the workspace has a field.** `AgentConfig` has Agent, Model, ModelEndpoint, Task and Template (`lego/backend/internal/agentsessions/models.go:110`). `AutomationAgentConfig` has Agent, Model and Template (`automations.go:74`). The automation runs (`automation_scheduler.go:273`, `automations.go:666`) and spawns (`spawn.go:108`) copy only those.
@@ -114,7 +114,7 @@ Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-gu
   - **`gh`.** A profile "can remove the GitHub CLI token from the machine", and with a mandatory profile "The GitHub CLI token is removed if either profile removes it".
   - **When a change applies.** Changes reach "new sessions immediately, and for existing sessions the next time they resume".
   - **Scope here.** bex has no enterprise level above the workspace, so the chain here starts at the workspace (Devin's organization default).
-- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../docs/ADR090-agent-owned-delivery.md)). It completes [w10/m524](../done/m524/README.md)'s `gh` setting with Devin's narrower bindings.
+- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../../docs/ADR090-agent-owned-delivery.md)). It completes [w10/m524](../../done/m524/README.md)'s `gh` setting with Devin's narrower bindings.
 - **Expected outcome:**
   - An admin keeps `gh` for interactive sessions but turns it off for a scheduled automation, or for every automation through the automations default. The reverse works too.
   - A member turns `gh` off for one session.
