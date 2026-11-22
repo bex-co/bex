@@ -230,6 +230,10 @@ jobs:
       # gh, no network.
       - name: ship gates self-test
         run: bash scripts/ship-gates.test.sh
+      # Routine pre-PR fast gate: rejects ledger-only diffs and unformatted Go
+      # locally before pushing an rt-* draft PR.
+      - name: Routine pre-PR check self-test
+        run: bash scripts/rt-pre-pr-check.test.sh
       # The real pinned binary and .gitleaks.toml: a credential-shaped value is
       # reported, the allowlisted shapes are not.
       - name: secret scanner self-test

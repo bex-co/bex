@@ -1,7 +1,7 @@
 ---
 name: rt-fix-logic-bugs
 description: >-
-  Picks a tricky logic domain — billing and pricing math, OpenFGA authz scope decisions, blueprint plan diffs — models it explicitly with invariants, truth tables, and property tests, and fixes the real bugs the model surfaces with regression tests. Use when the user asks to run the rt-fix-logic-bugs routine, hunt for logic bugs, or property-test a subsystem.
+  Picks a tricky logic unit anywhere in the repository's production code — billing and pricing math, authz and scope decisions, preview-vs-execute agreement, state machines, UI/client logic, or operational scripts — models it explicitly with invariants, truth tables, and property tests, and fixes the real bugs the model surfaces with regression tests. Use when the user asks to run the rt-fix-logic-bugs routine, hunt for logic bugs, or property-test a subsystem.
 ---
 
 # Routine: Logic Bugfixer
@@ -10,45 +10,40 @@ Model tricky business logic explicitly, then let the model find the bugs. The te
 
 ## Routine ground rules
 
-- A user request to run this routine authorizes the full cycle: plan, fix, verify, then invoke `$ship` (Codex) or `/ship` (Claude) directly in the same run. Honor explicit user limits such as audit-only or no-ship.
-- Keep a concise execution plan in the conversation and update it as findings are confirmed. Continue into implementation without a planning approval pause. Do not create or file a `.pm` milestone/task as a prerequisite or substitute for fixing; use the board only if the user requests it.
-- After the verification phase, follow the shipping phase below without asking the user to invoke ship separately. Preserve the ship skill's branch, conflict-resolution, and safety rules.
-- Fix everything you find directly in the working tree. If a fix can't be finished safely in this run, revert only your partial work for that fix and list it under **Deferred** in the report — never leave the tree half-refactored.
-- Scope: parse `$ARGUMENTS` per Phase 1 — an optional path/module scope or skill-specific target. No argument = the skill's stated default (usually the whole repo via parallel agents per module: lego/types, lego/operator, lego/backend, lego/cli, dashboard).
-- False-positive discipline: if a finding is intentional, load-bearing, or ambiguous, skip it with a one-line reason — don't argue it into a change.
-- A run that changes nothing is a success. Ship only findings that clear this routine's bar, and never pad a run with marginal items so it has something to show: one finding finished completely beats several half-justified ones. The routine runs often, so what is left today is still there tomorrow.
-- Read [`ledger.md`](ledger.md) beside this skill before auditing. It carries earlier runs' Deferred and Skipped findings. Do not re-audit a Skipped entry unless the code it cites has changed, and prefer finishing an open Deferred entry to hunting new ones. Update the ledger in the same change: add this run's Deferred and Skipped findings, and remove the entries this run fixed or whose code is gone. One line each, `- YYYY-MM-DD <path or symbol> — <finding>; <why deferred or skipped>`, newest first, at most 40 entries (drop the oldest Skipped first).
-- A finding outside this routine's class is never only mentioned. If it is a real bug — behavior a user or caller can observe is wrong — and a failing test proves it, fix it in this run as its own `fix` commit with that test, whichever routine owns the class: a proven bug outranks this routine's own findings. Anything else that belongs to another routine goes into that routine's ledger (`../<routine>/ledger.md`) as a Deferred entry in the same change, so its next run starts there. The report is not a handoff: nobody reads it after the run. A run whose only output is Deferred entries, its own or another routine's, still ships that ledger change. Skipped entries alone do not: they ride along with the run's code or Deferred change, and a run that has only Skipped entries lists them in its report and ships nothing.
-- Never work a `.pm` board item. The board is `/loopx`'s queue, and a routine that takes an item races the worker it was filed for. Find your own candidates in the code and the ledger; when a bug you found is already filed on the board, leave it to that worker and name the item in the report.
-- Before working a ledger entry, check it is still open: read its current line on `origin/main`, and `git log origin/main --since=24.hours --oneline` for the files it names. If it is gone or already fixed, skip it with that reason: another session may have taken it since the ledger was written.
-- Never fold a CI fix into this routine's change. A check that fails on `origin/main` without your change is main's failure, not this run's. Per `AGENTS.md` it ships alone as a `fix(ci)` change, and only after `git log origin/main --since=24.hours --grep='fix(ci)'` shows no one has fixed it already, so parallel runs do not each carry the same fix.
-- Verify every change with targeted checks before reporting it done, and leave the full suites to CI. Run only what the change can break, one heavy command at a time: never two in parallel, never the same suite twice.
-  - Go: `gofmt -l` on the touched files; `go build` and `go vet` of the touched packages; `go test` of those packages and of the packages that import them (find importers with `grep -rl '"<import path>"' --include='*.go' lego/`). Then lint the touched packages from each touched module with the pinned binary, `GOWORK=off "$(git rev-parse --show-toplevel)/lego/operator/bin/golangci-lint" run ./<pkg>/...` (`make golangci-lint` in `lego/operator` installs it). It takes seconds per package and catches what `go vet` does not (`unparam`, `lll`, depguard), which otherwise costs a CI round.
-  - Dashboard: `yarn vitest related --run <changed files>`, `yarn eslint <changed files>`, and `yarn typecheck` when TypeScript changed.
-  - Never the module-wide suites: `make lint`, `make test`, `go test ./...`, the whole `yarn test` or `yarn lint`. CI runs them on the pull request, against the real Postgres, OpenFGA and OpenBao a sandbox lacks. A failed check comes back to the session as its next turn (ADR047 D11). A run that ships straight to main gets them from the ship skill's gates and main's CI.
-- Run `npx prettier@3.4.2 --write` on any markdown touched.
-- Before shipping, summarize results in commentary using: **Candidates** (every candidate you examined, one line each: file:line, what it is, and its verdict; list them all, the ones you dropped at a glance included, because this list is how the run's search is judged) / **Fixed** (file:line + what it changes for a user or maintainer, not "cleaner") / **Deferred** (item + why, also written to the ledger) / **Skipped** (finding + reason) / **Gates** (commands run + outcomes).
+Follow the shared contract in [`../../rt-shared-contract.md`](../../rt-shared-contract.md) (execution, anti-noise value bar, **never opening ledger-only PRs**, board isolation, freshness check, `scripts/rt-pre-pr-check.sh` pre-PR fast gate, and report format).
+
+Logic-bugfixer additions:
+
+- **Scope:** parse `$ARGUMENTS` per Phase 1. Empty = pick the highest-priority domain from Phase 1.
+- **No-bug PR threshold:** if the audit finds **no real behavioral bug**, do **not** open a PR solely for a single small test case (<30 lines), a doc/comment tweak, or a ledger update. Ship a `test-only` PR without a code fix only when it adds durable property or cross-product matrix coverage for a previously unpinned invariant family.
+- **Cover the whole invariant surface:** whenever you fix a logic invariant (rounding/total agreement, plan-vs-apply gating, redaction, authz enforcement), audit and fix **every sibling projection/consumer of the same struct or contract** in the same PR (e.g., all views of an estimate: `TotalUSD`, `Resources`, and `Meters`) so one invariant never splits across follow-up PRs.
 
 ## Phase 1 — Scope
 
-Parse `$ARGUMENTS`: `billing` | `authz` | `blueprint-plan` | `agreement` | a package path. Empty → pick the least-recently-audited domain (`git log -1 --format=%cd` on each candidate below) and announce the choice.
+Parse `$ARGUMENTS`: any path, directory, package, or logic topic. Scope is **all production code in the repository** (Go services/plugins, JS/TS apps and drivers, Python/shell scripts, and any future language or module) — exclude only non-production trees (`examples/`, `**/testdata/**`, `**/fixtures/**`, `docs/`, `.pm/`, `.internal/`, `external/`, generated files).
 
-Domain map:
+When `$ARGUMENTS` is empty, discover the target dynamically:
 
-- **billing** — `lego/backend/internal/apps/blueprint_pricing.go`, `stripeBillingGate` in `lego/backend/cmd/api/billing_config.go`
-- **authz** — `lego/backend/internal/authz` and `lego/backend/internal/core/scope.go` (OpenFGA relationship model)
-- **blueprint-plan** — `lego/backend/internal/apps/blueprint_plan.go`, `blueprint_state_plan.go` and the plan/apply cycle in `deploy.go`
-- **agreement** — any place where one function predicts or previews what another performs, and the two must agree. This family has produced the most real bugs: a plan that promised an update its apply refuses (a database's name), a plan that reported a change and named no field (domains, the build strategy). Sites: the Blueprint plan against `applyDatabase` / `applyKeyValue` / `updateStackService` in `lego/backend/internal/apps/deploy.go`; plan-time admission against the admission the write runs (`lego/backend/internal/postgres/admission.go`, `lego/backend/internal/keyvalue/tiers.go`); validation and preview verbs against the verbs they preview; an estimate against the gate that enforces it.
+1. **Prefer recently changed production logic:** run `git log origin/main --since=7.days --name-only --diff-filter=AMCR` across the whole repo, exclude tests and non-production trees above, group by package/feature directory, and pick the highest-risk logic unit that was least recently audited in [`ledger.md`](ledger.md).
+2. **Fallback when quiet:** if no logic-bearing production code changed in the past 7 days, survey the repo's production source trees (excluding non-production trees above) and pick the least-recently-audited high-risk logic unit.
+3. Announce the chosen target and invariant before modeling.
 
-Within a domain, take one resource kind or one invariant per run (service, database, key value, environment, env group; refusals, changed-field names, idempotence), and check the ledger for the ones earlier runs covered, so each run digs somewhere new. Record what this run covered in the ledger's Skipped section, as `<domain>/<kind or invariant> — audited, holds`; like every Skipped entry it ships with the run's code or Deferred change, and a run that found nothing reports it instead.
+High-value logic shapes to prioritize (examples, not a closed list):
+
+- **Agreement / preview-vs-execute pairs** — any place where one function predicts, validates, estimates, or previews what another performs, and the two must agree (plan vs apply, admission vs write, estimate vs spend/payment gate, client vs server rule).
+- **Billing, pricing, quotas & caps** — monotonicity, cent/rounding alignment across all output projections, proration, limits, and cooldown windows.
+- **Authz, scopes, credentials & tenant isolation** — deny-by-default matrices, grant/scope narrowing, expiry, redaction, and cross-tenant boundaries.
+- **State machines, lifecycle & scheduling** — deploy/rollback eligibility, session/automation scheduling and overlap policies, UI/mobile form and workflow state, queues, retries, idempotence, and storage/ACL rules.
+
+Within the chosen package/unit, take one resource kind or one invariant per run, and check [`ledger.md`](ledger.md) for what earlier runs covered so each run digs somewhere new. Record what this run covered in the ledger's Skipped section (`<path or unit>/<kind or invariant> — audited, holds`) **only when shipping a code or qualifying property-test change**; otherwise report it without committing.
 
 ## Phase 2 — Model the logic
 
-Before hunting bugs, state the intended invariants in the conversation: e.g. "pricing is monotonic in replica count and disk size", "scope checks are deny-by-default", "plan(apply(plan)) is empty", "compile is deterministic", "the plan refuses exactly what the apply refuses", "a plan that says update names every field the apply moves". Build truth tables for boolean decision functions. Read the governing ADRs (`docs/ADR030-pricing.md`, `docs/ADR012-auth.md`, `docs/ADR024-members.md`) — the model must capture intent, not implementation.
+Before hunting bugs, state the intended invariants in the conversation: e.g. "pricing is monotonic in replica count and disk size", "scope checks are deny-by-default", "plan(apply(plan)) is empty", "compile is deterministic", "the plan refuses exactly what the apply refuses", "a plan that says update names every field the apply moves", "client eligibility matches server enforcement". Build truth tables for boolean decision functions. Read the governing ADRs or specs — the model must capture intent, not implementation.
 
 ## Phase 3 — Encode the model as tests
 
-Write property/table tests in the package's `_test.go`: `testing/quick` or hand-rolled generators for pure functions; the full scope × role matrix for authz; plan/apply round-trips for blueprint-plan. These tests persist as durable coverage.
+Write property or table-driven tests beside the code using that tree's native test framework (e.g., `*_test.go` with `testing/quick` or hand-rolled generators for Go; `*.test.ts(x)` for JS/TS apps and drivers; `test_*.py` for Python; `*.test.sh` for shell scripts). These tests persist as durable coverage.
 
 ## Phase 4 — Judge each failure
 
