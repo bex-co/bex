@@ -451,6 +451,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **388** — [A web service listening only on 127.0.0.1, or on ports that answer no HTTP, gets the plain `No open ports detected` scan line, where Render names the case it found](388.md) (~1h, minor, parity) ← follow-up from w8/385 2026-11-21
 - [ ] **387** — [Two back-to-back deploy triggers cancel the first deploy ("Superseded by …") before it starts, where Render's default Wait policy lets the first finish](387.md) (~1h30m, minor–major, parity) ← follow-up from the w8/378 live check 2026-11-21
 - [ ] **386** — [A failed deploy's startup-crash reason says the instance "is restarting repeatedly" after it has stopped, and tells an exit-0 crash to check its port bind](386.md) (~45m, minor) ← follow-up from routine `cli-qa` run r29 2026-11-21
 - [ ] **385** — [A web service with no reachable port prints nothing in its deploy log for the whole 15-minute port scan, where Render's log repeats `==> No open ports detected, continuing to scan...`](385.md) (~1h, minor) ← follow-up from routine `cli-qa` run r29 2026-11-21
