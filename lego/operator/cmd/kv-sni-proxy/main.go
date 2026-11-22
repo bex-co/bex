@@ -113,7 +113,14 @@ type kvRouter struct {
 }
 
 func newRouter(domain string) *kvRouter {
-	return &kvRouter{domain: domain, table: map[string]kvRoute{}, invalid: map[string]bool{}}
+	// DNS names match case-insensitively: the configured domain is lowercased
+	// once, like pg-sni-proxy, so set's EqualFold install and resolve's
+	// lowercased-SNI match agree on every casing of BEX_KV_DOMAIN.
+	return &kvRouter{
+		domain:  strings.ToLower(strings.TrimSuffix(domain, ".")),
+		table:   map[string]kvRoute{},
+		invalid: map[string]bool{},
+	}
 }
 
 func (r *kvRouter) set(kv *sniproxy.KeyValue) error {
@@ -227,7 +234,7 @@ func (w *kvWatcher) Reconcile(ctx context.Context, req reconcile.Request) (recon
 func main() {
 	ctrl.SetLogger(zap.New())
 	logger := ctrl.Log.WithName("kv-sni-proxy")
-	domain := strings.TrimSuffix(os.Getenv("BEX_KV_DOMAIN"), ".")
+	domain := os.Getenv("BEX_KV_DOMAIN")
 	if domain == "" {
 		logger.Info("BEX_KV_DOMAIN is unset; proxy has no public routes")
 	}
