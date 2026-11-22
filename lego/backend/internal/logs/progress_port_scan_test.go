@@ -45,6 +45,44 @@ func scanRow(status string, finished, until, read time.Time) DeployProgress {
 // at is scanSince plus d, as a line's timestamp.
 func at(d time.Duration) string { return scanSince.Add(d).Format(time.RFC3339Nano) }
 
+// Render's three narrations, restated here so the tests pin which lines and
+// which docs line each finding carries.
+var (
+	plainScan  = portScanWording{portScanLine, portScanTimeoutLine, portScanDocsLine}
+	localScan  = portScanWording{portScanLocalhostLine, portScanLocalhostTimeoutLine, portScanDocsLine}
+	noHTTPScan = portScanWording{portScanNoHTTPLine, portScanNoHTTPTimeoutLine, ""}
+)
+
+// said is msgs stamped at scanSince plus d, as scanStory lists them.
+func said(d time.Duration, msgs ...string) []string {
+	out := make([]string, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, at(d)+" "+m)
+	}
+	return out
+}
+
+// withDocs is line, then w's docs line when it has one.
+func (w portScanWording) withDocs(line string) []string {
+	if w.docs == "" {
+		return []string{line}
+	}
+	return []string{line, w.docs}
+}
+
+// scanPairs is w's scan line, with its docs line, at each of the given
+// minutes into the scan.
+func scanPairs(w portScanWording, minutes ...int) []string {
+	var out []string
+	for _, m := range minutes {
+		out = append(out, said(time.Duration(m)*time.Minute, w.withDocs(w.scan)...)...)
+	}
+	return out
+}
+
+// timedOut is w's timeout line, with its docs line, at d into the scan.
+func timedOut(w portScanWording, d time.Duration) []string { return said(d, w.withDocs(w.timeout)...) }
+
 // scanStory is the platform lines of a row from its first scan line on.
 func scanStory(d DeployProgress) []string {
 	var out []string
@@ -56,43 +94,56 @@ func scanStory(d DeployProgress) []string {
 	return out
 }
 
-// TestPortScanLinesKeepRendersCadence is w8/385's cadence: the scan
-// line when the stall first says no port is open, then one a minute, five at
-// most, the docs line after the first only; it stops when a stall says the
-// scan is over or the deploy ends, and a deploy that failed scanning ends with
-// Render's timeout line before its failure line.
+// TestPortScanLinesKeepRendersCadence is Render's cadence (w8/385, w8/389):
+// the scan line when the stall first says no port is open, then one a
+// minute, five at most, each followed by the docs line, then the timeout
+// line and its docs line a minute after the fifth, and nothing more until
+// the deploy ends. It stops when a stall says the scan is over or the deploy
+// ends; a port found after the timeout line still goes live, and a deploy
+// that failed scanning before the timeout line was due gets it as it fails.
 func TestPortScanLinesKeepRendersCadence(t *testing.T) {
 	const failed = "the container is running but its startup health check never succeeded within the rollout window, so the deploy failed: a TCP connect to any open port on the instance."
-	scan, docs, timeout := portScanLine, portScanDocsLine, portScanTimeoutLine
+	failedScanning := func(after time.Duration) DeployProgress {
+		d := scanRow("update_failed", scanSince.Add(after), time.Time{}, scanSince.Add(time.Hour))
+		d.FailureReason = failed
+		return d
+	}
+	open := func(read time.Duration) DeployProgress {
+		return scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(read))
+	}
 	for _, c := range []struct {
 		name string
 		row  DeployProgress
 		want []string
 	}{
-		{"open, read 2.5 minutes in", scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(150*time.Second)),
-			[]string{at(0) + " " + scan, at(0) + " " + docs, at(time.Minute) + " " + scan, at(2*time.Minute) + " " + scan}},
-		{"open, read on a minute", scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(time.Minute)),
-			[]string{at(0) + " " + scan, at(0) + " " + docs, at(time.Minute) + " " + scan}},
-		{"open, read before the first line", scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(-time.Second)), nil},
-		{"open past five minutes stops at five", scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(14*time.Minute)),
-			[]string{at(0) + " " + scan, at(0) + " " + docs, at(time.Minute) + " " + scan, at(2*time.Minute) + " " + scan,
-				at(3*time.Minute) + " " + scan, at(4*time.Minute) + " " + scan}},
+		{"open, read 2.5 minutes in", open(150 * time.Second), scanPairs(plainScan, 0, 1, 2)},
+		{"open, read on a minute", open(time.Minute), scanPairs(plainScan, 0, 1)},
+		{"open, read before the first line", open(-time.Second), nil},
+		{"open, read just before the timeout", open(5*time.Minute - time.Second), scanPairs(plainScan, 0, 1, 2, 3, 4)},
+		{"open, read on the timeout", open(5 * time.Minute),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute))},
+		{"open, read 14 minutes in, nothing after the timeout", open(14 * time.Minute),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute))},
 		{"the port appeared", scanRow("live", scanSince.Add(3*time.Minute), scanSince.Add(90*time.Second), scanSince.Add(time.Hour)),
-			[]string{at(0) + " " + scan, at(0) + " " + docs, at(time.Minute) + " " + scan, at(3*time.Minute) + " ==> Your service is live 🎉"}},
+			slices.Concat(scanPairs(plainScan, 0, 1), said(3*time.Minute, "==> Your service is live 🎉"))},
+		{"the port appeared after the timeout line", scanRow("live", scanSince.Add(7*time.Minute+10*time.Second), scanSince.Add(7*time.Minute), scanSince.Add(time.Hour)),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute),
+				said(7*time.Minute+10*time.Second, "==> Your service is live 🎉"))},
 		{"canceled while scanning", scanRow("canceled", scanSince.Add(2*time.Minute), time.Time{}, scanSince.Add(time.Hour)),
-			[]string{at(0) + " " + scan, at(0) + " " + docs, at(time.Minute) + " " + scan, at(2*time.Minute) + " ==> Deploy canceled"}},
-		{"failed while scanning", func() DeployProgress {
-			d := scanRow("update_failed", scanSince.Add(14*time.Minute+30*time.Second), time.Time{}, scanSince.Add(time.Hour))
-			d.FailureReason = failed
-			return d
-		}(), []string{at(0) + " " + scan, at(0) + " " + docs, at(time.Minute) + " " + scan, at(2*time.Minute) + " " + scan,
-			at(3*time.Minute) + " " + scan, at(4*time.Minute) + " " + scan,
-			at(14*time.Minute+30*time.Second) + " " + timeout, at(14*time.Minute+30*time.Second) + " " + docs,
-			at(14*time.Minute+30*time.Second) + " ==> Deploy failed: " + failed}},
+			slices.Concat(scanPairs(plainScan, 0, 1), said(2*time.Minute, "==> Deploy canceled"))},
+		{"failed at the budget, scanning", failedScanning(14*time.Minute + 30*time.Second),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute),
+				said(14*time.Minute+30*time.Second, "==> Deploy failed: "+failed))},
+		{"failed scanning before the timeout was due", failedScanning(3*time.Minute + 30*time.Second),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3), timedOut(plainScan, 3*time.Minute+30*time.Second),
+				said(3*time.Minute+30*time.Second, "==> Deploy failed: "+failed))},
+		{"failed on the timeout's moment", failedScanning(5 * time.Minute),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute),
+				said(5*time.Minute, "==> Deploy failed: "+failed))},
 		{"failed after the scan was over", scanRow("update_failed", scanSince.Add(5*time.Minute), scanSince.Add(30*time.Second), scanSince.Add(time.Hour)),
-			[]string{at(0) + " " + scan, at(0) + " " + docs, at(5*time.Minute) + " ==> Deploy failed"}},
+			slices.Concat(scanPairs(plainScan, 0), said(5*time.Minute, "==> Deploy failed"))},
 		{"no scan", func() DeployProgress {
-			d := scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(time.Hour))
+			d := open(time.Hour)
 			d.PortScanSince = time.Time{}
 			return d
 		}(), nil},
@@ -106,8 +157,9 @@ func TestPortScanLinesKeepRendersCadence(t *testing.T) {
 }
 
 // TestPortScanTailSendsEachLineOnceAsItFallsDue is the subscribe stream: a
-// build tail reads the row every few seconds, and each scan line reaches it
-// once, when its minute comes, never ahead of time.
+// build tail reads the row every few seconds, and each scan line and its docs
+// line reach it once, when their minute comes, never ahead of time; after the
+// timeout pair nothing more arrives.
 func TestPortScanTailSendsEachLineOnceAsItFallsDue(t *testing.T) {
 	svc := newService(nil, sampleApp("web"))
 	read := scanSince.Add(-10 * time.Second)
@@ -117,7 +169,7 @@ func TestPortScanTailSendsEachLineOnceAsItFallsDue(t *testing.T) {
 	follower := svc.newProgressFollower(LogQuery{App: "web", Types: []string{LogTypeBuild}, Since: scanSince.Add(-time.Second)}, "web", progressContext{})
 	var sent []string
 	emit := func(e LogEntry) error { sent = append(sent, e.Timestamp+" "+e.Message); return nil }
-	for ; read.Before(scanSince.Add(130 * time.Second)); read = read.Add(5 * time.Second) {
+	for ; read.Before(scanSince.Add(8 * time.Minute)); read = read.Add(5 * time.Second) {
 		if err := follower.emitReached(t.Context(), emit); err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +180,7 @@ func TestPortScanTailSendsEachLineOnceAsItFallsDue(t *testing.T) {
 			}
 		}
 	}
-	want := []string{at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine, at(2*time.Minute) + " " + portScanLine}
+	want := slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute))
 	if !slices.Equal(sent, want) {
 		t.Fatalf("tail sent:\n%s\nwant:\n%s", strings.Join(sent, "\n"), strings.Join(want, "\n"))
 	}
@@ -185,37 +237,32 @@ func TestPortScanLineReadsTheSameOnRESTAndGraphQL(t *testing.T) {
 // TestPortScanLinesNameWhatTheScanFound is w8/388: Render words its scan for
 // a listener only on localhost and for open ports that answer no HTTP. Each
 // line carries the wording of what the scan had found by its moment, so the
-// lines before the finding keep the plain text; the no-HTTP lines carry no
-// docs line, as Render's do.
+// lines before the finding keep the plain text, the timeout line included;
+// the no-HTTP lines carry no docs line, as Render's do.
 func TestPortScanLinesNameWhatTheScanFound(t *testing.T) {
-	failedAt := scanSince.Add(14*time.Minute + 30*time.Second)
+	const end = 14*time.Minute + 30*time.Second
 	found := func(d DeployProgress, what appv1alpha1.PortScanFinding, foundAt time.Duration) DeployProgress {
 		d.PortScanFound, d.PortScanFoundAt = what, scanSince.Add(foundAt)
 		return d
 	}
-	failed := scanRow("update_failed", failedAt, time.Time{}, scanSince.Add(time.Hour))
-	local, noHTTP := portScanLocalhostLine, portScanNoHTTPLine
-	end := at(14*time.Minute + 30*time.Second)
+	failed := scanRow("update_failed", scanSince.Add(end), time.Time{}, scanSince.Add(time.Hour))
 	for _, c := range []struct {
 		name string
 		row  DeployProgress
 		want []string
 	}{
-		{"localhost from the start, failed", found(failed, appv1alpha1.PortScanFoundLocalhost, 0), []string{
-			at(0) + " " + local, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + local, at(2*time.Minute) + " " + local,
-			at(3*time.Minute) + " " + local, at(4*time.Minute) + " " + local,
-			end + " " + portScanLocalhostTimeoutLine, end + " " + portScanDocsLine, end + " ==> Deploy failed"}},
-		{"no HTTP found 90 s in, failed", found(failed, appv1alpha1.PortScanFoundNoHTTP, 90*time.Second), []string{
-			at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine,
-			at(2*time.Minute) + " " + noHTTP, at(3*time.Minute) + " " + noHTTP, at(4*time.Minute) + " " + noHTTP,
-			end + " " + portScanNoHTTPTimeoutLine, end + " ==> Deploy failed"}},
+		{"localhost from the start, failed", found(failed, appv1alpha1.PortScanFoundLocalhost, 0),
+			slices.Concat(scanPairs(localScan, 0, 1, 2, 3, 4), timedOut(localScan, 5*time.Minute), said(end, "==> Deploy failed"))},
+		{"no HTTP found 90 s in, failed", found(failed, appv1alpha1.PortScanFoundNoHTTP, 90*time.Second),
+			slices.Concat(scanPairs(plainScan, 0, 1), scanPairs(noHTTPScan, 2, 3, 4), timedOut(noHTTPScan, 5*time.Minute),
+				said(end, "==> Deploy failed"))},
+		{"localhost found after the timeout line, failed", found(failed, appv1alpha1.PortScanFoundLocalhost, 6*time.Minute),
+			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute), said(end, "==> Deploy failed"))},
 		{"no HTTP from the start, then a port answered", found(scanRow("live", scanSince.Add(3*time.Minute), scanSince.Add(170*time.Second), scanSince.Add(time.Hour)),
-			appv1alpha1.PortScanFoundNoHTTP, 0), []string{
-			at(0) + " " + noHTTP, at(time.Minute) + " " + noHTTP, at(2*time.Minute) + " " + noHTTP,
-			at(3*time.Minute) + " ==> Your service is live 🎉"}},
+			appv1alpha1.PortScanFoundNoHTTP, 0),
+			slices.Concat(scanPairs(noHTTPScan, 0, 1, 2), said(3*time.Minute, "==> Your service is live 🎉"))},
 		{"open, read before the finding's moment", found(scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(70*time.Second)),
-			appv1alpha1.PortScanFoundLocalhost, 2*time.Minute), []string{
-			at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine}},
+			appv1alpha1.PortScanFoundLocalhost, 2*time.Minute), scanPairs(plainScan, 0, 1)},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if got := scanStory(c.row); !slices.Equal(got, c.want) {
@@ -246,8 +293,7 @@ func TestPortScanTailWordsTheLinesAfterTheFinding(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	want := []string{at(0) + " " + portScanLine, at(0) + " " + portScanDocsLine, at(time.Minute) + " " + portScanLine,
-		at(2*time.Minute) + " " + portScanLocalhostLine, at(3*time.Minute) + " " + portScanLocalhostLine}
+	want := slices.Concat(scanPairs(plainScan, 0, 1), scanPairs(localScan, 2, 3))
 	if !slices.Equal(sent, want) {
 		t.Fatalf("tail sent:\n%s\nwant:\n%s", strings.Join(sent, "\n"), strings.Join(want, "\n"))
 	}

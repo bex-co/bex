@@ -420,11 +420,12 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 	return out
 }
 
-// Render's port-scan narration (w8/385). While a web service listens on no
-// port, Render's deploy log repeats the scan line about once a minute, five
-// times, then gives up with the timeout line; the docs line follows each. The
-// wording and the count are Render's own, read from deploy logs users quoted
-// in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs).
+// Render's port-scan narration (w8/385, w8/389). While a web service listens
+// on no port, Render's deploy log repeats the scan line about once a minute,
+// five times, then gives up with the timeout line about five minutes in; the
+// docs line follows each. The deploy itself runs on to its 15-minute budget.
+// The wording and the count are Render's own, read from deploy logs users
+// quoted in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs).
 const (
 	portScanLine        = "==> No open ports detected, continuing to scan..."
 	portScanDocsLine    = "==> Docs on specifying a port: https://render.com/docs/web-services#port-binding"
@@ -448,10 +449,10 @@ const (
 // its timeout line, and the docs line that follows them ("" for none).
 type portScanWording struct{ scan, timeout, docs string }
 
-// entries is line at at, followed by w's docs line when docs and w has one.
-func (w portScanWording) entries(id string, at time.Time, line string, docs bool) []LogEntry {
+// entries is line at at, followed by w's docs line when w has one.
+func (w portScanWording) entries(id string, at time.Time, line string) []LogEntry {
 	out := []LogEntry{progressEntry(id, at, line)}
-	if docs && w.docs != "" {
+	if w.docs != "" {
 		out = append(out, progressEntry(id, at, w.docs))
 	}
 	return out
@@ -476,13 +477,15 @@ func portScanWordingAt(d DeployProgress, t time.Time) portScanWording {
 }
 
 // portScanLines are the scan lines d has earned: one when its stall first
-// said no port was open, then one a minute while the scan runs, at most five.
-// The scan ends when a stall says it is over or the deploy ends, and an open
-// one runs up to the read. The docs line follows only the first scan line, so
-// the narration never writes more than one line a minute. A deploy that
-// failed with its scan still running ends with Render's timeout line, at the
-// moment it failed, before the failure line. Each line is worded for what the
-// scan had found by its moment (portScanWordingAt).
+// said no port was open, then one a minute while the scan runs, at most five,
+// each followed by the docs line, then the timeout line and the docs line a
+// minute after the fifth. The scan ends when a stall says it is over or the
+// deploy ends, and an open one runs up to the read. After the timeout line
+// the rollout still serves a port found before its budget runs out; nothing
+// more is written until the deploy ends. A deploy that failed with its scan
+// still running before the timeout line was due gets it at the moment it
+// failed, before the failure line. Each line is worded for what the scan had
+// found by its moment (portScanWordingAt).
 func portScanLines(d DeployProgress) []LogEntry {
 	since := d.PortScanSince
 	if since.IsZero() {
@@ -502,13 +505,17 @@ func portScanLines(d DeployProgress) []LogEntry {
 			break
 		}
 		w := portScanWordingAt(d, at)
-		out = append(out, w.entries(d.ID, at, w.scan, i == 0)...)
+		out = append(out, w.entries(d.ID, at, w.scan)...)
 	}
-	if d.Status == "update_failed" && d.PortScanUntil.IsZero() && !d.FinishedAt.Before(since) {
-		w := portScanWordingAt(d, d.FinishedAt)
-		out = append(out, w.entries(d.ID, d.FinishedAt, w.timeout, true)...)
+	timeoutAt := since.Add(portScanMaxLines * portScanInterval)
+	if !due(timeoutAt) {
+		if d.Status != "update_failed" || !d.PortScanUntil.IsZero() || d.FinishedAt.Before(since) {
+			return out
+		}
+		timeoutAt = d.FinishedAt
 	}
-	return out
+	w := portScanWordingAt(d, timeoutAt)
+	return append(out, w.entries(d.ID, timeoutAt, w.timeout)...)
 }
 
 // The initial deploy hook's narration (w33/m435). Render runs the hook after
