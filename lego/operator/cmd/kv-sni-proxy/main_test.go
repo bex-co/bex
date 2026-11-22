@@ -138,6 +138,55 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	}
 }
 
+// TestRouterDomainMatchingIsCaseInsensitive pins the install/match agreement:
+// set installs a route when ExternalHost matches case-insensitively
+// (EqualFold) and resolve matches the lowercased SNI against a lowercased
+// domain, so every casing of BEX_KV_DOMAIN routes the same clients. Before
+// the newRouter normalization, an uppercase domain installed the route but no
+// SNI ever matched, dropping every external client before its handshake.
+func TestRouterDomainMatchingIsCaseInsensitive(t *testing.T) {
+	router := newRouter("KV.BEX.CO.")
+	kv := &sniproxy.KeyValue{}
+	kv.Name = "kv-one"
+	kv.Namespace = "default"
+	kv.Spec.Public = true
+	kv.Status.ExternalHost = "kv-one.kv.bex.co"
+	kv.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	for _, sni := range []string{
+		"kv-one.kv.bex.co",
+		"KV-ONE.KV.BEX.CO",
+		"kv-one.kv.bex.co.",
+		"Kv-One.Kv.Bex.Co.",
+	} {
+		if _, verdict := router.resolve(sni, netip.MustParseAddr("203.0.113.9")); verdict != admitted {
+			t.Errorf("SNI %q with an uppercase domain: verdict = %v, want admitted", sni, verdict)
+		}
+		if route, verdict := router.resolve(sni, netip.MustParseAddr("198.51.100.9")); verdict != refused ||
+			route.Refusal != "kv-one.default.svc.cluster.local:6381" {
+			t.Errorf("SNI %q with an uppercase domain: verdict = %v, want refused at the store's refusal port", sni, verdict)
+		}
+	}
+	// Fail-closed cells hold under an uppercase domain too.
+	if _, verdict := router.resolve("other.kv.bex.co", netip.MustParseAddr("203.0.113.9")); verdict != unrouted {
+		t.Errorf("unknown SNI: verdict = %v, want unrouted", verdict)
+	}
+	if _, verdict := router.resolve("a.b.kv.bex.co", netip.MustParseAddr("203.0.113.9")); verdict != unrouted {
+		t.Errorf("nested SNI: verdict = %v, want unrouted", verdict)
+	}
+	// The install seam stays case-insensitive the other way: an uppercase
+	// ExternalHost on status still installs the route.
+	kv.Status.ExternalHost = "KV-ONE.KV.BEX.CO"
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	if _, verdict := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.9")); verdict != admitted {
+		t.Errorf("uppercase ExternalHost: verdict = %v, want admitted", verdict)
+	}
+}
+
 // TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow pins w9/m388:
 // the workspace layer is a third AND on the Key Value front door.
 // TestRouterCarriesEachStoresCapacityFromThePlan (w6/154): a store's route
