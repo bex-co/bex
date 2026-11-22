@@ -32,6 +32,11 @@
 // Judoscale read to report request-queue time (Judoscale autoscales on it). A
 // caller's value is replaced, never trusted.
 //
+// Traefik's entrypoints keep a caller's X-Forwarded-* (w8/402), so that
+// X-Forwarded-For reaches the app as the caller's list with the client
+// appended, as on Render. This sanitizer rewrites or removes every other
+// forwarded header, so the app sees what Traefik set for an untrusted caller.
+//
 // A second instance, configured with originServer, sits in each web service's
 // own route (w8/321): Render's edge never hands a web service's Server header
 // to clients. It moves the value to X-Render-Origin-Server, and names "Render"
@@ -89,6 +94,20 @@ var cloudflareHeaders = map[string]bool{
 // and X-Request-Start are rewritten below.
 var alwaysStripped = map[string]bool{"x-client-ip": true, "true-client-ip": true, "rndr-id": true, "x-request-start": true}
 
+// forwardedHeaders are the headers Traefik's entrypoint manages (its
+// forwardedheaders.XHeadersSet), which the tenant entrypoints now take from
+// any caller (forwardedHeaders.insecure, w8/402) so that X-Forwarded-For
+// keeps the caller's list. false marks a header removed, as Traefik removed it
+// from an untrusted caller; true one kept, because it is X-Forwarded-For,
+// setForwarded rewrites it, or Traefik always overwrites it
+// (X-Forwarded-Server). Every underscore spelling is removed.
+var forwardedHeaders = map[string]bool{
+	"x-forwarded-for": true, "x-forwarded-proto": true, "x-forwarded-host": true,
+	"x-forwarded-port": true, "x-forwarded-server": true, "x-real-ip": true,
+	"x-forwarded-uri": false, "x-forwarded-method": false, "x-forwarded-prefix": false,
+	"x-forwarded-tls-client-cert": false, "x-forwarded-tls-client-cert-info": false,
+}
+
 type Config struct {
 	// OriginServer makes this instance the per-web-service Server rename
 	// (w8/321) instead of the entrypoint's request sanitizer.
@@ -143,7 +162,11 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if alwaysStripped[key] || (cloudflareHeaders[key] && (client == nil || strings.Contains(name, "_"))) {
 			delete(h, name)
 		}
+		if keep, ok := forwardedHeaders[key]; ok && (!keep || strings.Contains(name, "_")) {
+			delete(h, name)
+		}
 	}
+	setForwarded(r)
 	switch {
 	case client != nil:
 		h.Set("CF-Connecting-IP", client.String())
@@ -161,6 +184,50 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// spin-up, as on Render.
 	h.Set("X-Request-Start", strconv.FormatInt(time.Now().UnixMicro(), 10))
 	s.next.ServeHTTP(w, r)
+}
+
+// setForwarded writes what Traefik's entrypoint wrote for an untrusted caller
+// (forwardedheaders rewrite, v3.7.17), now that it keeps a caller's values:
+// the scheme from the TLS state, ws or wss on a WebSocket upgrade; the port
+// from the Host, else the scheme's; the Host; and the TCP peer, after PROXY
+// protocol, as X-Real-Ip, in Traefik's raw form (peerIP's normalizing would
+// change it for a v4-mapped peer).
+func setForwarded(r *http.Request) {
+	h := r.Header
+	proto, port := "http", "80"
+	if r.TLS != nil {
+		proto, port = "https", "443"
+	}
+	if hasToken(h.Get("Connection"), "upgrade") && hasToken(h.Get("Upgrade"), "websocket") {
+		proto = strings.Replace(proto, "http", "ws", 1)
+	}
+	h.Set("X-Forwarded-Proto", proto)
+	if _, p, err := net.SplitHostPort(r.Host); err == nil && p != "" {
+		port = p
+	}
+	h.Set("X-Forwarded-Port", port)
+	if r.Host != "" {
+		h.Set("X-Forwarded-Host", r.Host)
+	} else {
+		h.Del("X-Forwarded-Host")
+	}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		host, _, _ = strings.Cut(host, "%")
+		h.Set("X-Real-Ip", host)
+	} else {
+		h.Del("X-Real-Ip")
+	}
+}
+
+// hasToken reports whether the comma-separated list holds token, ignoring
+// case, as Traefik's isWebsocketRequest reads Connection and Upgrade.
+func hasToken(list, token string) bool {
+	for _, v := range strings.Split(list, ",") {
+		if strings.EqualFold(strings.TrimSpace(v), token) {
+			return true
+		}
+	}
+	return false
 }
 
 // requestID is a random id in Render's Rndr-Id shape: 8-4-4 lowercase hex,
@@ -203,9 +270,9 @@ func peerIP(remoteAddr string) net.IP {
 // Traefik's redirectScheme answers every method but GET with 308.
 //
 // Like that middleware, it reads the scheme from the TLS state, overridden
-// by X-Forwarded-Proto, which Traefik's entrypoint sets itself in place of
-// an untrusted caller's. The Location drops any port, so HTTPS whose Host
-// names a port other than 443 redirects too.
+// by X-Forwarded-Proto, which the entrypoint's sanitizer sets from the TLS
+// state in place of a caller's (setForwarded). The Location drops any port,
+// so HTTPS whose Host names a port other than 443 redirects too.
 type httpsRedirect struct{ next http.Handler }
 
 func (h *httpsRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {

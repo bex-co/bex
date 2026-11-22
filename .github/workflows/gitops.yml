@@ -199,8 +199,8 @@ jobs:
       # a wrapper that passes go test can still buffer every stream (w8/321).
       # Yaegi v0.16.1 is the version traefik v3.7.17 (base/values image.tag)
       # pins; bump it with the image. Only the plugin and its Yaegi-safe
-      # origin-server, HTTPS-redirect (w8/357) and static-site (w8/363) tests
-      # run here: the
+      # origin-server, HTTPS-redirect (w8/357), static-site (w8/363) and
+      # forwarded-header (w8/402) tests run here: the
       # sanitizer tests panic in v0.16.1's type checker, the compiled-only
       # test uses a fake Yaegi would hide, and the egress plugin's fakes do
       # not type-check under it.
@@ -211,7 +211,7 @@ jobs:
           gopath="$RUNNER_TEMP/yaegi"
           module="$(awk '/^module/ {print $2}' "$plugin/go.mod")"
           mkdir -p "$gopath/src/$module"
-          cp "$plugin/clientipheaders.go" "$plugin/originserver_test.go" "$plugin/httpsredirect_test.go" "$plugin/staticsite_test.go" "$gopath/src/$module/"
+          cp "$plugin/clientipheaders.go" "$plugin/originserver_test.go" "$plugin/httpsredirect_test.go" "$plugin/staticsite_test.go" "$plugin/forwarded_test.go" "$gopath/src/$module/"
           cd "$gopath" && GOPATH="$gopath" GO111MODULE=off timeout 300 "$RUNNER_TEMP/bin/yaegi" test "$module"
       # The S3 metadata-name plugin is small enough that all of its tests run
       # under Yaegi, its interpreted writer handed to compiled net/http code

@@ -19,7 +19,7 @@ deployment:
     - name: bex-client-ip-headers-plugin
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
-        name: bex-client-ip-headers-plugin-9dg4gd6h78
+        name: bex-client-ip-headers-plugin-ct4hd7dm7k
     - name: bex-s3-metadata-case-plugin
       configMap:
         # Content-hashed like the two above (w21/113): the S3 gateway's route
@@ -74,6 +74,15 @@ securityContext:
 # CF-Connecting-IP, CF-IPCountry or X-Client-IP, and True-Client-IP always names
 # the real client, as on Render behind Cloudflare. The Middleware ships in this
 # release (extraObjects below), so it exists before any router references it.
+#
+# Both entrypoints trust every caller's forwarded headers (w8/402), the only
+# Traefik switch that keeps a caller's X-Forwarded-For: the app gets that list
+# with the client appended, as on Render, for an app behind its own proxy or
+# CDN. Traefik has no switch for X-Forwarded-For alone, so the sanitizer
+# rewrites or removes every other X-Forwarded-*/X-Real-Ip to what Traefik set
+# for an untrusted caller. Nothing bex trusts reads the caller's entries: the
+# inbound-IP allowlist matches the TCP source, and bex-api, the gateways and
+# the static server read True-Client-IP, else walk X-Forwarded-For from the right.
 ports:
   web:
     # Bounded long uploads (w8/207): the upstream 60s default truncates slow bodies.
@@ -81,6 +90,8 @@ ports:
       respondingTimeouts:
         readTimeout: 6000s
     port: 80 # host :80 (HTTP + ACME HTTP-01 challenge)
+    forwardedHeaders:
+      insecure: true
     http:
       middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
   websecure:
@@ -88,6 +99,8 @@ ports:
       respondingTimeouts:
         readTimeout: 6000s
     port: 443 # host :443 (HTTPS)
+    forwardedHeaders:
+      insecure: true
     http:
       middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
   ssh:

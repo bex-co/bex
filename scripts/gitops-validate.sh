@@ -1430,6 +1430,12 @@ for render in base prod; do
       echo "FAIL: $render Traefik entrypoint $ep does not run traefik-bex-client-ip-headers@kubernetescrd first" >&2
       fail=1
     fi
+    # w8/402: a caller's X-Forwarded-For reaches the app with the client
+    # appended, as on Render; the sanitizer rewrites every other forwarded header.
+    if ! grep -qxF -- "--entryPoints.$ep.forwardedHeaders.insecure" <<<"$traefik_args"; then
+      echo "FAIL: $render Traefik entrypoint $ep must keep a caller's X-Forwarded-For (forwardedHeaders.insecure, w8/402)" >&2
+      fail=1
+    fi
   done
   sanitizer="$(yq -N 'select(.kind == "Middleware" and .metadata.name == "bex-client-ip-headers" and .metadata.namespace == "traefik") | .spec.plugin | keys | .[]' "$tmp/traefik-$render.yaml")"
   if [ "$sanitizer" != bexClientIPHeaders ]; then

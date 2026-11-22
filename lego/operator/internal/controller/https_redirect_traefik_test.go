@@ -39,14 +39,12 @@ func TestHTTPSRedirectOnTheDeployedTraefik(t *testing.T) {
 	origin := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		_, _ = io.WriteString(rw, "app "+req.Method)
 	})
-	dockerArgs, traefikArgs := edgePluginArgs(t, clientIPHeadersPlugin)
+	dockerArgs, traefikArgs := tenantEdgeArgs(t)
 	base, tlsBase := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
 		label: "https-redirect", chain: []string{"probe-https"}, tls: true,
 		middlewares: map[string]any{"client-ip": entrypointSanitizerSpec, "probe-https": httpsRedirectSpec},
 		readyPath:   "/", readyStatus: http.StatusMovedPermanently,
-		dockerArgs: dockerArgs,
-		traefikArgs: append(traefikArgs,
-			"--entrypoints.web.http.middlewares=client-ip@file", "--entrypoints.websecure.http.middlewares=client-ip@file"),
+		dockerArgs: dockerArgs, traefikArgs: traefikArgs,
 	})
 
 	transport := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true}
