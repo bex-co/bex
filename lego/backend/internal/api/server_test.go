@@ -1227,6 +1227,13 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "BuildSucceeded" {
 		return false
 	}
+	// The git push webhook's wait behind a deploy the operator has not
+	// adopted (w8/390): the push's HMAC signature is its authorization, and it
+	// receives the App the webhook matched, never a transport request. Its
+	// contracts live in deploys/push_wait_test.go and apps/push_wait_test.go.
+	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "DeferNewCommit" {
+		return false
+	}
 	// The deferred-deploy worker's run of an environment "Save and deploy"
 	// that waited (w4/667): the save that queued it authorized its caller, and
 	// the worker runs it as the platform. Its contracts live in
