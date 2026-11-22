@@ -36,19 +36,27 @@ var edgeCompressedTypes = []any{
 	"application/atom+xml", "application/wasm", "image/svg+xml",
 }
 
+// edgeMinGzipBytes is the smallest response the edge gzips, the 48-byte floor
+// of the static server's minGzipBytes (w8/359). Render's edge has no single
+// size: on a web service it gzipped JSON answers of English text from 46
+// bytes and of random hex from 49 (captured 2026-11-22, w8/403), so 48 sits
+// inside that range. Traefik's own default is 1024.
+const edgeMinGzipBytes = 48
+
 // edgeCompressionMiddlewares is the router chain that compresses a web
 // service's public responses: Traefik's own compress, gzip only, for at least
-// 1 KiB of a listed type and never an already encoded or HEAD response. Brotli
-// is left off because Traefik's Brotli writer (v3.7.5 through the pinned
-// v3.7.17) encodes a 206 Range body while Content-Range still counts identity
-// bytes; its gzip writer passes a partial response through untouched. zstd is
-// never sent: from v3.7.9 the gzip writer no longer negotiates it itself
-// (w8/m145). Two differences from Render remain,
+// edgeMinGzipBytes of a listed type and never an already encoded or HEAD
+// response. Brotli is left off because Traefik's Brotli writer (v3.7.5
+// through the pinned v3.7.17) encodes a 206 Range body while Content-Range
+// still counts identity bytes; its gzip writer passes a partial response
+// through untouched. zstd is never sent: from v3.7.9 the gzip writer no
+// longer negotiates it itself (w8/m145). Two differences from Render remain,
 // signed off by the user in ADR018: a Cache-Control: no-transform response is
 // still compressed, and a strong ETag stays strong on the encoded body (w8/m83).
 func edgeCompressionMiddlewares(app *appv1alpha1.App) (names []string, specs []map[string]any) {
 	return []string{app.Name + "-compress"}, []map[string]any{
-		{"compress": map[string]any{"encodings": []any{"gzip"}, "includedContentTypes": edgeCompressedTypes}},
+		{"compress": map[string]any{"encodings": []any{"gzip"}, "includedContentTypes": edgeCompressedTypes,
+			"minResponseBodyBytes": int64(edgeMinGzipBytes)}},
 	}
 }
 

@@ -30,6 +30,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -70,10 +71,17 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 			h.Set("Content-Encoding", "gzip")
 			_, _ = rw.Write(authored)
 			return
-		case "/stream":
+		case "/small":
+			h.Set("Content-Type", "application/json")
+			n, _ := strconv.Atoi(req.URL.Query().Get("n"))
+			_, _ = rw.Write(edgeSmallBody(n))
+			return
+		case "/stream", "/short-stream":
 			h.Set("Content-Type", "application/x-ndjson")
+			// /short-stream's 31-byte events are each under the 48-byte floor.
+			pad := map[string]int{"/stream": 2048, "/short-stream": 10}[req.URL.Path]
 			for i := range 3 {
-				_, _ = fmt.Fprintf(rw, "{\"event\":%d,\"pad\":%q}\n", i, strings.Repeat("x", 2048))
+				_, _ = fmt.Fprintf(rw, "{\"event\":%d,\"pad\":%q}\n", i, strings.Repeat("x", pad))
 				rw.(http.Flusher).Flush()
 				time.Sleep(time.Second)
 			}
@@ -121,6 +129,9 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 		{name: "small range untouched", path: "/range", acceptEncoding: "gzip, br", rangeHeader: "bytes=0-99", wantStatus: 206, want: text[:100]},
 		{name: "large range untouched", path: "/range", acceptEncoding: "gzip, br, zstd", rangeHeader: "bytes=100-200099", wantStatus: 206, want: text[100:200100]},
 		{name: "streamed ndjson decodes exactly", path: "/stream", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip"},
+		// w8/403: Render's edge gzips small API answers; the floor is 48 bytes.
+		{name: "a 48-byte body is gzip", path: "/small?n=48", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip", want: edgeSmallBody(48)},
+		{name: "a 47-byte body is identity", path: "/small?n=47", acceptEncoding: "gzip", wantStatus: 200, want: edgeSmallBody(47)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, base+tc.path, nil)
@@ -153,14 +164,15 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 		})
 	}
 
-	assertEdgeStreamUnbuffered(t, base)
+	assertEdgeStreamUnbuffered(t, base, "/stream")
+	assertEdgeStreamUnbuffered(t, base, "/short-stream")
 }
 
-// assertEdgeStreamUnbuffered checks that the first gzip-encoded event of
-// /stream decodes while the origin is still sleeping before the second.
-func assertEdgeStreamUnbuffered(t *testing.T, base string) {
+// assertEdgeStreamUnbuffered checks that the first gzip-encoded event of the
+// stream at path decodes while the origin is still sleeping before the second.
+func assertEdgeStreamUnbuffered(t *testing.T, base, path string) {
 	t.Helper()
-	req, _ := http.NewRequest(http.MethodGet, base+"/stream", nil)
+	req, _ := http.NewRequest(http.MethodGet, base+path, nil)
 	req.Header.Set("Accept-Encoding", "gzip")
 	start := time.Now()
 	resp, err := (&http.Transport{DisableCompression: true}).RoundTrip(req)
@@ -169,7 +181,7 @@ func assertEdgeStreamUnbuffered(t *testing.T, base string) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.Header.Get("Content-Encoding") != "gzip" {
-		t.Fatalf("stream encoding = %q, want gzip", resp.Header.Get("Content-Encoding"))
+		t.Fatalf("%s encoding = %q, want gzip", path, resp.Header.Get("Content-Encoding"))
 	}
 	zr, err := gzip.NewReader(resp.Body)
 	if err != nil {
@@ -177,12 +189,16 @@ func assertEdgeStreamUnbuffered(t *testing.T, base string) {
 	}
 	first, err := bufio.NewReader(zr).ReadString('\n')
 	if err != nil || !strings.HasPrefix(first, `{"event":0`) {
-		t.Fatalf("first event = %q, %v", first, err)
+		t.Fatalf("%s first event = %q, %v", path, first, err)
 	}
 	if elapsed := time.Since(start); elapsed > 900*time.Millisecond {
-		t.Fatalf("first event arrived after %s: the stream was buffered", elapsed)
+		t.Fatalf("%s first event arrived after %s: the stream was buffered", path, elapsed)
 	}
+}
 
+// edgeSmallBody is an n-byte JSON string, a small API answer.
+func edgeSmallBody(n int) []byte {
+	return []byte(`"` + strings.Repeat("x", max(n-2, 0)) + `"`)
 }
 
 func gzipBytes(t *testing.T, b []byte) []byte {

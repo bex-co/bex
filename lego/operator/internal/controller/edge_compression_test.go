@@ -35,9 +35,9 @@ import (
 
 // A public web service's route compresses its responses at the edge, as
 // Render's load balancer does (w8/m83): one App-owned Traefik compress
-// Middleware (gzip, compressible types only, no event stream) sits after the
-// access layers and before the WebSocket meter. Unexposing the service
-// removes it with its Ingress.
+// Middleware (gzip from 48 bytes, compressible types only, no event stream)
+// sits after the access layers and before the WebSocket meter. Unexposing the
+// service removes it with its Ingress.
 func TestWebServiceEdgeCompressionProjection(t *testing.T) {
 	scheme := newIPAllowListScheme()
 	app := appWithAllowList("edge", nil, appv1alpha1.TypeWebService)
@@ -64,6 +64,10 @@ func TestWebServiceEdgeCompressionProjection(t *testing.T) {
 	if !slices.Equal(encodings, []string{"gzip"}) || !slices.Contains(contentTypes, "text/html") || !slices.Contains(contentTypes, "application/json") ||
 		slices.Contains(contentTypes, "text/event-stream") || slices.ContainsFunc(contentTypes, func(t string) bool { return strings.HasPrefix(t, "image/") && t != "image/svg+xml" }) {
 		t.Errorf("compress spec = encodings %v, types %v", encodings, contentTypes)
+	}
+	// w8/403: Render's 48-byte gzip floor, not Traefik's 1 KiB default.
+	if floor, found, _ := unstructured.NestedInt64(mw.Object, "spec", "compress", "minResponseBodyBytes"); !found || floor != 48 {
+		t.Errorf("compress minResponseBodyBytes = %d (set %v), want 48", floor, found)
 	}
 
 	ing := &networkingv1.Ingress{}

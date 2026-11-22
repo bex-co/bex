@@ -57,7 +57,7 @@ func TestOriginServerOnTheDeployedTraefik(t *testing.T) {
 		}
 	}
 	t.Run("an event stream is not buffered", func(t *testing.T) { assertEventStreamUnbuffered(t, base) })
-	t.Run("a gzipped stream arrives event by event", func(t *testing.T) { assertEdgeStreamUnbuffered(t, base) })
+	t.Run("a gzipped stream arrives event by event", func(t *testing.T) { assertEdgeStreamUnbuffered(t, base, "/stream") })
 	t.Run("a slow body of known length is not held", func(t *testing.T) { assertKnownLengthUnbuffered(t, base) })
 	t.Run("a WebSocket upgrade echoes", func(t *testing.T) { assertWebSocketEcho(t, strings.TrimPrefix(base, "http://")) })
 }
