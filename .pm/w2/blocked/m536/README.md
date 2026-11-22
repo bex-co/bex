@@ -1,6 +1,6 @@
 # w2 · m536 — Focused security review, CLI/SDK compatibility suite & production verification of sandbox credential brokering
 
-**Worker:** worker2 **Goal:** Qualify sandbox group credential brokering (`w2/m532`–`m535`) with a focused adversarial security review ADR, pinned Render CLI and Python SDK contract suites, an isolation-matrix leg, and a live production walk on `api.bex.co` so the parity ledgers (`ADR018`, `ADR104`, `cli-compatibility-checklist.md`) turn `✅` with dated evidence. **Status:** todo (t001–t003 done)
+**Worker:** worker2 **Goal:** Qualify sandbox group credential brokering (`w2/m532`–`m535`) with a focused adversarial security review ADR, pinned Render CLI and Python SDK contract suites, an isolation-matrix leg, and a live production walk on `api.bex.co` so the parity ledgers (`ADR018`, `ADR104`, `cli-compatibility-checklist.md`) turn `✅` with dated evidence. **Status:** blocked (t001–t003 done; pin must carry `48b78ea2c5` before t004 live production walk)
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm one aspect of render parity for w2` (2026-11-18), materialized via `/pmx them all to w2`. Follows [ADR104 D1 & D9](../../../docs/ADR104-sandbox-render-parity.md#d1--the-parity-target-is-renders-documented-contract-graded-row-by-row) (`✅` only when verified live; SDK is part of the contract) and bex's focused security review lineage ([ADR117](../../../docs/ADR117-security-review-api-key-roles.md), [ADR118](../../../docs/ADR118-security-review-scoped-api-keys.md)).
+- **Source:** `/pm-brainstorm one aspect of render parity for w2` (2026-11-18), materialized via `/pmx them all to w2`. Follows [ADR104 D1 & D9](../../../../docs/ADR104-sandbox-render-parity.md#d1--the-parity-target-is-renders-documented-contract-graded-row-by-row) (`✅` only when verified live; SDK is part of the contract) and bex's focused security review lineage ([ADR117](../../../../docs/ADR117-security-review-api-key-roles.md), [ADR118](../../../../docs/ADR118-security-review-scoped-api-keys.md)).
 - **Goal linkage:** Satisfies bex's security bar for TLS-intercepting secret injection and closes the final non-excluded omission row in Render's Public API with live CLI + SDK proof.
 - **Expected outcome:** Sandbox Group Credential Brokering is production-verified, security-audited, regression-pinned in CI, and marked `✅` across all parity ledgers.
 - **Why now:** An outbound TLS-intercepting secret broker must not be declared done on unit tests alone; closing out `w2/m532`–`m535` with an adversarial review and live CLI/SDK proof prevents silent regressions or security gaps.
