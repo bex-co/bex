@@ -1339,6 +1339,68 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     message: "GitHub CLI 설정을 변경하지 못했습니다. 다시 시도하세요.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.githubCliMandatoryLabel": {
+    message: "끄기를 필수로 설정",
+    description:
+      "Label of the switch that makes the workspace's GitHub CLI off a floor no automation or session can turn back on (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatoryHelp": {
+    message:
+      "GitHub CLI가 꺼져 있는 동안 적용됩니다. 이때는 어떤 자동화나 세션도 gh를 다시 켤 수 없습니다.",
+    description:
+      "Help under the mandatory switch: it applies only while GitHub CLI is off (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatoryTurnedOn": {
+    message: "GitHub CLI 끄기를 필수로 설정했습니다",
+    description:
+      "Toast after an admin makes the workspace's GitHub CLI off mandatory (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatoryTurnedOff": {
+    message: "GitHub CLI 끄기 필수 설정을 해제했습니다",
+    description:
+      "Toast after an admin makes the workspace's GitHub CLI off no longer mandatory (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatorySaveFailed": {
+    message:
+      "GitHub CLI 끄기 필수 설정을 변경하지 못했습니다. 다시 시도하세요.",
+    description: "Error after a failed mandatory switch (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsLabel": {
+    message: "자동화의 GitHub CLI",
+    description:
+      "Label of the select that binds the gh of the sessions automations start: inherit, on or off (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsHelp": {
+    message:
+      "자동화가 시작하는 세션의 gh입니다. 자동화에서 따로 설정하지 않으면 이 값을 사용합니다. 상속은 위 스위치를 따릅니다.",
+    description:
+      "Help under the automations GitHub CLI select: an automation's own binding wins, and inherit follows the workspace switch (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsInherited": {
+    message: "이제 자동화가 GitHub CLI 설정을 상속합니다",
+    description:
+      "Toast after an admin returns automations to inheriting the workspace's GitHub CLI switch (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsTurnedOn": {
+    message: "자동화의 GitHub CLI를 켰습니다",
+    description:
+      "Toast after an admin turns GitHub CLI on for the sessions automations start (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsTurnedOff": {
+    message: "자동화의 GitHub CLI를 껐습니다",
+    description:
+      "Toast after an admin turns GitHub CLI off for the sessions automations start (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsSaveFailed": {
+    message: "자동화의 GitHub CLI를 변경하지 못했습니다. 다시 시도하세요.",
+    description:
+      "Error after a failed automations GitHub CLI choice (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsLocked": {
+    message: "GitHub CLI 끄기가 필수이므로 자동화에서 gh를 켤 수 없습니다.",
+    description:
+      "Mapped message for AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED: automations cannot be bound on under a mandatory off (w10/m561)",
+  },
   "agentEnvironment.modelsTitle": {
     message: "멤버가 선택할 수 있는 모델",
     description:

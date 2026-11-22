@@ -261,6 +261,59 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Tooltip of the sandbox template a session runs on, with its size",
   },
+  "agentSessions.githubCliInherit": {
+    message: "상속",
+    description:
+      "GitHub CLI choice — inherit the level above, while what that resolves to is still loading (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOn": {
+    message: "상속(켜짐)",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh on (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOff": {
+    message: "상속(꺼짐)",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh off (w10/m561)",
+  },
+  "agentSessions.githubCliOn": {
+    message: "켜짐",
+    description:
+      "GitHub CLI choice — gh on for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOff": {
+    message: "꺼짐",
+    description:
+      "GitHub CLI choice — gh off for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOnMandatory": {
+    message:
+      "이 워크스페이스에서 GitHub CLI 끄기가 필수인 동안에는 사용할 수 없습니다.",
+    description:
+      "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
+  },
+  "agentSessions.githubCliOnAdminOnly": {
+    message: "워크스페이스 관리자만 gh를 켤 수 있습니다.",
+    description:
+      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+  },
+  "agentSessions.githubCliTitle": {
+    message: "이 세션의 GitHub CLI: {choice}",
+    description:
+      "Tooltip of the composer's GitHub CLI control; {choice} is the chosen binding, e.g. Inherit (on) (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED": {
+    message:
+      "이 워크스페이스에서는 GitHub CLI 끄기가 필수이므로 세션에서 gh를 켤 수 없습니다. 꺼짐 또는 상속을 선택하세요.",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
+    message:
+      "워크스페이스 관리자만 세션에서 gh를 켤 수 있습니다. 꺼짐 또는 상속을 선택하세요.",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",

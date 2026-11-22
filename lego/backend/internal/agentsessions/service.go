@@ -729,6 +729,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	if err := s.refuseGitHubCLIOn(ctx, workspaceID, req.AgentConfig.GitHubCLI, CodeSessionGitHubCLILocked, sessionGitHubCLIField); err != nil {
+		return View{}, err
+	}
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
@@ -762,6 +765,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return View{}, err
 	}
 	config, err := json.Marshal(req.AgentConfig)
+	if err != nil {
+		return View{}, err
+	}
+	// The first turn's `gh`, resolved as its mints will be (w10/m561): the
+	// session's own binding, its parent's tree and its automation.
+	githubCLIOff, err := s.githubCLIOffLevel(ctx, store.AgentSession{
+		WorkspaceID: workspaceID, Repo: req.Repo, AgentConfig: config, ParentSessionID: req.ParentSessionID, AutomationID: req.AutomationID,
+	}, env)
 	if err != nil {
 		return View{}, err
 	}
@@ -831,7 +842,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelEndpoint: req.AgentConfig.ModelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        sessionEgress(env, egressAllowlist),
-		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env), env.NetworkTier, record.WorkspaceID, record.ID), record, output),
+		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env, githubCLIOff), env.NetworkTier, record.WorkspaceID, record.ID), record, output),
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
@@ -1826,9 +1837,14 @@ const (
 	envRepository = "BEX_AGENT_REPOSITORY"
 )
 
-// envGitHubCLI is "0" in a session's driver env when its workspace turned
-// gh off (w10/m524).
-const envGitHubCLI = "BEX_AGENT_GITHUB_CLI"
+// envGitHubCLI is "0" in a session's driver env when its binding chain has
+// gh off (w10/m524, w10/m561), and envGitHubCLILevel names the level that
+// did (agentsession.GitHubCLILevel); an older driver ignores the level and
+// keeps the workspace's words.
+const (
+	envGitHubCLI      = "BEX_AGENT_GITHUB_CLI"
+	envGitHubCLILevel = "BEX_AGENT_GITHUB_CLI_LEVEL"
+)
 
 func (s *Service) gitProxyURL() string {
 	if strings.TrimSpace(s.GitProxyURL) != "" {
@@ -1861,8 +1877,10 @@ func driverTurn(record store.AgentSession) int { return max(1, record.Turns) }
 // mandatory gateway base URL. The Git remote is a non-secret, Pod-bound proxy URL;
 // the raw GitHub token is minted and consumed only by the gateway. The
 // driver-grant value is likewise only an Ed25519 public verification key.
-// workspaceEnv is the workspace's agent environment row at dispatch.
-func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, workspaceEnv store.AgentEnvironment) map[string]string {
+// workspaceEnv is the workspace's agent environment row at dispatch, and
+// githubCLIOff the level that turned the session's `gh` off then
+// (githubCLIOffLevel), "" when it has `gh`.
+func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, workspaceEnv store.AgentEnvironment, githubCLIOff agentsession.GitHubCLILevel) map[string]string {
 	namespace := store.SandboxNamespace(record.WorkspaceID)
 	// Repo-less (chat-only) sessions carry no clone URL and never deliver: the
 	// driver runs the agent against the prompt in an empty /workspace and the
@@ -1902,11 +1920,13 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, works
 		env[envPRTakeover] = "1"
 		env[envBaseBranch] = record.TakeoverHeadRef
 	}
-	// w10/m524: a workspace that turned gh off gets no gh configuration in
-	// the sandbox; absent means on, so a driver never loses gh to an older
-	// bex-api. The github-api mints refuse it either way.
-	if deliver == "1" && workspaceEnv.GitHubCLIDisabled {
+	// w10/m524, w10/m561: a session whose binding chain has gh off gets no
+	// gh configuration in the sandbox, and the overlay names the level;
+	// absent means on, so a driver never loses gh to an older bex-api. The
+	// github-api mints refuse it either way.
+	if deliver == "1" && githubCLIOff != "" {
 		env[envGitHubCLI] = "0"
+		env[envGitHubCLILevel] = string(githubCLIOff)
 	}
 	// ADR095 D6: every session may hand the user files through its Pod-bound
 	// share URL once the attachments store exists; repo-less sessions too.
@@ -2245,6 +2265,12 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
 		return View{}, err
 	}
+	// The turn's `gh` is resolved now too (w10/m561), so an edit of the
+	// session's automation or of the environment applies from this turn.
+	githubCLIOff, err := s.githubCLIOffLevel(ctx, record, workspaceEnv)
+	if err != nil {
+		return View{}, err
+	}
 	// The message's model, when it names one, is the session's from this turn
 	// on (Devin's agent selector). A queued message whose model left the
 	// catalog or was turned off while it waited runs the fallback instead of
@@ -2308,7 +2334,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
 	record = begun
-	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv), workspaceEnv.NetworkTier, record.WorkspaceID, record.ID), record, output)
+	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv, githubCLIOff), workspaceEnv.NetworkTier, record.WorkspaceID, record.ID), record, output)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:          strings.TrimSpace(config.Template),

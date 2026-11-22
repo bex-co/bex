@@ -406,6 +406,71 @@ func TestAutomationTemplateFlagSetsTheSandbox(t *testing.T) {
 	}
 }
 
+// --github-cli is the template's own gh binding,
+// template.agentConfig.githubCli (w10/m561): create sends it only when given,
+// update keeps the stored one unless the flag names another, inherit removes
+// it, get shows it, and a value other than on, off or inherit is refused
+// before anything is sent.
+func TestAutomationGitHubCLIFlag(t *testing.T) {
+	f := newFakeAutomations(t)
+	create := []string{"automations", "create", "--every", "day", "--at", "09:00", "--max-spend", "1"}
+	if _, stderr, code := run(t, f.deps(), append(create, "--name", "gh-off", "--github-cli", "off", "task")...); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if _, stderr, code := run(t, f.deps(), append(create, "--name", "plain", "task")...); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if _, stderr, code := run(t, f.deps(), append(create, "--name", "unbound", "--github-cli", "inherit", "task")...); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	posts := f.calls(http.MethodPost)
+	for i, want := range []string{`{"agent":"claude","githubCli":false}`, `{"agent":"claude"}`, `{"agent":"claude"}`} {
+		if got := asJSON(t, posts[i].body["template"].(map[string]any)["agentConfig"]); got != want {
+			t.Errorf("create %d: agentConfig %s, want %s", i, got, want)
+		}
+	}
+	stdout, _, _ := run(t, f.deps(), "-o", "text", "automations", "get", "gh-off")
+	if !regexp.MustCompile(`(?m)^GitHub CLI\s+off$`).MatchString(stdout) {
+		t.Fatalf("get does not show the binding:\n%s", stdout)
+	}
+	stdout, _, _ = run(t, f.deps(), "-o", "text", "automations", "get", "plain")
+	if !regexp.MustCompile(`(?m)^GitHub CLI\s+inherit \(the workspace's automations default\)$`).MatchString(stdout) {
+		t.Fatalf("get of an automation binding no gh:\n%s", stdout)
+	}
+
+	for i, tc := range []struct {
+		args []string
+		want string
+	}{
+		// An update without the flag resends the template with the binding kept.
+		{[]string{"--max-spend", "5"}, `{"agent":"claude","githubCli":false}`},
+		{[]string{"--github-cli", "on"}, `{"agent":"claude","githubCli":true}`},
+		{[]string{"--github-cli", "off", "--model", "gpt-5"}, `{"agent":"claude","githubCli":false,"model":"gpt-5"}`},
+		{[]string{"--github-cli", "inherit"}, `{"agent":"claude","model":"gpt-5"}`},
+	} {
+		if _, stderr, code := run(t, f.deps(), append([]string{"automations", "update", "gh-off"}, tc.args...)...); code != 0 {
+			t.Fatalf("%v: exit %d: %s", tc.args, code, stderr)
+		}
+		got := f.calls(http.MethodPatch)[i].body["template"].(map[string]any)
+		if asJSON(t, got["agentConfig"]) != tc.want || got["task"] != "task" {
+			t.Fatalf("update %v sent template %v, want agentConfig %s and the rest kept", tc.args, got, tc.want)
+		}
+	}
+
+	before := len(f.requests)
+	for _, args := range [][]string{
+		append(create, "--name", "bad", "--github-cli", "maybe", "task"),
+		{"automations", "update", "gh-off", "--github-cli", "maybe"},
+	} {
+		if _, stderr, code := run(t, f.deps(), args...); code != exitUsage || !strings.Contains(stderr, "--github-cli takes on, off or inherit") {
+			t.Errorf("%v: exit %d, stderr %q; want a usage error", args, code, stderr)
+		}
+	}
+	if writes := len(f.calls(http.MethodPost)) + len(f.calls(http.MethodPatch)); writes != 3+4 {
+		t.Fatalf("a refused --github-cli wrote (%d writes; %d requests before)", writes, before)
+	}
+}
+
 func TestAutomationUpdateNewFrequencyStartsAFreshSchedule(t *testing.T) {
 	f := newFakeAutomations(t)
 	f.seed("triage", map[string]any{"frequency": "week", "at": "09:00", "weekdays": []any{"mon"}, "timezone": "Europe/Berlin"}, tpl("t"))
@@ -874,6 +939,52 @@ func TestExportRoundTripsThroughApply(t *testing.T) {
 	}
 }
 
+// template.agentConfig.githubCli round-trips through export and apply, and
+// a file that changes it shows the change in --dry-run and sends it with the
+// stored template kept; githubCli: null returns to inheriting (w10/m561).
+func TestExportApplyRoundTripsTheGitHubCLIBinding(t *testing.T) {
+	f := newFakeAutomations(t)
+	template := tpl("Triage")
+	template["agentConfig"] = map[string]any{"agent": "claude", "githubCli": false}
+	f.seed("triage", daily(), template)
+	exported, stderr, code := run(t, f.deps(), "-o", "text", "automations", "export", "triage")
+	if code != 0 || !strings.Contains(exported, "githubCli: false") {
+		t.Fatalf("export (exit %d) lacks the binding: %s\n%s", code, stderr, exported)
+	}
+	d := f.deps()
+	d.stdin = strings.NewReader(exported)
+	stdout, stderr, code := run(t, d, "-o", "text", "automations", "apply", "-f", "-", "--dry-run")
+	if code != 0 || !strings.Contains(stdout, "unchanged triage") {
+		t.Fatalf("export | apply is not a no-op (exit %d): %s\n%s", code, stderr, stdout)
+	}
+
+	file := filepath.Join(t.TempDir(), "a.yaml")
+	writeFile(t, file, strings.Replace(exported, "githubCli: false", "githubCli: true", 1))
+	stdout, stderr, code = run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 || !strings.Contains(stdout, "will update triage") || !strings.Contains(stdout, "template.agentConfig.githubCli: false → true") {
+		t.Fatalf("plan (exit %d) lacks the githubCli diff: %s\n%s", code, stderr, stdout)
+	}
+	if _, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	patch := f.calls(http.MethodPatch)[0].body["template"].(map[string]any)
+	if asJSON(t, patch["agentConfig"]) != `{"agent":"claude","githubCli":true}` || patch["task"] != "Triage" || patch["repo"] != "acme/api" {
+		t.Fatalf("PATCH template %v, want githubCli true and the stored fields kept", patch)
+	}
+
+	writeFile(t, file, "name: triage\ntemplate:\n  agentConfig: {githubCli: null}\n")
+	stdout, stderr, code = run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 || !strings.Contains(stdout, "template.agentConfig.githubCli: true → (none)") {
+		t.Fatalf("plan (exit %d) lacks the return to inherit: %s\n%s", code, stderr, stdout)
+	}
+	if _, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if got := asJSON(t, f.calls(http.MethodPatch)[1].body["template"].(map[string]any)["agentConfig"]); got != `{"agent":"claude","githubCli":null}` {
+		t.Fatalf("PATCH agentConfig %s, want githubCli null (inherit) and the agent kept", got)
+	}
+}
+
 func TestMachineZone(t *testing.T) {
 	for in, want := range map[string]string{
 		"Europe/Berlin":                          "Europe/Berlin",
@@ -920,7 +1031,7 @@ func TestAutomationContractFixtureDecodes(t *testing.T) {
 	s := firstSchedule(a)
 	if a.ID == "" || a.Name == "" || a.Version != 7 || a.PausedReason == "" || a.NextFireAt == nil || a.LastSessionID == "" || s == nil ||
 		s.Timezone == "" || s.At == "" || len(s.Weekdays) != 1 || s.EndsAt == nil || a.Template.MaxSpendUSD == nil || a.Template.AgentConfig.Agent == "" ||
-		a.Notifications.Email == "" {
+		a.Template.AgentConfig.GitHubCLI == nil || *a.Template.AgentConfig.GitHubCLI || a.Notifications.Email == "" {
 		t.Fatalf("automation fields lost: %+v", a)
 	}
 	if golden.AutomationList.NextCursor == "" || golden.RunList.NextCursor == "" {

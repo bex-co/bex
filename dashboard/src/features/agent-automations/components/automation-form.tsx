@@ -38,7 +38,14 @@ import {
   shownModel,
 } from "@/features/agent-sessions/lib/models";
 import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-picker";
+import { GithubCliPicker } from "@/features/agent-sessions/components/github-cli-picker";
+import {
+  githubCliOnLock,
+  inheritedGithubCli,
+} from "@/features/agent-sessions/lib/github-cli";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
+import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   FormField,
   FormSection,
@@ -80,13 +87,15 @@ interface AutomationFormProps {
 /**
  * The create and edit form (ADR101 D9): name, the schedule picker, then the
  * session each fire starts with the same task, repository, agent, model,
- * sandbox, spend-limit, secrets and skills controls the /agents composer has
- * (the sandbox may also follow the workspace default at each run, w10/m519),
- * and which runs email the creator. Shape errors are caught here and shown
- * beside their field; the server's named refusals (a schedule too frequent, a
- * missing spend limit, a taken name, a bad email setting, an unknown sandbox
- * template) are shown beside the field they name, with the server's own
- * wording.
+ * sandbox, GitHub CLI, spend-limit, secrets and skills controls the /agents
+ * composer has (the sandbox may also follow the workspace default at each
+ * run, w10/m519; the GitHub CLI binding inherits the workspace's automations
+ * default, w10/m561), and which runs email the creator. Shape errors are
+ * caught here and shown beside their field; the server's named refusals (a
+ * schedule too frequent, a missing spend limit, a taken name, a bad email
+ * setting, an unknown sandbox template) are shown beside the field they name,
+ * with the server's own wording, and a gh binding refused as on with the
+ * form's own.
  */
 const subscribeNever = () => () => {};
 
@@ -103,6 +112,16 @@ export function AutomationForm({
   const formRef = useRef<HTMLFormElement>(null);
   const { currentWorkspaceId } = useWorkspace();
   const { capabilities } = useAgentSessionCapabilities();
+  // The workspace's gh chain (w10/m561): what inherit resolves to, and
+  // whether "on" is locked by a mandatory off or the creator's role. An
+  // automation that already stores on keeps it, as the server does.
+  const { environment } = useAgentEnvironment(currentWorkspaceId ?? null);
+  const { canManage } = useCapabilities();
+  const githubCliLock = githubCliOnLock({
+    env: environment,
+    canManage,
+    kept: initial.githubCli === "on",
+  });
   const { repos } = useRepos();
   const [chosen, setValues] = useState<AutomationFormValues>(initial);
   // A create form leaves the zone "" until the person picks one; until then it
@@ -138,7 +157,9 @@ export function AutomationForm({
   }
 
   const fieldError = (field: FormFieldName): string | null => {
-    if (refusal?.target === field) return refusal.message;
+    if (refusal?.target === field) {
+      return refusal.messageKey ? t(refusal.messageKey) : refusal.message;
+    }
     const key = shown.fields[field];
     return key ? t(key) : null;
   };
@@ -214,6 +235,7 @@ export function AutomationForm({
     hasError: templateError != null,
     hasHelp: true,
   });
+  const githubCliError = fieldError("githubCli");
   const emailError = fieldError("emailNotifications");
   const skillsError = fieldError("skills");
 
@@ -417,6 +439,28 @@ export function AutomationForm({
               aria-describedby={templateDescribedBy}
             />
           )}
+        </FormField>
+
+        <FormField
+          id={id("github-cli")}
+          label={t("agentEnvironment.githubCliLabel")}
+          help={t("agentAutomations.help.githubCli")}
+          error={githubCliError}
+        >
+          <GithubCliPicker
+            id={id("github-cli")}
+            variant="field"
+            value={values.githubCli}
+            onChange={(githubCli) => change({ githubCli })}
+            inherited={inheritedGithubCli(environment, "automation")}
+            onLock={githubCliLock}
+            disabled={saving}
+            invalid={githubCliError != null}
+            describedBy={describedBy(id("github-cli"), {
+              hasError: githubCliError != null,
+              hasHelp: true,
+            })}
+          />
         </FormField>
 
         <div className="grid gap-4 sm:grid-cols-2">

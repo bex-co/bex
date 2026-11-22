@@ -73,12 +73,29 @@ const (
 	githubAPIUserAgent    = "bex-agent-github-api-proxy/1"
 )
 
-// githubCLIOffRefusal answers every call of a session whose workspace has
-// its GitHub CLI setting off (w10/m524, ADR090 D4): bex-api refused the mint,
-// so no token exists for the call.
-const githubCLIOffRefusal = "bex: gh is turned off for this workspace's agent sessions (the agent environment's GitHub CLI setting, githubCliEnabled). " +
-	"A workspace admin turns it back on in Settings → Agents or with `bex agent env set --github-cli on`. " +
-	"Pushes to your session branch and the bex MCP tools open_or_update_draft_pr, reply_on_pull_request, mark_pull_request_ready and merge_pull_request still work."
+// githubCLIOffRefusal answers every call of a session whose binding chain has
+// `gh` off (w10/m524, w10/m561, ADR090 D4): bex-api refused the mint, so no
+// token exists for the call. It names the level that turned `gh` off and how
+// that level turns it back on; the workspace's words are also what a level
+// this gateway does not know reads as.
+func githubCLIOffRefusal(level agentsession.GitHubCLILevel) string {
+	var head string
+	switch level {
+	case agentsession.GitHubCLISession:
+		head = "bex: gh is turned off for this agent session (its agentConfig.githubCli, chosen when it or the session that started it was created). " +
+			"A session keeps that choice: start a new session without `--github-cli off` to have gh. "
+	case agentsession.GitHubCLIAutomation:
+		head = "bex: gh is turned off for the sessions of the automation that started this session (its template's agentConfig.githubCli). " +
+			"Its creator turns it back on by setting it to inherit in the automation's settings or with `bex agent automations update <automation> --github-cli inherit`; turning it on outright needs a workspace admin. "
+	case agentsession.GitHubCLIAutomationsDefault:
+		head = "bex: gh is turned off for the sessions this workspace's automations start (the agent environment's automations GitHub CLI setting, automationsGithubCliEnabled). " +
+			"A workspace admin turns it back on in Settings → Agents or with `bex agent env set --automations-github-cli inherit` or `on`. "
+	default:
+		head = "bex: gh is turned off for this workspace's agent sessions (the agent environment's GitHub CLI setting, githubCliEnabled). " +
+			"A workspace admin turns it back on in Settings → Agents or with `bex agent env set --github-cli on`. "
+	}
+	return head + "Pushes to your session branch and the bex MCP tools open_or_update_draft_pr, reply_on_pull_request, mark_pull_request_ready and merge_pull_request still work."
+}
 
 // githubAPIRequestHeaders are the sandbox's request headers forwarded
 // upstream. Authorization is never among them: it carries gh's placeholder.
@@ -173,7 +190,9 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 		switch {
 		// ErrGitHubCLIOff wraps ErrForbidden, so it is tested first.
 		case errors.Is(err, agentsession.ErrGitHubCLIOff):
-			b.refuseGitHubAPI(w, verified, "github_cli_off", http.StatusForbidden, githubCLIOffRefusal)
+			// bex-api's denied-mint log line names the level too.
+			level, _ := agentsession.GitHubCLIOffLevel(err)
+			b.refuseGitHubAPI(w, verified, "github_cli_off", http.StatusForbidden, githubCLIOffRefusal(level))
 			return
 		case errors.Is(err, agentsession.ErrForbidden):
 			b.Metrics.Authentication("rejected_target")

@@ -35,14 +35,14 @@ func TestDriverEnvCarriesTheSessionCreationTime(t *testing.T) {
 		{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 1, CreatedAt: created},
 		{ID: "ags-y", WorkspaceID: "tea-a", Turns: 3, CreatedAt: created}, // a repo-less session, on a later turn
 	} {
-		env := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, record, store.AgentEnvironment{})
+		env := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, record, store.AgentEnvironment{}, "")
 		if got := env[envCreatedAt]; got != "2026-11-20T09:30:00Z" {
 			t.Errorf("session %s: %s = %q, want 2026-11-20T09:30:00Z", record.ID, envCreatedAt, got)
 		}
 	}
 	// An unknown creation time is no value at all, which the driver reads as
 	// unknown (the legacy default), never as the zero date.
-	env := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-z", WorkspaceID: "tea-a", Turns: 1}, store.AgentEnvironment{})
+	env := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-z", WorkspaceID: "tea-a", Turns: 1}, store.AgentEnvironment{}, "")
 	if got, ok := env[envCreatedAt]; ok {
 		t.Errorf("an unknown creation time sets %s = %q", envCreatedAt, got)
 	}

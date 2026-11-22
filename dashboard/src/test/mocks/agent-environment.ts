@@ -28,6 +28,10 @@ export function agentEnvironment(
     // The sessions' gh (w10/m524): on, as a workspace that never saved an
     // environment reads.
     githubCliEnabled: true,
+    // Its narrower bindings (w10/m561): automations inherit it, and its off
+    // is not mandatory.
+    automationsGithubCliEnabled: null,
+    githubCliMandatory: false,
     enabledAgents: ["claude", "codex", "gemini"],
     agentDataUse: [
       {

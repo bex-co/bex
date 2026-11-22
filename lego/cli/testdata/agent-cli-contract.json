@@ -11,7 +11,8 @@
     "agentConfig": {
       "agent": "claude",
       "model": "claude-sonnet-5-5",
-      "task": "Fix the crash in crash.log"
+      "task": "Fix the crash in crash.log",
+      "githubCli": false
     },
     "phase": "completed",
     "state": "succeeded",
@@ -238,7 +239,9 @@
         "memoryGb": 8
       }
     ],
-    "githubCliEnabled": false
+    "githubCliEnabled": false,
+    "automationsGithubCliEnabled": false,
+    "githubCliMandatory": true
   },
   "capabilities": {
     "ready": true,

@@ -617,6 +617,11 @@ const deAgentAutomations: Record<string, TranslationEntry> = {
       "Die Maschine, die die Sandbox jedes Laufs bekommt. Der Workspace-Standard folgt bei jedem Lauf Einstellungen → Agents.",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "Ob ihre Sitzungen gh bekommen. „Übernehmen“ folgt „GitHub CLI für Automatisierungen“ unter Einstellungen → Agents.",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "Bei welchen Läufen du eine E-Mail bekommst. Bei einer Pausierung durch die Plattform immer.",
@@ -702,6 +707,18 @@ const deAgentAutomations: Record<string, TranslationEntry> = {
     message:
       "Die Argumente eines Skills müssen eine einzelne Zeile mit höchstens 4 KB sein.",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "GitHub CLI aus ist in diesem Workspace verbindlich, daher kann eine Automatisierung gh nicht einschalten. Wähle „Aus“ oder „Übernehmen“.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message:
+      "Nur Workspace-Admins können gh für eine Automatisierung einschalten. Wähle „Aus“ oder „Übernehmen“.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "Wähle eine gültige Zeitzone.",

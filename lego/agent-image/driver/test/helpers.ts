@@ -73,6 +73,7 @@ export async function tempConfig(
     baseBranch: "",
     repository: "",
     githubCli: true,
+    githubCliLevel: "workspace",
     contextJson: "",
     originalTask: "",
     deliver: false,

@@ -266,6 +266,57 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Tooltip of the sandbox template a session runs on, with its size",
   },
+  "agentSessions.githubCliInherit": {
+    message: "继承",
+    description:
+      "GitHub CLI choice — inherit the level above, while what that resolves to is still loading (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOn": {
+    message: "继承（开启）",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh on (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOff": {
+    message: "继承（关闭）",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh off (w10/m561)",
+  },
+  "agentSessions.githubCliOn": {
+    message: "开启",
+    description:
+      "GitHub CLI choice — gh on for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOff": {
+    message: "关闭",
+    description:
+      "GitHub CLI choice — gh off for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOnMandatory": {
+    message: "此工作区已强制保持 GitHub CLI 关闭，无法选择。",
+    description:
+      "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
+  },
+  "agentSessions.githubCliOnAdminOnly": {
+    message: "只有工作区管理员可以开启 gh。",
+    description:
+      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+  },
+  "agentSessions.githubCliTitle": {
+    message: "此会话的 GitHub CLI：{choice}",
+    description:
+      "Tooltip of the composer's GitHub CLI control; {choice} is the chosen binding, e.g. Inherit (on) (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED": {
+    message:
+      "此工作区已强制保持 GitHub CLI 关闭，因此会话无法开启 gh。请选择“关闭”或“继承”。",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
+    message: "只有工作区管理员可以为会话开启 gh。请选择“关闭”或“继承”。",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",

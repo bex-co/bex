@@ -197,6 +197,53 @@ func TestAgentEnvironmentGitHubCLISettingRoundTrip(t *testing.T) {
 	}
 }
 
+// w10/m561: a row written without the gh bindings inherits and is not
+// mandatory; the automations default round-trips through on, off and back to
+// inherit (an explicit nil), the mandatory flag through on and off, and a
+// partial write of another field keeps both.
+func TestAgentEnvironmentGitHubCLIBindingsRoundTrip(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "agent-github-cli-bindings")
+	ctx := context.Background()
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM agent_environments WHERE workspace_id = $1`, tenant.ID) })
+
+	model := "claude-sonnet-4-5"
+	got, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DefaultModel: &model})
+	if err != nil || got.AutomationsGitHubCLI != nil || got.GitHubCLIMandatory {
+		t.Fatalf("first write without the bindings = %+v err=%v, want inherit and not mandatory", got, err)
+	}
+	off, on, yes := false, true, true
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{SetAutomationsGitHubCLI: true, AutomationsGitHubCLI: &off, GitHubCLIMandatory: &yes}); err != nil ||
+		got.AutomationsGitHubCLI == nil || *got.AutomationsGitHubCLI || !got.GitHubCLIMandatory || got.DefaultModel != model {
+		t.Fatalf("automations off and mandatory = %+v err=%v", got, err)
+	}
+	tier := "full"
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &tier, AutomationsGitHubCLI: &on}); err != nil ||
+		got.AutomationsGitHubCLI == nil || *got.AutomationsGitHubCLI || !got.GitHubCLIMandatory {
+		t.Fatalf("a write that does not set the automations default changed it: %+v err=%v", got, err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, tenant.ID); err != nil || read.AutomationsGitHubCLI == nil || *read.AutomationsGitHubCLI || !read.GitHubCLIMandatory {
+		t.Fatalf("read back = %+v err=%v", read, err)
+	}
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{SetAutomationsGitHubCLI: true, AutomationsGitHubCLI: &on}); err != nil || got.AutomationsGitHubCLI == nil || !*got.AutomationsGitHubCLI {
+		t.Fatalf("automations on = %+v err=%v", got, err)
+	}
+	no := false
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{SetAutomationsGitHubCLI: true, GitHubCLIMandatory: &no}); err != nil || got.AutomationsGitHubCLI != nil || got.GitHubCLIMandatory || got.NetworkTier != tier {
+		t.Fatalf("back to inherit and not mandatory = %+v err=%v", got, err)
+	}
+
+	// A workspace whose first write binds automations gets the other defaults.
+	other, err := s.CreateTenant(ctx, "agent-github-cli-bindings-first", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, other.ID) })
+	if got, err = s.UpsertAgentEnvironment(ctx, other.ID, AgentEnvironmentPatch{SetAutomationsGitHubCLI: true, AutomationsGitHubCLI: &off}); err != nil ||
+		got.AutomationsGitHubCLI == nil || *got.AutomationsGitHubCLI || got.GitHubCLIMandatory || got.GitHubCLIDisabled || got.NetworkTier != "registries" {
+		t.Fatalf("first write binding automations = %+v err=%v", got, err)
+	}
+}
+
 // w10/m527: a first write that does not name the turned-off models offers the
 // whole catalog, a list reads back and survives a partial write of another
 // field, and an explicit empty list turns every model back on.

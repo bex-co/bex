@@ -32,7 +32,8 @@
       ],
       "agentConfig": {
         "agent": "claude",
-        "model": "claude-sonnet-5-5"
+        "model": "claude-sonnet-5-5",
+        "githubCli": false
       },
       "maxSpendUSD": 5,
       "secretNames": [

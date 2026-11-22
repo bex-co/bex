@@ -614,6 +614,11 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
       "The machine each run's sandbox gets. The workspace default follows Settings → Agents at each run.",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "Whether its sessions get gh. Inherit follows GitHub CLI for automations in Settings → Agents.",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message: "Which runs email you. A platform pause always does.",
     description: "Email notifications field help",
@@ -696,6 +701,18 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.problem.skills": {
     message: "A skill's arguments must be one line of at most 4 KB.",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "This workspace's GitHub CLI off is mandatory, so an automation can't turn gh on. Choose Off or Inherit.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message:
+      "Only a workspace admin can turn gh on for an automation. Choose Off or Inherit.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "Choose a valid time zone.",

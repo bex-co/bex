@@ -614,6 +614,11 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
       "各実行のサンドボックスに割り当てるマシン。ワークスペースのデフォルトは、実行のたびに「設定 → エージェント」の設定に従います。",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "このオートメーションのセッションで gh を使えるかどうかです。「継承」は「設定 → エージェント」の「オートメーションの GitHub CLI」に従います。",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "メールを受け取る実行の条件です。プラットフォームによる一時停止は常に通知されます。",
@@ -698,6 +703,18 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.problem.skills": {
     message: "スキルの引数は、4 KB 以内の 1 行にしてください。",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "このワークスペースでは GitHub CLI のオフが必須のため、オートメーションで gh をオンにすることはできません。「オフ」または「継承」を選んでください。",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message:
+      "オートメーションで gh をオンにできるのはワークスペースの管理者のみです。「オフ」または「継承」を選んでください。",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "有効なタイムゾーンを選択してください。",

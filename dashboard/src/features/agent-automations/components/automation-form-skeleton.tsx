@@ -128,6 +128,14 @@ export function AutomationFormSkeleton({ mode }: { mode: "create" | "edit" }) {
             >
               {INPUT}
             </FormField>
+            {/* The gh binding (w10/m561), full width like the sandbox. */}
+            <FormField
+              id="sk-github-cli"
+              label={t("agentEnvironment.githubCliLabel")}
+              help={t("agentAutomations.help.githubCli")}
+            >
+              {INPUT}
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 id="sk-spend"

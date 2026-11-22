@@ -601,6 +601,11 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
       "每次运行的沙箱所用的机器。工作区默认值在每次运行时跟随“设置 → 智能体”。",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "其会话是否获得 gh。“继承”跟随“设置 → 智能体”中的“自动化的 GitHub CLI”。",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message: "哪些运行会给你发邮件。平台暂停此自动化时总会发送。",
     description: "Email notifications field help",
@@ -681,6 +686,17 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.problem.skills": {
     message: "技能参数必须是单行，且不超过 4 KB。",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "此工作区已强制保持 GitHub CLI 关闭，因此自动化无法开启 gh。请选择“关闭”或“继承”。",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message: "只有工作区管理员可以为自动化开启 gh。请选择“关闭”或“继承”。",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "请选择有效的时区。",

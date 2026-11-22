@@ -121,7 +121,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		input.markSpendCapPresence(raw)
+		input.markNullablePresence(raw)
 		env, err := s.UpdateEnvironment(r.Context(), r.URL.Query().Get("ownerId"), input)
 		if err != nil {
 			core.WriteErr(w, err)

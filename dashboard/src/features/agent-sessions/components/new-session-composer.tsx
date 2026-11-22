@@ -74,6 +74,15 @@ import { blocksCreate } from "@/features/agent-environment/lib/spend";
 import { ComposerSecrets } from "@/features/agent-sessions/components/composer-secrets";
 import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
 import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-picker";
+import { GithubCliPicker } from "@/features/agent-sessions/components/github-cli-picker";
+import {
+  githubCliBinding,
+  githubCliOnLock,
+  inheritedGithubCli,
+  type GithubCliChoice,
+} from "@/features/agent-sessions/lib/github-cli";
+import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   ComposerSkillChips,
   ComposerSkills,
@@ -96,12 +105,14 @@ const EXAMPLE_KEYS = [
 
 /**
  * The prompt-box composer: the visual center of `/agents`. Agent, model,
- * sandbox and repo live on the toolbar (w10/m17, w10/m516, w10/m519): the
- * branch is always derived from the task, the sandbox network comes from the
- * workspace's agent environment, the model control shows the agent's model
- * and its catalog, and the sandbox control the workspace's templates with the
- * default preselected; each sends its choice only when the person picks
- * something other than the default. A repo is optional — a repo-less prompt
+ * sandbox, GitHub CLI and repo live on the toolbar (w10/m17, w10/m516,
+ * w10/m519, w10/m561): the branch is always derived from the task, the
+ * sandbox network comes from the workspace's agent environment, the model
+ * control shows the agent's model and its catalog, the sandbox control the
+ * workspace's templates with the default preselected, and the GitHub CLI
+ * control the session's own `gh` binding, inheriting the workspace's switch;
+ * each sends its choice only when the person picks something other than the
+ * default. A repo is optional — a repo-less prompt
  * starts a chat-only session. The Connect GitHub callout appears only when the
  * composer targets a repo but the workspace has no GitHub App repos connected.
  */
@@ -170,6 +181,17 @@ export function NewSessionComposer() {
   const [model, setModel] = useState("");
   // The sandbox template it runs on (w10/m519); "" runs the workspace default.
   const [template, setTemplate] = useState("");
+  // The session's own gh binding (w10/m561); inherit sends none. "On" is
+  // locked under the workspace's mandatory off and for a member who is not
+  // an admin, as bex-api refuses it there (AGENT_SESSION_GITHUB_CLI_LOCKED).
+  const [githubCli, setGithubCli] = useState<GithubCliChoice>("inherit");
+  const { environment } = useAgentEnvironment(currentWorkspaceId ?? null);
+  const { canManage } = useCapabilities();
+  const githubCliLock = githubCliOnLock({ env: environment, canManage });
+  // A create refused for the gh binding: the alert below names why and is
+  // the control's description until the choice changes.
+  const [githubCliRefused, setGithubCliRefused] = useState(false);
+  const submitErrorId = useId();
   const skillsInvalid = !composerSkillsValid(skills);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
@@ -230,6 +252,7 @@ export function NewSessionComposer() {
   const submit = async (values: ComposerValues) => {
     setAvailabilityError(null);
     setSubmitError(null);
+    setGithubCliRefused(false);
 
     // The button carries the same gate, but Enter can submit from the editor.
     // Re-check here so no interaction can race a known capability gap.
@@ -268,6 +291,7 @@ export function NewSessionComposer() {
         values.agent,
         model,
         template,
+        githubCli,
         prompt,
         sentAttachmentIds,
         spendLimit.value,
@@ -278,6 +302,7 @@ export function NewSessionComposer() {
         composerSkillsFingerprint(skills),
       ]),
     );
+    const githubCliBound = githubCliBinding(githubCli);
     try {
       const ticket = await create({
         idempotencyKey,
@@ -287,6 +312,7 @@ export function NewSessionComposer() {
         agent: values.agent,
         ...(model ? { model } : {}),
         ...(template ? { template } : {}),
+        ...(githubCliBound !== undefined ? { githubCli: githubCliBound } : {}),
         task: prompt,
         attachmentIds: sentAttachmentIds,
         maxSpendUSD: spendLimit.value,
@@ -323,6 +349,7 @@ export function NewSessionComposer() {
       setAvailabilityError(err);
       return;
     }
+    setGithubCliRefused(err.code === "AGENT_SESSION_GITHUB_CLI_LOCKED");
     setSubmitError(
       t(err.messageKey, { ...err.params, defaultValue: err.message }),
     );
@@ -366,7 +393,7 @@ export function NewSessionComposer() {
       ) : null}
       <ComposerSpendBanner gate={spendGate} />
       {submitError ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" id={submitErrorId}>
           <AlertTitle>{t("agentSessions.createErrorTitle")}</AlertTitle>
           <AlertDescription>{submitError}</AlertDescription>
         </Alert>
@@ -459,6 +486,22 @@ export function NewSessionComposer() {
                 value={template}
                 onChange={setTemplate}
                 disabled={isSubmitting}
+              />
+
+              <GithubCliPicker
+                value={githubCli}
+                onChange={(choice) => {
+                  setGithubCli(choice);
+                  if (githubCliRefused) {
+                    setGithubCliRefused(false);
+                    setSubmitError(null);
+                  }
+                }}
+                inherited={inheritedGithubCli(environment, "session")}
+                onLock={githubCliLock}
+                disabled={isSubmitting}
+                invalid={githubCliRefused}
+                describedBy={githubCliRefused ? submitErrorId : undefined}
               />
 
               {attachmentLimits?.enabled ? (

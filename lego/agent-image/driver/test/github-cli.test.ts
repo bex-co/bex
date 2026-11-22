@@ -437,6 +437,102 @@ test("the overlay of a repo session with gh off says gh is turned off and pull r
   assert.doesNotMatch(text, /`gh` works on/);
   assert.doesNotMatch(text, /`gh run/);
   // Without gh the merge step does not point at `gh pr checks`.
-  assert.match(text, /wait until its required checks pass, then call `merge_pull_request`/);
+  assert.match(
+    text,
+    /wait until its required checks pass, then call `merge_pull_request`/,
+  );
   assert.doesNotMatch(text, /`gh pr checks/);
+});
+
+// w10/m561: BEX_AGENT_GITHUB_CLI_LEVEL names the binding that turned gh off;
+// an absent or unknown level is the workspace's, as an older bex-api meant.
+test("BEX_AGENT_GITHUB_CLI_LEVEL names the level, and an absent or unknown one is the workspace's", () => {
+  const hosted = {
+    BEX_AGENT_MODEL_PROXY_URL: "http://gateway/model/ns/ags-1",
+    BEX_AGENT_SESSION_ID: "ags-1",
+    BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
+    BEX_AGENT_GITHUB_CLI: "0",
+  };
+  assert.equal(loadConfig(hosted).githubCliLevel, "workspace");
+  for (const level of [
+    "workspace",
+    "automations-default",
+    "automation",
+    "session",
+  ]) {
+    assert.equal(
+      loadConfig({ ...hosted, BEX_AGENT_GITHUB_CLI_LEVEL: level })
+        .githubCliLevel,
+      level,
+    );
+  }
+  assert.equal(
+    loadConfig({ ...hosted, BEX_AGENT_GITHUB_CLI_LEVEL: "enterprise" })
+      .githubCliLevel,
+    "workspace",
+  );
+});
+
+test("the overlay of a session with gh off names the level that turned it off, and gh stays unconfigured", async () => {
+  const context = {
+    cwd: "/workspace",
+    deliver: true,
+    repoUrl: "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo",
+    branch: "bex-agent/ags-abc",
+    baseBranch: "",
+    repository: "acme/widgets",
+    githubCli: false,
+    deliveryBaseline: { baseBranch: "main" },
+  };
+  const workspace =
+    /this workspace's admins turned `gh` off for its agent sessions, so `gh` and direct GitHub API calls do not work here/;
+  // No level (an older bex-api) reads exactly as before.
+  assert.match(platformOverlay(context), workspace);
+  assert.match(
+    platformOverlay({ ...context, githubCliLevel: "workspace" }),
+    workspace,
+  );
+  for (const [level, words] of [
+    [
+      "automations-default",
+      /this workspace's admins turned `gh` off for the sessions its automations start, so `gh` and direct GitHub API calls do not work here/,
+    ],
+    [
+      "automation",
+      /the automation that started this session turned `gh` off for its sessions, so `gh` and direct GitHub API calls do not work here/,
+    ],
+    [
+      "session",
+      /`gh` is turned off for this session, which was started with it off, so `gh` and direct GitHub API calls do not work here/,
+    ],
+  ] as const) {
+    const text = platformOverlay({ ...context, githubCliLevel: level });
+    assert.match(text, words);
+    assert.doesNotMatch(text, workspace);
+    assert.match(
+      text,
+      /Your pull request goes through the `open_or_update_draft_pr`/,
+    );
+    assert.doesNotMatch(text, /`gh` works on/);
+  }
+
+  for (const level of [
+    "automations-default",
+    "automation",
+    "session",
+  ] as const) {
+    const config = await tempConfig({
+      deliver: true,
+      repoUrl: context.repoUrl,
+      branch: context.branch,
+      repository: context.repository,
+      githubCli: false,
+      githubCliLevel: level,
+    });
+    assert.equal(githubCliEnabled(config), false);
+    assert.deepEqual(
+      Object.keys(childEnv(config)).filter((name) => name.startsWith("GH_")),
+      [],
+    );
+  }
 });

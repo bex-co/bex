@@ -85,6 +85,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **041** — [A session can mark ready or merge only its own pull request, while Devin's credentials can merge any pull request in the repository](041.md) ← w10/m538 t006 (Devin comparison), 2026-11-20
 - [ ] **042** — [The overlay and the `merge_blocked` hint say `gh pr checks --watch`, which fails in a session without the pull request's number](042.md) ← w10/m538 t005 (live check), 2026-11-22
 - [ ] **043** — [SSH into an agent session whose turn ended answers a bare `Permission denied (publickey)`, as if the key were wrong](043.md) ← w10/032 (live check), 2026-11-22
+- [ ] **044** — [Only a workspace admin selects an agent session's or an automation's `gh` binding, as Devin gates every security-profile selection](044.md) ← w10/m561 (t001 design, the recorded divergence), 2026-11-22
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 

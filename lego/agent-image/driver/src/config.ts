@@ -79,9 +79,12 @@ export interface AgentDriverConfig {
   baseBranch: string;
   // owner/name of the bound repository (display only, for the overlay).
   repository: string;
-  // Whether the workspace lets its sessions use gh (w10/m524):
-  // BEX_AGENT_GITHUB_CLI=0 turns it off, and absent means on.
+  // Whether the session's gh binding chain lets it use gh (w10/m524,
+  // w10/m561): BEX_AGENT_GITHUB_CLI=0 turns it off, and absent means on.
   githubCli: boolean;
+  // Which binding turned gh off (BEX_AGENT_GITHUB_CLI_LEVEL), for the
+  // overlay; an absent or unknown level reads as the workspace's.
+  githubCliLevel: GitHubCliLevel;
   // Captured from the control-plane Git proxy during setup, before any tenant
   // agent process runs. The delivery check compares the remote head to baseOid.
   deliveryBaseline?: {
@@ -329,6 +332,23 @@ function optionalNonNegativeInt(
 
 const networkTiers = new Set(["registries", "custom", "full"]);
 
+// GitHubCliLevel is the binding that turned a session's gh off (w10/m561):
+// the workspace's GitHub CLI setting, its automations default, the
+// automation that started the session, or the session itself.
+const githubCliLevels = [
+  "workspace",
+  "automations-default",
+  "automation",
+  "session",
+] as const;
+export type GitHubCliLevel = (typeof githubCliLevels)[number];
+
+// githubCliLevel reads BEX_AGENT_GITHUB_CLI_LEVEL: an absent or unknown
+// value is the workspace's, the words an older bex-api's off always meant.
+export function githubCliLevel(value: string | undefined): GitHubCliLevel {
+  return githubCliLevels.find((level) => level === value) ?? "workspace";
+}
+
 function networkTier(value: string | undefined): string {
   return value && networkTiers.has(value) ? value : "";
 }
@@ -487,6 +507,7 @@ export function loadConfig(
     baseBranch: env.BEX_AGENT_BASE_BRANCH || "",
     repository: env.BEX_AGENT_REPOSITORY || "",
     githubCli: env.BEX_AGENT_GITHUB_CLI !== "0",
+    githubCliLevel: githubCliLevel(env.BEX_AGENT_GITHUB_CLI_LEVEL),
     deliver: env.BEX_AGENT_DELIVER === "1",
     gitName: env.BEX_AGENT_GIT_NAME || "bex agent",
     gitEmail: env.BEX_AGENT_GIT_EMAIL || "agent@bex.co",

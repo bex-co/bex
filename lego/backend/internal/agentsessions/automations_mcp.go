@@ -72,12 +72,12 @@ func (s *Service) registerAutomationMCP(server *mcp.Server) {
 			out, err := s.AgentAutomation(ctx, in.OwnerID, in.Automation)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_automation", Description: "Add an agent automation: a name, exactly one schedule trigger and a session template (task, repo, agentConfig, and maxSpendUSD when the model is platform-metered). Every fire starts a session as you. notifications.email (always, on_failure by default, on_success or never) says which run outcomes email you; a platform auto-pause always does. At most 50 per workspace."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_automation", Description: "Add an agent automation: a name, exactly one schedule trigger and a session template (task, repo, agentConfig, and maxSpendUSD when the model is platform-metered). Every fire starts a session as you. notifications.email (always, on_failure by default, on_success or never) says which run outcomes email you; a platform auto-pause always does. At most 50 per workspace. template.agentConfig.githubCli binds its sessions' gh: omitted inherits the workspace's automations default, false turns gh off, true (workspace admins only, never under a mandatory off: AGENT_AUTOMATION_GITHUB_CLI_LOCKED) turns it on; its sessions read it live."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in createAutomationArgs) (*mcp.CallToolResult, AgentAutomation, error) {
 			out, err := s.CreateAgentAutomation(ctx, in.OwnerID, in.AgentAutomationInput)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_automation", Description: "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_automation", Description: "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it. Changing template.agentConfig.githubCli to true needs a workspace admin and is refused under a mandatory gh off (AGENT_AUTOMATION_GITHUB_CLI_LOCKED); an unchanged value is kept."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateAutomationArgs) (*mcp.CallToolResult, AgentAutomation, error) {
 			out, err := s.UpdateAgentAutomation(ctx, in.OwnerID, in.Automation, in.AgentAutomationInput)
 			return nil, out, err

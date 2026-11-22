@@ -43,6 +43,15 @@ import (
 // runStarted is the only run outcome with a session.
 const runStarted = "started"
 
+// automationGitHubCLIHelp is what create and update say of --github-cli,
+// template.agentConfig.githubCli (w10/m561).
+const automationGitHubCLIHelp = "--github-cli off turns gh off for the sessions the automation starts (its\n" +
+	"creator may). --github-cli on turns gh on for them against an off\n" +
+	"automations default: only a workspace admin may, and nobody may while the\n" +
+	"workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason\n" +
+	"admin_required or mandatory). inherit, or no binding, follows the\n" +
+	"workspace's automations default (`bex agent env`)."
+
 // The automation error codes the CLI adds a hint to (ADR101 D8).
 const (
 	codeAutomationConflict   = "AGENT_AUTOMATION_CONFLICT"
@@ -361,7 +370,7 @@ func automationCreateCommand(d deps) *cobra.Command {
 			"Give exactly one of --every, --once or --cron. --timezone defaults to\n" +
 			"this machine's time zone. A template on the platform model needs\n" +
 			"--max-spend; the API refuses one without. Without --notify-email the\n" +
-			"creator is emailed when a run fails (on_failure).",
+			"creator is emailed when a run fails (on_failure).\n\n" + automationGitHubCLIHelp,
 		Example: "  bex agent automations create --name nightly-deps --every week --on mon --at 03:00 \\\n" +
 			"    --repo acme/api --max-spend 5 --secret NPM_TOKEN \"Update dependencies and open a draft PR\"",
 		RunE: func(c *cobra.Command, args []string) error {
@@ -421,7 +430,10 @@ func automationUpdateCommand(d deps) *cobra.Command {
 		Short: "Change an automation's name, schedule, template or notifications",
 		Long: "Changes only what the flags (and a new task) name; everything else keeps\n" +
 			"its stored value. The update is refused if someone else changed the\n" +
-			"automation since it was read: re-run the command to apply on top.",
+			"automation since it was read: re-run the command to apply on top.\n\n" +
+			automationGitHubCLIHelp + " Without --github-cli the stored binding stays;\n" +
+			"--github-cli inherit removes it. A change reaches the automation's running\n" +
+			"sessions from their next gh call.",
 		Args: automationArgs(-1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := refuseSessionOnly(c); err != nil {
@@ -634,6 +646,9 @@ func writeAutomation(w io.Writer, a automation) {
 	// A template naming none runs on the workspace default in force at each
 	// fire (w10/m519).
 	tw.row("Sandbox", firstNonEmpty(t.AgentConfig.Template, "the workspace's default"))
+	// A template that binds no gh follows the workspace's automations default
+	// (w10/m561).
+	tw.row("GitHub CLI", firstNonEmpty(bindingWord(t.AgentConfig.GitHubCLI), "inherit (the workspace's automations default)"))
 	if t.MaxSpendUSD != nil {
 		tw.row("Max spend", "$"+strconv.FormatFloat(*t.MaxSpendUSD, 'f', -1, 64)+" a run")
 	}

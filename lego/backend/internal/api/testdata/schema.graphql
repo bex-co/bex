@@ -89,12 +89,14 @@ type AgentAutomation {
 
 type AgentAutomationAgentConfig {
   agent: String!
+  githubCli: Boolean
   model: String
   template: String
 }
 
 input AgentAutomationAgentConfigInput {
   agent: String!
+  githubCli: Boolean
   model: String
   template: String
 }
@@ -229,6 +231,7 @@ type AgentEnvironment {
   agentModelSpendCapTierLimited: Boolean
   agentModelSpendMonthToDateUsd: Float
   agentModelUnbilledUsd: Float
+  automationsGithubCliEnabled: Boolean
   billingBalanceDue: Boolean
   customHosts: [String!]!
   defaultModel: String
@@ -236,6 +239,7 @@ type AgentEnvironment {
   enabledAgents: [String!]!
   enabledModels: [String!]!
   githubCliEnabled: Boolean!
+  githubCliMandatory: Boolean!
   modelKeySet: Boolean!
   modelPinned: Boolean!
   modelSource: AgentModelSource!
@@ -254,6 +258,7 @@ type AgentEnvironment {
 input AgentEnvironmentInput {
   acknowledgeAgentDataUse: [String!]
   agentModelMonthlySpendCapUsd: Float
+  automationsGithubCliEnabled: Boolean
   clearModelApiKey: Boolean
   customHosts: [String!]
   defaultModel: String
@@ -261,9 +266,11 @@ input AgentEnvironmentInput {
   enabledAgents: [String!]
   enabledModels: [String!]
   githubCliEnabled: Boolean
+  githubCliMandatory: Boolean
   modelApiKey: String
   networkTier: AgentNetworkTier
   resetAgentModelMonthlySpendCap: Boolean
+  resetAutomationsGithubCli: Boolean
 }
 
 enum AgentModelSource {
@@ -430,6 +437,7 @@ type AgentSessionCapabilities {
 
 type AgentSessionConfig {
   agent: String!
+  githubCli: Boolean
   model: String
   modelEndpoint: String
   task: String!
@@ -438,6 +446,7 @@ type AgentSessionConfig {
 
 input AgentSessionConfigInput {
   agent: String!
+  githubCli: Boolean
   model: String
   modelEndpoint: String
   task: String!

@@ -616,6 +616,11 @@ const esAgentAutomations: Record<string, TranslationEntry> = {
       "La máquina que recibe el sandbox de cada ejecución. El predeterminado del espacio de trabajo sigue Configuración → Agentes en cada ejecución.",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "Si sus sesiones reciben gh. “Heredar” sigue “GitHub CLI para automatizaciones” en Configuración → Agentes.",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "Qué ejecuciones te envían un correo. Una pausa de la plataforma siempre lo hace.",
@@ -700,6 +705,18 @@ const esAgentAutomations: Record<string, TranslationEntry> = {
     message:
       "Los argumentos de un skill deben ser una sola línea de 4 KB como máximo.",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "En este espacio de trabajo la desactivación de GitHub CLI es obligatoria, así que una automatización no puede activar gh. Elige “Desactivado” o “Heredar”.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message:
+      "Solo un administrador del espacio de trabajo puede activar gh para una automatización. Elige “Desactivado” o “Heredar”.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "Elige una zona horaria válida.",

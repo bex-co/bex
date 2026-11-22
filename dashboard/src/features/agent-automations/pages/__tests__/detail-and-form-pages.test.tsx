@@ -71,6 +71,18 @@ vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-capabilities",
   () => ({ useAgentSessionCapabilities: () => ({ capabilities: null }) }),
 );
+// The workspace's gh chain (w10/m561): the form's GitHub CLI field and the
+// settings card's row read it; any member can.
+vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
+  useAgentEnvironment: () => ({
+    environment: null,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    update: vi.fn(),
+    saving: false,
+  }),
+}));
 vi.mock("@/features/agent-sessions/components/composer-secrets", () => ({
   ComposerSecrets: () => <button type="button">secrets</button>,
 }));

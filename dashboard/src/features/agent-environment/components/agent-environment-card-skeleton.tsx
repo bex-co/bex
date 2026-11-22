@@ -118,6 +118,68 @@ export function SwitchListRow({
   );
 }
 
+/**
+ * A setting switch's row in the GitHub CLI section (the workspace switch,
+ * w10/m524, and its mandatory flag, w10/m561), shared by the ready section
+ * and this skeleton: the label and its help beside the control.
+ */
+export function SettingSwitchRow({
+  label,
+  help,
+  helpId,
+  control,
+}: {
+  label: ReactNode;
+  help: ReactNode;
+  helpId?: string;
+  control: ReactNode;
+}) {
+  return (
+    <div className="flex max-w-xl items-start justify-between gap-4">
+      <div className="min-w-0 space-y-1">
+        {label}
+        <p id={helpId} className="text-muted-foreground text-sm">
+          {help}
+        </p>
+      </div>
+      {control}
+    </div>
+  );
+}
+
+/**
+ * A setting picked from a list in the GitHub CLI section (the automations
+ * default, w10/m561), shared by the ready section and this skeleton: the
+ * label over the control, its help, then its error when a save is refused.
+ */
+export function SettingSelectField({
+  label,
+  control,
+  help,
+  helpId,
+  error,
+}: {
+  label: ReactNode;
+  control: ReactNode;
+  help: ReactNode;
+  helpId?: string;
+  error?: ReactNode;
+}) {
+  return (
+    <div className="max-w-xl space-y-2">
+      {label}
+      {control}
+      <p id={helpId} className="text-muted-foreground text-xs">
+        {help}
+      </p>
+      {error}
+    </div>
+  );
+}
+
+/** A setting select's box (h-9, as wide as the ready trigger) while it loads. */
+export const SETTING_SELECT_CLASS = "w-full max-w-sm";
+
 /** A switch's box (h-5 w-9) while its value loads. */
 function SwitchPlaceholder() {
   return <Skeleton className="h-5 w-9 shrink-0 rounded-full" />;
@@ -239,20 +301,37 @@ export function AgentEnvironmentCardSkeleton({
             </SkeletonText>
           </p>
         </div>
-        {/* The sessions' GitHub CLI switch (w10/m524). */}
+        {/* The sessions' GitHub CLI switch (w10/m524), its mandatory flag
+            and the automations default (w10/m561). */}
         <div
           className="space-y-3 border-t pt-6"
           data-testid="github-cli-section-skeleton"
         >
-          <div className="flex max-w-xl items-start justify-between gap-4">
-            <div className="min-w-0 space-y-1">
+          <SettingSwitchRow
+            label={
               <StaticLabel>{t("agentEnvironment.githubCliLabel")}</StaticLabel>
-              <p className="text-muted-foreground text-sm">
-                {t("agentEnvironment.githubCliHelp")}
-              </p>
-            </div>
-            <SwitchPlaceholder />
-          </div>
+            }
+            help={t("agentEnvironment.githubCliHelp")}
+            control={<SwitchPlaceholder />}
+          />
+          <SettingSwitchRow
+            label={
+              <StaticLabel>
+                {t("agentEnvironment.githubCliMandatoryLabel")}
+              </StaticLabel>
+            }
+            help={t("agentEnvironment.githubCliMandatoryHelp")}
+            control={<SwitchPlaceholder />}
+          />
+          <SettingSelectField
+            label={
+              <StaticLabel>
+                {t("agentEnvironment.githubCliAutomationsLabel")}
+              </StaticLabel>
+            }
+            control={<Skeleton className={cn("h-9", SETTING_SELECT_CLASS)} />}
+            help={t("agentEnvironment.githubCliAutomationsHelp")}
+          />
         </div>
         <div className="space-y-2 border-t pt-6">
           <StaticLabel>{t("agentEnvironment.modelLabel")}</StaticLabel>

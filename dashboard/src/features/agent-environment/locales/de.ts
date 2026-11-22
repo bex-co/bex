@@ -1370,6 +1370,70 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
       "Die GitHub-CLI-Einstellung konnte nicht geändert werden. Versuche es erneut.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.githubCliMandatoryLabel": {
+    message: "Aus verbindlich machen",
+    description:
+      "Label of the switch that makes the workspace's GitHub CLI off a floor no automation or session can turn back on (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatoryHelp": {
+    message:
+      "Greift, solange GitHub CLI aus ist: Dann kann keine Automatisierung und keine Sitzung gh wieder einschalten.",
+    description:
+      "Help under the mandatory switch: it applies only while GitHub CLI is off (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatoryTurnedOn": {
+    message: "GitHub CLI aus ist jetzt verbindlich",
+    description:
+      "Toast after an admin makes the workspace's GitHub CLI off mandatory (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatoryTurnedOff": {
+    message: "GitHub CLI aus ist nicht mehr verbindlich",
+    description:
+      "Toast after an admin makes the workspace's GitHub CLI off no longer mandatory (w10/m561)",
+  },
+  "agentEnvironment.githubCliMandatorySaveFailed": {
+    message:
+      "Ob GitHub CLI aus verbindlich ist, konnte nicht geändert werden. Versuche es erneut.",
+    description: "Error after a failed mandatory switch (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsLabel": {
+    message: "GitHub CLI für Automatisierungen",
+    description:
+      "Label of the select that binds the gh of the sessions automations start: inherit, on or off (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsHelp": {
+    message:
+      "Das gh der Sitzungen, die Automatisierungen starten, sofern eine Automatisierung nichts Eigenes festlegt. „Übernehmen“ folgt dem Schalter oben.",
+    description:
+      "Help under the automations GitHub CLI select: an automation's own binding wins, and inherit follows the workspace switch (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsInherited": {
+    message: "Automatisierungen übernehmen jetzt die GitHub-CLI-Einstellung",
+    description:
+      "Toast after an admin returns automations to inheriting the workspace's GitHub CLI switch (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsTurnedOn": {
+    message: "GitHub CLI für Automatisierungen eingeschaltet",
+    description:
+      "Toast after an admin turns GitHub CLI on for the sessions automations start (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsTurnedOff": {
+    message: "GitHub CLI für Automatisierungen ausgeschaltet",
+    description:
+      "Toast after an admin turns GitHub CLI off for the sessions automations start (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsSaveFailed": {
+    message:
+      "GitHub CLI für Automatisierungen konnte nicht geändert werden. Versuche es erneut.",
+    description:
+      "Error after a failed automations GitHub CLI choice (w10/m561)",
+  },
+  "agentEnvironment.githubCliAutomationsLocked": {
+    message:
+      "GitHub CLI aus ist verbindlich, daher können Automatisierungen gh nicht einschalten.",
+    description:
+      "Mapped message for AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED: automations cannot be bound on under a mandatory off (w10/m561)",
+  },
   "agentEnvironment.modelsTitle": {
     message: "Modelle, die Mitglieder wählen können",
     description:

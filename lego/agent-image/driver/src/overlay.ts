@@ -39,6 +39,7 @@ import {
 } from "./spawn-session.js";
 import { submitResultToolName } from "./submit-result.js";
 import type { PythonOutcome } from "./python-select.js";
+import type { GitHubCliLevel } from "./config.js";
 
 export const overlayVersion = 1;
 
@@ -49,8 +50,10 @@ export interface OverlayContext {
   branch: string;
   baseBranch: string;
   repository: string;
-  // false when the workspace turned gh off for its sessions (w10/m524).
+  // false when the session's gh binding chain turned gh off (w10/m524), and
+  // the level that did (w10/m561); an absent level is the workspace's.
   githubCli?: boolean;
+  githubCliLevel?: GitHubCliLevel;
   existingPrUrl?: string;
   existingPrNumber?: number | null;
   // The session took over existingPrUrl from the person who opened it; its
@@ -172,6 +175,16 @@ function readyOrMergeStep(context: OverlayContext, leave: string): string {
   return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark it ready for review. To merge, mark it ready, wait until its required checks pass${watch}, then call \`${mergePullRequestToolName}\`; it merges the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
 }
 
+// githubCliOffBy says who turned gh off, by binding level (w10/m561).
+const githubCliOffBy: Record<GitHubCliLevel, string> = {
+  workspace: "this workspace's admins turned `gh` off for its agent sessions",
+  "automations-default":
+    "this workspace's admins turned `gh` off for the sessions its automations start",
+  automation:
+    "the automation that started this session turned `gh` off for its sessions",
+  session: "`gh` is turned off for this session, which was started with it off",
+};
+
 // githubCliLine says what the session's gh can do (w10/m513, w10/m522,
 // w10/033): it reads the repository through bex and makes the writes the
 // gateway admits, a workflow dispatch on the session branch among them;
@@ -184,7 +197,7 @@ function githubCliLine(context: OverlayContext): string {
     return `- There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the ${tools}.
 `;
   if (context.githubCli === false)
-    return `- There is no GitHub token in the sandbox, and this workspace's admins turned \`gh\` off for its agent sessions, so \`gh\` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the ${tools}, and code reaches GitHub only through your pushes to your branch.
+    return `- There is no GitHub token in the sandbox, and ${githubCliOffBy[context.githubCliLevel ?? "workspace"]}, so \`gh\` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
   return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. It also comments, replies in review threads, reviews without approving (\`gh pr review --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit --add-label\`), opens, edits and closes issues, re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`), and runs a workflow on your branch (\`gh workflow run <workflow> --ref ${context.branch}\`), never on another ref. It cannot open, edit, approve, mark ready, merge or close a pull request, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;

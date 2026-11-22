@@ -1,22 +1,22 @@
 # w10 · m561 — An automation or a session can turn `gh` off for itself, and an admin can make the workspace's `gh` off mandatory, as Devin's security profiles bind per automation and per session
 
-**Worker:** worker10 **Goal:** `gh` access resolves through Devin's binding chain instead of one workspace switch. A session create and an automation template carry `agentConfig.githubCli`. The agent environment gains an automations default and a mandatory flag. The mints, the dispatch and the overlay use the most specific binding, unless the workspace's `gh` off is mandatory. A refusal names the level that turned `gh` off. REST, GraphQL, MCP, the CLI and the dashboard read and write each level. **Status:** todo
+**Worker:** worker10 **Goal:** `gh` access resolves through Devin's binding chain instead of one workspace switch. A session create and an automation template carry `agentConfig.githubCli`. The agent environment gains an automations default and a mandatory flag. The mints, the dispatch and the overlay use the most specific binding, unless the workspace's `gh` off is mandatory. A refusal names the level that turned `gh` off. REST, GraphQL, MCP, the CLI and the dashboard read and write each level. **Status:** todo (t001–t007 and t009–t011 done; t008's live check and t012 remain)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: names, the binding chain and its precedence, who may set each level, when a change applies, the refusal and driver contract; ADR047 and ADR090 amended | 45m | — |
-| [t002](t002.md) | Backend: the agent environment gains the automations default and the mandatory flag on REST, GraphQL and MCP | 1h30m | t001 |
-| [t003](t003.md) | Backend: a session create and an automation template carry `agentConfig.githubCli`, refused where it would loosen a mandatory or admin-set binding, and child sessions inherit it | 1h30m | t001, t002 |
-| [t004](t004.md) | Backend and gateway: one resolver feeds the mints and `driverEnv`, and the route's refusal names the level | 1h30m | t002, t003 |
-| [t005](t005.md) | Driver: the overlay says which level turned `gh` off | 30m | t004 |
-| [t006](t006.md) | CLI: `--github-cli` on `bex agent run`/`chat`/`handoff` and `bex agent automations`, and the two new `bex agent env set` flags | 1h | t002, t003 |
-| [t007](t007.md) | Dashboard: the session composer, the automation form and Settings → Agents set each level, with matching skeletons | 2h | t002, t003 |
+| [t001](done/t001.md) | Design: names, the binding chain and its precedence, who may set each level, when a change applies, the refusal and driver contract; ADR047 and ADR090 amended — **DONE** | 45m | — |
+| [t002](done/t002.md) | Backend: the agent environment gains the automations default and the mandatory flag on REST, GraphQL and MCP — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | Backend: a session create and an automation template carry `agentConfig.githubCli`, refused where it would loosen a mandatory or admin-set binding, and child sessions inherit it — **DONE** | 1h30m | t001, t002 |
+| [t004](done/t004.md) | Backend and gateway: one resolver feeds the mints and `driverEnv`, and the route's refusal names the level — **DONE** | 1h30m | t002, t003 |
+| [t005](done/t005.md) | Driver: the overlay says which level turned `gh` off — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | CLI: `--github-cli` on `bex agent run`/`chat`/`handoff` and `bex agent automations`, and the two new `bex agent env set` flags — **DONE** | 1h | t002, t003 |
+| [t007](done/t007.md) | Dashboard: the session composer, the automation form and Settings → Agents set each level, with matching skeletons — **DONE** | 2h | t002, t003 |
 | [t008](t008.md) | Live check on production: a session's and an automation's own `gh` off, and a mandatory workspace off that no create can loosen | 45m | t004, t005, t006, t007 |
-| [t009](t009.md) | Render parity (Devin) | 30m | t008 |
-| [t010](t010.md) | Simplify | 20m | t009 |
-| [t011](t011.md) | Test coverage | 45m | t009, t010 |
+| [t009](done/t009.md) | Render parity (Devin) — **DONE** | 30m | t008 |
+| [t010](done/t010.md) | Simplify — **DONE** | 20m | t009 |
+| [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009, t010 |
 | [t012](t012.md) | Closeout | 10m | t011 |
 
 Total: **12 tasks, about 11h15m**.
@@ -49,6 +49,53 @@ Total: **12 tasks, about 11h15m**.
    - An automation whose template turns `gh` off starts a session with no `gh` when run once. Its overlay names the automation.
    - With the workspace's `gh` off and mandatory, a create naming `githubCli: true` is refused with the named code, on REST and in the composer.
    - The workspace setting is left on and not mandatory, the automations default inherits, and the fixtures are deleted.
+
+## Design record (t001, 2026-11-22)
+
+Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-guides/security-profiles) (quoted under Source + Goal linkage) unless it says otherwise. The full text is in [ADR047 D2's w10/m561 amendment](../../../docs/ADR047-cloud-coding-agent-sessions.md#automations-and-sessions-bind-their-own-gh-over-a-mandatory-workspace-floor-amendment-w10m561-2026-11-22) and [ADR090 D4](../../../docs/ADR090-agent-owned-delivery.md#d4--agent-facing-tool-the-bex-stdio-mcp-server).
+
+- **Names.** As proposed, plus one flag:
+  - `agentConfig.githubCli` (optional boolean) on a session create and an automation template, and on their reads. GraphQL `AgentSessionConfig(Input).githubCli` and `AgentAutomationAgentConfig(Input).githubCli`.
+  - On the environment, `automationsGithubCliEnabled` (nullable, `null` inherits) and `githubCliMandatory` (boolean, default `false`). Columns `automations_github_cli_enabled boolean` (nullable) and `github_cli_mandatory boolean NOT NULL DEFAULT false`, migration 0328. Their zero value inherits and is not mandatory.
+  - **Added:** `resetAutomationsGithubCli: true` returns the automations default to inherit. graphql-go cannot carry an explicit `null`, the same reason `resetAgentModelMonthlySpendCap` exists. REST and MCP also take the `null`. Setting and resetting it in one update is `400 AGENT_ENVIRONMENT_GITHUB_CLI_INVALID`.
+  - CLI: `--github-cli on|off|inherit` on `bex agent run`/`chat`/`handoff` (`inherit` sends nothing) and on `bex agent automations create`/`update` (where `inherit` removes an automation's binding), `bex agent env set --automations-github-cli on|off|inherit` and `--github-cli-mandatory on|off`.
+  - Codes, `403` with `params.field` and `params.reason` (`mandatory` or `admin_required`): `AGENT_SESSION_GITHUB_CLI_LOCKED`, `AGENT_AUTOMATION_GITHUB_CLI_LOCKED`, `AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED`.
+  - Wire: `X-Bex-Agent-Credential-Refusal: github-cli-off` unchanged, plus `X-Bex-Agent-Credential-Refusal-Level: workspace|automations-default|automation|session`. Driver: `BEX_AGENT_GITHUB_CLI_LEVEL` beside `BEX_AGENT_GITHUB_CLI=0`.
+- **Precedence** (Devin: "The most specific binding wins, unless a mandatory profile higher up locks things down"). The chain runs workspace, then for an automation's session the automations default and the automation, then the session. The most specific non-absent binding wins. ADR047 has the table of every pair in both directions.
+  - **Mandatory** is the workspace's off as a floor, matching "A mandatory profile is a floor that lower levels cannot escape". It has no effect while the workspace is on, because a lower level may always turn `gh` off. It locks the automations default too: a `true` there is refused on save, and one stored earlier has no effect.
+  - Saving the workspace on neither clears nor refuses the flag. It just has no effect until the workspace is off again, as a mandatory Devin profile that keeps the token removes nothing.
+- **Child sessions** ("governed by the same chain as their parent"). A child resolves its tree's chain: the root's binding and the root's automation, then any session below the root that binds `false`. A child's own `true` is stored but never loosens. A spawn names nothing. A child whose parent was deleted is top-level, as ADR102 already makes it.
+- **Who may set which direction.** Anyone who may create the session or save the automation may set `false`. `true` needs a workspace admin (`can_manage`, bex's "Manage security profiles"), and nobody may set it under a mandatory off.
+  - `true` needs an admin even when the inherited value is on. A pinned on outlives a later workspace off that is not mandatory, and that is a selection Devin reserves for the permission.
+  - An automation update is checked only when the value changes to `true`, so its creator's save keeps an admin's on.
+  - The environment's two fields are admin-only, like every environment field.
+  - **Divergence:** Devin gates every selection, an opt-out included. bex lets members turn `gh` off, which only removes access. The stricter variant is filed as [w10/044](../044.md).
+- **Where it resolves, and when a change applies.** One resolver serves both `gh` mints and every dispatch: `agentsession.LoadGitHubCLIChain` and `GitHubCLIChain.Resolve` in `lego/backend/internal/agentsession/githubcli.go`. It reads the environment row, the session's tree (at most three ancestors) and the root's automation's current template, live. So an automation or environment edit refuses a running session's next `gh` call and reaches the driver at its next turn.
+  - An automation's session does not copy the template's value at fire time. The automation level therefore stays nameable, and an edit applies to its running sessions.
+  - A deleted automation reads as inherit, and its sessions still take the automations default.
+  - A session's own binding is set at create only, as Devin's is chosen "when it's created".
+- **Refusal and driver contract.** Keeping `github-cli-off` means an older gateway answers with the workspace's words, never `gh` on. A newer gateway reads an absent or unknown level as the workspace's.
+  - The route's message for each level says how that level turns `gh` back on (texts in ADR047), and the workspace's text is unchanged.
+  - The metric label stays `result="github_cli_off"`, and bex-api's denied-mint log line carries the level. The audit row has no place for it.
+  - The overlay names the level, and an absent level reads exactly as before.
+
+## Render parity (Devin) record (t009, 2026-11-22)
+
+- **The surfaces agree.** Each field reads and writes the same way on every surface, with the same refusals:
+  - **Session (`agentConfig.githubCli`).** REST `POST`/`GET /v1/agent-sessions`, GraphQL `createAgentSession`/`agentSession` and MCP `create_agent_session`/`get_agent_session` store the binding and read it back. A member's `true` is refused `AGENT_SESSION_GITHUB_CLI_LOCKED` (`admin_required`) on all three, an admin's is accepted, and under a mandatory off an admin's `true` is refused `mandatory` while a member's `false` is accepted. Pinned by `TestSessionGitHubCLIBindingOnEverySurface`.
+  - **Automation (`template.agentConfig.githubCli`).** REST, GraphQL and MCP create and read it the same way. A member's `true` is refused `AGENT_AUTOMATION_GITHUB_CLI_LOCKED` on all three. A creator's save that leaves an admin's `true` alone keeps it, and a change to `true` is refused. Pinned by `TestAutomationGitHubCLIBindingOnEverySurface`.
+  - **Environment (`automationsGithubCliEnabled`, `githubCliMandatory`).** REST, GraphQL and MCP read `null`/`false` with no row, and an admin's write on any surface reads back on the others. The explicit `null` (REST, MCP) and `resetAutomationsGithubCli` (all three) return the default to inherit. A member's write is refused on each, and an automations `true` under a mandatory off is refused `AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED` on each. Pinned by `TestEnvironmentGitHubCLIBindingsOnEverySurface`.
+  - **CLI.** `bex agent run`/`chat`/`handoff --github-cli on|off|inherit`, `bex agent automations create`/`update --github-cli on|off|inherit` and `export`/`apply` speak REST. So do `bex agent env set --automations-github-cli on|off|inherit` and `--github-cli-mandatory on|off`. `bex agent env`, `bex agent get` and `bex agent automations get` print each binding, reading a field missing from an older bex-api as inherit and not mandatory.
+  - **Dashboard.** The composer's toolbar, the automation form and Settings → Agents read and write each level through GraphQL. A shared inherit/on/off picker shows what inherit resolves to. Its "on" is disabled, with the reason, under a mandatory off and for a member, while "off" is open to anyone, as the API allows. Settings → Agents adds the mandatory switch and the automations select, whose inherit sends `resetAutomationsGithubCli`. Each refusal code shows as that control's error, and the automation settings card shows the binding.
+- **Devin** ([Security profiles](https://docs.devin.ai/product-guides/security-profiles), re-read 2026-11-22):
+  - **Levels:** organization default, automations default, automation and session. **Match**, with no enterprise level above the workspace.
+  - **Precedence:** "the most specific binding wins". **Match**: `TestGitHubCLIChainResolve` pins each pair in both directions.
+  - **Mandatory floor:** "a floor that lower levels cannot escape", where they "can only tighten". **Match**: no lower level turns `gh` on, any lower level may turn it off, and a save that would loosen is refused.
+  - **Child sessions:** "governed by the same chain as their parent". **Match**: a child resolves its tree's chain and can only turn `gh` off.
+  - **Who may select:** "Manage security profiles", and members "can't … select". **Partial**: `true` needs `can_manage`, as Devin's selection does, but a member may set `false`. That only removes access. The stricter variant is filed as [w10/044](../044.md).
+  - **Where it is chosen:** the session start box's options menu, and the automation's editor or `security_profile`. **Match**: the composer's options, the automation form and the template field.
+  - **When a change applies:** "new sessions immediately, and for existing sessions the next time they resume". **Match for an on, and sooner for an off**: a running session's next `gh` call is refused, as w10/m524 already decided for the workspace switch.
+- **Filed:** [w10/044](../044.md). No other gap users would miss: Devin's other profile controls (network policy, MCP allowlist, Git access level) and its enterprise level are out of scope.
 
 ## Source + Goal linkage
 

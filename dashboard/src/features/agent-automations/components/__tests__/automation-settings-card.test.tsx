@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
 import { AutomationSettingsCard } from "@/features/agent-automations/components/automation-settings-card";
+import { agentEnvironment } from "@/test/mocks/agent-environment";
+import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
 import { automation } from "./fixtures";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -13,6 +15,22 @@ vi.mock("@tanstack/react-router", () => ({
 // "Created by" resolves a member through Apollo; this card test does not need it.
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
   useWorkspaceSubjectLabel: (subject: string) => subject,
+}));
+
+// The workspace's gh chain (w10/m561), for what an inheriting automation's
+// sessions get.
+const env = vi.hoisted(() => ({
+  current: null as AgentEnvironmentView | null,
+}));
+vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
+  useAgentEnvironment: () => ({
+    environment: env.current,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    update: vi.fn(),
+    saving: false,
+  }),
 }));
 
 function withLimit(maxSpendUSD: number | null) {
@@ -78,5 +96,58 @@ describe("AutomationSettingsCard email notifications", () => {
   it("shows a value this dashboard does not know as itself", () => {
     render(<AutomationSettingsCard automation={withEmail("weekly_digest")} />);
     expect(rowValue("Email notifications")).toHaveTextContent("weekly_digest");
+  });
+});
+
+// w10/m561: the automation's own gh binding, beside its agent; inherit names
+// what its sessions get from the workspace's automations default, else its
+// GitHub CLI switch, with a mandatory off winning over both.
+describe("AutomationSettingsCard GitHub CLI", () => {
+  afterEach(() => {
+    env.current = null;
+  });
+
+  function withGithubCli(githubCli: boolean | null) {
+    const base = automation();
+    return automation({
+      template: {
+        ...base.template,
+        agentConfig: { ...base.template.agentConfig, githubCli },
+      },
+    });
+  }
+
+  it.each([
+    ["inherits an on switch", null, agentEnvironment(), "Inherit (on)"],
+    [
+      "inherits the automations default",
+      null,
+      agentEnvironment({ automationsGithubCliEnabled: false }),
+      "Inherit (off)",
+    ],
+    [
+      "inherits a mandatory off over the automations default",
+      null,
+      agentEnvironment({
+        githubCliEnabled: false,
+        githubCliMandatory: true,
+        automationsGithubCliEnabled: true,
+      }),
+      "Inherit (off)",
+    ],
+    ["inherits before the environment loads", null, null, "Inherit"],
+    ["is bound on", true, agentEnvironment(), "On"],
+    ["is bound off", false, agentEnvironment(), "Off"],
+  ])("%s", (_, githubCli, environment, text) => {
+    env.current = environment;
+    render(<AutomationSettingsCard automation={withGithubCli(githubCli)} />);
+    expect(rowValue("GitHub CLI (gh)")).toHaveTextContent(
+      new RegExp(`^${text.replace(/[()]/g, "\\$&")}$`),
+    );
+  });
+
+  it("holds the row in the pending card", () => {
+    render(<AutomationSettingsCard automation={null} />);
+    expect(rowValue("GitHub CLI (gh)")).toBeInTheDocument();
   });
 });

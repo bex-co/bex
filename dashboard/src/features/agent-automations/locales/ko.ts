@@ -611,6 +611,11 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
       "각 실행의 샌드박스가 받는 머신입니다. 워크스페이스 기본값은 실행할 때마다 설정 → 에이전트를 따릅니다.",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "이 자동화의 세션이 gh를 받을지 여부입니다. 상속은 설정 → 에이전트의 “자동화의 GitHub CLI”를 따릅니다.",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "어떤 실행에 대해 이메일을 받을지 선택합니다. 플랫폼에 의한 일시 중지는 항상 이메일로 알려드립니다.",
@@ -693,6 +698,18 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.problem.skills": {
     message: "스킬의 인수는 최대 4 KB의 한 줄이어야 합니다.",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "이 워크스페이스에서는 GitHub CLI 끄기가 필수이므로 자동화에서 gh를 켤 수 없습니다. 꺼짐 또는 상속을 선택하세요.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message:
+      "워크스페이스 관리자만 자동화에서 gh를 켤 수 있습니다. 꺼짐 또는 상속을 선택하세요.",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "올바른 시간대를 선택하세요.",

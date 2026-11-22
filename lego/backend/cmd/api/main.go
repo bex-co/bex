@@ -1369,7 +1369,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	// sandbox-exec HMAC secret is reused with protocol domain separation; the
 	// route is not mounted on :8090 and never enters the public surface.
 	if cfg.SandboxExecSecret != "" {
-		minter := &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Builds: st, Environments: st, Audit: st}
+		minter := &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Builds: st, Environments: st, Automations: st, Audit: st}
 		internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
 			Secret: []byte(cfg.SandboxExecSecret),
 			Minter: minter,

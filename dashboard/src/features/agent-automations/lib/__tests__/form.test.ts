@@ -10,6 +10,7 @@ import {
   type AutomationFormValues,
 } from "@/features/agent-automations/lib/form";
 import type { AgentAutomationFieldsFragment } from "@/graphql/definitions";
+import { automation } from "@/features/agent-automations/components/__tests__/fixtures";
 
 const NOW = Date.parse("2026-11-07T12:00:00Z");
 
@@ -354,5 +355,60 @@ describe("mapAutomationError (server refusals placed on their field)", () => {
     expect(
       mapAutomationError(uncodedGraphQLError("nope"), fallback).target,
     ).toBe("general");
+  });
+});
+
+// w10/m561: the automation's own gh binding rides in its template's
+// agentConfig, and its lock refusal is placed on the field in the form's own
+// words.
+describe("the gh binding", () => {
+  const agentConfig = (values: AutomationFormValues) =>
+    toAutomationInput(values).template?.agentConfig;
+
+  it("sends on or off and nothing to inherit", () => {
+    expect(emptyFormValues().githubCli).toBe("inherit");
+    expect(agentConfig(valid())).toEqual({ agent: "claude" });
+    expect(agentConfig(valid({ githubCli: "off" }))).toEqual({
+      agent: "claude",
+      githubCli: false,
+    });
+    expect(agentConfig(valid({ githubCli: "on" }))).toEqual({
+      agent: "claude",
+      githubCli: true,
+    });
+  });
+
+  it.each([
+    [null, "inherit"],
+    [false, "off"],
+    [true, "on"],
+  ] as const)("reads a stored %s back as %s", (githubCli, choice) => {
+    const base = automation();
+    const stored = automation({
+      template: {
+        ...base.template,
+        agentConfig: { ...base.template.agentConfig, githubCli },
+      },
+    });
+    const values = valuesFromAutomation(stored);
+    expect(values.githubCli).toBe(choice);
+    expect(agentConfig(values)?.githubCli).toBe(githubCli ?? undefined);
+  });
+
+  it.each([
+    ["mandatory", "agentAutomations.problem.githubCliMandatory"],
+    ["admin_required", "agentAutomations.problem.githubCliAdminRequired"],
+  ])("places a %s lock on the field with its own copy", (reason, key) => {
+    const err = codedGraphQLError(
+      "AGENT_AUTOMATION_GITHUB_CLI_LOCKED",
+      { field: "template.agentConfig.githubCli", reason },
+      "server wording",
+    );
+    expect(mapAutomationError(err, "Couldn't save")).toEqual({
+      target: "githubCli",
+      message: "Server wording",
+      messageKey: key,
+      code: "AGENT_AUTOMATION_GITHUB_CLI_LOCKED",
+    });
   });
 });

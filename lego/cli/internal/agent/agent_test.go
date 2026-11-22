@@ -431,7 +431,8 @@ func TestContractFixtureDecodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := golden.Session
-	if s.ID == "" || s.OwnerID == "" || s.State != stateSucceeded || s.SSHAddress == "" || s.Outcome == nil || s.PendingMessages != 1 {
+	if s.ID == "" || s.OwnerID == "" || s.State != stateSucceeded || s.SSHAddress == "" || s.Outcome == nil || s.PendingMessages != 1 ||
+		s.AgentConfig.GitHubCLI == nil || *s.AgentConfig.GitHubCLI {
 		t.Fatalf("session fields lost: %+v", s)
 	}
 	q := golden.QueuedMessage
@@ -535,6 +536,40 @@ func TestRunSendsTheCreateContract(t *testing.T) {
 	exp, _ := json.Marshal(want)
 	if string(got) != string(exp) {
 		t.Fatalf("create body\n got %s\nwant %s", got, exp)
+	}
+}
+
+// --github-cli is the session's own gh binding, agentConfig.githubCli
+// (w10/m561): on and off send it, inherit and no flag leave it out, and any
+// other value is refused before anything is sent.
+func TestRunGitHubCLIFlag(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want string // agentConfig as sent
+	}{
+		{[]string{"--github-cli", "off"}, `{"agent":"claude","githubCli":false,"task":"t"}`},
+		{[]string{"--github-cli", "on"}, `{"agent":"claude","githubCli":true,"task":"t"}`},
+		{[]string{"--github-cli", "inherit"}, `{"agent":"claude","task":"t"}`},
+		{nil, `{"agent":"claude","task":"t"}`},
+	} {
+		f := newFakeAPI(t)
+		if _, stderr, code := run(t, f.deps(t).deps, append(append([]string{"run"}, tc.args...), "t")...); code != 0 || len(f.creates) != 1 {
+			t.Fatalf("%v: exit %d, %d creates: %s", tc.args, code, len(f.creates), stderr)
+		}
+		var body map[string]any
+		if err := json.Unmarshal(f.creates[0].body, &body); err != nil {
+			t.Fatal(err)
+		}
+		if got := asJSON(t, body["agentConfig"]); got != tc.want {
+			t.Errorf("%v: agentConfig %s, want %s", tc.args, got, tc.want)
+		}
+	}
+	for _, bad := range []string{"maybe", "true", "ON", ""} {
+		f := newFakeAPI(t)
+		_, stderr, code := run(t, f.deps(t).deps, "run", "--github-cli", bad, "t")
+		if code != exitUsage || !strings.Contains(stderr, "--github-cli takes on, off or inherit") || len(f.creates)+len(f.uploads) != 0 {
+			t.Errorf("--github-cli %q: exit %d, %d creates, stderr %q; want a usage error and nothing sent", bad, code, len(f.creates), stderr)
+		}
 	}
 }
 
@@ -1247,6 +1282,30 @@ func TestADroppedConnectionIsTransient(t *testing.T) {
 
 // The text view names a session's sandbox template when it has one, and no
 // row for the default (w10/017).
+// The text view shows a session's own gh binding only when it has one
+// (w10/m561).
+func TestSessionTextShowsItsGitHubCLIBinding(t *testing.T) {
+	off, on := false, true
+	for _, tc := range []struct {
+		binding *bool
+		want    string
+	}{
+		{&off, `(?m)^GitHub CLI\s+off$`},
+		{&on, `(?m)^GitHub CLI\s+on$`},
+	} {
+		var out strings.Builder
+		writeSession(&out, session{ID: "ags-g1", State: stateWorking, AgentConfig: agentConfig{Agent: "claude", GitHubCLI: tc.binding}})
+		if !regexp.MustCompile(tc.want).MatchString(out.String()) {
+			t.Errorf("binding %v: text view:\n%s", *tc.binding, out.String())
+		}
+	}
+	var out strings.Builder
+	writeSession(&out, session{ID: "ags-g2", State: stateWorking, AgentConfig: agentConfig{Agent: "claude"}})
+	if strings.Contains(out.String(), "GitHub CLI") {
+		t.Fatalf("text view of a session that inherits gh:\n%s", out.String())
+	}
+}
+
 func TestSessionTextShowsTheSandboxTemplate(t *testing.T) {
 	var out strings.Builder
 	writeSession(&out, session{ID: "ags-t1", State: stateFailed, AgentConfig: agentConfig{Agent: "claude", Template: "agent-4c-8g"}})

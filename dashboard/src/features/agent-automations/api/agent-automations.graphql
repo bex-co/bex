@@ -32,6 +32,9 @@ fragment AgentAutomationFields on AgentAutomation {
       agent
       model
       template
+      # The automation's gh binding (w10/m561): null inherits the workspace's
+      # automations default, true or false binds its sessions.
+      githubCli
     }
     maxSpendUSD
     secretNames

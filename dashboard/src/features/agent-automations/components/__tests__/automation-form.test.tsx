@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { AgentAutomationInput } from "@/graphql/definitions";
@@ -10,6 +10,10 @@ import {
   valuesFromAutomation,
 } from "@/features/agent-automations/lib/form";
 import type { AgentTemplateOffer } from "@/features/agent-sessions/types";
+import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
+import { agentEnvironment } from "@/test/mocks/agent-environment";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import { automation } from "./fixtures";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -36,6 +40,20 @@ vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-capabilities",
   () => ({ useAgentSessionCapabilities: () => capabilitiesState }),
 );
+// The workspace's gh chain (w10/m561): null until a test loads one.
+const envState = vi.hoisted(() => ({
+  environment: null as AgentEnvironmentView | null,
+}));
+vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
+  useAgentEnvironment: () => ({
+    environment: envState.environment,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    update: vi.fn(),
+    saving: false,
+  }),
+}));
 vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({
     repos: [{ fullName: "acme/widgets" }],
@@ -628,4 +646,212 @@ describe("AutomationForm sandbox", () => {
       /is not an agent template; use one of agent/,
     );
   });
+});
+
+// w10/m561: an automation binds its sessions' gh in its editor, as Devin pins
+// a security profile on an automation. Inherit follows the workspace's
+// automations default, else its GitHub CLI switch; "on" is refused under the
+// workspace's mandatory off and for a creator who is not an admin, unless the
+// automation already stores it.
+describe("AutomationForm GitHub CLI", () => {
+  const picker = () =>
+    screen.getByRole("combobox", { name: "GitHub CLI (gh)" });
+  const option = (name: RegExp) => screen.getByRole("option", { name });
+  const savedAgentConfig = (onSave: ReturnType<typeof vi.fn>) =>
+    (onSave.mock.calls[0][0] as AgentAutomationInput).template?.agentConfig;
+  const stored = (githubCli: boolean | null) => {
+    const base = automation();
+    return automation({
+      template: {
+        ...base.template,
+        agentConfig: { ...base.template.agentConfig, githubCli },
+      },
+    });
+  };
+  function renderEdit(githubCli: boolean | null) {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => undefined);
+    const saved = stored(githubCli);
+    render(
+      <AutomationForm
+        mode="edit"
+        initial={valuesFromAutomation(saved)}
+        version={saved.version}
+        onSave={onSave}
+        cancelTo={{ to: "/automations/$automationId", id: saved.id }}
+      />,
+    );
+    return { user, onSave };
+  }
+  const asMember = () =>
+    vi
+      .mocked(useCapabilities)
+      .mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+
+  beforeEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+    envState.environment = agentEnvironment();
+  });
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+    envState.environment = null;
+  });
+
+  it("inherits the automations default by default and sends no binding", async () => {
+    // The workspace's switch is on, its automations default off.
+    envState.environment = agentEnvironment({
+      githubCliEnabled: true,
+      automationsGithubCliEnabled: false,
+    });
+    const { user, onSave } = setup();
+    await fillValid(user);
+    expect(picker()).toHaveTextContent("Inherit (off)");
+    expect(picker()).toHaveAccessibleDescription(
+      "Whether its sessions get gh. Inherit follows GitHub CLI for automations in Settings → Agents.",
+    );
+    await user.click(picker());
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Inherit (off)",
+      "On",
+      "Off",
+    ]);
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({ agent: "claude" });
+  });
+
+  it("inherits the workspace's switch while the automations default inherits", () => {
+    envState.environment = agentEnvironment({ githubCliEnabled: true });
+    setup();
+    expect(picker()).toHaveTextContent("Inherit (on)");
+  });
+
+  it("saves off, and an edit form reloads it and saves it back", async () => {
+    const { user, onSave } = setup();
+    await fillValid(user);
+    await user.click(picker());
+    await user.click(option(/^Off$/));
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      githubCli: false,
+    });
+
+    // The read carries it back as the stored false.
+    cleanup();
+    const edit = renderEdit(false);
+    expect(picker()).toHaveTextContent("Off");
+    await edit.user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(edit.onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(edit.onSave)).toEqual({
+      agent: "claude",
+      githubCli: false,
+    });
+  });
+
+  it("an edit form can return a stored off to inherit", async () => {
+    const { user, onSave } = renderEdit(false);
+    await user.click(picker());
+    await user.click(option(/^Inherit/));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({ agent: "claude" });
+  });
+
+  it("disables On with the reason under the workspace's mandatory off", async () => {
+    envState.environment = agentEnvironment({
+      githubCliEnabled: false,
+      githubCliMandatory: true,
+      // Ignored under the floor.
+      automationsGithubCliEnabled: true,
+    });
+    const { user } = setup();
+    expect(picker()).toHaveTextContent("Inherit (off)");
+    await user.click(picker());
+    const on = option(/^On/);
+    expect(on).toHaveAttribute("aria-disabled", "true");
+    expect(on).toHaveTextContent(
+      "Unavailable while this workspace's GitHub CLI off is mandatory.",
+    );
+    expect(option(/^Off$/)).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("lets a member who is not an admin turn gh off but not on", async () => {
+    asMember();
+    const { user, onSave } = setup();
+    await fillValid(user);
+    expect(picker()).toBeEnabled();
+    await user.click(picker());
+    const on = option(/^On/);
+    expect(on).toHaveAttribute("aria-disabled", "true");
+    expect(on).toHaveTextContent("Only a workspace admin can turn gh on.");
+    await user.click(option(/^Off$/));
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      githubCli: false,
+    });
+  });
+
+  it("keeps an automation that already stores on, even for a member under a mandatory off", async () => {
+    asMember();
+    envState.environment = agentEnvironment({
+      githubCliEnabled: false,
+      githubCliMandatory: true,
+    });
+    const { user, onSave } = renderEdit(true);
+    expect(picker()).toHaveTextContent("On");
+    await user.click(picker());
+    expect(option(/^On/)).not.toHaveAttribute("aria-disabled");
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      githubCli: true,
+    });
+  });
+
+  it.each([
+    [
+      "admin_required",
+      "Only a workspace admin can turn gh on for an automation. Choose Off or Inherit.",
+    ],
+    [
+      "mandatory",
+      "This workspace's GitHub CLI off is mandatory, so an automation can't turn gh on. Choose Off or Inherit.",
+    ],
+  ])(
+    "shows the server's %s refusal under the GitHub CLI field and clears it on change",
+    async (reason, text) => {
+      const onSave = vi.fn(async () => {
+        throw codedGraphQLError(
+          "AGENT_AUTOMATION_GITHUB_CLI_LOCKED",
+          { field: "template.agentConfig.githubCli", reason },
+          "server wording",
+        );
+      });
+      const { user } = setup(onSave);
+      await fillValid(user);
+      await user.click(picker());
+      await user.click(option(/^On$/));
+      await user.click(
+        screen.getByRole("button", { name: "Create automation" }),
+      );
+      await waitFor(() =>
+        expect(picker()).toHaveAttribute("aria-invalid", "true"),
+      );
+      expect(picker()).toHaveAccessibleDescription(new RegExp(`^${text}`));
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      await user.click(picker());
+      await user.click(option(/^Off$/));
+      expect(picker()).not.toHaveAttribute("aria-invalid");
+      expect(screen.queryByRole("alert")).toBeNull();
+    },
+  );
 });

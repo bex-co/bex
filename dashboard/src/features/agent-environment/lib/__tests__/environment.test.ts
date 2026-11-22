@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { AgentNetworkTier } from "@/graphql/definitions";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
+  automationsGithubCliInput,
   buildPatch,
   defaultModelUnoffered,
   draftFrom,
   enabledModelsErrorKey,
+  githubCliAutomationsErrorKey,
   githubCliErrorKey,
+  githubCliMandatoryErrorKey,
   modelKeyErrorKey,
   normalizeModelKey,
   parseHostLines,
@@ -299,6 +302,45 @@ describe("the model list", () => {
     );
     expect(enabledModelsErrorKey(new Error("offline"))).toBe(
       "agentEnvironment.modelsSaveFailed",
+    );
+  });
+});
+
+// w10/m561: the automations default and the mandatory flag beside the
+// workspace's switch.
+describe("the GitHub CLI section's other writes", () => {
+  it("sends inherit as the reset flag, on and off as the binding", () => {
+    expect(automationsGithubCliInput("inherit")).toEqual({
+      resetAutomationsGithubCli: true,
+    });
+    expect(automationsGithubCliInput("on")).toEqual({
+      automationsGithubCliEnabled: true,
+    });
+    expect(automationsGithubCliInput("off")).toEqual({
+      automationsGithubCliEnabled: false,
+    });
+  });
+
+  it("names the mandatory lock, the admin-only refusal, and offers a retry", () => {
+    expect(
+      githubCliAutomationsErrorKey(
+        codedGraphQLError("AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED", {
+          field: "automationsGithubCliEnabled",
+          reason: "mandatory",
+        }),
+      ),
+    ).toBe("agentEnvironment.githubCliAutomationsLocked");
+    expect(githubCliAutomationsErrorKey(codedGraphQLError("FORBIDDEN"))).toBe(
+      "agentEnvironment.forbidden",
+    );
+    expect(githubCliAutomationsErrorKey(new Error("offline"))).toBe(
+      "agentEnvironment.githubCliAutomationsSaveFailed",
+    );
+    expect(githubCliMandatoryErrorKey(codedGraphQLError("FORBIDDEN"))).toBe(
+      "agentEnvironment.forbidden",
+    );
+    expect(githubCliMandatoryErrorKey(uncodedGraphQLError("boom"))).toBe(
+      "agentEnvironment.githubCliMandatorySaveFailed",
     );
   });
 });

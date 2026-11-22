@@ -54,6 +54,11 @@ export interface CreateAgentSessionInput {
   task: string;
   /** Platform-registered sandbox image; omitted ⇒ the default template. */
   template?: string;
+  /**
+   * The session's own gh binding (w10/m561): false turns gh off for it, true
+   * turns it on; omitted ⇒ it inherits the workspace's GitHub CLI setting.
+   */
+  githubCli?: boolean;
   /** Uploaded `att-` ids bound to the first turn (ADR095 D3). */
   attachmentIds?: string[];
   /**
@@ -278,6 +283,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 model: input.model || undefined,
                 task: input.task,
                 template: input.template || undefined,
+                githubCli: input.githubCli,
               },
               attachmentIds: input.attachmentIds?.length
                 ? input.attachmentIds

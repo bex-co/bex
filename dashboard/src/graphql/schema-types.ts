@@ -109,12 +109,16 @@ export type AgentAutomation = {
 export type AgentAutomationAgentConfig = {
   __typename: 'AgentAutomationAgentConfig';
   agent: Scalars['String']['output'];
+  /** This automation's gh binding: null inherits the workspace's automations default, false turns gh off for its sessions, true turns it on against an inherited off. Its sessions read it live, so an edit applies from their next gh call. */
+  githubCli: Maybe<Scalars['Boolean']['output']>;
   model: Maybe<Scalars['String']['output']>;
   template: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentAutomationAgentConfigInput = {
   agent: Scalars['String']['input'];
+  /** Omit (or null) to inherit the workspace's automations default. false turns gh off for the automation's sessions. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An unchanged value is never re-checked. */
+  githubCli?: InputMaybe<Scalars['Boolean']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;
   template?: InputMaybe<Scalars['String']['input']>;
 };
@@ -299,6 +303,8 @@ export type AgentEnvironment = {
   agentModelSpendMonthToDateUsd: Maybe<Scalars['Float']['output']>;
   /** The agent-model spend (USD) a threshold charge would collect now: this charge window's spend less the billing credit and the charges already paid in it. */
   agentModelUnbilledUsd: Maybe<Scalars['Float']['output']>;
+  /** The gh binding of the sessions the workspace's automations start: null inherits githubCliEnabled, false turns gh off for them, true turns it on for them. An automation's own template.agentConfig.githubCli wins over it, and it has no effect under a mandatory off. */
+  automationsGithubCliEnabled: Maybe<Scalars['Boolean']['output']>;
   /** A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid. */
   billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;
@@ -311,6 +317,8 @@ export type AgentEnvironment = {
   enabledModels: Array<Scalars['String']['output']>;
   /** Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. */
   githubCliEnabled: Scalars['Boolean']['output'];
+  /** Whether the workspace's gh off is mandatory: while githubCliEnabled is false, no automations default, automation or session turns gh back on. No effect while githubCliEnabled is true. */
+  githubCliMandatory: Scalars['Boolean']['output'];
   modelKeySet: Scalars['Boolean']['output'];
   /** True on the platform model route, whose gateway pins each claude session to the catalog model it chose. */
   modelPinned: Scalars['Boolean']['output'];
@@ -338,6 +346,8 @@ export type AgentEnvironmentInput = {
   acknowledgeAgentDataUse?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default). */
   agentModelMonthlySpendCapUsd?: InputMaybe<Scalars['Float']['input']>;
+  /** The gh binding of the sessions automations start: false turns gh off for them, true turns it on for them, resetAutomationsGithubCli returns it to inheriting githubCliEnabled. true is refused with AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory. */
+  automationsGithubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;
   /** true removes the workspace's own model provider key. */
   clearModelApiKey?: InputMaybe<Scalars['Boolean']['input']>;
   /** Replaces the whole list; [] clears it. Opened only by the CUSTOM tier. */
@@ -352,11 +362,15 @@ export type AgentEnvironmentInput = {
   enabledModels?: InputMaybe<Array<Scalars['String']['input']>>;
   /** false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on. */
   githubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** true makes the workspace's gh off mandatory: while githubCliEnabled is false nothing below turns gh back on, and saving an automations default, automation or session that would is refused with a GITHUB_CLI_LOCKED code. false lets lower levels choose again. */
+  githubCliMandatory?: InputMaybe<Scalars['Boolean']['input']>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
   modelApiKey?: InputMaybe<Scalars['String']['input']>;
   networkTier?: InputMaybe<AgentNetworkTier>;
   /** true returns the spend cap to the plan default. */
   resetAgentModelMonthlySpendCap?: InputMaybe<Scalars['Boolean']['input']>;
+  /** true returns the automations default to inheriting githubCliEnabled (the explicit null this input cannot carry). */
+  resetAutomationsGithubCli?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /** The model credential a workspace's claude sessions use: BYO (the workspace's own key), PLATFORM (bex-provided, billed at the model provider's cost + 30%) or NONE. */
@@ -579,6 +593,8 @@ export type AgentSessionCapabilities = {
 export type AgentSessionConfig = {
   __typename: 'AgentSessionConfig';
   agent: Scalars['String']['output'];
+  /** This session's own gh binding: null inherits the workspace's GitHub CLI setting, false turned gh off for it, true turned it on against an inherited off. A child session is governed by its tree's chain and its own binding can only turn gh off. */
+  githubCli: Maybe<Scalars['Boolean']['output']>;
   model: Maybe<Scalars['String']['output']>;
   modelEndpoint: Maybe<Scalars['String']['output']>;
   task: Scalars['String']['output'];
@@ -587,6 +603,8 @@ export type AgentSessionConfig = {
 
 export type AgentSessionConfigInput = {
   agent: Scalars['String']['input'];
+  /** Omit (or null) to inherit the workspace's GitHub CLI setting. false turns gh off for this session; anyone who can start it may. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off. */
+  githubCli?: InputMaybe<Scalars['Boolean']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;
   modelEndpoint?: InputMaybe<Scalars['String']['input']>;
   task: Scalars['String']['input'];

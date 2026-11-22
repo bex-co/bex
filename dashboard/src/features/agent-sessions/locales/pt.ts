@@ -261,6 +261,59 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Tooltip of the sandbox template a session runs on, with its size",
   },
+  "agentSessions.githubCliInherit": {
+    message: "Herdar",
+    description:
+      "GitHub CLI choice — inherit the level above, while what that resolves to is still loading (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOn": {
+    message: "Herdar (ativado)",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh on (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOff": {
+    message: "Herdar (desativado)",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh off (w10/m561)",
+  },
+  "agentSessions.githubCliOn": {
+    message: "Ativado",
+    description:
+      "GitHub CLI choice — gh on for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOff": {
+    message: "Desativado",
+    description:
+      "GitHub CLI choice — gh off for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOnMandatory": {
+    message:
+      "Indisponível enquanto a desativação do GitHub CLI for obrigatória neste workspace.",
+    description:
+      "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
+  },
+  "agentSessions.githubCliOnAdminOnly": {
+    message: "Somente um administrador do workspace pode ativar o gh.",
+    description:
+      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+  },
+  "agentSessions.githubCliTitle": {
+    message: "GitHub CLI para esta sessão: {choice}",
+    description:
+      "Tooltip of the composer's GitHub CLI control; {choice} is the chosen binding, e.g. Inherit (on) (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED": {
+    message:
+      "Neste workspace a desativação do GitHub CLI é obrigatória, então uma sessão não pode ativar o gh. Escolha “Desativado” ou “Herdar”.",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
+    message:
+      "Somente um administrador do workspace pode ativar o gh para uma sessão. Escolha “Desativado” ou “Herdar”.",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",

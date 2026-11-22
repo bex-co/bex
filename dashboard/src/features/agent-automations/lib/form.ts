@@ -20,6 +20,11 @@ import {
 } from "@/features/agent-sessions/lib/composer-skills";
 import { parseSpendLimit } from "@/features/agent-sessions/lib/spend-limit";
 import {
+  githubCliBinding,
+  githubCliChoice,
+  type GithubCliChoice,
+} from "@/features/agent-sessions/lib/github-cli";
+import {
   DEFAULT_EMAIL_NOTIFICATION,
   isEmailNotification,
   type EmailNotification,
@@ -51,6 +56,11 @@ export interface AutomationFormValues {
    * templates, or "" for the workspace default in force when it fires.
    */
   template: string;
+  /**
+   * The gh binding of each run's session (w10/m561): inherit follows the
+   * workspace's automations default, on or off binds it.
+   */
+  githubCli: GithubCliChoice;
   /** Typed as-is; blank means no ceiling (the server requires one on the platform model). */
   spendLimit: string;
   secretNames: string[];
@@ -77,6 +87,7 @@ export function emptyFormValues(timezone?: string): AutomationFormValues {
     agent: "claude",
     model: "",
     template: "",
+    githubCli: "inherit",
     spendLimit: "",
     secretNames: [],
     skills: [],
@@ -105,6 +116,7 @@ export function valuesFromAutomation(
       : "claude",
     model: tpl.agentConfig.model ?? "",
     template: tpl.agentConfig.template ?? "",
+    githubCli: githubCliChoice(tpl.agentConfig.githubCli),
     spendLimit: tpl.maxSpendUSD != null ? String(tpl.maxSpendUSD) : "",
     secretNames: tpl.secretNames ?? [],
     skills: (tpl.skills ?? []).map((s) => ({
@@ -132,6 +144,7 @@ export type FormField =
   | "repo"
   | "model"
   | "template"
+  | "githubCli"
   | "spendLimit"
   | "emailNotifications"
   | "skills"
@@ -177,6 +190,7 @@ export function toAutomationInput(
 ): AgentAutomationInput {
   const spend = parseSpendLimit(values.spendLimit);
   const model = values.model.trim();
+  const githubCli = githubCliBinding(values.githubCli);
   const template: AgentAutomationTemplateInput = {
     ...values.carried,
     task: values.task.trim(),
@@ -185,6 +199,7 @@ export function toAutomationInput(
       agent: values.agent,
       ...(model ? { model } : {}),
       ...(values.template ? { template: values.template } : {}),
+      ...(githubCli !== undefined ? { githubCli } : {}),
     },
     maxSpendUSD: spend.ok ? spend.value : null,
     secretNames: [...values.secretNames].sort(),
@@ -211,6 +226,11 @@ export interface MappedError {
   scheduleField?: keyof ScheduleProblems;
   /** The server's own message, shown next to the field. */
   message: string;
+  /**
+   * The form's own copy for a refusal it words itself (the gh binding's,
+   * w10/m561), shown instead of `message`.
+   */
+  messageKey?: string;
   code: string | null;
 }
 
@@ -261,6 +281,9 @@ function targetForField(
     case "template.agentConfig.template":
     case "agentConfig.template":
       return { target: "template" };
+    case "template.agentConfig.githubCli":
+    case "agentConfig.githubCli":
+      return { target: "githubCli" };
     default:
       return { target: "general" };
   }
@@ -276,6 +299,16 @@ const CODE_TARGETS: Record<string, ErrorTarget> = {
   AGENT_SESSION_MODEL_NOT_OFFERED: "model",
   AGENT_SESSION_MODEL_PINNED: "model",
 };
+
+/**
+ * The copy of a gh binding refused as on (w10/m561): the workspace's
+ * mandatory off, or a creator who is not a workspace admin.
+ */
+function githubCliLockedKey(reason: unknown): string {
+  return reason === "admin_required"
+    ? "agentAutomations.problem.githubCliAdminRequired"
+    : "agentAutomations.problem.githubCliMandatory";
+}
 
 /**
  * Maps a refused create/update onto the field it concerns: the `field`
@@ -295,6 +328,14 @@ export function mapAutomationError(
         ? (first.extensions["code"] as string)
         : null;
     const field = first?.extensions?.["field"];
+    if (code === "AGENT_AUTOMATION_GITHUB_CLI_LOCKED") {
+      return {
+        target: "githubCli",
+        message,
+        messageKey: githubCliLockedKey(first?.extensions?.["reason"]),
+        code,
+      };
+    }
     if (typeof field === "string") {
       const mapped = targetForField(field);
       if (mapped.target !== "general") return { ...mapped, message, code };

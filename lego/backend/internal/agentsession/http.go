@@ -95,7 +95,9 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 			w.Header().Set(RefusalHeader, RefusalModelKeyMissing)
 		case errors.Is(err, ErrGitHubCLIOff):
 			status = http.StatusForbidden
+			level, _ := GitHubCLIOffLevel(err)
 			w.Header().Set(RefusalHeader, RefusalGitHubCLIOff)
+			w.Header().Set(RefusalLevelHeader, string(level))
 		case errors.Is(err, ErrForbidden):
 			status = http.StatusForbidden
 		case errors.Is(err, ErrInvalidRequest):
@@ -204,7 +206,7 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 			case RefusalModelKeyMissing:
 				return zero, ErrModelKeyMissing
 			case RefusalGitHubCLIOff:
-				return zero, ErrGitHubCLIOff
+				return zero, GitHubCLIOff(ParseGitHubCLILevel(resp.Header.Get(RefusalLevelHeader)))
 			}
 			return zero, ErrForbidden
 		}

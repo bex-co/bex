@@ -1788,4 +1788,149 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
       expect(screen.queryByRole("combobox", { name: "Sandbox" })).toBeNull();
     });
   });
+
+  // w10/m561: a session binds its own gh in the start box's options, as
+  // Devin's security profile is chosen there. Inherit names the workspace's
+  // switch and sends nothing, off sends false, and on is refused under a
+  // mandatory off and for a member who is not an admin.
+  describe("GitHub CLI", () => {
+    const picker = () =>
+      screen.getByRole("combobox", { name: "GitHub CLI (gh)" });
+    const option = (name: RegExp) => screen.getByRole("option", { name });
+    const start = async (user: ReturnType<typeof userEvent.setup>) => {
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Start session" }));
+    };
+
+    it.each([
+      [true, "Inherit (on)"],
+      [false, "Inherit (off)"],
+    ])(
+      "inherits the workspace's switch (%s) and sends no binding",
+      async (githubCliEnabled, text) => {
+        spend.environment = agentEnvironment({ githubCliEnabled });
+        const user = userEvent.setup();
+        render(<NewSessionComposer />);
+        expect(picker()).toHaveTextContent(text);
+        expect(picker()).toHaveAttribute(
+          "title",
+          `GitHub CLI for this session: ${text}`,
+        );
+        // The width the /agents skeleton holds for it (detail-skeletons.tsx).
+        expect(picker()).toHaveClass("h-8", "w-[9.5rem]");
+        await user.click(picker());
+        expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(
+          [text, "On", "Off"],
+        );
+        await user.keyboard("{Escape}");
+        await start(user);
+        await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+        expect(create.mock.calls[0][0]).not.toHaveProperty("githubCli");
+      },
+    );
+
+    it("reads Inherit while the environment loads", () => {
+      render(<NewSessionComposer />);
+      expect(picker()).toHaveTextContent(/^Inherit$/);
+    });
+
+    it("starts the session with gh off", async () => {
+      spend.environment = agentEnvironment();
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await user.click(picker());
+      await user.click(option(/^Off$/));
+      expect(picker()).toHaveTextContent(/^Off$/);
+      await start(user);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).toMatchObject({
+        agent: "claude",
+        githubCli: false,
+      });
+    });
+
+    it("lets an admin turn gh on against the workspace's off", async () => {
+      spend.environment = agentEnvironment({ githubCliEnabled: false });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await user.click(picker());
+      await user.click(option(/^On$/));
+      await start(user);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).toMatchObject({ githubCli: true });
+    });
+
+    it("disables On with the reason under the workspace's mandatory off", async () => {
+      spend.environment = agentEnvironment({
+        githubCliEnabled: false,
+        githubCliMandatory: true,
+      });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      expect(picker()).toHaveTextContent("Inherit (off)");
+      await user.click(picker());
+      const on = option(/^On/);
+      expect(on).toHaveAttribute("aria-disabled", "true");
+      expect(on).toHaveTextContent(
+        "Unavailable while this workspace's GitHub CLI off is mandatory.",
+      );
+      expect(option(/^Off$/)).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("lets a member turn gh off for a session but not on", async () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      spend.environment = agentEnvironment({ githubCliEnabled: false });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      expect(picker()).toBeEnabled();
+      await user.click(picker());
+      const on = option(/^On/);
+      expect(on).toHaveAttribute("aria-disabled", "true");
+      expect(on).toHaveTextContent("Only a workspace admin can turn gh on.");
+      await user.click(option(/^Off$/));
+      await start(user);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).toMatchObject({ githubCli: false });
+    });
+
+    it.each([
+      [
+        "mandatory",
+        "This workspace's GitHub CLI off is mandatory, so a session can't turn gh on. Choose Off or Inherit.",
+      ],
+      [
+        "admin_required",
+        "Only a workspace admin can turn gh on for a session. Choose Off or Inherit.",
+      ],
+    ])(
+      "shows a %s refusal on the control until the choice changes",
+      async (reason, text) => {
+        spend.environment = agentEnvironment();
+        create.mockRejectedValueOnce(
+          new AgentSessionError(
+            "AGENT_SESSION_GITHUB_CLI_LOCKED",
+            "server copy",
+            { field: "agentConfig.githubCli", reason },
+          ),
+        );
+        const user = userEvent.setup();
+        render(<NewSessionComposer />);
+        await user.click(picker());
+        await user.click(option(/^On$/));
+        await start(user);
+        expect(await screen.findByRole("alert")).toHaveTextContent(text);
+        expect(picker()).toHaveAttribute("aria-invalid", "true");
+        expect(picker()).toHaveAccessibleDescription(
+          expect.stringContaining(text),
+        );
+        expect(mockNavigate).not.toHaveBeenCalled();
+        await user.click(picker());
+        await user.click(option(/^Off$/));
+        expect(picker()).not.toHaveAttribute("aria-invalid");
+        expect(screen.queryByRole("alert")).toBeNull();
+      },
+    );
+  });
 });

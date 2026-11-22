@@ -102,8 +102,14 @@ type Environment struct {
 	// GitHubCLIEnabled is whether the workspace's repo sessions get a `gh`
 	// that reaches their repository through bex (w10/m524); true unless an
 	// admin turned it off.
-	GitHubCLIEnabled bool       `json:"githubCliEnabled"`
-	UpdatedAt        *time.Time `json:"updatedAt"`
+	GitHubCLIEnabled bool `json:"githubCliEnabled"`
+	// AutomationsGitHubCLIEnabled is the automations default (w10/m561): nil
+	// inherits GitHubCLIEnabled for the sessions automations start.
+	// GitHubCLIMandatory makes the workspace's off a floor no automation or
+	// session turns back on; it has no effect while GitHubCLIEnabled is true.
+	AutomationsGitHubCLIEnabled *bool      `json:"automationsGithubCliEnabled"`
+	GitHubCLIMandatory          bool       `json:"githubCliMandatory"`
+	UpdatedAt                   *time.Time `json:"updatedAt"`
 	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
 	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
 	// min(the admin override or the plan default, the trust tier's ceiling).
@@ -166,12 +172,22 @@ type EnvironmentInput struct {
 	EnabledAgents           *[]string `json:"enabledAgents,omitempty" jsonschema:"replaces the agent profiles members can start sessions with (admins only); the others are turned off, and running sessions keep running. A profile listed in agentDataUse can be enabled only once acknowledged"`
 	AcknowledgeAgentDataUse []string  `json:"acknowledgeAgentDataUse,omitempty" jsonschema:"agent profiles from agentDataUse whose data use this admin acknowledges: their model provider may train on the prompts, code, files, context and responses their sessions send"`
 	GitHubCLIEnabled        *bool     `json:"githubCliEnabled,omitempty" jsonschema:"false turns gh off for the workspace's agent sessions (admins only): turns dispatched afterwards get no gh configuration, and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. true turns it back on"`
+	// AutomationsGitHubCLIEnabled sets the automations default; an explicit
+	// null returns it to inherit, which the wire adapters record in
+	// AutomationsGitHubCLIEnabledSet (w10/m561).
+	AutomationsGitHubCLIEnabled *bool `json:"automationsGithubCliEnabled,omitempty" jsonschema:"the gh binding of the sessions automations start (admins only): false turns gh off for them, true turns it on for them, null returns to inheriting githubCliEnabled. An automation's own binding wins over it. true is refused with AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory"`
+	// ResetAutomationsGitHubCLI is the explicit null graphql-go cannot carry.
+	ResetAutomationsGitHubCLI bool  `json:"resetAutomationsGithubCli,omitempty" jsonschema:"true returns the automations default to inheriting githubCliEnabled, as an explicit null automationsGithubCliEnabled does"`
+	GitHubCLIMandatory        *bool `json:"githubCliMandatory,omitempty" jsonschema:"true makes the workspace's gh off mandatory (admins only): while githubCliEnabled is false, no automations default, automation or session turns gh back on, and saving one that would is refused with a GITHUB_CLI_LOCKED code; it has no effect while githubCliEnabled is true. false lets lower levels choose again"`
 	// EnabledModels replaces the platform catalog models members may choose;
 	// the catalog's others are turned off (w10/m527).
 	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off. It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
+	// AutomationsGitHubCLIEnabledSet is true when the automations default
+	// was present, so a nil value with it set returns it to inherit.
+	AutomationsGitHubCLIEnabledSet bool `json:"-"`
 }
 
 // AgentDataUse is one profile whose model provider may train on what its
@@ -333,14 +349,19 @@ func modelKeyChange(input EnvironmentInput) (set bool, value string, err error) 
 	return true, value, nil
 }
 
-// markSpendCapPresence records whether the raw JSON object named the spend
-// cap, so an explicit null clears it instead of keeping it.
-func (in *EnvironmentInput) markSpendCapPresence(raw []byte) {
+// markNullablePresence records whether the raw JSON object named the spend
+// cap and the automations `gh` default, so an explicit null clears the one
+// and returns the other to inherit instead of keeping them.
+func (in *EnvironmentInput) markNullablePresence(raw []byte) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(raw, &fields) == nil {
 		_, in.AgentModelMonthlySpendCapSet = fields[spendCapField]
+		_, in.AutomationsGitHubCLIEnabledSet = fields[automationsGitHubCLIField]
 	}
 }
+
+// automationsGitHubCLIField is the wire name of the automations `gh` default.
+const automationsGitHubCLIField = "automationsGithubCliEnabled"
 
 // modelIDPattern bounds a model id that reaches a sandbox env var: provider
 // ids (claude-sonnet-4-5, claude-sonnet-4-5[1m]) and OpenRouter slugs
@@ -395,13 +416,20 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 		return Environment{}, err
 	}
 	keySet := key != "" // whether a key change leaves the workspace its own key
-	// The model and agent lists are checked against the stored row, read only
-	// when the update names one of them.
+	// The model and agent lists and an automations `gh` default turning it on
+	// are checked against the stored row, read only when the update names one
+	// of them.
 	agentsChanged := input.EnabledAgents != nil || len(input.AcknowledgeAgentDataUse) > 0
-	if input.DefaultModel != nil || input.EnabledModels != nil || agentsChanged {
+	automationsOn := isTrue(patch.AutomationsGitHubCLI)
+	if input.DefaultModel != nil || input.EnabledModels != nil || agentsChanged || automationsOn {
 		current, err := s.workspaceEnvironment(ctx, workspaceID)
 		if err != nil {
 			return Environment{}, err
+		}
+		if automationsOn {
+			if err := automationsGitHubCLILocked(current, patch); err != nil {
+				return Environment{}, err
+			}
 		}
 		byoKey := current.ModelKeySet()
 		if keyChanged {
@@ -510,6 +538,14 @@ func validateEnvironmentInput(input EnvironmentInput, templates []sandbox.AgentT
 		disabled := !*input.GitHubCLIEnabled
 		patch.GitHubCLIDisabled = &disabled
 	}
+	if input.ResetAutomationsGitHubCLI && input.AutomationsGitHubCLIEnabled != nil {
+		return patch, core.NewBadRequestError(CodeEnvironmentGitHubCLIInvalid,
+			"set automationsGithubCliEnabled or resetAutomationsGithubCli, not both", map[string]any{"field": automationsGitHubCLIField})
+	}
+	if input.AutomationsGitHubCLIEnabledSet || input.AutomationsGitHubCLIEnabled != nil || input.ResetAutomationsGitHubCLI {
+		patch.SetAutomationsGitHubCLI, patch.AutomationsGitHubCLI = true, input.AutomationsGitHubCLIEnabled
+	}
+	patch.GitHubCLIMandatory = input.GitHubCLIMandatory
 	if input.NetworkTier != nil {
 		switch *input.NetworkTier {
 		case NetworkTierRegistries, NetworkTierCustom, NetworkTierFull:
@@ -666,6 +702,7 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 	}
 	view.ModelKeySet = view.ModelSource == ModelSourceBYO
 	view.GitHubCLIEnabled = !row.GitHubCLIDisabled
+	view.AutomationsGitHubCLIEnabled, view.GitHubCLIMandatory = row.AutomationsGitHubCLI, row.GitHubCLIMandatory
 	view.EnabledAgents, view.AgentDataUse = []string{}, []AgentDataUse{}
 	for _, id := range agentsession.AgentProfileIDs() {
 		if agentEnabled(row, id) {

@@ -185,7 +185,7 @@ func TestHandoffPushesTheWorktreeAndStartsTheSessionOnIt(t *testing.T) {
 	f, d := handoffDeps(t, g)
 	notes := filepath.Join(t.TempDir(), "NOTES.md")
 	writeFile(t, notes, "context\n")
-	stdout, stderr, code := run(t, d, "-o", "json", "handoff", "--confirm", "--notes", notes, "--max-spend", "2", "Finish", "the", "retry", "logic")
+	stdout, stderr, code := run(t, d, "-o", "json", "handoff", "--confirm", "--notes", notes, "--max-spend", "2", "--github-cli", "off", "Finish", "the", "retry", "logic")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
@@ -202,7 +202,8 @@ func TestHandoffPushesTheWorktreeAndStartsTheSessionOnIt(t *testing.T) {
 	var body map[string]any
 	_ = json.Unmarshal(f.creates[0].body, &body)
 	if body["repo"] != "acme/api" || body["branch"] != out.Branch || body["maxSpendUSD"] != 2.0 ||
-		asJSON(t, body["attachmentIds"]) != `["att-up1"]` || body["agentConfig"].(map[string]any)["task"] != "Finish the retry logic" {
+		asJSON(t, body["attachmentIds"]) != `["att-up1"]` || body["agentConfig"].(map[string]any)["task"] != "Finish the retry logic" ||
+		body["agentConfig"].(map[string]any)["githubCli"] != false {
 		t.Fatalf("create body %v", body)
 	}
 	if key := f.creates[0].header.Get("Idempotency-Key"); !strings.HasPrefix(key, "handoff:"+out.Commit+":") {
@@ -240,6 +241,7 @@ func TestHandoffRefusals(t *testing.T) {
 		{[]string{"handoff", "--confirm", "--branch", "x", "t"}, "handoff picks the branch", exitUsage},
 		// A bad flag is refused before the push, not after it.
 		{[]string{"handoff", "--confirm", "--output-schema", "missing.json", "t"}, "missing.json", 1},
+		{[]string{"handoff", "--confirm", "--github-cli", "maybe", "t"}, "--github-cli takes on, off or inherit", exitUsage},
 	} {
 		if _, stderr, code := run(t, d, tc.args...); code != tc.code || !strings.Contains(stderr, tc.want) {
 			t.Errorf("%v: exit %d, %s", tc.args, code, stderr)

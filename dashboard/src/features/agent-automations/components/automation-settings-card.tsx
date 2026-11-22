@@ -13,6 +13,12 @@ import {
   emailNotificationLabel,
 } from "@/features/agent-automations/lib/display";
 import { describeSchedule } from "@/features/agent-automations/lib/schedule";
+import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
+import {
+  githubCliChoice,
+  githubCliChoiceLabel,
+  inheritedGithubCli,
+} from "@/features/agent-sessions/lib/github-cli";
 
 /** The settings rows, in order. The skeleton and the ready card share it. */
 const ROW_LABELS = [
@@ -23,11 +29,18 @@ const ROW_LABELS = [
   "createdBy",
   "repo",
   "agent",
+  "githubCli",
   "spendLimit",
   "emailNotifications",
   "secrets",
   "skills",
 ] as const;
+
+// The gh row reads as the control it shows does (w10/m561).
+const rowLabelKey = (key: (typeof ROW_LABELS)[number]) =>
+  key === "githubCli"
+    ? "agentEnvironment.githubCliLabel"
+    : `agentAutomations.row.${key}`;
 
 function CreatedBy({ subject }: { subject: string }) {
   return <>{useWorkspaceSubjectLabel(subject)}</>;
@@ -46,6 +59,9 @@ export function AutomationSettingsCard({
   const { t, i18n } = useTranslations();
   const tpl = automation?.template;
   const schedule = automation?.triggers[0]?.schedule;
+  // What an inheriting automation's sessions get (w10/m561): the workspace's
+  // automations default, else its GitHub CLI switch.
+  const { environment } = useAgentEnvironment(automation?.ownerId ?? null);
   const bar = <Skeleton className="h-4 w-24" />;
   const values: Record<(typeof ROW_LABELS)[number], React.ReactNode> =
     automation && tpl
@@ -84,6 +100,11 @@ export function AutomationSettingsCard({
           createdBy: <CreatedBy subject={automation.createdBy} />,
           repo: tpl.repo || t("agentAutomations.noRepo"),
           agent: t(`agentSessions.agent.${tpl.agentConfig.agent}`),
+          githubCli: githubCliChoiceLabel(
+            githubCliChoice(tpl.agentConfig.githubCli),
+            inheritedGithubCli(environment, "automation"),
+            t,
+          ),
           spendLimit:
             tpl.maxSpendUSD != null
               ? formatPreciseUsd(String(tpl.maxSpendUSD), i18n.language)
@@ -107,6 +128,7 @@ export function AutomationSettingsCard({
           createdBy: bar,
           repo: bar,
           agent: bar,
+          githubCli: bar,
           spendLimit: bar,
           emailNotifications: bar,
           secrets: bar,
@@ -116,7 +138,7 @@ export function AutomationSettingsCard({
     <MetadataList
       title={t("agentAutomations.settingsTitle")}
       rows={ROW_LABELS.map((key) => ({
-        label: t(`agentAutomations.row.${key}`),
+        label: t(rowLabelKey(key)),
         value: values[key],
       }))}
     />

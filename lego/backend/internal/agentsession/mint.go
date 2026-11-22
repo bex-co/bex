@@ -125,8 +125,12 @@ type Minter struct {
 	// Environments reads the workspace's GitHub CLI setting for the `gh`
 	// route's mints (w10/m524); nil refuses them.
 	Environments EnvironmentStore
-	Audit        core.AuditSink
-	Now          func() time.Time
+	// Automations reads the `gh` binding of the automation that started a
+	// session's tree (w10/m561); nil reads every automation as binding
+	// nothing.
+	Automations AutomationStore
+	Audit       core.AuditSink
+	Now         func() time.Time
 }
 
 func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
@@ -136,8 +140,9 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error
 // MintGitHubRead is the credential of a repo session's read-only GitHub API
 // route (w10/m513): the same Pod, lifecycle and branch checks as Mint, then a
 // token that can only read the session's one repository. A repository
-// environment build has no `gh` route and gets none, and a workspace that
-// turned `gh` off gets ErrGitHubCLIOff (w10/m524).
+// environment build has no `gh` route and gets none, and a session whose
+// binding chain has `gh` off gets ErrGitHubCLIOff naming the level (w10/m524,
+// w10/m561).
 func (m *Minter) MintGitHubRead(ctx context.Context, req MintRequest) (MintResponse, error) {
 	return m.mint(ctx, req, mintGitHubRead)
 }
@@ -244,30 +249,37 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (resp
 		return MintResponse{}, err
 	}
 	if kind != mintGit {
-		if err := m.githubCLIAllowed(ctx, req.Workspace); err != nil {
+		if err := m.githubCLIAllowed(ctx, session); err != nil {
 			return MintResponse{}, err
 		}
 	}
 	return m.installationToken(ctx, req.Workspace, repository, kind.token(m.GitHub))
 }
 
-// githubCLIAllowed refuses the `gh` route's credentials with ErrGitHubCLIOff
-// while the workspace has its GitHub CLI setting off (w10/m524). The row is
-// read on every call, so a running session's next `gh` call is refused once
-// an admin saves the setting. A workspace with no row has the default, on.
-// The Git mint never asks: pushes to the session branch keep working.
-func (m *Minter) githubCLIAllowed(ctx context.Context, workspace string) error {
+// githubCLIAllowed refuses the `gh` route's credentials with a
+// GitHubCLIOffError naming the level whose binding turned `gh` off for
+// session (w10/m524, w10/m561). The environment row, the session's tree and
+// its automation are read on every call, so a running session's next `gh`
+// call is refused once an admin saves the setting or someone edits the
+// automation. A workspace with no row has the defaults, on. The Git mint
+// never asks: pushes to the session branch keep working.
+func (m *Minter) githubCLIAllowed(ctx context.Context, session store.AgentSession) error {
 	if m.Environments == nil {
 		return fmt.Errorf("agent credentials unavailable")
 	}
-	env, err := m.Environments.GetAgentEnvironment(ctx, workspace)
+	env, err := m.Environments.GetAgentEnvironment(ctx, session.WorkspaceID)
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		return nil
+		env = store.AgentEnvironment{WorkspaceID: session.WorkspaceID}
 	case err != nil:
 		return err
-	case env.GitHubCLIDisabled:
-		return ErrGitHubCLIOff
+	}
+	level, err := ResolveGitHubCLI(ctx, m.Sessions, m.Automations, env, session)
+	if err != nil {
+		return err
+	}
+	if level != "" {
+		return GitHubCLIOff(level)
 	}
 	return nil
 }

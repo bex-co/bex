@@ -821,3 +821,54 @@ func TestGitHubAPIRouteRefusesEveryCallWhileGitHubCLIIsOff(t *testing.T) {
 		t.Fatalf("a read after gh is back on = %d (read mints %d)", rec.Code, gh.apiCalls)
 	}
 }
+
+// w10/m561: the route's refusal names the level bex-api's mint named, and
+// says how that level turns gh back on; a level this gateway does not know,
+// or none (an older bex-api), reads as the workspace's.
+func TestGitHubAPIRouteRefusalNamesTheBindingLevel(t *testing.T) {
+	broker, repoURL, _, seen := githubAPIHarnessWithSetting(t, &githubCLISetting{}, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "{}")
+	})
+	registry := prometheus.NewRegistry()
+	broker.Metrics = sshgateway.NewMetrics(registry)
+	workspace := []string{"gh is turned off for this workspace's agent sessions", "githubCliEnabled", "bex agent env set --github-cli on"}
+	tail := []string{"session branch", "open_or_update_draft_pr", "merge_pull_request"}
+	for level, want := range map[string][]string{
+		"":                    workspace,
+		"workspace":           workspace,
+		"enterprise":          workspace,
+		"automations-default": {"gh is turned off for the sessions this workspace's automations start", "automationsGithubCliEnabled", "bex agent env set --automations-github-cli inherit"},
+		"automation":          {"gh is turned off for the sessions of the automation that started this session", "template's agentConfig.githubCli", "bex agent automations update <automation> --github-cli inherit", "workspace admin"},
+		"session":             {"gh is turned off for this agent session", "agentConfig.githubCli", "start a new session without `--github-cli off`"},
+	} {
+		mint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set(agentsession.RefusalHeader, agentsession.RefusalGitHubCLIOff)
+			if level != "" {
+				w.Header().Set(agentsession.RefusalLevelHeader, level)
+			}
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		broker.GitHubRead = &agentsession.Client{URL: mint.URL, Secret: []byte("github-api-secret"), HTTP: mint.Client()}
+		rec := githubAPIRequest(broker, http.MethodGet, repoURL+"/github-api/repos/octo/repo/actions/runs", "")
+		mint.Close()
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("level %q: %d %q, want 403", level, rec.Code, rec.Body.String())
+		}
+		message := githubAPIMessage(t, rec)
+		for _, phrase := range append(want, tail...) {
+			if !strings.Contains(message, phrase) {
+				t.Fatalf("level %q refusal %q does not say %q", level, message, phrase)
+			}
+		}
+		if level != "" && level != "workspace" && level != "enterprise" && strings.Contains(message, workspace[0]) {
+			t.Fatalf("level %q refusal %q speaks for the workspace", level, message)
+		}
+		assertNoToken(t, rec)
+	}
+	if seen.calls != 0 {
+		t.Fatalf("GitHub calls = %d, want none", seen.calls)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_authentications_total", map[string]string{"result": "github_cli_off"}); got != 6 {
+		t.Fatalf("github_cli_off refusals counted = %v, want 6", got)
+	}
+}

@@ -61,6 +61,12 @@ const (
 	// RefusalGitHubCLIOff is RefusalHeader's value for ErrGitHubCLIOff. An
 	// older gateway that does not know it still answers the plain 403.
 	RefusalGitHubCLIOff = "github-cli-off"
+	// RefusalLevelHeader names, beside RefusalGitHubCLIOff, the binding
+	// level that turned `gh` off (GitHubCLILevel, w10/m561). An older
+	// gateway ignores it and answers with the workspace's words; a newer one
+	// reads an absent or unknown level as the workspace's. Either way the call
+	// is refused.
+	RefusalLevelHeader = "X-Bex-Agent-Credential-Refusal-Level"
 
 	// Pod metadata is the authorization record until the durable session table
 	// (w3/m39) lands. OpenSandbox copies create metadata to labels, so the repo and
@@ -116,9 +122,10 @@ var (
 	// their behavior and recognizing the cause stays opt-in.
 	ErrModelKeyMissing = fmt.Errorf("%w: no model key provisioned for this workspace", ErrForbidden)
 	// ErrGitHubCLIOff refuses a `gh` route credential while the session's
-	// workspace has its GitHub CLI setting off (w10/m524), so the gateway can
-	// answer with a message naming the setting. It wraps ErrForbidden.
-	ErrGitHubCLIOff = fmt.Errorf("%w: the workspace turned gh off for its agent sessions", ErrForbidden)
+	// binding chain has `gh` off (w10/m524, w10/m561), so the gateway can
+	// answer with a message naming the binding. It wraps ErrForbidden; a
+	// GitHubCLIOffError wraps it with the level.
+	ErrGitHubCLIOff = fmt.Errorf("%w: gh is turned off for this agent session", ErrForbidden)
 )
 
 // MintRequest contains no credential. The gateway derives Workspace, PodName,

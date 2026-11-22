@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -382,8 +383,11 @@ func TestEnvSet(t *testing.T) {
 	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") || !strings.Contains(stdout, "claude, codex") ||
 		!strings.Contains(stdout, "needs an admin's --acknowledge-data-use to turn on") ||
 		!regexp.MustCompile(`(?m)^Default sandbox\s+agent-8c-16g \(8 CPU, 16 GB\)$`).MatchString(stdout) ||
-		// A bex-api that predates githubCliEnabled cannot turn gh off (w10/m524).
-		!regexp.MustCompile(`(?m)^GitHub CLI\s+on$`).MatchString(stdout) {
+		// A bex-api that predates githubCliEnabled cannot turn gh off (w10/m524),
+		// and one that predates the automations default and the mandatory
+		// flag reads as inherit and not mandatory (w10/m561).
+		!regexp.MustCompile(`(?m)^GitHub CLI\s+on$`).MatchString(stdout) ||
+		!regexp.MustCompile(`(?m)^Automations GitHub CLI\s+inherit$`).MatchString(stdout) {
 		t.Fatalf("env:\n%s", stdout)
 	}
 	// Each body is compared whole, so githubCliEnabled is sent only when
@@ -402,6 +406,15 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--default-template", ""}, `{"defaultTemplate":""}`},
 		{[]string{"--github-cli", "off"}, `{"githubCliEnabled":false}`},
 		{[]string{"--github-cli", "on", "--network-tier", "full"}, `{"githubCliEnabled":true,"networkTier":"full"}`},
+		// Each gh field is sent only when its flag is given, and inherit is an
+		// explicit null (an absent field keeps the stored value) (w10/m561).
+		{[]string{"--github-cli-mandatory", "on"}, `{"githubCliMandatory":true}`},
+		{[]string{"--github-cli-mandatory", "off"}, `{"githubCliMandatory":false}`},
+		{[]string{"--automations-github-cli", "off"}, `{"automationsGithubCliEnabled":false}`},
+		{[]string{"--automations-github-cli", "on"}, `{"automationsGithubCliEnabled":true}`},
+		{[]string{"--automations-github-cli", "inherit"}, `{"automationsGithubCliEnabled":null}`},
+		{[]string{"--github-cli", "off", "--github-cli-mandatory", "on", "--automations-github-cli", "inherit"},
+			`{"automationsGithubCliEnabled":null,"githubCliEnabled":false,"githubCliMandatory":true}`},
 		{[]string{"--models", "deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5"}, `{"enabledModels":["deepseek/deepseek-v4.1-flash-1017","anthropic/claude-haiku-5.5"]}`},
 	}
 	for _, tc := range cases {
@@ -435,6 +448,18 @@ func TestEnvSet(t *testing.T) {
 			t.Errorf("--github-cli %q: exit %d, %d requests, stderr %q; want a usage error naming on and off and nothing sent", bad, code, len(f.calls), stderr)
 		}
 	}
+	for _, bad := range []struct{ flag, value, want string }{
+		{"--automations-github-cli", "yes", "--automations-github-cli takes on, off or inherit"},
+		{"--automations-github-cli", "", "--automations-github-cli takes on, off or inherit"},
+		{"--github-cli-mandatory", "inherit", "--github-cli-mandatory takes on or off"},
+		{"--github-cli-mandatory", "true", "--github-cli-mandatory takes on or off"},
+	} {
+		f.calls = nil
+		_, stderr, code := run(t, d, "env", "set", bad.flag, bad.value, "--network-tier", "full")
+		if code != exitUsage || !strings.Contains(stderr, bad.want) || len(f.calls) != 0 {
+			t.Errorf("%s %q: exit %d, %d requests, stderr %q; want a usage error and nothing sent", bad.flag, bad.value, code, len(f.calls), stderr)
+		}
+	}
 }
 
 // TestEnvShowsGitHubCLI: `bex agent env` words the setting, and -o json
@@ -457,6 +482,43 @@ func TestEnvShowsGitHubCLI(t *testing.T) {
 		var got map[string]any
 		if err := json.Unmarshal([]byte(stdout), &got); code != 0 || err != nil || got["githubCliEnabled"] != tc.enabled {
 			t.Errorf("githubCliEnabled %v: -o json exit %d (%s), %v:\n%s", tc.enabled, code, stderr, err, stdout)
+		}
+	}
+}
+
+// TestEnvShowsTheGitHubCLIBindings: `bex agent env` marks a mandatory gh
+// off and words the automations default, and -o json prints the API's
+// fields as they came (w10/m561).
+func TestEnvShowsTheGitHubCLIBindings(t *testing.T) {
+	for _, tc := range []struct {
+		env        map[string]any
+		gh, robots string
+	}{
+		{map[string]any{"githubCliEnabled": false, "githubCliMandatory": true, "automationsGithubCliEnabled": nil},
+			`off \(mandatory; sessions get no gh; Git pushes and the bex tools still work\)`, "inherit"},
+		{map[string]any{"githubCliEnabled": false, "githubCliMandatory": false, "automationsGithubCliEnabled": true},
+			`off \(sessions get no gh; Git pushes and the bex tools still work\)`, "on"},
+		{map[string]any{"githubCliEnabled": true, "githubCliMandatory": false, "automationsGithubCliEnabled": false}, "on", "off"},
+		// Mandatory has no effect while gh is on, but says what an off would be.
+		{map[string]any{"githubCliEnabled": true, "githubCliMandatory": true}, `on \(an off would be mandatory\)`, "inherit"},
+		// An automations on stored before the off was made mandatory does not
+		// turn gh back on.
+		{map[string]any{"githubCliEnabled": false, "githubCliMandatory": true, "automationsGithubCliEnabled": true},
+			`off \(mandatory; .*\)`, `on \(the workspace's mandatory off wins\)`},
+	} {
+		env := map[string]any{"networkTier": "registries", "modelSource": "platform"}
+		maps.Copy(env, tc.env)
+		f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-environment": answer(http.StatusOK, env)})
+		stdout, stderr, code := run(t, f.deps(), "-o", "text", "env")
+		if code != 0 || !regexp.MustCompile(`(?m)^GitHub CLI\s+`+tc.gh+`$`).MatchString(stdout) ||
+			!regexp.MustCompile(`(?m)^Automations GitHub CLI\s+`+tc.robots+`$`).MatchString(stdout) {
+			t.Errorf("%v: exit %d (%s):\n%s", tc.env, code, stderr, stdout)
+		}
+		stdout, stderr, code = run(t, f.deps(), "-o", "json", "env")
+		var got map[string]any
+		if err := json.Unmarshal([]byte(stdout), &got); code != 0 || err != nil || got["githubCliMandatory"] != tc.env["githubCliMandatory"] ||
+			got["automationsGithubCliEnabled"] != tc.env["automationsGithubCliEnabled"] {
+			t.Errorf("%v: -o json exit %d (%s), %v:\n%s", tc.env, code, stderr, err, stdout)
 		}
 	}
 }
@@ -599,7 +661,7 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 	}
 	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
 		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled ||
-		len(e.EnabledModels) != 2 {
+		len(e.EnabledModels) != 2 || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {

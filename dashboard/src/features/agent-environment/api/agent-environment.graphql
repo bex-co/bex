@@ -31,6 +31,14 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   # Whether the workspace's repo sessions get a gh that reaches their
   # repository through bex (w10/m524); true unless an admin turned it off.
   githubCliEnabled
+  # The gh binding of the sessions automations start (w10/m561): null
+  # inherits githubCliEnabled, true or false binds them. An automation's own
+  # template.agentConfig.githubCli wins over it.
+  automationsGithubCliEnabled
+  # Whether the workspace's gh off is mandatory (w10/m561): while
+  # githubCliEnabled is false, no automations default, automation or session
+  # turns gh back on. No effect while githubCliEnabled is true.
+  githubCliMandatory
   # The agent profiles members can start sessions with, and each profile
   # whose model provider may train on session data with its admin
   # acknowledgement (w7/m392).
@@ -74,7 +82,9 @@ query AgentEnvironment($ownerId: String!) {
 # Partial update: omitted fields keep their value; customHosts [] clears the
 # list, defaultModel "" returns to the provider default and defaultTemplate ""
 # to the platform's; githubCliEnabled false turns the sessions' gh off;
-# enabledModels replaces the catalog models members may choose (w10/m527).
+# automationsGithubCliEnabled null returns automations to inheriting it and
+# githubCliMandatory true makes its off a floor (w10/m561); enabledModels
+# replaces the catalog models members may choose (w10/m527).
 mutation UpdateAgentEnvironment(
   $ownerId: String!
   $input: AgentEnvironmentInput!

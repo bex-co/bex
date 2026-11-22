@@ -37,6 +37,7 @@ export function automation(over: Partial<AutomationView> = {}): AutomationView {
         agent: "claude",
         model: null,
         template: null,
+        githubCli: null,
       },
       maxSpendUSD: 5,
       secretNames: [],

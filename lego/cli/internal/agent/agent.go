@@ -534,9 +534,14 @@ func parseSkills(specs []string) ([]skillInvocation, error) {
 // share, with the same names and help.
 type sessionFlags struct {
 	repo, branch, agent, model, title, template string
+	githubCLI                                   string
 	tags                                        []string
 	spend                                       float64
 }
+
+// githubCLIFlag is agentConfig.githubCli, a session's or an automation's own
+// `gh` binding (w10/m561).
+const githubCLIFlag = "github-cli"
 
 func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.StringVar(&s.repo, "repo", "", "repository to work on (owner/name or URL); empty runs without one")
@@ -547,6 +552,36 @@ func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.StringVar(&s.title, "title", "", "display title (default: the task's first line)")
 	f.StringArrayVar(&s.tags, "tag", nil, "label for filtering and cost attribution; repeatable")
 	f.Float64Var(&s.spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
+	f.StringVar(&s.githubCLI, githubCLIFlag, "", "on, off or inherit (the default, the workspace's setting): this session's gh, agentConfig.githubCli; "+
+		"on needs a workspace admin and is refused with AGENT_SESSION_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory")
+}
+
+// gitHubCLI is --github-cli when it was given (fs holds the bound flags):
+// given reports the flag, and binding is nil for inherit.
+func (s *sessionFlags) gitHubCLI(fs *pflag.FlagSet) (given bool, binding *bool, err error) {
+	if !fs.Changed(githubCLIFlag) {
+		return false, nil, nil
+	}
+	binding, err = parseOnOff(githubCLIFlag, s.githubCLI, true)
+	return err == nil, binding, err
+}
+
+// parseOnOff reads an on/off flag value, the inverse of bindingWord: nil for
+// inherit when the flag takes it, and a usage error for anything else.
+func parseOnOff(flag, value string, inherit bool) (*bool, error) {
+	switch value {
+	case "on", "off":
+		on := value == "on"
+		return &on, nil
+	case "inherit":
+		if inherit {
+			return nil, nil
+		}
+	}
+	if inherit {
+		return nil, usageError("--%s takes on, off or inherit, not %q", flag, value)
+	}
+	return nil, usageError("--%s takes on or off, not %q", flag, value)
 }
 
 // maxSpend is --max-spend when it was given (fs holds the bound flags).
@@ -598,6 +633,10 @@ func (f *createFlags) request(d deps, task []string) (createRequest, error) {
 	if in.MaxSpendUSD, err = f.session.maxSpend(f.fs); err != nil {
 		return createRequest{}, err
 	}
+	// inherit, like no flag, leaves agentConfig.githubCli out.
+	if _, in.AgentConfig.GitHubCLI, err = f.session.gitHubCLI(f.fs); err != nil {
+		return createRequest{}, err
+	}
 	if f.parent != "" {
 		if in.ParentSessionID, err = sessionRef(f.parent); err != nil {
 			return createRequest{}, err
@@ -646,7 +685,15 @@ func runCommand(d deps) *cobra.Command {
 			"runs in an empty sandbox. --attach uploads files the agent finds under\n" +
 			"/attachments; --output-schema asks for a result matching a JSON Schema\n" +
 			"(read it from outcome.result). The create is idempotent: a retry after a\n" +
-			"network error returns the same session, never a second one.",
+			"network error returns the same session, never a second one.\n\n" +
+			"--github-cli off turns gh off for this session alone (anyone who can start\n" +
+			"it may); Git pushes to its branch and the bex MCP tools keep working.\n" +
+			"--github-cli on turns gh on against a workspace whose gh is off: only a\n" +
+			"workspace admin may, and nobody may while that off is mandatory\n" +
+			"(AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required or mandatory). A\n" +
+			"child session (--parent) can only turn gh off. Without the flag (or with\n" +
+			"inherit) the session follows its parent's, else the workspace's setting\n" +
+			"(`bex agent env`).",
 		Example: "  bex agent run --repo acme/api \"Upgrade the Go toolchain to 1.26\"\n" +
 			"  bex agent run --attach screenshot.png --wait -o json \"Fix the layout bug in the screenshot\"\n" +
 			"  bex agent run --output-schema schema.json --max-spend 2 --follow -f task.md",

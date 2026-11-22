@@ -615,6 +615,11 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
       "Машина, которую получает песочница каждого запуска. Значение по умолчанию для рабочего пространства берётся из «Настройки → Агенты» при каждом запуске.",
     description: "Automation form — sandbox template field help (w10/m519)",
   },
+  "agentAutomations.help.githubCli": {
+    message:
+      "Получают ли её сессии gh. «Наследовать» следует настройке «GitHub CLI для автоматизаций» в «Настройки → Агенты».",
+    description: "Automation form — GitHub CLI field help (w10/m561)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "О каких запусках вам приходят письма. О приостановке платформой — всегда.",
@@ -699,6 +704,18 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.problem.skills": {
     message: "Аргументы навыка должны быть одной строкой не длиннее 4 КБ.",
     description: "Form validation",
+  },
+  "agentAutomations.problem.githubCliMandatory": {
+    message:
+      "В этом рабочем пространстве выключение GitHub CLI обязательно, поэтому автоматизация не может включить gh. Выберите «Выкл.» или «Наследовать».",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentAutomations.problem.githubCliAdminRequired": {
+    message:
+      "Включить gh для автоматизации может только администратор рабочего пространства. Выберите «Выкл.» или «Наследовать».",
+    description:
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
   },
   "agentAutomations.problem.timezone": {
     message: "Выберите допустимый часовой пояс.",

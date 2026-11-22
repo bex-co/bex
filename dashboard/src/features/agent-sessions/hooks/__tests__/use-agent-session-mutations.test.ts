@@ -137,3 +137,58 @@ describe("useAgentSessionMutations list cache invalidation", () => {
     expect(evict).not.toHaveBeenCalled();
   });
 });
+
+// w10/m561: the session's own gh binding rides in agentConfig: false turns
+// gh off, true turns it on, and an omitted one inherits the workspace's.
+describe("useAgentSessionMutations create agentConfig.githubCli", () => {
+  beforeEach(() => {
+    mutate.mockReset();
+    mutate.mockResolvedValue({
+      data: {
+        createAgentSession: {
+          __typename: "AgentSession",
+          id: "ags-new",
+          phase: "creating",
+          ticket: "tkt",
+          url: null,
+          streamUrl: null,
+          expiresAt: null,
+        },
+      },
+    });
+  });
+
+  const sentAgentConfig = () =>
+    (mutate.mock.calls[0][0] as { variables: { agentConfig: object } })
+      .variables.agentConfig;
+
+  it.each([false, true])("sends githubCli %s", async (githubCli) => {
+    const { result } = renderHook(() => useAgentSessionMutations());
+    await act(() =>
+      result.current.create({
+        repo: "acme/widgets",
+        branch: "bex-agent/fix",
+        agent: "claude",
+        task: "fix it",
+        githubCli,
+      }),
+    );
+    expect(sentAgentConfig()).toMatchObject({ agent: "claude", githubCli });
+  });
+
+  it("leaves githubCli out to inherit", async () => {
+    const { result } = renderHook(() => useAgentSessionMutations());
+    await act(() =>
+      result.current.create({
+        repo: "acme/widgets",
+        branch: "bex-agent/fix",
+        agent: "claude",
+        task: "fix it",
+      }),
+    );
+    // Undefined is dropped from the request's JSON, so nothing is sent.
+    expect(JSON.parse(JSON.stringify(sentAgentConfig()))).not.toHaveProperty(
+      "githubCli",
+    );
+  });
+});

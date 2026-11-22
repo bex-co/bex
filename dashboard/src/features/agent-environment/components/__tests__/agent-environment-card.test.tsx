@@ -56,6 +56,11 @@ function setupWithCache(env: AgentEnvironmentView = ENV) {
 }
 
 const radio = (name: RegExp) => screen.getByRole("radio", { name });
+const gh = () => screen.getByRole("switch", { name: "GitHub CLI (gh)" });
+const mandatory = () =>
+  screen.getByRole("switch", { name: "Make off mandatory" });
+const automations = () =>
+  screen.getByRole("combobox", { name: "GitHub CLI for automations" });
 const save = () => screen.getByRole("button", { name: "Save" });
 
 describe("AgentEnvironmentCard", () => {
@@ -755,8 +760,6 @@ describe("AgentEnvironmentCard", () => {
   // w10/m524: the sessions' gh, a Devin security profile's gh API access.
   // It saves on toggle, as the available-agents switches do.
   describe("GitHub CLI", () => {
-    const gh = () => screen.getByRole("switch", { name: "GitHub CLI (gh)" });
-
     it.each([true, false])("shows the stored value (%s)", (enabled) => {
       setup({ ...ENV, githubCliEnabled: enabled });
       expect(gh()).toHaveAttribute("aria-checked", String(enabled));
@@ -845,39 +848,236 @@ describe("AgentEnvironmentCard", () => {
       },
     );
 
-    it("keeps the skeleton's GitHub CLI row in step with the ready card", () => {
-      const shape = (section: HTMLElement) => {
-        const row = section.firstElementChild!;
-        return {
-          // Right after the network tier, in the same card slot.
-          slot: Array.from(section.parentElement!.children).indexOf(section),
-          section: section.className,
-          children: section.children.length,
+    it("keeps the skeleton's GitHub CLI rows in step with the ready card", () => {
+      // Each row's frame and the boxes inside it, in order: the workspace
+      // switch, the mandatory flag and the automations default (w10/m561).
+      const shape = (section: HTMLElement) => ({
+        // Right after the network tier, in the same card slot.
+        slot: Array.from(section.parentElement!.children).indexOf(section),
+        section: section.className,
+        rows: Array.from(section.children).map((row) => ({
           row: row.className,
-          text: row.firstElementChild!.className,
-          textRows: row.firstElementChild!.children.length,
-        };
-      };
+          children: Array.from(row.children).map((child) => ({
+            tag: child.tagName,
+            className: child.className,
+            children: child.children.length,
+          })),
+        })),
+      });
       setup();
-      const ready = shape(screen.getByTestId("github-cli-section"));
-      // The switch is h-5 w-9; the skeleton holds that box.
+      const section = screen.getByTestId("github-cli-section");
+      const ready = shape(section);
+      // The switches are h-5 w-9 and the select h-9; the skeleton holds them.
       expect(gh()).toHaveClass("h-5", "w-9", "shrink-0");
+      expect(mandatory()).toHaveClass("h-5", "w-9", "shrink-0");
+      expect(automations()).toHaveAttribute("data-size", "default");
+      expect(automations()).toHaveClass("w-full", "max-w-sm");
       cleanup();
 
       setup(null, true);
       const skeleton = screen.getByTestId("github-cli-section-skeleton");
-      expect(shape(skeleton)).toEqual(ready);
-      expect(skeleton.firstElementChild!.lastElementChild).toHaveClass(
-        "h-5",
-        "w-9",
-        "shrink-0",
-        "rounded-full",
+      const pending = shape(skeleton);
+      expect(pending.slot).toBe(ready.slot);
+      expect(pending.section).toBe(ready.section);
+      expect(pending.rows.map((row) => row.row)).toEqual(
+        ready.rows.map((row) => row.row),
       );
-      expect(skeleton).toHaveTextContent("GitHub CLI (gh)");
-      expect(skeleton).toHaveTextContent(
+      // The text column and the help match; the control is a placeholder of
+      // the same box, not the control.
+      expect(pending.rows.map((row) => row.children.length)).toEqual(
+        ready.rows.map((row) => row.children.length),
+      );
+      expect(pending.rows[0]!.children[0]).toEqual(ready.rows[0]!.children[0]);
+      expect(pending.rows[1]!.children[0]).toEqual(ready.rows[1]!.children[0]);
+      expect(pending.rows[2]!.children[2]).toEqual(ready.rows[2]!.children[2]);
+      const [ghBox, mandatoryBox] = [0, 1].map(
+        (i) => skeleton.children[i]!.lastElementChild,
+      );
+      for (const box of [ghBox, mandatoryBox]) {
+        expect(box).toHaveClass("h-5", "w-9", "shrink-0", "rounded-full");
+      }
+      expect(skeleton.children[2]!.children[1]).toHaveClass(
+        "h-9",
+        "w-full",
+        "max-w-sm",
+      );
+      for (const text of [
+        "GitHub CLI (gh)",
         /removes gh from every agent session in this workspace/,
-      );
+        "Make off mandatory",
+        "Takes effect while GitHub CLI is off: no automation or session can then turn gh back on.",
+        "GitHub CLI for automations",
+        /unless an automation sets its own/,
+      ]) {
+        expect(within(skeleton).getByText(text)).toBeInTheDocument();
+      }
       expect(within(skeleton).queryByRole("switch")).toBeNull();
+      expect(within(skeleton).queryByRole("combobox")).toBeNull();
+    });
+  });
+
+  // w10/m561: Devin's mandatory profile and automations default, beside the
+  // workspace's switch. Each saves on change; members see them disabled.
+  describe("GitHub CLI mandatory off and automations default", () => {
+    it("shows what is stored", () => {
+      setup({
+        ...ENV,
+        githubCliEnabled: false,
+        githubCliMandatory: true,
+        automationsGithubCliEnabled: false,
+      });
+      expect(mandatory()).toBeChecked();
+      expect(mandatory()).toBeEnabled();
+      expect(mandatory()).toHaveAccessibleDescription(
+        "Takes effect while GitHub CLI is off: no automation or session can then turn gh back on.",
+      );
+      expect(automations()).toHaveTextContent(/^Off$/);
+      expect(automations()).toBeEnabled();
+      expect(automations()).toHaveAccessibleDescription(
+        "The gh of the sessions automations start, unless an automation sets its own. Inherit follows the switch above.",
+      );
+    });
+
+    it("lets an admin make the off mandatory while gh is on, and lift it", async () => {
+      const { user, update } = setupWithCache({
+        ...ENV,
+        githubCliEnabled: true,
+      });
+      expect(mandatory()).not.toBeChecked();
+      await user.click(mandatory());
+      expect(update).toHaveBeenLastCalledWith({ githubCliMandatory: true });
+      expect(mandatory()).toBeChecked();
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "GitHub CLI off is now mandatory",
+      );
+      await user.click(mandatory());
+      expect(update).toHaveBeenLastCalledWith({ githubCliMandatory: false });
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "GitHub CLI off is no longer mandatory",
+      );
+      // Neither the workspace switch nor the Save button's draft moved.
+      expect(gh()).toBeChecked();
+      expect(save()).toBeDisabled();
+    });
+
+    it("saves the automations default: on and off bind, inherit resets", async () => {
+      const { user, update, rerender } = setup();
+      update.mockImplementation(async (input) => {
+        const next = {
+          ...hook.current.environment!,
+          automationsGithubCliEnabled: input.resetAutomationsGithubCli
+            ? null
+            : (input.automationsGithubCliEnabled ?? null),
+        };
+        rerender(next);
+        return next;
+      });
+      expect(automations()).toHaveTextContent("Inherit (on)");
+      await user.click(automations());
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual(["Inherit (on)", "On", "Off"]);
+      await user.click(screen.getByRole("option", { name: "Off" }));
+      expect(update).toHaveBeenLastCalledWith({
+        automationsGithubCliEnabled: false,
+      });
+      expect(automations()).toHaveTextContent(/^Off$/);
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "GitHub CLI turned off for automations",
+      );
+
+      await user.click(automations());
+      await user.click(screen.getByRole("option", { name: "On" }));
+      expect(update).toHaveBeenLastCalledWith({
+        automationsGithubCliEnabled: true,
+      });
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "GitHub CLI turned on for automations",
+      );
+
+      // Inherit is the explicit null the GraphQL input cannot carry.
+      await user.click(automations());
+      await user.click(screen.getByRole("option", { name: "Inherit (on)" }));
+      expect(update).toHaveBeenLastCalledWith({
+        resetAutomationsGithubCli: true,
+      });
+      expect(automations()).toHaveTextContent("Inherit (on)");
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "Automations now inherit the GitHub CLI setting",
+      );
+      expect(update).toHaveBeenCalledTimes(3);
+      expect(save()).toBeDisabled();
+    });
+
+    it("locks On with the reason while the workspace's off is mandatory", async () => {
+      const { user, update } = setup({
+        ...ENV,
+        githubCliEnabled: false,
+        githubCliMandatory: true,
+      });
+      expect(automations()).toHaveTextContent("Inherit (off)");
+      await user.click(automations());
+      const on = screen.getByRole("option", { name: /^On/ });
+      expect(on).toHaveAttribute("aria-disabled", "true");
+      expect(on).toHaveTextContent(
+        "Unavailable while this workspace's GitHub CLI off is mandatory.",
+      );
+      await user.click(screen.getByRole("option", { name: "Off" }));
+      expect(update).toHaveBeenLastCalledWith({
+        automationsGithubCliEnabled: false,
+      });
+    });
+
+    it("shows the server's lock under the automations control and the stored value again", async () => {
+      const { user, update } = setupWithCache();
+      update.mockRejectedValueOnce(
+        codedGraphQLError("AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED", {
+          field: "automationsGithubCliEnabled",
+          reason: "mandatory",
+        }),
+      );
+      await user.click(automations());
+      await user.click(screen.getByRole("option", { name: "On" }));
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "GitHub CLI off is mandatory, so automations can't turn gh on.",
+      );
+      expect(automations()).toHaveAttribute("aria-invalid", "true");
+      expect(automations()).toHaveAccessibleDescription(
+        /automations can't turn gh on.*unless an automation sets its own/,
+      );
+      expect(automations()).toHaveTextContent("Inherit (on)");
+      expect(toast.success).not.toHaveBeenCalled();
+    });
+
+    it("says why a mandatory switch failed to save", async () => {
+      const { user, update } = setupWithCache();
+      update.mockRejectedValueOnce(uncodedGraphQLError("boom"));
+      await user.click(mandatory());
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Couldn't change whether GitHub CLI off is mandatory. Try again.",
+      );
+      expect(mandatory()).not.toBeChecked();
+    });
+
+    it("disables every new control for a member without can_manage", async () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      const { user, update } = setup({
+        ...ENV,
+        githubCliMandatory: true,
+        automationsGithubCliEnabled: true,
+      });
+      expect(gh()).toBeDisabled();
+      expect(mandatory()).toBeDisabled();
+      expect(mandatory()).toBeChecked();
+      expect(automations()).toBeDisabled();
+      expect(automations()).toHaveTextContent(/^On$/);
+      await user.click(mandatory());
+      await user.click(automations());
+      expect(screen.queryByRole("option")).toBeNull();
+      expect(update).not.toHaveBeenCalled();
     });
   });
 

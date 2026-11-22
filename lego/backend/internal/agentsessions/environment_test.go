@@ -98,6 +98,12 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.GitHubCLIDisabled != nil {
 		row.GitHubCLIDisabled = *patch.GitHubCLIDisabled
 	}
+	if patch.SetAutomationsGitHubCLI {
+		row.AutomationsGitHubCLI = patch.AutomationsGitHubCLI
+	}
+	if patch.GitHubCLIMandatory != nil {
+		row.GitHubCLIMandatory = *patch.GitHubCLIMandatory
+	}
 	if patch.DisabledModels != nil {
 		row.DisabledModels = slices.Clone(*patch.DisabledModels)
 	}
@@ -902,7 +908,7 @@ func TestDispatchTellsTheDriverWhenGitHubCLIIsOff(t *testing.T) {
 		t.Fatalf("steer with gh back on: %s = %q, want it absent", envGitHubCLI, value)
 	}
 
-	chat := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 1}, store.AgentEnvironment{GitHubCLIDisabled: true})
+	chat := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 1}, store.AgentEnvironment{GitHubCLIDisabled: true}, agentsession.GitHubCLIWorkspace)
 	if value, ok := chat[envGitHubCLI]; ok {
 		t.Fatalf("a repo-less session with gh off: %s = %q, want it absent", envGitHubCLI, value)
 	}

@@ -13,6 +13,7 @@ import {
   type AgentEnvironmentFieldsFragment,
   type AgentEnvironmentInput,
 } from "@/graphql/definitions";
+import type { GithubCliChoice } from "@/features/agent-sessions/lib/github-cli";
 
 /** The network-tier options, shared by the ready card and its skeleton. */
 export const TIERS = [
@@ -303,6 +304,40 @@ export function modelKeyErrorKey(err: unknown): string {
 /** The locale key for a failed GitHub CLI switch (w10/m524). */
 export function githubCliErrorKey(err: unknown): string {
   return sectionErrorKey(err, "agentEnvironment.githubCliSaveFailed");
+}
+
+/** The locale key for a failed mandatory-off switch (w10/m561). */
+export function githubCliMandatoryErrorKey(err: unknown): string {
+  return sectionErrorKey(err, "agentEnvironment.githubCliMandatorySaveFailed");
+}
+
+/**
+ * The locale key for a failed automations default (w10/m561): "on" is
+ * refused while the workspace's gh off is mandatory.
+ */
+export function githubCliAutomationsErrorKey(err: unknown): string {
+  return sectionErrorKey(
+    err,
+    "agentEnvironment.githubCliAutomationsSaveFailed",
+    {
+      AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED:
+        "agentEnvironment.githubCliAutomationsLocked",
+    },
+  );
+}
+
+/**
+ * The update an automations-default choice sends (w10/m561): on or off binds
+ * the sessions automations start, and inherit returns them to the workspace's
+ * switch through resetAutomationsGithubCli, the explicit null the GraphQL
+ * input cannot carry.
+ */
+export function automationsGithubCliInput(
+  choice: GithubCliChoice,
+): AgentEnvironmentInput {
+  return choice === "inherit"
+    ? { resetAutomationsGithubCli: true }
+    : { automationsGithubCliEnabled: choice === "on" };
 }
 
 /**

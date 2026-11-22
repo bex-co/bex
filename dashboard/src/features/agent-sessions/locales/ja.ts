@@ -261,6 +261,59 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Tooltip of the sandbox template a session runs on, with its size",
   },
+  "agentSessions.githubCliInherit": {
+    message: "継承",
+    description:
+      "GitHub CLI choice — inherit the level above, while what that resolves to is still loading (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOn": {
+    message: "継承（オン）",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh on (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOff": {
+    message: "継承（オフ）",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh off (w10/m561)",
+  },
+  "agentSessions.githubCliOn": {
+    message: "オン",
+    description:
+      "GitHub CLI choice — gh on for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOff": {
+    message: "オフ",
+    description:
+      "GitHub CLI choice — gh off for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOnMandatory": {
+    message:
+      "このワークスペースでは GitHub CLI のオフが必須のため、選択できません。",
+    description:
+      "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
+  },
+  "agentSessions.githubCliOnAdminOnly": {
+    message: "gh をオンにできるのはワークスペースの管理者のみです。",
+    description:
+      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+  },
+  "agentSessions.githubCliTitle": {
+    message: "このセッションの GitHub CLI: {choice}",
+    description:
+      "Tooltip of the composer's GitHub CLI control; {choice} is the chosen binding, e.g. Inherit (on) (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED": {
+    message:
+      "このワークスペースでは GitHub CLI のオフが必須のため、セッションで gh をオンにすることはできません。「オフ」または「継承」を選んでください。",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
+    message:
+      "セッションで gh をオンにできるのはワークスペースの管理者のみです。「オフ」または「継承」を選んでください。",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",

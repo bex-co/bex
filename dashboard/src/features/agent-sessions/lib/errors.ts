@@ -24,7 +24,9 @@ export interface AgentSessionErrorParams {
  * Codes whose copy depends on a param: each names the message variant
  * (`agentSessions.errors.<CODE>_<variant>`) its params select, or null for the
  * plain message. The trust-tier session limit (ADR091 D10.1) names its cause:
- * a new workspace, or one held back by a failed or disputed payment.
+ * a new workspace, or one held back by a failed or disputed payment. A gh
+ * binding refused as on (w10/m561) names why: the workspace's mandatory off,
+ * or a caller who is not a workspace admin.
  */
 const MESSAGE_VARIANTS: Record<
   string,
@@ -32,6 +34,8 @@ const MESSAGE_VARIANTS: Record<
 > = {
   AGENT_SESSION_TRUST_LIMIT: (params) =>
     params.locked === true ? "locked" : null,
+  AGENT_SESSION_GITHUB_CLI_LOCKED: (params) =>
+    params.reason === "admin_required" ? "adminRequired" : null,
 };
 
 /**

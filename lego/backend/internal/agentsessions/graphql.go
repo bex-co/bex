@@ -21,6 +21,8 @@ var agentConfigGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"modelEndpoint": gqlutil.StrField(func(v AgentConfig) any { return v.ModelEndpoint }),
 		"task":          gqlutil.ReqStrField(func(v AgentConfig) any { return v.Task }),
 		"template":      gqlutil.StrField(func(v AgentConfig) any { return v.Template }),
+		"githubCli": &graphql.Field{Type: graphql.Boolean, Description: "This session's own gh binding: null inherits the workspace's GitHub CLI setting, false turned gh off for it, true turned it on against an inherited off. A child session is governed by its tree's chain and its own binding can only turn gh off.",
+			Resolve: gqlutil.Field(func(v AgentConfig) any { return v.GitHubCLI })},
 	},
 })
 
@@ -32,6 +34,7 @@ var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"modelEndpoint": &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"task":          &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"template":      &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"githubCli":     &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Omit (or null) to inherit the workspace's GitHub CLI setting. false turns gh off for this session; anyone who can start it may. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off."},
 	},
 })
 
@@ -197,6 +200,10 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"agentDataUse":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentDataUseGQLType))), Description: "Each agent profile whose model provider may train on what its sessions send, and the admin acknowledgement turning it on requires.", Resolve: gqlutil.Field(func(v Environment) any { return v.AgentDataUse })},
 		"githubCliEnabled": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.GitHubCLIEnabled })},
+		"automationsGithubCliEnabled": optionalBoolField("The gh binding of the sessions the workspace's automations start: null inherits githubCliEnabled, false turns gh off for them, true turns it on for them. An automation's own template.agentConfig.githubCli wins over it, and it has no effect under a mandatory off.",
+			func(v Environment) *bool { return v.AutomationsGitHubCLIEnabled }),
+		"githubCliMandatory": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "Whether the workspace's gh off is mandatory: while githubCliEnabled is false, no automations default, automation or session turns gh back on. No effect while githubCliEnabled is true.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.GitHubCLIMandatory })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
 				return nil
@@ -252,6 +259,9 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"enabledAgents":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first."},
 		"acknowledgeAgentDataUse":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Agent profiles from agentDataUse whose data use this admin acknowledges."},
 		"githubCliEnabled":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on."},
+		automationsGitHubCLIField:        &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "The gh binding of the sessions automations start: false turns gh off for them, true turns it on for them, resetAutomationsGithubCli returns it to inheriting githubCliEnabled. true is refused with AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory."},
+		"resetAutomationsGithubCli":      &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the automations default to inheriting githubCliEnabled (the explicit null this input cannot carry)."},
+		"githubCliMandatory":             &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true makes the workspace's gh off mandatory: while githubCliEnabled is false nothing below turns gh back on, and saving an automations default, automation or session that would is refused with a GITHUB_CLI_LOCKED code. false lets lower levels choose again."},
 		"enabledModels":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the catalog models members may choose; the catalog's others are turned off. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn."},
 	},
 })
@@ -291,6 +301,16 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 		input.AcknowledgeAgentDataUse = gqlutil.StringList(acks)
 	}
 	input.GitHubCLIEnabled = gqlutil.BoolPtr(raw, "githubCliEnabled")
+	if v, present := raw[automationsGitHubCLIField]; present {
+		input.AutomationsGitHubCLIEnabledSet = true
+		if b, ok := v.(bool); ok {
+			input.AutomationsGitHubCLIEnabled = &b
+		}
+	}
+	if reset, ok := raw["resetAutomationsGithubCli"].(bool); ok {
+		input.ResetAutomationsGitHubCLI = reset
+	}
+	input.GitHubCLIMandatory = gqlutil.BoolPtr(raw, "githubCliMandatory")
 	if models, ok := raw["enabledModels"].([]any); ok {
 		list := gqlutil.StringList(models)
 		input.EnabledModels = &list
@@ -758,7 +778,7 @@ func secretsArg(args map[string]any) SessionSecretsInput {
 
 func configArg(args map[string]any) AgentConfig {
 	raw, _ := args["agentConfig"].(map[string]any)
-	return AgentConfig{Agent: gqlutil.Str(raw, "agent"), Model: gqlutil.Str(raw, "model"), ModelEndpoint: gqlutil.Str(raw, "modelEndpoint"), Task: gqlutil.Str(raw, "task"), Template: gqlutil.Str(raw, "template")}
+	return AgentConfig{Agent: gqlutil.Str(raw, "agent"), Model: gqlutil.Str(raw, "model"), ModelEndpoint: gqlutil.Str(raw, "modelEndpoint"), Task: gqlutil.Str(raw, "task"), Template: gqlutil.Str(raw, "template"), GitHubCLI: gqlutil.BoolPtr(raw, "githubCli")}
 }
 
 func (s *Service) GraphQLQuery() graphql.Fields {

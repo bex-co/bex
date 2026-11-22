@@ -84,11 +84,15 @@ type queuedMessage struct {
 	BlockedReason string `json:"blockedReason"`
 }
 
+// agentConfig is a session's (and an automation template's) agent part.
+// GitHubCLI is its own `gh` binding (w10/m561): nil inherits the
+// workspace's, and the API sends it only when set.
 type agentConfig struct {
-	Agent    string `json:"agent"`
-	Model    string `json:"model,omitempty"`
-	Task     string `json:"task"`
-	Template string `json:"template,omitempty"`
+	Agent     string `json:"agent"`
+	Model     string `json:"model,omitempty"`
+	Task      string `json:"task"`
+	Template  string `json:"template,omitempty"`
+	GitHubCLI *bool  `json:"githubCli,omitempty"`
 }
 
 type outcome struct {

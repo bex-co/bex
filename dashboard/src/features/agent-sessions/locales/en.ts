@@ -266,6 +266,58 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Tooltip of the sandbox template a session runs on, with its size",
   },
+  "agentSessions.githubCliInherit": {
+    message: "Inherit",
+    description:
+      "GitHub CLI choice — inherit the level above, while what that resolves to is still loading (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOn": {
+    message: "Inherit (on)",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh on (w10/m561)",
+  },
+  "agentSessions.githubCliInheritOff": {
+    message: "Inherit (off)",
+    description:
+      "GitHub CLI choice — inherit the level above, which has gh off (w10/m561)",
+  },
+  "agentSessions.githubCliOn": {
+    message: "On",
+    description:
+      "GitHub CLI choice — gh on for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOff": {
+    message: "Off",
+    description:
+      "GitHub CLI choice — gh off for this session or automation (w10/m561)",
+  },
+  "agentSessions.githubCliOnMandatory": {
+    message: "Unavailable while this workspace's GitHub CLI off is mandatory.",
+    description:
+      "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
+  },
+  "agentSessions.githubCliOnAdminOnly": {
+    message: "Only a workspace admin can turn gh on.",
+    description:
+      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+  },
+  "agentSessions.githubCliTitle": {
+    message: "GitHub CLI for this session: {choice}",
+    description:
+      "Tooltip of the composer's GitHub CLI control; {choice} is the chosen binding, e.g. Inherit (on) (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED": {
+    message:
+      "This workspace's GitHub CLI off is mandatory, so a session can't turn gh on. Choose Off or Inherit.",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
+  },
+  "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
+    message:
+      "Only a workspace admin can turn gh on for a session. Choose Off or Inherit.",
+    description:
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",

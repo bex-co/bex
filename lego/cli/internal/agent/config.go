@@ -388,7 +388,13 @@ type agentEnvironment struct {
 	// (w10/m524); nil from a bex-api that predates the setting, which
 	// cannot turn it off, so it reads as on.
 	GitHubCLIEnabled *bool `json:"githubCliEnabled"`
-	AgentDataUse     []struct {
+	// AutomationsGitHubCLIEnabled is the gh of the sessions automations start
+	// (w10/m561), nil when it inherits GitHubCLIEnabled; GitHubCLIMandatory
+	// makes the workspace's off a floor. A bex-api that predates them sends
+	// neither, which reads as inherit and not mandatory.
+	AutomationsGitHubCLIEnabled *bool `json:"automationsGithubCliEnabled"`
+	GitHubCLIMandatory          bool  `json:"githubCliMandatory"`
+	AgentDataUse                []struct {
 		Agent          string     `json:"agent"`
 		AcknowledgedAt *time.Time `json:"acknowledgedAt"`
 		AcknowledgedBy *string    `json:"acknowledgedBy"`
@@ -407,6 +413,8 @@ func envCommand(d deps) *cobra.Command {
 	var (
 		tier, model, spendCap string
 		template, githubCLI   string
+		automationsGitHubCLI  string
+		githubCLIMandatory    string
 		hosts, agents, acks   []string
 		models                []string
 		noHosts, keyStdin     bool
@@ -428,6 +436,17 @@ func envCommand(d deps) *cobra.Command {
 			"gh call is refused with a message naming this setting. Git pushes to the\n" +
 			"session branch and the bex MCP tools keep working. --github-cli on turns it\n" +
 			"back on.\n" +
+			"--automations-github-cli sets the gh of the sessions automations start\n" +
+			"(automationsGithubCliEnabled): on, off, or inherit to follow --github-cli.\n" +
+			"An automation's own --github-cli wins over it. on is refused with\n" +
+			"AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED while the workspace's gh off is\n" +
+			"mandatory.\n" +
+			"--github-cli-mandatory on (githubCliMandatory) makes the workspace's gh off\n" +
+			"a floor: while --github-cli is off, no automations default, automation or\n" +
+			"session turns gh back on, and saving one that would is refused with\n" +
+			"AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED, AGENT_AUTOMATION_GITHUB_CLI_LOCKED or\n" +
+			"AGENT_SESSION_GITHUB_CLI_LOCKED (reason mandatory). It has no effect while\n" +
+			"gh is on; off lets them choose again.\n" +
 			"--models replaces the platform catalog models members may choose; the\n" +
 			"catalog's others are turned off. It must keep the catalog's default (the\n" +
 			"first of `bex agent env`'s Models). A session, message or automation naming\n" +
@@ -454,12 +473,27 @@ func envCommand(d deps) *cobra.Command {
 			if f.Changed("default-template") {
 				patch["defaultTemplate"] = template
 			}
-			if f.Changed("github-cli") {
-				switch githubCLI {
-				case "on", "off":
-					patch["githubCliEnabled"] = githubCLI == "on"
-				default:
-					return usageError("--github-cli takes on or off, not %q", githubCLI)
+			for _, sw := range []struct {
+				flag, value, field string
+				inherit            bool
+			}{
+				{"github-cli", githubCLI, "githubCliEnabled", false},
+				// inherit sends an explicit null, which returns to
+				// inheriting; an absent field keeps the stored value.
+				{"automations-github-cli", automationsGitHubCLI, "automationsGithubCliEnabled", true},
+				{"github-cli-mandatory", githubCLIMandatory, "githubCliMandatory", false},
+			} {
+				if !f.Changed(sw.flag) {
+					continue
+				}
+				binding, err := parseOnOff(sw.flag, sw.value, sw.inherit)
+				if err != nil {
+					return err
+				}
+				if binding == nil {
+					patch[sw.field] = nil
+				} else {
+					patch[sw.field] = *binding
 				}
 			}
 			if f.Changed("spend-cap") {
@@ -508,6 +542,8 @@ func envCommand(d deps) *cobra.Command {
 	f.StringVar(&model, "default-model", "", "the workspace's default model id (\"\" returns to the provider default)")
 	f.StringVar(&template, "default-template", "", "the workspace's default sandbox template (\"\" returns to the platform's; `bex agent models` lists them)")
 	f.StringVar(&githubCLI, "github-cli", "", "on or off: whether the workspace's agent sessions get gh (on unless an admin turned it off)")
+	f.StringVar(&automationsGitHubCLI, "automations-github-cli", "", "on, off or inherit: the gh of the sessions automations start (inherit, the default, follows --github-cli)")
+	f.StringVar(&githubCLIMandatory, "github-cli-mandatory", "", "on or off: whether the workspace's gh off is mandatory, so no automation or session turns gh back on")
 	f.StringVar(&spendCap, "spend-cap", "", "monthly agent-model spend cap in USD, or "+spendCapPlanDefault)
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
@@ -522,11 +558,22 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	tw := newTable(w)
 	tw.row("Network tier", e.NetworkTier)
 	tw.row("Custom hosts", strings.Join(e.CustomHosts, ", "))
-	if e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled {
+	githubOn := e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled
+	switch {
+	case githubOn && e.GitHubCLIMandatory:
+		tw.row("GitHub CLI", "on (an off would be mandatory)")
+	case githubOn:
 		tw.row("GitHub CLI", "on")
-	} else {
+	case e.GitHubCLIMandatory:
+		tw.row("GitHub CLI", "off (mandatory; sessions get no gh; Git pushes and the bex tools still work)")
+	default:
 		tw.row("GitHub CLI", "off (sessions get no gh; Git pushes and the bex tools still work)")
 	}
+	automations := firstNonEmpty(bindingWord(e.AutomationsGitHubCLIEnabled), "inherit")
+	if automations == "on" && !githubOn && e.GitHubCLIMandatory {
+		automations += " (the workspace's mandatory off wins)"
+	}
+	tw.row("Automations GitHub CLI", automations)
 	// A bex-api that predates the list offers the whole catalog.
 	enabled := e.EnabledModels
 	if enabled == nil {

@@ -87,6 +87,18 @@ func (t table) row(label, value string) {
 	}
 }
 
+// bindingWord words a `gh` binding (w10/m561): "on", "off", or "" when it
+// inherits.
+func bindingWord(b *bool) string {
+	switch {
+	case b == nil:
+		return ""
+	case *b:
+		return "on"
+	}
+	return "off"
+}
+
 // repoBranch is "owner/repo @ branch" (or just the repo).
 func repoBranch(repo, branch string) string {
 	return strings.TrimSpace(repo + " " + branchSuffix(branch))
@@ -266,6 +278,8 @@ func writeSession(w io.Writer, s session) {
 		row("Repo", repoBranch(s.Repo, s.Branch))
 	}
 	row("Sandbox", s.AgentConfig.Template)
+	// Shown only when the session binds gh itself (w10/m561).
+	row("GitHub CLI", bindingWord(s.AgentConfig.GitHubCLI))
 	o := s.Outcome
 	if o == nil {
 		o = &outcome{}
