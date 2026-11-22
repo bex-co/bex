@@ -1,3 +1,4 @@
+import { SERVICE_TYPE_CREATE_PATHS } from "@/features/services/lib/create-context";
 import { render, waitFor } from "@testing-library/react";
 import {
   Outlet,
@@ -13,6 +14,7 @@ import {
   AuthWidgetSkeleton,
   BillingPageSkeleton,
   BlueprintCreatePageSkeleton,
+  DatabaseCreatePageSkeleton,
   DatabaseOverviewSkeleton,
   DatastoreLogsSkeleton,
   EnvGroupDetailContentSkeleton,
@@ -46,13 +48,17 @@ function regions(container: HTMLElement): string[] {
 
 function renderServiceCreateSkeleton(path: string) {
   const rootRoute = createRootRoute();
-  const createRouteNode = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/services/new",
-    component: ServiceCreatePageSkeleton,
-  });
+  // The type is the path, Render's create URLs (/web/new …).
+  const createRouteNodes = Object.values(SERVICE_TYPE_CREATE_PATHS).map(
+    (createPath) =>
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path: createPath,
+        component: ServiceCreatePageSkeleton,
+      }),
+  );
   const router = createRouter({
-    routeTree: rootRoute.addChildren([createRouteNode]),
+    routeTree: rootRoute.addChildren(createRouteNodes),
     history: createMemoryHistory({ initialEntries: [path] }),
     context: {},
   });
@@ -153,6 +159,22 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       ["page-header", "source-picker", "settings", "preview", "actions"],
     ],
     [
+      <DatabaseCreatePageSkeleton key="database-create" />,
+      "database-create",
+      [
+        "page-header",
+        "name",
+        "project-environment",
+        "physical-names",
+        "version",
+        "plan-picker",
+        "storage",
+        "high-availability",
+        "public-access",
+        "actions",
+      ],
+    ],
+    [
       <KeyValueCreatePageSkeleton key="keyvalue-create" />,
       "keyvalue-create",
       ["plan-picker", "project-environment", "public-access", "actions"],
@@ -185,9 +207,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   });
 
   it("previews the create source picker's search, connection control, and repository list", async () => {
-    const { container } = renderServiceCreateSkeleton(
-      "/services/new?type=web_service",
-    );
+    const { container } = renderServiceCreateSkeleton("/web/new");
     await waitFor(() =>
       expect(
         container.querySelector('[data-skeleton-region="source-toolbar"]'),
@@ -504,11 +524,36 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     },
   );
 
+  // Render's create template (create-form.tsx): rows in the standard-width
+  // frame, the ready page's action bar pinned in the frame's footer.
   it.each([
     [<BlueprintCreatePageSkeleton key="blueprint" />, "blueprint-create"],
     [<KeyValueCreatePageSkeleton key="keyvalue" />, "keyvalue-create"],
-    [<WebhookCreatePageSkeleton key="webhook" />, "webhook-create"],
+    [<DatabaseCreatePageSkeleton key="database" />, "database-create"],
   ])(
+    "lays the %s rows out in the standard frame above the pinned action bar",
+    (component, shape) => {
+      const { container, unmount } = render(component);
+      const frame = container.querySelector<HTMLElement>(
+        `[data-route-skeleton="${shape}"]`,
+      );
+      expect(frame?.querySelector(".max-w-5xl")).not.toBeNull();
+      expect(
+        frame!.querySelector('[data-skeleton-region="page-header"] h1')
+          ?.textContent,
+      ).not.toBe("");
+      const footer = frame!.querySelector(
+        '[data-skeleton-region="page-footer"]',
+      );
+      expect(footer).toHaveClass("sticky");
+      expect(
+        footer!.querySelector('[data-skeleton-region="actions"] button'),
+      ).toBeDisabled();
+      unmount();
+    },
+  );
+
+  it.each([[<WebhookCreatePageSkeleton key="webhook" />, "webhook-create"]])(
     "titles the create form above its card, in the form-width frame",
     (component, shape) => {
       const { container, unmount } = render(component);
@@ -584,12 +629,16 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     }
   });
 
+  // The ready page opens on its heading and the Source Code row; the
+  // settings and the action bar wait for a source, so the pending frame draws
+  // neither — and a static site's picker has no Existing Image tab.
   it.each([
-    ["/services/new", "plan-picker", "build-filters"],
-    ["/services/new?type=static_site", "build-filters", "plan-picker"],
-  ])(
-    "selects the service-create geometry for %s",
-    async (path, expected, absent) => {
+    ["/web/new", "New Web Service", 3],
+    ["/static/new", "New Static Site", 2],
+    ["/cron/new", "New Cron Job", 3],
+  ] as const)(
+    "draws %s's heading and Source Code row alone",
+    async (path, title, tabs) => {
       const { container } = renderServiceCreateSkeleton(path);
 
       await waitFor(() =>
@@ -597,42 +646,27 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
           container.querySelector('[data-route-skeleton="service-create"]'),
         ).not.toBeNull(),
       );
-      expect(regions(container)).toContain(expected);
-      expect(regions(container)).not.toContain(absent);
-      expect(regions(container)).toEqual(
-        expect.arrayContaining([
-          "service-type",
-          "source-picker",
-          "project-environment",
-          "environment-variables",
-          "secret-files",
-          "actions",
-        ]),
-      );
-      // The type's own create title, in the shared page header.
+      expect(regions(container)).toEqual([
+        "page-header",
+        "service-form",
+        "source-picker",
+        "source-toolbar",
+        "source-repositories",
+      ]);
       expect(
         container.querySelector('[data-skeleton-region="page-header"] h1')
           ?.textContent,
-      ).not.toBe("");
+      ).toBe(title);
+      const source = container.querySelector(
+        '[data-skeleton-region="source-picker"]',
+      )!;
+      expect(source).toHaveTextContent("Source Code");
+      // The underline tabs' row: one slot per tab.
+      expect(source.querySelector(".border-b")!.children).toHaveLength(tabs);
+      expect(
+        container.querySelector('[data-skeleton-region="page-footer"]'),
+      ).toBeNull();
     },
-  );
-});
-
-// w4/546: a cron job's plan cards sit under the run-time billing hint, so the
-// pending form draws it too and the cards don't shift when the form loads.
-it("previews a cron job's plan billing hint", async () => {
-  const { container } = renderServiceCreateSkeleton(
-    "/services/new?type=cron_job",
-  );
-  const picker = await waitFor(() => {
-    const region = container.querySelector(
-      '[data-skeleton-region="plan-picker"]',
-    );
-    expect(region).not.toBeNull();
-    return region as HTMLElement;
-  });
-  expect(picker).toHaveTextContent(
-    "A cron job is billed per second while a run executes. The minimum charge is $0.70 a month per cron job.",
   );
 });
 

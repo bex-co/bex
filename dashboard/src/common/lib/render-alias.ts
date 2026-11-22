@@ -24,22 +24,20 @@ export type RenderAliasSegment = keyof typeof RENDER_ALIAS_TARGETS;
 /**
  * Where each segment's CREATE URL lands (w1/m45, w5/m47). Render's New menu puts
  * service creates under the type segment (`/web/new` … — live capture,
- * 2026-07-16); the generic `${target}/${rest}` join happens to land those on
- * `/services/new` and `/r/new` on `/keyvalue/new`, but sent `/d/new` to a
- * NONEXISTENT `/databases/new` (bex creates databases via a dialog, reached
- * through the overview's URL-owned `?new=database`). Explicit landings make
- * the create shape a contract instead of an accident. Service segments carry
- * `?type=` so the wizard preselects that type (w5/m47) — otherwise `/cron/new`
- * would drop the caller onto the Web-Service default.
+ * 2026-07-16), and bex's service create pages live at those same paths; the
+ * generic `${target}/${rest}` join would send them to `/services/new`, and
+ * `/d/new` to a NONEXISTENT `/databases/new` (bex's Postgres create page is
+ * Render's `/new/database`, its Key Value one `/new/redis`). Explicit
+ * landings make the create shape a contract instead of an accident.
  */
 export const RENDER_CREATE_LANDINGS: Record<RenderAliasSegment, string> = {
-  web: "/services/new?type=web_service",
-  worker: "/services/new?type=background_worker",
-  pserv: "/services/new?type=private_service",
-  static: "/services/new?type=static_site",
-  cron: "/services/new?type=cron_job",
-  d: "/?new=database",
-  r: "/keyvalue/new",
+  web: "/web/new",
+  worker: "/worker/new",
+  pserv: "/pserv/new",
+  static: "/static/new",
+  cron: "/cron/new",
+  d: "/new/database",
+  r: "/new/redis",
 };
 
 /** Splat → path parts, tolerating a leading slash and empties — the one
@@ -73,7 +71,7 @@ export function redirectRenderAlias(
 /**
  * Throw a replace-redirect to `path`, carrying the incoming query string and
  * hash along (the alias contract: `/web/srv-x/logs?level=error` keeps its
- * filter). A landing that already carries its own query (`/?new=database`)
+ * filter). A landing that already carries its own query (`/?new=project`)
  * folds the incoming one in with `&`.
  */
 export function redirectPreservingSuffix(

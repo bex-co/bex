@@ -22,7 +22,7 @@ function redirectFor(
 }
 
 // The Deploy-to-bex button (w8/163). Its search becomes the URL the sign-in
-// bounce keeps (`requireAuth` on /blueprints/new), so a signed-out visitor
+// bounce keeps (`requireAuth` on /blueprint/new), so a signed-out visitor
 // still lands on the prefilled wizard.
 describe("/deploy", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -31,7 +31,7 @@ describe("/deploy", () => {
     expect(
       redirectFor({ repo: "https://github.com/a/b/tree/dev", path: "x.yaml" }),
     ).toMatchObject({
-      to: "/blueprints/new",
+      to: "/blueprint/new",
       search: { repo: "https://github.com/a/b", branch: "dev", path: "x.yaml" },
     });
   });

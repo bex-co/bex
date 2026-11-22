@@ -71,6 +71,9 @@ describe("ProjectEnvironmentSelector", () => {
   });
 
   it("explains that Project-only creation remains outside any Project", () => {
+    environmentsState.environments = [
+      { id: "env-prod", projectId: "prj-empty", name: "Production" },
+    ];
     renderSelector();
     expect(screen.getByRole("combobox", { name: "Project" })).toHaveTextContent(
       "Empty Project",
@@ -80,14 +83,22 @@ describe("ProjectEnvironmentSelector", () => {
     ).toHaveTextContent("No environment");
     expect(
       screen.getByText(
-        /Leaving No environment selected creates the resource outside any Project/,
+        /With No environment selected, it is created outside any project/,
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Choose an Environment to add the resource to that Project/,
+        /Choose an environment to add the resource to this project/,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("adds no note before a Project is chosen", () => {
+    renderSelector(null);
+    expect(screen.queryByText(/outside any project/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/create one from the project's page/i),
+    ).not.toBeInTheDocument();
   });
 
   it("offers no phantom create affordance in the Environment option list (w6/042)", async () => {

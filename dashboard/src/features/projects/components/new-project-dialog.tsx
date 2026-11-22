@@ -41,8 +41,8 @@ const DEFAULT_ENVIRONMENT = "Production";
  * project only groups existing resources (assigned from their own row's
  * "Move to project" menu), so this dialog collects a name and the first environment's name, as Render does. Self-contained
  * by default (owns its trigger button and resets on close); pass
- * `open`/`onOpenChange` to drive it externally instead — mirrors
- * CreateDatabaseDialog's controlled-variant shape.
+ * `open`/`onOpenChange` to drive it externally instead (the overview's
+ * URL-owned `?new=project`).
  */
 export function NewProjectDialog({
   onCreated,

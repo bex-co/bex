@@ -50,7 +50,11 @@ export function useCardRadioGroup<T extends string>(
       }
       if (next === undefined) return;
       event.preventDefault();
-      buttons.current.get(next)?.focus();
+      const button = buttons.current.get(next);
+      button?.focus();
+      // A row under a pinned bar is in the scrollport yet hidden: bring it
+      // into the visible area (the scroller's scroll-padding).
+      button?.scrollIntoView?.({ block: "nearest" });
       if (next !== value) onChange(next);
     },
   });

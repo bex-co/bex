@@ -1,16 +1,16 @@
 import { useRef } from "react";
 import { InvitationFrame } from "@/features/invites/invitation-frame";
-import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
 import { WebhooksPageHeader } from "@/features/webhooks/components/webhooks-panel";
+import { ServiceCreateHeader } from "@/features/services/components/service-create-header";
 import {
   Table,
   TableBody,
   TableCell,
   TableRow,
 } from "@/common/components/ui/table";
-import { useRouterState, useSearch } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 import { Bell, Pencil, Plus, Webhook } from "lucide-react";
 import { PushNotificationEvent } from "@/graphql/definitions";
 import {
@@ -35,11 +35,19 @@ import { useGettingStartedDismissal } from "@/features/onboarding/hooks/use-gett
 import { useOverviewShape } from "@/features/onboarding/hooks/use-overview-shape";
 import { proFeaturesPlan } from "@/features/workspaces/types";
 import {
+  CreateActionBarSkeleton,
+  CreateField,
+  CreateFieldSkeleton,
+  ProjectSelectsSkeleton,
+  SwitchSkeleton,
+} from "@/common/components/create-form";
+import { CREATE_PLAN_ROWS } from "@/common/components/compute-plan-list";
+import {
   DatastorePlanPreview,
   KEY_VALUE_PLAN_SLOTS,
+  POSTGRES_PLAN_SLOTS,
   PlanTierSlots,
 } from "@/common/components/datastore-plan-preview";
-import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
 import {
   DatabaseHighAvailabilityPreview,
   DatastoreConnectionsPreview,
@@ -91,8 +99,7 @@ import { ActiveSessionsPanelSkeleton } from "@/features/sessions/components/acti
 import { NotificationsNavigation } from "@/features/notifications/components/notifications-navigation";
 import {
   DEFAULT_SERVICE_TYPE,
-  SERVICE_TYPES,
-  serviceTypeCreateCopy,
+  serviceTypeFromCreatePath,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import {
@@ -367,25 +374,22 @@ function FormCardSkeleton({
   );
 }
 
-function FormActionsSkeleton({ border = false }: { border?: boolean }) {
-  return (
-    <div className={cn("flex justify-end gap-2", border && "border-t pt-4")}>
-      <Skeleton className="h-9 w-20" />
-      <Skeleton className="h-9 w-32" />
-    </div>
-  );
-}
-
+/**
+ * ServiceSourcePicker inside a create row (`titleKey={null}`): its underline
+ * tabs — 45 px triggers over the list's 1 px rule — then the GitHub tab's
+ * search, connection control and repository list.
+ */
 function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
   return (
-    <div className="space-y-3">
-      <Skeleton className="h-4 w-32" />
-      <div
-        className="grid gap-1 rounded-lg bg-muted p-1"
-        style={{ gridTemplateColumns: `repeat(${tabs}, minmax(0, 1fr))` }}
-      >
+    <div className="space-y-5">
+      <div className="flex w-full border-b">
         {Array.from({ length: tabs }, (_, index) => (
-          <Skeleton key={index} className="h-8 w-full" />
+          <div
+            key={index}
+            className="flex h-[2.875rem] flex-1 items-center justify-center"
+          >
+            <Skeleton className="h-4 w-20 max-w-[70%]" />
+          </div>
         ))}
       </div>
       <div className="space-y-2">
@@ -393,7 +397,7 @@ function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
           className="flex flex-col gap-2 sm:flex-row"
           data-skeleton-region="source-toolbar"
         >
-          <Skeleton className="h-9 min-w-0 flex-1" />
+          <Skeleton className="h-11 min-w-0 flex-1 sm:h-9" />
           <Skeleton className="h-9 w-full sm:w-48" />
         </div>
         <div
@@ -413,20 +417,6 @@ function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
   );
 }
 
-function ProjectEnvironmentFieldsSkeleton() {
-  return (
-    <div className="space-y-2">
-      <Skeleton className="h-4 w-44" />
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-4/5" />
-    </div>
-  );
-}
-
 function ToggleRowSkeleton() {
   return (
     <div className="flex items-start justify-between gap-4 rounded-md border p-3">
@@ -435,22 +425,6 @@ function ToggleRowSkeleton() {
         <Skeleton className="h-4 w-4/5" />
       </div>
       <Skeleton className="h-6 w-11 shrink-0 rounded-full" />
-    </div>
-  );
-}
-
-function EditorSummarySkeleton({
-  description = false,
-}: {
-  description?: boolean;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-8 w-28" />
-      </div>
-      {description ? <Skeleton className="h-4 w-4/5" /> : null}
     </div>
   );
 }
@@ -1024,34 +998,43 @@ export function BlueprintCreatePageSkeleton() {
   return (
     <PageFrame
       pending="blueprint-create"
-      width="form"
+      width="standard"
       header={
         <PageHeader
           title={t("blueprints.createTitle")}
           description={t("blueprints.createDescription")}
         />
       }
+      footer={
+        <Region name="actions">
+          <CreateActionBarSkeleton
+            submitLabel={t("blueprints.createAction")}
+            cancelLabel={t("blueprints.createCancel")}
+            summary={false}
+          />
+        </Region>
+      }
     >
-      <Region name="blueprint-form">
-        <Card>
-          <CardContent className="space-y-6">
-            <Region name="source-picker">
-              <SourcePickerSkeleton tabs={2} />
-            </Region>
-            <Region name="settings" className="space-y-4">
-              <FieldRowSkeleton />
-              <FieldRowSkeleton hint />
-              <FieldRowSkeleton hint hintLines={2} />
-            </Region>
-            <Region name="preview" className="space-y-3">
-              <Skeleton className="h-6 w-56" />
-              <Skeleton className="h-5 w-full" />
-            </Region>
-            <Region name="actions">
-              <FormActionsSkeleton />
-            </Region>
-          </CardContent>
-        </Card>
+      <Region name="blueprint-form" className="space-y-8">
+        <Region name="source-picker">
+          <CreateFieldSkeleton descriptionLines={0}>
+            <SourcePickerSkeleton tabs={2} />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="settings" className="space-y-8">
+          <CreateFieldSkeleton />
+          <CreateFieldSkeleton />
+          <CreateFieldSkeleton descriptionLines={3} />
+        </Region>
+        <Region
+          name="preview"
+          className="space-y-4 rounded-lg border p-4 sm:p-6"
+        >
+          <div className="flex h-6 items-center">
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-5 w-full" />
+        </Region>
       </Region>
     </PageFrame>
   );
@@ -1541,44 +1524,119 @@ export function KeyValueCreatePageSkeleton() {
   return (
     <PageFrame
       pending="keyvalue-create"
-      width="form"
+      width="standard"
       header={
         <PageHeader
           title={t("keyvalue.createTitle")}
           description={t("keyvalue.createDescription")}
         />
       }
+      footer={
+        <Region name="actions">
+          <CreateActionBarSkeleton
+            submitLabel={t("keyvalue.createSubmit")}
+            cancelLabel={t("keyvalue.createCancel")}
+          />
+        </Region>
+      }
     >
-      <Region name="keyvalue-form">
-        <Card>
-          <CardContent className="space-y-6">
-            <Region name="name">
-              <FieldRowSkeleton />
-            </Region>
-            <Region name="plan-picker" className="space-y-2">
-              <Skeleton className="h-4 w-28" />
-              <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} connections />
-            </Region>
-            <Region name="version">
-              <FieldRowSkeleton />
-            </Region>
-            <Region name="memory-policy">
-              <FieldRowSkeleton hint />
-            </Region>
-            <Region name="persistence">
-              <FieldRowSkeleton hint />
-            </Region>
-            <Region name="project-environment">
-              <ProjectEnvironmentFieldsSkeleton />
-            </Region>
-            <Region name="public-access">
-              <ToggleRowSkeleton />
-            </Region>
-            <Region name="actions">
-              <FormActionsSkeleton />
-            </Region>
-          </CardContent>
-        </Card>
+      <Region name="keyvalue-form" className="space-y-8">
+        <Region name="name">
+          <CreateFieldSkeleton />
+        </Region>
+        <Region name="project-environment">
+          <CreateFieldSkeleton>
+            <ProjectSelectsSkeleton />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="version">
+          <CreateFieldSkeleton />
+        </Region>
+        <Region name="memory-policy">
+          <CreateFieldSkeleton />
+        </Region>
+        <Region name="persistence">
+          <CreateFieldSkeleton />
+        </Region>
+        <Region name="plan-picker">
+          <CreateFieldSkeleton>
+            <PlanTierSlots
+              count={KEY_VALUE_PLAN_SLOTS}
+              connections
+              collapsedCount={CREATE_PLAN_ROWS}
+            />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="public-access">
+          <CreateFieldSkeleton>
+            <SwitchSkeleton />
+          </CreateFieldSkeleton>
+        </Region>
+      </Region>
+    </PageFrame>
+  );
+}
+
+export function DatabaseCreatePageSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <PageFrame
+      pending="database-create"
+      width="standard"
+      header={
+        <PageHeader
+          title={t("databases.createTitle")}
+          description={t("databases.createDescription")}
+        />
+      }
+      footer={
+        <Region name="actions">
+          <CreateActionBarSkeleton
+            submitLabel={t("databases.createSubmit")}
+            cancelLabel={t("databases.createCancel")}
+          />
+        </Region>
+      }
+    >
+      <Region name="database-form" className="space-y-8">
+        <Region name="name">
+          <CreateFieldSkeleton />
+        </Region>
+        <Region name="project-environment">
+          <CreateFieldSkeleton>
+            <ProjectSelectsSkeleton />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="physical-names" className="space-y-8">
+          <CreateFieldSkeleton descriptionLines={2} />
+          <CreateFieldSkeleton descriptionLines={2} />
+        </Region>
+        <Region name="version">
+          <CreateFieldSkeleton descriptionLines={0} />
+        </Region>
+        <Region name="plan-picker">
+          <CreateFieldSkeleton descriptionLines={2}>
+            <PlanTierSlots
+              count={POSTGRES_PLAN_SLOTS}
+              collapsedCount={CREATE_PLAN_ROWS}
+            />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="storage">
+          <CreateFieldSkeleton descriptionLines={2}>
+            <Skeleton className="h-11 w-40 rounded-md sm:h-9" />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="high-availability">
+          <CreateFieldSkeleton descriptionLines={2}>
+            <SwitchSkeleton />
+          </CreateFieldSkeleton>
+        </Region>
+        <Region name="public-access">
+          <CreateFieldSkeleton descriptionLines={2}>
+            <SwitchSkeleton />
+          </CreateFieldSkeleton>
+        </Region>
       </Region>
     </PageFrame>
   );
@@ -2332,101 +2390,33 @@ export function InviteRouteSkeleton({
   );
 }
 
+/**
+ * The service create page before it loads: its heading and the Source Code
+ * row the ready page opens on — the settings and the action bar appear only
+ * once a source is chosen, so neither is drawn here.
+ */
 export function ServiceCreatePageSkeleton() {
   const { t } = useTranslations();
-  const { type } = useSearch({ from: "/services/new" });
-  const serviceType = type ?? DEFAULT_SERVICE_TYPE;
-  const createCopy = serviceTypeCreateCopy(serviceType);
-  const staticSite = serviceType === "static_site";
-  const cron = serviceType === "cron_job";
-  const noPublicUrl =
-    serviceType === "private_service" || serviceType === "background_worker";
-  const fieldCount = staticSite ? 5 : cron ? 7 : 6;
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const serviceType =
+    serviceTypeFromCreatePath(pathname) ?? DEFAULT_SERVICE_TYPE;
 
   return (
     <PageFrame
       pending="service-create"
-      width="form"
-      header={
-        <PageHeader
-          title={t(createCopy.titleKey)}
-          description={t(createCopy.descriptionKey)}
-        />
-      }
+      width="standard"
+      header={<ServiceCreateHeader serviceType={serviceType} />}
     >
-      <Region name="service-form">
-        <Card>
-          <CardContent className="space-y-6">
-            <Region name="service-type" className="space-y-3">
-              <Skeleton className="h-4 w-28" />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {Array.from({ length: SERVICE_TYPES.length }, (_, index) => (
-                  <Skeleton
-                    key={index}
-                    className="h-[4.5rem] w-full rounded-lg"
-                  />
-                ))}
-              </div>
-            </Region>
-            <Region name="source-picker">
-              <SourcePickerSkeleton tabs={3} />
-            </Region>
-            <Region name="settings" className="space-y-4">
-              <Skeleton className="h-5 w-24" />
-              {Array.from({ length: fieldCount }, (_, index) => (
-                <FieldRowSkeleton
-                  key={index}
-                  hint={index === 2 || (staticSite && index === 4)}
-                />
-              ))}
-              {staticSite ? (
-                <Region
-                  name="build-filters"
-                  className="space-y-4 rounded-md border p-4"
-                >
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-4/5" />
-                  </div>
-                  <EditorSummarySkeleton description />
-                  <EditorSummarySkeleton description />
-                </Region>
-              ) : null}
-              {noPublicUrl ? <Skeleton className="h-4 w-4/5" /> : null}
-            </Region>
-            {!staticSite ? (
-              <Region name="plan-picker" className="space-y-2">
-                <Skeleton className="h-4 w-28" />
-                {cron ? (
-                  <p className="text-muted-foreground text-xs">
-                    {t("services.createFieldPlanCronHint", {
-                      minimum: CRON_MINIMUM_USD,
-                    })}
-                  </p>
-                ) : null}
-                <PlanTierSlots
-                  count={servicePlanSlotCount(serviceType)}
-                  lastWraps
-                />
-              </Region>
-            ) : null}
-            <Region name="project-environment">
-              <ProjectEnvironmentFieldsSkeleton />
-            </Region>
-            <Region name="auto-deploy">
-              <ToggleRowSkeleton />
-            </Region>
-            <Region name="environment-variables">
-              <EditorSummarySkeleton />
-            </Region>
-            <Region name="secret-files">
-              <EditorSummarySkeleton description />
-            </Region>
-            <Region name="actions">
-              <FormActionsSkeleton />
-            </Region>
-          </CardContent>
-        </Card>
+      <Region name="service-form" className="space-y-8">
+        <Region name="source-picker">
+          <CreateField label={t("services.createSourceTitle")}>
+            <SourcePickerSkeleton
+              tabs={serviceType === "static_site" ? 2 : 3}
+            />
+          </CreateField>
+        </Region>
       </Region>
     </PageFrame>
   );

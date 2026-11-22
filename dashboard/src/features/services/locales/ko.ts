@@ -3766,7 +3766,7 @@ const koServices: Record<string, TranslationEntry> = {
       "Create-wizard page subtitle when the cron_job type is selected",
   },
   "services.createSourceTitle": {
-    message: "소스",
+    message: "소스 코드",
     description: "Create-wizard source-picker section label",
   },
   "services.createTabGitHub": {
@@ -3867,20 +3867,19 @@ const koServices: Record<string, TranslationEntry> = {
       "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortImageHint": {
-    message:
-      "선택 사항입니다. bex는 이미지가 선언한 모든 TCP 포트(EXPOSE)를 게시하며, 3000이 선언되어 있으면 3000, 아니면 선언된 가장 낮은 포트, 그것도 없으면 10000이 $PORT가 되고 헬스 체크 대상인 기본 포트가 됩니다. 기본 포트를 직접 선택하려면 포트를 설정하세요.",
+    message: "비워 두면 이미지가 선언한 포트가 $PORT가 됩니다.",
     description:
       "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
   },
   "services.createFieldPortImageHintWeb": {
     message:
-      "선택 사항입니다. bex는 이미지가 선언한(EXPOSE) 모든 TCP 포트를 게시합니다. 3000이 선언되어 있으면 3000, 아니면 선언된 가장 낮은 포트, 그것도 없으면 10000이 트래픽과 헬스 체크를 받는 기본 포트가 되며, bex가 서버가 HTTP로 응답하는 포트를 찾을 때까지 유지됩니다. $PORT는 직접 설정하지 않는 한 10000으로 유지됩니다. 포트를 지정하면 기본 포트를 직접 선택할 수 있습니다.",
+      "비워 두면 이미지가 선언한 포트로 트래픽을 보냅니다. 포트를 설정하지 않으면 $PORT 변수는 10000으로 유지됩니다.",
     description:
       "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:
-      "컨테이너가 포트 {port}에서 수신 대기해야 합니다. bex는 트래픽을 이 포트로 라우팅하고 $PORT로 주입합니다. 배포하는 이미지에 맞게 변경하세요.",
+      "컨테이너는 포트 {port}에서 수신해야 합니다. bex가 이 포트로 트래픽을 보내고 $PORT로 설정합니다.",
     description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
@@ -4170,12 +4169,12 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Label for the publish directory field in the create wizard",
   },
   "services.createFieldPublishPathPlaceholder": {
-    message: "dist",
+    message: "예: dist",
     description: "Placeholder for the publish directory field",
   },
   "services.createFieldPublishPathHint": {
     message:
-      "사이트 루트로 제공할 빌드 결과물 디렉터리입니다(예: dist, build, public).",
+      "빌드된 사이트가 있는 폴더로, 루트 디렉터리 기준 경로입니다(예: dist, 루트 디렉터리 자체는 .).",
     description: "Hint text under the publish directory field",
   },
   "services.createFieldPublishPathRequired": {
@@ -4854,7 +4853,8 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.eventsBuildReference": {
     message: "빌드 {id}",
-    description: "Build identifier shown on an artifact_fetch_failed activity row",
+    description:
+      "Build identifier shown on an artifact_fetch_failed activity row",
   },
   "services.eventsTypeSuspended": {
     message: "일시 중지됨",
@@ -5669,7 +5669,8 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageDescription": {
-    message: "이 서비스가 실행 중에 읽는 모든 값입니다. 값은 직접 표시하기 전까지 가려집니다.",
+    message:
+      "이 서비스가 실행 중에 읽는 모든 값입니다. 값은 직접 표시하기 전까지 가려집니다.",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -6178,6 +6179,98 @@ const koServices: Record<string, TranslationEntry> = {
     message: "위에서 다시 시도하면 변수와 함께 다시 불러옵니다.",
     description:
       "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
+  },
+  "services.createSubmitWeb": {
+    message: "Web Service 배포",
+    description:
+      "Create-wizard submit button for a web service (Render's 'Deploy web service')",
+  },
+  "services.createSubmitPrivate": {
+    message: "Private Service 배포",
+    description: "Create-wizard submit button for a private service",
+  },
+  "services.createSubmitWorker": {
+    message: "Background Worker 배포",
+    description: "Create-wizard submit button for a background worker",
+  },
+  "services.createSubmitCron": {
+    message: "Cron Job 배포",
+    description:
+      "Create-wizard submit button for a cron job (Render's 'Deploy cron job')",
+  },
+  "services.createSubmitStatic": {
+    message: "Static Site 배포",
+    description: "Create-wizard submit button for a static site",
+  },
+  "services.createSourceEdit": {
+    message: "편집",
+    description:
+      "Button on the chosen repository's summary row that reopens the source picker",
+  },
+  "services.createSourceEditLabel": {
+    message: "소스 변경",
+    description:
+      "Accessible name of the Edit button on the chosen repository's summary row ({repo} = owner/name)",
+  },
+  "services.createBlockedSource": {
+    message: "계속하려면 소스를 선택하세요.",
+    description:
+      "Create-wizard action bar: why Deploy is held while no source is chosen",
+  },
+  "services.createFieldNameDescription": {
+    message: "이 서비스의 고유한 이름입니다.",
+    description: "Create-wizard Name row description",
+  },
+  "services.createFieldRuntimeDescription": {
+    message: "이 서비스의 런타임 환경을 선택하세요.",
+    description: "Create-wizard Language/runtime row description",
+  },
+  "services.createFieldBranchDescription": {
+    message: "빌드하고 배포할 Git 브랜치입니다.",
+    description: "Create-wizard Branch row description",
+  },
+  "services.createFieldBuildCommandDescription": {
+    message: "배포할 때마다 먼저 이 명령으로 앱을 빌드합니다.",
+    description:
+      "Create-wizard Build Command row description (native runtimes)",
+  },
+  "services.createFieldStartCommandDescription": {
+    message: "배포할 때마다 이 명령으로 앱을 시작합니다.",
+    description: "Create-wizard Start Command row description",
+  },
+  "services.createFieldDockerCommandDescription": {
+    message:
+      "선택 사항: 이미지의 CMD와 ENTRYPOINT를 다른 명령으로 덮어써 서비스를 시작합니다.",
+    description: "Create-wizard Docker Command row description (Advanced)",
+  },
+  "services.createFieldPlanDescription": {
+    message: "서비스가 실행되는 인스턴스입니다. 언제든지 변경할 수 있습니다.",
+    description: "Create-wizard compute plan row description",
+  },
+  "services.createEnvVarsDescription": {
+    message:
+      "환경별 설정과 시크릿(API 키 등)을 지정하고 코드에서 그 값을 읽으세요.",
+    description: "Create-wizard Environment Variables card description",
+  },
+  "services.createBlockedPublishPath": {
+    message: "계속하려면 게시 디렉터리를 입력하세요.",
+    description:
+      "Create-wizard action bar: Deploy is held until a static site has a publish directory",
+  },
+  "services.createBlockedSchedule": {
+    message: "계속하려면 올바른 일정을 입력하세요.",
+    description:
+      "Create-wizard action bar: Deploy is held until a cron job has a valid schedule",
+  },
+  "services.createBlockedCommands": {
+    message: "계속하려면 빌드 명령과 시작 명령을 입력하세요.",
+    description:
+      "Create-wizard action bar: Deploy is held until the native runtime's build and start commands are filled",
+  },
+  "services.createBlockedPort": {
+    message: "계속하려면 올바른 포트를 입력하세요.",
+    description:
+      "Create-wizard action bar: Deploy is held while the port is out of range",
   },
 };
 

@@ -92,7 +92,7 @@ export function PageHeader({
           {description ? (
             // A div, not a p: a description may be a loading bar or a line
             // with its own block content.
-            <div className="text-muted-foreground max-w-prose text-sm">
+            <div className="text-muted-foreground max-w-prose text-sm text-pretty">
               {description}
             </div>
           ) : null}
@@ -112,6 +112,7 @@ export function PageFrame({
   header,
   navigation,
   pending,
+  footer,
   className,
   children,
   "data-testid": testId,
@@ -120,6 +121,12 @@ export function PageFrame({
   width?: PageFrameWidth;
   /** Usually a `<PageHeader>`. */
   header?: ReactNode;
+  /**
+   * A bar pinned to the bottom of the scroller across its full width, its
+   * content on the page's column: a create page's action bar
+   * (create-form.tsx `CreateActionBar`). Not offered with a navigation.
+   */
+  footer?: ReactNode;
   /** A section navigation; turns the frame into the settings layout. */
   navigation?: ReactNode;
   /** Route skeleton id: renders this frame as that route's pending state. */
@@ -150,7 +157,14 @@ export function PageFrame({
   return (
     <PageScroll
       data-testid={testId}
-      className={cn(pending && "group", className)}
+      className={cn(
+        pending && "group",
+        // Keep focused controls clear of the pinned footer: scrolling a
+        // control into view stops above the bar, not under it.
+        // A short page still docks the bar at the bottom: the column grows.
+        footer && !navigation && "flex flex-col scroll-pb-40 sm:scroll-pb-28",
+        className,
+      )}
       {...pendingProps}
     >
       {navigation ? (
@@ -175,7 +189,11 @@ export function PageFrame({
         </div>
       ) : (
         <div
-          className={cn("mx-auto w-full space-y-6", PAGE_FRAME_WIDTH[width])}
+          className={cn(
+            "mx-auto w-full space-y-6",
+            footer && "flex-1",
+            PAGE_FRAME_WIDTH[width],
+          )}
         >
           {headerSlot}
           <div className={cn("@container space-y-6", bodyPulse)}>
@@ -183,6 +201,21 @@ export function PageFrame({
           </div>
         </div>
       )}
+      {footer && !navigation ? (
+        // Sticky offsets are measured inside the scroller's padding, so the
+        // bar cancels it (the bottom padding equals the top) to sit flush on
+        // the scroller's edge, and the negative margins carry its rule and
+        // background across the full width.
+        <div
+          data-page-footer=""
+          data-skeleton-region={pending ? "page-footer" : undefined}
+          className="bg-background shadow-[0_-4px_12px_-8px_rgb(0_0_0/0.12)] sticky bottom-[calc(-1*var(--page-pad-top))] z-20 -mx-4 mt-8 -mb-4 border-t px-4 py-3 sm:-mx-6 sm:-mb-6 sm:px-6"
+        >
+          <div className={cn("mx-auto w-full", PAGE_FRAME_WIDTH[width])}>
+            {footer}
+          </div>
+        </div>
+      ) : null}
     </PageScroll>
   );
 }

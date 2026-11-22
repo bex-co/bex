@@ -3793,7 +3793,7 @@ const jaServices: Record<string, TranslationEntry> = {
       "Create-wizard page subtitle when the cron_job type is selected",
   },
   "services.createSourceTitle": {
-    message: "ソース",
+    message: "ソースコード",
     description: "Create-wizard source-picker section label",
   },
   "services.createTabGitHub": {
@@ -3894,20 +3894,19 @@ const jaServices: Record<string, TranslationEntry> = {
       "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortImageHint": {
-    message:
-      "任意。bex はイメージが宣言する（EXPOSE）すべての TCP ポートを公開します。3000 が宣言されていれば 3000、なければ宣言された最小のポート、それもなければ 10000 が $PORT となり、ヘルスチェック対象のプライマリポートになります。自分でプライマリを選ぶ場合はポートを設定してください。",
+    message: "空欄ならイメージが宣言したポートが $PORT になります。",
     description:
       "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
   },
   "services.createFieldPortImageHintWeb": {
     message:
-      "任意です。bex はイメージが宣言する（EXPOSE）すべての TCP ポートを公開します。3000 が宣言されていれば 3000、なければ宣言された最小のポート、それもなければ 10000 がプライマリとなり、トラフィックとヘルスチェックを受け取ります。これは bex がサーバーが HTTP に応答するポートを見つけるまでの動作です。$PORT は、設定しない限り 10000 のままです。プライマリを自分で選ぶには、ポートを設定してください。",
+      "空欄なら、イメージが宣言したポートへトラフィックを送ります。ポートを設定しない限り、$PORT 変数は 10000 のままです。",
     description:
       "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:
-      "コンテナはポート {port} で待ち受ける必要があります。bex はトラフィックをそこへルーティングし、$PORT として渡します。デプロイするイメージに合わせて変更してください。",
+      "コンテナはポート {port} で待ち受ける必要があります。bex はそこへトラフィックを送り、$PORT として設定します。",
     description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
@@ -4198,12 +4197,12 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Label for the publish directory field in the create wizard",
   },
   "services.createFieldPublishPathPlaceholder": {
-    message: "dist",
+    message: "例: dist",
     description: "Placeholder for the publish directory field",
   },
   "services.createFieldPublishPathHint": {
     message:
-      "サイトのルートとして配信するビルド出力ディレクトリです（例: dist、build、public）。",
+      "ビルドしたサイトを置くフォルダー。ルートディレクトリからの相対パスです（例: dist、ルートディレクトリ自体なら .）。",
     description: "Hint text under the publish directory field",
   },
   "services.createFieldPublishPathRequired": {
@@ -4887,7 +4886,8 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.eventsBuildReference": {
     message: "ビルド {id}",
-    description: "Build identifier shown on an artifact_fetch_failed activity row",
+    description:
+      "Build identifier shown on an artifact_fetch_failed activity row",
   },
   "services.eventsTypeSuspended": {
     message: "一時停止",
@@ -5709,7 +5709,8 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
   },
   "services.environmentPageDescription": {
-    message: "このサービスが実行時に読み込むすべての値です。値は表示するまで伏せられます。",
+    message:
+      "このサービスが実行時に読み込むすべての値です。値は表示するまで伏せられます。",
     description: "Service Environment page introduction",
   },
   "services.environmentEdit": {
@@ -6218,6 +6219,98 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "上で再試行すると、変数とあわせて再読み込みされます。",
     description:
       "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
+  },
+  "services.createSubmitWeb": {
+    message: "Web Service をデプロイ",
+    description:
+      "Create-wizard submit button for a web service (Render's 'Deploy web service')",
+  },
+  "services.createSubmitPrivate": {
+    message: "Private Service をデプロイ",
+    description: "Create-wizard submit button for a private service",
+  },
+  "services.createSubmitWorker": {
+    message: "Background Worker をデプロイ",
+    description: "Create-wizard submit button for a background worker",
+  },
+  "services.createSubmitCron": {
+    message: "Cron Job をデプロイ",
+    description:
+      "Create-wizard submit button for a cron job (Render's 'Deploy cron job')",
+  },
+  "services.createSubmitStatic": {
+    message: "Static Site をデプロイ",
+    description: "Create-wizard submit button for a static site",
+  },
+  "services.createSourceEdit": {
+    message: "編集",
+    description:
+      "Button on the chosen repository's summary row that reopens the source picker",
+  },
+  "services.createSourceEditLabel": {
+    message: "ソースを変更",
+    description:
+      "Accessible name of the Edit button on the chosen repository's summary row ({repo} = owner/name)",
+  },
+  "services.createBlockedSource": {
+    message: "続行するにはソースを選択してください。",
+    description:
+      "Create-wizard action bar: why Deploy is held while no source is chosen",
+  },
+  "services.createFieldNameDescription": {
+    message: "このサービスの一意な名前。",
+    description: "Create-wizard Name row description",
+  },
+  "services.createFieldRuntimeDescription": {
+    message: "このサービスのランタイム環境を選択します。",
+    description: "Create-wizard Language/runtime row description",
+  },
+  "services.createFieldBranchDescription": {
+    message: "ビルドしてデプロイする Git ブランチ。",
+    description: "Create-wizard Branch row description",
+  },
+  "services.createFieldBuildCommandDescription": {
+    message: "各デプロイの前に、このコマンドでアプリをビルドします。",
+    description:
+      "Create-wizard Build Command row description (native runtimes)",
+  },
+  "services.createFieldStartCommandDescription": {
+    message: "各デプロイで、このコマンドによりアプリを起動します。",
+    description: "Create-wizard Start Command row description",
+  },
+  "services.createFieldDockerCommandDescription": {
+    message:
+      "任意：イメージの CMD と ENTRYPOINT を別のコマンドで上書きしてサービスを起動します。",
+    description: "Create-wizard Docker Command row description (Advanced)",
+  },
+  "services.createFieldPlanDescription": {
+    message: "サービスを実行するインスタンス。いつでも変更できます。",
+    description: "Create-wizard compute plan row description",
+  },
+  "services.createEnvVarsDescription": {
+    message:
+      "環境ごとの設定やシークレット（API キーなど）を設定し、コードから読み取ります。",
+    description: "Create-wizard Environment Variables card description",
+  },
+  "services.createBlockedPublishPath": {
+    message: "続行するには公開ディレクトリを入力してください。",
+    description:
+      "Create-wizard action bar: Deploy is held until a static site has a publish directory",
+  },
+  "services.createBlockedSchedule": {
+    message: "続行するには有効なスケジュールを入力してください。",
+    description:
+      "Create-wizard action bar: Deploy is held until a cron job has a valid schedule",
+  },
+  "services.createBlockedCommands": {
+    message: "続行するにはビルドコマンドと起動コマンドを入力してください。",
+    description:
+      "Create-wizard action bar: Deploy is held until the native runtime's build and start commands are filled",
+  },
+  "services.createBlockedPort": {
+    message: "続行するには有効なポートを入力してください。",
+    description:
+      "Create-wizard action bar: Deploy is held while the port is out of range",
   },
 };
 

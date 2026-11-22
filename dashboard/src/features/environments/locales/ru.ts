@@ -464,7 +464,7 @@ const ruEnvironments: Record<string, TranslationEntry> = {
       "Environment card line while its resource lists are still loading, instead of the empty message",
   },
   "environments.assignmentTitle": {
-    message: "Проект и окружение",
+    message: "Проект",
     description: "Shared create-form Project/Environment selector heading",
   },
   "environments.assignmentProject": {
@@ -514,6 +514,27 @@ const ruEnvironments: Record<string, TranslationEntry> = {
     message: "{environment} (только для администраторов)",
     description:
       "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
+  "environments.assignmentDescription": {
+    message: "После создания он попадёт в выбранные проект и окружение.",
+    description: "Shared create-form Project row description",
+  },
+  "environments.assignmentNoEnvironments": {
+    message:
+      "В этом проекте пока нет окружений. Сначала создайте окружение на странице проекта.",
+    description:
+      "Shared create-form note when the chosen Project has no Environment to add the resource to",
+  },
+  "environments.assignmentPickEnvironment": {
+    message:
+      "Выберите окружение, чтобы добавить ресурс в этот проект. С вариантом «Без окружения» он будет создан вне проектов.",
+    description:
+      "Shared create-form note when a Project is chosen but No environment is: only an Environment adds the resource to the Project",
+  },
+  "environments.assignmentEnvironmentPickProject": {
+    message: "Сначала выберите проект",
+    description:
+      "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
 };
 

@@ -133,10 +133,6 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "{name} 데이터베이스를 삭제하지 못했습니다. 다시 시도하세요.",
     description: "Toast when a delete request fails",
   },
-  "databases.createButton": {
-    message: "새 데이터베이스",
-    description: "Button that opens the create-database dialog",
-  },
   "databases.createTitle": {
     message: "새 Postgres",
     description: "Create-database dialog title",
@@ -157,17 +153,8 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "줄 바꿈이나 제어 문자 없이 100자 이하의 이름을 입력하세요.",
     description: "Create-database name validation message",
   },
-  "databases.physicalNamesTitle": {
-    message: "PostgreSQL 이름 (선택 사항)",
-    description: "Create-database advanced physical-name section title",
-  },
-  "databases.physicalNamesHint": {
-    message:
-      "생성할 때만 설정할 수 있습니다. 비워 두면 고정된 이름이 자동으로 생성됩니다.",
-    description: "Create-database physical-name helper text",
-  },
   "databases.fieldDatabaseName": {
-    message: "데이터베이스 이름",
+    message: "데이터베이스",
     description: "Create-database physical PostgreSQL database label",
   },
   "databases.fieldDatabaseNamePlaceholder": {
@@ -175,7 +162,7 @@ const koDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL database placeholder",
   },
   "databases.fieldDatabaseUser": {
-    message: "데이터베이스 사용자",
+    message: "사용자",
     description: "Create-database physical PostgreSQL owner-role label",
   },
   "databases.fieldDatabaseUserPlaceholder": {
@@ -196,10 +183,6 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "컴퓨팅 플랜",
     description: "Create-database form field label (plan / tier)",
   },
-  "databases.fieldPlanPlaceholder": {
-    message: "컴퓨팅 플랜 선택",
-    description: "Create-database plan select placeholder",
-  },
   "databases.fieldVersion": {
     message: "PostgreSQL 버전",
     description: "Create-database form field label (major version)",
@@ -209,11 +192,12 @@ const koDatabases: Record<string, TranslationEntry> = {
     description: "Create-database version select default option",
   },
   "databases.fieldDisk": {
-    message: "디스크 크기 (GB)",
+    message: "스토리지",
     description: "Create-database form field label (storage size)",
   },
   "databases.fieldDiskFixed": {
-    message: "이 요금제는 디스크 크기가 {size} GB로 고정되어 있습니다.",
+    message:
+      "이 플랜에는 {size}GB 고정 디스크가 포함됩니다. 스토리지를 직접 설정하려면 더 큰 플랜을 선택하세요.",
     description:
       "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
   },
@@ -1902,6 +1886,41 @@ const koDatabases: Record<string, TranslationEntry> = {
   "databases.logsErrorTitle": {
     message: "데이터베이스 로그를 불러오지 못했습니다",
     description: "Managed Postgres logs generic error title",
+  },
+  "databases.fieldNameDescription": {
+    message: "Postgres 인스턴스의 고유한 이름입니다.",
+    description: "Create-Postgres Name row description",
+  },
+  "databases.fieldDatabaseNameDescription": {
+    message:
+      "Postgres dbname이며 생성할 때만 설정할 수 있습니다. 비워 두면 자동으로 생성됩니다.",
+    description:
+      "Create-Postgres Database row description: the physical dbname, create-time only",
+  },
+  "databases.fieldDatabaseUserDescription": {
+    message:
+      "데이터베이스를 소유하는 Postgres 사용자이며 생성할 때만 설정할 수 있습니다. 비워 두면 자동으로 생성됩니다.",
+    description:
+      "Create-Postgres User row description: the physical owner role, create-time only",
+  },
+  "databases.fieldPlanDescription": {
+    message:
+      "데이터베이스의 RAM과 CPU를 설정합니다. 컴퓨팅은 나중에 변경할 수 있습니다.",
+    description: "Create-Postgres plan row description (Render's Compute)",
+  },
+  "databases.fieldDiskDescription": {
+    message:
+      "데이터베이스 용량(GB)입니다. 나중에 늘릴 수는 있지만 줄일 수는 없습니다.",
+    description:
+      "Create-Postgres Storage row description (Render: storage only grows)",
+  },
+  "databases.fieldDiskUnit": {
+    message: "GB",
+    description: "Unit after the create-Postgres storage input",
+  },
+  "databases.fieldVersionDescription": {
+    message: "데이터베이스가 실행할 PostgreSQL 메이저 버전입니다.",
+    description: "Create-Postgres version row description",
   },
 };
 

@@ -138,10 +138,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Toast when a delete request fails",
   },
   // --- Create dialog ---
-  "databases.createButton": {
-    message: "新建数据库",
-    description: "Button that opens the create-database dialog",
-  },
   "databases.createTitle": {
     message: "新建 Postgres 数据库",
     description: "Create-database dialog title",
@@ -162,16 +158,8 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Create-database name validation message",
   },
-  "databases.physicalNamesTitle": {
-    message: "PostgreSQL 名称（可选）",
-    description: "Create-database advanced physical-name section title",
-  },
-  "databases.physicalNamesHint": {
-    message: "这些名称只能在创建时设置。留空则生成稳定名称。",
-    description: "Create-database physical-name helper text",
-  },
   "databases.fieldDatabaseName": {
-    message: "数据库名称",
+    message: "数据库",
     description: "Create-database physical PostgreSQL database label",
   },
   "databases.fieldDatabaseNamePlaceholder": {
@@ -179,7 +167,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL database placeholder",
   },
   "databases.fieldDatabaseUser": {
-    message: "数据库用户",
+    message: "用户",
     description: "Create-database physical PostgreSQL owner-role label",
   },
   "databases.fieldDatabaseUserPlaceholder": {
@@ -199,10 +187,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "计算套餐",
     description: "Create-database form field label (plan / tier)",
   },
-  "databases.fieldPlanPlaceholder": {
-    message: "选择计算套餐",
-    description: "Create-database plan select placeholder",
-  },
   "databases.fieldVersion": {
     message: "PostgreSQL 版本",
     description: "Create-database form field label (major version)",
@@ -212,11 +196,12 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Create-database version select default option",
   },
   "databases.fieldDisk": {
-    message: "磁盘大小（GB）",
+    message: "存储",
     description: "Create-database form field label (storage size)",
   },
   "databases.fieldDiskFixed": {
-    message: "此实例类型的磁盘固定为 {size} GB。",
+    message:
+      "此套餐包含固定的 {size} GB 磁盘。选择更大的套餐即可自行设置存储。",
     description:
       "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
   },
@@ -1865,6 +1850,37 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.logsErrorTitle": {
     message: "无法加载数据库日志",
     description: "Managed Postgres logs generic error title",
+  },
+  "databases.fieldNameDescription": {
+    message: "Postgres 实例的唯一名称。",
+    description: "Create-Postgres Name row description",
+  },
+  "databases.fieldDatabaseNameDescription": {
+    message: "Postgres 的 dbname，仅能在创建时设置。留空则自动生成。",
+    description:
+      "Create-Postgres Database row description: the physical dbname, create-time only",
+  },
+  "databases.fieldDatabaseUserDescription": {
+    message: "拥有该数据库的 Postgres 用户，仅能在创建时设置。留空则自动生成。",
+    description:
+      "Create-Postgres User row description: the physical owner role, create-time only",
+  },
+  "databases.fieldPlanDescription": {
+    message: "设置数据库的内存和 CPU，之后可以更改计算套餐。",
+    description: "Create-Postgres plan row description (Render's Compute)",
+  },
+  "databases.fieldDiskDescription": {
+    message: "数据库容量（GB）。之后可以扩容，但不能缩小。",
+    description:
+      "Create-Postgres Storage row description (Render: storage only grows)",
+  },
+  "databases.fieldDiskUnit": {
+    message: "GB",
+    description: "Unit after the create-Postgres storage input",
+  },
+  "databases.fieldVersionDescription": {
+    message: "数据库运行的 PostgreSQL 主版本。",
+    description: "Create-Postgres version row description",
   },
 };
 

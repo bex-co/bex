@@ -102,7 +102,7 @@ function BlueprintsListPage() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => void navigate({ to: "/blueprints/new" })}
+                  onClick={() => void navigate({ to: "/blueprint/new" })}
                 >
                   <Plus className="size-4" />
                   {t("blueprints.createButton")}
@@ -127,7 +127,7 @@ function BlueprintsListPage() {
             <Button
               size="sm"
               className="mt-4"
-              onClick={() => void navigate({ to: "/blueprints/new" })}
+              onClick={() => void navigate({ to: "/blueprint/new" })}
             >
               <Plus className="size-4" />
               {t("blueprints.createButton")}

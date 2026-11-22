@@ -924,7 +924,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Environment tab secret-files section title",
   },
   "services.secretFilesDescription": {
-    message: "存放包含机密内容的文件，例如私钥或 .env 文件。下次部署后，服务可在 /etc/secrets/<文件名> 读取每个文件。",
+    message:
+      "存放包含机密内容的文件，例如私钥或 .env 文件。下次部署后，服务可在 /etc/secrets/<文件名> 读取每个文件。",
     description: "Environment tab secret-files section description",
   },
   "services.secretFileColName": {
@@ -3672,7 +3673,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Create-wizard page subtitle when the cron_job type is selected",
   },
   "services.createSourceTitle": {
-    message: "来源",
+    message: "源代码",
     description: "Create-wizard source-picker section label",
   },
   "services.createTabGitHub": {
@@ -3771,20 +3772,19 @@ const zhServices: Record<string, TranslationEntry> = {
       "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortImageHint": {
-    message:
-      "可选。bex 会发布镜像声明（EXPOSE）的每个 TCP 端口；若声明了 3000 则以它为主端口，否则取声明的最小端口，未声明时为 10000，作为 $PORT 并用于健康检查。填写端口即可自行指定主端口。",
+    message: "留空则镜像声明的端口会成为 $PORT。",
     description:
       "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
   },
   "services.createFieldPortImageHintWeb": {
     message:
-      "可选。bex 会发布镜像声明（EXPOSE）的每个 TCP 端口；若声明了 3000 则以它为主端口，否则取声明的最小端口，未声明时为 10000，主端口接收流量并用于健康检查，直到 bex 找到服务器响应 HTTP 的端口。除非你自行设置，$PORT 始终为 10000。填写端口即可自行指定主端口。",
+      "留空则将流量路由到镜像声明的端口；除非你设置端口，$PORT 变量始终为 10000。",
     description:
       "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:
-      "容器必须监听 {port} 端口——bex 会把流量路由到该端口并以 $PORT 注入。请改成与所部署镜像一致的端口。",
+      "容器必须监听端口 {port}；bex 会将流量路由到该端口并将其设为 $PORT。",
     description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
@@ -4070,11 +4070,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Label for the publish directory field in the create wizard",
   },
   "services.createFieldPublishPathPlaceholder": {
-    message: "dist",
+    message: "例如 dist",
     description: "Placeholder for the publish directory field",
   },
   "services.createFieldPublishPathHint": {
-    message: "作为站点根目录的构建输出目录（如 dist、build、public）。",
+    message:
+      "存放构建产物的文件夹，相对于根目录（例如 dist，或用 . 表示根目录本身）。",
     description: "Hint text under the publish directory field",
   },
   "services.createFieldPublishPathRequired": {
@@ -4747,7 +4748,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsBuildReference": {
     message: "构建 {id}",
-    description: "Build identifier shown on an artifact_fetch_failed activity row",
+    description:
+      "Build identifier shown on an artifact_fetch_failed activity row",
   },
   "services.eventsTypeSuspended": {
     message: "已暂停",
@@ -6054,6 +6056,97 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "在上方重试时，它们会和变量一起重新加载。",
     description:
       "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
+  },
+  "services.createSubmitWeb": {
+    message: "部署 Web 服务",
+    description:
+      "Create-wizard submit button for a web service (Render's 'Deploy web service')",
+  },
+  "services.createSubmitPrivate": {
+    message: "部署私有服务",
+    description: "Create-wizard submit button for a private service",
+  },
+  "services.createSubmitWorker": {
+    message: "部署后台工作进程",
+    description: "Create-wizard submit button for a background worker",
+  },
+  "services.createSubmitCron": {
+    message: "部署定时任务",
+    description:
+      "Create-wizard submit button for a cron job (Render's 'Deploy cron job')",
+  },
+  "services.createSubmitStatic": {
+    message: "部署静态站点",
+    description: "Create-wizard submit button for a static site",
+  },
+  "services.createSourceEdit": {
+    message: "编辑",
+    description:
+      "Button on the chosen repository's summary row that reopens the source picker",
+  },
+  "services.createSourceEditLabel": {
+    message: "更改来源",
+    description:
+      "Accessible name of the Edit button on the chosen repository's summary row ({repo} = owner/name)",
+  },
+  "services.createBlockedSource": {
+    message: "请选择来源后继续。",
+    description:
+      "Create-wizard action bar: why Deploy is held while no source is chosen",
+  },
+  "services.createFieldNameDescription": {
+    message: "此服务的唯一名称。",
+    description: "Create-wizard Name row description",
+  },
+  "services.createFieldRuntimeDescription": {
+    message: "选择此服务的运行时环境。",
+    description: "Create-wizard Language/runtime row description",
+  },
+  "services.createFieldBranchDescription": {
+    message: "要构建并部署的 Git 分支。",
+    description: "Create-wizard Branch row description",
+  },
+  "services.createFieldBuildCommandDescription": {
+    message: "每次部署前，用此命令构建应用。",
+    description:
+      "Create-wizard Build Command row description (native runtimes)",
+  },
+  "services.createFieldStartCommandDescription": {
+    message: "每次部署时，用此命令启动应用。",
+    description: "Create-wizard Start Command row description",
+  },
+  "services.createFieldDockerCommandDescription": {
+    message: "可选：用其他命令覆盖镜像的 CMD 和 ENTRYPOINT 来启动服务。",
+    description: "Create-wizard Docker Command row description (Advanced)",
+  },
+  "services.createFieldPlanDescription": {
+    message: "服务运行所用的实例，可随时更改。",
+    description: "Create-wizard compute plan row description",
+  },
+  "services.createEnvVarsDescription": {
+    message:
+      "设置特定于环境的配置和密钥（如 API 密钥），然后在代码中读取这些值。",
+    description: "Create-wizard Environment Variables card description",
+  },
+  "services.createBlockedPublishPath": {
+    message: "请输入发布目录后继续。",
+    description:
+      "Create-wizard action bar: Deploy is held until a static site has a publish directory",
+  },
+  "services.createBlockedSchedule": {
+    message: "请输入有效的调度计划后继续。",
+    description:
+      "Create-wizard action bar: Deploy is held until a cron job has a valid schedule",
+  },
+  "services.createBlockedCommands": {
+    message: "请输入构建命令和启动命令后继续。",
+    description:
+      "Create-wizard action bar: Deploy is held until the native runtime's build and start commands are filled",
+  },
+  "services.createBlockedPort": {
+    message: "请输入有效的端口后继续。",
+    description:
+      "Create-wizard action bar: Deploy is held while the port is out of range",
   },
 };
 

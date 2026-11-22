@@ -4,7 +4,6 @@ import {
   serviceTypeCreateCopy,
   DEFAULT_SERVICE_TYPE,
   SERVICE_TYPES,
-  SERVICE_TYPE_CREATE_ITEMS,
   SERVICE_TYPE_CREATE_COPY,
 } from "../create-context";
 
@@ -40,28 +39,6 @@ describe("parseNewServiceSearch", () => {
     expect(
       parseNewServiceSearch({ projectId: "", environmentId: 0 }),
     ).toStrictEqual(NONE);
-  });
-});
-
-describe("SERVICE_TYPE_CREATE_ITEMS", () => {
-  it("covers every service type exactly once, in menu order", () => {
-    expect(SERVICE_TYPE_CREATE_ITEMS.map((i) => i.type)).toEqual([
-      "web_service",
-      "private_service",
-      "background_worker",
-      "cron_job",
-      "static_site",
-    ]);
-    // every type is offered as a first-class create entry
-    expect(new Set(SERVICE_TYPE_CREATE_ITEMS.map((i) => i.type))).toEqual(
-      new Set(SERVICE_TYPES),
-    );
-  });
-
-  it("gives each item a services.type* label key", () => {
-    for (const item of SERVICE_TYPE_CREATE_ITEMS) {
-      expect(item.labelKey).toMatch(/^services\.type/);
-    }
   });
 });
 

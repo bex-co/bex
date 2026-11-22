@@ -250,28 +250,28 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message:
       "其中部分资源已由另一个 Blueprint 管理。部署会把它们转移到此 Blueprint；下一步会确认具体接管的内容。",
     description:
-      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+      "Preview alert body on /blueprint/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
     message: "已被占用 — 部署将接管",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprint/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewMatchTitle": {
     message: "工作区中已有同名资源",
     description:
-      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+      "Notice title on /blueprint/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
   },
   "blueprints.previewMatchBody": {
     message:
       "此蓝图中的部分资源与工作区中已有的资源同名。部署时会新建资源，并在每个名称后加上后缀“-{suffix}”，已有的资源不会改动。",
     description:
-      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+      "Notice body on /blueprint/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
   },
   "blueprints.previewMatchListLabel": {
     message: "工作区中已有：",
     description:
-      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
+      "Notice on /blueprint/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "蓝图文件存在错误",
@@ -919,6 +919,30 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.stateSuccess": {
     message: "成功",
     description: "Sync-run state: the run completed successfully.",
+  },
+  "blueprints.createNameDescription": {
+    message: "此蓝图实例的唯一名称。",
+    description: "Create-Blueprint Name row description",
+  },
+  "blueprints.createBlockedSource": {
+    message: "请选择仓库后继续。",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while no repository is chosen",
+  },
+  "blueprints.createBlockedBranch": {
+    message: "请输入分支后继续。",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the branch is empty",
+  },
+  "blueprints.createBlockedReviewing": {
+    message: "正在检查蓝图文件…",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the Blueprint file is being reviewed",
+  },
+  "blueprints.createBlockedReview": {
+    message: "请先解决检查发现的问题再继续。",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
   },
 };
 

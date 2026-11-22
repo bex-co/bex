@@ -319,7 +319,8 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "クラスターの外部からの TLS 接続を許可します。",
+    message:
+      "プライベートネットワークの外部から TLS 経由で接続できるようにします。",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -481,7 +482,8 @@ const jaKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI コマンド",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "接続情報を読み込めませんでした",
@@ -872,6 +874,19 @@ const jaKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "この Key Value ストアのログを表示する権限がありません。",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "Key Value インスタンスの一意な名前。",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "インスタンスで実行する Valkey のメジャーバージョン。",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message: "インスタンスで使えるメモリと接続数の上限を決めます。",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

@@ -461,7 +461,7 @@ const esEnvironments: Record<string, TranslationEntry> = {
       "Environment card line while its resource lists are still loading, instead of the empty message",
   },
   "environments.assignmentTitle": {
-    message: "Proyecto y entorno",
+    message: "Proyecto",
     description: "Shared create-form Project/Environment selector heading",
   },
   "environments.assignmentProject": {
@@ -511,6 +511,27 @@ const esEnvironments: Record<string, TranslationEntry> = {
     message: "{environment} (solo administradores)",
     description:
       "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
+  "environments.assignmentDescription": {
+    message: "Agrégalo a un proyecto y un entorno al crearlo.",
+    description: "Shared create-form Project row description",
+  },
+  "environments.assignmentNoEnvironments": {
+    message:
+      "Este proyecto aún no tiene entornos. Crea uno primero desde la página del proyecto.",
+    description:
+      "Shared create-form note when the chosen Project has no Environment to add the resource to",
+  },
+  "environments.assignmentPickEnvironment": {
+    message:
+      "Elige un entorno para añadir el recurso a este proyecto. Con «Sin entorno», se crea fuera de cualquier proyecto.",
+    description:
+      "Shared create-form note when a Project is chosen but No environment is: only an Environment adds the resource to the Project",
+  },
+  "environments.assignmentEnvironmentPickProject": {
+    message: "Elige primero un proyecto",
+    description:
+      "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
 };
 

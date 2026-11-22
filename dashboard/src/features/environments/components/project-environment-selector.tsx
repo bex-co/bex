@@ -6,7 +6,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
-import { Label } from "@/common/components/ui/label";
+import {
+  CREATE_SELECT_CLASS,
+  PROJECT_SELECTS_GRID_CLASS,
+  CreateField,
+} from "@/common/components/create-form";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
 import { ReadUnavailable } from "@/common/components/read-unavailable";
@@ -22,8 +26,11 @@ export interface ProjectEnvironmentSelectorProps {
 }
 
 /**
- * Shared create-form selector. Project scopes the Environment list; only the
- * Environment id is submitted because assignment auto-joins its parent Project.
+ * Shared create-form selector, Render's "Project · Optional" row: the
+ * Project and Environment selects side by side. Project scopes the
+ * Environment list; only the Environment id is submitted because assignment
+ * auto-joins its parent Project. A note appears only when the choice needs
+ * one: a Project with no Environment, or a Project picked without one.
  */
 export function ProjectEnvironmentSelector({
   projectId,
@@ -33,6 +40,7 @@ export function ProjectEnvironmentSelector({
 }: ProjectEnvironmentSelectorProps) {
   const { t } = useTranslations();
   const protectedReasonId = useId();
+  const descriptionId = useId();
   const {
     projects,
     loading: projectsLoading,
@@ -115,10 +123,23 @@ export function ProjectEnvironmentSelector({
   const unlistedEnvironment =
     !environmentsSettled && environmentId && !environmentListed;
 
+  // The note a Project chosen without an Environment needs: there is none to
+  // choose yet, or leaving it empty creates the resource outside the Project.
+  const environmentNote =
+    projectId == null || environmentId != null || !environmentsSettled
+      ? null
+      : environments.length === 0
+        ? t("environments.assignmentNoEnvironments")
+        : t("environments.assignmentPickEnvironment");
+
   return (
-    <div className="space-y-2">
-      <Label>{t("environments.assignmentTitle")}</Label>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <CreateField
+      label={t("environments.assignmentTitle")}
+      optional
+      description={t("environments.assignmentDescription")}
+      descriptionId={descriptionId}
+    >
+      <div className={PROJECT_SELECTS_GRID_CLASS}>
         <Select
           value={projectId ?? "unassigned"}
           onValueChange={(value) => {
@@ -126,7 +147,11 @@ export function ProjectEnvironmentSelector({
             onEnvironmentChange(null);
           }}
         >
-          <SelectTrigger aria-label={t("environments.assignmentProject")}>
+          <SelectTrigger
+            aria-label={t("environments.assignmentProject")}
+            aria-describedby={descriptionId}
+            className={CREATE_SELECT_CLASS}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -145,6 +170,12 @@ export function ProjectEnvironmentSelector({
             ) : null}
           </SelectContent>
         </Select>
+        <span
+          aria-hidden
+          className="text-muted-foreground hidden px-1 @2xl:block"
+        >
+          /
+        </span>
         <Select
           disabled={projectId == null}
           value={environmentId ?? "unassigned"}
@@ -157,12 +188,15 @@ export function ProjectEnvironmentSelector({
             aria-describedby={
               blockedEnvironments ? protectedReasonId : undefined
             }
+            className={CREATE_SELECT_CLASS}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="unassigned">
-              {t("environments.assignmentEnvironmentNone")}
+              {projectId == null
+                ? t("environments.assignmentEnvironmentPickProject")
+                : t("environments.assignmentEnvironmentNone")}
             </SelectItem>
             {environments.map((environment) =>
               placement.restricts(environment) ? (
@@ -201,9 +235,9 @@ export function ProjectEnvironmentSelector({
           {placement.reason}
         </p>
       ) : null}
-      <p className="text-sm text-muted-foreground">
-        {t("environments.assignmentHint")}
-      </p>
-    </div>
+      {environmentNote ? (
+        <p className="text-sm text-muted-foreground">{environmentNote}</p>
+      ) : null}
+    </CreateField>
   );
 }

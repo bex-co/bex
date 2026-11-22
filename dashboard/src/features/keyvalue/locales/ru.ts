@@ -317,7 +317,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "Разрешить подключения извне кластера по TLS.",
+    message: "Разрешить подключения извне вашей частной сети по TLS.",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -480,7 +480,8 @@ const ruKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Команда Valkey CLI",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Не удалось загрузить данные подключения",
@@ -871,6 +872,19 @@ const ruKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "У вас нет прав на просмотр логов этого хранилища Key Value.",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "Уникальное название инстанса Key Value.",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "Основная версия Valkey, на которой работает инстанс.",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message: "Определяет доступную память и лимит подключений инстанса.",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

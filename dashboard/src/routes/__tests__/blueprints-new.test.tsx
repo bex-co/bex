@@ -8,7 +8,7 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { NewBlueprintPage } from "../blueprints.new";
+import { NewBlueprintPage } from "@/features/blueprints/pages/new-blueprint-page";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { BlueprintPreviewResult } from "@/features/blueprints/types";
 import i18n from "@/i18n/init";
@@ -834,7 +834,10 @@ describe("NewBlueprintPage", () => {
         "A Blueprint named hello-go already exists in this workspace. Choose another name.",
       );
       expect(nameField).toHaveAttribute("aria-invalid", "true");
-      expect(nameField).toHaveAttribute("aria-describedby", "bp-name-taken");
+      // The row's description, then the refusal.
+      expect(nameField).toHaveAccessibleDescription(
+        "A unique name for this Blueprint instance. A Blueprint named hello-go already exists in this workspace. Choose another name.",
+      );
       // The field is far above Deploy, so the refusal takes the focus there.
       expect(nameField).toHaveFocus();
       expect(deploy).toBeDisabled();
@@ -1273,7 +1276,7 @@ describe("deploy link prefill", () => {
     expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
       "dev",
     );
-    expect(screen.getByLabelText("Blueprint path")).toHaveValue(
+    expect(screen.getByLabelText("Blueprint Path")).toHaveValue(
       "infra/render.yaml",
     );
   });
@@ -1319,7 +1322,7 @@ describe("deploy link prefill", () => {
 
   it("ignores a repo that is not a clone URL", async () => {
     renderPage("/blueprints/new?repo=javascript:alert(1)");
-    await screen.findByRole("heading", { name: /blueprint/i });
+    await screen.findByRole("heading", { level: 1, name: /blueprint/i });
     expect(screen.queryByLabelText("Repository URL")).not.toBeInTheDocument();
   });
 });

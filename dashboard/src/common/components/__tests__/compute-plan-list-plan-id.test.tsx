@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { PlanCardGrid, type PlanCardTier } from "../plan-card-grid";
+import { ComputePlanList, type ComputePlanTier } from "../compute-plan-list";
 
 // w6/m483: a service's create-form cards name each paid plan by Render's plan
 // ID beside its legacy name, as the Compute page's cards do. Free (whose ID is
 // its name) and a family without plan IDs (Key Value, Postgres) keep the name.
-const tiers: PlanCardTier[] = [
+const tiers: ComputePlanTier[] = [
   { id: "free", planId: "free", name: "Free", cpu: "100m", memory: "512Mi" },
   {
     id: "starter",
@@ -17,10 +17,10 @@ const tiers: PlanCardTier[] = [
   { id: "pro_plus", name: "Pro Plus", cpu: "4", memory: "10Gi" },
 ];
 
-describe("PlanCardGrid plan IDs (w6/m483)", () => {
+describe("ComputePlanList plan IDs (w6/m483)", () => {
   it("shows a plan ID beside the legacy name only where the tier has one", () => {
     render(
-      <PlanCardGrid
+      <ComputePlanList
         instanceTypes={tiers}
         value="starter"
         ariaLabel="Compute Plan"

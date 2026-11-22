@@ -1,14 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  RENDER_CREATE_LANDINGS,
-  redirectPreservingSuffix,
-} from "@/common/lib/render-alias";
+import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
+import { DatabaseCreatePageSkeleton } from "@/common/components/route-skeletons";
+import { NewDatabasePage } from "@/features/databases/pages/new-database-page";
 
-/** Render's New-menu Postgres create URL (`/new/database`, live capture
- *  2026-07-16) — the same landing as `/d/new` (the overview's URL-owned
- *  create dialog), stated once in RENDER_CREATE_LANDINGS. */
+/**
+ * Render's New-menu Postgres create URL (`/new/database`, live captures
+ * 2026-07-16 and 2026-11-21) — a full page on the shared create template, as
+ * on Render, which every Postgres create landing (`/d/new`, the overview's old
+ * `?new=database`) now reaches (RENDER_CREATE_LANDINGS).
+ */
 export const Route = createFileRoute("/new/database")({
-  beforeLoad: ({ location }) => {
-    redirectPreservingSuffix(RENDER_CREATE_LANDINGS.d, location);
-  },
+  staticData: { chrome: true },
+  component: NewDatabasePage,
+  pendingComponent: DatabaseCreatePageSkeleton,
+  beforeLoad: requireAuth(),
+  head: ({ match }) => translatedTitleHead("databases.createTitle", match),
 });

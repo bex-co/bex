@@ -253,28 +253,28 @@ const esBlueprints: Record<string, TranslationEntry> = {
     message:
       "Otro Blueprint ya gestiona algunos de estos recursos. Al desplegar se transfieren a este Blueprint; en el siguiente paso confirmarás exactamente qué se toma.",
     description:
-      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+      "Preview alert body on /blueprint/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
     message: "Ya está gestionado: al desplegar se tomará el control",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprint/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewMatchTitle": {
     message: "Coincide con recursos existentes",
     description:
-      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+      "Notice title on /blueprint/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
   },
   "blueprints.previewMatchBody": {
     message:
       "Este Blueprint coincide con recursos que ya existen en tu espacio de trabajo. Los recursos nuevos se crearán con el sufijo “-{suffix}” añadido a cada nombre. Los recursos existentes no se modifican.",
     description:
-      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+      "Notice body on /blueprint/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
   },
   "blueprints.previewMatchListLabel": {
     message: "Ya están en tu espacio de trabajo:",
     description:
-      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
+      "Notice on /blueprint/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "El archivo Blueprint tiene errores",
@@ -971,6 +971,30 @@ const esBlueprints: Record<string, TranslationEntry> = {
   "blueprints.stateSuccess": {
     message: "Correcto",
     description: "Sync-run state: the run completed successfully.",
+  },
+  "blueprints.createNameDescription": {
+    message: "Un nombre único para esta instancia de Blueprint.",
+    description: "Create-Blueprint Name row description",
+  },
+  "blueprints.createBlockedSource": {
+    message: "Elige un repositorio para continuar.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while no repository is chosen",
+  },
+  "blueprints.createBlockedBranch": {
+    message: "Introduce una rama para continuar.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the branch is empty",
+  },
+  "blueprints.createBlockedReviewing": {
+    message: "Revisando el archivo del Blueprint…",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the Blueprint file is being reviewed",
+  },
+  "blueprints.createBlockedReview": {
+    message: "Resuelve los problemas que encontró la revisión para continuar.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
   },
 };
 

@@ -20,6 +20,7 @@ import {
 } from "@/common/lib/utils/git-url";
 import { dockerImageProblem } from "@/common/lib/utils/docker-image";
 import { cn } from "@/common/lib/utils/utils";
+import { CREATE_INPUT_CLASS } from "@/common/components/create-form";
 import { useRepos, type RepoView } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { useOnGitConnectionsChange } from "@/features/git/hooks/use-on-git-connections-change";
@@ -30,8 +31,17 @@ import { RegistryCredentialSelect } from "@/features/services/components/registr
 /** Where a service's code comes from. */
 export type SourceTab = "github" | "git" | "image" | "build-source";
 
+// Underline tabs (Render's source tabs), 48 px tall: a full touch target at
+// any width, and the selected tab marked by its rule, not a tint that dark
+// mode washes out.
 const TAB_TRIGGER_CLASS =
-  "min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" as const;
+  "min-w-0 flex-1 px-1.5 text-sm whitespace-normal sm:gap-1.5 sm:px-3" as const;
+
+// Every panel holds its own focusable control (the search box, the connect
+// button, a URL or image field), so a panel is no tab stop of its own
+// (`tabIndex={-1}` over Radix's 0): Tab goes from the tabs straight to the
+// control, which shows its own focus ring.
+const TAB_CONTENT_PROPS = { className: "mt-3", tabIndex: -1 } as const;
 
 /** The image tab's own state. Supplying it is what adds the tab. */
 export type ImageSourceOption = {
@@ -96,7 +106,8 @@ export function ServiceSourcePicker({
   onGitHubPage?: (page: GitHubPage) => void;
   image?: ImageSourceOption;
   buildSource?: ReactNode;
-  titleKey?: string;
+  /** The picker's own heading; null when a create row's label names it. */
+  titleKey?: string | null;
   idPrefix?: string;
 }) {
   const { t } = useTranslations();
@@ -171,16 +182,9 @@ export function ServiceSourcePicker({
 
   return (
     <div className="space-y-3">
-      <Label>{t(titleKey)}</Label>
+      {titleKey ? <Label>{t(titleKey)}</Label> : null}
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as SourceTab)}>
-        <TabsList
-          className={cn(
-            "grid h-auto w-full",
-            ["grid-cols-2", "grid-cols-3", "grid-cols-4"][
-              Number(Boolean(image)) + Number(buildSource !== undefined)
-            ],
-          )}
-        >
+        <TabsList variant="underline" className="justify-start">
           <TabsTrigger value="github" className={TAB_TRIGGER_CLASS}>
             <GithubIcon className="hidden size-4 sm:block" />
             {t("services.createTabGitHub")}
@@ -203,7 +207,7 @@ export function ServiceSourcePicker({
           )}
         </TabsList>
 
-        <TabsContent value="github" className="mt-3">
+        <TabsContent value="github" {...TAB_CONTENT_PROPS}>
           {connectionLoading ? (
             // The connect prompt's anatomy, the state a workspace sees until
             // it connects GitHub: a bare block was ~95 px shorter, so the
@@ -226,7 +230,7 @@ export function ServiceSourcePicker({
                   <Skeleton className="h-3.5 w-2/3" />
                 </span>
               </div>
-              <Skeleton className="h-9 w-40 rounded-md" />
+              <Skeleton className="h-11 w-40 rounded-md sm:h-9" />
             </div>
           ) : gitHubDisconnected ? (
             <div className={CONNECT_PROMPT_CLASS}>
@@ -239,7 +243,11 @@ export function ServiceSourcePicker({
                   {t("services.createGitConnectPromptBody")}
                 </p>
               </div>
-              <Button onClick={connect} disabled={connecting}>
+              <Button
+                onClick={connect}
+                disabled={connecting}
+                className={CREATE_INPUT_CLASS}
+              >
                 <GithubIcon className="size-4" />
                 {t("git.connectButton")}
               </Button>
@@ -248,7 +256,7 @@ export function ServiceSourcePicker({
             <div className="space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
-                  className="min-w-0 flex-1"
+                  className="h-11 min-w-0 flex-1 sm:h-9"
                   placeholder={t("services.createRepoSearchPlaceholder")}
                   value={repoSearch}
                   onChange={(e) => setRepoSearch(e.target.value)}
@@ -315,13 +323,14 @@ export function ServiceSourcePicker({
           )}
         </TabsContent>
 
-        <TabsContent value="git" className="mt-3">
+        <TabsContent value="git" {...TAB_CONTENT_PROPS}>
           <div className="space-y-2">
             <Label htmlFor={`${idPrefix}-git-url`}>
               {t("services.createPublicUrlLabel")}
             </Label>
             <Input
               id={`${idPrefix}-git-url`}
+              className={CREATE_INPUT_CLASS}
               value={gitUrl}
               onChange={(e) => onGitUrlChange(e.target.value)}
               onBlur={() => {
@@ -354,7 +363,7 @@ export function ServiceSourcePicker({
         </TabsContent>
 
         {image && (
-          <TabsContent value="image" className="mt-3">
+          <TabsContent value="image" {...TAB_CONTENT_PROPS}>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor={`${idPrefix}-image`}>
@@ -362,6 +371,7 @@ export function ServiceSourcePicker({
                 </Label>
                 <Input
                   id={`${idPrefix}-image`}
+                  className={CREATE_INPUT_CLASS}
                   value={image.value}
                   onChange={(e) => image.onChange(e.target.value)}
                   placeholder={t("services.createImagePlaceholder")}
@@ -393,7 +403,7 @@ export function ServiceSourcePicker({
                   </p>
                 ) : null}
                 {image.showPortHint ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {t("services.createImagePortHint")}
                   </p>
                 ) : null}
@@ -408,7 +418,7 @@ export function ServiceSourcePicker({
           </TabsContent>
         )}
         {buildSource !== undefined && (
-          <TabsContent value="build-source" className="mt-3">
+          <TabsContent value="build-source" {...TAB_CONTENT_PROPS}>
             {buildSource}
           </TabsContent>
         )}

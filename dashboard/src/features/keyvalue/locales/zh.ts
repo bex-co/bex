@@ -311,7 +311,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "允许通过 TLS 从集群外部连接。",
+    message: "允许通过 TLS 从你的私有网络外部连接。",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -474,7 +474,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 命令",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "无法加载连接信息",
@@ -863,6 +864,19 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "你没有权限查看此 Key Value 存储的日志。",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "Key Value 实例的唯一名称。",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "实例运行的 Valkey 主版本。",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message: "决定实例可用的内存和连接数上限。",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

@@ -271,11 +271,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "Compute plan",
+    message: "Compute Plan",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
-    message: "Valkey version",
+    message: "Valkey Version",
     description: "Create-Key-Value form field label (major version)",
   },
   "keyvalue.fieldVersionDefault": {
@@ -316,11 +316,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Persistence mode option: no persistence",
   },
   "keyvalue.fieldPublic": {
-    message: "Public access",
+    message: "Public Access",
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "Allow connections from outside the cluster over TLS.",
+    message: "Allow connections from outside your private network over TLS.",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -484,7 +484,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI command",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Couldn't load connection info",
@@ -880,6 +881,19 @@ const enKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "You don't have permission to view logs for this Key Value store.",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "A unique name for your Key Value instance.",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "The Valkey major version the instance runs.",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message: "Determines the instance's available RAM and connection limit.",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

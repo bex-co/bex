@@ -226,7 +226,7 @@ function renderBlueprintsPage() {
   });
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/blueprints/new",
+    path: "/blueprint/new",
     component: () => <div>new blueprint page</div>,
   });
   const router = createRouter({
@@ -348,7 +348,7 @@ describe("BlueprintsPage (list)", () => {
     });
     expect(buttons).toHaveLength(2); // header + empty state
     await userEvent.click(buttons[1]);
-    expect(router.state.location.pathname).toBe("/blueprints/new");
+    expect(router.state.location.pathname).toBe("/blueprint/new");
   });
 
   it("shows an error state when the query fails", async () => {
@@ -371,7 +371,7 @@ describe("BlueprintsPage (list)", () => {
     await userEvent.click(headerButton);
 
     expect(await screen.findByText("new blueprint page")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/blueprints/new");
+    expect(router.state.location.pathname).toBe("/blueprint/new");
   });
 });
 

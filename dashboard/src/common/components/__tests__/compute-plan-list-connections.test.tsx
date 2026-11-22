@@ -2,12 +2,12 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import i18n, { ensureLanguage } from "@/i18n/init";
 import { SUPPORTED_LANGUAGES } from "@/i18n/config";
-import { PlanCardGrid, type PlanCardTier } from "../plan-card-grid";
+import { ComputePlanList, type ComputePlanTier } from "../compute-plan-list";
 
 // w6/m459: a Key Value plan card states its connection limit on a line of its
 // own under the RAM, as Render's /new/redis cards do ("Free … 50 Connections");
 // a tier without one (services, Postgres, an older catalog) shows no line.
-const tiers: PlanCardTier[] = [
+const tiers: ComputePlanTier[] = [
   {
     id: "free",
     name: "Free",
@@ -36,7 +36,7 @@ const tiers: PlanCardTier[] = [
 
 function renderGrid() {
   return render(
-    <PlanCardGrid
+    <ComputePlanList
       instanceTypes={tiers}
       value="free"
       ariaLabel="Instance type"
@@ -47,7 +47,7 @@ function renderGrid() {
 
 const card = (name: RegExp) => screen.getByRole("radio", { name });
 
-describe("PlanCardGrid connection limit", () => {
+describe("ComputePlanList connection limit", () => {
   beforeAll(async () => {
     for (const lang of SUPPORTED_LANGUAGES) await ensureLanguage(lang);
   });
@@ -55,12 +55,16 @@ describe("PlanCardGrid connection limit", () => {
     await act(() => i18n.changeLanguage("en"));
   });
 
-  it("puts each plan's limit on its own line, a paused plan's too", () => {
+  // A row is the radio, the name with its specs, and the price; the specs are
+  // CPU, RAM and — for a tier that has one — the connection limit.
+  const specs = (row: HTMLElement) => row.children[1].children[1];
+
+  it("gives each plan's limit a spec of its own, a paused plan's too", () => {
     renderGrid();
     const free = card(/Free/);
-    // Name and price, the specs line, then the connection-limit line.
     expect(free.children).toHaveLength(3);
-    expect(free.children[2]).toHaveTextContent(/^50 connections$/);
+    expect(specs(free).children).toHaveLength(3);
+    expect(specs(free).children[2]).toHaveTextContent(/^50 connections$/);
     expect(card(/Standard/)).toHaveTextContent("1,000 connections");
     expect(card(/Pro Ultra/)).toHaveTextContent("40,000 connections");
   });
@@ -68,7 +72,7 @@ describe("PlanCardGrid connection limit", () => {
   it("shows no line for a tier without a limit", () => {
     renderGrid();
     const web = card(/Web/);
-    expect(web.children).toHaveLength(2);
+    expect(specs(web).children).toHaveLength(2);
     expect(web).not.toHaveTextContent(/connection/i);
   });
 

@@ -60,7 +60,7 @@ export function GettingStartedCard() {
   if (dismissed) return null;
 
   const items: ChecklistItem[] = [
-    { key: "createService", done: false, to: "/services/new" },
+    { key: "createService", done: false, to: "/web/new" },
     {
       key: "connectGithub",
       done: git.connected,

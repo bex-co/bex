@@ -452,7 +452,7 @@ const jaEnvironments: Record<string, TranslationEntry> = {
       "Environment card line while its resource lists are still loading, instead of the empty message",
   },
   "environments.assignmentTitle": {
-    message: "プロジェクトと環境",
+    message: "プロジェクト",
     description: "Shared create-form Project/Environment selector heading",
   },
   "environments.assignmentProject": {
@@ -502,6 +502,27 @@ const jaEnvironments: Record<string, TranslationEntry> = {
     message: "{environment}（管理者のみ）",
     description:
       "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
+  "environments.assignmentDescription": {
+    message: "作成後にプロジェクトと環境へ追加します。",
+    description: "Shared create-form Project row description",
+  },
+  "environments.assignmentNoEnvironments": {
+    message:
+      "このプロジェクトにはまだ環境がありません。先にプロジェクトのページで作成してください。",
+    description:
+      "Shared create-form note when the chosen Project has no Environment to add the resource to",
+  },
+  "environments.assignmentPickEnvironment": {
+    message:
+      "このプロジェクトに追加するには環境を選択してください。「環境なし」のままだと、どのプロジェクトにも属さずに作成されます。",
+    description:
+      "Shared create-form note when a Project is chosen but No environment is: only an Environment adds the resource to the Project",
+  },
+  "environments.assignmentEnvironmentPickProject": {
+    message: "先にプロジェクトを選択",
+    description:
+      "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
 };
 

@@ -1549,7 +1549,7 @@ describe("ServiceSettingsPage", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("combobox", { name: "Registry credential" }),
+      screen.getByRole("combobox", { name: "Registry Credential" }),
     ).toBeInTheDocument();
   });
 

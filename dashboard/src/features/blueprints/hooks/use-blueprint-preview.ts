@@ -44,7 +44,7 @@ export function useBlueprintPreview(
    * The blueprint this preview is on behalf of. The detail page's pre-sync
    * dialog passes its own id, so the server plans the sync against that
    * Blueprint's own resources and never reports them as another's;
-   * `/blueprints/new` omits it, which is what makes the server report the
+   * `/blueprint/new` omits it, which is what makes the server report the
    * resources that already exist in the workspace (w8/m153).
    */
   forBlueprintId?: string,

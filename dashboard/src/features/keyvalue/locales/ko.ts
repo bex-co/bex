@@ -312,7 +312,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "클러스터 외부에서 TLS를 통한 연결을 허용합니다.",
+    message: "TLS를 통해 사설 네트워크 외부에서의 연결을 허용합니다.",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -474,7 +474,8 @@ const koKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 명령",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "연결 정보를 불러오지 못했습니다",
@@ -860,6 +861,19 @@ const koKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "이 Key Value 스토어의 로그를 볼 권한이 없습니다.",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "Key Value 인스턴스의 고유한 이름입니다.",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "인스턴스가 실행할 Valkey 메이저 버전입니다.",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message: "인스턴스의 사용 가능한 RAM과 연결 수 한도를 정합니다.",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

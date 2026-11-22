@@ -11,13 +11,17 @@ describe("isNavItemActive", () => {
       "/databases/orders-db",
       "/keyvalue/sessions-cache",
       "/keyvalue/new",
+      "/new/database",
     ])("is active on %s", (pathname) => {
       expect(isNavItemActive(pathname, "/")).toBe(true);
     });
 
-    it.each(["/usage", "/settings"])("is not active on %s", (pathname) => {
-      expect(isNavItemActive(pathname, "/")).toBe(false);
-    });
+    it.each(["/usage", "/settings", "/new/workspace"])(
+      "is not active on %s",
+      (pathname) => {
+        expect(isNavItemActive(pathname, "/")).toBe(false);
+      },
+    );
   });
 
   describe("other items", () => {

@@ -28,13 +28,11 @@ const ROUTES_DIR = join(import.meta.dirname, "..");
 // that predates this guard. Do not extend it — new entries mean a regression.
 const ALLOWLIST = new Set<string>([
   "blueprints.$blueprintId.tsx BlueprintDetailPage",
-  "blueprints.new.tsx NewBlueprintPage",
   "blueprints.tsx BlueprintsPage",
   "env-groups_.$groupId.tsx EnvGroupDetailPage",
   "env-groups.tsx EnvGroupsPage",
   "index.tsx HomePage",
   "keyvalue.$keyValueId.tsx KeyValueDetailPage",
-  "keyvalue.new.tsx NewKeyValuePage",
   "new.workspace.tsx NewWorkspacePage",
   "project.$projectId.index.tsx ProjectPage",
   "project.$projectId.settings.tsx ProjectSettingsPage",
@@ -45,7 +43,6 @@ const ALLOWLIST = new Set<string>([
   "services.$serviceId.metrics.tsx ServiceMetricsPage",
   "services.$serviceId.redirects.tsx ServiceRedirectsPage",
   "services.$serviceId.settings.tsx ServiceSettingsPage",
-  "services.new.tsx NewServicePage",
   "webhooks_.new.tsx NewWebhookPage",
 ]);
 

@@ -253,28 +253,28 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     message:
       "別の Blueprint が、これらのリソースの一部をすでに管理しています。デプロイすると、それらがこの Blueprint に移管されます。引き継がれる内容は、次のステップで正確に確認できます。",
     description:
-      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+      "Preview alert body on /blueprint/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
     message: "すでに管理されています。デプロイすると引き継がれます",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprint/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewMatchTitle": {
     message: "既存のリソースと一致しています",
     description:
-      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+      "Notice title on /blueprint/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
   },
   "blueprints.previewMatchBody": {
     message:
       "この Blueprint は、ワークスペースにすでに存在するリソースと一致します。新しいリソースは、各名前に接尾辞「-{suffix}」を付けて作成されます。既存のリソースは変更されません。",
     description:
-      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+      "Notice body on /blueprint/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
   },
   "blueprints.previewMatchListLabel": {
     message: "ワークスペースにすでにあるもの:",
     description:
-      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
+      "Notice on /blueprint/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "Blueprint ファイルにエラーがあります",
@@ -925,6 +925,30 @@ const jaBlueprints: Record<string, TranslationEntry> = {
   "blueprints.stateSuccess": {
     message: "成功",
     description: "Sync-run state: the run completed successfully.",
+  },
+  "blueprints.createNameDescription": {
+    message: "この Blueprint インスタンスの一意な名前。",
+    description: "Create-Blueprint Name row description",
+  },
+  "blueprints.createBlockedSource": {
+    message: "続行するにはリポジトリを選択してください。",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while no repository is chosen",
+  },
+  "blueprints.createBlockedBranch": {
+    message: "続行するにはブランチを入力してください。",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the branch is empty",
+  },
+  "blueprints.createBlockedReviewing": {
+    message: "Blueprint ファイルを確認しています…",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the Blueprint file is being reviewed",
+  },
+  "blueprints.createBlockedReview": {
+    message: "続行するには、確認で見つかった問題を解決してください。",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
   },
 };
 

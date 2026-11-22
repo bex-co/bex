@@ -451,7 +451,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
       "Environment card line while its resource lists are still loading, instead of the empty message",
   },
   "environments.assignmentTitle": {
-    message: "Project and Environment",
+    message: "Project",
     description: "Shared create-form Project/Environment selector heading",
   },
   "environments.assignmentProject": {
@@ -501,6 +501,27 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "{environment} (admins only)",
     description:
       "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
+  "environments.assignmentDescription": {
+    message: "Add it to a project and environment once it's created.",
+    description: "Shared create-form Project row description",
+  },
+  "environments.assignmentNoEnvironments": {
+    message:
+      "This project has no environments yet. Create one from the project's page first.",
+    description:
+      "Shared create-form note when the chosen Project has no Environment to add the resource to",
+  },
+  "environments.assignmentPickEnvironment": {
+    message:
+      "Choose an environment to add the resource to this project. With No environment selected, it is created outside any project.",
+    description:
+      "Shared create-form note when a Project is chosen but No environment is: only an Environment adds the resource to the Project",
+  },
+  "environments.assignmentEnvironmentPickProject": {
+    message: "Choose a project first",
+    description:
+      "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
 };
 

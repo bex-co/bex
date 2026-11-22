@@ -28,7 +28,7 @@ export const Route = createFileRoute("/deploy")({
       ? parseDeployRepo(search.repo)
       : parseDeployReferrer(getReferrer(), getDashboardOrigin());
     throw redirect({
-      to: "/blueprints/new",
+      to: "/blueprint/new",
       search: link
         ? { ...link, ...(search.path && { path: search.path }) }
         : {},

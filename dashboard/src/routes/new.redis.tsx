@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  RENDER_CREATE_LANDINGS,
-  redirectPreservingSuffix,
-} from "@/common/lib/render-alias";
+import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
+import { KeyValueCreatePageSkeleton } from "@/common/components/route-skeletons";
+import { NewKeyValuePage } from "@/features/keyvalue/pages/new-key-value-page";
 
-/** Render's New-menu Key Value create URL (`/new/redis` — the legacy Redis
- *  segment, live capture 2026-07-16) — the same landing as `/r/new`
- *  (`/keyvalue/new`), stated once in RENDER_CREATE_LANDINGS. */
+/** Render's Key Value create URL (`/new/redis` — the legacy Redis segment,
+ *  live captures 2026-07-16 and 2026-11-21): the page lives here, and `/r/new`
+ *  and bex's old `/keyvalue/new` land on it. */
 export const Route = createFileRoute("/new/redis")({
-  beforeLoad: ({ location }) => {
-    redirectPreservingSuffix(RENDER_CREATE_LANDINGS.r, location);
-  },
+  staticData: { chrome: true },
+  component: NewKeyValuePage,
+  pendingComponent: KeyValueCreatePageSkeleton,
+  beforeLoad: requireAuth(),
+  head: ({ match }) => translatedTitleHead("keyvalue.createTitle", match),
 });

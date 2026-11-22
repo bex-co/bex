@@ -40,9 +40,10 @@ describe("page frame invariant", () => {
       "routes/blueprints.tsx",
       "routes/workspace.settings.tsx",
       "routes/new.workspace.tsx",
-      "routes/services.new.tsx",
-      "routes/blueprints.new.tsx",
-      "routes/keyvalue.new.tsx",
+      // The service create page's heading, shared with its skeleton.
+      "features/services/components/service-create-header.tsx",
+      "features/blueprints/pages/new-blueprint-page.tsx",
+      "features/keyvalue/pages/new-key-value-page.tsx",
       "routes/webhooks_.new.tsx",
       "routes/project.$projectId.settings.tsx",
       "features/usage/components/usage-page.tsx",

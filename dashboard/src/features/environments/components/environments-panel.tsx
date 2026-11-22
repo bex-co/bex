@@ -246,7 +246,7 @@ export function EnvironmentsPanel({
           <Button asChild size="sm">
             <Link
               key={contextualEnvironmentId ?? "project-only"}
-              to="/services/new"
+              to="/web/new"
               search={{
                 projectId,
                 ...(contextualEnvironmentId

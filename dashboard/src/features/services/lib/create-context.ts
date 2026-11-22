@@ -2,7 +2,8 @@ import { canonicalEnvironmentLinkId } from "@/features/environments/lib/link-id"
 
 /** The five bex service types (Render's `web_service`/`private_service`/
  *  `background_worker`/`cron_job`/`static_site`). Single source of truth for the
- *  create wizard, the `?type=` deep-link, and the per-type "New" menu items. */
+ *  create page, its create paths, and the create-type list the New menus and
+ *  the breadcrumb type switcher share (create-type-items.ts). */
 export const SERVICE_TYPES = [
   "web_service",
   "private_service",
@@ -13,8 +14,33 @@ export const SERVICE_TYPES = [
 
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
-/** What the wizard creates when `?type=` is absent. Exported so the form
- *  state and the route's document title resolve the same type. */
+/**
+ * Each service type's create URL, Render's own (`/web/new`, `/pserv/new`,
+ * `/worker/new`, `/cron/new`, `/static/new` — its New menu and the type
+ * switcher, live capture 2026-11-21). The page's type is its path.
+ */
+export const SERVICE_TYPE_CREATE_PATHS = {
+  web_service: "/web/new",
+  private_service: "/pserv/new",
+  background_worker: "/worker/new",
+  cron_job: "/cron/new",
+  static_site: "/static/new",
+} as const satisfies Record<ServiceType, string>;
+
+export type ServiceCreatePath = (typeof SERVICE_TYPE_CREATE_PATHS)[ServiceType];
+
+/** The service type a create URL names, or null off those URLs. */
+export function serviceTypeFromCreatePath(
+  pathname: string,
+): ServiceType | null {
+  const entry = Object.entries(SERVICE_TYPE_CREATE_PATHS).find(
+    ([, path]) => path === pathname,
+  );
+  return entry ? (entry[0] as ServiceType) : null;
+}
+
+/** The type `/services/new` (and a create path bex does not know) falls back
+ *  to. Exported so the form state and the skeleton resolve the same type. */
 export const DEFAULT_SERVICE_TYPE: ServiceType = "web_service";
 
 function isServiceType(v: unknown): v is ServiceType {
@@ -23,19 +49,12 @@ function isServiceType(v: unknown): v is ServiceType {
   );
 }
 
-/** Per-type service-create menu entries. Render's New menu lists service types
- *  individually; each entry deep-links the create wizard to its type via
- *  `?type=`. Label keys are the same ones the wizard's type picker uses. */
-export const SERVICE_TYPE_CREATE_ITEMS: {
-  type: ServiceType;
-  labelKey: string;
-}[] = [
-  { type: "web_service", labelKey: "services.typeWeb" },
-  { type: "private_service", labelKey: "services.typePrivate" },
-  { type: "background_worker", labelKey: "services.typeWorker" },
-  { type: "cron_job", labelKey: "services.typeCron" },
-  { type: "static_site", labelKey: "services.typeStatic" },
-];
+/** A service type's create-page copy: heading, subtitle and submit label. */
+export interface ServiceTypeCreateCopy {
+  titleKey: string;
+  descriptionKey: string;
+  submitKey: string;
+}
 
 /**
  * Create-wizard page title + subtitle, per service type. The wizard's heading
@@ -47,27 +66,32 @@ export const SERVICE_TYPE_CREATE_ITEMS: {
  */
 export const SERVICE_TYPE_CREATE_COPY: Record<
   ServiceType,
-  { titleKey: string; descriptionKey: string }
+  ServiceTypeCreateCopy
 > = {
   web_service: {
     titleKey: "services.createWebTitle",
     descriptionKey: "services.createWebDescription",
+    submitKey: "services.createSubmitWeb",
   },
   private_service: {
     titleKey: "services.createPrivateTitle",
     descriptionKey: "services.createPrivateDescription",
+    submitKey: "services.createSubmitPrivate",
   },
   background_worker: {
     titleKey: "services.createWorkerTitle",
     descriptionKey: "services.createWorkerDescription",
+    submitKey: "services.createSubmitWorker",
   },
   cron_job: {
     titleKey: "services.createCronTitle",
     descriptionKey: "services.createCronDescription",
+    submitKey: "services.createSubmitCron",
   },
   static_site: {
     titleKey: "services.createStaticTitle",
     descriptionKey: "services.createStaticDescription",
+    submitKey: "services.createSubmitStatic",
   },
 };
 
@@ -76,13 +100,13 @@ export const SERVICE_TYPE_CREATE_COPY: Record<
  *
  *  The parameter is a plain string on purpose (w4/102): defaulting only on
  *  nullish once indexed the table to `undefined` for `/services/new?type=worker`
+ *  (bex's old create URL, now a redirect to the per-type paths)
  *  and threw on `.titleKey`, because the route's `head` resolver then read the
  *  raw search. It reads validated search now (w5/078); the function stays total
  *  so no caller depends on that. */
-export function serviceTypeCreateCopy(type: string | undefined): {
-  titleKey: string;
-  descriptionKey: string;
-} {
+export function serviceTypeCreateCopy(
+  type: string | undefined,
+): ServiceTypeCreateCopy {
   return SERVICE_TYPE_CREATE_COPY[
     isServiceType(type) ? type : DEFAULT_SERVICE_TYPE
   ];
@@ -90,7 +114,8 @@ export function serviceTypeCreateCopy(type: string | undefined): {
 
 export interface NewServiceSearch {
   /** Preselects the wizard's service type (Render's per-type create deep link,
-   *  e.g. `/cron/new` → `/services/new?type=cron_job`). Unknown values dropped. */
+   *  on bex's old `/services/new`, which redirects to its path). Unknown
+   *  values dropped. */
   type?: ServiceType;
   projectId?: string;
   environmentId?: string;

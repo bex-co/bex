@@ -2,7 +2,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PlanCardGrid } from "../plan-card-grid";
+import { ComputePlanList } from "../compute-plan-list";
 
 // w4/m207: card radios follow the W3C radio-group keyboard contract.
 const tiers = [
@@ -23,7 +23,7 @@ function Harness({
   const [value, setValue] = useState(initial);
   return (
     <>
-      <PlanCardGrid
+      <ComputePlanList
         instanceTypes={tiers}
         value={value}
         disabled={disabled}
@@ -40,7 +40,7 @@ function Harness({
 
 const radio = (name: RegExp) => screen.getByRole("radio", { name });
 
-describe("PlanCardGrid keyboard", () => {
+describe("ComputePlanList keyboard", () => {
   it("is one named group with a single Tab stop on the checked card", async () => {
     const user = userEvent.setup();
     render(<Harness initial="starter" />);
@@ -103,7 +103,7 @@ describe("PlanCardGrid keyboard", () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(
-      <PlanCardGrid
+      <ComputePlanList
         instanceTypes={[
           tiers[0],
           tiers[1],

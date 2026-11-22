@@ -19,12 +19,17 @@ import {
   createRootRoute,
   createRoute,
   createMemoryHistory,
+  useSearch,
+  type AnyRouter,
 } from "@tanstack/react-router";
-import { NewServicePage } from "../services.new";
+import { NewServicePage } from "@/features/services/pages/new-service-page";
+import { CREATE_PLAN_ROWS } from "@/common/components/compute-plan-list";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import {
+  DEFAULT_SERVICE_TYPE,
   parseNewServiceSearch,
   serviceTypeCreateCopy,
+  type ServiceType,
 } from "@/features/services/lib/create-context";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RepoView } from "@/features/services/hooks/use-repos";
@@ -247,12 +252,26 @@ const REPO: RepoView = {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+/** The page at a stand-in route: its type comes from `?type=` here, as it
+ *  comes from the path (/web/new …) in the app — same prop, same page. */
+function TestPage() {
+  const search = parseNewServiceSearch(
+    useSearch({ strict: false }) as Record<string, unknown>,
+  );
+  return (
+    <NewServicePage
+      serviceType={search.type ?? DEFAULT_SERVICE_TYPE}
+      search={search}
+    />
+  );
+}
+
 function renderPage(initialEntry = "/") {
   const rootRoute = createRootRoute();
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: NewServicePage,
+    component: TestPage,
     validateSearch: parseNewServiceSearch,
   });
   const serviceRoute = createRoute({
@@ -288,9 +307,9 @@ function renderPageWithHead(initialEntry = "/") {
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: NewServicePage,
+    component: TestPage,
     validateSearch: parseNewServiceSearch,
-    // Same resolver as routes/services.new.tsx.
+    // The tab title follows the type, as the create routes' heads do.
     head: ({ match }) =>
       translatedTitleHead(
         serviceTypeCreateCopy(match.search?.type).titleKey,
@@ -303,6 +322,31 @@ function renderPageWithHead(initialEntry = "/") {
     context: { client: {} as never, session: null },
   });
   return { ...render(<RouterProvider router={router} />), router };
+}
+
+/** The breadcrumb type switcher's move (dashboard-breadcrumbs.tsx) between
+ *  the create paths, played here on the stand-in route's `?type=`: the page
+ *  stays mounted and keeps the other search params. */
+async function chooseType(router: AnyRouter, type: ServiceType) {
+  await act(() =>
+    router.navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, type }),
+      replace: true,
+    }),
+  );
+}
+
+/** Picks the connected repository, which reveals the settings. */
+async function pickRepo(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(
+    await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+  );
+}
+
+/** Opens the collapsed Advanced card. */
+async function openAdvanced(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Advanced" }));
 }
 
 // ── setup ─────────────────────────────────────────────────────────────────────
@@ -448,16 +492,15 @@ describe("NewServicePage", () => {
     });
 
     it("keeps the Existing Image tab for the four image-valid types", async () => {
-      const user = userEvent.setup();
-      renderPage();
-      await screen.findAllByRole("radiogroup");
-      for (const label of [
-        /Web Service/i,
-        /Private Service/i,
-        /Background Worker/i,
-        /Cron Job/i,
-      ]) {
-        await user.click(screen.getByRole("radio", { name: label }));
+      const { router } = renderPage();
+      await screen.findByRole("tab", { name: /GitHub/i });
+      for (const type of [
+        "web_service",
+        "private_service",
+        "background_worker",
+        "cron_job",
+      ] as const) {
+        await chooseType(router, type);
         expect(
           screen.getByRole("tab", { name: /Existing Image/i }),
         ).toBeInTheDocument();
@@ -466,7 +509,7 @@ describe("NewServicePage", () => {
 
     it("returns to the GitHub tab when Static Site is chosen from the image tab", async () => {
       const user = userEvent.setup();
-      renderPage();
+      const { router } = renderPage();
       await user.click(
         await screen.findByRole("tab", { name: /Existing Image/i }),
       );
@@ -474,7 +517,7 @@ describe("NewServicePage", () => {
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
       ).toBeInTheDocument();
 
-      await user.click(screen.getByRole("radio", { name: /Static Site/i }));
+      await chooseType(router, "static_site");
       expect(
         screen.queryByRole("tab", { name: /Existing Image/i }),
       ).not.toBeInTheDocument();
@@ -541,12 +584,28 @@ describe("NewServicePage", () => {
   });
 
   describe("form validation", () => {
-    it("keeps Deploy disabled when no repo is selected", async () => {
+    it("holds Deploy and says why once the chosen source is no longer valid", async () => {
+      const user = userEvent.setup();
       renderPage();
-      const deploy = await screen.findByRole("button", {
-        name: /Deploy Service/i,
-      });
+      await user.click(
+        await screen.findByRole("tab", { name: /Public Git URL/i }),
+      );
+      const url = screen.getByPlaceholderText(
+        "https://github.com/you/your-repo",
+      );
+      await user.type(url, "https://github.com/acme-corp/web-frontend");
+      await user.clear(screen.getByLabelText("Name"));
+      await user.type(screen.getByLabelText("Name"), "web");
+      const deploy = screen.getByRole("button", { name: /^Deploy / });
+      expect(deploy).toBeEnabled();
+
+      // The settings stay; the bar says why Deploy is held.
+      await user.clear(url);
+      expect(screen.getByLabelText("Name")).toHaveValue("web");
       expect(deploy).toBeDisabled();
+      expect(deploy).toHaveAccessibleDescription(
+        "Choose a source to continue.",
+      );
     });
 
     it("keeps Deploy disabled when name is over 100 characters", async () => {
@@ -560,9 +619,7 @@ describe("NewServicePage", () => {
       await user.click(nameInput);
       await user.paste("x".repeat(101));
       expect(screen.getByText(/up to 100 characters/i)).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
     });
 
     // w5/m153: the name is a free-form label, as on Render; bex derives the
@@ -582,9 +639,7 @@ describe("NewServicePage", () => {
         screen.getByText("Resource name: my-api-invalid"),
       ).toBeInTheDocument();
       expect(nameInput).not.toHaveAttribute("aria-invalid", "true");
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeEnabled();
     });
 
     it("previews a long name's hashed resource name", async () => {
@@ -611,9 +666,7 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeEnabled();
     });
 
     it("re-enables auto-fill when name is cleared and a new repo is selected", async () => {
@@ -635,6 +688,8 @@ describe("NewServicePage", () => {
       const nameInput = screen.getByLabelText("Name");
       // Clear the auto-filled name → nameEdited resets to false
       await user.clear(nameInput);
+      // The picked repository folds into a summary row; Edit reopens the list.
+      await user.click(screen.getByRole("button", { name: "Change source" }));
       // Selecting a different repo now re-triggers auto-fill
       await user.click(
         screen.getByRole("button", { name: /acme-corp\/api-service/ }),
@@ -654,9 +709,7 @@ describe("NewServicePage", () => {
       );
 
       expect(screen.getByText("Name is already in use")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
 
       await user.click(screen.getByRole("button", { name: "Use web-1" }));
       expect(screen.getByLabelText("Name")).toHaveValue("web-1");
@@ -668,9 +721,7 @@ describe("NewServicePage", () => {
       nameAvailabilityState.suggestion = null;
       await user.type(screen.getByLabelText("Name"), "!");
       await user.keyboard("{Backspace}");
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeEnabled();
     });
 
     it("maps a raced create-mutation conflict to the same inline message", async () => {
@@ -685,14 +736,17 @@ describe("NewServicePage", () => {
   });
 
   describe("plan picker", () => {
-    it("renders a card per catalog tier, defaulting to the first", async () => {
+    it("renders a row per catalog tier, defaulting to the first", async () => {
+      const user = userEvent.setup();
       renderPage();
-      // Page now has two radiogroups: type picker and plan picker.
-      await screen.findAllByRole("radiogroup");
-      expect(screen.getByText("Free")).toBeInTheDocument();
-      expect(screen.getByText("Starter")).toBeInTheDocument();
-      expect(screen.getByText("$0.00/month")).toBeInTheDocument();
-      expect(screen.getByText("$4.90/month")).toBeInTheDocument();
+      await pickRepo(user);
+      const plans = within(
+        screen.getByRole("radiogroup", { name: "Compute Plan" }),
+      );
+      expect(plans.getByText("Free")).toBeInTheDocument();
+      expect(plans.getByText("Starter")).toBeInTheDocument();
+      expect(plans.getByText("$0.00/month")).toBeInTheDocument();
+      expect(plans.getByText("$4.90/month")).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: /Free/i })).toHaveAttribute(
         "aria-checked",
         "true",
@@ -701,11 +755,9 @@ describe("NewServicePage", () => {
 
     it("offers no Free tier for a background worker and defaults to the first paid tier (w6/025)", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await screen.findAllByRole("radiogroup");
-      await user.click(
-        screen.getByRole("radio", { name: /Background Worker/i }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "background_worker");
       expect(screen.queryByText("Free")).not.toBeInTheDocument();
       expect(screen.getByRole("radio", { name: /Starter/i })).toHaveAttribute(
         "aria-checked",
@@ -725,7 +777,7 @@ describe("NewServicePage", () => {
       await user.clear(nameInput);
       await user.type(nameInput, " My API ");
       expect(screen.getByText("Resource name: my-api")).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ name: "My API" }),
       );
@@ -734,6 +786,7 @@ describe("NewServicePage", () => {
     it("preselects Project and Environment from validated URL context", async () => {
       const user = userEvent.setup();
       renderPage("/?projectId=prj-platform&environmentId=env-production");
+      await pickRepo(user);
 
       expect(
         await screen.findByRole("combobox", { name: "Project" }),
@@ -741,10 +794,7 @@ describe("NewServicePage", () => {
       expect(
         screen.getByRole("combobox", { name: "Environment" }),
       ).toHaveTextContent("Production");
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ environmentId: "env-production" }),
       );
@@ -762,6 +812,7 @@ describe("NewServicePage", () => {
       });
       const user = userEvent.setup();
       renderPage("/?projectId=prj-platform&environmentId=env-production");
+      await pickRepo(user);
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
         /couldn't load projects or environments/i,
@@ -769,17 +820,16 @@ describe("NewServicePage", () => {
       expect(
         screen.getByRole("combobox", { name: "Environment" }),
       ).not.toHaveTextContent("No environment");
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ environmentId: "env-production" }),
       );
     });
 
     it("clears stale Project and Environment URL context", async () => {
+      const user = userEvent.setup();
       renderPage("/?projectId=prj-stale&environmentId=env-production");
+      await pickRepo(user);
 
       expect(
         await screen.findByRole("combobox", { name: "Project" }),
@@ -796,7 +846,7 @@ describe("NewServicePage", () => {
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.click(screen.getByRole("radio", { name: /Starter/i }));
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "web-frontend",
@@ -812,15 +862,13 @@ describe("NewServicePage", () => {
 
     it("submits a paid plan for a background worker even after Free was picked under another type (w6/025)", async () => {
       const user = userEvent.setup();
-      renderPage();
+      const { router } = renderPage();
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.click(screen.getByRole("radio", { name: /Free/i }));
-      await user.click(
-        screen.getByRole("radio", { name: /Background Worker/i }),
-      );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await chooseType(router, "background_worker");
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "background_worker",
@@ -837,7 +885,7 @@ describe("NewServicePage", () => {
       );
       await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
       await user.click(screen.getByRole("option", { name: "Python 3" }));
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           runtime: "python",
@@ -855,17 +903,22 @@ describe("NewServicePage", () => {
       );
       await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
       await user.click(screen.getByRole("option", { name: "Docker" }));
+      // Render keeps a Dockerfile service's Docker settings under Advanced.
+      expect(
+        screen.queryByLabelText("Dockerfile Path"),
+      ).not.toBeInTheDocument();
+      await openAdvanced(user);
 
       expect(screen.getByLabelText("Dockerfile Path")).toBeInTheDocument();
       expect(screen.getByLabelText("Docker Command")).toBeInTheDocument();
-      expect(screen.getByLabelText("Registry credential")).toBeInTheDocument();
+      expect(screen.getByLabelText("Registry Credential")).toBeInTheDocument();
       expect(screen.queryByLabelText("Build Command")).not.toBeInTheDocument();
       await user.type(
         screen.getByLabelText("Dockerfile Path"),
         "docker/Dockerfile.prod",
       );
       await user.type(screen.getByLabelText("Docker Command"), "bin/server");
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -884,13 +937,14 @@ describe("NewServicePage", () => {
       );
       await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
       await user.click(screen.getByRole("option", { name: "Docker" }));
+      await openAdvanced(user);
       await user.click(
         screen.getByRole("combobox", { name: /Registry credential/i }),
       );
       await user.click(
         screen.getByRole("option", { name: /Private GHCR \(ghcr.io\)/i }),
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -911,6 +965,7 @@ describe("NewServicePage", () => {
       await user.click(screen.getByRole("option", { name: "Platform" }));
       await user.click(screen.getByRole("combobox", { name: "Environment" }));
       await user.click(screen.getByRole("option", { name: "Production" }));
+      await openAdvanced(user);
       await user.click(screen.getByRole("button", { name: "Add Secret File" }));
       await user.type(
         screen.getByRole("textbox", { name: "File name for secret file 1" }),
@@ -920,7 +975,7 @@ describe("NewServicePage", () => {
         screen.getByRole("textbox", { name: "Secret file 1 contents" }),
         "secret-content",
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -941,6 +996,7 @@ describe("NewServicePage", () => {
       const runtime = screen.getByRole("combobox", { name: /Runtime/i });
       await user.click(runtime);
       await user.click(screen.getByRole("option", { name: "Docker" }));
+      await openAdvanced(user);
       await user.type(
         screen.getByLabelText("Dockerfile Path"),
         "docker/Dockerfile.stale",
@@ -951,7 +1007,7 @@ describe("NewServicePage", () => {
       expect(
         screen.queryByLabelText("Dockerfile Path"),
       ).not.toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ runtime: "node", dockerfilePath: undefined }),
@@ -1004,18 +1060,19 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("tab", { name: /Existing Image/i }),
       );
-      await user.type(screen.getByLabelText("Name"), "private-web");
       await user.type(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
         "ghcr.io/acme/private-web:latest",
       );
+      // A valid image reveals the settings, Name among them.
+      await user.type(screen.getByLabelText("Name"), "private-web");
       await user.click(
         screen.getByRole("combobox", { name: /Registry credential/i }),
       );
       await user.click(
         screen.getByRole("option", { name: /Private GHCR \(ghcr.io\)/i }),
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1031,12 +1088,12 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("tab", { name: /Existing Image/i }),
       );
-      await user.type(screen.getByLabelText("Name"), "public-web");
       await user.type(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
         "docker.io/library/nginx:latest",
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.type(screen.getByLabelText("Name"), "public-web");
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1047,45 +1104,68 @@ describe("NewServicePage", () => {
     });
   });
 
-  describe("service type picker", () => {
-    it("renders all five service types", async () => {
+  // The type is the page's heading, switched from the breadcrumb ("New Web
+  // Service ▾") through ?type= — Render's create pages carry no in-page type
+  // cards (live capture 2026-11-21).
+  describe("service type from ?type=", () => {
+    it("opens on the Source Code row alone; the settings and Deploy wait for a source", async () => {
+      const user = userEvent.setup();
       renderPage();
-      await screen.findAllByRole("radiogroup");
       expect(
-        screen.getByRole("radio", { name: /Web Service/i }),
+        await screen.findByRole("heading", {
+          level: 1,
+          name: "New Web Service",
+        }),
       ).toBeInTheDocument();
+      expect(screen.getByText("Source Code")).toBeInTheDocument();
+      expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
       expect(
-        screen.getByRole("radio", { name: /Private Service/i }),
-      ).toBeInTheDocument();
+        screen.queryByRole("button", { name: /^Deploy / }),
+      ).not.toBeInTheDocument();
+
+      await pickRepo(user);
+      // The pick folds into a summary row and the settings open below it.
       expect(
-        screen.getByRole("radio", { name: /Background Worker/i }),
-      ).toBeInTheDocument();
+        screen.queryByPlaceholderText("Search repositories…"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
       expect(
-        screen.getByRole("radio", { name: /Cron Job/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("radio", { name: /Static Site/i }),
-      ).toBeInTheDocument();
+        screen.getByRole("button", { name: "Deploy web service" }),
+      ).toBeEnabled();
     });
 
-    it("defaults to Web Service selected", async () => {
-      renderPage();
-      await screen.findAllByRole("radiogroup");
-      expect(
-        screen.getByRole("radio", { name: /Web Service/i }),
-      ).toHaveAttribute("aria-checked", "true");
+    it("names the submit for the type it deploys", async () => {
+      const user = userEvent.setup();
+      const { router } = renderPage();
+      await pickRepo(user);
+      for (const [type, label] of [
+        ["web_service", "Deploy web service"],
+        ["private_service", "Deploy private service"],
+        ["background_worker", "Deploy background worker"],
+        ["cron_job", "Deploy cron job"],
+        ["static_site", "Deploy static site"],
+      ] as const) {
+        await chooseType(router, type);
+        expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+      }
     });
 
     // w4/546: a cron job is billed per second only while a run executes, so
-    // its plan cards price a minute of run time; a web service keeps its
+    // its plan rows price a minute of run time; a web service keeps its
     // monthly price.
     it("prices a cron job's plans per minute of run time", async () => {
       instanceTypesState.instanceTypes = [
         FREE,
         { ...STARTER, usdPerMinute: "0.00011" },
       ];
+      const user = userEvent.setup();
       renderPage("/?type=cron_job");
-      expect(await screen.findByText("$0.00011/min")).toBeInTheDocument();
+      await pickRepo(user);
+      const plans = within(
+        screen.getByRole("radiogroup", { name: "Compute Plan" }),
+      );
+      expect(plans.getByText("$0.00011/min")).toBeInTheDocument();
       expect(
         screen.getByText(
           "A cron job is billed per second while a run executes. The minimum charge is $0.70 a month per cron job.",
@@ -1099,43 +1179,49 @@ describe("NewServicePage", () => {
         FREE,
         { ...STARTER, usdPerMinute: "0.00011" },
       ];
+      const user = userEvent.setup();
       renderPage("/?type=web_service");
-      expect(await screen.findByText("$4.90/month")).toBeInTheDocument();
+      await pickRepo(user);
+      const plans = within(
+        screen.getByRole("radiogroup", { name: "Compute Plan" }),
+      );
+      expect(plans.getByText("$4.90/month")).toBeInTheDocument();
       expect(screen.queryByText(/\/min/)).not.toBeInTheDocument();
     });
 
     it("preselects the type from ?type= (Render /cron/new deep link)", async () => {
+      const user = userEvent.setup();
       renderPage("/?type=cron_job");
-      await screen.findAllByRole("radiogroup");
-      expect(screen.getByRole("radio", { name: /Cron Job/i })).toHaveAttribute(
-        "aria-checked",
-        "true",
-      );
-      // the cron-only Schedule field is shown with no click needed
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "New Cron Job" }),
+      ).toBeInTheDocument();
+      await pickRepo(user);
+      // the cron-only Schedule field is shown with no type switch needed
       expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
     });
 
     // w4/182: a mistyped or legacy ?type= opens the plain web wizard — the Web
-    // radio checked and its Port field present — never a typeless hybrid.
+    // heading and its Port field — never a typeless hybrid.
     it.each(["worker", "bogus123"])(
       "opens the default web wizard for an unknown ?type=%s",
       async (type) => {
+        const user = userEvent.setup();
         renderPage(`/?type=${type}`);
-        await screen.findAllByRole("radiogroup");
         expect(
-          screen.getByRole("radio", { name: /Web Service/i }),
-        ).toHaveAttribute("aria-checked", "true");
-        expect(screen.getByLabelText(/^Port/)).toBeInTheDocument();
-        expect(
-          screen.getByRole("heading", { level: 1, name: "New Web Service" }),
+          await screen.findByRole("heading", {
+            level: 1,
+            name: "New Web Service",
+          }),
         ).toBeInTheDocument();
+        await pickRepo(user);
+        expect(screen.getByLabelText(/^Port/)).toBeInTheDocument();
       },
     );
 
     // w5/078: see parseNewServiceSearch.
     it("hands readers no rejected ?type= or empty id", async () => {
       const { router } = renderPage("/?type=bogus123&projectId=");
-      await screen.findAllByRole("radiogroup");
+      await screen.findByRole("tab", { name: /GitHub/i });
       expect(router.state.matches.at(-1)?.search).toMatchObject({
         type: undefined,
         projectId: undefined,
@@ -1143,25 +1229,28 @@ describe("NewServicePage", () => {
     });
 
     it("shows cron-specific chrome and a pre-filled schedule on the cron deep link", async () => {
+      const user = userEvent.setup();
       renderPage("/?type=cron_job");
-      await screen.findAllByRole("radiogroup");
       // Heading + subtitle read as a cron form, not the generic New Service.
       expect(
-        screen.getByRole("heading", { level: 1, name: "New Cron Job" }),
+        await screen.findByRole("heading", { level: 1, name: "New Cron Job" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText("Run a command on a recurring schedule."),
       ).toBeInTheDocument();
+      await pickRepo(user);
       // Schedule is pre-filled with a valid default (Render parity).
       expect(screen.getByLabelText("Schedule")).toHaveValue("*/5 * * * *");
     });
 
     it("preselects static site from ?type=static_site", async () => {
       renderPage("/?type=static_site");
-      await screen.findAllByRole("radiogroup");
       expect(
-        screen.getByRole("radio", { name: /Static Site/i }),
-      ).toHaveAttribute("aria-checked", "true");
+        await screen.findByRole("heading", {
+          level: 1,
+          name: "New Static Site",
+        }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -1170,43 +1259,42 @@ describe("NewServicePage", () => {
   // page contradicting the type its own picker showed as selected.
   describe("per-type page heading and subtitle", () => {
     const CASES: {
-      label: RegExp;
+      type: ServiceType;
       heading: string;
       subtitle: string;
     }[] = [
       {
-        label: /Web Service/i,
+        type: "web_service",
         heading: "New Web Service",
         subtitle: "Deploy a web service from a Git repo or Docker image.",
       },
       {
-        label: /Private Service/i,
+        type: "private_service",
         heading: "New Private Service",
         subtitle: "Deploy a private service from a Git repo or Docker image.",
       },
       {
-        label: /Background Worker/i,
+        type: "background_worker",
         heading: "New Background Worker",
         subtitle: "Deploy a background worker from a Git repo or Docker image.",
       },
       {
-        label: /Cron Job/i,
+        type: "cron_job",
         heading: "New Cron Job",
         subtitle: "Run a command on a recurring schedule.",
       },
       {
-        label: /Static Site/i,
+        type: "static_site",
         heading: "New Static Site",
         subtitle: "Build and deploy a static site from a Git repo.",
       },
     ];
 
-    for (const { label, heading, subtitle } of CASES) {
+    for (const { type, heading, subtitle } of CASES) {
       it(`names the type in the heading and subtitle: ${heading}`, async () => {
-        const user = userEvent.setup();
-        renderPage();
-        await screen.findAllByRole("radiogroup");
-        await user.click(screen.getByRole("radio", { name: label }));
+        const { router } = renderPage();
+        await screen.findByRole("tab", { name: /GitHub/i });
+        await chooseType(router, type);
         expect(
           screen.getByRole("heading", { level: 1, name: heading }),
         ).toBeInTheDocument();
@@ -1216,11 +1304,9 @@ describe("NewServicePage", () => {
 
     it("never describes a non-web type as a web service", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await screen.findAllByRole("radiogroup");
-      await user.click(
-        screen.getByRole("radio", { name: /Background Worker/i }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "background_worker");
       expect(
         screen.queryByText(
           "Deploy a web service from a Git repo or Docker image.",
@@ -1238,14 +1324,13 @@ describe("NewServicePage", () => {
   // The radio's onChange now mirrors the choice into ?type= (replace: true).
   describe("tab title follows the Service Type radio", () => {
     it("updates ?type=, the tab title, and the heading together on a radio click", async () => {
-      const user = userEvent.setup();
       const { router } = renderPageWithHead();
-      await screen.findAllByRole("radiogroup");
+      await screen.findByRole("tab", { name: /GitHub/i });
       await waitFor(() =>
         expect(document.title).toBe("New Web Service ・ bex Dashboard"),
       );
 
-      await user.click(screen.getByRole("radio", { name: /Private Service/i }));
+      await chooseType(router, "private_service");
 
       expect(
         screen.getByRole("heading", { level: 1, name: "New Private Service" }),
@@ -1261,13 +1346,12 @@ describe("NewServicePage", () => {
     });
 
     it("replaces history and keeps other search params on a type switch", async () => {
-      const user = userEvent.setup();
       const { router } = renderPageWithHead(
         "/?projectId=prj-platform&environmentId=env-production",
       );
-      await screen.findAllByRole("radiogroup");
+      await screen.findByRole("tab", { name: /GitHub/i });
 
-      await user.click(screen.getByRole("radio", { name: /Cron Job/i }));
+      await chooseType(router, "cron_job");
 
       await waitFor(() =>
         expect(router.state.location.search).toMatchObject({
@@ -1288,9 +1372,7 @@ describe("NewServicePage", () => {
       );
       expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
 
-      await user.click(
-        screen.getByRole("radio", { name: /Background Worker/i }),
-      );
+      await chooseType(router, "background_worker");
 
       await waitFor(() =>
         expect(router.state.location.search).toMatchObject({
@@ -1300,64 +1382,74 @@ describe("NewServicePage", () => {
       // The selected repo and derived name survive the search-param update.
       expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
       expect(
-        screen.getByRole("radio", { name: /Background Worker/i }),
-      ).toHaveAttribute("aria-checked", "true");
+        screen.getByRole("heading", {
+          level: 1,
+          name: "New Background Worker",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Deploy background worker" }),
+      ).toBeInTheDocument();
     });
   });
 
   // w6/m43 t001: the Existing Image tab's "$PORT" hint rendered for every
-  // service type, directly contradicting the "no public URL" note shown a few
-  // fields below it on the same form for a worker/cron.
-  describe("Existing Image port hint", () => {
-    // w4/m121/t003 reworded the hint: the port is now a field on this form, so
-    // the hint names it instead of claiming a fixed default.
-    const PORT_HINT = /uses the port the image declares/i;
+  // service type, contradicting the "no public URL" note for a worker/cron.
+  // The image's port is now explained once, by the Port row — which only the
+  // port-binding types have — not repeated under the image field.
+  describe("Existing Image port copy", () => {
+    const IMAGE_PORT = /the port the image declares/i;
 
-    async function selectTypeThenImageTab(label: RegExp) {
+    async function enterImage(type: ServiceType) {
       const user = userEvent.setup();
-      renderPage();
-      await screen.findAllByRole("radiogroup");
-      await user.click(screen.getByRole("radio", { name: label }));
+      const { router } = renderPage();
+      await screen.findByRole("tab", { name: /GitHub/i });
+      await chooseType(router, type);
       await user.click(screen.getByRole("tab", { name: /Existing Image/i }));
+      await user.type(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+        "docker.io/library/nginx:latest",
+      );
     }
 
-    it("shows the hint for a web service, which does bind a port", async () => {
-      await selectTypeThenImageTab(/Web Service/i);
-      expect(screen.getByText(PORT_HINT)).toBeInTheDocument();
-    });
+    it.each(["web_service", "private_service"] as const)(
+      "explains the image's port once, on the Port row, for a %s",
+      async (type) => {
+        await enterImage(type);
+        expect(screen.getAllByText(IMAGE_PORT)).toHaveLength(1);
+        expect(screen.getByLabelText(/^Port/)).toHaveAccessibleDescription(
+          IMAGE_PORT,
+        );
+      },
+    );
 
-    it("shows the hint for a private service, which also binds a port", async () => {
-      await selectTypeThenImageTab(/Private Service/i);
-      expect(screen.getByText(PORT_HINT)).toBeInTheDocument();
-    });
-
-    it("hides the hint for a background worker, which never gets a port", async () => {
-      await selectTypeThenImageTab(/Background Worker/i);
-      expect(
-        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
-      ).toBeInTheDocument();
-      expect(screen.queryByText(PORT_HINT)).not.toBeInTheDocument();
-    });
-
-    it("hides the hint for a cron job, which never gets a port either", async () => {
-      await selectTypeThenImageTab(/Cron Job/i);
-      expect(screen.queryByText(PORT_HINT)).not.toBeInTheDocument();
-    });
+    it.each(["background_worker", "cron_job"] as const)(
+      "says nothing about a port for a %s, which binds none",
+      async (type) => {
+        await enterImage(type);
+        expect(screen.queryByLabelText(/^Port/)).not.toBeInTheDocument();
+        expect(screen.queryByText(IMAGE_PORT)).not.toBeInTheDocument();
+      },
+    );
 
     // w4/615: a web service's $PORT stays Render's 10000 whatever port the
     // image declares; a private service's primary is still its $PORT.
     it("words the port field's hint for a web service's 10000 $PORT", async () => {
-      await selectTypeThenImageTab(/Web Service/i);
+      await enterImage("web_service");
       expect(
-        screen.getByText(/\$PORT stays 10000 unless you set it/),
+        screen.getByText(
+          /the \$PORT variable stays 10000 unless you set a port/,
+        ),
       ).toBeInTheDocument();
       expect(screen.queryByText(/becomes \$PORT/)).not.toBeInTheDocument();
     });
 
     it("keeps a private service's declared primary as its $PORT", async () => {
-      await selectTypeThenImageTab(/Private Service/i);
+      await enterImage("private_service");
       expect(screen.getByText(/becomes \$PORT/)).toBeInTheDocument();
-      expect(screen.queryByText(/\$PORT stays 10000/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/\$PORT variable stays 10000/),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -1365,13 +1457,13 @@ describe("NewServicePage", () => {
   // binds anything but 3000 (nginx:alpine binds :80) came up unroutable — the
   // live 2026-09-21 pass got a 503 from a service created exactly this way.
   describe("service port", () => {
-    it.each([/Web Service/i, /Private Service/i])(
+    it.each(["web_service", "private_service"] as const)(
       "defaults the port to 10000 for %s, the types that bind one",
-      async (label) => {
+      async (type) => {
         const user = userEvent.setup();
-        renderPage();
-        await screen.findAllByRole("radiogroup");
-        await user.click(screen.getByRole("radio", { name: label }));
+        const { router } = renderPage();
+        await pickRepo(user);
+        await chooseType(router, type);
 
         expect(screen.getByLabelText("Port")).toHaveValue("10000");
         expect(
@@ -1380,13 +1472,13 @@ describe("NewServicePage", () => {
       },
     );
 
-    it.each([/Background Worker/i, /Cron Job/i, /Static Site/i])(
+    it.each(["background_worker", "cron_job", "static_site"] as const)(
       "renders no port field for %s, which binds none",
-      async (label) => {
+      async (type) => {
         const user = userEvent.setup();
-        renderPage();
-        await screen.findAllByRole("radiogroup");
-        await user.click(screen.getByRole("radio", { name: label }));
+        const { router } = renderPage();
+        await pickRepo(user);
+        await chooseType(router, type);
 
         expect(screen.queryByLabelText("Port")).not.toBeInTheDocument();
       },
@@ -1401,7 +1493,7 @@ describe("NewServicePage", () => {
       const port = screen.getByLabelText("Port");
       await user.clear(port);
       await user.type(port, "8080");
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ port: 8080 }),
@@ -1421,9 +1513,7 @@ describe("NewServicePage", () => {
       expect(
         screen.getByText("Enter a port between 1 and 65535."),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
       expect(create).not.toHaveBeenCalled();
     });
 
@@ -1431,8 +1521,7 @@ describe("NewServicePage", () => {
     it("accepts a PORT env var like any other key", async () => {
       const user = userEvent.setup();
       renderPage();
-      await screen.findAllByRole("radiogroup");
-      await user.click(screen.getByRole("button", { name: "Add Variable" }));
+      await pickRepo(user);
       await user.type(
         screen.getAllByLabelText(/^Variable \d+ key$/)[0],
         "PORT",
@@ -1451,18 +1540,18 @@ describe("NewServicePage", () => {
   describe("per-type conditional fields", () => {
     it("shows schedule and command fields for cron job", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
       expect(screen.getByLabelText("Start Command")).toBeInTheDocument();
     });
 
     it("shows publish directory for static site and hides plan picker", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(
-        await screen.findByRole("radio", { name: /Static Site/i }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "static_site");
       expect(screen.getByLabelText("Publish Directory")).toBeInTheDocument();
       // The publish directory resolves from the Root Directory (w4/642).
       expect(
@@ -1474,25 +1563,24 @@ describe("NewServicePage", () => {
 
     it("shows no-public-url note for private service", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(
-        await screen.findByRole("radio", { name: /Private Service/i }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "private_service");
       expect(screen.getByText(/no public URL/i)).toBeInTheDocument();
     });
 
     it("shows no-public-url note for background worker", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(
-        await screen.findByRole("radio", { name: /Background Worker/i }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "background_worker");
       expect(screen.getByText(/no public URL/i)).toBeInTheDocument();
     });
 
     it("hides schedule, command, and publish-path for web service (default)", async () => {
+      const user = userEvent.setup();
       renderPage();
-      await screen.findAllByRole("radiogroup");
+      await pickRepo(user);
       expect(screen.queryByLabelText("Schedule")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Command")).not.toBeInTheDocument();
       expect(
@@ -1504,27 +1592,30 @@ describe("NewServicePage", () => {
   describe("cron job validation", () => {
     it("keeps Deploy disabled when schedule is empty for cron job", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
+      const deploy = screen.getByRole("button", { name: /^Deploy / });
+      expect(deploy).toBeDisabled();
+      // A native cron job needs its command first, then a valid schedule:
+      // the bar names the first thing to fix.
+      expect(deploy).toHaveAccessibleDescription(
+        "Enter the build and start commands to continue.",
       );
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeDisabled();
+      await user.type(screen.getByLabelText("Start Command"), "npm run job");
+      await user.clear(screen.getByLabelText("Schedule"));
+      expect(deploy).toHaveAccessibleDescription(
+        "Enter a valid schedule to continue.",
+      );
     });
 
     it("keeps Deploy disabled and shows error when schedule has fewer than 5 fields", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       await user.type(screen.getByLabelText("Schedule"), "* * *");
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
       expect(
         screen.getByText(/valid 5-field cron expression/i),
       ).toBeInTheDocument();
@@ -1539,20 +1630,12 @@ describe("NewServicePage", () => {
       "keeps Deploy disabled and shows the format error for %j",
       async (schedule) => {
         const user = userEvent.setup();
-        renderPage();
-        await user.click(
-          await screen.findByRole("radio", { name: /Cron Job/i }),
-        );
-        await user.click(
-          await screen.findByRole("button", {
-            name: /acme-corp\/web-frontend/,
-          }),
-        );
+        const { router } = renderPage();
+        await pickRepo(user);
+        await chooseType(router, "cron_job");
         await user.type(screen.getByLabelText("Start Command"), "npm run job");
         await user.type(screen.getByLabelText("Schedule"), schedule);
-        expect(
-          screen.getByRole("button", { name: /Deploy Service/i }),
-        ).toBeDisabled();
+        expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
         expect(
           screen.getByText(/valid 5-field cron expression/i),
         ).toBeInTheDocument();
@@ -1561,8 +1644,9 @@ describe("NewServicePage", () => {
 
     it("tells a never-firing schedule apart from an out-of-range one", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       const schedule = screen.getByLabelText("Schedule");
       await user.type(schedule, "0 0 31 2 *");
       expect(screen.getByText(/never fires/i)).toBeInTheDocument();
@@ -1577,8 +1661,9 @@ describe("NewServicePage", () => {
 
     it("shows a human-readable preview for a valid schedule", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
       expect(
         screen.getByText(/Every day at 00:00 · runs in UTC/i),
@@ -1589,8 +1674,9 @@ describe("NewServicePage", () => {
     // wrapper was an English sentence; it now follows the active language.
     it("localizes the schedule preview with the active language", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       const schedule = screen.getByLabelText("Schedule");
       await user.type(schedule, "*/5 * * * *");
       expect(
@@ -1618,28 +1704,22 @@ describe("NewServicePage", () => {
 
     it("enables Deploy when schedule and start command are valid", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
       await user.type(screen.getByLabelText("Start Command"), "npm run job");
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeEnabled();
     });
 
     it("submits with type=cron_job, schedule, command but no publishPath", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "cron_job");
       await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
       await user.type(screen.getByLabelText("Start Command"), "python job.py");
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "cron_job",
@@ -1656,15 +1736,11 @@ describe("NewServicePage", () => {
 
     it("submits with type=static_site and publishPath but no schedule or command", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(
-        await screen.findByRole("radio", { name: /Static Site/i }),
-      );
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "static_site");
       await user.type(screen.getByLabelText("Publish Directory"), "dist");
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "static_site",
@@ -1680,19 +1756,24 @@ describe("NewServicePage", () => {
     // blank or whitespace one keeps Deploy disabled and says why at the field.
     it("keeps Deploy disabled until a static site has a publish directory", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(
-        await screen.findByRole("radio", { name: /Static Site/i }),
-      );
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
-      const deploy = screen.getByRole("button", { name: /Deploy Service/i });
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "static_site");
+      const deploy = screen.getByRole("button", { name: /^Deploy / });
       const field = screen.getByLabelText("Publish Directory");
       expect(deploy).toBeDisabled();
-      expect(
-        screen.getByText(/^Required\. Enter the built output/),
-      ).toBeVisible();
+      // The bar names the missing field, not "the fields above".
+      expect(deploy).toHaveAccessibleDescription(
+        "Enter a publish directory to continue.",
+      );
+      // The row is marked Required, and the bar's reason takes the user to it.
+      expect(screen.getByText("Required")).toBeVisible();
+      await user.click(
+        screen.getByRole("button", {
+          name: "Enter a publish directory to continue.",
+        }),
+      );
+      expect(field).toHaveFocus();
       await user.type(field, "   ");
       expect(deploy).toBeDisabled();
       await user.click(deploy);
@@ -1700,33 +1781,25 @@ describe("NewServicePage", () => {
       await user.clear(field);
       await user.type(field, ".");
       expect(deploy).toBeEnabled();
-      expect(
-        screen.queryByText(/^Required\. Enter the built output/),
-      ).toBeNull();
+      expect(deploy).not.toHaveAccessibleDescription();
       // Switching to a type that hides the field drops the requirement.
       await user.clear(field);
-      await user.click(screen.getByRole("radio", { name: /Web Service/i }));
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeEnabled();
+      await chooseType(router, "web_service");
+      expect(screen.getByRole("button", { name: /^Deploy / })).toBeEnabled();
     });
 
     // w21/050: what bex-api (or the operator, at deploy) refuses is marked in
     // its field before Deploy Service, as the Settings editors mark it.
     it("marks a publish directory that leaves the repository and holds Deploy", async () => {
       const user = userEvent.setup();
-      renderPage();
-      await user.click(
-        await screen.findByRole("radio", { name: /Static Site/i }),
-      );
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
+      const { router } = renderPage();
+      await pickRepo(user);
+      await chooseType(router, "static_site");
       const field = screen.getByLabelText("Publish Directory");
       await user.type(field, "../../../x");
       expect(field).toHaveAttribute("aria-invalid", "true");
       expect(field).toHaveAccessibleDescription(/leaves the repository/);
-      const deploy = screen.getByRole("button", { name: /Deploy Service/i });
+      const deploy = screen.getByRole("button", { name: /^Deploy / });
       expect(deploy).toBeDisabled();
       await user.clear(field);
       await user.type(field, "dist");
@@ -1744,7 +1817,7 @@ describe("NewServicePage", () => {
       await user.type(rootDir, "../x");
       expect(rootDir).toHaveAttribute("aria-invalid", "true");
       expect(rootDir).toHaveAccessibleDescription(/no \.\. segment/);
-      const deploy = screen.getByRole("button", { name: /Deploy Service/i });
+      const deploy = screen.getByRole("button", { name: /^Deploy / });
       expect(deploy).toBeDisabled();
       await user.clear(rootDir);
       // The spellings the server normalizes still submit.
@@ -1770,7 +1843,7 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ type: "web_service" }),
       );
@@ -1785,7 +1858,7 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(await screen.findByText("deploy landing")).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(
@@ -1803,7 +1876,7 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(await screen.findByText("service landing")).toBeInTheDocument();
       expect(router.state.location.pathname).toBe("/services/srv-local");
@@ -1816,7 +1889,7 @@ describe("NewServicePage", () => {
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
-      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
 
       expect(create).toHaveBeenCalled();
       expect(router.state.location.pathname).toBe("/");
@@ -1833,26 +1906,37 @@ describe("NewServicePage", () => {
 // (compiled CSS: 258/562px Web, 176/480px Private, identical to the ready
 // grid); this pins the slots per type.
 describe("NewServicePage plan region while the catalog loads (w4/329)", () => {
+  // The ready list shows CREATE_PLAN_ROWS plans and "Show all plans" (every
+  // ladder is longer than that plus one), so the preview draws those rows and
+  // the button's slot, whatever the type's ladder.
   it.each([
     ["web_service", 7],
     ["private_service", 6],
     ["background_worker", 6],
     ["cron_job", 6],
-  ])("%s previews %i inert tier slots", async (type, slots) => {
+  ])("%s previews the collapsed list's inert rows", async (type, tiers) => {
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
+    const user = userEvent.setup();
     renderPage(`/?type=${type}`);
+    await pickRepo(user);
     const label = await screen.findByText("Compute Plan");
-    const region = label.parentElement!;
-    const preview = region.querySelector('[aria-hidden="true"]');
-    expect(preview?.children).toHaveLength(slots);
+    const region = label.closest(".grid") as HTMLElement;
+    const preview = region.querySelector('[aria-hidden="true"]')!;
+    expect(tiers).toBeGreaterThan(CREATE_PLAN_ROWS + 1);
+    const rows = Array.from(preview.children).filter((child) =>
+      child.className.includes("rounded-md border"),
+    );
+    expect(rows).toHaveLength(CREATE_PLAN_ROWS);
+    expect(preview.children).toHaveLength(CREATE_PLAN_ROWS + 1);
     expect(within(region).queryByRole("radio")).toBeNull();
   });
 
   it("previews nothing for a static site", async () => {
     instanceTypesState.instanceTypes = [];
+    const user = userEvent.setup();
     renderPage("/?type=static_site");
-    await screen.findByRole("heading", { level: 1 });
+    await pickRepo(user);
     expect(screen.queryByText("Compute Plan")).toBeNull();
   });
 });
@@ -1868,6 +1952,7 @@ describe("NewServicePage with a failed plan catalog (w4/m218)", () => {
     const retry = vi.mocked(instanceTypesState.retry);
     retry.mockClear();
     renderPage("/?type=web_service");
+    await pickRepo(user);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Plans couldn't load");
@@ -1893,7 +1978,9 @@ describe("NewServicePage with a failed plan catalog (w4/m218)", () => {
 });
 
 it("keeps the service form, Port included, inside the hydration fieldset (w4/m219)", async () => {
+  const user = userEvent.setup();
   renderPage("/?type=web_service");
+  await pickRepo(user);
   const fieldset = (await screen.findByLabelText("Name")).closest("fieldset");
   expect(fieldset).not.toBeNull();
   expect(fieldset).toContainElement(screen.getByLabelText(/^Port/));

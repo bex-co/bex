@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Label } from "@/common/components/ui/label";
+import { CREATE_SELECT_CLASS } from "@/common/components/create-form";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,8 @@ export interface RegistryCredentialSelectProps {
   onValueChange: (value: string) => void;
   description: string;
   disabled?: boolean;
+  /** Leave the label to the caller: a create row names the select itself. */
+  hideLabel?: boolean;
 }
 
 /**
@@ -31,6 +34,7 @@ export function RegistryCredentialSelect({
   onValueChange,
   description,
   disabled = false,
+  hideLabel = false,
 }: RegistryCredentialSelectProps) {
   const { t } = useTranslations();
   const { credentials, loading, error } = useRegistryCredentials();
@@ -38,13 +42,22 @@ export function RegistryCredentialSelect({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{t("services.createRegistryCredentialLabel")}</Label>
+      {hideLabel ? null : (
+        <Label htmlFor={id}>
+          {t("services.createRegistryCredentialLabel")}
+        </Label>
+      )}
       <Select
         value={value || NONE_VALUE}
         onValueChange={(next) => onValueChange(next === NONE_VALUE ? "" : next)}
         disabled={disabled || loading || error != null}
       >
-        <SelectTrigger id={id} aria-describedby={descriptionId}>
+        <SelectTrigger
+          id={id}
+          aria-describedby={descriptionId}
+          // Full width, 44 px on a phone, wherever the picker appears.
+          className={CREATE_SELECT_CLASS}
+        >
           <SelectValue
             placeholder={t("services.createRegistryCredentialPlaceholder")}
           />
@@ -60,7 +73,12 @@ export function RegistryCredentialSelect({
           ))}
         </SelectContent>
       </Select>
-      <p id={descriptionId} className="text-xs text-muted-foreground">
+      <p
+        id={descriptionId}
+        // Two lines held: the copy while the list loads and the copy once it
+        // has (often one line) swap without moving the rows below.
+        className="text-muted-foreground min-h-10 text-sm"
+      >
         {error
           ? t("services.registryCredentialListError")
           : credentials.length === 0 && !loading
@@ -69,7 +87,7 @@ export function RegistryCredentialSelect({
         <Link
           to="/workspace/settings"
           hash="registry-credentials"
-          className="text-primary hover:underline"
+          className="text-primary relative hover:underline after:absolute after:inset-x-0 after:-inset-y-3 after:content-['']"
         >
           {t("services.registryCredentialManage")}
         </Link>

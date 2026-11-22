@@ -83,7 +83,6 @@ export interface BuildShape {
   isStaticBuild: boolean;
   usesRegistryCredential: boolean;
   showPlan: boolean;
-  showNoUrlNote: boolean;
   /**
    * The type binds a port (`servesHttp`): web_service and private_service.
    * Gates BOTH the image tab's `$PORT` hint and the create form's port field
@@ -139,9 +138,6 @@ export function buildShape(form: NewServiceForm): BuildShape {
     isStaticBuild: isGitSource && isStaticType,
     usesRegistryCredential: isImageSource || isDockerBuild,
     showPlan: !isStaticType,
-    showNoUrlNote:
-      form.serviceType === "private_service" ||
-      form.serviceType === "background_worker",
     showPort: servesHttp(form.serviceType),
     imagePorts: imagePortShape(form.serviceType, isDockerBuild, isImageSource),
   };
@@ -236,25 +232,50 @@ export function createFormErrors(form: NewServiceForm): CreateFormErrors {
   return errors;
 }
 
-/** True when the form is complete enough to submit, per the same build shapes. */
-export function isSubmittable(form: NewServiceForm): boolean {
-  const fieldErrors = createFormErrors(form);
-  const shape = buildShape(form);
-  const sourceValid =
+/** Whether the selected tab names a source the service can be built or run
+ *  from: a picked repository, a valid repository URL, or a valid image. The
+ *  create page reveals its settings once it does, as Render's does. */
+export function sourceChosen(form: NewServiceForm): boolean {
+  return (
     (form.tab === "github" && form.selectedRepo != null) ||
     (form.tab === "git" &&
       isValidGitUrl(form.gitUrl) &&
       !parseGitHubPage(form.gitUrl)?.file) ||
-    (shape.isImageSource && isValidDockerImageRef(form.image));
-  const nativeCommandsValid =
-    !shape.isNativeBuild ||
-    (form.buildCommand.trim() !== "" &&
-      (shape.isCronType
-        ? form.command.trim() !== ""
-        : form.startCommand.trim() !== ""));
+    (buildShape(form).isImageSource && isValidDockerImageRef(form.image))
+  );
+}
+
+/** A native build is missing its build command, or its start command (a cron
+ *  job's: its command). */
+export function nativeCommandsMissing(
+  form: NewServiceForm,
+  shape: BuildShape = buildShape(form),
+): boolean {
   return (
-    sourceValid &&
-    nativeCommandsValid &&
+    shape.isNativeBuild &&
+    (form.buildCommand.trim() === "" ||
+      (shape.isCronType
+        ? form.command.trim() === ""
+        : form.startCommand.trim() === ""))
+  );
+}
+
+/** A secret file the server would refuse: a bad name or a repeated one. */
+export function secretFilesInvalid(form: NewServiceForm): boolean {
+  return (
+    !submittableSecretFiles(form.secretFiles).every((file) =>
+      isValidSecretFileName(file.name),
+    ) || duplicateNames(form.secretFiles.map((file) => file.name)).size > 0
+  );
+}
+
+/** True when the form is complete enough to submit, per the same build shapes. */
+export function isSubmittable(form: NewServiceForm): boolean {
+  const fieldErrors = createFormErrors(form);
+  const shape = buildShape(form);
+  return (
+    sourceChosen(form) &&
+    !nativeCommandsMissing(form, shape) &&
     // A value the server would refuse (a bad PORT, an entry over the process
     // limit, a NUL) never leaves the browser either (w21/050).
     Object.keys(fieldErrors.envValues).length === 0 &&
@@ -267,10 +288,7 @@ export function isSubmittable(form: NewServiceForm): boolean {
       VALID_ENV_KEY.test(row.key),
     ) &&
     duplicateNames(form.envVars.map((row) => row.key)).size === 0 &&
-    submittableSecretFiles(form.secretFiles).every((file) =>
-      isValidSecretFileName(file.name),
-    ) &&
-    duplicateNames(form.secretFiles.map((file) => file.name)).size === 0 &&
+    !secretFilesInvalid(form) &&
     // A port the backend would refuse never leaves the browser: the form blocks
     // Submit (w4/m121/t003). Types that bind no port never read the field at
     // all.

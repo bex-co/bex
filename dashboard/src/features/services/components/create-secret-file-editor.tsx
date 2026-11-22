@@ -3,7 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
+import { CreateField } from "@/common/components/create-form";
 import { Textarea } from "@/common/components/ui/textarea";
 import {
   duplicateNames,
@@ -37,20 +37,13 @@ export function CreateSecretFileEditor({
     onChange(updateRow(rows, i, patch));
   }
 
+  // A create row, as Render's Advanced lays out Secret Files: what they are
+  // on the left, the files and the add button on the right.
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <Label>{t("services.createFieldSecretFilesTitle")}</Label>
-          <p className="text-sm text-muted-foreground">
-            {t("services.createFieldSecretFilesHint")}
-          </p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={addRow}>
-          <Plus className="size-3.5" />
-          {t("services.createFieldSecretFilesAdd")}
-        </Button>
-      </div>
+    <CreateField
+      label={t("services.createFieldSecretFilesTitle")}
+      description={t("services.createFieldSecretFilesHint")}
+    >
       {rows.map((row, i) => {
         const syntaxInvalid =
           row.name !== "" && !isValidSecretFileName(row.name);
@@ -72,7 +65,7 @@ export function CreateSecretFileEditor({
                   aria-describedby={
                     invalid ? `${baseId}-${i}-error` : undefined
                   }
-                  className="font-mono text-sm"
+                  className="h-11 font-mono text-sm sm:h-9"
                 />
                 <Textarea
                   value={row.content}
@@ -94,6 +87,7 @@ export function CreateSecretFileEditor({
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="size-11 sm:size-9"
                 onClick={() => onChange(removeRow(rows, i))}
                 aria-label={t("services.fileRowRemove", { n: String(i + 1) })}
               >
@@ -119,6 +113,15 @@ export function CreateSecretFileEditor({
           {t("services.secretFileLimit")}
         </p>
       ) : null}
-    </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 sm:h-9"
+        onClick={addRow}
+      >
+        <Plus className="size-3.5" />
+        {t("services.createFieldSecretFilesAdd")}
+      </Button>
+    </CreateField>
   );
 }

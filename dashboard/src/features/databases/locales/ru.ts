@@ -134,10 +134,6 @@ const ruDatabases: Record<string, TranslationEntry> = {
     message: "Не удалось удалить {name}. Попробуйте ещё раз.",
     description: "Toast when a delete request fails",
   },
-  "databases.createButton": {
-    message: "Новая база данных",
-    description: "Button that opens the create-database dialog",
-  },
   "databases.createTitle": {
     message: "Новая база Postgres",
     description: "Create-database dialog title",
@@ -159,17 +155,8 @@ const ruDatabases: Record<string, TranslationEntry> = {
       "Введите название длиной до 100 символов без переводов строк и управляющих символов.",
     description: "Create-database name validation message",
   },
-  "databases.physicalNamesTitle": {
-    message: "Имена PostgreSQL (необязательно)",
-    description: "Create-database advanced physical-name section title",
-  },
-  "databases.physicalNamesHint": {
-    message:
-      "Задаются только при создании. Оставьте пустыми, чтобы сгенерировать стабильные имена.",
-    description: "Create-database physical-name helper text",
-  },
   "databases.fieldDatabaseName": {
-    message: "Имя базы данных",
+    message: "База данных",
     description: "Create-database physical PostgreSQL database label",
   },
   "databases.fieldDatabaseNamePlaceholder": {
@@ -177,7 +164,7 @@ const ruDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL database placeholder",
   },
   "databases.fieldDatabaseUser": {
-    message: "Пользователь базы данных",
+    message: "Пользователь",
     description: "Create-database physical PostgreSQL owner-role label",
   },
   "databases.fieldDatabaseUserPlaceholder": {
@@ -198,10 +185,6 @@ const ruDatabases: Record<string, TranslationEntry> = {
     message: "Тариф вычислений",
     description: "Create-database form field label (plan / tier)",
   },
-  "databases.fieldPlanPlaceholder": {
-    message: "Выберите тариф вычислений",
-    description: "Create-database plan select placeholder",
-  },
   "databases.fieldVersion": {
     message: "Версия PostgreSQL",
     description: "Create-database form field label (major version)",
@@ -211,11 +194,12 @@ const ruDatabases: Record<string, TranslationEntry> = {
     description: "Create-database version select default option",
   },
   "databases.fieldDisk": {
-    message: "Размер диска (ГБ)",
+    message: "Хранилище",
     description: "Create-database form field label (storage size)",
   },
   "databases.fieldDiskFixed": {
-    message: "У этого тарифа фиксированный диск {size} ГБ.",
+    message:
+      "Этот тариф включает фиксированный диск на {size} ГБ. Чтобы задать объём самостоятельно, выберите тариф побольше.",
     description:
       "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
   },
@@ -1970,6 +1954,41 @@ const ruDatabases: Record<string, TranslationEntry> = {
   "databases.logsErrorTitle": {
     message: "Не удалось загрузить логи базы данных",
     description: "Managed Postgres logs generic error title",
+  },
+  "databases.fieldNameDescription": {
+    message: "Уникальное название инстанса Postgres.",
+    description: "Create-Postgres Name row description",
+  },
+  "databases.fieldDatabaseNameDescription": {
+    message:
+      "Имя базы (dbname) в Postgres, задаётся только при создании. Оставьте пустым, чтобы сгенерировать его.",
+    description:
+      "Create-Postgres Database row description: the physical dbname, create-time only",
+  },
+  "databases.fieldDatabaseUserDescription": {
+    message:
+      "Пользователь Postgres, которому принадлежит база, задаётся только при создании. Оставьте пустым, чтобы сгенерировать его.",
+    description:
+      "Create-Postgres User row description: the physical owner role, create-time only",
+  },
+  "databases.fieldPlanDescription": {
+    message:
+      "Задайте память и CPU базы данных. Тариф вычислений можно сменить позже.",
+    description: "Create-Postgres plan row description (Render's Compute)",
+  },
+  "databases.fieldDiskDescription": {
+    message:
+      "Ёмкость базы данных в ГБ. Позже её можно увеличить, но не уменьшить.",
+    description:
+      "Create-Postgres Storage row description (Render: storage only grows)",
+  },
+  "databases.fieldDiskUnit": {
+    message: "ГБ",
+    description: "Unit after the create-Postgres storage input",
+  },
+  "databases.fieldVersionDescription": {
+    message: "Основная версия PostgreSQL, на которой работает база данных.",
+    description: "Create-Postgres version row description",
   },
 };
 

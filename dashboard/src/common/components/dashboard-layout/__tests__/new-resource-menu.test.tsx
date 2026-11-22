@@ -26,9 +26,14 @@ function renderMenu() {
       validateSearch: IndexRoute.options.validateSearch,
     }),
     ...[
-      "/services/new",
-      "/keyvalue/new",
-      "/blueprints/new",
+      "/static/new",
+      "/web/new",
+      "/pserv/new",
+      "/worker/new",
+      "/cron/new",
+      "/new/database",
+      "/new/redis",
+      "/blueprint/new",
       "/webhooks/new",
     ].map((path) =>
       createRoute({
@@ -58,24 +63,56 @@ describe("NewResourceMenu", () => {
     expect(screen.getByRole("menu", { name: "New" })).toBeInTheDocument();
   });
 
-  it("lists every create entry, Sandbox Group included, under one heading", async () => {
+  // Render's New menu is flat (live capture 2026-11-21): each service type,
+  // then the datastores, with no "New Service" submenu between.
+  it("lists every create entry flat, in Render's bare names, Sandbox Group included", async () => {
     const user = userEvent.setup();
     renderMenu();
 
     await user.click(await screen.findByRole("button", { name: /^New/ }));
 
-    expect(screen.getByText("Create a resource")).toBeInTheDocument();
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
     ).toEqual([
-      "New Service",
-      "New Postgres",
-      "New Key Value",
-      "New Blueprint Instance",
-      "New Project",
-      "New Sandbox Group",
-      "New Webhook",
+      "Static Site",
+      "Web Service",
+      "Private Service",
+      "Background Worker",
+      "Cron Job",
+      "Postgres",
+      "Key Value",
+      "Project",
+      "Blueprint",
+      "Sandbox Group",
+      "Webhook",
     ]);
+    expect(screen.queryByRole("menuitem", { name: "New Service" })).toBeNull();
+  });
+
+  it("deep-links each service type and the datastores to their create pages", async () => {
+    const user = userEvent.setup();
+    const { router } = renderMenu();
+
+    await user.click(await screen.findByRole("button", { name: /^New/ }));
+    expect(screen.getByRole("menuitem", { name: "Cron Job" })).toHaveAttribute(
+      "href",
+      "/cron/new",
+    );
+    expect(screen.getByRole("menuitem", { name: "Postgres" })).toHaveAttribute(
+      "href",
+      "/new/database",
+    );
+    expect(screen.getByRole("menuitem", { name: "Key Value" })).toHaveAttribute(
+      "href",
+      "/new/redis",
+    );
+    expect(screen.getByRole("menuitem", { name: "Blueprint" })).toHaveAttribute(
+      "href",
+      "/blueprint/new",
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Static Site" }));
+    expect(router.state.location.pathname).toBe("/static/new");
   });
 
   it("opens the overview's sandbox group dialog through the URL", async () => {
@@ -83,7 +120,7 @@ describe("NewResourceMenu", () => {
     const { router } = renderMenu();
 
     await user.click(await screen.findByRole("button", { name: /^New/ }));
-    const item = screen.getByRole("menuitem", { name: "New Sandbox Group" });
+    const item = screen.getByRole("menuitem", { name: "Sandbox Group" });
     expect(item).toHaveAttribute("href", "/?new=sandbox-group");
 
     await user.click(item);

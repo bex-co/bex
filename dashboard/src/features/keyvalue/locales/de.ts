@@ -326,7 +326,8 @@ const deKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "Erlaube Verbindungen von außerhalb des Clusters über TLS.",
+    message:
+      "Verbindungen von außerhalb Ihres privaten Netzwerks über TLS erlauben.",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -490,7 +491,8 @@ const deKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey-CLI-Befehl",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Verbindungsinfos konnten nicht geladen werden",
@@ -887,6 +889,20 @@ const deKeyValue: Record<string, TranslationEntry> = {
     message:
       "Du hast keine Berechtigung, die Logs dieses Key-Value-Stores anzusehen.",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "Ein eindeutiger Name für Ihre Key-Value-Instanz.",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "Die Valkey-Hauptversion, die die Instanz ausführt.",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message:
+      "Bestimmt den verfügbaren Arbeitsspeicher und das Verbindungslimit der Instanz.",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

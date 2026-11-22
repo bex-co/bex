@@ -1,5 +1,10 @@
 import { useEffect, useMemo } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from "@tanstack/react-router";
 import {
   translatedTitleHead,
   titleLoaderFetchPolicy,
@@ -12,7 +17,7 @@ import {
   KeyValuesDocument,
 } from "@/graphql/definitions";
 import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
-import { Plus } from "lucide-react";
+import { Boxes, FolderKanban, Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
@@ -31,7 +36,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert.tsx";
-import { NewServiceMenuItems } from "@/features/services/components/new-service-menu-items";
+import { CreateTypeMenuItems } from "@/common/components/dashboard-layout/create-type-menu-items";
 import { useServices } from "@/features/services/hooks/use-services";
 import {
   useServiceLifecycle,
@@ -40,7 +45,6 @@ import {
 } from "@/features/services/hooks/use-service-lifecycle";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { computeStats as computeDatabaseStats } from "@/features/databases/lib/status";
-import { CreateDatabaseDialog } from "@/features/databases/components/create-database-dialog";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import { computeStats as computeKeyValueStats } from "@/features/keyvalue/lib/status";
 import { useProjects } from "@/features/projects/hooks/use-projects";
@@ -66,16 +70,29 @@ import {
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** The create dialogs the URL's `?new=` can open on the overview. */
-type CreateDialogKind = "database" | "project" | "sandbox-group";
+type CreateDialogKind = "project" | "sandbox-group";
+
+/**
+ * `?new=database` opened a Postgres create dialog here until Postgres got
+ * Render's full create page (`/new/database`); a saved or bookmarked link
+ * still lands there.
+ */
+const LEGACY_DATABASE_CREATE = "database";
 
 export const Route = createFileRoute("/")({
   staticData: { chrome: true },
   component: HomePage,
   pendingComponent: OverviewPageSkeleton,
-  // No-arg requireAuth: `next` defaults to the requested href, so
-  // `?new=database` — the create-dialog param Render's New-menu aliases land
-  // with (w1/m45) — survives the SSR login bounce.
-  beforeLoad: requireAuth(),
+  // No-arg requireAuth: `next` defaults to the requested href, so a `?new=`
+  // create-dialog param Render's New-menu aliases land with (w1/m45) survives
+  // the SSR login bounce. The legacy `?new=database` goes to the Postgres
+  // create page first, which signs in the same way.
+  beforeLoad: (ctx) => {
+    if (ctx.search.new === LEGACY_DATABASE_CREATE) {
+      throw redirect({ to: "/new/database", replace: true });
+    }
+    requireAuth()(ctx);
+  },
   // Prefetch the overview's four resource queries so `defaultPreload: "intent"`
   // warms them on hover and the page renders from cache on mount instead of a
   // skeleton (w9/m68). Keyed on the persisted workspace (the same `ownerId` the
@@ -117,25 +134,22 @@ export const Route = createFileRoute("/")({
         }),
     ]);
   },
-  // `?new=database|project|sandbox-group` opens the matching create dialog
-  // (w1/m45, w22/m311) — the URL owns the dialog state (the `?plan=change`
-  // pattern, routes/workspace.settings.tsx) so Render's New-menu URLs
-  // (`/new/database`, `/d/new`, `/new/project`) can alias onto it. Optional
-  // key, same rationale as workspace.settings' validateSearch.
+  // `?new=project|sandbox-group` opens the matching create dialog (w1/m45,
+  // w22/m311) — the URL owns the dialog state (the `?plan=change` pattern,
+  // routes/workspace.settings.tsx) so Render's New-menu URLs (`/new/project`)
+  // can alias onto it; `?new=database` is kept only to redirect (above).
+  // Optional key, same rationale as workspace.settings' validateSearch.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { new?: CreateDialogKind } => ({
+  ): { new?: CreateDialogKind | typeof LEGACY_DATABASE_CREATE } => ({
     new:
-      search.new === "database" ||
+      search.new === LEGACY_DATABASE_CREATE ||
       search.new === "project" ||
       search.new === "sandbox-group"
         ? search.new
         : undefined,
   }),
   head: ({ match }) => {
-    if (match.search.new === "database") {
-      return translatedTitleHead("databases.createTitle", match);
-    }
     if (match.search.new === "project") {
       return translatedTitleHead("projects.createTitle", match);
     }
@@ -183,7 +197,6 @@ export function HomePage() {
   // back-button history (the workspace.settings `?plan=change` idiom).
   const { new: newParam } = Route.useSearch();
   const routeNavigate = Route.useNavigate();
-  const newDatabaseOpen = newParam === "database";
   const newProjectOpen = newParam === "project";
   const newSandboxGroupOpen = newParam === "sandbox-group";
   function setCreateDialog(kind: CreateDialogKind, open: boolean) {
@@ -192,8 +205,6 @@ export function HomePage() {
       replace: true,
     });
   }
-  const setNewDatabaseOpen = (open: boolean) =>
-    setCreateDialog("database", open);
   const setNewProjectOpen = (open: boolean) => setCreateDialog("project", open);
   const setNewSandboxGroupOpen = (open: boolean) =>
     setCreateDialog("sandbox-group", open);
@@ -289,20 +300,16 @@ export function HomePage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <NewServiceMenuItems triggerLabelKey="projects.newService" />
-                  <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
-                    {t("projects.newDatabase")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/keyvalue/new">{t("projects.newKeyValue")}</Link>
-                  </DropdownMenuItem>
+                  <CreateTypeMenuItems />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
+                    <FolderKanban />
                     {t("projects.newProjectButton")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => setNewSandboxGroupOpen(true)}
                   >
+                    <Boxes />
                     {t("sandboxGroups.createTitle")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -334,7 +341,7 @@ export function HomePage() {
                 {t("projects.emptyBody")}
               </p>
               <Button asChild size="sm" className="mt-4">
-                <Link to="/services/new">
+                <Link to="/web/new">
                   <Plus className="size-4" />
                   {t("projects.emptyCreateService")}
                 </Link>
@@ -371,20 +378,6 @@ export function HomePage() {
           </>
         )}
       </PageFrame>
-      <CreateDatabaseDialog
-        open={newDatabaseOpen}
-        onOpenChange={setNewDatabaseOpen}
-        // refetchAll, not just the databases list: a create with a project or
-        // environment assignment also changes the Projects query this page's
-        // grouping is built from.
-        onCreated={(databaseId) => {
-          refetchAll();
-          return navigate({
-            to: "/databases/$databaseId",
-            params: { databaseId },
-          });
-        }}
-      />
       <NewProjectDialog
         open={newProjectOpen}
         onOpenChange={setNewProjectOpen}

@@ -139,10 +139,6 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Toast when a delete request fails",
   },
   // --- Create dialog ---
-  "databases.createButton": {
-    message: "New Database",
-    description: "Button that opens the create-database dialog",
-  },
   "databases.createTitle": {
     message: "New Postgres",
     description: "Create-database dialog title",
@@ -164,17 +160,8 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Enter a name of up to 100 characters, without line breaks or control characters.",
     description: "Create-database name validation message",
   },
-  "databases.physicalNamesTitle": {
-    message: "PostgreSQL names (optional)",
-    description: "Create-database advanced physical-name section title",
-  },
-  "databases.physicalNamesHint": {
-    message:
-      "Set these only at creation. Leave blank to generate stable names.",
-    description: "Create-database physical-name helper text",
-  },
   "databases.fieldDatabaseName": {
-    message: "Database name",
+    message: "Database",
     description: "Create-database physical PostgreSQL database label",
   },
   "databases.fieldDatabaseNamePlaceholder": {
@@ -182,7 +169,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL database placeholder",
   },
   "databases.fieldDatabaseUser": {
-    message: "Database user",
+    message: "User",
     description: "Create-database physical PostgreSQL owner-role label",
   },
   "databases.fieldDatabaseUserPlaceholder": {
@@ -200,15 +187,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "Compute plan",
+    message: "Compute Plan",
     description: "Create-database form field label (plan / tier)",
   },
-  "databases.fieldPlanPlaceholder": {
-    message: "Select a compute plan",
-    description: "Create-database plan select placeholder",
-  },
   "databases.fieldVersion": {
-    message: "PostgreSQL version",
+    message: "PostgreSQL Version",
     description: "Create-database form field label (major version)",
   },
   "databases.fieldVersionDefault": {
@@ -216,11 +199,12 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Create-database version select default option",
   },
   "databases.fieldDisk": {
-    message: "Disk size (GB)",
+    message: "Storage",
     description: "Create-database form field label (storage size)",
   },
   "databases.fieldDiskFixed": {
-    message: "This plan has a fixed {size} GB disk.",
+    message:
+      "This plan includes a fixed {size} GB disk. Choose a larger plan to set storage yourself.",
     description:
       "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
   },
@@ -230,7 +214,7 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Create-database validation message when the disk size is below the plan floor or above the volume cap",
   },
   "databases.fieldPublic": {
-    message: "Public access",
+    message: "Public Access",
     description: "Create-database form field label (external endpoint toggle)",
   },
   "databases.fieldPublicHint": {
@@ -246,7 +230,7 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Create-database public toggle helper text once switched off: the database is created private (w4/553)",
   },
   "databases.fieldHighAvailability": {
-    message: "High availability",
+    message: "High Availability",
     description: "Create-database high availability toggle label (w2/m171)",
   },
   "databases.fieldHighAvailabilityHint": {
@@ -1938,6 +1922,40 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.logsErrorTitle": {
     message: "Couldn't load database logs",
     description: "Managed Postgres logs generic error title",
+  },
+  "databases.fieldNameDescription": {
+    message: "A unique name for your Postgres instance.",
+    description: "Create-Postgres Name row description",
+  },
+  "databases.fieldDatabaseNameDescription": {
+    message:
+      "The Postgres dbname, set only at creation. Leave blank to generate one.",
+    description:
+      "Create-Postgres Database row description: the physical dbname, create-time only",
+  },
+  "databases.fieldDatabaseUserDescription": {
+    message:
+      "The Postgres user that owns the database, set only at creation. Leave blank to generate one.",
+    description:
+      "Create-Postgres User row description: the physical owner role, create-time only",
+  },
+  "databases.fieldPlanDescription": {
+    message: "Set your database's RAM and CPU. You can change compute later.",
+    description: "Create-Postgres plan row description (Render's Compute)",
+  },
+  "databases.fieldDiskDescription": {
+    message:
+      "Your database's capacity, in GB. You can increase storage later, but you can't decrease it.",
+    description:
+      "Create-Postgres Storage row description (Render: storage only grows)",
+  },
+  "databases.fieldDiskUnit": {
+    message: "GB",
+    description: "Unit after the create-Postgres storage input",
+  },
+  "databases.fieldVersionDescription": {
+    message: "The PostgreSQL major version the database runs.",
+    description: "Create-Postgres version row description",
   },
 };
 

@@ -23,9 +23,9 @@ This matches Render's documented resource-specific outcomes. Render redirects a 
 | Dashboard action | Successful result used | Required successful outcome | Failure outcome | Evidence / decision |
 | --- | --- | --- | --- | --- |
 | Create Service — web, private, worker, cron, or static | `createService.id`; `latestDeployId` when the control-plane deploy row exists | `/services/{srv-id}/deploys/{dep-id}` when a deploy id exists; otherwise `/services/{srv-id}` | Stay on `/services/new` with the form and inline/toast error | `routes/services.new.tsx`; [new-service-wizard.md](new-service-wizard.md). All five types share one mutation and landing branch. |
-| Create Postgres | `createDatabase.id` | `/databases/{dpg-id}` immediately in the creating state | Keep `/?new=database` and the populated dialog open | `routes/index.tsx`; `create-database-dialog.tsx`; live Render `/d/{dpg-id}` capture. w5/m45 fixes the previous list-only refetch. |
+| Create Postgres | `createDatabase.id` | `/databases/{dpg-id}` immediately in the creating state | Stay on `/new/database` with the form populated | `routes/new.database.tsx`; `features/databases/pages/new-database-page.tsx` (Render's full create page, live capture 2026-11-21; the overview's old `?new=database` redirects there); live Render `/d/{dpg-id}` capture. |
 | Recover Postgres with PITR | `recoverDatabase.id` | `/databases/{new-dpg-id}` for the independently provisioned recovery instance | Keep the source database's recovery dialog populated | `recovery-panel.tsx`; Render documents PITR as a new database instance whose status advances through Recovery/Creating/Available. w5/m45 fixes the previous boolean-only hook result. |
-| Create Key Value | `createKeyValue.id` | `/keyvalue/{red-id}` immediately in the creating state | Stay on `/keyvalue/new` with the form populated | `routes/keyvalue.new.tsx`; [key-value.md](key-value.md); [Render Key Value docs](https://render.com/docs/key-value). |
+| Create Key Value | `createKeyValue.id` | `/keyvalue/{red-id}` immediately in the creating state | Stay on `/new/redis` with the form populated | `routes/new.redis.tsx`; [key-value.md](key-value.md); [Render Key Value docs](https://render.com/docs/key-value). |
 | Create Project | `createProject.id` | `/project/{prj-id}` after the URL-owned dialog closes | Keep `/?new=project` and the populated dialog open | `routes/index.tsx`; [Render Projects docs](https://render.com/docs/projects). |
 | Create Environment Group from the workspace page | `createEnvGroup.id` | `/env-groups/{evg-id}` | Keep `/env-groups` and the populated dialog open | `routes/env-groups.tsx`; [env-group-create.md](env-group-create.md). |
 | Create Workspace | returned workspace `id` | Select the returned `tea-*` workspace, then `/`; refetch the switcher list in the background | Stay on `/new/workspace`; do not change workspace selection | `routes/new.workspace.tsx`. There is no separate workspace-detail route; the selected workspace's home is its operating context. |
@@ -67,7 +67,7 @@ The dashboard hooks must treat a missing required id as a failed create. Falling
 
 | Resource | Current dashboard behavior | Classification |
 | --- | --- | --- |
-| Blueprint | `/blueprints` lists and details Git-connected Blueprints; `/blueprints/new` provides the repo, branch, `render.yaml` path, validation, and create flow. A Blueprint can also be auto-registered when a deploy includes a repo plus a manifest. | Create lands on the Blueprint detail page, where validation, sync, auto-sync, and history are available. |
+| Blueprint | `/blueprints` lists and details Git-connected Blueprints; `/blueprint/new` (Render's path; the old `/blueprints/new` redirects) provides the repo, branch, `render.yaml` path, validation, and create flow. A Blueprint can also be auto-registered when a deploy includes a repo plus a manifest. | Create lands on the Blueprint detail page, where validation, sync, auto-sync, and history are available. |
 | Preview / workflow / task / one-off-job resources | No dashboard create action | Deliberate non-goals in `.pm/DO_NOT_DO.md`, not omissions from this contract. |
 
 ## Automated and browser evidence

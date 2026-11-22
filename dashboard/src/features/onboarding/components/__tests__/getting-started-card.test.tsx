@@ -40,13 +40,12 @@ function renderCard() {
     path: "/",
     component: () => <GettingStartedCard />,
   });
-  const routes = ["/services/new", "/settings", "/workspace/settings"].map(
-    (path) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path,
-        component: () => <p>landed on {path}</p>,
-      }),
+  const routes = ["/web/new", "/settings", "/workspace/settings"].map((path) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path,
+      component: () => <p>landed on {path}</p>,
+    }),
   );
   const router = createRouter({
     routeTree: rootRoute.addChildren([home, ...routes]),
@@ -72,7 +71,9 @@ describe("GettingStartedCard (ADR075 D2)", () => {
     expect(within(card).getAllByLabelText("Not done yet")).toHaveLength(3);
 
     await userEvent.click(
-      within(card).getByRole("link", { name: "Connect GitHub to deploy from a repository" }),
+      within(card).getByRole("link", {
+        name: "Connect GitHub to deploy from a repository",
+      }),
     );
     expect(router.state.location.pathname).toBe("/settings");
     expect(router.state.location.hash).toBe("integrations");
@@ -89,7 +90,7 @@ describe("GettingStartedCard (ADR075 D2)", () => {
     ).not.toBeInTheDocument();
     expect(
       within(card).getByRole("link", { name: "Create your first service" }),
-    ).toHaveAttribute("href", "/services/new");
+    ).toHaveAttribute("href", "/web/new");
   });
 
   // A Hobby workspace has one seat: inviting would dead-end in the seat wall.
@@ -123,25 +124,33 @@ describe("GettingStartedCard (ADR075 D2)", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Dismiss getting started" }),
     );
-    expect(screen.queryByTestId("getting-started-card")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("getting-started-card"),
+    ).not.toBeInTheDocument();
     first.unmount();
 
     renderCard(); // reload: same workspace stays dismissed
     await act(async () => {});
-    expect(screen.queryByTestId("getting-started-card")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("getting-started-card"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows another workspace's card even after one was dismissed", async () => {
     window.localStorage.setItem("bex.gettingStarted.dismissed.tea-a", "1");
     state.workspaceId = "tea-b";
     renderCard();
-    expect(await screen.findByTestId("getting-started-card")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("getting-started-card"),
+    ).toBeInTheDocument();
   });
 
   it("renders nothing before a workspace is known", async () => {
     state.workspaceId = null;
     renderCard();
     await act(async () => {});
-    expect(screen.queryByTestId("getting-started-card")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("getting-started-card"),
+    ).not.toBeInTheDocument();
   });
 });

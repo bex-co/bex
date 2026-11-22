@@ -7,40 +7,72 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import { CREATE_PLAN_CARD_GRID_CLASS } from "@/common/components/plan-card-grid";
+import { RadioDot } from "@/common/components/radio-dot";
+import {
+  COMPUTE_PLAN_LIST_CLASS,
+  COMPUTE_PLAN_ROW_CLASS,
+} from "@/common/components/compute-plan-list";
+import {
+  computePlanRowClasses,
+  planListCollapses,
+} from "@/common/lib/plan-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
- * Inert tier slots with a ready plan card's anatomy — p-3 border, a 24px name
- * line and a 20px specs line (70px) in the same 12px-gap grid — so a plan
- * region keeps its geometry while the catalog loads (w4/m208). `lastWraps`
- * gives the last slot the extra name line the top compute tier wraps onto in
- * three desktop columns (Pro Ultra's 94px card), so a service create form's
- * rows match the ready grid too (w4/329). `connections` adds the 20px
- * connection-limit line every Key Value card carries (90px, w6/m459).
+ * Inert tier rows with a ready plan row's anatomy (ComputePlanList): the list
+ * frame, the row box, the radio, a name line with the specs under it on a
+ * narrow list or beside it on a wide one, and the price — so a plan region
+ * keeps its geometry while the catalog loads (w4/m208). `connections` adds
+ * the connection-limit column every Key Value row carries (w6/m459);
+ * `collapsedCount` stands for the rows a collapsed create list shows and its
+ * "Show all plans" button.
  */
 export function PlanTierSlots({
   count = 3,
-  lastWraps = false,
   connections = false,
+  collapsedCount,
 }: {
   count?: number;
-  lastWraps?: boolean;
   connections?: boolean;
+  collapsedCount?: number;
 }) {
+  const collapses = planListCollapses(count, collapsedCount);
+  const rows = collapses ? (collapsedCount ?? count) : count;
+  // The ready row's own layout classes, so each slot takes the row's shape.
+  const row = computePlanRowClasses(connections);
   return (
-    <div className={CREATE_PLAN_CARD_GRID_CLASS} aria-hidden="true">
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="rounded-lg border border-border p-3">
-          <Skeleton
-            className={
-              lastWraps && i === count - 1 ? "h-6 w-20 sm:h-12" : "h-6 w-20"
-            }
-          />
-          <Skeleton className="h-5 w-32" />
-          {connections ? <Skeleton className="h-5 w-28" /> : null}
+    <div className={COMPUTE_PLAN_LIST_CLASS} aria-hidden="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className={`${COMPUTE_PLAN_ROW_CLASS} border-transparent`}>
+          <RadioDot checked={false} />
+          <span className={row.specs}>
+            <span className={`flex h-6 items-center ${row.name}`}>
+              <Skeleton className="h-4 w-24" />
+            </span>
+            <span className={`h-5 items-center ${row.specLine}`}>
+              <span className={`flex items-center ${row.cpu}`}>
+                <Skeleton className="h-3.5 w-12" />
+              </span>
+              <span className={`flex items-center ${row.ram}`}>
+                <Skeleton className="h-3.5 w-16" />
+              </span>
+              {connections ? (
+                <span className={`flex items-center ${row.conn}`}>
+                  <Skeleton className="h-3.5 w-24" />
+                </span>
+              ) : null}
+            </span>
+          </span>
+          <span className={`flex justify-end ${row.price}`}>
+            <Skeleton className="h-4 w-16" />
+          </span>
         </div>
       ))}
+      {collapses ? (
+        <div className="px-1.5 pt-1 pb-0.5">
+          <Skeleton className="h-11 w-36 rounded-md sm:h-9" />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -599,6 +599,77 @@ const jaCommon: Record<string, TranslationEntry> = {
     description:
       "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
   },
+  "common.createOptional": {
+    message: "任意",
+    description:
+      "Mark beside a create-page row label whose field may be left blank (Render's 'Optional')",
+  },
+  "common.createAdvanced": {
+    message: "詳細設定",
+    description: "Heading of the collapsed Advanced card on a create page",
+  },
+  "common.planListShowAll": {
+    message: "すべてのプランを表示",
+    description: "Button under a create page's plan list that shows every plan",
+  },
+  "common.planListShowFewer": {
+    message: "表示するプランを減らす",
+    description:
+      "Button under an expanded plan list that folds it back to the first plans",
+  },
+  "common.createBlockedName": {
+    message: "続行するには名前を入力してください。",
+    description:
+      "Create page action bar: why Submit is held while the name is empty or invalid",
+  },
+  "common.createBlockedFields": {
+    message: "続行するには、上の項目を入力または修正してください。",
+    description:
+      "Create page action bar: why Submit is held while a field is missing or invalid",
+  },
+  "common.createTypePostgres": {
+    message: "Postgres",
+    description:
+      "Postgres in the New menu and a create page's type switcher (Render's product name)",
+  },
+  "common.createTypeSwitcher": {
+    message: "{type}：サービスの種類を選択",
+    description:
+      "Accessible name of the breadcrumb menu that switches a create page to another resource type ({type} = the current page's heading)",
+  },
+  "common.createTypeProject": {
+    message: "プロジェクト",
+    description: "Project in the New menu (Render's bare 'Project')",
+  },
+  "common.createTypeBlueprint": {
+    message: "Blueprint",
+    description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeSandboxGroup": {
+    message: "サンドボックスグループ",
+    description:
+      "Sandbox Group in the New menu (Render's bare 'Sandbox Group')",
+  },
+  "common.createTypeWebhook": {
+    message: "Webhook",
+    description:
+      "Webhook in the New menu (bex's own create, after Render's entries)",
+  },
+  "common.createBlockedNameTaken": {
+    message: "続行するには、使われていない名前を選んでください。",
+    description:
+      "Create page action bar: why Submit is held while the name is already in use",
+  },
+  "common.createRequired": {
+    message: "必須",
+    description:
+      "Mark beside a create-page row label whose field must be filled before Submit",
+  },
+  "common.createBlockedLoadingPlans": {
+    message: "プランを読み込み中…",
+    description:
+      "Create page action bar: Submit waits only for the plan catalog to load (not the user's fault)",
+  },
 };
 
 export default jaCommon;

@@ -9,12 +9,15 @@ import {
   DatabaseOverviewSkeleton,
   KeyValueOverviewSkeleton,
 } from "../route-skeletons";
-import { CREATE_PLAN_CARD_GRID_CLASS } from "../plan-card-grid";
+import {
+  COMPUTE_PLAN_LIST_CLASS,
+  COMPUTE_PLAN_ROW_CLASS,
+} from "../compute-plan-list";
 
 // w4/m208: a datastore plan region keeps the ready card's anatomy while its
-// resource or catalog loads — title, description, one tier slot per catalog
-// tier in the ready grid (six 70px Postgres plans since w2/m171, nine 90px Key
-// Value ones with their connection-limit line since w6/m459), and the bordered
+// resource or catalog loads — title, description, one row per catalog tier in
+// the ready plan list (six Postgres plans since w2/m171, nine Key Value ones
+// with their connection-limit column since w6/m459), and the bordered
 // Cancel/Save footer — and stays inert.
 function planRegion(container: HTMLElement) {
   const region = container.querySelector('[data-skeleton-region="plan"]');
@@ -47,7 +50,7 @@ describe("datastore plan slot counts", () => {
 describe("datastore plan preview", () => {
   // Postgres's card ends in Render's Storage row (w2/m307), its Edit inert too.
   // Render's Postgres cards show no connection limit; its Key Value cards do.
-  for (const [name, Skeleton, title, buttonLabels, tiers, lines] of [
+  for (const [name, Skeleton, title, buttonLabels, tiers, specs] of [
     [
       "Postgres",
       DatabaseOverviewSkeleton,
@@ -71,20 +74,20 @@ describe("datastore plan preview", () => {
       const card = region.firstElementChild as HTMLElement;
       expect(card.hasAttribute("inert")).toBe(true);
       expect(within(region).getByText(title)).toBeTruthy();
-      const grid = region.querySelector('[aria-hidden="true"]') as HTMLElement;
-      expect(grid.className).toBe(CREATE_PLAN_CARD_GRID_CLASS);
-      const slots = Array.from(grid.children) as HTMLElement[];
-      expect(slots).toHaveLength(tiers);
-      for (const slot of slots) {
-        expect(slot.className).toContain("p-3");
-        expect(slot.className).toContain("border");
-        expect(slot.children).toHaveLength(lines);
-        const [nameLine, ...specLines] = Array.from(slot.children);
+      const list = region.querySelector('[aria-hidden="true"]') as HTMLElement;
+      expect(list.className).toBe(COMPUTE_PLAN_LIST_CLASS);
+      const rows = Array.from(list.children) as HTMLElement[];
+      expect(rows).toHaveLength(tiers);
+      for (const row of rows) {
+        // The ready row's box: radio, name and specs, price.
+        expect(row.className).toContain(COMPUTE_PLAN_ROW_CLASS);
+        expect(row.children).toHaveLength(3);
+        const [, body] = Array.from(row.children);
+        const [nameLine, specLine] = Array.from(body.children);
         expect(nameLine.className).toContain("h-6"); // 24px name line
-        for (const line of specLines) {
-          // 20px specs line; on Key Value a 20px connection-limit line too.
-          expect(line.className).toContain("h-5");
-        }
+        expect(specLine.className).toContain("h-5"); // 20px specs line
+        // CPU and RAM; on Key Value the connection limit too.
+        expect(specLine.children).toHaveLength(specs);
       }
       const buttons = within(region).getAllByRole("button", { hidden: true });
       expect(buttons.map((b) => b.textContent)).toEqual(buttonLabels);

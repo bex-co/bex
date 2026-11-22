@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
-import { PlanCardGrid } from "@/common/components/plan-card-grid";
+import { ComputePlanList } from "@/common/components/compute-plan-list";
 import {
   PlanTierSlots,
   POSTGRES_PLAN_SLOTS,
@@ -139,7 +139,7 @@ export function DatabasePlanSection({
             retrying={retrying}
           />
         ) : (
-          <PlanCardGrid
+          <ComputePlanList
             instanceTypes={instanceTypes}
             value={selected ?? ""}
             disabled={operateDenied}
@@ -366,10 +366,7 @@ function StorageRow({
               >
                 {t("common.cancel")}
               </Button>
-              <Button
-                type="submit"
-                disabled={!canSave || busy}
-              >
+              <Button type="submit" disabled={!canSave || busy}>
                 {busy ? <Loader2 className="animate-spin" /> : null}
                 {t("databases.storageEditSave")}
               </Button>

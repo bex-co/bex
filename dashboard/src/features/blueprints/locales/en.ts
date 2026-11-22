@@ -67,7 +67,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "New Blueprint page — branch field helper text",
   },
   "blueprints.createPathLabel": {
-    message: "Blueprint path",
+    message: "Blueprint Path",
     description: "New Blueprint page — render.yaml path input label",
   },
   "blueprints.createNamePlaceholder": {
@@ -256,28 +256,28 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message:
       "Another Blueprint already manages some of these resources. Deploying transfers them to this Blueprint; you'll confirm exactly what is taken over on the next step.",
     description:
-      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+      "Preview alert body on /blueprint/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
     message: "Already managed — deploying will take it over",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprint/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewMatchTitle": {
     message: "Matches existing resources",
     description:
-      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+      "Notice title on /blueprint/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
   },
   "blueprints.previewMatchBody": {
     message:
       "This Blueprint matches resources that already exist in your workspace. New resources will be created with the suffix “-{suffix}” added to each name. The existing resources are not changed.",
     description:
-      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+      "Notice body on /blueprint/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
   },
   "blueprints.previewMatchListLabel": {
     message: "Already in your workspace:",
     description:
-      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
+      "Notice on /blueprint/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "Blueprint file has errors",
@@ -962,6 +962,30 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.stateSuccess": {
     message: "Success",
     description: "Sync-run state: the run completed successfully.",
+  },
+  "blueprints.createNameDescription": {
+    message: "A unique name for this Blueprint instance.",
+    description: "Create-Blueprint Name row description",
+  },
+  "blueprints.createBlockedSource": {
+    message: "Choose a repository to continue.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while no repository is chosen",
+  },
+  "blueprints.createBlockedBranch": {
+    message: "Enter a branch to continue.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the branch is empty",
+  },
+  "blueprints.createBlockedReviewing": {
+    message: "Reviewing the Blueprint file…",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the Blueprint file is being reviewed",
+  },
+  "blueprints.createBlockedReview": {
+    message: "Resolve the problems the review found to continue.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
   },
 };
 

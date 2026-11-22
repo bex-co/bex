@@ -253,28 +253,28 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message:
       "다른 Blueprint가 이 리소스 중 일부를 이미 관리하고 있습니다. 배포하면 이 Blueprint로 이전되며, 인수되는 항목은 다음 단계에서 정확히 확인할 수 있습니다.",
     description:
-      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+      "Preview alert body on /blueprint/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
     message: "이미 관리 중 — 배포하면 인수됩니다",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprint/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewMatchTitle": {
     message: "기존 리소스와 일치합니다",
     description:
-      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+      "Notice title on /blueprint/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
   },
   "blueprints.previewMatchBody": {
     message:
       "이 Blueprint는 워크스페이스에 이미 있는 리소스와 일치합니다. 새 리소스는 각 이름에 “-{suffix}” 접미사가 붙어 생성되며, 기존 리소스는 변경되지 않습니다.",
     description:
-      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+      "Notice body on /blueprint/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
   },
   "blueprints.previewMatchListLabel": {
     message: "이미 워크스페이스에 있음:",
     description:
-      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
+      "Notice on /blueprint/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "Blueprint 파일에 오류가 있습니다",
@@ -925,6 +925,30 @@ const koBlueprints: Record<string, TranslationEntry> = {
   "blueprints.stateSuccess": {
     message: "성공",
     description: "Sync-run state: the run completed successfully.",
+  },
+  "blueprints.createNameDescription": {
+    message: "이 Blueprint 인스턴스의 고유한 이름입니다.",
+    description: "Create-Blueprint Name row description",
+  },
+  "blueprints.createBlockedSource": {
+    message: "계속하려면 저장소를 선택하세요.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while no repository is chosen",
+  },
+  "blueprints.createBlockedBranch": {
+    message: "계속하려면 브랜치를 입력하세요.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the branch is empty",
+  },
+  "blueprints.createBlockedReviewing": {
+    message: "Blueprint 파일을 검토하는 중…",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the Blueprint file is being reviewed",
+  },
+  "blueprints.createBlockedReview": {
+    message: "계속하려면 검토에서 발견된 문제를 해결하세요.",
+    description:
+      "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
   },
 };
 

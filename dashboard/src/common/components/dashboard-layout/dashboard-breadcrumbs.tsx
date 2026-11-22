@@ -7,6 +7,7 @@ import {
   Network,
   Boxes,
   Building2,
+  Check,
   ChevronDown,
   ChevronRight,
   CreditCard,
@@ -22,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import { cn } from "@/common/lib/utils/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +41,11 @@ import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { useEnvGroup } from "@/features/env-groups/hooks/use-env-groups";
+import {
+  CREATE_TYPE_ITEMS,
+  currentCreateType,
+  type CreateTypeItem,
+} from "@/common/components/dashboard-layout/create-type-items";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { Skeleton } from "@/common/components/ui/skeleton";
 
@@ -55,11 +62,16 @@ type DashboardParams = {
 
 /** Contextual hierarchy shown on the left of every dashboard topbar. */
 export function DashboardBreadcrumbs() {
+  // The location the page on screen rendered, not one still navigating: the
+  // trail changes together with the body, never ahead of it.
   const pathname = useRouterState({
-    select: (state) => state.location.pathname,
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
   const params = useParams({ strict: false }) as DashboardParams;
-
+  const createType = currentCreateType(pathname);
+  if (createType) {
+    return <CreateTypeBreadcrumbs current={createType} />;
+  }
   if (params.serviceId) {
     return <ServiceBreadcrumbs serviceId={params.serviceId} />;
   }
@@ -168,6 +180,81 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
               {t("common.topbarAllResources")}
             </Link>
           </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
+  );
+}
+
+/**
+ * A create page's trail, Render's "New Web Service ▾": the page's own heading
+ * is the menu that switches to another resource type ("Choose a service
+ * type", live capture 2026-11-21). A switch between service types keeps the
+ * page mounted (one layout route) and the form's draft: it replaces the
+ * history entry and keeps the Project/Environment context.
+ */
+function CreateTypeBreadcrumbs({ current }: { current: CreateTypeItem }) {
+  const { t } = useTranslations();
+  const CurrentIcon = current.icon;
+  return (
+    <nav
+      aria-label={t("common.topbarBreadcrumbs")}
+      className="flex min-w-0 items-center gap-0.5"
+    >
+      <BreadcrumbLink
+        to="/"
+        icon={FolderKanban}
+        label={t("common.navProjects")}
+      />
+      <BreadcrumbSeparator />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-w-0 max-w-64 shrink gap-1.5 px-2 font-medium"
+            aria-label={t("common.createTypeSwitcher", {
+              type: t(current.titleKey),
+            })}
+          >
+            <CurrentIcon className="shrink-0" />
+            <span className="truncate">{t(current.titleKey)}</span>
+            <ChevronDown className="shrink-0" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-60">
+          {CREATE_TYPE_ITEMS.map((item) => {
+            const { icon: Icon } = item;
+            const selected = item.id === current.id;
+            const keepDraft = item.service && current.service;
+            return (
+              <DropdownMenuItem key={item.id} asChild>
+                <Link
+                  to={item.to}
+                  search={(prev: {
+                    projectId?: string;
+                    environmentId?: string;
+                  }) =>
+                    keepDraft
+                      ? {
+                          projectId: prev.projectId,
+                          environmentId: prev.environmentId,
+                        }
+                      : {}
+                  }
+                  replace={keepDraft}
+                  aria-current={selected ? "page" : undefined}
+                  className={cn("min-h-9", selected && "font-medium")}
+                >
+                  <Icon />
+                  {t(item.labelKey)}
+                  {selected ? (
+                    <Check aria-hidden className="ml-auto text-primary" />
+                  ) : null}
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </nav>
@@ -481,6 +568,8 @@ type PageDefinition = {
   match: (pathname: string) => boolean;
   labelKey: keyof typeof en;
   icon: LucideIcon;
+  /** The section a create page sits under ("Blueprints › New …"). */
+  parent?: { to: "/blueprints"; labelKey: keyof typeof en; icon: LucideIcon };
 };
 
 const PAGE_DEFINITIONS: PageDefinition[] = [
@@ -490,19 +579,19 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     icon: FolderKanban,
   },
   {
-    match: (path) => path.startsWith("/services/new"),
-    labelKey: "services.createTitle",
-    icon: Plus,
-  },
-  {
-    match: (path) => path.startsWith("/keyvalue/new"),
-    labelKey: "keyvalue.createTitle",
-    icon: Plus,
-  },
-  {
     match: (path) => path.startsWith("/new/workspace"),
     labelKey: "workspaces.newTitle",
     icon: Plus,
+  },
+  {
+    match: (path) => path === "/blueprint/new",
+    labelKey: "blueprints.createTitle",
+    icon: Plus,
+    parent: {
+      to: "/blueprints",
+      labelKey: "common.navBlueprints",
+      icon: Layers,
+    },
   },
   {
     match: (path) => path.startsWith("/blueprints"),
@@ -608,10 +697,9 @@ function PageBreadcrumb({
   params: DashboardParams;
 }) {
   const { t } = useTranslations();
-  const definition = PAGE_DEFINITIONS.find((page) => page.match(pathname)) ?? {
-    labelKey: "common.appName" as const,
-    icon: Globe2,
-  };
+  const definition: Omit<PageDefinition, "match"> = PAGE_DEFINITIONS.find(
+    (page) => page.match(pathname),
+  ) ?? { labelKey: "common.appName", icon: Globe2 };
   const detailId = DETAIL_ID_PARAMS.map((key) => params[key]).find(Boolean);
   const Icon = definition.icon;
 
@@ -620,8 +708,29 @@ function PageBreadcrumb({
       aria-label={t("common.topbarBreadcrumbs")}
       className="flex min-w-0 items-center gap-1.5 px-2 text-sm font-medium"
     >
-      <Icon className="size-4 shrink-0 text-muted-foreground" />
-      <span className="max-w-48 truncate">{t(definition.labelKey)}</span>
+      {definition.parent ? (
+        <>
+          {/* The label is display:none below sm, which drops it from the
+              accessible name; name the icon-only link explicitly (w4/254). */}
+          <Link
+            to={definition.parent.to}
+            aria-label={t(definition.parent.labelKey)}
+            className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1.5"
+          >
+            <definition.parent.icon className="size-4 shrink-0" />
+            <span className="hidden truncate sm:inline">
+              {t(definition.parent.labelKey)}
+            </span>
+          </Link>
+          <BreadcrumbSeparator />
+          <span className="max-w-56 truncate">{t(definition.labelKey)}</span>
+        </>
+      ) : (
+        <>
+          <Icon className="size-4 shrink-0 text-muted-foreground" />
+          <span className="max-w-48 truncate">{t(definition.labelKey)}</span>
+        </>
+      )}
       {detailId ? (
         <>
           <BreadcrumbSeparator />

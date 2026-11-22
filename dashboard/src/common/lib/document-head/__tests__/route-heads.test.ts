@@ -13,13 +13,15 @@ import { Route as VerificationRoute } from "@/routes/auth.verification";
 import { Route as BlueprintsRoute } from "@/routes/blueprints";
 import { Route as EnvGroupsRoute } from "@/routes/env-groups";
 import { Route as IndexRoute } from "@/routes/index";
-import { Route as NewKeyValueRoute } from "@/routes/keyvalue.new";
+import { Route as NewKeyValueRoute } from "@/routes/new.redis";
+import { Route as NewDatabaseRoute } from "@/routes/new.database";
 import { Route as NewWorkspaceRoute } from "@/routes/new.workspace";
 import { Route as NotificationsRoute } from "@/routes/notifications";
 import { Route as ProjectRoute } from "@/routes/project.$projectId";
 import { Route as ProjectSettingsRoute } from "@/routes/project.$projectId.settings";
 import { Route as ServiceRoute } from "@/routes/services.$serviceId";
-import { Route as NewServiceRoute } from "@/routes/services.new";
+import { Route as NewServiceRoute } from "@/routes/_serviceCreate.web.new";
+import { Route as NewCronJobRoute } from "@/routes/_serviceCreate.cron.new";
 import { Route as SettingsRoute } from "@/routes/settings";
 import { Route as BillingRoute } from "@/routes/billing";
 import { Route as WebhookRoute } from "@/routes/webhook.$webhookId";
@@ -156,8 +158,8 @@ const staticRouteCases: Array<
   ],
   [
     "new Postgres",
-    IndexRoute,
-    { search: { new: "database" } },
+    NewDatabaseRoute,
+    { search: {} },
     "New Postgres",
     "新建 Postgres 数据库",
   ],
@@ -182,15 +184,21 @@ const staticRouteCases: Array<
     "Notifications",
     "通知",
   ],
-  // A bare /services/new starts the form on DEFAULT_SERVICE_TYPE, so the tab
-  // title names that type too. It used to read the generic "New Service" while
-  // the <h1> already said "New Web Service" (w6/m43).
+  // Each create path's tab title names its type, as its <h1> does — it once
+  // read the generic "New Service" under "New Web Service" (w6/m43).
   [
-    "new service",
+    "new web service (/web/new)",
     NewServiceRoute,
     { search: {} },
     "New Web Service",
     "新建 Web 服务",
+  ],
+  [
+    "new cron job (/cron/new)",
+    NewCronJobRoute,
+    { search: {} },
+    "New Cron Job",
+    "新建定时任务",
   ],
   ["account settings", SettingsRoute, { search: {} }, "Settings", "设置"],
   ["billing", BillingRoute, { search: {} }, "Billing", "账单"],

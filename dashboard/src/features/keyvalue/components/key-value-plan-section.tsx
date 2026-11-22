@@ -15,7 +15,7 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
-import { PlanCardGrid } from "@/common/components/plan-card-grid";
+import { ComputePlanList } from "@/common/components/compute-plan-list";
 import {
   KEY_VALUE_PLAN_SLOTS,
   PlanTierSlots,
@@ -108,7 +108,7 @@ export function KeyValuePlanSection({
             retrying={retrying}
           />
         ) : (
-          <PlanCardGrid
+          <ComputePlanList
             instanceTypes={planCards}
             value={selected}
             disabled={operateDenied}

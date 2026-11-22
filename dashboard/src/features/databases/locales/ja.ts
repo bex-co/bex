@@ -134,10 +134,6 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "{name} を削除できませんでした。もう一度お試しください。",
     description: "Toast when a delete request fails",
   },
-  "databases.createButton": {
-    message: "新規データベース",
-    description: "Button that opens the create-database dialog",
-  },
   "databases.createTitle": {
     message: "新規 Postgres",
     description: "Create-database dialog title",
@@ -158,17 +154,8 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "改行や制御文字を含まない、100 文字以内の名前を入力してください。",
     description: "Create-database name validation message",
   },
-  "databases.physicalNamesTitle": {
-    message: "PostgreSQL 名（任意）",
-    description: "Create-database advanced physical-name section title",
-  },
-  "databases.physicalNamesHint": {
-    message:
-      "作成時にのみ設定できます。空欄にすると固定の名前が自動生成されます。",
-    description: "Create-database physical-name helper text",
-  },
   "databases.fieldDatabaseName": {
-    message: "データベース名",
+    message: "データベース",
     description: "Create-database physical PostgreSQL database label",
   },
   "databases.fieldDatabaseNamePlaceholder": {
@@ -176,7 +163,7 @@ const jaDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL database placeholder",
   },
   "databases.fieldDatabaseUser": {
-    message: "データベースユーザー",
+    message: "ユーザー",
     description: "Create-database physical PostgreSQL owner-role label",
   },
   "databases.fieldDatabaseUserPlaceholder": {
@@ -197,10 +184,6 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "コンピュートプラン",
     description: "Create-database form field label (plan / tier)",
   },
-  "databases.fieldPlanPlaceholder": {
-    message: "コンピュートプランを選択",
-    description: "Create-database plan select placeholder",
-  },
   "databases.fieldVersion": {
     message: "PostgreSQL バージョン",
     description: "Create-database form field label (major version)",
@@ -210,11 +193,12 @@ const jaDatabases: Record<string, TranslationEntry> = {
     description: "Create-database version select default option",
   },
   "databases.fieldDisk": {
-    message: "ディスクサイズ (GB)",
+    message: "ストレージ",
     description: "Create-database form field label (storage size)",
   },
   "databases.fieldDiskFixed": {
-    message: "このプランのディスクサイズは {size} GB で固定です。",
+    message:
+      "このプランには {size} GB の固定ディスクが含まれます。ストレージを指定するには、より大きなプランを選んでください。",
     description:
       "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
   },
@@ -1912,6 +1896,41 @@ const jaDatabases: Record<string, TranslationEntry> = {
   "databases.logsErrorTitle": {
     message: "データベースログを読み込めませんでした",
     description: "Managed Postgres logs generic error title",
+  },
+  "databases.fieldNameDescription": {
+    message: "Postgres インスタンスの一意な名前。",
+    description: "Create-Postgres Name row description",
+  },
+  "databases.fieldDatabaseNameDescription": {
+    message:
+      "Postgres の dbname。作成時にのみ設定できます。空欄の場合は自動で生成されます。",
+    description:
+      "Create-Postgres Database row description: the physical dbname, create-time only",
+  },
+  "databases.fieldDatabaseUserDescription": {
+    message:
+      "データベースを所有する Postgres ユーザー。作成時にのみ設定できます。空欄の場合は自動で生成されます。",
+    description:
+      "Create-Postgres User row description: the physical owner role, create-time only",
+  },
+  "databases.fieldPlanDescription": {
+    message:
+      "データベースのメモリと CPU を設定します。コンピュートは後から変更できます。",
+    description: "Create-Postgres plan row description (Render's Compute)",
+  },
+  "databases.fieldDiskDescription": {
+    message:
+      "データベースの容量 (GB)。後から増やせますが、減らすことはできません。",
+    description:
+      "Create-Postgres Storage row description (Render: storage only grows)",
+  },
+  "databases.fieldDiskUnit": {
+    message: "GB",
+    description: "Unit after the create-Postgres storage input",
+  },
+  "databases.fieldVersionDescription": {
+    message: "データベースで実行する PostgreSQL のメジャーバージョン。",
+    description: "Create-Postgres version row description",
   },
 };
 

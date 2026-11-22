@@ -599,6 +599,77 @@ const koCommon: Record<string, TranslationEntry> = {
     description:
       "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
   },
+  "common.createOptional": {
+    message: "선택 사항",
+    description:
+      "Mark beside a create-page row label whose field may be left blank (Render's 'Optional')",
+  },
+  "common.createAdvanced": {
+    message: "고급",
+    description: "Heading of the collapsed Advanced card on a create page",
+  },
+  "common.planListShowAll": {
+    message: "모든 플랜 보기",
+    description: "Button under a create page's plan list that shows every plan",
+  },
+  "common.planListShowFewer": {
+    message: "플랜 접기",
+    description:
+      "Button under an expanded plan list that folds it back to the first plans",
+  },
+  "common.createBlockedName": {
+    message: "계속하려면 이름을 입력하세요.",
+    description:
+      "Create page action bar: why Submit is held while the name is empty or invalid",
+  },
+  "common.createBlockedFields": {
+    message: "계속하려면 위 항목을 입력하거나 수정하세요.",
+    description:
+      "Create page action bar: why Submit is held while a field is missing or invalid",
+  },
+  "common.createTypePostgres": {
+    message: "Postgres",
+    description:
+      "Postgres in the New menu and a create page's type switcher (Render's product name)",
+  },
+  "common.createTypeSwitcher": {
+    message: "{type}: 서비스 유형 선택",
+    description:
+      "Accessible name of the breadcrumb menu that switches a create page to another resource type ({type} = the current page's heading)",
+  },
+  "common.createTypeProject": {
+    message: "프로젝트",
+    description: "Project in the New menu (Render's bare 'Project')",
+  },
+  "common.createTypeBlueprint": {
+    message: "Blueprint",
+    description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeSandboxGroup": {
+    message: "샌드박스 그룹",
+    description:
+      "Sandbox Group in the New menu (Render's bare 'Sandbox Group')",
+  },
+  "common.createTypeWebhook": {
+    message: "웹훅",
+    description:
+      "Webhook in the New menu (bex's own create, after Render's entries)",
+  },
+  "common.createBlockedNameTaken": {
+    message: "계속하려면 사용 중이지 않은 이름을 선택하세요.",
+    description:
+      "Create page action bar: why Submit is held while the name is already in use",
+  },
+  "common.createRequired": {
+    message: "필수",
+    description:
+      "Mark beside a create-page row label whose field must be filled before Submit",
+  },
+  "common.createBlockedLoadingPlans": {
+    message: "플랜을 불러오는 중…",
+    description:
+      "Create page action bar: Submit waits only for the plan catalog to load (not the user's fault)",
+  },
 };
 
 export default koCommon;

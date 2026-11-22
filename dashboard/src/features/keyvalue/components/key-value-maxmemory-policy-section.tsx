@@ -14,6 +14,7 @@ import {
 import {
   MAXMEMORY_POLICIES,
   RECOMMENDED_MAXMEMORY_POLICY,
+  recommendedSuffix,
 } from "@/features/keyvalue/lib/labels";
 import { useSetKeyValueMaxmemoryPolicy } from "@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy";
 
@@ -48,7 +49,7 @@ export function KeyValueMaxmemoryPolicySection({
         value: p,
         label:
           p === RECOMMENDED_MAXMEMORY_POLICY
-            ? `${p} ${t("keyvalue.fieldMaxmemoryRecommended")}`
+            ? `${p}${recommendedSuffix(t("keyvalue.fieldMaxmemoryRecommended"))}`
             : p,
       })),
     [t],

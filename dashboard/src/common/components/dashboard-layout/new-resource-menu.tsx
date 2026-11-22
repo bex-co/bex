@@ -1,18 +1,20 @@
 import { Link } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Boxes, FolderKanban, Layers, Plus, Webhook } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { NewServiceMenuItems } from "@/features/services/components/new-service-menu-items";
+import { CreateTypeMenuItems } from "@/common/components/dashboard-layout/create-type-menu-items";
 
-/** The global counterpart to Render's persistent “+ New” topbar menu. */
+/**
+ * The global counterpart to Render's persistent “+ New” topbar menu: flat, as
+ * Render's is — the create types, then bex's other creates.
+ */
 export function NewResourceMenu() {
   const { t } = useTranslations();
   return (
@@ -29,32 +31,32 @@ export function NewResourceMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>{t("common.topbarCreate")}</DropdownMenuLabel>
-        <NewServiceMenuItems triggerLabelKey="services.createTitle" />
+        <CreateTypeMenuItems />
+        <DropdownMenuSeparator />
+        {/* Render's bare names ("Project", "Blueprint"), then bex's own. */}
         <DropdownMenuItem asChild>
-          <Link to="/" search={{ new: "database" }}>
-            {t("databases.createTitle")}
+          <Link to="/" search={{ new: "project" }}>
+            <FolderKanban />
+            {t("common.createTypeProject")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/keyvalue/new">{t("keyvalue.createTitle")}</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/blueprints/new">{t("blueprints.createTitle")}</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/" search={{ new: "project" }}>
-            {t("projects.createTitle")}
+          <Link to="/blueprint/new">
+            <Layers />
+            {t("common.createTypeBlueprint")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/" search={{ new: "sandbox-group" }}>
-            {t("sandboxGroups.createTitle")}
+            <Boxes />
+            {t("common.createTypeSandboxGroup")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/webhooks/new">{t("webhooks.newMenuLabel")}</Link>
+          <Link to="/webhooks/new">
+            <Webhook />
+            {t("common.createTypeWebhook")}
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

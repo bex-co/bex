@@ -134,10 +134,6 @@ const esDatabases: Record<string, TranslationEntry> = {
     message: "No se pudo eliminar {name}. Inténtalo de nuevo.",
     description: "Toast when a delete request fails",
   },
-  "databases.createButton": {
-    message: "Nueva base de datos",
-    description: "Button that opens the create-database dialog",
-  },
   "databases.createTitle": {
     message: "Nuevo Postgres",
     description: "Create-database dialog title",
@@ -159,17 +155,8 @@ const esDatabases: Record<string, TranslationEntry> = {
       "Introduce un nombre de hasta 100 caracteres, sin saltos de línea ni caracteres de control.",
     description: "Create-database name validation message",
   },
-  "databases.physicalNamesTitle": {
-    message: "Nombres de PostgreSQL (opcional)",
-    description: "Create-database advanced physical-name section title",
-  },
-  "databases.physicalNamesHint": {
-    message:
-      "Define estos nombres solo al crear. Déjalos en blanco para generar nombres estables.",
-    description: "Create-database physical-name helper text",
-  },
   "databases.fieldDatabaseName": {
-    message: "Nombre de la base de datos",
+    message: "Base de datos",
     description: "Create-database physical PostgreSQL database label",
   },
   "databases.fieldDatabaseNamePlaceholder": {
@@ -177,7 +164,7 @@ const esDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL database placeholder",
   },
   "databases.fieldDatabaseUser": {
-    message: "Usuario de la base de datos",
+    message: "Usuario",
     description: "Create-database physical PostgreSQL owner-role label",
   },
   "databases.fieldDatabaseUserPlaceholder": {
@@ -198,10 +185,6 @@ const esDatabases: Record<string, TranslationEntry> = {
     message: "Plan de cómputo",
     description: "Create-database form field label (plan / tier)",
   },
-  "databases.fieldPlanPlaceholder": {
-    message: "Selecciona un plan de cómputo",
-    description: "Create-database plan select placeholder",
-  },
   "databases.fieldVersion": {
     message: "Versión de PostgreSQL",
     description: "Create-database form field label (major version)",
@@ -211,11 +194,12 @@ const esDatabases: Record<string, TranslationEntry> = {
     description: "Create-database version select default option",
   },
   "databases.fieldDisk": {
-    message: "Tamaño del disco (GB)",
+    message: "Almacenamiento",
     description: "Create-database form field label (storage size)",
   },
   "databases.fieldDiskFixed": {
-    message: "Este plan tiene un disco fijo de {size} GB.",
+    message:
+      "Este plan incluye un disco fijo de {size} GB. Elige un plan mayor para definir el almacenamiento tú mismo.",
     description:
       "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
   },
@@ -1960,6 +1944,41 @@ const esDatabases: Record<string, TranslationEntry> = {
   "databases.logsErrorTitle": {
     message: "No se pudieron cargar los logs de la base de datos",
     description: "Managed Postgres logs generic error title",
+  },
+  "databases.fieldNameDescription": {
+    message: "Un nombre único para tu instancia de Postgres.",
+    description: "Create-Postgres Name row description",
+  },
+  "databases.fieldDatabaseNameDescription": {
+    message:
+      "El dbname de Postgres; solo se define al crearla. Déjalo vacío para generar uno.",
+    description:
+      "Create-Postgres Database row description: the physical dbname, create-time only",
+  },
+  "databases.fieldDatabaseUserDescription": {
+    message:
+      "El usuario de Postgres propietario de la base de datos; solo se define al crearla. Déjalo vacío para generar uno.",
+    description:
+      "Create-Postgres User row description: the physical owner role, create-time only",
+  },
+  "databases.fieldPlanDescription": {
+    message:
+      "Define la RAM y la CPU de tu base de datos. Puedes cambiar el cómputo más adelante.",
+    description: "Create-Postgres plan row description (Render's Compute)",
+  },
+  "databases.fieldDiskDescription": {
+    message:
+      "La capacidad de tu base de datos, en GB. Puedes aumentarla más adelante, pero no reducirla.",
+    description:
+      "Create-Postgres Storage row description (Render: storage only grows)",
+  },
+  "databases.fieldDiskUnit": {
+    message: "GB",
+    description: "Unit after the create-Postgres storage input",
+  },
+  "databases.fieldVersionDescription": {
+    message: "La versión principal de PostgreSQL que ejecuta la base de datos.",
+    description: "Create-Postgres version row description",
   },
 };
 

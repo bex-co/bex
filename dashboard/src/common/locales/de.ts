@@ -619,6 +619,78 @@ const deCommon: Record<string, TranslationEntry> = {
     description:
       "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
   },
+  "common.createOptional": {
+    message: "Optional",
+    description:
+      "Mark beside a create-page row label whose field may be left blank (Render's 'Optional')",
+  },
+  "common.createAdvanced": {
+    message: "Erweitert",
+    description: "Heading of the collapsed Advanced card on a create page",
+  },
+  "common.planListShowAll": {
+    message: "Alle Pläne anzeigen",
+    description: "Button under a create page's plan list that shows every plan",
+  },
+  "common.planListShowFewer": {
+    message: "Weniger Pläne anzeigen",
+    description:
+      "Button under an expanded plan list that folds it back to the first plans",
+  },
+  "common.createBlockedName": {
+    message: "Geben Sie einen Namen ein, um fortzufahren.",
+    description:
+      "Create page action bar: why Submit is held while the name is empty or invalid",
+  },
+  "common.createBlockedFields": {
+    message:
+      "Füllen Sie die Felder oben aus oder korrigieren Sie sie, um fortzufahren.",
+    description:
+      "Create page action bar: why Submit is held while a field is missing or invalid",
+  },
+  "common.createTypePostgres": {
+    message: "Postgres",
+    description:
+      "Postgres in the New menu and a create page's type switcher (Render's product name)",
+  },
+  "common.createTypeSwitcher": {
+    message: "{type}: Servicetyp wählen",
+    description:
+      "Accessible name of the breadcrumb menu that switches a create page to another resource type ({type} = the current page's heading)",
+  },
+  "common.createTypeProject": {
+    message: "Projekt",
+    description: "Project in the New menu (Render's bare 'Project')",
+  },
+  "common.createTypeBlueprint": {
+    message: "Blueprint",
+    description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeSandboxGroup": {
+    message: "Sandbox-Gruppe",
+    description:
+      "Sandbox Group in the New menu (Render's bare 'Sandbox Group')",
+  },
+  "common.createTypeWebhook": {
+    message: "Webhook",
+    description:
+      "Webhook in the New menu (bex's own create, after Render's entries)",
+  },
+  "common.createBlockedNameTaken": {
+    message: "Wählen Sie einen noch nicht verwendeten Namen, um fortzufahren.",
+    description:
+      "Create page action bar: why Submit is held while the name is already in use",
+  },
+  "common.createRequired": {
+    message: "Erforderlich",
+    description:
+      "Mark beside a create-page row label whose field must be filled before Submit",
+  },
+  "common.createBlockedLoadingPlans": {
+    message: "Pläne werden geladen …",
+    description:
+      "Create page action bar: Submit waits only for the plan catalog to load (not the user's fault)",
+  },
 };
 
 export default deCommon;

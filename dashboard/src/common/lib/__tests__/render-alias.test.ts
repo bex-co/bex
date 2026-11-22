@@ -84,16 +84,15 @@ describe("redirectRenderAlias", () => {
 
   // Render's New menu puts creates under the segment (`/web/new`, `/d/new` —
   // live capture 2026-07-16, w1/m45). `/d/new` used to fall through the
-  // generic join onto the nonexistent `/databases/new`. Service segments now
-  // carry `?type=` so the wizard preselects the type (w5/m47) — otherwise
-  // `/cron/new` dropped the caller onto the Web-Service default.
-  it("sends each service segment's /new to a type-preselected wizard", () => {
+  // generic join onto the nonexistent `/databases/new`. The create pages now
+  // live at Render's own paths, so each segment's /new is its own page.
+  it("lands each segment's /new on Render's own create path", () => {
     const expected: Record<string, string> = {
-      web: "/services/new?type=web_service",
-      worker: "/services/new?type=background_worker",
-      pserv: "/services/new?type=private_service",
-      static: "/services/new?type=static_site",
-      cron: "/services/new?type=cron_job",
+      web: "/web/new",
+      worker: "/worker/new",
+      pserv: "/pserv/new",
+      static: "/static/new",
+      cron: "/cron/new",
     };
     for (const segment of [
       "web",
@@ -106,19 +105,20 @@ describe("redirectRenderAlias", () => {
         expected[segment],
       );
     }
-    expect(hrefOf("d", "new", locationOf("/d/new"))).toBe("/?new=database");
-    expect(hrefOf("r", "new", locationOf("/r/new"))).toBe("/keyvalue/new");
+    expect(hrefOf("d", "new", locationOf("/d/new"))).toBe("/new/database");
+    expect(hrefOf("r", "new", locationOf("/r/new"))).toBe("/new/redis");
   });
 
-  it("folds an incoming query into a landing that already has one", () => {
+  it("carries an incoming query onto a bare create landing", () => {
     expect(hrefOf("d", "new", locationOf("/d/new", "?from=cli"))).toBe(
-      "/?new=database&from=cli",
+      "/new/database?from=cli",
     );
-    // A service create deep link with its own contextual query folds onto the
-    // `?type=` landing: `/cron/new?projectId=x` → `…?type=cron_job&projectId=x`.
+  });
+
+  it("keeps a create deep link's contextual query", () => {
     expect(
       hrefOf("cron", "new", locationOf("/cron/new", "?projectId=prj-1")),
-    ).toBe("/services/new?type=cron_job&projectId=prj-1");
+    ).toBe("/cron/new?projectId=prj-1");
   });
 
   it("replaces history instead of stacking the alias entry", () => {

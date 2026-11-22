@@ -103,7 +103,7 @@ describe("RegistryCredentialSelect", () => {
     );
 
     await user.click(
-      await screen.findByRole("combobox", { name: "Registry credential" }),
+      await screen.findByRole("combobox", { name: "Registry Credential" }),
     );
     await user.click(
       screen.getByRole("option", { name: "No credential — public image" }),
@@ -145,7 +145,7 @@ describe("RegistryCredentialSection", () => {
     );
 
     await user.click(
-      await screen.findByRole("combobox", { name: "Registry credential" }),
+      await screen.findByRole("combobox", { name: "Registry Credential" }),
     );
     await user.click(screen.getByRole("option", { name: /Backup GHCR/ }));
     await user.click(screen.getByRole("button", { name: "Save credential" }));
@@ -164,7 +164,7 @@ describe("RegistryCredentialSection", () => {
     );
 
     await user.click(
-      await screen.findByRole("combobox", { name: "Registry credential" }),
+      await screen.findByRole("combobox", { name: "Registry Credential" }),
     );
     await user.click(
       screen.getByRole("option", { name: "No credential — public image" }),

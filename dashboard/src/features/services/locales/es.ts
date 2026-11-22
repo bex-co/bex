@@ -3808,7 +3808,7 @@ const esServices: Record<string, TranslationEntry> = {
       "Create-wizard page subtitle when the cron_job type is selected",
   },
   "services.createSourceTitle": {
-    message: "Origen",
+    message: "Código fuente",
     description: "Create-wizard source-picker section label",
   },
   "services.createTabGitHub": {
@@ -3910,19 +3910,19 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldPortImageHint": {
     message:
-      "Opcional. bex publica todos los puertos TCP que declara la imagen (EXPOSE); el 3000 si está declarado, si no el más bajo declarado y si no el 10000 pasa a ser $PORT y el principal con comprobación de estado. Define un puerto para elegir tú mismo el principal.",
+      "Si lo dejas vacío, el puerto que declara la imagen pasa a ser $PORT.",
     description:
       "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
   },
   "services.createFieldPortImageHintWeb": {
     message:
-      "Opcional. bex publica todos los puertos TCP que declara la imagen (EXPOSE); el principal, que recibe el tráfico y las comprobaciones de estado, es 3000 si está declarado, si no el más bajo declarado, si no 10000, hasta que bex encuentre el puerto en el que tu servidor responde HTTP. $PORT sigue siendo 10000 salvo que lo establezcas. Indica un puerto para elegir tú el principal.",
+      "Déjalo vacío para enrutar el tráfico al puerto que declara la imagen; la variable $PORT sigue siendo 10000 salvo que definas un puerto.",
     description:
       "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:
-      "Tu contenedor debe escuchar en el puerto {port}: bex dirige el tráfico allí y lo inyecta como $PORT. Cámbialo para que coincida con la imagen que despliegas.",
+      "Tu contenedor debe escuchar en el puerto {port}; bex enruta el tráfico allí y lo define como $PORT.",
     description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
@@ -4227,12 +4227,12 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Label for the publish directory field in the create wizard",
   },
   "services.createFieldPublishPathPlaceholder": {
-    message: "dist",
+    message: "p. ej., dist",
     description: "Placeholder for the publish directory field",
   },
   "services.createFieldPublishPathHint": {
     message:
-      "El directorio de salida compilado que se sirve como raíz del sitio (p. ej. dist, build, public).",
+      "La carpeta con tu sitio compilado, relativa al directorio raíz (p. ej., dist, o . para el propio directorio raíz).",
     description: "Hint text under the publish directory field",
   },
   "services.createFieldPublishPathRequired": {
@@ -4937,7 +4937,8 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.eventsBuildReference": {
     message: "Compilación {id}",
-    description: "Build identifier shown on an artifact_fetch_failed activity row",
+    description:
+      "Build identifier shown on an artifact_fetch_failed activity row",
   },
   "services.eventsTypeSuspended": {
     message: "Suspendido",
@@ -6299,6 +6300,99 @@ const esServices: Record<string, TranslationEntry> = {
       "Se vuelven a cargar con las variables cuando lo intentas de nuevo arriba.",
     description:
       "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
+  },
+  "services.createSubmitWeb": {
+    message: "Desplegar Web Service",
+    description:
+      "Create-wizard submit button for a web service (Render's 'Deploy web service')",
+  },
+  "services.createSubmitPrivate": {
+    message: "Desplegar Private Service",
+    description: "Create-wizard submit button for a private service",
+  },
+  "services.createSubmitWorker": {
+    message: "Desplegar Background Worker",
+    description: "Create-wizard submit button for a background worker",
+  },
+  "services.createSubmitCron": {
+    message: "Desplegar Cron Job",
+    description:
+      "Create-wizard submit button for a cron job (Render's 'Deploy cron job')",
+  },
+  "services.createSubmitStatic": {
+    message: "Desplegar Static Site",
+    description: "Create-wizard submit button for a static site",
+  },
+  "services.createSourceEdit": {
+    message: "Editar",
+    description:
+      "Button on the chosen repository's summary row that reopens the source picker",
+  },
+  "services.createSourceEditLabel": {
+    message: "Cambiar el origen",
+    description:
+      "Accessible name of the Edit button on the chosen repository's summary row ({repo} = owner/name)",
+  },
+  "services.createBlockedSource": {
+    message: "Elige un origen para continuar.",
+    description:
+      "Create-wizard action bar: why Deploy is held while no source is chosen",
+  },
+  "services.createFieldNameDescription": {
+    message: "Un nombre único para este servicio.",
+    description: "Create-wizard Name row description",
+  },
+  "services.createFieldRuntimeDescription": {
+    message: "Elige el entorno de ejecución de este servicio.",
+    description: "Create-wizard Language/runtime row description",
+  },
+  "services.createFieldBranchDescription": {
+    message: "La rama de Git que se compila y despliega.",
+    description: "Create-wizard Branch row description",
+  },
+  "services.createFieldBuildCommandDescription": {
+    message: "Este comando compila tu app antes de cada despliegue.",
+    description:
+      "Create-wizard Build Command row description (native runtimes)",
+  },
+  "services.createFieldStartCommandDescription": {
+    message: "Este comando inicia tu app en cada despliegue.",
+    description: "Create-wizard Start Command row description",
+  },
+  "services.createFieldDockerCommandDescription": {
+    message:
+      "Opcional: reemplaza el CMD y el ENTRYPOINT de la imagen por otro comando para iniciar el servicio.",
+    description: "Create-wizard Docker Command row description (Advanced)",
+  },
+  "services.createFieldPlanDescription": {
+    message:
+      "La instancia en la que se ejecuta tu servicio. Puedes cambiarla en cualquier momento.",
+    description: "Create-wizard compute plan row description",
+  },
+  "services.createEnvVarsDescription": {
+    message:
+      "Define configuración y secretos específicos del entorno (como claves de API) y lee esos valores desde tu código.",
+    description: "Create-wizard Environment Variables card description",
+  },
+  "services.createBlockedPublishPath": {
+    message: "Introduce un directorio de publicación para continuar.",
+    description:
+      "Create-wizard action bar: Deploy is held until a static site has a publish directory",
+  },
+  "services.createBlockedSchedule": {
+    message: "Introduce una programación válida para continuar.",
+    description:
+      "Create-wizard action bar: Deploy is held until a cron job has a valid schedule",
+  },
+  "services.createBlockedCommands": {
+    message: "Introduce los comandos de compilación e inicio para continuar.",
+    description:
+      "Create-wizard action bar: Deploy is held until the native runtime's build and start commands are filled",
+  },
+  "services.createBlockedPort": {
+    message: "Introduce un puerto válido para continuar.",
+    description:
+      "Create-wizard action bar: Deploy is held while the port is out of range",
   },
 };
 

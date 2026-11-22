@@ -32,7 +32,7 @@ type AuthContext = Pick<RouterContext, "session" | "aal2Required">;
  * rather than leave the login page to rediscover it by minting a trial flow (w4/m17).
  *
  * `next` defaults to the REQUESTED href (w1/m45) so query/hash survive the
- * login bounce — `/?new=database` reopens its dialog, `/w/{tea-id}/settings`
+ * login bounce — `/?new=project` reopens its dialog, `/w/{tea-id}/settings`
  * re-selects its workspace. An explicit `redirectPath` still wins (legacy call
  * sites pass static paths — some literal `$param` patterns; migrating them to
  * the no-arg form is `w1/027`).

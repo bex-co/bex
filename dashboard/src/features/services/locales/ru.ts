@@ -3781,7 +3781,7 @@ const ruServices: Record<string, TranslationEntry> = {
       "Create-wizard page subtitle when the cron_job type is selected",
   },
   "services.createSourceTitle": {
-    message: "Источник",
+    message: "Исходный код",
     description: "Create-wizard source-picker section label",
   },
   "services.createTabGitHub": {
@@ -3882,20 +3882,19 @@ const ruServices: Record<string, TranslationEntry> = {
       "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortImageHint": {
-    message:
-      "Необязательно. bex публикует каждый TCP-порт, объявленный в образе (EXPOSE); порт 3000, если он объявлен, иначе наименьший объявленный, иначе 10000, становится $PORT и основным портом для проверки работоспособности. Укажите порт, чтобы выбрать основной самостоятельно.",
+    message: "Если оставить пустым, $PORT станет портом, объявленным в образе.",
     description:
       "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
   },
   "services.createFieldPortImageHintWeb": {
     message:
-      "Необязательно. bex публикует каждый TCP-порт, объявленный в образе (EXPOSE); основным, который получает трафик и проверки работоспособности, становится 3000, если он объявлен, иначе наименьший объявленный, иначе 10000 — пока bex не найдёт порт, на котором ваш сервер отвечает по HTTP. $PORT остаётся равным 10000, если вы не зададите его. Укажите порт, чтобы выбрать основной самостоятельно.",
+      "Оставьте пустым, чтобы направлять трафик на порт, объявленный в образе; переменная $PORT остаётся 10000, пока вы не зададите порт.",
     description:
       "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:
-      "Ваш контейнер должен слушать порт {port} — bex направляет трафик туда и передаёт его как $PORT. Измените значение в соответствии с разворачиваемым образом.",
+      "Контейнер должен слушать порт {port}; bex направляет туда трафик и задаёт его как $PORT.",
     description: "Create wizard: service port field hint",
   },
   "services.createRegistryCredentialLabel": {
@@ -4202,12 +4201,12 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Label for the publish directory field in the create wizard",
   },
   "services.createFieldPublishPathPlaceholder": {
-    message: "dist",
+    message: "например, dist",
     description: "Placeholder for the publish directory field",
   },
   "services.createFieldPublishPathHint": {
     message:
-      "Каталог с результатом сборки, который будет корнем сайта (напр. dist, build, public).",
+      "Папка с собранным сайтом относительно корневого каталога (например, dist или . для самого корневого каталога).",
     description: "Hint text under the publish directory field",
   },
   "services.createFieldPublishPathRequired": {
@@ -4921,7 +4920,8 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.eventsBuildReference": {
     message: "Сборка {id}",
-    description: "Build identifier shown on an artifact_fetch_failed activity row",
+    description:
+      "Build identifier shown on an artifact_fetch_failed activity row",
   },
   "services.eventsTypeSuspended": {
     message: "Приостановлен",
@@ -6295,6 +6295,99 @@ const ruServices: Record<string, TranslationEntry> = {
       "Они загрузятся вместе с переменными, когда вы повторите попытку выше.",
     description:
       "Secret Files card line when both lists failed to load: the variables card's Try again reloads the files too, so this card has no button of its own",
+  },
+  "services.createSubmitWeb": {
+    message: "Развернуть Web Service",
+    description:
+      "Create-wizard submit button for a web service (Render's 'Deploy web service')",
+  },
+  "services.createSubmitPrivate": {
+    message: "Развернуть Private Service",
+    description: "Create-wizard submit button for a private service",
+  },
+  "services.createSubmitWorker": {
+    message: "Развернуть Background Worker",
+    description: "Create-wizard submit button for a background worker",
+  },
+  "services.createSubmitCron": {
+    message: "Развернуть Cron Job",
+    description:
+      "Create-wizard submit button for a cron job (Render's 'Deploy cron job')",
+  },
+  "services.createSubmitStatic": {
+    message: "Развернуть Static Site",
+    description: "Create-wizard submit button for a static site",
+  },
+  "services.createSourceEdit": {
+    message: "Изменить",
+    description:
+      "Button on the chosen repository's summary row that reopens the source picker",
+  },
+  "services.createSourceEditLabel": {
+    message: "Изменить источник",
+    description:
+      "Accessible name of the Edit button on the chosen repository's summary row ({repo} = owner/name)",
+  },
+  "services.createBlockedSource": {
+    message: "Выберите источник, чтобы продолжить.",
+    description:
+      "Create-wizard action bar: why Deploy is held while no source is chosen",
+  },
+  "services.createFieldNameDescription": {
+    message: "Уникальное название этого сервиса.",
+    description: "Create-wizard Name row description",
+  },
+  "services.createFieldRuntimeDescription": {
+    message: "Выберите среду выполнения для этого сервиса.",
+    description: "Create-wizard Language/runtime row description",
+  },
+  "services.createFieldBranchDescription": {
+    message: "Ветка Git, которую нужно собрать и развернуть.",
+    description: "Create-wizard Branch row description",
+  },
+  "services.createFieldBuildCommandDescription": {
+    message: "Эта команда собирает приложение перед каждым развёртыванием.",
+    description:
+      "Create-wizard Build Command row description (native runtimes)",
+  },
+  "services.createFieldStartCommandDescription": {
+    message: "Эта команда запускает приложение при каждом развёртывании.",
+    description: "Create-wizard Start Command row description",
+  },
+  "services.createFieldDockerCommandDescription": {
+    message:
+      "Необязательно: заменить CMD и ENTRYPOINT образа другой командой запуска сервиса.",
+    description: "Create-wizard Docker Command row description (Advanced)",
+  },
+  "services.createFieldPlanDescription": {
+    message:
+      "Инстанс, на котором работает сервис. Его можно сменить в любой момент.",
+    description: "Create-wizard compute plan row description",
+  },
+  "services.createEnvVarsDescription": {
+    message:
+      "Задайте настройки и секреты для окружения (например, API-ключи) и читайте эти значения в коде.",
+    description: "Create-wizard Environment Variables card description",
+  },
+  "services.createBlockedPublishPath": {
+    message: "Укажите каталог публикации, чтобы продолжить.",
+    description:
+      "Create-wizard action bar: Deploy is held until a static site has a publish directory",
+  },
+  "services.createBlockedSchedule": {
+    message: "Укажите корректное расписание, чтобы продолжить.",
+    description:
+      "Create-wizard action bar: Deploy is held until a cron job has a valid schedule",
+  },
+  "services.createBlockedCommands": {
+    message: "Укажите команды сборки и запуска, чтобы продолжить.",
+    description:
+      "Create-wizard action bar: Deploy is held until the native runtime's build and start commands are filled",
+  },
+  "services.createBlockedPort": {
+    message: "Укажите корректный порт, чтобы продолжить.",
+    description:
+      "Create-wizard action bar: Deploy is held while the port is out of range",
   },
 };
 

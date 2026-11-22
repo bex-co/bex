@@ -323,7 +323,7 @@ const esKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value form field label (external endpoint toggle)",
   },
   "keyvalue.fieldPublicHint": {
-    message: "Permite conexiones desde fuera del clúster mediante TLS.",
+    message: "Permite conexiones desde fuera de tu red privada mediante TLS.",
     description: "Create-Key-Value public toggle helper text",
   },
   "keyvalue.createCancel": {
@@ -486,7 +486,8 @@ const esKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Comando de Valkey CLI",
-    description: "Connection-info field label (ready-to-run valkey-cli command)",
+    description:
+      "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "No se pudo cargar la información de conexión",
@@ -877,6 +878,20 @@ const esKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "No tienes permiso para ver los logs de este almacén Key Value.",
     description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.fieldNameDescription": {
+    message: "Un nombre único para tu instancia de Key Value.",
+    description: "Create-Key-Value Name row description",
+  },
+  "keyvalue.fieldVersionDescription": {
+    message: "La versión principal de Valkey que ejecuta la instancia.",
+    description: "Create-Key-Value Version row description",
+  },
+  "keyvalue.fieldPlanDescription": {
+    message:
+      "Determina la RAM disponible y el límite de conexiones de la instancia.",
+    description:
+      "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
 };
 

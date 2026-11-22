@@ -11,10 +11,7 @@ import {
 import { HomePage, Route } from "../index";
 import { OverviewPageSkeleton } from "@/common/components/route-skeletons";
 import type { ServiceView } from "@/features/services/types";
-import type {
-  DatabaseView,
-  DatabaseInstanceTypeView,
-} from "@/features/databases/types";
+import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -192,38 +189,8 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => projectsState,
 }));
 
-// The "+ New" menu's database option and the "New Project" dialog mount
-// unconditionally in the page header; stub their hooks (mirrors
-// databases.index.test.tsx's handling of the same create dialog).
-const instanceTypes: DatabaseInstanceTypeView[] = [
-  {
-    id: "free",
-    name: "Free",
-    cpu: "100m",
-    memory: "256Mi",
-    storageGB: 1,
-    maxStorageGB: 1,
-    supportsDiskAutoscaling: false,
-    supportsConnectionPooling: false,
-    maxReadReplicas: 0,
-    readReplicaMinStorageGB: 10,
-    supportsHighAvailability: false,
-    monthlyUsd: "",
-  },
-];
-vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
-  useDatabaseInstanceTypes: () => ({
-    instanceTypes,
-    loading: false,
-    error: undefined,
-  }),
-}));
-const createDatabase = vi.fn();
-vi.mock("@/features/databases/hooks/use-create-database", () => ({
-  useCreateDatabase: () => ({ create: createDatabase, busy: false }),
-}));
 // DatabaseRowActions/KeyValueRowActions call their delete hook unconditionally
-// (not gated behind the closed "•••" menu), same as useCreateDatabase above.
+// (not gated behind the closed "•••" menu).
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
   useDeleteDatabase: () => ({ remove: vi.fn(), deleting: null }),
 }));
@@ -251,9 +218,8 @@ vi.mock(
     }),
   }),
 );
-// The database dialog's Project/Environment selector reads environments over
-// Apollo when OPEN (the ?new=database cases below) — same stub
-// keyvalue.new.test.tsx uses.
+// The sandbox group dialog's Environment selector reads environments over
+// Apollo when OPEN — same stub keyvalue.new.test.tsx uses.
 vi.mock("@/features/environments/hooks/use-environments", () => ({
   useEnvironments: () => ({
     environments: [],
@@ -407,7 +373,6 @@ beforeEach(() => {
   projectsState.projects = [];
   projectsState.loading = false;
   projectsState.error = undefined;
-  createDatabase.mockResolvedValue("dpg-returned-id");
   createSandboxGroup.mockResolvedValue({
     __typename: "SandboxGroup",
     id: "sbg-returned-id",
@@ -650,7 +615,7 @@ describe("HomePage", () => {
 
     expect(
       await screen.findByRole("link", { name: "Create a service" }),
-    ).toHaveAttribute("href", "/services/new");
+    ).toHaveAttribute("href", "/web/new");
     expect(screen.getByTestId("getting-started-card")).toBeInTheDocument();
   });
 
@@ -756,11 +721,34 @@ describe("HomePage", () => {
 });
 
 // w1/m45: the URL owns the create dialogs, so Render's New-menu aliases
-// (`/d/new`, `/new/database`, `/new/project`) can land straight in them.
+// (`/new/project`) can land straight in them.
 describe("URL-owned create dialogs (w1/m45)", () => {
-  it("?new=database opens the database create dialog", async () => {
-    renderHomePage("/?new=database");
-    expect(await screen.findByText("New Postgres")).toBeInTheDocument();
+  // Postgres has Render's full create page now; a saved `?new=database` link
+  // lands there, signing in on the way as any create page does.
+  it("sends the old ?new=database link to the Postgres create page", async () => {
+    const rootRoute = createRootRoute();
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: HomePage,
+      validateSearch: Route.options.validateSearch,
+      // The real route's beforeLoad, typed for the app's root context.
+      beforeLoad: (ctx) => Route.options.beforeLoad?.(ctx as never),
+    });
+    const newDatabaseRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/new/database",
+      component: () => <p>Postgres create page</p>,
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, newDatabaseRoute]),
+      history: createMemoryHistory({ initialEntries: ["/?new=database"] }),
+      context: { client: {} as never, session: null },
+    });
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByText("Postgres create page")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/new/database");
+    expect(router.state.location.search).toEqual({});
   });
 
   it("?new=project opens the project create dialog", async () => {
@@ -779,7 +767,6 @@ describe("URL-owned create dialogs (w1/m45)", () => {
 
   it("plain / opens no dialog", () => {
     renderHomePage("/");
-    expect(screen.queryByText("New Postgres")).not.toBeInTheDocument();
     expect(screen.queryByText("New Project")).not.toBeInTheDocument();
     expect(screen.queryByText("New Sandbox Group")).not.toBeInTheDocument();
   });
@@ -801,10 +788,16 @@ describe("URL-owned create dialogs (w1/m45)", () => {
     const items = (await screen.findAllByRole("menuitem")).map(
       (item) => item.textContent,
     );
+    // Flat, as Render's New menu (2026-11-21): the create types, then the
+    // overview's own dialogs.
     expect(items).toEqual([
-      "New Service",
-      "New Database",
-      "New Key Value",
+      "Static Site",
+      "Web Service",
+      "Private Service",
+      "Background Worker",
+      "Cron Job",
+      "Postgres",
+      "Key Value",
       "New Project",
       "New Sandbox Group",
     ]);
@@ -856,41 +849,6 @@ describe("URL-owned create dialogs (w1/m45)", () => {
     await waitFor(() => expect(createSandboxGroup).toHaveBeenCalled());
     expect(router.state.location.search).toEqual({ new: "sandbox-group" });
     expect(within(dialog).getByLabelText("Name")).toHaveValue("ci");
-  });
-
-  it("closes the Postgres search dialog before landing on the returned immutable id", async () => {
-    const user = userEvent.setup();
-    const { router } = renderHomePage("/?new=database");
-
-    const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Name"), "friendly-name");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Create database" }),
-    );
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/databases/dpg-returned-id"),
-    );
-    expect(router.state.location.search).toEqual({});
-    expect(databasesState.refetch).toHaveBeenCalled();
-    expect(projectsState.refetch).toHaveBeenCalled();
-  });
-
-  it("keeps the Postgres form and route in place when create fails", async () => {
-    createDatabase.mockResolvedValueOnce(null);
-    const user = userEvent.setup();
-    const { router } = renderHomePage("/?new=database");
-
-    const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Name"), "friendly-name");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Create database" }),
-    );
-
-    await waitFor(() => expect(createDatabase).toHaveBeenCalled());
-    expect(router.state.location.pathname).toBe("/");
-    expect(router.state.location.search).toEqual({ new: "database" });
-    expect(within(dialog).getByLabelText("Name")).toHaveValue("friendly-name");
   });
 
   it("lands a new Project on the returned immutable id after closing its search dialog", async () => {

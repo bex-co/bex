@@ -297,7 +297,7 @@ describe("ServiceSourcePicker first connections read (w4/434)", () => {
     expect(icon).toHaveClass("size-8");
     expect(text.children).toHaveLength(3);
     expect(text.children[2]).toHaveClass("sm:hidden");
-    expect(button).toHaveClass("h-9");
+    expect(button).toHaveClass("h-11", "sm:h-9");
 
     await act(async () => {
       apollo.releaseResponses();

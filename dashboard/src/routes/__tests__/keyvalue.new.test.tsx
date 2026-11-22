@@ -16,8 +16,9 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { NewKeyValuePage } from "../keyvalue.new";
+import { NewKeyValuePage } from "@/features/keyvalue/pages/new-key-value-page";
 import type { KeyValueInstanceTypeView } from "@/features/keyvalue/types";
+import { CREATE_PLAN_ROWS } from "@/common/components/compute-plan-list";
 import { KEY_VALUE_PLAN_SLOTS } from "@/common/components/datastore-plan-preview";
 
 beforeAll(() => {
@@ -271,18 +272,25 @@ describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
     instanceTypesState.loading = false;
   });
 
-  it("previews one inert slot per plan, then the real cards with the draft kept", async () => {
+  it("previews the collapsed list's inert rows, then the real rows with the draft kept", async () => {
     const user = userEvent.setup();
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
-    renderPage();
-    const label = await screen.findByText("Compute plan");
-    const preview = label.parentElement!.querySelector('[aria-hidden="true"]');
-    // The route skeleton's slots: one per catalog plan, each with the ready
-    // card's name, specs and connection-limit lines (w6/m459).
-    expect(preview?.children).toHaveLength(KEY_VALUE_PLAN_SLOTS);
-    for (const slot of Array.from(preview!.children)) {
-      expect(slot.children).toHaveLength(3);
+    const { container } = renderPage();
+    await screen.findByText("Compute Plan");
+    const preview = container.querySelector('[aria-hidden="true"].rounded-lg');
+    // The route skeleton's rows: the four a create list shows before "Show
+    // all plans" (of the catalog's nine), each with the ready row's radio,
+    // name, specs (connection limit included, w6/m459) and price, and the
+    // button's slot.
+    expect(KEY_VALUE_PLAN_SLOTS).toBeGreaterThan(CREATE_PLAN_ROWS + 1);
+    const rows = Array.from(preview!.children).filter((child) =>
+      child.className.includes("rounded-md border"),
+    );
+    expect(rows).toHaveLength(CREATE_PLAN_ROWS);
+    for (const row of rows) {
+      expect(row.children).toHaveLength(3);
+      expect(row.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(5);
     }
     expect(screen.queryByRole("radiogroup")).toBeNull();
     await user.type(screen.getByLabelText("Name"), "qa-a771-previe");

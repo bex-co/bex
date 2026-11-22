@@ -446,7 +446,7 @@ const koEnvironments: Record<string, TranslationEntry> = {
       "Environment card line while its resource lists are still loading, instead of the empty message",
   },
   "environments.assignmentTitle": {
-    message: "프로젝트 및 환경",
+    message: "프로젝트",
     description: "Shared create-form Project/Environment selector heading",
   },
   "environments.assignmentProject": {
@@ -496,6 +496,27 @@ const koEnvironments: Record<string, TranslationEntry> = {
     message: "{environment} (관리자 전용)",
     description:
       "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
+  "environments.assignmentDescription": {
+    message: "생성 후 프로젝트와 환경에 추가합니다.",
+    description: "Shared create-form Project row description",
+  },
+  "environments.assignmentNoEnvironments": {
+    message:
+      "이 프로젝트에는 아직 환경이 없습니다. 먼저 프로젝트 페이지에서 환경을 만드세요.",
+    description:
+      "Shared create-form note when the chosen Project has no Environment to add the resource to",
+  },
+  "environments.assignmentPickEnvironment": {
+    message:
+      "이 프로젝트에 추가하려면 환경을 선택하세요. '환경 없음'을 선택하면 어떤 프로젝트에도 속하지 않은 채 생성됩니다.",
+    description:
+      "Shared create-form note when a Project is chosen but No environment is: only an Environment adds the resource to the Project",
+  },
+  "environments.assignmentEnvironmentPickProject": {
+    message: "먼저 프로젝트를 선택하세요",
+    description:
+      "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
 };
 

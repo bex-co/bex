@@ -111,6 +111,16 @@ export const PERSISTENCE_MODES = [
   "off",
 ] as const;
 
+/** Each persistence mode's label, at create and on the detail editor. */
+export const PERSISTENCE_LABEL_KEYS: Record<
+  (typeof PERSISTENCE_MODES)[number],
+  keyof typeof en
+> = {
+  "journal-snapshot": "keyvalue.persistenceJournalSnapshot",
+  snapshot: "keyvalue.persistenceSnapshot",
+  off: "keyvalue.persistenceOff",
+};
+
 /** Normalize underscored API reads onto the hyphen UI vocabulary. */
 export function persistenceModeToUi(apiValue: string): string {
   const hyphenated = apiValue.replace(/_/g, "-");
@@ -131,4 +141,10 @@ export function persistenceKeepsData(mode: string): boolean {
 /** The typed phrase every change that empties a store asks for. */
 export function keyValueClearPhrase(name: string): string {
   return `sudo clear key value ${name}`;
+}
+
+/** The "(recommended …)" note after a policy token: a space before a
+ *  half-width parenthesis, none before a full-width one (zh, ja). */
+export function recommendedSuffix(note: string): string {
+  return /^[（［【]/.test(note) ? note : ` ${note}`;
 }
