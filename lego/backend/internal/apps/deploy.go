@@ -1011,8 +1011,10 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		return StackResult{}, err
 	}
 	// Creating in, or moving into or out of, a protected environment needs an
-	// Admin (w3/m281) — refused here, before the groupings' first write.
-	ctx, err = s.requireBlueprintPlacement(ctx, st, snap)
+	// Admin (w3/m281) — refused here, before the groupings' first write. The
+	// gate reads a renamed group by its live name, or it would mistake the
+	// move for a create and miss the protected environment it leaves.
+	ctx, err = s.requireBlueprintPlacement(ctx, st, snap, envGroupRenames)
 	if err != nil {
 		return StackResult{}, err
 	}

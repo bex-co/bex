@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -392,6 +393,66 @@ func TestASyncRenamesItsEnvGroupBackAndMovesIt(t *testing.T) {
 	}
 	if again, err := svc.PlanBlueprint(ctx, bpID, "tea-a"); err != nil || again.PlanningOutcome != PlanningNoChanges {
 		t.Fatalf("re-plan = %+v err=%v, want no_changes", again, err)
+	}
+}
+
+// groupedEnvGroupLeftBehind is shared moved to production while web stays in
+// staging linked to it: the move strands the link, so only the placement gate
+// can stop it before the apply's own refusal.
+const groupedEnvGroupLeftBehind = `projects:
+  - name: shop
+    environments:
+      - name: staging
+        services:
+          - name: web
+            type: web
+            runtime: image
+            image: {url: nginx:1}
+            envVars:
+              - fromGroup: shared
+      - name: production
+        envVarGroups:
+          - name: shared
+            envVars:
+              - {key: LOG_LEVEL, value: info}
+`
+
+// A renamed group moved out of a protected environment is refused like one
+// that kept its name: the gate reads the placement by the live name, so the
+// move is not mistaken for a create in the unprotected target. Until the gate
+// knew the live name, a non-Admin's plan promised the move and the sync sailed
+// past the gate, failing later at the apply's own refusal instead.
+func TestASyncRefusesARenamedEnvGroupLeavingAProtectedEnvironment(t *testing.T) {
+	svc, groups, gst, ctx, bpID := groupedBlueprint(t, groupedResources(groupedEnvGroupResources, "shop", "staging"))
+	for i := range gst.environments {
+		if gst.environments[i].Name == "staging" {
+			gst.environments[i].ProtectedStatus = core.ProtectedStatusProtected
+		}
+	}
+	original := onlyGroup(t, groups, ctx)
+	if _, err := groups.RenameEnvGroup(ctx, original.ID, "renamed-outside"); err != nil {
+		t.Fatal(err)
+	}
+	asNonAdmin(svc)
+	svc.GitFetcher = fakeBlueprintFetcher{contents: groupedEnvGroupLeftBehind}
+
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.PlanningOutcome != PlanningFailed || len(plan.Notices) == 0 ||
+		!strings.Contains(plan.Notices[0].Message, "Admins") {
+		t.Fatalf("plan = %+v err=%v, want the protected-placement refusal", plan, err)
+	}
+	if v, err := svc.ValidateBlueprint(ctx, "tea-a", groupedEnvGroupLeftBehind, bpID); err != nil || v.Valid {
+		t.Fatalf("validate = %+v err=%v, want the protected-placement refusal", v, err)
+	}
+
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err == nil {
+		t.Fatalf("sync of a refused plan succeeded, want the protected-placement refusal")
+	}
+	if got := onlyGroup(t, groups, ctx); got.ID != original.ID || got.Name != "renamed-outside" {
+		t.Fatalf("after the refusal the group is %s=%q, want %s=renamed-outside", got.ID, got.Name, original.ID)
 	}
 }
 
