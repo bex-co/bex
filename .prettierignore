@@ -7,7 +7,8 @@ node_modules/
 .tmp/
 external/
 
-# internal PM notes — not public docs
+# the PM board: public like the rest of the repository (.pm/AGENTS.md), but
+# working notes, not formatted docs
 .pm/
 
 # vendored third-party chart (don't reformat upstream)

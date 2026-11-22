@@ -41,19 +41,19 @@ Read through the fetched kubeconfig (deleted afterwards): `SELECT` only against 
 
 All 11 are `enforced` (transition_version 3, `attempt_count` 0, empty `last_error`, no claim held), `reason = subscription_canceled`, plan `hobby`, `billing_excluded` and `billing_comped` both false, with **no** `billing_provider_mappings` row, **no** `billing_enforcements` row, no `apps` row and no tenant namespace on the cluster. Each has exactly one member and no other workspace; none shares a member with a first-party, excluded or comped workspace. Apart from 163 `billing.Status` reads across the 11, the only audit rows are one `billing.Checkout` each (2026-09-06 to 2026-09-29) and one `billing.EnforceWorkspace` each (2026-11-12).
 
-| workspace | created | `customer.subscription.deleted` (2026-10-03 UTC) | grace deadline (2026-10-10 UTC) | completed to `enforced` (2026-11-12 UTC) |
+| # | created | `customer.subscription.deleted` (2026-10-03 UTC) | grace deadline (2026-10-10 UTC) | completed to `enforced` (2026-11-12 UTC) |
 | --- | --- | --- | --- | --- |
-| tea-daekrutstb9s73801gcg | 09-06 | 07:03:06 | 07:03:06 | 06:46:39 |
-| tea-daf4cqnco25s73fkr3fg | 09-07 | 07:02:47 | 07:02:47 | 06:46:04 |
-| tea-dafeuj3h2g1c73dgc6m0 | 09-07 | 07:02:44 | 07:02:44 | 06:45:59 |
-| tea-dafjdgoendjc738s7b7g | 09-07 | 07:02:41 | 07:02:41 | 06:47:34 |
-| tea-daftut9c7cos73dm2lag | 09-08 | 07:02:51 | 07:02:51 | 06:46:14 |
-| tea-dahsl87nf85c739nikng | 09-11 | 07:02:54 | 07:02:54 | 06:46:34 |
-| tea-daj4rcggsm7s73f63ni0 | 09-13 | 07:02:57 | 07:02:57 | 06:46:44 |
-| tea-dal61gdurvac73dms4fg | 09-16 | 07:03:00 | 07:03:00 | 06:46:24 |
-| tea-dalq9onatu4c73cb8qvg | 09-17 | 07:03:00 | 07:03:00 | 06:47:04 |
-| tea-daqmsijbdpcs73f5egkg | 09-24 | 07:03:03 | 07:03:03 | 06:46:29 |
-| tea-datmop9bmrjc73fp31b0 | 09-29 | 07:03:06 | 07:03:06 | 06:47:09 |
+| 1 | 09-06 | 07:03:06 | 07:03:06 | 06:46:39 |
+| 2 | 09-07 | 07:02:47 | 07:02:47 | 06:46:04 |
+| 3 | 09-07 | 07:02:44 | 07:02:44 | 06:45:59 |
+| 4 | 09-07 | 07:02:41 | 07:02:41 | 06:47:34 |
+| 5 | 09-08 | 07:02:51 | 07:02:51 | 06:46:14 |
+| 6 | 09-11 | 07:02:54 | 07:02:54 | 06:46:34 |
+| 7 | 09-13 | 07:02:57 | 07:02:57 | 06:46:44 |
+| 8 | 09-16 | 07:03:00 | 07:03:00 | 06:46:24 |
+| 9 | 09-17 | 07:03:00 | 07:03:00 | 06:47:04 |
+| 10 | 09-24 | 07:03:03 | 07:03:03 | 06:46:29 |
+| 11 | 09-29 | 07:03:06 | 07:03:06 | 06:47:09 |
 
 Cardinalities of the rest of the table: 11 of 11 have `mapped = false`, `last_error = ''`, `attempt_count = 0`.
 
@@ -74,7 +74,7 @@ Cardinalities of the rest of the table: 11 of 11 have `mapped = false`, `last_er
 
 Leaving them is not harmful in the meantime: with the payment gate on for every plan (production's `BEX_REQUIRE_PAYMENT_METHOD=all`, per m172's t006) a cardless workspace cannot create anything anyway, and the row recovers by itself on its first successful Stripe event (a successful card bind: `transitionBillingState` moves `enforced` to `recovering`, and the stale-event guard only drops events older than the 2026-10-03 cancel). That second part is read from the code, not exercised.
 
-**Question for the user:** for the 11 ids above, (a) recover all to `healthy` and accept the "Billing recovered" mail, (b) first make that notice say what is true for a workspace that never paid (or recover without a mail), then recover, or (c) leave them to recover on their own card bind. My recommendation is (b); the reclaim path that caused it is filed as [w21/098](../098.md).
+**Question for the user:** for the 11 workspaces above, (a) recover all to `healthy` and accept the "Billing recovered" mail, (b) first make that notice say what is true for a workspace that never paid (or recover without a mail), then recover, or (c) leave them to recover on their own card bind. My recommendation is (b); the reclaim path that caused it is filed as [w21/098](../098.md).
 
 ### The two checks (2026-11-16, 08:16 to 08:19 UTC)
 
@@ -102,19 +102,19 @@ Decided by the user the same day (the second Unblock record in [`README.md`](REA
 
 **Checked right before each call** (and a call is made only if all hold): `status=enforced`, `reason=subscription_canceled`, no `billing_provider_mappings` row (so no payment method), no `billing_enforcements` row, not excluded, not comped, no bucket, sandbox, agent session or automation row, and nothing in the workspace's hosting or sandbox namespace (no App, Database, KeyValue, Deployment, StatefulSet, Pod, Service, PVC or CronJob). All 11 passed; none was skipped. A first run skipped all 11 on a test of mine that was wrong (psql prints booleans as `false`, not `f`), and a second skipped all 11 on a namespace test, which found that **each of the 11 does have a hosting and a sandbox namespace, 70 days old, created at sign-up and labelled `managed-by bex-controlplane`; both are empty.** The statement above, "no tenant namespace on the cluster", was wrong; the claim that matters, no resource, holds. Neither run called anything.
 
-| workspace | `recover` answer | healthy at (2026-11-16 UTC) | transition_version | notice "Billing recovered" |
+| # | `recover` answer | healthy at (2026-11-16 UTC) | transition_version | notice "Billing recovered" |
 | --- | --- | --- | --- | --- |
-| tea-daekrutstb9s73801gcg | 200 `recovering` | 10:20:01 | 5 | delivered |
-| tea-daf4cqnco25s73fkr3fg | 200 `recovering` | 10:20:26 | 5 | delivered |
-| tea-dafeuj3h2g1c73dgc6m0 | 200 `recovering` | 10:20:46 | 5 | delivered |
-| tea-dafjdgoendjc738s7b7g | 200 `recovering` | 10:21:06 | 5 | delivered |
-| tea-daftut9c7cos73dm2lag | 200 `recovering` | 10:21:26 | 5 | delivered |
-| tea-dahsl87nf85c739nikng | 200 `recovering` | 10:21:46 | 5 | delivered |
-| tea-daj4rcggsm7s73f63ni0 | 200 `recovering` | 10:22:02 | 5 | delivered |
-| tea-dal61gdurvac73dms4fg | 200 `recovering` | 10:22:21 | 5 | delivered |
-| tea-dalq9onatu4c73cb8qvg | 200 `recovering` | 10:22:41 | 5 | delivered |
-| tea-daqmsijbdpcs73f5egkg | 200 `recovering` | 10:22:57 | 5 | delivered |
-| tea-datmop9bmrjc73fp31b0 | 200 `recovering` | 10:23:16 | 5 | delivered |
+| 1 | 200 `recovering` | 10:20:01 | 5 | delivered |
+| 2 | 200 `recovering` | 10:20:26 | 5 | delivered |
+| 3 | 200 `recovering` | 10:20:46 | 5 | delivered |
+| 4 | 200 `recovering` | 10:21:06 | 5 | delivered |
+| 5 | 200 `recovering` | 10:21:26 | 5 | delivered |
+| 6 | 200 `recovering` | 10:21:46 | 5 | delivered |
+| 7 | 200 `recovering` | 10:22:02 | 5 | delivered |
+| 8 | 200 `recovering` | 10:22:21 | 5 | delivered |
+| 9 | 200 `recovering` | 10:22:41 | 5 | delivered |
+| 10 | 200 `recovering` | 10:22:57 | 5 | delivered |
+| 11 | 200 `recovering` | 10:23:16 | 5 | delivered |
 
 **Readbacks (2026-11-16, 10:23 to 10:48Z).**
 

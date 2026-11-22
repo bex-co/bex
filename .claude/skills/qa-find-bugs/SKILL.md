@@ -160,6 +160,8 @@ Write one record per bug:
 
 **Evidence has to survive the handoff.** `ls` every path before you cite it, and match each artifact to the claim it supports — an artifact from a different finding in the same hunt is not support. Screenshots under `.playwright-mcp/` are gitignored: they are yours for this session, not something a board item can rest on. For anything about an API or a contract the durable artifact is the probe itself — the exact request you sent and the complete response you got back, pasted into the record where the next person can re-run it.
 
+**The board is public** ([rule](../../../.pm/AGENTS.md#the-board-is-public)). A record names only bex's own fixture workspaces and services: the QA workspace, and the `qa-<date>-…` fixtures this run creates. Mark a workspace this run creates `(disposable)` on the line that names it. Another tenant's ids, service or app names, emails or metering that a probe shows you are hashed with `scripts/lib/public_log.py` or left out of the record.
+
 ## Phase 5 — Dedupe before filing anything
 
 Do this for every finding, and record the outcome in its record:

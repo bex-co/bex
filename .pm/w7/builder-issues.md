@@ -54,8 +54,8 @@ The six most recent `bex-build` pods on hetzner-prod:
 | --- | --- | --- | --- |
 | `bld-beancount-forum-gen-29-97qw4` | Failed | `clone` | **128** |
 | `bld-beancount-forum-gen-29-p9p6j` | Failed | `clone` | **128** |
-| `bld-…-market-size-gen-1-ggrgl` | Failed | `buildkit` | **1** |
-| `bld-…-market-size-gen-1-rl7kl` | Failed | `buildkit` | **1** |
+| `bld-…-<customer service>-gen-1-ggrgl` | Failed | `buildkit` | **1** |
+| `bld-…-<customer service>-gen-1-rl7kl` | Failed | `buildkit` | **1** |
 | `bld-…-beancount-cms-v2-gen-203-zpst8` | Succeeded | — | — |
 | `bld-…-eden-cms-v2-gen-97-qxnzp` | Running | — | — |
 

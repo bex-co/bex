@@ -6,6 +6,15 @@ Internal PM board — see [README.md](README.md). `/pm` files and schedules work
 
 The board is markdown and small text (user decision 2026-11-04, w6/100 D10). Never commit build artifacts or bulk evidence here: no file over 1 MiB and no `whl`/`gz`/`tar`/`zip`/`bin`/image/`pdf`/database file under `.pm/`. Raw run output of any size is evidence too: no `*evidence*` directory, no `json`/`jsonl`/`log`/`stdout`/`stderr` or `*evidence*.txt` file anywhere under `.pm/` (second history rewrite, 2026-11-04). Keep it in a local `evidence/` directory (gitignored) or upload it, and write the conclusion, the sha256 and the link into the item's markdown. `scripts/repo-artifact-guard.sh` rejects violations at ship time and in CI.
 
+## The board is public
+
+`bex-co/bex` is a public repository. Anyone can read every file under `.pm/`, `done/` and `blocked/` included, and every file under `docs/`. Git keeps a line after it is edited. The rule [ADR019](../docs/ADR019-infra-credentials.md) §5 sets for production job logs applies to the board and docs too:
+
+- **Name only bex's own fixtures:** the workspaces in [`scripts/lib/first_party_workspaces.txt`](../scripts/lib/first_party_workspaces.txt) and their services, plus the disposable QA and drill workspaces a run creates and deletes. Mark each disposable one `(disposable)` on the line that names it.
+- **Hash or leave out everything about other tenants:** their workspace, service, database and deploy ids, their service, app and host names, their members' emails, and their metering, billing and plan state. `scripts/lib/public_log.py` turns ids and names into keyed hashes that match an operator's local run. Otherwise write neutral words, such as "a Scale customer workspace" or "customer workspace 3 of 11".
+- **Keep the full detail in your own local notes**, outside the repository.
+- `scripts/ship-gates.sh` warns about a `tea-` id a push adds under `.pm/` or `docs/` that the list does not hold and its line does not mark `(disposable)` (`scripts/workspace_id_guard.py`). The warning never stops the ship, so the rule still rests on whoever writes the line.
+
 ## Done items move to `done/` folders
 
 When work is completed, do not leave it in place — move it:

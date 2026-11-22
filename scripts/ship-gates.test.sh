@@ -125,7 +125,7 @@ if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref
 # and a push without dashboard changes runs nothing.
 repo="$tmp/repo"
 mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
-cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$root/scripts/manifest_flag_guard.py" "$root/scripts/migration_order_guard.py" "$root/scripts/pm-board-validate.py" "$root/scripts/pm_gates.py" "$root/scripts/deploy_latency.py" "$root/scripts/secret-argv-validate.sh" "$root/scripts/production-secrets.txt" "$repo/scripts/"
+cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$root/scripts/manifest_flag_guard.py" "$root/scripts/migration_order_guard.py" "$root/scripts/pm-board-validate.py" "$root/scripts/pm_gates.py" "$root/scripts/deploy_latency.py" "$root/scripts/secret-argv-validate.sh" "$root/scripts/production-secrets.txt" "$root/scripts/workspace_id_guard.py" "$repo/scripts/"
 cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
 # Stands in for the native suites: logs that it ran, fails on demand.
 cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
@@ -293,6 +293,20 @@ if gate HEAD~1; then fail "a migration numbered below the base's highest passed 
 grep -q "0283_audit_source_ip_user_agent.up.sql numbers at or below 0284_cron_minimum.up.sql" "$tmp/err" || fail "the low migration was not named: $(cat "$tmp/err")"
 grep -q "renumber above 0284" "$tmp/err" || fail "the refusal did not say how to fix it: $(cat "$tmp/err")"
 grep -q "testing " "$tmp/err" && fail "the backend suite was reached before the migration order refused the push"
+
+# The workspace id warning (gate 13): a push that adds an id that is neither
+# listed nor marked disposable ships with a warning naming it; a marked one
+# ships quietly.
+mkdir -p "$repo/.pm/w9"
+printf '# 001\n\nRead in workspace `tea-d0tenant000000000002`.\n' >"$repo/.pm/w9/001.md"
+commit "w9 names an unlisted workspace"
+gate HEAD~1 || fail "an unlisted workspace id stopped the ship: $(cat "$tmp/err")"
+grep -q "warning: .pm/w9/001.md:3 adds workspace tea-d0tenant000000000002" "$tmp/err" || fail "the unlisted id was not named: $(cat "$tmp/err")"
+grep -q "ship-gates: ok" "$tmp/err" || fail "the warning did not let the ship finish: $(cat "$tmp/err")"
+printf -- '- Drill workspace `tea-d0tenant000000000003` (disposable).\n' >>"$repo/.pm/w9/001.md"
+commit "w9 names a disposable workspace"
+gate HEAD~1 || fail "a disposable workspace id stopped the ship: $(cat "$tmp/err")"
+if grep -q "workspace_id_guard" "$tmp/err"; then fail "a marked disposable id warned: $(cat "$tmp/err")"; fi
 
 # The .pm board gate (gate 12): a commit that adds a milestone number another
 # workstream already uses or leaves a task with a mismatched id blocks before

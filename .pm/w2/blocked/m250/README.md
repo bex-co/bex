@@ -21,7 +21,7 @@
 - On production, a `pro_plus` web service reaches `live` on a node of the cx53 pool and a `pro_ultra` one on a node of the ccx43 pool, created by the autoscaler from zero; after both are deleted, both pools return to 0 nodes.
 - `starter`…`pro` services, builds and datastores never schedule on either pool (taints), and the build-only pool is unchanged.
 - `scripts/clusterapi-validate.sh` fails if a large tier no longer fits its pool's allocatable, or if a pool loses its taint or min 0.
-- The Scale workspace whose pro-plus/pro-ultra services failed (`tea-db9f0dkfcf2c73c2mq4g`) can redeploy them successfully, or its owner is told the types now work.
+- The Scale customer workspace whose pro-plus/pro-ultra services failed can redeploy them successfully, or its owner is told the types now work.
 
 ## Source + Goal linkage
 
@@ -84,4 +84,4 @@ t001, t002, t004–t007 and t009 are done. What remains needs Hetzner:
 - **t003 (pro-plus / pro-max):** cx53 stock in fsn1 (user decision 2026-11-02: wait rather than use cpx62). Probes on 2026-11-02 and 2026-11-03 06:1xZ returned `resource_unavailable`. Release: a probe (create stopped, delete at once, label `purpose=w2-m250-stock-probe`) succeeds; then create a `pro_plus` service, confirm `live` on a `bex-tenant-xl` node, delete it, confirm the pool returns to 0, and replace the validator's cx53 allocatable estimate with the measured value.
 - **t003 (pro-ultra) and lifting the t009 pause:** the Hetzner project's dedicated-vCPU limit raised to at least 32 (account owner: Hetzner Console → Limits, or a support ticket). Release: the user says it is done; then remove `paused: true` from pro-ultra in `tiers.yaml`, ship, verify a `pro_ultra` service goes `live` on `bex-tenant-xxl` and the pool returns to 0, update ADR018.
 - **t008 Closeout** after t003.
-- Open question for the user, not a gate: whether to tell the owner of Scale workspace `tea-db9f0dkfcf2c73c2mq4g` (failed pro-plus/pro-ultra services) about the wait.
+- Open question for the user, not a gate: whether to tell the owner of the Scale customer workspace with failed pro-plus/pro-ultra services about the wait.

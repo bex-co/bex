@@ -32,6 +32,7 @@ Parse `$ARGUMENTS`:
 2. Check restarts and events: `kubectl -n bex-system get pods` (restart counts) and `kubectl -n bex-system get events --sort-by=.lastTimestamp` (OOMKilled, CrashLoopBackOff, probe failures).
 3. Sweep logs for each platform service (operator, bex-api, ssh-gateway, activator, pg-sni-proxy, kv-sni-proxy, egress-meter, static-server): `kubectl -n bex-system logs --prefix --since=48h deploy/<svc>`, plus `--previous` for any container that restarted. Grep for `panic:`, `runtime error`, `fatal error`, `goroutine `, SIGSEGV, and 5xx bursts.
 4. Deduplicate into distinct crash signatures. For each: root-cause from the stack trace in the source, fix the actual defect, and add a regression test reproducing the crashing input/state. Keep every crashing input as a fuzz seed for Phase 3.
+5. Production logs carry tenant data, and this repository is public ([rule](../../../.pm/AGENTS.md#the-board-is-public)). Before a crash signature, log excerpt or crashing input goes into a seed, test, commit message, PR or `ledger.md`, replace tenant ids, service and host names and emails with synthetic values, or hash them with `scripts/lib/public_log.py`. Name only bex's own fixture workspaces and services.
 
 ## Phase 3 — Fuzz untrusted-input parsers
 

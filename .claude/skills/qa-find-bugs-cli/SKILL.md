@@ -133,6 +133,8 @@ Blocker prevents a core journey; major misleads, loses data, or materially break
 
 Evidence must survive handoff: include sanitized commands and responses in the board record, not merely a gitignored transcript path. Keep raw captures private, sanitize **before** returning tool output or filing, and exclude credentials, secret env values/files, connection URLs, and device codes. Check every cited artifact exists and supports that particular claim. If secret material is essential to a reproduction, provide placeholders and safe acquisition steps rather than publishing it.
 
+The board is public ([rule](../../../.pm/AGENTS.md#the-board-is-public)). Name only bex's own fixture workspaces and services, and mark a workspace this run creates `(disposable)` on the line that names it. Hash another tenant's ids, service or app names, emails or metering with `scripts/lib/public_log.py`, or leave them out.
+
 ## 5 — Dedupe, file, and optionally ship
 
 Search `.pm/` open **and done** with `rg` for distinctive symptoms, endpoints, and symbols; inspect open milestones across all workstreams. Re-read `.pm/DO_NOT_DO.md` and the CLI compatibility ledger. Check targeted `git log -S` and recent CLI/backend/operator history for fixes already on main but not deployed. Report deploy lag without filing a new implementation bug. Existing open coverage gets an update through `/pm`; a regression cites the original milestone and rechecks its complete DoD.

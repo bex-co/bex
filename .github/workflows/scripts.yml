@@ -124,6 +124,10 @@ jobs:
       # its base's highest, which a database already past it would skip.
       - name: Migration order guard self-test
         run: python3 -B -m unittest scripts/test_migration_order_guard.py -v
+      # ship-gates warns, never blocks, when a push adds a workspace id to the
+      # public board or docs that is neither a bex fixture nor marked disposable.
+      - name: Workspace id guard self-test
+        run: python3 -B -m unittest scripts/test_workspace_id_guard.py -v
       # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
       # w21/097: it loads HCLOUD_TOKEN from the repository-root .env only when
       # the caller has not exported one.

@@ -54,7 +54,7 @@ A failing property is one of:
 
 ## Phase 5 — Verify and report
 
-Run the targeted checks (ground rules); report per the standard format, listing invariants encoded, bugs fixed, and model errors learned.
+Run the targeted checks (ground rules); report per the standard format, listing invariants encoded, bugs fixed, and model errors learned. Tests, `ledger.md`, commit messages and PRs are public ([rule](../../../.pm/AGENTS.md#the-board-is-public)): when a case comes from production data, use synthetic ids and names, never another tenant's.
 
 ## Final phase — Ship
 

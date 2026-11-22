@@ -58,6 +58,12 @@
 #      already uses or leaves an open/blocked task with an id: differing from
 #      its path (scripts/pm-board-validate.py --head HEAD). Blocks before push
 #      so a rebased .pm filing cannot turn references.yml red on main.
+#  13. The push adds a workspace id under .pm/ or docs/ that is neither one of
+#      bex's own fixtures (scripts/lib/first_party_workspaces.txt) nor marked
+#      `(disposable)` on its line (scripts/workspace_id_guard.py). A warning,
+#      never a stop: the board is public, so another tenant's id is hashed or
+#      left out (.pm/AGENTS.md), but most ids a push adds are disposable QA and
+#      drill workspaces.
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -167,6 +173,8 @@ python3 -B scripts/migration_order_guard.py "$base" HEAD
 if [ -n "$(git diff --name-only "$base"..HEAD -- .pm)" ]; then
   python3 -B scripts/pm-board-validate.py --base "$base" --head HEAD >&2
 fi
+# Gate 13 warns only; the guard names each id itself.
+python3 -B scripts/workspace_id_guard.py "$base" HEAD || true
 
 # Which gates this push needs, from git objects only. Captured, not piped into
 # grep: under pipefail an early-exiting grep can SIGPIPE git and make a large

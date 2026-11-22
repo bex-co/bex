@@ -1,0 +1,32 @@
+# Workspace ids this public repository may name on the board (.pm/) and in
+# docs/ without a `(disposable)` mark: bex's own long-lived fixtures, the
+# owner's own render.com workspaces in the parity captures, and the
+# placeholder ids docs use. Every other tenant's id is hashed with
+# scripts/lib/public_log.py or left out (.pm/AGENTS.md, "The board is public").
+# scripts/workspace_id_guard.py, run by scripts/ship-gates.sh, warns about any
+# other id a push adds.
+#
+# Format: one id per line, first word; '#' starts a comment. A disposable QA
+# or drill workspace a run creates and deletes is not listed here: mark it
+# `(disposable)` on the line that names it.
+
+# bex's production fixtures
+tea-d98210cbbpdc73dcrkvg # bex (Scale; bex's own services)
+tea-daif693dqjvc73e7as3g # bex-canary (the QA user's workspace)
+tea-da2isimlm39c739m4ofg # tian-personal (Hobby)
+
+# The owner's own render.com workspaces (docs/render-artifacts)
+tea-c185th5c2rvvnhbfiltg
+tea-cspvkdogph6c73ft15b0
+
+# Placeholder ids in docs and examples, not real workspaces
+tea-00000000000000000000
+tea-09876543210987654321
+tea-12345678901234567890
+tea-aaaaaaaaaaaaaaaaaaaa
+tea-bbbbbbbbbbbbbbbbbbbb
+tea-c0000000000000000000
+tea-d0000000000000000000
+tea-d0000000000000000001
+tea-d00000000000000000a0
+tea-d0stub0000000000000a

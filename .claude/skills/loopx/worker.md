@@ -138,6 +138,7 @@ List a `fix(ci)` commit in `commits` like any other, so the orchestrator watches
 - **Deletion is a claim, not a shortcut.** Every deleted item costs you a sentence of evidence. If you can't write that sentence, it isn't invalid. Never delete an item to avoid the work in it.
 - **The tree is shared.** Stage by name; a teammate's files are never yours to stage, stash, or discard.
 - **No evidence dumps in git.** Raw run output stays out of `.pm/` (`.pm/AGENTS.md`); write the conclusion and how to reproduce it into the item.
+- **The board is public** ([rule](../../../.pm/AGENTS.md#the-board-is-public)). The evidence you write into an item names only bex's own fixture workspaces and services, with a workspace a run creates and deletes marked `(disposable)`. Hash another tenant's ids, service or app names, emails and metering with `scripts/lib/public_log.py`, or leave them out. `/ship`'s gate warns about an added workspace id it cannot place.
 - **Report honestly.** If you skipped a task, mocked something, or a suite was flaky, say so in `notes`. Do not present partial work as complete, or a close-by-triage as work you did. The orchestrator checks your claim against `origin/main`.
 
 ## Routine runs
@@ -152,7 +153,7 @@ The triage and landing sections above do not apply, except where the task itself
 
 - Run the checks for every module you change (step 2's list) and ship each change through `/ship` ([Main is red](#main-is-red-fix-ci-first-then-resume) applies). Never ship your own red.
 - Write the board only when the command itself does so (a QA skill filing its findings through `/pm`, a sweep of parked items). List the item ids it filed, extended, or moved in `notes`.
-- Anything else that needs board work goes into `followups`: a STOP that needs a person, a finding outside the command's scope, a candidate too large for one run. The orchestrator files each one as an inbox note. Write each one so it stands alone: the problem, the evidence, the paths, and a testable end state.
+- Anything else that needs board work goes into `followups`: a STOP that needs a person, a finding outside the command's scope, a candidate too large for one run. The orchestrator files each one as an inbox note. Write each one so it stands alone: the problem, the evidence, the paths, and a testable end state. It becomes a public board item, so **The board is public** applies to it too.
 - `result: found` means the run shipped at least one commit (code, or board items filed or extended). `empty` means it ran and had nothing to ship. `failed` means the command could not run at all: missing credentials, a tool or service that is down, a skill that refuses to start. Say why in `notes`, and do not retry in a loop.
 - Leave nothing of yours uncommitted and every shipped commit on `origin/main`. A half-done change goes into a named stash (`git stash push -u -m "loopx/routine/<name>" -- <your paths>`), never into a ship.
 

@@ -1232,7 +1232,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// below this gate dispatches or observes a build Job — and EnsureBuild is
 	// create-if-absent, so once the failed Job is TTL-reaped (or an operator
 	// restart resyncs the App), re-entering would re-create the Job and re-run
-	// the whole doomed build (2026-08-20 evidence: market-size re-ran npm
+	// the whole doomed build (2026-08-20 evidence: a customer service re-ran npm
 	// install 3 days after its failure; beancount-forum re-ran a failing clone
 	// for 18 days). Halting here also keeps setPhase(PhaseBuilding) from
 	// overwriting the Failed marker, which is what double-metered the outcome
@@ -7382,7 +7382,7 @@ func (r *AppReconciler) writeAppStatus(ctx context.Context, app *appv1alpha1.App
 // operator's cache read; a plain status Update loses the write to a 409 that
 // used to be `_ =`-swallowed — silently dropping the durable Failed marker every
 // gate in buildFromSource keys on (2026-08-20: 8 consecutive lost retries after
-// market-size's first r.fail). On conflict, re-read the live object, re-apply
+// a customer service's first r.fail). On conflict, re-read the live object, re-apply
 // the local status, and update again; other errors are logged at ERROR so a
 // lost marker is at least visible. The projector never writes status; the
 // independent saved-configuration controller owns UndeployedChanges and the

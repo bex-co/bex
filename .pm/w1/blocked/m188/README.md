@@ -334,7 +334,7 @@ Ruby3.2已于23:30Z完成双架构运行验证并进入AMD全扫描；Node18继�
 
 采用前只读刷新仍为29个App、8项候选、6个运行Pod；候选身份、实际服务镜像和版本与原09:11快照相同，两次Pod替换仍使用相同镜像。未观察到新增的运行中旧11条线。初始严格报告仍保留5项unresolved，未回填为安全或零目标；见[初始快照、分开的补充结论与全部工具记录](evidence/priority-census-owner-uid-refresh/MANIFEST.json)。
 
-三项legacy auto的Alpine/Node22实际观察未变，客户Dockerfile来源沿用旧记录中的高置信推断，不能改写为已保留的构建Job证明。market-size为nativeNode失败状态，没有活动发布、镜像或工作负载。cloneix为nativeNode、取消且尚无活动发布，仍有当前App UID归属的零副本Deployment；通过该App现有专属拉取凭据在内存中读取固定gen3 manifest/config，验证digest与大小后，仅保留Node26.10.0/Linuxamd64版本声明。没有读取文件系统层、保存凭据或完整Env/config，也没有执行该镜像或声称安全；专属loopback连接已清理。cloneix未来重建的有效版本仍因源文件不可用及未读取的环境Secret引用而未知，不能假设未来版本或未来安全。
+三项legacy auto的Alpine/Node22实际观察未变，客户Dockerfile来源沿用旧记录中的高置信推断，不能改写为已保留的构建Job证明。一个客户服务为nativeNode失败状态，没有活动发布、镜像或工作负载。另一个客户服务为nativeNode、取消且尚无活动发布，仍有当前App UID归属的零副本Deployment；通过该App现有专属拉取凭据在内存中读取固定gen3 manifest/config，验证digest与大小后，仅保留Node26.10.0/Linuxamd64版本声明。没有读取文件系统层、保存凭据或完整Env/config，也没有执行该镜像或声称安全；专属loopback连接已清理。另一个客户服务未来重建的有效版本仍因源文件不可用及未读取的环境Secret引用而未知，不能假设未来版本或未来安全。
 
 原清单工具只按workload标签关联，漏记该无标签的零副本Deployment；新独立v2优先核对namespace和当前App UID/name/API group，拒绝冲突归属，不增加仅名称匹配的回退，并保留原无owner标签路径。13项隔离控制复现旧漏记、新识别及错误UID等拒绝；无Pod、未知运行时或保留镜像仍保持unresolved。旧helper、原计划与初始5项快照保持原字节。后续t004改用02231095的v2及追加计划，必须在真实operator Ready后用实际部署源码重新采集并结合明确范围证据；本节不是最终rollout、零目标、安全或任务完成证明。正式发布验收仍为8/11，Node18与Ruby3.2继续签名，Node20排队。
 
