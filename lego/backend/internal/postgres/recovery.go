@@ -577,10 +577,28 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		return PostgresView{}, err
 	}
 	resourcemeta.Touch(newDB, s.Now())
-	if err := s.Client.Create(ctx, newDB); err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			return PostgresView{}, fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
+	// A recovery onto the free plan is a free create, held to the one-free
+	// rule (w4/m241) as CreatePostgres is: checked under the tenant lock with
+	// the write, and rolled back if a create that held no lock landed beside
+	// it.
+	free := plan == core.FreePlanID
+	if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, free, func() error {
+		if free {
+			if err := s.refuseSecondFreeDatabase(ctx, tenantID, ""); err != nil {
+				return err
+			}
 		}
+		if err := s.Client.Create(ctx, newDB); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				return fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
+			}
+			return err
+		}
+		if free {
+			return rollbackSecondFreeDatabaseFor(ctx, s.Base, tenantID, newDB)
+		}
+		return nil
+	}); err != nil {
 		return PostgresView{}, err
 	}
 	return pgView(newDB), nil

@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -56,7 +57,11 @@ type workspaceSnapshot struct {
 	appList      *appv1alpha1.AppList
 	serviceMap   map[string]*appv1alpha1.App
 	databaseList *appv1alpha1.DatabaseList
-	keyValueList *appv1alpha1.KeyValueList
+	// databaseFreeSlots is the same Database listing's one-free-slot view
+	// (w4/m241), taken before the deleting databases are dropped: one being
+	// deleted still holds the slot until its deletion finishes (w6/m129).
+	databaseFreeSlots []core.FreeSlotInstance
+	keyValueList      *appv1alpha1.KeyValueList
 	// buildSourceMap is the workspace's build source carriers by name.
 	buildSourceMap map[string]*appv1alpha1.App
 	// deletingServices are the manifest-facing names of the workspace's
@@ -83,6 +88,7 @@ func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
 // workspace as it is now.
 func (snap *workspaceSnapshot) forget() {
 	snap.rawApps, snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList, snap.buildSourceMap = nil, nil, nil, nil, nil, nil
+	snap.databaseFreeSlots = nil
 	snap.deletingServices, snap.groupingRows = nil, nil
 }
 
@@ -239,10 +245,20 @@ func (snap *workspaceSnapshot) databases(ctx context.Context) (*appv1alpha1.Data
 		if err != nil {
 			return nil, err
 		}
+		snap.databaseFreeSlots = postgres.FreeSlots(list.Items, snap.tenantID)
 		list.Items = slices.DeleteFunc(list.Items, func(d appv1alpha1.Database) bool { return !d.DeletionTimestamp.IsZero() })
 		snap.databaseList = list
 	}
 	return snap.databaseList, nil
+}
+
+// freeDatabaseSlots is the workspace's databases as the one-free-slot rule
+// sees them, deleting ones included, from the snapshot's one Database listing.
+func (snap *workspaceSnapshot) freeDatabaseSlots(ctx context.Context) ([]core.FreeSlotInstance, error) {
+	if _, err := snap.databases(ctx); err != nil {
+		return nil, err
+	}
+	return snap.databaseFreeSlots, nil
 }
 
 func (snap *workspaceSnapshot) keyValues(ctx context.Context) (*appv1alpha1.KeyValueList, error) {

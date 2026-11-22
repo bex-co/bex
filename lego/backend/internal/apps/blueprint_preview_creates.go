@@ -99,27 +99,14 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 	// The apply's grouping assignment needs environments it creates, so a
 	// preview plans each datastore ungrouped; grouping adds only environment
 	// membership (labels and an allow-list), which admission does not judge.
+	// The one-free-Postgres rule is the plan's: it judges a free create
+	// together with the file's moves onto free (blueprintFreeDatabaseRefusals).
 	tenantID, _ := s.Tenant(ctx)
-	plannedFreeDB := 0
-	plannedFreeDBName := ""
 	for _, db := range st.databases {
 		if !creates[BlueprintResourcePostgres][db.name] {
 			continue
 		}
 		d, err := s.planStackDatabase(ctx, db, core.EnvironmentAssignment{})
-		if err == nil && db.spec.Plan == core.FreePlanID {
-			// A second free database in the same stack also takes the slot:
-			// the first planned free one counts as the holder (w4/m241).
-			if plannedFreeDB > 0 {
-				err = core.FreeInstanceLimitError("Postgres database", plannedFreeDBName, false)
-			} else if ferr := postgres.CheckFreeLimit(ctx, s.Base, tenantID, "", db.spec.Plan); ferr != nil {
-				err = ferr
-			}
-			if plannedFreeDB == 0 {
-				plannedFreeDBName = db.name
-			}
-			plannedFreeDB++
-		}
 		if err == nil {
 			err = postgres.CountCap.CreateError(s.DryRunCreate(ctx, d))
 		}

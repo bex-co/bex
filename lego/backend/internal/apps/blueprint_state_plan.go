@@ -91,6 +91,10 @@ type blueprintActionResolver struct {
 	service *Service
 	// snap reads the workspace's projects and environments for the moves.
 	snap *workspaceSnapshot
+	// freeDatabaseRefusals refuses, by declared name, each database the file
+	// creates on free or moves onto it that the workspace's one free slot
+	// cannot take, judged on the whole file (blueprintFreeDatabaseRefusals).
+	freeDatabaseRefusals map[string]error
 }
 
 func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
@@ -137,6 +141,13 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		}
 		resolver.databases[database.Spec.Name] = database
 	}
+	freeSlots, err := snap.freeDatabaseSlots(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resolver.freeDatabaseRefusals = blueprintFreeDatabaseRefusals(parsed.databases, func(name string) *appv1alpha1.Database {
+		return resolver.databases[name]
+	}, freeSlots)
 	keyValues, err := snap.keyValues(ctx)
 	if err != nil {
 		return nil, err
@@ -240,6 +251,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			}
 			if err := postgres.CheckNewDatabase(db.spec); err != nil {
 				return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, blueprintDatabaseAdmissionConflict(err, db.fields))
+			}
+			if err := r.freeDatabaseRefusals[resource.Name]; err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
 			}
 		}
 		if resource.Kind == BlueprintResourceEnvVarGroup {
@@ -407,6 +421,12 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, err)
 		}
 		live := r.databases[resource.Name]
+		// A move onto the free plan meets the one-free rule the create meets,
+		// judged on the workspace the whole file leaves: the apply checks it
+		// again before its write, and the API's plan change checks it too.
+		if err := r.freeDatabaseRefusals[resource.Name]; err != nil {
+			return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
+		}
 		if changed {
 			action.Operation = BlueprintPlanUpdate
 			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {

@@ -20,10 +20,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -100,11 +102,13 @@ func TestRecoveryEnforcesPaymentMethodForPaidPlans(t *testing.T) {
 	})
 
 	t.Run("free plan does not consult the paid gate", func(t *testing.T) {
-		svc, _ := backedUpSource(t, "free")
+		// A free source has no backups, so a free recovery is a paid source's
+		// copy on the free plan (the workspace's only free database).
+		svc, _ := backedUpSource(t, "basic-256mb")
 		gate := &rejectingPaymentGate{}
 		svc.Payment = gate
 
-		if _, err := svc.Recover(ctxAs("user-a"), "dpg-src", RecoverRequest{Name: "restored"}); err != nil {
+		if _, err := svc.Recover(ctxAs("user-a"), "dpg-src", RecoverRequest{Name: "restored", Plan: "free"}); err != nil {
 			t.Fatalf("free recovery => %v, want success", err)
 		}
 		if len(gate.calls) != 0 {
@@ -177,11 +181,36 @@ func TestRecoveryValidatesOnlyCallerSuppliedPlanAndVersion(t *testing.T) {
 	})
 
 	t.Run("an inherited empty version still recovers", func(t *testing.T) {
-		svc, _ := backedUpSource(t, "free") // seeded with no Version at all
+		svc, _ := backedUpSource(t, "basic-256mb") // seeded with no Version at all
 		if _, err := svc.Recover(ctxAs("user-a"), "dpg-src", RecoverRequest{Name: "restored"}); err != nil {
 			t.Fatalf("recovery of a default-version instance => %v, want success", err)
 		}
 	})
+}
+
+// A recovery onto the free plan is a free create: beside the workspace's free
+// database it is refused with FREE_INSTANCE_LIMIT and writes nothing, as
+// CreatePostgres refuses it.
+func TestARecoveryOntoFreeBesideAFreeDatabaseIsRefused(t *testing.T) {
+	svc, _ := backedUpSource(t, "basic-256mb")
+	holder := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-free", Namespace: "default", Labels: core.TenantLabels("tea-a")},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "hobby", Plan: core.FreePlanID},
+	}
+	if err := svc.Client.Create(context.Background(), holder); err != nil {
+		t.Fatal(err)
+	}
+	_, err := svc.Recover(ctxAs("user-a"), "dpg-src", RecoverRequest{Name: "restored", Plan: "free"})
+	if errorCode(err) != core.FreeInstanceLimitCode || !strings.Contains(err.Error(), "(hobby)") {
+		t.Fatalf("free recovery beside a free database = %v, want FREE_INSTANCE_LIMIT naming hobby", err)
+	}
+	var databases appv1alpha1.DatabaseList
+	if err := svc.Client.List(context.Background(), &databases); err != nil || len(databases.Items) != 2 {
+		t.Fatalf("a refused recovery left %d databases (%v), want the source and the free one", len(databases.Items), err)
+	}
+	if _, err := svc.Recover(ctxAs("user-a"), "dpg-src", RecoverRequest{Name: "restored"}); err != nil {
+		t.Fatalf("a recovery on the source's paid plan => %v, want success", err)
+	}
 }
 
 // w34/006: Render's API spells a recovery's plan basic_256mb, pro_4gb or

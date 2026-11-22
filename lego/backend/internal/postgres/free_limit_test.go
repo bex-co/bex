@@ -72,15 +72,18 @@ func TestFreePostgresLimitTerminatingHoldsSlot(t *testing.T) {
 	}
 }
 
+// Concurrent free creates hold the tenant lock across their check and write,
+// as production's resolver offers it, so the check alone admits one.
 func TestFreePostgresConcurrentCreatesAdmitOne(t *testing.T) {
 	svc, _ := newService()
+	svc.Workspace = &lockingWorkspace{fakeWorkspace: fakeWorkspace{"user-a": "tea-a"}, lock: mutexLock()}
 	var wg sync.WaitGroup
 	errs := make([]error, 4)
 	for i := range errs {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, errs[i] = svc.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "race-free-" + string(rune('a'+i)), Plan: "free"})
+			_, errs[i] = svc.CreatePostgres(ctxAs("user-a"), CreatePostgresRequest{Name: "race-free-" + string(rune('a'+i)), Plan: "free"})
 		}()
 	}
 	wg.Wait()

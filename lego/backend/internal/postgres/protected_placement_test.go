@@ -50,7 +50,7 @@ func (g *guardedEnvironment) RequirePlacement(_ context.Context, assignment core
 // gate a CreatePostgres does; a refusal writes no Database.
 func TestRecoveringIntoAProtectedEnvironmentNeedsAnAdmin(t *testing.T) {
 	for _, admin := range []bool{false, true} {
-		svc, src := backedUpSource(t, "free")
+		svc, src := backedUpSource(t, "basic-256mb")
 		src.Labels[core.LabelEnvironment] = "env-prod"
 		src.Labels[core.LabelProject] = "prj-shop"
 		if err := svc.Client.Update(context.Background(), src); err != nil {

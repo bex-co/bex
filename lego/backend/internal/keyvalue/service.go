@@ -636,8 +636,10 @@ func (s *Service) refuseSecondFreeKeyValue(ctx context.Context, tenantID, exclud
 	return core.RefuseSecondFree(slots, excludeID, "Key Value store")
 }
 
-// rollbackSecondFreeKeyValueFor closes the create race: after the CR lands,
-// the earliest free store keeps the slot and a later one deletes itself.
+// rollbackSecondFreeKeyValueFor is the fallback for two free creates that both
+// passed the pre-check, which only a resolver without the tenant lock allows:
+// after the CR lands, a store that another free one was created at or before
+// deletes itself (core.ResolveFreeSlotRace).
 func rollbackSecondFreeKeyValueFor(ctx context.Context, b *core.Base, tenantID string, mine *appv1alpha1.KeyValue) error {
 	var list appv1alpha1.KeyValueList
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
@@ -756,11 +758,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 		return CreateResource(ctx, s.Base, tenantID, kv)
 	}
-	if req.Plan == core.FreePlanID {
-		if err := core.WithTenantAdvisoryLock(ctx, s.Workspace, tenantID, create); err != nil {
-			return KeyValueView{}, err
-		}
-	} else if err := create(); err != nil {
+	if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, req.Plan == core.FreePlanID, create); err != nil {
 		return KeyValueView{}, err
 	}
 	s.RecordKeyValueEffect(ctx, kv, core.KeyValueCreated)
@@ -769,7 +767,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 
 // CreateResource writes kv, the create every Key Value takes — interactive or
 // from a Blueprint (w5/m126) — ensuring its workspace namespace first, like
-// postgres.CreateResource.
+// postgres.CreateResource. A free create's caller holds the tenant lock around
+// it (core.WithFreeSlotLock); it takes none itself, since the lock is not
+// re-entrant.
 func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv1alpha1.KeyValue) error {
 	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return err

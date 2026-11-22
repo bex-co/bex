@@ -159,6 +159,21 @@ func WithTenantAdvisoryLock(ctx context.Context, resolver WorkspaceResolver, ten
 	return fn()
 }
 
+// WithFreeSlotLock runs write under the tenant lock when claimsFree: write puts
+// an instance on the free plan it is not on now (a create or a plan change),
+// and checks the one-free rule (w4/m241) first. Every such writer takes this
+// lock, the interactive and Blueprint ones alike, so the check inside it is
+// sound and two writers cannot both pass it before either writes. The lock is
+// not re-entrant (each hold is its own database transaction), so nothing write
+// calls may take it again; the datastores' CreateResource, which every free
+// create runs under it, takes none itself.
+func WithFreeSlotLock(ctx context.Context, resolver WorkspaceResolver, tenantID string, claimsFree bool, write func() error) error {
+	if !claimsFree {
+		return write()
+	}
+	return WithTenantAdvisoryLock(ctx, resolver, tenantID, write)
+}
+
 // quotaCapExceeded reads the limit in the singular at 1 ("limited to 1
 // Postgres database", w4/339); every cap's noun pluralizes with a trailing s.
 func quotaCapExceeded(limit int64, noun string) error {

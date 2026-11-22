@@ -858,12 +858,13 @@ func freeDatabaseSlots(ctx context.Context, b *core.Base, tenantID string) ([]co
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
 		return nil, fmt.Errorf("checking free Postgres limit: %w", err)
 	}
-	return collectFreeDatabaseSlots(list.Items, tenantID), nil
+	return FreeSlots(list.Items, tenantID), nil
 }
 
-// collectFreeDatabaseSlots projects listed databases onto the one-free-slot
-// rule, skipping other tenants' instances.
-func collectFreeDatabaseSlots(items []appv1alpha1.Database, tenantID string) []core.FreeSlotInstance {
+// FreeSlots projects listed databases onto the one-free-slot rule, skipping
+// other tenants' instances. A Blueprint judges its whole sync on this view of
+// the workspace snapshot it already listed, deleting databases included.
+func FreeSlots(items []appv1alpha1.Database, tenantID string) []core.FreeSlotInstance {
 	return core.CollectFreeSlots(items, func(d appv1alpha1.Database) (core.FreeSlotInstance, bool) {
 		if d.Labels[core.LabelTenant] != tenantID {
 			return core.FreeSlotInstance{}, false
@@ -899,16 +900,17 @@ func (s *Service) refuseSecondFreeDatabase(ctx context.Context, tenantID, exclud
 	return core.RefuseSecondFree(slots, excludeID, "Postgres database")
 }
 
-// rollbackSecondFreeDatabaseFor closes the create race the pre-check cannot
-// (two free creates passing it concurrently): after the CR lands, the
-// earliest free database (creation time, then name) keeps the slot and a
-// later one deletes itself and reports the limit.
+// rollbackSecondFreeDatabaseFor is the fallback for two free creates that both
+// passed the pre-check, which only a resolver without the tenant lock allows
+// (core.WithFreeSlotLock): after the CR lands, a database that another free
+// one was created at or before deletes itself and reports the limit
+// (core.ResolveFreeSlotRace).
 func rollbackSecondFreeDatabaseFor(ctx context.Context, b *core.Base, tenantID string, mine *appv1alpha1.Database) error {
 	var list appv1alpha1.DatabaseList
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
 		return nil // the create landed; a list failure must not delete it
 	}
-	slots := collectFreeDatabaseSlots(list.Items, tenantID)
+	slots := FreeSlots(list.Items, tenantID)
 	keeper, mineKeeps := core.ResolveFreeSlotRace(slots, mine.Name)
 	if mineKeeps {
 		return nil
@@ -1027,11 +1029,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		}
 		return CreateResource(ctx, s.Base, tenantID, d)
 	}
-	if req.Plan == core.FreePlanID {
-		if err := core.WithTenantAdvisoryLock(ctx, s.Workspace, tenantID, create); err != nil {
-			return PostgresView{}, err
-		}
-	} else if err := create(); err != nil {
+	if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, req.Plan == core.FreePlanID, create); err != nil {
 		return PostgresView{}, err
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
@@ -1041,7 +1039,10 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 // CreateResource writes d, the create every Postgres takes — interactive or
 // from a Blueprint (w5/m126). A freshly minted workspace's tea-* namespace may
 // not exist yet (the NamespaceReconciler only converges it on its resync
-// tick), so it is ensured before the CR lands there (w2/026).
+// tick), so it is ensured before the CR lands there (w2/026). A free create's
+// caller holds the tenant lock around it (core.WithFreeSlotLock), which makes
+// the one-free check here sound; it takes no lock itself, since the lock is
+// not re-entrant.
 func CreateResource(ctx context.Context, b *core.Base, tenantID string, d *appv1alpha1.Database) error {
 	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return err
@@ -1365,7 +1366,7 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 		}
 	}
 	from := d.Spec.Plan
-	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
+	view, err := s.patchDatabaseToPlan(ctx, d, plan, func(d *appv1alpha1.Database) {
 		d.Spec.Plan = plan
 	}, dryRun)
 	if err != nil || dryRun {
@@ -1776,7 +1777,11 @@ func (s *Service) updatePostgres(ctx context.Context, name string, patch Postgre
 	}
 	before := d.Spec
 	highWater := DatabaseStorageHighWater(d)
-	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
+	plan := d.Spec.Plan
+	if patch.Plan != nil {
+		plan = tiers.Postgres.CanonicalID(*patch.Plan)
+	}
+	view, err := s.patchDatabaseToPlan(ctx, d, plan, func(d *appv1alpha1.Database) {
 		patch.apply(d)
 		if patch.DiskSizeGB != nil && *patch.DiskSizeGB > highWater {
 			StampStorageIncrease(d, s.Now())
@@ -2088,6 +2093,29 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 		return PostgresView{}, err
 	}
 	return s.view(d), nil
+}
+
+// patchDatabaseToPlan is patchDatabaseObj for a write that leaves d on plan. A
+// move onto the free plan runs the one-free check again under the tenant lock
+// (core.WithFreeSlotLock), which every free-slot writer holds across its check
+// and write: two plan changes, or a plan change and a free create, cannot both
+// pass the caller's pre-check and then both write (w4/m241). A dry run writes
+// nothing, so the caller's pre-check is its whole answer.
+func (s *Service) patchDatabaseToPlan(ctx context.Context, d *appv1alpha1.Database, plan string, mutate func(d *appv1alpha1.Database), dryRun bool) (PostgresView, error) {
+	tenantID := d.Labels[core.LabelTenant]
+	claimsFree := !dryRun && plan == core.FreePlanID && d.Spec.Plan != core.FreePlanID
+	var view PostgresView
+	err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, claimsFree, func() error {
+		if claimsFree {
+			if err := s.refuseSecondFreeDatabase(ctx, tenantID, d.Name); err != nil {
+				return err
+			}
+		}
+		var err error
+		view, err = s.patchDatabaseObj(ctx, d, mutate, dryRun)
+		return err
+	})
+	return view, err
 }
 
 // patchDatabase fetches the Database and merge-patches it — the spec-intent

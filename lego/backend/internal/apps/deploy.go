@@ -1184,20 +1184,8 @@ func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assi
 	// The compiler refuses a name repeated within a kind (as Render does), and
 	// each loop looks up only its own kind, so no lookup below targets a CR
 	// this loop has just created.
-	for _, db := range st.databases {
-		if err := requireDeployAuthority(ctx, s); err != nil {
-			return err
-		}
-		databases, err := snap.databases(ctx)
-		if err != nil {
-			return err
-		}
-		v, err := s.applyDatabase(ctx, db, assignments[db.grouping], databases.Items)
-		if err != nil {
-			return err
-		}
-		res.Databases = append(res.Databases, v)
-		dbRefs[db.name] = v.ref
+	if err := s.applyStackDatabases(ctx, st.databases, assignments, snap, dbRefs, res); err != nil {
+		return err
 	}
 	for _, kv := range st.keyValues {
 		if err := requireDeployAuthority(ctx, s); err != nil {
@@ -1213,6 +1201,45 @@ func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assi
 		}
 		res.KeyValues = append(res.KeyValues, v)
 		kvCRNames[kv.name] = v.ID // CR name = Secret name (kv.Status.SecretName = kv.Name)
+	}
+	return nil
+}
+
+// applyStackDatabases upserts the stack's databases in blueprintDatabaseApplyOrder
+// (each one the sync moves off the free plan first), appending each applied
+// view onto res in file order.
+func (s *Service) applyStackDatabases(ctx context.Context, declared []parsedDatabase, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, dbRefs map[string]databaseRef, res *StackResult) error {
+	if len(declared) == 0 {
+		return nil
+	}
+	databases, err := snap.databases(ctx)
+	if err != nil {
+		return err
+	}
+	tenantID, scoped := s.Tenant(ctx)
+	order := blueprintDatabaseApplyOrder(declared, func(name string) *appv1alpha1.Database {
+		existing, _ := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, name)
+		return existing
+	})
+	applied := make([]*StackDatabaseView, len(declared))
+	defer func() {
+		for _, v := range applied {
+			if v != nil {
+				res.Databases = append(res.Databases, *v)
+			}
+		}
+	}()
+	for _, i := range order {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
+		db := declared[i]
+		v, err := s.applyDatabase(ctx, db, assignments[db.grouping], databases.Items)
+		if err != nil {
+			return err
+		}
+		applied[i] = &v
+		dbRefs[db.name] = v.ref
 	}
 	return nil
 }
@@ -4685,8 +4712,8 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		if err != nil {
 			return StackDatabaseView{}, err
 		}
+		fromPlan := existing.Spec.Plan
 		if specChanged {
-			fromPlan := existing.Spec.Plan
 			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields, now); err != nil {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 			}
@@ -4696,7 +4723,18 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			existing.Spec.EnvironmentIPAllowList = core.ApplyGrouping(existing, assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
-		if err := s.Client.Patch(ctx, existing, base); err != nil {
+		// A move onto the free plan is checked here as SetPlan checks it, under
+		// the tenant lock with the write: the plan judged the whole file, and
+		// this catches a free database another writer made since.
+		claimsFree := existing.Spec.Plan == core.FreePlanID && fromPlan != core.FreePlanID
+		if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, claimsFree, func() error {
+			if claimsFree {
+				if err := postgres.CheckFreeLimit(ctx, s.Base, tenantID, existing.Name, core.FreePlanID); err != nil {
+					return err
+				}
+			}
+			return s.Client.Patch(ctx, existing, base)
+		}); err != nil {
 			return StackDatabaseView{}, err
 		}
 		return stackDatabaseView(existing), nil
@@ -4705,7 +4743,9 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 	if err != nil {
 		return StackDatabaseView{}, err
 	}
-	if err := postgres.CreateResource(ctx, s.Base, tenantID, d); err != nil {
+	if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, d.Spec.Plan == core.FreePlanID, func() error {
+		return postgres.CreateResource(ctx, s.Base, tenantID, d)
+	}); err != nil {
 		return StackDatabaseView{}, err
 	}
 	// Same successful-create effect hook as interactive CreatePostgres so
@@ -4776,7 +4816,9 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	if err != nil {
 		return StackKeyValueView{}, err
 	}
-	if err := keyvalue.CreateResource(ctx, s.Base, tenantID, resource); err != nil {
+	if err := core.WithFreeSlotLock(ctx, s.Workspace, tenantID, resource.Spec.Plan == core.FreePlanID, func() error {
+		return keyvalue.CreateResource(ctx, s.Base, tenantID, resource)
+	}); err != nil {
 		return StackKeyValueView{}, err
 	}
 	// Same successful-create effect hook as interactive CreateKeyValue so

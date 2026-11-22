@@ -80,29 +80,70 @@ func RefuseSecondFree(slots []FreeSlotInstance, excludeID, noun string) error {
 	return nil
 }
 
-// ResolveFreeSlotRace closes the create race the pre-check cannot (two free
-// creates passing it concurrently): the earliest free instance (creation
-// time, then name) keeps the slot and a later one loses. It reports the
-// keeper and whether mine (by CR name) keeps it; an uncontended slot is
-// always kept.
-func ResolveFreeSlotRace(slots []FreeSlotInstance, mine string) (keeper FreeSlotInstance, mineKeeps bool) {
-	var free []FreeSlotInstance
+// RefuseFreeSlotClaims judges a batch of writes (one Blueprint sync) by the
+// free slot the whole batch leaves, never one write at a time, so the file's
+// order cannot change the verdict. slots are the workspace's instances now;
+// vacating reports, by CR name, each instance the batch moves off the free
+// plan; claims are, by display name in apply order, the batch's writes that
+// leave an instance on the free plan it is not on now (a create, or a move
+// onto it). An instance that stays free keeps the slot; otherwise the first
+// claim takes it, and every later claim is refused naming the holder. It
+// returns each claim's refusal, nil where the claim is admitted.
+func RefuseFreeSlotClaims(slots []FreeSlotInstance, vacating func(name string) bool, claims []string, noun string) []error {
+	holder, terminating := "", false
 	for _, slot := range slots {
-		if slot.Plan == FreePlanID {
-			free = append(free, slot)
+		if slot.Plan == FreePlanID && !vacating(slot.Name) {
+			holder, terminating = slot.DisplayName, slot.Terminating
+			break
 		}
 	}
-	if len(free) <= 1 {
+	refusals := make([]error, len(claims))
+	for i, claim := range claims {
+		if holder != "" {
+			refusals[i] = FreeInstanceLimitError(noun, holder, terminating)
+			continue
+		}
+		holder = claim
+	}
+	return refusals
+}
+
+// ResolveFreeSlotRace is a free create's fallback where no tenant lock
+// serialized it (a resolver that offers none, WithFreeSlotLock): once the CR
+// has landed, mine keeps the slot only when every other free instance was
+// created strictly after it. Creation times have second precision, and CR
+// names minted on different replicas do not order by time, so an equal time
+// orders nothing and whoever sees the tie yields. A create that listed before
+// the other landed saw only itself and keeps the slot; the other then sees the
+// tie and yields. Two creates that each see the other both yield, which leaves
+// the slot open rather than held twice. A create missing from the list counts
+// as the newest. It reports the instance mine yields to (the earliest other,
+// then by name) and whether mine keeps the slot; an uncontended slot is always
+// kept.
+func ResolveFreeSlotRace(slots []FreeSlotInstance, mine string) (keeper FreeSlotInstance, mineKeeps bool) {
+	var others []FreeSlotInstance
+	var created time.Time
+	listed := false
+	for _, slot := range slots {
+		switch {
+		case slot.Plan != FreePlanID:
+		case slot.Name == mine:
+			created, listed = slot.CreatedAt, true
+		default:
+			others = append(others, slot)
+		}
+	}
+	if len(others) == 0 {
 		return FreeSlotInstance{}, true
 	}
-	slices.SortFunc(free, func(a, b FreeSlotInstance) int {
+	earliest := slices.MinFunc(others, func(a, b FreeSlotInstance) int {
 		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
 			return c
 		}
 		return strings.Compare(a.Name, b.Name)
 	})
-	if free[0].Name == mine {
-		return free[0], true
+	if listed && earliest.CreatedAt.After(created) {
+		return FreeSlotInstance{}, true
 	}
-	return free[0], false
+	return earliest, false
 }
