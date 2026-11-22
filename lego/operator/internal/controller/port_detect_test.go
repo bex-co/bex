@@ -91,6 +91,28 @@ func httpListenerPort(t *testing.T) int {
 	return server.Listener.Addr().(*net.TCPAddr).Port
 }
 
+// httpListenerPortAbove is httpListenerPort on the first free loopback port
+// above floor, for a test whose HTTP listener must sort after another one:
+// the kernel's ephemeral ports come in no order a test can rely on.
+func httpListenerPortAbove(t *testing.T, floor int) int {
+	t.Helper()
+	for port := floor + 1; port <= 65535; port++ {
+		listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err != nil {
+			continue
+		}
+		server := &httptest.Server{
+			Listener: listener,
+			Config:   &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNotFound) })},
+		}
+		server.Start()
+		t.Cleanup(server.Close)
+		return port
+	}
+	t.Fatalf("no free loopback port above %d", floor)
+	return 0
+}
+
 // rawListenerPort is a loopback listener that hands each connection to handle
 // and then closes it: a listener that speaks some other protocol than HTTP.
 func rawListenerPort(t *testing.T, handle func(net.Conn)) int {

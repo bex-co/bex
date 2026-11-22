@@ -211,16 +211,7 @@ func TestWebImageHTTPDiscoveryNamesWhatItFound(t *testing.T) {
 	epmd, silent := epmdListenerPort(t), distributionListenerPort(t)
 	// A silent listener below one that answers HTTP: discovery waits on it
 	// within its window, and the scan is over, since an HTTP port answers.
-	web := httpListenerPort(t)
-	for range 64 {
-		if web > silent {
-			break
-		}
-		web = httpListenerPort(t)
-	}
-	if web < silent {
-		t.Fatalf("no HTTP listener above the silent port %d in 64 tries", silent)
-	}
+	web := httpListenerPortAbove(t, silent)
 	for _, tc := range []struct {
 		name     string
 		reader   *cannedListeners
