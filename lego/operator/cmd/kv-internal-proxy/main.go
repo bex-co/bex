@@ -18,8 +18,9 @@ limitations under the License.
 // its plan's connection limit. Internal clients inherit the tenant default ACL
 // unless BEX_KV_INTERNAL_AUTH=client (the store requires internal
 // authentication), when they authenticate themselves; external TLS remains end
-// to end. The first SIGTERM or SIGINT drains for BEX_KV_DRAIN_SECONDS
-// (w6/m512) and a second closes every stream at once.
+// to end, and BEX_KV_ALLOWLIST_REFUSAL_ADDR answers the external clients the
+// store's allow list refuses (w8/m562). The first SIGTERM or SIGINT drains for
+// BEX_KV_DRAIN_SECONDS (w6/m512) and a second closes every stream at once.
 package main
 
 import (
@@ -56,8 +57,8 @@ func main() {
 	}
 }
 
-// run serves until ctx ends, which closes every stream at once, or until both
-// listeners have drained once drain closes.
+// run serves until ctx ends, which closes every stream at once, or until every
+// listener has drained once drain closes.
 func run(ctx context.Context, getenv func(string) string, check bool, drain <-chan struct{}) error {
 	upstream, password := getenv("BEX_KV_UPSTREAM_ADDR"), getenv("VALKEY_PASSWORD")
 	if upstream == "" || password == "" {
@@ -96,7 +97,7 @@ func run(ctx context.Context, getenv func(string) string, check bool, drain <-ch
 	defer func() { _ = internal.Close() }()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	results := make(chan error, 2)
+	results := make(chan error, 3)
 	count := 1
 	if tlsAddr := getenv("BEX_KV_TLS_ADDR"); tlsAddr != "" {
 		tlsUpstream := getenv("BEX_KV_TLS_UPSTREAM_ADDR")
@@ -113,6 +114,26 @@ func run(ctx context.Context, getenv func(string) string, check bool, drain <-ch
 			results <- kvinternalauth.Serve(ctx, listener, kvinternalauth.Config{
 				Upstream: tlsUpstream, Mode: kvinternalauth.TLSPassthrough, Budget: budget,
 				TLSCertFile: getenv("BEX_KV_TLS_CERT_FILE"), TLSKeyFile: getenv("BEX_KV_TLS_KEY_FILE"),
+				Drain: drain, DrainTimeout: drainTimeout,
+			})
+		}()
+	}
+	if refusalAddr := getenv("BEX_KV_ALLOWLIST_REFUSAL_ADDR"); refusalAddr != "" {
+		// The external clients the store's allow list refuses, answered
+		// inside TLS with Render's refusal; it dials nothing (w8/m562).
+		certFile, keyFile := getenv("BEX_KV_TLS_CERT_FILE"), getenv("BEX_KV_TLS_KEY_FILE")
+		if certFile == "" || keyFile == "" {
+			return errors.New("kv-internal-proxy: BEX_KV_TLS_CERT_FILE and BEX_KV_TLS_KEY_FILE are required with BEX_KV_ALLOWLIST_REFUSAL_ADDR")
+		}
+		listener, err := net.Listen("tcp", refusalAddr)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = listener.Close() }()
+		count++
+		go func() {
+			results <- kvinternalauth.Serve(ctx, listener, kvinternalauth.Config{
+				Mode: kvinternalauth.AllowListRefusal, TLSCertFile: certFile, TLSKeyFile: keyFile,
 				Drain: drain, DrainTimeout: drainTimeout,
 			})
 		}()

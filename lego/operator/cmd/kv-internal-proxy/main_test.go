@@ -37,6 +37,9 @@ func TestRunRequiresConfigurationBeforeListening(t *testing.T) {
 		{"BEX_KV_UPSTREAM_ADDR": "127.0.0.1:1", "VALKEY_PASSWORD": "secret", "BEX_KV_INTERNAL_ADDR": "127.0.0.1:0", "BEX_KV_TLS_ADDR": "127.0.0.1:0"},
 		// A store with internal authentication keeps the password for the check.
 		{"BEX_KV_UPSTREAM_ADDR": "127.0.0.1:1", "BEX_KV_INTERNAL_AUTH": "client"},
+		// The allow-list refusal answers inside TLS, so it needs the certificate.
+		{"BEX_KV_UPSTREAM_ADDR": "127.0.0.1:1", "VALKEY_PASSWORD": "secret", "BEX_KV_INTERNAL_ADDR": "127.0.0.1:0",
+			"BEX_KV_ALLOWLIST_REFUSAL_ADDR": "127.0.0.1:0", "BEX_KV_TLS_CERT_FILE": "/tls/tls.crt"},
 	} {
 		err := run(context.Background(), func(key string) string { return env[key] }, false, nil)
 		if err == nil || !strings.Contains(err.Error(), "required") {
@@ -282,10 +285,12 @@ func awaitEOF(t *testing.T, conn net.Conn, within time.Duration) {
 func TestRunDrainsUntilTheDeadline(t *testing.T) {
 	const password = "secret"
 	upstream := pingUpstream(t, password)
-	addr, tlsAddr := freeAddr(t), freeAddr(t)
+	addr, tlsAddr, refusalAddr := freeAddr(t), freeAddr(t), freeAddr(t)
+	certFile, keyFile, _ := writeCertificate(t)
 	env := map[string]string{
 		"BEX_KV_UPSTREAM_ADDR": upstream, "VALKEY_PASSWORD": password, "BEX_KV_INTERNAL_ADDR": addr,
 		"BEX_KV_TLS_ADDR": tlsAddr, "BEX_KV_TLS_UPSTREAM_ADDR": "127.0.0.1:1", "BEX_KV_DRAIN_SECONDS": "1",
+		"BEX_KV_ALLOWLIST_REFUSAL_ADDR": refusalAddr, "BEX_KV_TLS_CERT_FILE": certFile, "BEX_KV_TLS_KEY_FILE": keyFile,
 	}
 	drain := make(chan struct{})
 	done := make(chan error, 1)
@@ -295,6 +300,7 @@ func TestRunDrainsUntilTheDeadline(t *testing.T) {
 	close(drain)
 	awaitClosed(t, addr)
 	awaitClosed(t, tlsAddr)
+	awaitClosed(t, refusalAddr)
 	ping(t, held)
 	select {
 	case err := <-done:

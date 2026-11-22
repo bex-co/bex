@@ -683,7 +683,7 @@ func TestConfigRefusesAnUnknownMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Serve(t.Context(), listener, Config{Upstream: "127.0.0.1:1", Password: testPassword, Mode: TLSPassthrough + 1}); err == nil {
+	if err := Serve(t.Context(), listener, Config{Upstream: "127.0.0.1:1", Password: testPassword, Mode: AllowListRefusal + 1}); err == nil {
 		t.Fatal("served an unknown mode")
 	}
 }

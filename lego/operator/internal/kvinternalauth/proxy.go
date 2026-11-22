@@ -18,11 +18,14 @@ limitations under the License.
 // store's plan limit across its listeners (w6/m456) and, unless the store
 // requires internal authentication (w5/m268, w6/m463), gives its internal
 // connections the default user's ACL without asking for a password. The
-// external TLS listener remains an unmodified, authenticated Valkey stream.
+// external TLS listener remains an unmodified, authenticated Valkey stream,
+// and an external client the store's allow list refuses is answered by a
+// listener of its own that never reaches Valkey (w8/m562).
 package kvinternalauth
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -109,7 +112,33 @@ const (
 	// TLSPassthrough forwards a TLS client's bytes unchanged, including its
 	// authentication: TLS ends in Valkey (the external path).
 	TLSPassthrough
+	// AllowListRefusal serves the external clients the store's allow list
+	// refuses (w8/m562): it ends TLS with the store's certificate and answers
+	// every command with Render's refusal (allowListRefusalReply). It has no
+	// upstream and holds no password, so nothing a refused client sends can
+	// reach Valkey, and it draws nothing from the budget.
+	AllowListRefusal
 )
+
+// allowListRefusalReply is what a client the store's allow list refuses reads
+// for each command it sends. valkey-cli prints a refused opening AUTH as
+// "AUTH failed: <text>", Render's documented "AUTH failed: Client IP address
+// is not in the allowlist." (render.com/docs/key-value § Enabling external
+// connections, read 2026-11-22), and any other command's as "(error) <text>".
+const allowListRefusalReply = "-Client IP address is not in the allowlist.\r\n"
+
+// A refused client's commands are read only to answer each one, within
+// Valkey's bounds for a client that has not authenticated: at most 10
+// arguments of at most 16 KiB each (networking.c, "unauthenticated multibulk
+// length" and "unauthenticated bulk length"), or an inline line of at most 16
+// KiB. Past them, or past maxRefusedCommands, the client is closed.
+const (
+	maxRefusedCommands = 64
+	maxRefusedArgs     = 10
+	maxRefusedArgBytes = 16 << 10
+)
+
+var errRefusedCommand = errors.New("kv-internal-proxy: malformed or oversized command")
 
 // Config identifies a single store and transport.
 type Config struct {
@@ -123,8 +152,9 @@ type Config struct {
 	// TLSCertFile and TLSKeyFile are the store's own certificate. A
 	// TLSPassthrough listener completes the handshake with it only to answer a
 	// client past the budget with Valkey's refusal, which Valkey itself cannot
-	// do before a handshake. They are read at each refusal, so a renewed
-	// certificate applies at once; without them the client is closed.
+	// do before a handshake, and an AllowListRefusal listener to answer every
+	// client. They are read at each refusal, so a renewed certificate applies
+	// at once; without them the client is closed.
 	TLSCertFile      string
 	TLSKeyFile       string
 	HandshakeTimeout time.Duration
@@ -138,15 +168,23 @@ type Config struct {
 }
 
 func (c Config) normalized() (Config, error) {
-	if _, _, err := net.SplitHostPort(c.Upstream); err != nil {
-		return c, errors.New("kv-internal-proxy: upstream must be a host:port")
-	}
 	switch c.Mode {
-	case InjectAuth:
-		if c.Password == "" {
+	case AllowListRefusal:
+		// It refuses every client, so it has nothing to dial and no password
+		// to hold: a configuration naming either is a mistake.
+		if c.Upstream != "" || c.Password != "" {
+			return c, errors.New("kv-internal-proxy: an allow-list refusal listener has no upstream or password")
+		}
+		if c.TLSCertFile == "" || c.TLSKeyFile == "" {
+			return c, errors.New("kv-internal-proxy: an allow-list refusal listener requires the store's certificate")
+		}
+	case InjectAuth, PlainPassthrough, TLSPassthrough:
+		if _, _, err := net.SplitHostPort(c.Upstream); err != nil {
+			return c, errors.New("kv-internal-proxy: upstream must be a host:port")
+		}
+		if c.Mode == InjectAuth && c.Password == "" {
 			return c, errors.New("kv-internal-proxy: internal password is required")
 		}
-	case PlainPassthrough, TLSPassthrough:
 	default:
 		return c, errors.New("kv-internal-proxy: unknown listener mode")
 	}
@@ -161,7 +199,8 @@ func (c Config) normalized() (Config, error) {
 
 // Serve owns listener and closes it and all accepted streams on cancellation.
 // A client past the budget is refused before an upstream is dialed, with the
-// reply Valkey gives at its own maxclients.
+// reply Valkey gives at its own maxclients. An AllowListRefusal listener
+// refuses every client, outside the budget.
 // Only dial and the injected AUTH have deadlines: Redis blocking commands,
 // pubsub and idle connection pools may keep a stream open indefinitely.
 // Once config.Drain closes, the listener closes and Serve returns as soon as
@@ -216,7 +255,7 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 			_ = conn.Close()
 			return nil
 		}
-		if !config.Budget.admit(conn) {
+		if config.Mode == AllowListRefusal || !config.Budget.admit(conn) {
 			select {
 			case refusing <- struct{}{}:
 				handlers.Go(func() {
@@ -443,7 +482,9 @@ func upstreamFull(upstream net.Conn, head []byte) bool {
 // refuse answers a client past the budget as Valkey answers one past its
 // maxclients, then closes it: in plain text on a plain listener, whether the
 // proxy or the client authenticates, and inside TLS, which needs the store's
-// certificate, on a TLS one.
+// certificate, on a TLS one. An AllowListRefusal listener's client reads
+// Render's refusal inside TLS for each command (answerAllowListRefusals).
+// Either way the connection's whole life is config.HandshakeTimeout.
 func refuse(ctx context.Context, conn net.Conn, config Config) {
 	defer func() { _ = conn.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
@@ -452,7 +493,7 @@ func refuse(ctx context.Context, conn net.Conn, config Config) {
 		return
 	}
 	reply := conn
-	if config.Mode == TLSPassthrough {
+	if config.Mode == TLSPassthrough || config.Mode == AllowListRefusal {
 		if config.TLSCertFile == "" {
 			return
 		}
@@ -467,7 +508,86 @@ func refuse(ctx context.Context, conn net.Conn, config Config) {
 		defer func() { _ = server.Close() }()
 		reply = server
 	}
+	if config.Mode == AllowListRefusal {
+		answerAllowListRefusals(reply)
+		return
+	}
 	_, _ = io.WriteString(reply, maxClientsReply)
+}
+
+// answerAllowListRefusals answers each command conn sends with Render's
+// allow-list refusal, without regard to what it asks: an AUTH's password is
+// read past, never checked, so the reply says nothing about it. It returns at
+// the client's close or the deadline, on a malformed or oversized command, or
+// after maxRefusedCommands commands. valkey-cli keeps its connection after a
+// refused AUTH and sends its command on it, so answering only the first would
+// print "Server closed the connection" after Render's line.
+func answerAllowListRefusals(conn net.Conn) {
+	reader := bufio.NewReaderSize(conn, maxRefusedArgBytes+2)
+	for range maxRefusedCommands {
+		empty, err := readRefusedCommand(reader)
+		if err != nil {
+			return
+		}
+		// Valkey answers no empty command, and neither does the refusal.
+		if empty {
+			continue
+		}
+		if _, err := io.WriteString(conn, allowListRefusalReply); err != nil {
+			return
+		}
+	}
+}
+
+// readRefusedCommand reads past one command, multibulk or inline, within the
+// refusal's bounds, and reports whether it was empty.
+func readRefusedCommand(reader *bufio.Reader) (empty bool, err error) {
+	line, err := readRefusedLine(reader)
+	if err != nil {
+		return false, err
+	}
+	if len(line) == 0 || line[0] != '*' {
+		return len(bytes.TrimSpace(line)) == 0, nil
+	}
+	args, err := strconv.Atoi(string(line[1:]))
+	if err != nil || args > maxRefusedArgs {
+		return false, errRefusedCommand
+	}
+	for range args {
+		head, err := readRefusedLine(reader)
+		if err != nil {
+			return false, err
+		}
+		length, bulk := bytes.CutPrefix(head, []byte("$"))
+		size, err := strconv.Atoi(string(length))
+		if !bulk || err != nil || size < 0 || size > maxRefusedArgBytes {
+			return false, errRefusedCommand
+		}
+		if _, err := reader.Discard(size); err != nil {
+			return false, err
+		}
+		var end [2]byte
+		if _, err := io.ReadFull(reader, end[:]); err != nil {
+			return false, err
+		}
+		if string(end[:]) != "\r\n" {
+			return false, errRefusedCommand
+		}
+	}
+	return args <= 0, nil
+}
+
+// readRefusedLine reads one line of at most maxRefusedArgBytes and returns it
+// without its line ending.
+func readRefusedLine(reader *bufio.Reader) ([]byte, error) {
+	line, err := reader.ReadSlice('\n')
+	if errors.Is(err, bufio.ErrBufferFull) {
+		return nil, errRefusedCommand
+	}
+	if err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(line[:len(line)-1], []byte("\r")), nil
 }
 
 func proxy(ctx context.Context, client net.Conn, config Config) {
