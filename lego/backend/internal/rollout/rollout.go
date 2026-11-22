@@ -41,6 +41,7 @@ import (
 	"log"
 	"strconv"
 	"sync"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,12 +59,6 @@ type DeployStore interface {
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
-}
-
-// liveDeployStore is the optional capability ServedRelease reads;
-// *store.PGStore provides it.
-type liveDeployStore interface {
-	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 }
 
 // ErrNoDeployHistory reports that this Tracker cannot read deploy history
@@ -87,11 +82,11 @@ func (t *Tracker) ServedRelease(ctx context.Context, a *appv1alpha1.App) (*store
 
 // history is the reader of a's deploy history and its row id, or nil when
 // this Tracker cannot read it.
-func (t *Tracker) history(a *appv1alpha1.App) (liveDeployStore, string) {
+func (t *Tracker) history(a *appv1alpha1.App) (DeployLister, string) {
 	if t == nil || a == nil {
 		return nil, ""
 	}
-	lister, _ := t.Store.(liveDeployStore)
+	lister, _ := t.Store.(DeployLister)
 	appID := store.ManagedAppID(a.Labels)
 	if lister == nil || appID == "" {
 		return nil, ""
@@ -111,6 +106,19 @@ type Tracker struct {
 	// last deploy trigger's token fails at checkout. nil: no refresh (GitHub
 	// off, or a Tracker built for a test).
 	CloneSecrets CloneCredential
+	// AdoptionWait bounds how long a write that rolls a release waits for the
+	// operator to adopt the deploy ahead of it (AwaitAdoption, w8/390): zero
+	// is DefaultAdoptionWait, negative no wait.
+	AdoptionWait time.Duration
+}
+
+// awaitAdoption is AwaitAdoption for a write through this Tracker.
+func (t *Tracker) awaitAdoption(ctx context.Context, cl client.Reader, a *appv1alpha1.App) error {
+	if t == nil {
+		return nil
+	}
+	lister, _ := t.Store.(DeployLister)
+	return AwaitAdoption(ctx, cl, lister, a, t.AdoptionWait)
 }
 
 // CloneCredential is the clone-credential mint every deploy trigger uses
@@ -278,6 +286,11 @@ func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.Ap
 	if err := t.refresh(ctx, &cloneRefresh{}, before, a); err != nil {
 		return err
 	}
+	if tracked {
+		if err := t.awaitAdoption(ctx, cl, a); err != nil {
+			return err
+		}
+	}
 	if err := cl.Patch(ctx, a, base); err != nil {
 		return err
 	}
@@ -304,7 +317,15 @@ func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alp
 			return err
 		}
 		tracked = before.Stamp(a)
-		return t.refresh(ctx, &clone, before, a)
+		if err := t.refresh(ctx, &clone, before, a); err != nil {
+			return err
+		}
+		// A wait that ends on the operator's adoption loses this patch's
+		// resourceVersion race, so the mutation runs again on the adopted App.
+		if tracked {
+			return t.awaitAdoption(ctx, cl, a)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}

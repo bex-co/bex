@@ -39,6 +39,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/renderenv"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -4241,6 +4242,15 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	// canceled ("Canceled: the service was suspended"). Resume keeps the
 	// prior release serving; the next deploy rolls the saved change (w4/366).
 	suspendedHold := deploySpecChanged && existing.Spec.Suspended
+	// Behind a deploy the operator has not adopted yet, the sync's release
+	// waits for that adoption and then pends behind it, rather than replacing
+	// it (Render's Wait, w8/390).
+	if deploySpecChanged && !suspendedHold {
+		lister, _ := s.Store.(rollout.DeployLister)
+		if err := rollout.AwaitAdoption(ctx, s.Client, lister, existing, 0); err != nil {
+			return AppView{}, err
+		}
+	}
 	if deploySpecChanged {
 		if err := s.persistBlueprintIntent(ctx, existing, final.Spec); err != nil {
 			return AppView{}, fmt.Errorf("update source of truth: %w", err)

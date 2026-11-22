@@ -584,6 +584,10 @@ type TriggerParams struct {
 	// build is the build a build-source fan-out ships, resolved once for
 	// every linked service; nil resolves it per deploy (BuildID or current).
 	build *sourceBuild
+	// firstBuild marks a fan-out that completes a linked service's first
+	// deploy, which waits for this very build (BuildSucceeded), so the
+	// fan-out never waits behind it.
+	firstBuild bool
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -939,18 +943,24 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// does any deploy behind a selected release in flight, which the operator
 	// pins only once it adopted it (w4/661), and any deploy behind one the
 	// operator has not adopted yet (w8/387). A build-source fan-out ships one
-	// build to every linked service at once and writes through: the operator
-	// holds it behind an adopted selection.
-	if p.build == nil && !p.restart {
-		d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: trigger, Image: p.ImageURL, TriggeredBy: triggeredBy},
-			store.DeferredRequest{ImageURL: p.ImageURL, CommitID: p.CommitID, BuildID: p.BuildID, DeployMode: p.DeployMode, ClearCache: p.ClearCache,
-				DisableAutoDeploy: p.DisableAutoDeploy, Rebuild: trigger == store.TriggerConfigChange},
-			func(a *appv1alpha1.App) (bool, error) {
-				if p.ImageURL != "" || a.ActiveReleaseConfig() != nil {
-					return true, nil
-				}
-				return s.deployAheadUnadopted(ctx, a)
-			})
+	// build to every linked service at once and writes through behind an
+	// adopted selection, which the operator holds; behind a deploy it has not
+	// adopted, the fan-out waits too and then ships the build it named
+	// (w8/390).
+	if !p.restart && !p.firstBuild {
+		req := store.DeferredRequest{ImageURL: p.ImageURL, CommitID: p.CommitID, BuildID: p.BuildID, DeployMode: p.DeployMode, ClearCache: p.ClearCache,
+			DisableAutoDeploy: p.DisableAutoDeploy, Rebuild: trigger == store.TriggerConfigChange}
+		waits := func(a *appv1alpha1.App) (bool, error) {
+			if p.ImageURL != "" || a.ActiveReleaseConfig() != nil {
+				return true, nil
+			}
+			return s.deployAheadUnadopted(ctx, a)
+		}
+		if p.build != nil {
+			req = store.DeferredRequest{BuildID: p.build.id}
+			waits = func(a *appv1alpha1.App) (bool, error) { return s.deployAheadUnadopted(ctx, a) }
+		}
+		d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: trigger, Image: p.ImageURL, TriggeredBy: triggeredBy}, req, waits)
 		if deferred || err != nil {
 			return d, err
 		}

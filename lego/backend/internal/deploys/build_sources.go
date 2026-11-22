@@ -361,7 +361,7 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) error
 		if (!a.Spec.AutoDeploy && !waiting) || a.Spec.Suspended || a.DeletionTimestamp != nil {
 			continue
 		}
-		_, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{build: build}, store.TriggerNewCommit)
+		_, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{build: build, firstBuild: waiting}, store.TriggerNewCommit)
 		if err != nil && !errors.Is(err, errAlreadyOnBuild) {
 			errs = append(errs, fanoutFailure(wrap(row.ID, err)))
 		}

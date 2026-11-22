@@ -215,6 +215,12 @@ type Service struct {
 	// restart surface picks up the branch head (w1/m148). nil (tests, store off)
 	// => Restart only re-rolls the pods on the current spec.
 	RestartDeploy func(ctx context.Context, name string) error
+	// DeferNewCommit, when set (the composition root wires
+	// deploys.Service.DeferNewCommit), opens a git push's deploy as a queued
+	// deploy behind one the operator has not adopted yet, as a deploy trigger
+	// waits (w8/387, w8/390); true means it waits and the App is left alone.
+	// nil (tests, store off) => the push writes through.
+	DeferNewCommit func(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) (bool, error)
 	// Blueprints, when set (the control-plane store is wired), persists blueprint
 	// rows (w2/m15): auto-upserted on every repo-backed deploy, and queried by the
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
@@ -4447,6 +4453,19 @@ func (s *Service) redeploy(ctx context.Context, name string, commit store.Commit
 // BEX_API_NAMESPACE and miss the matched App.
 func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) (AppView, error) {
 	appID := managedAppID(a)
+	// Written to the App before the operator adopted the deploy ahead, the
+	// push's release would replace that deploy, which then never runs. It
+	// waits at the row level instead and runs, with the pushed commit, once
+	// the deploy ahead has ended (Render's Wait, w8/390).
+	if s.DeferNewCommit != nil && appID != "" && a.Spec.Repo != "" {
+		deferred, err := s.DeferNewCommit(ctx, a, commit)
+		if err != nil {
+			return AppView{}, err
+		}
+		if deferred {
+			return s.view(a), nil
+		}
+	}
 	// A rollback of a repo-backed App installs the selected deploy's resolved
 	// image as a temporary override. Push-to-deploy is a source build, so clear
 	// that override in the projector's row before patching the CR. Leaving it in

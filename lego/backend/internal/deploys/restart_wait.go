@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -51,9 +52,11 @@ import (
 // has not been adopted (w8/387), since written to the App it would replace
 // that deploy. An environment "Save and deploy" of a Git-backed service
 // selects the build serving when it runs, so it waits here too (w4/667;
-// secrets.Service.DeployServedBuild runs it). A git push, a configuration save,
-// a Blueprint sync and a build-source fan-out write through and wait behind the
-// operator's pin.
+// secrets.Service.DeployServedBuild runs it). A git push and a build-source
+// fan-out wait here behind a deploy the operator has not adopted (w8/390);
+// behind an adopted one they, a configuration save and a Blueprint sync write
+// through and wait behind the operator's pin, and a configuration save or a
+// Blueprint sync waits for that adoption first (rollout.AwaitAdoption).
 
 // DeployDeferrer is the store capability a waiting deploy needs;
 // *store.PGStore provides it. Without it the deploy replaces the one in
@@ -117,21 +120,23 @@ func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.D
 func alwaysWaits(*appv1alpha1.App) (bool, error) { return true, nil }
 
 // deployAheadUnadopted reports that the deploy executing for a carries a
-// release the operator has not adopted yet (w8/387). The operator holds a
-// release in flight only once it adopted it (releaseInFlight), so a release
-// written to the App before then replaces it, and the deploy a 201 named
-// never runs. A stale App read errs toward waiting.
+// release the operator has not adopted yet (w8/387): written to the App
+// before then, a release replaces it, and the deploy a 201 named never runs
+// (rollout.DeployAheadUnadopted, the rule every release writer shares).
 func (s *Service) deployAheadUnadopted(ctx context.Context, a *appv1alpha1.App) (bool, error) {
-	open, err := s.Store.ListDeploys(ctx, appStoreID(a), store.DeployFilter{Statuses: store.OpenDeployStatuses()})
-	if err != nil {
-		return false, err
-	}
-	for _, o := range open {
-		if !o.OverlapPending && o.Generation > a.Status.ReleaseGeneration {
-			return true, nil
-		}
-	}
-	return false, nil
+	return rollout.DeployAheadUnadopted(ctx, s.Store, a)
+}
+
+// DeferNewCommit opens a git push's deploy of commit as a deploy waiting
+// behind one the operator has not adopted yet (w8/390), as a trigger waits
+// (w8/387): queued, with no App change, and run with that commit by the
+// deferred-deploy worker once the deploy ahead has ended. Only waiting
+// deploys replace each other, so a newer push replaces this one alone.
+// false means nothing waits ahead, and the push writes through.
+func (s *Service) DeferNewCommit(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) (bool, error) {
+	_, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: store.TriggerNewCommit}, store.DeferredRequest{CommitID: commit.Hash},
+		func(a *appv1alpha1.App) (bool, error) { return s.deployAheadUnadopted(ctx, a) })
+	return deferred, err
 }
 
 // deferRestart records a Restart that waits for the deploy in flight.

@@ -366,6 +366,13 @@ func (s *Service) dispatchCheckedCommit(ctx context.Context, a *appv1alpha1.App,
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return false, err
 	}
+	// Behind a deploy the operator has not adopted yet, the release would
+	// replace it (w8/390). The commit stays pending and recovery dispatches it
+	// once that deploy is adopted, to pend behind it.
+	lister, _ := s.Store.(rollout.DeployLister)
+	if behind, err := rollout.DeployAheadUnadopted(ctx, lister, a); err != nil || behind {
+		return false, err
+	}
 	cloneSecret, err := s.ensureCloneSecret(ctx, a)
 	if err != nil {
 		return false, err
