@@ -36,6 +36,8 @@ import (
 // (serviceAppsOnly / buildSourcesOnly / TypeBuildSource / a build_source
 // predicate), resolve rows by id, or be listed here.
 var sqlAppsReadsThatMayIncludeBuildSources = map[string]string{
+	"store/domain_overlap.go:ForeignWildcardCovers":             "joins domains to the App that owns each; a carrier claims no domain",
+	"store/domain_overlap.go:verifiedOverlapElsewhere":          "joins domains to the App that owns each; a carrier claims no domain",
 	"store/environments.go:ListEnvironmentServices":             "filters environment_id, which a carrier never sets (its project scope is scope_project_id)",
 	"store/environments.go:ListWorkspaceEnvironmentServices":    "inner-joins environments on environment_id, which a carrier never sets",
 	"store/grouping_tx.go:ReclaimEmptyBlueprintGroupings":       "counts members by environment_id / project_id, which a carrier never sets",
