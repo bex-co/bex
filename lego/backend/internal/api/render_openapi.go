@@ -65,6 +65,9 @@ type renderOpenAPIContract struct {
 	// once at load time. Keyed by the operation pointer rather than its id so
 	// operations the upstream document leaves unnamed cannot collide on "".
 	allowedQuery map[*openapi3.Operation]map[string]struct{}
+	// errorCodes is the errorCode vocabulary: the only codes Render's error
+	// body carries (w8/411).
+	errorCodes map[string]bool
 }
 
 var renderContractOnce = sync.OnceValues(loadRenderOpenAPIContract)
@@ -410,7 +413,30 @@ func loadRenderOpenAPIContractData(data []byte, expectedSHA256 string) (*renderO
 	if err != nil {
 		return nil, fmt.Errorf("validate embedded Render OpenAPI: %w", err)
 	}
-	return &renderOpenAPIContract{document: doc, router: router, allowedQuery: buildAllowedQueryNames(doc)}, nil
+	errorCodes, err := renderErrorCodes(doc)
+	if err != nil {
+		return nil, err
+	}
+	return &renderOpenAPIContract{document: doc, router: router, allowedQuery: buildAllowedQueryNames(doc), errorCodes: errorCodes}, nil
+}
+
+// renderErrorCodes reads the spec's errorCode vocabulary, so a re-pin carries
+// Render's new codes with it. A pin without one fails to load rather than
+// strip every code.
+func renderErrorCodes(doc *openapi3.T) (map[string]bool, error) {
+	schema := doc.Components.Schemas["errorCode"]
+	if schema == nil || schema.Value == nil || len(schema.Value.Enum) == 0 {
+		return nil, errors.New("embedded Render OpenAPI has no errorCode vocabulary")
+	}
+	codes := make(map[string]bool, len(schema.Value.Enum))
+	for _, value := range schema.Value.Enum {
+		code, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("embedded Render OpenAPI errorCode value %v is not a string", value)
+		}
+		codes[code] = true
+	}
+	return codes, nil
 }
 
 // buildAllowedQueryNames resolves every operation's accepted query names — its
@@ -953,6 +979,29 @@ func (c *renderOpenAPIContract) renderOperation(pattern string, r *http.Request)
 	return route, pathParams, validationRequest, true
 }
 
+// withRenderErrorCodes drops from an error on one of Render's operations any
+// code outside the errorCode vocabulary (w8/411). Render's 404 carries none,
+// and the pinned CLI prints whatever code it gets: `received response code 404
+// (NOT_FOUND): …` where Render's reads `received response code 404: …`.
+// bex-native routes keep bex's codes, which the bex CLI's own commands read.
+// It wraps the whole REST mount, so the gate's and the middlewares' refusals
+// answer alike, and routes the request only when an error is written.
+func withRenderErrorCodes(rest *http.ServeMux, contract *renderOpenAPIContract, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resolved, onRender := false, false
+		keep := func(code string) bool {
+			if !resolved {
+				resolved = true
+				if _, pattern := rest.Handler(r); pattern != "" {
+					_, _, _, onRender = contract.renderOperation(pattern, r)
+				}
+			}
+			return !onRender || contract.errorCodes[code]
+		}
+		next.ServeHTTP(core.FilterErrorCodes(w, keep), r)
+	})
+}
+
 func retiredPublicRESTAlias(r *http.Request) bool {
 	path := r.URL.Path
 	switch {
@@ -1055,7 +1104,8 @@ func unsupportedQueryMessage(unknown []string, operationID string) string {
 // own check (SANDBOX_GROUP_LIMIT_INVALID) can. The gate otherwise answers a
 // codeless 400, so without these a malformed group id or an absent or zero limit
 // on REST would carry no code while GraphQL and MCP, which reach the Service's
-// own checks, do (w22/m311).
+// own checks, do (w22/m311). Since w8/411 REST keeps only the vocabulary's
+// codes, so SANDBOX_GROUP_LIMIT_INVALID reaches REST as its params alone.
 var renderValidationErrorCodes = map[string]string{
 	"sandboxGroupId":   sandbox.CodeInvalidSandboxGroupID,
 	"concurrencyLimit": sandbox.CodeSandboxGroupLimitInvalid,

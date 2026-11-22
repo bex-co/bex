@@ -19,9 +19,10 @@
 #
 # The creates start no sandbox: the group is first held at a concurrencyLimit
 # of 1 by the leg's one running sandbox, so every create the rate limiter
-# admits is refused by the group with its own 429
-# (SANDBOX_GROUP_CONCURRENCY_LIMIT). The rate limit is charged before that
-# check, which is what makes the two 429s distinguishable here.
+# admits is refused by the group with its own 429 (its message names the group's
+# concurrency limit; REST carries only Render's codes, w8/411). The rate limit
+# is charged before that check, which is what makes the two 429s
+# distinguishable here.
 #
 # Run by sandbox-measure.yml (leg `rate`) through
 # scripts/verify-sandbox-isolation-live.sh with BEX_VERIFY_SHARED_USER_KEYS=1,
@@ -124,7 +125,7 @@ one_create() {
     --dump-header "$out.headers" --output "$out.json" --write-out '%{http_code}' "$api_url/v1/sandboxes" 2>/dev/null)" || status=000
   if rate_limited "$status" "$out.json"; then
     verdict=limited
-  elif [ "$status" = 429 ] && [ "$(jq -r '.code // empty' "$out.json" 2>/dev/null)" = SANDBOX_GROUP_CONCURRENCY_LIMIT ]; then
+  elif [ "$status" = 429 ] && jq -e '.message | test("^sandbox group \".*\" is at its concurrency limit")' "$out.json" >/dev/null 2>&1; then
     verdict=group
   elif [ "$status" = 201 ]; then
     verdict=created

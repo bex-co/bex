@@ -134,7 +134,7 @@ func TestHandleByIDMapsAServiceError(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", w.Code)
 	}
-	want := `{"code":"NOT_FOUND","error":"not found","id":"not_found","message":"not found","params":null}` + "\n"
+	want := `{"code":"NOT_FOUND","error":"not found","id":"not_found","message":"not found"}` + "\n"
 	if got := w.Body.String(); got != want {
 		t.Fatalf("body = %q, want %q", got, want)
 	}
@@ -168,7 +168,7 @@ func TestHandleMappedMapsAServiceErrorWithoutViewing(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", w.Code)
 	}
-	want := `{"code":"FORBIDDEN","error":"forbidden","id":"forbidden","message":"forbidden","params":null}` + "\n"
+	want := `{"code":"FORBIDDEN","error":"forbidden","id":"forbidden","message":"forbidden"}` + "\n"
 	if got := w.Body.String(); got != want {
 		t.Fatalf("body = %q, want %q", got, want)
 	}

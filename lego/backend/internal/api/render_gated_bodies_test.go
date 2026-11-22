@@ -166,7 +166,9 @@ func TestPostgresReadReplicasPatchThroughComposedStack(t *testing.T) {
 		t.Fatalf("per-replica parameterOverrides = %d %s, want the strict decoder's named 400", w.Code, w.Body.String())
 	}
 	w = do(t, h, http.MethodPatch, path, testToken, `{"readReplicas":[{"name":"Reader_2"}]}`)
-	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "POSTGRES_READ_REPLICA_NAME_INVALID") {
-		t.Fatalf("invalid replica name = %d %s, want POSTGRES_READ_REPLICA_NAME_INVALID", w.Code, w.Body.String())
+	// Render's error body carries no bex code (w8/411); the message names it.
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `read replica name \"Reader_2\" must be`) ||
+		strings.Contains(w.Body.String(), `"code"`) {
+		t.Fatalf("invalid replica name = %d %s, want a named 400 without a code", w.Code, w.Body.String())
 	}
 }

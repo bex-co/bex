@@ -155,7 +155,7 @@ Environment variable and secret-file names are checked by Kubernetes' own Secret
 
 Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.ValidResourceName`, worded once as `core.ResourceNameRule`. Postgres and Key Value names pass one check on every way in (`core.CheckDatastoreName`), so Blueprint validation now checks a Key Value name too. GraphQL keeps the code of a coded error a resolver wrapped, as REST and MCP always did. A name or display name shaped like a resource ID is accepted, as on Render; `NAME_RESOURCE_ID_RESERVED` and `DISPLAY_NAME_RESOURCE_ID_RESERVED` are retired (w5/m118 reversed w8/049, 2026-10-24).
 
-**Refusals a client branches on carry codes (w5/m128, w5/m130).** The dashboard decides what to show from these refusals, so each carries a stable code on REST (`code`, `params`), GraphQL (`extensions`) and MCP (the `CODE: ` prefix). Render CLI users read the messages, so they are unchanged, except that a coded refusal drops the sentinel prefix every coded error drops (`bad request: `, `conflict: `):
+**Refusals a client branches on carry codes (w5/m128, w5/m130).** The dashboard decides what to show from these refusals, so each carries a stable code on GraphQL (`extensions`), MCP (the `CODE: ` prefix) and bex-native REST routes (`code`, `params`). Render's REST operations carry only Render's codes (below, w8/411). Render CLI users read the messages, so they are unchanged, except that a coded refusal drops the sentinel prefix every coded error drops (`bad request: `, `conflict: `):
 
 - 503s for a dependency the deployment never wired:
   - `LOGS_UNAVAILABLE`: no pod-log source;
@@ -167,12 +167,20 @@ Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.
   - `SHELL_UNAVAILABLE`: no browser-shell transport.
 - The 404 `NOT_FOUND`. `core.ErrNotFound` and `core.NotFound(resource)` carry it, so every refusal that wraps the sentinel answers the code. A feature's own not-found, built with `core.NewNotFoundError`, keeps its `*_NOT_FOUND` code. The dashboard reads either one, never "not found" in the message. A transport 404 is not a missing resource: bex-api answers one with 200 and a coded error.
 - The 403 `FORBIDDEN`. `core.ErrForbidden` carries it, so every refusal that wraps the sentinel answers the code. A refusal with a more specific 403 code, such as `insufficient_token_scope` (Render's spelling, w2/068) or `EMAIL_VERIFICATION_REQUIRED`, keeps its own.
-- The 400 `PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED`, with params `confirm`, `verb` and `name`. `confirm` is the phrase a retry must send. Services, Postgres and Key Values refuse with it alike through one check, `core.RequireProtectedConfirmation`. The dashboard reads the phrase from `confirm` and the resource's name from `name`, never from the message.
+- The typed-phrase 400 `PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED` is retired (w8/187): a protected environment asks for the Admin role, an ordinary 403.
 - The 400 `WORKSPACE_RESOURCE_LIMIT`, with param `limit`: a create past the workspace's count cap.
 - The 400 `LAST_ADMIN`: removing or demoting a workspace's last admin.
 - The 409 `SSH_KEY_EXISTS`: an SSH public key registered twice. A name taken in its workspace keeps the shared `CONFLICT` code (w6/m49).
 
-Render's error body has no `code`, so these are extensions a Render client ignores. `api/refusal_codes_test.go` pins each code on every surface.
+`api/refusal_codes_test.go` pins each code on every surface.
+
+**Render's REST operations answer Render's codes only (w8/411).** Render's error body is `{id, message, code}`. Its `code` is "present on specific errors that clients can handle specially", drawn from the `errorCode` vocabulary (33 lower-case values in the pinned spec, none a generic not-found). The pinned CLI prints any code it receives (`pkg/client/client.go` `ErrorFromResponse`): bex's `NOT_FOUND` read `received response code 404 (NOT_FOUND): project not found` where Render's 404 reads `received response code 404: project not found`. So an error on one of Render's REST operations carries `code` only when that code is in the embedded spec's `errorCode` enum (`invalid_limit`, `insufficient_token_scope`, `sandbox_group_limit_reached`, …). Every other code leaves the body: `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, the `*_UNAVAILABLE` 503s, `WORKSPACE_RESOURCE_LIMIT`, the sandbox codes and the rest. `id`, `message`, `error` and a non-empty `params` stay. No REST body writes `params: null` any more.
+
+- `withRenderErrorCodes` wraps the whole REST mount (`internal/api/render_openapi.go`), so the gate's and every middleware's refusal is held to the same rule. It routes the request only when an error is written, and treats it as a Render operation exactly when the request validator does (`renderOperation`). `core.WriteErr` asks the wrapper before it writes a code.
+- The vocabulary is read from the pinned spec at load, so a re-pin brings Render's new codes with it. A pin without an `errorCode` schema fails to load.
+- bex-native REST routes keep bex's codes, which the bex CLI's own commands read (`BUCKET_NOT_FOUND` on object storage, the `AGENT_SESSION_*` codes). So do GraphQL `extensions.code`, which the dashboard and mobile read, and MCP's `CODE: ` prefix.
+- bex's own verification scripts tell a bex refusal on a Render operation apart by its message (`scripts/verify-sandbox-isolation.sh`, `scripts/measure-sandbox-rate.sh`).
+- [ADR018 § API contract](ADR018-render-parity.md#api-contract) records the row. `api/render_error_codes_test.go` pins it.
 
 **A refusal does not carry its dependency's text (w5/112, w5/123).** A public refusal's whole message reaches REST, GraphQL and MCP, and a dependency's error can name hosts, accounts and internal addresses. A refusal that keeps its status therefore answers its own fixed sentence, and `core.HideCause` logs the dependency's error server-side:
 

@@ -124,14 +124,14 @@ func TestSandboxGroupPlacementThroughTheComposedAPIPG(t *testing.T) {
 	notFound := codedRefusal{status: http.StatusNotFound, code: core.NotFoundCode}
 	unknown := ids.EnvironmentPublicID("env-" + "aaaaaaaaaaaaaaaaaaaa")
 	for _, env := range []string{foreign, unknown} {
-		notFound.onREST(t, handler, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"nope","environmentId":%q}`, mine.ID, env))
+		notFound.onRenderREST(t, handler, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"nope","environmentId":%q}`, mine.ID, env))
 		notFound.onGraphQL(t, handler, fmt.Sprintf(`mutation { createSandboxGroup(name: "nope", ownerId: %q, environmentId: %q) { id } }`, mine.ID, env))
 		notFound.onMCP(t, session, "create_sandbox_group", map[string]any{"name": "nope", "workspaceId": mine.ID, "environmentId": env})
 	}
 
 	// A protected environment needs an Admin on every surface.
 	refused := codedRefusal{status: http.StatusForbidden, code: core.ProtectedPlacementCode, params: map[string]any{"environmentId": prod}}
-	refused.onREST(t, handler, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"prod","environmentId":%q}`, mine.ID, prod))
+	refused.onRenderREST(t, handler, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"prod","environmentId":%q}`, mine.ID, prod))
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { createSandboxGroup(name: "prod", ownerId: %q, environmentId: %q) { id } }`, mine.ID, prod))
 	refused.onMCP(t, session, "create_sandbox_group", map[string]any{"name": "prod", "workspaceId": mine.ID, "environmentId": prod})
 	if after := len(mustGroups(t, st, mine.ID)); after != before {

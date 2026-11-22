@@ -335,11 +335,15 @@ func timedOut(err error) bool {
 // reason instead of falling back to a generic "unknown error"; bex-only
 // callers keep reading `.error` unchanged. One mapper for every feature's
 // REST fragment, so the surfaces answer identically.
+//
+// A coded error adds `code`, unless a FilterErrorCodes wrapper on w refuses
+// it, and `params` when it has any.
 func WriteErr(w http.ResponseWriter, err error) {
 	if timedOut(err) {
 		log.Printf("bex-api: request timed out: %v", err)
-		WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"error": RequestTimedOutMessage, "message": RequestTimedOutMessage,
-			"id": statusErrID(http.StatusServiceUnavailable), "code": RequestTimeoutCode})
+		body := map[string]any{"error": RequestTimedOutMessage, "message": RequestTimedOutMessage, "id": statusErrID(http.StatusServiceUnavailable)}
+		addErrorCode(w, body, RequestTimeoutCode)
+		WriteJSON(w, http.StatusServiceUnavailable, body)
 		return
 	}
 	code := ErrorStatus(err)
@@ -350,7 +354,12 @@ func WriteErr(w http.ResponseWriter, err error) {
 		if seconds, ok := ce.Params["retryAfterSeconds"].(int); ok && seconds > 0 {
 			w.Header().Set("Retry-After", strconv.Itoa(seconds))
 		}
-		WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": statusErrID(code), "code": ce.Code, "params": ce.Params})
+		body := map[string]any{"error": msg, "message": msg, "id": statusErrID(code)}
+		addErrorCode(w, body, ce.Code)
+		if ce.Params != nil {
+			body["params"] = ce.Params
+		}
+		WriteJSON(w, code, body)
 		return
 	}
 	// An unclassified failure — no domain-error sentinel matched, so code is
@@ -367,6 +376,47 @@ func WriteErr(w http.ResponseWriter, err error) {
 	// The plain path is exactly WriteErrStatus's envelope — delegate so the
 	// {"error","message","id"} literal lives in one place and can't drift.
 	WriteErrStatus(w, code, msg)
+}
+
+// codeFilterWriter carries FilterErrorCodes' keep to WriteErr. It forwards
+// Flush, which the log tail and exec streams assert directly, and Unwrap, which
+// http.ResponseController (a WebSocket upgrade's Hijack, a write deadline)
+// walks.
+type codeFilterWriter struct {
+	http.ResponseWriter
+	keep func(code string) bool
+}
+
+// FilterErrorCodes wraps w so WriteErr writes an error's code only when keep
+// accepts it (w8/411). bex-api wraps every REST request: on one of Render's
+// operations keep accepts only the pinned spec's errorCode vocabulary, as
+// Render's error body carries no other code and the pinned CLI prints any code
+// it gets. keep runs at most once per error written, never on a success.
+func FilterErrorCodes(w http.ResponseWriter, keep func(code string) bool) http.ResponseWriter {
+	return &codeFilterWriter{ResponseWriter: w, keep: keep}
+}
+
+func (w *codeFilterWriter) Flush() { _ = http.NewResponseController(w.ResponseWriter).Flush() }
+
+func (w *codeFilterWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// addErrorCode sets body's code unless a FilterErrorCodes wrapper anywhere in
+// w's Unwrap chain refuses it.
+func addErrorCode(w http.ResponseWriter, body map[string]any, code string) {
+	for w != nil {
+		if f, ok := w.(*codeFilterWriter); ok {
+			if !f.keep(code) {
+				return
+			}
+			break
+		}
+		inner, ok := w.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			break
+		}
+		w = inner.Unwrap()
+	}
+	body["code"] = code
 }
 
 // IsPublicError reports whether err's message is safe to return to a client:

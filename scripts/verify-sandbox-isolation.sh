@@ -34,8 +34,8 @@ set -euo pipefail
 # another group still admits one, and frees its slot once the first sandbox is
 # terminated; a sandbox paused out of the group stops counting, so a create fills
 # its slot and the resume of the paused one answers 429 and stays paused until
-# the slot is free; and the workspace-B principal gets the same SANDBOX_GROUP_NOT_FOUND
-# for workspace A's group on retrieve, update, create and list as for an id that
+# the slot is free; and the workspace-B principal gets the same "sandbox group not
+# found" for workspace A's group on retrieve, update, create and list as for an id that
 # does not exist. It assumes the platform defaults (a ceiling of 1000 on a
 # group's limit, 10 groups a workspace). Groups have no delete route: the probe
 # makes two in workspace A per run, plus the default group the first sandbox
@@ -373,11 +373,20 @@ sandbox_exec() {
 }
 
 # expect_code <what> <file> <code>: the error envelope in <file> carries the
-# machine code <code>.
+# machine code <code>, one of Render's errorCode vocabulary.
 expect_code() {
   local what="$1" file="$2" want="$3" got
   got="$(jq -r '.code // empty' "$file")"
   [ "$got" = "$want" ] || fail "$what answered code '$got', want $want: $(head -c 300 "$file")"
+}
+
+# expect_message <what> <file> <regex>: the error envelope's message matches
+# <regex>. A refusal whose code is bex's own is told apart by its message: REST
+# carries only Render's codes, as Render's error body does (w8/411).
+expect_message() {
+  local what="$1" file="$2" want="$3"
+  jq -e --arg re "$want" '.message | test($re)' "$file" >/dev/null \
+    || fail "$what answered $(head -c 300 "$file"), want a message matching '$want'"
 }
 
 # create_group <name> <output>: POST /v1/sandbox-groups as workspace A's member,
@@ -445,7 +454,7 @@ group_region="$(jq -er '.region' "$fixture_dir/group-first.json")"
 expect_status 409 "$fixture_dir/owner-a.curl" POST "/v1/sandbox-groups" "$fixture_dir/group-duplicate.json" \
   --header 'Content-Type: application/json' \
   --data "$(jq -cn --arg owner "$BEX_WORKSPACE_A" --arg name "$group_first_name" '{ownerId: $owner, name: $name}')"
-expect_code "a duplicate group name" "$fixture_dir/group-duplicate.json" SANDBOX_GROUP_NAME_TAKEN
+expect_message "a duplicate group name" "$fixture_dir/group-duplicate.json" 'already exists in this workspace'
 group_limit_id="$(create_group "$group_limit_name" "$fixture_dir/group-limit.json")"
 jq -e '.isDefault == false and .concurrencyLimit == 1000' "$fixture_dir/group-limit.json" >/dev/null \
   || fail "the second group is not a plain non-default group: $(head -c 400 "$fixture_dir/group-limit.json")"
@@ -475,8 +484,7 @@ if [ "$invalid_policy_status" != 400 ]; then
   fi
   fail "allow-list without rules returned $invalid_policy_status, want 400"
 fi
-[ "$(jq -r '.code' "$fixture_dir/invalid-policy.json")" = "SANDBOX_NETWORK_POLICY_INVALID" ] \
-  || fail "allow-list without rules did not return SANDBOX_NETWORK_POLICY_INVALID"
+expect_message "allow-list without rules" "$fixture_dir/invalid-policy.json" 'needs at least one rule'
 # A is the attacker: allow-all is the most permissive tenant posture, so every
 # floor probe below runs against it. B and C are deny-all; D is an allow-list.
 # Render's create-time env (w32/m297): sandbox A carries one variable whose
@@ -544,14 +552,12 @@ if [ "$reserved_env_status" != 400 ]; then
   fi
   fail "a reserved env name returned $reserved_env_status, want 400"
 fi
-[ "$(jq -r '.code' "$fixture_dir/reserved-env.json")" = "SANDBOX_ENV_INVALID" ] \
-  || fail "a reserved env name did not return SANDBOX_ENV_INVALID"
+expect_message "a reserved env name" "$fixture_dir/reserved-env.json" 'is reserved for the platform'
 
 echo "==> verify owner/member/admin and cross-workspace behavior"
 expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-own.json"
 expect_status 404 "$fixture_dir/member-b.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-cross-owner.json"
-[ "$(jq -r '.code' "$fixture_dir/get-cross-owner.json")" = "SANDBOX_NOT_FOUND" ] \
-  || fail "cross-owner lookup did not use SANDBOX_NOT_FOUND"
+expect_message "cross-owner lookup" "$fixture_dir/get-cross-owner.json" '^sandbox not found$'
 expect_status 404 "$fixture_dir/member-b.curl" POST "/v1/sandboxes/$sandbox_a_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/stop-cross-owner.json"
 expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-admin.json"
 expect_status 404 "$fixture_dir/owner-c.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/get-cross-workspace.json"
@@ -804,8 +810,7 @@ grep -q 'm35-owner' "$fixture_dir/exec-own.sse" \
 expect_status 404 "$fixture_dir/member-b.curl" POST \
   "/v1/sandboxes/$sandbox_a_id/exec?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/exec-cross-owner.json" \
   --header 'Content-Type: application/json' --data '{"command":"true"}'
-[ "$(jq -r '.code' "$fixture_dir/exec-cross-owner.json")" = "SANDBOX_NOT_FOUND" ] \
-  || fail "cross-owner exec did not use SANDBOX_NOT_FOUND"
+expect_message "cross-owner exec" "$fixture_dir/exec-cross-owner.json" '^sandbox not found$'
 expect_status 200 "$fixture_dir/admin-a.curl" POST \
   "/v1/sandboxes/$sandbox_a_id/exec?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/exec-admin.sse" \
   --header 'Content-Type: application/json' --data '{"command":"printf m35-admin"}'
@@ -1604,7 +1609,7 @@ jq -e '.concurrencyLimit == 1000' "$fixture_dir/group-patch-cap.json" >/dev/null
   || fail "a limit of 5000 was not capped to 1000: $(head -c 400 "$fixture_dir/group-patch-cap.json")"
 expect_status 400 "$fixture_dir/owner-a.curl" PATCH "/v1/sandbox-groups/$group_limit_id" "$fixture_dir/group-patch-zero.json" \
   --header 'Content-Type: application/json' --data '{"concurrencyLimit":0}'
-expect_code "a concurrencyLimit of 0" "$fixture_dir/group-patch-zero.json" SANDBOX_GROUP_LIMIT_INVALID
+expect_message "a concurrencyLimit of 0" "$fixture_dir/group-patch-zero.json" 'concurrencyLimit'
 expect_status 200 "$fixture_dir/owner-a.curl" PATCH "/v1/sandbox-groups/$group_limit_id" "$fixture_dir/group-patch-one.json" \
   --header 'Content-Type: application/json' --data '{"concurrencyLimit":1}'
 jq -e --arg g "$group_limit_id" '.id == $g and .concurrencyLimit == 1' "$fixture_dir/group-patch-one.json" >/dev/null \
@@ -1620,7 +1625,7 @@ if [ "$refused_status" != 429 ]; then
   fi
   fail "a create in a group at its concurrencyLimit returned $refused_status, want 429: $(head -c 300 "$fixture_dir/group-x2.json")"
 fi
-expect_code "a create in a group at its concurrencyLimit" "$fixture_dir/group-x2.json" SANDBOX_GROUP_CONCURRENCY_LIMIT
+expect_message "a create in a group at its concurrencyLimit" "$fixture_dir/group-x2.json" '^sandbox group ".*" is at its concurrency limit'
 jq -e --arg g "$group_limit_id" '.params.sandboxGroupId == $g and .params.concurrencyLimit == 1 and .params.active == 1' "$fixture_dir/group-x2.json" >/dev/null \
   || fail "the 429 does not name the group, its limit of 1 and its 1 active sandbox: $(head -c 400 "$fixture_dir/group-x2.json")"
 # Another group still admits a create while this one is full.
@@ -1650,7 +1655,7 @@ group_x4_id="$(create_sandbox_when_room "$fixture_dir/owner-a.curl" "$BEX_WORKSP
 resume_status="$(api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_x3_id/resume?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-resume-full.json")"
 [ "$resume_status" = 429 ] \
   || fail "a resume into a group at its concurrencyLimit returned $resume_status, want 429: $(head -c 300 "$fixture_dir/group-x3-resume-full.json")"
-expect_code "a resume into a group at its concurrencyLimit" "$fixture_dir/group-x3-resume-full.json" SANDBOX_GROUP_CONCURRENCY_LIMIT
+expect_message "a resume into a group at its concurrencyLimit" "$fixture_dir/group-x3-resume-full.json" '^sandbox group ".*" is at its concurrency limit'
 jq -e --arg g "$group_limit_id" '.params.sandboxGroupId == $g and .params.concurrencyLimit == 1 and .params.active == 1' "$fixture_dir/group-x3-resume-full.json" >/dev/null \
   || fail "the resume's 429 does not name the group, its limit of 1 and its 1 active sandbox: $(head -c 400 "$fixture_dir/group-x3-resume-full.json")"
 expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$group_x3_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-get-after-429.json"
@@ -1675,10 +1680,10 @@ n=0
 for target in "$group_limit_id" "$unknown_group"; do
   n=$((n + 1))
   expect_status 404 "$fixture_dir/owner-c.curl" GET "/v1/sandbox-groups/$target" "$fixture_dir/xws-group-get-$n.json"
-  expect_code "a cross-workspace group retrieve ($target)" "$fixture_dir/xws-group-get-$n.json" SANDBOX_GROUP_NOT_FOUND
+  expect_message "a cross-workspace group retrieve ($target)" "$fixture_dir/xws-group-get-$n.json" '^sandbox group not found$'
   expect_status 404 "$fixture_dir/owner-c.curl" PATCH "/v1/sandbox-groups/$target" "$fixture_dir/xws-group-patch-$n.json" \
     --header 'Content-Type: application/json' --data '{"concurrencyLimit":1000}'
-  expect_code "a cross-workspace group update ($target)" "$fixture_dir/xws-group-patch-$n.json" SANDBOX_GROUP_NOT_FOUND
+  expect_message "a cross-workspace group update ($target)" "$fixture_dir/xws-group-patch-$n.json" '^sandbox group not found$'
   leak_status="$(api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes" "$fixture_dir/xws-group-create-$n.json" \
     --header 'Content-Type: application/json' \
     --data "{\"ownerId\":\"$BEX_WORKSPACE_B\",\"plan\":\"starter\",\"networkPolicy\":{\"type\":\"deny-all\"},\"sandboxGroupId\":\"$target\"}")"
@@ -1688,9 +1693,9 @@ for target in "$group_limit_id" "$unknown_group"; do
     fi
     fail "a create in workspace B naming group $target returned $leak_status, want 404"
   fi
-  expect_code "a cross-workspace create in group $target" "$fixture_dir/xws-group-create-$n.json" SANDBOX_GROUP_NOT_FOUND
+  expect_message "a cross-workspace create in group $target" "$fixture_dir/xws-group-create-$n.json" '^sandbox group not found$'
   expect_status 404 "$fixture_dir/owner-c.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_B&sandboxGroupId=$target" "$fixture_dir/xws-group-list-$n.json"
-  expect_code "a cross-workspace list filtered by group $target" "$fixture_dir/xws-group-list-$n.json" SANDBOX_GROUP_NOT_FOUND
+  expect_message "a cross-workspace list filtered by group $target" "$fixture_dir/xws-group-list-$n.json" '^sandbox group not found$'
 done
 expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandbox-groups/$group_limit_id" "$fixture_dir/group-after-xws.json"
 jq -e '.concurrencyLimit == 1' "$fixture_dir/group-after-xws.json" >/dev/null \
@@ -1699,7 +1704,7 @@ expect_status 200 "$fixture_dir/owner-c.curl" GET "/v1/sandbox-groups?ownerId=$B
 jq -e --arg first "$group_first_id" --arg limit "$group_limit_id" '
   ([.[].sandboxGroup.id] | index($first)) == null and ([.[].sandboxGroup.id] | index($limit)) == null' "$fixture_dir/groups-b.json" >/dev/null \
   || fail "workspace B lists workspace A's groups: $(head -c 600 "$fixture_dir/groups-b.json")"
-pass "another workspace's principal gets the same SANDBOX_GROUP_NOT_FOUND for retrieve, update, create and list, and changes nothing"
+pass "another workspace's principal gets the same sandbox group not found for retrieve, update, create and list, and changes nothing"
 
 echo "==> a token mint against a suspended sandbox answers at once (w32/m299)"
 for _ in $(seq 1 60); do

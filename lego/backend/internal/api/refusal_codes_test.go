@@ -43,17 +43,33 @@ type codedRefusal struct {
 	params map[string]any
 }
 
+// onREST checks the answer of a bex-native REST route, which carries bex's
+// code. An empty code expects no code at all.
 func (want codedRefusal) onREST(t *testing.T, h http.Handler, method, path, body string) {
+	t.Helper()
+	want.checkREST(t, h, method, path, body, want.code)
+}
+
+// onRenderREST checks the answer of one of Render's REST operations, which
+// carries no code: none of bex's codes is in Render's errorCode vocabulary,
+// and the pinned CLI prints any code it gets (w8/411). The params stay.
+func (want codedRefusal) onRenderREST(t *testing.T, h http.Handler, method, path, body string) {
+	t.Helper()
+	want.checkREST(t, h, method, path, body, "")
+}
+
+func (want codedRefusal) checkREST(t *testing.T, h http.Handler, method, path, body, code string) {
 	t.Helper()
 	res := do(t, h, method, path, testToken, body)
 	var got struct {
-		Code    string         `json:"code"`
+		Code    *string        `json:"code"`
 		Message string         `json:"message"`
 		Params  map[string]any `json:"params"`
 	}
-	if err := json.Unmarshal(res.Body.Bytes(), &got); err != nil || res.Code != want.status || got.Code != want.code ||
+	err := json.Unmarshal(res.Body.Bytes(), &got)
+	if err != nil || res.Code != want.status || (got.Code == nil) != (code == "") || (got.Code != nil && *got.Code != code) ||
 		!want.says(got.Message) || !want.carries(got.Params) {
-		t.Fatalf("%s %s = %d %s, want %d %s %q %v", method, path, res.Code, res.Body, want.status, want.code, want.msg, want.params)
+		t.Fatalf("%s %s = %d %s, want %d %q %q %v", method, path, res.Code, res.Body, want.status, code, want.msg, want.params)
 	}
 }
 
@@ -105,7 +121,9 @@ func (want codedRefusal) carries(got map[string]any) bool {
 // drops the sentinel prefix every coded error drops (`bad request: `,
 // `conflict: `), and MCP's text gains the `CODE: ` prefix. (The typed-phrase
 // protected-environment refusal is gone since w8/187: a protected environment
-// asks for the Admin role, an ordinary 403.)
+// asks for the Admin role, an ordinary 403.) REST carries the code only on a
+// bex-native route: one of Render's operations answers Render's own codes alone
+// (w8/411).
 func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 	unavailable := func(code, msg string) codedRefusal {
 		return codedRefusal{status: http.StatusServiceUnavailable, code: code, msg: msg}
@@ -115,6 +133,7 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		deny         bool          // the checker refuses every relation
 		overQuota    bool          // the workspace already holds its 25 services
 		setup        func(*Server) // state the refusal needs, set after wiring
+		native       bool          // a bex-native REST route, not one of Render's operations
 		method, path string
 		body         string
 		want         codedRefusal
@@ -185,12 +204,12 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		query: `mutation { createService(name: "web2", image: "nginx") { id } }`,
 		tool:  "create_web_service", args: map[string]any{"name": "web2", "image": "nginx", "runtime": "image"},
 	}, {
-		name: "GitHub integration unconfigured", method: http.MethodGet, path: "/v1/git/connections?ownerId=default",
+		name: "GitHub integration unconfigured", native: true, method: http.MethodGet, path: "/v1/git/connections?ownerId=default",
 		want:  unavailable("GITHUB_UNAVAILABLE", "github integration not configured"),
 		query: `{ gitConnections(ownerId: "default") { installationId } }`,
 		tool:  "list_git_connections", args: map[string]any{},
 	}, {
-		name: "web shell unconfigured", method: http.MethodPost, path: "/v1/services/web/shell-ticket",
+		name: "web shell unconfigured", native: true, method: http.MethodPost, path: "/v1/services/web/shell-ticket",
 		want:  unavailable("SHELL_UNAVAILABLE", "web shell transport not configured"),
 		query: `mutation { createShellSession(id: "web") { ticket } }`,
 	}} {
@@ -218,7 +237,13 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 				tc.setup(srv)
 			}
 
-			t.Run("REST", func(t *testing.T) { tc.want.onREST(t, h, tc.method, tc.path, tc.body) })
+			t.Run("REST", func(t *testing.T) {
+				if tc.native {
+					tc.want.onREST(t, h, tc.method, tc.path, tc.body)
+				} else {
+					tc.want.onRenderREST(t, h, tc.method, tc.path, tc.body)
+				}
+			})
 			t.Run("GraphQL", func(t *testing.T) { tc.want.onGraphQL(t, h, tc.query) })
 			t.Run("MCP", func(t *testing.T) {
 				if tc.tool == "" {

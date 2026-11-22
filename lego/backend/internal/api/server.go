@@ -1758,8 +1758,10 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// recordRoutePattern sits innermost, right against the REST mux: the
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
-	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(restRL(withValidQueryText(restBodyLimit(s.MaxBodyBytes)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
+	// the telemetry needs (w3/m84). withRenderErrorCodes is outermost, so the
+	// gate's and every middleware's refusal on a Render operation answers only
+	// Render's codes (w8/411).
+	mux.Handle(restMountPattern, withRenderErrorCodes(restMux, rest.contract, auth(restRL(withValidQueryText(restBodyLimit(s.MaxBodyBytes)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest))))))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies). Both carry the

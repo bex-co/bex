@@ -51,8 +51,9 @@ func (c *placementRoleChecker) Check(_ context.Context, _, relation, _ string) (
 // TestProtectedEnvironmentPlacementNeedsAnAdminOnEverySurfacePG (w3/m281):
 // Render lets only workspace Admins create resources in a protected
 // environment, or move them into or out of it (render.com/docs/projects). A
-// Developer gets the same coded 403 on REST, GraphQL and MCP for each kind; an
-// Admin succeeds; unprotected placements are unchanged.
+// Developer gets the same 403 on REST, GraphQL and MCP for each kind, coded
+// except on REST, which answers only Render's codes (w8/411); an Admin
+// succeeds; unprotected placements are unchanged.
 func TestProtectedEnvironmentPlacementNeedsAnAdminOnEverySurfacePG(t *testing.T) {
 	ctx, pool, st := ownerGuardPG(t)
 	owner, err := st.CreateWorkspace(ctx, "placement-"+ids.New(ids.Workspace), store.PlanHobby, "client-1")
@@ -104,16 +105,16 @@ func TestProtectedEnvironmentPlacementNeedsAnAdminOnEverySurfacePG(t *testing.T)
 	}
 
 	// A Developer cannot create any kind in the protected environment.
-	refused.onREST(t, handler, http.MethodPost, "/v1/services", serviceBody("web-dev", prod))
+	refused.onRenderREST(t, handler, http.MethodPost, "/v1/services", serviceBody("web-dev", prod))
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { createService(name: "web-dev", image: "nginx", ownerId: %q, environmentId: %q) { id } }`, owner.ID, prod))
 	refused.onMCP(t, session, "create_web_service", map[string]any{"name": "web-dev", "image": "nginx", "runtime": "image", "workspaceId": owner.ID, "environmentId": prod})
-	refused.onREST(t, handler, http.MethodPost, "/v1/postgres", fmt.Sprintf(`{"name":"orders-dev","plan":"free","ownerId":%q,"environmentId":%q}`, owner.ID, prod))
+	refused.onRenderREST(t, handler, http.MethodPost, "/v1/postgres", fmt.Sprintf(`{"name":"orders-dev","plan":"free","ownerId":%q,"environmentId":%q}`, owner.ID, prod))
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { createDatabase(name: "orders-dev", plan: "free", ownerId: %q, environmentId: %q) { id } }`, owner.ID, prod))
 	refused.onMCP(t, session, "create_postgres", map[string]any{"name": "orders-dev", "plan": "free", "workspaceId": owner.ID, "environmentId": prod})
-	refused.onREST(t, handler, http.MethodPost, "/v1/key-value", fmt.Sprintf(`{"name":"cache-dev","plan":"free","ownerId":%q,"environmentId":%q}`, owner.ID, prod))
+	refused.onRenderREST(t, handler, http.MethodPost, "/v1/key-value", fmt.Sprintf(`{"name":"cache-dev","plan":"free","ownerId":%q,"environmentId":%q}`, owner.ID, prod))
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { createKeyValue(name: "cache-dev", plan: "free", ownerId: %q, environmentId: %q) { id } }`, owner.ID, prod))
 	refused.onMCP(t, session, "create_key_value", map[string]any{"name": "cache-dev", "plan": "free", "workspaceId": owner.ID, "environmentId": prod})
-	refused.onREST(t, handler, http.MethodPost, "/v1/env-groups", fmt.Sprintf(`{"name":"shared-dev","ownerId":%q,"environmentId":%q}`, owner.ID, prod))
+	refused.onRenderREST(t, handler, http.MethodPost, "/v1/env-groups", fmt.Sprintf(`{"name":"shared-dev","ownerId":%q,"environmentId":%q}`, owner.ID, prod))
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { createEnvGroup(name: "shared-dev", ownerId: %q, environmentId: %q) { id } }`, owner.ID, prod))
 	refused.onMCP(t, session, "create_env_group", map[string]any{"name": "shared-dev", "workspaceId": owner.ID, "environmentId": prod})
 	if n := serviceRows(t, pool, owner.ID); n != 0 {
@@ -126,7 +127,7 @@ func TestProtectedEnvironmentPlacementNeedsAnAdminOnEverySurfacePG(t *testing.T)
 	stagedID, groupID := staged["service"].(map[string]any)["id"].(string), group["id"].(string)
 
 	// A Developer cannot move a resource into the protected environment.
-	refused.onREST(t, handler, http.MethodPost, "/v1/environments/"+prod+"/resources", fmt.Sprintf(`{"resourceIds":[%q]}`, stagedID))
+	refused.onRenderREST(t, handler, http.MethodPost, "/v1/environments/"+prod+"/resources", fmt.Sprintf(`{"resourceIds":[%q]}`, stagedID))
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { moveEnvGroup(id: %q, environmentId: %q) { id } }`, groupID, prod))
 	refused.onMCP(t, session, "move_env_group", map[string]any{"id": groupID, "environmentId": prod})
 
@@ -142,7 +143,7 @@ func TestProtectedEnvironmentPlacementNeedsAnAdminOnEverySurfacePG(t *testing.T)
 	// A Developer cannot move them out again: to another environment or to
 	// Unassigned.
 	role.admin = false
-	refused.onREST(t, handler, http.MethodDelete, "/v1/environments/"+prod+"/resources?resourceIds="+stagedID, "")
+	refused.onRenderREST(t, handler, http.MethodDelete, "/v1/environments/"+prod+"/resources?resourceIds="+stagedID, "")
 	refused.onGraphQL(t, handler, fmt.Sprintf(`mutation { setEnvironmentServices(id: %q, serviceIds: [%q]) { id } }`, staging, stagedID))
 	refused.onMCP(t, session, "move_env_group", map[string]any{"id": groupID, "environmentId": staging})
 	refused.onMCP(t, session, "move_env_group", map[string]any{"id": groupID})

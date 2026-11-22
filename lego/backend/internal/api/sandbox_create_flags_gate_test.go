@@ -33,8 +33,14 @@ import (
 // validator, strict decoding — so a refusal that a bare-mux test proves can
 // not be pre-empted by a generic validator or `unknown field` 400 (w2/m263).
 // The group routes reach the Service through the same path (w22/m311); with
-// no control-plane store they answer a named 503.
+// no control-plane store they answer a named 503. Each row's code is the one
+// GraphQL and MCP answer; REST carries it only when it is in Render's errorCode
+// vocabulary (w8/411).
 func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("a refused sandbox request reached OpenSandbox: %s %s", r.Method, r.URL.Path)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -136,8 +142,12 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 				Params  map[string]any `json:"params"`
 			}
 			_ = json.Unmarshal(rec.Body.Bytes(), &got)
-			if rec.Code != tc.status || got.Code != tc.code {
-				t.Fatalf("= %d %s, want %d %s", rec.Code, rec.Body.String(), tc.status, tc.code)
+			restCode := tc.code
+			if !contract.errorCodes[restCode] {
+				restCode = ""
+			}
+			if rec.Code != tc.status || got.Code != restCode {
+				t.Fatalf("= %d %s, want %d %q", rec.Code, rec.Body.String(), tc.status, restCode)
 			}
 			statuses := sandbox.BuildStatuses()
 			if strings.Contains(tc.path, "/snapshots") {

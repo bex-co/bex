@@ -132,9 +132,10 @@ func (h *gateHarness) assertNothingSubmitted(t *testing.T) {
 }
 
 // TestCreateIsRefusedWithNamedGone is the REST contract the pinned Render CLI
-// reads: a 410 whose body carries Render's {id, message, code} error shape, so
-// `bex jobs create` prints
-// "received response code 410 (ONE_OFF_JOBS_UNSUPPORTED): one-off jobs are not supported …".
+// reads: a 410 in Render's {id, message, code} error shape. The composed REST
+// mount drops the code, which is not in Render's errorCode vocabulary (w8/411),
+// so `bex jobs create` prints
+// "received response code 410: one-off jobs are not supported …".
 func TestCreateIsRefusedWithNamedGone(t *testing.T) {
 	h := newGateHarness(t, allowAllChecker{})
 

@@ -23,19 +23,18 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
+// TestPostgresInsightRenderRoutes: Render's `query/` spelling and bex's own
+// route answer the same 404, except that only bex's carries bex's code
+// (w8/411).
 func TestPostgresInsightRenderRoutes(t *testing.T) {
 	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"client-1": "tea-cli"}}, Deps{APIKeys: newFakeKeyStore()})
 	for _, insight := range []string{"processes", "top-queries", "sizes", "table-scans"} {
-		var body string
-		for _, prefix := range []string{"", "query/"} {
+		for prefix, coded := range map[string]bool{"": true, "query/": false} {
 			w := do(t, h, http.MethodGet, "/v1/postgres/dpg-missing/"+prefix+insight, testToken, "")
-			if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), `"message":"not found"`) {
-				t.Fatalf("%s%s: %d %s", prefix, insight, w.Code, w.Body.String())
+			if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), `"message":"not found"`) ||
+				strings.Contains(w.Body.String(), `"code":"NOT_FOUND"`) != coded {
+				t.Fatalf("%s%s: %d %s, want NOT_FOUND only on bex's own route", prefix, insight, w.Code, w.Body.String())
 			}
-			if body != "" && body != w.Body.String() {
-				t.Fatalf("alias mismatch: %s vs %s", body, w.Body.String())
-			}
-			body = w.Body.String()
 		}
 	}
 }
