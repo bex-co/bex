@@ -196,7 +196,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [085 — The isolation matrix's agent-session phase step relabels a running sandbox Pod, which `bex-sandbox-pods` now refuses (issue #196)](085.md) ← isolation-matrix run 45004293073, 2026-11-22
+- [x] [085 — The isolation matrix's agent-session phase step relabels a running sandbox Pod, which `bex-sandbox-pods` now refuses (issue #196)](done/085.md) — **DONE 2026-11-22** (`20475c038`): `scripts/verify-sandbox-isolation.sh` now proves `bex-sandbox-pods` refuses relabeling an existing sandbox Pod, creates a dedicated gVisor agent-session fixture Pod with `bex.co/agent-session` from CREATE, and verifies Hubble drop attribution on both Pods; dispatched `isolation-matrix.yml` run `45008993619` on `main` passed and closed #196 ← isolation-matrix run 45004293073, 2026-11-22
 
 - [x] [050 — Production deploys starve under concurrent pushes](done/050.md) — **DONE 2026-10-29**: the real superseder was a manifest change (`d66f96c06`), not the docs tip the message named; the supersession message now names the manifest-changing commits (shallow-safe), with a test
 

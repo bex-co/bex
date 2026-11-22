@@ -64,5 +64,5 @@
 - **t007.**
   - Branch probe run 45003934067: `readable=0 of 37`, and the environment job was refused.
   - `deploy.yml` 45001198444, `deploy-canary.yml` 45004007457, `ssh-edge-liveness.yml` 44998109993, `openbao-restore-drill.yml` 44989163840 and drift 45004009517 are green.
-  - `isolation-matrix.yml` 45004293073's credential steps passed; its sandbox leg is red on a separate probe issue ([w2/085](../../../w2/085.md), #196).
+  - `isolation-matrix.yml` 45004293073's credential steps passed; its sandbox leg is red on a separate probe issue ([w2/085](../../../w2/done/085.md), #196).
 - Temporary branches, runs, token secrets and tokens are deleted.
