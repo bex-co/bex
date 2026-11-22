@@ -481,6 +481,12 @@ type Deploy struct {
 	// (SetDeployRollout); the zero value is none. The deploy log narrates it
 	// as Render's does; not a Render deploy field.
 	Rollout DeployRollout `json:"-"`
+	// LiveURLs are the URLs a web service's deploy went live at, primary
+	// first, recorded once by its live close (w32/m567); nil is no record.
+	// The deploy log closes with Render's primary URL block from them, so the
+	// block does not follow the service's later domains. Not a Render deploy
+	// field.
+	LiveURLs []string `json:"-"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -3570,13 +3576,13 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0)`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), live_urls`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
 	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
-		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency}, extra...)...)
+		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.LiveURLs}, extra...)...)
 	return d, err
 }
 
@@ -3680,6 +3686,10 @@ type RanImage struct {
 	// image's revision label. It only fills a row whose trigger-time lookup
 	// recorded none (w4/458); a recorded commit is never overwritten.
 	Commit string
+	// URLs are the URLs a web service went live at, primary first
+	// (Deploy.LiveURLs, w32/m567). Only a live close records them, and only
+	// on a row that has none.
+	URLs []string
 }
 
 // DeployEnd is the structured cause a failing close records (w8/m146), from
@@ -3697,6 +3707,10 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 	var ended DeployEnd
 	if len(end) > 0 {
 		ended = end[0]
+	}
+	var liveURLs []string // NULL, not an empty array, when there is none
+	if len(ran.URLs) > 0 {
+		liveURLs = ran.URLs
 	}
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
@@ -3741,6 +3755,8 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     image_sha = COALESCE(NULLIF($16, ''), image_sha),
 			     detected_http_port = CASE WHEN $2 = $11 AND $17 > 0 THEN $17 ELSE detected_http_port END,
 			     commit = CASE WHEN $2 = $11 AND commit = '' THEN $18::text ELSE commit END,
+			     -- w32/m567: where a web service's deploy went live, written once.
+			     live_urls = CASE WHEN $2 = $11 THEN COALESCE(live_urls, $22::text[]) ELSE live_urls END,
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     -- w8/m146: the structured cause of a failed rollout.
 			     end_exit_code = COALESCE($19, end_exit_code),
@@ -3765,7 +3781,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			 WHERE id = $1`,
 			id, status, ran.Ref, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
 			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA, ran.DetectedHTTPPort, ran.Commit,
-			ended.ExitCode, ended.OOMKilled, ended.TimedOutSeconds); err != nil {
+			ended.ExitCode, ended.OOMKilled, ended.TimedOutSeconds, liveURLs); err != nil {
 			return err
 		}
 		if status == DeployLive {

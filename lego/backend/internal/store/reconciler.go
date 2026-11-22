@@ -1109,6 +1109,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		ran.SHA = releaseImageDigest(cur, open.Generation)
 		ran.DetectedHTTPPort = releaseDetectedHTTPPort(cur, open.Generation, ran.Ref)
 		ran.Commit = builtCommit(cur, ran.Ref)
+		ran.URLs = liveURLs(cur)
 	}
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
@@ -2141,6 +2142,37 @@ func releaseImageDigest(app *appv1alpha1.App, generation int64) string {
 		return ""
 	}
 	return d.Digest
+}
+
+// liveURLs are the URLs a web service answers at as its deploy goes live, for
+// the primary URL block Render's deploy log writes after its live line
+// (w32/m567): status.urls, the hosts the operator serves without wildcards,
+// with the primary first. Render's primary is a custom domain once the service
+// has one, so it is the first custom host served (spec.host, then spec.hosts
+// in the order they were added) that is not the redirecting side of a
+// www<->apex pair, else the first URL served (status.url). Every other type
+// records none: a static site's log ends at its live line, and a private
+// service, a worker and a cron job have no public URL.
+func liveURLs(app *appv1alpha1.App) []string {
+	served := app.Status.URLs
+	if (app.Spec.Type != "" && app.Spec.Type != appv1alpha1.TypeWebService) || len(served) == 0 {
+		return nil
+	}
+	primary := served[0]
+	for _, host := range append([]string{app.Spec.Host}, app.Spec.Hosts...) {
+		_, redirects := app.Spec.HostRedirects[host]
+		if url := "https://" + host; host != "" && !redirects && slices.Contains(served, url) {
+			primary = url
+			break
+		}
+	}
+	out := []string{primary}
+	for _, url := range served {
+		if url != primary {
+			out = append(out, url)
+		}
+	}
+	return out
 }
 
 // builtCommit is the commit a source build of ref checked out, which the

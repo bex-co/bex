@@ -346,14 +346,15 @@ describe("DeployDetailPage — canceled deploy's continued pre-deploy step", () 
     expect(server.logRequests.at(-1)?.endTime).toBe(server.deploy.finishedAt);
   });
 
-  it("keeps the normal createdAt..finishedAt window for a live deploy", async () => {
+  it("keeps a live deploy's own window, through its primary URL block", async () => {
     const server = successServer();
     server.deploy = { ...server.deploy, status: "live" };
     renderPage(server);
 
     await screen.findByText("qa-a147-cancel-start");
+    // finishedAt 04:09:01.5668: the block's last line is at .5728 (w32/m567).
     expect(new Set(server.logRequests.map((v) => v.endTime))).toEqual(
-      new Set([server.deploy.finishedAt]),
+      new Set(["2026-10-11T04:09:01.573Z"]),
     );
   });
 });

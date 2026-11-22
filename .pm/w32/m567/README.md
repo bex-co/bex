@@ -1,18 +1,18 @@
 # w32 · m567 — A web service's deploy log follows `==> Your service is live 🎉` with Render's primary URL block
 
-**Worker:** worker32 **Goal:** a web service deploy that goes live closes its log (`bex logs --type build`, the live tail, the deploy page, GraphQL and MCP) with the block Render writes after its live line, naming the URL the deploy went live at. The URL is the one recorded on the deploy's own row, so an older deploy's log does not change when the service later gets a custom domain. **Status:** todo
+**Worker:** worker32 **Goal:** a web service deploy that goes live closes its log (`bex logs --type build`, the live tail, the deploy page, GraphQL and MCP) with the block Render writes after its live line, naming the URL the deploy went live at. The URL is the one recorded on the deploy's own row, so an older deploy's log does not change when the service later gets a custom domain. **Status:** in progress (t001–t003, t006 and t007 done; t004 ships them and waits for the pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Record the URLs a deploy went live at on its row](t001.md) | 1h | — |
-| t002 | [Narrate Render's primary URL block after a web service's live line](t002.md) | 1h | t001 |
-| t003 | [Record the block in the progress-line contract and ADR018](t003.md) | 20m | t002 |
+| t001 | [Record the URLs a deploy went live at on its row](done/t001.md) — **DONE** | 1h | — |
+| t002 | [Narrate Render's primary URL block after a web service's live line](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [Record the block in the progress-line contract and ADR018](done/t003.md) — **DONE** | 20m | t002 |
 | t004 | [Ship and verify on production](t004.md) | 45m | t002, t003 |
 | t005 | [Render parity](t005.md) | 30m | t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Render's block

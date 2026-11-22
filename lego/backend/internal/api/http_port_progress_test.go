@@ -18,6 +18,8 @@ package api
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,5 +58,33 @@ func TestHTTPPortProgressHistoryKeepsEachDeploysListener(t *testing.T) {
 	oldLine, newLine := found["==> Detected HTTP on port 15672; serving it"], found["==> Detected HTTP on port 80; serving it"]
 	if oldLine.Timestamp != oldEnd.Format(time.RFC3339Nano) || newLine.Timestamp != newEnd.Format(time.RFC3339Nano) || oldLine.Labels[logs.LabelInstance] == newLine.Labels[logs.LabelInstance] {
 		t.Fatalf("historical narration=%v entries=%+v", found, entries)
+	}
+}
+
+// w32/m567: the composition root hands the narration each deploy row's own
+// record of where it went live, so a deploy's log names the URL it went live
+// at, and a row with no record (an older deploy) ends at its live line.
+func TestPrimaryURLBlockReadsEachDeploysOwnRecord(t *testing.T) {
+	at := time.Date(2026, 11, 22, 16, 0, 0, 0, time.UTC)
+	oldEnd, newEnd := at.Add(-time.Minute), at
+	old := store.Deploy{ID: "dep-old", Status: store.DeployDeactivated, CreatedAt: at.Add(-2 * time.Minute), FinishedAt: &oldEnd}
+	latest := store.Deploy{ID: "dep-new", Status: store.DeployLive, CreatedAt: at.Add(-time.Minute), FinishedAt: &newEnd,
+		LiveURLs: []string{"https://shop.example", "https://web.onbex.co"}}
+	server := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{
+		DeployStore: &conformDeployStore{byApp: map[string][]store.Deploy{"web": {latest, old}}},
+		LogHistory:  func(context.Context, string, logs.LogQuery) ([]logs.LogEntry, error) { return nil, nil },
+	})
+	entries, err := server.Logs.QueryLogs(context.Background(), logs.LogQuery{App: "web", Types: []string{logs.LogTypeBuild}, Since: at.Add(-3 * time.Minute), End: at.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	urls := map[string][]string{}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Message, "==> Available at your primary URL ") {
+			urls[e.Labels[logs.LabelBuild]] = append(urls[e.Labels[logs.LabelBuild]], e.Message)
+		}
+	}
+	if want := []string{"==> Available at your primary URL https://shop.example + 1 more domain"}; len(urls) != 1 || !slices.Equal(urls["dep-new"], want) {
+		t.Fatalf("primary URL lines by deploy = %q, want only dep-new's %q", urls, want)
 	}
 }

@@ -171,12 +171,14 @@ describe("DeployDetailPage", () => {
   });
 
   // w33/m435: the Blueprint's one-time initialDeployHook runs after the
-  // deploy is live, so its output is past the deploy's own end.
-  it("closes a live deploy's log window at its own end when no hook ran", () => {
+  // deploy is live, so its output is past the deploy's own end. With no hook
+  // the window closes just past the primary URL block bex-api writes after
+  // the live line (w32/m567).
+  it("closes a live deploy's log window past its primary URL block when no hook ran", () => {
     render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
 
     const panel = screen.getByTestId("build-log");
-    expect(panel).toHaveAttribute("data-end-time", "2026-07-14T00:01:00Z");
+    expect(panel).toHaveAttribute("data-end-time", "2026-07-14T00:01:00.007Z");
     expect(panel).toHaveAttribute("data-has-pre-deploy", "false");
   });
 

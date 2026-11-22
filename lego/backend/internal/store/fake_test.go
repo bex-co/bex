@@ -900,6 +900,9 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran Ra
 	if status == DeployLive && ran.DetectedHTTPPort > 0 {
 		d.DetectedHTTPPort = ran.DetectedHTTPPort
 	}
+	if status == DeployLive && d.LiveURLs == nil && len(ran.URLs) > 0 {
+		d.LiveURLs = slices.Clone(ran.URLs)
+	}
 	if failureReason != "" {
 		d.FailureReason = failureReason
 	}

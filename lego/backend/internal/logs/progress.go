@@ -103,7 +103,11 @@ type DeployProgress struct {
 	AppStartedAt          []time.Time
 	StartCommand          string
 	WebConcurrencyDefault int32
-	ReadAt                time.Time
+	// LiveURLs are the URLs the deploy went live at, primary first, as its
+	// row recorded them when it closed live (w32/m567); nil is no record.
+	// They write Render's primary URL block after the live line.
+	LiveURLs []string
+	ReadAt   time.Time
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -437,8 +441,19 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		for _, msg := range closingLines(d, pc.serviceType) {
 			add(d.FinishedAt, msg)
 		}
+		// Each line of the block has its own moment: a line's id is its
+		// instance, moment and text, and the block repeats two of its lines.
+		for i, msg := range primaryURLLines(d) {
+			add(d.FinishedAt.Add(time.Duration(i+1)*primaryURLLineStep), msg)
+		}
 	}
 	return out
+}
+
+// liveLinesEnd is the moment of the last line d's close wrote: its live
+// line's primary URL block, else the close itself.
+func liveLinesEnd(d DeployProgress) time.Time {
+	return d.FinishedAt.Add(time.Duration(len(primaryURLLines(d))) * primaryURLLineStep)
 }
 
 // Render's rollout narration (w32/m560), from deploy logs users quoted in
@@ -606,28 +621,38 @@ const (
 	hookLineRetry     = "==> The deploy stays live. The hook runs again after the next deploy goes live."
 )
 
+// hookMoments are the moments of h's lines on d. The operator stamps both in
+// whole seconds, so the start is held just after the lines d's live close
+// wrote and the end at the close of its second: the hook's own output, which
+// the pod stamps in nanoseconds, then reads between the two. finished is zero
+// while the hook runs.
+func hookMoments(d DeployProgress, h hookRun) (started, finished time.Time) {
+	started = h.startedAt
+	if live := liveLinesEnd(d).Add(time.Millisecond); started.Before(live) {
+		started = live
+	}
+	if h.finishedAt.IsZero() {
+		return started, time.Time{}
+	}
+	finished = h.finishedAt.Add(time.Second - time.Nanosecond)
+	if finished.Before(started) {
+		finished = started
+	}
+	return started, finished
+}
+
 // hookLines renders the lines d earned from the initial deploy hook that ran
-// once it was live: one when it started, and how it ended. The operator stamps
-// both moments in whole seconds, so the start is held just after the row's
-// live line and the end at the close of its second: the hook's own output,
-// which the pod stamps in nanoseconds, then reads between the two.
+// once it was live: one when it started, and how it ended (hookMoments).
 func hookLines(d DeployProgress, h hookRun) []LogEntry {
 	if !h.ranFor(d) {
 		return nil
 	}
 	var out []LogEntry
 	add := func(t time.Time, msg string) { out = append(out, progressEntry(d.ID, t, msg)) }
-	started := h.startedAt
-	if live := d.FinishedAt.Add(time.Millisecond); started.Before(live) {
-		started = live
-	}
+	started, finished := hookMoments(d, h)
 	add(started, hookLineRunning)
-	if h.finishedAt.IsZero() {
+	if finished.IsZero() {
 		return out
-	}
-	finished := h.finishedAt.Add(time.Second - time.Nanosecond)
-	if finished.Before(started) {
-		finished = started
 	}
 	switch h.status {
 	case appv1alpha1.PreDeploySucceeded:
@@ -643,16 +668,15 @@ func hookLines(d DeployProgress, h hookRun) []LogEntry {
 	return out
 }
 
-// hookEnd is when d's story ends once its hook is counted: the hook's end, the
-// zero time while it runs, else d's own finish.
-func hookEnd(d DeployProgress, h hookRun) time.Time {
+// storyEnd is the moment of d's last line once its hook is counted: the
+// hook's end line, the zero time while it runs, else the last line d's close
+// wrote (zero while d is open).
+func storyEnd(d DeployProgress, h hookRun) time.Time {
 	if !h.ranFor(d) {
-		return d.FinishedAt
+		return liveLinesEnd(d)
 	}
-	if h.finishedAt.IsZero() {
-		return time.Time{}
-	}
-	return h.finishedAt.Add(time.Second)
+	_, finished := hookMoments(d, h)
+	return finished
 }
 
 // Render's closing lines for a failed deploy, from deploy logs users quoted
@@ -669,6 +693,45 @@ const (
 	buildFailedLine  = "==> Build failed 😞"
 	troubleshootLine = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
 )
+
+// Render's primary URL block (w32/m567), from deploy logs users quoted in
+// GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): six lines
+// after a web service's `==> Your service is live 🎉`, a blank marker that
+// keeps its trailing space, a rule of 59 slashes, the URL line between two
+// more blank markers, and the rule again (falcon-Z/z0-auth#12,
+// lelewithheart/Pixel-Breach#10 and ten more). The URL ends at its host, as
+// Render's API reads give it (lss233/kirara-ai#1498, falcon-Z/z0-auth#12);
+// the dashboard's viewer links it and adds a slash. A custom domain is the
+// primary and counts the service's other domains (barouu78-wq/teranga-ai#417
+// and mvryhan-web/video-variator-android#233, `+ 2 more domains`;
+// bookorbit/bookorbit#31, `+ 1 more domain`). A static site's log has no
+// block (muppetbrown/mana_meeples_singles_market#226).
+const (
+	primaryURLBlank    = "==> "
+	primaryURLRule     = "==> ///////////////////////////////////////////////////////////"
+	primaryURLLine     = "==> Available at your primary URL "
+	primaryURLLineStep = time.Millisecond // each line follows the one before it by this
+)
+
+// primaryURLLines is Render's block after d's live line, from the URLs d's
+// row recorded when it went live: the first is the primary, the rest are
+// counted. A deploy that did not go live and a row with no record (a static
+// site, a private service, a worker, a cron job, a row closed before the
+// record existed) get none.
+func primaryURLLines(d DeployProgress) []string {
+	if (d.Status != "live" && d.Status != "deactivated") || d.FinishedAt.IsZero() || len(d.LiveURLs) == 0 {
+		return nil
+	}
+	url := primaryURLLine + d.LiveURLs[0]
+	switch more := len(d.LiveURLs) - 1; more {
+	case 0:
+	case 1:
+		url += " + 1 more domain"
+	default:
+		url += fmt.Sprintf(" + %d more domains", more)
+	}
+	return []string{primaryURLBlank, primaryURLRule, primaryURLBlank, url, primaryURLBlank, primaryURLRule}
+}
 
 // closingLines is a finished deploy's closing line(s): Render's verdict and
 // troubleshooting line for a failure Render's logs confirm, and bex's own
@@ -815,9 +878,10 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 	merged := entries
 	for i, d := range rows {
 		// Skip rows that ended before the window opened; per-line keep()
-		// applies the exact bounds below. A row's initial deploy hook runs
-		// after the row itself closed, so it ends when the hook does.
-		if ended := hookEnd(d, pc.hook); !q.Since.IsZero() && !ended.IsZero() && ended.Before(q.Since) {
+		// applies the exact bounds below. A row's primary URL block and its
+		// initial deploy hook come after the row itself closed, so it ends
+		// with them.
+		if ended := storyEnd(d, pc.hook); !q.Since.IsZero() && !ended.IsZero() && ended.Before(q.Since) {
 			continue
 		}
 		if !q.keepPod(d.ID) || (q.Deploy != "" && d.ID != q.Deploy) {
@@ -998,15 +1062,15 @@ func (f *progressFollower) readFollowed(ctx context.Context) bool {
 }
 
 // emitRow sends the lines d has earned that this tail has not sent yet. With
-// holdClosing it keeps back the lines d earned by closing.
+// holdClosing it keeps back the lines d earned by closing: the verdict at its
+// close and the primary URL block after it.
 func (f *progressFollower) emitRow(d DeployProgress, holdClosing bool, emit func(LogEntry) error) error {
-	closing := ""
-	if holdClosing && !d.FinishedAt.IsZero() {
-		closing = d.FinishedAt.UTC().Format(time.RFC3339Nano)
-	}
+	hold := holdClosing && !d.FinishedAt.IsZero()
 	for _, e := range progressLines(d, f.pc) {
-		if e.Timestamp == closing {
-			continue
+		if hold {
+			if at, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil && !at.Before(d.FinishedAt) {
+				continue
+			}
 		}
 		// logID is the adapters' stable line identity — reusing it here keeps
 		// the follower's dedupe in lockstep with what clients see.
