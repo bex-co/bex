@@ -5,6 +5,8 @@ export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' |
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type AgentSessionConfigInput = {
   agent: string;
+  /** Omit (or null) to inherit the workspace's GitHub CLI setting. false turns gh off for this session; anyone who can start it may. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off. */
+  githubCli?: boolean | null | undefined;
   model?: string | null | undefined;
   modelEndpoint?: string | null | undefined;
   task: string;
