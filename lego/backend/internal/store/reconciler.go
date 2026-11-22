@@ -1078,6 +1078,16 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			}
 		}
 	}
+	// w32/m560: the operator's record of this row's own release rollout, which
+	// its deploy log narrates. Stamped before the transition below can close
+	// the row, so a rollout that went live between two passes keeps its lines,
+	// and from the record's generation alone: a superseded row's rollout is
+	// still its own.
+	if rollout, ok := releaseRolloutFor(cur, open.Generation); ok && !open.Rollout.holds(rollout) {
+		if err := r.Store.SetDeployRollout(ctx, open.ID, rollout); err != nil {
+			log.Printf("controlplane: set deploy rollout %s: %v", open.ID, err)
+		}
+	}
 	if status == "" {
 		return
 	}
@@ -1248,6 +1258,40 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 		}
 	}
 	return "", ""
+}
+
+// releaseRolloutFor is the operator's record of one deploy row's release
+// rollout (status.releaseRollout, w32/m560). ok is false when the record is
+// another release's, or there is none.
+func releaseRolloutFor(app *appv1alpha1.App, generation int64) (DeployRollout, bool) {
+	rec := app.Status.ReleaseRollout
+	if generation == 0 || rec == nil || rec.Generation != generation || rec.StartedAt.IsZero() {
+		return DeployRollout{}, false
+	}
+	started := rec.StartedAt.Time
+	out := DeployRollout{StartedAt: &started, Command: rec.Command, WebConcurrency: rec.WebConcurrency}
+	for _, t := range rec.AppStarts {
+		out.AppStarts = append(out.AppStarts, t.Time)
+	}
+	return out, true
+}
+
+// holds reports that a row's rollout already carries everything rec would
+// add (SetDeployRollout): its start, and each of rec's app starts unless the
+// row's are at their bound.
+func (r DeployRollout) holds(rec DeployRollout) bool {
+	if r.StartedAt == nil {
+		return false
+	}
+	if len(r.AppStarts) >= appv1alpha1.MaxReleaseRolloutAppStarts {
+		return true
+	}
+	for _, t := range rec.AppStarts {
+		if !slices.ContainsFunc(r.AppStarts, t.Equal) {
+			return false
+		}
+	}
+	return true
 }
 
 // deployCloseEnd is the structured cause an update_failed close records

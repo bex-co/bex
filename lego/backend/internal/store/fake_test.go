@@ -998,6 +998,27 @@ func (m *memStore) SetDeployStallReason(_ context.Context, id, reason string) er
 	return nil
 }
 
+// SetDeployRollout mirrors PGStore: open rows only, the start, command and
+// default once, the app starts merged distinct, oldest first and bounded.
+func (m *memStore) SetDeployRollout(_ context.Context, id string, rollout DeployRollout) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.deploys[id]
+	if !ok || d.FinishedAt != nil || rollout.StartedAt == nil {
+		return nil
+	}
+	if d.Rollout.StartedAt == nil {
+		started := *rollout.StartedAt
+		d.Rollout.StartedAt, d.Rollout.Command, d.Rollout.WebConcurrency = &started, rollout.Command, rollout.WebConcurrency
+	}
+	starts := slices.Concat(d.Rollout.AppStarts, rollout.AppStarts)
+	slices.SortFunc(starts, time.Time.Compare)
+	starts = slices.CompactFunc(starts, time.Time.Equal)
+	d.Rollout.AppStarts = starts[:min(len(starts), appv1alpha1.MaxReleaseRolloutAppStarts)]
+	m.deploys[id] = d
+	return nil
+}
+
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

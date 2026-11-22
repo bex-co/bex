@@ -314,9 +314,12 @@ func TestRESTTriggerWaitsForTheWaitingDeployTheOperatorHasNotAdoptedYet(t *testi
 		t.Fatalf("C after B served = %+v, want it running as a release after B's", ran)
 	}
 	// A served before B, which now serves in its place.
-	for label, want := range map[store.Deploy]string{f.a: store.DeployDeactivated, f.b: store.DeployLive} {
-		if got := f.get(label); got.Status != want || got.CancelReason != "" {
-			t.Fatalf("%s = %s (%q), want %s and never canceled", label.ID, got.Status, got.CancelReason, want)
+	for _, row := range []struct {
+		deploy store.Deploy
+		want   string
+	}{{f.a, store.DeployDeactivated}, {f.b, store.DeployLive}} {
+		if got := f.get(row.deploy); got.Status != row.want || got.CancelReason != "" {
+			t.Fatalf("%s = %s (%q), want %s and never canceled", row.deploy.ID, got.Status, got.CancelReason, row.want)
 		}
 	}
 }

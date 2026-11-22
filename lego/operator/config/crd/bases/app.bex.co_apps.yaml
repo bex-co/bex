@@ -1943,6 +1943,60 @@ spec:
                   the release that caused them.
                 format: int64
                 type: integer
+              releaseRollout:
+                description: |-
+                  ReleaseRollout is what the operator saw of the latest release rollout
+                  it started (w32/m560): its start, its app container's starts, its
+                  native start command and its WEB_CONCURRENCY default. bex-api narrates
+                  it in the release's deploy log. Attributed to the release generation,
+                  like RolloutFailure.
+                properties:
+                  appStarts:
+                    description: |-
+                      AppStarts are the starts of the release's app container on its pods
+                      while the rollout ran, oldest first, at most
+                      MaxReleaseRolloutAppStarts: the first start, then one per restart.
+                      Whole seconds, as the kubelet reports them. Nothing is added once the
+                      release serves, fails or is replaced.
+                    items:
+                      format: date-time
+                      type: string
+                    maxItems: 10
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  command:
+                    description: |-
+                      Command is the start command the release's app container launched on a
+                      native image, as configured ($PORT unexpanded); empty for any other
+                      launch (a Docker image, with or without a Docker Command, a prebuilt
+                      image, or the image's own command).
+                    maxLength: 4096
+                    type: string
+                  generation:
+                    description: |-
+                      Generation is the release generation whose rollout this is. A newer
+                      release's rollout replaces the record.
+                    format: int64
+                    type: integer
+                  startedAt:
+                    description: |-
+                      StartedAt is when the operator first wrote the release's serving pod
+                      template, after its build and any pre-deploy step. Microseconds, so it
+                      sorts after the build's own last line. A resync, a cancel's revert and
+                      a survivor's redispatch never move it.
+                    format: date-time
+                    type: string
+                  webConcurrency:
+                    description: |-
+                      WebConcurrency is the WEB_CONCURRENCY default the app container got
+                      (a web or private service created after the default shipped, which sets
+                      no value of its own); zero for none.
+                    format: int32
+                    type: integer
+                required:
+                - generation
+                - startedAt
+                type: object
               releaseSettingsFingerprint:
                 description: |-
                   ReleaseSettingsFingerprint is the saved-settings identity of the release

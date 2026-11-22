@@ -1,22 +1,22 @@
 # w32 · m560 — A deploy log narrates its rollout as Render's does: `==> Deploying...`, the `WEB_CONCURRENCY` default and `==> Running '<start command>'`
 
-**Worker:** worker32 **Goal:** between a build's end and its verdict, a deploy's log (`bex logs --type build`, the deploy page, the live tail) shows the lines Render writes there, each at a moment the operator recorded. `==> Deploying...` comes when the release's rollout starts. `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` follows when its instance gets that default. On a native runtime, `==> Running '<start command>'` comes each time its app container starts. **Status:** todo
+**Worker:** worker32 **Goal:** between a build's end and its verdict, a deploy's log (`bex logs --type build`, the deploy page, the live tail) shows the lines Render writes there, each at a moment the operator recorded. `==> Deploying...` comes when the release's rollout starts. `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` follows when its instance gets that default. On a native runtime, `==> Running '<start command>'` comes each time its app container starts. **Status:** todo (t001–t007, t010, t011 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The operator records each release's rollout start, its app container's starts, its launched command and its `WEB_CONCURRENCY` default](t001.md) | 2h | — |
-| t002 | [The control plane projects the record onto the deploy row and into `DeployProgress`](t002.md) | 1h30m | t001 |
-| t003 | [`==> Deploying...` at the rollout's recorded start](t003.md) | 45m | t002 |
-| t004 | [`==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` after it](t004.md) | 30m | t003 |
-| t005 | [`==> Running '<start command>'` at each recorded start of a native runtime's app container](t005.md) | 45m | t003 |
-| t006 | [The live build tail carries the rollout lines as they are recorded](t006.md) | 45m | t003, t004, t005 |
-| t007 | [Record the lines in the progress-line contract and ADR018](t007.md) | 20m | t003, t004, t005 |
+| t001 | [The operator records each release's rollout start, its app container's starts, its launched command and its `WEB_CONCURRENCY` default](done/t001.md) — **DONE** | 2h | — |
+| t002 | [The control plane projects the record onto the deploy row and into `DeployProgress`](done/t002.md) — **DONE** | 1h30m | t001 |
+| t003 | [`==> Deploying...` at the rollout's recorded start](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [`==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` after it](done/t004.md) — **DONE** | 30m | t003 |
+| t005 | [`==> Running '<start command>'` at each recorded start of a native runtime's app container](done/t005.md) — **DONE** | 45m | t003 |
+| t006 | [The live build tail carries the rollout lines as they are recorded](done/t006.md) — **DONE** | 45m | t003, t004, t005 |
+| t007 | [Record the lines in the progress-line contract and ADR018](done/t007.md) — **DONE** | 20m | t003, t004, t005 |
 | t008 | [Ship and verify on production](t008.md) | 45m | t006, t007 |
 | t009 | [Render parity](t009.md) | 30m | t008 |
-| t010 | [Simplify](t010.md) | 15m | t009 |
-| t011 | [Test coverage](t011.md) | 30m | t009 |
+| t010 | [Simplify](done/t010.md) — **DONE** | 15m | t009 |
+| t011 | [Test coverage](done/t011.md) — **DONE** | 30m | t009 |
 | t012 | [Closeout](t012.md) | 10m | t010, t011 |
 
 ## Definition of done

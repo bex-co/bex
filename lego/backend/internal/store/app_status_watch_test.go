@@ -253,7 +253,7 @@ func TestResyncClosesADeployWhileTheStatusWatchIsDown(t *testing.T) {
 func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 	fingerprinted := map[string]bool{
 		"Phase": true, "Conditions": true, "BuildRun": true, "BuildHold": true, "PreDeploy": true,
-		"ReleaseStart": true, "ReleaseGeneration": true, "ActiveRevision": true, "RolloutFailure": true,
+		"ReleaseStart": true, "ReleaseGeneration": true, "ActiveRevision": true, "RolloutFailure": true, "ReleaseRollout": true,
 		"InstanceExits": true, "Runs": true, "Autoscaling": true, "PlatformRedeploy": true, "ManualRunHandledAt": true, "CancelRunRecorded": true,
 	}
 	ignored := map[string]string{

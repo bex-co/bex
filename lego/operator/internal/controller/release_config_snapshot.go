@@ -802,6 +802,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 	}
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
+	if restore == nil {
+		r.recordReleaseRollout(ctx, app, dep, nativeLaunchCommand(runtime, params.image, launch), params.webConcurrency)
+	}
 	return 0, nil
 }
 

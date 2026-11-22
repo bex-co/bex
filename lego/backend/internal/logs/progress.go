@@ -93,7 +93,17 @@ type DeployProgress struct {
 	// exited closes the log with Render's exit lines (w8/393).
 	ExitCode  *int32
 	OOMKilled bool
-	ReadAt    time.Time
+	// RolloutStartedAt is when the operator first wrote the release's serving
+	// template, AppStartedAt each start of its app container while the
+	// rollout ran (oldest first), StartCommand the start command that
+	// container ran on a native image, and WebConcurrencyDefault the
+	// WEB_CONCURRENCY default it got (status.releaseRollout, w32/m560). Zero
+	// values are none. They time Render's rollout lines (rolloutLines).
+	RolloutStartedAt      time.Time
+	AppStartedAt          []time.Time
+	StartCommand          string
+	WebConcurrencyDefault int32
+	ReadAt                time.Time
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -417,6 +427,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			}
 		}
 	}
+	out = append(out, rolloutLines(d, repo != "" && d.Built)...)
 	out = append(out, portScanLines(d)...)
 	if !d.FinishedAt.IsZero() {
 		if (d.Status == "live" || d.Status == "deactivated") && d.DetectedHTTPPort > 0 && d.DetectedHTTPPort <= 65535 {
@@ -426,6 +437,63 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		for _, msg := range closingLines(d, pc.serviceType) {
 			add(d.FinishedAt, msg)
 		}
+	}
+	return out
+}
+
+// Render's rollout narration (w32/m560), from deploy logs users quoted in
+// GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): `==>
+// Deploying...` opens the rollout of every built service, native or Docker
+// (DerekSopok/EMS-Kahoot#3, darthjee/ward#109); the WEB_CONCURRENCY line
+// follows about 0.1 s later; and on a native runtime `==> Running
+// '<command>'` comes each time the start command starts, quoted as configured
+// with $PORT unexpanded (frayel/devagent#62).
+const (
+	deployingLine            = "==> Deploying..."
+	webConcurrencyLineFormat = "==> Setting WEB_CONCURRENCY=%d by default, based on available CPUs in the instance"
+	runningLineFormat        = "==> Running '%s'"
+	// rolloutLineStep is how far a rollout line is held after the line before
+	// it when their moments do not order them.
+	rolloutLineStep = time.Millisecond
+)
+
+// rolloutLines are the lines d earned from the operator's record of its
+// rollout: `==> Deploying...` at the rollout's start when d built (a deploy
+// that ran no build keeps bex's own rollout line at its start), the
+// WEB_CONCURRENCY line when the release's instance got that default, and one
+// `==> Running '<command>'` at each recorded start of a native start command.
+// A record stamped after d closed, and a start after it, are not d's. Each
+// line is held just after the one before it when its moment does not order
+// it: the row's start is the dispatch, in whole seconds for a deploy that ran
+// no build, and the kubelet stamps a container's start in whole seconds too,
+// so a start in the rollout's first second would read before it.
+func rolloutLines(d DeployProgress, built bool) []LogEntry {
+	if d.RolloutStartedAt.IsZero() || (!d.FinishedAt.IsZero() && d.RolloutStartedAt.After(d.FinishedAt)) {
+		return nil
+	}
+	var out []LogEntry
+	last := d.StartedAt
+	add := func(t time.Time, msg string) {
+		if !last.IsZero() && !t.After(last) {
+			t = last.Add(rolloutLineStep)
+		}
+		last = t
+		out = append(out, progressEntry(d.ID, t, msg))
+	}
+	if built {
+		add(d.RolloutStartedAt, deployingLine)
+	}
+	if d.WebConcurrencyDefault > 0 {
+		add(d.RolloutStartedAt, fmt.Sprintf(webConcurrencyLineFormat, d.WebConcurrencyDefault))
+	}
+	if d.StartCommand == "" {
+		return out
+	}
+	for _, start := range d.AppStartedAt {
+		if !d.FinishedAt.IsZero() && start.After(d.FinishedAt) {
+			break
+		}
+		add(start, fmt.Sprintf(runningLineFormat, d.StartCommand))
 	}
 	return out
 }

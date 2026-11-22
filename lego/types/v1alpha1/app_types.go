@@ -1818,6 +1818,53 @@ type ImageDigestStatus struct {
 	Digest string `json:"digest"`
 }
 
+// MaxReleaseRolloutAppStarts bounds ReleaseRolloutStatus.AppStarts.
+const MaxReleaseRolloutAppStarts = 10
+
+// ReleaseRolloutStatus is what the operator saw of one release's rollout
+// (w32/m560): when it first wrote the release's serving pod template, each
+// start of the release's app container while the rollout ran, the start
+// command that container launched on a native image, and the WEB_CONCURRENCY
+// default it got. bex-api copies it onto the release's deploy row, and the
+// deploy log narrates it as Render's does: `==> Deploying...`, `==> Setting
+// WEB_CONCURRENCY=N by default…` and `==> Running '<command>'`. A static site
+// and a cron job run no instance at deploy and get none.
+type ReleaseRolloutStatus struct {
+	// Generation is the release generation whose rollout this is. A newer
+	// release's rollout replaces the record.
+	Generation int64 `json:"generation"`
+
+	// StartedAt is when the operator first wrote the release's serving pod
+	// template, after its build and any pre-deploy step. Microseconds, so it
+	// sorts after the build's own last line. A resync, a cancel's revert and
+	// a survivor's redispatch never move it.
+	StartedAt metav1.MicroTime `json:"startedAt"`
+
+	// AppStarts are the starts of the release's app container on its pods
+	// while the rollout ran, oldest first, at most
+	// MaxReleaseRolloutAppStarts: the first start, then one per restart.
+	// Whole seconds, as the kubelet reports them. Nothing is added once the
+	// release serves, fails or is replaced.
+	// +optional
+	// +listType=atomic
+	// +kubebuilder:validation:MaxItems=10
+	AppStarts []metav1.Time `json:"appStarts,omitempty"`
+
+	// Command is the start command the release's app container launched on a
+	// native image, as configured ($PORT unexpanded); empty for any other
+	// launch (a Docker image, with or without a Docker Command, a prebuilt
+	// image, or the image's own command).
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	Command string `json:"command,omitempty"`
+
+	// WebConcurrency is the WEB_CONCURRENCY default the app container got
+	// (a web or private service created after the default shipped, which sets
+	// no value of its own); zero for none.
+	// +optional
+	WebConcurrency int32 `json:"webConcurrency,omitempty"`
+}
+
 // RolloutFailureStatus is the structured cause of a failed rollout (w8/m146),
 // recorded when the operator settles it: the app container's last exit, read
 // from a current-revision pod, and the rollout budget when the deadline ended
@@ -2135,6 +2182,14 @@ type AppStatus struct {
 	// Attributed to the release generation, like ImageDigest.
 	// +optional
 	RolloutFailure *RolloutFailureStatus `json:"rolloutFailure,omitempty"`
+
+	// ReleaseRollout is what the operator saw of the latest release rollout
+	// it started (w32/m560): its start, its app container's starts, its
+	// native start command and its WEB_CONCURRENCY default. bex-api narrates
+	// it in the release's deploy log. Attributed to the release generation,
+	// like RolloutFailure.
+	// +optional
+	ReleaseRollout *ReleaseRolloutStatus `json:"releaseRollout,omitempty"`
 
 	// ProtectedImageTag is the live-<generation> tag the operator last pushed
 	// for the serving release's image in the in-cluster registry, which

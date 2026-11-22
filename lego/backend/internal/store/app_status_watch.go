@@ -185,8 +185,8 @@ func (w *AppStatusWatch) failed(err error) error {
 
 // statusFingerprint is the part of an App's status the projector turns into
 // deploy rows and service events: the phase and condition verdicts, the build,
-// pre-deploy and release records, rollout failures, instance exits, cron runs
-// and autoscaling transitions. A change to any of them is something
+// pre-deploy and release records, rollout failures, the release's rollout
+// record (w32/m560), instance exits, cron runs and autoscaling transitions. A change to any of them is something
 // recordObservations may record; nothing else in the status is.
 //
 // Conditions are reduced to their verdicts (type, status, reason, generation):
@@ -213,6 +213,7 @@ func statusFingerprint(s *appv1alpha1.AppStatus) uint64 {
 		ReleaseGeneration  int64
 		ActiveRevision     string
 		RolloutFailure     *appv1alpha1.RolloutFailureStatus
+		ReleaseRollout     *appv1alpha1.ReleaseRolloutStatus
 		InstanceExits      []appv1alpha1.InstanceExit
 		Runs               []appv1alpha1.CronRun
 		Autoscaling        *appv1alpha1.AutoscalingStatus
@@ -221,7 +222,7 @@ func statusFingerprint(s *appv1alpha1.AppStatus) uint64 {
 		CancelRunRecorded  string
 	}{
 		s.Phase, conditions, s.BuildRun, s.BuildHold, s.PreDeploy, s.ReleaseStart, s.ReleaseGeneration,
-		s.ActiveRevision, s.RolloutFailure, s.InstanceExits, s.Runs, s.Autoscaling, s.PlatformRedeploy,
+		s.ActiveRevision, s.RolloutFailure, s.ReleaseRollout, s.InstanceExits, s.Runs, s.Autoscaling, s.PlatformRedeploy,
 		s.ManualRunHandledAt, s.CancelRunRecorded,
 	})
 	if err != nil {

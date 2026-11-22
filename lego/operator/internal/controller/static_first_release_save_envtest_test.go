@@ -233,6 +233,7 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)))
 		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
 		Expect(backend(nn)).To(Equal(staticServerAliasName(nn.Name)), "the host is handed to the static-server")
+		Expect(app.Status.ReleaseRollout).To(BeNil(), "a static site publishes; it rolls out no instance (w32/m560)")
 	}
 
 	It("goes live after a root directory set and cleared during the build", func() {

@@ -476,6 +476,11 @@ type Deploy struct {
 	// start command that exited and a spent budget as Render's does (w8/391,
 	// w8/393).
 	End DeployEnd `json:"-"`
+	// Rollout is the operator's record of this deploy's release rollout
+	// (status.releaseRollout, w32/m560), stamped while the row was open
+	// (SetDeployRollout); the zero value is none. The deploy log narrates it
+	// as Render's does; not a Render deploy field.
+	Rollout DeployRollout `json:"-"`
 	// TriggeredBy is core.Identity.Subject for the caller that opened this row
 	// (w4/072) — same form as audit_events.caller. Empty for unattributed
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
@@ -820,6 +825,11 @@ type Store interface {
 	// each pass; ignored once the row is terminal. Best-effort observation —
 	// never a verdict, and never a reason to fail reconciliation.
 	SetDeployStallReason(ctx context.Context, id, reason string) error
+	// SetDeployRollout copies the operator's record of an OPEN deploy's
+	// release rollout onto its row (w32/m560): the start, command and
+	// WEB_CONCURRENCY default once, and the app starts as they grow, up to
+	// appv1alpha1.MaxReleaseRolloutAppStarts. Ignored once the row is terminal.
+	SetDeployRollout(ctx context.Context, id string, rollout DeployRollout) error
 	// RecordObservedServiceState persists level-triggered App status edges through
 	// a typed checkpoint; repeated reconciler observations are no-ops.
 	RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error)
@@ -3493,6 +3503,49 @@ func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) e
 	return classify("deploy stall reason", err)
 }
 
+// DeployRollout is the operator's record of a deploy's release rollout
+// (appv1alpha1.ReleaseRolloutStatus, w32/m560): when it first wrote the
+// release's serving template, the starts of its app container while the
+// rollout ran (oldest first), the start command it launched on a native
+// image, and its WEB_CONCURRENCY default. The zero value is none.
+type DeployRollout struct {
+	StartedAt      *time.Time
+	AppStarts      []time.Time
+	Command        string
+	WebConcurrency int32
+}
+
+// SetDeployRollout stamps an open row with its release's rollout record. The
+// start, command and default are written once, by the first write; the app
+// starts are merged with the row's own, distinct, oldest first and bounded,
+// so a record read again or out of order only ever adds starts. A write that
+// changes nothing is skipped, and like SetDeployStallReason it leaves
+// updated_at alone: it is an observation of the row, not a transition. A
+// terminal row keeps what it had: a start recorded after the close is not
+// this deploy's.
+func (s *PGStore) SetDeployRollout(ctx context.Context, id string, rollout DeployRollout) error {
+	if rollout.StartedAt == nil {
+		return nil
+	}
+	_, err := s.Pool.Exec(ctx,
+		`WITH merged AS (
+		   SELECT d.id, (SELECT array_agg(t ORDER BY t) FROM (
+		       SELECT DISTINCT t FROM unnest(COALESCE(d.app_started_at, '{}') || $5::timestamptz[]) AS u(t) ORDER BY t LIMIT $6
+		     ) s) AS starts
+		   FROM deploys d WHERE d.id = $1 AND d.finished_at IS NULL
+		 )
+		 UPDATE deploys SET
+		     rollout_started_at = COALESCE(deploys.rollout_started_at, $2),
+		     rollout_command = CASE WHEN deploys.rollout_started_at IS NULL THEN NULLIF($3, '') ELSE deploys.rollout_command END,
+		     rollout_web_concurrency = CASE WHEN deploys.rollout_started_at IS NULL THEN NULLIF($4, 0) ELSE deploys.rollout_web_concurrency END,
+		     app_started_at = merged.starts
+		 FROM merged
+		 WHERE deploys.id = merged.id
+		   AND (deploys.rollout_started_at IS NULL OR deploys.app_started_at IS DISTINCT FROM merged.starts)`,
+		id, *rollout.StartedAt, rollout.Command, rollout.WebConcurrency, rollout.AppStarts, appv1alpha1.MaxReleaseRolloutAppStarts)
+	return classify("deploy rollout", err)
+}
+
 // page, not a crash or a leak of the unfiltered list.
 func pageKeyset(query string, args []any, table, sortCol, cursor string, limit int, oldestFirst bool) (string, []any) {
 	cmp, ord := "<", "DESC"
@@ -3517,12 +3570,13 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0)`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds}, extra...)...)
+	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
+		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency}, extra...)...)
 	return d, err
 }
 
