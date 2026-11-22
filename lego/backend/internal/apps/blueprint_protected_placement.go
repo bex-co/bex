@@ -37,7 +37,7 @@ import (
 // A grouping counts as protected when its environment is protected now or the
 // manifest arms it, so a new protected environment admits no non-Admin
 // creates either — the same answer the create path's resolver gives the apply.
-func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (refused blueprintResourceErrors, cleared bool, err error) {
+func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st parsedStack, snap *workspaceSnapshot, renames map[string]blueprintEnvGroupRename) (refused blueprintResourceErrors, cleared bool, err error) {
 	tenantID, scoped := s.Tenant(ctx)
 	if !scoped || s.BlueprintGroups == nil || core.BlueprintSync(ctx) {
 		return nil, false, nil
@@ -106,7 +106,16 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 			if g.grouping == "" {
 				continue
 			}
-			envID, exists := current[g.name]
+			// A group renamed outside the file reads by its live name, as
+			// the plan and the apply do: the placements are keyed by the
+			// name the group has now, and reading by the declared name
+			// would mistake it for a create and miss the protected
+			// environment a move leaves.
+			name := g.name
+			if renamed, ok := renames[g.name]; ok {
+				name = renamed.current
+			}
+			envID, exists := current[name]
 			if envID, refused := placements.check(g.grouping, false, placementOf{exists: exists, environmentID: envID, unknown: current == nil}); refused {
 				refuse(BlueprintResourceEnvVarGroup, g.name, envID)
 			}
@@ -129,8 +138,8 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 // apply's refusal: the first resource it names, as a 403. When an Admin passed
 // the check it returns ctx marked cleared, so the apply's creates skip the
 // per-resource fresh check (w3/m292).
-func (s *Service) requireBlueprintPlacement(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (context.Context, error) {
-	refused, cleared, err := s.blueprintProtectedPlacementProblems(ctx, st, snap)
+func (s *Service) requireBlueprintPlacement(ctx context.Context, st parsedStack, snap *workspaceSnapshot, renames map[string]blueprintEnvGroupRename) (context.Context, error) {
+	refused, cleared, err := s.blueprintProtectedPlacementProblems(ctx, st, snap, renames)
 	if cleared {
 		tenantID, _ := s.Tenant(ctx)
 		return core.WithPlacementCleared(ctx, tenantID), nil

@@ -876,8 +876,15 @@ func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branc
 		}
 		// A non-Admin's create in, or move into or out of, a protected
 		// environment, which the apply refuses before any write (w3/m281).
+		// A renamed group reads by its live name, as the apply's gate
+		// does; an unreadable rename degrades to the declared name
+		// rather than failing the validation.
+		var groupRenames map[string]blueprintEnvGroupRename
+		if blueprintID != "" && len(st.envGroups) > 0 {
+			groupRenames, _ = s.renamedBlueprintEnvGroups(ctx, blueprintID, st.envGroups, nil)
+		}
 		var placed blueprintResourceErrors
-		if placed, _, err = s.blueprintProtectedPlacementProblems(ctx, st, snap); len(placed) > 0 {
+		if placed, _, err = s.blueprintProtectedPlacementProblems(ctx, st, snap, groupRenames); len(placed) > 0 {
 			return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, placed)}, nil
 		}
 	}
