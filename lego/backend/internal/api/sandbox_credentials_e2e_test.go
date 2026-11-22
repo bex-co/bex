@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -486,6 +487,66 @@ func TestSandboxGroupCredentialsE2E(t *testing.T) {
 		t.Fatalf("OpenBao still holds credentials after GQL/MCP delete: keys=%v err=%v", keysLeft, err)
 	}
 
+	// 8c. Demoted Admin & narrowed/revoked API key enforcement (ADR123 attack class 8).
+	admin2 := "sbcred-admin2-" + run
+	if err := st.AddMember(ctx, admin2, ws.ID, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	seat(ws.ID, admin2, "admin")
+	admin2KeyRec := call(session(admin2), http.MethodPost, "/v1/api-keys",
+		fmt.Sprintf(`{"name":"adm2cred-%s","ownerId":%q,"permissions":{"grants":[{"permission":"sandboxes","level":"read"},{"permission":"sandbox_credentials","level":"write"}]}}`, run, ws.ID))
+	if admin2KeyRec.Code != http.StatusCreated {
+		t.Fatalf("mint admin2 key = %d %s", admin2KeyRec.Code, admin2KeyRec.Body.String())
+	}
+	var admin2KeyMeta apikeys.APIKey
+	if err := json.Unmarshal(admin2KeyRec.Body.Bytes(), &admin2KeyMeta); err != nil {
+		t.Fatal(err)
+	}
+	admin2Key := keyOf(admin2KeyMeta.ID)
+	demoteCredPath := basePath + "/demote-check"
+	if rec := call(admin2Key, http.MethodPost, basePath,
+		`{"id":"demote-check","domain":"api.openai.com","value":"sk-demote-v1","injection":{"type":"header","name":"Authorization"}}`); rec.Code != http.StatusCreated {
+		t.Fatalf("admin2Key create before demotion = %d %s, want 201", rec.Code, rec.Body.String())
+	}
+	// Narrow key permissions to sandboxes:read only -> write refused with KeyPermissionDeniedCode.
+	if rec := call(session(admin2), http.MethodPatch, "/v1/api-keys/"+admin2KeyMeta.ID+"?ownerId="+ws.ID,
+		`{"permissions":{"grants":[{"permission":"sandboxes","level":"read"}]}}`); rec.Code != http.StatusOK {
+		t.Fatalf("narrow admin2 key permissions = %d %s, want 200", rec.Code, rec.Body.String())
+	}
+	if rec := call(admin2Key, http.MethodPatch, demoteCredPath, `{"enabled":false}`); rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), core.KeyPermissionDeniedCode) {
+		t.Fatalf("narrowed admin2Key PATCH = %d %s, want 403 %s", rec.Code, rec.Body.String(), core.KeyPermissionDeniedCode)
+	}
+	// Restore write permission, then demote creator admin2 -> developer in OpenFGA.
+	if rec := call(session(admin2), http.MethodPatch, "/v1/api-keys/"+admin2KeyMeta.ID+"?ownerId="+ws.ID,
+		`{"permissions":{"grants":[{"permission":"sandboxes","level":"read"},{"permission":"sandbox_credentials","level":"write"}]}}`); rec.Code != http.StatusOK {
+		t.Fatalf("restore admin2 key permissions = %d %s, want 200", rec.Code, rec.Body.String())
+	}
+	if err := checker.(members.RoleRevoker).RevokeWorkspaceMember(ctx, ws.ID, "user:"+admin2, "admin"); err != nil {
+		t.Fatalf("revoke admin2 admin role: %v", err)
+	}
+	seat(ws.ID, admin2, "developer")
+	// Creator ceiling immediately blocks Admin-only verbs (create, delete, restore, domain/value PATCH)
+	// while still permitting Developer PATCH (enabled).
+	if rec := call(admin2Key, http.MethodPatch, demoteCredPath, `{"enabled":false}`); rec.Code != http.StatusOK {
+		t.Fatalf("demoted admin2Key enabled PATCH = %d %s, want 200", rec.Code, rec.Body.String())
+	}
+	for _, tc := range []struct {
+		name, method, path, body string
+	}{
+		{"create", http.MethodPost, basePath, `{"id":"demote-blocked","domain":"api.openai.com","value":"sk-x","injection":{"type":"header","name":"Authorization"}}`},
+		{"patch-domain", http.MethodPatch, demoteCredPath, `{"domain":"api.github.com"}`},
+		{"patch-value", http.MethodPatch, demoteCredPath, `{"value":"sk-demote-v2"}`},
+		{"restore", http.MethodPost, demoteCredPath + "/restore", `{"versionId":1}`},
+		{"delete", http.MethodDelete, demoteCredPath, ""},
+	} {
+		if rec := call(admin2Key, tc.method, tc.path, tc.body); rec.Code != http.StatusForbidden {
+			t.Errorf("demoted admin2Key %s = %d %s, want 403", tc.name, rec.Code, rec.Body.String())
+		}
+	}
+	if rec := call(session(admin), http.MethodDelete, demoteCredPath, ""); rec.Code != http.StatusAccepted {
+		t.Fatalf("cleanup demote-check = %d %s, want 202", rec.Code, rec.Body.String())
+	}
+
 	// 9. Sandbox group delete purges credential secrets from OpenBao.
 	rec = call(session(admin), http.MethodPost, "/v1/sandbox-groups/"+secondGroup.ID+"/credentials",
 		`{"id":"group-del-key","domain":"api.stripe.com","value":"sk-group-del","injection":{"type":"header","name":"Authorization"}}`)
@@ -515,7 +576,7 @@ func TestSandboxGroupCredentialsE2E(t *testing.T) {
 
 	// 11. Audit events never contain any secret value.
 	auditBytes, _ := json.Marshal(auditSink.events)
-	for _, sec := range []string{secret1, gqlSecret1, gqlSecret2, mcpSecret, "sk-group-del", "ghp-ws-del", "sk-dev-attempt"} {
+	for _, sec := range []string{secret1, gqlSecret1, gqlSecret2, mcpSecret, "sk-group-del", "ghp-ws-del", "sk-dev-attempt", "sk-demote-v1", "sk-demote-v2"} {
 		if strings.Contains(string(auditBytes), sec) {
 			t.Fatalf("audit log leaked secret %q", sec)
 		}

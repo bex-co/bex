@@ -893,6 +893,159 @@ func TestSandboxBrokerNon443PassthroughAndQueryErrorScrubbing(t *testing.T) {
 	}
 }
 
+// TestBrokerMITMPathSmugglingAndRequestHardening pins ADR123 F3: raw-vs-decoded
+// path traversal, encoded-slash segment splits, backslashes, double slashes,
+// nested CONNECT, opaque URIs, and absolute-URI userinfo smuggling must never
+// inject credentials onto unintended upstream paths.
+func TestBrokerMITMPathSmugglingAndRequestHardening(t *testing.T) {
+	const secret = "sk-path-smuggle-guard-secret"
+	var sawSecretOnUnexpectedPath atomic.Bool
+
+	upstreams, upstreamRoots := makeUpstreamRootWithServers(t,
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			auth := r.Header.Get("Authorization")
+			rawTarget := r.RequestURI
+			if auth != "" && rawTarget != "/v1/safe/ok" {
+				sawSecretOnUnexpectedPath.Store(true)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"rawTarget": rawTarget,
+				"auth":      auth,
+			})
+		}),
+		http.NotFoundHandler(),
+	)
+	brokerCA, brokerCAPEM := makeBrokerCA(t)
+	const ipA = "93.184.216.34"
+
+	broker := &Broker{
+		Pods: staticPodResolver{
+			"127.0.0.1": {Namespace: "tea-1-sandbox", Workspace: "tea-1", Name: "sbx-1-0", UID: "u1", SandboxID: "sbx-1", GroupID: "sbg-1"},
+			"::1":       {Namespace: "tea-1-sandbox", Workspace: "tea-1", Name: "sbx-1-0", UID: "u1", SandboxID: "sbx-1", GroupID: "sbg-1"},
+		},
+		API: &staticLookupClient{
+			resp: sandbox.BrokerLookupResponse{
+				WorkspaceID:    "tea-1",
+				SandboxID:      "sbx-1",
+				SandboxGroupID: "sbg-1",
+				NetworkPolicy:  sandbox.NetworkPolicy{Default: sandbox.NetworkPolicyAllowAll},
+				Credentials: []sandbox.BrokerCredential{{
+					ID:        "safe-only",
+					Domain:    "api.example.com",
+					Methods:   []string{"GET"},
+					Paths:     []string{"/v1/safe/*"},
+					Value:     secret,
+					Injection: sandbox.GroupCredentialInjection{Type: "header", Name: "Authorization", Template: "Bearer ${SECRET}"},
+				}},
+			},
+		},
+		CA:              brokerCA,
+		UpstreamRootCAs: upstreamRoots,
+		Resolver:        staticResolver{"api.example.com": {netip.MustParseAddr(ipA)}},
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, network, upstreams.srvA.Listener.Addr().String())
+		},
+	}
+
+	srv := httptest.NewServer(broker.Handler())
+	defer srv.Close()
+	roots := x509.NewCertPool()
+	roots.AppendCertsFromPEM(brokerCAPEM)
+
+	sendRawMITM := func(t *testing.T, rawReq string) (*http.Response, string) {
+		t.Helper()
+		rawConn, err := net.DialTimeout("tcp", srv.Listener.Addr().String(), 5*time.Second)
+		if err != nil {
+			t.Fatalf("dial broker: %v", err)
+		}
+		defer rawConn.Close()
+		if _, err := io.WriteString(rawConn, "CONNECT api.example.com:443 HTTP/1.1\r\nHost: api.example.com:443\r\n\r\n"); err != nil {
+			t.Fatalf("write CONNECT: %v", err)
+		}
+		br := bufio.NewReader(rawConn)
+		connectResp, err := http.ReadResponse(br, &http.Request{Method: http.MethodConnect})
+		if err != nil || connectResp.StatusCode != http.StatusOK {
+			t.Fatalf("CONNECT failed: resp=%v err=%v", connectResp, err)
+		}
+		tlsConn := tls.Client(&bufferedConn{Conn: rawConn, r: br}, &tls.Config{
+			ServerName: "api.example.com",
+			RootCAs:    roots,
+			MinVersion: tls.VersionTLS12,
+		})
+		defer tlsConn.Close()
+		if err := tlsConn.Handshake(); err != nil {
+			t.Fatalf("TLS handshake: %v", err)
+		}
+		if _, err := io.WriteString(tlsConn, rawReq); err != nil {
+			t.Fatalf("write inner request: %v", err)
+		}
+		resp, err := http.ReadResponse(bufio.NewReader(tlsConn), nil)
+		if err != nil {
+			t.Fatalf("read inner response: %v", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		return resp, string(body)
+	}
+
+	// 1. Ambiguous / traversal / backslash / double-slash paths must be refused 400.
+	for _, target := range []string{
+		"/v1/admin/..%2fsafe/ok",
+		"/v1/admin/../safe/ok",
+		"/v1/safe/%2e%2e/admin",
+		"/v1/safe/%2e%2e%2fadmin",
+		"/v1/safe/./ok",
+		"/v1/safe/..%5cadmin",
+		`//v1/safe/ok`,
+	} {
+		resp, _ := sendRawMITM(t, "GET "+target+" HTTP/1.1\r\nHost: api.example.com\r\nConnection: close\r\n\r\n")
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("target %q status = %d, want 400", target, resp.StatusCode)
+		}
+	}
+
+	// 2. Nested CONNECT inside MITM tunnel must be refused 405.
+	resp, _ := sendRawMITM(t, "CONNECT api.example.com:443 HTTP/1.1\r\nHost: api.example.com\r\nConnection: close\r\n\r\n")
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("nested CONNECT status = %d, want 405", resp.StatusCode)
+	}
+
+	// 3. Encoded slash inside a single-segment wildcard (/v1/safe/*) must NOT
+	// receive injection because decoded path has 4 segments (/v1/safe/foo/bar).
+	resp, body := sendRawMITM(t, "GET /v1/safe/foo%2fbar HTTP/1.1\r\nHost: api.example.com\r\nConnection: close\r\n\r\n")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("encoded slash status = %d, want 200", resp.StatusCode)
+	}
+	if strings.Contains(body, secret) {
+		t.Fatalf("encoded slash bypassed single-segment wildcard and got secret: %s", body)
+	}
+
+	// 4. Absolute URI carrying userinfo must strip User so Basic auth is not smuggled.
+	resp, body = sendRawMITM(t, "GET https://attacker:smuggled@api.example.com/v1/public HTTP/1.1\r\nHost: api.example.com\r\nConnection: close\r\n\r\n")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("userinfo absolute URI status = %d, want 200", resp.StatusCode)
+	}
+	var echo map[string]string
+	if err := json.Unmarshal([]byte(body), &echo); err != nil {
+		t.Fatalf("decode echo: %v (%s)", err, body)
+	}
+	if echo["auth"] != "" {
+		t.Fatalf("userinfo smuggled Authorization=%q", echo["auth"])
+	}
+
+	// 5. Canonical matching path still injects normally.
+	resp, body = sendRawMITM(t, "GET /v1/safe/ok HTTP/1.1\r\nHost: api.example.com\r\nConnection: close\r\n\r\n")
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, "Bearer "+secret) {
+		t.Fatalf("canonical /v1/safe/ok failed: status=%d body=%s", resp.StatusCode, body)
+	}
+
+	if sawSecretOnUnexpectedPath.Load() {
+		t.Fatal("upstream observed injected secret on an unauthorized path")
+	}
+}
+
 type upstreamPair struct {
 	srvA    *httptest.Server
 	srvB    *httptest.Server

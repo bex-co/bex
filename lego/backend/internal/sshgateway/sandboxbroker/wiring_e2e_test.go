@@ -203,7 +203,7 @@ func TestSandboxPodWiringEndToEnd(t *testing.T) {
 					sessionegress.EgressLabel:       egress,
 				},
 			},
-			Status: corev1.PodStatus{PodIP: "127.0.0.1"},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIP: "127.0.0.1"},
 		}, metav1.CreateOptions{})
 		if err != nil {
 			t.Fatal(err)

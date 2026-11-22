@@ -37,10 +37,13 @@ spec:
          (object.metadata.?labels['bex.co/sandbox-group'].orValue('').matches('^sbg-[0-9a-v]{20}$') &&
           object.metadata.?labels['bex.co/agent-session'].orValue('') == '')) &&
         (request.operation != 'UPDATE' ||
-         oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('') == '' ||
-         object.metadata.?labels['bex.co/sandbox-group'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-group'].orValue(''))
+         (object.metadata.?labels['bex.co/sandbox-group'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('') &&
+          object.metadata.?labels['bex.co/sandbox-id'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-id'].orValue('') &&
+          object.metadata.?labels['bex.co/workspace'].orValue('') == oldObject.metadata.?labels['bex.co/workspace'].orValue('') &&
+          object.metadata.?labels['bex.co/agent-session'].orValue('') == oldObject.metadata.?labels['bex.co/agent-session'].orValue('') &&
+          object.metadata.?labels['bex.co/egress'].orValue('') == oldObject.metadata.?labels['bex.co/egress'].orValue('')))
       reason: Forbidden
-      message: sandbox Pod bex.co/sandbox-group label must be a valid sbg- id, absent on agent-session Pods, and immutable once set
+      message: sandbox Pod identity and egress labels (bex.co/sandbox-group, bex.co/sandbox-id, bex.co/workspace, bex.co/agent-session, bex.co/egress) must be valid at CREATE, exclude agent-session Pods from sandbox-group, and remain strictly immutable on UPDATE
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

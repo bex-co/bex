@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -133,19 +134,32 @@ func (r *KubeSandboxPodResolver) now() time.Time {
 	return time.Now()
 }
 
-// ResolveSandboxPod binds sourceIP to a live, non-terminating /v1/sandboxes
-// Pod. Fails closed on unknown IP, terminating Pod, ambiguous IP, or missing
+// isLivePodAtIP reports whether p is a live, running, non-terminating,
+// non-hostNetwork Pod currently holding sourceIP. Exited Pods (Succeeded/Failed)
+// retain Status.PodIP with DeletionTimestamp == nil even after Cilium recycles
+// the IP to a different Pod, so Phase == PodRunning is mandatory (ADR123 F2).
+func isLivePodAtIP(p *corev1.Pod, sourceIP string) bool {
+	return p != nil &&
+		p.DeletionTimestamp == nil &&
+		p.Status.Phase == corev1.PodRunning &&
+		!p.Spec.HostNetwork &&
+		p.Status.PodIP == sourceIP
+}
+
+// ResolveSandboxPod binds sourceIP to a live, running, non-terminating
+// /v1/sandboxes Pod. Fails closed on unknown IP, non-running/terminating Pod,
+// hostNetwork Pod, ambiguous IP, transient apiserver errors, or missing
 // sandbox labels.
 func (r *KubeSandboxPodResolver) ResolveSandboxPod(ctx context.Context, sourceIP string) (SandboxPod, error) {
 	if r == nil || r.Client == nil || r.Namespaces == nil || net.ParseIP(sourceIP) == nil {
 		return SandboxPod{}, ErrPodForbidden
 	}
 
-	// Fast path: verify hint with a direct single-Pod GET so Pod IP reuse or
-	// pod termination is always caught immediately.
+	// Fast path: verify hint with a direct single-Pod GET so Pod IP reuse,
+	// pod exit (Phase != Running), or termination is always caught immediately.
 	if hint, ok := r.getHint(sourceIP); ok {
 		pod, err := r.Client.CoreV1().Pods(hint.namespace).Get(ctx, hint.name, metav1.GetOptions{})
-		if err == nil && pod.Status.PodIP == sourceIP && pod.DeletionTimestamp == nil {
+		if err == nil && isLivePodAtIP(pod, sourceIP) {
 			verified, authErr := AuthorizeSandboxPod(pod.Namespace, pod.Name, string(pod.UID), pod.Labels)
 			if authErr == nil {
 				return verified, nil
@@ -193,6 +207,7 @@ func (r *KubeSandboxPodResolver) scanNamespaces(ctx context.Context, namespaces 
 		matches   []SandboxPod
 		ambiguous bool
 		denied    bool
+		scanErr   bool
 	)
 	for _, ns := range namespaces {
 		if ns == "" {
@@ -208,15 +223,20 @@ func (r *KubeSandboxPodResolver) scanNamespaces(ctx context.Context, namespaces 
 				Limit:         2,
 			})
 			if err != nil {
-				// Ignore unprovisioned sandbox namespaces.
+				// Ignore unprovisioned sandbox namespaces; fail closed on
+				// transient apiserver errors so a partial scan cannot
+				// misattribute a recycled IP.
 				if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
 					return
 				}
+				mu.Lock()
+				scanErr = true
+				mu.Unlock()
 				return
 			}
 			for i := range pods.Items {
 				p := &pods.Items[i]
-				if p.Status.PodIP != sourceIP || p.DeletionTimestamp != nil {
+				if !isLivePodAtIP(p, sourceIP) {
 					continue
 				}
 				verified, authErr := AuthorizeSandboxPod(namespace, p.Name, string(p.UID), p.Labels)
@@ -234,7 +254,7 @@ func (r *KubeSandboxPodResolver) scanNamespaces(ctx context.Context, namespaces 
 		}(ns)
 	}
 	wg.Wait()
-	if denied || ambiguous {
+	if denied || ambiguous || scanErr {
 		return false, SandboxPod{}, ErrPodForbidden
 	}
 	if len(matches) != 1 {

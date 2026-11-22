@@ -2860,10 +2860,18 @@ for required_guard in \
   "request.operation != 'CREATE' || !has(object.spec.nodeName)" \
   "object.metadata.?labels['bex.co/sandbox-group'].orValue('').matches('^sbg-[0-9a-v]{20}\$')" \
   "object.metadata.?labels['bex.co/agent-session'].orValue('') == ''" \
-  "object.metadata.?labels['bex.co/sandbox-group'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('')"; do
+  "object.metadata.?labels['bex.co/sandbox-group'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('')" \
+  "object.metadata.?labels['bex.co/sandbox-id'].orValue('') == oldObject.metadata.?labels['bex.co/sandbox-id'].orValue('')" \
+  "object.metadata.?labels['bex.co/workspace'].orValue('') == oldObject.metadata.?labels['bex.co/workspace'].orValue('')" \
+  "object.metadata.?labels['bex.co/agent-session'].orValue('') == oldObject.metadata.?labels['bex.co/agent-session'].orValue('')" \
+  "object.metadata.?labels['bex.co/egress'].orValue('') == oldObject.metadata.?labels['bex.co/egress'].orValue('')"; do
   grep -qF "$required_guard" deploy/gitops/base/sandbox-pod-admission.yaml \
     || { echo "FAIL: sandbox Pod admission guard lost: $required_guard" >&2; fail=1; }
 done
+if grep -qF "oldObject.metadata.?labels['bex.co/sandbox-group'].orValue('') == ''" deploy/gitops/base/sandbox-pod-admission.yaml; then
+  echo "FAIL: sandbox-pod-admission allows adding bex.co/sandbox-group on UPDATE (ADR123 F4)" >&2
+  fail=1
+fi
 controller_egress_selector="$(yq -N \
   'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-controller-egress") |
     [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",

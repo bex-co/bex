@@ -51,12 +51,25 @@ func HasCredentialForHost(creds []sandbox.BrokerCredential, host string) bool {
 // (lexicographically smallest ID wins). overlap is true when at least two
 // credentials matched the request.
 func MatchCredential(creds []sandbox.BrokerCredential, host, method, reqPath string) (*sandbox.BrokerCredential, bool) {
+	return matchCredentialPaths(creds, host, method, reqPath, "")
+}
+
+// matchCredentialPaths is MatchCredential with an optional raw/escaped path
+// cross-check: when rawPath is non-empty and differs from reqPath (for example
+// due to percent-encoded slashes %2f), any credential with non-empty Paths must
+// match BOTH the decoded and escaped path forms so parser differentials between
+// the broker and upstream cannot bypass path restrictions (ADR123 F3).
+func matchCredentialPaths(creds []sandbox.BrokerCredential, host, method, reqPath, rawPath string) (*sandbox.BrokerCredential, bool) {
 	target := NormalizeHost(host)
 	if target == "" || len(creds) == 0 {
 		return nil, false
 	}
 	normMethod := strings.ToUpper(strings.TrimSpace(method))
 	cleanPath := normalizeRequestPath(reqPath)
+	cleanRawPath := ""
+	if rawPath != "" {
+		cleanRawPath = normalizeRequestPath(rawPath)
+	}
 
 	ordered := creds
 	if !slices.IsSortedFunc(creds, func(a, b sandbox.BrokerCredential) int {
@@ -78,6 +91,9 @@ func MatchCredential(creds []sandbox.BrokerCredential, host, method, reqPath str
 			continue
 		}
 		if !matchAnyPath(c.Paths, cleanPath) {
+			continue
+		}
+		if cleanRawPath != "" && cleanRawPath != cleanPath && !matchAnyPath(c.Paths, cleanRawPath) {
 			continue
 		}
 		if winner != nil {

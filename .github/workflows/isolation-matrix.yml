@@ -204,6 +204,43 @@ jobs:
         if: always() && steps.sandbox.outputs.down == 'false'
         run: |
           bash scripts/lib/tracking-issue.sh close --label sandbox-isolation-down --comment "The sandbox boundary matrix passed again on production."
+      # Sandbox group credential-brokering isolation leg (ADR122 / ADR123, w2/m536):
+      # proves Group A's brokered credentials never inject into Group B's sandbox,
+      # deny-all sandboxes cannot reach the :8086 broker, and allow-list sandboxes
+      # cannot reach unlisted credentialed domains.
+      - name: Sandbox credential-brokering isolation (ADR122 / w2/m536)
+        id: broker
+        if: always()
+        env:
+          BEX_LIVE_VERIFY: "1"
+          BEX_VERIFY_PROBE: scripts/verify-sandbox-credential-broker-isolation.sh
+        run: |
+          code=0
+          bash scripts/verify-sandbox-isolation-live.sh > broker-isolation.txt 2>&1 || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          elif [ "$code" = 2 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::sandbox credential-brokering isolation leg could not run (exit 2 — missing tool or unreachable echo host); see the step log. Not treated as an isolation failure."
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat broker-isolation.txt
+      - name: Open or update the broker-isolation issue
+        if: always() && steps.broker.outputs.down == 'true'
+        run: |
+          body="The weekly sandbox credential-brokering isolation leg failed on production (exit ${{ steps.broker.outputs.code }})."$'\n\n'
+          body+="Probe output:"$'\n\n```\n'"$(cat broker-isolation.txt)"$'\n```\n\n'
+          body+="These checks verify cross-group non-injection, deny-all broker refusal, allow-list intersection, and split RBAC (docs/ADR122-sandbox-credential-brokering.md, docs/ADR123-security-review-sandbox-credentials.md). Treat a breach as P0."
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label sandbox-broker-isolation-down \
+            --color B60205 --description "A sandbox credential-brokering isolation check failed on production (ADR122, w2/m536)" \
+            --title "Sandbox credential-brokering isolation leg is red on production" --body-file issue-body.md
+      - name: Close the broker-isolation issue after recovery
+        if: always() && steps.broker.outputs.down == 'false'
+        run: |
+          bash scripts/lib/tracking-issue.sh close --label sandbox-broker-isolation-down --comment "The sandbox credential-brokering isolation leg passed again on production."
       # Both probes promise to clean up; this is the audit on that promise. It
       # reports rather than fails, because a leftover fixture is a hygiene
       # problem and must not be confused with an isolation breach.
@@ -234,13 +271,16 @@ jobs:
             echo "  none"
           fi
       - name: Fail the run when an isolation invariant regressed
-        if: always() && (steps.tenant.outputs.down == 'true' || steps.sandbox.outputs.down == 'true')
+        if: always() && (steps.tenant.outputs.down == 'true' || steps.sandbox.outputs.down == 'true' || steps.broker.outputs.down == 'true')
         run: |
           if [[ "${{ steps.tenant.outputs.down }}" == true ]]; then
             echo "::error::ADR043 tenant-isolation matrix is red on production" >&2
           fi
           if [[ "${{ steps.sandbox.outputs.down }}" == true ]]; then
             echo "::error::ADR042 sandbox isolation matrix is red on production" >&2
+          fi
+          if [[ "${{ steps.broker.outputs.down }}" == true ]]; then
+            echo "::error::ADR122 sandbox credential-brokering isolation leg is red on production" >&2
           fi
           exit 1
       # Last, and only after every cluster read: admin.conf outlives the SSH key

@@ -43,12 +43,14 @@ var deniedEgressPrefixes = func() []netip.Prefix {
 	return out
 }()
 
-// BlockedEgressAddr reports whether addr is invalid or falls inside any
-// built-in non-public/metadata/private/reserved prefix or deployment-configured
-// extra deny prefix. IPv4-mapped IPv6 addresses are unmapped first.
+// BlockedEgressAddr reports whether addr is invalid, carries an IPv6 zone
+// identifier (always link-/interface-scoped, never public), or falls inside
+// any built-in non-public/metadata/private/reserved prefix or
+// deployment-configured extra deny prefix. IPv4-mapped IPv6 addresses are
+// unmapped first.
 func BlockedEgressAddr(addr netip.Addr, extra []netip.Prefix) bool {
 	addr = addr.Unmap()
-	if !addr.IsValid() {
+	if !addr.IsValid() || addr.Zone() != "" {
 		return true
 	}
 	for _, prefix := range deniedEgressPrefixes {

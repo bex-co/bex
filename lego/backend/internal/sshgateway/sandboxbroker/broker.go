@@ -364,6 +364,21 @@ func (b *Broker) serveMITM(w http.ResponseWriter, r *http.Request, lookupReq san
 func (b *Broker) handleMITMRequest(ctx context.Context, tlsConn net.Conn, transport *http.Transport, lookupReq sandbox.BrokerLookupRequest, connectHost string, inReq *http.Request) bool {
 	defer inReq.Body.Close()
 
+	if inReq.Method == http.MethodConnect {
+		b.Metrics.SandboxBrokerRequest(outcomeDenied)
+		writeSimpleError(tlsConn, http.StatusMethodNotAllowed, "bex sandbox broker: nested CONNECT not allowed")
+		return false
+	}
+	if inReq.URL.Opaque != "" {
+		b.Metrics.SandboxBrokerRequest(outcomeDenied)
+		writeSimpleError(tlsConn, http.StatusBadRequest, "bex sandbox broker: opaque request target not allowed")
+		return false
+	}
+	if hasAmbiguousRequestPath(inReq.URL) {
+		b.Metrics.SandboxBrokerRequest(outcomeDenied)
+		writeSimpleError(tlsConn, http.StatusBadRequest, "bex sandbox broker: ambiguous or non-canonical request path")
+		return false
+	}
 	if len(inReq.TransferEncoding) > 1 || (len(inReq.TransferEncoding) == 1 && !strings.EqualFold(inReq.TransferEncoding[0], "chunked")) {
 		b.Metrics.SandboxBrokerRequest(outcomeDenied)
 		writeSimpleError(tlsConn, http.StatusBadRequest, "bex sandbox broker: unsupported transfer encoding")
@@ -406,6 +421,8 @@ func (b *Broker) handleMITMRequest(ctx context.Context, tlsConn net.Conn, transp
 	outURL := *inReq.URL
 	outURL.Scheme = "https"
 	outURL.Host = connectHost
+	outURL.User = nil
+	outURL.Fragment = ""
 
 	reqCtx, cancel := context.WithTimeout(ctx, b.maxDuration())
 	defer cancel()
@@ -418,7 +435,7 @@ func (b *Broker) handleMITMRequest(ctx context.Context, tlsConn net.Conn, transp
 	outReq.TransferEncoding = slices.Clone(inReq.TransferEncoding)
 	sshgateway.RemoveHopHeaders(outReq.Header)
 
-	matched, overlap := MatchCredential(fresh.Credentials, connectHost, outReq.Method, outReq.URL.Path)
+	matched, overlap := matchCredentialPaths(fresh.Credentials, connectHost, outReq.Method, outReq.URL.Path, outReq.URL.EscapedPath())
 	if matched != nil {
 		if overlap {
 			b.Metrics.SandboxBrokerOverlap()
@@ -485,6 +502,53 @@ func hostMatchesConnect(headerHost, connectHost string) bool {
 		return false
 	}
 	return NormalizeHost(headerHost) == connectHost
+}
+
+// hasAmbiguousRequestPath rejects non-canonical request paths that could cause
+// a parser differential between broker path matching and upstream routing:
+// literal or percent-encoded dot segments (`.` / `..` / `%2e`), backslashes
+// (`\` / `%5c`), and collapsed empty segments (`//`) (ADR123 F3).
+func hasAmbiguousRequestPath(u *url.URL) bool {
+	if u == nil {
+		return true
+	}
+	raw := u.EscapedPath()
+	lowerRaw := strings.ToLower(raw)
+	if strings.Contains(u.Path, "\\") || strings.Contains(raw, "\\") || strings.Contains(lowerRaw, "%5c") {
+		return true
+	}
+	if strings.Contains(u.Path, "//") || strings.Contains(raw, "//") {
+		return true
+	}
+	for _, seg := range strings.Split(u.Path, "/") {
+		if seg == "." || seg == ".." {
+			return true
+		}
+	}
+	for _, seg := range strings.Split(raw, "/") {
+		if isDotSegmentRaw(seg) {
+			return true
+		}
+		if strings.Contains(strings.ToLower(seg), "%2f") {
+			for _, sub := range strings.Split(strings.ToLower(seg), "%2f") {
+				if isDotSegmentRaw(sub) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isDotSegmentRaw(seg string) bool {
+	if seg == "." || seg == ".." {
+		return true
+	}
+	unesc, err := url.PathUnescape(seg)
+	if err != nil {
+		return true
+	}
+	return unesc == "." || unesc == ".."
 }
 
 func writeSimpleError(conn net.Conn, status int, msg string) {

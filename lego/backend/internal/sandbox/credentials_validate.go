@@ -294,12 +294,12 @@ func ValidateCredentialInjection(inj *GroupCredentialInjection, secretValue stri
 	rendered := strings.ReplaceAll(effectiveTemplate, credentialTemplatePlaceholder, secretValue)
 	switch inj.Type {
 	case CredentialInjectionHeader:
-		if strings.ContainsAny(rendered, "\r\n\x00") {
-			return store.SandboxCredentialInjection{}, credBadRequest("value", "rendered header value must not contain CR, LF, or NUL bytes")
+		if hasInvalidHeaderValueChar(rendered) {
+			return store.SandboxCredentialInjection{}, credBadRequest("value", "rendered header value must not contain control characters")
 		}
 	case CredentialInjectionCookie:
-		if strings.ContainsAny(rendered, "\r\n\x00;") {
-			return store.SandboxCredentialInjection{}, credBadRequest("value", "rendered cookie value must not contain CR, LF, NUL, or semicolons")
+		if hasInvalidCookieValueChar(rendered) {
+			return store.SandboxCredentialInjection{}, credBadRequest("value", "rendered cookie value must not contain control characters or semicolons")
 		}
 	case CredentialInjectionBasic:
 		if strings.ContainsAny(rendered, "\r\n\x00") {
@@ -316,4 +316,24 @@ func ValidateCredentialInjection(inj *GroupCredentialInjection, secretValue stri
 		Name:     inj.Name,
 		Template: inj.Template,
 	}, nil
+}
+
+func hasInvalidHeaderValueChar(s string) bool {
+	for i := range len(s) {
+		b := s[i]
+		if (b < 0x20 && b != '\t') || b == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
+func hasInvalidCookieValueChar(s string) bool {
+	for i := range len(s) {
+		b := s[i]
+		if b < 0x20 || b == 0x7f || b == ';' {
+			return true
+		}
+	}
+	return false
 }

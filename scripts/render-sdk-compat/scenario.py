@@ -31,10 +31,23 @@ from render.experimental.sandbox import (
 )
 from render.experimental.sandbox.types import SandboxExecExit, SandboxExecOutput
 from render.public_api.api.sandboxes import (
+    create_sandbox_group_credential,
+    delete_sandbox_group_credential,
     list_sandbox_builds,
     list_sandbox_executions,
+    list_sandbox_group_credential_versions,
     list_sandbox_group_credentials,
+    restore_sandbox_group_credential,
+    retrieve_sandbox_group_credential,
     retrieve_sandbox_execution,
+    update_sandbox_group_credential,
+)
+from render.public_api.models import (
+    SandboxCredentialCreate,
+    SandboxCredentialInjection,
+    SandboxCredentialInjectionType,
+    SandboxCredentialRestore,
+    SandboxCredentialUpdate,
 )
 
 failures = 0
@@ -459,10 +472,98 @@ def snapshot_unknown():
     return raises(SnapshotNotFoundError, lambda: sandboxes.snapshots.from_id(sandbox_group_id=state["group"], snapshot_id=missing_snapshot))
 
 
-def credentials_refused():
-    resp = list_sandbox_group_credentials.sync_detailed(state["group"], client=sandboxes.client)
-    assert resp.status_code == 404 and b"SANDBOX_CREDENTIALS_UNSUPPORTED" in resp.content, (resp.status_code, resp.content[:200])
-    return "404 SANDBOX_CREDENTIALS_UNSUPPORTED"
+def credentials_round_trip():
+    group_id = state["group"]
+    cred_id = f"sdk-cred-{run}"
+    secret_v1 = f"sk-sdk-compat-v1-{run}"
+    secret_v2 = f"sk-sdk-compat-v2-{run}"
+
+    def assert_no_secret(resp, label):
+        body = resp.content or b""
+        assert secret_v1.encode() not in body and secret_v2.encode() not in body, f"{label} leaked secret"
+
+    # 1. Create -> 201
+    created = create_sandbox_group_credential.sync_detailed(
+        group_id,
+        client=sandboxes.client,
+        body=SandboxCredentialCreate(
+            id=cred_id,
+            domain="api.example.com",
+            value=secret_v1,
+            enabled=True,
+            methods=["GET", "POST"],
+            paths=["/v1/*", "/v2/**"],
+            injection=SandboxCredentialInjection(
+                type_=SandboxCredentialInjectionType.HEADER,
+                name="Authorization",
+                template="Bearer ${SECRET}",
+            ),
+        ),
+    )
+    assert created.status_code == 201, (created.status_code, created.content[:200])
+    assert_no_secret(created, "create")
+    c = created.parsed
+    assert c.id == cred_id and c.domain == "api.example.com" and c.enabled is True, c
+    assert c.version.id == 1 and c.version.fingerprint, c.version
+    v1_fp = c.version.fingerprint
+
+    # 2. List -> 200
+    listed = list_sandbox_group_credentials.sync_detailed(group_id, client=sandboxes.client)
+    assert listed.status_code == 200, (listed.status_code, listed.content[:200])
+    assert_no_secret(listed, "list")
+    assert [item.id for item in listed.parsed] == [cred_id], listed.parsed
+
+    # 3. Retrieve -> 200
+    got = retrieve_sandbox_group_credential.sync_detailed(group_id, cred_id, client=sandboxes.client)
+    assert got.status_code == 200, (got.status_code, got.content[:200])
+    assert_no_secret(got, "retrieve")
+    assert got.parsed.id == cred_id and got.parsed.version.fingerprint == v1_fp, got.parsed
+
+    # 4. Update (rotate value + disable + clear filters) -> 200 (v2)
+    updated = update_sandbox_group_credential.sync_detailed(
+        group_id,
+        cred_id,
+        client=sandboxes.client,
+        body=SandboxCredentialUpdate(
+            value=secret_v2,
+            enabled=False,
+            methods=[],
+            paths=[],
+        ),
+    )
+    assert updated.status_code == 200, (updated.status_code, updated.content[:200])
+    assert_no_secret(updated, "update")
+    u = updated.parsed
+    assert u.enabled is False and u.methods == [] and u.paths == [] and u.version.id == 2, u
+    assert u.version.fingerprint != v1_fp, u.version
+
+    # 5. List versions -> 200 newest first [2, 1]
+    versions = list_sandbox_group_credential_versions.sync_detailed(group_id, cred_id, client=sandboxes.client)
+    assert versions.status_code == 200, (versions.status_code, versions.content[:200])
+    assert_no_secret(versions, "versions")
+    assert [v.id for v in versions.parsed] == [2, 1], versions.parsed
+
+    # 6. Restore v1 -> 200 (v3, restoredFromVersionId=1, original fingerprint)
+    restored = restore_sandbox_group_credential.sync_detailed(
+        group_id,
+        cred_id,
+        client=sandboxes.client,
+        body=SandboxCredentialRestore(version_id=1),
+    )
+    assert restored.status_code == 200, (restored.status_code, restored.content[:200])
+    assert_no_secret(restored, "restore")
+    r = restored.parsed
+    assert r.enabled is True and r.version.id == 3 and r.version.restored_from_version_id == 1, r
+    assert r.version.fingerprint == v1_fp, r.version
+
+    # 7. Delete -> 202 (idempotent on repeat), list returns []
+    deleted = delete_sandbox_group_credential.sync_detailed(group_id, cred_id, client=sandboxes.client)
+    assert deleted.status_code == 202, (deleted.status_code, deleted.content[:200])
+    deleted_again = delete_sandbox_group_credential.sync_detailed(group_id, cred_id, client=sandboxes.client)
+    assert deleted_again.status_code == 202, (deleted_again.status_code, deleted_again.content[:200])
+    after = list_sandbox_group_credentials.sync_detailed(group_id, client=sandboxes.client)
+    assert after.status_code == 200 and after.parsed == [], (after.status_code, after.parsed)
+    return "create/list/get/update/versions/restore/delete (202), zero secret leakage"
 
 
 def delete_group():
@@ -541,7 +642,7 @@ if "id" in state:
                 step("snapshots.delete while creating", snapshot_delete_creating)
                 step("snapshots.delete / gone afterwards", snapshot_delete)
             step("snapshots.from_id unknown", snapshot_unknown)
-        step("group credentials refused by name", credentials_refused)
+        step("generated sandbox group credentials round-trip", credentials_round_trip)
         step("delete_group", delete_group)
     step("terminate", terminate)
     step("exec after terminate", exec_after_terminate)

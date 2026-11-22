@@ -156,6 +156,21 @@ func TestValidateCredentialRules(t *testing.T) {
 	if _, err := ValidateCredentialInjection(&GroupCredentialInjection{Type: "cookie", Name: "session"}, "abc;evil=1"); err == nil {
 		t.Error("cookie with semicolon accepted, want 400")
 	}
+	// ADR123 F5: reject non-CRLF ASCII control characters in header/cookie values.
+	for _, ctl := range []string{"val\x0bue", "val\x0cue", "val\x1fue", "val\x7fue"} {
+		if _, err := ValidateCredentialInjection(&GroupCredentialInjection{Type: "header", Name: "X-Key"}, ctl); err == nil {
+			t.Errorf("header value with control char %q accepted, want 400", ctl)
+		}
+		if _, err := ValidateCredentialInjection(&GroupCredentialInjection{Type: "cookie", Name: "session"}, ctl); err == nil {
+			t.Errorf("cookie value with control char %q accepted, want 400", ctl)
+		}
+	}
+	if _, err := ValidateCredentialInjection(&GroupCredentialInjection{Type: "header", Name: "X-Key"}, "tok\tpart"); err != nil {
+		t.Errorf("header with HTAB rejected: %v", err)
+	}
+	if _, err := ValidateCredentialInjection(&GroupCredentialInjection{Type: "cookie", Name: "session"}, "tok\tpart"); err == nil {
+		t.Error("cookie with HTAB accepted, want 400")
+	}
 	if _, err := ValidateCredentialInjection(&GroupCredentialInjection{Type: "cookie", Name: ""}, "abc"); err == nil {
 		t.Error("cookie without name accepted, want 400")
 	}

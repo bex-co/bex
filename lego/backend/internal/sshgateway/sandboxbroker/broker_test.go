@@ -30,8 +30,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
@@ -53,7 +55,7 @@ func validSandboxPodObj(ns, ws, name, uid, ip, sbxID, grpID string) *corev1.Pod 
 				sessionegress.SandboxGroupLabel: grpID,
 			},
 		},
-		Status: corev1.PodStatus{PodIP: ip},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIP: ip},
 	}
 }
 
@@ -180,8 +182,98 @@ func TestSSRFGuard(t *testing.T) {
 			t.Errorf("ResolveAndCheck(%q) err = %v, want ErrSSRFBlocked", h, err)
 		}
 	}
+	// ADR123 F1: zoned IPv6 addresses (e.g. ::1%lo, fe80::1%eth0) must NEVER
+	// bypass BlockedEgressAddr / SSRFGuard (netip.Prefix.Contains returns false
+	// for any zoned address).
+	for _, zoned := range []string{"::1%lo", "fe80::1%eth0", "[::1%lo]", "[fe80::1%eth0]"} {
+		if _, _, _, err := guard.ResolveAndCheck(ctx, zoned, 443); !errors.Is(err, ErrSSRFBlocked) {
+			t.Errorf("ResolveAndCheck(%q) err = %v, want ErrSSRFBlocked", zoned, err)
+		}
+	}
+	for _, zoned := range []string{"::1%lo", "fe80::1%eth0", "2001:4860:4860::8888%eth0"} {
+		addr := netip.MustParseAddr(zoned)
+		if !sshgateway.BlockedEgressAddr(addr, nil) {
+			t.Errorf("BlockedEgressAddr(%q) = false, want true", zoned)
+		}
+	}
 	if _, _, _, err := guard.ResolveAndCheck(ctx, "missing.example.com", 443); !errors.Is(err, ErrDNSLookupFailed) {
 		t.Fatalf("missing host err = %v, want ErrDNSLookupFailed", err)
+	}
+}
+
+// TestKubeSandboxPodResolverRejectsNonRunningHostNetworkAndTransientErrors
+// pins ADR123 F2: exited Pods (Succeeded/Failed/Pending) that still hold their
+// old Status.PodIP with DeletionTimestamp == nil after Cilium recycles the IP,
+// hostNetwork Pods, and partial scans with transient apiserver errors must all
+// fail closed with ErrPodForbidden.
+func TestKubeSandboxPodResolverRejectsNonRunningHostNetworkAndTransientErrors(t *testing.T) {
+	ctx := context.Background()
+
+	runningPod := validSandboxPodObj("tea-1-sandbox", "tea-1", "sbx-run-0", "uid-run", "10.244.2.10", "sbx-run", "sbg-1")
+	failedPod := validSandboxPodObj("tea-1-sandbox", "tea-1", "sbx-fail-0", "uid-fail", "10.244.2.11", "sbx-fail", "sbg-1")
+	failedPod.Status.Phase = corev1.PodFailed
+	succeededPod := validSandboxPodObj("tea-1-sandbox", "tea-1", "sbx-done-0", "uid-done", "10.244.2.12", "sbx-done", "sbg-1")
+	succeededPod.Status.Phase = corev1.PodSucceeded
+	pendingPod := validSandboxPodObj("tea-1-sandbox", "tea-1", "sbx-pend-0", "uid-pend", "10.244.2.13", "sbx-pend", "sbg-1")
+	pendingPod.Status.Phase = corev1.PodPending
+	hostNetPod := validSandboxPodObj("tea-1-sandbox", "tea-1", "sbx-host-0", "uid-host", "10.244.2.14", "sbx-host", "sbg-1")
+	hostNetPod.Spec.HostNetwork = true
+
+	client := fake.NewSimpleClientset(runningPod, failedPod, succeededPod, pendingPod, hostNetPod)
+	resolver := &KubeSandboxPodResolver{
+		Client: client,
+		Namespaces: func(context.Context) ([]string, error) {
+			return []string{"tea-1-sandbox", "tea-2-sandbox"}, nil
+		},
+	}
+
+	// Warm the hint cache on the running Pod.
+	got, err := resolver.ResolveSandboxPod(ctx, "10.244.2.10")
+	if err != nil || got.UID != "uid-run" {
+		t.Fatalf("warm resolve = (%+v, %v), want uid-run", got, err)
+	}
+
+	// Simulate Pod exiting (Phase=Failed, DeletionTimestamp still nil, PodIP
+	// unchanged) while Cilium reassigns 10.244.2.10 to another Pod. Both the
+	// cached hint AND fallback scan must refuse the exited Pod.
+	runningPod.Status.Phase = corev1.PodFailed
+	if _, err := client.CoreV1().Pods("tea-1-sandbox").Update(ctx, runningPod, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolver.ResolveSandboxPod(ctx, "10.244.2.10"); !errors.Is(err, ErrPodForbidden) {
+		t.Fatalf("exited cached pod err = %v, want ErrPodForbidden", err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		ip   string
+	}{
+		{"failed pod", "10.244.2.11"},
+		{"succeeded pod", "10.244.2.12"},
+		{"pending pod", "10.244.2.13"},
+		{"hostNetwork pod", "10.244.2.14"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := resolver.ResolveSandboxPod(ctx, tc.ip); !errors.Is(err, ErrPodForbidden) {
+				t.Fatalf("ResolveSandboxPod(%q) err = %v, want ErrPodForbidden", tc.ip, err)
+			}
+		})
+	}
+
+	// Transient apiserver error on a peer namespace must fail closed so a
+	// partial scan cannot misattribute an IP.
+	goodPod := validSandboxPodObj("tea-1-sandbox", "tea-1", "sbx-good-0", "uid-good", "10.244.2.99", "sbx-good", "sbg-1")
+	if _, err := client.CoreV1().Pods("tea-1-sandbox").Create(ctx, goodPod, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	client.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if action.GetNamespace() == "tea-2-sandbox" {
+			return true, nil, errors.New("apiserver temporary 500")
+		}
+		return false, nil, nil
+	})
+	if _, err := resolver.ResolveSandboxPod(ctx, "10.244.2.99"); !errors.Is(err, ErrPodForbidden) {
+		t.Fatalf("transient scan error err = %v, want ErrPodForbidden", err)
 	}
 }
 
