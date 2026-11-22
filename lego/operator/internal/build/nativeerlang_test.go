@@ -305,7 +305,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 		}
 	})
 	t.Run("registry failure", func(t *testing.T) {
-		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, nil, files(nil))
+		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, nil, files(nil), packageJSON)
 		must(t, err)
 		got := pinDefaultErlang(t.Context(), &fakeExact{err: errors.New("registry answered 500")}, choice)
 		want := "==> Using Elixir version " + reviewed.lineVersion + " (default)" + elixirDocs + "\n" +

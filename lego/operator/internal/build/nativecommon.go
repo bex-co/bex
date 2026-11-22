@@ -184,9 +184,10 @@ func commonNativeRubyToolLines(choice NativeChoice) string {
 
 // resolveNativeCompanion picks a companion toolchain as a primary of that
 // runtime created at created would be: Render's Python, Ruby, Go and Rust
-// builds name their Node's dated default, as its Node services do (w8/370).
-func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, string, error) {
-	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile)
+// builds name their Node's dated default, as its Node services do (w8/370),
+// and a Node companion reads the package.json a Node service would (w8/399).
+func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool), nodePackage string) (NativeChoice, string, error) {
+	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile, nodePackage)
 	if err != nil {
 		return NativeChoice{}, "", err
 	}

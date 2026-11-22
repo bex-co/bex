@@ -1211,13 +1211,13 @@ func TestPythonDefaultFollowsCreationDate(t *testing.T) {
 		{"unknown creation keeps the legacy default", time.Time{}, nil, "3.13"},
 		{"explicit signal wins on a new service", after, map[string]string{"PYTHON_VERSION": "3.12"}, "3.12"},
 	} {
-		got, err := ResolveNativeVersionAt(tc.created, "python", tc.env, files(nil))
+		got, err := ResolveNativeVersionAt(tc.created, "python", tc.env, files(nil), packageJSON)
 		if err != nil || got.Line != tc.line {
 			t.Errorf("%s: line = %q, err = %v, want %q", tc.name, got.Line, err, tc.line)
 		}
 	}
 	// Other runtimes ignore the creation date.
-	if got, _ := ResolveNativeVersionAt(after, "node", nil, files(nil)); got.Line != "24" {
+	if got, _ := ResolveNativeVersionAt(after, "node", nil, files(nil), packageJSON); got.Line != "24" {
 		t.Errorf("node default = %q", got.Line)
 	}
 }
@@ -1266,7 +1266,7 @@ func TestElixirOTPPairs(t *testing.T) {
 		{map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.3"}, "1.19", "1.19.5", "28.3", "ELIXIR_VERSION=1.19.5, ERLANG_VERSION=28.3", false},
 		{map[string]string{"ELIXIR_VERSION": "1.18.4", "ERLANG_VERSION": "28"}, "1.18", "1.18.4", "", "ELIXIR_VERSION=1.18.4, ERLANG_VERSION=28", false},
 	} {
-		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, tc.env, files(nil))
+		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, tc.env, files(nil), packageJSON)
 		if err != nil {
 			t.Errorf("%v: %v", tc.env, err)
 			continue

@@ -67,7 +67,8 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		return nil, err
 	}
 	readFile := func(name string) ([]byte, bool) { return toolchains.ReadVersionFile(sourceDir, name) }
-	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile)
+	nodePackage := nodePackageJSON(sourceDir)
+	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile, nodePackage)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		}
 	}
 	if nativeJSCompanionRuntimes[runtime] {
-		node, lines, err := resolveNativeCompanion(ctx, exact, created, nativeNodeRuntime, env, readFile)
+		node, lines, err := resolveNativeCompanion(ctx, exact, created, nativeNodeRuntime, env, readFile, nodePackage)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +145,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	// dated Ruby defaults reach a static site is unmeasured, so its default
 	// stays the line's reviewed patch (w8/370).
 	if strings.Contains(rewritten, nativeStaticInstallCopy) && hasGemfile(sourceDir) {
-		ruby, lines, err := resolveNativeCompanion(ctx, exact, time.Time{}, nativeRubyRuntime, env, readFile)
+		ruby, lines, err := resolveNativeCompanion(ctx, exact, time.Time{}, nativeRubyRuntime, env, readFile, nodePackage)
 		var unsupported *UnsupportedVersionError
 		switch {
 		case errors.As(err, &unsupported):
@@ -371,6 +372,49 @@ func readEnvBundle(path string) (map[string]string, error) {
 func hasGemfile(sourceDir string) bool {
 	info, err := os.Lstat(filepath.Join(sourceDir, "Gemfile"))
 	return err == nil && info.Mode().IsRegular()
+}
+
+// With no package.json at the root, Render's Node "uses the first package.json
+// file it finds in a subdirectory" (render.com/docs/node-version, w8/399), in
+// an order its docs leave open. bex takes the shallowest: breadth-first, each
+// directory's entries in lexical order, at most nodePackageDepth levels and
+// nodePackageDirs directories down, skipping node_modules and dot-directories,
+// never through a symlink.
+const (
+	nodePackageDepth = 3
+	nodePackageDirs  = 1000
+)
+
+// nodePackageJSON is the package.json a Node build reads engines.node from,
+// relative to sourceDir, the service's root directory: the root's own whenever
+// the root has one, else the first regular one the search finds, else "".
+func nodePackageJSON(sourceDir string) string {
+	if _, err := os.Lstat(filepath.Join(sourceDir, packageJSON)); err == nil {
+		return packageJSON
+	}
+	level, visited := []string{"."}, 0
+	for depth := 0; depth <= nodePackageDepth && len(level) > 0; depth++ {
+		var next []string
+		for _, dir := range level {
+			if visited++; visited > nodePackageDirs {
+				return ""
+			}
+			entries, err := os.ReadDir(filepath.Join(sourceDir, dir))
+			if err != nil {
+				continue
+			}
+			for _, e := range entries {
+				switch name := e.Name(); {
+				case depth > 0 && name == packageJSON && e.Type().IsRegular():
+					return filepath.ToSlash(filepath.Join(dir, name))
+				case depth < nodePackageDepth && e.IsDir() && name != "node_modules" && !strings.HasPrefix(name, "."):
+					next = append(next, filepath.Join(dir, name))
+				}
+			}
+		}
+		level = next
+	}
+	return ""
 }
 
 // rewriteNativeBase swaps the generated Dockerfile's single FROM (the default

@@ -72,7 +72,7 @@ func TestCommonFoundationPreservesDefaultAndExactSelections(t *testing.T) {
 			data, err := os.ReadFile(path)
 			must(t, err)
 			recipe := string(data)
-			reviewed, err := ResolveNativeVersionAt(tc.created, tc.runtime, tc.env, files(nil))
+			reviewed, err := ResolveNativeVersionAt(tc.created, tc.runtime, tc.env, files(nil), packageJSON)
 			must(t, err)
 			primary := reviewed.Image
 			if tc.tag != "" && !tc.missing {

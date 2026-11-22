@@ -187,9 +187,13 @@ var renderNames = map[string]string{"Node": "Node.js"}
 // ok is false for a signal Render's logs do not show. Render names Erlang on a
 // line of its own, before Elixir's.
 func (c NativeChoice) renderNarration(version, dir string) (line string, ok bool) {
-	signal, _, _ := strings.Cut(c.Source, "=")
-	signal, _, _ = strings.Cut(signal, " ") // "package.json engines.node"
-	from, ok := renderSignals[c.Label][signal]
+	signal, engines := strings.CutSuffix(c.Source, enginesNodeSuffix) // "backend/package.json engines.node"
+	if !engines {
+		signal, _, _ = strings.Cut(signal, "=")
+	}
+	// A package.json below the root (w8/399) keys its signal by file name, and
+	// the log names its path.
+	from, ok := renderSignals[c.Label][signal[strings.LastIndex(signal, "/")+1:]]
 	if !ok {
 		return "", false
 	}
@@ -230,7 +234,7 @@ type UnsupportedVersionError = toolchains.UnsupportedVersionError
 // addendum, w8/m51):
 //
 //	python  PYTHON_VERSION → .python-version → default (toolchains.ResolvePython, which agent sessions share)
-//	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
+//	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node (nodePackageJSON's, w8/399) → default
 //	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
 //	elixir  ELIXIR_VERSION (→ line, or any release from 1.12.0 on no line, w8/373), ERLANG_VERSION (any Erlang/OTP from 24.3.4 Elixir's table pairs with it; one the line's image does not carry is installed exactly, w8/197, w8/373); with neither, Render's dated default Elixir on its default OTP (w8/333)
 //	go      default (Render offers no Go selection)
@@ -243,9 +247,10 @@ type UnsupportedVersionError = toolchains.UnsupportedVersionError
 // odd line's, or a release from 14 on that no line carries) resolves to the
 // release Render's node-version-alias picks, which the resolve phase installs
 // or refuses by name (w8/398). env is the build's effective environment;
-// readFile reads a file relative to the service's root directory.
+// readFile reads a file relative to the service's root directory, whose
+// package.json, if any, is Node's.
 func ResolveNativeVersion(runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
-	return ResolveNativeVersionAt(time.Time{}, runtime, env, readFile)
+	return ResolveNativeVersionAt(time.Time{}, runtime, env, readFile, packageJSON)
 }
 
 // rubyDefaultCutoff: Render's default Ruby for services created from 2025-06-12
@@ -273,9 +278,10 @@ var (
 )
 
 // ResolveNativeVersionAt is ResolveNativeVersion for a service created at
-// created, whose creation date picks the default line where Render's does.
-func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
-	choice, err := resolveNativeLine(created, runtime, env, readFile)
+// created, whose creation date picks the default line where Render's does, and
+// whose Node reads engines.node from nodePackage (nodePackageJSON).
+func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool), nodePackage string) (NativeChoice, error) {
+	choice, err := resolveNativeLine(created, runtime, env, readFile, nodePackage)
 	if err != nil {
 		return choice, err
 	}
@@ -367,12 +373,12 @@ func defaultExact(created time.Time, runtime string, choice NativeChoice) string
 	return version
 }
 
-func resolveNativeLine(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
+func resolveNativeLine(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool), nodePackage string) (NativeChoice, error) {
 	t, ok := nativeToolchains[runtime]
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("unsupported native runtime %q", runtime)
 	}
-	r := resolver{t: t, env: env, readFile: readFile}
+	r := resolver{t: t, env: env, readFile: readFile, nodePackage: nodePackage}
 	switch runtime {
 	case nativePythonRuntime:
 		python, err := toolchains.ResolvePython(created, env, readFile)
@@ -629,6 +635,9 @@ type resolver struct {
 	t        nativeToolchain
 	env      map[string]string
 	readFile func(string) ([]byte, bool)
+	// nodePackage is the package.json Node reads engines.node from, relative
+	// to the service's root directory, or "" for none (nodePackageJSON).
+	nodePackage string
 }
 
 // signal returns (line, source, found, err): found=false means "no signal here,
@@ -901,15 +910,16 @@ func lineHasRelease(l nativeLine, c *semver.Constraints) bool {
 }
 
 func (r resolver) fromPackageEngines() (string, string, bool, error) {
-	request := strings.TrimSpace(packageEnginesNode(r.readFile))
+	request := strings.TrimSpace(packageEnginesNode(r.readFile, r.nodePackage))
 	if request == "" {
 		return "", "", false, nil
 	}
+	source := r.nodePackage + enginesNodeSuffix
 	line, ok := r.nodeRequest(request)
 	if !ok {
-		return "", "", false, r.unsupported(fmt.Sprintf("package.json engines.node %q", request))
+		return "", "", false, r.unsupported(fmt.Sprintf("%s %q", source, request))
 	}
-	return line, "package.json engines.node", true, nil
+	return line, source, true, nil
 }
 
 var gemfileRuby = regexp.MustCompile(`(?m)^\s*ruby\s*\(?\s*(['"])([^'"]+)['"]((?:\s*,\s*['"][^'"]+['"])*)`)
@@ -1232,8 +1242,8 @@ func nodeRequestText(source string, readFile func(string) ([]byte, bool)) string
 		return strings.TrimPrefix(source, "NODE_VERSION=")
 	case source == ".node-version" || source == ".nvmrc":
 		return firstLine(readFile, source)
-	case source == "package.json engines.node":
-		return strings.TrimSpace(packageEnginesNode(readFile))
+	case strings.HasSuffix(source, enginesNodeSuffix):
+		return strings.TrimSpace(packageEnginesNode(readFile, strings.TrimSuffix(source, enginesNodeSuffix)))
 	}
 	return ""
 }
@@ -1249,10 +1259,19 @@ func renderNodeRequest(request string) string {
 	return toolchains.BoundedRequest(request)
 }
 
-// packageEnginesNode is package.json's engines.node, or "" when there is none.
-// An unparseable package.json is npm's error to report, not a version request.
-func packageEnginesNode(readFile func(string) ([]byte, bool)) string {
-	raw, ok := readFile("package.json")
+// packageJSON is npm's manifest, and the root's is Node's whenever the root
+// has one (nodePackageJSON).
+const packageJSON = "package.json"
+
+// enginesNodeSuffix follows the package.json path in a Node choice's Source:
+// `backend/package.json engines.node`.
+const enginesNodeSuffix = " engines.node"
+
+// packageEnginesNode is the engines.node of the package.json at name, or ""
+// when there is none. An unparseable package.json is npm's error to report,
+// not a version request.
+func packageEnginesNode(readFile func(string) ([]byte, bool), name string) string {
+	raw, ok := readFile(name)
 	if !ok {
 		return ""
 	}
