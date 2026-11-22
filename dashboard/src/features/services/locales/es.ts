@@ -4371,11 +4371,6 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
   },
-  "services.navBuilds": {
-    message: "Builds",
-    description:
-      "Service-detail nav item for a cron job: its build history, Render's Builds page (w2/m360)",
-  },
   "services.navRuns": {
     message: "Ejecuciones",
     description:

@@ -28,7 +28,8 @@ function CachedServiceComputeSkeleton({ serviceId }: { serviceId: string }) {
  * services — Render's scaling sections as its live Scaling page drew them
  * (w7/m43): Autoscaling ⊕ Manual Scaling (mutually exclusive — the manual
  * section shows exactly while autoscaling is off), then Recent Metrics. A cron
- * job has a compute plan and no scaling, so its page is the Compute section.
+ * job has no Compute page: its URL lands on its Settings' Compute section, the
+ * same ComputePlanSection (w3/m554).
  *
  * Gated on the server query: the plan editor seeds its selection from the
  * current plan, and a type-shaped skeleton holds the frame until it resolves.

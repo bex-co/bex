@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { isRedirect } from "@tanstack/react-router";
 import {
-  redirectHistoryTabByType,
+  redirectBuildsByType,
+  redirectCronCompute,
+  redirectRunsByType,
   redirectServiceRoot,
 } from "../service-root-redirect";
 import type { RouterContext } from "@/common/types/router-context";
@@ -58,58 +60,123 @@ function clientFor(type: string | null): RouterContext["client"] {
   } as unknown as RouterContext["client"];
 }
 
-async function historyRedirect(
-  type: string | null,
-  tab: "deploys" | "builds" | "runs",
-): Promise<unknown> {
+/** The redirect a beforeLoad helper throws, or null when it lets the page render. */
+async function thrown(load: Promise<unknown>): Promise<unknown> {
   try {
-    await redirectHistoryTabByType(clientFor(type), "srv-1", tab);
+    await load;
     return null;
   } catch (error) {
     return error;
   }
 }
 
-describe("a cron job's Builds and Runs (w2/m360)", () => {
-  it("lands a cron job's root on Builds", () => {
+describe("a cron job's Runs, Deploys and Compute URLs (w3/m554)", () => {
+  it("lands a cron job's root on Runs, the page Render shows at /cron/<id>", () => {
     expect(caught("srv-cron", "cron_job")).toMatchObject({
-      options: { to: "/services/$serviceId/builds" },
+      options: {
+        to: "/services/$serviceId/runs",
+        params: { serviceId: "srv-cron" },
+        replace: true,
+      },
     });
   });
 
-  it("sends a cron job's Deploys URL to Builds, keeping its filters", async () => {
-    const error = await historyRedirect("cron_job", "deploys");
+  it("renders Runs for a cron job, or when the type is unknown", async () => {
+    expect(
+      await thrown(redirectRunsByType(clientFor("cron_job"), "srv-1")),
+    ).toBeNull();
+    expect(
+      await thrown(redirectRunsByType(clientFor(null), "srv-1")),
+    ).toBeNull();
+  });
+
+  it("sends another type's Runs URL to its primary tab", async () => {
+    expect(
+      await thrown(redirectRunsByType(clientFor("web_service"), "srv-1")),
+    ).toMatchObject({ options: { to: "/services/$serviceId/deploys" } });
+    expect(
+      await thrown(redirectRunsByType(clientFor("static_site"), "srv-1")),
+    ).toMatchObject({ options: { to: "/static/$serviceId/events" } });
+  });
+
+  it("lands a cron job's Builds URL on Deploys, keeping its query", async () => {
+    for (const type of ["cron_job", null]) {
+      const error = await thrown(
+        redirectBuildsByType(clientFor(type), "srv-1", undefined),
+      );
+      expect(isRedirect(error)).toBe(true);
+      expect(error).toMatchObject({
+        options: {
+          to: "/services/$serviceId/deploys",
+          params: { serviceId: "srv-1" },
+          search: true,
+          replace: true,
+        },
+      });
+    }
+  });
+
+  it("lands a cron job's build on that deploy's detail", async () => {
+    expect(
+      await thrown(
+        redirectBuildsByType(clientFor("cron_job"), "srv-1", "dep-2"),
+      ),
+    ).toMatchObject({
+      options: {
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "srv-1", deployId: "dep-2" },
+        search: true,
+        replace: true,
+      },
+    });
+  });
+
+  it("sends another type's Builds URL to its primary tab", async () => {
+    expect(
+      await thrown(
+        redirectBuildsByType(
+          clientFor("background_worker"),
+          "srv-1",
+          undefined,
+        ),
+      ),
+    ).toMatchObject({ options: { to: "/services/$serviceId/deploys" } });
+    expect(
+      await thrown(
+        redirectBuildsByType(clientFor("static_site"), "srv-1", "dep-2"),
+      ),
+    ).toMatchObject({ options: { to: "/static/$serviceId/events" } });
+  });
+
+  it("sends a cron job's Compute URL to Settings' Compute section", async () => {
+    const error = await thrown(
+      redirectCronCompute(clientFor("cron_job"), "srv-1"),
+    );
     expect(isRedirect(error)).toBe(true);
     expect(error).toMatchObject({
       options: {
-        to: "/services/$serviceId/builds",
+        to: "/services/$serviceId/settings",
         params: { serviceId: "srv-1" },
+        hash: "compute",
         replace: true,
       },
     });
     const search = (
       error as { options: { search: (prev: unknown) => unknown } }
     ).options.search;
-    expect(search({ status: "failed" })).toEqual({ status: "failed" });
+    expect(search({ lang: "de" })).toEqual({ lang: "de" });
   });
 
-  it("renders Builds and Runs for a cron job, and Deploys for every other type", async () => {
-    expect(await historyRedirect("cron_job", "builds")).toBeNull();
-    expect(await historyRedirect("cron_job", "runs")).toBeNull();
-    expect(await historyRedirect("web_service", "deploys")).toBeNull();
-    // Unknown type: render what was asked for.
-    expect(await historyRedirect(null, "runs")).toBeNull();
-  });
-
-  it("sends another type's Builds or Runs URL to its primary tab", async () => {
-    expect(await historyRedirect("web_service", "runs")).toMatchObject({
-      options: { to: "/services/$serviceId/deploys" },
-    });
-    expect(await historyRedirect("background_worker", "builds")).toMatchObject({
-      options: { to: "/services/$serviceId/deploys" },
-    });
-    expect(await historyRedirect("static_site", "runs")).toMatchObject({
-      options: { to: "/static/$serviceId/events" },
-    });
+  it("renders the Compute page for every other type, and an unknown one", async () => {
+    for (const type of [
+      "web_service",
+      "private_service",
+      "background_worker",
+      null,
+    ]) {
+      expect(
+        await thrown(redirectCronCompute(clientFor(type), "srv-1")),
+      ).toBeNull();
+    }
   });
 });

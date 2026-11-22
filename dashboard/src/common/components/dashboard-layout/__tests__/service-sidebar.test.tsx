@@ -130,6 +130,66 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     ).not.toBeInTheDocument();
   });
 
+  // Render's cron sidebar (w3/m554, docs/render-artifacts/cron-dashboard.md):
+  // Runs, Deploys, Settings / Events, Logs, Metrics / Environment, Shell, with
+  // Deploys highlighted on a deploy's detail as on the list.
+  describe("a cron job", () => {
+    beforeEach(() => {
+      serverState.service = {
+        id: "srv-1",
+        name: "nightly-report",
+        type: "cron_job",
+      } as ServiceView;
+    });
+
+    const active = () =>
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("data-active") === "true")
+        .map((link) => link.textContent);
+
+    it("lists Render's entries in Render's order, with no Compute", async () => {
+      renderAt("/services/srv-1/runs");
+
+      expect(await screen.findByRole("link", { name: "Runs" })).toHaveAttribute(
+        "href",
+        "/services/srv-1/runs",
+      );
+      expect(screen.getByRole("link", { name: "Deploys" })).toHaveAttribute(
+        "href",
+        "/services/srv-1/deploys",
+      );
+      expect(
+        screen
+          .getAllByRole("link")
+          .map((link) => link.textContent)
+          .filter(Boolean),
+      ).toEqual([
+        "Dashboard",
+        "Runs",
+        "Deploys",
+        "Settings",
+        "Events",
+        "Logs",
+        "Metrics",
+        "Environment",
+        "Shell",
+      ]);
+      expect(active()).toEqual(["Runs"]);
+    });
+
+    it.each([
+      ["/services/srv-1/deploys", "Deploys"],
+      ["/services/srv-1/deploys/dep-1", "Deploys"],
+      ["/services/srv-1/settings", "Settings"],
+    ])("highlights %s under %s", async (path, entry) => {
+      renderAt(path);
+
+      await screen.findByRole("link", { name: "Runs" });
+      expect(active()).toEqual([entry]);
+    });
+  });
+
   it("type-gates a static site: Events-first, no Deploys/Logs/Shell/Compute, adds Redirects + Headers (w5/m48, w5/m57)", async () => {
     serverState.service = {
       id: "srv-1",

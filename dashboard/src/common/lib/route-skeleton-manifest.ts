@@ -659,6 +659,12 @@ export const ROUTE_SKELETON_MANIFEST = {
     to: "/services/$serviceId",
     reason: "data-dependent redirect",
   },
+  "/services/$serviceId/builds/$": {
+    kind: "delegate",
+    owner: "routes/services.$serviceId.builds.$.tsx",
+    to: "/services/$serviceId",
+    reason: "data-dependent redirect",
+  },
   "/static/$serviceId/": {
     kind: "delegate",
     owner: "routes/static.$serviceId.index.tsx",
@@ -697,12 +703,6 @@ export const ROUTE_SKELETON_MANIFEST = {
   "/services/$serviceId/deploys/": {
     kind: "render",
     owner: "routes/services.$serviceId.deploys.index.tsx",
-    shape: "deploys-list",
-    regions: ["deploys-table"],
-  },
-  "/services/$serviceId/builds": {
-    kind: "render",
-    owner: "routes/services.$serviceId.builds.tsx",
     shape: "deploys-list",
     regions: ["deploys-table"],
   },

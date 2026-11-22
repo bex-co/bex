@@ -661,6 +661,18 @@ describe("ServiceDetailHeader", () => {
     ).toHaveAttribute("href", "/services/app/compute");
   });
 
+  // w3/m554: a cron job has no Compute page. Render's plan badge links its
+  // Settings' Compute section (`settings#compute`), and bex's does too.
+  it("links a cron job's plan chip to its Settings' Compute section", async () => {
+    renderHeader(
+      svc({ type: "cron_job", plan: "starter", schedule: "*/5 * * * *" }),
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Starter" }),
+    ).toHaveAttribute("href", "/services/app/settings#compute");
+  });
+
   it("shows a bound image credential by name and links to its settings panel", async () => {
     renderHeader(
       svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),

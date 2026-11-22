@@ -2,14 +2,10 @@ import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { DeployHistorySkeleton } from "@/features/deploys/components/deploy-history-skeleton";
 import { DeployHistoryView } from "@/features/deploys/components/deploy-history-view";
-import { redirectHistoryTabByType } from "@/features/services/lib/service-root-redirect";
 import { parseDeployListSearch } from "@/features/deploys/lib/deploy-list-search";
 
 export const Route = createFileRoute("/services/$serviceId/deploys/")({
   head: serviceTabHead("services.navDeploys", "/services/$serviceId"),
-  // A cron job's deploy history is its Builds page (w2/m360).
-  beforeLoad: ({ context, params }) =>
-    redirectHistoryTabByType(context.client, params.serviceId, "deploys"),
   component: RouteComponent,
   pendingComponent: DeployHistorySkeleton,
   // The history's filters live in the URL, so Back from a deploy's detail
@@ -18,9 +14,11 @@ export const Route = createFileRoute("/services/$serviceId/deploys/")({
 });
 
 // The dedicated Deploys tab (w9/002): Render's standalone deploy-history
-// list, distinct from the Events feed. Nests under the `services.$serviceId`
-// layout route like every other tab; its rows link into the sibling
-// per-deploy route ($deployId).
+// list, distinct from the Events feed, for every compute type, a cron job
+// included (w3/m554: Render's signed-in dashboard calls a cron job's deploy
+// list Deploys, where its docs still say Builds). Nests under the
+// `services.$serviceId` layout route like every other tab; its rows link into
+// the sibling per-deploy route ($deployId).
 function RouteComponent() {
   const { serviceId } = Route.useParams();
   const search = Route.useSearch();

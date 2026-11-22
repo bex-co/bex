@@ -59,7 +59,10 @@ function renderServiceCreateSkeleton(path: string) {
   return render(<RouterProvider router={router} />);
 }
 
-function renderServiceRootSkeleton(base: "/services" | "/static") {
+function renderServiceRootSkeleton(
+  base: "/services" | "/static",
+  serviceType: string | null = null,
+) {
   const rootRoute = createRootRoute({ component: Outlet });
   const resourceRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -69,7 +72,9 @@ function renderServiceRootSkeleton(base: "/services" | "/static") {
   const indexRoute = createRoute({
     getParentRoute: () => resourceRoute,
     path: "/",
-    component: () => <ServiceRouteContentSkeleton base={base} />,
+    component: () => (
+      <ServiceRouteContentSkeleton base={base} serviceType={serviceType} />
+    ),
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([resourceRoute.addChildren([indexRoute])]),
@@ -526,12 +531,15 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   });
 
   it.each([
-    ["/services", "deploys-list"],
-    ["/static", "service-events"],
+    ["/services", null, "deploys-list"],
+    ["/services", "web_service", "deploys-list"],
+    // A cron job's bare URL opens Runs, as on Render (w3/m554).
+    ["/services", "cron_job", "cron-runs"],
+    ["/static", null, "service-events"],
   ] as const)(
-    "selects the canonical root destination for %s",
-    async (base, expectedShape) => {
-      const { container } = renderServiceRootSkeleton(base);
+    "selects the canonical root destination for %s (%s)",
+    async (base, serviceType, expectedShape) => {
+      const { container } = renderServiceRootSkeleton(base, serviceType);
       await waitFor(() =>
         expect(
           container.querySelector(`[data-route-skeleton="${expectedShape}"]`),
@@ -648,8 +656,6 @@ describe("service compute pending frame (w6/m483)", () => {
     ["web_service", SCALABLE],
     ["private_service", SCALABLE],
     ["background_worker", SCALABLE],
-    // A cron job has a compute plan and no scaling sections.
-    ["cron_job", ["compute-plan"]],
     // Undecided: reserve the sections every other compute type has.
     [null, SCALABLE],
   ])(
@@ -665,6 +671,18 @@ describe("service compute pending frame (w6/m483)", () => {
       ).toHaveTextContent("Compute");
     },
   );
+
+  // A cron job has no Compute page: its Compute URL lands on Settings, whose
+  // frame the parent's pending state previews instead (w3/m554).
+  it("previews Settings for a cron job's Compute URL", async () => {
+    const { container } = renderServiceComputeParentSkeleton("cron_job");
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-route-skeleton="service-settings"]'),
+      ).not.toBeNull(),
+    );
+    expect(regions(container)).toEqual([]);
+  });
 });
 
 // The Runtime and Edge Caching cards reserve the heights measured in Chromium

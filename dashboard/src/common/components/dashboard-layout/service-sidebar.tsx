@@ -67,19 +67,9 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
               base,
             )}
             linkParams={{ serviceId }}
-            isItemActive={(to) => {
-              const href = to.replace("$serviceId", serviceId);
-              // A cron job's build detail is the deploy detail route, under
-              // its Builds entry (w2/m360).
-              return (
-                isNavItemActive(pathname, href) ||
-                (href.endsWith("/builds") &&
-                  isNavItemActive(
-                    pathname,
-                    href.replace(/\/builds$/, "/deploys"),
-                  ))
-              );
-            }}
+            isItemActive={(to) =>
+              isNavItemActive(pathname, to.replace("$serviceId", serviceId))
+            }
           />
         ) : null}
       </SidebarContent>

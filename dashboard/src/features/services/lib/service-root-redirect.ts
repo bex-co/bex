@@ -2,15 +2,16 @@ import { redirect } from "@tanstack/react-router";
 import { ServerDocument } from "@/graphql/definitions";
 import type { RouterContext } from "@/common/types/router-context";
 import { isCronType } from "@/features/services/lib/service-type";
+import { COMPUTE_SECTION_ANCHOR } from "@/features/services/lib/compute-page";
 
 /**
  * Land the bare service URL on its type's primary tab, under its canonical base
  * (Render parity, w5/m57): a static_site lives at `/static/<id>` and lands on
  * Events (it has no Deploys tab — deploy history/detail is reached from the
- * Events feed); a cron job lands on Builds (its Deploys tab, split from Runs as
- * on Render, w2/m360); every other type lives at `/services/<id>` and lands on
- * Deploys. `type` is the raw wire serviceType (`static_site`, `web_service`, …);
- * an unknown/absent type falls back to the `/services` Deploys default.
+ * Events feed); a cron job lands on Runs, the page Render shows at `/cron/<id>`
+ * (w3/m554); every other type lives at `/services/<id>` and lands on Deploys.
+ * `type` is the raw wire serviceType (`static_site`, `web_service`, …); an
+ * unknown/absent type falls back to the `/services` Deploys default.
  */
 export function redirectServiceRoot(
   serviceId: string,
@@ -25,7 +26,7 @@ export function redirectServiceRoot(
 
 function primaryTab(type?: string | null) {
   if (type === "static_site") return "/static/$serviceId/events" as const;
-  if (type && isCronType(type)) return "/services/$serviceId/builds" as const;
+  if (type && isCronType(type)) return "/services/$serviceId/runs" as const;
   return "/services/$serviceId/deploys" as const;
 }
 
@@ -43,28 +44,68 @@ async function serviceType(
 }
 
 /**
- * Keep a service's history tab the one its type has (w2/m360): a cron job's
- * Deploys URL lands on its Builds page, with its filters, and Builds and Runs
- * belong to cron jobs only, so another type's lands on its primary tab. An
- * unknown type renders the tab asked for.
+ * Runs belong to a cron job (w2/m360): another type's Runs URL lands on its
+ * primary tab. An unknown type renders the page asked for.
  */
-export async function redirectHistoryTabByType(
+export async function redirectRunsByType(
   client: RouterContext["client"],
   serviceId: string,
-  tab: "deploys" | "builds" | "runs",
 ): Promise<void> {
   const type = await serviceType(client, serviceId);
-  if (type === null) return;
-  const cron = isCronType(type);
-  if (tab === "deploys" && cron) {
+  if (type !== null && !isCronType(type)) redirectServiceRoot(serviceId, type);
+}
+
+/**
+ * Render's `/cron/<id>/builds` replaces itself with `/cron/<id>/deploys`, and
+ * a build's detail is `/cron/<id>/builds/<id>` (w3/m554,
+ * docs/render-artifacts/cron-dashboard.md). A cron job's build is its deploy,
+ * so its Builds URL lands on its Deploys page with its query (the filters
+ * w4/284 keeps in the URL), and a build's on that deploy's detail. Another
+ * type never had a Builds URL, so it lands on its primary tab; an unknown type
+ * takes the cron job's way, since the Deploys page is what Builds became.
+ */
+export async function redirectBuildsByType(
+  client: RouterContext["client"],
+  serviceId: string,
+  deployId: string | undefined,
+): Promise<never> {
+  const type = await serviceType(client, serviceId);
+  if (type !== null && !isCronType(type)) redirectServiceRoot(serviceId, type);
+  if (deployId) {
     throw redirect({
-      to: "/services/$serviceId/builds",
-      params: { serviceId },
-      search: (prev) => prev,
+      to: "/services/$serviceId/deploys/$deployId",
+      params: { serviceId, deployId },
+      search: true,
       replace: true,
     });
   }
-  if (tab !== "deploys" && !cron) redirectServiceRoot(serviceId, type);
+  throw redirect({
+    to: "/services/$serviceId/deploys",
+    params: { serviceId },
+    search: true,
+    replace: true,
+  });
+}
+
+/**
+ * A cron job has no Compute page (w3/m554): its plan is its Settings' Compute
+ * section, where Render's plan badge links (`settings#compute`), so its
+ * Compute URL lands there with its query. Every other type, and an unknown
+ * one, renders the Compute page.
+ */
+export async function redirectCronCompute(
+  client: RouterContext["client"],
+  serviceId: string,
+): Promise<void> {
+  const type = await serviceType(client, serviceId);
+  if (type === null || !isCronType(type)) return;
+  throw redirect({
+    to: "/services/$serviceId/settings",
+    params: { serviceId },
+    search: (prev) => prev,
+    hash: COMPUTE_SECTION_ANCHOR,
+    replace: true,
+  });
 }
 
 /**

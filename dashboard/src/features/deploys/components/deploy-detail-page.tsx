@@ -1,4 +1,3 @@
-import { isCron } from "@/features/services/lib/service-type";
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -56,17 +55,13 @@ export function DeployDetailPage({
   // SERVICE id never reaches here: the services.$serviceId layout redirects
   // before mounting its Outlet. `useDeploy` already excludes query errors
   // from `notFound`, so outages keep the inline error state below.
-  // A cron job's history tab is Builds (w2/m360).
-  const cron = service ? isCron(service) : false;
   const deploysTab = useMemo(
     () => ({
-      to: cron
-        ? ("/services/$serviceId/builds" as const)
-        : (`${base}/$serviceId/deploys` as const),
+      to: `${base}/$serviceId/deploys` as const,
       params: { serviceId },
       replace: true,
     }),
-    [serviceId, base, cron],
+    [serviceId, base],
   );
   useNotFoundRedirect(notFound, deploysTab);
 
@@ -109,7 +104,7 @@ export function DeployDetailPage({
       className="relative inline-flex h-5 items-center gap-1 text-xs text-muted-foreground hover:text-foreground max-lg:after:absolute max-lg:after:-inset-x-2 max-lg:after:-inset-y-3 max-lg:after:content-['']"
     >
       <ChevronLeft className="size-3.5" aria-hidden />
-      {t(cron ? "services.navBuilds" : "services.navDeploys")}
+      {t("services.navDeploys")}
     </Link>
   );
 

@@ -10,6 +10,7 @@ import {
 /** A section of a service's Settings page, named by its anchor id. */
 export type ServiceSettingsSectionId =
   | "general"
+  | "compute"
   | "deploy"
   | "source"
   | "runtime"
@@ -65,11 +66,12 @@ export function serviceSettingsSections(
   const runtime = Boolean(repo) && !staticSite && service.runtime !== "image";
   const sections: ServiceSettingsSectionId[] = ["general"];
   if (cron) {
-    // Source holds the image or repo like any other type, so an image cron's
-    // image can be seen and changed (w4/498). Its Deploy section holds the
-    // schedule and command. A git-sourced cron job still builds, so it keeps
-    // Build (w2/m9, w5/010).
-    sections.push("source", "deploy");
+    // A cron job has no Compute page: its plan is the Compute section right
+    // after General, as on Render (w3/m554). Source holds the image or repo
+    // like any other type, so an image cron's image can be seen and changed
+    // (w4/498). Its Deploy section holds the schedule and command. A
+    // git-sourced cron job still builds, so it keeps Build (w2/m9, w5/010).
+    sections.push("compute", "source", "deploy");
     if (runtime) sections.push("runtime");
     if (repo) sections.push("build");
   } else {

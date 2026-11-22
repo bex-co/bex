@@ -8,7 +8,6 @@ import {
   Braces,
   ChartNoAxesCombined,
   Cpu,
-  Hammer,
   HardDrive,
   History,
   Rocket,
@@ -31,10 +30,13 @@ import type { ServiceBase } from "@/features/services/lib/service-base";
 // Redirects/Rewrites and Headers. It also mirrors Render's static IA (w5/m57):
 // its primary entry is Events (promoted to a top-level item), not Deploys —
 // Render's static sidebar has no Deploys tab (deploy history/detail is reached
-// from the Events feed). Every other type keeps Deploys as its primary entry
-// because bex exposes dedicated deploy history and detail routes. Compute is
-// Render's page for the compute plan and scaling (w6/m483,
-// docs/render-artifacts/compute-page.md). Shell leads to bex's
+// from the Events feed). A cron job leads with Runs, then Deploys, as Render's
+// signed-in dashboard does (w3/m554, docs/render-artifacts/cron-dashboard.md;
+// Render's docs still call its deploy list "Builds"). Every other type keeps
+// Deploys as its primary entry because bex exposes dedicated deploy history
+// and detail routes. Compute is Render's page for the compute plan and scaling
+// (w6/m483, docs/render-artifacts/compute-page.md); a cron job has none, its
+// plan being its Settings' Compute section. Shell leads to bex's
 // running-instance SSH instructions. Disk shipped with ADR082 (the
 // stateless-first non-goal was reversed 2026-08-22); Previews and One-Off Jobs
 // remain DO_NOT_DO non-goals.
@@ -60,9 +62,7 @@ export function serviceNavGroups(
   base: ServiceBase = "/services",
 ): SidebarNavGroup[] {
   const DEPLOYS = navItem(base, "/deploys", "services.navDeploys", Rocket);
-  // A cron job's history splits in two, as on Render (changelog 2026-09-03,
-  // render.com/docs/cronjobs): Builds and Runs replace its Deploys tab (w2/m360).
-  const BUILDS = navItem(base, "/builds", "services.navBuilds", Hammer);
+  // A cron job's run history, beside its deploys (w2/m360, w3/m554).
   const RUNS = navItem(base, "/runs", "services.navRuns", History);
   const SETTINGS = navItem(base, "/settings", "services.navSettings", Settings);
   const DISK = navItem(base, "/disk", "services.navDisk", HardDrive);
@@ -109,7 +109,7 @@ export function serviceNavGroups(
     type === null
       ? [SETTINGS]
       : type === "cron"
-        ? [BUILDS, RUNS, SETTINGS]
+        ? [RUNS, DEPLOYS, SETTINGS]
         : [DEPLOYS, SETTINGS];
   // Render orders Manage as Environment, Previews, Disk, One-Off Jobs, Shell;
   // bex has neither Previews nor Jobs, so Disk sits directly after Environment.
@@ -120,10 +120,16 @@ export function serviceNavGroups(
   // there would lead to an Add Disk button that always 400s.
   const diskEligible =
     type === "web" || type === "private" || type === "worker";
-  // Compute sits where Render's Manage group had Scaling, for every runtime
-  // type: a cron job has a compute plan even though it cannot scale.
+  // Compute sits where Render's Manage group had Scaling. A cron job has no
+  // Compute entry, as on Render: its plan is its Settings' Compute section.
   const manageTail =
-    type === null ? [] : [...(diskEligible ? [DISK] : []), SHELL, COMPUTE];
+    type === null
+      ? []
+      : [
+          ...(diskEligible ? [DISK] : []),
+          SHELL,
+          ...(type === "cron" ? [] : [COMPUTE]),
+        ];
   return [
     { items: topLevel },
     { labelKey: "common.navMonitorGroup", items: [EVENTS, LOGS, METRICS] },

@@ -45,8 +45,9 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
   });
 
   // w6/m483: one Compute entry, where Render's Manage group had Scaling,
-  // replaces bex's Scaling and Plan entries for every runtime type.
-  it.each(["web", "private", "worker", "cron"] as const)(
+  // replaces bex's Scaling and Plan entries for every type that runs
+  // instances.
+  it.each(["web", "private", "worker"] as const)(
     "%s has one Compute entry and neither Scaling nor Plan",
     (type) => {
       const groups = serviceNavGroups(type);
@@ -65,29 +66,39 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     expect(flat).toContain("services.navDisk");
   });
 
-  it("cron: Builds and Runs replace Deploys, as on Render (w2/m360)", () => {
+  // Render's signed-in cron sidebar (w3/m554,
+  // docs/render-artifacts/cron-dashboard.md): Runs, Deploys, Settings; Events,
+  // Logs, Metrics; Environment, Shell (One-Off Jobs is a DO_NOT_DO non-goal).
+  it("cron: Runs, Deploys, Settings / Events, Logs, Metrics / Environment, Shell", () => {
     const groups = serviceNavGroups("cron", "/services");
-    expect(labels(groups)[0]).toEqual([
-      "services.navBuilds",
-      "services.navRuns",
-      "services.navSettings",
+    expect(labels(groups)).toEqual([
+      ["services.navRuns", "services.navDeploys", "services.navSettings"],
+      ["services.navEvents", "services.navLogs", "services.navMetrics"],
+      ["services.navEnvironment", "services.navShell"],
     ]);
-    expect(tos(groups)).toContain("/services/$serviceId/builds");
-    expect(tos(groups)).toContain("/services/$serviceId/runs");
-    expect(tos(groups)).not.toContain("/services/$serviceId/deploys");
-    // Only a cron job has them; the type-unknown frame shows neither.
-    for (const type of ["web", "private", "worker", "static", null] as const) {
-      const flat = labels(serviceNavGroups(type)).flat();
-      expect(flat).not.toContain("services.navBuilds");
-      expect(flat).not.toContain("services.navRuns");
-    }
+    expect(groups.map((group) => group.labelKey)).toEqual([
+      undefined,
+      "common.navMonitorGroup",
+      "common.navManageGroup",
+    ]);
+    expect(tos(groups).slice(0, 3)).toEqual([
+      "/services/$serviceId/runs",
+      "/services/$serviceId/deploys",
+      "/services/$serviceId/settings",
+    ]);
+    // No Builds page, no Disk (no long-running instance to mount one on) and
+    // no Compute page: a cron job's plan is its Settings' Compute section.
+    expect(tos(groups)).not.toContain("/services/$serviceId/builds");
+    expect(tos(groups)).not.toContain("/services/$serviceId/disk");
+    expect(tos(groups)).not.toContain("/services/$serviceId/compute");
   });
 
-  it("cron omits Disk (no long-running instance) and keeps Compute for its plan", () => {
-    const flat = labels(serviceNavGroups("cron")).flat();
-    expect(flat).toContain("services.navShell");
-    expect(flat).toContain("services.navCompute");
-    expect(flat).not.toContain("services.navDisk");
+  it("gives only a cron job a Runs entry", () => {
+    for (const type of ["web", "private", "worker", "static", null] as const) {
+      expect(labels(serviceNavGroups(type)).flat()).not.toContain(
+        "services.navRuns",
+      );
+    }
   });
 
   it("null (still loading): only the shared entries, so nothing type-specific flashes", () => {
@@ -118,9 +129,12 @@ describe("serviceTabLabelKey (the detail layout's tab heading)", () => {
     expect(serviceTabLabelKey("/services/srv-1/env/", "srv-1")).toBe(
       "services.navEnvironment",
     );
-    // A cron job's Builds and a static site's Headers are tabs too.
-    expect(serviceTabLabelKey("/services/srv-1/builds", "srv-1")).toBe(
-      "services.navBuilds",
+    // A cron job's Runs and a static site's Headers are tabs too.
+    expect(serviceTabLabelKey("/services/srv-1/runs", "srv-1")).toBe(
+      "services.navRuns",
+    );
+    expect(serviceTabLabelKey("/services/srv-1/compute", "srv-1")).toBe(
+      "services.navCompute",
     );
     expect(
       serviceTabLabelKey("/static/site-1/headers", "site-1", "/static"),

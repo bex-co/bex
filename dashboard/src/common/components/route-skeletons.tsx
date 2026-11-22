@@ -2845,11 +2845,12 @@ function isPlainSettingsSection(
 }
 
 /**
- * General's height: its rows are the name, the instance type, the idle timeout
- * (a free web service's select, a paid one's shorter always-on notice), the
- * max shutdown delay (web, private, worker) and Region when the install sets
- * one. Region is 128px at narrow mobile and 88px at desktop plus a 24px gap; a
- * static site never shows it.
+ * General's height: its rows are the name, the instance type (not a cron job's,
+ * whose plan is its own Compute section, w3/m554), the idle timeout (a free web
+ * service's select, a paid one's shorter always-on notice), the max shutdown
+ * delay (web, private, worker) and Region when the install sets one. Region is
+ * 128px at narrow mobile and 88px at desktop plus a 24px gap; a static site
+ * never shows it.
  */
 function generalHeight(service: SettingsSkeletonService): string {
   const region = Boolean(service.region) && !isStaticSiteType(service.type);
@@ -2860,7 +2861,9 @@ function generalHeight(service: SettingsSkeletonService): string {
       }
       return region ? "h-[782px] sm:h-[566px]" : "h-[630px] sm:h-[454px]";
     case "cron_job":
-      return region ? "h-[498px] sm:h-[366px]" : "h-[346px] sm:h-[254px]";
+      // Name and Region only: the plan is the Compute section (w3/m554,
+      // measured on dev-3 at 390 and 1440 with a region).
+      return region ? "h-[414px] sm:h-[298px]" : "h-[262px] sm:h-[186px]";
     case "static_site":
       return "h-[246px] sm:h-[186px]";
     default:
@@ -2872,7 +2875,7 @@ function generalRows(service: SettingsSkeletonService): number {
   const { type } = service;
   if (isStaticSiteType(type)) return 1;
   return (
-    2 +
+    (isCronType(type) ? 1 : 2) +
     (autoSleepEligibleType(type) ? 1 : 0) +
     (supportsMaxShutdownDelay(service) ? 1 : 0) +
     (service.region ? 1 : 0)
@@ -2966,6 +2969,14 @@ export function SettingsSectionSkeleton({
         <SettingsFormCardSkeleton
           fields={generalRows(service)}
           className={generalHeight(service)}
+        />
+      );
+    case "compute":
+      // A cron job's plan: the Compute page's section frame (w3/m554).
+      return (
+        <ComputePlanSectionSkeleton
+          serviceType={type}
+          currentPlan={service.plan}
         />
       );
     case "source":
@@ -3658,7 +3669,7 @@ type ServiceRouteSkeletonKind =
 const SERVICE_ROUTE_SKELETON_BY_ID = {
   "/services/$serviceId": "deploys",
   "/services/$serviceId/": "deploys",
-  "/services/$serviceId/builds": "deploys",
+  "/services/$serviceId/builds/$": "deploys",
   "/services/$serviceId/compute": "compute",
   "/services/$serviceId/deploys/": "deploys",
   "/services/$serviceId/deploys/$deployId": "deploy-detail",
@@ -3684,6 +3695,21 @@ const SERVICE_ROUTE_SKELETON_BY_ID = {
   "/static/$serviceId/settings": "settings",
 } as const satisfies Record<string, ServiceRouteSkeletonKind>;
 
+/**
+ * Where a cron job's URL lands instead (w3/m554): its bare URL on Runs and its
+ * Compute URL on Settings, so the frame previews the page that will render.
+ */
+function cronLanding(
+  kind: ServiceRouteSkeletonKind | undefined,
+  routeId: string | undefined,
+  serviceType: string | null,
+): ServiceRouteSkeletonKind | undefined {
+  if (serviceType === null || !isCronType(serviceType)) return kind;
+  if (routeId === "/services/$serviceId" || routeId === "/services/$serviceId/")
+    return "cron-runs";
+  return kind === "compute" ? "settings" : kind;
+}
+
 /** Select the tab frame that a service/static parent loader is blocking. */
 export function ServiceRouteContentSkeleton({
   base,
@@ -3701,11 +3727,15 @@ export function ServiceRouteContentSkeleton({
   const routeId = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId,
   });
-  const kind = routeId
-    ? SERVICE_ROUTE_SKELETON_BY_ID[
-        routeId as keyof typeof SERVICE_ROUTE_SKELETON_BY_ID
-      ]
-    : undefined;
+  const kind = cronLanding(
+    routeId
+      ? SERVICE_ROUTE_SKELETON_BY_ID[
+          routeId as keyof typeof SERVICE_ROUTE_SKELETON_BY_ID
+        ]
+      : undefined,
+    routeId,
+    serviceType,
+  );
 
   switch (kind) {
     case "cron-runs":

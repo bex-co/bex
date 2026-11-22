@@ -55,6 +55,7 @@ import {
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
+import { computePlanLink } from "@/features/services/lib/compute-page";
 import { autoSleepEligible } from "@/features/services/lib/idle-timeout";
 import {
   openPortsDisplay,
@@ -209,8 +210,10 @@ export function ServiceDetailHeader({
                 </span>
               ) : null}
               {isStaticSite(service) ? null : instanceType ? (
+                // Render's plan badge opens where the plan is changed: a cron
+                // job's Settings' Compute section, else the Compute page.
                 <Link
-                  to="/services/$serviceId/compute"
+                  {...computePlanLink(isCron(service))}
                   params={{ serviceId: service.id }}
                   className="relative flex after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
                 >

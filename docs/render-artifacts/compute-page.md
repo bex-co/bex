@@ -54,7 +54,17 @@ render.com/docs/scaling:
 | How the Compute section shows the current plan | A row with the plan ID, its legacy name, CPU and RAM, and **Edit**. Edit opens the plan cards in place with Cancel and **Save**; Save confirms and changes the plan. |
 | Whether plan cards show IDs, names or both | Both: the plan ID first, the legacy name beside it, as the docs' tables and "the mapping of old plan names to new plan IDs in the Render Dashboard" describe. `free` has no legacy name; its card keeps the name Free. |
 | URL and anchor | `/services/{id}/compute`. The old Plan URL redirects there; the old Scaling URL redirects to `#manual-scaling`. |
-| Sidebar | One **Compute** entry where Scaling and Plan were (Render's Manage group carried Scaling; bex's Plan entry was bex-only). Cron jobs get Compute too: they have a compute plan but no scaling sections. |
-| Settings page | Render's docs no longer send anyone to Settings to change a plan. bex keeps its Settings row as a summary with an Update link to Compute; a live capture may show Render dropped it. |
+| Sidebar | One **Compute** entry where Scaling and Plan were (Render's Manage group carried Scaling; bex's Plan entry was bex-only), for a web service, private service and background worker. A cron job has none: see [below](#a-cron-job-has-no-compute-page-w3m554-2026-11-21). |
+| Settings page | Render's docs no longer send anyone to Settings to change a plan. bex keeps its Settings row as a summary with an Update link to Compute; a live capture may show Render dropped it. A cron job's Settings hold the plan itself ([below](#a-cron-job-has-no-compute-page-w3m554-2026-11-21)). |
 | Event name | The `plan_changed` event keeps the label "Instance type changed" in the event feed and metrics markers, as Render's dashboard keeps "Instance Type Changed". Its detail line names the plans ("Compute plan Starter → Standard"). |
 | Datastore labels | "Compute plan" replaces "Instance type" on the Postgres and Key Value pages. Their layout is out of scope for w6/m483. |
+
+## A cron job has no Compute page (w3/m554, 2026-11-21)
+
+A signed-in walk of four cron jobs and Render's dashboard bundle, read the same day ([cron-dashboard.md § The dashboard, walked and read](cron-dashboard.md#the-dashboard-walked-and-read-2026-11-21-w3m554)), settled what the docs could not for a cron job:
+
+- The cron sidebar's title map has no `/compute` entry (the Server map has `/compute` and `/scaling`), and the walked sidebars had no Compute entry.
+- A cron job's plan is its Settings page's **Compute** section, `id="compute"`, right after General: the plan cards, read-only until Edit, then a review step and Update compute. General holds only the name and the region.
+- The header's plan badge links `settings#compute`, and the helper behind "Review upgrade options" returns `settings#compute` for a cron job and `/compute` for every other type.
+
+bex follows it: a cron job's sidebar has no Compute entry, its Settings carry the Compute section (`#compute`, the Compute page's section with Edit) after General, its header badge links there, and its `/services/{id}/compute` and `/plan` URLs land there. Every other type keeps the Compute page.

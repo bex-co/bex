@@ -1,6 +1,10 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
-import type { ReactNode } from "react";
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { useEffect, useRef, type ReactNode } from "react";
+import {
+  createFileRoute,
+  getRouteApi,
+  useLocation,
+} from "@tanstack/react-router";
 import {
   Card,
   CardHeader,
@@ -13,6 +17,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { regionLabel } from "@/common/lib/region-label";
 import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
+import { ComputePlanSection } from "@/features/services/components/compute-plan-section";
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { DeployCard } from "@/features/services/components/deploy-card";
@@ -107,6 +112,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   );
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
+  useScrollToHashedSection(sections);
 
   // A section's content. The list holds the sections that read the loaded
   // service only once it has loaded; the guards narrow its type.
@@ -151,8 +157,9 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                   )}
                   {/* A static_site has no instance type — it serves from the object
                   store, not a sized pod (Render shows no Instance Type for
-                  static sites; w5/m48/t004). The Plan tab is gated the same way. */}
-                  {!staticSite && (
+                  static sites; w5/m48/t004). The Plan tab is gated the same way.
+                  A cron job's plan is its own Compute section below (w3/m554). */}
+                  {!staticSite && !cron && (
                     <InstanceTypeRow
                       serviceId={serviceId}
                       plan={service?.plan ?? null}
@@ -183,6 +190,18 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
               )}
             </CardContent>
           </Card>
+        );
+      case "compute":
+        // A cron job has no Compute page, so its plan is changed here, in the
+        // Compute page's section, as on Render (w3/m554).
+        if (!service) return null;
+        return (
+          <ComputePlanSection
+            serviceId={serviceId}
+            currentPlan={service.plan ?? null}
+            serviceType={service.type}
+            live={hasServed(service)}
+          />
         );
       case "deploy":
         if (!service) return null;
@@ -455,6 +474,23 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Scroll the section the URL's hash names into view once it renders. The
+ * router scrolls to a hash as it navigates, but a section that waits for the
+ * service read is not on the page yet: a cron job's Compute section, where its
+ * Compute URL and the header's plan badge send it (w3/m554).
+ */
+function useScrollToHashedSection(sections: readonly string[]) {
+  const hash = useLocation({ select: (location) => location.hash });
+  const rendered = sections.includes(hash);
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (!rendered || scrolled.current) return;
+    scrolled.current = true;
+    document.getElementById(hash)?.scrollIntoView();
+  }, [rendered, hash]);
 }
 
 /**

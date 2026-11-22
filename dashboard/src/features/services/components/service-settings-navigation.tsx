@@ -10,6 +10,7 @@ import {
   HeartPulse,
   KeyRound,
   Network,
+  Package,
   Plug,
   Rocket,
   Settings2,
@@ -37,6 +38,11 @@ const SECTION_ITEMS: Record<NavigableSettingsSectionId, SectionItem> = {
   general: {
     labelKey: "services.generalTitle",
     icon: Settings2,
+  },
+  // A cron job's compute plan (w3/m554), drawn like the datastores' Plan.
+  compute: {
+    labelKey: "services.computeTitle",
+    icon: Package,
   },
   deploy: {
     labelKey: "services.deployTitle",

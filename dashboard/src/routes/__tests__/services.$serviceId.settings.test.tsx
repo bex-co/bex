@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import i18n, { ensureLanguage } from "@/i18n/init";
 import {
@@ -545,6 +546,7 @@ describe("settings skeleton parity", () => {
       "repo",
       [
         "general",
+        "compute",
         "source",
         "deploy",
         "runtime",
@@ -559,6 +561,7 @@ describe("settings skeleton parity", () => {
       "image",
       [
         "general",
+        "compute",
         "source",
         "deploy",
         "registry-credential",
@@ -811,6 +814,7 @@ describe("ServiceSettingsPage", () => {
 
     expect(hrefs).toEqual([
       "#general",
+      "#compute",
       "#source",
       "#deploy",
       "#registry-credential",
@@ -1375,6 +1379,94 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     expect(await screen.findByText("Compute Plan")).toBeInTheDocument();
+  });
+
+  // w3/m554: a cron job has no Compute page. Its plan is the Compute section
+  // right after General, as on Render's cron Settings (`id="compute"`).
+  it("holds a cron job's plan in a Compute section after General, with Edit", async () => {
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "*/15 * * * *",
+      command: "npm run report",
+    });
+    renderSettings();
+
+    await waitFor(() =>
+      expect(document.getElementById("compute")).not.toBeNull(),
+    );
+    const section = document.getElementById("compute")!;
+    expect(section.previousElementSibling?.id).toBe("general");
+    expect(
+      within(section).getByText("Compute", {
+        selector: '[data-slot="card-title"]',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole("button", { name: "Edit" }),
+    ).toBeInTheDocument();
+    // General no longer repeats the plan as a row linking to a Compute page.
+    expect(screen.queryByText("Compute Plan")).not.toBeInTheDocument();
+    expect(document.querySelector('a[href$="/compute"]')).toBeNull();
+  });
+
+  it("gives no other type a Compute section on Settings", async () => {
+    serverState.service = svc();
+    renderSettings();
+
+    expect(await screen.findByText("Compute Plan")).toBeInTheDocument();
+    expect(document.getElementById("compute")).toBeNull();
+    expect(await sectionHrefs()).not.toContain("#compute");
+  });
+
+  // The section waits for the service read, so the router's own hash scroll
+  // ran before it existed: the page scrolls it into view once it renders.
+  it("scrolls #compute into view once a cron job's section renders", async () => {
+    let reload = () => {};
+    function Page() {
+      const [, setTick] = useState(0);
+      reload = () => setTick((tick) => tick + 1);
+      return <ServiceSettingsPage serviceId="app" />;
+    }
+    const rootRoute = createRootRoute();
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/services/$serviceId/settings",
+          component: Page,
+        }),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ["/services/app/settings#compute"],
+      }),
+      context: { client: {} as never, session: null },
+    });
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    serverState.service = null;
+    serverState.loading = true;
+    render(<RouterProvider router={router} />);
+    await sectionHrefs();
+    scroll.mockClear();
+
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "*/15 * * * *",
+      command: "npm run report",
+    });
+    serverState.loading = false;
+    act(() => reload());
+
+    await waitFor(() =>
+      expect(scroll.mock.contexts).toContain(
+        document.getElementById("compute"),
+      ),
+    );
+    const calls = scroll.mock.calls.length;
+    act(() => reload());
+    // Once: a later render does not pull the page back to the section.
+    expect(scroll.mock.calls).toHaveLength(calls);
   });
 
   it("links the static edge-rule editors' dedicated pages from Settings (w5/m48)", async () => {
