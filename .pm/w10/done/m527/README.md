@@ -59,7 +59,7 @@ Total: **10 tasks, about 8h15m**.
   - **What members see:** in Devin, a model outside the allowlist is hidden "from the relevant picker". Same here: the capabilities read, `bex agent models` and every dashboard picker.
   - **The default:** Devin says "the allowlist always takes precedence", and a pinned default outside it falls back to the built-in default. Same here.
   - **A running session:** a Devin switch "takes effect with your next message". Same here: the turn in flight keeps its model.
-  - **A model added later:** Devin offers "allow all models" or "allowlist specific models", a "curated list of approved models", and the page does not say how a new model is treated. bex's list is an opt-out, so a new catalog model starts on. Filed as [w10/036](../../036.md).
+  - **A model added later:** Devin offers "allow all models" or "allowlist specific models", a "curated list of approved models", and the page does not say how a new model is treated. bex's list is an opt-out, so a new catalog model starts on. Filed as [w10/036](../036.md).
   - **Filter by provider:** Devin Desktop can "filter by specific models or by provider". bex filters by model only. Filed as [w10/037](../../037.md).
   - **Not filed:** group-level lists, because a bex workspace has no member groups (members have roles only), so there is nothing to bind such a list to. Devin's enterprise defaults have no counterpart, because the workspace is bex's top tenancy level.
 
