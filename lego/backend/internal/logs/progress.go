@@ -687,12 +687,18 @@ func unmarked(line string) string {
 // open states (no line yet) and unknown values (never invent an outcome). A
 // cron_job runs its command to completion on a schedule — it is never a served
 // "live" service — so a successful deploy narrates that it is scheduled, not
-// live (background workers keep the "live" line: they run continuously).
+// live (background workers keep the "live" line: they run continuously). A
+// static site closes with Render's site wording (w32/081): Render's static
+// site logs end `==> Uploading build...` then `==> Your site is live 🎉`,
+// where a web service's end `==> Your service is live 🎉`.
 func terminalLine(status, serviceType string) string {
 	switch status {
 	case "live", "deactivated":
-		if serviceType == "cron_job" {
+		switch serviceType {
+		case appv1alpha1.TypeCronJob:
 			return "==> Cron job deployed — runs on schedule 🎉"
+		case appv1alpha1.TypeStaticSite:
+			return "==> Your site is live 🎉"
 		}
 		return "==> Your service is live 🎉"
 	case "build_failed":

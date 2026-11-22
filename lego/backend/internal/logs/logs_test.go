@@ -875,45 +875,74 @@ func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
 	}
 }
 
-// TestQueryLogsProgressTerminalLineIsTypeAware guards w9/057: a successful
-// cron_job deploy narrates that it is scheduled, not "live" (a cron runs its
-// command to completion, it is never a served live service), while every other
-// type keeps Render's "Your service is live 🎉" line.
+// TestQueryLogsProgressTerminalLineIsTypeAware guards w9/057 and w32/081: a
+// successful cron_job deploy narrates that it is scheduled, not "live" (a cron
+// runs its command to completion, it is never a served live service), a static
+// site closes with Render's "Your site is live 🎉", and every other type keeps
+// Render's "Your service is live 🎉" line. The static site is w32/081's repro:
+// a built no-build site whose log read Build queued, Building from, then the
+// web service's verdict.
 func TestQueryLogsProgressTerminalLineIsTypeAware(t *testing.T) {
-	liveTerminalLine := func(t *testing.T, svcType string) string {
-		t.Helper()
-		app := sampleApp("svc")
-		app.Spec.Type = svcType // image-backed (no Repo): Deploy queued / Deploying image
-		svc := newService(nil, app)
-		svc.History = func(_ context.Context, _ string, _ LogQuery) ([]LogEntry, error) {
-			return nil, nil
-		}
-		deploy := DeployProgress{
-			ID:         "dep-1",
-			Status:     "live",
-			Image:      "busybox:latest",
-			CreatedAt:  time.Date(2026, 8, 20, 1, 0, 0, 0, time.UTC),
-			StartedAt:  time.Date(2026, 8, 20, 1, 0, 2, 0, time.UTC),
-			FinishedAt: time.Date(2026, 8, 20, 1, 0, 5, 0, time.UTC),
-		}
-		svc.DeployProgress = func(_ context.Context, _ string, _ time.Time) ([]DeployProgress, error) {
-			return []DeployProgress{deploy}, nil
-		}
-		entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "svc", Types: []string{LogTypeBuild}})
-		if err != nil {
-			t.Fatalf("QueryLogs: %v", err)
-		}
-		if len(entries) == 0 {
-			t.Fatalf("no progress lines synthesized")
-		}
-		return entries[len(entries)-1].Message // the terminal line is last chronologically
+	const repo = "https://github.com/bex-co/bex"
+	for _, c := range []struct {
+		svcType string
+		repo    string // "" is image-backed: Deploy queued / Deploying image
+		want    []string
+	}{
+		{appv1alpha1.TypeStaticSite, repo, []string{
+			"==> Build queued", "==> Building from " + repo + "@24b25a6", "==> Your site is live 🎉"}},
+		{appv1alpha1.TypeWebService, repo, []string{
+			"==> Build queued", "==> Building from " + repo + "@24b25a6", "==> Your service is live 🎉"}},
+		{appv1alpha1.TypeWebService, "", []string{
+			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+		{"", "", []string{ // an empty spec.type is a web service
+			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+		{appv1alpha1.TypePrivateService, "", []string{
+			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+		{appv1alpha1.TypeBackgroundWorker, "", []string{
+			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+		{appv1alpha1.TypeCronJob, "", []string{
+			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Cron job deployed — runs on schedule 🎉"}},
+	} {
+		t.Run(c.svcType+"/"+c.repo, func(t *testing.T) {
+			app := sampleApp("svc")
+			app.Spec.Type = c.svcType
+			app.Spec.Repo = c.repo
+			svc := newService(nil, app)
+			svc.History = func(_ context.Context, _ string, _ LogQuery) ([]LogEntry, error) {
+				return nil, nil
+			}
+			deploy := DeployProgress{
+				ID:         "dep-1",
+				Status:     "live",
+				CreatedAt:  time.Date(2026, 8, 20, 1, 0, 0, 0, time.UTC),
+				StartedAt:  time.Date(2026, 8, 20, 1, 0, 2, 0, time.UTC),
+				FinishedAt: time.Date(2026, 8, 20, 1, 0, 5, 0, time.UTC),
+			}
+			if c.repo != "" {
+				deploy.Commit, deploy.Built = "24b25a6f00d1c0ffee", true
+			} else {
+				deploy.Image = "busybox:latest"
+			}
+			svc.DeployProgress = func(_ context.Context, _ string, _ time.Time) ([]DeployProgress, error) {
+				return []DeployProgress{deploy}, nil
+			}
+			entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "svc", Types: []string{LogTypeBuild}})
+			if err != nil {
+				t.Fatalf("QueryLogs: %v", err)
+			}
+			got := make([]string, 0, len(entries))
+			for _, e := range entries { // oldest first: the verdict is last
+				got = append(got, e.Message)
+			}
+			if !slices.Equal(got, c.want) {
+				t.Fatalf("%s deploy log = %q, want %q", c.svcType, got, c.want)
+			}
+		})
 	}
-
-	if got := liveTerminalLine(t, appv1alpha1.TypeCronJob); got != "==> Cron job deployed — runs on schedule 🎉" {
-		t.Errorf("cron_job terminal line = %q, want the scheduled (not live) line", got)
-	}
-	if got := liveTerminalLine(t, appv1alpha1.TypeWebService); got != "==> Your service is live 🎉" {
-		t.Errorf("web_service terminal line = %q, want the live line", got)
+	// A deactivated deploy keeps its type's live line.
+	if got := terminalLine("deactivated", appv1alpha1.TypeStaticSite); got != "==> Your site is live 🎉" {
+		t.Errorf("deactivated static site = %q, want the site line", got)
 	}
 }
 
