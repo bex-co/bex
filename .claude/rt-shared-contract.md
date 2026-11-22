@@ -35,13 +35,17 @@ Every `.claude/skills/rt-*/SKILL.md` routine follows this shared contract. Each 
 - **Check freshness before working a ledger entry:** read the cited line on `origin/main` and run `git log origin/main --since=24.hours --oneline` for the files it names. If it is already fixed or gone, skip it with that reason.
 - **Never fold a main CI fix into a routine PR.** A check that fails on `origin/main` without your change is main's failure, not this run's. Per `AGENTS.md`, a main CI fix ships alone as `fix(ci)`, and only after `git log origin/main --since=24.hours --grep='fix(ci)'` confirms nobody already fixed it.
 
+## Module Discovery (Never Hardcode Modules)
+
+- **Dynamic scope:** when `$ARGUMENTS` is empty, discover modules dynamically from the repository layout — every Go module (`go.mod` / `lego/go.work`), every JS/TS app or package (`package.json`), and any other top-level code module — rather than relying on a fixed module list. New modules added to the repo are automatically in scope without editing any skill.
+
 ## Verification & Pre-PR Gate
 
 Verify every change with targeted checks before shipping, and leave module-wide suites to CI. Run one heavy command at a time — never two in parallel, never the same suite twice.
 
-- **Pre-PR fast gate (required before pushing / opening a PR):** run `bash scripts/rt-pre-pr-check.sh origin/main`. It rejects ledger-only diffs, checks `gofmt -l`, runs `golangci-lint` on touched Go packages when the pinned binary is present, runs `yarn eslint` on touched dashboard files, runs `shellcheck` on touched shell scripts, checks skill layout on `.claude/skills/` edits, and runs `scripts/gitleaks.sh` when `gitleaks` is available.
-- **Go:** `gofmt -l` on touched files; `go build` and `go vet` of touched packages; `go test -count=1` of touched packages and packages that import them (`grep -rl '"<import path>"' --include='*.go' lego/`). Run the pinned linter per touched module: `GOWORK=off "$(git rev-parse --show-toplevel)/lego/operator/bin/golangci-lint" run ./<pkg>/...` (`make golangci-lint` in `lego/operator` installs it).
-- **Dashboard:** `yarn vitest related --run <changed files>`, `yarn eslint <changed files>`, and `yarn typecheck` when TypeScript changed.
+- **Pre-PR fast gate (required before pushing / opening a PR):** run `bash scripts/rt-pre-pr-check.sh origin/main`. It rejects ledger-only diffs, checks `gofmt -l`, runs `golangci-lint` on every touched Go module discovered via its nearest `go.mod` (when the pinned binary is present), runs `eslint` on every touched JS/TS package discovered via its nearest `package.json`, runs `shellcheck` on touched shell scripts, checks skill layout on `.claude/skills/` edits, and runs `scripts/gitleaks.sh` when `gitleaks` is available.
+- **Go:** `gofmt -l` on touched files; from each touched Go module root (nearest `go.mod`), run `go build`, `go vet`, and `go test -count=1` on touched packages and their importers (`grep -rl '"<import path>"' --include='*.go'`). Run the pinned linter per touched module: `GOWORK=off "$(git rev-parse --show-toplevel)/lego/operator/bin/golangci-lint" run ./<pkg>/...` (`make golangci-lint` in `lego/operator` installs it).
+- **JS/TS apps & packages:** from each touched package root (nearest `package.json`), run its targeted test runner (e.g., `yarn vitest related --run <changed files>`), `yarn eslint <changed files>`, and `yarn typecheck` when TypeScript changed.
 - **Markdown:** run `npx prettier@3.4.2 --write` on any markdown touched.
 - **Never run module-wide suites locally** (`make lint`, `make test`, `go test ./...`, full `yarn test` or `yarn lint`): CI runs them on the PR against real Postgres, OpenFGA, and OpenBao.
 

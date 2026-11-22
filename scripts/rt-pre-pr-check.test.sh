@@ -13,6 +13,7 @@ init_repo() {
   git -C "$dir" config user.email test@example.com
   git -C "$dir" config user.name test
   printf '# ledger\n' >"$dir/.claude/skills/rt-fix-logic-bugs/ledger.md"
+  printf 'module example.com/types\n\ngo 1.24\n' >"$dir/lego/types/go.mod"
   printf 'package types\n\nconst X = 1\n' >"$dir/lego/types/x.go"
   git -C "$dir" add .
   git -C "$dir" commit -q -m "base"
@@ -59,3 +60,22 @@ printf 'package types\n\nconst X = 2\n' >"$d4/lego/types/x.go"
 printf -- '- 2026-11-22 foo — skipped\n' >>"$d4/.claude/skills/rt-fix-logic-bugs/ledger.md"
 git -C "$d4" commit -q -am "fix(types): update X"
 assert_rc "formatted go + ledger passes" 0 "$d4" "rt-pre-pr-check: OK"
+
+# 5. Any newly added Go module is discovered automatically via its go.mod.
+d5="$tmp/new-module"
+init_repo "$d5"
+mkdir -p "$d5/lego/newmod/sub" "$d5/bin"
+printf 'module example.com/newmod\n\ngo 1.24\n' >"$d5/lego/newmod/go.mod"
+printf 'package sub\n\nconst Y = 1\n' >"$d5/lego/newmod/sub/y.go"
+cat >"$d5/bin/fake-lint" <<'LINT'
+#!/usr/bin/env bash
+printf '%s %s\n' "$PWD" "$*" >"$FAKE_LINT_LOG"
+LINT
+chmod +x "$d5/bin/fake-lint"
+lint_log="$d5/lint.log"
+(cd "$d5" && FAKE_LINT_LOG="$lint_log" BEX_GOLANGCI_LINT="$d5/bin/fake-lint" bash scripts/rt-pre-pr-check.sh main >/dev/null)
+if ! grep -q "lego/newmod run ./sub" "$lint_log"; then
+  echo "FAIL [dynamic Go module discovery]: unexpected lint invocation: $(cat "$lint_log")" >&2
+  exit 1
+fi
+echo "PASS [dynamic Go module discovery]"

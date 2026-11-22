@@ -20,22 +20,22 @@ Logic-bugfixer additions:
 
 ## Phase 1 — Scope
 
-Parse `$ARGUMENTS`: `billing` | `authz` | `blueprint-plan` | `agreement` | `agentsessions` | `sandbox` | `storage` | `deploys-webhooks` | a package path.
+Parse `$ARGUMENTS`: any path, module, package, or logic topic. Do not restrict discovery to a closed list of modules or domains — any module in the repository (`go.mod` / `package.json` trees, present or future) is eligible.
 
-When empty, prefer **recently changed logic domains**: inspect `git log origin/main --since=7.days --name-only -- lego/backend/internal/ lego/operator/internal/` (excluding `*_test.go`) and pick the domain with active non-test changes that was least recently audited in [`ledger.md`](ledger.md). Fall back to the least-recently-audited domain if no domain changed in the past 7 days. Announce the choice.
+When `$ARGUMENTS` is empty, discover the target dynamically:
 
-Domain map:
+1. **Prefer recently changed non-test logic:** run `git log origin/main --since=7.days --name-only --diff-filter=AMCR` across the whole repo, filter to production source files (excluding tests, docs, generated files, and `.pm/`), group by package/feature directory, and pick the highest-risk logic package that was least recently audited in [`ledger.md`](ledger.md).
+2. **Fallback when quiet:** if no logic-bearing package changed in the past 7 days, discover modules from the repo layout (`go.mod` / `package.json`) and pick the least-recently-audited high-risk logic package.
+3. Announce the chosen package/invariant before modeling.
 
-- **billing** — `lego/backend/internal/pricing`, `lego/backend/internal/billing`, `lego/backend/internal/usage`, `lego/backend/internal/apps/blueprint_pricing.go`, `stripeBillingGate` in `lego/backend/cmd/api/billing_config.go`
-- **authz** — `lego/backend/internal/authz`, `lego/backend/internal/core/scope.go`, `lego/backend/internal/api/scope_matrix.go`, `lego/backend/internal/twofactor`, `lego/backend/internal/managedoidc`
-- **blueprint-plan** — `lego/backend/internal/apps/blueprint_plan.go`, `blueprint_state_plan.go` and the plan/apply cycle in `deploy.go`
-- **agreement** — any place where one function predicts or previews what another performs, and the two must agree. Sites: Blueprint plan against `applyDatabase` / `applyKeyValue` / `updateStackService` in `lego/backend/internal/apps/deploy.go`; plan-time admission against write-time admission (`lego/backend/internal/postgres/admission.go`, `lego/backend/internal/keyvalue/tiers.go`); validation/preview verbs against write verbs; estimates against spend/payment gates.
-- **agentsessions** — `lego/backend/internal/agentsessions`, `lego/backend/internal/agentsession`, `lego/backend/internal/sshgateway/agentcred` (session lifecycle, automation overlapPolicy/scheduling, spend-cap accounting, PR takeover, message queueing)
-- **sandbox** — `lego/backend/internal/sandbox`, `lego/backend/internal/sandboxexec`, `lego/backend/internal/sandboxfiles`, `lego/backend/internal/sessionegress`, `lego/backend/internal/sshgateway` (ticket/grant expiry and narrowing, exec revalidation, egress policy)
-- **storage** — `lego/backend/internal/s3gw`, `lego/backend/internal/objectgw`, `lego/backend/internal/objectstorage` (presign/ACL/bucket isolation, lifecycle/CORS rules)
-- **deploys-webhooks** — `lego/backend/internal/deploys`, `lego/backend/internal/rollout`, `lego/backend/internal/webhooks`, `lego/backend/internal/notifications` (deploy state machine/rollback eligibility, webhook redaction and delivery)
+High-value logic shapes to prioritize (examples, not a closed list):
 
-Within a domain, take one resource kind or one invariant per run, and check the ledger for the ones earlier runs covered so each run digs somewhere new. Record what this run covered in the ledger's Skipped section (`<domain>/<kind or invariant> — audited, holds`) **only when shipping a code or qualifying property-test change**; otherwise report it without committing.
+- **Agreement / preview-vs-execute pairs** — any place where one function predicts, validates, estimates, or previews what another performs, and the two must agree (plan vs apply, admission vs write, estimate vs spend/payment gate, client vs server rule).
+- **Billing, pricing, quotas & caps** — monotonicity, cent/rounding alignment across all output projections, proration, limits, and cooldown windows.
+- **Authz, scopes, credentials & tenant isolation** — deny-by-default matrices, grant/scope narrowing, expiry, redaction, and cross-tenant boundaries.
+- **State machines, lifecycle & scheduling** — deploy/rollback eligibility, session/automation scheduling and overlap policies, queues, retries, idempotence, and storage/ACL rules.
+
+Within the chosen package, take one resource kind or one invariant per run, and check [`ledger.md`](ledger.md) for what earlier runs covered so each run digs somewhere new. Record what this run covered in the ledger's Skipped section (`<package>/<kind or invariant> — audited, holds`) **only when shipping a code or qualifying property-test change**; otherwise report it without committing.
 
 ## Phase 2 — Model the logic
 

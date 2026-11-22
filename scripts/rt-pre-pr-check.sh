@@ -2,6 +2,8 @@
 # rt-pre-pr-check.sh — fast deterministic pre-PR gate for rt-* routine runs.
 # Catches low-signal diffs (ledger-only PRs) and formatting/lint issues locally
 # before pushing a branch or opening a draft PR, avoiding avoidable CI rounds.
+# Modules are discovered dynamically from nearest go.mod / package.json files so
+# newly added modules need no edits here.
 #
 # Usage: bash scripts/rt-pre-pr-check.sh [<base-ref>]   (default: origin/main)
 set -euo pipefail
@@ -19,6 +21,24 @@ collect_changed_files() {
     git diff --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
     git ls-files --others --exclude-standard 2>/dev/null || true
   } | awk 'NF' | LC_ALL=C sort -u
+}
+
+# Walk up from a repo-relative file path to find the nearest ancestor directory
+# (within $root) containing the marker file (e.g. go.mod or package.json).
+find_nearest_root() {
+  local path="$1" marker="$2"
+  local dir
+  dir="$(dirname "$path")"
+  while true; do
+    if [ -f "$root/$dir/$marker" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+    if [ "$dir" = "." ] || [ "$dir" = "/" ]; then
+      return 1
+    fi
+    dir="$(dirname "$dir")"
+  done
 }
 
 changed="$(collect_changed_files)"
@@ -42,7 +62,7 @@ fi
 
 fail=0
 
-# 1. Go formatting & per-package golangci-lint (when pinned binary is present).
+# 1. Go formatting & per-package golangci-lint (modules discovered via nearest go.mod).
 go_files=()
 while IFS= read -r path; do
   case "$path" in
@@ -58,30 +78,41 @@ if [ "${#go_files[@]}" -gt 0 ]; then
     fail=1
   fi
 
-  lint_bin="$root/lego/operator/bin/golangci-lint"
+  lint_bin="${BEX_GOLANGCI_LINT:-$root/lego/operator/bin/golangci-lint}"
   if [ -x "$lint_bin" ]; then
-    for mod in types operator backend cli; do
+    go_mods=()
+    while IFS= read -r mod_dir; do
+      [ -n "$mod_dir" ] && go_mods+=("$mod_dir")
+    done < <(
+      for f in "${go_files[@]}"; do
+        find_nearest_root "$f" "go.mod" || true
+      done | LC_ALL=C sort -u
+    )
+
+    for mod_dir in "${go_mods[@]}"; do
       pkgs=()
       while IFS= read -r pkg; do
         [ -n "$pkg" ] && pkgs+=("./$pkg")
       done < <(
         for f in "${go_files[@]}"; do
-          case "$f" in
-            "lego/$mod/"*)
-              rel="${f#lego/"$mod"/}"
-              dir="$(dirname "$rel")"
-              if [ "$dir" = "." ]; then
-                printf '.\n'
-              else
-                printf '%s\n' "$dir"
-              fi
-              ;;
-          esac
+          f_mod="$(find_nearest_root "$f" "go.mod" || true)"
+          [ "$f_mod" = "$mod_dir" ] || continue
+          if [ "$mod_dir" = "." ]; then
+            rel="$f"
+          else
+            rel="${f#"$mod_dir/"}"
+          fi
+          dir="$(dirname "$rel")"
+          if [ "$dir" = "." ]; then
+            printf '.\n'
+          else
+            printf '%s\n' "$dir"
+          fi
         done | LC_ALL=C sort -u
       )
       if [ "${#pkgs[@]}" -gt 0 ]; then
-        if ! (cd "$root/lego/$mod" && GOWORK=off "$lint_bin" run "${pkgs[@]}"); then
-          echo "rt-pre-pr-check: FAIL — golangci-lint failed in lego/$mod (${pkgs[*]})" >&2
+        if ! (cd "$root/$mod_dir" && GOWORK=off "$lint_bin" run "${pkgs[@]}"); then
+          echo "rt-pre-pr-check: FAIL — golangci-lint failed in $mod_dir (${pkgs[*]})" >&2
           fail=1
         fi
       fi
@@ -89,25 +120,43 @@ if [ "${#go_files[@]}" -gt 0 ]; then
   fi
 fi
 
-# 2. Dashboard eslint on touched TS/JS files (when node_modules is installed).
-dash_dir="dashboard"
-dash_files=()
+# 2. JS/TS eslint on touched files (packages discovered via nearest package.json).
+js_files=()
 while IFS= read -r path; do
   case "$path" in
-    "$dash_dir/"*)
-      rel="${path#"$dash_dir/"}"
-      case "$rel" in
-        *.ts | *.tsx | *.js | *.jsx) [ -f "$path" ] && dash_files+=("$rel") ;;
-      esac
-      ;;
+    *.ts | *.tsx | *.js | *.jsx) [ -f "$path" ] && js_files+=("$path") ;;
   esac
 done <<<"$changed"
 
-if [ "${#dash_files[@]}" -gt 0 ] && [ -x "$root/$dash_dir/node_modules/.bin/eslint" ]; then
-  if ! (cd "$root/$dash_dir" && yarn eslint "${dash_files[@]}"); then
-    echo "rt-pre-pr-check: FAIL — dashboard eslint failed" >&2
-    fail=1
-  fi
+if [ "${#js_files[@]}" -gt 0 ]; then
+  js_pkgs=()
+  while IFS= read -r pkg_dir; do
+    [ -n "$pkg_dir" ] && js_pkgs+=("$pkg_dir")
+  done < <(
+    for f in "${js_files[@]}"; do
+      find_nearest_root "$f" "package.json" || true
+    done | LC_ALL=C sort -u
+  )
+
+  for pkg_dir in "${js_pkgs[@]}"; do
+    [ -x "$root/$pkg_dir/node_modules/.bin/eslint" ] || continue
+    rel_files=()
+    for f in "${js_files[@]}"; do
+      f_pkg="$(find_nearest_root "$f" "package.json" || true)"
+      [ "$f_pkg" = "$pkg_dir" ] || continue
+      if [ "$pkg_dir" = "." ]; then
+        rel_files+=("$f")
+      else
+        rel_files+=("${f#"$pkg_dir/"}")
+      fi
+    done
+    if [ "${#rel_files[@]}" -gt 0 ]; then
+      if ! (cd "$root/$pkg_dir" && "$root/$pkg_dir/node_modules/.bin/eslint" "${rel_files[@]}"); then
+        echo "rt-pre-pr-check: FAIL — eslint failed in $pkg_dir" >&2
+        fail=1
+      fi
+    fi
+  done
 fi
 
 # 3. Shell scripts (when shellcheck is installed).

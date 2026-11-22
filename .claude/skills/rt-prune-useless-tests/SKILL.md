@@ -20,7 +20,7 @@ Follow the shared contract in [`../../rt-shared-contract.md`](../../rt-shared-co
 
 ## Phase 1 — Scope
 
-Parse `$ARGUMENTS` as an optional path/module scope. Empty = `lego/types`, `lego/operator`, `lego/backend`, `lego/cli`, and the dashboard test tree. Read root and scoped `AGENTS.md` files and record the initial working-tree state before editing.
+Parse `$ARGUMENTS` as an optional path/module scope. Empty = every discovered Go module (`go.mod`) and JS/TS app/package (`package.json`) test tree in the repository. Read root and scoped `AGENTS.md` files and record the initial working-tree state before editing.
 
 For whole-repo runs, use parallel discovery agents per module when available; otherwise cover the modules sequentially. Assign disjoint files for edits. Coordinate mutation probes centrally: no agent may mutate files another agent is editing or testing. Use an isolated checkout when probes cannot be serialized safely.
 

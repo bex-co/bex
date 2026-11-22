@@ -12,11 +12,11 @@ Find convoluted business logic in existing code and simplify it without changing
 
 Follow the shared contract in [`../../rt-shared-contract.md`](../../rt-shared-contract.md) (execution, tidy-routine value bar, batch cleanup & ≤15-line minimum threshold, **never opening ledger-only PRs**, board isolation, freshness check, `scripts/rt-pre-pr-check.sh` pre-PR fast gate, and report format).
 
-- **Scope:** parse `$ARGUMENTS` per Phase 1. Empty = whole repo via parallel explore agents per module (`lego/types`, `lego/operator`, `lego/backend`, `lego/cli`, `dashboard`).
+- **Scope:** parse `$ARGUMENTS` per Phase 1. Empty = whole repo via parallel explore agents over all discovered Go modules (`go.mod`) and JS/TS packages (`package.json`).
 
 ## Phase 1 — Scope
 
-Parse `$ARGUMENTS` as an optional path/module scope. Empty = whole repo: launch parallel explore agents per module (lego/types, lego/operator, lego/backend, lego/cli, dashboard) to collect candidates.
+Parse `$ARGUMENTS` as an optional path/module scope. Empty = whole repo: discover every Go module (`go.mod`) and JS/TS package (`package.json`) dynamically and launch parallel explore agents per module to collect candidates.
 
 ## Phase 2 — Find candidates
 
