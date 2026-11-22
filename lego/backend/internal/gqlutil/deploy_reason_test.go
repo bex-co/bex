@@ -319,13 +319,16 @@ func TestDashboardWordsEveryDeployReason(t *testing.T) {
 		dir = parent
 	}
 	for code, tmpl := range appv1alpha1.DeployReasonTemplates() {
-		entry := regexp.MustCompile(`"deploys\.reason\.` + regexp.QuoteMeta(code) + `": \{\s*message:\s*"((?:[^"\\]|\\.)*)"`)
+		// Prettier single-quotes a message that has a double quote in it
+		// (w8/386's "successfully").
+		entry := regexp.MustCompile(`"deploys\.reason\.` + regexp.QuoteMeta(code) +
+			`": \{\s*message:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')`)
 		m := entry.FindSubmatch(data)
 		if m == nil {
 			t.Errorf("the dashboard does not word %s", code)
 			continue
 		}
-		if got := strings.ReplaceAll(string(m[1]), `\"`, `"`); got != tmpl {
+		if got := strings.NewReplacer(`\"`, `"`, `\'`, `'`).Replace(string(m[1]) + string(m[2])); got != tmpl {
 			t.Errorf("%s: the dashboard says %q, the API %q", code, got, tmpl)
 		}
 	}

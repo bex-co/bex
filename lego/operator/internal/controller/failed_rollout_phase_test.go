@@ -118,8 +118,10 @@ func TestFirstDeployRolloutDeadlineSettlesFailedCrashLoop(t *testing.T) {
 		t.Fatalf("phase = %q, want %q — first-deploy crash-loop past the rollout budget", stored.Status.Phase, appv1alpha1.PhaseFailed)
 	}
 	ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
-	if ready == nil || ready.Reason != "CrashLoopBackOff" || !strings.Contains(ready.Message, "restarting") {
-		t.Fatalf("Ready = %+v, want CrashLoopBackOff diagnosis preserved for the deploy row", ready)
+	// The deadline stops the release, so the diagnosis says so (w8/386).
+	if ready == nil || ready.Reason != "CrashLoopBackOff" || !strings.Contains(ready.Message, "last exit code 127") ||
+		!strings.Contains(ready.Message, appv1alpha1.CrashStallFailed) || strings.Contains(ready.Message, "restarting") {
+		t.Fatalf("Ready = %+v, want CrashLoopBackOff diagnosis preserved for the deploy row as stopped", ready)
 	}
 	// w8/m146: the deadline and the container's exit are both on record.
 	if f := stored.Status.RolloutFailure; f == nil || f.TimedOutSeconds != rolloutBudgetSeconds || f.ExitCode == nil || *f.ExitCode != 127 {
@@ -562,8 +564,9 @@ func TestPermanentStartupCrashSettlesBeforeRolloutDeadline(t *testing.T) {
 				return
 			}
 			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Reason != "CrashLoopBackOff" ||
-				!strings.Contains(rollout.Message, "last exit code 3") || rollout.ObservedGeneration != 3 {
-				t.Fatalf("crash not settled: %+v", rollout)
+				!strings.Contains(rollout.Message, "last exit code 3") || rollout.ObservedGeneration != 3 ||
+				!strings.Contains(rollout.Message, appv1alpha1.CrashStallFailed) || strings.Contains(rollout.Message, "restarting") {
+				t.Fatalf("crash not settled as stopped: %+v", rollout)
 			}
 			// w8/m146: the structured exit rides with the verdict, release-attributed.
 			if f := stored.Status.RolloutFailure; f == nil || f.ExitCode == nil || *f.ExitCode != 3 || f.OOMKilled || f.TimedOutSeconds != 0 || f.Generation != 3 {
@@ -592,13 +595,22 @@ func TestStartupCleanExitRecordsExitZero(t *testing.T) {
 				State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
 				LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: code, Reason: reason}}}}}}
 	}
+	// w8/386: the reason says the instance stopped, and only a clean exit gets
+	// Render's early-exit guidance in place of the port-bind hint.
+	const earlyExit = "container exited shortly after start and its instance has stopped (last exit code 0):" +
+		` the process exited "successfully" but early. A service runs continuously and must not exit until it receives SIGTERM;` +
+		" use a cron job for a task that ends when its work is done. Check the service logs for why it ended." +
+		" The server must keep listening on $PORT (3000) until it receives SIGTERM."
+	const crashed = "container exited shortly after start and its instance has stopped (last exit code 1)" +
+		" — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (3000)."
 	for _, tc := range []struct {
-		name string
-		pods []client.Object
-		want int32
+		name   string
+		pods   []client.Object
+		want   int32
+		reason string
 	}{
-		{"exit 0", []client.Object{crashPod("web-a", 0, "Completed")}, 0},
-		{"exit 0 beside exit 1", []client.Object{crashPod("web-a", 0, "Completed"), crashPod("web-b", 1, "Error")}, 1},
+		{"exit 0", []client.Object{crashPod("web-a", 0, "Completed")}, 0, earlyExit},
+		{"exit 0 beside exit 1", []client.Object{crashPod("web-a", 0, "Completed"), crashPod("web-b", 1, "Error")}, 1, crashed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -623,6 +635,9 @@ func TestStartupCleanExitRecordsExitZero(t *testing.T) {
 			if f := stored.Status.RolloutFailure; f == nil || f.ExitCode == nil || *f.ExitCode != tc.want ||
 				f.OOMKilled || f.TimedOutSeconds != 0 || f.Generation != 1 {
 				t.Fatalf("rolloutFailure = %+v, want exit %d before any deadline for release 1", f, tc.want)
+			}
+			if rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout); rollout == nil || rollout.Message != tc.reason {
+				t.Fatalf("Rollout = %+v, want the message %q", rollout, tc.reason)
 			}
 		})
 	}

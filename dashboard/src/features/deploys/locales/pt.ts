@@ -582,6 +582,30 @@ const ptDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "o contêiner encerrou logo após iniciar e está reiniciando repetidamente (último código de saída {code}) — verifique os logs do serviço para ver a saída da falha.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "o contêiner encerrou logo após iniciar e sua instância parou (último código de saída {code}) — verifique os logs do serviço para ver a saída da falha.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      'o contêiner encerrou logo após iniciar e está reiniciando repetidamente (último código de saída 0): o processo encerrou "com sucesso", mas cedo demais. Um serviço roda continuamente e não deve encerrar até receber SIGTERM; use um Cron Job para uma tarefa que termina quando seu trabalho acaba. Verifique nos logs do serviço por que ele encerrou.{hint}',
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      'o contêiner encerrou logo após iniciar e sua instância parou (último código de saída 0): o processo encerrou "com sucesso", mas cedo demais. Um serviço roda continuamente e não deve encerrar até receber SIGTERM; use um Cron Job para uma tarefa que termina quando seu trabalho acaba. Verifique nos logs do serviço por que ele encerrou.{hint}',
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "o contêiner está em execução, mas o health check {kind} ainda não teve sucesso, então o rollout está aguardando: GET {path} na porta {port}. Verifique se o caminho retorna um status 2xx ou 3xx na porta do próprio serviço.{hint}",
@@ -869,6 +893,18 @@ const ptDeploys: Record<string, TranslationEntry> = {
       " Nenhuma porta aberta foi detectada na instância: o servidor deve escutar o host 0.0.0.0 na porta do serviço ({port}).",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message:
+      " Se a falha for de vinculação de porta: o processo deve escutar em $PORT ({port}).",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message:
+      " O servidor deve continuar escutando em $PORT ({port}) até receber SIGTERM.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message:

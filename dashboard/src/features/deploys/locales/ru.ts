@@ -589,6 +589,30 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "контейнер завершился вскоре после запуска и многократно перезапускается (последний код выхода {code}) — проверьте логи сервиса, чтобы увидеть вывод сбоя.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "контейнер завершился вскоре после запуска, и его инстанс остановлен (последний код выхода {code}) — проверьте логи сервиса, чтобы увидеть вывод сбоя.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      "контейнер завершился вскоре после запуска и многократно перезапускается (последний код выхода 0): процесс завершился «успешно», но слишком рано. Сервис работает непрерывно и не должен завершаться, пока не получит SIGTERM; для задачи, которая завершается по окончании работы, используйте Cron Job. Проверьте в логах сервиса, почему процесс завершился.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      "контейнер завершился вскоре после запуска, и его инстанс остановлен (последний код выхода 0): процесс завершился «успешно», но слишком рано. Сервис работает непрерывно и не должен завершаться, пока не получит SIGTERM; для задачи, которая завершается по окончании работы, используйте Cron Job. Проверьте в логах сервиса, почему процесс завершился.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "контейнер запущен, но его проверка {kind} ещё не пройдена, поэтому выкатка ожидает: GET {path} на порту {port}. Убедитесь, что путь возвращает статус 2xx или 3xx на собственном порту сервиса.{hint}",
@@ -876,6 +900,17 @@ const ruDeploys: Record<string, TranslationEntry> = {
       " На инстансе не обнаружено открытых портов: сервер должен слушать хост 0.0.0.0 на порту сервиса ({port}).",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message:
+      " Если сбой связан с привязкой порта: процесс должен слушать $PORT ({port}).",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message: " Сервер должен слушать $PORT ({port}), пока не получит SIGTERM.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message:

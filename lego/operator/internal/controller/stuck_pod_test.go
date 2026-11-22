@@ -64,6 +64,13 @@ func TestStuckPodMessage(t *testing.T) {
 			Terminated: &corev1.ContainerStateTerminated{ExitCode: 1},
 		},
 	})
+	// w8/386: a start command that exits 0 is Render's early exit.
+	cleanExit := pod("web-1", corev1.ContainerStatus{
+		State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+		LastTerminationState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "Completed"},
+		},
+	})
 	startError := func(msg string) *corev1.Pod {
 		return pod("web-1", corev1.ContainerStatus{
 			State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
@@ -97,7 +104,7 @@ func TestStuckPodMessage(t *testing.T) {
 		{
 			name: "crash loop with port", pod: crashing, port: 3000,
 			wantReason: "CrashLoopBackOff",
-			wantIn:     []string{"last exit code 1", "$PORT (3000)", "service logs"},
+			wantIn:     []string{"is restarting repeatedly (last exit code 1)", "port bind", "$PORT (3000)", "service logs"},
 			// Ports below 1024 are bindable (w6/m149), so the hint names $PORT only.
 			wantNotIn: []string{"below 1024"},
 		},
@@ -106,6 +113,19 @@ func TestStuckPodMessage(t *testing.T) {
 			wantReason: "CrashLoopBackOff",
 			wantIn:     []string{"last exit code 1", "service logs"},
 			wantNotIn:  []string{"$PORT"},
+		},
+		{
+			name: "clean exit with port", pod: cleanExit, port: 3000,
+			wantReason: "CrashLoopBackOff",
+			wantIn: []string{"is restarting repeatedly (last exit code 0)", `exited "successfully" but early`,
+				"until it receives SIGTERM", "keep listening on $PORT (3000)", "cron job", "service logs"},
+			wantNotIn: []string{"port bind", "crash output"},
+		},
+		{
+			name: "clean exit without port (worker)", pod: cleanExit, port: 0,
+			wantReason: "CrashLoopBackOff",
+			wantIn:     []string{`exited "successfully" but early`, "until it receives SIGTERM"},
+			wantNotIn:  []string{"$PORT", "port bind"},
 		},
 		{
 			name: "start error: missing shell", pod: missingShell, port: 3000,

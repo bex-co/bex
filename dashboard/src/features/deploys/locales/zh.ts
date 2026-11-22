@@ -549,6 +549,30 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "容器在启动后不久退出，正在反复重启（最后退出码 {code}）— 请在服务日志中查看崩溃输出。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "容器在启动后不久退出，其实例已停止（最后退出码 {code}）— 请在服务日志中查看崩溃输出。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      "容器在启动后不久退出，正在反复重启（最后退出码 0）：进程“成功”退出了，但退出得太早。服务需要持续运行，在收到 SIGTERM 之前不能退出；完成工作就结束的任务请使用 Cron 任务。请在服务日志中查看它退出的原因。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      "容器在启动后不久退出，其实例已停止（最后退出码 0）：进程“成功”退出了，但退出得太早。服务需要持续运行，在收到 SIGTERM 之前不能退出；完成工作就结束的任务请使用 Cron 任务。请在服务日志中查看它退出的原因。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：端口 {port} 上的 GET {path}。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
@@ -827,6 +851,16 @@ const zhDeploys: Record<string, TranslationEntry> = {
       "实例上未检测到开放端口：服务器必须绑定到 0.0.0.0，并监听服务的端口（{port}）。",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message: "如果崩溃源于端口绑定：进程必须监听 $PORT（{port}）。",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message: "服务器必须持续监听 $PORT（{port}），直到收到 SIGTERM。",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message: "{noun}已有 {active}/{limit} 个并发构建在运行；正在等待空位",

@@ -32,6 +32,10 @@ const (
 	UnschedulableStallFailed  = "the rollout window ended before capacity freed up; deploy again later"
 	QuotaStallWaiting         = "the new instance starts as soon as capacity frees up"
 	QuotaStallFailed          = "the rollout window ended before capacity freed up, so the deploy failed; deploy again once there is room"
+	// A startup crash stops the deploy's instance when the deploy fails
+	// (w4/m351), so its outcome no longer says it restarts (w8/386).
+	CrashStallWaiting = "shortly after start and is restarting repeatedly"
+	CrashStallFailed  = "shortly after start and its instance has stopped"
 )
 
 // TerminalStallText restates an in-flight stall diagnosis as the outcome of a
@@ -42,5 +46,6 @@ func TerminalStallText(msg string) string {
 		ImagePullStallWaiting, ImagePullStallFailed,
 		UnschedulableStallWaiting, UnschedulableStallFailed,
 		QuotaStallWaiting, QuotaStallFailed,
+		CrashStallWaiting, CrashStallFailed,
 	).Replace(msg)
 }

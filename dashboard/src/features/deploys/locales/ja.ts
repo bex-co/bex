@@ -564,6 +564,30 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "コンテナが起動直後に終了し、再起動を繰り返しています（最後の終了コード {code}）。サービスのログでクラッシュ時の出力を確認してください。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "コンテナが起動直後に終了し、そのインスタンスは停止しました（最後の終了コード {code}）。サービスのログでクラッシュ時の出力を確認してください。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      "コンテナが起動直後に終了し、再起動を繰り返しています（最後の終了コード 0）。プロセスは「正常に」終了しましたが、終了が早すぎます。サービスは継続して実行されるもので、SIGTERM を受け取るまで終了してはいけません。作業が終わると終了するタスクには Cron Job を使用してください。終了した理由をサービスのログで確認してください。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      "コンテナが起動直後に終了し、そのインスタンスは停止しました（最後の終了コード 0）。プロセスは「正常に」終了しましたが、終了が早すぎます。サービスは継続して実行されるもので、SIGTERM を受け取るまで終了してはいけません。作業が終わると終了するタスクには Cron Job を使用してください。終了した理由をサービスのログで確認してください。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "コンテナーは実行中ですが、{kind} ヘルスチェックが成功していないため、ロールアウトは待機中です: ポート {port} への GET {path}。そのパスがサービス自身のポートで 2xx または 3xx のステータスを返すことを確認してください。{hint}",
@@ -853,6 +877,18 @@ const jaDeploys: Record<string, TranslationEntry> = {
       " インスタンスで開いているポートが検出されませんでした。サーバーはサービスのポート ({port}) で、ホスト 0.0.0.0 にバインドする必要があります。",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message:
+      " クラッシュの原因がポートのバインドの場合: プロセスは $PORT ({port}) でリッスンする必要があります。",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message:
+      " サーバーは SIGTERM を受け取るまで $PORT ({port}) でリッスンし続ける必要があります。",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message:

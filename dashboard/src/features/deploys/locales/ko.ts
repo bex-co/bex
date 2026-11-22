@@ -561,6 +561,30 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "컨테이너가 시작 직후 종료되어 반복해서 재시작하고 있습니다(마지막 종료 코드 {code}) — 서비스 로그에서 크래시 출력을 확인하세요.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "컨테이너가 시작 직후 종료되었고 해당 인스턴스는 중지되었습니다(마지막 종료 코드 {code}) — 서비스 로그에서 크래시 출력을 확인하세요.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      '컨테이너가 시작 직후 종료되어 반복해서 재시작하고 있습니다(마지막 종료 코드 0): 프로세스가 "성공적으로" 종료되었지만 너무 일찍 종료되었습니다. 서비스는 계속 실행되며 SIGTERM을 받기 전에는 종료되면 안 됩니다. 작업을 마치면 끝나는 작업에는 Cron Job을 사용하세요. 서비스 로그에서 종료된 이유를 확인하세요.{hint}',
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      '컨테이너가 시작 직후 종료되었고 해당 인스턴스는 중지되었습니다(마지막 종료 코드 0): 프로세스가 "성공적으로" 종료되었지만 너무 일찍 종료되었습니다. 서비스는 계속 실행되며 SIGTERM을 받기 전에는 종료되면 안 됩니다. 작업을 마치면 끝나는 작업에는 Cron Job을 사용하세요. 서비스 로그에서 종료된 이유를 확인하세요.{hint}',
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "컨테이너는 실행 중이지만 {kind} 헬스 체크가 아직 성공하지 않아 롤아웃이 대기 중입니다. {port} 포트의 GET {path} 요청입니다. 해당 경로가 서비스 자체 포트에서 2xx 또는 3xx 상태를 반환하는지 확인하세요.{hint}",
@@ -847,6 +871,18 @@ const koDeploys: Record<string, TranslationEntry> = {
       " 인스턴스에서 열린 포트가 감지되지 않았습니다. 서버는 서비스 포트({port})의 호스트 0.0.0.0에 바인딩해야 합니다.",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message:
+      " 크래시가 포트 바인딩 문제라면: 프로세스는 $PORT({port})에서 수신 대기해야 합니다.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message:
+      " 서버는 SIGTERM을 받을 때까지 $PORT({port})에서 계속 수신 대기해야 합니다.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message:

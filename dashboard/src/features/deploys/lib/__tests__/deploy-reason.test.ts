@@ -220,6 +220,51 @@ describe("deployReasonText", () => {
     expect(zh).not.toContain("路径在服务自身端口上返回");
   });
 
+  // w8/386: a failed deploy's startup crash says its instance stopped, and a
+  // clean exit gets Render's early-exit guidance, not the port-bind hint.
+  it("words a stopped startup crash by how the process exited", () => {
+    const port = [{ name: "port", value: "10000" }];
+    const bind =
+      " If the crash is a port bind: the process must listen on $PORT (10000).";
+    const listen =
+      " The server must keep listening on $PORT (10000) until it receives SIGTERM.";
+    const crash = wire(
+      "startup_crash_stopped",
+      [
+        { name: "code", value: "1" },
+        { name: "hint", value: bind },
+      ],
+      [{ code: "hint_crash_port_bind", params: port, text: bind }],
+    );
+    const crashText =
+      "container exited shortly after start and its instance has stopped (last exit code 1) — check the service logs for the crash output." +
+      bind;
+    expect(deployReasonText(translator("en"), crashText, crash)).toBe(
+      crashText,
+    );
+    expect(deployReasonText(translator("zh"), crashText, crash)).toBe(
+      "容器在启动后不久退出，其实例已停止（最后退出码 1）— 请在服务日志中查看崩溃输出。如果崩溃源于端口绑定：进程必须监听 $PORT（10000）。",
+    );
+    const early = wire(
+      "startup_early_exit_stopped",
+      [{ name: "hint", value: listen }],
+      [{ code: "hint_early_exit_port", params: port, text: listen }],
+    );
+    const earlyText =
+      'container exited shortly after start and its instance has stopped (last exit code 0): the process exited "successfully" but early.' +
+      " A service runs continuously and must not exit until it receives SIGTERM; use a cron job for a task that ends when its work is done." +
+      " Check the service logs for why it ended." +
+      listen;
+    expect(deployReasonText(translator("en"), earlyText, early)).toBe(
+      earlyText,
+    );
+    const zh = deployReasonText(translator("zh"), earlyText, early);
+    expect(zh).toContain("其实例已停止");
+    expect(zh).toContain("SIGTERM");
+    expect(zh).toContain("服务器必须持续监听 $PORT（10000）");
+    expect(zh).not.toContain("端口绑定");
+  });
+
   // w5/m356: a never-started build's cause is worded too.
   describe("a build that never started", () => {
     const cause =

@@ -583,6 +583,30 @@ const esDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "el contenedor terminó poco después de arrancar y se está reiniciando repetidamente (último código de salida {code}): revisa los logs del servicio para ver la salida del fallo.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "el contenedor terminó poco después de arrancar y su instancia se detuvo (último código de salida {code}): revisa los logs del servicio para ver la salida del fallo.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      "el contenedor terminó poco después de arrancar y se está reiniciando repetidamente (último código de salida 0): el proceso terminó «correctamente», pero antes de tiempo. Un servicio se ejecuta de forma continua y no debe terminar hasta recibir SIGTERM; usa un Cron Job para una tarea que termina cuando completa su trabajo. Revisa los logs del servicio para ver por qué terminó.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      "el contenedor terminó poco después de arrancar y su instancia se detuvo (último código de salida 0): el proceso terminó «correctamente», pero antes de tiempo. Un servicio se ejecuta de forma continua y no debe terminar hasta recibir SIGTERM; usa un Cron Job para una tarea que termina cuando completa su trabajo. Revisa los logs del servicio para ver por qué terminó.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "el contenedor está en ejecución pero su comprobación de estado {kind} no ha tenido éxito, por lo que el despliegue está esperando: GET {path} en el puerto {port}. Comprueba que la ruta devuelva un estado 2xx o 3xx en el puerto propio del servicio.{hint}",
@@ -873,6 +897,18 @@ const esDeploys: Record<string, TranslationEntry> = {
       " No se detectó ningún puerto abierto en la instancia: el servidor debe enlazarse al host 0.0.0.0 en el puerto del servicio ({port}).",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message:
+      " Si el fallo se debe al enlace del puerto: el proceso debe escuchar en $PORT ({port}).",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message:
+      " El servidor debe seguir escuchando en $PORT ({port}) hasta recibir SIGTERM.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message:

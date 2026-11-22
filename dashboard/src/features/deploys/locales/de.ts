@@ -574,6 +574,30 @@ const deDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
+  "deploys.reason.startup_crash_restarting": {
+    message:
+      "der Container wurde kurz nach dem Start beendet und startet wiederholt neu (letzter Exit-Code {code}) — prüfe die Service-Logs auf die Ausgabe des Absturzes.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_restarting, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_crash_stopped": {
+    message:
+      "der Container wurde kurz nach dem Start beendet und seine Instanz wurde gestoppt (letzter Exit-Code {code}) — prüfe die Service-Logs auf die Ausgabe des Absturzes.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_crash_stopped, w8/386); params are the sentence's values: code is the exit code, hint the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_restarting": {
+    message:
+      "der Container wurde kurz nach dem Start beendet und startet wiederholt neu (letzter Exit-Code 0): Der Prozess wurde „erfolgreich“, aber zu früh beendet. Ein Service läuft dauerhaft und darf sich erst beenden, wenn er SIGTERM erhält; nutze einen Cron Job für eine Aufgabe, die endet, sobald ihre Arbeit erledigt ist. Prüfe in den Service-Logs, warum er beendet wurde.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_restarting, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
+  "deploys.reason.startup_early_exit_stopped": {
+    message:
+      "der Container wurde kurz nach dem Start beendet und seine Instanz wurde gestoppt (letzter Exit-Code 0): Der Prozess wurde „erfolgreich“, aber zu früh beendet. Ein Service läuft dauerhaft und darf sich erst beenden, wenn er SIGTERM erhält; nutze einen Cron Job für eine Aufgabe, die endet, sobald ihre Arbeit erledigt ist. Prüfe in den Service-Logs, warum er beendet wurde.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_early_exit_stopped, w8/386); the start command exited with code 0; hint is the port advice (a part)",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "der Container läuft, aber sein {kind}-Health-Check war noch nicht erfolgreich, daher wartet der Rollout: GET {path} auf Port {port}. Prüfe, ob der Pfad auf dem eigenen Port des Services einen 2xx- oder 3xx-Status zurückgibt.{hint}",
@@ -864,6 +888,18 @@ const deDeploys: Record<string, TranslationEntry> = {
       " Auf der Instanz wurde kein offener Port erkannt: Der Server muss Host 0.0.0.0 auf dem Port des Services ({port}) binden.",
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_crash_port_bind": {
+    message:
+      " Falls der Absturz an der Port-Bindung liegt: Der Prozess muss auf $PORT ({port}) lauschen.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_crash_port_bind, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_early_exit_port": {
+    message:
+      " Der Server muss auf $PORT ({port}) lauschen, bis er SIGTERM erhält.",
+    description:
+      "A startup crash's port advice, by its code (bex-api DeployReason part hint_early_exit_port, w8/386); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
   "deploys.reason.queued_build_limit": {
     message:

@@ -303,8 +303,9 @@ func TestStartupCrashStopsAFirstReleaseBeforeTheDeadline(t *testing.T) {
 					got, live.Status.Phase, live.Status.ActiveRevision)
 			}
 			ready := meta.FindStatusCondition(live.Status.Conditions, appv1alpha1.ConditionReady)
-			if ready == nil || ready.Reason != crashLoopBackOff || !strings.Contains(ready.Message, "last exit code 3") {
-				t.Fatalf("Ready = %+v, want the crash diagnosis kept", ready)
+			if ready == nil || ready.Reason != crashLoopBackOff || !strings.Contains(ready.Message, "last exit code 3") ||
+				!strings.Contains(ready.Message, appv1alpha1.CrashStallFailed) {
+				t.Fatalf("Ready = %+v, want the crash diagnosis kept, saying the instance stopped (w8/386)", ready)
 			}
 		})
 	}

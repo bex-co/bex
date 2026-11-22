@@ -52,6 +52,14 @@ const (
 	// w4/630: the service container was OOM-killed while starting; {memory}
 	// is its compute plan's limit, as Render's "Out of memory" names it.
 	DeployReasonStartupOutOfMemory = "startup_out_of_memory"
+	// w8/386: a start command that exits during startup, restarting while
+	// the rollout waits and stopped once the deploy failed (CrashStallWaiting
+	// and CrashStallFailed). Exit code 0 is Render's "Your app exited
+	// "successfully" but early" (render.com/docs/troubleshooting-deploys).
+	DeployReasonStartupCrashRestarting     = "startup_crash_restarting"
+	DeployReasonStartupCrashStopped        = "startup_crash_stopped"
+	DeployReasonStartupEarlyExitRestarting = "startup_early_exit_restarting"
+	DeployReasonStartupEarlyExitStopped    = "startup_early_exit_stopped"
 
 	// w4/591: the health-check stall, by its target and whether liveness has
 	// restarted the container. The operator writes the waiting half;
@@ -133,6 +141,9 @@ const (
 	DeployReasonHintNoOpenPort             = "hint_no_open_port"
 	DeployReasonHintNoOpenPortBefore       = "hint_no_open_port_before"
 	DeployReasonHintNoOpenServicePort      = "hint_no_open_service_port"
+	// w8/386: a startup crash's port advice, by how the process exited.
+	DeployReasonHintCrashPortBind = "hint_crash_port_bind"
+	DeployReasonHintEarlyExitPort = "hint_early_exit_port"
 
 	DeployReasonQueuedBuildLimit     = "queued_build_limit"
 	DeployReasonQueuedClusterFull    = "queued_cluster_full"
@@ -166,6 +177,15 @@ const (
 	probeStallHint = "{hint}"
 )
 
+// The startup crash sentence's parts (w8/386). Its {hint} is the port advice.
+const (
+	crashHead      = "container exited "
+	crashCodeTail  = " (last exit code {code}) — check the service logs for the crash output.{hint}"
+	earlyExitTail  = " (last exit code 0): the process exited \"successfully\" but early. A service runs continuously and must not exit until it receives SIGTERM; use a cron job for a task that ends when its work is done. Check the service logs for why it ended.{hint}"
+	crashRestarted = crashHead + CrashStallWaiting
+	crashStopped   = crashHead + CrashStallFailed
+)
+
 // deployReasonTemplates are the sentences, {name} marking a parameter.
 var deployReasonTemplates = map[string]string{
 	DeployReasonHTTPPortWaiting:          "Waiting for the container to start before detecting its HTTP port",
@@ -184,6 +204,11 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonPreDeployTimedOut:        "the pre-deploy command did not finish within its window; check the pre-deploy logs",
 	DeployReasonHealthTimedOut:           "the deploy did not become healthy within the health-gate window; check the service logs",
 	DeployReasonStartupOutOfMemory:       "the instance ran out of memory during startup ({memory} limit on its compute plan; exit code {code}) — reduce memory use or choose a larger compute plan",
+
+	DeployReasonStartupCrashRestarting:     crashRestarted + crashCodeTail,
+	DeployReasonStartupCrashStopped:        crashStopped + crashCodeTail,
+	DeployReasonStartupEarlyExitRestarting: crashRestarted + earlyExitTail,
+	DeployReasonStartupEarlyExitStopped:    crashStopped + earlyExitTail,
 
 	DeployReasonProbeHTTPWaiting:          probeStallHead + ProbeStallWaiting + probeStallHTTP + probeStallPathTail + probeStallHint,
 	DeployReasonProbeHTTPWaitingRestarted: probeStallHead + ProbeStallWaiting + probeStallHTTP + probeStallRestarted + probeStallPathTail + probeStallHint,
@@ -256,6 +281,8 @@ var deployReasonPartTemplates = map[string]string{
 	DeployReasonHintNoOpenPort:             hintNoOpenPort + "the port in PORT ({port}).",
 	DeployReasonHintNoOpenPortBefore:       hintNoOpenPort + "the port in PORT ({port}); it listened on port {previous} before.",
 	DeployReasonHintNoOpenServicePort:      hintNoOpenPort + "the service's port ({port}).",
+	DeployReasonHintCrashPortBind:          " If the crash is a port bind: the process must listen on $PORT ({port}).",
+	DeployReasonHintEarlyExitPort:          " The server must keep listening on $PORT ({port}) until it receives SIGTERM.",
 
 	DeployReasonQueuedBuildLimit:  "{noun} has {active}/{limit} concurrent builds active; waiting for a slot",
 	DeployReasonQueuedClusterFull: "the cluster's build capacity is full; waiting for a slot",
@@ -326,6 +353,23 @@ func ProbeStallReason(kind string, tcp bool, path, port string, restarts int32) 
 	}
 	return FormatDeployReason(code, DeployReasonParam{Name: "kind", Value: kind}, DeployReasonParam{Name: "path", Value: path},
 		DeployReasonParam{Name: "port", Value: port}, DeployReasonParam{Name: "restarts", Value: strconv.Itoa(int(restarts))})
+}
+
+// StartupCrashReason is the in-flight crash of a start command that last
+// exited with code, with the advice for port unless it is 0. Exit code 0 is
+// Render's early exit, which no port bind explains (w8/386); TerminalStallText
+// restates either as the instance that stopped.
+func StartupCrashReason(code int32, port int) string {
+	reason, hint := DeployReasonStartupCrashRestarting, DeployReasonHintCrashPortBind
+	if code == 0 {
+		reason, hint = DeployReasonStartupEarlyExitRestarting, DeployReasonHintEarlyExitPort
+	}
+	advice := ""
+	if port > 0 {
+		advice = FormatDeployReason(hint, DeployReasonParam{Name: "port", Value: strconv.Itoa(port)})
+	}
+	return FormatDeployReason(reason, DeployReasonParam{Name: "code", Value: strconv.Itoa(int(code))},
+		DeployReasonParam{Name: "hint", Value: advice})
 }
 
 // OtherProbeStallReason is ProbeStallReason for a check that is neither a GET

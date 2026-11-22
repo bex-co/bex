@@ -4428,7 +4428,7 @@ func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.
 			}
 			switch {
 			case t == nil:
-			case t.ExitCode != 0 || t.Reason == containerReasonOOMKilled:
+			case !exitedClean(t):
 				record(t)
 				return
 			case clean == nil:
@@ -4439,6 +4439,12 @@ func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.
 	if clean != nil {
 		record(clean)
 	}
+}
+
+// exitedClean reports a container that ended with status 0 on its own, not
+// killed for memory: Render's earlyExit (w8/383).
+func exitedClean(t *corev1.ContainerStateTerminated) bool {
+	return t.ExitCode == 0 && t.Reason != containerReasonOOMKilled
 }
 
 // rolloutFailureFor is the current release's RolloutFailure record, started
@@ -4512,7 +4518,9 @@ func (r *AppReconciler) permanentRolloutCrash(ctx context.Context, dep *appsv1.D
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return "", ""
 	}
-	msg := ""
+	// A non-zero exit or an OOM kill in any pod words the reason over a clean
+	// exit, as recordRolloutExit records it (w8/383).
+	msg, clean := "", false
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		if pod.DeletionTimestamp != nil || pod.Labels[labelRevision] != revision {
@@ -4525,8 +4533,9 @@ func (r *AppReconciler) permanentRolloutCrash(ctx context.Context, dep *appsv1.D
 			}
 			crashed = cs.State.Waiting != nil && cs.State.Waiting.Reason == crashLoopBackOff &&
 				cs.RestartCount >= crashSettleRestarts && !podEverReady(pod)
-			if crashed && msg == "" {
-				msg = crashLoopMessage(pod, cs, port)
+			if crashed && (msg == "" || clean) {
+				t := cs.LastTerminationState.Terminated
+				msg, clean = crashLoopMessage(pod, cs, port), t != nil && exitedClean(t)
 			}
 		}
 		if !crashed {
@@ -4536,7 +4545,9 @@ func (r *AppReconciler) permanentRolloutCrash(ctx context.Context, dep *appsv1.D
 	if msg == "" {
 		return "", ""
 	}
-	return crashLoopBackOff, msg
+	// The settle stops the release's instance (stopsFirstRelease), or puts the
+	// Deployment back on the served one: the reason says it has stopped.
+	return crashLoopBackOff, terminalStallMessage(crashLoopBackOff, msg)
 }
 
 // podEverReady reports whether the pod may ever have been Ready: its Ready
@@ -6810,32 +6821,33 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 	return probeStallMessage(pods.Items)
 }
 
-// crashLoopMessage words a crash-looping container's diagnosis; the Ready
-// condition while the rollout is in flight and the terminal deploy reason
-// (permanentRolloutCrash) are the same text. A container the kernel killed
-// for exceeding its memory limit reads as Render's "Out of memory", naming
-// the pod's limit (its instance type's, resourcesForTier): it printed nothing
-// and bound no port, so neither the logs nor the port hint apply (w4/630).
+// crashLoopMessage words a crash-looping container's diagnosis while the
+// rollout is in flight; the terminal deploy reason (permanentRolloutCrash, the
+// deadline) restates it as the instance that stopped (terminalStallMessage,
+// w8/386). A container the kernel killed for exceeding its memory limit reads
+// as Render's "Out of memory", naming the pod's limit (its instance type's,
+// resourcesForTier): it printed nothing and bound no port, so neither the
+// logs nor the port hint apply (w4/630). An exit with code 0 is Render's
+// early exit (appv1alpha1.StartupCrashReason).
 func crashLoopMessage(pod *corev1.Pod, cs corev1.ContainerStatus, port int) string {
-	exit := ""
-	if t := cs.LastTerminationState.Terminated; t != nil {
-		if t.Reason == runtimeStartError {
-			return startErrorMessage(t.Message)
+	t := cs.LastTerminationState.Terminated
+	if t == nil {
+		msg := "container exited " + appv1alpha1.CrashStallWaiting + " — check the service logs for the crash output."
+		if port > 0 {
+			msg += appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintCrashPortBind,
+				appv1alpha1.DeployReasonParam{Name: "port", Value: strconv.Itoa(port)})
 		}
-		if memory := containerMemoryLimit(pod, cs.Name); t.Reason == containerReasonOOMKilled && memory != "" {
-			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonStartupOutOfMemory,
-				appv1alpha1.DeployReasonParam{Name: "memory", Value: memory},
-				appv1alpha1.DeployReasonParam{Name: "code", Value: strconv.Itoa(int(t.ExitCode))})
-		}
-		exit = fmt.Sprintf(" (last exit code %d)", t.ExitCode)
+		return msg
 	}
-	msg := fmt.Sprintf(
-		"container exited shortly after start and is restarting repeatedly%s — check the service logs for the crash output.", exit)
-	if port > 0 {
-		msg += fmt.Sprintf(
-			" If the crash is a port bind: the process must listen on $PORT (%d).", port)
+	if t.Reason == runtimeStartError {
+		return startErrorMessage(t.Message)
 	}
-	return msg
+	if memory := containerMemoryLimit(pod, cs.Name); t.Reason == containerReasonOOMKilled && memory != "" {
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonStartupOutOfMemory,
+			appv1alpha1.DeployReasonParam{Name: "memory", Value: memory},
+			appv1alpha1.DeployReasonParam{Name: "code", Value: strconv.Itoa(int(t.ExitCode))})
+	}
+	return appv1alpha1.StartupCrashReason(t.ExitCode, port)
 }
 
 // containerMemoryLimit is the named container's memory limit ("512Mi"), or ""
@@ -7053,6 +7065,8 @@ func terminalStallMessage(reason, msg string) string {
 		return strings.Replace(msg, unschedulableWaiting, unschedulableFailed, 1)
 	case reasonRolloutBlockedByQuota:
 		return strings.Replace(msg, appv1alpha1.QuotaStallWaiting, appv1alpha1.QuotaStallFailed, 1)
+	case crashLoopBackOff:
+		return strings.Replace(msg, appv1alpha1.CrashStallWaiting, appv1alpha1.CrashStallFailed, 1)
 	}
 	return msg
 }
