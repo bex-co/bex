@@ -1,6 +1,6 @@
 # w8 · m562 — A Key Value client outside the IP allow list reads Render's "AUTH failed: Client IP address is not in the allowlist.", not a bare TLS EOF
 
-**Worker:** worker8 **Goal:** a client whose source the store's allow list refuses completes a TLS handshake under the store's own certificate and reads `-Client IP address is not in the allowlist.` for every command it sends, so `valkey-cli` and `bex kv-cli` print Render's documented `AUTH failed: Client IP address is not in the allowlist.` No byte from a refused source reaches Valkey, and an unknown hostname is still dropped before TLS. **Status:** todo (t001–t003 done) (t001–t002 done) (t001 done)
+**Worker:** worker8 **Goal:** a client whose source the store's allow list refuses completes a TLS handshake under the store's own certificate and reads `-Client IP address is not in the allowlist.` for every command it sends, so `valkey-cli` and `bex kv-cli` print Render's documented `AUTH failed: Client IP address is not in the allowlist.` No byte from a refused source reaches Valkey, and an unknown hostname is still dropped before TLS. **Status:** todo (t001–t004 done) (t001–t003 done) (t001–t002 done) (t001 done)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | [t001](done/t001.md) | `kv-internal-proxy`: an allow-list refusal listener that ends TLS with the store's certificate and answers every command with Render's refusal, never dialing Valkey — **DONE** | 45m | — |
 | [t002](done/t002.md) | Operator: the proxy and the stable Service carry the refusal port; the held-template roll decision — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | `kv-sni-proxy`: a refused source on a known store's name goes to the refusal port, inside the handshake caps and counted as a rejection — **DONE** | 45m | t002 |
-| [t004](t004.md) | Docs: ADR021 and the operator guide describe the refusal path | 20m | t003 |
+| [t004](done/t004.md) | Docs: ADR021 and the operator guide describe the refusal path — **DONE** | 20m | t003 |
 | [t005](t005.md) | Live check on production in `bex-canary` | 30m | t004 |
 | [t006](t006.md) | Render parity | 15m | t005 |
 | [t007](t007.md) | Simplify | 15m | t006 |
@@ -48,3 +48,12 @@ Total: **9 tasks, about 4h15m**.
 - **Expected outcome:** a customer blocked by their own allow list reads that it blocked them, instead of an EOF that looks like an outage, a wrong host or a TLS fault.
 - **Why now:** every external Key Value user who sets an allow list meets it on a changed IP, and the skill pack sends them to the allow list for an error they never see.
 - **Render parity included:** the refusal is a tenant-facing wire behavior. REST, GraphQL, MCP and the dashboard do not change, so t006 checks the wire against Render's docs and the pinned client.
+
+## Progress
+
+- **2026-11-22: t001–t004 done** in `9c5b3a2f08` (the refusal listener), `7c31907d2a` (the rendered port), `10be6b80d4` (the routing and the alert exclusion) and the docs commit. Each task file records its design and tests.
+- **Local check of DoD 1, not production.** `valkey-cli` 8.1 (`valkey/valkey:8.1`) in a TTY, against a locally built `/kv-internal-proxy` refusal listener with a self-signed certificate:
+  - with no password, `PING` prints `(error) Client IP address is not in the allowlist.`;
+  - with `REDISCLI_AUTH` and `--user`, the shape of `kv-cli`'s command, it prints `AUTH failed: Client IP address is not in the allowlist.` and then `(error) Client IP address is not in the allowlist.`.
+  - Without a TTY it prints the same lines without `(error) `.
+- **DoD 3's last control moved.** Since w9/134 (`4eda96b34f`), a private store's connection info answers a `rediss://` URL over its reserved host, where it answered an empty `externalConnectionString`. The control becomes: a store cleared with `--clear-ip-allow-list` answers what w9/134 answers, and a client of its host is still dropped after the ClientHello, since the proxy routes no private store and a private store has no certificate.
