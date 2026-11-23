@@ -1,17 +1,17 @@
 # w4 · m553 — The weekly Render drift job reads Render's changelog and fails on an entry with no disposition
 
-**Worker:** worker4 **Goal:** every entry on Render's changelog has a recorded disposition (an ADR018 row, an owning board item, a non-goal or n/a), and the weekly Render drift workflow fails when a new entry has none, so a dashboard-only Render feature can no longer go unnoticed. **Status:** todo
+**Worker:** worker4 **Goal:** every entry on Render's changelog has a recorded disposition (an ADR018 row, an owning board item, a non-goal or n/a), and the weekly Render drift workflow fails when a new entry has none, so a dashboard-only Render feature can no longer go unnoticed. **Status:** todo (t001, t002, t004–t006 done; t003 waits for a dispatched run of the drift workflow on `main`)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | scripts/render-changelog-drift.sh: Render's changelog feed against a disposition table | 1h | — |
-| [t002](t002.md) | Disposition every Render changelog entry since 2023-03-31 | 2h | t001 |
+| [t001](done/t001.md) | scripts/render-changelog-drift.sh: Render's changelog feed against a disposition table — **DONE** | 1h | — |
+| [t002](done/t002.md) | Disposition every Render changelog entry since 2023-03-31 — **DONE** | 2h | t001 |
 | [t003](t003.md) | Run the changelog check in the weekly Render drift workflow | 30m | t001 |
-| [t004](t004.md) | ADR018's Method names the changelog check | 15m | t002 |
-| [t005](t005.md) | Simplify | 15m | t003, t004 |
-| [t006](t006.md) | Test coverage | 30m | t005 |
+| [t004](done/t004.md) | ADR018's Method names the changelog check — **DONE** | 15m | t002 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t003, t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t005 |
 | [t007](t007.md) | Closeout | 10m | t006 |
 
 Total: **7 tasks, about 4h40m**.

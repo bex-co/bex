@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shape of https://render.com/changelog/feed.xml (captured 2026-11-22), trimmed to two entries. -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://render.com</id>
+    <title>Render</title>
+    <updated>2026-11-21T16:10:29.467Z</updated>
+    <link rel="alternate" href="https://render.com/changelog"/>
+    <link rel="self" href="https://render.com/changelog/feed.xml"/>
+    <entry>
+        <title type="html"><![CDATA[Fine-grained API keys now generally available]]></title>
+        <id>https://render.com/changelog/fine-grained-api-keys-now-generally-available</id>
+        <link href="https://render.com/changelog/fine-grained-api-keys-now-generally-available"/>
+        <updated>2026-11-18T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>Newly created Render API keys are now scoped to a single workspace.</p>]]></summary>
+        <category label="New"/>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Render Sandboxes now available in beta]]></title>
+        <id>https://render.com/changelog/render-sandboxes-now-available-in-beta</id>
+        <link href="https://render.com/changelog/render-sandboxes-now-available-in-beta"/>
+        <updated>2026-11-11T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>Now in public beta, use Render Sandboxes.</p>]]></summary>
+        <category label="New"/>
+    </entry>
+</feed>

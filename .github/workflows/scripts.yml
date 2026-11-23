@@ -334,6 +334,10 @@ jobs:
         run: bash scripts/render-mcp-drift.test.sh
       - name: Render Blueprint/webhook schema drift reporting unit tests
         run: bash scripts/render-schema-drift.test.sh
+      # w4/m553: a changelog entry with no row, a row Render removed, and a feed
+      # or page the script cannot read all fail; the committed table is well formed.
+      - name: Render changelog disposition drift unit tests
+        run: bash scripts/render-changelog-drift.test.sh
       - name: Render examples corpus fetch unit tests
         run: bash scripts/render-examples-corpus.test.sh
       - name: Verified CI download fallback unit tests
@@ -363,6 +367,7 @@ jobs:
           scripts/adr-registry-validate.sh scripts/adr-registry-validate.test.sh
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
+          scripts/render-changelog-drift.sh scripts/render-changelog-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh

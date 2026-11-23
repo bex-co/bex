@@ -48,6 +48,24 @@ jobs:
       - name: Compare Render's MCP tool surface with the reviewed pin
         run: scripts/render-mcp-drift.sh
 
+  # Render's changelog (w4/m553). A feature Render ships only in its dashboard
+  # moves none of the contracts above, so every changelog entry needs a row in
+  # docs/render-artifacts/render-changelog.md: an owner, a non-goal or n/a.
+  render-changelog:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - name: Every Render changelog entry has a disposition
+        run: scripts/render-changelog-drift.sh
+
   # Render's own example Blueprints (w33/001). Each must validate, or fail only
   # for a refusal TestRenderExamplesCorpus lists as deliberate or as a filed
   # gap; anything else is a new class to triage. Nothing ran this opt-in test
