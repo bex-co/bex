@@ -84,14 +84,18 @@ func probeRegistry(t *testing.T, dir string, ids ...string) string {
 	return string(out)
 }
 
-func waitForFile(t *testing.T, path string) {
+// waitForContent returns path's content once it has some. A registry entry
+// exists empty for a moment: the wrapper's redirection creates it before
+// printf writes the line.
+func waitForContent(t *testing.T, path string) string {
 	t.Helper()
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
-		if _, err := os.Stat(path); err == nil {
-			return
+		if b, err := os.ReadFile(path); err == nil && len(b) > 0 {
+			return string(b)
 		}
 	}
 	t.Fatalf("%s never appeared", path)
+	return ""
 }
 
 // The registry changes nothing the command sees: bash in the home directory,
@@ -122,7 +126,7 @@ func TestARunningCommandIsInTheRegistryUntilItEnds(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waitForFile(t, filepath.Join(dir, "exe-2.run"))
+	waitForContent(t, filepath.Join(dir, "exe-2.run"))
 	if got := probeRegistry(t, dir, "exe-2"); got != "running exe-2\n" {
 		t.Fatalf("while it runs, probe = %q", got)
 	}
@@ -155,19 +159,20 @@ func TestAStaleRegistryEntryIsNotRunning(t *testing.T) {
 
 // The command runs in the foreground, so it keeps SIGINT: a background child
 // of a non-interactive shell starts with it ignored and could not trap it.
+// The entry is written before the command starts, so the signal waits for the
+// command to say its trap is set: sent sooner, it ends the command before the
+// trap exists (exit 130), as it would in any shell.
 func TestARegisteredCommandKeepsSIGINT(t *testing.T) {
 	needProc(t)
 	dir := t.TempDir()
-	cmd, out, _ := registeredCommand(t, filepath.Join(dir, "exe-4"), `trap 'echo got-int; exit 5' INT; while :; do sleep 0.05; done`)
+	cmd, out, _ := registeredCommand(t, filepath.Join(dir, "exe-4"), `trap 'echo got-int; exit 5' INT; echo set >trap-set; while :; do sleep 0.05; done`)
+	home := strings.TrimPrefix(cmd.Env[0], "HOME=")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waitForFile(t, filepath.Join(dir, "exe-4.run"))
-	entry, err := os.ReadFile(filepath.Join(dir, "exe-4.run"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pid, err := strconv.Atoi(strings.Fields(string(entry))[0])
+	entry := waitForContent(t, filepath.Join(dir, "exe-4.run"))
+	waitForContent(t, filepath.Join(home, "trap-set"))
+	pid, err := strconv.Atoi(strings.Fields(entry)[0])
 	if err != nil {
 		t.Fatal(err)
 	}
