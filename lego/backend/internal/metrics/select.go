@@ -38,12 +38,14 @@ const (
 
 // instanceFilterSupported reports whether an INSTANCE filter is meaningful for
 // a metric. cpu/memory carry per-instance series and cpu_limit/memory_limit
-// carry per-instance limit series (w5/m89 limit consumers); every other metric
+// carry per-instance limit series (w5/m89 limit consumers); db/kv_connections
+// carry per-instance backend counts (w34/m589 MCP parity). Every other metric
 // (request metrics, instance_count, autoscale targets) has no per-instance
 // axis, so an INSTANCE filter on it is a defined bad request (w5/m91).
 func instanceFilterSupported(metric string) bool {
 	switch metric {
-	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
+	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit,
+		MetricDBConnections, MetricKVConnections:
 		return true
 	default:
 		return false
@@ -216,10 +218,10 @@ func applyInstanceSelection(q MetricQuery, series []MetricSeries, live []ids.Ins
 		// check so existing unit probes without a metric still behave.
 		if q.Metric != "" {
 			if !instanceFilterSupported(q.Metric) {
-				return nil, fmt.Errorf("%w: INSTANCE filter applies only to per-instance cpu/memory metrics", core.ErrBadRequest)
+				return nil, fmt.Errorf("%w: INSTANCE filter applies only to per-instance cpu/memory and connection metrics", core.ErrBadRequest)
 			}
 		} else if !seriesHaveInstanceLabels(series) {
-			return nil, fmt.Errorf("%w: INSTANCE filter applies only to per-instance cpu/memory metrics", core.ErrBadRequest)
+			return nil, fmt.Errorf("%w: INSTANCE filter applies only to per-instance cpu/memory and connection metrics", core.ErrBadRequest)
 		}
 		series = filterSeriesByInstances(q.App, q.Instances, series, live)
 	}

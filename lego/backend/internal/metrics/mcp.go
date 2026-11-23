@@ -277,7 +277,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				var series []MetricSeries
 				read := scope.forMetric(q, metricIDFor(metricType))
 				if metricType == renderActiveConnections {
-					series, err = s.activeConnections(ctx, id, q.Start, q.End, q.Resolution)
+					series, err = s.activeConnections(ctx, read, id)
 				} else if core.IsDatastoreResource(id) {
 					series, err = s.datastoreAppMetric(ctx, read, id)
 				} else {
