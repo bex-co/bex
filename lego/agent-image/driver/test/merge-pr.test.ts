@@ -163,6 +163,115 @@ test("merge_pull_request sends only the method and commit text, and records the 
   assert.equal(gateway.requests[1].body, "{}");
 });
 
+test("merge_pull_request with auto arms auto-merge, returns the armed answer and records nothing merged", async (t) => {
+  const armed = {
+    url: merged.url,
+    number: 12,
+    merged: false,
+    method: "squash",
+    headSha: merged.headSha,
+    autoMerge: true,
+  };
+  const gateway = await stubGateway({
+    [`${base}/merge`]: { status: 200, body: armed },
+  });
+  t.after(gateway.close);
+  const dir = await mkdtemp(path.join(tmpdir(), "bex-merge-"));
+  const record = path.join(dir, "pull-request.json");
+  const opened = JSON.stringify({
+    url: merged.url,
+    number: 12,
+    created: true,
+    headSha: merged.headSha,
+  });
+  await writeFile(record, opened);
+  const env = { ...gateway.env, BEX_PR_RECORD_PATH: record };
+
+  const reply = await handleMessage(
+    {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: {
+        name: "merge_pull_request",
+        arguments: { auto: true, method: "squash" },
+      },
+    },
+    env,
+  );
+  const result = (reply as { result: any }).result;
+  assert.equal(result.isError, false);
+  assert.deepEqual(result.structuredContent, armed);
+  assert.equal(
+    gateway.requests[0].body,
+    JSON.stringify({ method: "squash", auto: true }),
+  );
+  // The delivery check reads no merged head for an armed pull request.
+  assert.equal(await readFile(record, "utf8"), opened);
+
+  // A queued answer and an undo come back as they are, and record nothing.
+  for (const answer of [
+    {
+      url: merged.url,
+      number: 12,
+      merged: false,
+      headSha: merged.headSha,
+      mergeQueue: true,
+    },
+    {
+      url: merged.url,
+      number: 12,
+      merged: false,
+      headSha: merged.headSha,
+      autoMergeDisabled: true,
+    },
+  ]) {
+    const later = await stubGateway({
+      [`${base}/merge`]: { status: 200, body: answer },
+    });
+    t.after(later.close);
+    const outcome = await mergePullRequest(
+      answer.autoMergeDisabled ? { disableAuto: true } : {},
+      { ...later.env, BEX_PR_RECORD_PATH: record },
+    );
+    assert.deepEqual(outcome, { ok: true, result: answer });
+    assert.equal(
+      later.requests[0].body,
+      answer.autoMergeDisabled ? JSON.stringify({ disableAuto: true }) : "{}",
+    );
+    assert.equal(await readFile(record, "utf8"), opened);
+  }
+});
+
+test("an answer with no outcome, two outcomes or a merge without its commit is refused", async (t) => {
+  for (const body of [
+    { url: merged.url, number: 12, merged: false, headSha: merged.headSha },
+    {
+      url: merged.url,
+      number: 12,
+      merged: false,
+      autoMerge: true,
+      mergeQueue: true,
+    },
+    { ...merged, autoMerge: true },
+    { ...merged, sha: "" },
+    { url: merged.url, number: 12, autoMerge: true },
+    { url: "", number: 12, merged: false, autoMerge: true },
+    { url: merged.url, number: 12, merged: false, autoMerge: "yes" },
+  ]) {
+    const gateway = await stubGateway({
+      [`${base}/merge`]: { status: 200, body },
+    });
+    t.after(gateway.close);
+    const outcome = await mergePullRequest({ auto: true }, gateway.env);
+    assert.equal(
+      !outcome.ok && outcome.error.code,
+      "upstream_error",
+      JSON.stringify(body),
+    );
+  }
+});
+
 test("GitHub's refusals pass through verbatim; other failures become upstream_error", async (t) => {
   const error = {
     code: "merge_blocked",
@@ -216,6 +325,13 @@ test("malformed merges are rejected before any request", async (t) => {
     [{ commitMessage: "nul\u0000byte" }, "invalid_request"],
     [{ commitTitle: "é".repeat(maxCommitTitleRunes + 1) }, "too_large"],
     [{ commitMessage: "é".repeat(maxCommitMessageBytes / 2 + 1) }, "too_large"],
+    [{ auto: "true" }, "invalid_request"],
+    [{ auto: 1 }, "invalid_request"],
+    [{ disableAuto: "yes" }, "invalid_request"],
+    [{ disableAuto: true, auto: true }, "invalid_request"],
+    [{ disableAuto: true, method: "squash" }, "invalid_request"],
+    [{ disableAuto: true, commitTitle: "x" }, "invalid_request"],
+    [{ auto: true, expectedHeadOid: "abc" }, "invalid_request"],
   ];
   for (const [args, code] of cases) {
     const outcome = await mergePullRequest(args, gateway.env);
@@ -229,6 +345,16 @@ test("malformed merges are rejected before any request", async (t) => {
       ok: true,
       input: { commitTitle: "é".repeat(maxCommitTitleRunes) },
     },
+  );
+  // false is the default and is not sent; an empty commit text beside
+  // disableAuto is none, as the gateway reads it.
+  assert.deepEqual(validateMergeInput({ auto: false, disableAuto: false }), {
+    ok: true,
+    input: {},
+  });
+  assert.deepEqual(
+    validateMergeInput({ disableAuto: true, auto: false, commitTitle: " " }),
+    { ok: true, input: { disableAuto: true } },
   );
 });
 
@@ -262,6 +388,17 @@ test("only repo sessions list the ready and merge tools, saying to use them only
       "no tool takes a pull request number",
     );
   }
+  // w10/m577: the merge tool offers auto and its undo, and says to arm it
+  // and end the turn rather than wait for the checks.
+  const merge = tools.find((tool) => tool.name === "merge_pull_request")!;
+  assert.equal(merge.inputSchema.properties.auto.type, "boolean");
+  assert.equal(merge.inputSchema.properties.disableAuto.type, "boolean");
+  assert.match(
+    merge.description,
+    /When asked to merge once the checks pass, call it with auto: true and end your turn/,
+  );
+  assert.match(merge.description, /merge queue/);
+  assert.match(merge.description, /only disableAuto: true/);
   const init = await handleMessage(
     { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
     env,

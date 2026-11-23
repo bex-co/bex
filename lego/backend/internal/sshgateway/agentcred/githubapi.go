@@ -565,10 +565,13 @@ func writeRefusal(repository string) string {
 // pullRequestStateRefusal answers gh pr ready and gh pr merge (w10/m538): the
 // session's pull request changes state only through the bex tools, which
 // act on that one pull request at the head bex recorded, then what else gh
-// can write here.
+// can write here. It names the merge tool's auto and disableAuto, which
+// stand in for gh pr merge --auto, the merge queue and --disable-auto
+// (w10/m577).
 func pullRequestStateRefusal(repository string) string {
 	return "bex: gh pr ready and gh pr merge do not work in this session; call the mark_pull_request_ready and merge_pull_request tools of the bex MCP server instead, " +
-		"only when your task or a person asks. " + strings.TrimPrefix(writeRefusal(repository), "bex: ")
+		"only when your task or a person asks. merge_pull_request with \"auto\": true arms auto-merge or joins the merge queue (for gh pr merge --auto), and with \"disableAuto\": true undoes it (for --disable-auto). " +
+		strings.TrimPrefix(writeRefusal(repository), "bex: ")
 }
 
 // pullRequestStateMutations are the GraphQL mutations of gh pr ready, gh pr

@@ -40,10 +40,18 @@ type fakeMergeAPI struct {
 	mergeStatus             int
 	mergeBody               string
 	graphql                 string
-	scopes                  []map[string]any
-	merges                  []map[string]any
-	mutations               []map[string]any
+	// answers is GitHub's GraphQL answer by the field a document calls
+	// (graphQLFields), graphql the answer to any other.
+	answers       map[string]string
+	settingsReads int
+	scopes        []map[string]any
+	merges        []map[string]any
+	mutations     []map[string]any
 }
+
+// graphQLFields are the top-level fields the merge calls send, in the order
+// fakeMergeAPI looks for them.
+var graphQLFields = []string{"node(id", "enablePullRequestAutoMerge", "enqueuePullRequest", "disablePullRequestAutoMerge", "dequeuePullRequest"}
 
 func (f *fakeMergeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
@@ -65,6 +73,7 @@ func (f *fakeMergeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprint(w, `{"token":"ghs_merge","expires_at":"2026-11-20T13:00:00Z"}`)
 	case r.Method == http.MethodGet && r.URL.Path == "/repos/octo/repo":
+		f.settingsReads++
 		fmt.Fprint(w, f.settings)
 	case r.Method == http.MethodGet && r.URL.Path == "/repos/octo/repo/rules/branches/main":
 		if f.rules == "" {
@@ -81,8 +90,19 @@ func (f *fakeMergeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprint(w, `{"sha":"fedcba9876543210fedcba9876543210fedcba98","merged":true,"message":"Pull Request successfully merged"}`)
 	case r.Method == http.MethodPost && r.URL.Path == "/graphql":
-		f.mutations = append(f.mutations, decode())
-		fmt.Fprint(w, f.graphql)
+		body := decode()
+		f.mutations = append(f.mutations, body)
+		query, _ := body["query"].(string)
+		answer := f.graphql
+		for _, field := range graphQLFields {
+			if strings.Contains(query, field) {
+				if found, ok := f.answers[field]; ok {
+					answer = found
+				}
+				break
+			}
+		}
+		fmt.Fprint(w, answer)
 	default:
 		http.Error(w, "unexpected "+r.Method+" "+r.URL.String(), http.StatusTeapot)
 	}
@@ -253,5 +273,214 @@ func TestMarkPullRequestReadySendsTheMutationForTheNode(t *testing.T) {
 	err := pullsClient(t, &fakeMergeAPI{noContents: true}).MarkPullRequestReady(context.Background(), 42, "repo", "PR_kwDOnode7")
 	if !errors.Is(err, ErrPermissionNotGranted) {
 		t.Fatalf("no contents err = %v", err)
+	}
+}
+
+// mutationInput is the input variable of the index-th GraphQL document sent.
+func (f *fakeMergeAPI) mutationInput(t *testing.T, index int) (string, map[string]any) {
+	t.Helper()
+	if len(f.mutations) <= index {
+		t.Fatalf("GraphQL documents = %+v, want at least %d", f.mutations, index+1)
+	}
+	query, _ := f.mutations[index]["query"].(string)
+	variables, _ := f.mutations[index]["variables"].(map[string]any)
+	input, _ := variables["input"].(map[string]any)
+	return query, input
+}
+
+const armed = `{"data":{"enablePullRequestAutoMerge":{"clientMutationId":null}}}`
+
+// graphQLRefusal is GitHub's GraphQL answer refusing a mutation.
+func graphQLRefusal(field, kind, message string) string {
+	raw, _ := json.Marshal(map[string]any{"data": map[string]any{field: nil}, "errors": []map[string]string{{"type": kind, "message": message}}})
+	return string(raw)
+}
+
+// w10/m577: auto-merge is armed with gh pr merge --auto's mutation, pinned to
+// the recorded head (expectedHeadOid, which gh leaves out), with the merge
+// method rule and the commit text, and the merge's token.
+func TestEnablePullRequestAutoMergePinsTheHeadWithTheMethodRule(t *testing.T) {
+	api := &fakeMergeAPI{settings: `{"allow_merge_commit":false,"allow_squash_merge":true,"allow_rebase_merge":true,"allow_auto_merge":true}`, answers: map[string]string{"enablePullRequestAutoMerge": armed}}
+	c := pullsClient(t, api)
+	method, err := c.EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, CommitTitle: "Add retries (#7)", CommitMessage: "Retries.", Base: "main"})
+	if err != nil || method != MergeMethodSquash {
+		t.Fatalf("arm = %q err=%v, want squash, the first method the repository allows", method, err)
+	}
+	query, input := api.mutationInput(t, 0)
+	if !strings.Contains(query, "enablePullRequestAutoMerge(input: $input)") || len(api.mutations) != 1 {
+		t.Fatalf("documents = %+v", api.mutations)
+	}
+	want := map[string]any{"pullRequestId": "PR_kwDOnode7", "expectedHeadOid": pullsTestHead, "mergeMethod": "SQUASH", "commitHeadline": "Add retries (#7)", "commitBody": "Retries."}
+	if fmt.Sprint(input) != fmt.Sprint(want) {
+		t.Fatalf("input = %v, want %v", input, want)
+	}
+	if len(api.merges) != 0 {
+		t.Fatal("arming auto-merge merged the pull request")
+	}
+	if perms := api.lastPermissions(); perms["contents"] != "write" || perms["pull_requests"] != "write" || perms["workflows"] != "write" || len(perms) != 4 {
+		t.Fatalf("token scope = %+v, want the merge's", api.scopes)
+	}
+	// A named method goes to GitHub's enum; no commit text sends none.
+	api = &fakeMergeAPI{settings: allMethods, answers: map[string]string{"enablePullRequestAutoMerge": armed}}
+	if method, err := pullsClient(t, api).EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, Method: MergeMethodRebase, Base: "main"}); err != nil || method != MergeMethodRebase {
+		t.Fatalf("named arm = %q err=%v", method, err)
+	}
+	if _, input := api.mutationInput(t, 0); len(input) != 3 || input["mergeMethod"] != "REBASE" || input["expectedHeadOid"] != pullsTestHead {
+		t.Fatalf("named input = %v", input)
+	}
+	// The method rule refuses before any mutation, as for a merge.
+	api = &fakeMergeAPI{settings: `{"allow_merge_commit":true,"allow_squash_merge":false,"allow_rebase_merge":false}`}
+	_, err = pullsClient(t, api).EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, Method: MergeMethodSquash, Base: "main"})
+	var methodErr *MergeMethodError
+	if !errors.As(err, &methodErr) || len(api.mutations) != 0 {
+		t.Fatalf("refused method err=%v documents=%d", err, len(api.mutations))
+	}
+}
+
+// A repository whose "Allow auto-merge" is off is refused before the
+// mutation; GitHub's own words for it and for a pull request it would merge
+// now are named, and every other refusal keeps its status and message.
+func TestEnablePullRequestAutoMergeNamesGitHubsRefusals(t *testing.T) {
+	api := &fakeMergeAPI{settings: `{"allow_merge_commit":true,"allow_auto_merge":false}`}
+	_, err := pullsClient(t, api).EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, Base: "main"})
+	if !errors.Is(err, ErrAutoMergeNotAllowed) || len(api.mutations) != 0 {
+		t.Fatalf("allow_auto_merge false: err=%v documents=%d", err, len(api.mutations))
+	}
+	for _, tc := range []struct {
+		answer  string
+		want    error
+		status  int
+		message string
+	}{
+		{graphQLRefusal("enablePullRequestAutoMerge", "UNPROCESSABLE", "Auto merge is not allowed for this repository"), ErrAutoMergeNotAllowed, http.StatusUnprocessableEntity, "Auto merge is not allowed for this repository"},
+		{graphQLRefusal("enablePullRequestAutoMerge", "UNPROCESSABLE", "Pull request Pull request is in clean status"), ErrMergeableNow, http.StatusUnprocessableEntity, "Pull request Pull request is in clean status"},
+		{graphQLRefusal("enablePullRequestAutoMerge", "UNPROCESSABLE", "Pull request Pull request is in unstable status"), ErrMergeableNow, http.StatusUnprocessableEntity, "Pull request Pull request is in unstable status"},
+		{graphQLRefusal("enablePullRequestAutoMerge", "FORBIDDEN", "Resource not accessible by integration"), nil, http.StatusForbidden, "Resource not accessible by integration"},
+		{graphQLRefusal("enablePullRequestAutoMerge", "UNPROCESSABLE", "Pull request is in dirty status"), nil, http.StatusUnprocessableEntity, "Pull request is in dirty status"},
+		{graphQLRefusal("enablePullRequestAutoMerge", "RATE_LIMITED", "API rate limit exceeded"), nil, http.StatusForbidden, "API rate limit exceeded"},
+	} {
+		api := &fakeMergeAPI{settings: allMethods, answers: map[string]string{"enablePullRequestAutoMerge": tc.answer}}
+		_, err := pullsClient(t, api).EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, Base: "main"})
+		var apiErr *APIError
+		if !errors.As(err, &apiErr) || apiErr.Status != tc.status || APIErrorMessage(err) != tc.message {
+			t.Fatalf("%s: err = %v (%q)", tc.message, err, APIErrorMessage(err))
+		}
+		if tc.want != nil && !errors.Is(err, tc.want) {
+			t.Fatalf("%s: err = %v, want %v", tc.message, err, tc.want)
+		}
+		if tc.want == nil && (errors.Is(err, ErrAutoMergeNotAllowed) || errors.Is(err, ErrMergeableNow)) {
+			t.Fatalf("%s: err = %v is named as a refusal it is not", tc.message, err)
+		}
+		if apiErr.RateLimited != strings.Contains(tc.answer, "RATE_LIMITED") {
+			t.Fatalf("%s: rate limited = %v", tc.message, apiErr.RateLimited)
+		}
+	}
+}
+
+// w10/m577: a merge-queue branch takes the pull request through gh's queue
+// call, pinned to the head, with no method or commit text (the queue sets
+// them) and no read of the repository's merge settings; where GitHub will not
+// arm it, it is enqueued directly with the same pin.
+func TestEnqueuePullRequestPinsTheHeadAndLeavesTheMethodToTheQueue(t *testing.T) {
+	api := &fakeMergeAPI{settings: allMethods, answers: map[string]string{"enablePullRequestAutoMerge": armed}}
+	if err := pullsClient(t, api).EnqueuePullRequest(context.Background(), 42, "repo", "PR_kwDOnode7", pullsTestHead); err != nil {
+		t.Fatal(err)
+	}
+	query, input := api.mutationInput(t, 0)
+	if !strings.Contains(query, "enablePullRequestAutoMerge(input: $input)") || len(api.mutations) != 1 || len(input) != 2 ||
+		input["pullRequestId"] != "PR_kwDOnode7" || input["expectedHeadOid"] != pullsTestHead || api.settingsReads != 0 {
+		t.Fatalf("queue documents = %+v, settings reads %d", api.mutations, api.settingsReads)
+	}
+	if perms := api.lastPermissions(); perms["contents"] != "write" || perms["workflows"] != "write" {
+		t.Fatalf("token scope = %+v, want the merge's", api.scopes)
+	}
+	for _, refusal := range []string{"Auto merge is not allowed for this repository", "Pull request Pull request is in clean status"} {
+		api := &fakeMergeAPI{answers: map[string]string{
+			"enablePullRequestAutoMerge": graphQLRefusal("enablePullRequestAutoMerge", "UNPROCESSABLE", refusal),
+			"enqueuePullRequest":         `{"data":{"enqueuePullRequest":{"clientMutationId":null}}}`,
+		}}
+		if err := pullsClient(t, api).EnqueuePullRequest(context.Background(), 42, "repo", "PR_kwDOnode7", pullsTestHead); err != nil {
+			t.Fatalf("%s: %v", refusal, err)
+		}
+		query, input := api.mutationInput(t, 1)
+		if !strings.Contains(query, "enqueuePullRequest(input: $input)") || len(input) != 2 || input["expectedHeadOid"] != pullsTestHead {
+			t.Fatalf("%s: documents = %+v", refusal, api.mutations)
+		}
+	}
+	// Any other refusal is GitHub's answer; nothing else is tried.
+	api = &fakeMergeAPI{answers: map[string]string{"enablePullRequestAutoMerge": graphQLRefusal("enablePullRequestAutoMerge", "UNPROCESSABLE", "Pull request is in dirty status")}}
+	err := pullsClient(t, api).EnqueuePullRequest(context.Background(), 42, "repo", "PR_kwDOnode7", pullsTestHead)
+	if APIErrorMessage(err) != "Pull request is in dirty status" || len(api.mutations) != 1 {
+		t.Fatalf("dirty: err=%v documents=%d", err, len(api.mutations))
+	}
+}
+
+// w10/m577: the undo disables auto-merge, or takes a queued pull request out
+// of the queue, with the mark-ready token.
+func TestDisablePullRequestAutoMergeOrLeaveTheQueue(t *testing.T) {
+	for _, tc := range []struct {
+		queued   bool
+		mutation string
+		answer   string
+	}{
+		{false, "disablePullRequestAutoMerge(input: {pullRequestId: $id})", `{"data":{"disablePullRequestAutoMerge":{"clientMutationId":null}}}`},
+		{true, "dequeuePullRequest(input: {id: $id})", `{"data":{"dequeuePullRequest":{"clientMutationId":null}}}`},
+	} {
+		api := &fakeMergeAPI{graphql: tc.answer}
+		if err := pullsClient(t, api).DisablePullRequestAutoMerge(context.Background(), 42, "repo", "PR_kwDOnode7", tc.queued); err != nil {
+			t.Fatal(err)
+		}
+		query, _ := api.mutations[0]["query"].(string)
+		variables, _ := api.mutations[0]["variables"].(map[string]any)
+		if len(api.mutations) != 1 || !strings.Contains(query, tc.mutation) || variables["id"] != "PR_kwDOnode7" {
+			t.Fatalf("queued=%v documents = %+v", tc.queued, api.mutations)
+		}
+		if perms := api.lastPermissions(); perms["contents"] != "write" || perms["pull_requests"] != "write" || len(perms) != 3 {
+			t.Fatalf("token scope = %+v", api.scopes)
+		}
+	}
+	api := &fakeMergeAPI{graphql: graphQLRefusal("disablePullRequestAutoMerge", "FORBIDDEN", "Resource not accessible by integration")}
+	err := pullsClient(t, api).DisablePullRequestAutoMerge(context.Background(), 42, "repo", "PR_kwDOnode7", false)
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden {
+		t.Fatalf("forbidden err = %v", err)
+	}
+}
+
+// w10/m577: the state read asks for what gh pr merge reads, with the PR
+// read's token, and tells the queue, an armed pull request and one GitHub
+// would merge now apart.
+func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
+	api := &fakeMergeAPI{answers: map[string]string{"node(id": `{"data":{"node":{"isMergeQueueEnabled":true,"isInMergeQueue":false,"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"}}}}`}}
+	state, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state != (MergeState{MergeQueueEnabled: true, Status: "BLOCKED", AutoMerge: true, AutoMergeMethod: MergeMethodSquash}) || state.MergeableNow() {
+		t.Fatalf("state = %+v", state)
+	}
+	query, _ := api.mutations[0]["query"].(string)
+	variables, _ := api.mutations[0]["variables"].(map[string]any)
+	for _, field := range []string{"isMergeQueueEnabled", "isInMergeQueue", "mergeStateStatus", "autoMergeRequest { mergeMethod }"} {
+		if !strings.Contains(query, field) {
+			t.Fatalf("query %q does not read %s", query, field)
+		}
+	}
+	if variables["id"] != "PR_kwDOnode7" || strings.Contains(query, "mutation") {
+		t.Fatalf("query = %+v", api.mutations[0])
+	}
+	if perms := api.lastPermissions(); perms["pull_requests"] != "read" || len(perms) != 2 {
+		t.Fatalf("token scope = %+v, want the PR read's", api.scopes)
+	}
+	for status, now := range map[string]bool{"CLEAN": true, "HAS_HOOKS": true, "UNSTABLE": true, "BLOCKED": false, "BEHIND": false, "DIRTY": false, "UNKNOWN": false, "DRAFT": false} {
+		if (MergeState{Status: status}).MergeableNow() != now {
+			t.Errorf("%s mergeable now = %v, want %v (gh's isImmediatelyMergeable)", status, !now, now)
+		}
+	}
+	for _, answer := range []string{`{"data":{"node":null}}`, graphQLRefusal("node", "NOT_FOUND", "Could not resolve to a node")} {
+		api := &fakeMergeAPI{answers: map[string]string{"node(id": answer}}
+		if _, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7"); err == nil {
+			t.Fatalf("%s read as a state", answer)
+		}
 	}
 }

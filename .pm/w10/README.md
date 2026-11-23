@@ -91,6 +91,8 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **044** — [Only a workspace admin selects an agent session's or an automation's `gh` binding, as Devin gates every security-profile selection](044.md) ← w10/m561 (t001 design, the recorded divergence), 2026-11-22
 - [ ] **045** — [`agentsession`'s signed-POST replay tests flake under the full real-DB ship gate](045.md) ← seen by two `/loopx w8` workers' gate runs, 2026-11-22 (~45m, minor)
 - [ ] **046** — [A workspace admin cannot keep an allowlist that lists every current catalog model](046.md) ← w10/m568 t001 (design, Devin's explicit modes), 2026-11-22
+- [ ] **047** — [A session's surfaces do not show that auto-merge is armed on its pull request, or who armed it, as Devin's merge bar does](047.md) ← w10/m577 t006 (Devin comparison), 2026-11-22
+- [ ] **048** — [Arming auto-merge on a taken-over stacked pull request merges only that pull request into the one below it, where Devin's stacked auto-merge lands the whole stack](048.md) ← w10/m577 t006 (Devin comparison), 2026-11-22
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 

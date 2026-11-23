@@ -208,7 +208,8 @@ type PullRequestResponse struct {
 }
 
 // PullRequestGitHub opens or updates the draft PR, brings a taken-over one up
-// to date, comments on it, marks it ready and merges it (*github.Client).
+// to date, comments on it, marks it ready, and merges it, arms auto-merge on
+// it or queues it (*github.Client).
 type PullRequestGitHub interface {
 	SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error)
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
@@ -217,6 +218,10 @@ type PullRequestGitHub interface {
 	CreateIssueComment(ctx context.Context, installationID int64, owner, repo string, number int, body string) (string, error)
 	MarkPullRequestReady(ctx context.Context, installationID int64, repo, nodeID string) error
 	MergePullRequest(ctx context.Context, installationID int64, owner, repo string, number int, opts github.MergeOptions) (github.MergeResult, error)
+	PullRequestMergeState(ctx context.Context, installationID int64, repo, nodeID string) (github.MergeState, error)
+	EnablePullRequestAutoMerge(ctx context.Context, installationID int64, owner, repo, nodeID string, opts github.MergeOptions) (string, error)
+	EnqueuePullRequest(ctx context.Context, installationID int64, repo, nodeID, headSHA string) error
+	DisablePullRequestAutoMerge(ctx context.Context, installationID int64, repo, nodeID string, queued bool) error
 }
 
 // PullRequestSessionStore reads the durable session and records the PR on it

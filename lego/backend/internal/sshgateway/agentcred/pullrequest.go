@@ -114,8 +114,9 @@ func (b *Broker) servePullRequestReady(w http.ResponseWriter, r *http.Request, n
 }
 
 // servePullRequestMerge is the merge twin (w10/m538). The sandbox supplies
-// at most {method, commitTitle, commitMessage}; bex-api merges the session's
-// recorded pull request at its recorded head.
+// at most {method, commitTitle, commitMessage, auto}, or {disableAuto}
+// (w10/m577); bex-api merges the session's recorded pull request at its
+// recorded head, arms GitHub auto-merge on it or queues it, or disarms it.
 func (b *Broker) servePullRequestMerge(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
 	if b.PullRequestMerges == nil {
 		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestUnavailable, "merging pull requests is not available on this gateway"))
@@ -129,7 +130,7 @@ func (b *Broker) servePullRequestMerge(w http.ResponseWriter, r *http.Request, n
 	defer admitted.release()
 	var content agentsession.PullRequestMergeContent
 	if err := core.UnmarshalJSON(core.WithStrictJSONDecoding(admitted.r.Context()), raw, &content); err != nil {
-		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"method\", \"commitTitle\" and \"commitMessage\""))
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"method\", \"commitTitle\", \"commitMessage\" and \"auto\" (a boolean), or \"disableAuto\" (a boolean) alone"))
 		return
 	}
 	if invalid := content.Validate(); invalid != nil {

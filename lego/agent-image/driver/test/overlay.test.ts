@@ -88,11 +88,28 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
   );
   assert.match(
     text,
-    /To merge, mark it ready, wait until its required checks pass \(`gh pr checks --watch` waits for them\), then call `merge_pull_request`; it merges the head you last pushed and recorded with `open_or_update_draft_pr`/,
+    /To merge, mark it ready, then call `merge_pull_request`; it acts on the head you last pushed and recorded with `open_or_update_draft_pr`/,
   );
-  assert.match(text, /you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop/);
+  // w10/m577: asked to merge once the checks pass, it arms auto-merge or the
+  // merge queue and ends its turn instead of watching them.
+  assert.match(
+    text,
+    /When asked to merge once the checks pass, call it with `auto: true` and end your turn instead of waiting for the checks: GitHub merges the pull request when its required checks pass/,
+  );
+  assert.match(
+    text,
+    /if a person asks you not to merge after all, call `merge_pull_request` with `disableAuto: true`/,
+  );
+  assert.doesNotMatch(text, /gh pr checks --watch/);
+  assert.match(
+    text,
+    /you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop/,
+  );
   assert.match(text, /include the merge commit in your final reply/);
-  assert.match(text, /Marking the pull request ready or merging it is not part of that request unless the task or a later message asks for it/);
+  assert.match(
+    text,
+    /Marking the pull request ready or merging it is not part of that request unless the task or a later message asks for it/,
+  );
   assert.doesNotMatch(text, /requester's decision/);
   // Direct guidance, not shouted imperatives (they make models over-trigger).
   assert.doesNotMatch(text, /\b(MUST|NEVER|ALWAYS|IMPORTANT|CRITICAL)\b/);
@@ -150,7 +167,10 @@ test("a takeover pushes its own branch and fast-forwards the person's PR with th
     text,
     /6\. Its draft or ready state and whether it merges belong to the person who opened it, so leave them as they are unless the `\/bex` comment or a later message asks you to mark it ready or merge it\. When asked, call `mark_pull_request_ready`/,
   );
-  assert.match(text, /Marking the pull request ready or merging it is not part of that request unless the comment or a later message asks for it/);
+  assert.match(
+    text,
+    /Marking the pull request ready or merging it is not part of that request unless the comment or a later message asks for it/,
+  );
   assert.doesNotMatch(text, /The deliverable is a draft pull request/);
   assert.doesNotMatch(text, /Leave the pull request as a draft/);
   assert.doesNotMatch(text, /already opened draft pull request/);

@@ -1,19 +1,19 @@
 # w10 · m577 — A session told to merge once CI is green arms GitHub auto-merge or the merge queue and ends its turn, as Devin can
 
-**Worker:** worker10 **Goal:** "merge once CI is green" no longer keeps a session in its turn watching the checks, and a repository whose base branch requires a merge queue no longer refuses the session's merge outright. `merge_pull_request` takes one option (t001 names it, for example `auto: true`, after `gh pr merge --auto`). With it, bex enables GitHub auto-merge on the session's own recorded pull request, pinned to the head bex recorded, and on a merge-queue branch the pull request goes into the queue. GitHub then lands it when its checks pass, and the session's `prState` reads `merged` once the PR-state poller or a `pull_request` delivery sees it. **Status:** todo
+**Worker:** worker10 **Goal:** "merge once CI is green" no longer keeps a session in its turn watching the checks, and a repository whose base branch requires a merge queue no longer refuses the session's merge outright. `merge_pull_request` takes one option (t001 names it, for example `auto: true`, after `gh pr merge --auto`). With it, bex enables GitHub auto-merge on the session's own recorded pull request, pinned to the head bex recorded, and on a merge-queue branch the pull request goes into the queue. GitHub then lands it when its checks pass, and the session's `prState` reads `merged` once the PR-state poller or a `pull_request` delivery sees it. **Status:** todo (t001–t004 and t006–t008 done; t005, the live check, waits for a deploy that carries the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: the option, auto-merge vs the queue vs a merge now, the head pin after arming, the undo, the refusals and the answer; ADR090 and ADR047 amended | 1h | — |
-| [t002](t002.md) | Backend: the GitHub client enables and disables auto-merge and enqueues, pinned to the head | 1h15m | t001 |
-| [t003](t003.md) | Backend: the merge verb and the gateway route take the option and answer an armed or queued pull request | 1h15m | t002 |
-| [t004](t004.md) | Driver: the tool's option, its answer, the overlay's "arm it and end your turn" and the `gh pr merge --auto` refusal | 1h | t001, t003 |
+| [t001](done/t001.md) | Design: the option, auto-merge vs the queue vs a merge now, the head pin after arming, the undo, the refusals and the answer; ADR090 and ADR047 amended — **DONE** | 1h | — |
+| [t002](done/t002.md) | Backend: the GitHub client enables and disables auto-merge and enqueues, pinned to the head — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | Backend: the merge verb and the gateway route take the option and answer an armed or queued pull request — **DONE** | 1h15m | t002 |
+| [t004](done/t004.md) | Driver: the tool's option, its answer, the overlay's "arm it and end your turn" and the `gh pr merge --auto` refusal — **DONE** | 1h | t001, t003 |
 | [t005](t005.md) | Live check on production: a session arms auto-merge and ends its turn, GitHub merges after the check, and `prState` reads merged | 45m | t003, t004 |
-| [t006](t006.md) | Render parity (Devin) | 30m | t005 |
-| [t007](t007.md) | Simplify | 20m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 7h**.
@@ -61,3 +61,90 @@ Total: **9 tasks, about 7h**.
   - The synchronous merge is live (w10/m538, pin `eaaa61506165`), so this is the remaining gap in "merge once CI is green".
   - The prod sandbox node is near capacity (w9/m349). A session that waits on CI holds a sandbox through the whole check run, and one with `gh` off cannot wait at all.
 - **Render parity included (reference product: Devin):** the `bex` MCP tool, its refusals and the session's `prState` are cloud coding-agent surfaces. t006 walks them against Devin's auto-merge and merge-queue behavior above. Two candidate drifts are filed as notes, not built here: showing the auto-merge status and who enabled it on the session (Devin's merge bar), and Devin's stacked-PR auto-merge (`includeStack`).
+
+## Design record (t001, 2026-11-22)
+
+Settled on `79633aaba2` and implemented in the same change; [ADR090 D3](../../../docs/ADR090-agent-owned-delivery.md#d3--the-pull-request-verb) (the w10/m577 amendment) is the contract. gh's behavior is read from `pkg/cmd/pr/merge/merge.go` and `http.go` at `cli/cli` tag `v2.105.0` (the pinned gh).
+
+- **The option** is `auto: true`, after `gh pr merge --auto`; the undo is `disableAuto: true`, after `--disable-auto`, and takes no other field (`invalid_request` otherwise, as is `auto` with `disableAuto`). Without a merge queue, `method`, `commitTitle` and `commitMessage` keep today's meaning and go to `enablePullRequestAutoMerge`'s `mergeMethod`, `commitHeadline` and `commitBody` under today's method rule. On a merge-queue branch GitHub ignores all three ("when merging with a merge queue any input value for merge method is ignored", the same for the headline and body, [GraphQL pulls](https://docs.github.com/en/graphql/reference/pulls), read 2026-11-22), so bex sends none, skips the method pre-check and answers no `method`. They are ignored rather than refused, as gh only warns ("The merge strategy for main is set by the merge queue") and proceeds.
+- **The state read** is GraphQL `node(id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus autoMergeRequest { mergeMethod } } }`, the fields gh's `NewMergeContext` reads, with a Pull requests read token. `isMergeQueueEnabled` covers rulesets and classic protection, so the `merge_queue` branch rule is not read.
+- **The decision table.** `mergeableNow` is gh's `isImmediatelyMergeable`: `CLEAN`, `HAS_HOOKS` or `UNSTABLE`.
+
+  | State | Plain call | `auto: true` |
+  | --- | --- | --- |
+  | Already in the queue | `{merged: false, mergeQueue: true}`, no call | same |
+  | Queue branch, not queued | queue call, `{merged: false, mergeQueue: true}` | same |
+  | No queue, auto-merge armed | the synchronous merge, as today | `{merged: false, autoMerge: true, method: <armed>}`, no call |
+  | No queue, mergeable now | the synchronous merge | the synchronous merge (gh's `autoMerge: enable && !isImmediatelyMergeable`) |
+  | No queue, not mergeable yet (`BLOCKED`, `BEHIND`, `UNKNOWN`, `DIRTY`) | the synchronous merge, which GitHub refuses (`merge_blocked`) | `enablePullRequestAutoMerge` pinned, `{merged: false, autoMerge: true, method}` |
+  | GitHub refuses the arm with "Pull request is in clean status" (the state read lags behind checks that just settled) | — | the synchronous merge, pinned |
+
+  The plain call on a queue branch queues the pull request (DoD 2), as gh does (its `shouldAddToMergeQueue` sets `payload.auto = true` with or without `--auto`), as GitHub's button does, and as Devin's `m` "merges or adds the PR to the queue" ([Devin Review](https://docs.devin.ai/work-with-devin/devin-review), read 2026-11-22). A plain call whose state read fails merges as today, so the read can never break the m538 merge. An `auto` call whose read fails is refused (`upstream_error`).
+
+- **The queue call** is `enablePullRequestAutoMerge({pullRequestId, expectedHeadOid})`, gh's call on a queue branch and GitHub's "Merge when ready": it adds a ready pull request to the queue and one whose checks are pending once they pass. `enqueuePullRequest` adds only a ready one, and `merge-async` answers 202 with a UUID to poll, so neither is the first call. GitHub's docs say the repository's auto-merge setting does not apply on a queue branch ([Automatically merging a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), read 2026-11-22), but public reports show the mutation refused there with "Auto merge is not allowed for this repository". When GitHub refuses the arm that way, or with "is in clean status", bex sends `enqueuePullRequest({pullRequestId, expectedHeadOid})` with the same pin.
+- **The head pin after arming: GitHub's rule, no disarm.** The arm is pinned: `head_changed` before any call when the pull request's head is not the recorded one, and `expectedHeadOid` = the recorded head on the arm and the queue call. GitHub disables auto-merge only when "someone without write permissions pushes new changes to the head branch" (same page), so a later push by the session, which has write access, keeps it armed. GitHub then merges the new head only once that head's own required checks pass. Devin arms with `gh pr merge --auto`, which sends no expected head, and keeps pushing to its branch, so a later head merging after its checks is Devin's observable behavior. bex does not disarm on a push, which would make "fix the failing check" turns re-arm by hand. ADR090 D3's "a commit pushed later is never merged unchecked" still holds for the merge now. For an armed pull request it reads "a later head merges only after its own required checks pass". The overlay says so and names `disableAuto` for a person's "don't merge it after all".
+- **The undo is kept.** `disableAuto: true` sends `dequeuePullRequest({id})` for a queued pull request, `disablePullRequestAutoMerge({pullRequestId})` for an armed one, and nothing for one with neither. The answer is `{merged: false, autoMergeDisabled: true}` either way. It is never pinned and runs on a draft too: leaving a pull request unmerged is safe at any head. Devin Review can "Enable or disable GitHub auto-merge", and its `m` can "remove it from the merge queue".
+- **Refusals.**
+  - `auto_merge_not_allowed` (409): GET `/repos/{owner}/{repo}` reads `allow_auto_merge: false` beside the merge-method settings, with the same Contents-write token. Checked only on a branch without a queue; GitHub's own "Auto merge is not allowed for this repository" maps to the same code. Hint: the setting is off, so wait until the checks pass and call without `auto`, or tell the user a person has to turn it on or merge it.
+  - A GraphQL `expectedHeadOid` mismatch ("… does not match") is `head_changed`.
+  - FORBIDDEN is `not_permitted`, and RATE_LIMITED is `rate_limited`, since GraphQL errors now carry it.
+  - Every other GraphQL refusal of the arm or the queue is `merge_blocked` with GitHub's message.
+  - The disarm's refusals go through the shared `gitHubStateRefusal`.
+  - Every hint keeps `mergeNoOtherRoute`. `merge_blocked`'s hint now offers `auto: true` first for pending checks, and `head_changed`'s offers it for the retry.
+- **The answer.** `{url, number, merged, sha?, method?, headSha}` plus at most one of `autoMerge`, `mergeQueue` or `autoMergeDisabled`. The gateway client (`PullRequestMergeResponse.wellFormed`) and the driver (`mergeAnswer`) accept an answer that names the pull request, carries exactly one outcome, and gives a merge its commit. `recordMerged` runs only on a merge, and so does the driver's `recordMerge`, so the delivery check's `mergedHead` stays empty for an armed pull request.
+- **The audit.** It keeps the one verb, `agentsessions.PullRequestMerge`, allowed or denied with the repository, on both hops: arming, queueing and disarming are decisions of the merge verb. Audit detail fields are typed columns per verb (`core.AuditEvent`), and GitHub's own timeline already shows `auto_merge_enabled` by `bex-co[bot]`.
+- **Tokens.**
+  - The arm and the queue call use the merge's token (Contents, Pull requests and Workflows write, with the w10/014 fallback). GitHub's Dependabot docs run `gh pr merge --auto` with `GITHUB_TOKEN`, an installation token, given `contents: write` and `pull-requests: write` ([Automating Dependabot with GitHub Actions](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions), read 2026-11-22). The same page says a merge-queue branch needs "a GitHub App token that has permission to merge" instead of the built-in token.
+  - GitHub makes the later merge as the actor who armed it, so Workflows write matters for a pull request that changes a workflow file. [stateful-y/python-package-copier#489](https://github.com/stateful-y/python-package-copier/pull/489) moved its arm to an App token for exactly that.
+  - The undo uses the mark-ready token (Contents and Pull requests write), and the state read Pull requests read.
+  - t005 confirms the arm live.
+- **Docs.** ADR090 D3 (merge call, head pin, tokens, the state, the delivery check) and D4 (the `gh pr merge --auto` refusal), ADR047's PR-delivery amendment, ADR018's m538 row, `lego/agent-image/README.md` and the backend env inventory.
+
+## Render parity (Devin) record (t006, 2026-11-22)
+
+Walked against [Devin Review](https://docs.devin.ai/work-with-devin/devin-review) (re-read 2026-11-22) and gh 2.105.0's `pr merge`. The live half of the `prState` row rests on t005.
+
+| Surface | bex (w10/m577) | Devin | Verdict |
+| --- | --- | --- | --- |
+| Arm auto-merge | `merge_pull_request({auto: true})` arms GitHub auto-merge pinned to the recorded head and answers `{merged: false, autoMerge: true, method, headSha}` within the call | "Enable … GitHub auto-merge from the merge button dropdown. When enabled, the PR will merge automatically once all required checks pass"; Devin's `gh` runs `gh pr merge --auto` | match |
+| Merge queue | a queue branch takes the pull request into the queue with or without `auto` (`mergeQueue: true`); already queued answers the same | `m` "merges or adds the PR to the queue"; GitHub's button on a queue branch is "Merge when ready" | match (live leg: t005) |
+| Undo | `{disableAuto: true}` disables auto-merge or dequeues, answering `autoMergeDisabled: true` | "Enable or disable GitHub auto-merge"; `m` can "remove it from the merge queue" | match |
+| A pull request mergeable now, with `auto` | merged now, as `gh pr merge --auto` does | "enable auto-merge when offered"; GitHub offers it "only on pull requests that cannot be merged immediately" | match |
+| Auto-merge off in the repository | `auto_merge_not_allowed` with a hint to wait and merge without `auto`, or tell the user | Devin Review would not offer the option; gh prints GitHub's "Auto merge is not allowed for this repository" | match (typed) |
+| `gh pr merge --auto` / `--disable-auto` in the sandbox | refused in the `github-api` route, the refusal naming `merge_pull_request` with `auto` / `disableAuto` | Devin's `gh` token runs them | same outcome through the tool; the refusal names it (ADR090 D4, w10/m538) |
+| The overlay and the tool description | asked to merge once the checks pass: mark ready, call with `auto: true`, report it, end the turn; `disableAuto` when a person says not to merge | Devin arms auto-merge and does not hold a session on CI | match |
+| `prState` after GitHub's later merge | the PR-state poller (5 minutes, first week) or a `pull_request` delivery records `merged` on REST, GraphQL, MCP and the dashboard; an armed answer records nothing | the session's PR shows merged | match (live: t005) |
+| Auto-merge status and who enabled it | not shown: `prState` stays `open` while armed | "The merge bar shows the current auto-merge status, including who enabled it" | **drift**, filed as [w10/047](../047.md) |
+| Stacked pull requests | a taken-over stacked pull request is armed alone (no `includeStack`) | "You can enable GitHub auto-merge on a stacked PR … GitHub lands the PR and every unmerged PR below it" | **drift** (takeover only), filed as [w10/048](../048.md) |
+
+The overlay's merge step and the tool's description no longer name `gh pr checks --watch`, because `auto` replaces the wait. The `merge_blocked` hint still names it as the alternative, so [w10/042](../042.md) keeps that part.
+
+## Simplify record (t007, 2026-11-22)
+
+`/simplify` over the changed backend and driver code:
+
+- The arm branch in `PullRequester.Merge` became a flat `switch` on the arm's error: armed, refused, or mergeable now and merged.
+- The GraphQL error mapping `MarkPullRequestReady` had inline is now one helper, `gitHubGraphQL`, shared by the five GraphQL calls. It also maps `RATE_LIMITED` to a rate-limited `*APIError`.
+- The token mint with the Workflows fallback is now `mergeToken`, shared by the merge, the arm and the queue call. The method rule is `repositoryMergeSettings.method`, shared by the merge and the arm.
+- Kept: the merge state read on a plain merge. It is one more GitHub call per merge, but it is what tells a queue branch apart (DoD 2), and a failed read falls back to the plain merge.
+
+The suites t002–t004 name pass after it.
+
+## Test coverage record (t008, 2026-11-22)
+
+| DoD 8 case | Test |
+| --- | --- |
+| The auto-merge call's exact body, `expectedHeadOid`, the method in GraphQL's enum, the commit text, the token | `github.TestEnablePullRequestAutoMergePinsTheHeadWithTheMethodRule`; through the verb, `agentsession.TestPullRequestMergeAutoArmsAutoMergeAtTheRecordedHead` |
+| The queue call (pin, no method, no settings read, the `enqueuePullRequest` fallback), plain and with `auto`, already queued | `github.TestEnqueuePullRequestPinsTheHeadAndLeavesTheMethodToTheQueue`, `agentsession.TestPullRequestMergeJoinsTheMergeQueue` |
+| A repository with auto-merge off (pre-check and GitHub's words) | `github.TestEnablePullRequestAutoMergeNamesGitHubsRefusals`, `agentsession.TestPullRequestMergeAutoTypedRefusals` |
+| The head pin before arming, and the unpinned undo | `agentsession.TestPullRequestMergeAutoTypedRefusals` ("a head bex has not recorded", "a draft": no state read, no arm), `TestPullRequestMergeDisableAutoUndoesTheArm` |
+| An already-mergeable pull request (state `CLEAN`/`UNSTABLE`, GitHub's "clean status") | `agentsession.TestPullRequestMergeAutoMergesAPullRequestMergeableNow`, `github.TestPullRequestMergeStateReadsWhatGhReads` |
+| The gateway client's and the driver's acceptance of an armed answer | `agentsession.TestPullRequestMergeResponseWellFormed`, `agentcred.TestPullRequestMergeRouteArmsAndDisarmsAutoMerge` (end to end), driver `merge-pr.test.ts` ("auto arms auto-merge …", "an answer with no outcome …") |
+| The overlay sentence, with `gh` on and off | driver `overlay.test.ts` ("the repo overlay names …"), `github-cli.test.ts` ("… gh off …") |
+| The `gh pr merge --auto` / `--disable-auto` refusal | `agentcred.TestGitHubAPIRouteRefusesAutoMergeNamingTheMergeToolsOption` |
+
+Revert proofs (each change reverted, the named test failed, the change restored):
+
+- Dropping `expectedHeadOid` from `EnablePullRequestAutoMerge`'s input fails `TestEnablePullRequestAutoMergePinsTheHeadWithTheMethodRule` ("input = map[… no expectedHeadOid …]").
+- Letting the driver call `recordMerge` for every answer fails "merge_pull_request with auto arms auto-merge, returns the armed answer and records nothing merged" (the PR record gained `merged: true`).
+- The head-pin-after-arming rule has two code-bearing halves. Skipping the head check for `auto` fails `TestPullRequestMergeAutoTypedRefusals/a_head_bex_has_not_recorded`. Routing `disableAuto` through the draft and head checks fails `TestPullRequestMergeDisableAutoUndoesTheArm/armed` and `/neither`. The rule's third half, that a later head merges only after its own checks, is GitHub's and has no bex code to revert.

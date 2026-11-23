@@ -17,6 +17,7 @@ limitations under the License.
 package agentsession
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"io"
@@ -66,14 +67,72 @@ type fakeForge struct {
 	merges     []forgeMerge
 	mergeErr   error
 	mergeCalls int
+	// state is the pull request's merge state and stateErr fails its read;
+	// armed records each auto-merge armed (armErr fails it), enqueued each
+	// head queued (enqueueErr fails it), and disabled each disarm, true for
+	// a dequeue (disableErr fails it).
+	state      github.MergeState
+	stateErr   error
+	stateReads int
+	armed      []forgeMerge
+	armErr     error
+	enqueued   []string
+	enqueueErr error
+	disabled   []bool
+	disableErr error
 }
 
-// forgeMerge is one merge the merge verb asked for.
+// forgeMerge is one merge, or one auto-merge armed (by node), the merge verb
+// asked for.
 type forgeMerge struct {
 	installation int64
 	owner, repo  string
 	number       int
+	node         string
 	opts         github.MergeOptions
+}
+
+func (f *fakeForge) PullRequestMergeState(_ context.Context, _ int64, _, nodeID string) (github.MergeState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.stateReads++
+	if nodeID != f.existing.NodeID {
+		return github.MergeState{}, &github.APIError{Status: http.StatusNotFound}
+	}
+	return f.state, f.stateErr
+}
+
+func (f *fakeForge) EnablePullRequestAutoMerge(_ context.Context, installation int64, owner, repo, nodeID string, opts github.MergeOptions) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.armErr != nil {
+		return "", f.armErr
+	}
+	f.armed = append(f.armed, forgeMerge{installation: installation, owner: owner, repo: repo, node: nodeID, opts: opts})
+	return cmp.Or(opts.Method, github.MergeMethodSquash), nil
+}
+
+func (f *fakeForge) EnqueuePullRequest(_ context.Context, _ int64, _, nodeID, headSHA string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.enqueueErr != nil {
+		return f.enqueueErr
+	}
+	f.enqueued = append(f.enqueued, nodeID+"@"+headSHA)
+	return nil
+}
+
+func (f *fakeForge) DisablePullRequestAutoMerge(_ context.Context, _ int64, _, nodeID string, queued bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.disableErr != nil {
+		return f.disableErr
+	}
+	if nodeID != f.existing.NodeID {
+		return &github.APIError{Status: http.StatusNotFound}
+	}
+	f.disabled = append(f.disabled, queued)
+	return nil
 }
 
 func (f *fakeForge) MarkPullRequestReady(_ context.Context, _ int64, _, nodeID string) error {

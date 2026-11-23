@@ -311,7 +311,7 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   }
   if (env.BEX_PR_READY_ENDPOINT && env.BEX_PR_MERGE_ENDPOINT) {
     lines.push(
-      `Use ${markPullRequestReadyToolName} and ${mergePullRequestToolName} to mark the session's pull request ready and merge it, only when the task or a person's message asks.`,
+      `Use ${markPullRequestReadyToolName} and ${mergePullRequestToolName} to mark the session's pull request ready and merge it, only when the task or a person's message asks; ${mergePullRequestToolName} with auto: true has GitHub merge it once its required checks pass, so the turn can end.`,
     );
   }
   if (env.BEX_SHARE_ENDPOINT) {

@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -417,4 +418,252 @@ func TestPullRequestReadyAndMergeHandlersAndClientsRoundTrip(t *testing.T) {
 	defer unguarded.Close()
 	_, err = (&PullRequestMergeClient{URL: unguarded.URL, Secret: secret, HTTP: unguarded.Client()}).Merge(context.Background(), mergeRequest(PullRequestMergeContent{}))
 	wantMergeCode(t, err, PullRequestUnavailable, http.StatusServiceUnavailable)
+}
+
+// armedForge serves readyPR on a base branch without a queue whose required checks
+// are still running.
+func armedForge() *fakeForge {
+	return &fakeForge{existing: readyPR(), state: github.MergeState{Status: "BLOCKED"}}
+}
+
+// w10/m577 DoD 1: auto arms GitHub auto-merge on the session's recorded pull
+// request, pinned to the recorded head, with the method rule and the commit
+// text, and answers armed within the call: not merged, and no merged state
+// on the session, which the PR-state poller records once GitHub merges it.
+func TestPullRequestMergeAutoArmsAutoMergeAtTheRecordedHead(t *testing.T) {
+	forge, sessions, audit := armedForge(), &prSessions{session: mergeSession()}, &auditRecorder{}
+	got, err := newPullRequester(forge, sessions, audit).Merge(context.Background(), mergeRequest(PullRequestMergeContent{
+		Auto: true, Method: github.MergeMethodSquash, CommitTitle: " Add retries (#7) ", CommitMessage: "Retries.",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, AutoMerge: true, Method: github.MergeMethodSquash, HeadSHA: recordedHead}
+	if got != want {
+		t.Fatalf("response = %+v, want %+v", got, want)
+	}
+	if len(forge.armed) != 1 || forge.armed[0].node != "PR_kwDOnode7" || forge.armed[0].owner != "octo" || forge.armed[0].repo != "repo" || forge.armed[0].installation != 42 {
+		t.Fatalf("armed = %+v, want the recorded PR's node in the session's repository", forge.armed)
+	}
+	if opts := forge.armed[0].opts; opts != (github.MergeOptions{SHA: recordedHead, Method: github.MergeMethodSquash, CommitTitle: "Add retries (#7)", CommitMessage: "Retries.", Base: "main"}) {
+		t.Fatalf("arm options = %+v, want the recorded head pinned", opts)
+	}
+	if forge.mergeCalls != 0 || len(sessions.states) != 0 || sessions.session.PRState == store.PRStateMerged {
+		t.Fatalf("an armed pull request was merged (%d) or recorded %v", forge.mergeCalls, sessions.states)
+	}
+	wantAudit(t, audit, AuditVerbPullRequestMerge, core.AuditAllowed)
+
+	// Armed already, by the session or a person: the same answer with the
+	// armed method, and GitHub is not asked again.
+	forge = armedForge()
+	forge.state.AutoMerge, forge.state.AutoMergeMethod = true, github.MergeMethodRebase
+	again, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
+	if err != nil || !again.AutoMerge || again.Merged || again.Method != github.MergeMethodRebase || len(forge.armed) != 0 || forge.mergeCalls != 0 {
+		t.Fatalf("armed again = %+v err=%v (armed %d, merges %d)", again, err, len(forge.armed), forge.mergeCalls)
+	}
+}
+
+// w10/m577 DoD 3: a pull request GitHub would merge now is merged now, as
+// gh pr merge --auto does (its isImmediatelyMergeable), whether the state
+// read says so or GitHub's refusal to arm it does.
+func TestPullRequestMergeAutoMergesAPullRequestMergeableNow(t *testing.T) {
+	for name, mutate := range map[string]func(*fakeForge){
+		"the state reads clean":    func(f *fakeForge) { f.state.Status = "CLEAN" },
+		"the state reads unstable": func(f *fakeForge) { f.state.Status = "UNSTABLE" },
+		"GitHub says it is clean": func(f *fakeForge) {
+			f.armErr = fmt.Errorf("%w: %w", github.ErrMergeableNow, errors.New("clean status"))
+		},
+		"armed but a plain merge asked": func(f *fakeForge) { f.state.AutoMerge = true },
+	} {
+		t.Run(name, func(t *testing.T) {
+			forge, sessions := armedForge(), &prSessions{session: mergeSession()}
+			mutate(forge)
+			content := PullRequestMergeContent{Auto: !forge.state.AutoMerge}
+			got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(content))
+			if err != nil || !got.Merged || got.AutoMerge || got.SHA == "" || len(forge.merges) != 1 || forge.merges[0].opts.SHA != recordedHead {
+				t.Fatalf("merge = %+v err=%v merges=%+v", got, err, forge.merges)
+			}
+			if len(forge.armed) != 0 || len(sessions.states) != 1 || sessions.states[0] != store.PRStateMerged {
+				t.Fatalf("armed=%+v states=%v, want a merge recorded merged", forge.armed, sessions.states)
+			}
+		})
+	}
+}
+
+// w10/m577 DoD 2: a base branch that requires a merge queue takes the pull
+// request into the queue, pinned to the recorded head, with or without auto,
+// and never asks GitHub for a direct merge, which a queue refuses. A queued
+// pull request answers the same and is left as it is.
+func TestPullRequestMergeJoinsTheMergeQueue(t *testing.T) {
+	for _, content := range []PullRequestMergeContent{{}, {Auto: true, Method: github.MergeMethodRebase, CommitTitle: "ignored by the queue"}} {
+		forge, sessions := armedForge(), &prSessions{session: mergeSession()}
+		forge.state.MergeQueueEnabled = true
+		got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(content))
+		want := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, MergeQueue: true, HeadSHA: recordedHead}
+		if err != nil || got != want {
+			t.Fatalf("%+v: queue = %+v err=%v, want %+v", content, got, err, want)
+		}
+		if strings.Join(forge.enqueued, ",") != "PR_kwDOnode7@"+recordedHead || forge.mergeCalls != 0 || len(forge.armed) != 0 || len(sessions.states) != 0 {
+			t.Fatalf("%+v: enqueued=%v merges=%d armed=%d states=%v", content, forge.enqueued, forge.mergeCalls, len(forge.armed), sessions.states)
+		}
+	}
+	forge := armedForge()
+	forge.state.MergeQueueEnabled, forge.state.InMergeQueue = true, true
+	got, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
+	if err != nil || !got.MergeQueue || len(forge.enqueued) != 0 || forge.mergeCalls != 0 {
+		t.Fatalf("queued again = %+v err=%v enqueued=%v", got, err, forge.enqueued)
+	}
+	// GitHub's refusal to queue it comes back in GitHub's words.
+	forge = armedForge()
+	forge.state.MergeQueueEnabled = true
+	forge.enqueueErr = &github.APIError{Status: http.StatusUnprocessableEntity, Body: `{"message":"Pull request is in dirty status"}`}
+	_, err = newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{}))
+	if typed := wantMergeCode(t, err, PullRequestMergeBlocked, http.StatusConflict); typed.Message != "GitHub: Pull request is in dirty status" {
+		t.Fatalf("queue refusal message = %q", typed.Message)
+	}
+}
+
+// w10/m577 DoD 3: auto's refusals are typed, and a draft or a head bex has
+// not recorded is refused before any GitHub call, the state read included.
+func TestPullRequestMergeAutoTypedRefusals(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*fakeForge, *prSessions)
+		code   string
+		status int
+		// read is whether the merge state was read before the refusal.
+		read    bool
+		message string
+	}{
+		{name: "a draft", mutate: func(f *fakeForge, _ *prSessions) { f.existing.Draft = true }, code: PullRequestDraft, status: http.StatusConflict},
+		{name: "a head bex has not recorded", mutate: func(f *fakeForge, _ *prSessions) { f.existing.HeadSHA = "99999999999999999999999999999999deadbeef" }, code: PullRequestHeadChanged, status: http.StatusConflict},
+		{name: "auto-merge off", mutate: func(f *fakeForge, _ *prSessions) { f.armErr = github.ErrAutoMergeNotAllowed }, code: PullRequestAutoMergeNotAllowed, status: http.StatusConflict, read: true, message: "the repository does not allow auto-merge"},
+		{name: "auto-merge off, in GitHub's words", mutate: func(f *fakeForge, _ *prSessions) {
+			f.armErr = fmt.Errorf("%w: %w", github.ErrAutoMergeNotAllowed, &github.APIError{Status: http.StatusUnprocessableEntity, Body: `{"message":"Auto merge is not allowed for this repository"}`})
+		}, code: PullRequestAutoMergeNotAllowed, status: http.StatusConflict, read: true, message: "GitHub: Auto merge is not allowed for this repository"},
+		{name: "a method the repository refuses", mutate: func(f *fakeForge, _ *prSessions) {
+			f.armErr = &github.MergeMethodError{Method: "squash", Allowed: []string{"merge"}}
+		}, code: PullRequestMergeMethodNotAllowed, status: http.StatusUnprocessableEntity, read: true, message: "does not allow squash"},
+		{name: "GitHub's head pin refuses the arm", mutate: func(f *fakeForge, _ *prSessions) {
+			f.armErr = &github.APIError{Status: http.StatusUnprocessableEntity, Body: `{"message":"The head of the pull request does not match the expected head OID"}`}
+		}, code: PullRequestHeadChanged, status: http.StatusConflict, read: true, message: "does not match"},
+		{name: "GitHub refuses the App", mutate: func(f *fakeForge, _ *prSessions) {
+			f.armErr = &github.APIError{Status: http.StatusForbidden, Body: `{"message":"Resource not accessible by integration"}`}
+		}, code: PullRequestNotPermitted, status: http.StatusForbidden, read: true, message: "Resource not accessible by integration"},
+		{name: "the state cannot be read", mutate: func(f *fakeForge, _ *prSessions) { f.stateErr = &github.APIError{Status: http.StatusBadGateway} }, code: PullRequestUpstreamError, status: http.StatusBadGateway, read: true},
+		{name: "no node id", mutate: func(f *fakeForge, _ *prSessions) { f.existing.NodeID = "" }, code: PullRequestUpstreamError, status: http.StatusBadGateway, message: "node id"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			forge, sessions, audit := armedForge(), &prSessions{session: mergeSession()}, &auditRecorder{}
+			tc.mutate(forge, sessions)
+			_, err := newPullRequester(forge, sessions, audit).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
+			typed := wantMergeCode(t, err, tc.code, tc.status)
+			if !strings.Contains(typed.Message, tc.message) {
+				t.Fatalf("message %q, want %q", typed.Message, tc.message)
+			}
+			if (forge.stateReads > 0) != tc.read || len(forge.armed) != 0 || forge.mergeCalls != 0 || len(sessions.states) != 0 {
+				t.Fatalf("state reads=%d armed=%d merges=%d states=%v", forge.stateReads, len(forge.armed), forge.mergeCalls, sessions.states)
+			}
+			wantAudit(t, audit, AuditVerbPullRequestMerge, core.AuditDenied)
+		})
+	}
+	hint := NewPullRequestMergeError(PullRequestAutoMergeNotAllowed, "").Hint
+	for _, want := range []string{"Allow auto-merge", `without "auto"`, "tell the user"} {
+		if !strings.Contains(hint, want) {
+			t.Errorf("auto_merge_not_allowed hint lacks %q: %q", want, hint)
+		}
+	}
+	if hint := NewPullRequestMergeError(PullRequestMergeBlocked, "").Hint; !strings.Contains(hint, `"auto": true so GitHub merges it once they pass, and end your turn`) {
+		t.Errorf("merge_blocked hint %q does not offer auto for pending checks", hint)
+	}
+	// A plain merge does not need the state: an unreadable one merges as before.
+	for name, mutate := range map[string]func(*fakeForge){
+		"state unreadable": func(f *fakeForge) { f.stateErr = &github.APIError{Status: http.StatusBadGateway} },
+		"no node id":       func(f *fakeForge) { f.existing.NodeID = "" },
+	} {
+		forge := armedForge()
+		mutate(forge)
+		got, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{}))
+		if err != nil || !got.Merged || forge.mergeCalls != 1 {
+			t.Fatalf("%s: plain merge = %+v err=%v", name, got, err)
+		}
+	}
+}
+
+// w10/m577 DoD 5: disableAuto stops a later merge, whatever the head and
+// even on a draft: a queued pull request leaves the queue, an armed one is
+// disarmed, and one with neither answers the same with no call.
+func TestPullRequestMergeDisableAutoUndoesTheArm(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		state     github.MergeState
+		disabled  string
+		moveHead  bool
+		makeDraft bool
+	}{
+		{name: "armed", state: github.MergeState{AutoMerge: true}, disabled: "[false]", moveHead: true},
+		{name: "queued", state: github.MergeState{MergeQueueEnabled: true, InMergeQueue: true}, disabled: "[true]"},
+		{name: "neither", state: github.MergeState{}, disabled: "[]", makeDraft: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			forge, sessions, audit := armedForge(), &prSessions{session: mergeSession()}, &auditRecorder{}
+			forge.state = tc.state
+			if tc.moveHead {
+				forge.existing.HeadSHA = "99999999999999999999999999999999deadbeef"
+			}
+			forge.existing.Draft = tc.makeDraft
+			got, err := newPullRequester(forge, sessions, audit).Merge(context.Background(), mergeRequest(PullRequestMergeContent{DisableAuto: true}))
+			want := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, AutoMergeDisabled: true, HeadSHA: recordedHead}
+			if err != nil || got != want {
+				t.Fatalf("disable = %+v err=%v, want %+v", got, err, want)
+			}
+			if fmt.Sprint(forge.disabled) != tc.disabled || forge.mergeCalls != 0 || len(forge.armed) != 0 || len(sessions.states) != 0 {
+				t.Fatalf("disabled=%v merges=%d armed=%d states=%v", forge.disabled, forge.mergeCalls, len(forge.armed), sessions.states)
+			}
+			wantAudit(t, audit, AuditVerbPullRequestMerge, core.AuditAllowed)
+		})
+	}
+	forge := armedForge()
+	forge.state.AutoMerge = true
+	forge.disableErr = &github.APIError{Status: http.StatusForbidden, Body: `{"message":"Resource not accessible by integration"}`}
+	_, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{DisableAuto: true}))
+	wantMergeCode(t, err, PullRequestNotPermitted, http.StatusForbidden)
+	for _, content := range []PullRequestMergeContent{
+		{DisableAuto: true, Auto: true}, {DisableAuto: true, Method: github.MergeMethodSquash}, {DisableAuto: true, CommitTitle: "x"}, {DisableAuto: true, CommitMessage: "x"},
+	} {
+		forge := armedForge()
+		_, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(content))
+		if typed := wantMergeCode(t, err, PullRequestInvalidRequest, http.StatusUnprocessableEntity); forge.reads != 0 || !strings.Contains(typed.Hint, `"disableAuto": true alone`) {
+			t.Fatalf("%+v: reads=%d hint=%q", content, forge.reads, typed.Hint)
+		}
+	}
+}
+
+// w10/m577 DoD 1 and 6: the gateway client accepts exactly one outcome, so
+// an armed, queued or disarmed answer gets through and a malformed one does
+// not.
+func TestPullRequestMergeResponseWellFormed(t *testing.T) {
+	base := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, HeadSHA: recordedHead}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*PullRequestMergeResponse)
+		ok     bool
+	}{
+		{"merged", func(r *PullRequestMergeResponse) { r.Merged, r.SHA = true, "fedcba" }, true},
+		{"armed", func(r *PullRequestMergeResponse) { r.AutoMerge = true }, true},
+		{"queued", func(r *PullRequestMergeResponse) { r.MergeQueue = true }, true},
+		{"disarmed", func(r *PullRequestMergeResponse) { r.AutoMergeDisabled = true }, true},
+		{"no outcome", func(*PullRequestMergeResponse) {}, false},
+		{"merged without its commit", func(r *PullRequestMergeResponse) { r.Merged = true }, false},
+		{"merged and armed", func(r *PullRequestMergeResponse) { r.Merged, r.SHA, r.AutoMerge = true, "fedcba", true }, false},
+		{"armed and queued", func(r *PullRequestMergeResponse) { r.AutoMerge, r.MergeQueue = true, true }, false},
+		{"no pull request", func(r *PullRequestMergeResponse) { r.AutoMerge, r.Number = true, 0 }, false},
+	} {
+		response := base
+		tc.mutate(&response)
+		if response.wellFormed() != tc.ok {
+			t.Errorf("%s: wellFormed = %v, want %v", tc.name, !tc.ok, tc.ok)
+		}
+	}
 }

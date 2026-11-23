@@ -243,6 +243,11 @@ func assertWriteRefusal(t *testing.T, label string, rec *httptest.ResponseRecord
 		if !strings.HasPrefix(msg, "bex: gh pr ready and gh pr merge do not work in this session; call the mark_pull_request_ready and merge_pull_request tools") {
 			t.Errorf("%s refusal does not lead with the bex tools: %q", label, msg)
 		}
+		// w10/m577: gh pr merge --auto and --disable-auto are told the option.
+		if !strings.Contains(msg, `merge_pull_request with "auto": true arms auto-merge or joins the merge queue (for gh pr merge --auto)`) ||
+			!strings.Contains(msg, `"disableAuto": true undoes it (for --disable-auto)`) {
+			t.Errorf("%s refusal does not name the merge tool's auto and disableAuto: %q", label, msg)
+		}
 	}
 }
 
@@ -334,6 +339,27 @@ func TestGitHubAPIRouteRefusesWritesNamingTheBexTools(t *testing.T) {
 	// budget; none minted a credential.
 	if gh.apiCalls != 0 || gh.apiWriteCalls != 0 {
 		t.Fatalf("a refused write minted a credential (read %d, write %d)", gh.apiCalls, gh.apiWriteCalls)
+	}
+}
+
+// w10/m577 DoD 5: gh pr merge --auto, --disable-auto and the merge queue's
+// mutations stay refused, and the refusal leads with the merge tool and the
+// option that does each.
+func TestGitHubAPIRouteRefusesAutoMergeNamingTheMergeToolsOption(t *testing.T) {
+	broker, repoURL, _, seen := githubAPIHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "{}")
+	})
+	for _, mutation := range []string{
+		`mutation PullRequestAutoMerge($input:EnablePullRequestAutoMergeInput!){enablePullRequestAutoMerge(input: $input){clientMutationId}}`,
+		`mutation PullRequestAutoMergeDisable($prID:ID!){disablePullRequestAutoMerge(input: {pullRequestId: $prID}){clientMutationId}}`,
+		`mutation{enqueuePullRequest(input: {pullRequestId: "PR_1"}){clientMutationId}}`,
+		`mutation{dequeuePullRequest(input: {id: "PR_1"}){clientMutationId}}`,
+	} {
+		rec := githubAPIRequest(broker, http.MethodPost, repoURL+"/github-api/graphql", graphQLBody(t, mutation, map[string]any{"input": map[string]any{"pullRequestId": "PR_1"}, "prID": "PR_1"}))
+		assertWriteRefusal(t, "gh pr merge: "+mutation, rec)
+	}
+	if seen.calls != 0 {
+		t.Fatalf("a refused auto-merge reached GitHub (upstream %d)", seen.calls)
 	}
 }
 

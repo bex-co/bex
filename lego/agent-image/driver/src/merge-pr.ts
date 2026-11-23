@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-// mark_pull_request_ready and merge_pull_request (ADR090 D3 amendment
-// w10/m538): when the task or a person's message asks, the agent undrafts its
-// own pull request and merges it, as Devin does. Each posts to a gateway verb
-// on the session's Pod-bound Git proxy path (pull-request/ready and
-// pull-request/merge). The pull request, its repository and the head the merge
-// is pinned to are fixed server-side from the session record; the merge says
-// at most which method and what commit text. Branch protection decides, and
-// GitHub's refusal comes back with its reason. No secret is involved.
+// mark_pull_request_ready and merge_pull_request (ADR090 D3 amendments
+// w10/m538 and w10/m577): when the task or a person's message asks, the agent
+// undrafts its own pull request and merges it, as Devin does, now or, with
+// auto, once its required checks pass (GitHub auto-merge, or the merge queue
+// its base branch requires). Each posts to a gateway verb on the session's
+// Pod-bound Git proxy path (pull-request/ready and pull-request/merge). The
+// pull request, its repository and the head the merge is pinned to are fixed
+// server-side from the session record; the merge says at most which method,
+// what commit text and whether to wait for the checks, or that GitHub should
+// not merge it later after all. Branch protection decides, and GitHub's
+// refusal comes back with its reason. No secret is involved.
 
 import { readFile } from "node:fs/promises";
 import { describeError } from "./errors.js";
@@ -58,9 +61,11 @@ export const mergePullRequestToolDefinition = {
   name: mergePullRequestToolName,
   title: "Merge the pull request",
   description:
-    "Merge this session's own pull request into its base branch. " +
+    "Merge this session's own pull request into its base branch, now or once its required checks pass. " +
     onlyWhenAsked +
-    " Mark it ready first, and merge once its required checks pass (`gh pr checks --watch`). " +
+    " Mark it ready first. When asked to merge once the checks pass, call it with auto: true and end your turn: GitHub auto-merge merges it when they pass (the answer has autoMerge: true), " +
+    "and a base branch that requires a merge queue takes it into the queue, with or without auto (mergeQueue: true). Without auto it merges now; a pull request GitHub would merge now is merged even with auto. " +
+    "If a person asks not to merge after all, call it with only disableAuto: true. " +
     "The merge is pinned to the head bex recorded when you last called open_or_update_draft_pr, so push and call that tool first. " +
     "The repository's branch protection decides: if GitHub refuses (checks pending or failing, a required review, a conflict), the error gives GitHub's reason and what to do; " +
     "report it and do not call this tool in a loop, and never use `gh pr merge`.",
@@ -81,6 +86,16 @@ export const mergePullRequestToolDefinition = {
         type: "string",
         description: `Optional message of the merge or squash commit, at most ${maxCommitMessageBytes} bytes.`,
       },
+      auto: {
+        type: "boolean",
+        description:
+          "true: have GitHub merge the pull request once its required checks pass (GitHub auto-merge, or the merge queue), so you can end your turn. On a merge-queue branch the queue sets the method and commit text.",
+      },
+      disableAuto: {
+        type: "boolean",
+        description:
+          "true, with no other argument: GitHub no longer merges the pull request later (its auto-merge is disabled, or it leaves the merge queue).",
+      },
     },
     additionalProperties: false,
   },
@@ -93,15 +108,25 @@ export interface ReadyPullRequest {
   alreadyReady?: true;
 }
 
-export interface MergedPullRequest {
+// MergeAnswer is what the merge did, with exactly one outcome: merged now
+// (sha, the merge commit, and method), autoMerge armed with method, joined the
+// mergeQueue, or autoMergeDisabled. Only a merge is merged: GitHub merges an
+// armed or queued pull request later.
+export interface MergeAnswer {
   url: string;
   number: number;
-  merged: true;
-  sha: string;
-  method: string;
-  // The head bex merged: the one open_or_update_draft_pr last recorded.
+  merged: boolean;
+  sha?: string;
+  method?: string;
+  // The head bex merged or armed: the one open_or_update_draft_pr last recorded.
   headSha: string;
+  autoMerge?: true;
+  mergeQueue?: true;
+  autoMergeDisabled?: true;
 }
+
+// The outcomes an answer may carry besides a merge.
+const laterOutcomes = ["autoMerge", "mergeQueue", "autoMergeDisabled"] as const;
 
 type Outcome<T> = { ok: true; result: T } | { ok: false; error: ToolError };
 
@@ -133,6 +158,8 @@ export interface MergeInput {
   method?: (typeof mergeMethods)[number];
   commitTitle?: string;
   commitMessage?: string;
+  auto?: true;
+  disableAuto?: true;
 }
 
 // validateMergeInput mirrors the gateway's PullRequestMergeContent.Validate
@@ -145,15 +172,19 @@ export function validateMergeInput(
   if (typeof args !== "object" || Array.isArray(args)) {
     return invalid("arguments must be an object");
   }
-  const { method, commitTitle, commitMessage, ...rest } = args as Record<
-    string,
-    unknown
-  >;
+  const { method, commitTitle, commitMessage, auto, disableAuto, ...rest } =
+    args as Record<string, unknown>;
   const unknown = Object.keys(rest);
   if (unknown.length > 0) {
     return invalid(
-      `unknown argument ${unknown[0]}: merge_pull_request takes only method, commitTitle and commitMessage; the pull request is fixed by the platform`,
+      `unknown argument ${unknown[0]}: merge_pull_request takes only method, commitTitle, commitMessage and auto, or disableAuto alone; the pull request is fixed by the platform`,
     );
+  }
+  if (auto !== undefined && typeof auto !== "boolean") {
+    return invalid("auto must be true or false");
+  }
+  if (disableAuto !== undefined && typeof disableAuto !== "boolean") {
+    return invalid("disableAuto must be true or false");
   }
   const input: MergeInput = {};
   if (method !== undefined) {
@@ -203,6 +234,13 @@ export function validateMergeInput(
     }
     if (commitMessage) input.commitMessage = commitMessage;
   }
+  if (disableAuto === true) {
+    if (auto === true || Object.keys(input).length > 0) {
+      return invalid("disableAuto takes no other argument");
+    }
+    return { ok: true, input: { disableAuto: true } };
+  }
+  if (auto === true) input.auto = true;
   return { ok: true, input };
 }
 
@@ -259,7 +297,7 @@ export async function markPullRequestReady(
 export async function mergePullRequest(
   args: unknown,
   env: NodeJS.ProcessEnv = process.env,
-): Promise<Outcome<MergedPullRequest>> {
+): Promise<Outcome<MergeAnswer>> {
   const checked = validateMergeInput(args);
   if (!checked.ok) return checked;
   const label = "pull-request merge endpoint";
@@ -269,26 +307,11 @@ export async function mergePullRequest(
     checked.input,
   );
   if (!reply.ok) return reply;
-  const { url, number, merged, sha, method, headSha } = reply.payload;
-  if (
-    typeof url !== "string" ||
-    !url ||
-    typeof number !== "number" ||
-    merged !== true ||
-    typeof sha !== "string" ||
-    !sha ||
-    typeof method !== "string"
-  ) {
+  const result = mergeAnswer(reply.payload);
+  if (!result) {
     return upstreamError(`${label} returned an unexpected response`);
   }
-  const result: MergedPullRequest = {
-    url,
-    number,
-    merged: true,
-    sha,
-    method,
-    headSha: typeof headSha === "string" ? headSha : "",
-  };
+  if (!result.merged) return { ok: true, result };
   try {
     await recordMerge(env.BEX_PR_RECORD_PATH || "", result);
   } catch (error) {
@@ -301,13 +324,45 @@ export async function mergePullRequest(
   return { ok: true, result };
 }
 
+// mergeAnswer reads the gateway's answer as the gateway client does
+// (PullRequestMergeResponse.wellFormed): the pull request named, exactly one
+// outcome, and a merge's commit and method.
+function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
+  const { url, number, merged, sha, method, headSha } = payload;
+  if (typeof url !== "string" || !url || typeof number !== "number") {
+    return null;
+  }
+  const later = laterOutcomes.filter((outcome) => payload[outcome] === true);
+  if (merged === true) {
+    if (
+      later.length > 0 ||
+      typeof sha !== "string" ||
+      !sha ||
+      typeof method !== "string"
+    ) {
+      return null;
+    }
+  } else if (merged !== false || later.length !== 1) {
+    return null;
+  }
+  return {
+    url,
+    number,
+    merged: merged === true,
+    ...(typeof sha === "string" && sha ? { sha } : {}),
+    ...(typeof method === "string" && method ? { method } : {}),
+    headSha: typeof headSha === "string" ? headSha : "",
+    ...Object.fromEntries(later.map((outcome) => [outcome, true as const])),
+  };
+}
+
 // recordMerge marks the pull request record (the one open_or_update_draft_pr
 // writes) merged at headSha. GitHub may delete a merged branch, and the
 // delivery check then counts local commits from the merged head rather than
 // asking the agent to push work that is already merged.
 async function recordMerge(
   recordPath: string,
-  result: MergedPullRequest,
+  result: MergeAnswer,
 ): Promise<void> {
   if (!recordPath) return;
   let record: Record<string, unknown> = {};

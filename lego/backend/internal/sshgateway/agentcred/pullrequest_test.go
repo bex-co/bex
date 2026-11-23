@@ -45,6 +45,39 @@ type prForge struct {
 	pr       github.PullRequestDetail
 	readied  []string
 	merged   []github.MergeOptions
+	// state is the pull request's merge state; armed records each auto-merge
+	// armed, and disarmed each auto-merge disabled.
+	state    github.MergeState
+	armed    []github.MergeOptions
+	disarmed int
+}
+
+func (f *prForge) PullRequestMergeState(context.Context, int64, string, string) (github.MergeState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.state, nil
+}
+
+func (f *prForge) EnablePullRequestAutoMerge(_ context.Context, _ int64, _, _, _ string, opts github.MergeOptions) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.armed = append(f.armed, opts)
+	f.state.AutoMerge, f.state.AutoMergeMethod = true, github.MergeMethodSquash
+	return github.MergeMethodSquash, nil
+}
+
+func (f *prForge) EnqueuePullRequest(context.Context, int64, string, string, string) error {
+	return errors.New("no merge queue in the gateway tests")
+}
+
+func (f *prForge) DisablePullRequestAutoMerge(context.Context, int64, string, string, bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.disarmed++
+	f.state.AutoMerge = false
+	return nil
 }
 
 func (f *prForge) MarkPullRequestReady(_ context.Context, _ int64, _, nodeID string) error {

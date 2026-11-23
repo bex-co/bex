@@ -391,10 +391,11 @@ test("the overlay of a repo session with gh off says gh is turned off and pull r
   );
   assert.doesNotMatch(text, /`gh` works on/);
   assert.doesNotMatch(text, /`gh run/);
-  // Without gh the merge step does not point at `gh pr checks`.
+  // Without gh the agent cannot watch the checks, so the merge step arms
+  // auto-merge or the merge queue and ends the turn (w10/m577).
   assert.match(
     text,
-    /wait until its required checks pass, then call `merge_pull_request`/,
+    /When asked to merge once the checks pass, call it with `auto: true` and end your turn instead of waiting for the checks/,
   );
   assert.doesNotMatch(text, /`gh pr checks/);
 });

@@ -150,7 +150,7 @@ You took over ${pr}, which a person opened. Your branch \`${branch}\` started fr
 3. Call \`${toolName}\` with a one-line title and a short body (the tool requires them, but for a taken-over pull request they are not used). It moves \`${prBranch}\` to your pushed commits and leaves the pull request's title, description and draft or ready state as they are, since they belong to the person who opened it.
 4. If it answers \`pr_branch_diverged\`, someone pushed to \`${prBranch}\` since your branch started from it. Run \`git fetch origin ${prBranch} && git merge FETCH_HEAD\`, resolve any conflicts, push again, and call \`${toolName}\` again.
 5. Once the pull request has your commits, call \`${replyOnPullRequestToolName}\` with what you changed and why, and include the pull request URL in your final reply. If a tool returns another error, report it as given; do not try to update the pull request another way.
-6. ${readyOrMergeStep(context, "Its draft or ready state and whether it merges belong to the person who opened it, so leave them as they are unless the `/bex` comment or a later message asks you to mark it ready or merge it.")}
+6. ${readyOrMergeStep("Its draft or ready state and whether it merges belong to the person who opened it, so leave them as they are unless the `/bex` comment or a later message asks you to mark it ready or merge it.")}
 
 If the task needs no code changes (a question, an investigation, a review), answer with \`${replyOnPullRequestToolName}\` and end with a written report, making no commit.
 
@@ -164,15 +164,13 @@ Later messages in this session, including comments and reviews on the pull reque
 }
 
 // readyOrMergeStep is the delivery step that marks the session's own pull
-// request ready or merges it (w10/m538): only when asked, as Devin does,
-// after its required checks pass, with GitHub's refusal reported rather than
-// retried. leave is when to leave it alone.
-function readyOrMergeStep(context: OverlayContext, leave: string): string {
-  const watch =
-    context.repository && context.githubCli !== false
-      ? " (`gh pr checks --watch` waits for them)"
-      : "";
-  return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark it ready for review. To merge, mark it ready, wait until its required checks pass${watch}, then call \`${mergePullRequestToolName}\`; it merges the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
+// request ready or merges it (w10/m538): only when asked, as Devin does, with
+// GitHub's refusal reported rather than retried. Asked to merge once the
+// checks pass, the agent arms GitHub auto-merge or the merge queue and ends
+// its turn instead of watching them (w10/m577), which a session with `gh` off
+// could not do at all. leave is when to leave it alone.
+function readyOrMergeStep(leave: string): string {
+  return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark it ready for review. To merge, mark it ready, then call \`${mergePullRequestToolName}\`; it acts on the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. When asked to merge once the checks pass, call it with \`auto: true\` and end your turn instead of waiting for the checks: GitHub merges the pull request when its required checks pass (the tool answers that auto-merge is armed, or that the pull request joined the merge queue), and your final reply says so. Without \`auto\` it merges now if GitHub allows it. GitHub also merges a head you push after arming once that head's checks pass, so if a person asks you not to merge after all, call \`${mergePullRequestToolName}\` with \`disableAuto: true\`. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
 }
 
 // githubCliOffBy says who turned gh off, by binding level (w10/m561).
@@ -241,7 +239,7 @@ The deliverable is a draft pull request from \`${branch}\` into ${baseRef}.
 2. Push with \`git push origin HEAD:${branch}\`. Do not force-push: the reviewer reads this history. If a push is rejected because the remote branch moved, run \`git pull --rebase origin ${branch}\` and push again.
 3. Call \`${toolName}\` with a title and a body. The pull request covers the whole branch, so the title and body describe every commit since ${baseRef} (\`git log\` shows them), not only what changed in this turn. Write the body by filling in the repository's pull request template. Look for it in \`.github/pull_request_template.md\`, \`.github/PULL_REQUEST_TEMPLATE.md\`, \`.github/PULL_REQUEST_TEMPLATE/\`, then \`docs/\`, then the repository root. If there is none, write a short body with Summary, Changes and Testing sections. bex appends its own footer, so do not add one.
 4. Only say that a pull request exists once the tool has returned its URL, and include that URL in your final reply. If the tool returns an error, report the error as given; do not try to create the pull request another way.
-5. ${readyOrMergeStep(context, "Leave the pull request as a draft for the requester to review, unless the task or a person's message asks you to mark it ready or merge it.")}
+5. ${readyOrMergeStep("Leave the pull request as a draft for the requester to review, unless the task or a person's message asks you to mark it ready or merge it.")}
 6. When a turn was started by pull request feedback, reply on the pull request with \`${replyOnPullRequestToolName}\` once your changes are pushed, saying what you changed.
 
 If the task needs no code changes (a question, an investigation, a review), end with a written report and make no commit.

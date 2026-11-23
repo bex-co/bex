@@ -172,6 +172,50 @@ func TestPullRequestReadyAndMergeRoutesRefuseForeignPodsAndBranches(t *testing.T
 	}
 }
 
+// w10/m577: auto arms GitHub auto-merge on the session's pull request at its
+// recorded head through both hops, the answer says armed and not merged, and
+// nothing records the pull request merged; disableAuto disarms it.
+func TestPullRequestMergeRouteArmsAndDisarmsAutoMerge(t *testing.T) {
+	broker, forge, audit, states := mergeHarness(t, 7)
+	forge.pr.Draft = false
+	forge.state = github.MergeState{Status: "BLOCKED"}
+	reply := postPR(t, broker, ownMergeURL(t), "10.0.0.1", "application/json", `{"auto":true,"method":"squash","commitTitle":"Add retries (#7)"}`)
+	var armed agentsession.PullRequestMergeResponse
+	if reply.code != http.StatusOK || json.Unmarshal([]byte(reply.raw), &armed) != nil {
+		t.Fatalf("auto: status=%d body=%s", reply.code, reply.raw)
+	}
+	if armed.Merged || !armed.AutoMerge || armed.MergeQueue || armed.SHA != "" || armed.Method != "squash" || armed.HeadSHA != mergeHead || armed.Number != 7 {
+		t.Fatalf("auto answer = %+v (%s), want armed, not merged, at the recorded head", armed, reply.raw)
+	}
+	if !strings.Contains(reply.raw, `"merged":false`) {
+		t.Fatalf("auto answer %s does not say merged false", reply.raw)
+	}
+	if len(forge.merged) != 0 || len(forge.armed) != 1 || forge.armed[0].SHA != mergeHead || forge.armed[0].CommitTitle != "Add retries (#7)" {
+		t.Fatalf("GitHub merged=%+v armed=%+v, want one arm pinned to the recorded head", forge.merged, forge.armed)
+	}
+	if len(*states) != 0 {
+		t.Fatalf("recorded states = %v, want none for an armed pull request", *states)
+	}
+	// Armed already: the same answer, and GitHub is not asked again.
+	reply = postPR(t, broker, ownMergeURL(t), "10.0.0.1", "application/json", `{"auto":true}`)
+	if reply.code != http.StatusOK || !strings.Contains(reply.raw, `"autoMerge":true`) || len(forge.armed) != 1 {
+		t.Fatalf("auto again: status=%d body=%s armed=%d", reply.code, reply.raw, len(forge.armed))
+	}
+	reply = postPR(t, broker, ownMergeURL(t), "10.0.0.1", "application/json", `{"disableAuto":true}`)
+	var disarmed agentsession.PullRequestMergeResponse
+	if reply.code != http.StatusOK || json.Unmarshal([]byte(reply.raw), &disarmed) != nil || !disarmed.AutoMergeDisabled || disarmed.Merged || disarmed.AutoMerge || forge.disarmed != 1 {
+		t.Fatalf("disableAuto: status=%d body=%s disarmed=%d", reply.code, reply.raw, forge.disarmed)
+	}
+	if len(*states) != 0 || len(audit.events) != 3 {
+		t.Fatalf("states=%v audit=%+v", *states, audit.events)
+	}
+	for _, event := range audit.events {
+		if event.Verb != agentsession.AuditVerbPullRequestMerge || event.Outcome != core.AuditAllowed {
+			t.Fatalf("gateway audit = %+v, want the merge verb allowed", event)
+		}
+	}
+}
+
 // The sandbox names nothing but the merge method and commit text: a request
 // naming the PR, the repository, the head or anything else is refused before
 // bex-api, as is a malformed body.
@@ -193,6 +237,10 @@ func TestPullRequestReadyAndMergeRoutesValidateTheBody(t *testing.T) {
 		{"merge message too long", agentsession.PullRequestMergeProxySegment, "application/json", `{"commitMessage":"` + strings.Repeat("m", agentsession.MaxMergeCommitMessageBytes+1) + `"}`, http.StatusRequestEntityTooLarge, agentsession.PullRequestTooLarge},
 		{"merge request over 64 KiB", agentsession.PullRequestMergeProxySegment, "application/json", `{"commitMessage":"` + strings.Repeat("m", agentsession.MaxPullRequestRequestBytes) + `"}`, http.StatusRequestEntityTooLarge, agentsession.PullRequestTooLarge},
 		{"merge query string", agentsession.PullRequestMergeProxySegment + "?number=8", "application/json", `{}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge auto not a boolean", agentsession.PullRequestMergeProxySegment, "application/json", `{"auto":"yes"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge auto and disableAuto", agentsession.PullRequestMergeProxySegment, "application/json", `{"auto":true,"disableAuto":true}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge disableAuto with a method", agentsession.PullRequestMergeProxySegment, "application/json", `{"disableAuto":true,"method":"squash"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge names the head to arm", agentsession.PullRequestMergeProxySegment, "application/json", `{"auto":true,"expectedHeadOid":"abc"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
