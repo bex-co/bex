@@ -108,5 +108,71 @@ class ExportProtocolTests(unittest.TestCase):
                 self.assertEqual(list((root / "work").glob(".bex-postgres-export.*")), [])
 
 
+# The publish gate runs check.sh on every platform of the built index. A fake
+# registry client and container runtime stand in; the actual gate.sh runs.
+ORAS = r'''#!/usr/bin/env python3
+import json
+print(json.dumps({"manifests": [
+    {"digest": "sha256:" + "a" * 64, "platform": {"os": "linux", "architecture": "arm64"}},
+    {"digest": "sha256:" + "b" * 64, "platform": {"os": "linux", "architecture": "amd64"}},
+    {"digest": "sha256:" + "c" * 64, "platform": {"os": "unknown", "architecture": "unknown"}},
+]}))
+'''
+
+DOCKER = r'''#!/usr/bin/env python3
+import json, os, pathlib, sys
+argv = sys.argv[1:]
+arch = argv[argv.index("--platform") + 1].split("/")[1]
+with open(pathlib.Path(os.environ["TEST_ROOT"]) / "runs.jsonl", "a") as runs:
+    runs.write(json.dumps(argv) + "\n")
+sys.exit(1 if arch in os.environ.get("FAIL_ARCHES", "").split(",") else 0)
+'''
+
+
+class GateTests(unittest.TestCase):
+    def gate(self, root, fail_arches="", arches=()):
+        binaries = root / "bin"
+        binaries.mkdir()
+        for name, body in (("oras", ORAS), ("docker", DOCKER)):
+            path = binaries / name
+            path.write_text(body)
+            path.chmod(0o700)
+        environment = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
+                           TEST_ROOT=str(root), FAIL_ARCHES=fail_arches)
+        result = subprocess.run(["bash", str(ROOT / "gate.sh"), "127.0.0.1:5000/operand", "sha256:" + "f" * 64,
+                                 "16", "postgis,timescaledb", "postgis", "16.16", *arches],
+                                env=environment, capture_output=True, timeout=10)
+        runs = [json.loads(line) for line in (root / "runs.jsonl").read_text().splitlines()]
+        return result, runs
+
+    def test_every_platform_runs_from_its_own_manifest_even_after_a_failure(self):
+        for fail_arches in ("", "arm64", "amd64", "arm64,amd64"):
+            with self.subTest(fail_arches=fail_arches), tempfile.TemporaryDirectory() as folder:
+                result, runs = self.gate(Path(folder), fail_arches)
+                self.assertEqual([run[run.index("--platform") + 1] for run in runs], ["linux/arm64", "linux/amd64"])
+                for run, digest in zip(runs, ("a", "b")):
+                    self.assertIn("127.0.0.1:5000/operand@sha256:" + digest * 64, run)
+                    self.assertEqual(run[-5:], ["/check/check.sh", "16", "postgis,timescaledb", "postgis", "16.16"])
+                    for flag in (["--network", "none"], ["--memory", "256m"], ["--memory-swap", "256m"]):
+                        self.assertIn(flag, [run[i:i + 2] for i in range(len(run) - 1)])
+                stdout = result.stdout.decode()
+                for arch in ("arm64", "amd64"):
+                    want = "FAIL" if arch in fail_arches else "PASS"
+                    self.assertIn("gate_%s=%s" % (arch, want), stdout)
+                if fail_arches:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("failed on " + fail_arches.replace(",", " "), result.stderr.decode())
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr.decode())
+
+    def test_a_named_platform_runs_alone_on_its_own_runner(self):
+        for fail_arches, code in (("", 0), ("amd64", 1)):
+            with self.subTest(fail_arches=fail_arches), tempfile.TemporaryDirectory() as folder:
+                result, runs = self.gate(Path(folder), fail_arches, ("amd64",))
+                self.assertEqual([run[run.index("--platform") + 1] for run in runs], ["linux/amd64"])
+                self.assertIn("127.0.0.1:5000/operand@sha256:" + "b" * 64, runs[0])
+                self.assertEqual(result.returncode, code, result.stderr.decode())
+
+
 if __name__ == "__main__":
     unittest.main()

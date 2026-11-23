@@ -33,10 +33,11 @@ import (
 )
 
 // TestPGExtensionAllowlistMatchesTheImageGate keeps the operator's allowlist
-// and the publish workflow's real-server gate (deploy/pg-operand/matrix.json)
-// on one list per major, for every major the CRD permits: an extension the
-// gate never created must not be admitted, and one the gate proved must not
-// be silently left out.
+// and the publish workflow's real-server gate (deploy/pg-operand/matrix.json
+// "admitted") on one list per major, for every major the CRD permits: the gate
+// fails when an admitted extension fails its own verdict or a passing one is
+// left out, so this equality is what carries those verdicts to production.
+// Every admitted extension is one the image carries.
 func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 	raw, err := os.ReadFile("../../../../deploy/pg-operand/matrix.json")
 	if err != nil {
@@ -45,6 +46,7 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 	var matrix map[string]struct {
 		Base       string   `json:"base"`
 		Extensions []string `json:"extensions"`
+		Admitted   []string `json:"admitted"`
 	}
 	if err := json.Unmarshal(raw, &matrix); err != nil {
 		t.Fatal(err)
@@ -58,8 +60,13 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 	}
 	for _, v := range versions {
 		t.Logf("PG%s exact operand server_version_num=%s", v, operandServerVersionNumber(t, v))
-		if !slices.Equal(matrix[v].Extensions, pgExtensionAllowlist[v]) {
-			t.Errorf("PG%s: matrix.json extensions %v != pgExtensionAllowlist %v", v, matrix[v].Extensions, pgExtensionAllowlist[v])
+		if !slices.Equal(matrix[v].Admitted, pgExtensionAllowlist[v]) {
+			t.Errorf("PG%s: matrix.json admitted %v != pgExtensionAllowlist %v", v, matrix[v].Admitted, pgExtensionAllowlist[v])
+		}
+		for _, ext := range matrix[v].Admitted {
+			if !slices.Contains(matrix[v].Extensions, ext) {
+				t.Errorf("PG%s: admits %s, which the image does not carry (matrix.json extensions %v)", v, ext, matrix[v].Extensions)
+			}
 		}
 		if !strings.Contains(matrix[v].Base, ":"+v+".") || !strings.Contains(matrix[v].Base, "@sha256:") {
 			t.Errorf("PG%s: base %q is not a digest-pinned PG%s image", v, matrix[v].Base, v)
@@ -97,6 +104,51 @@ func TestCheckShConfiguresTheProjectedSettings(t *testing.T) {
 				t.Errorf("gate settings = %v; want actual Free projection %v", got, want)
 			}
 		})
+	}
+}
+
+// TestEveryOperandMajorPreloadsWhatItCarries: every library the image
+// carries that must be preloaded is preloaded from the start on every major,
+// whether or not its extension is admitted, so admitting one later is a
+// reload, never a restart (ADR092 D4). pgaudit loads from nowhere else.
+func TestEveryOperandMajorPreloadsWhatItCarries(t *testing.T) {
+	for _, v := range permittedPostgresVersions(t) {
+		preload := pgExtensionPreloadLibraries(v)
+		want := []any{"timescaledb", "pg_ivm", "pgaudit"}
+		if major, _ := strconv.Atoi(v); major >= 16 {
+			want = []any{"timescaledb", "pg_ivm", "pg_duckdb", "pgaudit"}
+		}
+		if !slices.Equal(preload, want) {
+			t.Errorf("PG%s preloads %v, want %v", v, preload, want)
+		}
+		if slices.Contains(preload, any("pg_partman_bgw")) {
+			t.Errorf("PG%s preloads pg_partman's background worker, which Render runs without", v)
+		}
+	}
+}
+
+// TestWal2jsonIsABlessedOutputPluginWhereTheServerAsks: on 14-18 the server
+// refuses a logical slot whose plugin is not in output_plugin_libraries, so
+// the operand lists wal2json beside the defaults; PostgreSQL 13 has no such
+// setting and would not start with it. A tenant value never replaces it.
+func TestWal2jsonIsABlessedOutputPluginWhereTheServerAsks(t *testing.T) {
+	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
+	for _, v := range permittedPostgresVersions(t) {
+		got, ok := pgExtensionParameters(clusterParams{version: v, plan: plan, owner: "app"})["output_plugin_libraries"]
+		if v == "13" {
+			if ok {
+				t.Errorf("PG13 projects output_plugin_libraries=%v, a setting its server does not have", got)
+			}
+			continue
+		}
+		if got != "pgoutput,test_decoding,wal2json" {
+			t.Errorf("PG%s output_plugin_libraries = %v, want pgoutput,test_decoding,wal2json", v, got)
+		}
+	}
+	withBexOperands(t, map[string]string{"18": "ghcr.io/bex-co/bex-operator:18.7-postgres-abc@sha256:0123"})
+	_, _, params := clusterPostgresql(t, "18", map[string]string{" Output_Plugin_Libraries ": "pgoutput,evil"})
+	if params[" Output_Plugin_Libraries "] != nil || params["output_plugin_libraries"] != "pgoutput,test_decoding,wal2json" {
+		t.Errorf("a tenant value reached output_plugin_libraries: %v", params)
 	}
 }
 
@@ -155,12 +207,12 @@ func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 	if image != bex {
 		t.Errorf("imageName = %q, want the bex operand %q", image, bex)
 	}
-	if !slices.Equal(preload, []any{"pg_stat_statements", "timescaledb", "pg_ivm", "pg_duckdb"}) {
-		t.Errorf("shared_preload_libraries = %v, want pg_stat_statements + timescaledb (no pg_partman_bgw)", preload)
+	if !slices.Equal(preload, []any{"pg_stat_statements", "timescaledb", "pg_ivm", "pg_duckdb", "pgaudit"}) {
+		t.Errorf("shared_preload_libraries = %v, want pg_stat_statements + timescaledb, pg_ivm, pg_duckdb, pgaudit (no pg_partman_bgw)", preload)
 	}
 	want := map[string]any{
 		"local_preload_libraries":             "pgextwlist",
-		"extwlist.extensions":                 "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,timescaledb",
+		"extwlist.extensions":                 "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,pg_repack",
 		"extwlist.restrict_to_database_owner": "on",
 		"extwlist.custom_path":                "/usr/share/bex/extwlist",
 		"timescaledb.license":                 "apache",
@@ -295,12 +347,10 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 					" INSERT INTO places SELECT g, ST_SetSRID(ST_MakePoint(g, g), 4326) FROM generate_series(1, 50) g;" +
 					" CREATE INDEX ON places USING gist (geom);" +
 					" SELECT count(*) FROM places WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(10, 10), 4326), 1.5)", "3"},
-				{"CREATE EXTENSION timescaledb; CREATE TABLE metrics (at timestamptz NOT NULL, v float8);" +
-					" SELECT count(*) FROM create_hypertable('metrics', 'at'); INSERT INTO metrics VALUES (now(), 1);" +
-					" SELECT count(*) FROM metrics", "1"},
 				{"CREATE EXTENSION hstore; SELECT 'a=>1'::hstore -> 'a'", "1"},
 				{"SELECT rolsuper FROM pg_roles WHERE rolname = current_user", "f"},
 			}
+			timescale := ownerTimescaleOnCNPG(t, major, asOwner)
 			if slices.Contains(pgExtensionAllowlist[major], "pg_partman") {
 				steps = append(steps, struct{ sql, want string }{
 					"CREATE SCHEMA partman; CREATE EXTENSION pg_partman SCHEMA partman;" +
@@ -316,7 +366,7 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 			if out, err := asOwner("CREATE EXTENSION pg_ivm; CREATE TABLE ivm_base (id int PRIMARY KEY,v int); INSERT INTO ivm_base VALUES (1,10),(2,20); SELECT pgivm.create_immv('ivm_sum','SELECT sum(v) AS s FROM ivm_base'); INSERT INTO ivm_base VALUES (3,30); SELECT s FROM ivm_sum"); err != nil || !strings.HasSuffix(out, "60") {
 				t.Fatalf("actual IMMV maintenance: %v %s", err, out)
 			}
-			verifyCNPGOwnerExportRestore(t, cl, kubeconfig, namespace)
+			verifyCNPGOwnerExportRestore(t, cl, kubeconfig, namespace, timescale)
 
 			for _, refused := range []string{"CREATE EXTENSION file_fdw", "CREATE EXTENSION dblink", "SET extwlist.extensions = 'file_fdw'"} {
 				if out, err := asOwner(refused); err == nil || !strings.Contains(out, "permission denied") {
@@ -325,6 +375,27 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ownerTimescaleOnCNPG: TimescaleDB is carried and preloaded but admitted
+// only once its own gate passes. Admitted, the owner builds a hypertable;
+// until then the owner meets PostgreSQL's refusal. It reports whether the
+// database now holds TimescaleDB.
+func ownerTimescaleOnCNPG(t *testing.T, major string, asOwner func(string) (string, error)) bool {
+	t.Helper()
+	if !slices.Contains(pgExtensionAllowlist[major], "timescaledb") {
+		if out, err := asOwner("CREATE EXTENSION timescaledb"); err == nil || !strings.Contains(out, "permission denied to create extension") {
+			t.Fatalf("CREATE EXTENSION timescaledb while not admitted = %v %q, want PostgreSQL's permission error", err, out)
+		}
+		return false
+	}
+	out, err := asOwner("CREATE EXTENSION timescaledb; CREATE TABLE metrics (at timestamptz NOT NULL, v float8);" +
+		" SELECT count(*) FROM create_hypertable('metrics', 'at'); INSERT INTO metrics VALUES (now(), 1);" +
+		" SELECT count(*) FROM metrics")
+	if err != nil || !strings.HasSuffix(out, "1") {
+		t.Fatalf("owner hypertable = %v %q", err, out)
+	}
+	return true
 }
 
 // TestUnversionedDatabasesMoveOnlyOntoTheirOwnMajorsOperand: a Database with

@@ -13,6 +13,7 @@ buffers=$((memory_mb / 4))
 if test "$buffers" -lt 16; then buffers=16; fi
 preloads=pg_stat_statements,timescaledb,pg_ivm
 if test "$major" -ge 16; then preloads=$preloads,pg_duckdb; fi
+preloads=$preloads,pgaudit
 cat <<EOF
 shared_buffers = '${buffers}MB'
 shared_preload_libraries = '$preloads'
@@ -23,6 +24,8 @@ extwlist.custom_path = '/usr/share/bex/extwlist'
 timescaledb.license = 'apache'
 timescaledb.telemetry_level = 'off'
 EOF
+# PostgreSQL 13 has no output_plugin_libraries; 14+ refuse wal2json without it.
+if test "$major" -ge 14; then echo "output_plugin_libraries = 'pgoutput,test_decoding,wal2json'"; fi
 if test "$major" -ge 16; then
   memory=$((memory_mb / 8))
   if test "$memory" -lt 1; then memory=1; fi

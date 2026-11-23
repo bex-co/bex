@@ -1,14 +1,14 @@
 # w21 · m584 — Adopt the bex Postgres operand image with each extension gated on its own, so PostGIS and the rest stop waiting on TimescaleDB's restore
 
-**Worker:** worker21 **Goal:** production managed Postgres runs the bex operand image on every major 13–18; each extension whose own ADR092 gate passes is in the owner allowlist; `pg_repack`, `wal2json` and the `pgaudit` preload ride the same digest, so every managed cluster restarts once. **Status:** todo
+**Worker:** worker21 **Goal:** production managed Postgres runs the bex operand image on every major 13–18; each extension whose own ADR092 gate passes is in the owner allowlist; `pg_repack`, `wal2json` and the `pgaudit` preload ride the same digest, so every managed cluster restarts once. **Status:** todo (t001, t002, t003 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Amend ADR092: D3 property 5 is judged per extension; a failing extension stays out of the allowlist, keeps its preload, and joins later by reload | 30m | — |
-| [t002](t002.md) | A per-extension gate: TimescaleDB and pg_ivm restore separately, `matrix.json` records each verdict, the allowlist takes only passed extensions, both architectures always run | 1h30m | t001 |
-| [t003](t003.md) | One digest carries every image-level change: `pg_repack` on 16+ with its `repack` schema grants, `wal2json` on 13–18, `pgaudit` in `shared_preload_libraries` | 1h | t001 |
+| [t001](done/t001.md) | Amend ADR092: D3 property 5 is judged per extension; a failing extension stays out of the allowlist, keeps its preload, and joins later by reload — **DONE** | 30m | — |
+| [t002](done/t002.md) | A per-extension gate: TimescaleDB and pg_ivm restore separately, `matrix.json` records each verdict, the allowlist takes only passed extensions, both architectures always run — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | One digest carries every image-level change: `pg_repack` on 16+ with its `repack` schema grants, `wal2json` on 13–18, `pgaudit` in `shared_preload_libraries` — **DONE** | 1h | t001 |
 | [t004](t004.md) | Run the gate on 13–18 × arm64 and amd64, and record each digest and each extension's verdict | 45m | t002, t003 |
 | [t005](t005.md) | Write the gated digests into `bexOperandImages` and restart every managed cluster once, off-peak, under ADR092 D4 | 1h | t004 |
 | [t006](t006.md) | Production acceptance, and the w8 extension items told what they wait on now | 45m | t005 |

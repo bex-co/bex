@@ -150,9 +150,11 @@ func TestOperandQualificationDoesNotSilentlyNarrowMatrix(t *testing.T) {
 	}
 }
 
-// The original owner restore is a required outcome. Its exact failure remains
-// a red matrix result; a stronger platform actor never substitutes for it.
-func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, namespace string) {
+// The original owner restore is a required outcome for every admitted
+// extension. Its exact failure remains a red matrix result; a stronger
+// platform actor never substitutes for it. TimescaleDB's pre/post-restore
+// protocol runs only when it is admitted, so it is in the database.
+func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, namespace string, timescale bool) {
 	t.Helper()
 	var secret corev1.Secret
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: namespace, Name: "pg-app"}, &secret); err != nil {
@@ -170,12 +172,21 @@ func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, na
 	if out, err := run(append(slices.Clone(ownerEnv), "PGDATABASE=geo_prod", "BEX_POSTGRES_EXPORT_ROOT=/tmp/bex-operand-owned-export", "EXPORT_DIRECTORY=fixture", "EXPORT_FILENAME=fixture.dir.tar.gz", "bex-postgres-export")...); err != nil {
 		t.Fatalf("ordinary owner coherent export: %v %s", err, out)
 	}
-	commands := [][]string{
-		{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", "CREATE EXTENSION timescaledb; SELECT timescaledb_pre_restore()"},
-		{"pg_restore", "--no-owner", "--no-privileges", "--exit-on-error", "--dbname=owner_restored", "/tmp/bex-operand-owned-export/fixture/geo_prod"},
-		{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", "SELECT timescaledb_post_restore()", "-f", "/tmp/bex-operand-owned-export/fixture/pg_ivm_restore.sql"},
-		{"psql", "-X", "-At", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", "INSERT INTO ivm_base VALUES(4,40); INSERT INTO metrics VALUES(now(),2); SELECT (SELECT s FROM ivm_sum)=100 AND (SELECT sum(v) FROM metrics)=3 AND NOT rolsuper FROM pg_roles WHERE rolname=current_user"},
+	restore := []string{"pg_restore", "--no-owner", "--no-privileges", "--exit-on-error", "--dbname=owner_restored", "/tmp/bex-operand-owned-export/fixture/geo_prod"}
+	const sidecarFile = "/tmp/bex-operand-owned-export/fixture/pg_ivm_restore.sql"
+	sidecar := []string{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-f", sidecarFile}
+	check := "INSERT INTO ivm_base VALUES(4,40); SELECT (SELECT s FROM ivm_sum)=100 AND NOT rolsuper FROM pg_roles WHERE rolname=current_user"
+	commands := make([][]string, 0, 4)
+	if timescale {
+		commands = append(commands,
+			[]string{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", "CREATE EXTENSION timescaledb; SELECT timescaledb_pre_restore()"},
+			restore,
+			[]string{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", "SELECT timescaledb_post_restore()", "-f", sidecarFile})
+		check = "INSERT INTO ivm_base VALUES(4,40); INSERT INTO metrics VALUES(now(),2); SELECT (SELECT s FROM ivm_sum)=100 AND (SELECT sum(v) FROM metrics)=3 AND NOT rolsuper FROM pg_roles WHERE rolname=current_user"
+	} else {
+		commands = append(commands, restore, sidecar)
 	}
+	commands = append(commands, []string{"psql", "-X", "-At", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", check})
 	for i, command := range commands {
 		out, err := run(append(slices.Clone(ownerEnv), command...)...)
 		if err != nil || (i == len(commands)-1 && !strings.HasSuffix(strings.TrimSpace(out), "t")) {

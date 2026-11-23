@@ -37,35 +37,43 @@ var bexOperandImages = map[string]string{}
 
 const postgresDisabled = "false"
 
-// pgExtensionAllowlist is ADR092 D1's table: the non-trusted extensions a
-// database owner may CREATE EXTENSION on each major, as Render documents them
-// (render.com/docs/postgresql-extensions). DuckDB access and per-connection
+// pgExtensionAllowlist is the extwlist.extensions value per major: the
+// non-trusted extensions a database owner may CREATE EXTENSION, as Render
+// documents them (render.com/docs/postgresql-extensions), that passed their
+// own ADR092 D3 gate on that major. DuckDB access and per-connection
 // resources are projected with the owner and plan below.
-// deploy/pg-operand/matrix.json carries the same lists for the image gate;
-// TestPGExtensionAllowlistMatchesTheImageGate keeps them equal.
+// deploy/pg-operand/matrix.json "admitted" carries the same lists for the
+// image gate, which fails when an admitted extension fails or a passing one
+// is left out; TestPGExtensionAllowlistMatchesTheImageGate keeps them equal.
 var pgExtensionAllowlist = map[string][]string{
-	"13": renderExtensions(13), "14": renderExtensions(14), "15": renderExtensions(15),
-	"16": renderExtensions(16), "17": renderExtensions(17), "18": renderExtensions(18),
+	"13": admittedExtensions(13), "14": admittedExtensions(14), "15": admittedExtensions(15),
+	"16": admittedExtensions(16), "17": admittedExtensions(17), "18": admittedExtensions(18),
 }
 
-// renderExtensions applies Render's per-major restrictions to the six.
-func renderExtensions(major int) []string {
+// admittedExtensions applies Render's per-major restrictions to the
+// extensions the image carries, less those whose gate failed. TimescaleDB is
+// carried and preloaded but held out: its ordinary owner cannot run
+// timescaledb_pre_restore() ("permission denied to set parameter
+// timescaledb.restoring"), so property 5 fails on every major. Admitting an
+// extension later is a reload of extwlist.extensions, never a restart
+// (ADR092 D3, D4).
+func admittedExtensions(major int) []string {
 	list := []string{"postgis", "postgis_raster", "postgis_topology", "postgis_tiger_geocoder"}
 	if major >= 14 {
 		list = append(list, "pg_partman")
 	}
 	list = append(list, "pg_ivm")
 	if major < 16 {
-		list = append(list, "pg_similarity")
-	} else {
-		list = append(list, "pg_duckdb")
+		return append(list, "pg_similarity")
 	}
-	return append(list, "timescaledb")
+	return append(list, "pg_duckdb", "pg_repack")
 }
 
 // pgExtensionPreloadLibraries join pg_stat_statements in
-// shared_preload_libraries on a bex operand. pg_partman_bgw is deliberately
-// absent: Render runs pg_partman without its background worker.
+// shared_preload_libraries on a bex operand: every library the image carries
+// that must be preloaded, whether or not its extension is admitted yet, so a
+// later admission needs no restart. pg_partman_bgw is deliberately absent:
+// Render runs pg_partman without its background worker.
 func pgExtensionPreloadLibraries(version string) []any {
 	// pg_ivm's preload is required for maintenance even in sessions that did
 	// not themselves CREATE EXTENSION. pgextwlist remains a local preload.
@@ -73,12 +81,16 @@ func pgExtensionPreloadLibraries(version string) []any {
 	if version == "16" || version == "17" || version == "18" {
 		libraries = append(libraries, "pg_duckdb")
 	}
-	return libraries
+	// pgaudit refuses to load from anywhere but shared_preload_libraries. It
+	// is listed here rather than enabled through CloudNativePG's pgaudit.*
+	// parameters, which would also CREATE EXTENSION pgaudit in every database
+	// (ADR092 D2).
+	return append(libraries, "pgaudit")
 }
 
 func managedExtensionParameter(name string) bool {
 	name = strings.ToLower(strings.TrimSpace(name))
-	return name == "local_preload_libraries" || name == "session_preload_libraries" ||
+	return name == "local_preload_libraries" || name == "session_preload_libraries" || name == "output_plugin_libraries" ||
 		strings.HasPrefix(name, "extwlist.") || strings.HasPrefix(name, "timescaledb.") || strings.HasPrefix(name, "duckdb.")
 }
 
@@ -143,6 +155,14 @@ func pgExtensionParameters(p clusterParams) map[string]any {
 		// no TSL module either; this keeps the server's own refusal explicit.
 		"timescaledb.license":         "apache",
 		"timescaledb.telemetry_level": "off",
+	}
+	// wal2json is the logical-decoding output plugin Render lists. The minor
+	// releases the 14-18 bases carry refuse any plugin a slot names that is
+	// not in output_plugin_libraries (default "pgoutput, test_decoding";
+	// postgres/postgres 4e1252ee56). PostgreSQL 13 has no such setting, and
+	// an unknown one would stop its server.
+	if p.version != "13" {
+		parameters["output_plugin_libraries"] = "pgoutput,test_decoding,wal2json"
 	}
 	memory := resource.MustParse(p.plan.Memory)
 	memoryMB := memory.Value() / (1024 * 1024)

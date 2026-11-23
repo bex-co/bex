@@ -1,10 +1,12 @@
 # bex managed-Postgres operand image (ADR092 D1, w8/m92 t008).
 #
-# A reviewed CloudNativePG "system" operand plus the six extensions Render
-# documents (https://render.com/docs/postgresql-extensions), on exactly the
-# majors where Render offers each, and pgextwlist, the closed allowlist that
-# lets a database owner CREATE EXTENSION them (ADR092 D3). Nothing is
-# preinstalled into any database: activation stays per database, by the owner.
+# A reviewed CloudNativePG "system" operand plus the extensions Render
+# documents (https://render.com/docs/postgresql-extensions) that its base does
+# not carry, on exactly the majors where Render offers each: the six of ADR092
+# D1, pg_repack on 16+ and the wal2json output plugin. pgextwlist is the closed
+# allowlist that lets a database owner CREATE EXTENSION them (ADR092 D3).
+# Nothing is preinstalled into any database: activation stays per database, by
+# the owner.
 #
 # The base is CNPG's bookworm system image of the same major and patch. The
 # bullseye images bex pinned before carry no PGDG archive for PostGIS on 18 or
@@ -77,9 +79,23 @@ RUN set -eu; \
   if ls "/usr/lib/postgresql/${PG_MAJOR}/lib"/timescaledb-tsl-*.so >/dev/null 2>&1; then \
     echo "TimescaleDB TSL module present" >&2; exit 1; \
   fi; \
+  # TimescaleDB's control file is marked trusted, which lets any database
+  # owner create it whatever extwlist.extensions says. bex admits an extension
+  # only once its own ADR092 D3 gate passes, so the flag goes and the
+  # allowlist governs TimescaleDB like every other extension the image
+  # carries; admitting it later stays a reload.
+  control="/usr/share/postgresql/${PG_MAJOR}/extension/timescaledb.control"; \
+  if [ -e "$control" ]; then \
+    sed -i -E '/^[[:space:]]*trusted[[:space:]]*=/d' "$control"; \
+    if grep -Eq '^[[:space:]]*trusted' "$control"; then echo "TimescaleDB is still trusted" >&2; exit 1; fi; \
+  fi; \
   # pgextwlist loads through local_preload_libraries, which only reads
   # $libdir/plugins.
   test -e "/usr/lib/postgresql/${PG_MAJOR}/lib/plugins/pgextwlist.so"; \
+  # The operator preloads pgaudit, which CNPG's system base already carries;
+  # a base without it would leave every cluster unable to start.
+  test -e "/usr/lib/postgresql/${PG_MAJOR}/lib/pgaudit.so"; \
+  test -e "/usr/lib/postgresql/${PG_MAJOR}/lib/wal2json.so"; \
   ldd "/usr/lib/postgresql/${PG_MAJOR}/lib"/*.so | { ! grep 'not found'; }; \
   apt-get clean; \
   rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /var/log/apt /var/log/dpkg.log /tmp/*
