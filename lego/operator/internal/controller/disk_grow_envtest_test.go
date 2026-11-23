@@ -118,9 +118,16 @@ var _ = Describe("Persistent disk grow", func() {
 
 		Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
 		template := dep.Spec.Template.DeepCopy()
-		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
-		app.Spec.Disk.SizeGB = 11
-		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		// The controller writes the App's status while it reconciles, so a
+		// single Get+Update races it into a 409 Conflict (red main
+		// 2026-11-23, run 45231384775): retry on the latest version.
+		Eventually(func() error {
+			if err := k8sClient.Get(ctx, nn, app); err != nil {
+				return err
+			}
+			app.Spec.Disk.SizeGB = 11
+			return k8sClient.Update(ctx, app)
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 		Eventually(func(g Gomega) {
 			g.Expect(k8sClient.Get(ctx, claimKey, claim)).To(Succeed())
 			g.Expect(claim.Spec.Resources.Requests.Storage().String()).To(Equal("11Gi"))
