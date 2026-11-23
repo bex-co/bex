@@ -15,13 +15,11 @@
  */
 
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 import { loadConfig } from "../src/config.js";
 import {
   githubCliEnabled,
@@ -32,7 +30,7 @@ import {
   startGitHubCliProxy,
 } from "../src/github-cli.js";
 import { platformOverlay } from "../src/overlay.js";
-import { childEnv, tempConfig } from "./helpers.js";
+import { childEnv, tempConfig, terminal } from "./helpers.js";
 
 interface Seen {
   method?: string;
@@ -209,49 +207,6 @@ test("gh's socket forwards api.github.com calls to the gateway route without the
   assert.match(JSON.parse(elsewhere.body).message, /only api\.github\.com/);
   assert.equal(gateway.seen.length, 3);
 });
-
-// The image's /etc/profile.d/bex-agent-tools.sh, which an interactive sh (the
-// web Shell's and SSH's /bin/sh) reads through ENV and every bash through
-// BASH_ENV.
-const profileScript = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "bex-agent-tools.sh",
-);
-
-// terminal runs a command the way a session's terminal does, with only the
-// environment the image gives every process, and returns its output. Its
-// stdin is not a socket, as a terminal's is not: bash reads no BASH_ENV when
-// stdin is one, which is what a Node pipe is.
-function terminal(
-  statusPath: string,
-  cwd: string,
-  shell: string[],
-  command: string,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(shell[0], [...shell.slice(1), command], {
-      cwd,
-      env: {
-        PATH: process.env.PATH ?? "/usr/bin:/bin",
-        HOME: cwd,
-        ENV: profileScript,
-        BASH_ENV: profileScript,
-        BEX_AGENT_STATUS_FILE: statusPath,
-      },
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    let stdout = "";
-    child.stdout.on("data", (chunk: Buffer) => (stdout += chunk));
-    child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0
-        ? resolve(stdout)
-        : reject(new Error(`${shell.join(" ")} ${command} exited ${code}`)),
-    );
-  });
-}
 
 function ghVariables(env: string): Record<string, string> {
   return Object.fromEntries(

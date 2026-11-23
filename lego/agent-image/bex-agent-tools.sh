@@ -17,12 +17,34 @@ case ":$PATH:" in
 esac
 export PATH
 
+# The driver's files for terminals sit beside its status file.
+__bex_agent_state=${BEX_AGENT_STATUS_FILE:-/var/run/bex-agent/status.json}
+__bex_agent_state=${__bex_agent_state%/*}
+
 # A full-tier session's Java tools (w10/032): the JVM reads no HTTPS_PROXY,
 # so bex-api also gives the egress proxy as JVM system properties, and they
 # go in front of JAVA_TOOL_OPTIONS. A value already there (a repository's
 # own) stays after them, so its own properties win. /etc/mavenrc gives Maven
-# settings naming the same proxy.
+# settings naming the same proxy. The driver serves a loopback relay that
+# adds the session claim, which the JDK sends only through an Authenticator
+# a plain HTTP client does not install (w10/038), and java/env.sh names it in
+# place of the gateway. A shell started before the relay put the gateway's
+# properties in front; the relay's replace them there.
 if [ -n "${BEX_AGENT_JAVA_PROXY_OPTIONS-}" ]; then
+	__bex_java_proxy=$BEX_AGENT_JAVA_PROXY_OPTIONS
+	if [ -r "$__bex_agent_state/java/env.sh" ]; then
+		# shellcheck source=/dev/null
+		. "$__bex_agent_state/java/env.sh"
+	fi
+	if [ "$__bex_java_proxy" != "$BEX_AGENT_JAVA_PROXY_OPTIONS" ]; then
+		case "${JAVA_TOOL_OPTIONS-}" in
+		"$__bex_java_proxy" | "$__bex_java_proxy "*)
+			JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS#"$__bex_java_proxy"}
+			JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS# }
+			;;
+		esac
+	fi
+	unset __bex_java_proxy
 	case " ${JAVA_TOOL_OPTIONS-} " in
 	*" $BEX_AGENT_JAVA_PROXY_OPTIONS "*) ;;
 	*)
@@ -36,13 +58,11 @@ fi
 # the agent to gh/env.sh beside its status file, so gh in a terminal (the web
 # Shell, SSH, Zed) reaches the session's repository as the agent's does. A
 # session without a repository, or whose workspace turned gh off, has none.
-__bex_gh_env=${BEX_AGENT_STATUS_FILE:-/var/run/bex-agent/status.json}
-__bex_gh_env=${__bex_gh_env%/*}/gh/env.sh
-if [ -r "$__bex_gh_env" ]; then
+if [ -r "$__bex_agent_state/gh/env.sh" ]; then
 	# shellcheck source=/dev/null
-	. "$__bex_gh_env"
+	. "$__bex_agent_state/gh/env.sh"
 fi
-unset __bex_gh_env
+unset __bex_agent_state
 
 if [ -n "${BASH_VERSION-}" ] && [ -s "${NVM_DIR-}/nvm.sh" ]; then
 	case $- in

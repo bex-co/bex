@@ -33,6 +33,7 @@ import http from "node:http";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { AgentDriverConfig } from "./config.js";
+import { shellExports } from "./fs-util.js";
 
 // githubCliTokenPlaceholder satisfies gh, which refuses to call the API
 // without a token. The gateway ignores it.
@@ -116,13 +117,13 @@ export function githubCliEnvironment(
   };
 }
 
-// githubCliShellEnvironment is githubCliEnvironment as POSIX shell exports,
-// each value single-quoted.
+// githubCliShellEnvironment is githubCliEnvironment as the terminals' shell
+// file.
 export function githubCliShellEnvironment(config: GitHubCliConfig): string {
-  const exports = Object.entries(githubCliEnvironment(config)).map(
-    ([name, value]) => `export ${name}='${value.replaceAll("'", `'\\''`)}'\n`,
+  return shellExports(
+    "Written by the bex agent driver: gh in this session's terminals reaches its repository through bex, as the agent's does.",
+    githubCliEnvironment(config),
   );
-  return `# Written by the bex agent driver: gh in this session's terminals reaches its repository through bex, as the agent's does.\n${exports.join("")}`;
 }
 
 function refuse(

@@ -430,11 +430,14 @@ USER 10001:10001
 # session without them gets none. So do a full-tier session's JVM proxy
 # properties (w10/032): they go in front of JAVA_TOOL_OPTIONS once, the JVM
 # takes them, and /etc/mavenrc hands mvn global settings naming the proxy
-# unless it was given its own -gs. The session's Python (w4/m544), once the
-# driver points /opt/bex-python/bin at it, is python3, python, pip and pip3
-# in every kind of shell, and /usr/bin/python3 stays Debian's. Cargo, Java
-# and mavenrc write only under /tmp and /var/tmp/bex-maven-10001, and the
-# Python check only its links, which the check removes.
+# unless it was given its own -gs. Once the driver's relay writes java/env.sh
+# beside BEX_AGENT_STATUS_FILE (w10/038), its properties take their place,
+# also in front of a shell's that predates it, and mavenrc names the relay.
+# The session's Python (w4/m544), once the driver points /opt/bex-python/bin
+# at it, is python3, python, pip and pip3 in every kind of shell, and
+# /usr/bin/python3 stays Debian's. Cargo, Java and mavenrc write only under
+# /tmp and /var/tmp/bex-maven-10001, and the Python check only its links,
+# which the check removes.
 RUN set -e; \
     for name in python python3; do ln -s /usr/local/bin/python3.13 "/opt/bex-python/bin/$name"; done; \
     printf '#!/bin/sh\nexec /usr/local/bin/python3.13 -m pip "$@"\n' > /opt/bex-python/bin/pip; chmod 0755 /opt/bex-python/bin/pip; \
@@ -483,7 +486,15 @@ RUN set -e; \
     [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" sh -c '. /etc/mavenrc; echo "$*"' mvn -B)" = "-gs $TMPDIR/bex-maven-10001/settings.xml -B" ]; \
     [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" sh -c '. /etc/mavenrc; echo "$*"' mvn -gs own.xml -B)" = "-gs own.xml -B" ]; \
     python3 -c 'import sys, xml.dom.minidom as m; p = m.parse(sys.argv[1]).getElementsByTagName("proxy")[0]; v = lambda t: p.getElementsByTagName(t)[0].firstChild.data; assert (v("host"), v("port"), v("username"), v("password"), v("nonProxyHosts")) == ("gw.example", "8085", "bnM", "c2Vzc2lvbg", "localhost|127.*|gw.example")' "$TMPDIR/bex-maven-10001/settings.xml"; \
-    rm -rf /tmp/java-check /tmp/rust-check /tmp/cargo-home /tmp/gh-check /tmp/jvm-check "$TMPDIR/bex-maven-10001"
+    relay='-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=41234 -Dhttps.proxyUser=bnM -Dhttps.proxyPassword=c2Vzc2lvbg -Dhttp.nonProxyHosts=localhost|127.*|gw.example -Djdk.http.auth.tunneling.disabledSchemes='; \
+    mkdir -p /tmp/relay-check/java; printf "export BEX_AGENT_JAVA_PROXY_OPTIONS='%s'\n" "$relay" > /tmp/relay-check/java/env.sh; \
+    for shell in 'sh -ic' 'sh -lc' 'bash -c' 'bash -lc' 'bash -ic'; do \
+      [ "$(BEX_AGENT_STATUS_FILE=/tmp/relay-check/status.json BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" $shell 'echo "$JAVA_TOOL_OPTIONS"' 2>/dev/null)" = "$relay" ] || exit 1; \
+      [ "$(BEX_AGENT_STATUS_FILE=/tmp/relay-check/status.json BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" JAVA_TOOL_OPTIONS="$proxy -Down=1" $shell 'echo "$JAVA_TOOL_OPTIONS"' 2>/dev/null)" = "$relay -Down=1" ] || exit 1; \
+    done; \
+    [ "$(BEX_AGENT_STATUS_FILE=/tmp/relay-check/status.json BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" sh -c '. /etc/mavenrc; echo "$*"' mvn -B)" = "-gs $TMPDIR/bex-maven-10001/settings.xml -B" ]; \
+    grep -q '<host>127.0.0.1</host>' "$TMPDIR/bex-maven-10001/settings.xml"; grep -q '<port>41234</port>' "$TMPDIR/bex-maven-10001/settings.xml"; \
+    rm -rf /tmp/java-check /tmp/rust-check /tmp/cargo-home /tmp/gh-check /tmp/jvm-check /tmp/relay-check "$TMPDIR/bex-maven-10001"
 WORKDIR /workspace
 EXPOSE 8787
 ENTRYPOINT ["bex-agent-driver"]

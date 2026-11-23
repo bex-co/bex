@@ -20,6 +20,7 @@ import { runBuild } from "./build.js";
 import { driverMode, loadBuildConfig, loadConfig } from "./config.js";
 import { waitForAttachments } from "./attachments.js";
 import { installSkills } from "./skills.js";
+import { useJavaProxyRelay } from "./java-proxy.js";
 import { ensureRepo } from "./git-setup.js";
 import { choosePython } from "./python-select.js";
 import { describeError } from "./errors.js";
@@ -37,6 +38,10 @@ async function main(): Promise<void> {
   const config = loadConfig();
   // Parsed into config; the agent and its tools have no use for the raw value.
   delete process.env.BEX_REPO_ENVIRONMENT;
+  // Before the agent's environment is built and any tenant process runs, so
+  // every JVM in the sandbox reaches a full-tier session's egress proxy
+  // through the relay (w10/038).
+  const javaProxy = await useJavaProxyRelay(config);
   const agentEnv = agentEnvironment(config);
   let githubCli: GitHubCliProxy | undefined;
   const hub = new UIMessageStreamHub();
@@ -140,7 +145,11 @@ async function main(): Promise<void> {
     try {
       await terminalize();
     } finally {
-      await Promise.all([listener.close(), githubCli?.close()]);
+      await Promise.all([
+        listener.close(),
+        githubCli?.close(),
+        javaProxy?.close(),
+      ]);
     }
   };
   const signalShutdown = () =>
@@ -198,6 +207,9 @@ async function main(): Promise<void> {
 async function buildMain(): Promise<void> {
   const config = loadBuildConfig();
   delete process.env.BEX_REPO_ENVIRONMENT;
+  // A setup step's JVMs reach a full-tier build's egress proxy through the
+  // relay too (w10/038); the process's exit ends it.
+  await useJavaProxyRelay(config);
   const keepAlive = setInterval(() => undefined, 60 * 60_000);
   const abort = new AbortController();
   const stop = () => {

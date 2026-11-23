@@ -96,11 +96,11 @@ function oauthLine(): string {
 }
 
 // networkLine tells a full-tier agent how its internet access works, Java
-// tools' included (w10/032); the other tiers' allowlists need no explanation
-// beyond what fails.
+// tools' included (w10/032, w10/038); the other tiers' allowlists need no
+// explanation beyond what fails.
 function networkLine(context: OverlayContext): string {
   if (context.networkTier !== "full") return "";
-  return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Java tools use it too: `JAVA_TOOL_OPTIONS` carries it as JVM properties, which Gradle and its wrapper read (so each JVM prints a `Picked up JAVA_TOOL_OPTIONS` line), and every `mvn` gets Maven settings naming it. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
+  return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Java tools use it too: `JAVA_TOOL_OPTIONS` carries it as JVM properties naming a local relay that adds the proxy credentials, so any JVM HTTP client that honours the standard proxy properties (`HttpURLConnection`, `java.net.http.HttpClient`, Gradle and its wrapper) reaches it with no `Authenticator` (each JVM prints a `Picked up JAVA_TOOL_OPTIONS` line), and every `mvn` gets Maven settings naming it. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
 }
 
 // pythonLine names the Python the session selected and why (w4/m544), as a

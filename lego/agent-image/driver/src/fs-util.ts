@@ -86,3 +86,16 @@ export async function waitForFiles<T>(
     await sleep(options.intervalMs ?? 250);
   }
 }
+
+// shellExports is a shell file of POSIX exports, each value single-quoted,
+// under one comment line: what the driver writes for the terminals' profile
+// script (bex-agent-tools.sh) to read.
+export function shellExports(
+  comment: string,
+  variables: Record<string, string>,
+): string {
+  const exports = Object.entries(variables).map(
+    ([name, value]) => `export ${name}='${value.replaceAll("'", `'\\''`)}'\n`,
+  );
+  return `# ${comment}\n${exports.join("")}`;
+}

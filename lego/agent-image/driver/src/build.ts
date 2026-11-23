@@ -23,6 +23,7 @@ import { rm } from "node:fs/promises";
 import type { BuildConfig } from "./config.js";
 import { describeError } from "./errors.js";
 import { writeJsonAtomic } from "./fs-util.js";
+import { javaProxyPaths } from "./java-proxy.js";
 import { cloneWithRetry, git, scrubBuildCheckout } from "./git-setup.js";
 import { choosePython } from "./python-select.js";
 import { SecretRedactor } from "./redact.js";
@@ -228,6 +229,7 @@ async function removeDriverState(config: BuildConfig): Promise<void> {
     config.sessionLogPath,
     config.prRecordPath,
     config.resultRecordPath,
+    javaProxyPaths(config).shellEnvPath,
   ]) {
     await rm(file, { force: true });
   }

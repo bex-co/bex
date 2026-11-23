@@ -18,7 +18,7 @@
 // fixture ACP agent, the signed-grant key pair, the child environment, and a
 // seeded bare Git remote.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -145,4 +145,45 @@ export async function promptsSent(file: string): Promise<string[]> {
     .trim()
     .split("\n")
     .map((line) => JSON.parse(line)[0].text as string);
+}
+
+// The image's /etc/profile.d/bex-agent-tools.sh, which an interactive sh (the
+// web Shell's and SSH's /bin/sh) reads through ENV and every bash through
+// BASH_ENV.
+const profileScript = path.join(here, "..", "..", "bex-agent-tools.sh");
+
+// terminal runs a command the way a session's terminal does, with only the
+// environment the image gives every process (plus `env`, the sandbox's own
+// variables), and returns its output. Its stdin is not a socket, as a
+// terminal's is not: bash reads no BASH_ENV when stdin is one, which is what
+// a Node pipe is.
+export function terminal(
+  statusPath: string,
+  cwd: string,
+  shell: string[],
+  command: string,
+  env: Record<string, string> = {},
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(shell[0], [...shell.slice(1), command], {
+      cwd,
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        HOME: cwd,
+        ENV: profileScript,
+        BASH_ENV: profileScript,
+        BEX_AGENT_STATUS_FILE: statusPath,
+        ...env,
+      },
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    let stdout = "";
+    child.stdout.on("data", (chunk: Buffer) => (stdout += chunk));
+    child.on("error", reject);
+    child.on("close", (code) =>
+      code === 0
+        ? resolve(stdout)
+        : reject(new Error(`${shell.join(" ")} ${command} exited ${code}`)),
+    );
+  });
 }
