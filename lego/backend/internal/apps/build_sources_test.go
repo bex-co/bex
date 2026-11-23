@@ -1061,3 +1061,111 @@ func TestBuildSourceRESTRejectsBadJSONWith400(t *testing.T) {
 		}
 	}
 }
+
+// w5/m583 t002: linking a service to a git-backed build source in a different
+// declared Render region returns 400 build_source_region_mismatch on service
+// create, LinkBuildSource, and CreateBuildSource(serviceIds). Matching regions
+// and image-backed build sources (region-independent) succeed.
+func TestBuildSourceRegionMismatch(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	svc.Metadata = resourcemeta.Config{Region: "fsn1"} // default Render region = frankfurt
+
+	oregonGit, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{
+		OwnerID: "tea-a", Name: "OregonGit",
+		Git: &BuildSourceGit{RepoURL: "https://github.com/acme/mono", Branch: "main", Runtime: "node", BuildCommand: "npm ci", Region: "oregon"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaultGit, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{
+		OwnerID: "tea-a", Name: "FrankfurtDefaultGit",
+		Git: &BuildSourceGit{RepoURL: "https://github.com/acme/mono", Branch: "main", Runtime: "node", BuildCommand: "npm ci"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	imgSrc, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{
+		OwnerID: "tea-a", Name: "ImageSrc",
+		Image: &BuildSourceImage{ImageURL: "nginx:1"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertMismatch := func(t *testing.T, label string, err error) {
+		t.Helper()
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != BuildSourceRegionMismatchCode || !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("%s: err = %v, want 400 %s", label, err, BuildSourceRegionMismatchCode)
+		}
+	}
+
+	// 1. Service create: mismatched explicit region and mismatched default region fail.
+	_, err = svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "svc-fra", Type: appv1alpha1.TypeWebService,
+		Region: "frankfurt", BuildSourceID: oregonGit.ID, StartCommand: "node server.js",
+	})
+	assertMismatch(t, "create frankfurt with oregon git source", err)
+
+	_, err = svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "svc-default", Type: appv1alpha1.TypeWebService,
+		BuildSourceID: oregonGit.ID, StartCommand: "node server.js",
+	})
+	assertMismatch(t, "create default (frankfurt) with oregon git source", err)
+
+	_, err = svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "svc-ohio", Type: appv1alpha1.TypeWebService,
+		Region: "ohio", BuildSourceID: defaultGit.ID, StartCommand: "node server.js",
+	})
+	assertMismatch(t, "create ohio with default (frankfurt) git source", err)
+
+	// 2. Service create: matching region (explicit or default) and image-backed succeed.
+	if _, err := svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "svc-oregon-ok", Type: appv1alpha1.TypeWebService,
+		Region: "oregon", BuildSourceID: oregonGit.ID, StartCommand: "node server.js",
+	}); err != nil {
+		t.Fatalf("create oregon with oregon git source: %v", err)
+	}
+	if _, err := svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "svc-fra-default-ok", Type: appv1alpha1.TypeWebService,
+		Region: "frankfurt", BuildSourceID: defaultGit.ID, StartCommand: "node server.js",
+	}); err != nil {
+		t.Fatalf("create frankfurt with default git source: %v", err)
+	}
+	if _, err := svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "svc-singapore-img", Type: appv1alpha1.TypeWebService,
+		Region: "singapore", BuildSourceID: imgSrc.ID,
+	}); err != nil {
+		t.Fatalf("create singapore with image build source: %v", err)
+	}
+
+	// 3. LinkBuildSource (PATCH buildSourceId / GraphQL / MCP).
+	if _, err := svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "existing-fra", Type: appv1alpha1.TypeWebService,
+		Region: "frankfurt", Repo: "https://github.com/acme/web", Runtime: "node", BuildCommand: "npm ci", StartCommand: "node server.js",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	start := "node server.js"
+	_, err = svc.LinkBuildSource(ctx, "existing-fra", oregonGit.ID, &start, false)
+	assertMismatch(t, "link frankfurt service to oregon git source", err)
+
+	if _, err := svc.LinkBuildSource(ctx, "existing-fra", defaultGit.ID, &start, false); err != nil {
+		t.Fatalf("link frankfurt service to frankfurt git source: %v", err)
+	}
+	if _, err := svc.LinkBuildSource(ctx, "existing-fra", imgSrc.ID, nil, false); err != nil {
+		t.Fatalf("link frankfurt service to image build source: %v", err)
+	}
+
+	// 4. CreateBuildSource with serviceIds fails before writing a carrier when region mismatches.
+	beforeRows := len(st.rows)
+	_, err = svc.CreateBuildSource(ctx, CreateBuildSourceRequest{
+		OwnerID: "tea-a", Name: "OhioGitWithFraSvc",
+		Git:        &BuildSourceGit{RepoURL: "https://github.com/acme/mono", Branch: "main", Runtime: "node", BuildCommand: "npm ci", Region: "ohio"},
+		ServiceIDs: []string{"existing-fra"},
+	})
+	assertMismatch(t, "CreateBuildSource ohio linking frankfurt service", err)
+	if len(st.rows) != beforeRows {
+		t.Fatalf("refused CreateBuildSource wrote %d carrier row(s)", len(st.rows)-beforeRows)
+	}
+}

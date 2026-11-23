@@ -46,6 +46,10 @@ var bandwidthSourcesSince = time.Date(2025, time.March, 9, 0, 0, 0, 0, time.UTC)
 // maxBandwidthSourceResources is Render's cap (error code too_many_resources).
 const maxBandwidthSourceResources = 30
 
+// TooManyResourcesCode is Render's errorCode when GET /v1/metrics/bandwidth-sources
+// requests more than maxBandwidthSourceResources resources.
+const TooManyResourcesCode = "too_many_resources"
+
 // bandwidthTrafficSources maps Render's trafficSource values onto the metric
 // source each is read from; "" is the all-sources total.
 var bandwidthTrafficSources = []struct{ render, metric string }{
@@ -95,8 +99,9 @@ func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(resources) > maxBandwidthSourceResources {
-		core.WriteErrStatus(w, http.StatusBadRequest, fmt.Sprintf(
-			"too_many_resources: the breakdown supports at most %d resources", maxBandwidthSourceResources))
+		core.WriteErr(w, core.NewBadRequestError(TooManyResourcesCode,
+			fmt.Sprintf("the breakdown supports at most %d resources", maxBandwidthSourceResources),
+			map[string]any{"maxResources": maxBandwidthSourceResources}))
 		return
 	}
 	if !q.Start.IsZero() && q.Start.Before(bandwidthSourcesSince) {

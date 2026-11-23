@@ -229,8 +229,12 @@ func TestResourceRegionReadsBackTheCreatedRegion(t *testing.T) {
 	} {
 		obj := &metav1.ObjectMeta{}
 		StampRegion(obj, tc.requested)
-		if got := (Config{Region: tc.platform}).ResourceRegion(obj); got != tc.want {
+		cfg := Config{Region: tc.platform}
+		if got := cfg.ResourceRegion(obj); got != tc.want {
 			t.Errorf("platform %q, created with %q: region = %q, want %q", tc.platform, tc.requested, got, tc.want)
+		}
+		if got := cfg.EffectiveRegion(tc.requested); got != tc.want {
+			t.Errorf("platform %q, effective(%q) = %q, want %q", tc.platform, tc.requested, got, tc.want)
 		}
 		if _, stamped := obj.Annotations[AnnotRegion]; stamped != slices.Contains(RenderRegions, tc.requested) {
 			t.Errorf("created with %q: stamped = %v", tc.requested, stamped)

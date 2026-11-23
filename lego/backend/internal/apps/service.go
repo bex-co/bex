@@ -2390,7 +2390,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if desired.Type == appv1alpha1.TypeCronJob {
 			start = req.Command
 		}
-		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, &start, req.startIsDockerCommand, "")
+		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, s.Metadata.EffectiveRegion(req.Region), &start, req.startIsDockerCommand, "")
 		if err != nil {
 			return AppView{}, err
 		}
@@ -2877,7 +2877,7 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	var carrier *appv1alpha1.App
 	if req.BuildSourceID != "" {
 		start := linkStartCommand(a.Spec.Type, req.StartCommand, req.Command)
-		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, &start, req.startIsDockerCommand, "")
+		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, s.Metadata.ResourceRegion(a), &start, req.startIsDockerCommand, "")
 		if err != nil {
 			return stackAppPlan{}, err
 		}

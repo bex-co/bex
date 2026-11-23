@@ -233,19 +233,35 @@ func TestBandwidthSourcesRefusals(t *testing.T) {
 	svc := newService(nil, func(context.Context, RequestMetricsRequest) ([]MetricSeries, error) { return nil, nil }, sampleApp("web"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	many := make([]string, 31)
-	for i := range many {
-		many[i] = "resource=web"
+	limit := make([]string, maxBandwidthSourceResources)
+	for i := range limit {
+		limit[i] = "resource=web"
 	}
-	for _, tc := range []struct{ name, query, want string }{
-		{"before the data begins", "resource=web&startTime=2025-03-08T00:00:00Z&endTime=2025-03-10T00:00:00Z", "only available after 2025-03-09"},
-		{"too many resources", strings.Join(many, "&"), "too_many_resources"},
-		{"no resource", "startTime=2026-10-10T15:00:00Z", "resource is required"},
+	rrOK := httptest.NewRecorder()
+	mux.ServeHTTP(rrOK, httptest.NewRequest(http.MethodGet, "/v1/metrics/bandwidth-sources?"+strings.Join(limit, "&"), nil))
+	if rrOK.Code != http.StatusOK {
+		t.Fatalf("at limit (%d resources): %d %s, want 200", maxBandwidthSourceResources, rrOK.Code, rrOK.Body.String())
+	}
+	many := append(limit, "resource=web")
+	for _, tc := range []struct{ name, query, want, wantCode string }{
+		{"before the data begins", "resource=web&startTime=2025-03-08T00:00:00Z&endTime=2025-03-10T00:00:00Z", "only available after 2025-03-09", ""},
+		{"too many resources", strings.Join(many, "&"), "at most 30 resources", TooManyResourcesCode},
+		{"no resource", "startTime=2026-10-10T15:00:00Z", "resource is required", ""},
 	} {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/v1/metrics/bandwidth-sources?"+tc.query, nil))
 		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), tc.want) {
 			t.Errorf("%s: %d %s, want 400 containing %q", tc.name, rr.Code, rr.Body.String(), tc.want)
+			continue
+		}
+		var body map[string]any
+		if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+			t.Errorf("%s: invalid JSON %q: %v", tc.name, rr.Body.String(), err)
+			continue
+		}
+		gotCode, _ := body["code"].(string)
+		if gotCode != tc.wantCode {
+			t.Errorf("%s: code = %q, want %q (body: %s)", tc.name, gotCode, tc.wantCode, rr.Body.String())
 		}
 	}
 }

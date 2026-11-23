@@ -161,6 +161,23 @@ const BuildSourceNameTakenCode = "BUILD_SOURCE_NAME_TAKEN"
 // and linked some of its serviceIds before a later link failed.
 const BuildSourcePartiallyLinkedCode = "BUILD_SOURCE_PARTIALLY_LINKED"
 
+// BuildSourceRegionMismatchCode is Render's errorCode when a service create or
+// update links a git-backed build source in a different Render region than the
+// service (POST /v1/services, PATCH /v1/services/{id}).
+const BuildSourceRegionMismatchCode = "build_source_region_mismatch"
+
+// checkBuildSourceRegion refuses linking a service in serviceRegion to a
+// git-backed build source in sourceRegion when their effective Render regions
+// differ. Image-backed build sources are region-independent.
+func checkBuildSourceRegion(gitBacked bool, sourceRegion, serviceRegion, buildSourceRef string) error {
+	if !gitBacked || sourceRegion == "" || serviceRegion == "" || sourceRegion == serviceRegion {
+		return nil
+	}
+	return core.NewBadRequestError(BuildSourceRegionMismatchCode,
+		fmt.Sprintf("build source %s is in region %q, which differs from the service's region %q", buildSourceRef, sourceRegion, serviceRegion),
+		map[string]any{"buildSourceRegion": sourceRegion, "serviceRegion": serviceRegion})
+}
+
 func errBuildSourceNameTaken(name string) error {
 	return core.NewConflictError(BuildSourceNameTakenCode,
 		fmt.Sprintf("a build source named %q already exists in this workspace", name), map[string]any{"name": name})
@@ -237,8 +254,11 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 		}
 		create.Image, create.RegistryCredentialID = req.Image.ImageURL, req.Image.RegistryCredentialID
 	}
+	if err := resourcemeta.CheckRequestedRegion(create.Region); err != nil {
+		return BuildSourceView{}, err
+	}
 	native := req.Git != nil && blueprintNativeRuntime(req.Git.Runtime)
-	links, err := s.checkBuildSourceCreateLinks(ctx, req.ServiceIDs, native)
+	links, err := s.checkBuildSourceCreateLinks(ctx, req.ServiceIDs, native, req.Git != nil, s.Metadata.EffectiveRegion(create.Region))
 	if err != nil {
 		return BuildSourceView{}, err
 	}
@@ -294,8 +314,9 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 
 // checkBuildSourceCreateLinks checks each service a create links before the
 // carrier exists, so a refused link writes nothing: linkableService's checks,
-// plus Render's start-command rule for a source that is native or not.
-func (s *Service) checkBuildSourceCreateLinks(ctx context.Context, serviceIDs []string, native bool) ([]string, error) {
+// Render's git-source region match, plus Render's start-command rule for a
+// source that is native or not.
+func (s *Service) checkBuildSourceCreateLinks(ctx context.Context, serviceIDs []string, native, gitBacked bool, sourceRegion string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, id := range serviceIDs {
 		if seen[id] {
@@ -305,6 +326,9 @@ func (s *Service) checkBuildSourceCreateLinks(ctx context.Context, serviceIDs []
 		a, err := s.linkableService(ctx, id)
 		if err != nil {
 			return nil, err
+		}
+		if err := checkBuildSourceRegion(gitBacked, sourceRegion, s.Metadata.ResourceRegion(a), "being created"); err != nil {
+			return nil, fmt.Errorf("service %s: %w", id, err)
 		}
 		existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
 		if _, err := buildSourceLinkCommand(native, nil, false, existing, "being created"); err != nil {
@@ -908,7 +932,7 @@ var buildSourceLinkTypes = []string{"", appv1alpha1.TypeWebService, appv1alpha1.
 //
 // It also returns the carrier, whose source fields the image rules read for
 // the linked service (sourceForImageRules).
-func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType string, start *string, docker bool, existing string) (*appv1alpha1.BuildSourceLink, string, *appv1alpha1.App, error) {
+func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType, serviceRegion string, start *string, docker bool, existing string) (*appv1alpha1.BuildSourceLink, string, *appv1alpha1.App, error) {
 	if err := linkableType(svcType); err != nil {
 		return nil, "", nil, err
 	}
@@ -921,6 +945,9 @@ func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType str
 	}
 	if tenantID != "" && carrier.Labels[core.LabelTenant] != tenantID {
 		return nil, "", nil, fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
+	}
+	if err := checkBuildSourceRegion(carrier.Spec.Image == "", s.Metadata.ResourceRegion(carrier), serviceRegion, id); err != nil {
+		return nil, "", nil, err
 	}
 	command, err := buildSourceLinkCommand(buildSourceNative(carrier.Spec), start, docker, existing, id)
 	if err != nil {
@@ -1090,7 +1117,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 	}
 	cron := a.Spec.Type == appv1alpha1.TypeCronJob
 	existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
-	link, start, _, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, false, existing)
+	link, start, _, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, s.Metadata.ResourceRegion(a), startCommand, false, existing)
 	if err != nil {
 		return AppView{}, err
 	}

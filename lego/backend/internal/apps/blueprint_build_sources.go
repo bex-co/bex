@@ -535,7 +535,7 @@ func (s *Service) blueprintServiceLink(ctx context.Context, req CreateRequest, f
 		command := linkStartCommand(existing.Spec.Type, req.StartCommand, req.Command)
 		start = &command
 	}
-	link, _, _, err := s.buildSourceLink(ctx, existing.Labels[core.LabelTenant], req.BuildSourceID, existing.Spec.Type, start, dockerDeclared, current)
+	link, _, _, err := s.buildSourceLink(ctx, existing.Labels[core.LabelTenant], req.BuildSourceID, existing.Spec.Type, s.Metadata.ResourceRegion(existing), start, dockerDeclared, current)
 	if err != nil {
 		return nil, fmt.Errorf("service %q: %w", req.Name, err)
 	}

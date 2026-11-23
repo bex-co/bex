@@ -164,15 +164,23 @@ func StampRegion(obj metav1.Object, requested string) {
 	obj.SetAnnotations(annotations)
 }
 
+// EffectiveRegion returns the Render region a resource created with requested
+// reads back: requested when it is a Render region, else the public alias of
+// BEX_REGION (RenderRegion; user decision D7, w8/218), or "" when neither is
+// known.
+func (c Config) EffectiveRegion(requested string) string {
+	if slices.Contains(RenderRegions, requested) {
+		return requested
+	}
+	return RenderRegion(c.PlatformRegion())
+}
+
 // ResourceRegion is the region a resource reads back on every surface: the
 // Render region it was created with (StampRegion), else the public alias of
 // BEX_REGION (RenderRegion; user decision D7, w8/218), or "" when neither is
 // known.
 func (c Config) ResourceRegion(obj metav1.Object) string {
-	if region := obj.GetAnnotations()[AnnotRegion]; slices.Contains(RenderRegions, region) {
-		return region
-	}
-	return RenderRegion(c.PlatformRegion())
+	return c.EffectiveRegion(obj.GetAnnotations()[AnnotRegion])
 }
 
 // CheckRequestedRegion is bex's one region policy for every create surface
