@@ -46,7 +46,7 @@
 - **Measured before (t001, production, 2026-11-21):** 15.8–23.3 s on the same node and 39.8–46.8 s across nodes. The time went to node moves (27–32 s each), the 10 s startup period (7–9 s) and the kubelet's 10 s sync (1.7–8.6 s on the same node). LUKS `cryptsetup open` (2.1–2.3 s) is a floor the operator cannot move.
 - **Expected after:** about 6–9 s on the volume's node: stop 0.5 s, a sync of at most 2 s, LUKS 2.2 s, mount 0.8 s, pull 0.6–2.2 s, start 0.3 s, a 1 s probe and Ready 0.4 s. That is above the definition of done's "about 5 s". t005 names the excess phase if the measurement agrees, and t006 records the measured bound.
 - **Gate (clears by itself): pin must carry `e0b731eba`.** Then t005 runs its steps: a tenant node at 2 s (roll `bex-tenant-0` with `rolloutAfter` if none), the fixture, and the runs.
-- **Filed on the way:** [w6/159](../../blocked/159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/m595](../m595/README.md) (pre-pull for large images).
+- **Filed on the way:** [w6/159](../159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/m595](../m595/README.md) (pre-pull for large images).
 
 ## UNBLOCKED — 2026-11-21: production pin `cce6c749f6ff` carries `e0b731eba`
 
