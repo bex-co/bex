@@ -835,7 +835,7 @@ func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /v1/build-sources", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		f, err := parseBuildSourceFilter(q["name"], q.Get)
+		f, err := parseBuildSourceFilter(core.QueryNameList(r.URL, "name"), q.Get)
 		if err != nil {
 			return nil, err
 		}

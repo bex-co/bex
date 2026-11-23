@@ -90,7 +90,7 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 		return ListFilter{}, err
 	}
 	return FilterFromStrings(
-		q["status"],
+		core.QueryList(q, "status"),
 		q.Get("createdBefore"), q.Get("createdAfter"),
 		q.Get("startedBefore"), q.Get("startedAfter"),
 		q.Get("finishedBefore"), q.Get("finishedAfter"),

@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -945,6 +946,62 @@ func TestCreateBuildSourceDoesNotStampManagedOIDC(t *testing.T) {
 			}
 		} else if got != appv1alpha1.ManagedOIDCEnabled {
 			t.Fatalf("service %s got %s=%q; want %q", a.Name, appv1alpha1.LabelManagedOIDC, got, appv1alpha1.ManagedOIDCEnabled)
+		}
+	}
+}
+
+// w5/m580 t001: GET /v1/build-sources parses name with core.QueryNameList so
+// explode=false comma lists, repeated keys, and literal percent-encoded commas
+// all match Render's wire contract (w8/m55).
+func TestBuildSourceListNameFilterParsing(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	for _, name := range []string{"alpha", "beta", "gamma,delta"} {
+		req := monorepoSource
+		req.Name = name
+		if _, err := svc.CreateBuildSource(ctx, req); err != nil {
+			t.Fatalf("create %q: %v", name, err)
+		}
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	listNames := func(rawQuery string) []string {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/v1/build-sources?"+rawQuery, nil).WithContext(ctx)
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /v1/build-sources?%s = %d %s", rawQuery, rec.Code, rec.Body)
+		}
+		var rows []struct {
+			BuildSource struct {
+				Name string `json:"name"`
+			} `json:"buildSource"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil {
+			t.Fatal(err)
+		}
+		out := make([]string, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, r.BuildSource.Name)
+		}
+		return out
+	}
+
+	for _, tc := range []struct {
+		query string
+		want  []string
+	}{
+		{"name=alpha,beta", []string{"alpha", "beta"}},
+		{"name=alpha,+beta,", []string{"alpha", "beta"}},
+		{"name=alpha&name=beta", []string{"alpha", "beta"}},
+		{"name=gamma%2Cdelta", []string{"gamma,delta"}},
+		{"name=alpha,gamma%2Cdelta", []string{"alpha", "gamma,delta"}},
+	} {
+		got := listNames(tc.query)
+		slices.Sort(got)
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("query %q = %v, want %v", tc.query, got, tc.want)
 		}
 	}
 }

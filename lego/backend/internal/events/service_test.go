@@ -864,6 +864,34 @@ func TestFilterOfReadsRendersCommaWire(t *testing.T) {
 	}
 }
 
+// w5/m580 t001: GET /v1/services/{id}/events honors both comma-separated and
+// repeated ?type= parameters instead of dropping keys after the first.
+func TestRESTListEventsTypeFilterMultiValue(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		query string
+	}{
+		{"comma-separated", "type=deploy_ended,server_failed"},
+		{"repeated", "type=deploy_ended&type=server_failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := &fakeStore{}
+			svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/v1/services/srv-1/events?"+tc.query, nil)
+			mux.ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET events?%s = %d %s", tc.query, rec.Code, rec.Body.String())
+			}
+			if !slices.Contains(st.got.Phases, "ended") || !slices.Contains(st.got.FactTypes, TypeServerFailed) {
+				t.Fatalf("store filter = %+v, want both deploy ended phase and server_failed fact type", st.got)
+			}
+		})
+	}
+}
+
 // TestScheduledCronRunReachesTheFeed is w4/m118's behavioral regression, at the
 // level the bug actually bit: what the service asks the store for, and what
 // comes back.

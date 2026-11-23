@@ -109,14 +109,15 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
-	label := r.URL.Query().Get("label")
+	v := r.URL.Query()
+	label := v.Get("label")
 	if label == "" {
 		core.WriteErr(w, fmt.Errorf("%w: label is required", core.ErrBadRequest))
 		return
 	}
 
 	all := []string{}
-	ctx := core.WithRequestMemo(r.Context())
+	ctx := core.WithRequestMemo(core.WithWorkspace(r.Context(), v.Get("ownerId")))
 	for _, res := range resources {
 		q.App = res
 		values, err := s.LogLabelValues(ctx, label, q)
@@ -155,7 +156,8 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 	// then sorts and caps. QueryLogs gets the query as parsed: normalizing here
 	// first would coerce an invalid `direction` to the default before the verb
 	// could refuse it.
-	page, err := s.queryLogPage(r.Context(), resources, q)
+	ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
+	page, err := s.queryLogPage(ctx, resources, q)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -178,7 +180,8 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Mounted as a method value, this has no verb method beneath it: the tail's
 	// authorizations name FollowLogs, as the other surfaces' tail does (w21/093).
-	r = r.WithContext(core.WithAuditVerb(r.Context(), AuditVerbFollowLogs))
+	ctx := core.WithWorkspace(core.WithAuditVerb(r.Context(), AuditVerbFollowLogs), r.URL.Query().Get("ownerId"))
+	r = r.WithContext(ctx)
 	if r.URL.Query().Has("project") {
 		s.projectSubscribe(w, r)
 		return

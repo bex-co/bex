@@ -65,4 +65,15 @@ func TestUnfilteredOverridesSpanTheCallersWorkspaces(t *testing.T) {
 	if got := list("?ownerId=tea-a"); len(got) != 1 {
 		t.Errorf("ownerId=tea-a overrides = %v, want one", got)
 	}
+	if got := list("?ownerId=tea-a,tea-b"); len(got) != 2 {
+		t.Errorf("ownerId=tea-a,tea-b overrides = %v, want both workspaces' services", got)
+	}
+	if got := list("?ownerId=tea-a&ownerId=tea-b"); len(got) != 2 {
+		t.Errorf("repeated ownerId overrides = %v, want both workspaces' services", got)
+	}
+	rec := httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides?ownerId=tea-a,tea-foreign", nil).WithContext(ctxAs("id-a")))
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("foreign ownerId in comma list = %d %s, want 403", rec.Code, rec.Body)
+	}
 }

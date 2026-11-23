@@ -155,7 +155,7 @@ func TestListJobsFilterEdgeCases(t *testing.T) {
 		}
 	})
 
-	for _, bad := range []string{"limit=0", "limit=-1", "limit=abc", "createdBefore=not-a-time"} {
+	for _, bad := range []string{"limit=0", "limit=-1", "limit=abc", "createdBefore=not-a-time", "status=pending,bogus", "status=pending&status=bogus"} {
 		t.Run("rejects "+bad, func(t *testing.T) {
 			_, mux := filterHarness(t)
 			if rec := getJobs(t, mux, "/v1/services/web/jobs?"+bad); rec.Code != http.StatusBadRequest {
@@ -163,4 +163,14 @@ func TestListJobsFilterEdgeCases(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("parses comma-separated and repeated statuses", func(t *testing.T) {
+		st, mux := filterHarness(t)
+		if rec := getJobs(t, mux, "/v1/services/web/jobs?status=pending,+,running&status=succeeded,running"); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (body: %s)", rec.Code, rec.Body.String())
+		}
+		if !slices.Equal(st.filter.Statuses, []string{"pending", "running", "succeeded"}) {
+			t.Fatalf("Statuses = %v, want [pending running succeeded]", st.filter.Statuses)
+		}
+	})
 }

@@ -28,6 +28,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // A Render list-logs filter bex cannot honor is refused by name on every logs
@@ -144,4 +147,71 @@ func declaredQueryNames(t *testing.T, spec any, path string) []string {
 		}
 	}
 	return names
+}
+
+// w5/m580 t002: REST logs endpoints honor ownerId instead of ignoring it:
+// a foreign workspace answers 403, a resource in another workspace answers 404,
+// and an explicit ownerId disambiguates same-named services across workspaces.
+func TestLogsRESTHonorsOwnerID(t *testing.T) {
+	appA := sampleApp(core.CRName("tea-a", "web"))
+	appA.Namespace = "tea-a"
+	appA.Labels = map[string]string{core.LabelTenant: "tea-a", core.LabelAppID: "srv-a", core.LabelServiceName: "web"}
+	appB := sampleApp(core.CRName("tea-b", "web"))
+	appB.Namespace = "tea-b"
+	appB.Labels = map[string]string{core.LabelTenant: "tea-b", core.LabelAppID: "srv-b", core.LabelServiceName: "web"}
+	podA := podFor(appA.Name, "web-a-1")
+	podA.Namespace = "tea-a"
+	podB := podFor(appB.Name, "web-b-1")
+	podB.Namespace = "tea-b"
+
+	svc := newService(map[string][]string{
+		"web-a-1": {"2026-07-05T00:00:01Z alpha-line"},
+		"web-b-1": {"2026-07-05T00:00:01Z beta-line"},
+	}, appA, appB, podA, podB)
+	svc.Base.Workspace = coretest.Workspaces{"tea-a", "tea-b"}
+	svc.LabelValues = func(_ context.Context, app, _ string, _ LogQuery) ([]string, error) {
+		return []string{app}, nil
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	caller := core.WithIdentity(context.Background(), core.Identity{Subject: "user-1", Method: "session"})
+	get := func(path string) *httptest.ResponseRecorder {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil).WithContext(caller))
+		return rec
+	}
+
+	// Non-member ownerId refuses with 403 on all three REST log routes.
+	for _, path := range []string{
+		"/v1/logs?ownerId=tea-foreign&resource=srv-a&startTime=" + fixtureDay,
+		"/v1/logs/values?ownerId=tea-foreign&resource=srv-a&label=instance&startTime=" + fixtureDay,
+		"/v1/logs/subscribe?ownerId=tea-foreign&resource=srv-a",
+	} {
+		if rec := get(path); rec.Code != http.StatusForbidden {
+			t.Errorf("GET %s = %d %s, want 403", path, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Mismatched member ownerId refuses srv-a (which lives in tea-a) with 404.
+	for _, path := range []string{
+		"/v1/logs?ownerId=tea-b&resource=srv-a&startTime=" + fixtureDay,
+		"/v1/logs/values?ownerId=tea-b&resource=srv-a&label=instance&startTime=" + fixtureDay,
+		"/v1/logs/subscribe?ownerId=tea-b&resource=srv-a",
+	} {
+		if rec := get(path); rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s = %d %s, want 404", path, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Explicit ownerId disambiguates the same displayed name "web" in tea-b.
+	rec := get("/v1/logs?ownerId=tea-b&resource=web&startTime=" + fixtureDay)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "beta-line") || strings.Contains(rec.Body.String(), "alpha-line") {
+		t.Fatalf("GET /v1/logs?ownerId=tea-b&resource=web = %d %s, want beta-line only", rec.Code, rec.Body.String())
+	}
+	rec = get("/v1/logs/values?ownerId=tea-b&resource=web&label=instance&startTime=" + fixtureDay)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "srv-b") || strings.Contains(rec.Body.String(), "srv-a") {
+		t.Fatalf("GET /v1/logs/values?ownerId=tea-b&resource=web = %d %s, want srv-b only", rec.Code, rec.Body.String())
+	}
 }

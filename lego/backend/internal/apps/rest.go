@@ -1902,19 +1902,6 @@ type notificationOverrideItem struct {
 
 const notificationOverrideTypeService = "service"
 
-// listOverrideApps is the notification-overrides list's source: the named
-// workspace, or — when none is named — every workspace the caller belongs to
-// (Render: "all notification overrides for all workspaces the user belongs
-// to"; core.ListForCaller). Each workspace is listed through s.List, which
-// authorizes it.
-func (s *Service) listOverrideApps(ctx context.Context, ownerID string) ([]AppView, error) {
-	var named []string
-	if ownerID != "" {
-		named = []string{ownerID}
-	}
-	return core.ListForCaller(ctx, s.Base, named, s.List)
-}
-
 // registerNotificationOverrideRoutes mounts the per-service notification
 // override pair — read the effective override, and PATCH notificationsToSend
 // and previewNotificationsEnabled — plus Render's workspace-wide list (w2/m100
@@ -1927,10 +1914,10 @@ func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/notification-settings/overrides", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		// Workspace scoping is s.List's, so this route cannot see further than
-		// any other list: the named workspace when the caller belongs to it,
+		// any other list: the named workspaces when the caller belongs to them,
 		// nothing at all for a foreign one — and, when unnamed, every
 		// workspace the caller belongs to, as Render documents (w8/191).
-		apps, err := s.listOverrideApps(r.Context(), q.Get("ownerId"))
+		apps, err := core.ListForCaller(r.Context(), s.Base, core.QueryList(q, "ownerId"), s.List)
 		if err != nil {
 			return nil, err
 		}
