@@ -723,3 +723,59 @@ func TestDockerfileBuildLogIsBuildKitsOutput(t *testing.T) {
 		t.Fatalf("exit %d, log:\n%q\nwant:\n%q", exit, log, transcript)
 	}
 }
+
+// w32/098: nativeLogDisplay keeps BuildKit's pre-command runtime layer copies
+// and Poetry/uv pip-install layers out of the build log whether cold or cached,
+// emitting no `==> Installing <Runtime> version` line before the build command.
+func TestNativeBuildLogOmitsInstallingLineForRuntimeLayersAndPythonTools(t *testing.T) {
+	const command = "pip install -r requirements.txt"
+	run := fmt.Sprintf(`#23 [stage-0 11/12] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n%s"]`, command)
+	for _, tc := range []struct {
+		name  string
+		steps string
+	}{
+		{
+			name: "cold runtime copy and pip install layers",
+			steps: `#7 [stage-0  2/12] COPY --link --from=python:3.11.9-bookworm@sha256:0001 /usr/local/ /usr/local/
+#7 DONE 2.1s
+#8 [stage-0  3/12] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+#8 1.210 Collecting poetry==2.1.3
+#8 5.902 Successfully installed poetry-2.1.3
+#8 DONE 6.4s
+#9 [stage-0  4/12] RUN /usr/local/bin/python -m venv /opt/bex/uv && /opt/bex/uv/bin/pip install --no-cache-dir --disable-pip-version-check --no-input uv==0.13.7 && ln -s /opt/bex/uv/bin/uv /usr/local/bin/uv && ln -s /opt/bex/uv/bin/uvx /usr/local/bin/uvx
+#9 0.912 Collecting uv==0.13.7
+#9 DONE 2.0s
+#10 [stage-0  5/12] COPY --link --from=node:26-bookworm@sha256:0002 /usr/local/bin/node /usr/local/bin/node
+#10 DONE 1.4s
+`,
+		},
+		{
+			name: "cached runtime copy and pip install layers",
+			steps: `#7 [stage-0  2/12] COPY --link --from=python:3.11.9-bookworm@sha256:0001 /usr/local/ /usr/local/
+#7 CACHED
+#8 [stage-0  3/12] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+#8 CACHED
+#9 [stage-0  4/12] RUN /usr/local/bin/python -m venv /opt/bex/uv && /opt/bex/uv/bin/pip install --no-cache-dir --disable-pip-version-check --no-input uv==0.13.7 && ln -s /opt/bex/uv/bin/uv /usr/local/bin/uv && ln -s /opt/bex/uv/bin/uvx /usr/local/bin/uvx
+#9 CACHED
+#10 [stage-0  5/12] COPY --link --from=node:26-bookworm@sha256:0002 /usr/local/bin/node /usr/local/bin/node
+#10 CACHED
+`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			transcript := "#1 [internal] load build definition from Dockerfile\n#1 DONE 0.0s\n" +
+				tc.steps + run + "\n#23 1.000 ok\n#23 DONE 1.1s\n#24 exporting to oci image format\n#24 DONE 0.5s\n"
+			log, _, exit := runBuildkit(t, nativeLogOptions(command), transcript, 0)
+			if exit != 0 {
+				t.Fatalf("exit %d, log:\n%s", exit, log)
+			}
+			want := rendersShellLine("Running build command '"+command+"'...") + "\nok\n" + rendersRuntimeLine("Uploading build...") + "\n"
+			if log != want {
+				t.Fatalf("log = %q, want %q", log, want)
+			}
+			if strings.Contains(shown(log), "Installing ") {
+				t.Errorf("log unexpectedly emitted an Installing line:\n%s", log)
+			}
+		})
+	}
+}

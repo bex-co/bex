@@ -17,10 +17,15 @@ limitations under the License.
 package build
 
 import (
+	"context"
+	"encoding/base64"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/types/renderlog"
 )
@@ -123,5 +128,128 @@ func TestOnlyNodesVersionLinesCarryRendersForm(t *testing.T) {
 		if n := c.Narration(); strings.Contains(n, "\x1b") {
 			t.Errorf("%s's narration %q carries codes no Render capture shows", runtime, n)
 		}
+	}
+}
+
+// w32/098: bex assembles every primary language runtime and Bun from prebuilt
+// OCI images copied onto nativeCommonBase (never running an in-build runtime
+// installer), while Poetry and uv install inside BuildKit after native-resolve
+// has already narrated every runtime and companion. Neither path emits Render's
+// `==> Installing <Runtime> version <v>...` line.
+func TestNativeResolveOmitsInstallingLineAndUsesPrebuiltOCIImages(t *testing.T) {
+	exact := &fakeExact{digests: map[string]string{
+		"node:22.23.1-bookworm":  exactDigest,
+		"node:25.8.1-bookworm":   exactDigest,
+		"python:3.11.9-bookworm": exactDigest,
+	}}
+	for _, tc := range []struct {
+		name           string
+		runtime        string
+		env            map[string]string
+		repoFiles      map[string]string
+		wantCopies     []string
+		wantPipInstall []string
+	}{
+		{
+			name:       "node default",
+			runtime:    nativeNodeRuntime,
+			wantCopies: []string{"COPY --link --from=node:24-bookworm@"},
+		},
+		{
+			name:       "node exact env",
+			runtime:    nativeNodeRuntime,
+			env:        map[string]string{"NODE_VERSION": "22.23.1"},
+			wantCopies: []string{"COPY --link --from=node:22.23.1-bookworm@" + exactDigest},
+		},
+		{
+			name:       "node package.json range",
+			runtime:    nativeNodeRuntime,
+			repoFiles:  map[string]string{"package.json": `{"engines":{"node":">=20"}}`},
+			wantCopies: []string{"COPY --link --from=node:26-bookworm@"},
+		},
+		{
+			name:       "node unreviewed exact release",
+			runtime:    nativeNodeRuntime,
+			env:        map[string]string{"NODE_VERSION": "25.8.1"},
+			wantCopies: []string{"COPY --link --from=node:25.8.1-bookworm@" + exactDigest},
+		},
+		{
+			name:       "node with bun lockfile",
+			runtime:    nativeNodeRuntime,
+			repoFiles:  map[string]string{"bun.lock": "{}"},
+			wantCopies: []string{"COPY --link --from=node:24-bookworm@", "COPY --link --from=oven/bun:"},
+		},
+		{
+			name:           "python exact with poetry, uv and node companion",
+			runtime:        nativePythonRuntime,
+			env:            map[string]string{"PYTHON_VERSION": "3.11.9", "POETRY_VERSION": "1.8.3", "UV_VERSION": "0.13.7"},
+			repoFiles:      map[string]string{"uv.lock": ""},
+			wantCopies:     []string{"COPY --link --from=python:3.11.9-bookworm@" + exactDigest, "COPY --link --from=node:24-bookworm@"},
+			wantPipInstall: []string{"poetry==1.8.3", "uv==0.13.7"},
+		},
+		{
+			name:       "ruby file with node companion",
+			runtime:    nativeRubyRuntime,
+			repoFiles:  map[string]string{".ruby-version": "3.2\n"},
+			wantCopies: []string{"COPY --link --from=ruby:3.2-bookworm@", "COPY --link --from=node:24-bookworm@"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			srcDir := filepath.Join(dir, "src")
+			if err := os.MkdirAll(srcDir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			for name, content := range tc.repoFiles {
+				if err := os.WriteFile(filepath.Join(srcDir, name), []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var bundle strings.Builder
+			for k, v := range tc.env {
+				bundle.WriteString(k + "=" + base64.StdEncoding.EncodeToString([]byte(v)) + "\n")
+			}
+			bundlePath := filepath.Join(dir, "render-env")
+			if err := os.WriteFile(bundlePath, []byte(bundle.String()), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			o := nativeOptions()
+			o.Runtime = tc.runtime
+			o.BuildCommand = "true"
+			o.StartCommand = "true"
+			dockerfilePath := filepath.Join(dir, "Dockerfile")
+			if err := os.WriteFile(dockerfilePath, []byte(nativeDockerfile(o)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			choices, err := ResolveNativeBuildExact(context.Background(), exact, time.Time{}, tc.runtime, bundlePath, dockerfilePath, srcDir)
+			if err != nil {
+				t.Fatalf("ResolveNativeBuildExact: %v", err)
+			}
+			for _, c := range choices {
+				narration := c.NarrationIn(NativeWorkdir)
+				if strings.Contains(shown(narration), "Installing ") {
+					t.Errorf("%s narration unexpectedly emitted an Installing line:\n%s", c.Label, narration)
+				}
+			}
+			raw, err := os.ReadFile(dockerfilePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dockerfile := string(raw)
+			if !strings.Contains(dockerfile, "\nFROM "+nativeCommonBase+"\n") {
+				t.Errorf("Dockerfile does not build on nativeCommonBase:\n%s", dockerfile)
+			}
+			for _, want := range tc.wantCopies {
+				if !strings.Contains(dockerfile, want) {
+					t.Errorf("Dockerfile missing prebuilt OCI copy %q:\n%s", want, dockerfile)
+				}
+			}
+			for _, want := range tc.wantPipInstall {
+				if !strings.Contains(dockerfile, "pip install --no-cache-dir --disable-pip-version-check --no-input "+want) {
+					t.Errorf("Dockerfile missing BuildKit pip install for %q:\n%s", want, dockerfile)
+				}
+			}
+		})
 	}
 }
