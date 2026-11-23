@@ -1,6 +1,6 @@
 # w4 · m594 — In a protected environment only Admins read datastore passwords, change datastore IP rules or touch environment groups' variables, as on Render
 
-**Worker:** worker4 **Goal:** in a protected environment, the remaining actions Render reserves to Admins are Admin-only on bex too: viewing a Postgres's or Key Value's password and connection URLs, changing a Postgres's or Key Value's inbound IP rules, and viewing or changing an environment group's variables and secret files (and deleting the group). A non-Admin is refused with `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` on REST, GraphQL and MCP, and the dashboard shows each control disabled with Render's _This action is limited to admins._ before the click. A Blueprint's own sync keeps Render's exception. **Status:** blocked (pin must carry `3329f5eaff`: t006's production walk as the QA user, then t010; t001–t005 and t007–t009 done, and t006 passed on dev-4)
+**Worker:** worker4 **Goal:** in a protected environment, the remaining actions Render reserves to Admins are Admin-only on bex too: viewing a Postgres's or Key Value's password and connection URLs, changing a Postgres's or Key Value's inbound IP rules, and viewing or changing an environment group's variables and secret files (and deleting the group). A non-Admin is refused with `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` on REST, GraphQL and MCP, and the dashboard shows each control disabled with Render's _This action is limited to admins._ before the click. A Blueprint's own sync keeps Render's exception. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | An environment group's variables, secret files and Delete are Admin-only in a protected environment — **DONE** | 1h15m | — |
 | [t004](done/t004.md) | The datastore projections and the env-group view say so before the click — **DONE** | 45m | t001, t002, t003 |
 | [t005](done/t005.md) | Dashboard: the reveal, IP-rule and env-group controls read Render's admin-only reason — **DONE** | 1h30m | t004 |
-| [t006](t006.md) | Live check on dev-4 as an Admin, a Developer and a Viewer at 1440 and 390 | 45m | t005 |
+| [t006](done/t006.md) | Live check on dev-4 as an Admin, a Developer and a Viewer at 1440 and 390 — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 25m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 7h10m**.
 
@@ -80,4 +80,25 @@ REST's `403` carries no code on these Render operations (w8/411 keeps Render's v
 The pooled-string reveal was not shown (no pooler on these plans); its gate is covered by `admin-only-controls.test.tsx`. A raced coded `403` was not forced live; the API rows above show the code reaching GraphQL, and the component tests show each control reading it as the admin-only reason.
 
 - **Cleanup:** the services, datastores, groups, project, the three workspaces and the three identities were deleted, the OpenFGA and OpenBao deployments removed, the dashboard stopped, and bex-api restarted with its defaults.
-- **Production:** waits for a pin that carries this change. The QA user is an Admin in `bex-canary`, so the walk checks that an Admin keeps every control in a protected environment of a disposable project.
+
+**Production (2026-11-23, pin `9fdf7e0a1171`, carrying `3329f5eaff`).** Signed in as the QA user with `bash scripts/qa-login.sh` in `bex-canary` (where the QA user is an Admin). Disposable fixtures: project `qa-20261123-m594` (disposable) with one protected environment, `production`, holding a free Postgres 16 (`qa-20261123-m594-pg`), a free Key Value (`qa-20261123-m594-kv`) with external access, and an environment group (`qa-20261123-m594-eg`) with a variable (`QA_VAR`) and a secret file (`qa-secret.txt`).
+
+- **REST and GraphQL as the Admin.** `GET /v1/postgres/{id}/connection-info` and `GET /v1/key-value/{id}/connection-info` answered 200 with connection strings; `GET /v1/env-groups/{id}` answered 200 with `envVars` and `secretFiles`. GraphQL `databaseActions` and `keyValueActions` returned `view_connection_info` and `update_ip_allow_list` as `allowed`, and `envGroupActions` returned `view_env_vars`, `update_env_vars` and `delete` as `allowed`.
+- **Dashboard**, headless Chromium at 1440 and 390 (both widths gave the same results):
+
+| Control (Admin, protected) | 1440 and 390 |
+| --- | --- |
+| Postgres **Reveal connection info** | Enabled; clicked, revealed connection info (**Hide connection info** shown), then hidden. |
+| Postgres Access control IP allowlist | Inputs, **Add** and **Save allowlist** enabled; added and saved `203.0.113.10/32` (1440) and `203.0.113.11/32` (390), verified via REST. |
+| Key Value **Reveal connection info** | Enabled; clicked, revealed connection info (**Hide connection info** shown), then hidden. |
+| Key Value Networking IP allowlist | Inputs, **Add** and **Save allowlist** enabled; added and saved `203.0.113.20/32` (1440) and `203.0.113.21/32` (390), verified via REST. |
+| Env group **Reveal** (variable and secret file), **Edit** and Manage → **Clone** / **Delete** | All enabled; revealed `QA_VAR` and `qa-secret.txt`, edited and saved `QA_VAR` (`qa-1440`, then `qa-390`, verified via REST), and confirmed Manage → **Clone** and **Delete** enabled. |
+
+- **Scope.** Production has one QA identity, so the Developer and Viewer refusals rest on dev-4's run above.
+- **Cleanup:** the Postgres, Key Value, env group and project were deleted (each by-ID `GET` answered 404), the QA session was revoked (`--logout`: `ok logged-out`), and its jar and storage-state file were removed. Pre-existing resources in `bex-canary` were untouched.
+
+## Unblocked (2026-11-23)
+
+- **Finding (verified evidence):** production's pin `9fdf7e0a1171` (`cded300699`, `chore(deploy): pin platform images to 9fdf7e0a1171`) carries `3329f5eaff` (`git merge-base --is-ancestor 3329f5eaff 9fdf7e0a1171` exited 0). The live dashboard entry bundle on `dashboard.bex.co` carries `EnvGroupActions`, `envGroupActions`, `update_ip_allow_list` and `view_connection_info`.
+- **Gate:** none left. The pin gate cleared by itself; no user action was involved.
+- **Next:** complete the production Admin walk in `bex-canary` at 1440 and 390 (t006 step 3), delete fixtures and log out, then close with t010 (completed above).
