@@ -641,6 +641,12 @@ const (
 	portScanNoHTTPLine        = "==> No open HTTP ports detected on 0.0.0.0, continuing to scan..."
 	portScanNoHTTPTimeoutLine = "==> Port scan timeout reached, no open HTTP ports detected. " +
 		"If you don't need to receive public HTTP traffic, create a private service instead."
+	// w8/416: once a web service sets PORT, Render scans that port alone and
+	// names it (community.render.com/t/21740, 2024-05;
+	// htdio-stg/deploy-templates#1, 2025-02), with no docs line.
+	portScanEnvPortLine        = "==> Continuing to scan for open port %d (from PORT environment variable)..."
+	portScanEnvPortTimeoutLine = "==> Port scan timeout reached, failed to detect open port %d from PORT environment variable. " +
+		"Bind your service to port %d or update the PORT environment variable to the correct port."
 	portScanInterval = time.Minute
 	portScanMaxLines = 5
 )
@@ -670,7 +676,13 @@ var (
 // from the moment the finding was recorded, the plain one before, so a line
 // already read keeps its text.
 func portScanWordingAt(d DeployProgress, t time.Time) portScanWording {
-	if w, ok := portScanWordings[d.PortScanFound]; ok && !t.Before(d.PortScanFoundAt) {
+	if d.PortScanFound == "" || t.Before(d.PortScanFoundAt) {
+		return portScanPlain
+	}
+	if port := d.PortScanFound.EnvPort(); port > 0 {
+		return portScanWording{scan: fmt.Sprintf(portScanEnvPortLine, port), timeout: fmt.Sprintf(portScanEnvPortTimeoutLine, port, port)}
+	}
+	if w, ok := portScanWordings[d.PortScanFound]; ok {
 		return w
 	}
 	return portScanPlain

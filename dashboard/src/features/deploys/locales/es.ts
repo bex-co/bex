@@ -839,6 +839,12 @@ const esDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_env_port_closed": {
+    message:
+      " Nada aceptó una conexión TCP en el puerto {port}, definido por la variable de entorno PORT del servicio. Enlaza el servidor a 0.0.0.0 en el puerto {port} o cambia la variable de entorno PORT por el puerto en el que escucha.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " Nada aceptó una conexión TCP en el puerto {port}, definido por el puerto configurado del servicio; la imagen no declara ningún otro puerto TCP. Enlaza el servidor a 0.0.0.0 en el puerto {port} o cambia el puerto del servicio por aquel en el que escucha.",

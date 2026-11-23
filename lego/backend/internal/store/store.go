@@ -466,8 +466,9 @@ type Deploy struct {
 	PortScanUntil *time.Time `json:"-"`
 	// PortScanFound is the first finding Render names apart from "no open
 	// ports" that the running scan reported (appv1alpha1.PortScanFound*:
-	// a listener only on localhost, or open ports answering no HTTP), and
-	// PortScanFoundAt when (w8/388). "" and nil are neither.
+	// a listener only on localhost, open ports answering no HTTP (w8/388), or
+	// the closed port a web service's PORT names, "env_port:8080", w8/416),
+	// and PortScanFoundAt when. "" and nil are neither.
 	PortScanFound   appv1alpha1.PortScanFinding `json:"-"`
 	PortScanFoundAt *time.Time                  `json:"-"`
 	// End is the structured cause a failed deploy's close recorded (w8/m146):
@@ -3498,12 +3499,13 @@ func clampPageLimit(n int) int {
 // has one scan: a second no-open-port stretch after the first ended adds no
 // lines, so a line is only ever written for a moment the scan was running.
 // The first stall of a running scan that names a finding (a listener only on
-// localhost, open ports answering no HTTP; w8/388) records it and its moment,
+// localhost, open ports answering no HTTP, w8/388; the closed port PORT
+// names, w8/416) records it and its moment,
 // and nothing later changes it, so a scan line already read never rewords.
 // One clock reading stamps all three, so a scan that starts with a finding
 // finds it at its first line.
 func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) error {
-	scan := appv1alpha1.PortScanOf(reason)
+	scan, found := appv1alpha1.ReadPortScan(reason)
 	_, err := s.Pool.Exec(ctx,
 		`UPDATE deploys SET stall_reason = $2,
 		     port_scan_since = CASE WHEN $3 THEN COALESCE(port_scan_since, c.at) ELSE port_scan_since END,
@@ -3515,7 +3517,7 @@ func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) e
 		                               ELSE port_scan_found_at END
 		 FROM (SELECT clock_timestamp() AS at) c
 		 WHERE id = $1 AND finished_at IS NULL AND stall_reason IS DISTINCT FROM $2`,
-		id, reason, scan.Scanning(), scan == appv1alpha1.PortScanOver, scan.Found())
+		id, reason, scan.Scanning(), scan == appv1alpha1.PortScanOver, found)
 	return classify("deploy stall reason", err)
 }
 

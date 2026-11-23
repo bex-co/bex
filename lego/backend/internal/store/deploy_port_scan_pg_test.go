@@ -184,6 +184,15 @@ func TestPGStallReasonRecordsThePortScansFinding(t *testing.T) {
 		t.Fatalf("a scan that starts with a finding: since %v, found %q at %v, want no_http at the scan's start", d.PortScanSince, d.PortScanFound, d.PortScanFoundAt)
 	}
 
+	// w8/416: a web service's closed PORT is a scan of that port, recorded
+	// with it from the first line.
+	stall, read = rollout("closed-port")
+	stall(appv1alpha1.ProbeStallReason("startup", true, "", "8080", 0) +
+		appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintEnvPortClosed, appv1alpha1.DeployReasonParam{Name: "port", Value: "8080"}))
+	if d := read(); d.PortScanFound.EnvPort() != 8080 || d.PortScanSince == nil || d.PortScanFoundAt == nil || !d.PortScanFoundAt.Equal(*d.PortScanSince) {
+		t.Fatalf("a closed PORT: since %v, found %q at %v, want port 8080 at the scan's start", d.PortScanSince, d.PortScanFound, d.PortScanFoundAt)
+	}
+
 	stall, read = rollout("after-the-scan")
 	stall(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneYet))
 	stall(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected, appv1alpha1.DeployReasonParam{Name: "port", Value: "8080"}))

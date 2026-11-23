@@ -161,9 +161,12 @@ func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
 		{"explicit port the image does not declare", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 80, 10000), 10000,
 			[]string{"port 10000, set by the service's configured port", "declares TCP ports (80)", "Settings"}, []string{"80, 10000", "Bind the server"}},
 		// w4/m323: the variable wins over any port setting, so the advice is
-		// to change or remove the variable, not the setting.
+		// to change or remove the variable, not the setting. On a web service
+		// it is Render's PORT fix, and the image's ports are not Render's
+		// business once PORT is set (w8/416).
 		{"PORT env the image does not declare", web(appv1alpha1.PortModeWebImageV1, 9999, 80, 9999), 9999,
-			[]string{"set by the service's PORT environment variable", "(80)", "Change the PORT environment variable"}, []string{"80, 9999", "in Settings"}},
+			[]string{"port 9999, set by the service's PORT environment variable", "update the PORT environment variable"},
+			[]string{"(80)", "80, 9999", "in Settings", "background worker"}},
 		{"explicit port the image declares", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 80, 8080), 8080,
 			[]string{"set by the service's configured port", "(80)"}, []string{"8080)", "80, 8080"}},
 		{"explicit port and no other declared", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 10000), 10000,
@@ -172,7 +175,7 @@ func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
 		{"private PORT env the image does not declare", privatePORT, 8080,
 			[]string{"port 8080, set by the service's PORT environment variable", "(80)"}, []string{"80, 8080"}},
 	} {
-		hint := imagePortStallHint(tc.app, tc.port)
+		hint := imagePortStallHint(tc.app, tc.port) + envPortStallHint(tc.app, tc.port)
 		for _, want := range tc.want {
 			if !strings.Contains(hint, want) {
 				t.Errorf("%s: hint %q lacks %q", tc.name, hint, want)
@@ -213,8 +216,6 @@ func TestImagePortStallHintOffersABackgroundWorker(t *testing.T) {
 			[]string{"set by the service's configured port", "declares TCP ports (80)"}},
 		{"a configured port and no other declared", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, false, 10000), 10000,
 			[]string{"declares no other TCP port", "0.0.0.0"}},
-		{"a PORT variable the image does not declare", web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999,
-			[]string{"set by the service's PORT environment variable", "Change the PORT environment variable"}},
 	} {
 		hint := imagePortStallHint(tc.app, tc.port)
 		for _, want := range append(tc.want, "create a background worker instead") {
@@ -237,6 +238,13 @@ func TestImagePortStallHintOffersABackgroundWorker(t *testing.T) {
 	}
 	if plain := imageStallNote(web(appv1alpha1.PortModeWebImageV1, 0, true, 10000), 10000); strings.Contains(plain, "startup discovery") {
 		t.Errorf("a service with no discovery verdict mentions it: %q", plain)
+	}
+	// A PORT the service sets is Render's PORT case, whose fix offers no
+	// background worker: the service means to serve on it (w8/416).
+	if got := imagePortStallHint(web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999) +
+		envPortStallHint(web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999); !strings.Contains(got, "update the PORT environment variable") ||
+		strings.Contains(got, "background worker") {
+		t.Errorf("a PORT variable the image does not declare: hint %q", got)
 	}
 	// An HTTP health check is about the path, not the listener: no hint at all.
 	checked := web(appv1alpha1.PortModeWebImageV1, 0, true, 10000)

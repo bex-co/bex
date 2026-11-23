@@ -312,3 +312,41 @@ func TestPortScanTailWordsTheLinesAfterTheFinding(t *testing.T) {
 		t.Fatalf("tail sent:\n%s\nwant:\n%s", strings.Join(sent, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+// TestPortScanLinesNameThePortPORTSets is a web service whose PORT is set and
+// closed (w8/416). Render scans that port alone and says so: its scan line a
+// minute apart, five times, with no docs line, then its timeout line naming
+// the port and its fix (community.render.com/t/21740;
+// htdio-stg/deploy-templates#1). The text is restated so the test pins it.
+func TestPortScanLinesNameThePortPORTSets(t *testing.T) {
+	envScan := portScanWording{
+		scan: "==> Continuing to scan for open port 8080 (from PORT environment variable)...",
+		timeout: "==> Port scan timeout reached, failed to detect open port 8080 from PORT environment variable. " +
+			"Bind your service to port 8080 or update the PORT environment variable to the correct port.",
+	}
+	const end = 14*time.Minute + 30*time.Second
+	onPORT := func(d DeployProgress) DeployProgress {
+		d.PortScanFound, d.PortScanFoundAt = appv1alpha1.PortScanFoundEnvPort(8080), scanSince
+		return d
+	}
+	atBudget := onPORT(scanRow("update_failed", scanSince.Add(end), time.Time{}, scanSince.Add(time.Hour)))
+	atBudget.TimedOut = true
+	for _, c := range []struct {
+		name string
+		row  DeployProgress
+		want []string
+	}{
+		{"open, read 2.5 minutes in", onPORT(scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(150*time.Second))),
+			scanPairs(envScan, 0, 1, 2)},
+		{"failed at the budget", atBudget,
+			slices.Concat(scanPairs(envScan, 0, 1, 2, 3, 4), timedOut(envScan, 5*time.Minute), said(end, rendersTimeout...))},
+		{"PORT was bound 3 minutes in", onPORT(scanRow("live", scanSince.Add(3*time.Minute+5*time.Second), scanSince.Add(3*time.Minute), scanSince.Add(time.Hour))),
+			slices.Concat(scanPairs(envScan, 0, 1, 2), said(3*time.Minute+5*time.Second, "==> Your service is live 🎉"))},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := scanStory(c.row); !slices.Equal(got, c.want) {
+				t.Fatalf("narration:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(c.want, "\n"))
+			}
+		})
+	}
+}

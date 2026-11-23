@@ -147,8 +147,8 @@ describe("deployReasonText", () => {
       });
 
       // w8/388: the scan's localhost and no-HTTP findings name their ports,
-      // read the same in en and are worded in zh.
-      it("words the localhost and no-HTTP findings in zh", () => {
+      // read the same in en and are worded in zh, as is w8/416's closed PORT.
+      it("words the scan's findings in zh", () => {
         const port = { name: "port", value: "10000" };
         const ports = { name: "ports", value: "8080, 10000" };
         const localhost =
@@ -165,6 +165,12 @@ describe("deployReasonText", () => {
             "hint_no_open_http_port",
             noHTTP,
             "0.0.0.0 上有开放端口（8080, 10000），但都不响应 HTTP：服务器必须在 PORT 环境变量指定的端口（10000）上提供 HTTP 服务。如果服务不需要接收公网 HTTP 流量，请改为创建私有服务。",
+          ],
+          // w8/416: a closed PORT gets Render's fix, bind it or change it.
+          [
+            "hint_env_port_closed",
+            " Nothing accepted a TCP connection on port 10000, set by the service's PORT environment variable. Bind the server to 0.0.0.0 on port 10000, or update the PORT environment variable to the port it listens on.",
+            "端口 10000 上没有任何进程接受 TCP 连接，该端口由服务的 PORT 环境变量设定。请让服务器在端口 10000 上绑定 0.0.0.0，或把 PORT 环境变量改为它实际监听的端口。",
           ],
         ]) {
           const found = wire(

@@ -830,6 +830,12 @@ const deDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_env_port_closed": {
+    message:
+      " Auf Port {port} hat nichts eine TCP-Verbindung angenommen; er wurde durch die Umgebungsvariable PORT des Services gesetzt. Binde den Server an 0.0.0.0 auf Port {port}, oder ändere die Umgebungsvariable PORT auf den Port, auf dem er lauscht.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " Auf Port {port} hat nichts eine TCP-Verbindung angenommen; er wurde durch den konfigurierten Port des Services gesetzt, und das Image deklariert keinen anderen TCP-Port. Binde den Server an 0.0.0.0 auf Port {port} oder ändere den Port des Services auf den, auf dem er lauscht.",

@@ -6632,6 +6632,7 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 		} else {
 			msg += imageStallNote(app, port)
 		}
+		msg += envPortStallHint(app, port)
 		msg += r.detectBoundPort(ctx, app, dep, port)
 		msg += r.detectPrivatePrimary(ctx, app, dep, port)
 	}
@@ -6659,9 +6660,13 @@ func imageStallNote(app *appv1alpha1.App, port int) string {
 // A primary the owner chose (a service port or its PORT env) is not one the
 // image declared: the network carries it alongside the image's ports. The hint
 // then calls it configured and lists only the others (w4/m243 t011).
+//
+// A web service's PORT is envPortStallHint's, so the env cases here are a
+// private image service's.
 func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	network := app.Status.ImageNetwork
-	if !app.Spec.HasImagePorts() || app.Spec.HTTPHealthCheckPath() != "" || network == nil || len(network.Ports) == 0 {
+	if !app.Spec.HasImagePorts() || app.Spec.HTTPHealthCheckPath() != "" || network == nil || len(network.Ports) == 0 ||
+		envPortScanned(app, port) {
 		return ""
 	}
 	env := app.Status.EnvPort > 0
@@ -6691,6 +6696,29 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	}
 	return appv1alpha1.FormatDeployReason(code, portParam(int32(port)),
 		appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(declared, ", ")}) + backgroundWorkerHint
+}
+
+// envPortStallHint names the closed port of a web service whose PORT variable
+// sets it (w8/416). Render scans only that port once PORT is set: its staff
+// answer that "if you want to disable the port detector and specify the port
+// to use with the public proxy, you can set the PORT env var", and its deploy
+// log reads "Continuing to scan for open port 8080 (from PORT environment
+// variable)". So the hint gives Render's fix, bind PORT or change it, and bex,
+// like Render, routes to no other listener (explicitServingPort). The process
+// serves, so a background worker is no alternative, and Render's PORT line
+// offers none.
+func envPortStallHint(app *appv1alpha1.App, port int) string {
+	if !envPortScanned(app, port) {
+		return ""
+	}
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintEnvPortClosed, portParam(int32(port)))
+}
+
+// envPortScanned reports a web service whose PORT variable sets port and whose
+// failing check is the TCP connect to it, native or image. A Health Check
+// Path's failure is about the path, as for imagePortStallHint.
+func envPortScanned(app *appv1alpha1.App, port int) bool {
+	return isWebService(app) && app.Status.EnvPort > 0 && int(app.Status.EnvPort) == port && app.Spec.HTTPHealthCheckPath() == ""
 }
 
 // nodeLossDisruptions are the DisruptionTarget reasons Kubernetes gives a pod

@@ -797,6 +797,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_env_port_closed": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接，该端口由服务的 PORT 环境变量设定。请让服务器在端口 {port} 上绑定 0.0.0.0，或把 PORT 环境变量改为它实际监听的端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       "端口 {port} 上没有任何进程接受 TCP 连接，该端口是服务配置的端口；镜像未声明其他 TCP 端口。请让服务器在端口 {port} 上绑定 0.0.0.0，或把服务的端口改为它实际监听的端口。",

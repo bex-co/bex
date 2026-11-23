@@ -843,6 +843,12 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_env_port_closed": {
+    message:
+      " Ничто не приняло TCP-подключение на порту {port}, заданном переменной окружения PORT сервиса. Привяжите сервер к 0.0.0.0 на порту {port} или измените переменную окружения PORT на порт, который сервис слушает.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " Ничто не приняло TCP-подключение на порту {port}, заданном в настройках порта сервиса; образ не объявляет других TCP-портов. Привяжите сервер к 0.0.0.0 на порту {port} или измените порт сервиса на тот, который он слушает.",

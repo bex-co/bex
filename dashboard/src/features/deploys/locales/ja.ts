@@ -820,6 +820,12 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_env_port_closed": {
+    message:
+      " ポート {port} で TCP 接続を受け付けたものはありませんでした。これはサービスの環境変数 PORT で設定されています。サーバーをポート {port} でホスト 0.0.0.0 にバインドするか、環境変数 PORT をサーバーがリッスンしているポートに変更してください。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " ポート {port} で TCP 接続を受け付けたものはありませんでした。これはサービスに設定されたポートで、イメージは他の TCP ポートを宣言していません。サーバーをポート {port} で 0.0.0.0 にバインドするか、サービスのポートをサーバーがリッスンしているポートに変更してください。",

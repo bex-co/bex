@@ -88,7 +88,11 @@ const (
 // edge_cache.go; a pod running it is not scanned.)
 
 // explicitServingPort reports whether the App's own configuration already names
-// the serving port, so a detected listener must never override it.
+// the serving port, so a detected listener must never override it. A PORT the
+// service sets is one, as on Render: its staff answer that "if you want to
+// disable the port detector and specify the port to use with the public
+// proxy, you can set the PORT env var" (community.render.com/t/15678), and its
+// deploy log then scans that port alone (envPortStallHint, w8/416).
 func explicitServingPort(app *appv1alpha1.App) bool {
 	spec := releaseRuntimeSpec(app)
 	return (spec.Port > 0 && spec.Port != appv1alpha1.DefaultPort) || app.Status.EnvPort > 0 || spec.HasImagePorts()

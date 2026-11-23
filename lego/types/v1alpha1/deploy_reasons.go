@@ -150,6 +150,11 @@ const (
 	// w8/386: a startup crash's port advice, by how the process exited.
 	DeployReasonHintCrashPortBind = "hint_crash_port_bind"
 	DeployReasonHintEarlyExitPort = "hint_early_exit_port"
+	// w8/416: a web service's PORT variable names the one port Render scans,
+	// so a closed PORT gets Render's fix, on a native service as on an image.
+	// A private image service keeps hint_env_port_only and
+	// hint_env_port_declared.
+	DeployReasonHintEnvPortClosed = "hint_env_port_closed"
 
 	DeployReasonQueuedBuildLimit     = "queued_build_limit"
 	DeployReasonQueuedClusterFull    = "queued_cluster_full"
@@ -296,6 +301,9 @@ var deployReasonPartTemplates = map[string]string{
 	DeployReasonHintNoOpenHTTPPort:         " Ports are open on 0.0.0.0 ({ports}) but none answers HTTP: the server must serve HTTP on the port in PORT ({port}). " + hintPrivateService + ".",
 	DeployReasonHintCrashPortBind:          " If the crash is a port bind: the process must listen on $PORT ({port}).",
 	DeployReasonHintEarlyExitPort:          " The server must keep listening on $PORT ({port}) until it receives SIGTERM.",
+	// Render's "Bind your service to port {port} or update the PORT
+	// environment variable to the correct port" (w8/416).
+	DeployReasonHintEnvPortClosed: hintNothingAccepted + "set by the service's PORT environment variable. Bind the server to 0.0.0.0 on port {port}, or update the PORT environment variable to the port it listens on.",
 
 	DeployReasonQueuedBuildLimit:  "{noun} has {active}/{limit} concurrent builds active; waiting for a slot",
 	DeployReasonQueuedClusterFull: "the cluster's build capacity is full; waiting for a slot",

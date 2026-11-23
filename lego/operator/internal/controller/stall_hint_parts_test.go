@@ -62,6 +62,14 @@ func TestStallHintsAndQueuedCausesAreTemplated(t *testing.T) {
 		a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageV1
 		a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 8123, Ports: []int32{8123, 9000, 9009}}
 	})
+	privatePORT := func(ports ...int32) *appv1alpha1.App {
+		return projectionApp(func(a *appv1alpha1.App) {
+			a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageV1
+			a.Status.EnvPort = 9999
+			a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 9999, Ports: ports}
+		})
+	}
+	nativePORT := projectionApp(func(a *appv1alpha1.App) { a.Spec.Port, a.Status.EnvPort = 10000, 8080 })
 	fallback := web(appv1alpha1.PortModeWebImageV1, 0, true, 10000)
 	fallback.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionFallback
 	detected := projectionApp(func(a *appv1alpha1.App) { a.Status.DetectedPort = 3000 })
@@ -100,8 +108,23 @@ func TestStallHintsAndQueuedCausesAreTemplated(t *testing.T) {
 				" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on." + workerHint,
 			codes: []string{appv1alpha1.DeployReasonHintImageDeclaredPorts, appv1alpha1.DeployReasonHintBackgroundWorker},
 		},
+		// w8/416: a web service's PORT is the one port Render scans, native
+		// or image, and Render's fix is to bind it or change it.
+		"PORT on a native web service": {
+			got: envPortStallHint(nativePORT, 8080),
+			want: " Nothing accepted a TCP connection on port 8080, set by the service's PORT environment variable." +
+				" Bind the server to 0.0.0.0 on port 8080, or update the PORT environment variable to the port it listens on.",
+			codes: []string{appv1alpha1.DeployReasonHintEnvPortClosed},
+		},
+		"PORT on a web image service beside declared ports": {
+			got: imagePortStallHint(web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999) +
+				envPortStallHint(web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999),
+			want: " Nothing accepted a TCP connection on port 9999, set by the service's PORT environment variable." +
+				" Bind the server to 0.0.0.0 on port 9999, or update the PORT environment variable to the port it listens on.",
+			codes: []string{appv1alpha1.DeployReasonHintEnvPortClosed},
+		},
 		"PORT and no other declared port": {
-			got: imagePortStallHint(web(appv1alpha1.PortModeWebImageV1, 9999, false, 9999), 9999),
+			got: imagePortStallHint(privatePORT(9999), 9999),
 			want: " Nothing accepted a TCP connection on port 9999, set by the service's PORT environment variable; the image declares no other TCP port." +
 				" Bind the server to 0.0.0.0 on port 9999, or change the service's port to the one it listens on." + workerHint,
 			codes: []string{appv1alpha1.DeployReasonHintEnvPortOnly, appv1alpha1.DeployReasonHintBackgroundWorker},
@@ -113,7 +136,7 @@ func TestStallHintsAndQueuedCausesAreTemplated(t *testing.T) {
 			codes: []string{appv1alpha1.DeployReasonHintConfiguredPortOnly, appv1alpha1.DeployReasonHintBackgroundWorker},
 		},
 		"PORT beside declared ports": {
-			got: imagePortStallHint(web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999),
+			got: imagePortStallHint(privatePORT(80, 9999), 9999),
 			want: " Nothing accepted a TCP connection on port 9999, set by the service's PORT environment variable; the image declares TCP ports (80)." +
 				" Change the PORT environment variable to the port it listens on, or remove it to use the image's port." + workerHint,
 			codes: []string{appv1alpha1.DeployReasonHintEnvPortDeclared, appv1alpha1.DeployReasonHintBackgroundWorker},

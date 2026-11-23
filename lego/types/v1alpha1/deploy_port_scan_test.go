@@ -65,6 +65,13 @@ func TestPortScanOfTheOperatorsStalls(t *testing.T) {
 		{"image TCP check: declared primary closed", tcp + hint(DeployReasonHintImageDeclaredPorts, DeployReasonHintBackgroundWorker,
 			DeployReasonHintNoHTTPDiscovered), PortScanSilent},
 		{"configured port closed", tcp + hint(DeployReasonHintConfiguredPortOnly, DeployReasonHintBackgroundWorker), PortScanSilent},
+		{"configured port closed, the image declares others", tcp + hint(DeployReasonHintConfiguredPortDeclared, DeployReasonHintBackgroundWorker), PortScanSilent},
+		// w8/416: Render scans only the port PORT names once it is set.
+		{"PORT closed", tcp + hint(DeployReasonHintEnvPortClosed), PortScanEnvPort},
+		{"private image: PORT closed", tcp + hint(DeployReasonHintEnvPortOnly, DeployReasonHintBackgroundWorker), PortScanSilent},
+		{"private image: PORT closed, the image declares others", tcp + hint(DeployReasonHintEnvPortDeclared, DeployReasonHintBackgroundWorker), PortScanSilent},
+		{"PORT closed, restarted", ProbeStallReason("startup", true, "", "10000", 2) + hint(DeployReasonHintEnvPortClosed), PortScanEnvPort},
+		{"PORT closed with no port to name", tcp + FormatDeployReason(DeployReasonHintEnvPortClosed, DeployReasonParam{Name: "port", Value: "0"}), PortScanOver},
 		{"any-open-port check, no hint", openPort, PortScanNoOpenPort},
 		{"any-open-port check, image hints (w8/384's busybox)", openPort + hint(DeployReasonHintImageDefaultPort,
 			DeployReasonHintBackgroundWorker, DeployReasonHintNoHTTPDiscovered), PortScanNoOpenPort},
@@ -77,25 +84,40 @@ func TestPortScanOfTheOperatorsStalls(t *testing.T) {
 	}
 }
 
-// w8/388: the scan's three running cases are each a scan, and the row records
-// the two Render names apart from the plain one.
+// w8/388: the scan's running cases are each a scan, and the row records the
+// ones Render names apart from the plain one; w8/416 adds the port PORT names.
 func TestPortScanFindings(t *testing.T) {
+	port := DeployReasonParam{Name: "port", Value: "8080"}
+	ports := DeployReasonParam{Name: "ports", Value: "8000, 9000"}
+	tcp := ProbeStallReason("startup", true, "", "8080", 0)
 	for _, c := range []struct {
-		scan     PortScan
-		scanning bool
-		found    PortScanFinding
+		name, stall string
+		scanning    bool
+		found       PortScanFinding
 	}{
-		{PortScanSilent, false, ""},
-		{PortScanNoOpenPort, true, ""},
-		{PortScanLocalhostOnly, true, PortScanFoundLocalhost},
-		{PortScanNoHTTPPort, true, PortScanFoundNoHTTP},
-		{PortScanOver, false, ""},
+		{"waiting to start", FormatDeployReason(DeployReasonHTTPPortWaiting), false, ""},
+		{"no open port", tcp + FormatDeployReason(DeployReasonHintNoOpenPort, port), true, ""},
+		{"only localhost listens", tcp + FormatDeployReason(DeployReasonHintNoOpenPortLocalhost, port, ports), true, PortScanFoundLocalhost},
+		{"open ports answer no HTTP", tcp + FormatDeployReason(DeployReasonHintNoOpenHTTPPort, port, ports), true, PortScanFoundNoHTTP},
+		{"PORT closed", tcp + FormatDeployReason(DeployReasonHintEnvPortClosed, port), true, "env_port:8080"},
+		{"private image: PORT closed", tcp + FormatDeployReason(DeployReasonHintEnvPortDeclared, port, ports), false, ""},
+		{"no stall", "", false, ""},
 	} {
-		if got := c.scan.Scanning(); got != c.scanning {
-			t.Errorf("PortScan(%d).Scanning() = %v, want %v", c.scan, got, c.scanning)
+		scan, found := ReadPortScan(c.stall)
+		if scan != PortScanOf(c.stall) || scan.Scanning() != c.scanning || found != c.found {
+			t.Errorf("%s: ReadPortScan(%q) = (%d, %q), want a scan %v finding %q", c.name, c.stall, scan, found, c.scanning, c.found)
 		}
-		if got := c.scan.Found(); got != c.found {
-			t.Errorf("PortScan(%d).Found() = %q, want %q", c.scan, got, c.found)
+	}
+}
+
+// w8/416: a scan for PORT records its port, and only a port reads back.
+func TestPortScanFindingNamesThePortPORTSets(t *testing.T) {
+	if got := PortScanFoundEnvPort(8080); got != "env_port:8080" || got.EnvPort() != 8080 {
+		t.Fatalf("PortScanFoundEnvPort(8080) = %q, reading %d", got, got.EnvPort())
+	}
+	for _, f := range []PortScanFinding{"", PortScanFoundLocalhost, PortScanFoundNoHTTP, "env_port:", "env_port:x", "env_port:0", "env_port:65536", "port:8080"} {
+		if got := f.EnvPort(); got != 0 {
+			t.Errorf("%q.EnvPort() = %d, want 0", f, got)
 		}
 	}
 }
