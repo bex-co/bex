@@ -1,17 +1,17 @@
 # w33 · m570 — A native build's log says `==> Uploading build...` when its build command ends, and `Uploaded in` covers the whole export
 
-**Worker:** worker33 **Goal:** the line after a native build command's last output is Render's `==> Uploading build...`, printed as BuildKit starts writing the image. The minutes BuildKit spends exporting and compressing (7 min on a 1.4 GB Node image) run under that line instead of in silence, and `==> Uploaded in Ns` counts them. **Status:** todo
+**Worker:** worker33 **Goal:** the line after a native build command's last output is Render's `==> Uploading build...`, printed as BuildKit starts writing the image. The minutes BuildKit spends exporting and compressing (7 min on a 1.4 GB Node image) run under that line instead of in silence, and `==> Uploaded in Ns` counts them. **Status:** todo (t001–t006 done; t007, the live check, waits for a production pin carrying them)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The buildkit phase prints `==> Uploading build...` when the build command's step ends and the export begins, and stamps the start for the push phase | 1h | — |
-| [t002](t002.md) | The push phase prints no second `Uploading` line, counts `Uploaded in` from the stamp, and an export that fails says `==> Uploading build failed` | 45m | t001 |
-| [t003](t003.md) | The live-deploy-following contract and ADR018's Build logs row say where the line sits | 30m | t002 |
-| [t004](t004.md) | Render parity | 20m | t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004 |
+| [t001](done/t001.md) | The buildkit phase prints `==> Uploading build...` when the build command's step ends and the export begins, and stamps the start for the push phase — **DONE** | 1h | — |
+| [t002](done/t002.md) | The push phase prints no second `Uploading` line, counts `Uploaded in` from the stamp, and an export that fails says `==> Uploading build failed` — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | The live-deploy-following contract and ADR018's Build logs row say where the line sits — **DONE** | 30m | t002 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
 | [t007](t007.md) | Closeout (live check on production) | 40m | t005, t006 |
 
 ## Definition of done
@@ -23,6 +23,15 @@ On production, once the pin carries this milestone's commits, for a native Node 
 3. The dashboard deploy page and `bex logs --tail` during the build show the line at the same moment.
 4. A build whose export fails (operator test, with the buildkit phase failing after the command step) ends with `==> Uploading build failed` and no `Build successful`.
 5. `make test` (from `lego/operator/`) passes.
+
+## Implementation record (2026-11-22, t001–t006)
+
+- **The line:** the BuildKit container's display filter (`nativeLogDisplay`, `lego/operator/internal/build/build.go`) prints `==> Uploading build...` at the command step's `DONE` or `CACHED` line, after writing that moment to `/output/bex-upload-started` (`uploadStartedFile`). It prints the line only when the write succeeded. Everything after it runs under it: the dependency save, the secret-file links, the image's export and compression, the layer cache's export and the `$XDG_CACHE_HOME` archive.
+- **The count:** the push phase (`nativePushNarration`) reads the stamp. With a number there it prints no line of its own and counts `==> Uploaded in Ns` from it. Without one it prints the line and counts from its own start, as before.
+- **A failure after the line:** BuildKit's `#N` and `error:` lines stay out, and the filter ends the log with `==> Uploading build failed` whenever the phase did not exit 0, even when BuildKit said nothing. The deploy's reason still quotes BuildKit's error through the termination message, under the `build environment` step.
+- **Docs:** ADR018 Build logs row (new w33/m570 entry; the w4/m324 entry amended); `docs/render-artifacts/live-deploy-following.md` § A native build's own lines.
+- **Tests:** `TestNativeBuildLogSaysUploadingOnceTheCommandsStepEnds`, `TestNativeBuildSaysUploadingBeforeTheExportEnds`, `TestNativeBuildLogSaysAnUploadThatFailsAfterTheCommand`, `TestNativeBuildLogLeavesTheUploadLineToThePushWithoutItsMoment`, `TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase`, `TestANativeBuildSaysUploadingOnce`; `TestNativeBuildLogShowsTheCommandAndItsOutput`, `TestNativeBuildLogSaysACachedCommandWasReused` and `TestNativeBuildLogNamesAFailedCommand` updated.
+- **Not done here:** DoD items 1–3 need a live build on production (t007).
 
 ## Source + Goal linkage
 

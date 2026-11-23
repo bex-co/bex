@@ -211,9 +211,19 @@ var nativeStepLogEnv = []corev1.EnvVar{
 // writes the transcript's tail to the termination message, which the failure
 // reason and the platform-fetch classification read (failureDetail). The
 // command reaches the filter through BEX_BUILD_COMMAND, never the script text.
+//
+// Once the command's step is done or cached, the rest of the phase is the
+// upload, as Render's log has it (w33/m570): `==> Uploading build...` follows
+// the command's last line, and the image's remaining steps, its export and
+// compression, the layer cache's export and the $XDG_CACHE_HOME archive run
+// under it. The line is printed only once its moment is in uploadStartedFile,
+// from which the push phase counts `Uploaded in` instead of printing the line
+// again. A phase that fails after it shows nothing of BuildKit's error and
+// ends with `==> Uploading build failed`; the reason still quotes the error
+// from the termination message.
 var nativeLogDisplay = `bex_message=/dev/termination-log
 bex_display() {
-  awk '
+  awk -v stamp=` + uploadStartedFile + ` -v rc_file="$bex_rc_file" '
     /^#[0-9]+ / {
       started = 1
       n = substr($1, 2)
@@ -225,9 +235,18 @@ bex_display() {
         }
         next
       }
-      if (n == step && $2 == "CACHED" && ENVIRON["BEX_BUILD_COMMAND"] != "") {
-        print "==> Reusing the cached result: nothing the build command reads has changed since an earlier build"
+      if (n == step && ($2 == "DONE" || $2 == "CACHED")) {
+        if ($2 == "CACHED" && ENVIRON["BEX_BUILD_COMMAND"] != "") {
+          print "==> Reusing the cached result: nothing the build command reads has changed since an earlier build"
+        }
+        if (!uploading && system("{ date +%s > " stamp "; } 2>/dev/null") == 0) {
+          uploading = 1
+          print "==> Uploading build..."
+        }
         fflush()
+        next
+      }
+      if (uploading) {
         next
       }
       if ($2 != "ERROR:") {
@@ -262,7 +281,7 @@ bex_display() {
       next
     }
     /^(error|ERROR): / {
-      if (!failed) {
+      if (!failed && !uploading) {
         print "==> " $0
         fflush()
       }
@@ -271,6 +290,11 @@ bex_display() {
     !started && NF {
       print
       fflush()
+    }
+    END {
+      if (uploading && ((getline rc < rc_file) <= 0 || rc != "0")) {
+        print "==> Uploading build failed"
+      }
     }
   '
 }
@@ -306,9 +330,13 @@ const skopeoQuiet = `bex_skopeo() {
 // (w4/582). skopeo's per-blob transcript stays out, as BuildKit's does, and
 // a failed upload says so in product words (bex_skopeo). With image signing
 // on, cosign runs after it (it has no shell to print from), so a signing
-// failure follows the verdict.
-const nativePushNarration = skopeoQuiet + `echo '==> Uploading build...'
-bex_started=$(date +%s)
+// failure follows the verdict. The buildkit phase has already said
+// `==> Uploading build...` when it left its moment in uploadStartedFile, and
+// `Uploaded in` then counts the export before the push as well (w33/m570).
+const nativePushNarration = skopeoQuiet + `bex_started=$(cat ` + uploadStartedFile + ` 2>/dev/null)
+case $bex_started in
+''|*[!0-9]*) echo '==> Uploading build...'; bex_started=$(date +%s) ;;
+esac
 bex_skopeo "$@" >/dev/null || { bex_failed=$?; echo '==> Uploading build failed'; exit $bex_failed; }
 echo "==> Uploaded in $(( $(date +%s) - bex_started ))s"
 ` + "echo '==> Build successful \U0001F389'"
@@ -405,6 +433,10 @@ const (
 	outputMount       = "/output"
 	// revisionFile is where the clone step leaves the fetched commit.
 	revisionFile = outputMount + "/commit"
+	// uploadStartedFile is when a native build's buildkit phase printed
+	// `==> Uploading build...`, in epoch seconds, for the push phase that
+	// counts `Uploaded in` from it (w33/m570).
+	uploadStartedFile = outputMount + "/bex-upload-started"
 	// revisionLabel mirrors registry.RevisionLabel; build does not import
 	// registry.
 	revisionLabel = "org.opencontainers.image.revision"

@@ -24,8 +24,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -73,25 +75,43 @@ error: failed to solve: process ` + process + ` did not complete successfully: e
 `
 }
 
+// nativeCommandOutput is the command's output in nativeTranscript, as the
+// build log shows it.
+const nativeCommandOutput = "added 80 packages, and audited 81 packages in 2s\n\n  run `npm fund` for details\n"
+
 // runBuildkit runs the buildkit phase BuildJob gives o, with its env as
 // the kubelet resolves it and a stand-in buildctl that prints transcript and
 // exits code. It returns the container's log (stdout and stderr), the
 // termination message the phase left, and its exit status.
 func runBuildkit(t *testing.T, o Options, transcript string, code int) (log, message string, exit int) {
 	t.Helper()
-	dir := t.TempDir()
-	fake := filepath.Join(dir, "transcript")
+	return runBuildkitWithOutput(t, o, transcript, code, t.TempDir())
+}
+
+// runBuildkitWithOutput is runBuildkit with the build's output volume at
+// output, where the phase leaves uploadStartedFile.
+func runBuildkitWithOutput(t *testing.T, o Options, transcript string, code int, output string) (log, message string, exit int) {
+	t.Helper()
+	fake := filepath.Join(t.TempDir(), "transcript")
 	if err := os.WriteFile(fake, []byte(transcript), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	return runBuildkitFrom(t, o, fake, code, output)
+}
+
+// runBuildkitFrom is runBuildkitWithOutput with the stand-in buildctl
+// printing what it reads from the file (or FIFO) at transcript.
+func runBuildkitFrom(t *testing.T, o Options, transcript string, code int, output string) (log, message string, exit int) {
+	t.Helper()
+	dir := t.TempDir()
 	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
 	c := cachePhaseIn(&spec, "buildkit")
 	messagePath := filepath.Join(dir, "termination-log")
-	script := strings.NewReplacer("/tmp/bex-", dir+"/bex-", "/dev/termination-log", messagePath,
+	script := strings.NewReplacer("/tmp/bex-", dir+"/bex-", "/dev/termination-log", messagePath, outputMount+"/", output+"/",
 		"bex_run buildctl-daemonless.sh", "bex_run bex_fake_buildctl").Replace(scriptOf(t, c))
 	script = "bex_fake_buildctl() { cat \"$BEX_TRANSCRIPT\"; return $BEX_CODE; }\n" + script
 	cmd := exec.Command("sh", append([]string{"-eu", "-c", script, c.Name}, c.Args...)...)
-	cmd.Env = append(os.Environ(), "BEX_TRANSCRIPT="+fake, "BEX_CODE="+strconv.Itoa(code))
+	cmd.Env = append(os.Environ(), "BEX_TRANSCRIPT="+transcript, "BEX_CODE="+strconv.Itoa(code))
 	values := expandedBuildValues(c.Env)
 	for _, e := range c.Env {
 		if e.ValueFrom == nil {
@@ -155,10 +175,7 @@ func TestNativeBuildLogShowsTheCommandAndItsOutput(t *testing.T) {
 	if exit != 0 {
 		t.Fatalf("exit %d, log:\n%s", exit, log)
 	}
-	want := "==> Running build command '" + command + "'...\n" +
-		"added 80 packages, and audited 81 packages in 2s\n" +
-		"\n" +
-		"  run `npm fund` for details\n"
+	want := "==> Running build command '" + command + "'...\n" + nativeCommandOutput + "==> Uploading build...\n"
 	if log != want {
 		t.Fatalf("log:\n%q\nwant:\n%q", log, want)
 	}
@@ -176,33 +193,272 @@ func TestNativeBuildLogSaysACachedCommandWasReused(t *testing.T) {
 	if exit != 0 {
 		t.Fatalf("exit %d, log:\n%s", exit, log)
 	}
-	if want := "==> Running build command 'npm install'...\n==> Reusing the cached result: nothing the build command reads has changed since an earlier build\n"; log != want {
+	if want := "==> Running build command 'npm install'...\n==> Reusing the cached result: nothing the build command reads has changed since an earlier build\n==> Uploading build...\n"; log != want {
 		t.Fatalf("log:\n%q\nwant:\n%q", log, want)
 	}
 }
 
-// w4/582: the verdict follows the upload, as Render's does, so a push that
-// fails never reads "Build successful"; skopeo's blob transcript stays out.
-func TestNativeBuildPushSaysSuccessOnlyAfterTheUpload(t *testing.T) {
-	spec := BuildJob(nativeLogOptions("npm install"), nativeLogOptions("npm install").ImageRef()).Spec.Template.Spec
+// nativeAfterCommand is BuildKit's plain progress after a native build's
+// command step, abridged: the secret-file links, then the image's export and
+// the layer cache's, which take minutes on a large image (w33/m570).
+const nativeAfterCommand = `#24 [stage-0 12/12] RUN set -e; for name in .env; do [ -d "./$name" ] && [ ! -L "./$name" ] || ln -sfn "/etc/secrets/$name" "./$name"; done
+#24 DONE 0.1s
+#25 exporting to oci image format
+#25 exporting layers
+#25 exporting layers 412.6s done
+#25 exporting manifest sha256:0e1f5d done
+#25 exporting config sha256:9a8b7c done
+#25 sending tarball
+#25 sending tarball 21.4s done
+#25 DONE 434.1s
+#26 exporting cache to client directory
+#26 preparing build cache for export
+#26 writing layer sha256:77aa01 3.1s done
+#26 DONE 12.3s
+`
+
+// nativeExportFailure is BuildKit's plain progress for an image export that
+// fails after the command step.
+const nativeExportFailure = `#25 exporting to oci image format
+#25 exporting layers
+#25 ERROR: failed to export layer: write /var/lib/buildkit/tmp/layer: no space left on device
+------
+ > exporting to oci image format:
+------
+error: failed to solve: failed to export layer: write /var/lib/buildkit/tmp/layer: no space left on device
+`
+
+// nativeThroughCommand is nativeTranscript(command, "") up to and including
+// the command step's DONE line.
+func nativeThroughCommand(t *testing.T, command string) string {
+	t.Helper()
+	head, _, ok := strings.Cut(nativeTranscript(command, ""), "#24 exporting")
+	if !ok || !strings.HasSuffix(head, "#23 DONE 2.6s\n") {
+		t.Fatalf("nativeTranscript changed shape:\n%s", head)
+	}
+	return head
+}
+
+// uploadStamp reads the moment a buildkit phase left in its output volume.
+func uploadStamp(t *testing.T, output string) (int64, bool) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(output, filepath.Base(uploadStartedFile)))
+	if os.IsNotExist(err) {
+		return 0, false
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	at, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+	if err != nil {
+		t.Fatalf("upload stamp %q: %v", raw, err)
+	}
+	return at, true
+}
+
+// w33/m570: once the command's step is done, the log says the build is
+// uploading, once, right after the command's last line; the image's export
+// and the cache's run under it, as Render's upload does. The phase leaves
+// that moment for the push phase. A build with no command says it too.
+func TestNativeBuildLogSaysUploadingOnceTheCommandsStepEnds(t *testing.T) {
+	for name, tc := range map[string]struct{ command, want string }{
+		"command":    {"npm install", "==> Running build command 'npm install'...\n" + nativeCommandOutput + "==> Uploading build...\n"},
+		"no command": {"", nativeCommandOutput + "==> Uploading build...\n"},
+	} {
+		volume := t.TempDir()
+		before := time.Now().Unix()
+		log, _, exit := runBuildkitWithOutput(t, nativeLogOptions(tc.command), nativeThroughCommand(t, tc.command)+nativeAfterCommand, 0, volume)
+		after := time.Now().Unix()
+		if exit != 0 || log != tc.want {
+			t.Fatalf("%s: exit %d, log:\n%q\nwant:\n%q", name, exit, log, tc.want)
+		}
+		if at, ok := uploadStamp(t, volume); !ok || at < before || at > after {
+			t.Errorf("%s: upload stamp %d (present %v), want a moment within [%d, %d]", name, at, ok, before, after)
+		}
+	}
+}
+
+// streamingAwk puts first on PATH an awk that reads a pipe as it arrives, as
+// production's does (busybox, in the BuildKit image), or skips. mawk, the CI
+// image's, reads a pipe in blocks unless it is told it is interactive, and
+// would print nothing that could be timed.
+func streamingAwk(t *testing.T) {
+	t.Helper()
+	bin := t.TempDir()
+	for _, candidate := range []string{"busybox", "gawk", "mawk"} {
+		path, err := exec.LookPath(candidate)
+		if err != nil {
+			continue
+		}
+		awk := filepath.Join(bin, "awk")
+		if candidate == "mawk" {
+			err = os.WriteFile(awk, []byte("#!/bin/sh\nexec "+path+" -W interactive \"$@\"\n"), 0o755)
+		} else {
+			err = os.Symlink(path, awk)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+		return
+	}
+	t.Skip("no awk that can read a pipe as it arrives (busybox, gawk or mawk) on PATH")
+}
+
+// w33/m570: the line and its moment come as the command's step ends, not
+// when BuildKit's export does, minutes later on a large image. The stand-in
+// buildctl holds the export back until the phase has stamped the upload.
+func TestNativeBuildSaysUploadingBeforeTheExportEnds(t *testing.T) {
+	streamingAwk(t)
+	fifo := filepath.Join(t.TempDir(), "transcript")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	head := nativeThroughCommand(t, "npm install")
+	volume := t.TempDir()
+	stamped := make(chan bool, 1)
+	go func() {
+		f, err := os.OpenFile(fifo, os.O_WRONLY, 0)
+		if err != nil {
+			stamped <- false
+			return
+		}
+		defer func() { _ = f.Close() }()
+		_, _ = f.WriteString(head)
+		// Not uploadStamp, which may fail the test: this is not its goroutine,
+		// and the stamp can be seen created before it is written.
+		ok := false
+		for deadline := time.Now().Add(10 * time.Second); !ok && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			_, err := os.Stat(filepath.Join(volume, filepath.Base(uploadStartedFile)))
+			ok = err == nil
+		}
+		stamped <- ok
+		_, _ = f.WriteString(nativeAfterCommand)
+	}()
+	log, _, exit := runBuildkitFrom(t, nativeLogOptions("npm install"), fifo, 0, volume)
+	if exit != 0 || !strings.HasSuffix(log, "  run `npm fund` for details\n==> Uploading build...\n") {
+		t.Fatalf("exit %d, log:\n%s", exit, log)
+	}
+	select {
+	case ok := <-stamped:
+		if !ok {
+			t.Fatal("the phase stamped the upload only once BuildKit's export had ended")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the stand-in buildctl never wrote the transcript")
+	}
+}
+
+// w33/m570: a phase that fails after the command's step, an export that
+// runs out of disk or a BuildKit that dies without a word, ends its log with
+// Render's upload failure instead of BuildKit's error, and never says the
+// build succeeded. The reason still quotes BuildKit.
+func TestNativeBuildLogSaysAnUploadThatFailsAfterTheCommand(t *testing.T) {
+	o := nativeLogOptions("npm install")
+	head := nativeThroughCommand(t, "npm install")
+	for name, transcript := range map[string]string{"export": head + nativeExportFailure, "silent": head} {
+		log, message, exit := runBuildkit(t, o, transcript, 1)
+		want := "==> Running build command 'npm install'...\n" + nativeCommandOutput + "==> Uploading build...\n==> Uploading build failed\n"
+		if exit == 0 || log != want {
+			t.Fatalf("%s: exit %d, log:\n%q\nwant:\n%q", name, exit, log, want)
+		}
+		if name == "export" {
+			if obs := failedBuildkit(t, o, exit, message); !strings.Contains(obs.Tail, "no space left on device") {
+				t.Errorf("the reason's tail %q does not quote BuildKit's error", obs.Tail)
+			}
+		}
+	}
+}
+
+// w33/m570: a phase that cannot leave the upload's moment prints no line of
+// its own, and the push phase says it then, as before.
+func TestNativeBuildLogLeavesTheUploadLineToThePushWithoutItsMoment(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	log, _, exit := runBuildkitWithOutput(t, nativeLogOptions("npm install"), nativeTranscript("npm install", ""), 0, missing)
+	if want := "==> Running build command 'npm install'...\n" + nativeCommandOutput; exit != 0 || log != want {
+		t.Fatalf("exit %d, log:\n%q\nwant:\n%q", exit, log, want)
+	}
+}
+
+// w33/m570: with the buildkit phase's moment, the push says no second
+// `Uploading build...`, and `Uploaded in` counts from that moment: the
+// export and the push together. A moment that is not a number is ignored.
+func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
+	uploaded := regexp.MustCompile(`^==> Uploaded in ([0-9]+)s\n==> Build successful \x{1F389}\n$`)
+	withStamp := func(content string) string {
+		output := t.TempDir()
+		if err := os.WriteFile(filepath.Join(output, filepath.Base(uploadStartedFile)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return output
+	}
+	fourHundredAgo := strconv.FormatInt(time.Now().Unix()-400, 10) + "\n"
+	log, err := runNativePush(t, withStamp(fourHundredAgo), 0)
+	m := uploaded.FindStringSubmatch(log)
+	if err != nil || m == nil {
+		t.Fatalf("err %v, log %q; want `Uploaded in` and the verdict alone", err, log)
+	}
+	if n, _ := strconv.Atoi(m[1]); n < 400 || n > 405 {
+		t.Errorf("Uploaded in %ds, want the 400 s since the buildkit phase's moment", n)
+	}
+	for _, stamp := range []string{"", "\n", "soon\n", "12a\n", "$(echo 1)\n"} {
+		log, err := runNativePush(t, withStamp(stamp), 0)
+		rest, ok := strings.CutPrefix(log, "==> Uploading build...\n")
+		if m := uploaded.FindStringSubmatch(rest); err != nil || !ok || m == nil || m[1] != "0" && m[1] != "1" {
+			t.Errorf("stamp %q: err %v, log %q; want the push's own line and its own count", stamp, err, log)
+		}
+	}
+	log, err = runNativePush(t, withStamp(fourHundredAgo), 1)
+	if err == nil || strings.Contains(log, "Uploading build...") || !strings.HasSuffix(log, "==> Uploading build failed\n") {
+		t.Errorf("refused: err %v, log %q; want the failure alone", err, log)
+	}
+}
+
+// w33/m570: across its phases, a native build's log says it is uploading
+// once, after the command's output, then the push's count and verdict.
+func TestANativeBuildSaysUploadingOnce(t *testing.T) {
+	volume := t.TempDir()
+	build, _, exit := runBuildkitWithOutput(t, nativeLogOptions("npm install"), nativeTranscript("npm install", ""), 0, volume)
+	push, err := runNativePush(t, volume, 0)
+	log := build + push
+	whole := regexp.MustCompile("run `npm fund` for details\n==> Uploading build...\n==> Uploaded in [0-9]+s\n==> Build successful \U0001F389\n$")
+	if exit != 0 || err != nil || strings.Count(log, "Uploading build") != 1 || !whole.MatchString(log) {
+		t.Fatalf("exit %d, push err %v, log:\n%s", exit, err, log)
+	}
+}
+
+// runNativePush runs a native build's push phase with the build's output
+// volume at output and a stand-in skopeo that prints a blob line, then
+// skopeoRegistryRefusal's records when code is not 0, and exits code.
+func runNativePush(t *testing.T, output string, code int) (string, error) {
+	t.Helper()
+	o := nativeLogOptions("npm install")
+	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
 	push := cachePhaseIn(&spec, pushContainer)
 	if len(push.Command) != 4 || push.Command[0] != "sh" || push.Command[3] != pushContainer {
 		t.Fatalf("native push command = %q, want the narration wrapper", push.Command)
 	}
-	dir := t.TempDir()
+	bin := t.TempDir()
+	fake := "#!/bin/sh\necho 'Copying blob sha256:abc'\n"
+	if code != 0 {
+		fake += skopeoRegistryRefusal
+	}
+	if err := os.WriteFile(filepath.Join(bin, "skopeo"), []byte(fake+"exit "+strconv.Itoa(code)+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := strings.ReplaceAll(push.Command[2], outputMount+"/", output+"/")
+	cmd := exec.Command("sh", append([]string{"-c", script, pushContainer}, push.Args...)...)
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// w4/582: the verdict follows the upload, as Render's does, so a push that
+// fails never reads "Build successful"; skopeo's blob transcript stays out.
+// With no moment left by the buildkit phase, the push says it is uploading.
+func TestNativeBuildPushSaysSuccessOnlyAfterTheUpload(t *testing.T) {
 	for name, code := range map[string]int{"pushed": 0, "refused": 1} {
-		bin := filepath.Join(dir, name)
-		if err := os.MkdirAll(bin, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		fake := "#!/bin/sh\necho 'Copying blob sha256:abc'\n" + skopeoRegistryRefusal + "exit " + strconv.Itoa(code) + "\n"
-		if err := os.WriteFile(filepath.Join(bin, "skopeo"), []byte(fake), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		cmd := exec.Command(push.Command[0], append(push.Command[1:], push.Args...)...)
-		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
-		out, err := cmd.CombinedOutput()
-		log := string(out)
+		log, err := runNativePush(t, t.TempDir(), code)
 		if strings.Contains(log, "Copying blob") || !strings.HasPrefix(log, "==> Uploading build...\n") {
 			t.Fatalf("%s: log %q, want the narration without skopeo's transcript", name, log)
 		}
@@ -270,14 +526,19 @@ func TestEveryBuildSkopeoKeepsRegistryInternalsOutOfTheLog(t *testing.T) {
 func TestNativeBuildLogNamesAFailedCommand(t *testing.T) {
 	command := "npm install && echo QA84 failing on purpose && exit 3"
 	o := nativeLogOptions(command)
-	log, message, exit := runBuildkit(t, o, nativeTranscript(command, "QA84 failing on purpose"), 1)
+	output := t.TempDir()
+	log, message, exit := runBuildkitWithOutput(t, o, nativeTranscript(command, "QA84 failing on purpose"), 1, output)
 	if exit != ExitTenantError {
 		t.Fatalf("exit %d, want the tenant-error class %d; log:\n%s", exit, ExitTenantError, log)
 	}
 	if !strings.HasSuffix(log, "QA84 failing on purpose\nerror: build command '"+command+"' exited with code 3\n") {
 		t.Errorf("log does not end with the command's output and exit code:\n%s", log)
 	}
-	for _, internal := range []string{"#", "sha256:", "static-ffmpeg", "bex-init", "/opt/bex/load-env", "--mount=type=secret", "Build successful"} {
+	// Nothing is uploaded after a command that failed (w33/m570).
+	if _, err := os.Stat(filepath.Join(output, filepath.Base(uploadStartedFile))); !os.IsNotExist(err) {
+		t.Errorf("a failed command left the upload's moment (stat: %v)", err)
+	}
+	for _, internal := range []string{"#", "sha256:", "static-ffmpeg", "bex-init", "/opt/bex/load-env", "--mount=type=secret", "Build successful", "Uploading"} {
 		if strings.Contains(log, internal) {
 			t.Errorf("log shows %q:\n%s", internal, log)
 		}
