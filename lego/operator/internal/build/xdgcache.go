@@ -311,7 +311,8 @@ COPY --from=bex-xdg-save /bex-xdg-out/ /
 // archive, runs the image's solve exactly as asked, and then archives the
 // mounts into /xdg-out. Seed and export are best-effort, quiet and bounded:
 // their output never reaches the build log, and only the image's solve
-// decides the phase's exit status.
+// decides the phase's exit status. The export's seconds follow it on a line
+// of their own (xdgExportLine), which nativeLogDisplay keeps out of the log.
 //
 // Before the image's solve it prints Render's second restore line from the
 // totals cache-restore left (xdgCacheRestored): the layout and the archive
@@ -370,10 +371,17 @@ bex_number() { case $1 in ''|*[!0-9]*) return 1 ;; esac; }
 fi
 buildctl "$bex_addr" "$@" || exit
 if [ -n "$bex_base" ]; then
+  bex_t0=$(date +%s)
   bex_xdg bex-xdg-export --local context=` + xdgDir + ` --output type=local,dest=` + xdgOutMount + ` >/dev/null ||
     rm -rf ` + xdgOutMount + `/* ` + xdgOutMount + `/.[!.]*
+  echo "` + xdgExportLine + ` $(( $(date +%s) - bex_t0 ))"
 fi
 `
+
+// xdgExportLine heads the line on which xdgBuildctl reports the seconds its
+// archive's solve took, for nativeLogDisplay to keep out of the log and
+// count among the export's parts (w33/m571).
+const xdgExportLine = "bex-export-xdg"
 
 // xdgBuildkitSetup writes the wrapper and its Dockerfile where $BUILDCTL
 // finds them, before the phase runs BuildKit. Both are fixed platform text.

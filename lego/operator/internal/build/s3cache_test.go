@@ -183,7 +183,7 @@ func TestS3BuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 				c.Env = slices.DeleteFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == "BUILDCTL" || e.Name == "BUILDKITD_FLAGS" })
 				script := revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
 				if tc.o.Builder == BuilderNative {
-					script = nativeLogDisplay + script
+					script = nativeLogDisplay + script + nativeExportReport
 				}
 				c.Command[scriptIndex(t, c)] = classifyPrelude + script
 				if j := slices.Index(c.Args, "--export-cache"); j >= 0 {

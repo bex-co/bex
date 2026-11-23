@@ -221,12 +221,44 @@ var nativeStepLogEnv = []corev1.EnvVar{
 // again. A phase that fails after it shows nothing of BuildKit's error and
 // ends with `==> Uploading build failed`; the reason still quotes the error
 // from the termination message.
+//
+// The filter also keeps what the export cost, for the operator and never for
+// the log (w33/m571): the seconds of the image's export and of its layers'
+// compression within it, of the layer cache's export, and of the
+// $XDG_CACHE_HOME archive's solve, which the wrapper reports on a line of its
+// own (xdgBuildctl). It leaves them in exportSecondsFile, which
+// nativeExportReport turns into the termination message of a phase that
+// succeeds.
 var nativeLogDisplay = `bex_message=/dev/termination-log
 bex_display() {
-  awk -v stamp=` + uploadStartedFile + ` -v rc_file="$bex_rc_file" '
+  awk -v stamp=` + uploadStartedFile + ` -v rc_file="$bex_rc_file" -v parts_file=` + exportSecondsFile + ` '
+    function seconds(s) {
+      sub(/s$/, "", s)
+      if (s == "") {
+        return "0"
+      }
+      return (s ~ /^[0-9]+(\.[0-9]+)?$/) ? s : ""
+    }
     /^#[0-9]+ / {
       started = 1
       n = substr($1, 2)
+      if ($2 == "exporting" && $0 == "#" n " ` + buildkitImageExport + `") {
+        part[n] = "` + ExportImage + `"
+      } else if ($2 == "exporting" && $0 == "#" n " ` + buildkitCacheExport + `") {
+        part[n] = "` + ExportCache + `"
+      } else if (n in part) {
+        p = part[n]
+        t = ""
+        if ($2 == "DONE") {
+          t = seconds($3)
+        } else if (p == "` + ExportImage + `" && $2 == "exporting" && $3 == "layers" && $NF == "done") {
+          p = "` + ExportLayers + `"
+          t = seconds(NF == 5 ? $4 : "")
+        }
+        if (t != "") {
+          secs[p] = t
+        }
+      }
       if (step == "" && index($0, "] ` + nativeEnvRunMount + `") > 0) {
         step = n
         if (ENVIRON["BEX_BUILD_COMMAND"] != "") {
@@ -280,6 +312,10 @@ bex_display() {
       fflush()
       next
     }
+    /^` + xdgExportLine + ` [0-9]+$/ {
+      secs["` + ExportXDG + `"] = $NF
+      next
+    }
     /^(error|ERROR): / {
       if (!failed && !uploading) {
         print "==> " $0
@@ -295,10 +331,42 @@ bex_display() {
       if (uploading && ((getline rc < rc_file) <= 0 || rc != "0")) {
         print "==> Uploading build failed"
       }
+      k = split("` + ExportImage + ` ` + ExportLayers + ` ` + ExportCache + ` ` + ExportXDG + `", order, " ")
+      for (i = 1; i <= k; i++) {
+        if (order[i] in secs) {
+          printf "export %s %s\n", order[i], secs[order[i]] > parts_file
+        }
+      }
     }
   '
 }
 `
+
+// nativeExportReport leaves a native build's export seconds as the
+// termination message of its buildkit phase once the phase has succeeded
+// (signals.go exportSignals reads it): each part nativeLogDisplay kept, then
+// the whole time from `==> Uploading build...` to the phase's end. A failed
+// phase never reaches it, and its message stays the transcript's tail. It
+// never fails the build.
+const nativeExportReport = `
+bex_at=$(cat ` + uploadStartedFile + ` 2>/dev/null) || bex_at=
+{
+  cat ` + exportSecondsFile + ` 2>/dev/null || :
+  case $bex_at in ''|*[!0-9]*) ;; *) echo "export ` + ExportTotal + ` $(( $(date +%s) - bex_at ))" ;; esac
+} > "$bex_message" 2>/dev/null || :
+`
+
+// BuildKit's names for a build's two exports, as its plain progress heads
+// their steps (v0.30.0: exporter/oci/export.go and
+// cache/remotecache/local/local.go).
+const (
+	buildkitImageExport = "exporting to oci image format"
+	buildkitCacheExport = "exporting cache to client directory"
+)
+
+// exportSecondsFile is where nativeLogDisplay leaves the export's parts for
+// nativeExportReport.
+const exportSecondsFile = "/tmp/bex-export"
 
 // skopeoQuiet defines bex_skopeo, skopeo as every build phase runs it. A
 // build pod's output is the tenant's build log, and skopeo's own stderr
@@ -457,6 +525,7 @@ fi
 	// Phase and volume names. Constants for the same reason pushContainer is
 	// one: signals.go matches phases by name, so a literal here and a literal
 	// there would be two facts that must agree.
+	buildkitPhase     = "buildkit"
 	cacheRestorePhase = "cache-restore"
 	cacheSavePhase    = "cache-save"
 	cachePurgePhase   = "cache-purge"
@@ -987,7 +1056,7 @@ var buildStepNames = map[string]string{
 	"prepare-native-build": "build preparation",
 	contextFilesContainer:  "secret file copy",
 	nativeResolveContainer: "runtime version selection",
-	"buildkit":             "docker build",
+	buildkitPhase:          "docker build",
 	pushContainer:          "image push",
 	signContainer:          "image signing",
 	cacheSavePhase:         "build cache save",
@@ -1027,7 +1096,7 @@ func failureDetail(o Options, pods []corev1.Pod) (step, tail string, platformFet
 			msg, failed := nativeCommandFailure(t.Message)
 			tail = failureTail(buildkitFailureSummary(msg))
 			platformFetch = nil
-			if o.Builder == BuilderNative && cs.Name == "buildkit" {
+			if o.Builder == BuilderNative && cs.Name == buildkitPhase {
 				// A native build has no Dockerfile of the tenant's: its
 				// BuildKit step runs their build command, or prepares bex's
 				// toolchain around it (w4/m324).
@@ -1482,7 +1551,8 @@ fi
 	} else {
 		// A native build's log reads like Render's: the command, its output,
 		// and the verdict (w4/m324). A Dockerfile build keeps BuildKit's output.
-		buildkitScript = nativeLogDisplay + buildkitScript
+		// What its export cost goes to the operator (w33/m571).
+		buildkitScript = nativeLogDisplay + buildkitScript + nativeExportReport
 	}
 
 	// Keep BuildKit's default OCI process sandbox enabled; the Pod user namespace
@@ -1545,7 +1615,7 @@ fi
 	// clone, platform push, or signing credential.
 	// Tenant code, so it classifies. Args stay positional (see classifyPrelude).
 	buildkit := corev1.Container{
-		Name:    "buildkit",
+		Name:    buildkitPhase,
 		Image:   buildkitImage,
 		Command: []string{"sh", "-eu", "-c", classifyPrelude + buildkitScript, "bex-buildkit"},
 		Args:    args,

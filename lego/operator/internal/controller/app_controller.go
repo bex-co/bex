@@ -1631,7 +1631,8 @@ func legacyReadyBuildVerdict(app *appv1alpha1.App) bool {
 }
 
 // meterBuildSignals records the pod-derived build series (queue wait, push
-// duration/errors, classified retries) for one finished build.
+// duration/errors, classified retries, a native build's export seconds) for
+// one finished build, and logs the export's seconds with the Job's name.
 //
 // Failure to read is logged, never fatal: these are observability series, and
 // the kpack path legitimately has no build Job at all (the Get 404s), so a
@@ -1652,6 +1653,13 @@ func (r *AppReconciler) meterBuildSignals(ctx context.Context, app *appv1alpha1.
 		return
 	}
 	recordBuildSignals(sig)
+	if len(sig.Export) > 0 {
+		kv := []any{"app", app.Name, "job", jobName}
+		for _, part := range sig.Export {
+			kv = append(kv, part.Part+"Seconds", part.Seconds)
+		}
+		logf.FromContext(ctx).Info("build export seconds", kv...)
+	}
 	// Same once-per-build gate as the histogram above, which is what keeps a
 	// re-reconcile of an already-finished build from counting one slow push
 	// twice toward the trial's latency rule.

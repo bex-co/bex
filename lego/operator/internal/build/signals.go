@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"sort"
 	"strconv"
@@ -105,7 +106,40 @@ type Signals struct {
 	// ended. StampMetering marks the Job so PendingCacheSaves meters the phase
 	// once it has.
 	CacheSavePending bool
+	// Export is what a native build's export cost on the final attempt
+	// (w33/m571), in exportParts order: the parts its buildkit phase reported
+	// once it succeeded. Empty for a Dockerfile build, a failed phase and a
+	// phase from before the report.
+	Export []ExportPart
 }
+
+// ExportPart is one part of a native build's export and the seconds it took.
+type ExportPart struct {
+	Part    string
+	Seconds float64
+}
+
+// The parts of a native build's export its buildkit phase reports
+// (nativeLogDisplay, nativeExportReport), a CLOSED set because each is a
+// Prometheus label.
+const (
+	// ExportImage is the image's export to its OCI archive, BuildKit's own
+	// count for the step: its layers' compression, then the archive's writing.
+	ExportImage = "image"
+	// ExportLayers is the image's layers' compression, within ExportImage.
+	ExportLayers = "layers"
+	// ExportCache is the layer cache's export (mode=max, zstd).
+	ExportCache = "cache"
+	// ExportXDG is the solve that archives $XDG_CACHE_HOME and the dependency
+	// directories (xdgcache.go).
+	ExportXDG = "xdg"
+	// ExportTotal is the whole time from `==> Uploading build...` to the
+	// phase's end, every part above included.
+	ExportTotal = "total"
+)
+
+// exportParts is the closed set in the order the phase reports it.
+var exportParts = []string{ExportImage, ExportLayers, ExportCache, ExportXDG, ExportTotal}
 
 // CachePhaseSignal is one cache phase's own account of what it did. The phases
 // always exit 0 (the cache affects speed, never results), so an outcome read
@@ -269,7 +303,41 @@ func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
 	}
 	sig.CachePhases = cachePhaseSignals(last)
 	sig.CacheSavePending = phaseRunning(last, cacheSavePhase)
+	sig.Export = exportSignals(last)
 	return sig
+}
+
+// exportSignals reads the export's parts off pod's buildkit phase once it has
+// succeeded: "export <part> <seconds>" lines (nativeExportReport), each part
+// at most once and in exportParts order. A line outside the closed set, or
+// with seconds that are not a finite non-negative number, is dropped.
+func exportSignals(pod *corev1.Pod) []ExportPart {
+	for _, cs := range containerStatuses(pod) {
+		term := cs.State.Terminated
+		if cs.Name != buildkitPhase || term == nil || term.ExitCode != 0 {
+			continue
+		}
+		seen := map[string]float64{}
+		for line := range strings.SplitSeq(term.Message, "\n") {
+			f := strings.Fields(line)
+			if len(f) != 3 || f[0] != "export" || !slices.Contains(exportParts, f[1]) {
+				continue
+			}
+			secs, err := strconv.ParseFloat(f[2], 64)
+			if _, dup := seen[f[1]]; dup || err != nil || secs < 0 || math.IsNaN(secs) || math.IsInf(secs, 0) {
+				continue
+			}
+			seen[f[1]] = secs
+		}
+		var out []ExportPart
+		for _, part := range exportParts {
+			if secs, ok := seen[part]; ok {
+				out = append(out, ExportPart{Part: part, Seconds: secs})
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 // attemptsInOrder is a Job's pods in its retry order, oldest first. Sorted by

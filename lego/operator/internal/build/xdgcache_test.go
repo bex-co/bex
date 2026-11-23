@@ -528,7 +528,8 @@ func TestXDGCachePurgeDeletesTheArchiveBesideTheLayout(t *testing.T) {
 // fakeBuildctl logs each call and answers the wrapper's three solves:
 // FAKE_SEED=unusable makes the seed report an archive it could not unpack,
 // FAKE_BUILD_RC fails the image's own solve, FAKE_EXPORT_FAIL leaves a
-// partial export behind a failure.
+// partial export behind a failure, and FAKE_EXPORT_SLEEP holds the export
+// for that many seconds.
 const fakeBuildctl = `#!/bin/sh
 printf '%s\n' "$*" >> "$FAKE_BUILDCTL_LOG"
 case " $* " in
@@ -537,6 +538,7 @@ case " $* " in
   if [ "$FAKE_SEED" = unusable ]; then echo "#5 0.120 bex-xdg-seed: unusable"; else echo "#5 0.120 bex-xdg-seed: restored in 4s"; fi
   ;;
 *" target=bex-xdg-export "*)
+  [ -z "$FAKE_EXPORT_SLEEP" ] || sleep "$FAKE_EXPORT_SLEEP"
   echo partial > "$FAKE_XDG_OUT/` + xdgCacheObject + `"
   [ -z "$FAKE_EXPORT_FAIL" ] || exit 1
   ;;
@@ -749,6 +751,37 @@ func TestXDGBuildctlNeverLetsTheCacheDecideTheBuild(t *testing.T) {
 			t.Errorf("err=%v calls=%v", err, r.calls())
 		}
 	})
+}
+
+// w33/m571: after the image's solve, the wrapper reports how long its
+// archive's solve took, on a line of its own, whether the archive came out
+// or not. A build that failed, and anything but a build, report nothing.
+func TestXDGBuildctlReportsTheSecondsItsArchiveTook(t *testing.T) {
+	line := regexp.MustCompile(`(?m)^` + xdgExportLine + ` ([0-9]+)$`)
+	for name, env := range map[string][]string{
+		"an archive":           {"FAKE_EXPORT_SLEEP=1"},
+		"an export that fails": {"FAKE_EXPORT_SLEEP=1", "FAKE_EXPORT_FAIL=1"},
+	} {
+		r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
+		out, err := r.run(wrapperBuildArgs, env...)
+		m := line.FindAllStringSubmatch(out, -1)
+		if err != nil || len(m) != 1 {
+			t.Fatalf("%s: err=%v, want one seconds line:\n%s", name, err, out)
+		}
+		if n, _ := strconv.Atoi(m[0][1]); n < 1 || n > 3 {
+			t.Errorf("%s: the archive took %ds, want the 1 s its solve was held", name, n)
+		}
+		if strings.Index(out, xdgExportLine) < strings.Index(out, "the image's solve") {
+			t.Errorf("%s: the seconds precede the image's solve:\n%s", name, out)
+		}
+	}
+	r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
+	if out, _ := r.run(wrapperBuildArgs, "FAKE_BUILD_RC=7"); strings.Contains(out, xdgExportLine) {
+		t.Errorf("a failed build reported an archive:\n%s", out)
+	}
+	if out, _ := r.run([]string{"debug", "workers"}); strings.Contains(out, xdgExportLine) {
+		t.Errorf("a command other than a build reported an archive:\n%s", out)
+	}
 }
 
 // --- the seed and save steps BuildKit runs, on GNU userland ---

@@ -467,6 +467,7 @@ The "required operational signals" ADR034 listed become real Prometheus series o
 | `bex_builds_active` / `bex_builds_queued{}` | live gauge of the admission picture |
 | `bex_build_hold_seconds{cause}` / `bex_builds_held{cause}` / `bex_build_hold_oldest_seconds` | releases held before their build Job exists (w6/m306, below) |
 | `bex_build_push_seconds` / `..._errors_total` | registry health as seen by builds (D4's tripwire) |
+| `bex_build_export_seconds{part}` (histogram) | a native build's work after its build command (w33/m571): `image` (the OCI archive, BuildKit's count for the step), `layers` (their compression, within `image`), `cache` (the layer cache's export), `xdg` (the `$XDG_CACHE_HOME` and dependency archive's solve) and `total` (from `==> Uploading build...` to the buildkit phase's end, the others included). The phase leaves them as `export <part> <seconds>` lines in its termination message once it succeeds, and the operator also logs them as `build export seconds` with the Job's name, so a build pod's `kubectl get pod -o jsonpath` reads them too |
 
 Rules that follow from them:
 

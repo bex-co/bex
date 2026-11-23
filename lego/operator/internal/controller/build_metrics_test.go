@@ -124,6 +124,30 @@ func TestRecordBuildSignalsMetersEachCachePhase(t *testing.T) {
 	}
 }
 
+// w33/m571: each part of a native build's export the build plane read lands
+// on its own series, and a build that reported none observes nothing.
+func TestRecordBuildSignalsMetersEachExportPart(t *testing.T) {
+	parts := []string{build.ExportImage, build.ExportLayers, build.ExportCache, build.ExportXDG, build.ExportTotal}
+	before := map[string]uint64{}
+	for _, part := range parts {
+		before[part] = histogramCount(t, buildExportSeconds.WithLabelValues(part))
+	}
+	recordBuildSignals(build.Signals{})
+	recordBuildSignals(build.Signals{Export: []build.ExportPart{
+		{Part: build.ExportImage, Seconds: 434.1}, {Part: build.ExportLayers, Seconds: 412.6},
+		{Part: build.ExportCache, Seconds: 12.3}, {Part: build.ExportTotal, Seconds: 452},
+	}})
+	for _, part := range parts {
+		want := before[part] + 1
+		if part == build.ExportXDG {
+			want = before[part]
+		}
+		if got := histogramCount(t, buildExportSeconds.WithLabelValues(part)); got != want {
+			t.Errorf("%s count = %d, want %d", part, got, want)
+		}
+	}
+}
+
 func histogramCount(t *testing.T, o prometheus.Observer) uint64 {
 	t.Helper()
 	var m dto.Metric

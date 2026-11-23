@@ -1,12 +1,12 @@
 # w33 · m571 — A native build's image export takes less than half its 7 minutes
 
-**Worker:** worker33 **Goal:** the time between a native build command's last line and `==> Build successful 🎉` on a 1.4 GB Node image falls from 7m09s–7m42s to under 3m30s. Each build records which part of its export the time went to, so the cut is chosen from measurements, and pulls and cache hits get no worse. **Status:** todo
+**Worker:** worker33 **Goal:** the time between a native build command's last line and `==> Build successful 🎉` on a 1.4 GB Node image falls from 7m09s–7m42s to under 3m30s. Each build records which part of its export the time went to, so the cut is chosen from measurements, and pulls and cache hits get no worse. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Each native build records how long its image archive, layer-cache export and XDG/dependency archive take | 1h | — |
+| [t001](done/t001.md) | Each native build records how long its image archive, layer-cache export and XDG/dependency archive take — **DONE** | 1h | — |
 | [t002](t002.md) | Measure the split on a 1 GB+ Node image and choose the cut from the numbers | 1h30m | t001 |
 | [t003](t003.md) | Ship the chosen cut | 1h | t002 |
 | [t004](t004.md) | Simplify | 15m | t003 |
@@ -22,6 +22,14 @@ On production, once the pin carries this milestone's commits, for a rebuild of `
 3. The build after it still reuses what the cache holds: `cache-restore` reports a hit, and the dependency directories and `$XDG_CACHE_HOME` arrive.
 4. The phase split that t001 records is in the milestone README, before and after.
 5. `make test` (from `lego/operator/`) passes.
+
+## Measurements
+
+- **How to read the split (t001, 2026-11-22).** Once a pin carries t001, every native build whose buildkit phase succeeds leaves `export <part> <seconds>` lines in that phase's termination message: `image` (the OCI archive, BuildKit's count for the step), `layers` (the layers' compression, within `image`), `cache` (the layer cache's export), `xdg` (the `$XDG_CACHE_HOME` and dependency archive's solve) and `total` (from `==> Uploading build...` to the phase's end, all of them included). Three ways to read them, all read-only:
+  - the operator's log line `build export seconds`, with `app`, `job` and `imageSeconds` … `totalSeconds` (`kubectl -n bex-system logs deploy/bex-controller-manager | grep 'build export seconds'`);
+  - the build pod while its Job lives (one hour): `kubectl -n bex-build get pod -l job-name=<job> -o jsonpath='{.items[*].status.initContainerStatuses[?(@.name=="buildkit")].state.terminated.message}'`;
+  - the operator's metrics, `bex_build_export_seconds{part}`.
+- **Before (t002):** not yet measured.
 
 ## Source + Goal linkage
 

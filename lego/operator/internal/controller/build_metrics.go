@@ -200,6 +200,20 @@ var (
 		// 1 MiB to the 8 GB volume bound, a factor of four apart.
 		Buckets: prometheus.ExponentialBuckets(1<<20, 4, 8),
 	}, []string{"phase", "kind"})
+
+	// What a native build's export cost after its build command (w33/m571):
+	// the image's export, its layers' compression within it, the layer cache's
+	// export, the $XDG_CACHE_HOME archive, and the whole stretch from the
+	// command's end to the buildkit phase's end. They say which part of the
+	// minutes a large image spends there to cut, which the build log no longer
+	// shows (nativeLogDisplay). The parts are build.exportParts, a closed set.
+	buildExportSeconds = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "bex_build_export_seconds",
+		Help: "Seconds a native build's buildkit phase spent after its build command, by part: image (the OCI archive, layers included), layers (their compression), cache (the layer cache's export), xdg (the $XDG_CACHE_HOME and dependency archive) and total (from the command's end to the phase's end, every other part included).",
+		// A small image exports in seconds; a 1.4 GB Node image took over seven
+		// minutes on 2026-11-22.
+		Buckets: []float64{1, 5, 15, 30, 60, 120, 240, 480, 900},
+	}, []string{"part"})
 )
 
 // The closed reason set for buildCacheWithdrawalsTotal, and for the log line
@@ -217,7 +231,7 @@ func init() {
 		buildHoldSeconds, buildsHeld, buildHoldOldestSeconds,
 		buildPushSeconds, buildPushErrorsTotal, buildRetriesTotal,
 		buildCacheEnabled, buildCacheWithdrawalsTotal,
-		buildCachePhaseSeconds, buildCacheBytes,
+		buildCachePhaseSeconds, buildCacheBytes, buildExportSeconds,
 	)
 }
 
@@ -286,6 +300,9 @@ func recordBuildSignals(sig build.Signals) {
 		if phase.Bytes > 0 {
 			buildCacheBytes.WithLabelValues(phase.Phase, phase.Kind).Observe(float64(phase.Bytes))
 		}
+	}
+	for _, part := range sig.Export {
+		buildExportSeconds.WithLabelValues(part.Part).Observe(part.Seconds)
 	}
 }
 
