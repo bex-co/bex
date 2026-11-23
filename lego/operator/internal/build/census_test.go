@@ -227,15 +227,16 @@ func TestTrimOvershootNeverDeletesFinishedBuilds(t *testing.T) {
 	}
 }
 
-// TestStampMeteringRecordsPlacementAndFault: bex-api bills a build from its
-// pod's first placement and skips the platform's own failures (w6/m307), and it
-// can only read both off the Job once the pods are gone.
-func TestStampMeteringRecordsPlacementAndFault(t *testing.T) {
+// TestStampMeteringRecordsPlacementEndAndFault: bex-api bills a build from its
+// pod's first placement to its image push and skips the platform's own
+// failures (w6/m307, w33/012), and it can only read them off the Job once the
+// pods are gone.
+func TestStampMeteringRecordsPlacementEndAndFault(t *testing.T) {
 	job := censusJob("bld-meter", "tea-a", time.Minute, true)
 	cl := fakeClient(job)
 	placed := metav1.NewTime(time.Date(2026, 11, 10, 9, 30, 0, 0, time.UTC))
 
-	if err := StampMetering(context.Background(), cl, censusNS, "bld-meter", Signals{PlacedAt: placed}, FaultInfra); err != nil {
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-meter", Signals{PlacedAt: placed}, Observation{Phase: PhaseFailed, Fault: FaultInfra, FinishedAt: placed.Add(time.Minute)}); err != nil {
 		t.Fatalf("StampMetering: %v", err)
 	}
 	var got batchv1.Job
@@ -248,14 +249,34 @@ func TestStampMeteringRecordsPlacementAndFault(t *testing.T) {
 	if v := got.Annotations[appv1alpha1.AnnotationBuildFault]; v != appv1alpha1.BuildFaultInfra {
 		t.Errorf("fault = %q, want infra", v)
 	}
+	if v, ok := got.Annotations[appv1alpha1.AnnotationBuildEndedAt]; ok {
+		t.Errorf("ended-at = %q on a failed build, want none: it bills to the Job's failure", v)
+	}
 	if got.Labels["app.bex.co/workspace"] != "tea-a" {
 		t.Error("the stamp must not disturb the Job's labels")
 	}
 
-	// A succeeded build with no observed placement writes nothing.
+	// A succeeded build ends at its push, whatever cache-save does after it.
+	pushed := censusJob("bld-pushed", "tea-a", time.Minute, false)
+	cl = fakeClient(pushed)
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-pushed", Signals{PlacedAt: placed, CacheSavePending: true},
+		Observation{Phase: PhaseSucceeded, FinishedAt: placed.Add(4 * time.Minute)}); err != nil {
+		t.Fatalf("StampMetering: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: censusNS, Name: "bld-pushed"}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if v := got.Annotations[appv1alpha1.AnnotationBuildEndedAt]; v != "2026-11-10T09:34:00Z" {
+		t.Errorf("ended-at = %q, want the push's end 2026-11-10T09:34:00Z", v)
+	}
+	if v, ok := got.Annotations[appv1alpha1.AnnotationBuildFault]; ok {
+		t.Errorf("fault = %q on a succeeded build, want none", v)
+	}
+
+	// A succeeded build with no observed placement or end writes nothing.
 	plain := censusJob("bld-plain", "tea-a", time.Minute, true)
 	cl = fakeClient(plain)
-	if err := StampMetering(context.Background(), cl, censusNS, "bld-plain", Signals{}, FaultNone); err != nil {
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-plain", Signals{}, Observation{Phase: PhaseSucceeded}); err != nil {
 		t.Fatalf("StampMetering: %v", err)
 	}
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: censusNS, Name: "bld-plain"}, &got); err != nil {

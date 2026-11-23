@@ -106,6 +106,15 @@ func TestABuildRollsOutAtItsImagePushWhileItsCacheSaveRuns(t *testing.T) {
 	if live.Status.BuildRun == nil || *live.Status.BuildRun != want {
 		t.Fatalf("buildRun = %+v, want %+v: bex-api dates build_ended from it", live.Status.BuildRun, want)
 	}
+	// bex-api bills the build to the same moment, not to the Job's end once
+	// cache-save exits (w33/012).
+	metered := &batchv1.Job{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(job), metered); err != nil {
+		t.Fatal(err)
+	}
+	if got := metered.Annotations[appv1alpha1.AnnotationBuildEndedAt]; got != want.FinishedAt {
+		t.Fatalf("the build Job's %s = %q, want the push's end %q", appv1alpha1.AnnotationBuildEndedAt, got, want.FinishedAt)
+	}
 	built := live.Status.ArtifactImage
 	if got := liveDeployment(t, cl, nn).Spec.Template.Spec.Containers[0].Image; built == "" || built == prior || got != built {
 		t.Fatalf("the pod template runs %q, want release 2's built image %q while cache-save still runs", got, built)
@@ -174,7 +183,7 @@ func TestTheBuildCensusMetersACacheSaveThatOutlivedItsBuild(t *testing.T) {
 		Registry: "zot.test:5000", AppUID: "uid-web", Workspace: "tea-a", BuildCache: true,
 	}, "zot.test:5000/web:gen-2")
 	cl := fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(job).WithStatusSubresource(&batchv1.Job{}).Build()
-	if err := build.StampMetering(ctx, cl, censusBuildNS, job.Name, build.Signals{CacheSavePending: true}, build.FaultNone); err != nil {
+	if err := build.StampMetering(ctx, cl, censusBuildNS, job.Name, build.Signals{CacheSavePending: true}, build.Observation{Phase: build.PhaseSucceeded}); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Now().Add(-time.Minute)

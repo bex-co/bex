@@ -34,9 +34,11 @@ import (
 
 // build_seconds counts what Render counts as pipeline minutes (w6/m307,
 // docs/ADR023): the build, Dockerfile or buildpack, and the pre-deploy command,
-// whether it succeeded or failed, from when its pod was placed. Two exceptions,
-// both the platform's own time: a build that failed for a platform reason, and
-// a platform-opened release (w1/m184). A run is metered in the hour it ended.
+// whether it succeeded or failed, from when its pod was placed to when the
+// build ended, which for a succeeded build is its image push and not the
+// cache-save after it (w33/012). Two exceptions, both the platform's own time:
+// a build that failed for a platform reason, and a platform-opened release
+// (w1/m184). A run is metered in the hour its Job or kpack Build ended.
 
 var kpackBuildListGVK = appv1alpha1.KpackGroupVersion.WithKind("BuildList")
 
@@ -85,17 +87,19 @@ func (s *Service) queryBuildSeconds(ctx context.Context, crName, appNs string, w
 	return total + kpack, true
 }
 
-// jobBilledSeconds is what a finished Job bills in [window, end): from its
-// pod's first placement (the operator's app.bex.co/build-placed-at, else the
-// Job's own startTime) to its completion or failure. A build that failed for
-// a platform reason bills nothing: the operator's verdict when it stamped one,
-// else the Job's failure reason.
+// jobBilledSeconds is what a Job that finished in [window, end) bills: from
+// its pod's first placement (the operator's app.bex.co/build-placed-at, else
+// the Job's own startTime) to the build's end. A build that succeeded ended at
+// its image push (app.bex.co/build-ended-at, w33/012): the cache-save beside
+// it can keep the Job running a minute or more, and is not a build command.
+// Any other run ends at the Job's completion or failure. A build that failed
+// for a platform reason bills nothing: the operator's verdict when it stamped
+// one, else the Job's failure reason. The run is metered in the hour its Job
+// ended, which is never before the push, so a stamp written a few seconds
+// after the push cannot miss its hour.
 func jobBilledSeconds(job *batchv1.Job, buildJob bool, window, end time.Time) int64 {
 	finished, failureReason, ok := jobEnd(job)
-	if !ok {
-		return 0
-	}
-	if buildJob && cmp.Or(job.Annotations[appv1alpha1.AnnotationBuildFault], appv1alpha1.BuildJobFault(failureReason)) == appv1alpha1.BuildFaultInfra {
+	if !ok || finished.Before(window) || !finished.Before(end) {
 		return 0
 	}
 	var started time.Time
@@ -105,7 +109,16 @@ func jobBilledSeconds(job *batchv1.Job, buildJob bool, window, end time.Time) in
 	if at, err := time.Parse(time.RFC3339, job.Annotations[appv1alpha1.AnnotationBuildPlacedAt]); err == nil && !at.After(finished) {
 		started = at
 	}
-	return billedSeconds(started, finished, window, end)
+	// A stamped end is the operator's verdict that the build succeeded, so
+	// a cache-save that then failed the Job, or a retry after the push that
+	// spent its backoff, changes neither the fault nor the end.
+	if at, err := time.Parse(time.RFC3339, job.Annotations[appv1alpha1.AnnotationBuildEndedAt]); err == nil && at.After(started) && !at.After(finished) {
+		return runSeconds(started, at)
+	}
+	if buildJob && cmp.Or(job.Annotations[appv1alpha1.AnnotationBuildFault], appv1alpha1.BuildJobFault(failureReason)) == appv1alpha1.BuildFaultInfra {
+		return 0
+	}
+	return runSeconds(started, finished)
 }
 
 // jobEnd is when a Job finished and, for a failed one, why. Kubernetes sets
@@ -152,7 +165,7 @@ func (s *Service) kpackBuildSeconds(ctx context.Context, crName, buildNs string,
 		if name, _, _ := unstructured.NestedString(b.Object, "status", "podName"); !podStarts[name].IsZero() {
 			started = podStarts[name]
 		}
-		total += billedSeconds(started, finished, window, end)
+		total += runSeconds(started, finished)
 	}
 	return total, true
 }
@@ -191,11 +204,10 @@ func kpackBuildEnd(b *unstructured.Unstructured) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// billedSeconds is the whole seconds from started to finished when the run
-// ended in [window, end); zero otherwise, or when either time is unknown or
-// they are out of order.
-func billedSeconds(started, finished, window, end time.Time) int64 {
-	if started.IsZero() || finished.Before(window) || !finished.Before(end) || !finished.After(started) {
+// runSeconds is the whole seconds from started to finished; zero when the
+// start is unknown or the two are out of order.
+func runSeconds(started, finished time.Time) int64 {
+	if started.IsZero() || !finished.After(started) {
 		return 0
 	}
 	return int64(finished.Sub(started) / time.Second)

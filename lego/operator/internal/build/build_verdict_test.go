@@ -269,7 +269,7 @@ func TestACacheSaveStillRunningAtTheVerdictIsMeteredOnceItEnds(t *testing.T) {
 	}
 	cl := fakeClient(j, running)
 	ctx := context.Background()
-	if err := StampMetering(ctx, cl, censusNS, j.Name, Signals{CacheSavePending: true}, FaultNone); err != nil {
+	if err := StampMetering(ctx, cl, censusNS, j.Name, Signals{CacheSavePending: true}, Observation{Phase: PhaseSucceeded}); err != nil {
 		t.Fatal(err)
 	}
 	if saves, err := PendingCacheSaves(ctx, cl, censusNS); err != nil || len(saves) != 0 {

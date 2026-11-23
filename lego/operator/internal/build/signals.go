@@ -186,16 +186,21 @@ func ReadSignals(ctx context.Context, cl client.Client, namespace, jobName strin
 
 // StampMetering records on a terminal build's Job what bex-api's build_seconds
 // meter needs and cannot see once the pods are reaped (w6/m307, docs/ADR023):
-// when the build's pod was first placed, and, for a failed build, its fault.
-// A zero placement or an empty fault leaves that annotation off. A cache-save
-// still running gets the Job marked for PendingCacheSaves.
-func StampMetering(ctx context.Context, cl client.Client, namespace, jobName string, sig Signals, fault Fault) error {
+// when the build's pod was first placed; for a succeeded build, when it ended,
+// its image push and not the Job's end after cache-save (obs.FinishedAt,
+// w33/012); for a failed build, its fault. A zero time or an empty fault
+// leaves that annotation off. A cache-save still running gets the Job marked
+// for PendingCacheSaves.
+func StampMetering(ctx context.Context, cl client.Client, namespace, jobName string, sig Signals, obs Observation) error {
 	annotations := map[string]string{}
 	if !sig.PlacedAt.IsZero() {
 		annotations[appv1alpha1.AnnotationBuildPlacedAt] = sig.PlacedAt.UTC().Format(time.RFC3339)
 	}
-	if fault != FaultNone {
-		annotations[appv1alpha1.AnnotationBuildFault] = string(fault)
+	if obs.Phase == PhaseSucceeded && !obs.FinishedAt.IsZero() {
+		annotations[appv1alpha1.AnnotationBuildEndedAt] = obs.FinishedAt.UTC().Format(time.RFC3339)
+	}
+	if obs.Fault != FaultNone {
+		annotations[appv1alpha1.AnnotationBuildFault] = string(obs.Fault)
 	}
 	meta := map[string]any{}
 	if len(annotations) > 0 {

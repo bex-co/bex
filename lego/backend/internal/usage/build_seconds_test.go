@@ -117,6 +117,54 @@ func TestBuildSecondsStartsWhenTheBuildPodWasPlaced(t *testing.T) {
 	}
 }
 
+// TestBuildSecondsEndsAtTheImagePush (w33/012): a succeeded build ends at its
+// image push, where `==> Build successful 🎉`, build_ended and the rollout
+// are; the cache-save that kept its Job running 70 s longer (eden-dash-v3,
+// 2026-11-22) is not a build command, and Render bills the time its build
+// commands run.
+func TestBuildSecondsEndsAtTheImagePush(t *testing.T) {
+	stamp := func(job *batchv1.Job, placedSec, pushedSec int) *batchv1.Job {
+		at := func(sec int) string {
+			return meterWindow.Add(time.Duration(sec) * time.Second).UTC().Format(time.RFC3339)
+		}
+		job.Annotations = map[string]string{appv1alpha1.AnnotationBuildPlacedAt: at(placedSec), appv1alpha1.AnnotationBuildEndedAt: at(pushedSec)}
+		return job
+	}
+	// Placed at 0:30, pushed at 4:30, Job complete 70 s later once cache-save stored the cache.
+	pushed := meterJob("bld-pushed", "bex-build", buildLabels("gen-1"), 0, 0, false)
+	pushed.Status.CompletionTime = &metav1.Time{Time: meterWindow.Add(270*time.Second + 70*time.Second)}
+	stamp(pushed, 30, 270)
+	// cache-save was OOM-killed after the push, and the pod failure policy
+	// failed the Job: the build still succeeded at its push, by the stamp.
+	cacheFailed := stamp(meterJob("bld-cache-failed", "bex-build", buildLabels("gen-2"), 10, 14, true), 10*60, 12*60)
+	cacheFailed.Status.Conditions[0].Reason = "PodFailurePolicy"
+	// The pod was disrupted after the push and its rebuilds spent the
+	// backoff: a platform failure by the Job's reason, but the tenant's build
+	// had succeeded.
+	retried := stamp(meterJob("bld-retried", "bex-build", buildLabels("gen-3"), 20, 30, true), 20*60, 23*60)
+	retried.Status.Conditions[0].Reason = "BackoffLimitExceeded"
+	// A stamped end the Job never reached, or one before the build started,
+	// is not a push: such a Job bills to its own end.
+	late := stamp(meterJob("bld-late", "bex-build", buildLabels("gen-4"), 40, 42, false), 40*60, 45*60)
+	early := stamp(meterJob("bld-early", "bex-build", buildLabels("gen-5"), 50, 52, false), 50*60, 49*60)
+	// Pushed just before the hour, Job complete just after: metered in the
+	// hour its Job ended, so the hour it was pushed in bills nothing for it.
+	straddle := stamp(meterJob("bld-straddle", "bex-build", buildLabels("gen-6"), 55, 61, false), 55*60, 59*60)
+
+	svc := meterService(t, pushed, cacheFailed, retried, late, early, straddle)
+	secs, ok := svc.queryBuildSeconds(context.Background(), "web", "tea-a", meterWindow, meterWindow.Add(time.Hour), nil)
+	if !ok {
+		t.Fatal("listing failed")
+	}
+	if want := int64(240 + 2*60 + 3*60 + 2*60 + 2*60); secs != want {
+		t.Errorf("build_seconds = %d, want %d: a succeeded build bills placement to push, failed Job or not, never cache-save's tail", secs, want)
+	}
+	next, _ := svc.queryBuildSeconds(context.Background(), "web", "tea-a", meterWindow.Add(time.Hour), meterWindow.Add(2*time.Hour), nil)
+	if want := int64(4 * 60); next != want {
+		t.Errorf("next hour's build_seconds = %d, want %d: the build pushed at 9:59 whose Job ended at 10:01", next, want)
+	}
+}
+
 func TestBuildSecondsCountsPreDeployRunsInTheAppsNamespace(t *testing.T) {
 	predeploy := func(name, revision string, startMin, endMin int, failed bool) *batchv1.Job {
 		return meterJob(name, "tea-a", map[string]string{

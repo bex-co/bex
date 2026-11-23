@@ -86,15 +86,21 @@ const (
 	LabelBuildRevision = "app.bex.co/build-revision" // the release's BuildRevision
 )
 
-// Annotations the operator stamps on a build Job once it has finished, for
-// bex-api's build_seconds meter (w6/m307, docs/ADR023): Render counts pipeline
-// minutes from when the build runs, and does not bill the platform's own
-// failures.
+// Annotations the operator stamps on a build Job once the build has its
+// verdict, for bex-api's build_seconds meter (w6/m307, docs/ADR023): Render
+// counts pipeline minutes while the build runs, and does not bill the
+// platform's own failures.
 const (
 	// AnnotationBuildPlacedAt is when the build's pod was first placed on a
 	// node (RFC3339). The Job's own startTime precedes that by the wait for a
 	// build node, which is the platform's time, not the tenant's.
 	AnnotationBuildPlacedAt = "app.bex.co/build-placed-at"
+	// AnnotationBuildEndedAt is when a succeeded build ended (RFC3339): its
+	// image phase's exit, the push or the signature after it (w33/012). The
+	// build's cache-save may run on beside it, and the Job ends only once that
+	// has, but Render bills the time its build commands run, which ends at
+	// `==> Build successful 🎉`.
+	AnnotationBuildEndedAt = "app.bex.co/build-ended-at"
 	// AnnotationBuildFault is the operator's verdict on a failed build:
 	// BuildFaultTenant, BuildFaultInfra or BuildFaultTimeout. It can differ
 	// from BuildJobFault, e.g. a toolchain bex supplies that failed to arrive
