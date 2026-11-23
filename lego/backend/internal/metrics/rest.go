@@ -133,17 +133,29 @@ func activeConnectionsMetric(kind, resource string) (string, error) {
 
 // activeConnections reads Render's active_connections for one datastore
 // resource — the MCP get_metrics path, which names Render's metric type rather
-// than a REST route.
-func (s *Service) activeConnections(ctx context.Context, resource string, start, end time.Time, resolution time.Duration) ([]MetricSeries, error) {
+// than a REST route. Connection counts have no limit denominator, so
+// percentage is refused exactly as DatastoreMetrics refuses it for every
+// non cpu/memory metric; instance selection and replica aggregation apply to
+// the per-instance series identically to a service's, with unresolved
+// selectors narrowing to empty rather than broadening.
+func (s *Service) activeConnections(ctx context.Context, q MetricQuery, resource string) ([]MetricSeries, error) {
 	kind := datastoreKindFor(resource)
 	metric, err := activeConnectionsMetric(kind, resource)
 	if err != nil {
 		return nil, err
 	}
-	return s.DatastoreMetrics(ctx, DatastoreMetricQuery{
+	if q.Percentage {
+		return nil, fmt.Errorf("%w: percentage applies only to cpu and memory metrics", core.ErrBadRequest)
+	}
+	series, err := s.DatastoreMetrics(ctx, DatastoreMetricQuery{
 		Kind: kind, Resource: resource, Metric: metric,
-		Start: start, End: end, Resolution: resolution,
+		Start: q.Start, End: q.End, Resolution: q.Resolution,
 	})
+	if err != nil {
+		return nil, err
+	}
+	q.App, q.Metric = resource, metric
+	return applyInstanceSelection(q, series, nil)
 }
 
 // datastoreAppMetric answers one of Render's App-metric paths (cpu, memory,

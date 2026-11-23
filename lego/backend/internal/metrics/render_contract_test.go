@@ -945,6 +945,91 @@ func TestMultiValueStatusCodeFilteringAcrossSurfaces(t *testing.T) {
 	}
 }
 
+// TestMCPActiveConnectionsHonorsSharedFilters: MCP get_metrics routes
+// active_connections around datastoreAppMetric (it builds its own query in
+// activeConnections), so the shared percentage/instance/aggregate contract has
+// to hold in that branch too — an answer in absolute counts to a percentage
+// request, or every instance to an instance filter, is the wrong shape, and an
+// unresolved selector must narrow to empty, never broaden.
+func TestMCPActiveConnectionsHonorsSharedFilters(t *testing.T) {
+	const (
+		pgID = "dpg-c185th5c2rvvnhbfiltg"
+		kvID = "red-c185th5c2rvvnhbfiltg"
+		ts   = "2026-11-23T12:00:00Z"
+	)
+	svc := newService(nil, nil, sampleApp("web"), sampleDatabase(pgID, true), sampleKeyValue(kvID))
+	svc.DBConnections = func(_ context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{
+			{Labels: map[string]string{"instance": req.Cluster + "-1"}, Unit: unitCount, Points: []MetricPoint{{Timestamp: ts, Value: 10}}},
+			{Labels: map[string]string{"instance": req.Cluster + "-2"}, Unit: unitCount, Points: []MetricPoint{{Timestamp: ts, Value: 30}}},
+		}, nil
+	}
+	svc.KeyValueStats = func(_ context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		if req.Dimension != "connections" {
+			t.Errorf("kv active_connections read dimension = %q, want connections", req.Dimension)
+			return nil, nil
+		}
+		return []MetricSeries{
+			{Labels: map[string]string{"instance": req.Resource + "-0"}, Unit: unitCount, Points: []MetricPoint{{Timestamp: ts, Value: 4}}},
+		}, nil
+	}
+	cs := mcpSession(t, svc)
+	call := func(args map[string]any) (*mcp.CallToolResult, error) {
+		return cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: args})
+	}
+
+	// 1. An instance filter narrows to the selected replica.
+	filtered, err := call(map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"active_connections"}, "instance": []string{pgID + "-2"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeGetMetrics(t, filtered).series(); len(got) != 1 || got[0].Values[0].Value != 30 {
+		t.Errorf("MCP active_connections instance filter = %+v, want the 1 series at 30", got)
+	}
+
+	// 2. An unresolved instance narrows to empty — never broadens to all instances.
+	unresolved, err := call(map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"active_connections"}, "instance": []string{"nope"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeGetMetrics(t, unresolved).series(); len(got) != 0 {
+		t.Errorf("MCP active_connections unresolved instance = %+v, want []", got)
+	}
+
+	// 3. Percentage has no connection-count denominator, so it refuses like the verb does.
+	if res, err := call(map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"active_connections"}, "percentage": true,
+	}); err != nil || !res.IsError {
+		t.Errorf("MCP active_connections percentage:true = err:%v isError:%v, want tool error", err, res != nil && res.IsError)
+	}
+
+	// 4. Replica aggregation applies to the per-instance connection series.
+	avg, err := call(map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"active_connections"}, "aggregateAllMethod": "AVG",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeGetMetrics(t, avg).series(); len(got) != 1 || got[0].Unit != unitCount || got[0].Values[0].Value != 20 {
+		t.Errorf("MCP active_connections AVG = %+v, want 1 count series at 20", got)
+	}
+
+	// 5. The Key Value sibling honors the instance filter the same way.
+	kv, err := call(map[string]any{
+		"resourceId": kvID, "metricTypes": []string{"active_connections"}, "instance": []string{kvID + "-0"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeGetMetrics(t, kv).series(); len(got) != 1 || got[0].Values[0].Value != 4 {
+		t.Errorf("MCP kv active_connections instance filter = %+v, want the 1 series at 4", got)
+	}
+}
+
 // renderMetricsTypes pins Render's MCP get_metrics enum
 // (render-oss/render-mcp-server pkg/metrics/tools.go): every name maps to a
 // metric id the Metrics verb or the datastore route knows, so dropping one is a
