@@ -240,11 +240,13 @@ def verify_datastore_activity_scrapes(prometheus):
     assert relabel(cnpg, backends) == backends, "The existing connection series is unchanged"
 
 
-def verify_sandbox_pod_cpu_scrape(prometheus):
+def verify_sandbox_pod_scrape(prometheus):
     """A gVisor sandbox's CPU exists only on its pod-level cAdvisor row, which
     the used-CPU meter bills on (w22/m314). That one row is stored for sandbox
     namespaces under its own name; every query over
-    container_cpu_usage_seconds_total reads what it read before."""
+    container_cpu_usage_seconds_total reads what it read before. The same row's
+    working set is kept the same way (w6/167): it is the only memory reading a
+    gVisor sandbox has."""
     jobs = {job["job_name"]: job for job in prometheus["scrape_configs"]}
     cadvisor = jobs["kubernetes-cadvisor"]["metric_relabel_configs"]
     # The label sets cAdvisor reports for a runsc pod on production (2026-11-17).
@@ -259,19 +261,31 @@ def verify_sandbox_pod_cpu_scrape(prometheus):
     for namespace in ("tea-d98210cbbpdc73dcrkvg", "bex-system", "opensandbox-system", "sandbox"):
         assert relabel(cadvisor, dict(pod_row, namespace=namespace)) is None, \
             f"A pod-level CPU row outside a sandbox namespace ({namespace}) must still drop"
-    for name in ("container_memory_working_set_bytes", "container_cpu_cfs_throttled_seconds_total",
-                 "container_cpu_user_seconds_total", "container_network_receive_bytes_total"):
-        assert relabel(cadvisor, dict(pod_row, __name__=name)) is None, f"Only the CPU usage counter is kept, not {name}"
+    memory_row = dict(pod_row, __name__="container_memory_working_set_bytes")
+    del memory_row["cpu"]
+    assert relabel(cadvisor, memory_row) == dict(memory_row, __name__="sandbox_pod_memory_working_set_bytes"), \
+        "A sandbox pod's pod-level working set must be stored, renamed, with its pod and namespace"
+    assert relabel(cadvisor, dict(memory_row, id=pause["id"], name=pause["name"], image=pause["image"])) is None, \
+        "The pause container's memory row must drop"
+    assert relabel(cadvisor, dict(memory_row, namespace="tea-d98210cbbpdc73dcrkvg")) is None, \
+        "A pod-level memory row outside a sandbox namespace must still drop"
+    for name in ("container_memory_usage_bytes", "container_memory_max_usage_bytes", "container_memory_rss",
+                 "container_cpu_cfs_throttled_seconds_total", "container_cpu_user_seconds_total",
+                 "container_network_receive_bytes_total"):
+        assert relabel(cadvisor, dict(pod_row, __name__=name)) is None, \
+            f"Only the CPU usage counter and the working set are kept, not {name}"
     container = dict(pod_row, container="sandbox", name="c1", id=slice_id + "/cri-containerd-c1.scope")
     assert relabel(cadvisor, container) == container, "A container's own CPU row is stored under its own name, as before"
+    container_memory = dict(memory_row, container="sandbox", name="c1", id=container["id"])
+    assert relabel(cadvisor, container_memory) == container_memory, "A container's own memory row keeps its name"
     app = {"__name__": "container_cpu_usage_seconds_total", "namespace": "tea-a", "pod": "tea-a-web-6b7f9c-x2k4p",
            "container": "app", "cpu": "total", "id": "/kubepods/pod1/c1", "image": "x", "name": "c1"}
     assert relabel(cadvisor, app) == app, "App CPU rows are unchanged"
     assert not any(rule.get("target_label", "").startswith("__tmp") and rule.get("action", "replace") != "replace"
                    for rule in cadvisor)
-    # Nothing but the meter may read the renamed series through the old name.
-    stored = relabel(cadvisor, pod_row)
-    assert "__tmp_sandbox_pod_cpu" not in stored and "__tmp_datastore_network" not in stored
+    # The temporary labels never reach storage.
+    for stored in (relabel(cadvisor, pod_row), relabel(cadvisor, memory_row)):
+        assert not any(label.startswith("__tmp") for label in stored), stored
 
 
 def verify_filesystem_collector(resources, prometheus, environment):
@@ -505,7 +519,7 @@ def main():
             }
             verify_log_metric_filtering(alloy, loki)
             verify_datastore_activity_scrapes(prometheus)
-            verify_sandbox_pod_cpu_scrape(prometheus)
+            verify_sandbox_pod_scrape(prometheus)
             (temporary / "platform_gitops_expected.yml").write_text(config["platform_gitops_expected.yml"])
             fixture = {
                 "rule_files": ["platform_gitops_expected.yml"],

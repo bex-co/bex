@@ -528,18 +528,21 @@ spec:
                   # name) is kept for *-sandbox namespaces under its own metric
                   # name, sandbox_pod_cpu_usage_seconds_total, so no query over
                   # container_cpu_usage_seconds_total sees it or counts it twice.
+                  # The same row's working set is kept the same way, as
+                  # sandbox_pod_memory_working_set_bytes: it is the only memory
+                  # reading a gVisor sandbox has, and w6/167 reads its peak to
+                  # size the routines' agent sandbox template. Nothing bills it.
                   - source_labels: [__name__, namespace, container, name]
-                    regex: container_cpu_usage_seconds_total;[a-z0-9-]+-sandbox;;
-                    target_label: __tmp_sandbox_pod_cpu
-                    replacement: "1"
-                  - source_labels: [__tmp_sandbox_pod_cpu]
-                    regex: "1"
+                    regex: container_(cpu_usage_seconds_total|memory_working_set_bytes);[a-z0-9-]+-sandbox;;
+                    target_label: __tmp_sandbox_pod
+                    replacement: sandbox_pod_${1}
+                  - source_labels: [__tmp_sandbox_pod]
+                    regex: (.+)
                     target_label: __name__
-                    replacement: sandbox_pod_cpu_usage_seconds_total
-                  - source_labels: [container, __tmp_datastore_network, __tmp_sandbox_pod_cpu]
+                  - source_labels: [container, __tmp_datastore_network, __tmp_sandbox_pod]
                     regex: ";;"
                     action: drop
-                  - regex: __tmp_datastore_network|__tmp_sandbox_pod_cpu
+                  - regex: __tmp_datastore_network|__tmp_sandbox_pod
                     action: labeldrop
               # The alert pipeline watches itself (w3/m174).
               - job_name: prometheus
