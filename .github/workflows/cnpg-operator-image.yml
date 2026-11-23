@@ -85,29 +85,36 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.recipe.outputs.version }}
           tags: ${{ env.IMAGE }}:${{ steps.recipe.outputs.tag }}
-      # What was published: both platforms, each reporting the release version
-      # and the bex commit suffix, each carrying both architectures' binaries.
+      # What was published: both platforms, each carrying both architectures'
+      # binaries of the bex build, and the arm64 one reporting the release
+      # version and the bex commit suffix. Each platform is read by its own
+      # manifest digest: Docker refuses a second platform of one index digest.
       - name: verify the published image
         env:
           REF: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
           UPSTREAM: ${{ steps.recipe.outputs.upstream }}
           COMMIT: ${{ steps.recipe.outputs.commit }}
         run: |
-          platforms=$(docker buildx imagetools inspect --raw "$REF" \
-            | jq -r '[.manifests[] | select(.platform.os == "linux") | .platform.architecture] | sort | join(",")')
+          index=$(docker buildx imagetools inspect --raw "$REF")
+          platforms=$(jq -r '[.manifests[] | select(.platform.os == "linux") | .platform.architecture] | sort | join(",")' <<<"$index")
           [ "$platforms" = "amd64,arm64" ] || { echo "published platforms: $platforms" >&2; exit 1; }
-          version=$(docker run --rm --platform linux/arm64 "$REF" version)
-          echo "$version"
-          case "$version" in
-            *"Version:$UPSTREAM Commit:$COMMIT "*) ;;
-            *) echo "manager version does not report $UPSTREAM and $COMMIT" >&2; exit 1 ;;
-          esac
-          docker create --name cnpg-operator-files --platform linux/amd64 "$REF" >/dev/null
-          docker cp cnpg-operator-files:/operator "$RUNNER_TEMP/operator"
-          docker rm cnpg-operator-files >/dev/null
-          for arch in amd64 arm64; do
-            grep -qa -- "$COMMIT" "$RUNNER_TEMP/operator/manager_$arch" \
-              || { echo "the amd64 image's manager_$arch is not the bex build" >&2; exit 1; }
+          for platform in amd64 arm64; do
+            manifest=$(jq -er --arg arch "$platform" '.manifests[] | select(.platform.os == "linux" and .platform.architecture == $arch) | .digest' <<<"$index")
+            docker create --name "cnpg-operator-$platform" "$IMAGE@$manifest" >/dev/null
+            docker cp "cnpg-operator-$platform:/operator" "$RUNNER_TEMP/operator-$platform"
+            docker rm "cnpg-operator-$platform" >/dev/null
+            for arch in amd64 arm64; do
+              grep -qa -- "$COMMIT" "$RUNNER_TEMP/operator-$platform/manager_$arch" \
+                || { echo "the $platform image's manager_$arch is not the bex build" >&2; exit 1; }
+            done
+            if [ "$platform" = arm64 ]; then
+              version=$(docker run --rm "$IMAGE@$manifest" version)
+              echo "$version"
+              case "$version" in
+                *"Version:$UPSTREAM Commit:$COMMIT "*) ;;
+                *) echo "manager version does not report $UPSTREAM and $COMMIT" >&2; exit 1 ;;
+              esac
+            fi
           done
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
