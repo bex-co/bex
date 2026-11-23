@@ -219,7 +219,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED（2026-10-29）：** [upstream #75](https://github.com/render-oss/cli/pull/75) 已提交；等 upstream merge/release，再审阅 Bex pin、授权 CLI release 并完成原验收。
 
-- [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED（2026-10-29 复核）：** t001–t006 done；等用户发起 `$release cli`，再做 published-binary 验收，latest v0.3.3 早于本项新变更。
+- [x] **m67** — [Keep native live logs running after a transient disconnect](done/m67/README.md) — **DONE 2026-11-23** (published `bex-cli/v0.9.0` / Render CLI v2.36.0 verified via `install-bex.sh` cosign+sha256: loopback drop/1011 exact-once reconnect + close-4000 refusal, live production tail across 130s pause 80/80 ticks 0 dups 0 gaps, `--network-policy deny-all`, full cleanup)
 
 - [x] **m66** — [Keep Blueprint service updates in canonical intent](done/m66/README.md) (6 tasks) — **DONE 2026-10-15:** canonical-intent fix62c74aae6; inline sweep288 and persistent sweep330 pass first-artifact/runtime/source, three native waited controls, delayed no-ops, source checks and complete cleanup. Different containing/service sources remain [m78](done/m78/README.md).
 

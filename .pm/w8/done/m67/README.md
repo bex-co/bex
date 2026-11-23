@@ -1,20 +1,20 @@
 # w8 · m67 — Keep native live logs running after a transient disconnect
 
-**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** blocked — t001–t006 done，候选线上验收已完成；t007 等用户发起 CLI release 后验证已发布二进制
+**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** done (2026-11-23)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Qualify the released reconnecting tail against Bex lifecycle controls](t001.md) — **DONE** | 45m | — |
+| t001 | [Qualify the released reconnecting tail against Bex lifecycle controls](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Adopt the qualified upstream pin and review its hosting wire delta](done/t002.md) — **DONE 2026-10-29** | 35m | t001 |
 | t003 | [Verify affected hosting callers through candidate Bex and upstream CLI](done/t003.md) — **DONE 2026-10-29** | 30m | t002 |
 | t004 | [Render parity](done/t004.md) — **DONE 2026-10-29** | 20m | t003 |
 | t005 | [Simplify](done/t005.md) — **DONE 2026-10-29** | 10m | t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE 2026-10-29** | 20m | t004 |
-| t007 | [Closeout](t007.md) | 10m | t005, t006 |
+| t007 | [Closeout](done/t007.md) — **DONE 2026-11-23** | 10m | t005, t006 |
 
-Total: 2h50m, seven tasks. [Researched finding](finding.md), [native fault/recovery evidence](evidence/cli-sweep272/README.md).
+Total: 2h50m, seven tasks. [Researched finding](finding.md), native fault/recovery evidence (`evidence/cli-sweep272/README.md`, purged 2026-11-04).
 
 ## Definition of done
 
@@ -38,7 +38,7 @@ Current pin remains2.27/a764810a7682; it is the contract oracle until qualified 
 
 ## Qualified, parked on a lifecycle decision — 2026-10-14 (`/loopx w8`)
 
-The v2.29 candidate fixes silent termination (see [evidence](evidence/candidate-2.29-20261014/README.md)), but it retries 1000 closes. Bex's w8/020 terminal build-tail refusal closes with 1000, so adoption needs the user to choose:
+The v2.29 candidate fixes silent termination (`evidence/candidate-2.29-20261014/README.md`, purged 2026-11-04), but it retries 1000 closes. Bex's w8/020 terminal build-tail refusal closes with 1000, so adoption needs the user to choose:
 
 - **(A)** Send a non-retryable close code for named refusals; v2.29 then exits non-zero with the reason.
 - **(B)** Accept indefinite retry for finished build tails.
@@ -79,3 +79,20 @@ t003 is done; t007 needs the next `bex-cli/v*` release (user-run `/release cli`)
 - **结论来源：** 2026-10-29 GitHub release / 当前源码复核。Bex 最新发布仍是 2026-10-16 的 `bex-cli/v0.3.3`，早于本项 10-28/29 完成的 launcher / pin 工作。
 - **处理：** 原本地/候选验收保留，继续 blocked 等用户明确 `$release cli`，再按本项原 published-binary DoD 验收并清理。`$unblock` 不授权发 tag / 发布；本次也未发布。与 090 不同，v0.3.3 不含这里的新变更。
 - **worker 下一步：** 发布实际完成后才恢复最终任务；不能用 main 或 candidate 的成功关闭最终交付门槛。
+
+## Unblock & published-binary verification (t007) — 2026-11-23 (`/loopx w8`)
+
+- **Affected ID:** `w8/m67` (`w8/m67/t007`).
+- **Source / gate cleared:** verified GitHub release `bex-cli/v0.9.0` (`06a28e1159`, published 2026-11-20; supersedes the 2026-10-29 `v0.3.3` baseline) and production pin `1a5a8e872398` (`e6c65f5c62`). Both carry `b321637c16` (Render CLI v2.29.0 reconnect + close-4000 refusal) and `c9f3f970f1` (`networkPolicy.type`/`default` resolver); `bex-cli/v0.9.0` embeds Render CLI `v2.36.0` (`4fd34231b637`).
+- **Distribution check:** `BEX_VERSION=0.9.0 sh scripts/install-bex.sh` (`linux/arm64`, isolated temp dir) verified the Sigstore cosign signature on `checksums.txt` (`Verified OK`) and the archive SHA-256; `bex -v` printed `bex v0.9.0` / `compatible with Render CLI v2.36.0`.
+- **Published-binary loopback controls:**
+  - Abrupt TCP drop after `LINE-A` (reconnect replays `LINE-A` then `LINE-B`): 2 connections, `LINE-A` and `LINE-B` delivered once each, stderr `Unable to connect to logs. Retrying in 1s.` → `Log connection restored.`, process stayed alive until `SIGINT`.
+  - Close `1011` after `LINE-A` (same overlap replay): 2 connections, `LINE-A` and `LINE-B` delivered once each, same visible retry/restored status, alive until `SIGINT`.
+  - Terminal refusal (`==>` line + close `4000`): 1 connection (no retry), refusal printed once on stdout, `Error: websocket: close 4000: …` on stderr, exit `1`.
+  - Root `--help`: retains `bex skills install` branding with no `render skills install` leak.
+- **Published-binary live production acceptance (`bex-canary` `tea-daif693dqjvc73e7as3g`, isolated device OAuth login, `cli.yaml` `0600`):**
+  - **Live tail through a real dropped connection:** disposable free busybox `web_service` `srv-dc215i7qbg1c739j1i30` (`qa-20261123-467a2f69-m67`, live in 30s) tailed via `bex logs -r srv-dc215i7qbg1c739j1i30 --tail --confirm -o text`. Across a 130s `SIGSTOP` pause inducing a real WebSocket drop, the process printed `Unable to connect to logs. Retrying in 1s.` then `Log connection restored.`, delivered 80/80 ticks (`17..96`) with 0 duplicates and 0 gaps, and stayed alive until explicit `SIGINT`.
+  - **Build tail with no running build:** `bex logs -r srv-dc215i7qbg1c739j1i30 --type build --tail --confirm -o text` (8s bounded) stayed open quietly waiting for the next build with empty stdout/stderr, matching current post-`w8/m159` production semantics (tails with no log source still end with close 4000, verified by the loopback control above).
+  - **`--network-policy deny-all`:** `bex sandboxes create --name qa-20261123-…-m67 --network-policy deny-all --confirm -o json` returned `sbx-dc215a8oodks73auddt0` with `networkPolicy: {default: deny-all, type: deny-all}`, then stopped (`status=terminated`). Negative create-nothing REST probe with disagreeing `type`/`default` returned HTTP 400 naming the conflict.
+- **Cleanup:** `DELETE /v1/services/srv-dc215i7qbg1c739j1i30` → 204, `GET` → 404, workspace baseline preserved (`3/3` services); `bex logout` removed isolated `cli.yaml`; temporary Kratos QA sessions revoked via `scripts/qa-login.sh --logout`; temporary install directory removed.
+- **Disposition:** all DoD criteria hold on the published `bex-cli/v0.9.0` binary; `t007` marked `done` and `w8/m67` moved to `w8/done/m67/`.
