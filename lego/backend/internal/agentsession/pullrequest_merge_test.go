@@ -508,11 +508,11 @@ func TestPullRequestMergeAutoArmsTheStackOfAStackedPullRequest(t *testing.T) {
 		session.HeadSHA = sessionHead
 		pr := takenOverPR()
 		pr.NodeID, pr.HeadSHA, pr.BaseRef = "PR_kwDOnode7", sessionHead, "alice/part-1"
-		return &fakeForge{existing: pr, state: github.MergeState{Status: "CLEAN", Stacked: true, StackBase: "main"}}, &prSessions{session: session}
+		return &fakeForge{existing: pr, state: github.MergeState{Status: "CLEAN", Stacked: true, StackBase: "main", StackLands: 2}}, &prSessions{session: session}
 	}
 	forge, sessions := stacked()
 	got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true, Method: github.MergeMethodRebase}))
-	want := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, AutoMerge: true, Method: github.MergeMethodRebase, Stack: true, HeadSHA: sessionHead}
+	want := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, AutoMerge: true, Method: github.MergeMethodRebase, Stack: true, PullRequestCount: 2, HeadSHA: sessionHead}
 	if err != nil || got != want {
 		t.Fatalf("stacked auto = %+v err=%v, want %+v", got, err, want)
 	}
@@ -523,11 +523,12 @@ func TestPullRequestMergeAutoArmsTheStackOfAStackedPullRequest(t *testing.T) {
 		t.Fatalf("a stacked pull request clean against the branch below was merged alone (%d) or recorded %v", forge.mergeCalls, sessions.states)
 	}
 
-	// The stack armed already, on it or above it: the same answer, no call.
+	// The stack armed already, on it or above it: the same answer, no call,
+	// and no count, since a request armed above it lands more than it.
 	forge, sessions = stacked()
 	forge.state.AutoMerge, forge.state.StackAutoMerge = &store.PRAutoMerge{Method: github.MergeMethodSquash, EnabledBy: "octocat"}, true
 	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
-	if err != nil || !got.AutoMerge || !got.Stack || got.Method != github.MergeMethodSquash || len(forge.armed) != 0 || forge.mergeCalls != 0 {
+	if err != nil || !got.AutoMerge || !got.Stack || got.PullRequestCount != 0 || got.Method != github.MergeMethodSquash || len(forge.armed) != 0 || forge.mergeCalls != 0 {
 		t.Fatalf("stack armed already = %+v err=%v (armed %d, merges %d)", got, err, len(forge.armed), forge.mergeCalls)
 	}
 
@@ -537,14 +538,132 @@ func TestPullRequestMergeAutoArmsTheStackOfAStackedPullRequest(t *testing.T) {
 		t.Fatalf("stack disarm = %+v err=%v (disabled %v)", got, err, forge.disabled)
 	}
 
-	// GitHub says the whole stack would merge now: the arm's rule for that
-	// stands, the synchronous merge at the pull request's own base, whose
-	// answer GitHub gives.
+	// GitHub says the whole stack would merge now: it is merged now, as gh
+	// pr merge --auto does, and a stack lands only through the asynchronous
+	// merge, with every open pull request below it, on the stack's base
+	// (w10/053).
 	forge, sessions = stacked()
 	forge.armErr = fmt.Errorf("%w: %w", github.ErrMergeableNow, errors.New("clean status"))
-	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
-	if err != nil || !got.Merged || got.Stack || len(forge.merges) != 1 || forge.merges[0].opts.Base != "alice/part-1" || forge.merges[0].opts.IncludeStack {
-		t.Fatalf("stack ready now = %+v err=%v merges=%+v", got, err, forge.merges)
+	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true, Method: github.MergeMethodRebase}))
+	want = PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, Merged: true, SHA: "fedcba9876543210fedcba9876543210fedcba98", Method: github.MergeMethodRebase, Stack: true, PullRequestCount: 2, HeadSHA: sessionHead}
+	if err != nil || got != want || forge.mergeCalls != 0 || len(forge.asyncMerges) != 1 ||
+		forge.asyncMerges[0].opts != (github.MergeOptions{SHA: sessionHead, Method: github.MergeMethodRebase, Base: "main"}) {
+		t.Fatalf("stack ready now = %+v err=%v (sync merges %d, async %+v), want %+v", got, err, forge.mergeCalls, forge.asyncMerges, want)
+	}
+	if len(sessions.states) != 1 || sessions.states[0] != store.PRStateMerged {
+		t.Fatalf("stack ready now recorded %v, want merged", sessions.states)
+	}
+}
+
+// w10/053: a pull request in a GitHub stack merged now lands with every open
+// pull request below it, as Devin's merge button does, through GitHub's
+// asynchronous merge, the only call that lands a stack: pinned, under the
+// stack base's method rule, with the commit text, and with how many pull
+// requests it landed. Its own base needs no merge queue of its own: one the
+// stack's base requires is GitHub's to use (merge_action default), and the
+// answer says the stack joined it. A merge GitHub is still landing at the
+// bound answers mergePending and records nothing. A pull request in no stack
+// keeps the synchronous merge.
+func TestPullRequestMergeLandsAStackedPullRequestWithItsStack(t *testing.T) {
+	stacked := func(mutate func(*fakeForge)) (*fakeForge, *prSessions) {
+		session := takeoverSession()
+		session.HeadSHA = sessionHead
+		pr := takenOverPR()
+		pr.NodeID, pr.HeadSHA, pr.BaseRef = "PR_kwDOnode7", sessionHead, "alice/part-2"
+		forge := &fakeForge{existing: pr, state: github.MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main", StackLands: 3}}
+		if mutate != nil {
+			mutate(forge)
+		}
+		return forge, &prSessions{session: session}
+	}
+	content := PullRequestMergeContent{Method: github.MergeMethodSquash, CommitTitle: " Part 2 (#7) ", CommitMessage: "The second part."}
+	wantOpts := github.MergeOptions{SHA: sessionHead, Method: github.MergeMethodSquash, CommitTitle: "Part 2 (#7)", CommitMessage: "The second part.", Base: "main"}
+	base := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, HeadSHA: sessionHead, Stack: true, PullRequestCount: 3}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*fakeForge)
+		want   func(*PullRequestMergeResponse)
+		states string
+		marks  string
+	}{
+		{"merged", nil, func(r *PullRequestMergeResponse) {
+			r.Merged, r.SHA, r.Method = true, "fedcba9876543210fedcba9876543210fedcba98", github.MergeMethodSquash
+		}, store.PRStateMerged, ""},
+		{"the bottom pull request on a merge-queue base", func(f *fakeForge) { f.state.MergeQueueEnabled, f.state.StackLands = true, 1 }, func(r *PullRequestMergeResponse) {
+			r.Merged, r.SHA, r.Method, r.PullRequestCount = true, "fedcba9876543210fedcba9876543210fedcba98", github.MergeMethodSquash, 1
+		}, store.PRStateMerged, ""},
+		{"queued", func(f *fakeForge) {
+			f.asyncResult = github.AsyncMergeResult{Status: github.AsyncMergeEnqueued, Method: github.MergeMethodSquash}
+		},
+			func(r *PullRequestMergeResponse) { r.MergeQueue = true }, "", "tea-a octo/repo#7 none queued"},
+		{"still landing at the bound", func(f *fakeForge) {
+			f.asyncResult = github.AsyncMergeResult{Status: github.AsyncMergePending, Method: github.MergeMethodSquash}
+		},
+			func(r *PullRequestMergeResponse) { r.MergePending, r.Method = true, github.MergeMethodSquash }, "", ""},
+		{"a stack the read could not count", func(f *fakeForge) { f.state.StackLands = 0 }, func(r *PullRequestMergeResponse) {
+			r.Merged, r.SHA, r.Method, r.PullRequestCount = true, "fedcba9876543210fedcba9876543210fedcba98", github.MergeMethodSquash, 0
+		}, store.PRStateMerged, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			forge, sessions := stacked(tc.mutate)
+			audit := &auditRecorder{}
+			got, err := newPullRequester(forge, sessions, audit).Merge(context.Background(), mergeRequest(content))
+			want := base
+			tc.want(&want)
+			if err != nil || got != want || !got.wellFormed() {
+				t.Fatalf("merge = %+v err=%v, want %+v", got, err, want)
+			}
+			if len(forge.asyncMerges) != 1 || forge.asyncMerges[0].opts != wantOpts || forge.asyncMerges[0].number != 7 || forge.asyncMerges[0].owner != "octo" || forge.asyncMerges[0].repo != "repo" {
+				t.Fatalf("async merges = %+v, want one of #7 pinned on the stack's base", forge.asyncMerges)
+			}
+			if forge.mergeCalls != 0 || len(forge.enqueued) != 0 || len(forge.armed) != 0 {
+				t.Fatalf("a stacked pull request went to the synchronous merge (%d), the queue (%v) or an arm (%v)", forge.mergeCalls, forge.enqueued, forge.armed)
+			}
+			if got := strings.Join(sessions.states, ","); got != tc.states {
+				t.Fatalf("recorded states = %q, want %q", got, tc.states)
+			}
+			if got := strings.Join(sessions.marks, ","); got != tc.marks {
+				t.Fatalf("recorded marks = %q, want %q", got, tc.marks)
+			}
+			wantAudit(t, audit, AuditVerbPullRequestMerge, core.AuditAllowed)
+		})
+	}
+
+	// A merge GitHub failed is refused in GitHub's words under the codes of
+	// any merge.
+	for _, tc := range []struct {
+		message string
+		code    string
+		status  int
+	}{
+		{`Required status check "test" is expected.`, PullRequestMergeBlocked, http.StatusConflict},
+		{"Pull request is closed.", PullRequestMergeBlocked, http.StatusConflict},
+		{"Head branch was modified. Review and try the merge again.", PullRequestHeadChanged, http.StatusConflict},
+		{"Squash merges are not allowed on this repository.", PullRequestMergeMethodNotAllowed, http.StatusUnprocessableEntity},
+	} {
+		forge, sessions := stacked(func(f *fakeForge) { f.asyncErr = &github.AsyncMergeFailedError{Message: tc.message} })
+		_, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(content))
+		if typed := wantMergeCode(t, err, tc.code, tc.status); typed.Message != "GitHub: "+tc.message {
+			t.Fatalf("%s: message = %q", tc.message, typed.Message)
+		}
+		if len(sessions.states) != 0 || len(sessions.marks) != 0 {
+			t.Fatalf("%s: a failed merge recorded %v %v", tc.message, sessions.states, sessions.marks)
+		}
+	}
+	// Another merge of it pending at another head is GitHub's 409.
+	forge, sessions := stacked(func(f *fakeForge) {
+		f.asyncErr = &github.APIError{Status: http.StatusConflict, Body: `{"status":"pending","details":{"message":"A merge request already exists for this pull request."}}`}
+	})
+	_, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(content))
+	if typed := wantMergeCode(t, err, PullRequestHeadChanged, http.StatusConflict); typed.Message != "GitHub: A merge request already exists for this pull request." {
+		t.Fatalf("pending at another head message = %q", typed.Message)
+	}
+
+	// In no stack, the same merge is the synchronous one, as before.
+	forge, sessions = stacked(func(f *fakeForge) { f.state = github.MergeState{Status: "CLEAN"} })
+	got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(content))
+	if err != nil || !got.Merged || got.Stack || got.PullRequestCount != 0 || forge.mergeCalls != 1 || len(forge.asyncMerges) != 0 || forge.merges[0].opts.Base != "alice/part-2" {
+		t.Fatalf("unstacked merge = %+v err=%v (sync %d, async %d)", got, err, forge.mergeCalls, len(forge.asyncMerges))
 	}
 }
 
@@ -746,6 +865,8 @@ func TestPullRequestMergeResponseWellFormed(t *testing.T) {
 		{"armed", func(r *PullRequestMergeResponse) { r.AutoMerge = true }, true},
 		{"queued", func(r *PullRequestMergeResponse) { r.MergeQueue = true }, true},
 		{"disarmed", func(r *PullRequestMergeResponse) { r.AutoMergeDisabled = true }, true},
+		{"still landing", func(r *PullRequestMergeResponse) { r.MergePending = true }, true},
+		{"merged and still landing", func(r *PullRequestMergeResponse) { r.Merged, r.SHA, r.MergePending = true, "fedcba", true }, false},
 		{"no outcome", func(*PullRequestMergeResponse) {}, false},
 		{"merged without its commit", func(r *PullRequestMergeResponse) { r.Merged = true }, false},
 		{"merged and armed", func(r *PullRequestMergeResponse) { r.Merged, r.SHA, r.AutoMerge = true, "fedcba", true }, false},

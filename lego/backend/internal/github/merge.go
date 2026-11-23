@@ -17,6 +17,7 @@ limitations under the License.
 package github
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,7 @@ import (
 	neturl "net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,11 +38,12 @@ import (
 // The writes behind an agent session's mark-ready and merge verbs (ADR090
 // D3, w10/m538 and w10/m577): GitHub undrafts a pull request only through
 // GraphQL; the merge is the synchronous REST merge, pinned to the head bex
-// recorded, with a method the repository allows; and GitHub auto-merge and
-// the merge queue take a pull request through GraphQL, pinned the same way,
-// as gh pr merge --auto does. Branch protection and rulesets decide whether
-// it may happen; GitHub's refusal comes back as an *APIError whose message
-// APIErrorMessage reads.
+// recorded, with a method the repository allows, and a pull request in a
+// GitHub stack lands through the asynchronous one (w10/053); and GitHub
+// auto-merge and the merge queue take a pull request through GraphQL, pinned
+// the same way, as gh pr merge --auto does. Branch protection and rulesets
+// decide whether it may happen; GitHub's refusal comes back as an *APIError,
+// or an *AsyncMergeFailedError, whose message APIErrorMessage reads.
 
 // The merge methods, in the order GitHub's settings and merge button list
 // them; a merge that names none takes the first one the repository allows.
@@ -193,9 +196,10 @@ func (c *Client) gitHubGraphQL(ctx context.Context, token, query string, variabl
 // synchronous REST merge (PUT …/pulls/{n}/merge), whose answer is final: 200
 // merged, 405 not mergeable (checks, reviews, conflicts, rules), 409 the head
 // is not opts.SHA, 422 invalid, 403 not permitted. A branch that requires a
-// merge queue takes the pull request through EnqueuePullRequest instead. A
-// method the repository does not allow is a *MergeMethodError before any
-// merge is sent. The token is mergeToken's.
+// merge queue takes the pull request through EnqueuePullRequest instead, and
+// GitHub refuses this merge for a pull request in a stack, which lands through
+// MergePullRequestAsync (w10/053). A method the repository does not allow is a
+// *MergeMethodError before any merge is sent. The token is mergeToken's.
 func (c *Client) MergePullRequest(ctx context.Context, installationID int64, owner, repo string, number int, opts MergeOptions) (MergeResult, error) {
 	token, err := c.mergeToken(ctx, installationID, repo)
 	if err != nil {
@@ -227,6 +231,151 @@ func (c *Client) MergePullRequest(ctx context.Context, installationID int64, own
 		return MergeResult{}, errors.New("github: the merge answered 200 without merging the pull request")
 	}
 	return MergeResult{SHA: out.SHA, Method: method}, nil
+}
+
+// The results of an asynchronous merge (PUT …/pulls/{n}/merge-async and its
+// GET …/merge-async/{uuid}) as GitHub names them.
+const (
+	AsyncMergeMerged   = "merged"
+	AsyncMergeEnqueued = "enqueued"
+	AsyncMergePending  = "pending"
+	asyncMergeFailed   = "failed"
+)
+
+// AsyncMergeWait bounds how long MergePullRequestAsync waits for GitHub to
+// finish an asynchronous merge, polling its result every asyncMergePause,
+// before it answers that the merge is still pending (w10/053, ADR090 D3). The
+// verb it serves answers within bex-api's 30-second write timeout, which the
+// reads and calls before the merge share.
+const (
+	AsyncMergeWait  = 15 * time.Second
+	asyncMergePause = time.Second
+)
+
+// AsyncMergeResult is what an asynchronous merge came to within
+// AsyncMergeWait: Status AsyncMergeMerged with SHA, the commit it created on
+// the base branch, AsyncMergeEnqueued when the pull request joined the merge
+// queue its base requires, or AsyncMergePending when GitHub accepted it and
+// is still landing it. Method is the method it asked for.
+type AsyncMergeResult struct {
+	Status string
+	SHA    string
+	Method string
+}
+
+// AsyncMergeFailedError is an asynchronous merge GitHub failed, at once (its
+// basic checks: closed, a draft) or once it ran (branch protection, rules, a
+// conflict, a head that moved). APIErrorMessage reads Message, GitHub's own
+// words; Error() never carries them (w6/005).
+type AsyncMergeFailedError struct {
+	Message string
+}
+
+func (e *AsyncMergeFailedError) Error() string {
+	return "github: the asynchronous merge failed"
+}
+
+// asyncMergeAnswer is GitHub's pull-request-merge-async-result.
+type asyncMergeAnswer struct {
+	Status  string `json:"status"`
+	Details struct {
+		Message         string `json:"message"`
+		UUID            string `json:"uuid"`
+		SHA             string `json:"sha"`
+		ExpectedHeadSHA string `json:"expected_head_sha"`
+	} `json:"details"`
+}
+
+// MergePullRequestAsync merges pull request number of owner/repo with GitHub's
+// asynchronous merge (PUT …/pulls/{n}/merge-async), the only call that lands
+// a pull request in a GitHub stack: atomically with every open pull request
+// below it, or into the merge queue the stack's base (opts.Base) requires
+// (merge_action default), as Devin's merge button does (w10/053). It is
+// pinned to opts.SHA and uses the method rule of MergePullRequest with the
+// commit text when given; GitHub applies them to a direct merge only. It
+// waits for the result for AsyncMergeWait at most. GitHub's refusal is an
+// *APIError, and a merge GitHub failed an *AsyncMergeFailedError. A merge of
+// the pull request already pending answers 409 with its own pin: at the same
+// head its result is waited for, and at another head the 409 is returned.
+func (c *Client) MergePullRequestAsync(ctx context.Context, installationID int64, owner, repo string, number int, opts MergeOptions) (AsyncMergeResult, error) {
+	token, err := c.mergeToken(ctx, installationID, repo)
+	if err != nil {
+		return AsyncMergeResult{}, err
+	}
+	settings, err := c.mergeSettings(ctx, token, owner, repo, opts.Base)
+	if err != nil {
+		return AsyncMergeResult{}, err
+	}
+	method, err := settings.method(opts.Method)
+	if err != nil {
+		return AsyncMergeResult{}, err
+	}
+	payload := map[string]string{"sha": opts.SHA, "merge_method": method, "merge_action": "default"}
+	if opts.CommitTitle != "" {
+		payload["commit_title"] = opts.CommitTitle
+	}
+	if opts.CommitMessage != "" {
+		payload["commit_message"] = opts.CommitMessage
+	}
+	url := fmt.Sprintf("%s/pulls/%d/merge-async", c.repoURL(owner, repo), number)
+	var raw json.RawMessage
+	status, err := c.tokenJSONStatus(ctx, token, http.MethodPut, url, payload, &raw,
+		http.StatusOK, http.StatusAccepted, http.StatusBadRequest, http.StatusConflict)
+	if err != nil {
+		return AsyncMergeResult{}, err
+	}
+	var answer asyncMergeAnswer
+	if json.Unmarshal(raw, &answer) != nil || answer.Status == "" ||
+		(status == http.StatusConflict && !strings.EqualFold(answer.Details.ExpectedHeadSHA, opts.SHA)) {
+		return AsyncMergeResult{}, &APIError{Status: status, Body: string(raw)}
+	}
+	if answer.Status == AsyncMergePending {
+		if answer, err = c.awaitAsyncMerge(ctx, token, url, answer); err != nil {
+			return AsyncMergeResult{}, err
+		}
+	}
+	switch answer.Status {
+	case AsyncMergeMerged:
+		if answer.Details.SHA == "" {
+			return AsyncMergeResult{}, errors.New("github: the asynchronous merge answered merged without its commit")
+		}
+		return AsyncMergeResult{Status: AsyncMergeMerged, SHA: answer.Details.SHA, Method: method}, nil
+	case AsyncMergeEnqueued, AsyncMergePending:
+		return AsyncMergeResult{Status: answer.Status, Method: method}, nil
+	case asyncMergeFailed:
+		return AsyncMergeResult{}, &AsyncMergeFailedError{Message: answer.Details.Message}
+	}
+	return AsyncMergeResult{}, fmt.Errorf("github: the asynchronous merge answered status %q", answer.Status)
+}
+
+// awaitAsyncMerge polls the pending asynchronous merge's result (GET
+// …/merge-async/{uuid}, Contents write like the merge) until it is no longer
+// pending or AsyncMergeWait has passed, and answers the last result read. A
+// read that fails is tried again until then: GitHub has accepted the merge,
+// so only its result is unknown.
+func (c *Client) awaitAsyncMerge(ctx context.Context, token, url string, pending asyncMergeAnswer) (asyncMergeAnswer, error) {
+	if pending.Details.UUID == "" {
+		return pending, nil
+	}
+	wait, pause := cmp.Or(c.mergeWait, AsyncMergeWait), cmp.Or(c.mergePause, asyncMergePause)
+	bounded, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	poll := url + "/" + neturl.PathEscape(pending.Details.UUID)
+	for {
+		select {
+		case <-bounded.Done():
+			return pending, ctx.Err()
+		case <-time.After(pause):
+		}
+		var answer asyncMergeAnswer
+		if err := c.tokenJSON(bounded, token, http.MethodGet, poll, nil, http.StatusOK, &answer); err != nil || answer.Status == "" {
+			continue
+		}
+		if answer.Status != AsyncMergePending {
+			return answer, nil
+		}
+		pending = answer
+	}
 }
 
 // mergeToken mints a merge's token, narrowed to the one repository, with
@@ -357,6 +506,11 @@ type MergeState struct {
 	// StackAutoMerge is set when AutoMerge is the stack's auto-merge request,
 	// which GitHub disarms for every pull request it covers at once.
 	StackAutoMerge bool
+	// StackLands is how many pull requests merging it lands: it and every
+	// open pull request below it in its stack, which GitHub merges with it
+	// (w10/053). It is 0 when it is in no stack, or when the read did not see
+	// every pull request below it.
+	StackLands int
 }
 
 // MergeableNow is gh's isImmediatelyMergeable: GitHub would merge the pull
@@ -407,11 +561,16 @@ func (c *Client) PullRequestMergeState(ctx context.Context, installationID int64
 			StackAutoMergeRequest *autoMergeRequest `json:"stackAutoMergeRequest"`
 			Stack                 *struct {
 				BaseRefName string `json:"baseRefName"`
+				Entries     struct {
+					Nodes []stackEntry `json:"nodes"`
+				} `json:"entries"`
 			} `json:"stack"`
+			StackEntry *stackEntry `json:"stackEntry"`
 		} `json:"node"`
 	}
 	if err := c.gitHubGraphQL(ctx, token, `query($id: ID!) { node(id: $id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus `+
-		`autoMergeRequest { mergeMethod enabledAt enabledBy { login } } stack { baseRefName } `+
+		`autoMergeRequest { mergeMethod enabledAt enabledBy { login } } `+
+		`stack { baseRefName entries(first: `+strconv.Itoa(maxStackEntries)+`) { nodes { position pullRequest { state } } } } stackEntry { position } `+
 		`stackAutoMergeRequest: autoMergeRequest(includeStack: true) { mergeMethod enabledAt enabledBy { login } } } } }`,
 		map[string]any{"id": nodeID}, &out); err != nil {
 		return MergeState{}, err
@@ -426,8 +585,48 @@ func (c *Client) PullRequestMergeState(ctx context.Context, installationID int64
 		if stackArmed := node.StackAutoMergeRequest.record(); stackArmed != nil {
 			state.AutoMerge, state.StackAutoMerge = stackArmed, true
 		}
+		if node.StackEntry != nil {
+			state.StackLands = stackLands(node.StackEntry.Position, node.Stack.Entries.Nodes)
+		}
 	}
 	return state, nil
+}
+
+// maxStackEntries bounds the stack entries the merge state reads, which
+// count what merging a stacked pull request lands.
+const maxStackEntries = 100
+
+// stackEntry is a pull request's place in its GitHub stack, where position 1
+// targets the stack's base.
+type stackEntry struct {
+	Position    int `json:"position"`
+	PullRequest *struct {
+		State string `json:"state"`
+	} `json:"pullRequest"`
+}
+
+// stackLands counts the pull requests a merge of the one at position lands,
+// as Devin's merge button shows: it and every open one below it. It is 0 when
+// entries do not show every position below it, or one whose pull request the
+// token cannot see.
+func stackLands(position int, entries []stackEntry) int {
+	below, open := 0, 0
+	for _, entry := range entries {
+		if entry.Position < 1 || entry.Position >= position {
+			continue
+		}
+		if entry.PullRequest == nil {
+			return 0
+		}
+		below++
+		if entry.PullRequest.State == "OPEN" {
+			open++
+		}
+	}
+	if position < 1 || below != position-1 {
+		return 0
+	}
+	return 1 + open
 }
 
 // The refusals of arming auto-merge, in GitHub's words or bex's pre-check.
@@ -555,23 +754,32 @@ func (c *Client) DisablePullRequestAutoMerge(ctx context.Context, installationID
 const maxAPIErrorMessageRunes = 1000
 
 // APIErrorMessage is GitHub's own explanation of a refusal: the "message" of
-// its error body, followed by each entry of its "errors" list, on one line and
-// bounded. It is "" for an error that is not an *APIError or carries no
-// message. Callers relay it to the agent whose own pull request GitHub
-// refused (w10/m538), which is why Error() alone never carries it (w6/005).
+// its error body (or of its "details", as an asynchronous merge's answer
+// carries it), followed by each entry of its "errors" list, or the message of
+// an asynchronous merge it failed (w10/053), on one line and bounded. It is
+// "" for an error that is neither or carries no message. Callers relay it to
+// the agent whose own pull request GitHub refused (w10/m538), which is why
+// Error() alone never carries it (w6/005).
 func APIErrorMessage(err error) string {
+	var failed *AsyncMergeFailedError
+	if errors.As(err, &failed) {
+		return oneBoundedLine(failed.Message)
+	}
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		return ""
 	}
 	var body struct {
-		Message string            `json:"message"`
-		Errors  []json.RawMessage `json:"errors"`
+		Message string `json:"message"`
+		Details struct {
+			Message string `json:"message"`
+		} `json:"details"`
+		Errors []json.RawMessage `json:"errors"`
 	}
 	if json.Unmarshal([]byte(apiErr.Body), &body) != nil {
 		return ""
 	}
-	parts := []string{body.Message}
+	parts := []string{cmp.Or(body.Message, body.Details.Message)}
 	for _, raw := range body.Errors {
 		var entry struct {
 			Message string `json:"message"`
@@ -584,6 +792,12 @@ func APIErrorMessage(err error) string {
 			parts = append(parts, text)
 		}
 	}
+	return oneBoundedLine(parts...)
+}
+
+// oneBoundedLine joins GitHub's message parts on one line of valid UTF-8, at
+// most maxAPIErrorMessageRunes long.
+func oneBoundedLine(parts ...string) string {
 	message := strings.ToValidUTF8(strings.Join(strings.Fields(strings.Join(parts, " ")), " "), "")
 	if utf8.RuneCountInString(message) > maxAPIErrorMessageRunes {
 		message = string([]rune(message)[:maxAPIErrorMessageRunes]) + "…"

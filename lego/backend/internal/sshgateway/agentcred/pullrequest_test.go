@@ -99,6 +99,10 @@ func (f *prForge) MergePullRequest(_ context.Context, _ int64, _, _ string, _ in
 	return github.MergeResult{SHA: "fedcba9876543210fedcba9876543210fedcba98", Method: github.MergeMethodMerge}, nil
 }
 
+func (f *prForge) MergePullRequestAsync(context.Context, int64, string, string, int, github.MergeOptions) (github.AsyncMergeResult, error) {
+	return github.AsyncMergeResult{}, errors.New("no stacks in the gateway tests")
+}
+
 func (f *prForge) CreateIssueComment(_ context.Context, _ int64, owner, repo string, number int, _ string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

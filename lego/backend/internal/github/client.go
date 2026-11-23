@@ -94,6 +94,9 @@ type Client struct {
 	clientSecret string
 	httpClient   *http.Client
 	now          func() time.Time
+	// mergeWait and mergePause bound and space the polls of an asynchronous
+	// merge's result; zero is AsyncMergeWait and asyncMergePause.
+	mergeWait, mergePause time.Duration
 }
 
 // NewClient parses the config (numeric app id, PEM private key) and returns a

@@ -256,15 +256,22 @@ func (r PullRequestMergeRequest) verbKind() string { return r.Kind }
 //     once its required checks pass;
 //   - MergeQueue: it is in its base branch's merge queue, or joins it once
 //     its required checks pass, and the queue merges it with its own method;
+//   - MergePending: GitHub accepted the asynchronous merge of its stack and
+//     was still landing it when github.AsyncMergeWait ran out (w10/053);
 //   - AutoMergeDisabled: GitHub no longer merges it later (disableAuto).
 //
-// Stack marks an auto-merge armed, found or disabled that is its GitHub
-// stack's (w10/048): it lands, or no longer lands, every unmerged pull
-// request below it too, and a disarm also stops those above it that the
-// request covered.
+// Stack marks a pull request in a GitHub stack whose outcome is its stack's:
+// a merge, a queue or a pending merge that lands it with every open pull
+// request below it (w10/053), or an auto-merge armed, found or disabled that
+// lands, or no longer lands, every unmerged pull request below it too, where
+// a disarm also stops those above it that the request covered (w10/048).
+// PullRequestCount is then how many pull requests the merge, the queue or a
+// fresh arm lands, as Devin's merge button shows, when GitHub's read saw
+// them all.
 //
-// An armed or queued pull request is not merged: the PR-state poller or a
-// pull_request delivery records prState merged once GitHub merges it.
+// An armed, queued or pending pull request is not merged: the PR-state
+// poller or a pull_request delivery records prState merged once GitHub
+// merges it.
 type PullRequestMergeResponse struct {
 	URL               string `json:"url"`
 	Number            int    `json:"number"`
@@ -274,8 +281,10 @@ type PullRequestMergeResponse struct {
 	HeadSHA           string `json:"headSha"`
 	AutoMerge         bool   `json:"autoMerge,omitempty"`
 	MergeQueue        bool   `json:"mergeQueue,omitempty"`
+	MergePending      bool   `json:"mergePending,omitempty"`
 	AutoMergeDisabled bool   `json:"autoMergeDisabled,omitempty"`
 	Stack             bool   `json:"stack,omitempty"`
+	PullRequestCount  int    `json:"pullRequestCount,omitempty"`
 	OtherPullRequest  bool   `json:"otherPullRequest,omitempty"`
 }
 
@@ -283,7 +292,7 @@ type PullRequestMergeResponse struct {
 // request named, exactly one outcome, and a merge's commit.
 func (r PullRequestMergeResponse) wellFormed() bool {
 	outcomes := 0
-	for _, outcome := range []bool{r.Merged, r.AutoMerge, r.MergeQueue, r.AutoMergeDisabled} {
+	for _, outcome := range []bool{r.Merged, r.AutoMerge, r.MergeQueue, r.MergePending, r.AutoMergeDisabled} {
 		if outcome {
 			outcomes++
 		}
@@ -333,6 +342,11 @@ func (p *PullRequester) MarkReady(ctx context.Context, req PullRequestReadyReque
 //     one already armed is left as it is; a pull request in a GitHub stack
 //     arms the stack, so GitHub lands it with every unmerged pull request
 //     below it, as Devin Review does (w10/048);
+//   - a pull request in a GitHub stack merged now, without auto or because
+//     GitHub refuses to arm a stack that is ready, lands with every open pull
+//     request below it, or joins the merge queue its stack's base requires,
+//     through GitHub's asynchronous merge, as Devin's merge button does
+//     (w10/053); any other merges through the synchronous one;
 //   - disableAuto takes it out of the queue or disables its auto-merge.
 //
 // A merge records prState merged at once on every session of the workspace
@@ -390,6 +404,8 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 		p.recordMergeMarks(ctx, target, state)
 		response.MergeQueue = true
 		return response, nil
+	case state.Stacked && !req.Auto:
+		return p.mergeStack(ctx, target, pr, opts, state, response)
 	case state.MergeQueueEnabled:
 		if err := p.GitHub.EnqueuePullRequest(ctx, target.installationID, target.name, pr.NodeID, pin); err != nil {
 			return PullRequestMergeResponse{}, mergeRefusal(err)
@@ -416,11 +432,18 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 			now := p.now().UTC()
 			p.rereadMergeMarks(ctx, target, pr, github.MergeState{AutoMerge: &store.PRAutoMerge{Method: method, EnabledAt: &now}})
 			response.AutoMerge, response.Method, response.Stack = true, method, arm.IncludeStack
+			if arm.IncludeStack {
+				response.PullRequestCount = state.StackLands
+			}
 			return response, nil
 		case !errors.Is(err, github.ErrMergeableNow):
 			return PullRequestMergeResponse{}, mergeRefusal(err)
 		}
-		// GitHub would merge it now, so it is merged now, as gh pr merge --auto does.
+		// GitHub would merge it now, so it is merged now, as gh pr merge
+		// --auto does: a stack with every open pull request below it.
+		if state.Stacked {
+			return p.mergeStack(ctx, target, pr, opts, state, response)
+		}
 	}
 	result, err := p.GitHub.MergePullRequest(ctx, target.installationID, target.owner, target.name, pr.Number, opts)
 	if err != nil {
@@ -428,6 +451,34 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 	}
 	p.recordMerged(ctx, target)
 	response.Merged, response.SHA, response.Method = true, result.SHA, result.Method
+	return response, nil
+}
+
+// mergeStack merges a pull request in a GitHub stack now through GitHub's
+// asynchronous merge (w10/053), pinned as any merge is and under the method
+// rule of the stack's base, where the stack lands: it lands with every open
+// pull request below it at once, or they join the merge queue that base
+// requires, and the answer says so and how many they are. A merge GitHub is
+// still landing when github.AsyncMergeWait runs out answers MergePending and
+// records nothing, as an armed one does; a failed one is refused in GitHub's
+// words under the codes of any merge.
+func (p *PullRequester) mergeStack(ctx context.Context, target stateTarget, pr github.PullRequestDetail, opts github.MergeOptions, state github.MergeState, response PullRequestMergeResponse) (PullRequestMergeResponse, error) {
+	opts.Base = cmp.Or(state.StackBase, opts.Base)
+	result, err := p.GitHub.MergePullRequestAsync(ctx, target.installationID, target.owner, target.name, pr.Number, opts)
+	if err != nil {
+		return PullRequestMergeResponse{}, mergeRefusal(err)
+	}
+	response.Stack, response.PullRequestCount = true, state.StackLands
+	switch result.Status {
+	case github.AsyncMergeMerged:
+		p.recordMerged(ctx, target)
+		response.Merged, response.SHA, response.Method = true, result.SHA, result.Method
+	case github.AsyncMergeEnqueued:
+		p.rereadMergeMarks(ctx, target, pr, github.MergeState{InMergeQueue: true})
+		response.MergeQueue = true
+	default:
+		response.MergePending, response.Method = true, result.Method
+	}
 	return response, nil
 }
 
@@ -600,12 +651,27 @@ func (p *PullRequester) recordMerged(ctx context.Context, target stateTarget) {
 var methodRefusal = regexp.MustCompile(`(?i)(merge commits|squash merges|rebase merges|merge method)[^.]*not (allowed|permitted)`)
 
 // headMovedRefusal matches GitHub's GraphQL words for an expectedHeadOid that
-// is no longer the pull request's head, which REST answers with 409.
-var headMovedRefusal = regexp.MustCompile(`(?i)head[^.]*(does not|doesn't|did not|didn't) match`)
+// is no longer the pull request's head, which REST answers with 409, and its
+// REST words for a head pushed to before the merge ran ("Head branch was
+// modified"), which an asynchronous merge reports as its failure (w10/053).
+var headMovedRefusal = regexp.MustCompile(`(?i)head[^.]*((does not|doesn't|did not|didn't) match|was modified)`)
+
+// notMergeable is the code of GitHub's message refusing a merge: the method,
+// the head that moved, or else the pull request not mergeable now.
+func notMergeable(message string) *PullRequestError {
+	switch {
+	case methodRefusal.MatchString(message):
+		return NewPullRequestMergeError(PullRequestMergeMethodNotAllowed, githubSaid(message, "the merge method is not allowed"))
+	case headMovedRefusal.MatchString(message):
+		return NewPullRequestMergeError(PullRequestHeadChanged, githubSaid(message, "the pull request's head no longer matches the recorded head"))
+	}
+	return NewPullRequestMergeError(PullRequestMergeBlocked, githubSaid(message, "the pull request is not mergeable"))
+}
 
 // mergeRefusal maps a refused merge, arm or enqueue to its typed code,
 // carrying GitHub's own message: 405 not mergeable, 409 the head moved, 422
-// invalid (GraphQL's refusals among them), 403 not permitted.
+// invalid (GraphQL's refusals among them), 403 not permitted; an asynchronous
+// merge GitHub failed reads as a 405 does (w10/053).
 func mergeRefusal(err error) *PullRequestError {
 	if errors.Is(err, github.ErrAutoMergeNotAllowed) {
 		return NewPullRequestMergeError(PullRequestAutoMergeNotAllowed, githubSaid(github.APIErrorMessage(err), "the repository does not allow auto-merge"))
@@ -618,18 +684,16 @@ func mergeRefusal(err error) *PullRequestError {
 		return NewPullRequestMergeError(PullRequestMergeMethodNotAllowed, fmt.Sprintf(
 			"the repository does not allow %s; it allows %s", methodErr.Method, orNone(methodErr.Allowed)))
 	}
+	var failed *github.AsyncMergeFailedError
+	if errors.As(err, &failed) {
+		return notMergeable(github.APIErrorMessage(err))
+	}
 	var apiErr *github.APIError
 	if errors.As(err, &apiErr) && !apiErr.RateLimited {
 		message := github.APIErrorMessage(err)
 		switch apiErr.Status {
 		case http.StatusMethodNotAllowed, http.StatusUnprocessableEntity:
-			if methodRefusal.MatchString(message) {
-				return NewPullRequestMergeError(PullRequestMergeMethodNotAllowed, githubSaid(message, "the merge method is not allowed"))
-			}
-			if headMovedRefusal.MatchString(message) {
-				return NewPullRequestMergeError(PullRequestHeadChanged, githubSaid(message, "the pull request's head no longer matches the recorded head"))
-			}
-			return NewPullRequestMergeError(PullRequestMergeBlocked, githubSaid(message, "the pull request is not mergeable"))
+			return notMergeable(message)
 		case http.StatusConflict:
 			return NewPullRequestMergeError(PullRequestHeadChanged, githubSaid(message, "the pull request's head no longer matches the recorded head"))
 		}

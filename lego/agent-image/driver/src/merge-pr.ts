@@ -75,7 +75,8 @@ export const mergePullRequestToolDefinition = {
     onlyWhenAsked +
     " Mark a draft ready first. When asked to merge once the checks pass or CI is green, call it with auto: true as soon as the pull request is ready and end your turn, without waiting for or watching the checks: GitHub auto-merge merges it when they pass (the answer has autoMerge: true, and next says what to tell the user), " +
     "and a base branch that requires a merge queue takes it into the queue, with or without auto (mergeQueue: true). Without auto it merges now; a pull request GitHub would merge now is merged even with auto. " +
-    "On a pull request in a GitHub stack, auto arms the stack: GitHub merges it together with every unmerged pull request below it (the answer has stack: true). " +
+    "On a pull request in a GitHub stack, a merge lands it together with every open pull request below it, or queues them where the stack's base requires a merge queue, and auto arms the stack so GitHub merges them all once they are ready (the answer has stack: true, and pullRequestCount says how many pull requests that is). " +
+    "GitHub may still be landing a stack when the call answers (mergePending: true): it has not merged yet, and next says what to do. " +
     "If a person asks not to merge after all, call it with only disableAuto: true. " +
     "The merge of this session's own pull request is pinned to the head bex recorded when you last called open_or_update_draft_pr, so push and call that tool first; another pull request merges at the head GitHub reports for it when you call (the answer has otherPullRequest: true). " +
     "The repository's branch protection decides: if GitHub refuses (checks pending or failing, a required review, a conflict), the error gives GitHub's reason and what to do; " +
@@ -124,8 +125,10 @@ export interface ReadyPullRequest {
 
 // MergeAnswer is what the merge did, with exactly one outcome: merged now
 // (sha, the merge commit, and method), autoMerge armed with method, joined the
-// mergeQueue, or autoMergeDisabled. Only a merge is merged: GitHub merges an
-// armed or queued pull request later.
+// mergeQueue, mergePending (GitHub accepted a stack's merge and was still
+// landing it when the call answered, w10/053), or autoMergeDisabled. Only a
+// merge is merged: GitHub merges an armed, queued or pending pull request
+// later.
 export interface MergeAnswer {
   url: string;
   number: number;
@@ -137,10 +140,16 @@ export interface MergeAnswer {
   headSha: string;
   autoMerge?: true;
   mergeQueue?: true;
+  mergePending?: true;
   autoMergeDisabled?: true;
-  // The auto-merge armed, found or disabled is its GitHub stack's (w10/048):
-  // it lands, or no longer lands, every unmerged pull request below it too.
+  // The outcome is its GitHub stack's: a merge, a queue or a pending merge
+  // lands every open pull request below it too (w10/053), and an auto-merge
+  // armed, found or disabled lands, or no longer lands, every unmerged one
+  // below it (w10/048).
   stack?: true;
+  // How many pull requests a stack's merge, queue or fresh arm lands, this
+  // one included, as Devin's merge button shows (w10/053).
+  pullRequestCount?: number;
   // A pull request of the repository other than the session's own (w10/041),
   // which the session's pull request record never takes.
   otherPullRequest?: true;
@@ -148,11 +157,11 @@ export interface MergeAnswer {
   next?: string;
 }
 
-// endTurnAfter is an armed or queued answer's next step. The overlay and the
-// tool description already say to end the turn, yet on production the default
-// model armed auto-merge and then watched the checks anyway, "to report
-// accurately" (w10/m577 t005, 2026-11-23). The answer is read at that very
-// decision, so it says what the final reply reports in place of a merge.
+// endTurnAfter is an armed, queued or pending answer's next step. The overlay
+// and the tool description already say to end the turn, yet on production the
+// default model armed auto-merge and then watched the checks anyway, "to
+// report accurately" (w10/m577 t005, 2026-11-23). The answer is read at that
+// very decision, so it says what the final reply reports in place of a merge.
 const endTurnAfter = {
   autoMerge:
     "Auto-merge is armed: GitHub merges this pull request once its required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed, not that the pull request merged.",
@@ -160,10 +169,36 @@ const endTurnAfter = {
     "Auto-merge is armed for this pull request's stack: GitHub merges it together with every unmerged pull request below it once all their required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed for the stack, not that the pull requests merged.",
   mergeQueue:
     "The pull request joined the merge queue: GitHub merges it once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says it is in the merge queue, not that it merged.",
+  stackMergeQueue:
+    "The pull request joined the merge queue together with every open pull request below it in its stack: GitHub merges them once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says the stack is in the merge queue, not that it merged.",
+  // w10/053: GitHub's asynchronous merge of a stack may outlast the call.
+  mergePending:
+    "GitHub accepted the merge of this pull request together with every open pull request below it in its stack and is still landing them: they have not merged yet. Do not use `gh pr merge`. To learn the result, call merge_pull_request once more with the same arguments in a minute or so: it reads this merge's result rather than starting another, and a pull_request_closed error saying the pull request is already merged means it landed. Otherwise end your turn; your final reply says GitHub is still merging the stack, not that it merged.",
 } as const;
 
+// nextStep is what an armed, queued or pending answer says to do next.
+function nextStep(
+  outcome: (typeof laterOutcomes)[number] | undefined,
+  stack: boolean,
+): string | undefined {
+  switch (outcome) {
+    case "autoMerge":
+      return stack ? endTurnAfter.stackAutoMerge : endTurnAfter.autoMerge;
+    case "mergeQueue":
+      return stack ? endTurnAfter.stackMergeQueue : endTurnAfter.mergeQueue;
+    case "mergePending":
+      return endTurnAfter.mergePending;
+  }
+  return undefined;
+}
+
 // The outcomes an answer may carry besides a merge.
-const laterOutcomes = ["autoMerge", "mergeQueue", "autoMergeDisabled"] as const;
+const laterOutcomes = [
+  "autoMerge",
+  "mergeQueue",
+  "mergePending",
+  "autoMergeDisabled",
+] as const;
 
 type Outcome<T> = { ok: true; result: T } | { ok: false; error: ToolError };
 
@@ -402,14 +437,20 @@ export async function mergePullRequest(
 // (PullRequestMergeResponse.wellFormed): the pull request named, exactly one
 // outcome, and a merge's commit and method.
 function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
-  const { url, number, merged, sha, method, headSha } = payload;
+  const { url, number, merged, sha, method, headSha, pullRequestCount } =
+    payload;
   if (typeof url !== "string" || !url || typeof number !== "number") {
     return null;
   }
   const later = laterOutcomes.filter((outcome) => payload[outcome] === true);
-  const stack =
-    payload.stack === true &&
-    (later[0] === "autoMerge" || later[0] === "autoMergeDisabled");
+  const stack = payload.stack === true;
+  const count =
+    stack &&
+    typeof pullRequestCount === "number" &&
+    Number.isSafeInteger(pullRequestCount) &&
+    pullRequestCount > 0
+      ? pullRequestCount
+      : undefined;
   if (merged === true) {
     if (
       later.length > 0 ||
@@ -422,6 +463,7 @@ function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
   } else if (merged !== false || later.length !== 1) {
     return null;
   }
+  const next = nextStep(later[0], stack);
   return {
     url,
     number,
@@ -431,16 +473,11 @@ function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
     headSha: typeof headSha === "string" ? headSha : "",
     ...Object.fromEntries(later.map((outcome) => [outcome, true as const])),
     ...(stack ? { stack: true as const } : {}),
+    ...(count ? { pullRequestCount: count } : {}),
     ...(payload.otherPullRequest === true
       ? { otherPullRequest: true as const }
       : {}),
-    ...(later[0] === "autoMerge" || later[0] === "mergeQueue"
-      ? {
-          next: endTurnAfter[
-            later[0] === "autoMerge" && stack ? "stackAutoMerge" : later[0]
-          ],
-        }
-      : {}),
+    ...(next ? { next } : {}),
   };
 }
 

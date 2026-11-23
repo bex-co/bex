@@ -93,6 +93,11 @@ type fakeForge struct {
 	// other is a second pull request of the repository, a person's or
 	// another session's, which a named number reaches (w10/041).
 	other *github.PullRequestDetail
+	// asyncMerges records each asynchronous merge of a stack (w10/053),
+	// asyncResult is GitHub's result (merged by default) and asyncErr fails it.
+	asyncMerges []forgeMerge
+	asyncResult github.AsyncMergeResult
+	asyncErr    error
 }
 
 // byNode is the pull request with GraphQL node id node, nil for none.
@@ -204,6 +209,22 @@ func (f *fakeForge) MergePullRequest(_ context.Context, installation int64, owne
 		method = github.MergeMethodSquash
 	}
 	return github.MergeResult{SHA: "fedcba9876543210fedcba9876543210fedcba98", Method: method}, nil
+}
+
+func (f *fakeForge) MergePullRequestAsync(_ context.Context, installation int64, owner, repo string, number int, opts github.MergeOptions) (github.AsyncMergeResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.asyncMerges = append(f.asyncMerges, forgeMerge{installation: installation, owner: owner, repo: repo, number: number, opts: opts})
+	if f.asyncErr != nil {
+		return github.AsyncMergeResult{}, f.asyncErr
+	}
+	if f.asyncResult.Status == github.AsyncMergeEnqueued {
+		f.state.InMergeQueue = true
+	}
+	if f.asyncResult.Status != "" {
+		return f.asyncResult, nil
+	}
+	return github.AsyncMergeResult{Status: github.AsyncMergeMerged, SHA: "fedcba9876543210fedcba9876543210fedcba98", Method: cmp.Or(opts.Method, github.MergeMethodSquash)}, nil
 }
 
 func (f *fakeForge) GetPullRequest(_ context.Context, _ int64, _, _ string, number int) (github.PullRequestDetail, error) {

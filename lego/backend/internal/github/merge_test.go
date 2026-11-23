@@ -50,6 +50,17 @@ type fakeMergeAPI struct {
 	scopes        []map[string]any
 	merges        []map[string]any
 	mutations     []map[string]any
+	// asyncStatus and asyncBody are GitHub's answer to an asynchronous merge
+	// (w10/053), asyncMerges its bodies; asyncPolls are the answers to the
+	// reads of its result, in order, the last one repeating ("" a 403), and
+	// polled the result paths read.
+	asyncStatus int
+	asyncBody   string
+	asyncMerges []map[string]any
+	asyncPolls  []string
+	polled      []string
+	// onPoll, when set, runs at each read of the result.
+	onPoll func()
 }
 
 // graphQLFields are the top-level fields the merge calls send, in the order
@@ -92,6 +103,21 @@ func (f *fakeMergeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Fprint(w, `{"sha":"fedcba9876543210fedcba9876543210fedcba98","merged":true,"message":"Pull Request successfully merged"}`)
+	case r.Method == http.MethodPut && r.URL.Path == "/repos/octo/repo/pulls/7/merge-async":
+		f.asyncMerges = append(f.asyncMerges, decode())
+		w.WriteHeader(f.asyncStatus)
+		fmt.Fprint(w, f.asyncBody)
+	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/repos/octo/repo/pulls/7/merge-async/"):
+		f.polled = append(f.polled, r.URL.Path)
+		if f.onPoll != nil {
+			f.onPoll()
+		}
+		answer := f.asyncPolls[min(len(f.polled), len(f.asyncPolls))-1]
+		if answer == "" {
+			http.Error(w, `{"message":"Resource not accessible by integration"}`, http.StatusForbidden)
+			return
+		}
+		fmt.Fprint(w, answer)
 	case r.Method == http.MethodPost && r.URL.Path == "/graphql":
 		body := decode()
 		f.mutations = append(f.mutations, body)
@@ -491,7 +517,8 @@ func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
 	query, _ := api.mutations[0]["query"].(string)
 	variables, _ := api.mutations[0]["variables"].(map[string]any)
 	for _, field := range []string{"isMergeQueueEnabled", "isInMergeQueue", "mergeStateStatus", "autoMergeRequest { mergeMethod enabledAt enabledBy { login } }",
-		"stack { baseRefName }", "stackAutoMergeRequest: autoMergeRequest(includeStack: true) { mergeMethod enabledAt enabledBy { login } }"} {
+		"stack { baseRefName entries(first: 100) { nodes { position pullRequest { state } } } }", "stackEntry { position }",
+		"stackAutoMergeRequest: autoMergeRequest(includeStack: true) { mergeMethod enabledAt enabledBy { login } }"} {
 		if !strings.Contains(query, field) {
 			t.Fatalf("query %q does not read %s", query, field)
 		}
@@ -533,8 +560,22 @@ func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
 			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main", StackAutoMerge: true, AutoMerge: &store.PRAutoMerge{Method: MergeMethodRebase, EnabledBy: "octocat"}}},
 		{"stacked, armed alone", `{"data":{"node":{"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"},"stack":{"baseRefName":"main"},"stackAutoMergeRequest":null}}}`,
 			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main", AutoMerge: &store.PRAutoMerge{Method: MergeMethodSquash}}},
-		{"in no stack", `{"data":{"node":{"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"},"stack":null,"stackAutoMergeRequest":{"mergeMethod":"MERGE"}}}}`,
+		{"in no stack", `{"data":{"node":{"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"},"stack":null,"stackEntry":null,"stackAutoMergeRequest":{"mergeMethod":"MERGE"}}}}`,
 			MergeState{Status: "BLOCKED", AutoMerge: &store.PRAutoMerge{Method: MergeMethodSquash}}},
+		// w10/053: what merging it lands, as Devin's merge button counts it:
+		// it and every open pull request below it, not a merged or closed
+		// one, nor one above it.
+		{"third of four, the first merged", `{"data":{"node":{"mergeStateStatus":"BLOCKED","stackEntry":{"position":3},"stack":{"baseRefName":"main","entries":{"nodes":[` +
+			`{"position":1,"pullRequest":{"state":"MERGED"}},{"position":2,"pullRequest":{"state":"OPEN"}},{"position":3,"pullRequest":{"state":"OPEN"}},{"position":4,"pullRequest":{"state":"OPEN"}}]}}}}}`,
+			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main", StackLands: 2}},
+		{"the bottom", `{"data":{"node":{"mergeStateStatus":"CLEAN","stackEntry":{"position":1},"stack":{"baseRefName":"main","entries":{"nodes":[{"position":2,"pullRequest":{"state":"OPEN"}},{"position":1,"pullRequest":{"state":"OPEN"}}]}}}}}`,
+			MergeState{Status: "CLEAN", Stacked: true, StackBase: "main", StackLands: 1}},
+		{"a position below it unread", `{"data":{"node":{"mergeStateStatus":"BLOCKED","stackEntry":{"position":3},"stack":{"baseRefName":"main","entries":{"nodes":[{"position":1,"pullRequest":{"state":"OPEN"}},{"position":3,"pullRequest":{"state":"OPEN"}}]}}}}}`,
+			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main"}},
+		{"a pull request below it hidden", `{"data":{"node":{"mergeStateStatus":"BLOCKED","stackEntry":{"position":2},"stack":{"baseRefName":"main","entries":{"nodes":[{"position":1,"pullRequest":null},{"position":2,"pullRequest":{"state":"OPEN"}}]}}}}}`,
+			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main"}},
+		{"no place read", `{"data":{"node":{"mergeStateStatus":"BLOCKED","stackEntry":null,"stack":{"baseRefName":"main","entries":{"nodes":[{"position":1,"pullRequest":{"state":"OPEN"}}]}}}}}`,
+			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main"}},
 	} {
 		api := &fakeMergeAPI{answers: map[string]string{"node(id": tc.answer}}
 		state, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7")
@@ -549,5 +590,150 @@ func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
 		if _, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7"); err == nil {
 			t.Fatalf("%s read as a state", answer)
 		}
+	}
+}
+
+// asyncMergeAPI is fakeMergeAPI answering an asynchronous merge with status
+// and body, and the reads of its result with polls.
+func asyncMergeAPI(status int, body string, polls ...string) *fakeMergeAPI {
+	return &fakeMergeAPI{settings: allMethods, rules: `[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash","rebase"]}}]`,
+		asyncStatus: status, asyncBody: body, asyncPolls: polls}
+}
+
+// asyncMergeClient is pullsClient waiting at most wait for an asynchronous
+// merge, polling every millisecond.
+func asyncMergeClient(t *testing.T, api *fakeMergeAPI, wait time.Duration) *Client {
+	c := pullsClient(t, api)
+	c.mergeWait, c.mergePause = wait, time.Millisecond
+	return c
+}
+
+const (
+	asyncUUID    = "630b9d5e-3f2a-4f7e-8b0c-2d5f9a8c1e42"
+	asyncPending = `{"status":"pending","details":{"message":"Merge request enqueued.","uuid":"` + asyncUUID + `","merge_method":"squash","merge_action":"default","expected_head_sha":"` + pullsTestHead + `"}}`
+	asyncMerged  = `{"status":"merged","details":{"message":"Pull request was merged.","sha":"6dcb09b5b57875f334f61aebed695e2e4193db5e"}}`
+	asyncQueued  = `{"status":"enqueued","details":{"message":"Pull request is in the merge queue."}}`
+)
+
+// w10/053: a pull request in a GitHub stack lands only through GitHub's
+// asynchronous merge, which lands it with every open pull request below it
+// or queues them where the stack's base requires a merge queue. The call is
+// pinned to the head, uses the stack base's method rule with the commit text,
+// leaves the choice of a queue to GitHub (merge_action default) and never
+// bypasses a rule, and its result is polled within the bound, with the
+// merge's own token (Contents write, as GitHub lists both calls).
+func TestMergePullRequestAsyncLandsTheStackAndWaitsForItsResult(t *testing.T) {
+	api := asyncMergeAPI(http.StatusAccepted, asyncPending, asyncPending, asyncMerged)
+	got, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7,
+		MergeOptions{SHA: pullsTestHead, CommitTitle: "Part 2 (#7)", CommitMessage: "The second part.", Base: "main"})
+	if err != nil || got != (AsyncMergeResult{Status: AsyncMergeMerged, SHA: "6dcb09b5b57875f334f61aebed695e2e4193db5e", Method: MergeMethodSquash}) {
+		t.Fatalf("merge = %+v err=%v, want merged with squash, the first method the stack's base allows", got, err)
+	}
+	wantBody := map[string]any{"sha": pullsTestHead, "merge_method": "squash", "merge_action": "default", "commit_title": "Part 2 (#7)", "commit_message": "The second part."}
+	if len(api.asyncMerges) != 1 || fmt.Sprint(api.asyncMerges[0]) != fmt.Sprint(wantBody) {
+		t.Fatalf("merge body = %+v, want %+v", api.asyncMerges, wantBody)
+	}
+	if want := "/repos/octo/repo/pulls/7/merge-async/" + asyncUUID; len(api.polled) != 2 || api.polled[0] != want || api.polled[1] != want {
+		t.Fatalf("polled = %v, want its result read until it merged", api.polled)
+	}
+	if perms := api.lastPermissions(); perms["contents"] != "write" || perms["pull_requests"] != "write" || perms["workflows"] != "write" || len(api.merges) != 0 {
+		t.Fatalf("token scope = %+v, synchronous merges %d", api.scopes, len(api.merges))
+	}
+
+	// The stack joins the merge queue its base requires, now or once polled.
+	for name, api := range map[string]*fakeMergeAPI{
+		"already queued":     asyncMergeAPI(http.StatusOK, asyncQueued),
+		"queued once polled": asyncMergeAPI(http.StatusAccepted, asyncPending, asyncQueued),
+	} {
+		got, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Method: MergeMethodRebase, Base: "main"})
+		if err != nil || got != (AsyncMergeResult{Status: AsyncMergeEnqueued, Method: MergeMethodRebase}) {
+			t.Fatalf("%s: merge = %+v err=%v", name, got, err)
+		}
+	}
+
+	// A result read that fails is read again: GitHub has accepted the merge.
+	api = asyncMergeAPI(http.StatusAccepted, asyncPending, "", asyncMerged)
+	if got, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Base: "main"}); err != nil || got.Status != AsyncMergeMerged || len(api.polled) != 2 {
+		t.Fatalf("merge after a failed read = %+v err=%v polled=%v", got, err, api.polled)
+	}
+
+	// Still landing at the bound: pending, which only the bound ends.
+	api = asyncMergeAPI(http.StatusAccepted, asyncPending, asyncPending)
+	start := time.Now()
+	got, err = asyncMergeClient(t, api, 50*time.Millisecond).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Base: "main"})
+	if err != nil || got != (AsyncMergeResult{Status: AsyncMergePending, Method: MergeMethodSquash}) || len(api.polled) < 2 || time.Since(start) > 5*time.Second {
+		t.Fatalf("pending merge = %+v err=%v polled=%d", got, err, len(api.polled))
+	}
+	// A request given up on while it waits stops waiting, with no answer.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api = asyncMergeAPI(http.StatusAccepted, asyncPending, asyncPending)
+	api.onPoll = cancel
+	if got, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(ctx, 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Base: "main"}); !errors.Is(err, context.Canceled) || len(api.polled) != 1 {
+		t.Fatalf("a request given up on = %+v err=%v polled=%d", got, err, len(api.polled))
+	}
+	if AsyncMergeWait != 15*time.Second {
+		t.Fatalf("AsyncMergeWait = %s; ADR090 D3 states 15 seconds, inside bex-api's 30-second write timeout", AsyncMergeWait)
+	}
+
+	// Another merge of it already pending at the same head is waited for; at
+	// another head it is GitHub's 409, unpolled.
+	api = asyncMergeAPI(http.StatusConflict, strings.Replace(asyncPending, "Merge request enqueued.", "A merge request already exists for this pull request.", 1), asyncMerged)
+	if got, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: strings.ToUpper(pullsTestHead), Base: "main"}); err != nil || got.Status != AsyncMergeMerged || len(api.polled) != 1 {
+		t.Fatalf("pending at the same head = %+v err=%v polled=%v", got, err, api.polled)
+	}
+	api.polled = nil
+	_, err = asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: "0000000000000000000000000000000000000000", Base: "main"})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict || APIErrorMessage(err) != "A merge request already exists for this pull request." || len(api.polled) != 0 {
+		t.Fatalf("pending at another head err=%v (%q) polled=%v", err, APIErrorMessage(err), api.polled)
+	}
+}
+
+// w10/053: a merge GitHub fails, at once or once it ran, is an
+// *AsyncMergeFailedError whose message APIErrorMessage reads and Error()
+// never carries; GitHub's other refusals are *APIErrors, and a method the
+// stack's base refuses never reaches GitHub.
+func TestMergePullRequestAsyncRefusals(t *testing.T) {
+	for name, api := range map[string]*fakeMergeAPI{
+		"failed at once":     asyncMergeAPI(http.StatusBadRequest, `{"status":"failed","details":{"message":"Pull request is closed."}}`),
+		"failed once it ran": asyncMergeAPI(http.StatusAccepted, asyncPending, `{"status":"failed","details":{"message":"Pull request is closed."}}`),
+	} {
+		_, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Base: "main"})
+		var failed *AsyncMergeFailedError
+		if !errors.As(err, &failed) || APIErrorMessage(err) != "Pull request is closed." || strings.Contains(err.Error(), "closed") {
+			t.Fatalf("%s: err = %v (%q)", name, err, APIErrorMessage(err))
+		}
+	}
+	for _, tc := range []struct {
+		status  int
+		body    string
+		message string
+	}{
+		{http.StatusUnprocessableEntity, `{"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"sha is invalid"}]}`, "Validation Failed sha is invalid"},
+		{http.StatusForbidden, `{"message":"Resource not accessible by integration"}`, "Resource not accessible by integration"},
+		{http.StatusBadRequest, `{"message":"Problems parsing JSON"}`, "Problems parsing JSON"},
+		{http.StatusNotFound, `{"message":"Not Found"}`, "Not Found"},
+	} {
+		_, err := asyncMergeClient(t, asyncMergeAPI(tc.status, tc.body), time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Base: "main"})
+		var apiErr *APIError
+		if !errors.As(err, &apiErr) || apiErr.Status != tc.status || APIErrorMessage(err) != tc.message {
+			t.Fatalf("%d: err = %v (%q)", tc.status, err, APIErrorMessage(err))
+		}
+	}
+	for name, body := range map[string]string{
+		"merged without its commit": `{"status":"merged","details":{"message":"Pull request was merged."}}`,
+		"an unknown status":         `{"status":"rejected","details":{"message":"?"}}`,
+		"no result":                 `{}`,
+	} {
+		if _, err := asyncMergeClient(t, asyncMergeAPI(http.StatusOK, body), time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Base: "main"}); err == nil {
+			t.Fatalf("%s read as a result", name)
+		}
+	}
+	api := asyncMergeAPI(http.StatusAccepted, asyncPending, asyncMerged)
+	_, err := asyncMergeClient(t, api, time.Minute).MergePullRequestAsync(context.Background(), 42, "octo", "repo", 7, MergeOptions{SHA: pullsTestHead, Method: MergeMethodMerge, Base: "main"})
+	var methodErr *MergeMethodError
+	if !errors.As(err, &methodErr) || methodErr.Method != MergeMethodMerge || strings.Join(methodErr.Allowed, ",") != "squash,rebase" || len(api.asyncMerges) != 0 {
+		t.Fatalf("refused method err=%v merges=%d", err, len(api.asyncMerges))
 	}
 }

@@ -26,6 +26,7 @@ import (
 	"iter"
 	"net/http"
 	neturl "net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -70,17 +71,24 @@ func (c *Client) repoToken(ctx context.Context, installationID int64, repo strin
 
 // tokenJSON is repoJSON's request half, for a caller that already holds a token.
 func (c *Client) tokenJSON(ctx context.Context, token, method, url string, payload any, wantStatus int, out any) error {
+	_, err := c.tokenJSONStatus(ctx, token, method, url, payload, out, wantStatus)
+	return err
+}
+
+// tokenJSONStatus is tokenJSON for a call GitHub answers with any of
+// wantStatuses: it decodes such an answer into out and reports its status.
+func (c *Client) tokenJSONStatus(ctx context.Context, token, method, url string, payload any, out any, wantStatuses ...int) (int, error) {
 	var reader io.Reader
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		reader = bytes.NewReader(encoded)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, url, reader)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	setTokenAuth(req, token)
 	req.Header.Set("Accept", acceptHeader)
@@ -89,20 +97,20 @@ func (c *Client) tokenJSON(ctx context.Context, token, method, url string, paylo
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("github: %s %s: %w", method, url, err)
+		return 0, fmt.Errorf("github: %s %s: %w", method, url, err)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
-	if resp.StatusCode != wantStatus {
-		return newAPIError(resp, body)
+	if !slices.Contains(wantStatuses, resp.StatusCode) {
+		return resp.StatusCode, newAPIError(resp, body)
 	}
 	if out == nil {
-		return nil
+		return resp.StatusCode, nil
 	}
 	if err := json.Unmarshal(body, out); err != nil {
-		return fmt.Errorf("github: decode %s: %w", url, err)
+		return resp.StatusCode, fmt.Errorf("github: decode %s: %w", url, err)
 	}
-	return nil
+	return resp.StatusCode, nil
 }
 
 func (c *Client) repoURL(owner, repo string) string {

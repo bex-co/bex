@@ -341,9 +341,9 @@ test("merge_pull_request with auto arms auto-merge, returns the armed answer and
 
 // w10/048: auto on a pull request in a GitHub stack arms the stack, and the
 // answer says so, with a next step naming the pull requests below it; an
-// undo of the stack's request says so too, and a stack mark on any other
-// outcome is not relayed.
-test("merge_pull_request relays a stack's auto-merge and its undo", async (t) => {
+// undo of the stack's request says so too. w10/053: a stack queued says the
+// pull requests below it joined the queue with it.
+test("merge_pull_request relays a stack's auto-merge, its queue and its undo", async (t) => {
   const stackArmed = {
     url: merged.url,
     number: 12,
@@ -378,10 +378,12 @@ test("merge_pull_request relays a stack's auto-merge and its undo", async (t) =>
     ],
     [disarmed, disarmed],
     [
-      { ...queued, stack: true },
+      { ...queued, stack: true, pullRequestCount: 3 },
       {
         ...queued,
-        next: "The pull request joined the merge queue: GitHub merges it once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says it is in the merge queue, not that it merged.",
+        stack: true,
+        pullRequestCount: 3,
+        next: "The pull request joined the merge queue together with every open pull request below it in its stack: GitHub merges them once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says the stack is in the merge queue, not that it merged.",
       },
     ],
   ] as const) {
@@ -397,6 +399,82 @@ test("merge_pull_request relays a stack's auto-merge and its undo", async (t) =>
   }
 });
 
+// w10/053: a stack merged now lands with every open pull request below it,
+// and the answer says how many; its merged head is recorded as any merge's.
+// One GitHub is still landing when the call answers is not merged: its next
+// step says so and how to learn the result, and nothing is recorded. A count
+// that is not a positive whole number, or on a pull request in no stack, is
+// not relayed.
+test("merge_pull_request relays a stack merged now, or still landing, with how many pull requests it lands", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "bex-merge-"));
+  const record = path.join(dir, "pull-request.json");
+  const stackMerged = { ...merged, stack: true, pullRequestCount: 3 };
+  let gateway = await stubGateway({
+    [`${base}/merge`]: { status: 200, body: stackMerged },
+  });
+  t.after(gateway.close);
+  let outcome = await mergePullRequest(
+    {},
+    { ...gateway.env, BEX_PR_RECORD_PATH: record },
+  );
+  assert.deepEqual(outcome, { ok: true, result: stackMerged });
+  const written = JSON.parse(await readFile(record, "utf8"));
+  assert.equal(written.merged, true);
+  assert.equal(written.mergeSha, merged.sha);
+  assert.equal(written.headSha, merged.headSha);
+
+  const pending = {
+    url: merged.url,
+    number: 12,
+    merged: false,
+    method: "squash",
+    headSha: merged.headSha,
+    mergePending: true,
+    stack: true,
+    pullRequestCount: 2,
+  };
+  const pendingRecord = path.join(dir, "pending.json");
+  gateway = await stubGateway({
+    [`${base}/merge`]: { status: 200, body: pending },
+  });
+  t.after(gateway.close);
+  outcome = await mergePullRequest(
+    {},
+    { ...gateway.env, BEX_PR_RECORD_PATH: pendingRecord },
+  );
+  assert.deepEqual(outcome, {
+    ok: true,
+    result: {
+      ...pending,
+      next: "GitHub accepted the merge of this pull request together with every open pull request below it in its stack and is still landing them: they have not merged yet. Do not use `gh pr merge`. To learn the result, call merge_pull_request once more with the same arguments in a minute or so: it reads this merge's result rather than starting another, and a pull_request_closed error saying the pull request is already merged means it landed. Otherwise end your turn; your final reply says GitHub is still merging the stack, not that it merged.",
+    },
+  });
+  await assert.rejects(readFile(pendingRecord, "utf8"));
+
+  for (const [body, want] of [
+    [
+      { ...merged, stack: true, pullRequestCount: 0 },
+      { ...merged, stack: true },
+    ],
+    [
+      { ...merged, stack: true, pullRequestCount: 2.5 },
+      { ...merged, stack: true },
+    ],
+    [
+      { ...merged, stack: true, pullRequestCount: "3" },
+      { ...merged, stack: true },
+    ],
+    [{ ...merged, pullRequestCount: 3 }, merged],
+  ] as const) {
+    gateway = await stubGateway({
+      [`${base}/merge`]: { status: 200, body },
+    });
+    t.after(gateway.close);
+    outcome = await mergePullRequest({}, gateway.env);
+    assert.deepEqual(outcome, { ok: true, result: want }, JSON.stringify(body));
+  }
+});
+
 test("an answer with no outcome, two outcomes or a merge without its commit is refused", async (t) => {
   for (const body of [
     { url: merged.url, number: 12, merged: false, headSha: merged.headSha },
@@ -408,6 +486,7 @@ test("an answer with no outcome, two outcomes or a merge without its commit is r
       mergeQueue: true,
     },
     { ...merged, autoMerge: true },
+    { ...merged, mergePending: true },
     { ...merged, sha: "" },
     { url: merged.url, number: 12, autoMerge: true },
     { url: "", number: 12, merged: false, autoMerge: true },
@@ -581,11 +660,13 @@ test("only repo sessions list the ready and merge tools, saying to use them only
   );
   // The armed answer's next step is named, so the agent looks for it.
   assert.match(merge.description, /next says what to tell the user/);
-  // w10/048: a stacked pull request's auto arms its stack.
+  // w10/048 and w10/053: a stacked pull request lands, queues and arms with
+  // its stack, and the answer says how many pull requests that is.
   assert.match(
     merge.description,
-    /On a pull request in a GitHub stack, auto arms the stack: GitHub merges it together with every unmerged pull request below it \(the answer has stack: true\)/,
+    /On a pull request in a GitHub stack, a merge lands it together with every open pull request below it, or queues them where the stack's base requires a merge queue, and auto arms the stack so GitHub merges them all once they are ready \(the answer has stack: true, and pullRequestCount says how many pull requests that is\)/,
   );
+  assert.match(merge.description, /mergePending: true/);
   assert.match(merge.description, /merge queue/);
   assert.match(merge.description, /only disableAuto: true/);
   const init = await handleMessage(
