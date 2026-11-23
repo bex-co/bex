@@ -235,7 +235,7 @@ func TestStampMeteringRecordsPlacementAndFault(t *testing.T) {
 	cl := fakeClient(job)
 	placed := metav1.NewTime(time.Date(2026, 11, 10, 9, 30, 0, 0, time.UTC))
 
-	if err := StampMetering(context.Background(), cl, censusNS, "bld-meter", placed, FaultInfra); err != nil {
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-meter", Signals{PlacedAt: placed}, FaultInfra); err != nil {
 		t.Fatalf("StampMetering: %v", err)
 	}
 	var got batchv1.Job
@@ -255,7 +255,7 @@ func TestStampMeteringRecordsPlacementAndFault(t *testing.T) {
 	// A succeeded build with no observed placement writes nothing.
 	plain := censusJob("bld-plain", "tea-a", time.Minute, true)
 	cl = fakeClient(plain)
-	if err := StampMetering(context.Background(), cl, censusNS, "bld-plain", metav1.Time{}, FaultNone); err != nil {
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-plain", Signals{}, FaultNone); err != nil {
 		t.Fatalf("StampMetering: %v", err)
 	}
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: censusNS, Name: "bld-plain"}, &got); err != nil {

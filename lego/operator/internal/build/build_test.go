@@ -1189,7 +1189,7 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 
 	t.Run("unplaced pod is queued and names the scarce resource", func(t *testing.T) {
 		o.Client = fakeClient(job, buildPod(o, "b-1", "", unschedulable))
-		queued, reason := buildQueued(context.Background(), o, job.Name)
+		queued, reason := buildQueued(listJobPods(context.Background(), o.Client, o.Namespace, job.Name))
 		if !queued {
 			t.Fatal("a pod the scheduler could not place must report queued")
 		}
@@ -1204,7 +1204,7 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 	// and hold the clock at zero for the entire build.
 	t.Run("scheduled pod still Pending is building, not queued", func(t *testing.T) {
 		o.Client = fakeClient(job, buildPod(o, "b-2", "node-a", nil))
-		if queued, _ := buildQueued(context.Background(), o, job.Name); queued {
+		if queued, _ := buildQueued(listJobPods(context.Background(), o.Client, o.Namespace, job.Name)); queued {
 			t.Error("a placed pod is consuming capacity and building, even while phase is Pending")
 		}
 	})
@@ -1213,7 +1213,7 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 		dead := buildPod(o, "b-3", "node-a", nil)
 		dead.Status.Phase = corev1.PodFailed
 		o.Client = fakeClient(job, dead, buildPod(o, "b-4", "", unschedulable))
-		if queued, _ := buildQueued(context.Background(), o, job.Name); !queued {
+		if queued, _ := buildQueued(listJobPods(context.Background(), o.Client, o.Namespace, job.Name)); !queued {
 			t.Error("the retry is unplaced, so the build is queued regardless of the failed attempt")
 		}
 	})
@@ -1225,7 +1225,7 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 	// is available to follow", with no BuildKit pod ever created.
 	t.Run("a job with no pod yet is queued, not building", func(t *testing.T) {
 		o.Client = fakeClient(job)
-		queued, reason := buildQueued(context.Background(), o, job.Name)
+		queued, reason := buildQueued(listJobPods(context.Background(), o.Client, o.Namespace, job.Name))
 		if !queued {
 			t.Error("a Job whose controller has not created a pod has nothing running: that is queued")
 		}
@@ -1239,7 +1239,7 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 	// something it does not actually know.
 	t.Run("a failed pod list is not reported as queued", func(t *testing.T) {
 		o.Client = listErrorClient{Client: fakeClient(job), err: errors.New("apiserver unavailable")}
-		if queued, _ := buildQueued(context.Background(), o, job.Name); queued {
+		if queued, _ := buildQueued(listJobPods(context.Background(), o.Client, o.Namespace, job.Name)); queued {
 			t.Error("a List error must not be read as evidence that no pod exists")
 		}
 	})

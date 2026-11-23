@@ -121,13 +121,14 @@ func platformFetchMessage(f build.PlatformFetch) string {
 	return "bex could not download its " + f.Tool + how + "; this is a platform problem, not a problem with your code — trigger a new deploy to retry, and contact support if it keeps happening"
 }
 
-// stampBuildRun records a failed build's execution window on the App status:
-// a build Job's (w6/m123), or a direct static publish's clone step (w32/034).
-// Called just before r.fail so it rides the same status update as the Build
-// condition — the two can never be observed apart. A window the Job never
-// reported writes nothing: bex-api treats an absent window as "start unknown"
-// and leaves the deploy row's started_at honestly null rather than fabricating
-// one at observation time.
+// stampBuildRun records a terminal build's execution window on the App status:
+// a failed build Job's (w6/m123) or a direct static publish's clone step
+// (w32/034), called just before r.fail so it rides the same status update as
+// the Build condition, and a succeeded build's, ending at its image push
+// (w33/m569), written with the artifact it built. Either pair can never be
+// observed apart. A window the Job never reported writes nothing: bex-api
+// treats an absent window as "start unknown" and leaves the deploy row's
+// started_at honestly null rather than fabricating one at observation time.
 func stampBuildRun(app *appv1alpha1.App, start, finish time.Time) {
 	if start.IsZero() || finish.IsZero() {
 		return

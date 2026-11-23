@@ -1,17 +1,17 @@
 # w33 · m569 — A native build's release starts when its image is uploaded, not when its cache upload ends
 
-**Worker:** worker33 **Goal:** a build whose `cache-save` outlasts its image push records its end, emits `build_ended` and starts its release at the push's `==> Build successful 🎉`, as Render's deploy goes straight from that line to `==> Deploying...`. The cache is still stored, and it never decides the build's verdict. **Status:** todo
+**Worker:** worker33 **Goal:** a build whose `cache-save` outlasts its image push records its end, emits `build_ended` and starts its release at the push's `==> Build successful 🎉`, as Render's deploy goes straight from that line to `==> Deploying...`. The cache is still stored, and it never decides the build's verdict. **Status:** todo (t001–t006 done; t007, the live check, waits for the production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | `EnsureBuild` reports success once the image's last phase (`push`, or `sign` when signing is on) exits 0, at that container's finish time | 1h15m | — |
-| [t002](t002.md) | A `cache-save` still running, or failing, after that point never changes the recorded verdict | 45m | t001 |
-| [t003](t003.md) | `build_ended`, `BuildRun.finishedAt` and the deploy row's `update_in_progress` follow the push's end | 30m | t001 |
-| [t004](t004.md) | Render parity | 20m | t002, t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004 |
+| [t001](done/t001.md) | `EnsureBuild` reports success once the image's last phase (`push`, or `sign` when signing is on) exits 0, at that container's finish time — **DONE** | 1h15m | — |
+| [t002](done/t002.md) | A `cache-save` still running, or failing, after that point never changes the recorded verdict — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | `build_ended`, `BuildRun.finishedAt` and the deploy row's `update_in_progress` follow the push's end — **DONE** | 30m | t001 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
 | [t007](t007.md) | Closeout (live check on production) | 40m | t005, t006 |
 
 ## Definition of done
@@ -23,6 +23,16 @@ On production, once the pin carries this milestone's commits, for a native build
 3. The build after that one restores the cache `cache-save` stored (its `cache-restore` reports a hit).
 4. A build whose `cache-save` fails after a successful push still goes live, and a build whose push fails still ends `build_failed` (operator tests; no production fault injection).
 5. `make test` (from `lego/operator/`) and `cd lego/backend && go test ./...` pass.
+
+## Implementation record (2026-11-22, t001–t006)
+
+- **Verdict at the push:** `EnsureBuild` reads the Job's pods first and returns `PhaseSucceeded` once an attempt's image phase (`push`, or `sign` with signing) terminated 0, dated at that container's `finishedAt`; `Complete`/`Failed` decide only what the pods cannot (`lego/operator/internal/build/build.go`). The in-flight poll shares that one pod List with the queued check.
+- **Verdict holds:** once the artifact is stored, later passes reuse it and never call `EnsureBuild` for that release, so nothing can flip it. Added beyond the plan: a third pod failure policy rule, `FailJob` on `cache-save` exiting non-zero (only when the build has the phase; the API server refuses a rule naming a missing container). Without it a `cache-save` OOM would retry the whole build and push the release's tag again after the release rolled out from the first image. A push that failed beside a killed `cache-save` loses its retry and is attributed to the platform, naming the push.
+- **Timestamps:** `storeBuiltArtifact` stamps `status.buildRun` (start → push end) with the artifact; bex-api already dates `build_ended` from it. A static site keeps no success window, since its build ends with its publish (w4/493).
+- **Metering kept:** a `cache-save` still running when the build is metered marks its Job `app.bex.co/cache-save-pending`, and the build census collector records the outcome once the Job finishes, so `BuildCacheStoreErrors` still sees save errors. `build_seconds` still bills to the Job's end: follow-up [w33/012](../012.md).
+- **Docs:** ADR060 D3 amendment (w33/m569); ADR018 Build logs and List / get deploy objects rows.
+- **Tests** (each fails on the old behavior): `TestABuildSucceedsAtItsImagePushWhileCacheSaveRuns`, `TestASignedBuildSucceedsAtItsSignature`, `TestACompletedBuildWithNoPodLeftSucceedsFromItsJob`, `TestACacheSaveFailureAfterThePushLeavesTheBuildSucceeded`, `TestAFailedPushFailsTheBuildWhateverCacheSaveDoes`, `TestAPolicyFailureWithNoExitToReadStaysTheTenants`, `TestTheFailurePolicyFailsTheJobOnAFailedCacheSave`, `TestACacheSaveStillRunningAtTheVerdictIsMeteredOnceItEnds` (build); `TestABuildRollsOutAtItsImagePushWhileItsCacheSaveRuns`, `TestAFailedPushStillFailsTheBuild`, `TestTheBuildCensusMetersACacheSaveThatOutlivedItsBuild` and the envtests `A build's verdict is its image push (w33/m569)` and `build Job failure policy` (controller); `TestBuildEndedFollowsTheImagePushNotTheObservation` (backend store).
+- **Not done here:** DoD items 1–3 need a live build on production (t007).
 
 ## Source + Goal linkage
 

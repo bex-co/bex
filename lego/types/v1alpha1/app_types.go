@@ -2094,8 +2094,10 @@ type AppStatus struct {
 	// the deploy row's started_at would be stamped at observation time —
 	// collapsing a minute-long build into a microsecond. bex-api reads it (via
 	// its Generation attribution, like status.preDeploy) to stamp the failed
-	// deploy row's real start. Nil when no terminal build has been observed or
-	// the Job's timestamps were unavailable.
+	// deploy row's real start. A succeeded build's window ends at its image
+	// push, where bex-api dates its build_ended (w33/m569); a static site's
+	// build ends with its publish and records none. Nil when no terminal build
+	// has been observed or the Job's timestamps were unavailable.
 	// +optional
 	BuildRun *BuildRunStatus `json:"buildRun,omitempty"`
 

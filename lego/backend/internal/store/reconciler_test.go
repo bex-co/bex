@@ -3320,6 +3320,74 @@ func TestReconcileBuildFirstSeenLiveUsesOwnBuildWindow(t *testing.T) {
 	}
 }
 
+// TestBuildEndedFollowsTheImagePushNotTheObservation is w33/m569: the
+// operator settles a build at its image push and records that end in
+// status.buildRun with the artifact, while cache-save still runs and before
+// the rollout's first status reaches bex-api. The deploy row leaves
+// build_in_progress for update_in_progress, and build_ended carries the
+// push's end, not the pass that saw the rollout.
+func TestBuildEndedFollowsTheImagePushNotTheObservation(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	open := onlyDeploy(t, st, row.ID)
+	backdateDeploy(t, st, open.ID, 5*time.Minute)
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	app.Status.ReleaseGeneration = open.Generation
+	app.Status.Conditions = []metav1.Condition{{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "Building", ObservedGeneration: app.Generation,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe building: %v", err)
+	}
+	if got := onlyDeploy(t, st, row.ID); got.Status != DeployBuildInProgress || got.StartedAt == nil {
+		t.Fatalf("deploy = %+v, want build_in_progress with a start", got)
+	}
+
+	pushed := time.Now().Add(-70 * time.Second).UTC().Truncate(time.Second)
+	app = getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.Conditions = []metav1.Condition{{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "Deploying", ObservedGeneration: app.Generation,
+	}}
+	app.Status.BuildRun = &appv1alpha1.BuildRunStatus{
+		Generation: open.Generation,
+		StartedAt:  pushed.Add(-2 * time.Minute).Format(time.RFC3339),
+		FinishedAt: pushed.Format(time.RFC3339),
+	}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe the rollout: %v", err)
+	}
+	if got := onlyDeploy(t, st, row.ID); got.Status != DeployUpdateInProgress {
+		t.Fatalf("deploy status = %q, want update_in_progress once the rollout begins", got.Status)
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	ended, ok := st.eventFacts["deploy:"+open.ID+":build_ended"]
+	if !ok || ended.Status != EventStatusSucceeded {
+		t.Fatalf("build_ended = %+v (present %v), want succeeded", ended, ok)
+	}
+	if !ended.At.Equal(pushed) {
+		t.Errorf("build_ended at %v, want the push's end %v (70 s before the rollout was seen)", ended.At, pushed)
+	}
+}
+
 // TestRecordedBuildRun pins the generation attribution (w6/m123): only the
 // row's own release generation may trust the window, and an unparsable window
 // reads as absent rather than as garbage timestamps.

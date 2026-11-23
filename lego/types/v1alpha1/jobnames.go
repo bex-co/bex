@@ -108,10 +108,14 @@ const (
 
 // BuildJobFault reads a failed build Job's fault off its Failed condition's
 // reason, which Kubernetes writes: the build's pod failure policy fails the
-// Job at once only on the tenant-error exit, so PodFailurePolicy means the
+// Job at once on the tenant-error exit, so PodFailurePolicy means the
 // tenant's input failed, while a failure that used up the retries
 // (BackoffLimitExceeded) is the platform's, and DeadlineExceeded is the
-// timeout. "" for any other reason. Only build Jobs carry that policy.
+// timeout. "" for any other reason. Only build Jobs carry that policy. Its
+// other immediate failure, a failed cache-save, leaves either a build that
+// succeeded at its image push (a tenant's build, billed as one) or one whose
+// push failed too, whose fault the operator stamps (AnnotationBuildFault,
+// w33/m569).
 func BuildJobFault(reason string) string {
 	switch reason {
 	case "PodFailurePolicy":

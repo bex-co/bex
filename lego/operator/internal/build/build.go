@@ -719,10 +719,12 @@ const (
 )
 
 // faultFromJob reads the class off the Job's own failure reason, which needs no
-// extra API call and no pod listing: buildPodFailurePolicy's only FailJob rule
-// matches ExitTenantError, so Kubernetes writing "PodFailurePolicy" as the
-// reason IS the statement that a tenant-classified phase failed. Anything that
-// instead exhausted the backoff budget was, by construction, not tenant-classified.
+// pod listing: buildPodFailurePolicy's tenant rule matches ExitTenantError, so
+// Kubernetes writing "PodFailurePolicy" as the reason is the statement that a
+// tenant-classified phase failed. Its other FailJob rule, a failed cache-save,
+// fails a build only when the push beside it failed too, and EnsureBuild reads
+// that case off the pods (failedOnCacheSave). Anything that instead exhausted
+// the backoff budget was, by construction, not tenant-classified.
 func faultFromJob(reason string) Fault {
 	return Fault(appv1alpha1.BuildJobFault(reason))
 }
@@ -815,6 +817,18 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	if err != nil {
 		return Observation{}, err
 	}
+	// A build has succeeded once its image is in the registry (w33/m569): an
+	// attempt's image phase exited 0. cache-save may still be storing the layer
+	// cache beside it, and the Job reads Complete only once that exits too,
+	// over a minute later on a large cache. Render goes from `Build successful`
+	// straight to `Deploying...`. The Job's own verdict decides only what the
+	// pods cannot: a pod that is gone, or a push that failed.
+	pods, podsErr := listJobPods(ctx, o.Client, o.Namespace, cur.Name)
+	if pushedAt, ok := imagePushedAt(pods, imagePhase(o)); ok {
+		start, _ := jobRunWindow(cur)
+		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: windowSeconds(start, pushedAt),
+			StartedAt: start, FinishedAt: pushedAt, Created: created}, nil
+	}
 	switch {
 	case execution.JobHasCondition(cur, batchv1.JobComplete):
 		start, finish := jobRunWindow(cur)
@@ -822,8 +836,13 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 			StartedAt: start, FinishedAt: finish, Created: created}, nil
 	case execution.JobHasCondition(cur, batchv1.JobFailed):
 		start, finish := jobRunWindow(cur)
-		step, tail, platformFetch := failureDetail(ctx, o, cur.Name)
+		step, tail, platformFetch := failureDetail(o, pods)
 		fault := faultFromJob(execution.JobFailedReason(cur))
+		if fault == FaultTenant && failedOnCacheSave(pods) {
+			// The push beside the failed cache-save failed too, on its own:
+			// not a tenant-classified failure.
+			fault = FaultInfra
+		}
 		if platformFetch != nil {
 			// A toolchain bex supplies failed to arrive: the platform's
 			// failure whatever exit the build step chose (w8/m148), so the
@@ -843,10 +862,59 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 			Created:       created,
 		}, nil
 	}
-	if queued, reason := buildQueued(ctx, o, cur.Name); queued {
+	if queued, reason := buildQueued(pods, podsErr); queued {
 		return Observation{Phase: PhaseWaiting, Message: reason, Created: created}, nil
 	}
 	return Observation{Phase: PhaseBuilding, Created: created}, nil
+}
+
+// imagePhase is the build phase whose exit 0 leaves the image in the registry:
+// the push, or the signature after it when tenant image signing moves the push
+// into the init containers (w6/006).
+func imagePhase(o Options) string {
+	if o.SignKeySecret != "" {
+		return signContainer
+	}
+	return pushContainer
+}
+
+// imagePushedAt is when the first attempt whose image phase exited 0 finished
+// it, and whether any has. A later attempt (a disruption retried after the
+// push) can only push the same release's image again.
+func imagePushedAt(pods []corev1.Pod, phase string) (time.Time, bool) {
+	var at time.Time
+	for i := range pods {
+		for _, cs := range containerStatuses(&pods[i]) {
+			t := cs.State.Terminated
+			if cs.Name != phase || t == nil || t.ExitCode != 0 || t.FinishedAt.IsZero() {
+				continue
+			}
+			if at.IsZero() || t.FinishedAt.Time.Before(at) {
+				at = t.FinishedAt.Time
+			}
+		}
+	}
+	return at, !at.IsZero()
+}
+
+// failedOnCacheSave reports whether buildPodFailurePolicy failed the Job on
+// its cache-save rule rather than its tenant rule: a cache-save exited
+// non-zero, and no phase exited ExitTenantError.
+func failedOnCacheSave(pods []corev1.Pod) bool {
+	cacheSave := false
+	for i := range pods {
+		for _, cs := range containerStatuses(&pods[i]) {
+			t := cs.State.Terminated
+			switch {
+			case t == nil:
+			case t.ExitCode == ExitTenantError:
+				return false
+			case cs.Name == cacheSavePhase && t.ExitCode != 0:
+				cacheSave = true
+			}
+		}
+	}
+	return cacheSave
 }
 
 // jobRunWindow is a terminal build Job's execution window from the Job's own
@@ -889,7 +957,7 @@ var buildStepNames = map[string]string{
 	nativeResolveContainer: "runtime version selection",
 	"buildkit":             "docker build",
 	pushContainer:          "image push",
-	"sign":                 "image signing",
+	signContainer:          "image signing",
 	cacheSavePhase:         "build cache save",
 }
 
@@ -908,21 +976,15 @@ const (
 // supplies (platformFetchFailure). Best-effort by design: a reaped pod (Job
 // TTL, a gone node) or a List error yields ("", "", nil), and the caller's
 // message must stand without it. When backoff spent a second attempt, the most
-// recently finished failed container wins.
-func failureDetail(ctx context.Context, o Options, jobName string) (step, tail string, platformFetch *PlatformFetch) {
-	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
-	if err != nil {
-		return "", "", nil
-	}
+// recently finished failed container wins. A failed cache-save never names
+// the failure: its image push beside it decides the build (w33/m569), and a
+// build that reaches here had a push that failed too.
+func failureDetail(o Options, pods []corev1.Pod) (step, tail string, platformFetch *PlatformFetch) {
 	var at time.Time
 	for i := range pods {
-		statuses := make([]corev1.ContainerStatus, 0,
-			len(pods[i].Status.InitContainerStatuses)+len(pods[i].Status.ContainerStatuses))
-		statuses = append(statuses, pods[i].Status.InitContainerStatuses...)
-		statuses = append(statuses, pods[i].Status.ContainerStatuses...)
-		for _, cs := range statuses {
+		for _, cs := range containerStatuses(&pods[i]) {
 			t := cs.State.Terminated
-			if t == nil || t.ExitCode == 0 || t.FinishedAt.Time.Before(at) {
+			if t == nil || t.ExitCode == 0 || cs.Name == cacheSavePhase || t.FinishedAt.Time.Before(at) {
 				continue
 			}
 			at = t.FinishedAt.Time
@@ -1104,8 +1166,13 @@ const jobNameLabel = "job-name"
 // construction rather than by coincidence.
 const pushContainer = "push"
 
-// buildQueued reports whether the Job's build is still waiting for capacity
-// rather than doing work, and the scheduler's reason when it is.
+// signContainer names the phase that signs the pushed image when tenant image
+// signing is on (w6/006). It is then the image's last phase (imagePhase).
+const signContainer = "sign"
+
+// buildQueued reports, from a listing of the Job's pods, whether its build is
+// still waiting for capacity rather than doing work, and the scheduler's
+// reason when it is.
 //
 // A failed List is reported as NOT queued: guessing "queued" on evidence the
 // caller does not have would stall its clock. A List that SUCCEEDS and returns
@@ -1118,9 +1185,8 @@ const pushContainer = "push"
 // way for the no-pods window — see CountBuilds — because the gap between a
 // Job's creation and its first pod is exactly the cold scale-from-zero wait
 // the gauge exists to show.)
-func buildQueued(ctx context.Context, o Options, jobName string) (bool, string) {
-	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
-	if err != nil {
+func buildQueued(pods []corev1.Pod, listErr error) (bool, string) {
+	if listErr != nil {
 		return false, ""
 	}
 	if len(pods) == 0 {
@@ -1572,7 +1638,7 @@ fi
 	// of the build (the validated context string stays a discrete container arg).
 	if o.SignKeySecret != "" {
 		sign := corev1.Container{
-			Name:    "sign",
+			Name:    signContainer,
 			Image:   signImage,
 			Command: []string{"cosign"},
 			Args: []string{
@@ -1612,10 +1678,12 @@ fi
 	// Storing the cache is a sibling of the push, not a step before it: it reads
 	// its own volume and shares nothing with the image push, so the two run
 	// concurrently and the build pays max(push, cache-save) rather than their
-	// sum. It is NOT off the critical path — the Job is Complete only once every
-	// regular container exits, so a cache larger than the image (the normal case
-	// under mode=max) is what the deploy waits on. Measured at 1.5s against the
-	// image push's 0.8s, i.e. ~0.7s added; serializing it would have cost 2.3s.
+	// sum. It is off the deploy's critical path: EnsureBuild reports the build
+	// succeeded once the image phase exits 0 (w33/m569), not when the Job is
+	// Complete, which waits for every regular container. A cache larger than
+	// the image (the normal case under mode=max) kept a release 70 s past its
+	// `Build successful` before. The pod still holds its build slot until
+	// cache-save exits, and the next build restores what it stored.
 	if cacheSave != nil {
 		podSpec.Containers = append(podSpec.Containers, *cacheSave)
 	}
@@ -1633,7 +1701,7 @@ fi
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,
-			PodFailurePolicy:        buildPodFailurePolicy(),
+			PodFailurePolicy:        buildPodFailurePolicy(cacheSave != nil),
 			ActiveDeadlineSeconds:   &deadline,
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
@@ -1955,14 +2023,24 @@ if [ -d ` + outputMount + ` ]; then printf '%s' "$commit" > ` + revisionFile + `
 //     and what a future move to interruptible capacity depends on.
 //   - ExitTenantError => FailJob. Deterministic tenant input; a second attempt
 //     cannot succeed and would hold a 7 GiB node-exclusive slot to prove it.
+//   - a failed cache-save => FailJob (w33/m569), when the build has one. Its
+//     script exits 0 on every failure it sees, so only the kernel fails it (an
+//     OOM kill), and a pod fails only once the push beside it has exited too.
+//     A push that succeeded already settled the build, whose release rolls out
+//     from that image: a retry would rebuild it and push the release's tag
+//     again. A push that failed fails the build here instead of retrying,
+//     which EnsureBuild attributes to the platform (failedOnCacheSave).
 //   - everything else counts against backoffLimit (2 attempts).
 //
-// OOM (137) is deliberately absent: the kubelet never sets DisruptionTarget for
-// it, so it falls through to the backoff budget rather than being absorbed as a
-// disruption -- capped like any other unclassified failure rather than retried
-// freely.
-func buildPodFailurePolicy() *batchv1.PodFailurePolicy {
-	return &batchv1.PodFailurePolicy{
+// OOM (137) of a build phase is deliberately absent: the kubelet never sets
+// DisruptionTarget for it, so it falls through to the backoff budget rather
+// than being absorbed as a disruption -- capped like any other unclassified
+// failure rather than retried freely.
+//
+// The API server refuses a rule naming a container the pod does not have, so
+// the cache-save rule rides only with the phase.
+func buildPodFailurePolicy(cacheSave bool) *batchv1.PodFailurePolicy {
+	policy := &batchv1.PodFailurePolicy{
 		Rules: []batchv1.PodFailurePolicyRule{
 			{
 				Action: batchv1.PodFailurePolicyActionIgnore,
@@ -1979,6 +2057,17 @@ func buildPodFailurePolicy() *batchv1.PodFailurePolicy {
 			},
 		},
 	}
+	if cacheSave {
+		policy.Rules = append(policy.Rules, batchv1.PodFailurePolicyRule{
+			Action: batchv1.PodFailurePolicyActionFailJob,
+			OnExitCodes: &batchv1.PodFailurePolicyOnExitCodesRequirement{
+				ContainerName: new(cacheSavePhase),
+				Operator:      batchv1.PodFailurePolicyOnExitCodesOpNotIn,
+				Values:        []int32{0},
+			},
+		})
+	}
+	return policy
 }
 
 // captureFailureTail sets terminationMessagePolicy on every build phase so a

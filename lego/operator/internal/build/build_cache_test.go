@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -151,6 +152,7 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 			// this test compared only the pod template and missed them.
 			want := BuildJob(off, off.ImageRef())
 			got := BuildJob(tc.o, tc.o.ImageRef())
+			withoutCacheSaveRule(got)
 
 			spec := &got.Spec.Template.Spec
 			spec.InitContainers = withoutCachePhases(spec.InitContainers)
@@ -196,6 +198,14 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 func withoutCachePhases(cs []corev1.Container) []corev1.Container {
 	return slices.DeleteFunc(cs, func(c corev1.Container) bool {
 		return c.Name == cacheRestorePhase || c.Name == cacheSavePhase || c.Name == cachePurgePhase
+	})
+}
+
+// withoutCacheSaveRule strips the failure-policy rule that rides with the
+// cache-save phase (w33/m569), the one cache seam outside the pod spec.
+func withoutCacheSaveRule(j *batchv1.Job) {
+	j.Spec.PodFailurePolicy.Rules = slices.DeleteFunc(j.Spec.PodFailurePolicy.Rules, func(r batchv1.PodFailurePolicyRule) bool {
+		return r.OnExitCodes != nil && r.OnExitCodes.ContainerName != nil && *r.OnExitCodes.ContainerName == cacheSavePhase
 	})
 }
 

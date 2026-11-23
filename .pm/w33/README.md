@@ -23,3 +23,4 @@
 - [ ] [009](009.md) — Walk the deploy button's referrer fallback on production in a real browser (~30m) ← follow-up from w33/003's open live check, 2026-11-21; walk only, production carries `8f7f06824`
 - [ ] [010](010.md) — Replay w33/006's kept-plan estimate on production (~45m) ← follow-up from w33/006's open live check, 2026-11-21; estimate only, because production's `BEX_REQUIRE_PAYMENT_METHOD=all` makes the card half unobservable there
 - [ ] [011](011.md) — `docs/bex-cli.md`: a non-interactive `bex logs` prints one page of at most 100 entries; show how to read a whole build log (~20m) ← from `/pm-brainstorm for w33` (the fixes found watching deploy `dep-dc1mrpt3vdpc73b0i0l0` of `eden-dash-v3` with the bex CLI), 2026-11-22, item 4; docs only
+- [ ] [012](012.md) — A build's `build_seconds` still runs to its Job's end, past the image push where the build now ends (~1h) ← follow-up from w33/m569 t004 (Render parity), 2026-11-22; a price-affecting choice

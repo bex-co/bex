@@ -1480,6 +1480,13 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 func (r *AppReconciler) storeBuiltArtifact(ctx context.Context, app *appv1alpha1.App, obs build.Observation, buildNs, artifact string) (string, ctrl.Result, bool, error) {
 	image := r.pinBuiltImage(ctx, app, obs.Image)
 	app.Status.ArtifactFingerprint, app.Status.ArtifactImage = artifact, image
+	// The build's own window rides the same write, so bex-api dates
+	// build_ended at the image push, not at the pass that saw the rollout
+	// begin (w33/m569). A static site's build ends with its publish instead
+	// (w4/493), which bex-api dates when it sees the publish's outcome.
+	if app.Spec.Type != appv1alpha1.TypeStaticSite {
+		stampBuildRun(app, obs.StartedAt, obs.FinishedAt)
+	}
 	// An unconditional write, not updateStatusIfChanged: a pass that read the
 	// App before an earlier pass stored this artifact must conflict here. Its
 	// cache may have caught up since, and a skipped write would let it meter
@@ -1636,7 +1643,7 @@ func (r *AppReconciler) meterBuildSignals(ctx context.Context, app *appv1alpha1.
 	// by these stamps (w6/m307). The fault goes on even without signals: a
 	// lost stamp bills from the Job's startTime and reads the fault off the
 	// Job's own failure reason, which misses only the operator's overrides.
-	if stampErr := build.StampMetering(ctx, r.buildPlaneClient(), buildNs, jobName, sig.PlacedAt, fault); stampErr != nil {
+	if stampErr := build.StampMetering(ctx, r.buildPlaneClient(), buildNs, jobName, sig, fault); stampErr != nil {
 		logf.FromContext(ctx).Error(stampErr, "build metering stamp failed; build_seconds falls back to the Job's own times", "app", app.Name)
 	}
 	if err != nil {

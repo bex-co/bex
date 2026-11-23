@@ -165,6 +165,7 @@ func TestS3BuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 			off.BuildCache = false
 			want := BuildJob(off, off.ImageRef())
 			got := BuildJob(tc.o, tc.o.ImageRef())
+			withoutCacheSaveRule(got)
 			spec := &got.Spec.Template.Spec
 			spec.InitContainers = withoutCachePhases(spec.InitContainers)
 			spec.Containers = withoutCachePhases(spec.Containers)

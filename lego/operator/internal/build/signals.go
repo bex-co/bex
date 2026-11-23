@@ -19,6 +19,7 @@ package build
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -98,6 +100,11 @@ type Signals struct {
 	// execution order. A registry-backend phase reports no outcome and is left
 	// out: its skopeo wrapper writes nothing to the termination log.
 	CachePhases []CachePhaseSignal
+	// CacheSavePending is the final attempt's cache-save still running: the
+	// build succeeded at its image push (w33/m569), before the phase beside it
+	// ended. StampMetering marks the Job so PendingCacheSaves meters the phase
+	// once it has.
+	CacheSavePending bool
 }
 
 // CachePhaseSignal is one cache phase's own account of what it did. The phases
@@ -143,28 +150,91 @@ func ReadSignals(ctx context.Context, cl client.Client, namespace, jobName strin
 	return signalsFrom(&job, pods), nil
 }
 
-// StampMetering records on a finished build Job what bex-api's build_seconds
+// StampMetering records on a terminal build's Job what bex-api's build_seconds
 // meter needs and cannot see once the pods are reaped (w6/m307, docs/ADR023):
 // when the build's pod was first placed, and, for a failed build, its fault.
-// A zero placement or an empty fault leaves that annotation off.
-func StampMetering(ctx context.Context, cl client.Client, namespace, jobName string, placedAt metav1.Time, fault Fault) error {
+// A zero placement or an empty fault leaves that annotation off. A cache-save
+// still running gets the Job marked for PendingCacheSaves.
+func StampMetering(ctx context.Context, cl client.Client, namespace, jobName string, sig Signals, fault Fault) error {
 	annotations := map[string]string{}
-	if !placedAt.IsZero() {
-		annotations[appv1alpha1.AnnotationBuildPlacedAt] = placedAt.UTC().Format(time.RFC3339)
+	if !sig.PlacedAt.IsZero() {
+		annotations[appv1alpha1.AnnotationBuildPlacedAt] = sig.PlacedAt.UTC().Format(time.RFC3339)
 	}
 	if fault != FaultNone {
 		annotations[appv1alpha1.AnnotationBuildFault] = string(fault)
 	}
-	if len(annotations) == 0 {
+	meta := map[string]any{}
+	if len(annotations) > 0 {
+		meta["annotations"] = annotations
+	}
+	if sig.CacheSavePending {
+		meta["labels"] = map[string]any{cacheSavePendingLabel: "true"}
+	}
+	if len(meta) == 0 {
 		return nil
 	}
-	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: jobName, Namespace: namespace}}
-	patch, err := json.Marshal(map[string]any{"metadata": map[string]any{"annotations": annotations}})
+	if err := patchJobMeta(ctx, cl, namespace, jobName, meta); err != nil {
+		return fmt.Errorf("stamp metering on build job %s: %w", jobName, err)
+	}
+	return nil
+}
+
+// cacheSavePendingLabel marks a build Job metered while its cache-save still
+// ran (Signals.CacheSavePending). A label, so the census collector lists only
+// the Jobs it marks.
+const cacheSavePendingLabel = "app.bex.co/cache-save-pending"
+
+// PendingCacheSaves returns the cache-save outcome of each finished build Job
+// marked cacheSavePendingLabel and clears its mark, so each is counted once:
+// the mark goes before the outcome is returned, and a failed clear leaves it
+// for a later pass. A Job still running keeps its mark. The census collector
+// calls it on its interval; the App's reconcile has moved on to the rollout.
+func PendingCacheSaves(ctx context.Context, cl client.Client, namespace string) ([]CachePhaseSignal, error) {
+	sel := workspaceSelector("")
+	sel[cacheSavePendingLabel] = "true"
+	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
+	if err != nil {
+		return nil, err
+	}
+	var saves []CachePhaseSignal
+	var errs []error
+	for i := range jobs {
+		job := &jobs[i]
+		if !execution.JobFinished(job) {
+			continue
+		}
+		pods, err := listJobPods(ctx, cl, namespace, job.Name)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if err := patchJobMeta(ctx, cl, namespace, job.Name, map[string]any{"labels": map[string]any{cacheSavePendingLabel: nil}}); err != nil {
+			errs = append(errs, fmt.Errorf("clear %s on build job %s: %w", cacheSavePendingLabel, job.Name, err))
+			continue
+		}
+		if len(pods) == 0 {
+			continue
+		}
+		attempts := attemptsInOrder(pods)
+		for _, phase := range cachePhaseSignals(attempts[len(attempts)-1]) {
+			if phase.Phase == cacheSavePhase {
+				saves = append(saves, phase)
+			}
+		}
+	}
+	return saves, errors.Join(errs...)
+}
+
+// patchJobMeta merge-patches a build Job's metadata. A Job already gone is
+// not an error: it took its metering with it.
+func patchJobMeta(ctx context.Context, cl client.Client, namespace, jobName string, meta map[string]any) error {
+	patch, err := json.Marshal(map[string]any{"metadata": meta})
 	if err != nil {
 		return err
 	}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: jobName, Namespace: namespace}}
 	if err := cl.Patch(ctx, job, client.RawPatch(types.MergePatchType, patch)); err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("stamp metering on build job %s: %w", jobName, err)
+		return err
 	}
 	return nil
 }
@@ -175,17 +245,7 @@ func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
 	if len(pods) == 0 {
 		return Signals{}
 	}
-	// Attempt order is the Job's retry order. Sort by creation, tie-broken by
-	// name: two pods created inside the same second must still order stably, or
-	// "the last attempt" (whose push phase is metered) would flip between reads.
-	attempts := make([]*corev1.Pod, 0, len(pods))
-	for i := range pods {
-		attempts = append(attempts, &pods[i])
-	}
-	sort.Slice(attempts, func(a, b int) bool {
-		return newerFirst(attempts[b].CreationTimestamp, attempts[b].Name,
-			attempts[a].CreationTimestamp, attempts[a].Name)
-	})
+	attempts := attemptsInOrder(pods)
 
 	sig := Signals{}
 	// Queue time is measured to the FIRST placement, not the last: a retry's own
@@ -208,7 +268,39 @@ func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
 		sig.PushSeconds, sig.PushFailed = secs, failed
 	}
 	sig.CachePhases = cachePhaseSignals(last)
+	sig.CacheSavePending = phaseRunning(last, cacheSavePhase)
 	return sig
+}
+
+// attemptsInOrder is a Job's pods in its retry order, oldest first. Sorted by
+// creation, tie-broken by name: two pods created inside the same second must
+// still order stably, or "the last attempt" (whose push phase is metered)
+// would flip between reads.
+func attemptsInOrder(pods []corev1.Pod) []*corev1.Pod {
+	attempts := make([]*corev1.Pod, 0, len(pods))
+	for i := range pods {
+		attempts = append(attempts, &pods[i])
+	}
+	sort.Slice(attempts, func(a, b int) bool {
+		return newerFirst(attempts[b].CreationTimestamp, attempts[b].Name,
+			attempts[a].CreationTimestamp, attempts[a].Name)
+	})
+	return attempts
+}
+
+// phaseRunning reports whether pod's named main container is still to end:
+// the pod has it, is not over, and has not seen it terminate.
+func phaseRunning(pod *corev1.Pod, name string) bool {
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed ||
+		!slices.ContainsFunc(pod.Spec.Containers, func(c corev1.Container) bool { return c.Name == name }) {
+		return false
+	}
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.Name == name {
+			return cs.State.Terminated == nil
+		}
+	}
+	return true
 }
 
 // cacheOutcomes is the closed outcome set each phase may report on each kind.

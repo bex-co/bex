@@ -86,6 +86,14 @@ func (c *BuildCensusCollector) Start(ctx context.Context) error {
 }
 
 func (c *BuildCensusCollector) collect(ctx context.Context) {
+	// A build that succeeded at its image push was metered while its
+	// cache-save still ran (w33/m569); the phase's outcome is counted here once
+	// its Job has finished.
+	saves, err := build.PendingCacheSaves(ctx, c.Client, c.Namespace)
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "metering finished builds' cache saves; retrying next pass")
+	}
+	recordBuildSignals(build.Signals{CachePhases: saves})
 	census, err := build.CountBuilds(ctx, c.Client, c.Namespace, time.Now())
 	if err != nil {
 		logf.FromContext(ctx).Error(err, "build census failed; leaving the previous gauge values in place")

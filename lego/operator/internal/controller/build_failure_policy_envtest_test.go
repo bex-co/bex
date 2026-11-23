@@ -84,4 +84,41 @@ var _ = Describe("build Job failure policy", func() {
 		// The pin that used to force this: eviction is now absorbed, not prevented.
 		Expect(stored.Spec.Template.Annotations).NotTo(HaveKey("cluster-autoscaler.kubernetes.io/safe-to-evict"))
 	})
+
+	// w33/m569: a build with a cache-save fails its Job at once when that phase
+	// fails. The rule names the container, which the API server checks against
+	// the pod template, so both cache stores' Jobs are submitted.
+	It("accepts the cache-save rule on a cached build, with either store", func() {
+		ctx := context.Background()
+		for name, store := range map[string]build.CacheStore{
+			"registry": {},
+			"s3":       {Endpoint: "https://s3.example.test", Bucket: "bex-build-cache", Secret: "bex-build-cache-s3"},
+		} {
+			job := build.BuildJob(build.Options{
+				Name:       "policy-cache-" + name,
+				Namespace:  ns,
+				Revision:   "gen-1",
+				Repo:       "https://github.com/example/repo",
+				Registry:   "zot.bex-registry.svc:5000",
+				AppUID:     "uid-policy-cache",
+				Workspace:  "tea-policy",
+				BuildCache: true,
+				CacheStore: store,
+			}, "zot.bex-registry.svc:5000/policy-cache:gen-1")
+			Expect(k8sClient.Create(ctx, job)).To(Succeed(),
+				"the API server rejected a cached build Job (%s); every cached build would stop dispatching", name)
+			DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), job) })
+
+			var stored batchv1.Job
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(job), &stored)).To(Succeed())
+			rules := stored.Spec.PodFailurePolicy.Rules
+			Expect(rules).NotTo(BeEmpty())
+			last := rules[len(rules)-1]
+			Expect(last.Action).To(Equal(batchv1.PodFailurePolicyActionFailJob))
+			Expect(last.OnExitCodes).NotTo(BeNil())
+			Expect(last.OnExitCodes.ContainerName).To(HaveValue(Equal("cache-save")), "the stored policy lost its cache-save rule (%s)", name)
+			Expect(last.OnExitCodes.Operator).To(Equal(batchv1.PodFailurePolicyOnExitCodesOpNotIn))
+			Expect(last.OnExitCodes.Values).To(Equal([]int32{0}))
+		}
+	})
 })
