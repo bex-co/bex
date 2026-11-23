@@ -1,6 +1,6 @@
 # w6 · m563 — An agent session's sandbox closes 5 minutes after its turn, as Devin's session sleeps; an automation's closes at once
 
-**Worker:** worker6 **Goal:** a finished turn's sandbox stops costing money within minutes, as a Devin session sleeps after 5 minutes of inactivity, instead of running for two more hours that nothing uses. **Status:** todo (t001–t003, t005–t007 done; t004 waits for production)
+**Worker:** worker6 **Goal:** a finished turn's sandbox stops costing money within minutes, as a Devin session sleeps after 5 minutes of inactivity, instead of running for two more hours that nothing uses. **Status:** blocked (t001–t003, t005–t007 done; t004 waits for production)
 
 ## Tasks (in order)
 
@@ -27,11 +27,15 @@
 
 ## Source + Goal linkage
 
-- **Source:** the user's decisions of 2026-11-22: "那就跟 devin 对齐" (align the idle close with Devin: 5 minutes by default, 5–120 minutes for Enterprise) and "其他的按照你推荐的修" (automation sessions close at once, as recommended). This replaces the user's own 2026-10-25 choice of two hours ([ADR059 § Superseded](../../../docs/ADR059-agent-sandbox-hibernation.md#2026-10-25--superseded-hibernation-retired)), which was made when an idle close lost undelivered work. w10/m491's retention (production carries `0d7e8fc8b`) now keeps that work.
+- **Source:** the user's decisions of 2026-11-22: "那就跟 devin 对齐" (align the idle close with Devin: 5 minutes by default, 5–120 minutes for Enterprise) and "其他的按照你推荐的修" (automation sessions close at once, as recommended). This replaces the user's own 2026-10-25 choice of two hours ([ADR059 § Superseded](../../../../docs/ADR059-agent-sandbox-hibernation.md#2026-10-25--superseded-hibernation-retired)), which was made when an idle close lost undelivered work. w10/m491's retention (production carries `0d7e8fc8b`) now keeps that work.
 - **Reference product:** Devin. Per [docs.devin.ai/admin/billing/usage](https://docs.devin.ai/admin/billing/usage) (read 2026-11-22), a session "sleeps automatically after 5 minutes of inactivity by default"; Windows and GPU machines sleep after 30 minutes; Enterprise customers can ask for 5–120 minutes, which applies to every session type; a sleeping session consumes no usage and wakes on the next message. bex has no Windows or GPU sandbox, so that row does not apply. Closing an automation's sandbox at once is stricter than Devin's 5 minutes for unattended sessions. It is the recommendation the user approved, not a parity claim: no person opens an editor on a routine's sandbox.
 - **Evidence (production, read-only, 2026-11-22):** in the `bex` workspace (`tea-d98210cbbpdc73dcrkvg`), November's 301 agent sandboxes billed $230.34 for 578 hours. Their turns ran 122 of those hours. $185.94 (81%) was the idle grace, and the median idle tail was exactly 120 minutes. 258 of the 301 belonged to automations. None of the 301 served a second turn, because a follow-up always boots a fresh sandbox (`Steer`, `lego/backend/internal/agentsessions/service.go:2130`). After a turn ended, people opened Zed 25 times with a known delay: 20 within 5 minutes, 2 more within 15.
-- **Goal linkage:** ADR047 cloud coding-agent sessions, priced and behaving as the reference product does ([ADR008](../../../docs/ADR008-vision.md)).
+- **Goal linkage:** ADR047 cloud coding-agent sessions, priced and behaving as the reference product does ([ADR008](../../../../docs/ADR008-vision.md)).
 - **Expected outcome:** at November's volume the `bex` workspace's agent sandbox charge falls from about $231 to about $45, and a customer's sessions stop paying for two idle hours per turn.
 - **Why now:** the billing page's projection for the period is $892, mostly this idle tail. Every customer session pays it. The retention that made the long grace unnecessary shipped on 2026-11-18.
 - **Render parity:** included, against Devin: t002 adds a setting on REST, GraphQL, MCP and the dashboard.
 - **Related:** m564 (opening a closed session in Zed starts its sandbox), which makes the short grace painless for editors. w10/m491 t011 is the live check of the retention this relies on.
+
+## Parked (2026-11-23)
+
+`b5cbb23493` ships t001–t003 and t005–t007: a person's session closes 5 minutes after its turn, an automation's and a child's at the harvest, and an Enterprise workspace sets `idleTimeoutMinutes` (5–120) on REST, GraphQL, MCP, Settings → Agents and `bex agent env set --idle-timeout`. Production sets no `BEX_AGENT_SANDBOX_IDLE_TTL` (`lego/operator/config` has none), so the new 5-minute default reaches it with the pin. t004 needs that deploy and 24 hours of sessions after it: the gate is the pin carrying `b5cbb23493` and a date gate a day past it. When it clears, read the deploy time from the pin, and if 24 hours have not passed since it, park again with a date gate 24 hours after it; then run t004's read on sandboxes created after the deploy (person and automation medians, the idle share) and its close-and-continue check as the QA user (`bash scripts/qa-login.sh`), record the figures here, and close with t008.

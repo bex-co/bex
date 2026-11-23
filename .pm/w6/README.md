@@ -101,7 +101,7 @@ Materialized from all five proposals of `/pm-brainstorm one aspect of render par
 
 Materialized from the five proposals of `/pm-brainstorm for w6` 2026-11-22 (agent sandbox cost: the `bex` workspace's November agent sandboxes billed $231.64, 81% of it the 2-hour idle grace), approved by the user's `/pmx them to w6`. The user decided 2026-11-22 to align the idle close with Devin ("那就跟 devin 对齐") and approved the other recommendations ("其他的按照你推荐的修"). Scheduled items for worker6, not a workstream specialty.
 
-1. **[m563](m563/README.md)** — an agent session's sandbox closes 5 minutes after its turn, as Devin's session sleeps; an automation's closes at once; Enterprise sets 5–120 minutes (8 tasks).
+1. **[m563](blocked/m563/README.md)** — an agent session's sandbox closes 5 minutes after its turn, as Devin's session sleeps; an automation's closes at once; Enterprise sets 5–120 minutes (8 tasks).
 2. **[m564](m564/README.md)** — opening a closed agent session in Zed starts its sandbox again (8 tasks); pairs with m563.
 3. **[m565](m565/README.md)** — each agent sandbox's billing line names its real size and its session (7 tasks).
 4. **[m566](m566/README.md)** — an agent session's sandbox is billed for the CPU it uses and the memory it is allocated, as a Render sandbox is (10 tasks); its cutover waits for w22/m314's accuracy run.
@@ -109,7 +109,7 @@ Materialized from the five proposals of `/pm-brainstorm for w6` 2026-11-22 (agen
 
 ## Milestones
 
-- [ ] **m563** — [An agent session's sandbox closes 5 minutes after its turn, as Devin's session sleeps; an automation's closes at once](m563/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-22; user decision 2026-11-22 (align with Devin)
+- [ ] **m563** — **BLOCKED (pin must carry `b5cbb23493`; date gate: 2026-11-24T12:00Z — then t004 reads 24 h of agent sandboxes created after that deploy from `usage_hourly`, `sandbox_meter_states` and `agent_session_turns` (a person's median idle tail ≤ 6 min, an automation's ≤ 1 min) and checks, as the QA user, that an uncommitted file survives the 5-minute close into the next turn; if the deploy came less than 24 h before the resume, park again with the date 24 h after it. t001–t003 and t005–t007 done: a person's session closes 5 minutes after its turn, an automation's and a child's at the harvest, and an Enterprise workspace sets `idleTimeoutMinutes` 5–120 on REST, GraphQL, MCP, Settings → Agents and `bex agent env set`)** — [An agent session's sandbox closes 5 minutes after its turn, as Devin's session sleeps; an automation's closes at once](blocked/m563/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-22; user decision 2026-11-22 (align with Devin)
 - [ ] **m564** — [Opening a closed agent session in Zed starts its sandbox again](m564/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-22
 - [ ] **m565** — [Each agent sandbox's billing line names its real size and its session](m565/README.md) (7 tasks) ← from `/pm-brainstorm for w6` 2026-11-22
 - [ ] **m566** — [An agent session's sandbox is billed for the CPU it uses and the memory it is allocated, as a Render sandbox is](m566/README.md) (10 tasks) ← from `/pm-brainstorm for w6` 2026-11-22; t003 waits for w22/m314's accuracy run
