@@ -100,13 +100,7 @@ func NewPrometheusDatastoreActivitySource(base string, hc *http.Client) Datastor
 		if query == "" {
 			return []MetricSeries{}, nil
 		}
-		// No point after now: a rate at a future step reads the last samples
-		// again (w4/644).
-		end := earlierTime(req.End, time.Now())
-		if end.Before(req.Start) {
-			return nil, nil
-		}
-		return promInstanceQuery(ctx, hc, base, query, req.Resource, unit, req.Start, end, stepSeconds(req.Resolution))
+		return promInstanceQuery(ctx, hc, base, query, req.Resource, unit, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
 

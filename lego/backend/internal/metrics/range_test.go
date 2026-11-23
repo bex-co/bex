@@ -352,9 +352,11 @@ func TestNewPrometheusResourceSourceErrorStatus(t *testing.T) {
 	}
 }
 
-// w4/644: a range ending in the future is read only up to now, so no point is
-// invented after the request; a range wholly in the future reads nothing.
-func TestNewPrometheusResourceSourceEndsAtNow(t *testing.T) {
+// w4/644, w8/413: every Prometheus-backed source reads a range ending in the
+// future only up to now, so no point is invented after the request (a step
+// after now reads the lookback's last samples again); a range wholly in the
+// future reads nothing.
+func TestPrometheusSourcesEndAtNow(t *testing.T) {
 	var gotEnd string
 	calls := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -363,26 +365,69 @@ func TestNewPrometheusResourceSourceEndsAtNow(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`))
 	}))
 	defer ts.Close()
-	src := NewPrometheusResourceSource(ts.URL, ts.Client())
+	base, hc := ts.URL, ts.Client()
+	routers := []string{"default-web-web-onbex-co@kubernetes"}
+	for _, tc := range []struct {
+		name string
+		read func(start, end time.Time) ([]MetricSeries, error)
+	}{
+		{"memory", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusResourceSource(base, hc)(context.Background(), ResourceMetricsRangeRequest{
+				Namespace: "default", App: "web", Metric: MetricMemory, Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"memory_limit", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusResourceLimitSource(base, hc)(context.Background(), ResourceLimitRangeRequest{
+				Namespace: "default", App: "web", Metric: MetricMemory, Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"http_requests", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusRequestSource(base, hc)(context.Background(), RequestMetricsRequest{
+				App: "web", Routers: routers, Metric: MetricHTTPRequests, Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"http_latency", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusRequestSource(base, hc)(context.Background(), RequestMetricsRequest{
+				App: "web", Routers: routers, Metric: MetricHTTPLatency, Quantile: 0.95, Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"disk_usage", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusDiskUsageSource(base, hc)(context.Background(), DiskUsageRequest{
+				Namespace: "default", Resource: "pg", PVCPattern: "pg-[0-9]+", Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"kv_connections", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusKeyValueStatsSource(base, hc)(context.Background(), KeyValueStatsRequest{
+				Namespace: "default", Resource: "kv", Dimension: "connections", Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"datastore_cpu", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusDatastoreResourceSource(base, hc)(context.Background(), DatastoreResourceRequest{
+				Kind: DatastoreDatabase, Namespace: "default", Resource: "pg", Container: "postgres", Metric: MetricCPU, Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"db_connections", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusDBConnectionsSource(base, hc)(context.Background(), DBConnectionsRequest{
+				Namespace: "default", Cluster: "pg", Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"replication_lag", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusReplicationLagSource(base, hc)(context.Background(), ReplicationLagRequest{
+				Namespace: "default", Cluster: "pg", Start: start, End: end, Resolution: time.Minute})
+		}},
+		{"network_activity", func(start, end time.Time) ([]MetricSeries, error) {
+			return NewPrometheusDatastoreActivitySource(base, hc)(context.Background(), DatastoreActivityRequest{
+				Kind: DatastoreDatabase, Namespace: "default", Resource: "pg", Metric: MetricNetworkActivity, Start: start, End: end, Resolution: time.Minute})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls = 0
+			before := time.Now()
+			if _, err := tc.read(before.Add(-time.Hour), before.Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+			end, err := strconv.ParseInt(gotEnd, 10, 64)
+			if calls != 1 || err != nil || end > time.Now().Unix() || end < before.Unix() {
+				t.Fatalf("end = %q after %d queries, want now (%d)", gotEnd, calls, before.Unix())
+			}
 
-	before := time.Now()
-	if _, err := src(context.Background(), ResourceMetricsRangeRequest{
-		Namespace: "default", App: "web", Metric: MetricMemory,
-		Start: before.Add(-time.Hour), End: before.Add(time.Hour), Resolution: time.Minute,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	end, err := strconv.ParseInt(gotEnd, 10, 64)
-	if err != nil || end > time.Now().Unix() || end < before.Unix() {
-		t.Fatalf("end = %q, want now (%d)", gotEnd, before.Unix())
-	}
-
-	calls = 0
-	series, err := src(context.Background(), ResourceMetricsRangeRequest{
-		Namespace: "default", App: "web", Metric: MetricMemory,
-		Start: before.Add(time.Hour), End: before.Add(2 * time.Hour), Resolution: time.Minute,
-	})
-	if err != nil || len(series) != 0 || calls != 0 {
-		t.Fatalf("future range = %v, %v after %d queries; want nothing and no query", series, err, calls)
+			calls = 0
+			series, err := tc.read(before.Add(time.Hour), before.Add(2*time.Hour))
+			if err != nil || len(series) != 0 || calls != 0 {
+				t.Fatalf("future range = %v, %v after %d queries; want nothing and no query", series, err, calls)
+			}
+		})
 	}
 }

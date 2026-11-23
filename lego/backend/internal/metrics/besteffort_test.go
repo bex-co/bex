@@ -18,8 +18,10 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -129,5 +131,93 @@ func TestMonthToDateBandwidthSourceBestEffortOnUnhealthySource(t *testing.T) {
 	}
 	if len(degraded) != 1 || degraded[0] != "http" {
 		t.Fatalf("degraded sources: got %v want [http]", degraded)
+	}
+}
+
+// futurePromFake answers like Prometheus does for a window running past the
+// wall clock: a health instant after now reads 0 (the minutes that have not
+// happened hold no `up` samples), and the range answers every step up to its
+// end, 100 bytes in the past and the `or vector(0)` fallback's 0 after now.
+// It records each instant's time and the range's end.
+func futurePromFake(t *testing.T) (*httptest.Server, *[]int64, *int64) {
+	t.Helper()
+	var instants []int64
+	var rangeEnd int64
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		now := time.Now().Unix()
+		if strings.HasSuffix(r.URL.Path, "/query_range") {
+			start, _ := strconv.ParseInt(q.Get("start"), 10, 64)
+			rangeEnd, _ = strconv.ParseInt(q.Get("end"), 10, 64)
+			step, _ := strconv.ParseInt(q.Get("step"), 10, 64)
+			var values []string
+			for at := start; at <= rangeEnd; at += step {
+				v := "100"
+				if at > now {
+					v = "0"
+				}
+				values = append(values, fmt.Sprintf(`[%d,%q]`, at, v))
+			}
+			_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[%s]}]}}`, strings.Join(values, ","))
+			return
+		}
+		at, _ := strconv.ParseInt(q.Get("time"), 10, 64)
+		instants = append(instants, at)
+		value := "1"
+		if at > now {
+			value = "0"
+		}
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"` + value + `"]}]}}`))
+	}))
+	return ts, &instants, &rangeEnd
+}
+
+// w8/413: a bandwidth read whose end is after now reads only up to now. It
+// answers no zero-valued point for a minute that has not happened, and checks
+// source health over the window that has, so healthy sources carry no
+// degraded label. A window wholly in the future reads nothing.
+func TestBandwidthWindowEndingAfterNowReadsUpToNow(t *testing.T) {
+	ts, instants, rangeEnd := futurePromFake(t)
+	defer ts.Close()
+	src := NewPrometheusRequestSource(ts.URL, ts.Client())
+	req := bandwidthReq()
+	before := time.Now()
+	req.Start, req.End, req.Resolution = before.Add(-5*time.Minute), before.Add(15*time.Minute), time.Minute
+
+	series, err := src(context.Background(), req)
+	if err != nil || len(series) != 1 {
+		t.Fatalf("read: %v %+v", err, series)
+	}
+	after := time.Now()
+	if *rangeEnd < before.Unix() || *rangeEnd > after.Unix() {
+		t.Errorf("query_range end = %d, want now (%d..%d)", *rangeEnd, before.Unix(), after.Unix())
+	}
+	if len(*instants) != 3 {
+		t.Fatalf("health instants = %v, want one per source", *instants)
+	}
+	for _, at := range *instants {
+		if at > after.Unix() {
+			t.Errorf("health evaluated at %d, after now (%d)", at, after.Unix())
+		}
+	}
+	if got, ok := series[0].Labels[LabelDegradedSources]; ok {
+		t.Errorf("healthy sources labeled degraded: %q", got)
+	}
+	var sum float64
+	for _, p := range series[0].Points {
+		at, _ := time.Parse(time.RFC3339, p.Timestamp)
+		if at.After(after) {
+			t.Errorf("point %s is after now", p.Timestamp)
+		}
+		sum += p.Value
+	}
+	if want := float64(100 * len(series[0].Points)); sum != want || len(series[0].Points) < 5 {
+		t.Errorf("points = %+v, want five or six 100-byte minutes", series[0].Points)
+	}
+
+	*instants = nil
+	req.Start, req.End = before.Add(time.Hour), before.Add(2*time.Hour)
+	if series, err := src(context.Background(), req); err != nil || len(series) != 0 || len(*instants) != 0 {
+		t.Fatalf("future window = %+v, %v after %d health reads; want nothing and no query", series, err, len(*instants))
 	}
 }

@@ -89,6 +89,12 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		// The health check reads the same bounded window as the range: over
+		// minutes that have not happened, every source read as degraded (w8/413).
+		end, ok := untilNow(req.Start, req.End)
+		if !ok {
+			return []MetricSeries{}, nil
+		}
 		var degraded []string
 		if req.Metric == MetricBandwidth {
 			// Interactive reads are best-effort (ADR023 § Observability reads
@@ -97,9 +103,9 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 			// rejects the whole window — the series is served and the failing
 			// sources travel as the degraded_sources label so clients can
 			// annotate. The usage rollup keeps the strict gate.
-			seconds := int64(req.End.Sub(req.Start) / time.Second)
+			seconds := int64(end.Sub(req.Start) / time.Second)
 			for _, spec := range bandwidthSpecs(req) {
-				health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, seconds), req.End)
+				health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, seconds), end)
 				if err != nil {
 					return nil, err
 				}
@@ -112,7 +118,7 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 		if query == "" {
 			return []MetricSeries{}, nil
 		}
-		series, err := promQueryRange(ctx, hc, base, query, req.Start, req.End, stepSeconds(req.Resolution))
+		series, err := promQueryRange(ctx, hc, base, query, req.Start, end, stepSeconds(req.Resolution))
 		if err != nil {
 			return nil, err
 		}
@@ -123,17 +129,25 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 }
 
-// earlierTime is the earlier of a and b.
-func earlierTime(a, b time.Time) time.Time {
-	if b.Before(a) {
-		return b
+// untilNow bounds a range read's end at now, and reports false for a range
+// wholly in the future, which reads nothing. No metrics read returns a point
+// after the request time (w4/644): a step after now reads the lookback's last
+// samples again, and a zero fallback (`or vector(0)`) answers 0 there (w8/413).
+func untilNow(start, end time.Time) (time.Time, bool) {
+	if now := time.Now(); now.Before(end) {
+		end = now
 	}
-	return a
+	return end, !end.Before(start)
 }
 
 // promQueryRange runs one Prometheus query_range and parses the matrix reply —
-// the shared transport under the request- and resource-metric sources.
+// the shared transport under every Prometheus-backed metrics source, so each
+// one is bounded at now (untilNow).
 func promQueryRange(ctx context.Context, hc *http.Client, base, query string, start, end time.Time, step int64) ([]MetricSeries, error) {
+	end, ok := untilNow(start, end)
+	if !ok {
+		return []MetricSeries{}, nil
+	}
 	u := fmt.Sprintf("%s/api/v1/query_range?%s", base, url.Values{
 		"query": {query},
 		"start": {strconv.FormatInt(start.Unix(), 10)},
@@ -202,13 +216,7 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
-		// No point after now: a range ending in the future read invented
-		// points from the lookback (w4/644).
-		end := earlierTime(req.End, time.Now())
-		if end.Before(req.Start) {
-			return nil, nil
-		}
-		series, err := promQueryRange(ctx, hc, base, promResourceQueryFor(req), req.Start, end, stepSeconds(req.Resolution))
+		series, err := promQueryRange(ctx, hc, base, promResourceQueryFor(req), req.Start, req.End, stepSeconds(req.Resolution))
 		if err != nil {
 			return nil, err
 		}
