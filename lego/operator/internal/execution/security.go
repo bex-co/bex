@@ -60,10 +60,12 @@ const (
 	// selects it to refuse outbound TCP 25/465/587, as Render does for free
 	// instances (w8/m127). Paid Apps carry no label, so their templates are
 	// unchanged.
-	LabelFreePlan     = "app.bex.co/free-plan"
-	FreePlanValue     = "true"
-	NodePoolLabel     = "bex.co/pool"
-	UntrustedNodePool = "tenant"
+	LabelFreePlan = "app.bex.co/free-plan"
+	FreePlanValue = "true"
+	// NodePoolLabel/UntrustedNodePool alias the canonical node-pool key in
+	// lego/types (v1alpha1), shared with bex-api's outbound-IP selection.
+	NodePoolLabel     = appv1alpha1.LabelNodePool
+	UntrustedNodePool = appv1alpha1.NodePoolTenant
 
 	// BuildPoolTaintKey/Value name the taint the dedicated build node pools
 	// (bex-tenant-lg, bex-tenant-burst) register with at bootstrap

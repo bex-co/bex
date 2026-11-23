@@ -24,13 +24,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // tenantNodePoolSelector selects the autoscaled tenant node pool
-// (infra/clusterapi stamps bex.co/pool=tenant on every worker). The label
-// literal is duplicated from the operator's execution.NodePoolLabel on
-// purpose — backend never imports operator.
-var tenantNodePoolSelector = client.MatchingLabels{"bex.co/pool": "tenant"}
+// (infra/clusterapi stamps bex.co/pool=tenant on every worker). It shares
+// the canonical key in lego/types (v1alpha1) with the operator's workload
+// placement, so the two selects can never drift apart.
+var tenantNodePoolSelector = client.MatchingLabels{appv1alpha1.LabelNodePool: appv1alpha1.NodePoolTenant}
 
 // OutboundIPs implements Render's retrieve-service-outbound-ips read
 // (GET /v1/services/{id}/outbound-ips → {type, ips, dedicatedIpId?}).

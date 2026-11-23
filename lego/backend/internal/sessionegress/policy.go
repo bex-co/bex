@@ -33,10 +33,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
-	SessionLabel = "bex.co/agent-session"
+	// SessionLabel marks an agent session's sandbox. Aliases the canonical
+	// key in lego/types (v1alpha1), shared with the agent-session service
+	// and the operator egress meter.
+	SessionLabel = appv1alpha1.LabelAgentSession
 
 	managedByLabel  = "app.kubernetes.io/managed-by"
 	managedByValue  = "bex-session-egress"

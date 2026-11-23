@@ -76,7 +76,7 @@ const (
 	// lego/types (v1alpha1), which bex-api's NamespaceReconciler stamps and
 	// the operator also reads.
 	LabelRegime       = appv1alpha1.LabelRegime
-	LabelSession      = "bex.co/agent-session"
+	LabelSession      = appv1alpha1.LabelAgentSession
 	LabelDispatchTurn = "bex.co/agent-dispatch-turn"
 	LabelRepository   = "bex.co/agent-repository"
 	LabelBranch       = "bex.co/agent-branch"

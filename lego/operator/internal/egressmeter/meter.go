@@ -60,15 +60,16 @@ const (
 	PodLabelEgressAppID = appv1alpha1.LabelEgressAppID
 	// PodLabelSandboxID is the public id (`sbx-...`) bex-api stamps on a
 	// /v1/sandboxes sandbox and OpenSandbox persists as a pod label (the
-	// per-sandbox Cilium allow-list policy selects pods by it). The operator
-	// cannot import the backend, so the name is repeated here; backend
-	// sessionegress.SandboxIDLabel is the source (ADR042 D4).
-	PodLabelSandboxID = "bex.co/sandbox-id"
-	// PodLabelAgentSession marks an agent session's sandbox (backend
-	// agentsession.LabelSession). Its egress runs through the session egress
-	// policy and the model proxy (ADR047 D5), so it is not a workspace's
-	// /v1/sandboxes egress and is never metered here.
-	PodLabelAgentSession = "bex.co/agent-session"
+	// per-sandbox Cilium allow-list policy selects pods by it). It aliases
+	// the canonical key in lego/types (v1alpha1), shared with bex-api's
+	// sessionegress policy (ADR042 D4).
+	PodLabelSandboxID = appv1alpha1.LabelSandboxID
+	// PodLabelAgentSession marks an agent session's sandbox. Its egress runs
+	// through the session egress policy and the model proxy (ADR047 D5), so
+	// it is not a workspace's /v1/sandboxes egress and is never metered
+	// here. It aliases the canonical key in lego/types (v1alpha1), shared
+	// with bex-api's agent-session service.
+	PodLabelAgentSession = appv1alpha1.LabelAgentSession
 	// SandboxEgressAppID is the app id under which every /v1/sandboxes sandbox
 	// of a workspace is metered, in that workspace's sandbox namespace. One
 	// series per workspace keeps the cardinality bounded by workspaces rather
