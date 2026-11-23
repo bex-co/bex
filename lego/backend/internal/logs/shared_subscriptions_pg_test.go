@@ -47,6 +47,20 @@ func subscriptionPGStore(t *testing.T) *store.PGStore {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	// Open the connections the lease tests use at once before their timed
+	// part: a cold connect inside it, under a loaded suite run, can outlast a
+	// lease's renewal slack.
+	conns := make([]*pgxpool.Conn, 0, 3)
+	for range cap(conns) {
+		conn, err := pool.Acquire(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		conns = append(conns, conn)
+	}
+	for _, conn := range conns {
+		conn.Release()
+	}
 	st := store.NewPGStore(pool)
 	if _, err := pool.Exec(context.Background(), `DELETE FROM log_subscription_slots`); err != nil {
 		t.Fatalf("clean log_subscription_slots: %v", err)
@@ -165,7 +179,7 @@ func TestSharedLogSubscriptionLeaseRenewalAndExpiryPG(t *testing.T) {
 		MaxSSEConnsPerSubject:     1,
 		MaxSSEConnsPerWorkspace:   2,
 		SubscriptionStore:         st,
-		SubscriptionLeaseTTL:      150 * time.Millisecond,
+		SubscriptionLeaseTTL:      time.Second,
 		SubscriptionRenewInterval: 40 * time.Millisecond,
 	}
 	repB := &Service{
@@ -174,7 +188,7 @@ func TestSharedLogSubscriptionLeaseRenewalAndExpiryPG(t *testing.T) {
 		MaxSSEConnsPerSubject:   1,
 		MaxSSEConnsPerWorkspace: 2,
 		SubscriptionStore:       st,
-		SubscriptionLeaseTTL:    150 * time.Millisecond,
+		SubscriptionLeaseTTL:    time.Second,
 	}
 
 	subCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-live", Method: core.MethodOAuth2})
@@ -189,9 +203,10 @@ func TestSharedLogSubscriptionLeaseRenewalAndExpiryPG(t *testing.T) {
 		t.Fatalf("seed crashed slot: %v", err)
 	}
 
-	// Wait past both the crashed slot's 100ms TTL and repA's 150ms initial TTL:
-	// repA's heartbeat must have kept user-live's lease alive while crashed-slot expired.
-	time.Sleep(240 * time.Millisecond)
+	// Wait past both the crashed slot's 100ms TTL and repA's 1s initial TTL:
+	// repA's heartbeat must have kept user-live's lease alive while crashed-slot
+	// expired. The TTL leaves a renewal 960ms of slack on a loaded machine.
+	time.Sleep(1500 * time.Millisecond)
 
 	// user-live is STILL at its per-subject cap (heartbeat kept its lease valid).
 	if _, err := repB.acquireSubscription(subCtx, LogQuery{App: "a"}); !errors.Is(err, errSubscriptionLimit) {
