@@ -1,6 +1,6 @@
 # w32 · m576 — Every `==>` line bex writes carries Render's ANSI colour codes, in the API, the CLI and the dashboard
 
-**Worker:** worker32 **Goal:** each `==>` line bex writes itself (the platform's deploy narration, a native build's narration, the instance's `==> Running '<command>'`) carries the ANSI codes Render's log API returns for that kind of line, byte for byte where a Render capture shows the line. REST `GET /v1/logs`, the subscribe stream, GraphQL, MCP `list_logs` and `bex logs -o json` return the codes, as Render's API, MCP server and CLI do. `bex logs` on a terminal shows the lines coloured, and the dashboard draws them coloured with the visible text it shows today. **Status:** blocked (t001–t007, t010 and t011 done and shipped as `059fe69101`; t008 walks production once the pin carries it; t009 and t012 follow)
+**Worker:** worker32 **Goal:** each `==>` line bex writes itself (the platform's deploy narration, a native build's narration, the instance's `==> Running '<command>'`) carries the ANSI codes Render's log API returns for that kind of line, byte for byte where a Render capture shows the line. REST `GET /v1/logs`, the subscribe stream, GraphQL, MCP `list_logs` and `bex logs -o json` return the codes, as Render's API, MCP server and CLI do. `bex logs` on a terminal shows the lines coloured, and the dashboard draws them coloured with the visible text it shows today. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | t005 | [The dashboard draws the coloured lines with today's text](done/t005.md) — **DONE** | 45m | t002, t003, t004 |
 | t006 | [The CLI, MCP, GraphQL and text search on coloured lines](done/t006.md) — **DONE** | 45m | t002, t003, t004 |
 | t007 | [Record the forms in the progress-line contract and ADR018](done/t007.md) — **DONE** | 30m | t005, t006 |
-| t008 | [Ship and verify on production](t008.md) | 1h | t007 |
-| t009 | [Render parity](t009.md) | 30m | t008 |
+| t008 | [Ship and verify on production](done/t008.md) — **DONE** | 1h | t007 |
+| t009 | [Render parity](done/t009.md) — **DONE** | 30m | t008 |
 | t010 | [Simplify](done/t010.md) — **DONE** | 15m | t009 |
 | t011 | [Test coverage](done/t011.md) — **DONE** | 30m | t009 |
-| t012 | [Closeout](t012.md) | 10m | t010, t011 |
+| t012 | [Closeout](done/t012.md) — **DONE** | 10m | t010, t011 |
 
 ## Definition of done
 
@@ -98,3 +98,20 @@ A search of GitHub code on 2026-11-22 (`gh api search/code` for `u001b` with eac
 | Instance | `==> Running '<command>'` at each `<shell> -c` launch native-init names (start command, cron run, initial deploy hook) | instance | tretta |
 
 Two edge cases t001 named: no multi-line reason carries the failure form, since only Render's own verdicts take it and bex's cause-bearing closes stay plain; and the URL block's blank line keeps its trailing space inside the marker's colour, as tretta's and Sentry-AI's captures do. A Dockerfile build keeps BuildKit's own output, which carries no `==>` line.
+
+## Unblocked (2026-11-23)
+
+**Source:** verified evidence (`/pm unblock w32/m576`, run by the `/loopx w32` worker for this milestone). **Affected:** t008, t009, t012. **Finding:** the gate ``pin must carry `059fe69101` `` holds. The newest pin commit on `origin/main` is `87ea4b0ee5` (`chore(deploy): pin platform images to ac882b5f557f`), and `git merge-base --is-ancestor 059fe69101 ac882b5f557f` succeeds. On the control plane (`167.233.216.116`), `bex-controller-manager` and both `bex-api` pods are ready on `ghcr.io/bex-co/bex-operator@sha256:f5d75a7c48d1…` (matching `deploy/gitops/base/bex.yaml`), and `dashboard` is ready on `ghcr.io/bex-co/bex-dashboard@sha256:1eb4c5a69615…` (matching `deploy/gitops/base/dashboard.yaml`).
+
+**Remaining gates:** none. **Next:** run t008's live walk on a free native Node web service (`examples/hello-node`, `node main.js`) in `bex-canary` with the released `bex` v0.9.0 and a human device login across CLI (text, TTY/pipe/file, `-o json`, `-o yaml`, `--tail`), REST (`GET /v1/logs`, `textMode=display`, `GET /v1/logs/subscribe`), GraphQL `logs`, MCP `list_logs`, and dashboard deploy/Logs queries + ANSI-rendering logic; delete the disposable fixture by ID, confirm the 404, complete t009 (surface parity + wording drifts + `w32/085` listing), and close out (t012).
+
+## Closed (2026-11-23)
+
+The definition of done holds:
+
+- **Production walk.** On pin `ac882b5f557f` (`bex-operator@sha256:f5d75a7c48d1…`, `bex-dashboard@sha256:1eb4c5a69615…`), the released `bex` v0.9.0 walked the scenarios in `bex-canary` on free native Node web service `srv-dc22ac905vrc73fj7jk0` (disposable, `examples/hello-node`, `npm install`, `node main.js`; [t008 § Walk](done/t008.md)):
+  - Deploy 1 (`dep-dc22ac905vrc73fj7jkg`) and cached deploy 2 (`dep-dc22bsehv52s73bqmmb0`) emitted every line in t001's table byte for byte in `bex logs --type build -o json` (raw JSON escaped as `\u001b[0;34m…`), `-o yaml`, and unfiltered `-o json`: blue `BuildRuntime` on Node.js version/docs, `Uploading build...`, and `Uploaded in Ns`; green `BuildRuntimeSuccess` on `Build successful 🎉`; blue `BuildShell` on `Downloading cache...`, `Transferred … Extraction took …s.`, and `Running build command 'npm install'...`; blue `PlatformStep` on `Deploying...` and `Setting WEB_CONCURRENCY=1 …`; green `PlatformSuccess` on `Your service is live 🎉` and all six URL block lines (including the three blank green markers); green `Instance` on `==> Running 'node main.js'` (`type=app`); and plain on `Build queued`, `Building from …`, and `Requesting Node.js version >=20`.
+  - Redirected to a file, `bex logs --type build` kept raw codes including `\x1b(B` untouched; piped (`| cat -v`) and on a PTY (`-o text`), it kept SGR, stripped `\x1b(B`, and closed with `\x1b[0m`.
+  - `srv-dc22ac905vrc73fj7jk0` (disposable) was deleted by ID and answered `404` on both `GET /v1/services/<id>` and its public URL.
+- **Surfaces and follow-ups.** REST `GET /v1/logs` (with `textMode=display` matching `==> Deploying...` and raw `text` returning 0), `GET /v1/logs/subscribe` (WebSocket `--tail` 21/21 exact match on deploy 2 + SSE `type=build`), GraphQL `logs`, and MCP `list_logs` all returned identical IDs and raw ANSI bytes. Dashboard deploy and Logs panes were verified via live GraphQL payloads through `dashboard/src/features/logs/lib/ansi.ts` (`parseAnsi`/`stripAnsi`) and `log-rows.ts` (this host has no Playwright browser): blue/green markers and bold text parsed cleanly with zero stray `(B` or escape bytes, and copy-line returned plain words ([t009](done/t009.md)). The four wording drifts were filed as [w32/096](../../096.md)–[w32/099](../../099.md), uncaptured Render ANSI lines were listed on [w32/085](../../blocked/085.md), and mobile ANSI rendering stays with [w32/094](../../094.md).
+- **Tests and docs.** Unit tests across `lego/types/renderlog`, `lego/operator`, `lego/backend`, and `dashboard/` ([t011](done/t011.md)) and updates to `docs/render-artifacts/live-deploy-following.md` and `docs/ADR018-render-parity.md` ([t007](done/t007.md)) shipped in `059fe69101`.
