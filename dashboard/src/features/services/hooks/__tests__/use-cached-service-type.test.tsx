@@ -111,11 +111,35 @@ describe("useCachedServiceSource (w3/094)", () => {
     expect(read("srv-img")).toEqual({
       repository: false,
       registryCredential: false,
+      cron: false,
+      suspended: false,
     });
     expect(read("srv-git")).toEqual({
       repository: true,
       registryCredential: false,
+      cron: false,
+      suspended: false,
     });
+  });
+
+  // w3/m555: a cron job's header frame has its own action and facts, and a
+  // suspended one's none and its notice.
+  it("says which services are cron jobs and which are suspended", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          {
+            id: "srv-run",
+            type: "cron_job",
+            repo: "",
+            suspended: "not_suspended",
+          },
+          { id: "srv-off", type: "cron_job", repo: "", suspended: "suspended" },
+        ]),
+      useCachedServiceSource,
+    );
+    expect(read("srv-run")).toMatchObject({ cron: true, suspended: false });
+    expect(read("srv-off")).toMatchObject({ cron: true, suspended: true });
   });
 
   it("says an image pulled with a registry credential names it", () => {
@@ -134,6 +158,8 @@ describe("useCachedServiceSource (w3/094)", () => {
     expect(read("srv-img")).toEqual({
       repository: false,
       registryCredential: true,
+      cron: false,
+      suspended: false,
     });
   });
 
@@ -155,6 +181,8 @@ describe("useCachedServiceSource (w3/094)", () => {
     expect(read("srv-a")).toEqual({
       repository: true,
       registryCredential: true,
+      cron: false,
+      suspended: false,
     });
   });
 

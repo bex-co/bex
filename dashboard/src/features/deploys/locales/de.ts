@@ -379,13 +379,18 @@ const deDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "Suchen…",
+    message: "Deployments und Commits durchsuchen",
     description:
-      "Deploys tab: placeholder for client-side deploy-history search",
+      "Placeholder of the deploy list's search field on every service's Deploys page (Render's text, w3/m555)",
   },
   "deploys.listSearchLabel": {
     message: "Geladene Deployments und Commits durchsuchen",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.manualBuild": {
+    message: "Manueller Build",
+    description:
+      "Button beside a repo-backed cron job's deploy search that builds its latest commit and opens the new build (Render's Manual Build, w3/m555)",
   },
   "deploys.listClearSearch": {
     message: "Suche löschen",

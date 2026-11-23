@@ -501,20 +501,45 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header toggle, phones only, that shows or hides the slug, instances, revision and age line",
   },
-  "services.headerSchedule": {
-    message: "调度：",
-    description:
-      "Service-detail header metadata label for a cron job's schedule",
-  },
   "services.headerLastRun": {
-    message: "上次成功运行：",
+    message: "上次成功运行",
     description:
-      "Service-detail header metadata label for a cron job's last successful run",
+      "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
-  "services.headerNextRun": {
-    message: "下次运行：",
+  "services.headerRuns": {
+    message: "运行",
     description:
-      "Service-detail header metadata label for a cron job's next scheduled run",
+      "Service-detail header: the word before a cron job's command on its first fact line (Render's \"Runs <command> <schedule>\", w3/m555)",
+  },
+  "services.headerRunsDockerCmd": {
+    message: "{dockerfile} 中的 {cmd}",
+    description:
+      "Service-detail header: what a Docker or image cron job with no command override runs; {cmd} is the code word CMD and {dockerfile} the Dockerfile's path, both shown as code (Render's \"CMD in Dockerfile\", w3/m555)",
+  },
+  "services.headerNoSuccessfulRuns": {
+    message: "还没有成功的运行。",
+    description:
+      "Service-detail header: a cron job's second fact line before its first successful run (Render's text, w3/m555)",
+  },
+  "services.suspendedNoticeManual": {
+    message: "已手动暂停",
+    description:
+      "Title of the notice under a suspended cron job's header when its owner suspended it (Render's \"Manually suspended\", w3/m555)",
+  },
+  "services.suspendedNoticeTitle": {
+    message: "已暂停",
+    description:
+      "Title of the notice under a suspended cron job's header when the platform suspended it (Render's fallback \"Suspended\", w3/m555)",
+  },
+  "services.suspendedNoticeBody": {
+    message: "已暂停的服务不会计费。",
+    description:
+      "Body of the notice under a suspended cron job's header (Render's text, w3/m555)",
+  },
+  "services.suspendedNoticeResume": {
+    message: "恢复服务",
+    description:
+      "The notice's inline action that resumes a suspended cron job (Render's \"Resume service\", w3/m555)",
   },
   "services.headerCopyServiceId": {
     message: "复制服务 ID",
@@ -3445,33 +3470,20 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "手动运行",
     description: "Button that fires an immediate cron run (Render parity)",
   },
-  "services.cronTriggering": {
-    message: "正在触发…",
-    description: "Trigger Run button label while the run is being created",
-  },
-  "services.cronTriggerSuccess": {
-    message: "已触发定时任务运行。",
-    description: "Toast after a manual cron run is accepted",
-  },
   "services.cronTriggerError": {
-    message: "无法触发运行。",
-    description: "Fallback inline error when triggering a cron run fails",
-  },
-  "services.cronTriggerConfirmTitle": {
-    message: "立即触发一次运行？",
-    description: "Trigger Run confirmation dialog title",
-  },
-  "services.cronTriggerConfirmBody": {
-    message:
-      "这将在计划之外请求一次运行。它会替换任何待处理的手动运行请求，并在新运行开始前取消任何正在进行的运行。",
+    message: "无法触发运行。请稍后再试。",
     description:
-      "Trigger Run confirmation dialog body when no active run is visible (one may still exist, so state the replacement semantics conditionally)",
+      "Toast, kept until dismissed, when Trigger Run fails and the server gave no message (Render's text, w3/m555)",
   },
-  "services.cronTriggerConfirmBodyPreempt": {
-    message:
-      "已有运行正在进行。现在触发会取消它，并立即在计划之外开始一次新的运行。",
+  "services.cronTriggerForbidden": {
+    message: "你没有运行此定时任务的权限。",
     description:
-      "Trigger Run confirmation dialog body when a run is already active",
+      "Toast, kept until dismissed, when Trigger Run is refused for permission (Render's text, w3/m555)",
+  },
+  "services.cronTriggerNoBuild": {
+    message: "未检测到成功的构建。查看{deploys}。",
+    description:
+      "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
   "services.cronRunDetailToggle": {
     message: "运行详情，开始于 {when}",
@@ -6001,6 +6013,46 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "每月 {day} 日 {time}",
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
+  },
+  "services.cronRunsEveryMinute": {
+    message: "每分钟",
+    description:
+      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryNMinutes": {
+    message: "每 {n} 分钟",
+    description:
+      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryHour": {
+    message: "每小时",
+    description:
+      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsHourlyAtMinute": {
+    message: "每小时第 {minute} 分钟",
+    description:
+      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryNHours": {
+    message: "每 {n} 小时的第 {minute} 分钟",
+    description:
+      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsDailyAt": {
+    message: "每天 UTC {time}",
+    description:
+      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsWeeklyAt": {
+    message: "每{day} UTC {time}",
+    description:
+      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsMonthlyAt": {
+    message: "每月 {day} 日 UTC {time}",
+    description:
+      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
   },
   "services.cronDaySunday": {
     message: "周日",

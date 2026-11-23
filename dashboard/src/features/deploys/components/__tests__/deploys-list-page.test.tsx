@@ -19,6 +19,7 @@ import {
 import { DeploysListPage } from "../deploys-list-page";
 import { DeploysListSkeleton } from "@/common/components/route-skeletons";
 import { hydrateAcrossBoundary, serverRendered } from "@/test/hydration";
+import { mockAllowedResourceActions } from "@/test/mocks/resource-actions";
 import type { DeployRow, UseDeploysResult } from "../../hooks/use-deploys";
 
 const state: UseDeploysResult = {
@@ -32,8 +33,23 @@ const state: UseDeploysResult = {
 };
 const statusCalls: string[][] = [];
 
+let deployActions: unknown = { status: "checking", refresh: vi.fn() };
 vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
-  useDeployActions: () => ({ status: "checking", refresh: vi.fn() }),
+  useDeployActions: () => deployActions,
+}));
+vi.mock("@/features/workspaces/context/hooks", async () => {
+  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
+  return mockWorkspaceContext();
+});
+// Manual Build's trigger (w3/m555): the deploy verb, answering the new
+// deploy's id.
+const triggerDeploy = vi.fn(async (_serviceId: string) => "dep-new");
+vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
+  useTriggerDeploy: () => ({
+    deploying: false,
+    trigger: triggerDeploy,
+    restart: vi.fn(),
+  }),
 }));
 
 vi.mock("../../hooks/use-deploys", () => ({
@@ -44,10 +60,13 @@ vi.mock("../../hooks/use-deploys", () => ({
 }));
 // The service read that turns each row's SHA into a commit link; the repo is
 // per-test state so both the linked and the plain-text shapes are covered.
-const serverState: { repo: string | null } = { repo: null };
+const serverState: { repo: string | null; type: string } = {
+  repo: null,
+  type: "web_service",
+};
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => ({
-    service: { repo: serverState.repo },
+    service: { repo: serverState.repo, type: serverState.type },
     loading: false,
     error: undefined,
     refetch: vi.fn(),
@@ -103,7 +122,7 @@ function pageRouter() {
   const detail = createRoute({
     getParentRoute: () => root,
     path: "/services/$serviceId/deploys/$deployId",
-    component: () => null,
+    component: () => <p>deploy detail</p>,
   });
   const router = createRouter({
     routeTree: root.addChildren([list, detail]),
@@ -133,6 +152,9 @@ const NOW = Date.parse("2026-07-16T03:00:00Z");
 beforeEach(() => {
   vi.spyOn(Date, "now").mockReturnValue(NOW);
   serverState.repo = "https://github.com/acme/web.git";
+  serverState.type = "web_service";
+  deployActions = { status: "checking", refresh: vi.fn() };
+  triggerDeploy.mockClear();
   state.deploys = [];
   state.loading = false;
   state.loadingMore = false;
@@ -710,4 +732,112 @@ it("keeps the history search uneditable until hydration (w4/m219)", async () => 
   expect(search().value).toBe("broken");
   expect(container).toHaveTextContent("dep-failed");
   expect(container).not.toHaveTextContent("dep-live");
+});
+
+// w3/m555: Render's Deploys page reads "Search deploys and commits" for every
+// type, and a repo-backed cron job builds from it with Manual Build.
+describe("DeploysListPage search and Manual Build", () => {
+  it("reads Render's search placeholder on every Deploys page", async () => {
+    state.deploys = [row()];
+    renderPage();
+    expect(
+      await screen.findByRole("textbox", {
+        name: "Search loaded deploys and commits",
+      }),
+    ).toHaveAttribute("placeholder", "Search deploys and commits");
+  });
+
+  it("builds a repo-backed cron job from Manual Build and opens the new build", async () => {
+    serverState.type = "cron_job";
+    deployActions = mockAllowedResourceActions("web").useDeployActions();
+    state.deploys = [row()];
+    const user = userEvent.setup();
+    renderPage();
+
+    const button = await screen.findByRole("button", { name: "Manual Build" });
+    expect(button).toBeEnabled();
+    await user.click(button);
+
+    expect(triggerDeploy).toHaveBeenCalledExactlyOnceWith("web");
+    // No confirm or menu: the build's page opens at once.
+    expect(await screen.findByText("deploy detail")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("stays on the list when the build is refused", async () => {
+    serverState.type = "cron_job";
+    deployActions = mockAllowedResourceActions("web").useDeployActions();
+    triggerDeploy.mockResolvedValueOnce(null as never);
+    state.deploys = [row()];
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Manual Build" }),
+    );
+    expect(triggerDeploy).toHaveBeenCalledOnce();
+    expect(screen.queryByText("deploy detail")).toBeNull();
+    expect(screen.getByRole("button", { name: "Manual Build" })).toBeEnabled();
+  });
+
+  it("disables Manual Build with the permission's reason", async () => {
+    serverState.type = "cron_job";
+    deployActions = mockAllowedResourceActions("web", {
+      deploy: { outcome: "denied" },
+    }).useDeployActions();
+    state.deploys = [row()];
+    const user = userEvent.setup();
+    renderPage();
+
+    const button = await screen.findByRole("button", { name: "Manual Build" });
+    expect(button).toBeDisabled();
+    await user.hover(button.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can’t perform this action. Ask a workspace admin.",
+    );
+    expect(triggerDeploy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["an image-backed cron job", "cron_job", null],
+    ["a web service", "web_service", "https://github.com/acme/web.git"],
+    ["a background worker", "background_worker", "https://github.com/acme/w"],
+  ])("offers no Manual Build on %s", async (_, type, repo) => {
+    serverState.type = type;
+    serverState.repo = repo;
+    state.deploys = [row()];
+    renderPage();
+    await screen.findByRole("textbox", {
+      name: "Search loaded deploys and commits",
+    });
+    expect(screen.queryByRole("button", { name: "Manual Build" })).toBeNull();
+  });
+
+  it("reserves Manual Build where the ready page draws it", async () => {
+    serverState.type = "cron_job";
+    deployActions = mockAllowedResourceActions("web").useDeployActions();
+    state.deploys = [row()];
+    const ready = renderPage();
+    const button = await screen.findByRole("button", { name: "Manual Build" });
+    const slot = button.closest("[data-deploys-action]")!;
+
+    const skeleton = render(<DeploysListSkeleton manualBuild />);
+    const reserved = skeleton.container.querySelector("[data-deploys-action]")!;
+    expect(reserved).not.toBeNull();
+    expect(reserved.className).toBe(slot.className);
+    // The same button box: its variant, size and touch height.
+    const box = reserved.querySelector(".invisible")!;
+    for (const name of ["h-8", "max-lg:h-11", "border"]) {
+      expect(box).toHaveClass(name);
+      expect(button).toHaveClass(name);
+    }
+    expect(box).toHaveTextContent("Manual Build");
+    expect(
+      render(<DeploysListSkeleton />).container.querySelector(
+        "[data-deploys-action]",
+      ),
+    ).toBeNull();
+    ready.unmount();
+  });
 });

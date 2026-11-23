@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -28,19 +28,29 @@ export interface ResumeServiceButtonProps {
     confirmation?: string,
   ) => Promise<ProtectedActionResult>;
   size?: "default" | "sm";
+  variant?: ComponentProps<typeof Button>["variant"];
+  /** The button's words: Resume by default, "Resume service" in a cron job's
+   *  suspension notice (w3/m555). */
+  label?: string;
+  className?: string;
 }
 
 /**
  * Resume Service, gated by the service's `resume` action decision (w6/m143)
  * and rechecked before dispatch (w4/m159). A protected environment answers
  * with the phrase to retry with. Shared by the Settings card and the service
- * header, which offers it while the service is suspended (w4/643).
+ * header, which offers it while the service is suspended (w4/643), and a
+ * suspended cron job's notice, which offers it as Render's inline link
+ * (w3/m555).
  */
 export function ResumeServiceButton({
   service,
   pending,
   onRun,
   size,
+  variant,
+  label,
+  className,
 }: ResumeServiceButtonProps) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
@@ -116,6 +126,8 @@ export function ResumeServiceButton({
       <PermissionTooltip reason={permissionReason}>
         <Button
           size={size}
+          variant={variant}
+          className={className}
           onClick={() => {
             if (busy || permissionReason) return;
             void run(openConfirm("resume"));
@@ -125,7 +137,7 @@ export function ResumeServiceButton({
           {busy && pending === "resume" ? (
             <Loader2 className="animate-spin" />
           ) : null}
-          {t("services.actionResume")}
+          {label ?? t("services.actionResume")}
         </Button>
       </PermissionTooltip>
       <ProtectedConfirmationDialog

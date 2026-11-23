@@ -16,26 +16,44 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { DEPLOYS_PAGE_SIZE } from "../lib/deploy-list-search";
 
+/** Manual Build's box, which the loading frame reserves. Kept here, not in
+ *  the button's module, so the route skeletons stay free of its mutation. */
+export const MANUAL_BUILD_BUTTON_CLASS = "shrink-0 max-lg:h-11";
+
 /**
  * The deploy history's frame: the count line, the search and status filter,
  * then the list (the tab's name is the detail layout's heading). The page and
  * its route skeleton both draw it, so the two pending states share the ready
  * geometry (w4/702).
+ *
+ * `action` is a repo-backed cron job's Manual Build (w3/m555): beside the
+ * search and filter once the list is wide, as on Render, and on the count's
+ * line below that, so the search keeps its width on a phone.
  */
 export function DeploysListFrame({
   count,
   controls,
+  action,
   children,
 }: {
   count: ReactNode;
   controls: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="@container/deploys space-y-4 max-sm:space-y-3">
-      <div className="space-y-3 max-sm:space-y-2 @3xl/deploys:flex @3xl/deploys:items-center @3xl/deploys:justify-between @3xl/deploys:gap-6 @3xl/deploys:space-y-0">
-        <div>{count}</div>
-        <div className="flex gap-2 @3xl/deploys:w-[32rem] @3xl/deploys:max-w-[60%]">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 max-sm:gap-y-2 @3xl/deploys:flex @3xl/deploys:gap-6">
+        <div className="min-w-0">{count}</div>
+        {action ? (
+          <div
+            data-deploys-action=""
+            className="col-start-2 row-start-1 flex @3xl/deploys:order-last @3xl/deploys:-ml-4"
+          >
+            {action}
+          </div>
+        ) : null}
+        <div className="col-span-2 flex gap-2 @3xl/deploys:ml-auto @3xl/deploys:w-[32rem] @3xl/deploys:max-w-[60%]">
           {controls}
         </div>
       </div>
@@ -177,11 +195,30 @@ export function DeploysTableFrame({ commits = true }: { commits?: boolean }) {
 }
 
 /** The whole list before the route's component mounts: the count slot, the
- *  search and status filter's boxes, and the table frame. */
-export function DeploysListFrameSkeleton({ commits }: { commits?: boolean }) {
+ *  search and status filter's boxes, a repo-backed cron job's Manual Build,
+ *  and the table frame. */
+export function DeploysListFrameSkeleton({
+  commits,
+  manualBuild = false,
+}: {
+  commits?: boolean;
+  manualBuild?: boolean;
+}) {
+  const { t } = useTranslations();
   return (
     <DeploysListFrame
       count={<DeploysCountSlot />}
+      action={
+        manualBuild ? (
+          <ReservedButton
+            variant="outline"
+            size="sm"
+            className={MANUAL_BUILD_BUTTON_CLASS}
+          >
+            {t("deploys.manualBuild")}
+          </ReservedButton>
+        ) : undefined
+      }
       controls={
         <>
           <Skeleton className="h-9 min-w-0 flex-1 max-lg:h-11 pointer-coarse:h-11" />

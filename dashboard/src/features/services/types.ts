@@ -33,6 +33,12 @@ export interface ServiceView {
    * Only the detail `server` query selects suspenders, so a list row reads false.
    */
   crashLoopSuspended?: boolean;
+  /**
+   * Its owner suspended it (Render's `user` suspender), which a cron job's
+   * suspension notice titles "Manually suspended" (w3/m555). Only the detail
+   * `server` query selects suspenders, so a list row reads false.
+   */
+  manuallySuspended?: boolean;
   /** Operator phase, verbatim (Pending/Building/Deploying/Running/Hibernated/Failed). */
   phase: string;
   /** Live URL, or null when the App has none yet. */
@@ -426,12 +432,7 @@ export type LifecycleAction = "suspend" | "resume" | "restart";
 
 /** A resolved service-type key (i18n label) + the badge variant it renders as. */
 export type ServiceTypeKey =
-  | "web"
-  | "private"
-  | "worker"
-  | "cron"
-  | "static"
-  | "unknown";
+  "web" | "private" | "worker" | "cron" | "static" | "unknown";
 
 /**
  * One env-var key on a sensitive-config list. Values are fetched individually
@@ -572,10 +573,7 @@ export type ServiceStatusKey =
   | "unknown";
 
 export type ServiceBadgeVariant =
-  | "default"
-  | "secondary"
-  | "outline"
-  | "destructive";
+  "default" | "secondary" | "outline" | "destructive";
 
 export interface ServiceStatus {
   key: ServiceStatusKey;

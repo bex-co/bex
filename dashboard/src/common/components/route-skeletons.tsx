@@ -2433,6 +2433,7 @@ export function ServiceCreatePageSkeleton() {
 export function DeploysListSkeleton({
   banner,
   commits,
+  manualBuild,
 }: {
   /** The auto-deploy-off banner the ready page shows above the list
    *  (w3/064): its own content is already known, so the pending state shows
@@ -2440,12 +2441,14 @@ export function DeploysListSkeleton({
   banner?: React.ReactNode;
   /** False when the cached service is image-backed: no commit lines. */
   commits?: boolean;
+  /** A repo-backed cron job's list has Manual Build (w3/m555). */
+  manualBuild?: boolean;
 } = {}) {
   return (
     <PendingFrame route="deploys-list" className="space-y-4">
       {banner ? <Region name="auto-deploy-off-banner">{banner}</Region> : null}
       <Region name="deploys-table">
-        <DeploysListFrameSkeleton commits={commits} />
+        <DeploysListFrameSkeleton commits={commits} manualBuild={manualBuild} />
       </Region>
     </PendingFrame>
   );
@@ -2471,13 +2474,13 @@ export function DeployDetailSkeleton() {
   );
 }
 
-/** A cron job's Runs page (w2/m360): the runs card, its title with Trigger Run
- *  beside it, over the four-column run table. */
+/** A cron job's Runs page (w2/m360): the runs card's title over the
+ *  four-column run table. Trigger Run is the header's (w3/m555). */
 export function ServiceCronRunsSkeleton() {
   return (
     <PendingFrame route="cron-runs">
       <Region name="cron-runs-table">
-        <TableCardSkeleton rows={3} columns={4} />
+        <TableCardSkeleton rows={3} columns={4} action={false} />
       </Region>
     </PendingFrame>
   );

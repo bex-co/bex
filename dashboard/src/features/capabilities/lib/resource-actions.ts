@@ -233,6 +233,32 @@ export function gateReason(
 }
 
 /**
+ * Why a resource's action projection refuses `action` right now, as the
+ * reason a disabled control shows, or undefined when it may run: the
+ * projection still checking, unavailable, the decision denied, or a blocking
+ * precondition.
+ */
+export function projectionReason(
+  projection:
+    | { status: "checking" | "unavailable" }
+    | { status: "ready"; snapshot: ResourceActionSnapshot },
+  workspaceId: string | null,
+  resourceId: string,
+  action: ResourceActionId,
+  t: (key: string) => string,
+): string | undefined {
+  return gateReason(
+    gateAction(
+      projection.status === "ready"
+        ? resourceDecision(projection.snapshot, workspaceId, resourceId, action)
+        : null,
+      projection.status,
+    ),
+    t,
+  );
+}
+
+/**
  * Service-wide `no_eligible_rollback_target` must not disable a selected
  * deploy that itself passes the execute-path eligibility predicate. Drop that
  * precondition when composing a selected-target rollback gate (m143 t003).

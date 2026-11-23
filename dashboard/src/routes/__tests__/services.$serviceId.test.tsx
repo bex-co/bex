@@ -467,17 +467,32 @@ describe("service-detail layout routing", () => {
     ["nothing cached", null, ["repository"]],
     [
       "an image-backed service",
-      { repository: false, registryCredential: false },
+      {
+        repository: false,
+        registryCredential: false,
+        cron: false,
+        suspended: false,
+      },
       [],
     ],
     [
       "an image pulled with a registry credential",
-      { repository: false, registryCredential: true },
+      {
+        repository: false,
+        registryCredential: true,
+        cron: false,
+        suspended: false,
+      },
       ["registry-credential"],
     ],
     [
       "a Git service",
-      { repository: true, registryCredential: false },
+      {
+        repository: true,
+        registryCredential: false,
+        cron: false,
+        suspended: false,
+      },
       ["repository"],
     ],
   ])(

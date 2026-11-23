@@ -46,6 +46,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "suspenders" in s
         ? (s.suspenders ?? []).includes("stuck_crashlooping")
         : false,
+    manuallySuspended:
+      "suspenders" in s ? (s.suspenders ?? []).includes("user") : false,
     phase: s.phase ?? "",
     url: s.url ?? null,
     internalAddress: "internalAddress" in s ? s.internalAddress || null : null,

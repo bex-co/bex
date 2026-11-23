@@ -517,20 +517,45 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header toggle, phones only, that shows or hides the slug, instances, revision and age line",
   },
-  "services.headerSchedule": {
-    message: "스케줄:",
-    description:
-      "Service-detail header metadata label for a cron job's schedule",
-  },
   "services.headerLastRun": {
-    message: "마지막 성공 실행:",
+    message: "마지막 성공 실행",
     description:
-      "Service-detail header metadata label for a cron job's last successful run",
+      "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
-  "services.headerNextRun": {
-    message: "다음 실행:",
+  "services.headerRuns": {
+    message: "실행",
     description:
-      "Service-detail header metadata label for a cron job's next scheduled run",
+      "Service-detail header: the word before a cron job's command on its first fact line (Render's \"Runs <command> <schedule>\", w3/m555)",
+  },
+  "services.headerRunsDockerCmd": {
+    message: "{dockerfile}의 {cmd}",
+    description:
+      "Service-detail header: what a Docker or image cron job with no command override runs; {cmd} is the code word CMD and {dockerfile} the Dockerfile's path, both shown as code (Render's \"CMD in Dockerfile\", w3/m555)",
+  },
+  "services.headerNoSuccessfulRuns": {
+    message: "아직 성공한 실행이 없습니다.",
+    description:
+      "Service-detail header: a cron job's second fact line before its first successful run (Render's text, w3/m555)",
+  },
+  "services.suspendedNoticeManual": {
+    message: "수동으로 일시 중지됨",
+    description:
+      "Title of the notice under a suspended cron job's header when its owner suspended it (Render's \"Manually suspended\", w3/m555)",
+  },
+  "services.suspendedNoticeTitle": {
+    message: "일시 중지됨",
+    description:
+      "Title of the notice under a suspended cron job's header when the platform suspended it (Render's fallback \"Suspended\", w3/m555)",
+  },
+  "services.suspendedNoticeBody": {
+    message: "일시 중지된 서비스에는 요금이 청구되지 않습니다.",
+    description:
+      "Body of the notice under a suspended cron job's header (Render's text, w3/m555)",
+  },
+  "services.suspendedNoticeResume": {
+    message: "서비스 재개",
+    description:
+      "The notice's inline action that resumes a suspended cron job (Render's \"Resume service\", w3/m555)",
   },
   "services.headerCopyServiceId": {
     message: "서비스 ID 복사",
@@ -3532,33 +3557,20 @@ const koServices: Record<string, TranslationEntry> = {
     message: "실행 트리거",
     description: "Button that fires an immediate cron run (Render parity)",
   },
-  "services.cronTriggering": {
-    message: "트리거하는 중…",
-    description: "Trigger Run button label while the run is being created",
-  },
-  "services.cronTriggerSuccess": {
-    message: "Cron 실행을 트리거했습니다.",
-    description: "Toast after a manual cron run is accepted",
-  },
   "services.cronTriggerError": {
-    message: "실행을 트리거하지 못했습니다.",
-    description: "Fallback inline error when triggering a cron run fails",
-  },
-  "services.cronTriggerConfirmTitle": {
-    message: "지금 실행하시겠습니까?",
-    description: "Trigger Run confirmation dialog title",
-  },
-  "services.cronTriggerConfirmBody": {
-    message:
-      "스케줄과 별개로 실행을 요청합니다. 대기 중인 수동 실행 요청이 있으면 대체되며, 대체 실행이 시작되기 전에 진행 중인 실행이 있으면 취소됩니다.",
+    message: "실행을 트리거하지 못했습니다. 잠시 후 다시 시도하세요.",
     description:
-      "Trigger Run confirmation dialog body when no active run is visible (one may still exist, so state the replacement semantics conditionally)",
+      "Toast, kept until dismissed, when Trigger Run fails and the server gave no message (Render's text, w3/m555)",
   },
-  "services.cronTriggerConfirmBodyPreempt": {
-    message:
-      "이미 실행이 진행 중입니다. 지금 트리거하면 해당 실행이 취소되고 스케줄과 별개로 새 실행이 즉시 시작됩니다.",
+  "services.cronTriggerForbidden": {
+    message: "이 Cron Job을 실행할 권한이 없습니다.",
     description:
-      "Trigger Run confirmation dialog body when a run is already active",
+      "Toast, kept until dismissed, when Trigger Run is refused for permission (Render's text, w3/m555)",
+  },
+  "services.cronTriggerNoBuild": {
+    message: "성공한 빌드가 없습니다. {deploys}에서 확인하세요.",
+    description:
+      "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
   "services.cronRunDetailToggle": {
     message: "실행 상세 정보, {when}에 시작됨",
@@ -6124,6 +6136,46 @@ const koServices: Record<string, TranslationEntry> = {
     message: "매월 {day}일 {time}",
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
+  },
+  "services.cronRunsEveryMinute": {
+    message: "매분",
+    description:
+      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryNMinutes": {
+    message: "{n}분마다",
+    description:
+      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryHour": {
+    message: "매시간",
+    description:
+      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsHourlyAtMinute": {
+    message: "매시 {minute}분",
+    description:
+      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryNHours": {
+    message: "{n}시간마다 {minute}분",
+    description:
+      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsDailyAt": {
+    message: "매일 UTC {time}",
+    description:
+      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsWeeklyAt": {
+    message: "매주 {day} UTC {time}",
+    description:
+      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsMonthlyAt": {
+    message: "매월 {day}일 UTC {time}",
+    description:
+      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
   },
   "services.cronDaySunday": {
     message: "일요일",

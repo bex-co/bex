@@ -516,20 +516,45 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header toggle, below the desktop layout, that shows or hides the slug, instances, revision and age line",
   },
-  "services.headerSchedule": {
-    message: "Schedule:",
-    description:
-      "Service-detail header metadata label for a cron job's schedule",
-  },
   "services.headerLastRun": {
-    message: "Last successful run:",
+    message: "Last successful run",
     description:
-      "Service-detail header metadata label for a cron job's last successful run",
+      "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
-  "services.headerNextRun": {
-    message: "Next run:",
+  "services.headerRuns": {
+    message: "Runs",
     description:
-      "Service-detail header metadata label for a cron job's next scheduled run",
+      "Service-detail header: the word before a cron job's command on its first fact line (Render's \"Runs <command> <schedule>\", w3/m555)",
+  },
+  "services.headerRunsDockerCmd": {
+    message: "{cmd} in {dockerfile}",
+    description:
+      "Service-detail header: what a Docker or image cron job with no command override runs; {cmd} is the code word CMD and {dockerfile} the Dockerfile's path, both shown as code (Render's \"CMD in Dockerfile\", w3/m555)",
+  },
+  "services.headerNoSuccessfulRuns": {
+    message: "No successful runs yet.",
+    description:
+      "Service-detail header: a cron job's second fact line before its first successful run (Render's text, w3/m555)",
+  },
+  "services.suspendedNoticeManual": {
+    message: "Manually suspended",
+    description:
+      "Title of the notice under a suspended cron job's header when its owner suspended it (Render's \"Manually suspended\", w3/m555)",
+  },
+  "services.suspendedNoticeTitle": {
+    message: "Suspended",
+    description:
+      "Title of the notice under a suspended cron job's header when the platform suspended it (Render's fallback \"Suspended\", w3/m555)",
+  },
+  "services.suspendedNoticeBody": {
+    message: "You are not billed for suspended services.",
+    description:
+      "Body of the notice under a suspended cron job's header (Render's text, w3/m555)",
+  },
+  "services.suspendedNoticeResume": {
+    message: "Resume service",
+    description:
+      "The notice's inline action that resumes a suspended cron job (Render's \"Resume service\", w3/m555)",
   },
   "services.headerCopyServiceId": {
     message: "Copy service ID",
@@ -3515,33 +3540,20 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Trigger Run",
     description: "Button that fires an immediate cron run (Render parity)",
   },
-  "services.cronTriggering": {
-    message: "Triggering…",
-    description: "Trigger Run button label while the run is being created",
-  },
-  "services.cronTriggerSuccess": {
-    message: "Cron run triggered.",
-    description: "Toast after a manual cron run is accepted",
-  },
   "services.cronTriggerError": {
-    message: "Couldn't trigger the run.",
-    description: "Fallback inline error when triggering a cron run fails",
-  },
-  "services.cronTriggerConfirmTitle": {
-    message: "Trigger a run now?",
-    description: "Trigger Run confirmation dialog title",
-  },
-  "services.cronTriggerConfirmBody": {
-    message:
-      "This requests a run outside its schedule. It replaces any pending manual run request and cancels any active run before the replacement starts.",
+    message: "Couldn't trigger a run. Try again in a moment.",
     description:
-      "Trigger Run confirmation dialog body when no active run is visible (one may still exist, so state the replacement semantics conditionally)",
+      "Toast, kept until dismissed, when Trigger Run fails and the server gave no message (Render's text, w3/m555)",
   },
-  "services.cronTriggerConfirmBodyPreempt": {
-    message:
-      "A run is already in progress. Triggering now cancels it and starts a new run immediately, outside the schedule.",
+  "services.cronTriggerForbidden": {
+    message: "You don't have permission to run this cron job.",
     description:
-      "Trigger Run confirmation dialog body when a run is already active",
+      "Toast, kept until dismissed, when Trigger Run is refused for permission (Render's text, w3/m555)",
+  },
+  "services.cronTriggerNoBuild": {
+    message: "No successful build detected. View {deploys}.",
+    description:
+      "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
   "services.cronRunDetailToggle": {
     message: "Run details, started {when}",
@@ -6149,6 +6161,46 @@ const enServices: Record<string, TranslationEntry> = {
     message: "On day {day} of every month at {time}",
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
+  },
+  "services.cronRunsEveryMinute": {
+    message: "every minute",
+    description:
+      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryNMinutes": {
+    message: "every {n} minutes",
+    description:
+      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryHour": {
+    message: "every hour",
+    description:
+      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsHourlyAtMinute": {
+    message: "at {minute} minutes past the hour",
+    description:
+      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsEveryNHours": {
+    message: "at {minute} minutes past the hour, every {n} hours",
+    description:
+      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsDailyAt": {
+    message: "at {time} UTC",
+    description:
+      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsWeeklyAt": {
+    message: "at {time} UTC, only on {day}",
+    description:
+      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
+  },
+  "services.cronRunsMonthlyAt": {
+    message: "at {time} UTC, on day {day} of the month",
+    description:
+      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
   },
   "services.cronDaySunday": {
     message: "Sunday",

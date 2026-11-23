@@ -379,13 +379,18 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "検索…",
+    message: "デプロイとコミットを検索",
     description:
-      "Deploys tab: placeholder for client-side deploy-history search",
+      "Placeholder of the deploy list's search field on every service's Deploys page (Render's text, w3/m555)",
   },
   "deploys.listSearchLabel": {
     message: "読み込み済みのデプロイとコミットを検索",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.manualBuild": {
+    message: "手動ビルド",
+    description:
+      "Button beside a repo-backed cron job's deploy search that builds its latest commit and opens the new build (Render's Manual Build, w3/m555)",
   },
   "deploys.listClearSearch": {
     message: "検索をクリア",

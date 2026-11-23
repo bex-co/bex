@@ -197,6 +197,7 @@ describe("toServiceView", () => {
       type: "web_service",
       suspended: true,
       crashLoopSuspended: false,
+      manuallySuspended: false,
       phase: "Hibernated",
       url: "https://app.onbex.co",
       internalAddress: null,
@@ -292,6 +293,20 @@ describe("toServiceView", () => {
     ).toBe(false);
     expect(
       toServiceView(node({ suspended: "suspended" })).crashLoopSuspended,
+    ).toBe(false);
+  });
+
+  // w3/m555: a suspended cron job's notice reads "Manually suspended" only
+  // for Render's user suspender.
+  it("flags a suspension its owner made from the detail query's suspenders", () => {
+    const by = (suspenders: string[]) =>
+      toServiceView(server({ suspended: "suspended", suspenders }))
+        .manuallySuspended;
+    expect(by(["user"])).toBe(true);
+    expect(by(["billing"])).toBe(false);
+    expect(by(["stuck_crashlooping"])).toBe(false);
+    expect(
+      toServiceView(node({ suspended: "suspended" })).manuallySuspended,
     ).toBe(false);
   });
 

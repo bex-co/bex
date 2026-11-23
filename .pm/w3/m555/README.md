@@ -1,21 +1,21 @@
 # w3 · m555 — A cron job's header and actions are Render's: Trigger Run while it runs, the schedule in words, Manual Build on its Deploys page
 
-**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** todo
+**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** todo (t001–t006 and t008–t010 done; t007's production walk waits for a pin that carries the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's cron job header and actions from the walk and the bundle | 30m | — |
-| [t002](t002.md) | Header: Trigger Run while the cron job runs, no Connect or Manual Deploy menu, and Render's disabled reasons | 1h15m | t001 |
-| [t003](t003.md) | Trigger Run's click: no confirm, then Logs on Live tail; the Runs card loses its own button | 45m | t002 |
-| [t004](t004.md) | Header facts: "Runs `<command>` <schedule in words>" and "Last successful run <date>" | 45m | t001 |
-| [t005](t005.md) | Deploys page: Manual Build for a repo-backed cron job, and Render's "Search deploys and commits" on every Deploys page | 1h | t001, w3/m554/t003 |
-| [t006](t006.md) | Skeletons: the header's action slot and facts line, and the Deploys toolbar | 30m | t002, t004, t005 |
+| [t001](done/t001.md) | Record Render's cron job header and actions from the walk and the bundle — **DONE** | 30m | — |
+| [t002](done/t002.md) | Header: Trigger Run while the cron job runs, no Connect or Manual Deploy menu, and Render's disabled reasons — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | Trigger Run's click: no confirm, then Logs on Live tail; the Runs card loses its own button — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | Header facts: "Runs `<command>` <schedule in words>" and "Last successful run <date>" — **DONE** | 45m | t001 |
+| [t005](done/t005.md) | Deploys page: Manual Build for a repo-backed cron job, and Render's "Search deploys and commits" on every Deploys page — **DONE** | 1h | t001, w3/m554/t003 |
+| [t006](done/t006.md) | Skeletons: the header's action slot and facts line, and the Deploys toolbar — **DONE** | 30m | t002, t004, t005 |
 | [t007](t007.md) | Verify in a real browser at 1440 and 390, on dev-3 and on production | 45m | t003, t006 |
-| [t008](t008.md) | Render parity | 30m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008 |
+| [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
 | [t011](t011.md) | Closeout | 10m | t009, t010 |
 
 Total: **11 tasks, about 7h10m**.
@@ -32,6 +32,28 @@ Total: **11 tasks, about 7h10m**.
 - Trigger Run sits only in the Runs card's header, behind a confirm (w4/m114 t003), and stays on Runs.
 - The header shows "Schedule: <expression>"; `describeCron` exists in `features/services/lib/cron.ts`.
 - Deploys search reads "Search…".
+
+## Live walk
+
+### Local, against `yarn local-bex` (2026-11-22, t007 step 1)
+
+**dev-3 could not run.** The shared kind/CAPD cluster's app cluster was not Available and CAPI kept replacing its workers: this host has `fs.inotify.max_user_instances` = 128, under the 512 `scripts/mock-cluster.sh` requires (root `AGENTS.md`, Local cluster workflow), and raising it needs root on the host. `bash scripts/dev-env.sh 3 status` answered nothing on any port. So the walk ran the dashboard from this tree (`vite dev`) against the repository's `local-bex` stub, in Google Chrome headless through `playwright-core`, `en-US`, zone America/Los_Angeles. A Playwright route answered what the stub lacks: the cron job `nightly-report` as repo-backed (`node` runtime, start command `node report.js`, `0 9 * * *`, last success 2026-11-22T09:00:12Z), suspended or not, with or without a live release; `ViewerCapabilities`, `ServerActions` and `DeployActions` allowed; `RunCronJob` answering a pending run. Pending frames were drawn by holding the `Server` read (header) and the Deploys route's chunk, then releasing them.
+
+| Point | Seen at 1440 and 390 | Verdict |
+| --- | --- | --- |
+| Header actions, running | Trigger Run alone (1440 at x 1315, 101×32; 390 at y 122, 101×44); no Connect, no Manual Deploy | holds |
+| Trigger Run's click | no dialog, one `RunCronJob`, landed on `/services/nightly-report/logs?range=live` with Live tail selected; the Runs page then had one Trigger Run (the header's) and no confirm | holds |
+| No build | repo-backed with an empty revision: Trigger Run disabled, tooltip "No successful build detected. View Deploys." | holds |
+| Suspended | no action; the notice "Manually suspended You are not billed for suspended services. Resume service" (1184×46 at 1440, 358×102 at 390) | holds |
+| Facts | "Runs `node report.js` at 09:00 AM UTC" and "Last successful run November 22, 2026 at 1:00 AM" (the viewer's zone), no next run | holds |
+| Header pending against ready | band 189/189 px at 1440 and 209/209 at 390 (running), 239/239 and 255/255 (suspended); the action slot, both facts lines and the notice at the same boxes. The first pass at 390 differed by 30–42 px: the frame's status row wrapped onto a second line where the ready one did not, and the facts' second line wrapped beside Details; t006 fixed both | holds |
+| Deploys | "Search deploys and commits" on the cron job's and the web service's pages; Manual Build only on the cron job's (1440: x 1303 after the search and filter; 390: on the count's line, 113×44); the toolbar row 1136×36 at 1440 and 358×96 at 390 in both states; a click called `TriggerDeploy` once, with no dialog or menu, and opened `/services/nightly-report/deploys/<new deploy>` | holds |
+
+No page errors at either width.
+
+### Production
+
+Waits for a pin that carries the milestone's commit (t007 step 2). Then, as the QA user in `bex-canary`, with a repo-backed cron job and an image-backed one created for the walk (disposable): the header on Runs, Deploys, Events, Logs and Settings at 1440 and 390, Trigger Run's click landing on Live tail with the run's output, the no-build and suspended states, Manual Build building and opening the build, pending against ready for the header and the Deploys toolbar, then cleanup.
 
 ## Definition of done
 

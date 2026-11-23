@@ -28,7 +28,10 @@ import {
   TooltipContent,
 } from "@/common/components/ui/tooltip";
 import { CopyButton } from "@/common/components/copy-button";
-import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
+import { ReservedText } from "@/common/components/reserved-skeleton";
+import { InstantTooltip } from "@/common/components/instant-tooltip";
+import { LocalDateTime } from "@/common/components/local-time";
+import { RelativeAge } from "@/common/components/relative-time";
 import {
   useTranslations,
   type Translate,
@@ -40,6 +43,12 @@ import { useProjects } from "@/features/projects/hooks/use-projects";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { ResumeServiceButton } from "@/features/services/components/resume-service-button";
+import {
+  CRON_SUSPENDED_NOTICE_CLASS,
+  CronSuspendedNotice,
+  CronTriggerRunButton,
+  SLOT,
+} from "@/features/services/components/cron-header-actions";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
@@ -54,6 +63,8 @@ import {
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
+import { describeCronRun } from "@/features/services/lib/cron";
+import { isNativeRuntime } from "@/features/services/lib/runtime";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
 import { computePlanLink } from "@/features/services/lib/compute-page";
 import { autoSleepEligible } from "@/features/services/lib/idle-timeout";
@@ -230,20 +241,39 @@ export function ServiceDetailHeader({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 max-md:[&_button]:min-h-11 md:max-lg:col-start-2 md:max-lg:row-start-1">
-            {/* A static_site has no running instance to SSH into — Render's
-              static header carries only Manual Deploy (w5/m48/t001). */}
-            {!isStaticSite(service) && (
-              <ServiceConnectButton service={service} openPorts={openPorts} />
+            {isCron(service) ? (
+              // Render's cron header: Trigger Run while it runs and nothing
+              // while suspended, where the notice below offers Resume. Its
+              // build is Manual Build on the Deploys page, and it has no SSH
+              // (w3/m555).
+              service.suspended ? null : (
+                <CronTriggerRunButton service={service} />
+              )
+            ) : (
+              <>
+                {/* A static_site has no running instance to SSH into —
+                  Render's static header carries only Manual Deploy
+                  (w5/m48/t001). */}
+                {!isStaticSite(service) && (
+                  <ServiceConnectButton
+                    service={service}
+                    openPorts={openPorts}
+                  />
+                )}
+                {service.suspended && onRun ? (
+                  <ResumeServiceButton
+                    service={service}
+                    pending={pending}
+                    onRun={onRun}
+                    size="sm"
+                  />
+                ) : null}
+                <ManualDeployButton
+                  service={service}
+                  pending={pending !== null}
+                />
+              </>
             )}
-            {service.suspended && onRun ? (
-              <ResumeServiceButton
-                service={service}
-                pending={pending}
-                onRun={onRun}
-                size="sm"
-              />
-            ) : null}
-            <ManualDeployButton service={service} pending={pending !== null} />
           </div>
         </div>
 
@@ -310,32 +340,7 @@ export function ServiceDetailHeader({
           ) : null}
 
           {isCron(service) ? (
-            <>
-              <div className="text-muted-foreground flex items-center gap-1.5">
-                <span>{t("services.headerSchedule")}</span>
-                <span className="text-foreground font-mono text-xs">
-                  {service.schedule || "—"}
-                </span>
-              </div>
-              {service.lastSuccessfulRunAt ? (
-                <div className="text-muted-foreground flex items-center gap-1.5">
-                  <span>{t("services.headerLastRun")}</span>
-                  <RelativeAge
-                    value={service.lastSuccessfulRunAt}
-                    className="text-foreground text-xs"
-                  />
-                </div>
-              ) : null}
-              {service.nextRunAt ? (
-                <div className="text-muted-foreground flex items-center gap-1.5">
-                  <span>{t("services.headerNextRun")}</span>
-                  <RelativeUntil
-                    value={service.nextRunAt}
-                    className="text-foreground text-xs"
-                  />
-                </div>
-              ) : null}
-            </>
+            <CronRunFacts service={service} />
           ) : isPrivateService(service) && service.internalAddress ? (
             // A private service has no public URL — Render's header shows its
             // Service Address (the private-network `<slug>:<port>`) as copyable
@@ -406,6 +411,14 @@ export function ServiceDetailHeader({
         </div>
 
         <HeaderFacts service={service} id={factsId} open={factsOpen} />
+
+        {isCron(service) && service.suspended ? (
+          <CronSuspendedNotice
+            service={service}
+            pending={pending}
+            onRun={onRun}
+          />
+        ) : null}
 
         {service.undeployedChanges ? (
           // Save only, cancellation and rollback can leave saved settings different
@@ -496,6 +509,101 @@ function RepoLabel({ repo }: { repo: string }) {
     <>
       <span className="max-sm:hidden">{label.slice(0, split + 2)}</span>
       {label.slice(split + 2)}
+    </>
+  );
+}
+
+/** The Dockerfile instruction a container cron job runs when nothing
+ *  overrides it: a keyword, not words. */
+const DOCKER_CMD = "CMD";
+const DEFAULT_DOCKERFILE = "Dockerfile";
+
+/**
+ * A cron job's two fact lines, as Render's header has them (w3/m555): "Runs
+ * <command> <schedule in words>", then "Last successful run <date>" or "No
+ * successful runs yet.". They take the live URL's place; from `lg` they are
+ * their own lines under the Service ID and the repository, as on Render.
+ *
+ * What runs is the command override, else a native runtime's start command,
+ * else (a Dockerfile or image cron job) the image's own CMD, which Render
+ * words "CMD in Dockerfile" for an image too. A schedule bex cannot put in
+ * words reads as its expression.
+ */
+function CronRunFacts({ service }: { service: ServiceView }) {
+  const { t, i18n } = useTranslations();
+  const schedule = service.schedule?.trim() ?? "";
+  const words = schedule ? describeCronRun(schedule, t, i18n.language) : null;
+  const command = service.command?.trim()
+    ? service.command
+    : isNativeRuntime(service.runtime) && service.startCommand?.trim()
+      ? service.startCommand
+      : null;
+  const codeClass = "text-foreground font-mono text-xs";
+
+  let what: ReactNode;
+  if (command) {
+    what = (
+      <code title={command} className={cn(codeClass, "min-w-[4ch] truncate")}>
+        {command}
+      </code>
+    );
+  } else {
+    const dockerfile = service.dockerfilePath?.trim() || DEFAULT_DOCKERFILE;
+    const parts = t("services.headerRunsDockerCmd", {
+      cmd: `${SLOT}cmd${SLOT}`,
+      dockerfile: `${SLOT}dockerfile${SLOT}`,
+    }).split(SLOT);
+    what = (
+      <span className="min-w-[4ch] truncate">
+        {parts.map((part, i) =>
+          i % 2 === 0 ? (
+            part
+          ) : (
+            <code key={part} className={codeClass}>
+              {part === "cmd" ? DOCKER_CMD : dockerfile}
+            </code>
+          ),
+        )}
+      </span>
+    );
+  }
+
+  // Two items of the row, so on a phone "Details" sits beside the first and
+  // the second takes the whole width; from `lg` each is its own line.
+  return (
+    <>
+      {/* The spaces between the items are the sentence's, for whoever reads
+          its text; the flex gap is what draws them. A long command truncates
+          before the schedule's words do. */}
+      <p
+        data-header-item="cron-runs"
+        className="text-muted-foreground flex min-w-0 items-baseline gap-x-1.5 max-sm:self-center lg:basis-full"
+      >
+        <span className="shrink-0">{t("services.headerRuns")}</span> {what}{" "}
+        {words ? (
+          <span className="min-w-0">{words}</span>
+        ) : schedule ? (
+          <code className={cn(codeClass, "min-w-0 truncate")}>{schedule}</code>
+        ) : null}
+      </p>
+      <p
+        data-header-item="cron-last-run"
+        className="text-muted-foreground min-w-0 max-sm:col-span-2 lg:basis-full"
+      >
+        {service.lastSuccessfulRunAt ? (
+          <>
+            {t("services.headerLastRun")}{" "}
+            <InstantTooltip
+              value={service.lastSuccessfulRunAt}
+              className="text-foreground"
+            >
+              <LocalDateTime value={service.lastSuccessfulRunAt} as="span" />
+            </InstantTooltip>
+          </>
+        ) : (
+          t("services.headerNoSuccessfulRuns")
+        )}
+      </p>
     </>
   );
 }
@@ -901,6 +1009,8 @@ function HeaderFacts({
 const GIT_SOURCE: CachedServiceSource = {
   repository: true,
   registryCredential: false,
+  cron: false,
+  suspended: false,
 };
 
 /**
@@ -914,13 +1024,20 @@ const GIT_SOURCE: CachedServiceSource = {
  * image-backed service has no repository item, and at 1024 its Service ID and
  * URL fit on one line where a Git service's take two (w3/094). `source` comes
  * from the cache; without it the frame is a Git service's.
+ *
+ * A cron job's frame is its own (w3/m555): one action, Trigger Run, while it
+ * runs and none while suspended, its two "Runs …" items in the URL's place,
+ * and a suspended one's notice under the facts, its words laid out invisibly
+ * so it wraps where the ready notice does.
  */
 export function ServiceDetailHeaderSkeleton({
   source,
 }: {
   source?: CachedServiceSource | null;
 }) {
-  const { repository, registryCredential } = source ?? GIT_SOURCE;
+  const { t } = useTranslations();
+  const { repository, registryCredential, cron, suspended } =
+    source ?? GIT_SOURCE;
   return (
     <div
       aria-hidden="true"
@@ -931,16 +1048,31 @@ export function ServiceDetailHeaderSkeleton({
         <Skeleton className="h-4 w-24" />
         <div className="flex flex-wrap items-center justify-between gap-3 md:max-lg:grid md:max-lg:grid-cols-[minmax(0,1fr)_auto] md:max-lg:gap-y-2 lg:flex-nowrap lg:items-start">
           <div className="flex min-w-0 flex-wrap items-center gap-2 md:max-lg:contents">
-            <Skeleton className="h-7 w-48 max-w-[50vw]" />
+            {/* Sized as a typical ready row ("Service", a status, a plan),
+                so at 390 it fits one line where the ready one does instead
+                of wrapping the plan onto a second (w3/m555). */}
+            <Skeleton className="h-7 w-48 max-w-[50vw] max-sm:w-36" />
             <div className="contents sm:flex sm:items-center sm:gap-2 md:max-lg:col-span-2 md:max-lg:row-start-2">
-              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-12" />
               <Skeleton className="h-[22px] w-16 rounded-full" />
-              <Skeleton className="h-[22px] w-20 rounded-full" />
+              <Skeleton className="h-[22px] w-14 rounded-full" />
             </div>
           </div>
           <div className="flex items-center gap-2 md:max-lg:col-start-2 md:max-lg:row-start-1">
-            <Skeleton data-touch-spacer="" className="h-8 w-24" />
-            <Skeleton data-touch-spacer="" className="h-8 w-28" />
+            {cron ? (
+              suspended ? null : (
+                <Skeleton
+                  data-touch-spacer=""
+                  data-skeleton-item="trigger-run"
+                  className="h-8 w-[101px]"
+                />
+              )
+            ) : (
+              <>
+                <Skeleton data-touch-spacer="" className="h-8 w-24" />
+                <Skeleton data-touch-spacer="" className="h-8 w-28" />
+              </>
+            )}
           </div>
         </div>
         {/* Placed as the ready row is: on a phone every item stacks in the
@@ -971,13 +1103,30 @@ export function ServiceDetailHeaderSkeleton({
               <Skeleton className="h-4 w-60" />
             </div>
           ) : null}
-          <div
-            data-skeleton-item="service-url"
-            className="flex items-center gap-1.5"
-          >
-            <Skeleton className="h-4 w-56" />
-            <Skeleton data-touch-spacer="" className="size-8" />
-          </div>
+          {cron ? (
+            <>
+              <div
+                data-skeleton-item="cron-runs"
+                className="flex h-5 min-w-0 items-center lg:basis-full"
+              >
+                <Skeleton className="h-4 w-64 max-w-full" />
+              </div>
+              <div
+                data-skeleton-item="cron-last-run"
+                className="flex h-5 min-w-0 items-center max-sm:col-span-2 lg:basis-full"
+              >
+                <Skeleton className="h-4 w-60 max-w-full" />
+              </div>
+            </>
+          ) : (
+            <div
+              data-skeleton-item="service-url"
+              className="flex items-center gap-1.5"
+            >
+              <Skeleton className="h-4 w-56" />
+              <Skeleton data-touch-spacer="" className="size-8" />
+            </div>
+          )}
           <div
             data-skeleton-item="details-toggle"
             data-touch-spacer=""
@@ -991,6 +1140,26 @@ export function ServiceDetailHeaderSkeleton({
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 w-16" />
         </div>
+        {cron && suspended ? (
+          <div
+            data-skeleton-item="cron-suspended-notice"
+            className={CRON_SUSPENDED_NOTICE_CLASS}
+          >
+            <Skeleton className="size-4 shrink-0 rounded-full" />
+            <span className="relative font-medium">
+              <ReservedText>{t("services.suspendedNoticeManual")}</ReservedText>
+            </span>{" "}
+            <span className="relative">
+              <ReservedText>{t("services.suspendedNoticeBody")}</ReservedText>
+            </span>{" "}
+            <span
+              data-touch-spacer=""
+              className="relative inline-flex h-8 items-center"
+            >
+              <ReservedText>{t("services.suspendedNoticeResume")}</ReservedText>
+            </span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

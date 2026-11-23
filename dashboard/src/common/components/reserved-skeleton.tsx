@@ -23,15 +23,24 @@ export function ReservedText({ children }: { children: React.ReactNode }) {
 export function ReservedButton({
   variant,
   size,
+  className,
   children,
 }: {
   variant: "outline" | "destructive" | "default";
   size?: "sm";
+  /** The ready button's own size classes, beyond its variant's. */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
     <span className="relative inline-flex shrink-0">
-      <span className={cn(buttonVariants({ variant, size }), "invisible")}>
+      <span
+        className={cn(
+          buttonVariants({ variant, size }),
+          "invisible",
+          className,
+        )}
+      >
         {children}
       </span>
       <SkeletonSpan />

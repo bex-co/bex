@@ -64,6 +64,14 @@ vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
     restart: restartServer,
   }),
 }));
+const triggerCronRun = vi.fn(async () => {});
+let cronTriggering = false;
+vi.mock("@/features/services/hooks/use-trigger-cron-run", () => ({
+  useTriggerCronRun: () => ({
+    triggering: cronTriggering,
+    trigger: triggerCronRun,
+  }),
+}));
 vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
   useAutoDeploy: () => ({ setAutoDeploy: vi.fn(), busy: false }),
 }));
@@ -95,6 +103,8 @@ beforeEach(() => {
   });
   triggerDeploy.mockClear();
   restartServer.mockClear();
+  triggerCronRun.mockClear();
+  cronTriggering = false;
 });
 
 vi.mock("@/features/workspaces/context/hooks", async () => {
@@ -692,76 +702,149 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText("Registry credential:")).not.toBeInTheDocument();
   });
 
-  it("shows a cron job's schedule in place of the URL row", async () => {
-    renderHeader(
-      svc({ type: "cron_job", url: null, schedule: "*/5 * * * *", plan: null }),
-    );
-
-    expect(await screen.findByText("Cron Job")).toBeInTheDocument();
-    expect(screen.getByText("*/5 * * * *")).toBeInTheDocument();
-    expect(screen.queryByText("https://app.onbex.co")).not.toBeInTheDocument();
-  });
-
-  it("shows a cron job's last and next run when present", async () => {
+  // w3/m555: Render's facts under the source: "Runs <command> <schedule in
+  // words>", then the last successful run, and no next run.
+  it("says what a cron job runs and when, in Render's words, where the URL was", async () => {
     renderHeader(
       svc({
         type: "cron_job",
         url: null,
-        schedule: "*/5 * * * *",
         plan: null,
-        lastSuccessfulRunAt: "2020-01-01T00:00:00Z", // long past → some age
-        nextRunAt: new Date(Date.now() + 5 * 60_000).toISOString(), // ~in 5m
+        schedule: "0 9 * * *",
+        command: "node report.js",
       }),
     );
 
-    expect(await screen.findByText("Last successful run:")).toBeInTheDocument();
-    expect(screen.getByText("Next run:")).toBeInTheDocument();
-    expect(screen.getByText(/^in \d+m$/)).toBeInTheDocument();
+    const command = await screen.findByText("node report.js");
+    expect(command.tagName).toBe("CODE");
+    const line = command.closest("p")!;
+    expect(line).toHaveTextContent("Runs node report.js at 09:00 AM UTC");
+    expect(screen.queryByText("https://app.onbex.co")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Schedule/)).not.toBeInTheDocument();
   });
 
-  it("advances cron and creation ages for two minutes with unchanged service facts", async () => {
+  it.each([
+    ["* * * * *", "every minute"],
+    ["*/5 * * * *", "every 5 minutes"],
+    ["0 * * * *", "every hour"],
+    ["30 13 * * 1", "at 01:30 PM UTC, only on Monday"],
+  ])("words %s as %s", async (schedule, words) => {
+    renderHeader(
+      svc({ type: "cron_job", url: null, schedule, command: "./job" }),
+    );
+    expect(await screen.findByText(words)).toBeInTheDocument();
+  });
+
+  it("shows a schedule it cannot word as the expression", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "0 9 * * 1-5",
+        command: "./job",
+      }),
+    );
+    const expression = await screen.findByText("0 9 * * 1-5");
+    expect(expression.tagName).toBe("CODE");
+  });
+
+  it("names a native cron job's start command when nothing overrides it", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "* * * * *",
+        command: null,
+        runtime: "node",
+        startCommand: "npm run report",
+      }),
+    );
+    expect(await screen.findByText("npm run report")).toBeInTheDocument();
+  });
+
+  // Render's bundle words a Docker or image cron job with no command as the
+  // Dockerfile's CMD, the image-backed one included.
+  it.each([
+    ["an image", { runtime: "image", dockerfilePath: null }, "Dockerfile"],
+    [
+      "a Dockerfile build",
+      { runtime: "docker", dockerfilePath: "jobs/Dockerfile" },
+      "jobs/Dockerfile",
+    ],
+  ])(
+    "says %s cron job with no command runs CMD in its Dockerfile",
+    async (_, source, dockerfile) => {
+      renderHeader(
+        svc({
+          type: "cron_job",
+          url: null,
+          schedule: "* * * * *",
+          command: null,
+          ...source,
+        }),
+      );
+      const cmd = await screen.findByText("CMD");
+      expect(cmd.tagName).toBe("CODE");
+      expect(screen.getByText(dockerfile).tagName).toBe("CODE");
+      expect(cmd.closest("p")).toHaveTextContent(
+        `Runs CMD in ${dockerfile} every minute`,
+      );
+    },
+  );
+
+  it("shows a cron job's last successful run as a local date, and no next run", async () => {
+    const lastRun = "2026-11-21T09:00:00Z";
+    const { container } = renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "0 9 * * *",
+        command: "./job",
+        lastSuccessfulRunAt: lastRun,
+        nextRunAt: "2026-11-22T09:00:00Z",
+      }),
+    );
+
+    const label = await screen.findByText(/^Last successful run/);
+    const instant = label.querySelector("time")!;
+    expect(instant).toHaveAttribute("dateTime", lastRun);
+    // Hydrated, the viewer's own clock: UTC in the suite.
+    await waitFor(() =>
+      expect(instant).toHaveTextContent("November 21, 2026 at 9:00 AM"),
+    );
+    expect(screen.queryByText(/Next run/)).not.toBeInTheDocument();
+    expect(
+      container.querySelector('time[datetime="2026-11-22T09:00:00Z"]'),
+    ).toBeNull();
+  });
+
+  it("advances a cron job's creation age for two minutes with unchanged service facts", async () => {
     const now = Date.parse("2026-10-02T12:00:00Z");
     const clock = vi.spyOn(Date, "now").mockReturnValue(now);
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     const createdAt = new Date(now - 4 * 60_000).toISOString();
-    const lastSuccessfulRunAt = new Date(now - 10_000).toISOString();
-    const nextRunAt = new Date(now + 4 * 60_000).toISOString();
     const service = svc({
       type: "cron_job",
       url: null,
       plan: null,
       schedule: "*/5 * * * *",
       createdAt,
-      lastSuccessfulRunAt,
-      nextRunAt,
     });
     const view = renderHeader(service);
     try {
-      await screen.findByText("Last successful run:");
+      await screen.findByText("No successful runs yet.");
       const created = view.container.querySelector(
         `time[datetime="${createdAt}"]`,
       );
-      const last = view.container.querySelector(
-        `time[datetime="${lastSuccessfulRunAt}"]`,
-      );
-      const next = view.container.querySelector(
-        `time[datetime="${nextRunAt}"]`,
-      );
       expect(created).toHaveTextContent("4m");
-      expect(last).toHaveTextContent("now");
-      expect(next).toHaveTextContent("in 4m");
       for (const minutes of [1, 2]) {
         clock.mockReturnValue(now + minutes * 60_000);
         act(() => vi.advanceTimersByTime(60_000));
         expect(created).toHaveTextContent(`${4 + minutes}m`);
-        expect(last).toHaveTextContent(`${minutes}m`);
-        expect(next).toHaveTextContent(`in ${4 - minutes}m`);
         expect(created).toHaveAttribute("dateTime", createdAt);
-        expect(last).toHaveAttribute("dateTime", lastSuccessfulRunAt);
-        expect(next).toHaveAttribute("dateTime", nextRunAt);
       }
       expect(triggerDeploy).not.toHaveBeenCalled();
-      expect(restartServer).not.toHaveBeenCalled();
+      expect(triggerCronRun).not.toHaveBeenCalled();
     } finally {
       view.unmount();
       vi.useRealTimers();
@@ -769,47 +852,175 @@ describe("ServiceDetailHeader", () => {
     }
   });
 
-  // w6/m102: the cron header's ages go through RelativeAge/RelativeUntil, whose
-  // <time dateTime> carries the SSR/hydration guard (relative-time.test.tsx owns
-  // the mismatch proof). This pins the migration to this block — a plain <span>
-  // here would mean the guard was dropped.
-  it("renders the cron ages as machine-readable, hydration-guarded <time>", async () => {
-    const lastRun = "2020-01-01T00:00:00Z";
-    const nextRun = new Date(Date.now() + 5 * 60_000).toISOString();
-    const { container } = renderHeader(
-      svc({
-        type: "cron_job",
-        url: null,
-        schedule: "*/5 * * * *",
-        plan: null,
-        lastSuccessfulRunAt: lastRun,
-        nextRunAt: nextRun,
-      }),
-    );
-
-    await screen.findByText("Last successful run:");
-    const instants = Array.from(container.querySelectorAll("time")).map((el) =>
-      el.getAttribute("dateTime"),
-    );
-    expect(instants).toContain(lastRun);
-    expect(instants).toContain(nextRun);
-  });
-
-  it("omits last/next run rows when the cron has never run and has no next time", async () => {
+  it("says a cron job has no successful runs yet", async () => {
     renderHeader(
       svc({
         type: "cron_job",
         url: null,
         schedule: "*/5 * * * *",
-        plan: null,
+        command: "./job",
         lastSuccessfulRunAt: null,
-        nextRunAt: null,
       }),
     );
+    expect(
+      await screen.findByText("No successful runs yet."),
+    ).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText("Cron Job")).toBeInTheDocument();
-    expect(screen.queryByText("Last successful run:")).not.toBeInTheDocument();
-    expect(screen.queryByText("Next run:")).not.toBeInTheDocument();
+  // w3/m555: a running cron job's header has one action, Trigger Run: no
+  // Connect (a cron job has no SSH) and no Manual Deploy menu (its build is
+  // Manual Build on the Deploys page).
+  it("gives a running cron job Trigger Run and no other action", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ type: "cron_job", url: null, schedule: "* * * * *" }), {
+      onRun: vi.fn(),
+    });
+
+    const button = await screen.findByRole("button", { name: "Trigger Run" });
+    expect(button).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Manual Deploy" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+
+    await user.click(button);
+    expect(triggerCronRun).toHaveBeenCalledOnce();
+    // Render's click has no confirm.
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps Trigger Run's place while it runs", async () => {
+    cronTriggering = true;
+    renderHeader(svc({ type: "cron_job", url: null, schedule: "* * * * *" }));
+    expect(
+      await screen.findByRole("button", { name: "Trigger Run" }),
+    ).toBeDisabled();
+  });
+
+  it("disables Trigger Run on a repo-backed cron job whose build never went live, linking Deploys", async () => {
+    const user = userEvent.setup();
+    renderHeader(
+      svc({ type: "cron_job", url: null, schedule: "* * * * *", revision: "" }),
+    );
+
+    const button = await screen.findByRole("button", { name: "Trigger Run" });
+    expect(button).toBeDisabled();
+    await user.hover(button.parentElement!);
+    const tip = await screen.findByRole("tooltip");
+    expect(tip).toHaveTextContent(
+      "No successful build detected. View Deploys.",
+    );
+    expect(within(tip).getByRole("link", { name: "Deploys" })).toHaveAttribute(
+      "href",
+      "/services/app/deploys",
+    );
+    expect(triggerCronRun).not.toHaveBeenCalled();
+  });
+
+  it("lets an image-backed cron job run before any release went live", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "* * * * *",
+        repo: null,
+        branch: null,
+        imagePath: "docker.io/library/busybox:1.36",
+        revision: "",
+      }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Trigger Run" }),
+    ).toBeEnabled();
+  });
+
+  it.each([
+    [
+      "a role without the permission",
+      { outcome: "denied" as const },
+      "Your role can’t perform this action. Ask a workspace admin.",
+    ],
+    [
+      "a precondition the server reports",
+      { precondition: "suspended" },
+      "Unavailable while the service is suspended. Resume it first.",
+    ],
+  ])("disables Trigger Run for %s, with its reason", async (_, gate, text) => {
+    resourceActions = mockAllowedResourceActions("app", { cron_run_now: gate });
+    const user = userEvent.setup();
+    renderHeader(svc({ type: "cron_job", url: null, schedule: "* * * * *" }));
+
+    const button = await screen.findByRole("button", { name: "Trigger Run" });
+    expect(button).toBeDisabled();
+    await user.hover(button.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(text);
+  });
+
+  // w3/m555: Render's suspended cron header has no action; its notice says so
+  // and offers Resume service.
+  it("gives a suspended cron job no header action, and Render's notice with Resume service", async () => {
+    const user = userEvent.setup();
+    const onRun = vi.fn().mockResolvedValue({ status: "success" });
+    // Resume rechecks its decision before it dispatches (w4/m159).
+    permissionQuery.mockResolvedValue({
+      data: {
+        serverActions: [
+          {
+            action: "resume",
+            outcome: "allowed",
+            reason: null,
+            precondition: null,
+          },
+        ],
+      },
+    });
+    const service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "* * * * *",
+      suspended: true,
+      manuallySuspended: true,
+    });
+    renderHeader(service, { onRun });
+
+    const notice = await screen.findByText("Manually suspended");
+    expect(notice.closest('[role="status"]')).toHaveTextContent(
+      "Manually suspended You are not billed for suspended services. Resume service",
+    );
+    for (const name of ["Trigger Run", "Connect", "Manual Deploy", "Resume"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+
+    await user.click(screen.getByRole("button", { name: "Resume service" }));
+    await waitFor(() => expect(onRun).toHaveBeenCalledWith("resume", service));
+  });
+
+  it("titles a suspension the platform made Suspended", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "* * * * *",
+        suspended: true,
+        manuallySuspended: false,
+      }),
+      { onRun: vi.fn() },
+    );
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(
+      "Suspended You are not billed for suspended services. Resume service",
+    );
+    expect(screen.queryByText("Manually suspended")).toBeNull();
+  });
+
+  it("keeps a suspended web service's header as it was", async () => {
+    renderHeader(svc({ suspended: true, manuallySuspended: true }), {
+      onRun: vi.fn(),
+    });
+    expect(
+      await screen.findByRole("button", { name: "Resume" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manual Deploy" })).toBeVisible();
+    expect(screen.queryByText("Manually suspended")).toBeNull();
   });
 
   it("deploys the latest commit directly from the Manual Deploy dropdown", async () => {
@@ -1169,25 +1380,45 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
     [
       "a Git service",
       svc(),
-      { repository: true, registryCredential: false },
+      {
+        repository: true,
+        registryCredential: false,
+        cron: false,
+        suspended: false,
+      },
       ["repository"],
     ],
     [
       "an image-backed service",
       svc({ repo: "", branch: null }),
-      { repository: false, registryCredential: false },
+      {
+        repository: false,
+        registryCredential: false,
+        cron: false,
+        suspended: false,
+      },
       [],
     ],
     [
       "an image pulled with a registry credential",
       svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),
-      { repository: false, registryCredential: true },
+      {
+        repository: false,
+        registryCredential: true,
+        cron: false,
+        suspended: false,
+      },
       ["registry-credential"],
     ],
     [
       "a Git service whose Dockerfile pulls with a registry credential",
       svc({ registryCredentialId: "rgc-private" }),
-      { repository: true, registryCredential: true },
+      {
+        repository: true,
+        registryCredential: true,
+        cron: false,
+        suspended: false,
+      },
       ["repository", "registry-credential"],
     ],
   ])("draws %s's source items", async (_, service, source, items) => {
@@ -1225,7 +1456,12 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
 
     const { container } = render(
       <ServiceDetailHeaderSkeleton
-        source={{ repository: false, registryCredential: true }}
+        source={{
+          repository: false,
+          registryCredential: true,
+          cron: false,
+          suspended: false,
+        }}
       />,
     );
     const slot = container.querySelector(
@@ -1242,5 +1478,69 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
   it("draws a Git service's items while nothing cached has said", () => {
     const { container } = render(<ServiceDetailHeaderSkeleton source={null} />);
     expect(drawn(container)).toEqual(["repository"]);
+  });
+});
+
+// w3/m555: a cron job's frame is its own. Running: one action slot, Trigger
+// Run's, and the two "Runs …" lines in the URL's place. Suspended: no action
+// and the notice, its words laid out as the ready one's are.
+describe("ServiceDetailHeaderSkeleton for a cron job", () => {
+  const CRON = { repository: true, registryCredential: false, cron: true };
+  const actionSlots = (container: Element) =>
+    container.querySelectorAll(
+      ".md\\:max-lg\\:col-start-2 > [data-touch-spacer]",
+    ).length;
+
+  it("reserves Trigger Run alone and the two facts lines while it runs", async () => {
+    renderHeader(svc({ type: "cron_job", url: null, schedule: "* * * * *" }));
+    const ready = await screen.findByRole("button", { name: "Trigger Run" });
+    expect(ready.closest(".md\\:max-lg\\:col-start-2")!.children).toHaveLength(
+      1,
+    );
+    const items = ["cron-runs", "cron-last-run"];
+
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton source={{ ...CRON, suspended: false }} />,
+    );
+    expect(actionSlots(container)).toBe(1);
+    expect(
+      container.querySelector('[data-skeleton-item="trigger-run"]'),
+    ).toHaveAttribute("data-touch-spacer");
+    for (const item of items) {
+      const ready = document.querySelector(`[data-header-item="${item}"]`)!;
+      const slot = container.querySelector(`[data-skeleton-item="${item}"]`)!;
+      // A text-sm line: 20px. On a phone the last run spans both columns,
+      // beside nothing; from `lg` each is its own line.
+      expect(slot).toHaveClass("h-5");
+      const placement = (el: Element) =>
+        [...el.classList].filter((c) => /col-span|basis/.test(c)).sort();
+      expect(placement(slot)).toEqual(placement(ready));
+    }
+    expect(
+      container.querySelector('[data-skeleton-item="service-url"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-skeleton-item="cron-suspended-notice"]'),
+    ).toBeNull();
+  });
+
+  it("reserves no action and the notice while it is suspended", () => {
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton source={{ ...CRON, suspended: true }} />,
+    );
+    expect(actionSlots(container)).toBe(0);
+    const notice = container.querySelector(
+      '[data-skeleton-item="cron-suspended-notice"]',
+    )!;
+    expect(notice).toHaveTextContent(
+      "Manually suspended You are not billed for suspended services. Resume service",
+    );
+    // The resume link's slot grows with the touch rule, as the ready one does.
+    expect(notice.lastElementChild).toHaveAttribute("data-touch-spacer");
+  });
+
+  it("keeps every other type's two action slots", () => {
+    const { container } = render(<ServiceDetailHeaderSkeleton />);
+    expect(actionSlots(container)).toBe(2);
   });
 });

@@ -8,6 +8,7 @@
 // as "Every Sunday", then failed on submit) nor refuse one it accepts.
 
 import type { Translate } from "@/common/hooks/use-translations";
+import { dashboardLanguage } from "@/common/lib/format/language";
 
 type FieldSpec = {
   min: number;
@@ -233,12 +234,20 @@ function stepShape(
   return (spec.max - spec.min + 1) % step === 0 ? "uniform" : "uneven";
 }
 
-// describeCron renders a valid 5-field expression as a short human-readable
-// phrase (Render shows one beside the schedule field) in the caller's active
-// language, best-effort: it names the common shapes and returns null for
-// anything unusual or invalid so the caller simply shows no preview. Schedules
-// run in UTC.
-export function describeCron(s: string, t: Translate): string | null {
+// The shapes the two phrasings below name. Times are UTC, as every schedule
+// runs; anything else (ranges, lists, a step that does not divide its field)
+// has no shape, so neither describer claims a pattern it would misstate.
+type CronShape =
+  | { kind: "everyMinute" }
+  | { kind: "everyNMinutes"; n: number }
+  | { kind: "everyHour" }
+  | { kind: "hourlyAtMinute"; minute: string }
+  | { kind: "everyNHours"; minute: string; n: number }
+  | { kind: "daily"; hour: string; minute: string }
+  | { kind: "weekly"; hour: string; minute: string; day: number }
+  | { kind: "monthly"; hour: string; minute: string; day: string };
+
+function cronShape(s: string): CronShape | null {
   const expr = s.trim();
   if (!isValidCron(expr)) return null;
   const [minute, hour, dom, month, dow] = expr
@@ -247,19 +256,17 @@ export function describeCron(s: string, t: Translate): string | null {
   const allDates = dom === "*" && month === "*" && dow === "*";
 
   if (minute === "*" && hour === "*" && allDates)
-    return t("services.cronEveryMinute");
+    return { kind: "everyMinute" };
 
   const stepMinute = /^\*\/(\d+)$/.exec(minute);
   if (stepMinute && hour === "*" && allDates) {
     switch (stepShape(Number(stepMinute[1]), FIELDS[0])) {
       case "uniform":
-        return t("services.cronEveryNMinutes", {
-          n: String(Number(stepMinute[1])),
-        });
+        return { kind: "everyNMinutes", n: Number(stepMinute[1]) };
       // Wider than the minute field: only minute 0 ever fires, so it is hourly
       // — the same schedule as "0 * * * *", and described the same way.
       case "start-only":
-        return t("services.cronEveryHour");
+        return { kind: "everyHour" };
       default:
         return null;
     }
@@ -269,12 +276,10 @@ export function describeCron(s: string, t: Translate): string | null {
   if (/^\d+$/.test(minute) && stepHour && allDates) {
     switch (stepShape(Number(stepHour[1]), FIELDS[1])) {
       case "uniform":
-        return t("services.cronEveryNHours", {
-          n: String(Number(stepHour[1])),
-        });
+        return { kind: "everyNHours", minute, n: Number(stepHour[1]) };
       // Wider than the hour field: only hour 0 ever fires, so it is daily.
       case "start-only":
-        return t("services.cronDailyAt", { time: hhmm("0", minute) });
+        return { kind: "daily", hour: "0", minute };
       default:
         return null;
     }
@@ -282,24 +287,115 @@ export function describeCron(s: string, t: Translate): string | null {
 
   if (/^\d+$/.test(minute) && hour === "*" && allDates) {
     return minute === "0"
-      ? t("services.cronEveryHour")
-      : t("services.cronHourlyAtMinute", { minute });
+      ? { kind: "everyHour" }
+      : { kind: "hourlyAtMinute", minute };
   }
 
   // Single minute + single hour: a daily/weekly/monthly time.
   if (/^\d+$/.test(minute) && /^\d+$/.test(hour)) {
-    const time = hhmm(hour, minute);
-    if (allDates) return t("services.cronDailyAt", { time });
+    if (allDates) return { kind: "daily", hour, minute };
     if (dom === "*" && month === "*" && /^\d+$/.test(dow)) {
-      return t("services.cronWeeklyAt", {
-        day: t(DAY_NAME_KEYS[Number(dow)]),
-        time,
-      });
+      return { kind: "weekly", hour, minute, day: Number(dow) };
     }
     if (dow === "*" && month === "*" && /^\d+$/.test(dom)) {
-      return t("services.cronMonthlyAt", { day: dom, time });
+      return { kind: "monthly", hour, minute, day: dom };
     }
   }
 
   return null;
+}
+
+// describeCron renders a valid 5-field expression as a short human-readable
+// phrase (Render shows one beside the schedule field) in the caller's active
+// language, best-effort: it names the common shapes and returns null for
+// anything unusual or invalid so the caller simply shows no preview. Schedules
+// run in UTC.
+export function describeCron(s: string, t: Translate): string | null {
+  const shape = cronShape(s);
+  switch (shape?.kind) {
+    case "everyMinute":
+      return t("services.cronEveryMinute");
+    case "everyNMinutes":
+      return t("services.cronEveryNMinutes", { n: String(shape.n) });
+    case "everyHour":
+      return t("services.cronEveryHour");
+    case "hourlyAtMinute":
+      return t("services.cronHourlyAtMinute", { minute: shape.minute });
+    case "everyNHours":
+      return t("services.cronEveryNHours", { n: String(shape.n) });
+    case "daily":
+      return t("services.cronDailyAt", {
+        time: hhmm(shape.hour, shape.minute),
+      });
+    case "weekly":
+      return t("services.cronWeeklyAt", {
+        day: t(DAY_NAME_KEYS[shape.day]),
+        time: hhmm(shape.hour, shape.minute),
+      });
+    case "monthly":
+      return t("services.cronMonthlyAt", {
+        day: shape.day,
+        time: hhmm(shape.hour, shape.minute),
+      });
+    default:
+      return null;
+  }
+}
+
+/**
+ * The time a "Runs … at" phrase names: English reads Render's 12-hour clock
+ * ("09:00 AM", cronstrue's form), every other dashboard language its own
+ * 24-hour one ("09:00"). Fixed text, never a runtime locale, so the server and
+ * the browser render the same words.
+ */
+function runClock(hour: string, minute: string, language: string): string {
+  if (dashboardLanguage(language) !== "en") return hhmm(hour, minute);
+  const h = Number(hour);
+  const twelve = h % 12 === 0 ? 12 : h % 12;
+  return `${hhmm(String(twelve), minute)} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * What a cron job's header says after "Runs <command>": its schedule in the
+ * words Render's header uses (cronstrue's phrase with its first letter
+ * lowered and UTC after the time: "at 09:00 AM UTC", "every minute", w3/m555).
+ * Null for a shape bex does not name, where the header shows the expression.
+ */
+export function describeCronRun(
+  s: string,
+  t: Translate,
+  language: string,
+): string | null {
+  const shape = cronShape(s);
+  switch (shape?.kind) {
+    case "everyMinute":
+      return t("services.cronRunsEveryMinute");
+    case "everyNMinutes":
+      return t("services.cronRunsEveryNMinutes", { n: String(shape.n) });
+    case "everyHour":
+      return t("services.cronRunsEveryHour");
+    case "hourlyAtMinute":
+      return t("services.cronRunsHourlyAtMinute", { minute: shape.minute });
+    case "everyNHours":
+      return t("services.cronRunsEveryNHours", {
+        minute: shape.minute,
+        n: String(shape.n),
+      });
+    case "daily":
+      return t("services.cronRunsDailyAt", {
+        time: runClock(shape.hour, shape.minute, language),
+      });
+    case "weekly":
+      return t("services.cronRunsWeeklyAt", {
+        day: t(DAY_NAME_KEYS[shape.day]),
+        time: runClock(shape.hour, shape.minute, language),
+      });
+    case "monthly":
+      return t("services.cronRunsMonthlyAt", {
+        day: shape.day,
+        time: runClock(shape.hour, shape.minute, language),
+      });
+    default:
+      return null;
+  }
 }

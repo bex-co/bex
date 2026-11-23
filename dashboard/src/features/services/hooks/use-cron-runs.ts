@@ -4,14 +4,10 @@ import { toast } from "sonner";
 import {
   CancelCronJobRunDocument,
   CronJobRunsDocument,
-  RunCronJobDocument,
   type CronJobRunsQuery,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  hasGraphQLErrorCode,
-  mutationErrorMessage,
-} from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { skipPollWhenHidden, useConvergingPoll } from "@/common/lib/polling";
 import {
   NO_APPENDED,
@@ -23,9 +19,8 @@ import type { CronRunView } from "@/features/services/types";
 
 const PAGE_SIZE = 5;
 
-// A run that hasn't reached a terminal status yet — used to gate Trigger Run
-// (the operator forbids concurrent runs, so the button is disabled while one of
-// these exists) and mirrored by the backend's own ForbidConcurrent rejection.
+// A run that hasn't reached a terminal status yet: the history polls fast
+// while one is listed.
 const ACTIVE_STATUSES = new Set(["pending", "running"]);
 
 export interface UseCronRunsResult {
@@ -37,13 +32,6 @@ export interface UseCronRunsResult {
   cancelingId: string | null;
   loadMore: () => Promise<void>;
   cancel: (runId: string) => Promise<boolean>;
-  /** True while a run is pending/running — Trigger Run is disabled then. */
-  hasActiveRun: boolean;
-  triggering: boolean;
-  /** The backend's rejection message from the last failed trigger, shown inline. */
-  triggerError: string | null;
-  clearTriggerError: () => void;
-  trigger: () => Promise<boolean>;
 }
 
 type RawCronRun = NonNullable<CronJobRunsQuery["cronJobRuns"]>[number];
@@ -93,7 +81,7 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     useState<AppendedPages<CronRunView>>(NO_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
-  const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
+  const { data, loading, error, startPolling, stopPolling } = useQuery(
     CronJobRunsDocument,
     {
       variables: { serviceId, limit: PAGE_SIZE },
@@ -103,9 +91,6 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     },
   );
   const [cancelRun] = useMutation(CancelCronJobRunDocument);
-  const [runCronJob] = useMutation(RunCronJobDocument);
-  const [triggering, setTriggering] = useState(false);
-  const [triggerError, setTriggerError] = useState<string | null>(null);
 
   // Last good first page, kept so a transient poll failure leaves the history
   // standing instead of blanking it. With errorPolicy "all" a failed refresh
@@ -139,29 +124,13 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
   );
 
   // Tagged with the service and the head boundary (w4/138, w4/230).
-  // The run Trigger Run answered, shown until a read carries it (w4/m300):
-  // POST answers the run, so it is on screen — pending, with Cancel and the
-  // fast poll — from that moment, not from the operator's next reconcile.
-  const [triggered, setTriggered] = useState<{
-    serviceId: string;
-    run: CronRunView;
-  } | null>(null);
   const {
-    rows: joined,
+    rows: runs,
     hasMore,
     next,
   } = useMemo(
     () => joinAppendedPages(firstPage, appendedState, serviceId, PAGE_SIZE),
     [appendedState, serviceId, firstPage],
-  );
-  const pinned =
-    triggered?.serviceId === serviceId &&
-    !joined.some((run) => run.id === triggered.run.id)
-      ? triggered.run
-      : null;
-  const runs = useMemo(
-    () => (pinned ? [pinned, ...joined] : joined),
-    [pinned, joined],
   );
 
   const hasActiveRun = runs.some((run) =>
@@ -215,33 +184,6 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     [cancelRun, serviceId, t],
   );
 
-  const trigger = useCallback(async () => {
-    setTriggering(true);
-    setTriggerError(null);
-    try {
-      const result = await runCronJob({ variables: { id: serviceId } });
-      const run = toRuns(
-        result.data?.runCronJob ? [result.data.runCronJob] : [],
-      )[0];
-      if (run) setTriggered({ serviceId, run });
-      // A fresh first-page read surfaces the new pending run at the top.
-      await refetch();
-      toast.success(t("services.cronTriggerSuccess"));
-      return true;
-    } catch (e) {
-      // Inline rather than a toast; a known refusal reads as its localized
-      // reason, never the server's English text naming an internal id (w4/203).
-      setTriggerError(
-        hasGraphQLErrorCode(e, "CRON_SUSPENDED")
-          ? t("capabilities.blockedSuspended")
-          : mutationErrorMessage(e, t("services.cronTriggerError")),
-      );
-      return false;
-    } finally {
-      setTriggering(false);
-    }
-  }, [runCronJob, refetch, serviceId, t]);
-
   return {
     runs,
     // Don't flash a skeleton over rows we already have while a background
@@ -253,10 +195,5 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     cancelingId,
     loadMore,
     cancel,
-    hasActiveRun,
-    triggering,
-    triggerError,
-    clearTriggerError: () => setTriggerError(null),
-    trigger,
   };
 }

@@ -8,6 +8,7 @@ import {
 } from "@/features/deploys/lib/auto-deploy-off";
 import { useServer } from "@/features/services/hooks/use-server";
 import type { ServiceBase } from "@/features/services/lib/service-base";
+import { isCron } from "@/features/services/lib/service-type";
 
 /**
  * The deploy history's pending state: the list's skeleton, below the same
@@ -32,6 +33,7 @@ export function DeployHistorySkeleton() {
   return (
     <DeploysListSkeleton
       commits={!service || Boolean(service.repo)}
+      manualBuild={Boolean(service && isCron(service) && service.repo)}
       banner={
         autoDeployOff(service) ? (
           <AutoDeployOffBanner

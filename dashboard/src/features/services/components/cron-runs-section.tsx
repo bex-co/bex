@@ -6,7 +6,6 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -34,12 +33,7 @@ import type {
 } from "@/features/services/types";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
-import {
-  gateAction,
-  gateReason,
-  resourceDecision,
-  type ResourceActionId,
-} from "@/features/capabilities/lib/resource-actions";
+import { projectionReason } from "@/features/capabilities/lib/resource-actions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { en } from "@/i18n";
 
@@ -100,8 +94,9 @@ function duration(run: CronRunView): string {
   return `${minutes}m ${seconds % 60}s`;
 }
 
-/** Cursor-paged cron run objects with Trigger Run, per-run detail, and a
- *  confirmed cancel action for pending rows. */
+/** Cursor-paged cron run objects with per-run detail and a confirmed cancel
+ *  action for pending rows. Trigger Run is the header's, as on Render
+ *  (w3/m555): one per page, with no confirm. */
 export function CronRunsSection({ serviceId }: { serviceId: string }) {
   const { t, i18n } = useTranslations();
   const clockLanguage = useIsHydrated() ? i18n.language : null;
@@ -114,15 +109,8 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
     cancelingId,
     loadMore,
     cancel,
-    hasActiveRun,
-    triggering,
-    triggerError,
-    clearTriggerError,
-    trigger,
   } = useCronRuns(serviceId);
-  // The server's own decision gates both verbs (w4/203): a suspended cron
-  // answers cron_run_now with precondition "suspended", which the button
-  // used to ignore and then show the raw refusal.
+  // The server's own decision gates Cancel (w4/203).
   const { currentWorkspaceId } = useWorkspace();
   const serverActions = useServerActions(serviceId);
   // The action snapshot is a separate no-cache read that history polling never
@@ -145,31 +133,14 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
       live = false;
     };
   }, [activeRunKey, checkedRunKey]);
-  const actionBlocked = (
-    action: ResourceActionId,
-    status = serverActions.status,
-  ) =>
-    gateReason(
-      gateAction(
-        serverActions.status === "ready"
-          ? resourceDecision(
-              serverActions.snapshot,
-              currentWorkspaceId,
-              serviceId,
-              action,
-            )
-          : null,
-        status,
-      ),
-      t,
-    );
-  const triggerBlocked = actionBlocked("cron_run_now");
-  const cancelBlocked = actionBlocked(
+  const cancelBlocked = projectionReason(
+    activeRunKey === checkedRunKey ? serverActions : { status: "checking" },
+    currentWorkspaceId,
+    serviceId,
     "cron_cancel_run",
-    activeRunKey === checkedRunKey ? serverActions.status : "checking",
+    t,
   );
   const [confirmRun, setConfirmRun] = useState<CronRunView | null>(null);
-  const [confirmTrigger, setConfirmTrigger] = useState(false);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   async function handleCancel() {
@@ -178,45 +149,13 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
     setConfirmRun(null);
   }
 
-  async function handleTrigger() {
-    const ok = await trigger();
-    setConfirmTrigger(false);
-    if (ok) setExpandedRunId(null);
-  }
-
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>{t("services.cronRunsTitle")}</CardTitle>
-          <CardAction>
-            {/* w4/m114 t003: Trigger Run stays enabled during an active run.
-                The server preempts by design — runCronJob cancels the active
-                Job and returns a new pending run — so disabling the button
-                here forbade what the API performs, and blocked the one
-                in-product recovery for a wedged run (the QA probe had to drop
-                to raw GraphQL). The confirm dialog below names the
-                preemption instead. */}
-            <PermissionTooltip reason={triggerBlocked}>
-              <Button
-                size="sm"
-                disabled={triggering || !!triggerBlocked}
-                onClick={() => {
-                  clearTriggerError();
-                  setConfirmTrigger(true);
-                }}
-              >
-                {triggering
-                  ? t("services.cronTriggering")
-                  : t("services.cronTriggerRun")}
-              </Button>
-            </PermissionTooltip>
-          </CardAction>
         </CardHeader>
         <CardContent>
-          {triggerError ? (
-            <p className="mb-4 text-sm text-destructive">{triggerError}</p>
-          ) : null}
           {loading && runs.length === 0 ? (
             // The route skeleton's table, so the page does not change shape
             // between the route's pending state and the runs read (w2/m360).
@@ -344,23 +283,6 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
         confirmLabel={t("services.eventsConfirmProceed")}
         pending={confirmRun ? cancelingId === confirmRun.id : false}
         onConfirm={() => void handleCancel()}
-      />
-
-      <ConfirmDialog
-        open={confirmTrigger}
-        onOpenChange={(open) => !open && setConfirmTrigger(false)}
-        title={t("services.cronTriggerConfirmTitle")}
-        description={
-          hasActiveRun
-            ? t("services.cronTriggerConfirmBodyPreempt")
-            : t("services.cronTriggerConfirmBody")
-        }
-        cancelLabel={t("services.eventsConfirmCancel")}
-        confirmLabel={t("services.cronTriggerRun")}
-        // Triggering a run is not destructive — it is the primary action here.
-        destructive={false}
-        pending={triggering}
-        onConfirm={() => void handleTrigger()}
       />
     </>
   );

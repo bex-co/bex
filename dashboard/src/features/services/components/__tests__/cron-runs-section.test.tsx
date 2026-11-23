@@ -33,13 +33,8 @@ vi.mock("@tanstack/react-router", () => ({
 
 const cancel = vi.fn();
 const loadMore = vi.fn();
-const trigger = vi.fn();
-const clearTriggerError = vi.fn();
 let runs: CronRunView[] = [];
 let hasMore = false;
-let hasActiveRun = false;
-let triggering = false;
-let triggerError: string | null = null;
 
 vi.mock("@/features/services/hooks/use-cron-runs", () => ({
   useCronRuns: () => ({
@@ -51,11 +46,6 @@ vi.mock("@/features/services/hooks/use-cron-runs", () => ({
     cancelingId: null,
     cancel,
     loadMore,
-    hasActiveRun,
-    triggering,
-    triggerError,
-    clearTriggerError,
-    trigger,
   }),
 }));
 
@@ -102,9 +92,6 @@ beforeEach(() => {
   refreshActions.mockResolvedValue(undefined);
   runs = [];
   hasMore = false;
-  hasActiveRun = false;
-  triggering = false;
-  triggerError = null;
   detailRun = null;
   detailLoading = false;
   detailError = false;
@@ -112,9 +99,6 @@ beforeEach(() => {
   cancel.mockResolvedValue(true);
   loadMore.mockReset();
   loadMore.mockResolvedValue(undefined);
-  trigger.mockReset();
-  trigger.mockResolvedValue(true);
-  clearTriggerError.mockReset();
 });
 
 describe("CronRunsSection", () => {
@@ -190,68 +174,21 @@ describe("CronRunsSection", () => {
     expect(loadMore).toHaveBeenCalledOnce();
   });
 
-  it("triggers a run after confirming (w5/m60)", async () => {
-    const user = userEvent.setup();
+  // w3/m555: Trigger Run is the header's, one per page and with no confirm,
+  // as on Render; the Runs card keeps only its runs.
+  it("has no Trigger Run and no confirm of its own, during an active run too", () => {
+    runs = [
+      {
+        id: "crr-1",
+        startedAt: "2026-07-09T10:00:00Z",
+        finishedAt: null,
+        status: "running",
+      },
+    ];
     render(<CronRunsSection serviceId="nightly" />);
-
-    await user.click(screen.getByRole("button", { name: "Trigger Run" }));
-    // Confirm dialog → the second "Trigger Run" is the dialog's action.
-    const actions = screen.getAllByRole("button", { name: "Trigger Run" });
-    await user.click(actions[actions.length - 1]);
-
-    expect(trigger).toHaveBeenCalledOnce();
-  });
-
-  // w4/m114 t003: the button used to be disabled here with "A run is already
-  // in progress" while the server happily accepted runCronJob and preempted
-  // the active run — one surface forbidding what the other performs, and the
-  // only in-product way to recover a wedged run. It now offers the action and
-  // names the consequence.
-  it("offers Trigger Run during an active run and warns that it preempts", async () => {
-    hasActiveRun = true;
-    const user = userEvent.setup();
-    render(<CronRunsSection serviceId="nightly" />);
-
-    const button = screen.getByRole("button", { name: "Trigger Run" });
-    expect(button).not.toBeDisabled();
-    await user.click(button);
-
-    const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent(
-      "A run is already in progress. Triggering now cancels it and starts a new run immediately, outside the schedule.",
-    );
-  });
-
-  // w4/237: history can lag an accepted run (the refetch after a replacement
-  // may hold only terminal rows), so "no active run loaded" is not proof that
-  // triggering replaces nothing. The default copy states the replacement
-  // semantics conditionally, without claiming a run exists.
-  it("still explains replacement when no active run is loaded", async () => {
-    hasActiveRun = false;
-    const user = userEvent.setup();
-    render(<CronRunsSection serviceId="nightly" />);
-
-    await user.click(screen.getByRole("button", { name: "Trigger Run" }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent(
-      "This requests a run outside its schedule. It replaces any pending manual run request and cancels any active run before the replacement starts.",
-    );
-    expect(dialog.textContent ?? "").not.toContain("already in progress");
-
-    await user.click(within(dialog).getByRole("button", { name: "Go Back" }));
-    expect(trigger).not.toHaveBeenCalled();
-  });
-
-  it("disables Trigger Run on a suspended cron, with the reason (w4/203)", async () => {
-    preconditions = { cron_run_now: "suspended" };
-    render(<CronRunsSection serviceId="nightly" />);
-    const button = screen.getByRole("button", { name: "Trigger Run" });
-    expect(button).toBeDisabled();
-    await userEvent.hover(button.parentElement ?? button);
-    expect(
-      (await screen.findAllByText(/Resume it first/)).length,
-    ).toBeGreaterThan(0);
-    expect(trigger).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Trigger Run" })).toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByText(/outside the schedule/)).toBeNull();
   });
 
   it("disables a run's Cancel when the server reports no active run", () => {
@@ -266,13 +203,6 @@ describe("CronRunsSection", () => {
     ];
     render(<CronRunsSection serviceId="nightly" />);
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Trigger Run" })).toBeEnabled();
-  });
-
-  it("shows the backend's trigger rejection inline, not a toast", () => {
-    triggerError = "a run is already active";
-    render(<CronRunsSection serviceId="nightly" />);
-    expect(screen.getByText("a run is already active")).toBeInTheDocument();
   });
 
   it("expands a history row to show the run detail from cronJobRun (w5/m60)", async () => {
@@ -629,7 +559,6 @@ describe("CronRunsSection active-run action refresh (w4/249)", () => {
       actionsStatus = "ready";
     });
     runs = [pending, finished];
-    hasActiveRun = true;
     rerender(<CronRunsSection serviceId="nightly" />);
 
     expect(refreshActions).toHaveBeenCalledTimes(1);
@@ -651,7 +580,6 @@ describe("CronRunsSection active-run action refresh (w4/249)", () => {
 
     // The run finishing is a transition too: the decision is re-read.
     runs = [{ ...pending, status: "successful" }, finished];
-    hasActiveRun = false;
     rerender(<CronRunsSection serviceId="nightly" />);
     expect(refreshActions).toHaveBeenCalledTimes(2);
   });

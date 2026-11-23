@@ -2,20 +2,36 @@
 // service/deploy controls without a live Apollo client (w6/m143).
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 
-export function mockAllowedResourceActions(resourceId = "app") {
-  const snapshot = toResourceSnapshot("tea-test", resourceId, [
-    { action: "suspend", outcome: "allowed", reason: null, precondition: null },
-    { action: "resume", outcome: "allowed", reason: null, precondition: null },
-    { action: "restart", outcome: "allowed", reason: null, precondition: null },
-    { action: "deploy", outcome: "allowed", reason: null, precondition: null },
-    {
-      action: "cancel_deploy",
-      outcome: "allowed",
+const ACTIONS = [
+  "suspend",
+  "resume",
+  "restart",
+  "deploy",
+  "cancel_deploy",
+  "rollback",
+  "cron_run_now",
+  "cron_cancel_run",
+];
+
+/** Every action allowed, unless `overrides` names its outcome or the
+ *  precondition that blocks it. */
+export function mockAllowedResourceActions(
+  resourceId = "app",
+  overrides: Record<
+    string,
+    { outcome?: "allowed" | "denied"; precondition?: string }
+  > = {},
+) {
+  const snapshot = toResourceSnapshot(
+    "tea-test",
+    resourceId,
+    ACTIONS.map((action) => ({
+      action,
+      outcome: overrides[action]?.outcome ?? "allowed",
       reason: null,
-      precondition: null,
-    },
-    { action: "rollback", outcome: "allowed", reason: null, precondition: null },
-  ]);
+      precondition: overrides[action]?.precondition ?? null,
+    })),
+  );
   const state = {
     status: "ready" as const,
     snapshot,

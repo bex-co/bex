@@ -5,6 +5,7 @@ import {
   decisionForSelectedRollback,
   decisionReady,
   gateAction,
+  projectionReason,
   resourceDecision,
   toResourceSnapshot,
   type ResourceActionId,
@@ -186,6 +187,38 @@ describe("not_suspended (w4/132)", () => {
     // running resource is suspended is exactly backwards.
     expect(blockedReasonKey("not_suspended")).not.toBe(
       blockedReasonKey("suspended"),
+    );
+  });
+});
+
+// w3/m555: one reading of a projection for a disabled control's reason.
+describe("projectionReason", () => {
+  const t = (key: string) => key;
+  const ready = (precondition: string | null, outcome = "allowed") => ({
+    status: "ready" as const,
+    snapshot: snapshot([{ action: "cron_run_now", outcome, precondition }]),
+  });
+
+  it("names no reason for a ready decision", () => {
+    expect(
+      projectionReason(ready(null), "tea-a", "srv-one", "cron_run_now", t),
+    ).toBeUndefined();
+  });
+
+  it("names the projection's state, the denial or the precondition", () => {
+    const reason = (
+      projection: Parameters<typeof projectionReason>[0],
+      resourceId = "srv-one",
+    ) => projectionReason(projection, "tea-a", resourceId, "cron_run_now", t);
+    expect(reason({ status: "checking" })).toBe("capabilities.actionChecking");
+    expect(reason({ status: "unavailable" })).toBe(
+      "capabilities.actionUnavailable",
+    );
+    expect(reason(ready(null, "denied"))).toBe("capabilities.actionDenied");
+    expect(reason(ready("suspended"))).toBe(blockedReasonKey("suspended"));
+    // Another resource's snapshot never answers for this one.
+    expect(reason(ready(null), "srv-other")).toBe(
+      "capabilities.actionUnavailable",
     );
   });
 });

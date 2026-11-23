@@ -122,11 +122,12 @@ describe("useCronRuns freshness (w4/138)", () => {
       ]),
     });
 
-    await waitFor(() => expect(result.current.hasActiveRun).toBe(true));
+    await waitFor(() => expect(result.current.runs[0]?.status).toBe("running"));
 
     await tickSettledPoll();
-    await waitFor(() => expect(result.current.hasActiveRun).toBe(false));
-    expect(result.current.runs[0]?.status).toBe("successful");
+    await waitFor(() =>
+      expect(result.current.runs[0]?.status).toBe("successful"),
+    );
   });
 
   it("keeps loaded older rows when a poll refreshes the first page", async () => {

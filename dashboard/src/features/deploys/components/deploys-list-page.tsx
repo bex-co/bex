@@ -60,6 +60,8 @@ import {
   deploySubject,
 } from "../lib/deploy-presentation";
 import { DeployActions } from "./deploy-actions";
+import { ManualBuildButton } from "./manual-build-button";
+import { isCron } from "@/features/services/lib/service-type";
 import { DeployFailureReason } from "./deploy-failure-reason";
 
 // Radix Select can't hold "" — the log-filter-bar's "all" sentinel idiom.
@@ -116,6 +118,9 @@ export function DeploysListPage({
   // a secondary, non-polling read of the document the layout already owns.
   const { service } = useServer(serviceId, { poll: false });
   const repo = service?.repo ?? null;
+  // A repo-backed cron job builds from here, as on Render; an image-backed
+  // one has nothing to build (w3/m555).
+  const manualBuild = Boolean(service && isCron(service) && repo);
   // The inputs stay local so typing never waits on the router; the URL
   // mirrors them, which is what brings them back after a deploy's detail.
   const [localFilters, setLocalFilters] = useState(urlFilters);
@@ -484,6 +489,9 @@ export function DeploysListPage({
 
   return (
     <DeploysListFrame
+      action={
+        manualBuild ? <ManualBuildButton serviceId={serviceId} /> : undefined
+      }
       count={
         count !== null ? (
           <p
