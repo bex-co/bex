@@ -13,7 +13,7 @@ Why: the weekly Render drift workflow has been red on its `render-schema` job si
   - Logs: `GET /logs`, `GET /logs/subscribe`, `GET /logs/values`.
   - Metrics: 18 `GET /metrics/*` operations: `active-connections`, `bandwidth`, `bandwidth-sources`, `cpu`, `cpu-limit`, `cpu-target`, `disk-capacity`, `disk-usage`, `filters/application`, `filters/http`, `filters/path`, `http-latency`, `http-requests`, `instance-count`, `memory`, `memory-limit`, `memory-target` and `replication-lag`.
   - Others: `GET /notification-settings/overrides`, `GET /postgres/{postgresId}`, `PATCH /postgres/{postgresId}`, `POST /postgres`, `POST /postgres/{postgresId}/recovery`, `POST /environments/{environmentId}/resources`, `GET /sandboxes`, `POST /sandboxes` and `POST /sandbox-groups`.
-- **The same job's CLI check:** `render-oss/cli v2.38.0 is newer than bex's pin v2.36.0` (`lego/cli/UPSTREAM_RENDER_CLI.md`). [w22/m444](../w22/m444/README.md) owns the move to v2.37.0 only.
+- **The same job's CLI check:** `render-oss/cli v2.38.0 is newer than bex's pin v2.36.0` (`lego/cli/UPSTREAM_RENDER_CLI.md`). [w22/m444](../../w22/done/m444/README.md) owns the move to v2.37.0 only.
 
 ## Fix
 
