@@ -657,6 +657,46 @@ const jaMetrics: Record<string, TranslationEntry> = {
       "このビューはプロジェクトのサービス、cron ジョブ、Postgres データベース、Key Value インスタンスをグラフにしますが、まだ何もありません。",
     description: "Body of the empty project Service Metrics view (w3/m508)",
   },
+  "metrics.viewActionsFor": {
+    message: "{instance} の操作を表示",
+    description:
+      "Tooltip hint at the bottom of a Memory or CPU chart when hovering an instance's series (w4/717; Render's 'View actions for <slug>')",
+  },
+  "metrics.instanceActionsMenu": {
+    message: "インスタンス {instance} の操作",
+    description:
+      "Accessible name of the instance action card and legend menu trigger on Memory and CPU charts (w4/717)",
+  },
+  "metrics.filterToInstance": {
+    message: "このインスタンスで絞り込む",
+    description:
+      "Chart instance menu item: filters the Application Metrics card to this instance (w4/717; Render's 'Filter to instance')",
+  },
+  "metrics.resetInstanceFilter": {
+    message: "インスタンスフィルターをリセット",
+    description:
+      "Chart instance menu item: removes this instance from the card's Instances filter (w4/717; Render's 'Reset instance filter')",
+  },
+  "metrics.viewInstanceLogs": {
+    message: "インスタンスのログを表示",
+    description:
+      "Chart instance menu item: opens the service's Logs tab filtered to this instance in a new tab (w4/717; Render's 'View instance logs')",
+  },
+  "metrics.copyInstanceId": {
+    message: "インスタンス ID をコピー",
+    description:
+      "Chart instance menu item: copies the instance's full ID to the clipboard (w4/717; Render's 'Copy instance ID')",
+  },
+  "metrics.instanceIdCopied": {
+    message: "インスタンス ID をコピーしました",
+    description:
+      "Toast after Copy instance ID wrote the instance ID to the clipboard (w4/717)",
+  },
+  "metrics.instanceIdCopyFailed": {
+    message: "インスタンス ID をコピーできませんでした",
+    description:
+      "Toast when the clipboard refused Copy instance ID (w4/717)",
+  },
 };
 
 export default jaMetrics;

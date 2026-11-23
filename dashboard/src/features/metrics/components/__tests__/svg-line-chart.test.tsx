@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SvgLineChart, EmptyChart, ChartLegend } from "../svg-line-chart";
+import type { ChartInstanceActions } from "../chart-instance-menu";
 
 const POINTS = [
   { timestamp: "2026-07-06T09:00:00Z", value: 1 },
@@ -97,5 +99,52 @@ describe("ChartLegend", () => {
 
     rerender(<ChartLegend entries={[{ color: "red", label: "solo" }]} />);
     expect(screen.queryByText("solo")).not.toBeInTheDocument();
+  });
+});
+
+describe("SvgLineChart instance actions (w4/717)", () => {
+  const actions = (running: string[]): ChartInstanceActions => ({
+    shell: (id) => ({
+      href: running.includes(id) ? `/services/srv-a/shell?instance=${id}` : null,
+    }),
+    logsHref: (id) => `/services/srv-a/logs?instance=${id}`,
+    isFiltered: () => false,
+    onToggleFilter: vi.fn(),
+    onCopyId: vi.fn(),
+  });
+
+  it("shows Render's hover hint, opens the action card on keyboard navigation, and closes on Escape", async () => {
+    const user = userEvent.setup();
+    render(
+      <SvgLineChart
+        unit="cpu"
+        series={[
+          { points: POINTS, color: "var(--chart-1)", label: "inst-up" },
+          { points: POINTS, color: "var(--chart-2)", label: "inst-gone" },
+        ]}
+        instanceActions={actions(["inst-up"])}
+      />,
+    );
+
+    const chart = screen.getByRole("img");
+    fireEvent.keyDown(chart, { key: "ArrowRight" });
+    expect(screen.getByText("View actions for inst-up")).toBeInTheDocument();
+
+    // ArrowDown moves selection to the second (stopped) instance in the frame.
+    fireEvent.keyDown(chart, { key: "ArrowDown" });
+    expect(screen.getByText("View actions for inst-gone")).toBeInTheDocument();
+
+    // Enter opens the floating card with SSH disabled for the stopped instance.
+    fireEvent.keyDown(chart, { key: "Enter" });
+    const sshButton = screen.getByRole("button", { name: "SSH into instance" });
+    expect(sshButton).toBeDisabled();
+    expect(sshButton).toHaveAccessibleDescription(
+      "You can only SSH into running instances. This one is not available.",
+    );
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("button", { name: "SSH into instance" }),
+    ).not.toBeInTheDocument();
   });
 });

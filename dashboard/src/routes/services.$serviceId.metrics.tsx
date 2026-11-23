@@ -110,6 +110,7 @@ export function ServiceMetricsPage({
   // a static site never fires the pod-metrics queries.
   const { service } = useServer(serviceId, { poll: false });
   const showApplicationCard = service != null && !isStaticSite(service);
+  const shellEligible = Boolean(service?.sshAddress);
 
   return (
     <>
@@ -145,6 +146,7 @@ export function ServiceMetricsPage({
           markers={markers}
           runsInstances={runsInstances(service)}
           scalable={supportsScaling(service)}
+          shellEligible={shellEligible}
         />
       )}
       <NetworkMetricsCard

@@ -657,6 +657,46 @@ const koMetrics: Record<string, TranslationEntry> = {
       "이 뷰는 프로젝트의 서비스, 크론 작업, Postgres 데이터베이스, Key Value 인스턴스를 차트로 표시하지만 아직 아무것도 없습니다.",
     description: "Body of the empty project Service Metrics view (w3/m508)",
   },
+  "metrics.viewActionsFor": {
+    message: "{instance} 작업 보기",
+    description:
+      "Tooltip hint at the bottom of a Memory or CPU chart when hovering an instance's series (w4/717; Render's 'View actions for <slug>')",
+  },
+  "metrics.instanceActionsMenu": {
+    message: "인스턴스 {instance} 작업",
+    description:
+      "Accessible name of the instance action card and legend menu trigger on Memory and CPU charts (w4/717)",
+  },
+  "metrics.filterToInstance": {
+    message: "이 인스턴스로 필터링",
+    description:
+      "Chart instance menu item: filters the Application Metrics card to this instance (w4/717; Render's 'Filter to instance')",
+  },
+  "metrics.resetInstanceFilter": {
+    message: "인스턴스 필터 초기화",
+    description:
+      "Chart instance menu item: removes this instance from the card's Instances filter (w4/717; Render's 'Reset instance filter')",
+  },
+  "metrics.viewInstanceLogs": {
+    message: "인스턴스 로그 보기",
+    description:
+      "Chart instance menu item: opens the service's Logs tab filtered to this instance in a new tab (w4/717; Render's 'View instance logs')",
+  },
+  "metrics.copyInstanceId": {
+    message: "인스턴스 ID 복사",
+    description:
+      "Chart instance menu item: copies the instance's full ID to the clipboard (w4/717; Render's 'Copy instance ID')",
+  },
+  "metrics.instanceIdCopied": {
+    message: "인스턴스 ID를 복사했습니다",
+    description:
+      "Toast after Copy instance ID wrote the instance ID to the clipboard (w4/717)",
+  },
+  "metrics.instanceIdCopyFailed": {
+    message: "인스턴스 ID를 복사하지 못했습니다",
+    description:
+      "Toast when the clipboard refused Copy instance ID (w4/717)",
+  },
 };
 
 export default koMetrics;

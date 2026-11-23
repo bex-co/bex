@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatAxisTime, formatTimeOfDay } from "@/common/lib/format";
 import {
@@ -29,6 +29,11 @@ import {
   EventLaneSlot,
 } from "@/features/metrics/components/chart-event-markers";
 import {
+  ChartInstanceLegendTrigger,
+  ChartInstanceMenu,
+  type ChartInstanceActions,
+} from "@/features/metrics/components/chart-instance-menu";
+import {
   clusterMarkers,
   type ChartEventMarker,
 } from "@/features/metrics/lib/chart-events";
@@ -46,6 +51,16 @@ interface SvgLineChartProps {
   markers?: ChartEventMarker[];
   /** The service the markers' badges link into; required to render markers. */
   markersServiceId?: string;
+  /** Per-instance chart actions (w4/717: Render's click-a-series action card). */
+  instanceActions?: ChartInstanceActions;
+}
+
+interface OpenInstanceMenu {
+  instanceId: string;
+  color: string;
+  xPercent: number;
+  yPx: number;
+  flipLeft: boolean;
 }
 
 /**
@@ -62,9 +77,12 @@ export function SvgLineChart({
   referenceValue,
   markers,
   markersServiceId,
+  instanceActions,
 }: SvgLineChartProps) {
   const { t, i18n } = useTranslations();
   const [activeFrame, setActiveFrame] = useState<number | null>(null);
+  const [activeSeries, setActiveSeries] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<OpenInstanceMenu | null>(null);
   // The SVG draws in its own measured pixels (see useChartBox).
   const { ref: svgRef, box } = useChartBox<SVGSVGElement>();
   const { width: WIDTH, height: HEIGHT } = box;
@@ -95,29 +113,87 @@ export function SvgLineChart({
     [geo, box.measured, WIDTH, i18n.language],
   );
 
+  const closeMenu = useCallback(() => setOpenMenu(null), []);
+
   if (!geo) {
     return <EmptyChart />;
   }
 
   const { frames, xForT, yFor, yTicks, paths, referenceY, left } = geo;
 
-  function nearestFrameForClientX(clientX: number, svg: SVGSVGElement): number {
-    if (!geo) return 0;
+  function nearestPointForPointer(
+    clientX: number,
+    clientY: number,
+    svg: SVGSVGElement,
+  ): { frameIndex: number; rowIndex: number } {
     const rect = svg.getBoundingClientRect();
-    const relX = ((clientX - rect.left) / rect.width) * WIDTH;
-    let best = 0;
-    let bestDist = Infinity;
-    geo.frames.forEach((f, i) => {
-      const d = Math.abs(geo.xForT(f.time) - relX);
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
-      }
+    const hasRect = rect.width > 0 && rect.height > 0;
+    const relX = hasRect ? ((clientX - rect.left) / rect.width) * WIDTH : 0;
+    const relY = hasRect ? ((clientY - rect.top) / rect.height) * HEIGHT : 0;
+    let bestFrame = 0;
+    if (hasRect) {
+      let bestDist = Infinity;
+      frames.forEach((f, i) => {
+        const d = Math.abs(xForT(f.time) - relX);
+        if (d < bestDist) {
+          bestDist = d;
+          bestFrame = i;
+        }
+      });
+    }
+    const frame = frames[bestFrame];
+    let bestRow = 0;
+    if (hasRect && frame.rows.length > 1) {
+      let bestYDist = Infinity;
+      frame.rows.forEach((row, i) => {
+        const d = Math.abs(yFor(row.value) - relY);
+        if (d < bestYDist) {
+          bestYDist = d;
+          bestRow = i;
+        }
+      });
+    }
+    return { frameIndex: bestFrame, rowIndex: bestRow };
+  }
+
+  function openMenuForRow(
+    frame: ChartFrame,
+    row: ChartFrame["rows"][number] | undefined,
+  ) {
+    if (!instanceActions || !row?.label) return;
+    const x = xForT(frame.time);
+    const y = yFor(row.value);
+    const xPercent = WIDTH > 0 ? (x / WIDTH) * 100 : 0;
+    setOpenMenu({
+      instanceId: row.label,
+      color: row.color,
+      xPercent,
+      yPx: Math.min(HEIGHT - 16, Math.max(4, y + 8)),
+      flipLeft: x > WIDTH / 2,
     });
-    return best;
   }
 
   const active = activeFrame != null ? frames[activeFrame] : null;
+  const visibleMenu =
+    openMenu && series.some((s) => s.label === openMenu.instanceId)
+      ? openMenu
+      : null;
+  const activeLabeledRow =
+    active && instanceActions
+      ? (active.rows.find((r) => r.label === activeSeries) ??
+        active.rows.find((r) => Boolean(r.label)))
+      : undefined;
+  const hasInstanceSeries = Boolean(
+    instanceActions && series.some((s) => Boolean(s.label) && s.points.length > 0),
+  );
+  const tooltipHint =
+    activeLabeledRow?.label && instanceActions
+      ? t("metrics.viewActionsFor", {
+          instance:
+            instanceActions.formatLabel?.(activeLabeledRow.label) ??
+            activeLabeledRow.label,
+        })
+      : undefined;
 
   return (
     <div className="relative">
@@ -131,22 +207,103 @@ export function SvgLineChart({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="block w-full"
+        className={hasInstanceSeries ? "block w-full cursor-pointer" : "block w-full"}
         style={CHART_FRAME_STYLE}
         role="img"
         aria-label={t("metrics.lineChartLabel", { count: frames.length })}
         tabIndex={0}
-        onPointerMove={(e) =>
-          setActiveFrame(nearestFrameForClientX(e.clientX, e.currentTarget))
+        onPointerMove={(e) => {
+          if (visibleMenu) return;
+          const { frameIndex, rowIndex } = nearestPointForPointer(
+            e.clientX,
+            e.clientY,
+            e.currentTarget,
+          );
+          setActiveFrame(frameIndex);
+          setActiveSeries(frames[frameIndex]?.rows[rowIndex]?.label ?? null);
+        }}
+        onPointerLeave={() => {
+          if (visibleMenu) return;
+          setActiveFrame(null);
+          setActiveSeries(null);
+        }}
+        onClick={
+          hasInstanceSeries
+            ? (e) => {
+                const useExisting =
+                  e.clientX === 0 && e.clientY === 0 && active != null;
+                if (useExisting) {
+                  openMenuForRow(active, activeLabeledRow);
+                  return;
+                }
+                const { frameIndex, rowIndex } = nearestPointForPointer(
+                  e.clientX,
+                  e.clientY,
+                  e.currentTarget,
+                );
+                const frame = frames[frameIndex];
+                if (!frame) return;
+                const row =
+                  frame.rows[rowIndex] ??
+                  frame.rows.find((r) => Boolean(r.label));
+                setActiveFrame(frameIndex);
+                setActiveSeries(row?.label ?? null);
+                openMenuForRow(frame, row);
+              }
+            : undefined
         }
-        onPointerLeave={() => setActiveFrame(null)}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") {
-            setActiveFrame((i) => Math.min(frames.length - 1, (i ?? -1) + 1));
+            const next = Math.min(frames.length - 1, (activeFrame ?? -1) + 1);
+            setActiveFrame(next);
+            const rows = frames[next]?.rows ?? [];
+            if (!rows.some((r) => r.label === activeSeries)) {
+              setActiveSeries(rows.find((r) => Boolean(r.label))?.label ?? null);
+            }
           } else if (e.key === "ArrowLeft") {
-            setActiveFrame((i) => Math.max(0, (i ?? frames.length) - 1));
+            const next = Math.max(0, (activeFrame ?? frames.length) - 1);
+            setActiveFrame(next);
+            const rows = frames[next]?.rows ?? [];
+            if (!rows.some((r) => r.label === activeSeries)) {
+              setActiveSeries(rows.find((r) => Boolean(r.label))?.label ?? null);
+            }
+          } else if (
+            hasInstanceSeries &&
+            active &&
+            (e.key === "ArrowDown" || e.key === "ArrowUp")
+          ) {
+            const labeled = active.rows
+              .map((r) => r.label)
+              .filter((l): l is string => Boolean(l));
+            if (labeled.length > 1) {
+              e.preventDefault();
+              const cur = labeled.indexOf(activeLabeledRow?.label ?? "");
+              const delta = e.key === "ArrowDown" ? 1 : -1;
+              const next = (cur + delta + labeled.length) % labeled.length;
+              setActiveSeries(labeled[next]);
+            }
+          } else if (
+            hasInstanceSeries &&
+            (e.key === "Enter" || e.key === " ")
+          ) {
+            const frame = active ?? frames[frames.length - 1];
+            if (!frame) return;
+            const row =
+              (active ? activeLabeledRow : undefined) ??
+              frame.rows.find((r) => Boolean(r.label));
+            if (row?.label) {
+              e.preventDefault();
+              setActiveFrame(activeFrame ?? frames.length - 1);
+              setActiveSeries(row.label);
+              openMenuForRow(frame, row);
+            }
           } else if (e.key === "Escape") {
-            setActiveFrame(null);
+            if (visibleMenu) {
+              setOpenMenu(null);
+            } else {
+              setActiveFrame(null);
+              setActiveSeries(null);
+            }
           }
         }}
       >
@@ -228,7 +385,11 @@ export function SvgLineChart({
                 key={i}
                 cx={xForT(active.time)}
                 cy={yFor(row.value)}
-                r={4}
+                r={
+                  activeLabeledRow?.label && row.label === activeLabeledRow.label
+                    ? 5
+                    : 4
+                }
                 fill={row.color}
                 stroke="var(--background)"
                 strokeWidth={2}
@@ -238,12 +399,24 @@ export function SvgLineChart({
         )}
       </svg>
 
-      {active && (
+      {visibleMenu && instanceActions ? (
+        <ChartInstanceMenu
+          instanceId={visibleMenu.instanceId}
+          color={visibleMenu.color}
+          xPercent={visibleMenu.xPercent}
+          yPx={visibleMenu.yPx}
+          flipLeft={visibleMenu.flipLeft}
+          actions={instanceActions}
+          onClose={closeMenu}
+        />
+      ) : active ? (
         <ChartTooltip
           label={formatTimeOfDay(active.time, i18n.language)}
           rows={frameTooltipRows(active, unit)}
+          activeName={activeLabeledRow?.label}
+          hint={tooltipHint}
         />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -258,29 +431,54 @@ export interface TooltipRow {
 export function ChartTooltip({
   label,
   rows,
+  activeName,
+  hint,
 }: {
   label: string;
   rows: TooltipRow[];
+  /** Highlighted series when hovering a multi-series interactive chart. */
+  activeName?: string;
+  /** Render's footer hint ("View actions for <instance>"). */
+  hint?: string;
 }) {
   return (
     <div className="pointer-events-none absolute top-1 right-1 rounded-md border bg-popover px-2 py-1 text-xs shadow-sm">
-      {rows.map((row, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-0.5 w-3 rounded-full"
-            style={{ backgroundColor: row.color }}
-          />
-          {row.name && (
-            <span className="max-w-40 truncate text-muted-foreground">
-              {row.name}
+      {rows.map((row, i) => {
+        const dimmed =
+          rows.length > 1 &&
+          activeName != null &&
+          row.name != null &&
+          row.name !== activeName;
+        return (
+          <div
+            key={i}
+            className={
+              dimmed
+                ? "flex items-center gap-1.5 opacity-60"
+                : "flex items-center gap-1.5"
+            }
+          >
+            <span
+              className="inline-block h-0.5 w-3 rounded-full"
+              style={{ backgroundColor: row.color }}
+            />
+            {row.name && (
+              <span className="max-w-40 truncate text-muted-foreground">
+                {row.name}
+              </span>
+            )}
+            <span className="font-semibold text-popover-foreground">
+              {row.value}
             </span>
-          )}
-          <span className="font-semibold text-popover-foreground">
-            {row.value}
-          </span>
-        </div>
-      ))}
+          </div>
+        );
+      })}
       <div className="text-muted-foreground">{label}</div>
+      {hint ? (
+        <div className="mt-0.5 border-t pt-0.5 text-muted-foreground">
+          {hint}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -311,12 +509,15 @@ export function EmptyChart({
 
 /**
  * A legend row for a multi-series chart: one colored dot + label per named
- * series. Hides itself for single-series (or unlabeled) charts.
+ * series. Hides itself for single-series (or unlabeled) charts. When
+ * `instanceActions` is provided, each entry opens the instance action menu.
  */
 export function ChartLegend({
   entries,
+  instanceActions,
 }: {
   entries: { color: string; label?: string }[];
+  instanceActions?: ChartInstanceActions;
 }) {
   const named = entries.filter(
     (e): e is { color: string; label: string } => !!e.label,
@@ -324,18 +525,27 @@ export function ChartLegend({
   if (named.length < 2) return null;
   return (
     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-      {named.map((e, i) => (
-        <span
-          key={i}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground"
-        >
-          <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: e.color }}
+      {named.map((e, i) =>
+        instanceActions ? (
+          <ChartInstanceLegendTrigger
+            key={`${e.label}-${i}`}
+            instanceId={e.label}
+            color={e.color}
+            actions={instanceActions}
           />
-          {e.label}
-        </span>
-      ))}
+        ) : (
+          <span
+            key={i}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          >
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: e.color }}
+            />
+            {e.label}
+          </span>
+        ),
+      )}
     </div>
   );
 }

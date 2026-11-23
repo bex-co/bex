@@ -13,6 +13,7 @@ import { ApplicationMetricsCard } from "../application-metrics-card";
 import { summarizeLimits } from "@/features/metrics/lib/limit-summary";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
 import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
+import { useServiceInstances } from "@/features/services/hooks/use-service-instances";
 
 vi.mock("@/features/metrics/hooks/use-metrics", () => ({
   useMetrics: vi.fn(),
@@ -20,9 +21,17 @@ vi.mock("@/features/metrics/hooks/use-metrics", () => ({
 vi.mock("@/features/metrics/hooks/use-metrics-filter-values", () => ({
   useMetricsFilterValues: vi.fn(() => []),
 }));
+vi.mock("@/features/services/hooks/use-service-instances", () => ({
+  useServiceInstances: vi.fn(() => ({
+    instances: [],
+    loading: false,
+    refetch: vi.fn(),
+  })),
+}));
 
 const mockUseMetrics = vi.mocked(useMetrics);
 const mockFilterValues = vi.mocked(useMetricsFilterValues);
+const mockUseServiceInstances = vi.mocked(useServiceInstances);
 
 // The page-level resolved live window, passed down by the route.
 const WINDOW = {
@@ -119,13 +128,19 @@ describe("ApplicationMetricsCard", () => {
     mockUseMetrics.mockReset();
     mockFilterValues.mockReset();
     mockFilterValues.mockReturnValue([]);
+    mockUseServiceInstances.mockReset();
+    mockUseServiceInstances.mockReturnValue({
+      instances: [],
+      loading: false,
+      refetch: vi.fn(),
+    });
   });
 
   // The card's Limit / Manage-scaling header links (w5/m42) need a router
   // around the render — the service-detail-header test's harness pattern.
   function renderCard(
     resource = "app",
-    { runsInstances = true, scalable = true } = {},
+    { runsInstances = true, scalable = true, shellEligible = false } = {},
   ) {
     const rootRoute = createRootRoute();
     const indexRoute = createRoute({
@@ -137,6 +152,7 @@ describe("ApplicationMetricsCard", () => {
           window={WINDOW}
           runsInstances={runsInstances}
           scalable={scalable}
+          shellEligible={shellEligible}
         />
       ),
     });
@@ -805,5 +821,224 @@ describe("ApplicationMetricsCard usage header across instances (w4/258)", () => 
     await toggleInstance(OLD);
     await toggleInstance(NEW);
     expect(headerScalars(container)).toEqual(["100.0%"]);
+  });
+});
+
+// w4/717: Render's service metrics action menu on Memory and CPU charts opens a
+// dashboard shell on a running instance, disables SSH with the log row's reason
+// for a stopped instance, and omits SSH when the service's Shell cannot open.
+describe("ApplicationMetricsCard instance shell actions (w4/717)", () => {
+  const RUNNING = "srv-web-0123456789abcdefghij";
+  const STOPPED = "srv-web-9999999999abcdefghij";
+
+  beforeEach(() => {
+    mockUseMetrics.mockReset();
+    mockFilterValues.mockReset();
+    mockFilterValues.mockReturnValue([]);
+    mockUseServiceInstances.mockReset();
+    mockUseServiceInstances.mockReturnValue({
+      instances: [{ id: RUNNING, createdAt: "2026-11-23T00:00:00Z" }],
+      loading: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  function renderCard({ shellEligible = true } = {}) {
+    const rootRoute = createRootRoute();
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => (
+        <ApplicationMetricsCard
+          resource="srv-web"
+          window={WINDOW}
+          runsInstances
+          scalable
+          shellEligible={shellEligible}
+        />
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      context: { client: {} as never, session: null },
+    });
+    return render(<RouterProvider router={router} />);
+  }
+
+  it("links SSH into instance on a running instance and disables it with Render's reason on a stopped one", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "cpu" && opts?.percentage) {
+        return multiSeriesResult("percentage", {
+          [RUNNING]: [45, 52],
+          [STOPPED]: [12, 18],
+        });
+      }
+      if (metric === "cpu" && !opts?.percentage) {
+        return multiSeriesResult("cpu", {
+          [RUNNING]: [0.2, 0.3],
+          [STOPPED]: [0.1, 0.1],
+        });
+      }
+      return emptyResult();
+    });
+
+    renderCard({ shellEligible: true });
+
+    // Running instance: clicking its legend trigger opens the menu with an
+    // active Shell link targeting that instance.
+    const runningTrigger = await screen.findByRole("button", {
+      name: "Actions for instance srv-web-01234",
+    });
+    expect(mockUseServiceInstances).toHaveBeenCalledWith("srv-web", {
+      skip: false,
+    });
+    await user.click(runningTrigger);
+    const sshLink = screen.getByRole("menuitem", {
+      name: "SSH into instance",
+    });
+    expect(sshLink).toHaveAttribute(
+      "href",
+      `/services/srv-web/shell?instance=${RUNNING}`,
+    );
+    expect(sshLink).toHaveAttribute("target", "_blank");
+    const logsLink = screen.getByRole("menuitem", {
+      name: "View instance logs",
+    });
+    expect(logsLink).toHaveAttribute(
+      "href",
+      `/services/srv-web/logs?instance=${RUNNING}`,
+    );
+    expect(logsLink).toHaveAttribute("target", "_blank");
+
+    // Copy instance ID writes the full canonical ID (not the shortened slug).
+    await user.click(
+      screen.getByRole("menuitem", { name: "Copy instance ID" }),
+    );
+    expect(await navigator.clipboard.readText()).toBe(RUNNING);
+
+    // Stopped instance: SSH into instance is disabled with no href and carries
+    // the log row's exact reason.
+    const stoppedTrigger = screen.getByRole("button", {
+      name: "Actions for instance srv-web-99999",
+    });
+    await user.click(stoppedTrigger);
+    const disabledSsh = screen.getByRole("menuitem", {
+      name: "SSH into instance",
+    });
+    expect(disabledSsh).toHaveAttribute("aria-disabled", "true");
+    expect(disabledSsh).not.toHaveAttribute("href");
+    expect(disabledSsh).toHaveAccessibleDescription(
+      "You can only SSH into running instances. This one is not available.",
+    );
+    await user.keyboard("{Escape}");
+  });
+
+  it("opens Render's floating action card when clicking a charted series, and filters or resets from it", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "memory" && opts?.percentage) {
+        return multiSeriesResult("percentage", {
+          [RUNNING]: [40, 42],
+          [STOPPED]: [10, 12],
+        });
+      }
+      if (metric === "cpu" && !opts?.percentage) {
+        return multiSeriesResult("cpu", {
+          [RUNNING]: [0.2],
+          [STOPPED]: [0.1],
+        });
+      }
+      return emptyResult();
+    });
+
+    renderCard({ shellEligible: true });
+    const charts = await screen.findAllByRole("img", {
+      name: /2 data points/,
+    });
+    // Clicking the Memory chart opens the floating action card for the nearest
+    // series (RUNNING first in jsdom's zero-rect fallback).
+    await user.click(charts[0]);
+    const sshLink = screen.getByRole("link", { name: "SSH into instance" });
+    expect(sshLink).toHaveAttribute(
+      "href",
+      `/services/srv-web/shell?instance=${RUNNING}`,
+    );
+    expect(sshLink).toHaveAttribute("target", "_blank");
+
+    // Filter to instance narrows the card, and reopening shows Reset instance filter.
+    await user.click(
+      screen.getByRole("button", { name: "Filter to instance" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Show all" }),
+    ).toBeInTheDocument();
+
+    await user.click(charts[0]);
+    expect(
+      screen.getByRole("button", { name: "Reset instance filter" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Reset instance filter" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Show all" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("omits SSH into instance and skips instance polling when the service's Shell cannot open", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "cpu" && opts?.percentage) {
+        return multiSeriesResult("percentage", {
+          [RUNNING]: [45, 52],
+          [STOPPED]: [12, 18],
+        });
+      }
+      if (metric === "cpu" && !opts?.percentage) {
+        return multiSeriesResult("cpu", {
+          [RUNNING]: [0.2, 0.3],
+          [STOPPED]: [0.1, 0.1],
+        });
+      }
+      return emptyResult();
+    });
+
+    renderCard({ shellEligible: false });
+
+    const trigger = await screen.findByRole("button", {
+      name: "Actions for instance srv-web-01234",
+    });
+    expect(mockUseServiceInstances).toHaveBeenCalledWith("srv-web", {
+      skip: true,
+    });
+    await user.click(trigger);
+    expect(
+      screen.queryByRole("menuitem", { name: "SSH into instance" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("menuitem", { name: "View instance logs" }),
+    ).toHaveAttribute("href", `/services/srv-web/logs?instance=${RUNNING}`);
+  });
+
+  it("offers no instance action menu on Total Instances (Memory and CPU only, as on Render)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "instance_count") {
+        return seriesResult("count", [2, 2], RUNNING);
+      }
+      return emptyResult();
+    });
+
+    renderCard({ shellEligible: true });
+    const chart = await screen.findByRole("img", { name: /2 data points/ });
+    await user.click(chart);
+    expect(
+      screen.queryByRole("link", { name: "SSH into instance" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy instance ID" }),
+    ).not.toBeInTheDocument();
   });
 });

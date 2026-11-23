@@ -700,6 +700,46 @@ const deMetrics: Record<string, TranslationEntry> = {
       "Diese Ansicht zeigt die Services, Cronjobs, Postgres-Datenbanken und Key-Value-Instanzen des Projekts, und sie enthält noch keine.",
     description: "Body of the empty project Service Metrics view (w3/m508)",
   },
+  "metrics.viewActionsFor": {
+    message: "Aktionen für {instance} anzeigen",
+    description:
+      "Tooltip hint at the bottom of a Memory or CPU chart when hovering an instance's series (w4/717; Render's 'View actions for <slug>')",
+  },
+  "metrics.instanceActionsMenu": {
+    message: "Aktionen für Instanz {instance}",
+    description:
+      "Accessible name of the instance action card and legend menu trigger on Memory and CPU charts (w4/717)",
+  },
+  "metrics.filterToInstance": {
+    message: "Auf Instanz filtern",
+    description:
+      "Chart instance menu item: filters the Application Metrics card to this instance (w4/717; Render's 'Filter to instance')",
+  },
+  "metrics.resetInstanceFilter": {
+    message: "Instanzfilter zurücksetzen",
+    description:
+      "Chart instance menu item: removes this instance from the card's Instances filter (w4/717; Render's 'Reset instance filter')",
+  },
+  "metrics.viewInstanceLogs": {
+    message: "Instanz-Logs anzeigen",
+    description:
+      "Chart instance menu item: opens the service's Logs tab filtered to this instance in a new tab (w4/717; Render's 'View instance logs')",
+  },
+  "metrics.copyInstanceId": {
+    message: "Instanz-ID kopieren",
+    description:
+      "Chart instance menu item: copies the instance's full ID to the clipboard (w4/717; Render's 'Copy instance ID')",
+  },
+  "metrics.instanceIdCopied": {
+    message: "Instanz-ID kopiert",
+    description:
+      "Toast after Copy instance ID wrote the instance ID to the clipboard (w4/717)",
+  },
+  "metrics.instanceIdCopyFailed": {
+    message: "Instanz-ID konnte nicht kopiert werden",
+    description:
+      "Toast when the clipboard refused Copy instance ID (w4/717)",
+  },
 };
 
 export default deMetrics;

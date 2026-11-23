@@ -652,6 +652,46 @@ const zhMetrics: Record<string, TranslationEntry> = {
       "此视图绘制项目的服务、定时任务、Postgres 数据库和 Key Value 实例，但目前其中还没有任何资源。",
     description: "Body of the empty project Service Metrics view (w3/m508)",
   },
+  "metrics.viewActionsFor": {
+    message: "查看实例 {instance} 的操作",
+    description:
+      "Tooltip hint at the bottom of a Memory or CPU chart when hovering an instance's series (w4/717; Render's 'View actions for <slug>')",
+  },
+  "metrics.instanceActionsMenu": {
+    message: "实例 {instance} 的操作",
+    description:
+      "Accessible name of the instance action card and legend menu trigger on Memory and CPU charts (w4/717)",
+  },
+  "metrics.filterToInstance": {
+    message: "仅筛选此实例",
+    description:
+      "Chart instance menu item: filters the Application Metrics card to this instance (w4/717; Render's 'Filter to instance')",
+  },
+  "metrics.resetInstanceFilter": {
+    message: "重置实例筛选",
+    description:
+      "Chart instance menu item: removes this instance from the card's Instances filter (w4/717; Render's 'Reset instance filter')",
+  },
+  "metrics.viewInstanceLogs": {
+    message: "查看实例日志",
+    description:
+      "Chart instance menu item: opens the service's Logs tab filtered to this instance in a new tab (w4/717; Render's 'View instance logs')",
+  },
+  "metrics.copyInstanceId": {
+    message: "复制实例 ID",
+    description:
+      "Chart instance menu item: copies the instance's full ID to the clipboard (w4/717; Render's 'Copy instance ID')",
+  },
+  "metrics.instanceIdCopied": {
+    message: "已复制实例 ID",
+    description:
+      "Toast after Copy instance ID wrote the instance ID to the clipboard (w4/717)",
+  },
+  "metrics.instanceIdCopyFailed": {
+    message: "无法复制实例 ID",
+    description:
+      "Toast when the clipboard refused Copy instance ID (w4/717)",
+  },
 };
 
 export default zhMetrics;

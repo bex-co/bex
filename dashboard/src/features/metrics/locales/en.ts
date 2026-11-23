@@ -690,6 +690,46 @@ const enMetrics: Record<string, TranslationEntry> = {
       "This view charts the project's services, cron jobs, Postgres databases and Key Value instances, and there are none in it yet.",
     description: "Body of the empty project Service Metrics view (w3/m508)",
   },
+  "metrics.viewActionsFor": {
+    message: "View actions for {instance}",
+    description:
+      "Tooltip hint at the bottom of a Memory or CPU chart when hovering an instance's series (w4/717; Render's 'View actions for <slug>')",
+  },
+  "metrics.instanceActionsMenu": {
+    message: "Actions for instance {instance}",
+    description:
+      "Accessible name of the instance action card and legend menu trigger on Memory and CPU charts (w4/717)",
+  },
+  "metrics.filterToInstance": {
+    message: "Filter to instance",
+    description:
+      "Chart instance menu item: filters the Application Metrics card to this instance (w4/717; Render's 'Filter to instance')",
+  },
+  "metrics.resetInstanceFilter": {
+    message: "Reset instance filter",
+    description:
+      "Chart instance menu item: removes this instance from the card's Instances filter (w4/717; Render's 'Reset instance filter')",
+  },
+  "metrics.viewInstanceLogs": {
+    message: "View instance logs",
+    description:
+      "Chart instance menu item: opens the service's Logs tab filtered to this instance in a new tab (w4/717; Render's 'View instance logs')",
+  },
+  "metrics.copyInstanceId": {
+    message: "Copy instance ID",
+    description:
+      "Chart instance menu item: copies the instance's full ID to the clipboard (w4/717; Render's 'Copy instance ID')",
+  },
+  "metrics.instanceIdCopied": {
+    message: "Copied instance ID",
+    description:
+      "Toast after Copy instance ID wrote the instance ID to the clipboard (w4/717)",
+  },
+  "metrics.instanceIdCopyFailed": {
+    message: "Couldn't copy the instance ID",
+    description:
+      "Toast when the clipboard refused Copy instance ID (w4/717)",
+  },
 };
 
 export default enMetrics;

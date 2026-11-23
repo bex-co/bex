@@ -12,8 +12,17 @@ import type { UseServerResult } from "@/features/services/hooks/use-server";
 // chart rendering) are covered by their own tests — stub them so this test
 // stays about the w5/m48 type-gating decision: which cards a type gets.
 vi.mock("@/features/metrics/components/application-metrics-card", () => ({
-  ApplicationMetricsCard: ({ runsInstances }: { runsInstances: boolean }) => (
-    <p>application card{runsInstances ? "" : " (parked)"}</p>
+  ApplicationMetricsCard: ({
+    runsInstances,
+    shellEligible,
+  }: {
+    runsInstances: boolean;
+    shellEligible?: boolean;
+  }) => (
+    <p>
+      application card{runsInstances ? "" : " (parked)"}
+      {shellEligible ? " (shell)" : ""}
+    </p>
   ),
 }));
 vi.mock("@/features/metrics/components/network-metrics-card", () => ({
@@ -85,6 +94,21 @@ describe("ServiceMetricsPage (w5/m48 — static sites get no pod metrics)", () =
 
     expect(screen.getByText("application card")).toBeInTheDocument();
     expect(screen.getByText("network card")).toBeInTheDocument();
+  });
+
+  // w4/717: Shell actions on Memory/CPU follow the Shell page and Logs tab's
+  // eligibility rule (`Boolean(service.sshAddress)`).
+  it("enables Shell actions on the Application card only when the service has an sshAddress (w4/717)", () => {
+    serverState.service = {
+      id: "srv-1",
+      type: "web_service",
+      suspended: false,
+      phase: "Running",
+      sshAddress: "srv-1@ssh.bex.co",
+    } as ServiceView;
+    render(<ServiceMetricsPage serviceId="srv-1" />);
+
+    expect(screen.getByText("application card (shell)")).toBeInTheDocument();
   });
 
   // w5/m125: a parked service's current-limit read is empty for want of a pod,

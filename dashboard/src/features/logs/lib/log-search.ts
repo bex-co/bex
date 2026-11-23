@@ -177,6 +177,33 @@ export function searchHref(
 }
 
 /**
+ * A service's Shell link for one instance (w3/m528, w4/717; Render's
+ * `${servicePath}/shell/${instance}`): the Shell page on that instance while
+ * it is one of `running`, or `null` (disabled) once it is not.
+ */
+export function serviceInstanceShellHref(
+  serviceId: string,
+  instanceId: string,
+  running: ReadonlySet<string>,
+): string | null {
+  return running.has(instanceId)
+    ? searchHref(`/services/${serviceId}/shell`, {
+        instance: instanceId,
+      })
+    : null;
+}
+
+/** A service's Logs tab pre-filtered to one instance (w4/717). */
+export function serviceInstanceLogsHref(
+  serviceId: string,
+  instanceId: string,
+): string {
+  return searchHref(`/services/${serviceId}/logs`, {
+    instance: instanceId,
+  });
+}
+
+/**
  * The service Logs tab's SSH into instance for a line (w3/m528, Render's
  * `${servicePath}/shell/${instance}`): the Shell page on the line's instance
  * while it is one of `running`, `href: null` (disabled) once it is not, and
@@ -189,11 +216,7 @@ export function serviceLineShell(
   return (line) =>
     line.instance
       ? {
-          href: running.has(line.instance)
-            ? searchHref(`/services/${serviceId}/shell`, {
-                instance: line.instance,
-              })
-            : null,
+          href: serviceInstanceShellHref(serviceId, line.instance, running),
         }
       : null;
 }

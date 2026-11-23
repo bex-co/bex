@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Card,
@@ -21,6 +21,7 @@ import {
   EmptyChart,
   type LineSeriesInput,
 } from "@/features/metrics/components/svg-line-chart";
+import type { ChartInstanceActions } from "@/features/metrics/components/chart-instance-menu";
 import { MetricSection } from "@/features/metrics/components/metric-section";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import {
@@ -29,6 +30,12 @@ import {
   type UseMetricsResult,
 } from "@/features/metrics/hooks/use-metrics";
 import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
+import { useServiceInstances } from "@/features/services/hooks/use-service-instances";
+import {
+  serviceInstanceLogsHref,
+  serviceInstanceShellHref,
+} from "@/features/logs/lib/log-search";
+import { useCopyToClipboard } from "@/common/hooks/use-copy-to-clipboard";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricValue } from "@/features/metrics/lib/format";
 import { hasPoints, latestValue } from "@/features/metrics/lib/series";
@@ -51,6 +58,9 @@ interface ApplicationMetricsCardProps {
   runsInstances: boolean;
   /** The service has a Scaling page, so Total Instances links to it. */
   scalable: boolean;
+  /** The service's Shell can open (`Boolean(service.sshAddress)`), so Memory
+   *  and CPU instance charts offer SSH into instance (w4/717). */
+  shellEligible?: boolean;
 }
 
 /**
@@ -85,6 +95,7 @@ export function ApplicationMetricsCard({
   markers,
   runsInstances,
   scalable,
+  shellEligible = false,
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
   const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
@@ -95,6 +106,16 @@ export function ApplicationMetricsCard({
   const [selectedInstances, setSelectedInstances] = useState<string[]>([]);
 
   const liveInstances = useMetricsFilterValues(resource, "INSTANCE");
+  // Running instances for SSH into instance (w4/717), sharing the Logs tab's
+  // eligibility and running-instance rules (ServiceLogsPage, w3/m528).
+  const { instances: runningInstances } = useServiceInstances(resource, {
+    skip: !shellEligible,
+  });
+  const runningIds = runningInstances.map((instance) => instance.id).join(" ");
+  const { copy: copyInstanceId } = useCopyToClipboard({
+    successText: t("metrics.instanceIdCopied"),
+    errorText: t("metrics.instanceIdCopyFailed"),
+  });
   // Unfiltered CPU series seeds historical instance choices (terminated pods
   // still in the window). When there is no INSTANCE selection and no aggregate,
   // this is the same query as cpuAbsolute — share it so we don't double-POST
@@ -170,6 +191,41 @@ export function ApplicationMetricsCard({
     [selectedInstances, availableInstances],
   );
   const hasSelection = selectedInstances.length > 0;
+  const canFilterInstance = instanceChoices.length > 1 || hasSelection;
+
+  const toggleChartInstance = useCallback((instanceId: string) => {
+    setSelectedInstances((cur) =>
+      cur.includes(instanceId)
+        ? cur.filter((id) => id !== instanceId)
+        : [...cur, instanceId],
+    );
+  }, []);
+
+  // Per-instance chart action menu on Memory and CPU (w4/717, matching
+  // Render's `metrics-*.js` `actionsData` on Memory and CPU only).
+  const instanceActions = useMemo<ChartInstanceActions>(() => {
+    const runningSet = new Set(runningIds ? runningIds.split(" ") : []);
+    return {
+      shell: shellEligible
+        ? (instanceId) => ({
+            href: serviceInstanceShellHref(resource, instanceId, runningSet),
+          })
+        : undefined,
+      logsHref: (instanceId) => serviceInstanceLogsHref(resource, instanceId),
+      isFiltered: (instanceId) => selectedInstances.includes(instanceId),
+      onToggleFilter: canFilterInstance ? toggleChartInstance : undefined,
+      onCopyId: (instanceId) => void copyInstanceId(instanceId),
+      formatLabel: shortInstanceLabel,
+    };
+  }, [
+    canFilterInstance,
+    copyInstanceId,
+    resource,
+    runningIds,
+    selectedInstances,
+    shellEligible,
+    toggleChartInstance,
+  ]);
 
   // Resource-navigation reset lives with the owner: the route renders this
   // card with key={resource}, so a selection names instances of one service
@@ -310,6 +366,7 @@ export function ApplicationMetricsCard({
           runsInstances={runsInstances}
           markers={markers}
           hasSelection={hasSelection}
+          instanceActions={instanceActions}
         />
         <ResourceSection
           title={t("metrics.cpu")}
@@ -323,6 +380,7 @@ export function ApplicationMetricsCard({
           runsInstances={runsInstances}
           markers={markers}
           hasSelection={hasSelection}
+          instanceActions={instanceActions}
         />
         <MetricSection
           eventLane
@@ -400,6 +458,8 @@ interface ResourceSectionProps {
    * stays distinct from query errors (handled by MetricSection).
    */
   hasSelection?: boolean;
+  /** Per-instance actions for Memory/CPU series (w4/717). */
+  instanceActions?: ChartInstanceActions;
 }
 
 /**
@@ -423,6 +483,7 @@ function ResourceSection({
   runsInstances,
   markers,
   hasSelection,
+  instanceActions,
 }: ResourceSectionProps) {
   const { t } = useTranslations();
 
@@ -529,8 +590,9 @@ function ResourceSection({
             referenceValue={referenceValue}
             markers={markers}
             markersServiceId={serviceId}
+            instanceActions={instanceActions}
           />
-          <ChartLegend entries={series} />
+          <ChartLegend entries={series} instanceActions={instanceActions} />
         </>
       )}
     </MetricSection>
