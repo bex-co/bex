@@ -1380,9 +1380,9 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "选择成员在会话、消息和自动化中可以选用的平台模型。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。一旦关闭任一模型，之后加入平台的模型会保持关闭，直到你将其开启。",
+      "按模型或按提供商，选择成员在会话、消息和自动化中可以选用的平台模型。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message: "平台的默认模型始终保持开启，因为会话会回退到它。",
@@ -1413,6 +1413,68 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsSaveFailed": {
     message: "无法更新成员可选的模型，请重试。",
     description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelsFilterLabel": {
+    message: "筛选成员可选用的模型的方式",
+    description:
+      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsByModel": {
+    message: "按模型",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose one model at a time (w10/m573)",
+  },
+  "agentEnvironment.modelsByProvider": {
+    message: "按提供商",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
+  },
+  "agentEnvironment.modelsByModelHelp": {
+    message: "一旦关闭任一模型，之后加入平台的模型会保持关闭，直到你将其开启。",
+    description:
+      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+  },
+  "agentEnvironment.modelsByProviderHelp": {
+    message:
+      "成员可以选用你允许的提供商的所有模型，包括之后加入平台的模型。其他提供商的模型保持关闭。",
+    description:
+      "Settings → Agents: help under the filter choice while it is by provider — every model of an allowed provider, a later one included, and other providers' models off (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderDefault": {
+    message: "{model}（默认模型，始终开启）",
+    description:
+      "Settings → Agents, by provider: the catalog's default model in the list under its provider's switch; {model} is its id (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderLastLocked": {
+    message: "至少保留一个允许的提供商。若只提供默认模型，请改为按模型筛选。",
+    description:
+      "Settings → Agents, by provider: note under the one provider still allowed, whose switch is locked on (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOn": {
+    message: "已为成员开启 {provider} 的模型",
+    description:
+      "Toast after an admin allows a provider's models for members; {provider} is the provider id, e.g. anthropic (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOff": {
+    message: "已为成员关闭 {provider} 的模型",
+    description:
+      "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByProvider": {
+    message: "成员现在从你允许的提供商的模型中选用",
+    description:
+      "Toast after an admin switches the model list to filtering by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByModel": {
+    message: "成员现在从你允许的模型中选用",
+    description:
+      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+  },
+  "agentEnvironment.modelsProvidersInvalid": {
+    message:
+      "无法更新提供商：列表必须至少包含一个平台目录中的提供商。请刷新页面查看当前目录。",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model}（已关闭）",

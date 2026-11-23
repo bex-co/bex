@@ -74,23 +74,28 @@ type EnvironmentStore interface {
 // EnabledModels is the part of it the workspace's admins left on (w10/m527),
 // the models a claude session, an automation and DefaultModel may name, the
 // catalog's default always among them: every catalog model until an admin
-// turns one off, then the allowlist that write left on (w10/m568). NewModels
+// turns one off, then the allowlist that write left on (w10/m568), or under a
+// filter by provider every model of a listed provider (w10/m573). NewModels
 // are the catalog models off because that allowlist predates them, apart from
-// the ones an admin turned off. A DefaultModel outside EnabledModels
+// the ones an admin turned off. Providers are the catalog's providers, and
+// EnabledProviders the ones the filter by provider lists, nil while the list
+// is by model. A DefaultModel outside EnabledModels
 // is stored but does not take effect: the catalog's default runs. ModelPinned
 // is true on the route, whose gateway pins each session to its chosen model;
 // PinnedModel is the catalog's default, kept for clients older than Models.
 // UpdatedAt is nil until the environment is first written.
 type Environment struct {
-	OwnerID       string   `json:"ownerId"`
-	NetworkTier   string   `json:"networkTier"`
-	CustomHosts   []string `json:"customHosts"`
-	DefaultModel  *string  `json:"defaultModel"`
-	Models        []string `json:"models"`
-	EnabledModels []string `json:"enabledModels"`
-	NewModels     []string `json:"newModels"`
-	ModelPinned   bool     `json:"modelPinned"`
-	PinnedModel   *string  `json:"pinnedModel"`
+	OwnerID          string   `json:"ownerId"`
+	NetworkTier      string   `json:"networkTier"`
+	CustomHosts      []string `json:"customHosts"`
+	DefaultModel     *string  `json:"defaultModel"`
+	Models           []string `json:"models"`
+	EnabledModels    []string `json:"enabledModels"`
+	NewModels        []string `json:"newModels"`
+	Providers        []string `json:"providers"`
+	EnabledProviders []string `json:"enabledProviders"`
+	ModelPinned      bool     `json:"modelPinned"`
+	PinnedModel      *string  `json:"pinnedModel"`
 	TemplateOffer
 	// ModelSource is the credential the workspace's claude sessions use;
 	// ModelKeySet is ModelSource == ModelSourceBYO (environmentView derives
@@ -195,7 +200,10 @@ type EnvironmentInput struct {
 	// the catalog's others are turned off (w10/m527). Every catalog model on
 	// allows all, a later one included; any model off makes it an allowlist
 	// that leaves a model added to the catalog later off (w10/m568).
-	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, and a model added to the catalog later stays off until an admin turns it on (it reads in newModels). It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
+	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off, and a filter by provider is replaced. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, and a model added to the catalog later stays off until an admin turns it on (it reads in newModels). It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
+	// EnabledProviders filters the catalog by provider instead (w10/m573),
+	// Devin's other filter type; one write names one of the two.
+	EnabledProviders *[]string `json:"enabledProviders,omitempty" jsonschema:"filters the platform catalog models members may choose by provider instead of by model (admins only), as Devin's one filter type at a time: the workspace offers every catalog model whose id starts with <provider>/ for a listed provider, one added to the catalog later included, plus the catalog's default, which is always on; a model of any other provider is off. Names providers from the environment's providers (at least one); a write naming enabledModels too is refused with AGENT_ENVIRONMENT_MODELS_INVALID, and a later enabledModels write returns to the by-model list. Applies to the platform model route only"`
 	// IdleTimeoutMinutes sets the workspace's own idle timeout (w6/m563).
 	IdleTimeoutMinutes *int `json:"idleTimeoutMinutes,omitempty" jsonschema:"how long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects (admins only, Enterprise plan only): 5 to 120, else AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID; any other plan is refused with PLAN_FEATURE_REQUIRED and keeps 5. A closed session's next message runs in a fresh sandbox. Automations' and child sessions' sandboxes close when their turn ends whatever it says"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
@@ -227,7 +235,10 @@ const (
 	DataUseUnacknowledgedCode = "AGENT_ENVIRONMENT_DATA_USE_UNACKNOWLEDGED"
 	// ModelListInvalidCode refuses an enabledModels that turns the catalog's
 	// default off (an empty list does), names a model outside the catalog, or
-	// is sent where there is no catalog to narrow (w10/m527).
+	// is sent where there is no catalog to narrow (w10/m527); and an
+	// enabledProviders that is empty, names a provider no catalog model
+	// carries, is sent with enabledModels or where there is no catalog
+	// (w10/m573).
 	ModelListInvalidCode = "AGENT_ENVIRONMENT_MODELS_INVALID"
 )
 
@@ -448,7 +459,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	// of them.
 	agentsChanged := input.EnabledAgents != nil || len(input.AcknowledgeAgentDataUse) > 0
 	automationsOn := isTrue(patch.AutomationsGitHubCLI)
-	if input.DefaultModel != nil || input.EnabledModels != nil || agentsChanged || automationsOn {
+	if input.DefaultModel != nil || input.EnabledModels != nil || input.EnabledProviders != nil || agentsChanged || automationsOn {
 		current, err := s.workspaceEnvironment(ctx, workspaceID)
 		if err != nil {
 			return Environment{}, err
@@ -613,25 +624,40 @@ func validateEnvironmentInput(input EnvironmentInput, templates []sandbox.AgentT
 // models": a model added to the catalog later is on too. Leaving any out is
 // its "Allowlist specific models" (w10/m568): the write records the catalog
 // it saw, and a model added later is off until an admin turns it on. It
-// must keep the catalog's default and name only catalog models, and
-// is refused off the route, where there is no catalog to narrow. defaultModel
+// must keep the catalog's default and name only catalog models. Devin's other
+// filter type, enabledProviders (w10/m573), lists providers instead: the
+// write records them, the catalog it saw and, as the turned-off list, every
+// model but the default of an unlisted provider, so a previous-release
+// bex-api offers the same set. One write names one filter type, and both are
+// refused off the route, where there is no catalog to narrow. defaultModel
 // must be one of the models offered after the update. Turning off the model
 // the stored default names is allowed, as Devin's allowlist overrides a
 // pinned default: that default stops taking effect and the catalog's runs.
 func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byoKey bool, patch *store.AgentEnvironmentPatch) error {
 	catalog, routed := agentsession.PlatformModels(byoKey)
 	after := current
+	field := ""
+	switch {
+	case input.EnabledModels != nil && input.EnabledProviders != nil:
+		return core.NewBadRequestError(ModelListInvalidCode,
+			"set enabledModels or enabledProviders, not both: the models members may choose are filtered by model or by provider, one filter type at a time",
+			map[string]any{"field": "enabledProviders", "fields": []string{"enabledModels", "enabledProviders"}})
+	case input.EnabledModels != nil:
+		field = "enabledModels"
+	case input.EnabledProviders != nil:
+		field = "enabledProviders"
+	}
+	if field != "" && !routed {
+		msg := field + " narrows the platform model catalog, and this workspace runs agents on its own model key, where any model id is accepted"
+		if !byoKey {
+			msg = field + " narrows the platform model catalog, which this bex-api does not offer"
+		}
+		return core.NewBadRequestError(ModelListInvalidCode, msg, map[string]any{"field": field})
+	}
 	if input.EnabledModels != nil {
 		invalid := func(msg, model string) error {
 			return core.NewBadRequestError(ModelListInvalidCode, msg,
 				map[string]any{"field": "enabledModels", "model": model, "models": catalog})
-		}
-		if !routed {
-			msg := "enabledModels narrows the platform model catalog, and this workspace runs agents on its own model key, where any model id is accepted"
-			if !byoKey {
-				msg = "enabledModels narrows the platform model catalog, which this bex-api does not offer"
-			}
-			return core.NewBadRequestError(ModelListInvalidCode, msg, map[string]any{"field": "enabledModels"})
 		}
 		enabled := map[string]bool{}
 		for _, model := range *input.EnabledModels {
@@ -655,7 +681,16 @@ func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byo
 			known = catalog
 		}
 		patch.DisabledModels, patch.KnownModels = &disabled, known
-		after.DisabledModels, after.KnownModels = disabled, known
+		after.DisabledModels, after.KnownModels, after.EnabledProviders = disabled, known, nil
+	}
+	if input.EnabledProviders != nil {
+		providers, err := listedProviders(catalog, *input.EnabledProviders)
+		if err != nil {
+			return err
+		}
+		disabled := providerFilterOff(catalog, providers)
+		patch.DisabledModels, patch.KnownModels, patch.EnabledProviders = &disabled, catalog, providers
+		after.DisabledModels, after.KnownModels, after.EnabledProviders = disabled, catalog, providers
 	}
 	if input.DefaultModel != nil && *input.DefaultModel != "" && routed {
 		if offered, _ := leftOn(catalog, after); !slices.Contains(offered, *input.DefaultModel) {
@@ -663,6 +698,31 @@ func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byo
 		}
 	}
 	return nil
+}
+
+// listedProviders checks an enabledProviders write against catalog's
+// providers and returns the ones it lists, folded and in catalog order. It
+// must list at least one: Devin's empty list means "not this filter type", so
+// an empty filter would read two ways, and enabledModels naming the default
+// alone offers only it.
+func listedProviders(catalog, input []string) ([]string, error) {
+	offered := catalogProviders(catalog)
+	listed := map[string]bool{}
+	for _, provider := range input {
+		provider = strings.TrimSpace(provider)
+		if !slices.Contains(offered, provider) {
+			return nil, core.NewBadRequestError(ModelListInvalidCode,
+				fmt.Sprintf("enabledProviders: %q is not a provider of the platform catalog, whose providers are %s", provider, strings.Join(offered, ", ")),
+				map[string]any{"field": "enabledProviders", "provider": provider, "providers": offered})
+		}
+		listed[provider] = true
+	}
+	if len(listed) == 0 {
+		return nil, core.NewBadRequestError(ModelListInvalidCode,
+			fmt.Sprintf("enabledProviders must list at least one of the platform catalog's providers (%s); to offer only the catalog's default, set enabledModels to it", strings.Join(offered, ", ")),
+			map[string]any{"field": "enabledProviders", "providers": offered})
+	}
+	return slices.DeleteFunc(offered, func(p string) bool { return !listed[p] }), nil
 }
 
 // workspaceHosts validates a custom hostname list with the per-session
@@ -728,7 +788,7 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.DefaultModel = &model
 	}
 	view.TemplateOffer = s.templateOffer(row)
-	view.Models, view.EnabledModels, view.NewModels = []string{}, []string{}, []string{}
+	view.Models, view.EnabledModels, view.NewModels, view.Providers = []string{}, []string{}, []string{}, []string{}
 	switch models, ok := agentsession.PlatformModels(row.ModelKeySet()); {
 	case row.ModelKeySet():
 		view.ModelSource = ModelSourceBYO
@@ -736,6 +796,12 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.ModelSource = ModelSourcePlatform
 		view.Models = models
 		view.EnabledModels, view.NewModels = leftOn(models, row)
+		view.Providers = catalogProviders(models)
+		if listed, ok := providerFilter(row); ok {
+			// The catalog's providers it lists, so a write built from the
+			// read never names one the catalog dropped.
+			view.EnabledProviders = slices.DeleteFunc(slices.Clone(view.Providers), func(p string) bool { return !slices.Contains(listed, p) })
+		}
 		view.ModelPinned = true
 		view.PinnedModel = &models[0]
 	default:
@@ -892,20 +958,28 @@ func inPlatformCatalog(model string) bool {
 // leftOn is what env's stored list allows of catalog, as new slices in
 // catalog order: on, the models members may choose, and added, the ones off
 // only because they are new in the catalog since an admin narrowed the list
-// (w10/m568). Devin's rule: a model is allowed when the allowlist names it.
-// The allowlist is KnownModels, the catalog the narrowing write saw, less
-// DisabledModels. A list with no known models (none narrowed, or narrowed
-// under migration 0315 and not yet converted) or none turned off (an
-// all-on write by a bex-api before m568) allows every catalog model but the
-// turned-off ones, as the opt-out did. The catalog's default is never off,
-// even by a list stored before the catalog's default changed.
+// (w10/m568). Devin's rule: a model is allowed when the allowlist names it or
+// it carries a listed provider tag. Under a filter by provider in force
+// (providerFilter, w10/m573) every model of a listed provider is on, a later
+// one included, and none is new. Otherwise the allowlist is KnownModels, the
+// catalog the narrowing write saw, less DisabledModels. A list with no known
+// models (none narrowed, or narrowed under migration 0315 and not yet
+// converted) or none turned off (an all-on write by a bex-api before m568)
+// allows every catalog model but the turned-off ones, as the opt-out did.
+// The catalog's default is never off, even by a list stored before the
+// catalog's default changed.
 func leftOn(catalog []string, env store.AgentEnvironment) (on, added []string) {
+	providers, byProvider := providerFilter(env)
 	allowAll := env.KnownModels == nil || len(env.DisabledModels) == 0
 	on, added = make([]string, 0, len(catalog)), []string{}
 	for i, model := range catalog {
 		switch {
 		case i == 0:
 			on = append(on, model)
+		case byProvider:
+			if slices.Contains(providers, modelProvider(model)) {
+				on = append(on, model)
+			}
 		case slices.Contains(env.DisabledModels, model):
 		case allowAll || slices.Contains(env.KnownModels, model):
 			on = append(on, model)
@@ -914,6 +988,60 @@ func leftOn(catalog []string, env store.AgentEnvironment) (on, added []string) {
 		}
 	}
 	return on, added
+}
+
+// modelProvider is a catalog model's provider (w10/m573), Devin's provider
+// tag: its id's prefix before the first "/", "" for an id with none, which
+// no filter by provider allows.
+func modelProvider(model string) string {
+	provider, _, ok := strings.Cut(model, "/")
+	if !ok {
+		return ""
+	}
+	return provider
+}
+
+// catalogProviders are the providers of catalog's models, in catalog order.
+func catalogProviders(catalog []string) []string {
+	providers := []string{}
+	for _, model := range catalog {
+		if p := modelProvider(model); p != "" && !slices.Contains(providers, p) {
+			providers = append(providers, p)
+		}
+	}
+	return providers
+}
+
+// providerFilterOff is the turned-off list a filter by provider stores for
+// catalog: every model but the default whose provider is not listed. A
+// previous-release bex-api, which knows only the turned-off list, offers the
+// same set under that catalog.
+func providerFilterOff(catalog, providers []string) []string {
+	off := []string{}
+	for i, model := range catalog {
+		if i > 0 && !slices.Contains(providers, modelProvider(model)) {
+			off = append(off, model)
+		}
+	}
+	return off
+}
+
+// providerFilter is env's filter by provider and whether it is in force: only
+// while its turned-off list is still the one its write derived from the
+// catalog it saw. A previous-release bex-api's enabledModels write changes
+// that list and leaves enabled_providers in place; the row then reads by model,
+// as that bex-api reads it.
+func providerFilter(env store.AgentEnvironment) ([]string, bool) {
+	if env.EnabledProviders == nil || env.KnownModels == nil {
+		return nil, false
+	}
+	want, got := providerFilterOff(env.KnownModels, env.EnabledProviders), slices.Clone(env.DisabledModels)
+	slices.Sort(want)
+	slices.Sort(got)
+	if !slices.Equal(want, got) {
+		return nil, false
+	}
+	return env.EnabledProviders, true
 }
 
 // LegacyModelListStore converts the model lists narrowed under migration

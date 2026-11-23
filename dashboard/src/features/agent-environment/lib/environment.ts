@@ -5,6 +5,7 @@
 
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
+  graphQLErrorExtensions,
   hasGraphQLErrorCode,
   isForbiddenError,
 } from "@/common/lib/graphql-error";
@@ -32,6 +33,15 @@ export const TIERS = [
     titleKey: "agentEnvironment.tierFullTitle",
     descriptionKey: "agentEnvironment.tierFullDescription",
   },
+] as const;
+
+/**
+ * The model list's filter choices (w10/m573), Devin's one filter type at a
+ * time, in the order the ready card and its skeleton draw them.
+ */
+export const MODEL_FILTERS = [
+  { byProvider: false, labelKey: "agentEnvironment.modelsByModel" },
+  { byProvider: true, labelKey: "agentEnvironment.modelsByProvider" },
 ] as const;
 
 export type AgentEnvironmentView = AgentEnvironmentFieldsFragment;
@@ -372,11 +382,83 @@ export function defaultModelUnoffered(
 }
 
 /**
- * The locale key for a failed model switch (w10/m527): a list the server
- * refuses means the catalog or the model source changed since the card
- * loaded.
+ * A catalog model's provider (w10/m573), Devin's provider tag: its id's
+ * prefix before the first "/", "" for an id with none.
+ */
+export function modelProvider(model: string): string {
+  const slash = model.indexOf("/");
+  return slash < 0 ? "" : model.slice(0, slash);
+}
+
+/** The catalog models of one provider, in catalog order (w10/m573). */
+export function providerModels(
+  env: AgentEnvironmentView,
+  provider: string,
+): string[] {
+  return env.models.filter((m) => modelProvider(m) === provider);
+}
+
+/**
+ * What the model list's controls show (w10/m573): whether it filters by
+ * provider, Devin's one filter type at a time, and the models or providers
+ * on in each. Saved, it is the environment's; while a change saves, it is
+ * that change.
+ */
+export interface ModelFilter {
+  byProvider: boolean;
+  models: string[];
+  providers: string[];
+}
+
+export function modelFilterOf(env: AgentEnvironmentView): ModelFilter {
+  return {
+    byProvider: env.enabledProviders != null,
+    models: env.enabledModels,
+    providers: env.enabledProviders ?? [],
+  };
+}
+
+/**
+ * The whole enabledProviders list one provider switch implies (w10/m573):
+ * the catalog's providers in catalog order, `provider` on or off and every
+ * other as saved.
+ */
+export function withProviderToggled(
+  env: AgentEnvironmentView,
+  provider: string,
+  on: boolean,
+): string[] {
+  const listed = env.enabledProviders ?? [];
+  return env.providers.filter((p) =>
+    p === provider ? on : listed.includes(p),
+  );
+}
+
+/**
+ * The providers switching the list to "By provider" allows (w10/m573): the
+ * providers of the models on now, so the offer stays at least what it was;
+ * every provider when none of those models has one.
+ */
+export function providersOfEnabledModels(env: AgentEnvironmentView): string[] {
+  const on = env.providers.filter((p) =>
+    env.enabledModels.some((m) => modelProvider(m) === p),
+  );
+  return on.length > 0 ? on : env.providers;
+}
+
+/**
+ * The locale key for a failed model or provider switch (w10/m527, m573): a
+ * list the server refuses means the catalog or the model source changed
+ * since the card loaded.
  */
 export function enabledModelsErrorKey(err: unknown): string {
+  const refusal = graphQLErrorExtensions(
+    err,
+    "AGENT_ENVIRONMENT_MODELS_INVALID",
+  );
+  if (refusal?.["field"] === "enabledProviders") {
+    return "agentEnvironment.modelsProvidersInvalid";
+  }
   return sectionErrorKey(err, "agentEnvironment.modelsSaveFailed", {
     AGENT_ENVIRONMENT_MODELS_INVALID: "agentEnvironment.modelsInvalid",
   });

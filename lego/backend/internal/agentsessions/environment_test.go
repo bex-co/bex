@@ -107,6 +107,7 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.DisabledModels != nil {
 		row.DisabledModels = slices.Clone(*patch.DisabledModels)
 		row.KnownModels = slices.Clone(patch.KnownModels)
+		row.EnabledProviders = slices.Clone(patch.EnabledProviders)
 	}
 	if patch.IdleTimeoutMinutes != nil {
 		minutes := *patch.IdleTimeoutMinutes
@@ -199,7 +200,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, EnabledModels: []string{}, NewModels: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, EnabledModels: []string{}, NewModels: []string{}, Providers: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
 		TemplateOffer: offerOf("agent"),
 		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}},
 		GitHubCLIEnabled: true, IdleTimeoutMinutes: 5, IdleTimeoutConfigurable: true}

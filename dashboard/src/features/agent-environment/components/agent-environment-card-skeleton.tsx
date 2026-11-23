@@ -12,7 +12,10 @@ import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
-import { TIERS } from "@/features/agent-environment/lib/environment";
+import {
+  MODEL_FILTERS,
+  TIERS,
+} from "@/features/agent-environment/lib/environment";
 import { PricingWithTerms } from "@/features/legal/components/agent-model-terms-link";
 import {
   AGENT_OPTIONS,
@@ -81,6 +84,29 @@ export function ModelSourceLine({ children, ...props }: ComponentProps<"p">) {
     </p>
   );
 }
+
+/**
+ * The model list's filter choice (w10/m573), "By model" or "By provider",
+ * Devin's one filter type at a time: its frame, shared by the ready section
+ * and this skeleton, and the class of each option inside it.
+ */
+export function ModelFilterFrame({
+  className,
+  ...props
+}: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "bg-muted/40 flex w-fit flex-wrap gap-0.5 rounded-md border p-0.5",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export const MODEL_FILTER_OPTION_CLASS =
+  "rounded-[5px] px-2.5 py-1 text-xs font-medium whitespace-nowrap";
 
 /** A list of switch rows (available agents, models). */
 export function SwitchList({ children }: { children: ReactNode }) {
@@ -354,7 +380,9 @@ export function AgentEnvironmentCardSkeleton({
             locked default with its static note. A model's "New in the
             catalog" note (w10/m568) is data-dependent and only follows an
             admin narrowing the list before the catalog grew, so the rows
-            hold the usual state without it. */}
+            hold the usual state without it. The rows hold the list by model,
+            the default; a list by provider draws one row per provider
+            (w10/m573). */}
         <div
           className="space-y-3 border-t pt-6"
           data-testid="enabled-models-section-skeleton"
@@ -363,6 +391,28 @@ export function AgentEnvironmentCardSkeleton({
             title={t("agentEnvironment.modelsTitle")}
             description={t("agentEnvironment.modelsDescription")}
           />
+          {/* The filter choice (w10/m573): its labels are static, the
+              selected one is the saved filter's. The help under it and the
+              rows below hold the list by model, every workspace's until an
+              admin filters by provider. */}
+          <ModelFilterFrame aria-hidden="true">
+            {MODEL_FILTERS.map(({ labelKey }) => (
+              <span
+                key={labelKey}
+                className={cn(
+                  MODEL_FILTER_OPTION_CLASS,
+                  "text-muted-foreground",
+                )}
+              >
+                {t(labelKey)}
+              </span>
+            ))}
+          </ModelFilterFrame>
+          <p className="text-muted-foreground text-xs">
+            <SkeletonText>
+              {t("agentEnvironment.modelsByModelHelp")}
+            </SkeletonText>
+          </p>
           <SkeletonSwitchList
             rows={Array.from({ length: MODEL_ROWS }, (_, i) => ({
               key: String(i),

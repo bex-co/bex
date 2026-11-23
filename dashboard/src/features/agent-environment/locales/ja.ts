@@ -1428,9 +1428,9 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを選択します。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。モデルを1つでもオフにすると、後からプラットフォームに追加されたモデルは、オンにするまでオフのままです。",
+      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを、モデルごとまたはプロバイダーごとに選択します。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1463,6 +1463,70 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
     message:
       "メンバーが選べるモデルを更新できませんでした。もう一度お試しください。",
     description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelsFilterLabel": {
+    message: "メンバーが選べるモデルの絞り込み方法",
+    description:
+      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsByModel": {
+    message: "モデルごと",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose one model at a time (w10/m573)",
+  },
+  "agentEnvironment.modelsByProvider": {
+    message: "プロバイダーごと",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
+  },
+  "agentEnvironment.modelsByModelHelp": {
+    message:
+      "モデルを1つでもオフにすると、後からプラットフォームに追加されたモデルは、オンにするまでオフのままです。",
+    description:
+      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+  },
+  "agentEnvironment.modelsByProviderHelp": {
+    message:
+      "メンバーは、許可したプロバイダーのすべてのモデルを選べます。後からプラットフォームに追加されたモデルも含みます。ほかのプロバイダーのモデルはオフのままです。",
+    description:
+      "Settings → Agents: help under the filter choice while it is by provider — every model of an allowed provider, a later one included, and other providers' models off (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderDefault": {
+    message: "{model}（デフォルト、常にオン）",
+    description:
+      "Settings → Agents, by provider: the catalog's default model in the list under its provider's switch; {model} is its id (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderLastLocked": {
+    message:
+      "少なくとも1つのプロバイダーは許可されたままです。デフォルトのモデルだけを提供するには、モデルごとに絞り込んでください。",
+    description:
+      "Settings → Agents, by provider: note under the one provider still allowed, whose switch is locked on (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOn": {
+    message: "メンバー向けに {provider} のモデルをオンにしました",
+    description:
+      "Toast after an admin allows a provider's models for members; {provider} is the provider id, e.g. anthropic (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOff": {
+    message: "メンバー向けに {provider} のモデルをオフにしました",
+    description:
+      "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByProvider": {
+    message: "メンバーは許可したプロバイダーのモデルから選ぶようになりました",
+    description:
+      "Toast after an admin switches the model list to filtering by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByModel": {
+    message: "メンバーは許可したモデルから選ぶようになりました",
+    description:
+      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+  },
+  "agentEnvironment.modelsProvidersInvalid": {
+    message:
+      "プロバイダーを更新できませんでした。リストにはプラットフォームカタログのプロバイダーを少なくとも1つ含める必要があります。ページを再読み込みして現在のカタログを確認してください。",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model}（オフ）",

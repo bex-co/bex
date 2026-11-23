@@ -419,6 +419,8 @@ func TestEnvSet(t *testing.T) {
 			`{"automationsGithubCliEnabled":null,"githubCliEnabled":false,"githubCliMandatory":true}`},
 		{[]string{"--models", "deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5"}, `{"enabledModels":["deepseek/deepseek-v4.1-flash-1017","anthropic/claude-haiku-5.5"]}`},
 		{[]string{"--idle-timeout", "30"}, `{"idleTimeoutMinutes":30}`},
+		// w10/m573: the filter by provider, the other filter type.
+		{[]string{"--providers", "anthropic,moonshotai"}, `{"enabledProviders":["anthropic","moonshotai"]}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil
@@ -438,6 +440,18 @@ func TestEnvSet(t *testing.T) {
 	f.calls = nil
 	if _, stderr, code := run(t, d, "env", "set", "--models", "", "--network-tier", "full"); code != exitUsage || !strings.Contains(stderr, "the catalog's default always stays on") || len(f.calls) != 0 {
 		t.Errorf("--models \"\": exit %d, %d requests, stderr %q; want a usage error and nothing sent", code, len(f.calls), stderr)
+	}
+	for _, bad := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--providers", "", "--network-tier", "full"}, "--providers takes the providers"},
+		{[]string{"--providers", "anthropic", "--models", "deepseek/deepseek-v4.1-flash-1017"}, "use --models or --providers, not both"},
+	} {
+		f.calls = nil
+		if _, stderr, code := run(t, d, append([]string{"env", "set"}, bad.args...)...); code != exitUsage || !strings.Contains(stderr, bad.want) || len(f.calls) != 0 {
+			t.Errorf("%v: exit %d, %d requests, stderr %q; want a usage error saying %q and nothing sent", bad.args, code, len(f.calls), stderr, bad.want)
+		}
 	}
 	for _, bad := range [][]string{{}, {"--spend-cap", "lots"}, {"--model-key-stdin", "--clear-model-key"}} {
 		if _, stderr, code := run(t, d, append([]string{"env", "set"}, bad...)...); code != exitUsage {
@@ -568,6 +582,16 @@ func TestEnvShowsTheEnabledModels(t *testing.T) {
 		{"the workspace's own key", map[string]any{"models": []any{}, "enabledModels": []any{}, "defaultModel": "claude-opus-4-1", "modelKeySet": true}, []string{
 			`(?m)^Default model\s+claude-opus-4-1$`,
 		}, "Models"},
+		// w10/m573: under a filter by provider the allowed providers print,
+		// and a model of another provider is off because of the filter.
+		{"a filter by provider", map[string]any{"models": append(append([]any{}, catalog...), "moonshotai/kimi-k3"), "enabledModels": catalog, "newModels": []any{}, "enabledProviders": []any{"anthropic"}}, []string{
+			`(?m)^Models\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default, always on\), anthropic/claude-haiku-5.5, anthropic/claude-opus-5.5$`,
+			`(?m)^Providers\s+anthropic \(members may choose every model of these providers, a later one included\)$`,
+			`(?m)^Models off\s+moonshotai/kimi-k3 \(provider not allowed\)$`,
+		}, ""},
+		{"a list by model", map[string]any{"models": catalog, "enabledModels": catalog[:2], "newModels": []any{}, "enabledProviders": nil}, []string{
+			`(?m)^Models off\s+anthropic/claude-opus-5.5 \(turned off by an admin\)$`,
+		}, "Providers"},
 	} {
 		tc.env["networkTier"], tc.env["modelSource"] = "registries", "platform"
 		f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-environment": answer(http.StatusOK, tc.env)})
@@ -675,7 +699,7 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 	}
 	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
 		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled ||
-		len(e.EnabledModels) != 2 || len(e.NewModels) != 1 || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
+		len(e.EnabledModels) != 2 || len(e.NewModels) != 1 || e.EnabledProviders != nil || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {

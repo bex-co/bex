@@ -1408,9 +1408,9 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Choose which platform models members can pick for sessions, messages and automations. A session or automation already on a model you turn off runs the default model from its next turn. Once you turn a model off, models added to the platform later stay off until you turn them on.",
+      "Choose which platform models members can pick for sessions, messages and automations, by model or by provider. A session or automation already on a model you turn off runs the default model from its next turn.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1442,6 +1442,70 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsSaveFailed": {
     message: "Couldn't update the models members can choose. Try again.",
     description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelsFilterLabel": {
+    message: "Filter the models members can choose",
+    description:
+      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsByModel": {
+    message: "By model",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose one model at a time (w10/m573)",
+  },
+  "agentEnvironment.modelsByProvider": {
+    message: "By provider",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
+  },
+  "agentEnvironment.modelsByModelHelp": {
+    message:
+      "Once you turn a model off, models added to the platform later stay off until you turn them on.",
+    description:
+      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+  },
+  "agentEnvironment.modelsByProviderHelp": {
+    message:
+      "Members can pick every model of the providers you allow, including models added to the platform later. Models of other providers stay off.",
+    description:
+      "Settings → Agents: help under the filter choice while it is by provider — every model of an allowed provider, a later one included, and other providers' models off (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderDefault": {
+    message: "{model} (the default, always on)",
+    description:
+      "Settings → Agents, by provider: the catalog's default model in the list under its provider's switch; {model} is its id (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderLastLocked": {
+    message:
+      "At least one provider stays allowed. To offer only the default model, filter by model.",
+    description:
+      "Settings → Agents, by provider: note under the one provider still allowed, whose switch is locked on (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOn": {
+    message: "{provider} models turned on for members",
+    description:
+      "Toast after an admin allows a provider's models for members; {provider} is the provider id, e.g. anthropic (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOff": {
+    message: "{provider} models turned off for members",
+    description:
+      "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByProvider": {
+    message: "Members now choose from the models of the providers you allow",
+    description:
+      "Toast after an admin switches the model list to filtering by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByModel": {
+    message: "Members now choose from the models you allow",
+    description:
+      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+  },
+  "agentEnvironment.modelsProvidersInvalid": {
+    message:
+      "Couldn't update the providers: the list has to name at least one provider of the platform catalog. Reload to see the current catalog.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model} (turned off)",

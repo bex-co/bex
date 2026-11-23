@@ -1408,9 +1408,9 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 고릅니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다. 모델을 하나라도 끄면, 이후 플랫폼에 추가되는 모델은 켤 때까지 꺼진 상태로 유지됩니다.",
+      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 모델별 또는 제공업체별로 고릅니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1443,6 +1443,70 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     message:
       "멤버가 선택할 수 있는 모델을 업데이트하지 못했습니다. 다시 시도하세요.",
     description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelsFilterLabel": {
+    message: "멤버가 선택할 수 있는 모델 필터 방식",
+    description:
+      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsByModel": {
+    message: "모델별",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose one model at a time (w10/m573)",
+  },
+  "agentEnvironment.modelsByProvider": {
+    message: "제공업체별",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
+  },
+  "agentEnvironment.modelsByModelHelp": {
+    message:
+      "모델을 하나라도 끄면, 이후 플랫폼에 추가되는 모델은 켤 때까지 꺼진 상태로 유지됩니다.",
+    description:
+      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+  },
+  "agentEnvironment.modelsByProviderHelp": {
+    message:
+      "멤버는 허용한 제공업체의 모든 모델을 선택할 수 있으며, 이후 플랫폼에 추가되는 모델도 포함됩니다. 다른 제공업체의 모델은 꺼진 상태로 유지됩니다.",
+    description:
+      "Settings → Agents: help under the filter choice while it is by provider — every model of an allowed provider, a later one included, and other providers' models off (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderDefault": {
+    message: "{model} (기본 모델, 항상 켜짐)",
+    description:
+      "Settings → Agents, by provider: the catalog's default model in the list under its provider's switch; {model} is its id (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderLastLocked": {
+    message:
+      "제공업체는 최소 하나 이상 허용되어야 합니다. 기본 모델만 제공하려면 모델별로 필터링하세요.",
+    description:
+      "Settings → Agents, by provider: note under the one provider still allowed, whose switch is locked on (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOn": {
+    message: "멤버용 {provider} 모델을 켰습니다",
+    description:
+      "Toast after an admin allows a provider's models for members; {provider} is the provider id, e.g. anthropic (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOff": {
+    message: "멤버용 {provider} 모델을 껐습니다",
+    description:
+      "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByProvider": {
+    message: "이제 멤버는 허용한 제공업체의 모델 중에서 선택합니다",
+    description:
+      "Toast after an admin switches the model list to filtering by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByModel": {
+    message: "이제 멤버는 허용한 모델 중에서 선택합니다",
+    description:
+      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+  },
+  "agentEnvironment.modelsProvidersInvalid": {
+    message:
+      "제공업체를 업데이트하지 못했습니다. 목록에는 플랫폼 카탈로그의 제공업체가 하나 이상 있어야 합니다. 페이지를 새로고침해 현재 카탈로그를 확인하세요.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model} (꺼짐)",

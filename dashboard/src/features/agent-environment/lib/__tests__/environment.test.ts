@@ -7,6 +7,10 @@ import {
   defaultModelUnoffered,
   draftFrom,
   enabledModelsErrorKey,
+  modelFilterOf,
+  modelProvider,
+  providerModels,
+  providersOfEnabledModels,
   githubCliAutomationsErrorKey,
   githubCliErrorKey,
   githubCliMandatoryErrorKey,
@@ -19,6 +23,7 @@ import {
   validModel,
   validateCustomHosts,
   withModelToggled,
+  withProviderToggled,
   type AgentEnvironmentView,
 } from "@/features/agent-environment/lib/environment";
 import { agentEnvironment } from "@/test/mocks/agent-environment";
@@ -305,6 +310,90 @@ describe("the model list", () => {
     expect(enabledModelsErrorKey(new Error("offline"))).toBe(
       "agentEnvironment.modelsSaveFailed",
     );
+    // w10/m573: the same code on the provider filter names the providers.
+    expect(
+      enabledModelsErrorKey(
+        codedGraphQLError("AGENT_ENVIRONMENT_MODELS_INVALID", {
+          field: "enabledProviders",
+          provider: "openai",
+        }),
+      ),
+    ).toBe("agentEnvironment.modelsProvidersInvalid");
+  });
+});
+
+// w10/m573: the catalog filtered by provider, Devin's other filter type.
+describe("the filter by provider", () => {
+  const CATALOG = [
+    "deepseek/deepseek-v4.1-flash-1017",
+    "anthropic/claude-sonnet-5.5",
+    "anthropic/claude-opus-5.5",
+    "moonshotai/kimi-k3",
+  ];
+  const PROVIDERS = ["deepseek", "anthropic", "moonshotai"];
+  const env = (
+    enabledModels: string[],
+    enabledProviders: string[] | null = null,
+  ) =>
+    agentEnvironment({
+      models: CATALOG,
+      enabledModels,
+      providers: PROVIDERS,
+      enabledProviders,
+    });
+
+  it("takes a model's provider from its id's prefix before the slash", () => {
+    expect(modelProvider("anthropic/claude-opus-5.5")).toBe("anthropic");
+    expect(modelProvider("~deepseek/deepseek-flash-latest")).toBe("~deepseek");
+    expect(modelProvider("claude-opus-4-1")).toBe("");
+    expect(providerModels(env(CATALOG), "anthropic")).toEqual(
+      CATALOG.slice(1, 3),
+    );
+  });
+
+  it("reads the filter in force from the environment", () => {
+    expect(modelFilterOf(env(CATALOG.slice(0, 2)))).toEqual({
+      byProvider: false,
+      models: CATALOG.slice(0, 2),
+      providers: [],
+    });
+    expect(modelFilterOf(env(CATALOG.slice(0, 3), ["anthropic"]))).toEqual({
+      byProvider: true,
+      models: CATALOG.slice(0, 3),
+      providers: ["anthropic"],
+    });
+  });
+
+  it("sends the whole provider list in catalog order", () => {
+    const saved = env(CATALOG.slice(0, 3), ["anthropic"]);
+    expect(withProviderToggled(saved, "moonshotai", true)).toEqual([
+      "anthropic",
+      "moonshotai",
+    ]);
+    expect(withProviderToggled(saved, "deepseek", true)).toEqual([
+      "deepseek",
+      "anthropic",
+    ]);
+    expect(withProviderToggled(saved, "anthropic", false)).toEqual([]);
+  });
+
+  it("switches to the filter by provider with the providers of the models on now", () => {
+    // Sonnet and the default on: anthropic and deepseek, not moonshotai.
+    expect(providersOfEnabledModels(env([CATALOG[0], CATALOG[1]]))).toEqual([
+      "deepseek",
+      "anthropic",
+    ]);
+    expect(providersOfEnabledModels(env(CATALOG))).toEqual(PROVIDERS);
+    // No model on has a provider: every provider.
+    expect(
+      providersOfEnabledModels(
+        agentEnvironment({
+          models: ["claude-opus-4-1", ...CATALOG.slice(1)],
+          enabledModels: ["claude-opus-4-1"],
+          providers: ["anthropic", "moonshotai"],
+        }),
+      ),
+    ).toEqual(["anthropic", "moonshotai"]);
   });
 });
 

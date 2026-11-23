@@ -1417,6 +1417,12 @@ describe("AgentEnvironmentCard", () => {
           textRows: rows.map((row) => text(row).children.length),
           label: rows.map((row) => text(row).firstElementChild!.className),
           note: text(rows[0]).lastElementChild!.textContent,
+          // The filter choice and the help under it (w10/m573).
+          filter: section.children[1].className,
+          filterOptions: Array.from(section.children[1].children).map(
+            (option) => option.textContent,
+          ),
+          help: section.children[2].className,
         };
       };
       setup(ROUTED);
@@ -1451,6 +1457,152 @@ describe("AgentEnvironmentCard", () => {
         );
       }
       expect(within(skeleton).queryByRole("switch")).toBeNull();
+    });
+
+    // w10/m573: the list filtered by provider, Devin's other filter type,
+    // one at a time.
+    describe("by provider", () => {
+      const KIMI = "moonshotai/kimi-k3";
+      const BY_PROVIDER = {
+        ...ROUTED,
+        models: [...CATALOG, KIMI],
+        enabledModels: CATALOG,
+        providers: ["deepseek", "anthropic", "moonshotai"],
+        enabledProviders: ["anthropic"],
+      };
+      const filter = (name: "By model" | "By provider") =>
+        screen.getByRole("radio", { name });
+      const filterChoice = () =>
+        screen.getByRole("radiogroup", {
+          name: "Filter the models members can choose",
+        });
+      // A save answers as bex-api does: one filter type replaces the other.
+      const setupAsServer = (env: AgentEnvironmentView) => {
+        const harness = setup(env);
+        harness.update.mockImplementation(async (input) => {
+          const current = hook.current.environment!;
+          const providers = input.enabledProviders ?? null;
+          const next = {
+            ...current,
+            enabledProviders: providers,
+            enabledModels: providers
+              ? current.models.filter(
+                  (m, i) => i === 0 || providers.includes(m.split("/")[0]),
+                )
+              : (input.enabledModels ?? current.enabledModels),
+          };
+          harness.rerender(next);
+          return next;
+        });
+        return harness;
+      };
+      const providerSwitch = (name: string) =>
+        screen.getByRole("switch", { name });
+
+      it("switches to the providers of the models on now, saying what it does", async () => {
+        const { user, update } = setupAsServer({
+          ...ROUTED,
+          enabledModels: [CATALOG[0], CATALOG[2]],
+          providers: ["deepseek", "anthropic"],
+        });
+        expect(filter("By model")).toBeChecked();
+        expect(filterChoice()).toHaveAccessibleDescription(
+          "Once you turn a model off, models added to the platform later stay off until you turn them on.",
+        );
+        await user.click(filter("By provider"));
+        expect(update).toHaveBeenLastCalledWith({
+          enabledProviders: ["deepseek", "anthropic"],
+        });
+        expect(toast.success).toHaveBeenLastCalledWith(
+          "Members now choose from the models of the providers you allow",
+        );
+      });
+
+      it("lists a switch per provider with its models, the default always on", async () => {
+        const { user, update } = setupAsServer(BY_PROVIDER);
+        const section = screen.getByTestId("enabled-models-section");
+        expect(filter("By provider")).toBeChecked();
+        expect(filterChoice()).toHaveAccessibleDescription(
+          /every model of the providers you allow, including models added to the platform later/,
+        );
+        expect(
+          within(section)
+            .getAllByRole("listitem")
+            .map((row) => row.querySelector("label")!.textContent),
+        ).toEqual(["deepseek", "anthropic", "moonshotai"]);
+        expect(switches().map((s) => s.getAttribute("aria-checked"))).toEqual([
+          "false",
+          "true",
+          "false",
+        ]);
+        expect(providerSwitch("deepseek")).toHaveAccessibleDescription(
+          "deepseek/deepseek-v4.1-flash-1017 (the default, always on)",
+        );
+        expect(providerSwitch("moonshotai")).toHaveAccessibleDescription(KIMI);
+        // The one provider allowed is locked on: an empty filter is refused.
+        expect(providerSwitch("anthropic")).toBeDisabled();
+        expect(providerSwitch("anthropic")).toHaveAccessibleDescription(
+          `${CATALOG.slice(1).join(", ")}At least one provider stays allowed. To offer only the default model, filter by model.`,
+        );
+        await user.click(providerSwitch("moonshotai"));
+        expect(update).toHaveBeenLastCalledWith({
+          enabledProviders: ["anthropic", "moonshotai"],
+        });
+        expect(providerSwitch("moonshotai")).toBeChecked();
+        expect(providerSwitch("anthropic")).toBeEnabled();
+        expect(toast.success).toHaveBeenLastCalledWith(
+          "moonshotai models turned on for members",
+        );
+        await user.click(providerSwitch("anthropic"));
+        expect(update).toHaveBeenLastCalledWith({
+          enabledProviders: ["moonshotai"],
+        });
+      });
+
+      it("switches back to the list by model with the models on now", async () => {
+        const { user, update } = setupAsServer(BY_PROVIDER);
+        await user.click(filter("By model"));
+        expect(update).toHaveBeenLastCalledWith({ enabledModels: CATALOG });
+        expect(filter("By model")).toBeChecked();
+        expect(
+          within(screen.getByTestId("enabled-models-section"))
+            .getAllByRole("listitem")
+            .map((row) => row.querySelector("label")!.textContent),
+        ).toEqual([...CATALOG, KIMI]);
+        expect(modelSwitch(KIMI)).not.toBeChecked();
+        expect(toast.success).toHaveBeenLastCalledWith(
+          "Members now choose from the models you allow",
+        );
+      });
+
+      it("returns to the saved filter and names the providers when the server refuses", async () => {
+        const { user, update } = setupAsServer(BY_PROVIDER);
+        update.mockRejectedValueOnce(
+          codedGraphQLError("AGENT_ENVIRONMENT_MODELS_INVALID", {
+            field: "enabledProviders",
+            provider: "moonshotai",
+          }),
+        );
+        await user.click(providerSwitch("moonshotai"));
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+          "Couldn't update the providers: the list has to name at least one provider of the platform catalog.",
+        );
+        expect(providerSwitch("moonshotai")).not.toBeChecked();
+        expect(filter("By provider")).toBeChecked();
+      });
+
+      it("shows a member the filter read-only", async () => {
+        vi.mocked(useCapabilities).mockReturnValue(
+          mockCapabilities({ role: "DEVELOPER", canManage: false }),
+        );
+        const { user, update } = setup(BY_PROVIDER);
+        for (const radio of screen.getAllByRole("radio")) {
+          expect(radio).toBeDisabled();
+        }
+        for (const s of switches()) expect(s).toBeDisabled();
+        await user.click(filter("By model"));
+        expect(update).not.toHaveBeenCalled();
+      });
     });
   });
 

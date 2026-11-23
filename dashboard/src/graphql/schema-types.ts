@@ -313,8 +313,10 @@ export type AgentEnvironment = {
   defaultTemplate: Scalars['String']['output'];
   /** The agent profiles members can start sessions with, as the workspace's admins chose. */
   enabledAgents: Array<Scalars['String']['output']>;
-  /** The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model, one added to the catalog later included, until an admin turns one off; from then on it is an allowlist, and a model added to the catalog later is off (newModels) until an admin turns it on. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key. */
+  /** The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model, one added to the catalog later included, until an admin turns one off; from then on it is an allowlist, and a model added to the catalog later is off (newModels) until an admin turns it on. Under a filter by provider (enabledProviders) it is every catalog model of a listed provider, one added later included, plus the catalog's default. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key. */
   enabledModels: Array<Scalars['String']['output']>;
+  /** The providers the workspace's admins allow while its models are filtered by provider, Devin's other filter type (one at a time): every catalog model of a listed provider is offered, one added to the catalog later included, plus the catalog's default, and a model of any other provider is off. Null while the list is by model (enabledModels, newModels) and on the workspace's own key. */
+  enabledProviders: Maybe<Array<Scalars['String']['output']>>;
   /** Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. */
   githubCliEnabled: Scalars['Boolean']['output'];
   /** Whether the workspace's gh off is mandatory: while githubCliEnabled is false, no automations default, automation or session turns gh back on. No effect while githubCliEnabled is true. */
@@ -330,13 +332,15 @@ export type AgentEnvironment = {
   /** The whole platform model catalog, its default first; enabledModels is the part members may choose. Empty on the workspace's own key, where any model id is accepted. */
   models: Array<Scalars['String']['output']>;
   networkTier: AgentNetworkTier;
-  /** The catalog models off only because they joined the catalog after an admin narrowed the list (the allowlist predates them), apart from the ones an admin turned off; an admin turns one on through enabledModels. Empty while every model is allowed and on the workspace's own key. */
+  /** The catalog models off only because they joined the catalog after an admin narrowed the list (the allowlist predates them), apart from the ones an admin turned off; an admin turns one on through enabledModels. Empty while every model is allowed, under a filter by provider (a model of an unlisted provider is off by the filter) and on the workspace's own key. */
   newModels: Array<Scalars['String']['output']>;
   /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
   nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
   /** The platform catalog's default model; models lists every choice. */
   pinnedModel: Maybe<Scalars['String']['output']>;
+  /** The platform catalog's providers in catalog order, a model's provider being its id's prefix before /: what enabledProviders may list. Empty where models is. */
+  providers: Array<Scalars['String']['output']>;
   registryHosts: Array<Scalars['String']['output']>;
   /** The agent sandbox templates a session may name, smallest first. */
   templates: Array<AgentSandboxTemplate>;
@@ -364,8 +368,10 @@ export type AgentEnvironmentInput = {
   defaultTemplate?: InputMaybe<Scalars['String']['input']>;
   /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
   enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Replaces the catalog models members may choose; the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, which leaves a model added to the catalog later off until an admin turns it on. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn. */
+  /** Replaces the catalog models members may choose, and a filter by provider; the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, which leaves a model added to the catalog later off until an admin turns it on. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn. */
   enabledModels?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Filters the catalog models members may choose by provider instead of by model, Devin's one filter type at a time: every catalog model of a listed provider is offered, one added to the catalog later included, plus the catalog's default. Lists providers from providers, at least one; naming enabledModels too, an empty list or another provider is refused (AGENT_ENVIRONMENT_MODELS_INVALID). A later enabledModels write returns to the by-model list. */
+  enabledProviders?: InputMaybe<Array<Scalars['String']['input']>>;
   /** false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on. */
   githubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;
   /** true makes the workspace's gh off mandatory: while githubCliEnabled is false nothing below turns gh back on, and saving an automations default, automation or session that would is refused with a GITHUB_CLI_LOCKED code. false lets lower levels choose again. */

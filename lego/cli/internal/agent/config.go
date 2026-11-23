@@ -388,6 +388,9 @@ type agentEnvironment struct {
 	// them, which has none.
 	EnabledModels []string `json:"enabledModels"`
 	NewModels     []string `json:"newModels"`
+	// EnabledProviders is the filter by provider (w10/m573), nil while the
+	// list is by model or from a bex-api that predates it.
+	EnabledProviders []string `json:"enabledProviders"`
 	// GitHubCLIEnabled is whether the workspace's sessions get a `gh`
 	// (w10/m524); nil from a bex-api that predates the setting, which
 	// cannot turn it off, so it reads as on.
@@ -426,7 +429,7 @@ func envCommand(d deps) *cobra.Command {
 		automationsGitHubCLI  string
 		githubCLIMandatory    string
 		hosts, agents, acks   []string
-		models                []string
+		models, providers     []string
 		noHosts, keyStdin     bool
 		clearKey              bool
 		idleTimeout           int
@@ -466,6 +469,12 @@ func envCommand(d deps) *cobra.Command {
 			"catalog's default (the first of `bex agent env`'s Models). A session,\n" +
 			"message or automation naming a turned-off model is refused, and one already\n" +
 			"on it runs the workspace default from its next turn.\n" +
+			"--providers filters the catalog by provider instead, as the one filter\n" +
+			"type in force (a model's provider is its id's prefix before /): members may\n" +
+			"choose every catalog model of a listed provider, one added to the catalog\n" +
+			"later included, plus the catalog's default, and a model of any other\n" +
+			"provider is off. A later --models returns to the list by model, and --models\n" +
+			"naming every catalog model allows all models again.\n" +
 			"--idle-timeout sets how many minutes the sandbox of a session a person\n" +
 			"started stays up after its turn ends or its last editor disconnects, 5 to\n" +
 			"120 (Enterprise workspaces only; every other plan keeps 5). Automations'\n" +
@@ -538,6 +547,15 @@ func envCommand(d deps) *cobra.Command {
 			if f.Changed("agents") {
 				patch["enabledAgents"] = agents
 			}
+			if f.Changed("models") && f.Changed("providers") {
+				return usageError("use --models or --providers, not both: the models members may choose are filtered by model or by provider, one at a time")
+			}
+			if f.Changed("providers") {
+				if len(providers) == 0 {
+					return usageError("--providers takes the providers whose models members may choose, comma-separated; the catalog's default always stays on")
+				}
+				patch["enabledProviders"] = providers
+			}
 			if f.Changed("models") {
 				if len(models) == 0 {
 					return usageError("--models takes the models members may choose, comma-separated; the catalog's default always stays on")
@@ -570,6 +588,7 @@ func envCommand(d deps) *cobra.Command {
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
 	f.StringSliceVar(&agents, "agents", nil, "the agents members can start sessions with, comma-separated; replaces the list (\"\" turns every agent off)")
 	f.StringSliceVar(&models, "models", nil, "the platform catalog models members may choose, comma-separated; replaces the list and must keep the catalog's default. Every model allows all, a later one included; any model left out leaves a later one off")
+	f.StringSliceVar(&providers, "providers", nil, "the providers whose platform catalog models members may choose, comma-separated (anthropic for anthropic/…); replaces the list by model, and a model of another provider is off")
 	f.IntVar(&idleTimeout, "idle-timeout", 0, "minutes the sandbox of a session a person started stays up after its turn, 5 to 120 (Enterprise only)")
 	f.StringArrayVar(&acks, "acknowledge-data-use", nil, "acknowledge, as an admin, that this agent's model provider may train on what its sessions send; repeatable")
 	root.AddCommand(set)
@@ -622,6 +641,9 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 			on = append(on, m)
 		}
 		tw.row("Models", strings.Join(on, ", "))
+		if e.EnabledProviders != nil {
+			tw.row("Providers", firstNonEmpty(strings.Join(e.EnabledProviders, ", "), "none")+" (members may choose every model of these providers, a later one included)")
+		}
 		var byAdmin, added []string
 		for _, m := range e.Models {
 			switch {
@@ -633,7 +655,10 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 			}
 		}
 		var off []string
-		if len(byAdmin) > 0 {
+		switch {
+		case len(byAdmin) > 0 && e.EnabledProviders != nil:
+			off = append(off, strings.Join(byAdmin, ", ")+" (provider not allowed)")
+		case len(byAdmin) > 0:
 			off = append(off, strings.Join(byAdmin, ", ")+" (turned off by an admin)")
 		}
 		if len(added) > 0 {

@@ -348,3 +348,50 @@ func TestAgentEnvironmentKnownModelsAndTheLegacyConversion(t *testing.T) {
 		t.Fatal("65 known models were stored")
 	}
 }
+
+// w10/m573: the provider filter round-trips with the two columns it is written
+// with, is NULL by default and after a by-model write, survives a write that
+// names no model field, and is capped at 64.
+func TestAgentEnvironmentEnabledProviders(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "agent-enabled-providers")
+	ctx := context.Background()
+	tier := "custom"
+	got, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &tier})
+	if err != nil || got.EnabledProviders != nil {
+		t.Fatalf("a first write = providers %#v err=%v, want NULL", got.EnabledProviders, err)
+	}
+	catalog := []string{"deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-sonnet-5.5", "moonshotai/kimi-k3"}
+	off, providers := []string{"moonshotai/kimi-k3"}, []string{"anthropic"}
+	got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &off, KnownModels: catalog, EnabledProviders: providers})
+	if err != nil || !slices.Equal(got.EnabledProviders, providers) || !slices.Equal(got.KnownModels, catalog) || !slices.Equal(got.DisabledModels, off) {
+		t.Fatalf("a provider write = %+v err=%v", got, err)
+	}
+	tier = "full"
+	model := "anthropic/claude-sonnet-5.5"
+	if _, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &tier, DefaultModel: &model}); err != nil {
+		t.Fatal(err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, tenant.ID); err != nil || !slices.Equal(read.EnabledProviders, providers) || !slices.Equal(read.DisabledModels, off) {
+		t.Fatalf("a write naming no model field = providers %v disabled %v err=%v, want both kept", read.EnabledProviders, read.DisabledModels, err)
+	}
+	// A previous-release Pod's enabledModels write sets disabled_models
+	// alone and leaves the column in place.
+	if _, err := pool.Exec(ctx, `UPDATE agent_environments SET disabled_models = '{}' WHERE workspace_id = $1`, tenant.ID); err != nil {
+		t.Fatal(err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, tenant.ID); err != nil || !slices.Equal(read.EnabledProviders, providers) || len(read.DisabledModels) != 0 {
+		t.Fatalf("after a previous-release write = providers %v disabled %v err=%v", read.EnabledProviders, read.DisabledModels, err)
+	}
+	none := []string{}
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &none}); err != nil || got.EnabledProviders != nil || got.KnownModels != nil {
+		t.Fatalf("a by-model write = providers %#v known %#v err=%v, want both NULL", got.EnabledProviders, got.KnownModels, err)
+	}
+
+	tooMany := make([]string, 65)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("vendor-%d", i)
+	}
+	if _, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &off, KnownModels: catalog, EnabledProviders: tooMany}); err == nil {
+		t.Fatal("65 providers were stored")
+	}
+}

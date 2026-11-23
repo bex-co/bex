@@ -19,8 +19,16 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   enabledModels
   # The catalog models off only because they joined the catalog after an
   # admin narrowed the list (w10/m568); Settings labels them "New in the
-  # catalog". Empty while every model is allowed and on the own key.
+  # catalog". Empty while every model is allowed, under a filter by provider
+  # and on the own key.
   newModels
+  # The catalog's providers in catalog order (w10/m573), a model's provider
+  # being its id's prefix before "/", and the ones the filter by provider
+  # lists: every catalog model of a listed provider is offered, a later one
+  # included, plus the catalog's default. enabledProviders is null while the
+  # list is by model (Devin's one filter type at a time).
+  providers
+  enabledProviders
   # The sandbox template a session or automation run that names none runs on
   # (w10/m519), and every agent template a session may name, smallest first.
   defaultTemplate
@@ -95,7 +103,8 @@ query AgentEnvironment($ownerId: String!) {
 # to the platform's; githubCliEnabled false turns the sessions' gh off;
 # automationsGithubCliEnabled null returns automations to inheriting it and
 # githubCliMandatory true makes its off a floor (w10/m561); enabledModels
-# replaces the catalog models members may choose (w10/m527);
+# replaces the catalog models members may choose (w10/m527), and
+# enabledProviders filters them by provider instead (w10/m573);
 # idleTimeoutMinutes (5 to 120, Enterprise only) sets the idle close
 # (w6/m563).
 mutation UpdateAgentEnvironment(

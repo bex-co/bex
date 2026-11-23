@@ -238,6 +238,7 @@ type AgentEnvironment {
   defaultTemplate: String!
   enabledAgents: [String!]!
   enabledModels: [String!]!
+  enabledProviders: [String!]
   githubCliEnabled: Boolean!
   githubCliMandatory: Boolean!
   idleTimeoutConfigurable: Boolean!
@@ -251,6 +252,7 @@ type AgentEnvironment {
   nextChargeThresholdUsd: Float
   ownerId: String!
   pinnedModel: String
+  providers: [String!]!
   registryHosts: [String!]!
   templates: [AgentSandboxTemplate!]!
   trustTier: String
@@ -268,6 +270,7 @@ input AgentEnvironmentInput {
   defaultTemplate: String
   enabledAgents: [String!]
   enabledModels: [String!]
+  enabledProviders: [String!]
   githubCliEnabled: Boolean
   githubCliMandatory: Boolean
   idleTimeoutMinutes: Int

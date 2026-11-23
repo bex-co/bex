@@ -187,10 +187,19 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"defaultModel": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
 		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The whole platform model catalog, its default first; enabledModels is the part members may choose. Empty on the workspace's own key, where any model id is accepted.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.Models })},
-		"enabledModels": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model, one added to the catalog later included, until an admin turns one off; from then on it is an allowlist, and a model added to the catalog later is off (newModels) until an admin turns it on. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key.",
+		"enabledModels": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model, one added to the catalog later included, until an admin turns one off; from then on it is an allowlist, and a model added to the catalog later is off (newModels) until an admin turns it on. Under a filter by provider (enabledProviders) it is every catalog model of a listed provider, one added later included, plus the catalog's default. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.EnabledModels })},
-		"newModels": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The catalog models off only because they joined the catalog after an admin narrowed the list (the allowlist predates them), apart from the ones an admin turned off; an admin turns one on through enabledModels. Empty while every model is allowed and on the workspace's own key.",
+		"newModels": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The catalog models off only because they joined the catalog after an admin narrowed the list (the allowlist predates them), apart from the ones an admin turned off; an admin turns one on through enabledModels. Empty while every model is allowed, under a filter by provider (a model of an unlisted provider is off by the filter) and on the workspace's own key.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.NewModels })},
+		"providers": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The platform catalog's providers in catalog order, a model's provider being its id's prefix before /: what enabledProviders may list. Empty where models is.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.Providers })},
+		"enabledProviders": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "The providers the workspace's admins allow while its models are filtered by provider, Devin's other filter type (one at a time): every catalog model of a listed provider is offered, one added to the catalog later included, plus the catalog's default, and a model of any other provider is off. Null while the list is by model (enabledModels, newModels) and on the workspace's own key.",
+			Resolve: gqlutil.Field(func(v Environment) any {
+				if v.EnabledProviders == nil {
+					return nil
+				}
+				return v.EnabledProviders
+			})},
 		"modelPinned": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "True on the platform model route, whose gateway pins each claude session to the catalog model it chose.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.ModelPinned })},
 		"pinnedModel": &graphql.Field{Type: graphql.String, Description: "The platform catalog's default model; models lists every choice.",
@@ -269,7 +278,8 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"resetAutomationsGithubCli":      &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the automations default to inheriting githubCliEnabled (the explicit null this input cannot carry)."},
 		"githubCliMandatory":             &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true makes the workspace's gh off mandatory: while githubCliEnabled is false nothing below turns gh back on, and saving an automations default, automation or session that would is refused with a GITHUB_CLI_LOCKED code. false lets lower levels choose again."},
 		idleTimeoutField:                 &graphql.InputObjectFieldConfig{Type: graphql.Int, Description: "How long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects: 5 to 120 (AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID). Enterprise only: any other plan is refused with PLAN_FEATURE_REQUIRED."},
-		"enabledModels":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the catalog models members may choose; the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, which leaves a model added to the catalog later off until an admin turns it on. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn."},
+		"enabledModels":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the catalog models members may choose, and a filter by provider; the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, which leaves a model added to the catalog later off until an admin turns it on. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn."},
+		"enabledProviders":               &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Filters the catalog models members may choose by provider instead of by model, Devin's one filter type at a time: every catalog model of a listed provider is offered, one added to the catalog later included, plus the catalog's default. Lists providers from providers, at least one; naming enabledModels too, an empty list or another provider is refused (AGENT_ENVIRONMENT_MODELS_INVALID). A later enabledModels write returns to the by-model list."},
 	},
 })
 
@@ -322,6 +332,10 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	if models, ok := raw["enabledModels"].([]any); ok {
 		list := gqlutil.StringList(models)
 		input.EnabledModels = &list
+	}
+	if providers, ok := raw["enabledProviders"].([]any); ok {
+		list := gqlutil.StringList(providers)
+		input.EnabledProviders = &list
 	}
 	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
 		input.ResetAgentModelMonthlySpendCap = reset

@@ -1438,9 +1438,9 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Escolha quais modelos da plataforma os membros podem usar em sessões, mensagens e automações. Uma sessão ou automação que já usa um modelo que você desativar passa para o modelo padrão a partir do próximo turno. Depois que você desativa um modelo, os modelos que a plataforma adicionar mais tarde ficam desativados até você ativá-los.",
+      "Escolha quais modelos da plataforma os membros podem usar em sessões, mensagens e automações, por modelo ou por provedor. Uma sessão ou automação que já usa um modelo que você desativar passa para o modelo padrão a partir do próximo turno.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1473,6 +1473,71 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
     message:
       "Não foi possível atualizar os modelos que os membros podem escolher. Tente novamente.",
     description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelsFilterLabel": {
+    message: "Filtrar os modelos que os membros podem escolher",
+    description:
+      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsByModel": {
+    message: "Por modelo",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose one model at a time (w10/m573)",
+  },
+  "agentEnvironment.modelsByProvider": {
+    message: "Por provedor",
+    description:
+      "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
+  },
+  "agentEnvironment.modelsByModelHelp": {
+    message:
+      "Depois que você desativa um modelo, os modelos que a plataforma adicionar mais tarde ficam desativados até você ativá-los.",
+    description:
+      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+  },
+  "agentEnvironment.modelsByProviderHelp": {
+    message:
+      "Os membros podem escolher qualquer modelo dos provedores que você permitir, inclusive os que a plataforma adicionar mais tarde. Os modelos de outros provedores ficam desativados.",
+    description:
+      "Settings → Agents: help under the filter choice while it is by provider — every model of an allowed provider, a later one included, and other providers' models off (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderDefault": {
+    message: "{model} (o padrão, sempre ativado)",
+    description:
+      "Settings → Agents, by provider: the catalog's default model in the list under its provider's switch; {model} is its id (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderLastLocked": {
+    message:
+      "Pelo menos um provedor continua permitido. Para oferecer só o modelo padrão, filtre por modelo.",
+    description:
+      "Settings → Agents, by provider: note under the one provider still allowed, whose switch is locked on (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOn": {
+    message: "Modelos de {provider} ativados para os membros",
+    description:
+      "Toast after an admin allows a provider's models for members; {provider} is the provider id, e.g. anthropic (w10/m573)",
+  },
+  "agentEnvironment.modelsProviderTurnedOff": {
+    message: "Modelos de {provider} desativados para os membros",
+    description:
+      "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByProvider": {
+    message:
+      "Agora os membros escolhem entre os modelos dos provedores que você permite",
+    description:
+      "Toast after an admin switches the model list to filtering by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsFilteredByModel": {
+    message: "Agora os membros escolhem entre os modelos que você permite",
+    description:
+      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+  },
+  "agentEnvironment.modelsProvidersInvalid": {
+    message:
+      "Não foi possível atualizar os provedores: a lista precisa incluir pelo menos um provedor do catálogo da plataforma. Recarregue a página para ver o catálogo atual.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model} (desativado)",

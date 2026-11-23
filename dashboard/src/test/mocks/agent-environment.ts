@@ -20,6 +20,10 @@ export function agentEnvironment(
     enabledModels: [],
     // The ones off because they are new in the catalog (w10/m568): none.
     newModels: [],
+    // The catalog's providers and the filter by provider (w10/m573): none,
+    // and the list is by model.
+    providers: [],
+    enabledProviders: null,
     // The sandbox templates (w10/m519): none listed, so Settings draws no
     // default-sandbox control unless a test lists some.
     defaultTemplate: "agent",
