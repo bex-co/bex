@@ -10,14 +10,18 @@ export const PROJECT_RESOURCE_KINDS = [
 ] as const;
 export type ProjectResourceKind = (typeof PROJECT_RESOURCE_KINDS)[number];
 
+// A sandbox group (w22/m603) is counted, so "All" includes it, but offers no
+// type pill of its own: the pills the page's skeleton previews stay the same
+// whether or not an environment holds groups.
 const FILTER_KIND_BY_RESOURCE: Record<
   ResourceRow["kind"],
-  Exclude<ProjectResourceKind, "all">
+  Exclude<keyof ProjectResourceCounts, "all">
 > = {
   service: "services",
   database: "databases",
   keyvalue: "keyvalues",
   envgroup: "envgroups",
+  sandboxgroup: "sandboxgroups",
 };
 
 export interface ProjectResourceFilterState {
@@ -82,6 +86,7 @@ export interface ProjectResourceCounts {
   databases: number;
   keyvalues: number;
   envgroups: number;
+  sandboxgroups: number;
 }
 
 /** Counts are scoped to the selected Environment and intentionally pre-search. */
@@ -94,6 +99,7 @@ export function countProjectResources(
     databases: 0,
     keyvalues: 0,
     envgroups: 0,
+    sandboxgroups: 0,
   };
   for (const row of rows) {
     counts[FILTER_KIND_BY_RESOURCE[row.kind]] += 1;
@@ -101,7 +107,12 @@ export function countProjectResources(
   return counts;
 }
 
-/** A resource family: every filter kind except "all". */
+/**
+ * A resource family: every filter kind except "all". Sandbox groups are none:
+ * their placement is read from the groups themselves, and a workspace whose
+ * bex-api has no sandboxes cannot read them at all, so an unread groups list is
+ * never shown as unknown rows (w22/m603).
+ */
 export type ProjectResourceFamily = Exclude<ProjectResourceKind, "all">;
 
 /**

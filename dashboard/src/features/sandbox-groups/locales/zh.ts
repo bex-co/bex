@@ -143,6 +143,21 @@ const zhSandboxGroups: Record<string, TranslationEntry> = {
     message: "默认",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "就绪",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "已更新“{name}”的沙箱组。",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message: "无法移动沙箱组 {group}，请重试。",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "无法加载沙箱组，请重试。",
     description: "Error state when loading sandbox groups fails",

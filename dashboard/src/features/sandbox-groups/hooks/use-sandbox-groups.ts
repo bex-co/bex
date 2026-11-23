@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import {
   SandboxGroupDocument,
@@ -23,8 +24,13 @@ export function useSandboxGroups() {
     errorPolicy: "all",
   });
 
-  const groups: SandboxGroupItem[] = (data?.sandboxGroups ?? []).filter(
-    (g): g is SandboxGroupItem => g != null,
+  // Memoized: the project page's environment cards derive their rows from it.
+  const groups = useMemo(
+    () =>
+      (data?.sandboxGroups ?? []).filter(
+        (g): g is SandboxGroupItem => g != null,
+      ),
+    [data],
   );
 
   return {

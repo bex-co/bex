@@ -7,6 +7,7 @@ const LABEL_KEY: Record<ResourceKind, string> = {
   database: "projects.typeDatabase",
   keyvalue: "projects.typeKeyValue",
   envgroup: "projects.typeEnvGroup",
+  sandboxgroup: "sandboxGroups.resourceType",
 };
 
 /**

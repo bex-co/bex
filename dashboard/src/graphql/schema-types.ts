@@ -2576,6 +2576,7 @@ export type Mutation = {
   setRepo: Maybe<Service>;
   setRootDir: Maybe<Service>;
   setRuntime: Maybe<Service>;
+  setSandboxGroupEnvironment: Maybe<SandboxGroup>;
   setSecretFile: Maybe<Scalars['Boolean']['output']>;
   setServiceIpAllowList: Maybe<Service>;
   setStartCommand: Maybe<Service>;
@@ -4051,6 +4052,13 @@ export type MutationSetRuntimeArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   runtime: Scalars['String']['input'];
+};
+
+
+export type MutationSetSandboxGroupEnvironmentArgs = {
+  environmentId?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

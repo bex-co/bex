@@ -59,6 +59,7 @@ vi.mock("@/features/environments/components/environments-panel", () => ({
           databases: 0,
           keyvalues: 0,
           envgroups: 2,
+          sandboxgroups: 0,
         }}
         onChange={onResourceFilterChange}
       />

@@ -6,6 +6,7 @@ import { useSetEnvironmentServices } from "@/features/environments/hooks/use-set
 import { useSetEnvironmentDatabases } from "@/features/environments/hooks/use-set-environment-databases";
 import { useSetEnvironmentKeyValues } from "@/features/environments/hooks/use-set-environment-keyvalues";
 import { useSetEnvironmentEnvGroups } from "@/features/environments/hooks/use-set-environment-env-groups";
+import { useSetSandboxGroupEnvironment } from "@/features/sandbox-groups/hooks/use-set-sandbox-group-environment";
 import { useStrandedLinkGuard } from "@/features/env-groups/hooks/use-stranded-link-guard";
 import { strandedPromptItems } from "@/features/env-groups/lib/stranded";
 import type { StrandedGroupPromptItem } from "@/features/environments/components/stranded-groups-confirm-dialog";
@@ -50,6 +51,8 @@ export function useBulkMove(
     useSetEnvironmentKeyValues();
   const { setEnvGroups, busyId: envGroupsBusyId } =
     useSetEnvironmentEnvGroups();
+  const { setGroupsEnvironment, busyId: sandboxGroupsBusyId } =
+    useSetSandboxGroupEnvironment();
   const guard = useStrandedLinkGuard();
   const [strandedPrompt, setStrandedPrompt] =
     useState<BulkMove["strandedPrompt"]>(null);
@@ -58,6 +61,7 @@ export function useBulkMove(
     databasesBusyId,
     keyValuesBusyId,
     envGroupsBusyId,
+    sandboxGroupsBusyId,
   ];
 
   async function move(targetId: string) {
@@ -142,21 +146,37 @@ export function useBulkMove(
       operations.filter((op) => op.kind === "service"),
     );
     const servicesMoved = serviceResults.every((result) => result.succeeded);
-    const results = [
-      ...serviceResults,
-      ...(await settle(
+    // A sandbox group is written on its own (Render's environment-resources
+    // move, w22/m603), alongside the other kinds: each group that moved
+    // leaves the selection, and each refused one stays for a retry.
+    const sandboxGroups = selectedRows.filter(
+      (row) => row.kind === "sandboxgroup",
+    );
+    const [otherResults, movedGroups] = await Promise.all([
+      settle(
         operations.filter(
           (op) =>
             op.kind !== "service" && (servicesMoved || op.kind !== "envgroup"),
         ),
-      )),
-    ];
+      ),
+      setGroupsEnvironment(
+        target,
+        sandboxGroups.map((row) => ({
+          id: row.id,
+          name: row.name,
+          into: true,
+        })),
+      ),
+    ]);
     selection.deselect(
-      new Set(
-        results
+      new Set([
+        ...[...serviceResults, ...otherResults]
           .filter((result) => result.succeeded)
           .flatMap((result) => result.keys),
-      ),
+        ...sandboxGroups
+          .filter((row) => movedGroups.has(row.id))
+          .map(resourceSelectionKey),
+      ]),
     );
   }
 

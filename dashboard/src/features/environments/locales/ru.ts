@@ -317,6 +317,16 @@ const ruEnvironments: Record<string, TranslationEntry> = {
       "В этом рабочем пространстве пока нет групп окружения для назначения.",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "Группы песочниц",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message:
+      "В этом рабочем пространстве пока нет групп песочниц для назначения.",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "Группы окружения для «{name}» обновлены.",
     description: "Toast shown after environment-group membership is updated",

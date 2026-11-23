@@ -304,6 +304,15 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "This workspace has no environment groups to assign yet.",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "Sandbox Groups",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message: "This workspace has no sandbox groups to assign yet.",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: 'Environment groups for "{name}" updated.',
     description: "Toast shown after environment-group membership is updated",

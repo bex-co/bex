@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table.tsx";
+import { Badge } from "@/common/components/ui/badge.tsx";
 import { Checkbox } from "@/common/components/ui/checkbox";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -200,12 +201,12 @@ function ResourceTableRow({
       <TableCell className="min-w-0 font-medium">
         <ResourceLink row={row} />
         <div className={projectMetadata ? "mt-1" : "mt-1 sm:hidden"}>
-          <RowTypeBadge row={row} />
+          <RowBadges row={row} />
         </div>
       </TableCell>
       {!projectMetadata ? (
         <TableCell className="hidden sm:table-cell">
-          <RowTypeBadge row={row} />
+          <RowBadges row={row} />
         </TableCell>
       ) : null}
       <TableCell>
@@ -215,7 +216,11 @@ function ResourceTableRow({
         <>
           <TableCell className="hidden text-muted-foreground md:table-cell">
             {row.runtime ?? (
-              <UnknownValue notApplicable={row.kind === "envgroup"} />
+              <UnknownValue
+                notApplicable={
+                  row.kind === "envgroup" || row.kind === "sandboxgroup"
+                }
+              />
             )}
           </TableCell>
           <TableCell className="hidden text-muted-foreground lg:table-cell">
@@ -253,12 +258,28 @@ function ResourceTableRow({
 // via the shared ServiceTypeBadge — the same component the detail header uses,
 // so the list and header can't drift — instead of the generic "Service" the
 // merged-table badge would otherwise render for every service kind (w4/047).
-// database/keyvalue/envgroup rows keep their generic kind label.
+// database/keyvalue/envgroup/sandboxgroup rows keep their generic kind label.
 function RowTypeBadge({ row }: { row: ResourceRow }) {
   if (row.kind === "service" && row.service) {
     return <ServiceTypeBadge service={row.service} />;
   }
   return <ResourceTypeBadge kind={row.kind} />;
+}
+
+// Render marks the workspace's default sandbox group with a Default badge in
+// the resource list, as bex's sandbox group pages do (w22/m603). The two wrap
+// as one group in a narrow Name cell; every other row keeps its lone badge.
+function RowBadges({ row }: { row: ResourceRow }) {
+  const { t } = useTranslations();
+  if (row.kind !== "sandboxgroup" || !row.sandboxGroup?.isDefault) {
+    return <RowTypeBadge row={row} />;
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <RowTypeBadge row={row} />
+      <Badge variant="secondary">{t("sandboxGroups.defaultBadge")}</Badge>
+    </span>
+  );
 }
 
 function ResourceLink({ row }: { row: ResourceRow }) {
@@ -307,6 +328,17 @@ function ResourceLink({ row }: { row: ResourceRow }) {
       </Link>
     );
   }
+  if (row.kind === "sandboxgroup") {
+    return (
+      <Link
+        to="/sandbox-groups/$sandboxGroupId"
+        params={{ sandboxGroupId: row.id }}
+        className={className}
+      >
+        {row.name}
+      </Link>
+    );
+  }
   return (
     <Link
       to="/env-groups/$groupId"
@@ -332,7 +364,15 @@ function ResourceStatus({ row }: { row: ResourceRow }) {
     );
   if (row.kind === "keyvalue" && row.keyValue)
     return <KeyValueStatusBadge keyValue={row.keyValue} />;
+  // A sandbox group has no lifecycle of its own: Render shows every group as
+  // Ready, in the same variant as a running service.
+  if (row.kind === "sandboxgroup") return <SandboxGroupStatusBadge />;
   return <UnknownValue notApplicable={row.kind === "envgroup"} />;
+}
+
+function SandboxGroupStatusBadge() {
+  const { t } = useTranslations();
+  return <Badge variant="default">{t("sandboxGroups.statusReady")}</Badge>;
 }
 
 function ResourceActions({
@@ -379,13 +419,15 @@ function ResourceActions({
       />
     );
   }
+  // An env group has no row menu, and Render offers none on a sandbox group
+  // row: it moves with the selection toolbar and is managed on its own page.
   return null;
 }
 
 /**
  * A dash for a value the row lacks. An environment group has no status,
- * runtime or region at all, so its dash says the column doesn't apply rather
- * than that something failed to load (w4/549).
+ * runtime or region at all, and a sandbox group no runtime, so its dash says
+ * the column doesn't apply rather than that something failed to load (w4/549).
  */
 function UnknownValue({ notApplicable = false }: { notApplicable?: boolean }) {
   const { t } = useTranslations();

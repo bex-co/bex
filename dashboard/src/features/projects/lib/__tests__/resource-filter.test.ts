@@ -62,6 +62,7 @@ describe("project resource filters", () => {
       databases: 1,
       keyvalues: 2,
       envgroups: 1,
+      sandboxgroups: 0,
     });
     expect(countProjectResources([])).toEqual({
       all: 0,
@@ -69,11 +70,14 @@ describe("project resource filters", () => {
       databases: 0,
       keyvalues: 0,
       envgroups: 0,
+      sandboxgroups: 0,
     });
   });
 
   it("parses only URL-supported kinds", () => {
     expect(parseProjectResourceKind("envgroups")).toBe("envgroups");
+    // Sandbox groups have no type filter of their own (w22/m603).
+    expect(parseProjectResourceKind("sandboxgroups")).toBe("all");
     expect(parseProjectResourceKind("workers")).toBe("all");
   });
 
@@ -114,6 +118,36 @@ describe("project resource filters", () => {
       databases: 1,
       keyvalues: 0,
       envgroups: 1,
+      sandboxgroups: 0,
+    });
+  });
+
+  // w22/m603: an environment's sandbox groups are counted and listed under
+  // "All", and no type filter selects them.
+  it("counts sandbox group rows and lists them only under All", () => {
+    const groupRow = {
+      kind: "sandboxgroup",
+      id: "sbg-agents",
+      name: "agents",
+    } as ResourceRow;
+    for (const kind of ["services", "envgroups"] as const) {
+      expect(
+        filterProjectResources([...allRows, groupRow], { query: "", kind }),
+      ).not.toContain(groupRow);
+    }
+    expect(
+      filterProjectResources([...allRows, groupRow], {
+        query: "sbg-agents",
+        kind: "all",
+      }),
+    ).toEqual([groupRow]);
+    expect(countProjectResources([...allRows, groupRow])).toEqual({
+      all: 5,
+      services: 1,
+      databases: 1,
+      keyvalues: 1,
+      envgroups: 1,
+      sandboxgroups: 1,
     });
   });
 });

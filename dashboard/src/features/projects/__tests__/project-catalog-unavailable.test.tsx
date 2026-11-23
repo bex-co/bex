@@ -140,6 +140,20 @@ function fakeApi(
           });
           return;
         }
+        // A bex-api without sandboxes has no sandboxGroups field (w22/m603):
+        // the panel's groups read fails validation, and the card must read
+        // exactly as it does without groups.
+        if (name === "SandboxGroups") {
+          reply({
+            errors: [
+              {
+                message: 'Cannot query field "sandboxGroups" on type "Query".',
+                extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+              },
+            ],
+          });
+          return;
+        }
         if (!(name in reads)) {
           others.push(name);
           sub.error(new Error(`unexpected ${name}`));

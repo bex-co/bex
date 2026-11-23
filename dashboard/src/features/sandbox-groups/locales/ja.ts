@@ -148,6 +148,21 @@ const jaSandboxGroups: Record<string, TranslationEntry> = {
     message: "デフォルト",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "準備完了",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "「{name}」のサンドボックスグループを更新しました。",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message: "サンドボックスグループ {group} を移動できませんでした。もう一度お試しください。",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "サンドボックスグループを読み込めませんでした。もう一度お試しください。",
     description: "Error state when loading sandbox groups fails",

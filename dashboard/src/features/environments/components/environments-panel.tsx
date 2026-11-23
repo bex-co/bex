@@ -32,6 +32,7 @@ import type {
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
+import { useSandboxGroups } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
 import type { ResourceRow } from "@/features/projects/types";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import { ProjectResourceFilters } from "@/features/projects/components/project-resource-filters";
@@ -120,6 +121,10 @@ export function EnvironmentsPanel({
     error: envGroupsError,
     refetch: refetchEnvGroups,
   } = useEnvGroups();
+  // The environments' sandbox groups (w22/m603). Not a catalog family: a
+  // bex-api without sandboxes refuses the query, and its groups are none, so
+  // the card reads exactly as it does without them.
+  const { groups: sandboxGroups } = useSandboxGroups();
   const base = catalog ?? NO_CATALOG;
   const { retry, retrying } = useCatalogRetry(() =>
     Promise.all([base.retry(), envGroupsError ? refetchEnvGroups() : null]),
@@ -297,6 +302,7 @@ export function EnvironmentsPanel({
           onDatabaseDeleted={onDatabaseDeleted}
           onKeyValueDeleted={onKeyValueDeleted}
           envGroups={envGroups}
+          sandboxGroups={sandboxGroups}
           resourceFilter={selectedFilter}
           onResourceFilterChange={onResourceFilterChange}
           unread={unread}

@@ -292,6 +292,15 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "此工作区暂无可分配的环境组。",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "沙箱组",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message: "此工作区暂无可分配的沙箱组。",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "已更新“{name}”的环境组。",
     description: "Toast shown after environment-group membership is updated",

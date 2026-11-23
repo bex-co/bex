@@ -312,6 +312,15 @@ const ptEnvironments: Record<string, TranslationEntry> = {
     message: "Este workspace ainda não tem grupos de ambiente para atribuir.",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "Grupos de sandbox",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message: "Este workspace ainda não tem grupos de sandbox para atribuir.",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "Grupos de ambiente de “{name}” atualizados.",
     description: "Toast shown after environment-group membership is updated",

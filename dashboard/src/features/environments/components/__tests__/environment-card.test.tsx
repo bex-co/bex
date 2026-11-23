@@ -49,6 +49,17 @@ vi.mock("@/features/environments/hooks/use-set-environment-keyvalues", () => ({
 vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
   useSetEnvironmentEnvGroups: () => ({ setEnvGroups, busyId: null }),
 }));
+// w22/m603: a selected sandbox group moves through its own writer.
+const setGroupsEnvironment = vi.fn(async () => new Set<string>());
+vi.mock(
+  "@/features/sandbox-groups/hooks/use-set-sandbox-group-environment",
+  () => ({
+    useSetSandboxGroupEnvironment: () => ({
+      setGroupsEnvironment,
+      busyId: null,
+    }),
+  }),
+);
 
 // w4/m238: the card consults the stranded-link guard before a bulk move.
 // Default: reads resolved, nothing stranded — individual tests override

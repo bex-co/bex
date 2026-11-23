@@ -155,6 +155,22 @@ const deSandboxGroups: Record<string, TranslationEntry> = {
     message: "Standard",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "Bereit",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "Sandbox-Gruppen für „{name}“ aktualisiert.",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message:
+      "Sandbox-Gruppe {group} konnte nicht verschoben werden. Bitte versuche es erneut.",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "Sandbox-Gruppen konnten nicht geladen werden. Bitte versuche es erneut.",
     description: "Error state when loading sandbox groups fails",

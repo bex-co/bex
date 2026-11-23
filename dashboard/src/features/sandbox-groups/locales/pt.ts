@@ -157,6 +157,22 @@ const ptSandboxGroups: Record<string, TranslationEntry> = {
     message: "Padrão",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "Pronto",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "Grupos de sandbox de “{name}” atualizados.",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message:
+      "Não foi possível mover o grupo de sandbox {group}. Tente novamente.",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "Não foi possível carregar os grupos de sandbox. Tente novamente.",
     description: "Error state when loading sandbox groups fails",

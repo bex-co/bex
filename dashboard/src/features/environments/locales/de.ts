@@ -308,6 +308,15 @@ const deEnvironments: Record<string, TranslationEntry> = {
     message: "Dieser Workspace hat noch keine Umgebungsgruppen zum Zuweisen.",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "Sandbox-Gruppen",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message: "Dieser Workspace hat noch keine Sandbox-Gruppen zum Zuweisen.",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "Umgebungsgruppen für „{name}“ aktualisiert.",
     description: "Toast shown after environment-group membership is updated",

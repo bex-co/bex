@@ -227,13 +227,15 @@ func TestMovingASandboxGroupIntoOrOutOfAProtectedEnvironmentNeedsAnAdmin(t *test
 		t.Fatalf("developer removal from prod = %v, want %s", err, core.ProtectedPlacementCode)
 	}
 	web := id.New(id.Service)
+	writes := &countingServiceStore{fakeStore: f.st}
+	dev.Store = writes
 	_, err := dev.ChangeResources(ctx, qa, []string{web, g}, true)
 	var coded *core.CodedError
 	if !placementRefused(err) || !errors.As(err, &coded) || coded.Params["environmentId"] != prod {
 		t.Fatalf("developer move from prod to qa = %v, want %s naming prod", err, core.ProtectedPlacementCode)
 	}
-	if groups.in(g) != prod || len(f.servicesIn(t, f.qa)) != 0 {
-		t.Fatalf("refused moves out: group in %q, qa services %v; want the group in prod and qa empty", groups.in(g), f.servicesIn(t, f.qa))
+	if groups.in(g) != prod || writes.calls != 0 {
+		t.Fatalf("refused moves out: group in %q, %d service writes; want the group in prod and no write, not one undone", groups.in(g), writes.calls)
 	}
 	if _, err := f.admin.ChangeResources(ctx, qa, []string{g}, true); err != nil || groups.in(g) != qa {
 		t.Fatalf("admin move from prod to qa = %v; group in %q", err, groups.in(g))
@@ -241,4 +243,16 @@ func TestMovingASandboxGroupIntoOrOutOfAProtectedEnvironmentNeedsAnAdmin(t *test
 	if _, err := dev.ChangeResources(ctx, qa, []string{g}, false); err != nil || groups.in(g) != "" {
 		t.Fatalf("developer removal from qa = %v; group in %q", err, groups.in(g))
 	}
+}
+
+// countingServiceStore counts service placement writes, so a test can tell a
+// request refused before any change from one whose change was undone.
+type countingServiceStore struct {
+	*fakeStore
+	calls int
+}
+
+func (c *countingServiceStore) ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	c.calls++
+	return c.fakeStore.ChangeEnvironmentServices(ctx, environmentID, projectID, tenantID, serviceIDs, add, exit)
 }

@@ -6,6 +6,7 @@ import type { EnvironmentView } from "@/features/environments/hooks/use-environm
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import type { SandboxGroupItem } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
 
 const setServices = vi.fn();
 vi.mock("@/features/environments/hooks/use-set-environment-services", () => ({
@@ -26,6 +27,18 @@ const setEnvGroups = vi.fn();
 vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
   useSetEnvironmentEnvGroups: () => ({ setEnvGroups, busyId: null }),
 }));
+
+// w22/m603: the sandbox groups tab moves each changed group on its own.
+const setGroupsEnvironment = vi.fn();
+vi.mock(
+  "@/features/sandbox-groups/hooks/use-set-sandbox-group-environment",
+  () => ({
+    useSetSandboxGroupEnvironment: () => ({
+      setGroupsEnvironment,
+      busyId: null,
+    }),
+  }),
+);
 
 const groupsOverride = vi.hoisted(() => ({
   groups: null as unknown[] | null,
@@ -146,6 +159,11 @@ beforeEach(() => {
   setKeyValues.mockResolvedValue(true);
   setEnvGroups.mockReset();
   setEnvGroups.mockResolvedValue(true);
+  setGroupsEnvironment.mockReset();
+  setGroupsEnvironment.mockImplementation(
+    async (_env: unknown, moves: Array<{ id: string }>) =>
+      new Set(moves.map((move) => move.id)),
+  );
 });
 
 function renderDialog(onOpenChange = vi.fn()) {
@@ -770,5 +788,197 @@ describe("ManageResourcesDialog draft retention across tabs", () => {
       // Other candidates stay available.
       expect(screen.getByRole("checkbox", { name: /worker/ })).toBeEnabled();
     });
+  });
+});
+
+// w22/m603: Render's Move Services dialog offers the workspace's sandbox
+// groups; in bex's checklist a checked group is in this environment, and Save
+// moves only the groups whose membership changed.
+describe("ManageResourcesDialog sandbox groups", () => {
+  function group(
+    id: string,
+    environmentId: string | null,
+    isDefault = false,
+  ): SandboxGroupItem {
+    return {
+      __typename: "SandboxGroup",
+      id,
+      name: id,
+      ownerId: "tea-1",
+      region: "oregon",
+      isDefault,
+      environmentId,
+      concurrencyLimit: 1000,
+      createdAt: null,
+      updatedAt: null,
+    };
+  }
+  const production: EnvironmentView = {
+    ...env,
+    id: "evm-production",
+    name: "production",
+    serviceIds: [],
+    databaseIds: [],
+    keyValueIds: [],
+    envGroupIds: [],
+    protectedStatus: "protected",
+  };
+  const groups = [
+    group("sbg-here", "env-1", true),
+    group("sbg-loose", null),
+    group("sbg-prod", "evm-production"),
+  ];
+
+  function renderWithGroups(
+    sandboxGroups: SandboxGroupItem[] = groups,
+    onOpenChange = vi.fn(),
+  ) {
+    return render(
+      <ManageResourcesDialog
+        environment={env}
+        services={[svc("api")]}
+        databases={[db("primary-db")]}
+        keyValues={[kv("cache")]}
+        sandboxGroups={sandboxGroups}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+  }
+  const tabNames = () =>
+    screen.getAllByRole("tab").map((tab) => tab.textContent);
+
+  beforeEach(() => {
+    scope.environments = [env, production];
+  });
+
+  it("offers today's four tabs when the workspace has no sandbox group", () => {
+    renderWithGroups([]);
+    expect(tabNames()).toEqual([
+      "Services",
+      "Databases",
+      "Key Value",
+      "Env Groups",
+    ]);
+  });
+
+  it("lists every group, checked where it is in this environment", async () => {
+    const user = userEvent.setup();
+    renderWithGroups();
+    expect(tabNames()).toEqual([
+      "Services",
+      "Databases",
+      "Key Value",
+      "Env Groups",
+      "Sandbox Groups",
+    ]);
+
+    await user.click(screen.getByRole("tab", { name: "Sandbox Groups" }));
+    expect(screen.getByRole("checkbox", { name: "sbg-here" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "sbg-loose" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "sbg-prod" }),
+    ).not.toBeChecked();
+    // The workspace's default group carries its badge; a group elsewhere
+    // says where it is, as every other candidate does.
+    expect(
+      screen.getByRole("checkbox", { name: "sbg-here" }).closest("label"),
+    ).toHaveTextContent("Default");
+    expect(
+      screen.getByRole("checkbox", { name: "sbg-prod" }),
+    ).toHaveAccessibleDescription(/In production/);
+  });
+
+  it("moves only the changed groups: a checked one in, an unchecked one out", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithGroups(groups, onOpenChange);
+
+    await user.click(screen.getByRole("tab", { name: "Sandbox Groups" }));
+    await user.click(screen.getByRole("checkbox", { name: "sbg-here" }));
+    await user.click(screen.getByRole("checkbox", { name: "sbg-prod" }));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Moves out of production: sbg-prod",
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setGroupsEnvironment).toHaveBeenCalledTimes(1);
+    expect(setGroupsEnvironment).toHaveBeenCalledWith(env, [
+      { id: "sbg-prod", name: "sbg-prod", into: true },
+      { id: "sbg-here", name: "sbg-here", into: false },
+    ]);
+    // No other kind changed, so no other kind is written.
+    expect(setServices).not.toHaveBeenCalled();
+    expect(setEnvGroups).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("writes no group when none changed", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithGroups(groups, onOpenChange);
+
+    await user.click(screen.getByRole("tab", { name: "Sandbox Groups" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setGroupsEnvironment).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("keeps the dialog open on its draft when a group's move is refused", async () => {
+    setGroupsEnvironment.mockResolvedValue(new Set());
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithGroups(groups, onOpenChange);
+
+    await user.click(screen.getByRole("tab", { name: "Sandbox Groups" }));
+    await user.click(screen.getByRole("checkbox", { name: "sbg-loose" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setGroupsEnvironment).toHaveBeenCalledWith(env, [
+      { id: "sbg-loose", name: "sbg-loose", into: true },
+    ]);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("checkbox", { name: "sbg-loose" })).toBeChecked();
+  });
+
+  it("tells a non-admin why a group cannot leave a protected environment", async () => {
+    caps.canManage = false;
+    const user = userEvent.setup();
+    renderWithGroups();
+
+    await user.click(screen.getByRole("tab", { name: "Sandbox Groups" }));
+    expect(screen.getByRole("checkbox", { name: "sbg-prod" })).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", { name: "sbg-prod" }),
+    ).toHaveAccessibleDescription(
+      /Only an admin can move it out of production\./,
+    );
+    expect(screen.getByRole("checkbox", { name: "sbg-loose" })).toBeEnabled();
+  });
+
+  it("adds the tab, seeded from where the groups are, when they are read after the dialog opened", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWithGroups([]);
+    expect(tabNames()).not.toContain("Sandbox Groups");
+
+    rerender(
+      <ManageResourcesDialog
+        environment={env}
+        services={[svc("api")]}
+        databases={[db("primary-db")]}
+        keyValues={[kv("cache")]}
+        sandboxGroups={groups}
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: "Sandbox Groups" }));
+    expect(screen.getByRole("checkbox", { name: "sbg-here" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    // A late read is not a draft: nothing moves.
+    expect(setGroupsEnvironment).not.toHaveBeenCalled();
   });
 });

@@ -37,7 +37,7 @@ function target(
 }
 
 describe("lifecycleTargets", () => {
-  it("acts on services, Postgres and Key Value, never an environment group", () => {
+  it("acts on services, Postgres and Key Value, never an environment or sandbox group", () => {
     const rows: ResourceRow[] = [
       serviceRow("web", false),
       {
@@ -61,6 +61,13 @@ describe("lifecycleTargets", () => {
         } as ResourceRow["keyValue"],
       },
       { ...serviceRow("shared", false), kind: "envgroup", service: undefined },
+      // w22/m603: a sandbox group is selectable but has no lifecycle.
+      {
+        ...serviceRow("agents", false),
+        kind: "sandboxgroup",
+        service: undefined,
+        sandboxGroup: { id: "agents" } as ResourceRow["sandboxGroup"],
+      },
     ];
     expect(lifecycleTargets(rows)).toEqual([
       target("service", "web", false),

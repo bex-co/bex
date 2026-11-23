@@ -48,8 +48,11 @@ import {
   toDatabaseRow,
   toEnvGroupRow,
   toKeyValueRow,
+  toSandboxGroupRow,
   toServiceRow,
 } from "@/features/projects/hooks/use-grouped-resources";
+import type { SandboxGroupItem } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
+import { inEnvironment } from "@/features/environments/lib/link-id";
 import type { ResourceRow } from "@/features/projects/types";
 import { useRenameEnvironment } from "@/features/environments/hooks/use-rename-environment";
 import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-environment";
@@ -88,6 +91,13 @@ export interface EnvironmentCardProps {
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
   envGroups?: EnvGroupView[];
+  /**
+   * The workspace's sandbox groups (w22/m603): those whose `environmentId` is
+   * this environment are its rows, and all of them are Manage resources'
+   * candidates. Empty when bex-api has no sandboxes, which leaves the card as
+   * it is without them.
+   */
+  sandboxGroups?: SandboxGroupItem[];
   allEnvironments?: EnvironmentView[];
   resourceFilter?: ProjectResourceFilterState;
   onResourceFilterChange?: (filter: ProjectResourceFilterState) => void;
@@ -98,7 +108,8 @@ export interface EnvironmentCardProps {
 /**
  * One environment rendered as a card: its name with rename/delete affordances
  * and a "Manage resources" action, over a reused `ResourceTable` of the
- * services, databases, key-value instances, and Env Groups assigned to it.
+ * services, databases, key-value instances, Env Groups, and sandbox groups
+ * assigned to it.
  * The Environment's full management dialogs remain here alongside the selected
  * operating view (docs/ADR032-environments.md).
  */
@@ -112,6 +123,7 @@ export function EnvironmentCard({
   onDatabaseDeleted,
   onKeyValueDeleted,
   envGroups = [],
+  sandboxGroups = NO_SANDBOX_GROUPS,
   allEnvironments = [environment],
   resourceFilter = {
     environmentId: environment.id,
@@ -161,8 +173,20 @@ export function EnvironmentCard({
       .map((id) => envGroupById.get(id))
       .filter((group): group is EnvGroupView => group != null)
       .map(toEnvGroupRow);
-    return [...serviceRows, ...databaseRows, ...keyValueRows, ...envGroupRows];
+    // An environment's Render shape names no sandbox groups: each group names
+    // its environment instead, and Render lists them after the other kinds.
+    const sandboxGroupRows = sandboxGroups
+      .filter((group) => inEnvironment(group.environmentId, environment.id))
+      .map(toSandboxGroupRow);
+    return [
+      ...serviceRows,
+      ...databaseRows,
+      ...keyValueRows,
+      ...envGroupRows,
+      ...sandboxGroupRows,
+    ];
   }, [
+    environment.id,
     environment.serviceIds,
     environment.databaseIds,
     environment.keyValueIds,
@@ -171,6 +195,7 @@ export function EnvironmentCard({
     keyValues,
     environment.envGroupIds,
     envGroups,
+    sandboxGroups,
   ]);
   const visibleRows = filterProjectResources(rows, resourceFilter);
   // Judged against the whole membership, so a row merely hidden by the search
@@ -420,6 +445,7 @@ export function EnvironmentCard({
         services={services}
         databases={databases}
         keyValues={keyValues}
+        sandboxGroups={sandboxGroups}
         open={assignOpen}
         onOpenChange={setAssignOpen}
         unread={unread}
@@ -432,3 +458,5 @@ export function EnvironmentCard({
     </Card>
   );
 }
+
+const NO_SANDBOX_GROUPS: SandboxGroupItem[] = [];

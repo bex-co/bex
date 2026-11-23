@@ -417,3 +417,79 @@ func TestChangeResourcesRemovalUngroupsAServicePG(t *testing.T) {
 		t.Errorf("%s after the reversal carries the environment label %q, want %q", worker.ID, cr.Labels[core.LabelEnvironment], staging.ID)
 	}
 }
+
+// w22/m603: requests that move the same sandbox group at once, each to its own
+// environment, against the real store. Every request either moves the group or
+// is refused as a placement change (the group moved after it was listed), never
+// both moving it from where the other put it; the group ends in exactly the
+// environment of the last request that succeeded, and an environment's delete
+// still keeps it.
+func TestChangeResourcesConcurrentMovesOfOneSandboxGroupPG(t *testing.T) {
+	pg, workspaceID, stamp := resourcesWorkspace(t)
+	ctx := context.Background()
+	project, err := pg.CreateProject(ctx, workspaceID, "stack-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const n = 4
+	envs := make([]store.Environment, n)
+	for i := range envs {
+		if envs[i], err = pg.CreateEnvironment(ctx, project.ID, workspaceID, fmt.Sprintf("env-%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	group, err := pg.CreateSandboxGroup(ctx, workspaceID, "mover", store.SandboxGroupRegion, "", 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gated := &gatedStore{PGStore: pg}
+	svc := newService(gated)
+	svc.SandboxGroups = pg
+
+	gated.hold(n)
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := range envs {
+		wg.Go(func() {
+			_, errs[i] = svc.ChangeResources(ctxAs("user-a"), ids.EnvironmentPublicID(envs[i].ID), []string{group.ID}, true)
+		})
+	}
+	wg.Wait()
+	moved := 0
+	for i, err := range errs {
+		var coded *core.CodedError
+		switch {
+		case err == nil:
+			moved++
+		case errors.As(err, &coded) && coded.Code == "RESOURCE_PLACEMENT_CHANGED":
+		default:
+			t.Fatalf("move to %s: %v, want success or RESOURCE_PLACEMENT_CHANGED", envs[i].Name, err)
+		}
+	}
+	got, err := pg.SandboxGroup(ctx, workspaceID, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved == 0 || !slices.ContainsFunc(envs, func(e store.Environment) bool { return e.ID == got.EnvironmentID }) {
+		t.Fatalf("%d of %d moves succeeded and the group is in %q, want at least one to land it in one of the environments", moved, n, got.EnvironmentID)
+	}
+
+	// A removal from an environment it is not in leaves it; the right one
+	// takes it out; deleting an environment that held it keeps the group.
+	other := envs[0]
+	if other.ID == got.EnvironmentID {
+		other = envs[1]
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), ids.EnvironmentPublicID(other.ID), []string{group.ID}, false); err != nil {
+		t.Fatal(err)
+	}
+	if still, _ := pg.SandboxGroup(ctx, workspaceID, group.ID); still.EnvironmentID != got.EnvironmentID {
+		t.Fatalf("a removal from %s moved the group to %q", other.Name, still.EnvironmentID)
+	}
+	if err := pg.DeleteEnvironment(ctx, got.EnvironmentID); err != nil {
+		t.Fatal(err)
+	}
+	if kept, err := pg.SandboxGroup(ctx, workspaceID, group.ID); err != nil || kept.EnvironmentID != "" {
+		t.Fatalf("after its environment's delete the group reads %+v, %v; want it kept in none", kept, err)
+	}
+}

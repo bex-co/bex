@@ -8,11 +8,10 @@ import { formatRelativeAge } from "@/features/services/lib/format";
 import { translator } from "@/test/translator";
 import i18n, { ensureLanguage } from "@/i18n/init";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: React.ReactNode }) => (
-    <a href="#resource">{children}</a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const { PlainLink } = await import("@/test/mocks/router-link");
+  return { Link: PlainLink };
+});
 vi.mock("@/features/services/components/service-status-badge", () => ({
   ServiceStatusBadge: () => <span>Running</span>,
 }));
@@ -233,5 +232,51 @@ describe("ResourceTable", () => {
   it("shows a region it does not know verbatim", () => {
     render(<ResourceTable rows={rows} projectMetadata {...commonProps} />);
     expect(screen.getAllByText("fsn1").length).toBeGreaterThan(0);
+  });
+
+  // w22/m603: Render lists an environment's sandbox groups with its services:
+  // Type "Sandbox Group", status Ready, the Default badge on the workspace's
+  // default group, its region, no runtime, and no row Options menu.
+  it("renders a sandbox group row as Render lists one", () => {
+    const groupRow = (id: string, isDefault: boolean): ResourceRow => ({
+      kind: "sandboxgroup",
+      id,
+      name: id === "sbg-default" ? "agents" : "batch",
+      createdAt,
+      updatedAt,
+      runtime: null,
+      region: "oregon",
+      sandboxGroup: { id, isDefault } as never,
+    });
+    render(
+      <ResourceTable
+        rows={[groupRow("sbg-default", true), groupRow("sbg-other", false)]}
+        projectMetadata
+        selectedKeys={new Set()}
+        onSelectedKeysChange={vi.fn()}
+        {...commonProps}
+      />,
+    );
+
+    const agents = screen.getByRole("row", { name: /agents/ });
+    expect(
+      within(agents).getByRole("link", { name: "agents" }),
+    ).toHaveAttribute("href", "/sandbox-groups/sbg-default");
+    expect(within(agents).getByText("Sandbox Group")).toBeInTheDocument();
+    expect(within(agents).getByText("Default")).toBeInTheDocument();
+    expect(within(agents).getByText("Ready")).toBeInTheDocument();
+    expect(within(agents).getByText("Oregon, USA")).toBeInTheDocument();
+    // Only the runtime does not apply; nothing is missing.
+    expect(within(agents).getAllByLabelText("Not applicable")).toHaveLength(1);
+    expect(within(agents).queryByLabelText("Not available")).toBeNull();
+    // Selectable, with no per-row actions.
+    expect(within(agents).queryAllByRole("button")).toEqual([]);
+    expect(
+      within(agents).getByRole("checkbox", { name: "Select agents" }),
+    ).toBeInTheDocument();
+
+    const batch = screen.getByRole("row", { name: /batch/ });
+    expect(within(batch).queryByText("Default")).toBeNull();
+    expect(within(batch).getByText("Ready")).toBeInTheDocument();
   });
 });

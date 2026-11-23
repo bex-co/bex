@@ -146,6 +146,21 @@ const koSandboxGroups: Record<string, TranslationEntry> = {
     message: "기본값",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "준비됨",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "“{name}”의 샌드박스 그룹을 업데이트했습니다.",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message: "{group} 샌드박스 그룹을 이동하지 못했습니다. 다시 시도하세요.",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "샌드박스 그룹을 불러올 수 없습니다. 다시 시도해 주세요.",
     description: "Error state when loading sandbox groups fails",

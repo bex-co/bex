@@ -160,6 +160,22 @@ const esSandboxGroups: Record<string, TranslationEntry> = {
     message: "Predeterminado",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "Listo",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "Grupos de sandbox de “{name}” actualizados.",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message:
+      "No se pudo mover el grupo de sandbox {group}. Inténtalo de nuevo.",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "No se pudieron cargar los grupos de sandbox. Inténtalo de nuevo.",
     description: "Error state when loading sandbox groups fails",

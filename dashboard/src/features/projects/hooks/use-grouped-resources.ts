@@ -5,6 +5,7 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { ResourceGroup, ResourceRow } from "@/features/projects/types";
 import type { EnvGroupView } from "@/features/env-groups/types";
+import type { SandboxGroupItem } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
 
 export interface UseGroupedResourcesArgs {
   projects: ProjectView[];
@@ -74,6 +75,24 @@ export function toEnvGroupRow(group: EnvGroupView): ResourceRow {
     runtime: null,
     region: null,
     envGroup: group,
+  };
+}
+
+/**
+ * Normalize a sandbox group into the same table (w22/m603): Render lists an
+ * environment's groups with its services. A group runs in its region and has
+ * no runtime.
+ */
+export function toSandboxGroupRow(group: SandboxGroupItem): ResourceRow {
+  return {
+    kind: "sandboxgroup",
+    id: group.id,
+    name: group.name,
+    createdAt: group.createdAt ?? null,
+    updatedAt: group.updatedAt ?? null,
+    runtime: null,
+    region: group.region || null,
+    sandboxGroup: group,
   };
 }
 

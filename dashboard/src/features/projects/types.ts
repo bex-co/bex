@@ -2,9 +2,11 @@ import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { EnvGroupView } from "@/features/env-groups/types";
+import type { SandboxGroupItem } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
 
 /** Every resource kind rendered in an Environment's unified operating table. */
-export type ResourceKind = "service" | "database" | "keyvalue" | "envgroup";
+export type ResourceKind =
+  "service" | "database" | "keyvalue" | "envgroup" | "sandboxgroup";
 
 /**
  * One row in the unified Projects page's merged table — a service, database,
@@ -28,6 +30,8 @@ export interface ResourceRow {
   database?: DatabaseView;
   keyValue?: KeyValueView;
   envGroup?: EnvGroupView;
+  /** A sandbox group placed in the environment (w22/m603), as Render lists it. */
+  sandboxGroup?: SandboxGroupItem;
 }
 
 /** Stable selection identity across filters and resource kinds. */

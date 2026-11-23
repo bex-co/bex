@@ -304,6 +304,16 @@ const jaEnvironments: Record<string, TranslationEntry> = {
       "このワークスペースには、割り当てられる環境グループがまだありません。",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "サンドボックスグループ",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message:
+      "このワークスペースには、割り当てられるサンドボックスグループがまだありません。",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "「{name}」の環境グループを更新しました。",
     description: "Toast shown after environment-group membership is updated",

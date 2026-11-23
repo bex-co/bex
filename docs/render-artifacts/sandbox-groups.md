@@ -1,4 +1,4 @@
-# Render sandbox groups: delete and default set
+# Render sandbox groups: delete, default set and the project environment
 
 Captured 2026-11-12 for w2/m359 from the pinned Render CLI v2.36 (`render-oss/cli` at `4fd34231b637`). Neither operation is in Render's public OpenAPI, so the CLI's generated client and commands are the contract. The group create, list, retrieve and update operations are in the OpenAPI and were served by w22/m311. The design bex chose is [ADR104 § D7](../ADR104-sandbox-render-parity.md#d7--groups-plans-limits-and-regions).
 
@@ -22,16 +22,46 @@ render.com/docs/sandboxes-creating (read 2026-11-12 and again 2026-11-14) mentio
 
 ## The project environment
 
-The pinned OpenAPI's `create-sandbox-group` body has `ownerId`, `name` and `region` only; its response (and the retrieve and list shapes) carry a nullable `environmentId` ("The ID of the environment this sandbox group belongs to, if any"). The page says nothing about what placement does: whether it scopes the group's access or visibility, or whether a group can move between environments, is not documented, so bex records those as unknown and gives the placement the one meaning the page supports, membership (w22/m412, [ADR104 § D7](../ADR104-sandbox-render-parity.md#d7--groups-plans-limits-and-regions)).
+The pinned OpenAPI's `create-sandbox-group` body has `ownerId`, `name` and `region` only. Its response, and the retrieve and list shapes, carry a nullable `environmentId` ("The ID of the environment this sandbox group belongs to, if any"). Render's own clients go further. They are the contract here, as [ADR104 § D9](../ADR104-sandbox-render-parity.md#d9--the-sdk-is-part-of-the-contract) makes the SDK:
+
+- **Create:** SDK v1.10.0's `createGroup({environmentId})` and CLI v2.38.0's `sandbox-groups create --environment <id or name>` send `environmentId` in the create body.
+- **Move:** both clients put a group in an environment, or move it to another one, with Render's environment-resources routes. The SDK's verb is `setGroupEnvironment(group, environment)`; the CLI's is `sandbox-groups environment set <group> <environment>`, which "relies on the API to move the group out of any environment it was in". Both send `POST /environments/{id}/resources` with `{resourceIds: [group]}`.
+- **Clear:** `setGroupEnvironment(group, null)` and `sandbox-groups environment remove <group>` read the group and, when it is in an environment, send `DELETE /environments/{that id}/resources?resourceIds=<group>`.
+- **Read back:** both clients read the group again afterwards.
+
+The requests and the statuses each client accepts are recorded in `lego/backend/internal/sandbox/testdata/group-environment-contract.json` (w22/m603). Render's public docs (render.com/docs/sandboxes-creating, read 2026-11-23) still name only the dashboard's placement at create, and the public OpenAPI's `resourceIds` description lists "env group, service, Postgres, or Redis".
+
+Placement is membership only: who can see or use the group does not change (w22/m412, [ADR104 § D7](../ADR104-sandbox-render-parity.md#d7--groups-plans-limits-and-regions)).
 
 |  | bex |
 | --- | --- |
-| REST create body | the pinned fields, plus an optional `environmentId` (a string or `null`) as a **bex extension**; an official client never sends it |
+| REST create body | the pinned fields, plus an optional `environmentId` (a string or `null`), which SDK v1.10.0 and CLI v2.38.0 send |
 | Response | `environmentId` is the environment's public `evm-` id, `null` for a group in none |
-| Another workspace's environment, or an id that does not exist | `404 NOT_FOUND`, one answer for both |
-| A protected environment, for a non-Admin | `403 PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` |
+| `POST /v1/environments/{id}/resources` with an `sbg-` id | `201` with the environment: the group is in it, moved out of any other |
+| `DELETE /v1/environments/{id}/resources?resourceIds=<sbg->` | `204`: the group is in no environment; a group that is not in this one is left where it is, as for every other kind |
+| An `sbg-` id that names no group of the workspace, on either route | `404 SANDBOX_GROUP_NOT_FOUND`, "sandbox group not found" (the CLI's own reading), the same for another workspace's group; nothing in the request changes |
+| A create in another workspace's environment, or one that does not exist | `404 NOT_FOUND`, one answer for both |
+| A protected environment on either side of a create or a move, for a non-Admin | `403 PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` ("Moving a group into or out of a protected environment requires an admin", CLI v2.38.0) |
+| The environment object | lists no groups, as Render's does not |
+| The environment is deleted | the group stays and reads `environmentId: null` (unknown on Render, not enforced; see below) |
 
-Placement is the only group verb gated by environment protection. Deleting, editing or reading a group in a protected environment is not restricted: Render documents none of it (unknown, not enforced). | The environment is deleted | the group stays and reads `environmentId: null` | | Moving a group between environments | not offered (the update takes only `concurrencyLimit`) |
+Placement and moves are the only group verbs gated by environment protection. Deleting, editing or reading a group in a protected environment is not restricted: Render documents none of it (unknown, not enforced).
+
+GraphQL `setSandboxGroupEnvironment` and MCP `set_sandbox_group_environment` take the SDK's shape (an environment, or null to clear) and go through the same verb as REST.
+
+### Render's dashboard (bundle read 2026-11-23)
+
+- **The group's own page** shows no environment and offers no move.
+- **The project page** lists an environment's groups among its resources. Selected groups move with the bulk **Move** control, into another environment or out to the workspace, through the generic `changeEnvironmentForResources` mutation.
+- **Other lists:** the environment's "Move Services" dialog lists the workspace's groups as candidates, and the home page's ungrouped table lists groups that are in no environment.
+- **Deleting an environment or project that holds the default group** is refused there: "This … contains the default sandbox group. Make another group the default first." Whether Render's API refuses it too is not known (w22/030).
+
+### bex's dashboard (w22/m603)
+
+- **The project page.** Each environment's card lists its sandbox groups among its resources: type "Sandbox Group", status "Ready", the Default badge, and the group's region. They are counted under "All" but have no type filter of their own, so the card's pills stay the ones its skeleton previews, and a group row has no row menu.
+- **Moving and removing.** Selected groups move with the card's bulk **Move**. The environment's **Manage resources** dialog has a Sandbox Groups tab, where a group is checked to put it in the environment and unchecked to take it out. Both write `setSandboxGroupEnvironment`.
+- **The group's own page** is unchanged, as Render's.
+- **Not yet as on Render (w22/031):** the Overview's ungrouped list does not list groups that are in no environment, and bulk Move has no workspace item that takes a selection out of its environment.
 
 ## What bex answers where Render is silent
 

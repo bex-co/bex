@@ -166,6 +166,22 @@ const ruSandboxGroups: Record<string, TranslationEntry> = {
     message: "По умолчанию",
     description: "Badge indicating the workspace default sandbox group",
   },
+  "sandboxGroups.statusReady": {
+    message: "Готово",
+    description:
+      "Status of a sandbox group row in a project environment's resource table; Render shows every group as Ready",
+  },
+  "sandboxGroups.environmentUpdated": {
+    message: "Группы песочниц для «{name}» обновлены.",
+    description:
+      "Toast after sandbox groups were moved into or out of an environment; {name} is the environment",
+  },
+  "sandboxGroups.environmentUpdateError": {
+    message:
+      "Не удалось переместить группу песочниц {group}. Попробуйте ещё раз.",
+    description:
+      "Toast when moving a sandbox group into or out of an environment fails and the server gave no reason to show",
+  },
   "sandboxGroups.listLoadError": {
     message: "Не удалось загрузить группы песочниц. Попробуйте снова.",
     description: "Error state when loading sandbox groups fails",

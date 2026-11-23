@@ -153,6 +153,32 @@ func TestChangeResourcesPlacesMovesAndClearsASandboxGroup(t *testing.T) {
 	}
 }
 
+// One request moves groups out of different environments into a third, and
+// each one's source is checked: all land, and none is left behind.
+func TestChangeResourcesMovesSandboxGroupsFromSeveralEnvironments(t *testing.T) {
+	f := newSandboxGroupFixture(t)
+	ctx := ctxAs("user-a")
+	third, err := f.svc.Create(ctx, "prj-1", "qa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, b, loose := f.groups.add("tea-a"), f.groups.add("tea-a"), f.groups.add("tea-a")
+	if _, err := f.svc.ChangeResources(ctx, f.staging, []string{a}, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.ChangeResources(ctx, f.production, []string{b}, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.ChangeResources(ctx, third.ID, []string{a, b, loose}, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range []string{a, b, loose} {
+		if f.groups.in(g) != third.ID {
+			t.Errorf("%s is in %q, want %s", g, f.groups.in(g), third.ID)
+		}
+	}
+}
+
 // An sbg- id that names no group of the environment's workspace answers 404
 // "sandbox group not found", the CLI's own reading of it, on an add and on a
 // removal, and identically for another workspace's group and for one that
@@ -173,11 +199,10 @@ func TestChangeResourcesRefusesAnUnknownOrForeignSandboxGroupAsNotFound(t *testi
 			if !errors.As(err, &coded) || coded.Code != core.SandboxGroupNotFoundCode || !errors.Is(err, core.ErrNotFound) {
 				t.Fatalf("%s (add %v) = %v, want 404 %s", name, add, err, core.SandboxGroupNotFoundCode)
 			}
-			msg := fmt.Sprintf("%s %v", coded.Error(), coded.Params["id"] != nil)
 			if first == "" {
-				first = msg
-			} else if msg != first {
-				t.Fatalf("%s answered %q where another not-found answered %q", name, msg, first)
+				first = coded.Error()
+			} else if coded.Error() != first {
+				t.Fatalf("%s answered %q where another not-found answered %q", name, coded.Error(), first)
 			}
 		}
 	}

@@ -300,6 +300,15 @@ const koEnvironments: Record<string, TranslationEntry> = {
     message: "이 워크스페이스에는 아직 할당할 환경 그룹이 없습니다.",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "샌드박스 그룹",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message: "이 워크스페이스에는 아직 할당할 샌드박스 그룹이 없습니다.",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "“{name}”의 환경 그룹을 업데이트했습니다.",
     description: "Toast shown after environment-group membership is updated",

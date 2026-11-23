@@ -314,6 +314,16 @@ const esEnvironments: Record<string, TranslationEntry> = {
       "Este espacio de trabajo aún no tiene grupos de entorno que asignar.",
     description: "Environment-groups checklist empty state",
   },
+  "environments.tabSandboxGroups": {
+    message: "Grupos de sandbox",
+    description:
+      "Manage-resources dialog tab label for the workspace's sandbox groups",
+  },
+  "environments.manageNoSandboxGroups": {
+    message:
+      "Este espacio de trabajo aún no tiene grupos de sandbox que asignar.",
+    description: "Sandbox-groups checklist empty state",
+  },
   "environments.assignEnvGroupsSuccess": {
     message: "Grupos de entorno de “{name}” actualizados.",
     description: "Toast shown after environment-group membership is updated",

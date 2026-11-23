@@ -247,6 +247,15 @@ vi.mock("@/features/environments/hooks/use-set-environment-keyvalues", () => ({
 vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
   useSetEnvironmentEnvGroups: () => ({ setEnvGroups: vi.fn(), busyId: null }),
 }));
+vi.mock(
+  "@/features/sandbox-groups/hooks/use-set-sandbox-group-environment",
+  () => ({
+    useSetSandboxGroupEnvironment: () => ({
+      setGroupsEnvironment: vi.fn(async () => new Set<string>()),
+      busyId: null,
+    }),
+  }),
+);
 const moveTargets = vi.hoisted(() => ({
   current: [] as Array<{ environment: EnvironmentView; label: string }>,
 }));

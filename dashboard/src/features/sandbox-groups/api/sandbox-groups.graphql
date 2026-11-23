@@ -66,6 +66,23 @@ mutation CreateSandboxGroup(
   }
 }
 
+# Render's environment-resources move of a group (w22/m603): a non-null
+# environmentId puts the group there, moving it out of any other; null takes it
+# out of the environment it is in.
+mutation SetSandboxGroupEnvironment(
+  $id: String!
+  $environmentId: String
+  $ownerId: String
+) {
+  setSandboxGroupEnvironment(
+    id: $id
+    environmentId: $environmentId
+    ownerId: $ownerId
+  ) {
+    ...SandboxGroupFields
+  }
+}
+
 query SandboxGroupCredentials($sandboxGroupId: String!, $ownerId: String) {
   sandboxGroupCredentials(sandboxGroupId: $sandboxGroupId, ownerId: $ownerId) {
     ...SandboxGroupCredentialFields

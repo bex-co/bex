@@ -11,6 +11,7 @@ const counts = {
   databases: 0,
   keyvalues: 0,
   envgroups: 0,
+  sandboxgroups: 0,
 };
 
 function pressedNames() {
