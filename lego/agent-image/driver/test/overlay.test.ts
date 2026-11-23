@@ -110,6 +110,8 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
     text,
     /if a person asks you not to merge after all, call `merge_pull_request` with `disableAuto: true`/,
   );
+  // Nothing says to wait with a gh pr checks that names no pull request,
+  // which fails in a session (w10/042).
   assert.doesNotMatch(text, /gh pr checks --watch/);
   // w10/041: asked about another pull request of the repository, it passes
   // that one's number, merged at the head GitHub reports when it calls.

@@ -190,7 +190,10 @@ const githubCliOffBy: Record<GitHubCliLevel, string> = {
 // gateway admits, a workflow dispatch on the session branch among them;
 // only the bex tools open or change its pull request, and only a push to the
 // session branch changes code. The driver configures gh only when it knows
-// the repository and the workspace has not turned gh off (w10/m524).
+// the repository and the workspace has not turned gh off (w10/m524). Each
+// `gh pr` command names its pull request's number, the session's own when
+// it has one (w10/042): origin is the bex Git proxy, so gh finds no pull
+// request for the current branch.
 function githubCliLine(context: OverlayContext): string {
   const tools = `\`${toolName}\`, \`${replyOnPullRequestToolName}\`, \`${markPullRequestReadyToolName}\` and \`${mergePullRequestToolName}\` tools of the \`bex\` MCP server`;
   if (!context.repository)
@@ -199,7 +202,11 @@ function githubCliLine(context: OverlayContext): string {
   if (context.githubCli === false)
     return `- There is no GitHub token in the sandbox, and ${githubCliOffBy[context.githubCliLevel ?? "workspace"]}, so \`gh\` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
-  return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. It also comments, replies in review threads, reviews without approving (\`gh pr review --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit --add-label\`), opens, edits and closes issues, re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`), and runs a workflow on your branch (\`gh workflow run <workflow> --ref ${context.branch}\`), never on another ref. It cannot open, edit, approve, mark ready, merge or close a pull request, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
+  const number = context.existingPrNumber || "<number>";
+  const yours = context.existingPrNumber
+    ? `yours is ${context.existingPrNumber}`
+    : `\`${toolName}\` returns yours as \`number\``;
+  return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks ${number} --watch\` waits for them), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. Pass the pull request's number to every \`gh pr\` command (${yours}): \`origin\` is the bex Git proxy, so \`gh\` cannot find the current branch's pull request by itself. It also comments, replies in review threads, reviews without approving (\`gh pr review ${number} --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit ${number} --add-label\`), opens, edits and closes issues, re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`), and runs a workflow on your branch (\`gh workflow run <workflow> --ref ${context.branch}\`), never on another ref. It cannot open, edit, approve, mark ready, merge or close a pull request, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
 }
 

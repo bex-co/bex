@@ -309,10 +309,35 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
     /There is no GitHub token in the sandbox, but `gh` works on `acme\/widgets` through bex/,
   );
   assert.match(text, /`gh run view --log-failed`/);
+  // w10/042: origin is the bex Git proxy, so gh finds no pull request for
+  // the current branch; every gh pr command the line names takes the number,
+  // which the PR tool returns.
   assert.match(
     text,
-    /reviews without approving \(`gh pr review --comment` or `--request-changes`\), adds labels, assignees and reviewers/,
+    /checks \(`gh pr checks <number> --watch` waits for them\)/,
   );
+  assert.match(
+    text,
+    /Pass the pull request's number to every `gh pr` command \(`open_or_update_draft_pr` returns yours as `number`\): `origin` is the bex Git proxy, so `gh` cannot find the current branch's pull request by itself\./,
+  );
+  assert.match(
+    text,
+    /reviews without approving \(`gh pr review <number> --comment` or `--request-changes`\), adds labels, assignees and reviewers \(`gh pr edit <number> --add-label`\)/,
+  );
+  assert.doesNotMatch(text, /`gh pr checks`|gh pr checks --watch/);
+  // A session that already has its pull request is given its number.
+  const recorded = platformOverlay({
+    ...context,
+    existingPrUrl: "https://github.com/acme/widgets/pull/7",
+    existingPrNumber: 7,
+  });
+  assert.match(recorded, /`gh pr checks 7 --watch` waits for them/);
+  assert.match(
+    recorded,
+    /Pass the pull request's number to every `gh pr` command \(yours is 7\)/,
+  );
+  assert.match(recorded, /`gh pr review 7 --comment`/);
+  assert.doesNotMatch(recorded, /<number>/);
   assert.match(
     text,
     /opens, edits and closes issues, re-runs or cancels CI \(`gh run rerun --failed`, `gh run cancel`\), and runs a workflow on your branch \(`gh workflow run <workflow> --ref bex-agent\/ags-abc`\), never on another ref\./,

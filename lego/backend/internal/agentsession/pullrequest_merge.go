@@ -123,7 +123,7 @@ func NewPullRequestMergeError(code, message string) *PullRequestError {
 			"For another pull request: look at what was pushed to it, and call merge_pull_request once more only if you were still asked to merge it."
 	case PullRequestMergeBlocked:
 		status, hint = http.StatusConflict, "GitHub refused the merge for the reason in the message; the repository's branch protection decides, not you. "+
-			"Required checks pending: call merge_pull_request with \"auto\": true so GitHub merges it once they pass, and end your turn; or wait until they finish (`gh pr checks --watch`) and call merge_pull_request once more. "+
+			"Required checks pending: call merge_pull_request with \"auto\": true so GitHub merges it once they pass, and end your turn; or wait until they finish (`gh pr checks <number> --watch`, with the pull request's number: the one you passed, or the `number` open_or_update_draft_pr returned) and call merge_pull_request once more. "+
 			"Checks failed: fix the failure, push, call open_or_update_draft_pr and wait again. "+
 			"A review or approval required: you cannot give it, so stop and tell the user the pull request is waiting for a reviewer. "+
 			"A conflict, or a branch behind its base: merge the base branch into your branch, push, call open_or_update_draft_pr, and try once more. "+
@@ -134,7 +134,7 @@ func NewPullRequestMergeError(code, message string) *PullRequestError {
 		status, hint = http.StatusForbidden, "GitHub does not let the bex GitHub App do this in this repository (a permission the installation has not granted, or a rule on who may merge). Do not retry; tell the user a person has to do it."
 	case PullRequestAutoMergeNotAllowed:
 		status, hint = http.StatusConflict, "The repository does not allow auto-merge (its \"Allow auto-merge\" setting is off), so GitHub cannot merge the pull request later. "+
-			"Wait until its required checks pass and call merge_pull_request without \"auto\", or tell the user a person has to turn auto-merge on or merge it."
+			"Wait until its required checks pass (`gh pr checks <number> --watch`, with the pull request's number) and call merge_pull_request without \"auto\", or tell the user a person has to turn auto-merge on or merge it."
 	case PullRequestInvalidRequest:
 		status, hint = http.StatusUnprocessableEntity, "mark_pull_request_ready takes only an optional \"number\". merge_pull_request takes only an optional \"number\", \"method\" (merge, squash or rebase), \"commitTitle\", \"commitMessage\" and \"auto\": true, or \"disableAuto\": true with at most a \"number\". "+
 			"\"number\" is a pull request number of the session's repository, which is fixed by the platform; omit it for the session's own pull request."

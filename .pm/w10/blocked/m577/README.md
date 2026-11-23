@@ -117,7 +117,7 @@ Walked against [Devin Review](https://docs.devin.ai/work-with-devin/devin-review
 | Auto-merge status and who enabled it | not shown: `prState` stays `open` while armed | "The merge bar shows the current auto-merge status, including who enabled it" | **drift**, filed as [w10/047](../../047.md) |
 | Stacked pull requests | a taken-over stacked pull request is armed alone (no `includeStack`) | "You can enable GitHub auto-merge on a stacked PR … GitHub lands the PR and every unmerged PR below it" | **drift** (takeover only), filed as [w10/048](../../048.md) |
 
-The overlay's merge step and the tool's description no longer name `gh pr checks --watch`, because `auto` replaces the wait. The `merge_blocked` hint still names it as the alternative, so [w10/042](../../042.md) keeps that part.
+The overlay's merge step and the tool's description no longer name `gh pr checks --watch`, because `auto` replaces the wait. The `merge_blocked` hint still names it as the alternative, so [w10/042](../../done/042.md) keeps that part.
 
 ## Simplify record (t007, 2026-11-22)
 

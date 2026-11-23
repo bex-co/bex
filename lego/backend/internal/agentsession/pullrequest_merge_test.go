@@ -294,9 +294,11 @@ func TestPullRequestMergeTypedRefusals(t *testing.T) {
 		})
 	}
 	// Every refusal of a pending, failing, reviewed or conflicting merge
-	// tells the agent what to wait for or fix, and not to loop.
+	// tells the agent what to wait for or fix, and not to loop. A session's
+	// origin is the bex Git proxy, so gh finds no pull request for the
+	// current branch: the wait names the number (w10/042).
 	hint := NewPullRequestMergeError(PullRequestMergeBlocked, "").Hint
-	for _, want := range []string{"gh pr checks --watch", "fix the failure", "you cannot give it", "merge the base branch", "Do not call merge_pull_request in a loop"} {
+	for _, want := range []string{"gh pr checks <number> --watch", "the `number` open_or_update_draft_pr returned", "fix the failure", "you cannot give it", "merge the base branch", "Do not call merge_pull_request in a loop"} {
 		if !strings.Contains(hint, want) {
 			t.Errorf("merge_blocked hint lacks %q: %q", want, hint)
 		}
@@ -577,7 +579,7 @@ func TestPullRequestMergeAutoTypedRefusals(t *testing.T) {
 		})
 	}
 	hint := NewPullRequestMergeError(PullRequestAutoMergeNotAllowed, "").Hint
-	for _, want := range []string{"Allow auto-merge", `without "auto"`, "tell the user"} {
+	for _, want := range []string{"Allow auto-merge", "gh pr checks <number> --watch", `without "auto"`, "tell the user"} {
 		if !strings.Contains(hint, want) {
 			t.Errorf("auto_merge_not_allowed hint lacks %q: %q", want, hint)
 		}

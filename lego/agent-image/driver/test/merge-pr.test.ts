@@ -351,7 +351,7 @@ test("GitHub's refusals pass through verbatim; other failures become upstream_er
   const error = {
     code: "merge_blocked",
     message: 'GitHub: Required status check "test" is expected.',
-    hint: "Required checks pending: wait until they finish (`gh pr checks --watch`), then call merge_pull_request once more. Do not call merge_pull_request in a loop.",
+    hint: "Required checks pending: wait until they finish (`gh pr checks <number> --watch`, with the pull request's number), then call merge_pull_request once more. Do not call merge_pull_request in a loop.",
   };
   const refusing = await stubGateway({
     [`${base}/merge`]: { status: 409, body: { error } },
