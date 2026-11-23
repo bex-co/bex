@@ -1,6 +1,6 @@
 # w32 · m591 — A failed deploy's one `==> Exited with status N` comes after the start command's first exit, as Render's does
 
-**Worker:** worker32 **Goal:** when a deploy fails because its start command exited, its deploy log (`bex logs --type build`, the interleaved `bex logs`, the live tail, the deploy page, GraphQL and MCP) places its one `==> Exited with status N` and troubleshooting line right after the start command's first exit, with that run's exit status, rather than at the deploy's close after the third run. Later restarts follow it, and the close adds no second verdict. **Status:** todo (t001–t004, t007 and t008 done; t005 walks production once the pin carries them; t006 and t009 follow)
+**Worker:** worker32 **Goal:** when a deploy fails because its start command exited, its deploy log (`bex logs --type build`, the interleaved `bex logs`, the live tail, the deploy page, GraphQL and MCP) places its one `==> Exited with status N` and troubleshooting line right after the start command's first exit, with that run's exit status, rather than at the deploy's close after the third run. Later restarts follow it, and the close adds no second verdict. **Status:** blocked (t001–t004, t007 and t008 done and shipped as `d34935a3c8`; t005 walks production once the pin carries it; t006 and t009 follow)
 
 ## Tasks (in order)
 
@@ -31,8 +31,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w32/090](../done/090.md), filed 2026-11-22 from [w32/086](../done/086.md)'s triage and promoted 2026-11-23 by `/loopx w32`.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log of a failing deploy. On Render the verdict follows the first failing run so the user reads the failure right beside the first traceback; on bex it waits until after the third run, making the exit code read as the last run's.
+- **Source:** inbox note [w32/090](../../done/090.md), filed 2026-11-22 from [w32/086](../../done/086.md)'s triage and promoted 2026-11-23 by `/loopx w32`.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log of a failing deploy. On Render the verdict follows the first failing run so the user reads the failure right beside the first traceback; on bex it waits until after the third run, making the exit code read as the last run's.
 - **Expected outcome:** a failing bex deploy's log places its single `==> Exited with status N` and troubleshooting pair immediately after the start command's first exit, matching Render's log layout on both native and Docker services.
 - **Why now:** w32/m560 added rollout narration, w32/m575 moved native `==> Running '<command>'` into the instance's own `type=app` stream, and w32/m576 added Render's ANSI forms. Moving the verdict pair to the first exit requires a new CRD status field + codegen in `lego/types` & `lego/operator`, a SQL migration + store/reconciler projection in `lego/backend`, narration + live-tail updates in `progress.go`, docs, and a post-deploy production walk in `bex-canary` (~6h15m across 9 tasks).
 - **Render parity task included:** the deploy log verdict appears on every tenant-facing log surface (REST, SSE/WebSocket subscribe, GraphQL, MCP, CLI and the dashboard's deploy page).
@@ -44,7 +44,7 @@
 - **darthjee/ward#109** (Docker): run 1, the pair at `01:32:22.77`, run 2 (yarn's `Command failed with exit code 1.` at `01:32:28.24`), a port-scan line at `01:32:30.86`, then run 3 from `01:32:49.19`. Neither later run gets a pair.
 - **muppetbrown/mana_meeples_singles_market#63** (native Node): the pair at `05:25:58.31`, `==> Running 'node server.js'` again at `05:25:59.10`. **omkarwarik02/DevLens#1** has the pair, then `==> Running 'node src/index.js'`.
 - **One exception:** **muppetbrown/mana_meeples_singles_market#84**: run 1's output ends at `18:21:58.24` with no pair, and the pair follows run 2's at `18:22:04.28`.
-- **Open question (left to [w32/085](../blocked/085.md)):** Render may fail the deploy at the first exit and restart the instance after that (its deploy page would then show the later runs because its window runs shortly after `finishedAt`, w32/084). bex holds the deploy open for two restarts (`crashSettleRestarts = 2`, w4/454). This milestone does not block on that question: it records the first exit and places the verdict there once the deploy settles `update_failed`, leaving an eventually-live deploy unchanged.
+- **Open question (left to [w32/085](../085.md)):** Render may fail the deploy at the first exit and restart the instance after that (its deploy page would then show the later runs because its window runs shortly after `finishedAt`, w32/084). bex holds the deploy open for two restarts (`crashSettleRestarts = 2`, w4/454). This milestone does not block on that question: it records the first exit and places the verdict there once the deploy settles `update_failed`, leaving an eventually-live deploy unchanged.
 
 ## bex today (`5aac2dc93b`)
 
