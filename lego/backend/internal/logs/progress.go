@@ -1169,15 +1169,38 @@ func terminalLine(status, serviceType string) string {
 	return ""
 }
 
+// excludesProgressLines reports whether q carries a positive (non-negated)
+// filter on a label synthetic deploy progress and hook lines never carry
+// (`level`, `statusCode`, `method`, `host`, `path`). Negated filters keep
+// unlabeled build lines, matching Loki's `!=`/`!~` semantics.
+func (q LogQuery) excludesProgressLines() bool {
+	for _, f := range []struct {
+		label  string
+		values []string
+	}{
+		{LabelLevel, q.Level},
+		{LabelStatusCode, q.StatusCode},
+		{LabelMethod, q.Method},
+		{LabelHost, q.Host},
+		{LabelPath, q.Path},
+	} {
+		if len(f.values) > 0 && !q.negates(f.label) {
+			return true
+		}
+	}
+	return false
+}
+
 // synthesizeProgress merges platform progress lines into a windowed read's
 // entries. Applies only when the query explicitly asks for build logs (the
-// same condition under which the store selector includes build streams) and a
-// source is wired. Additive by design: a source error degrades to the plain
-// read (narration must never break a log query), and it runs only on the
-// store-backed path — a missing Loki still reports buildStoreUnavailable, so
-// platform lines never masquerade as a successful empty build history.
+// same condition under which the store selector includes build streams), a
+// source is wired, and no positive filter excludes unlabeled build lines.
+// Additive by design: a source error degrades to the plain read (narration
+// must never break a log query), and it runs only on the store-backed path — a
+// missing Loki still reports buildStoreUnavailable, so platform lines never
+// masquerade as a successful empty build history.
 func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource string, pc progressContext, entries []LogEntry) []LogEntry {
-	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) {
+	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) || q.excludesProgressLines() {
 		return entries
 	}
 	rows, err := s.DeployProgress(ctx, resource, q.End)
@@ -1295,7 +1318,7 @@ func (f *progressFollower) buildOpen() bool {
 // newProgressFollower returns nil when no source is wired — every method is
 // nil-safe, so the tail path stays a straight line.
 func (s *Service) newProgressFollower(q LogQuery, resource string, pc progressContext) *progressFollower {
-	if s.DeployProgress == nil {
+	if s.DeployProgress == nil || q.excludesProgressLines() {
 		return nil
 	}
 	return &progressFollower{s: s, q: q, resource: resource, pc: pc, emitted: map[string]bool{}}
