@@ -21,68 +21,210 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// w8/190: GET /metrics/bandwidth-sources answers Render's hourly breakdown, one
-// source-narrowed read each, in MiB.
-func TestBandwidthSourcesServesHourlyPerSourceSeries(t *testing.T) {
-	var got []RequestMetricsRequest
-	src := func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
-		got = append(got, req)
-		// 2 MiB for the total, 1 MiB for each narrowed source.
-		bytes := float64(1 << 20)
-		if req.BandwidthSource == "" {
-			bytes *= 2
+// promLikeBandwidth answers a bandwidth read as Prometheus does under w8/413's
+// bound at now: a point every step from req.Start to the earlier of req.End
+// and now, each holding the bytes sent in the step that ends there. The
+// websocket and nat sources sent nothing.
+func promLikeBandwidth(now time.Time, sent map[time.Time]float64) RequestMetricsSource {
+	return func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		end := req.End
+		if end.After(now) {
+			end = now
 		}
-		return []MetricSeries{{Unit: unitBytes, Points: []MetricPoint{{Timestamp: "2026-10-10T16:00:00Z", Value: bytes}}}}, nil
-	}
-	svc := newService(nil, src, sampleApp("web"))
-	mux := http.NewServeMux()
-	svc.RegisterREST(mux)
-
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet,
-		"/v1/metrics/bandwidth-sources?resource=web&startTime=2026-10-10T15:00:00Z&endTime=2026-10-10T17:00:00Z", nil))
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d: %s", rr.Code, rr.Body.String())
-	}
-	var body struct {
-		Data []struct {
-			Labels struct{ Resource, TrafficSource string }
-			Values []struct {
-				Timestamp int64
-				Value     float64
+		points := []MetricPoint{}
+		for at := req.Start; !at.After(end); at = at.Add(req.Resolution) {
+			var bytes float64
+			for when, b := range sent {
+				if req.BandwidthSource != "websocket" && req.BandwidthSource != "nat" &&
+					when.After(at.Add(-req.Resolution)) && !when.After(at) {
+					bytes += b
+				}
 			}
+			points = append(points, MetricPoint{Timestamp: at.Format(time.RFC3339), Value: bytes})
 		}
+		return []MetricSeries{{Unit: unitBytes, Points: points}}, nil
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+}
+
+type sourcePoints map[string][]bandwidthSourcePoint
+
+func getBandwidthSources(t *testing.T, svc *Service, query url.Values) sourcePoints {
+	t.Helper()
+	rec := serveREST(svc, "/v1/metrics/bandwidth-sources?"+query.Encode())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var body struct{ Data []bandwidthSourceSeries }
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	sources := map[string]float64{}
+	out := sourcePoints{}
 	for _, series := range body.Data {
-		if series.Labels.Resource != "web" || len(series.Values) != 1 || series.Values[0].Timestamp != time.Date(2026, 10, 10, 16, 0, 0, 0, time.UTC).Unix() {
+		if series.Labels.Resource != "web" {
 			t.Fatalf("series = %+v", series)
 		}
-		sources[series.Labels.TrafficSource] = series.Values[0].Value
+		out[series.Labels.TrafficSource] = series.Values
 	}
-	want := map[string]float64{"total": 2, "http": 1, "websocket": 1, "nat": 1}
-	if len(sources) != len(want) {
-		t.Fatalf("sources = %v, want %v", sources, want)
+	if len(out) != len(bandwidthTrafficSources) {
+		t.Fatalf("sources = %v, want one series per traffic source", out)
 	}
-	for k, v := range want {
-		if sources[k] != v {
-			t.Errorf("%s = %v MiB, want %v", k, sources[k], v)
+	return out
+}
+
+// The w8/414 repro: a free service served paced requests from 02:03:24 to
+// 02:05:54, and the read came at 02:11:06.
+var (
+	sourcesNow  = time.Date(2026, 11, 23, 2, 11, 6, 0, time.UTC)
+	sourcesSent = func() map[time.Time]float64 {
+		sent := map[time.Time]float64{}
+		for i := range 6 {
+			sent[time.Date(2026, 11, 23, 2, 3, 24, 0, time.UTC).Add(time.Duration(i)*30*time.Second)] = 16 << 10
+		}
+		return sent
+	}()
+)
+
+func hourOf(h int) int64 { return time.Date(2026, 11, 23, h, 0, 0, 0, time.UTC).Unix() }
+
+func sourcesService(app *appv1alpha1.App) *Service {
+	svc := newService(nil, promLikeBandwidth(sourcesNow, sourcesSent), app)
+	svc.Clock = func() time.Time { return sourcesNow }
+	return svc
+}
+
+// w8/190, w8/414: Render's hourly breakdown, one source-narrowed read each, in
+// MiB, stamped on whole UTC hours, the hour in progress included.
+func TestBandwidthSourcesStampsWholeHoursFromTheirStart(t *testing.T) {
+	sentMiB := 6.0 * (16 << 10) / (1 << 20)
+	for _, tc := range []struct {
+		name       string
+		start, end string
+		created    time.Time
+		want       []bandwidthSourcePoint
+	}{
+		{"a window ending now", "2026-11-23T00:00:00Z", "2026-11-23T02:11:06Z", time.Time{},
+			[]bandwidthSourcePoint{{hourOf(0), 0}, {hourOf(1), 0}, {hourOf(2), sentMiB}}},
+		{"a service created this hour", "2026-11-23T00:00:00Z", "2026-11-23T02:11:06Z", time.Date(2026, 11, 23, 2, 2, 37, 0, time.UTC),
+			[]bandwidthSourcePoint{{hourOf(2), sentMiB}}},
+		{"a start off the hour", "2026-11-23T01:30:00Z", "2026-11-23T02:11:06Z", time.Time{},
+			[]bandwidthSourcePoint{{hourOf(1), 0}, {hourOf(2), sentMiB}}},
+		{"a window ending after now", "2026-11-23T00:00:00Z", "2026-11-23T06:00:00Z", time.Time{},
+			[]bandwidthSourcePoint{{hourOf(0), 0}, {hourOf(1), 0}, {hourOf(2), sentMiB}}},
+		{"no window", "", "", time.Time{},
+			[]bandwidthSourcePoint{{hourOf(1), 0}, {hourOf(2), sentMiB}}},
+		{"a window wholly after now", "2026-11-23T04:00:00Z", "2026-11-23T06:00:00Z", time.Time{},
+			[]bandwidthSourcePoint{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := sampleApp("web")
+			app.CreationTimestamp = metav1.NewTime(tc.created)
+			query := url.Values{"resource": {"web"}}
+			if tc.start != "" {
+				query.Set("startTime", tc.start)
+				query.Set("endTime", tc.end)
+			}
+			got := getBandwidthSources(t, sourcesService(app), query)
+			for source, want := range map[string][]bandwidthSourcePoint{"total": tc.want, "http": tc.want} {
+				if !slices.Equal(got[source], want) {
+					t.Errorf("%s = %v, want %v", source, got[source], want)
+				}
+			}
+			for source, points := range got {
+				for _, p := range points {
+					if p.Timestamp%3600 != 0 || p.Timestamp > sourcesNow.Unix() {
+						t.Errorf("%s stamps %s: not a whole UTC hour at or before now", source, time.Unix(p.Timestamp, 0).UTC())
+					}
+					if (source == "websocket" || source == "nat") && p.Value != 0 {
+						t.Errorf("%s = %v at %d, but sent nothing", source, p.Value, p.Timestamp)
+					}
+				}
+			}
+		})
+	}
+}
+
+// The total agrees with /v1/metrics/bandwidth summed over the same window
+// (w8/190's acceptance), here the hour in progress.
+func TestBandwidthSourcesTotalMatchesTheBandwidthSum(t *testing.T) {
+	svc := sourcesService(sampleApp("web"))
+	window := url.Values{"resource": {"web"}, "startTime": {"2026-11-23T02:00:00Z"}, "endTime": {"2026-11-23T02:11:06Z"}}
+	rec := serveREST(svc, "/v1/metrics/bandwidth?"+window.Encode())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("bandwidth status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var series []struct{ Values []struct{ Value float64 } }
+	if err := json.Unmarshal(rec.Body.Bytes(), &series); err != nil {
+		t.Fatal(err)
+	}
+	var bytes float64
+	for _, ser := range series {
+		for _, p := range ser.Values {
+			bytes += p.Value
 		}
 	}
-	for _, req := range got {
-		if req.Resolution.Hours() != 1 {
-			t.Errorf("resolution = %v, want hourly", req.Resolution)
+	total := getBandwidthSources(t, svc, window)["total"]
+	if bytes == 0 || len(total) != 1 || total[0].Timestamp != hourOf(2) || total[0].Value*(1<<20) != bytes {
+		t.Fatalf("total = %v, want one point at 02:00 holding the %v bytes /v1/metrics/bandwidth sums", total, bytes)
+	}
+}
+
+// The read widens the window to whole hours, and BEX_MAX_QUERY_HOURS holds for
+// the window as requested: the last 30 days off the hour are served, a longer
+// window is refused. The step stays within the per-series point budget.
+func TestBandwidthSourcesCapAppliesToTheRequestedWindow(t *testing.T) {
+	var reads []RequestMetricsRequest
+	svc := newService(nil, func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		reads = append(reads, req)
+		return nil, nil
+	}, sampleApp("web"))
+	svc.Clock = func() time.Time { return sourcesNow }
+	svc.MaxQueryHours = 720
+	window := func(span time.Duration) url.Values {
+		return url.Values{"resource": {"web"}, "startTime": {sourcesNow.Add(-span).Format(time.RFC3339)}, "endTime": {sourcesNow.Format(time.RFC3339)}}
+	}
+	getBandwidthSources(t, svc, window(720*time.Hour))
+	wantStart := sourcesNow.Add(-720 * time.Hour).Truncate(time.Hour)
+	for _, req := range reads {
+		if !req.Start.Equal(wantStart) || !req.End.Equal(sourcesNow) || req.Resolution != 4*time.Minute {
+			t.Fatalf("read %s–%s every %s, want %s–%s every 4m", req.Start, req.End, req.Resolution, wantStart, sourcesNow)
+		}
+	}
+	rec := serveREST(svc, "/v1/metrics/bandwidth-sources?"+window(721*time.Hour).Encode())
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "exceeds 720 hours") {
+		t.Fatalf("721 hours = %d %s, want the cap's 400", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHourlyReadSpansTheWholeHoursUpToNow(t *testing.T) {
+	at := func(h, m int) time.Time { return time.Date(2026, 11, 23, h, m, 0, 0, time.UTC) }
+	for _, tc := range []struct {
+		name            string
+		start, end, now time.Time
+		from, to        time.Time
+		step            time.Duration
+	}{
+		{"past hours", at(0, 10), at(1, 50), at(5, 0), at(0, 0), at(2, 0), time.Minute},
+		{"an end on the hour", at(0, 0), at(2, 0), at(5, 0), at(0, 0), at(2, 0), time.Minute},
+		{"the hour in progress", at(1, 30), at(2, 11), at(2, 11), at(1, 0), at(2, 11), time.Minute},
+		{"its first minute", at(2, 0), at(2, 0).Add(30 * time.Second), at(2, 0).Add(30 * time.Second), at(2, 0), at(2, 1), time.Minute},
+		{"after now", at(4, 0), at(6, 0), at(2, 11), at(4, 0), at(4, 1), time.Minute},
+		{"ten days", at(2, 0).Add(-240 * time.Hour), at(2, 0), at(2, 0), at(2, 0).Add(-240 * time.Hour), at(2, 0), 2 * time.Minute},
+	} {
+		from, to, step := hourlyRead(tc.start, tc.end, tc.now)
+		if !from.Equal(tc.from) || !to.Equal(tc.to) || step != tc.step {
+			t.Errorf("%s: %s–%s every %s, want %s–%s every %s", tc.name, from, to, step, tc.from, tc.to, tc.step)
 		}
 	}
 }

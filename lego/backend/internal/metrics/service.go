@@ -493,6 +493,13 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err := s.checkWindow(q.Start, q.End); err != nil {
 		return nil, err
 	}
+	return s.metricsInWindow(ctx, q)
+}
+
+// metricsInWindow is Metrics past the BEX_MAX_QUERY_HOURS check, for a caller
+// that checked the window as requested before widening it: bandwidthSources
+// reads whole hours (w8/414).
+func (s *Service) metricsInWindow(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
