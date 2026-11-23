@@ -1,6 +1,6 @@
 # w22 · m443 — Sandbox API rate limits match Render's per-operation table
 
-**Worker:** worker22 **Goal:** a user's sandbox calls are rate limited per operation class at Render's documented rates (create 100, terminate 1,000, exec 1,000, file transfer 1,000, reads 400, group writes 100, snapshot capture 10 per minute), per user and shared across that user's API keys, on REST, GraphQL and MCP, instead of sharing bex-api's general 500 per minute. **Status:** blocked (t001–t005 and t007–t009 done and shipped in `b7bc85e30`; t006 waits for the deploy that carries it, then t010)
+**Worker:** worker22 **Goal:** a user's sandbox calls are rate limited per operation class at Render's documented rates (create 100, terminate 1,000, exec 1,000, file transfer 1,000, reads 400, group writes 100, snapshot capture 10 per minute), per user and shared across that user's API keys, on REST, GraphQL and MCP, instead of sharing bex-api's general 500 per minute. **Status:** blocked (t001–t005 and t007–t009 done and shipped in `b7bc85e30`; t006's production run 45279460837 passed every create check, and its exec checks wait on w22/029, then t010)
 
 ## Tasks (in order)
 
@@ -64,6 +64,22 @@
   - A mounted route removed from the class table: registration panics, and `TestEveryLiveSandboxOperationHasARateClass` fails.
   - `make lint` is clean for all four modules.
 
+## Gate cleared 2026-11-23 (/loopx w22): the leg ran, and execs are held by the gateway, not the rate limiter
+
+- **Source:** verified evidence, not a user decision. Production's pin `9fdf7e0a1171` (`cded300699`, 2026-11-23T17:33Z) carries `b7bc85e30` (`git merge-base --is-ancestor b7bc85e30 9fdf7e0a1171` succeeds). Production has carried it since pin `1a5a8e872398` (04:25Z). No `rate` leg had run before: every `sandbox-measure` run on 2026-11-21 and 2026-11-23 was the `usage` leg.
+- **Run:** [45279460837](https://github.com/bex-co/bex/actions/runs/45279460837), dispatched with `gh workflow run sandbox-measure.yml -f leg=rate`. It failed 2 of its 10 checks. The figures are under "Production check" below. It did not meet w22/028's reset: every exec answered.
+- **Remaining gate:** [w22/029](../../029.md). Nothing is needed from the user. The ssh-gateway holds one user to 5 concurrent sessions per replica (2 replicas), in a limiter shared with native SSH. A sixth concurrent exec on a replica is refused, and bex-api answers it 400 `too many concurrent exec sessions`. Render documents no such limit (render.com/docs/sandboxes-limits, read 2026-11-23). On production this holds one user near 300 short execs a minute, so the definition of done's "600 execs inside a minute" cannot hold until w22/029 ships.
+- **Next:** when w22/029 ships, its worker writes its commit into this milestone's gate as ``pin must carry `<sha>` ``. Once production runs it, `gh workflow run sandbox-measure.yml -f leg=rate` must print PASS. Then record the run here, flip the ADR018 row to ✅ and close with t010.
+
 ## Production check
 
-Not run yet: production must carry `b7bc85e30` first. Then `gh workflow run sandbox-measure.yml -f leg=rate` must print PASS (600 execs inside a minute with none rate limited; creates across two API keys of one user refused with `rate_limited` on both keys past the buckets; no sandbox left behind). Record the run id and the `MEASURE execs` and `MEASURE creates` lines' figures here, flip the ADR018 row to ✅, replace "Pending the deploy" in ADR104 D7, and close with t010.
+[Run 45279460837](https://github.com/bex-co/bex/actions/runs/45279460837), 2026-11-23 22:26Z, production pin `9fdf7e0a1171`, one disposable workspace whose owner holds two API keys. 8 of 10 checks passed.
+
+- **Creates: pass.**
+  - 400 creates were sent in 12.7 s, alternating between the user's two keys. 120 were admitted by the rate limiter, then refused by the group's concurrency limit as the leg intends; none started a sandbox. 280 were refused with `rate_limited`: 141 on the first key and 139 on the second.
+  - The admitted 120 are one bucket of 100 plus 12.7 s of refill at 100 a minute (about 21). One bucket was spent across both keys and both bex-api replicas, which fits w8/m579's shared buckets that this pin also carries.
+  - The 429 carried `Retry-After: 1`. Every answer was the rate limiter's 429 or the group's, and the leg left no sandbox behind.
+- **Execs: the rate limiter passed; the leg failed.**
+  - All 600 mints answered 201 and none was rate limited. All 600 redeems were answered too, none with 429, so the redeem route's former 60 a minute per address is gone.
+  - 206 redeems answered 400 from the gateway's session cap (w22/029) and 394 streamed exit code 0. The burst took 76 s.
+  - Failed checks: "sent inside a minute" (76 s) and "at least 95% completed" (394 of 600).
