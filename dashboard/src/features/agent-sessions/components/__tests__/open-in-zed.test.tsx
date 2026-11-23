@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
@@ -35,31 +35,27 @@ beforeEach(() => {
   hasKeyState.hasKey = true;
   hasKeyState.loading = false;
   hasKeyState.error = false;
-  ssh.enabled = true;
-  resume.mockReset();
 });
 
-// The header calls the cancel mutation hook (Apollo); Open in Zed calls
-// resume to start a closed session's sandbox (ADR054 D8). Stubs keep the test
-// off the network.
-const resume = vi.hoisted(() => vi.fn());
+// The header calls the cancel mutation hook (Apollo); a stub keeps the test
+// off the network. Open in Zed calls none: connecting wakes a closed sandbox
+// (ADR054 D9).
+const mutations = vi.hoisted(() => ({ resume: vi.fn() }));
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({
     cancel: vi.fn(),
     archive: vi.fn(),
     unarchive: vi.fn(),
     deleteSession: vi.fn(),
-    resume,
+    resume: mutations.resume,
   }),
 }));
 
-// Whether the deployment serves editors over SSH (capabilities.sshEnabled).
-const ssh = vi.hoisted(() => ({ enabled: true }));
 vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-capabilities",
   () => ({
     useAgentSessionCapabilities: () => ({
-      capabilities: { sshEnabled: ssh.enabled, sandbox: null },
+      capabilities: { sshEnabled: true, sandbox: null },
       loading: false,
       error: undefined,
       refetch: vi.fn(),
@@ -92,12 +88,12 @@ function renderHeader(session: AgentSessionView) {
   };
 }
 
-// A completed session whose sandbox closed at its idle timeout.
+// A completed session whose sandbox closed at its idle timeout: the backend
+// still surfaces its address, because connecting wakes it (w10/m597).
 function closed(over: Partial<AgentSessionView> = {}): AgentSessionView {
   return view({
     phase: "completed",
     sandboxId: null,
-    sshAddress: null,
     status: "completed",
     ...over,
   });
@@ -135,85 +131,35 @@ describe("Open in Zed", () => {
   });
 });
 
-describe("Open in Zed on a closed session (ADR054 D8)", () => {
-  it("starts the sandbox, says it is starting, then offers the link once it is up", async () => {
-    resume.mockResolvedValue({});
-    const { update } = renderHeader(closed());
+describe("Open in Zed on a closed session (ADR054 D9)", () => {
+  it("offers the link and the ssh command at once, and starts nothing itself", async () => {
+    renderHeader(closed());
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
-    expect(
-      screen.getByText(/The sandbox closed after the session sat idle/),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitem", { name: /open in zed/i }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Start the sandbox" }),
-    );
-    expect(resume).toHaveBeenCalledWith("ags-1");
-
-    // The session reads resuming while the sandbox starts.
-    update(closed({ phase: "resuming", status: "resuming" }));
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Starting the sandbox",
-    );
-    expect(
-      screen.queryByRole("button", { name: "Start the sandbox" }),
-    ).not.toBeInTheDocument();
-
-    // Up: completed again, with its sandbox and address.
-    update(view({ phase: "completed", status: "completed" }));
     expect(
       screen.getByRole("menuitem", { name: /open in zed/i }),
     ).toHaveAttribute("href", "zed://ssh/ags-1@ssh.bex.co/workspace");
     expect(screen.getByText("ssh ags-1@ssh.bex.co")).toBeInTheDocument();
-
-    // A later idle close offers the start again, not a failure.
-    update(closed());
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Start the sandbox" }),
+      screen.getByText(/A sandbox that closed starts when you connect/),
     ).toBeInTheDocument();
-  });
-
-  it("shows a refused start and lets the person try again", async () => {
-    resume.mockRejectedValue(
-      new Error("this workspace already has 2 live agent-session sandboxes"),
-    );
-    renderHeader(closed());
-    await userEvent.click(screen.getByRole("button", { name: /connect/i }));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Start the sandbox" }),
-    );
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
     expect(
-      screen.getByRole("button", { name: "Start the sandbox" }),
-    ).toBeEnabled();
-  });
-
-  it("says so when a start ended without a sandbox", async () => {
-    resume.mockResolvedValue({});
-    const { update } = renderHeader(closed());
-    await userEvent.click(screen.getByRole("button", { name: /connect/i }));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Start the sandbox" }),
-    );
-    update(closed({ phase: "resuming", status: "resuming" }));
-    update(closed());
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "The sandbox did not start. Try again.",
-    );
-  });
-
-  it("offers nothing where the deployment serves no SSH, or for an archived or canceled session", () => {
-    ssh.enabled = false;
-    const { update } = renderHeader(closed());
-    expect(
-      screen.queryByRole("button", { name: /connect/i }),
+      screen.queryByRole("button", { name: "Start the sandbox" }),
     ).not.toBeInTheDocument();
-    ssh.enabled = true;
-    update(
+    expect(mutations.resume).not.toHaveBeenCalled();
+  });
+
+  it("keeps the targets while a sandbox starts, the trigger showing it is busy", async () => {
+    renderHeader(closed({ phase: "resuming", status: "working" }));
+    const trigger = screen.getByRole("button", { name: /connect/i });
+    expect(trigger.querySelector(".animate-spin")).not.toBeNull();
+    await userEvent.click(trigger);
+    expect(screen.getByText("ssh ags-1@ssh.bex.co")).toBeInTheDocument();
+  });
+
+  it("offers nothing where the backend gives no address: no SSH here, or an archived or canceled session", () => {
+    renderHeader(
       closed({
+        sshAddress: null,
         archivedAt: "2026-11-22T00:00:00Z",
         isArchived: true,
         isSteerable: false,
@@ -222,19 +168,13 @@ describe("Open in Zed on a closed session (ADR054 D8)", () => {
     expect(
       screen.queryByRole("button", { name: /connect/i }),
     ).not.toBeInTheDocument();
-    update(closed({ phase: "canceled", isSteerable: false, isTerminal: true }));
-    expect(
-      screen.queryByRole("button", { name: /connect/i }),
-    ).not.toBeInTheDocument();
   });
 
-  it("asks for an SSH key before starting anything", async () => {
+  it("asks for an SSH key before offering anything", async () => {
     hasKeyState.hasKey = false;
     renderHeader(closed());
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
     expect(screen.getByText("Add an SSH key to connect")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Start the sandbox" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("ssh ags-1@ssh.bex.co")).not.toBeInTheDocument();
   });
 });

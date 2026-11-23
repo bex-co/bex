@@ -213,7 +213,7 @@ func TestSSHRefusalSaysWhatBringsTheSandboxBack(t *testing.T) {
 		forbidden []string
 	}{
 		{"completed, sandbox closed", store.AgentSession{Phase: PhaseCompleted},
-			[]string{"is not running", "sandbox has closed", "send the session a message", "Start the sandbox", "connect again"}, nil},
+			[]string{"is not running", "sandbox has closed", "send the session a message", "connect again"}, []string{"Start the sandbox"}},
 		{"failed, sandbox closed", store.AgentSession{Phase: PhaseFailed},
 			[]string{"is not running", "send the session a message", "connect again"}, nil},
 		{"starting for an editor", store.AgentSession{Phase: PhaseResuming, SandboxID: "os-starting"},
@@ -225,7 +225,7 @@ func TestSSHRefusalSaysWhatBringsTheSandboxBack(t *testing.T) {
 		{"canceling", store.AgentSession{Phase: PhaseCanceling, SandboxID: "os-dying"},
 			[]string{"was canceled"}, []string{"connect again"}},
 		{"archived", store.AgentSession{Phase: PhaseCompleted, SandboxID: "os-idle", ArchivedAt: archived},
-			[]string{"is archived", "Unarchive it", "send it a message", "Start the sandbox", "connect again"}, nil},
+			[]string{"is archived", "Unarchive it", "connect again"}, []string{"Start the sandbox"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := newFakeStore()
@@ -246,6 +246,49 @@ func TestSSHRefusalSaysWhatBringsTheSandboxBack(t *testing.T) {
 				if strings.Contains(err.Error(), unwanted) {
 					t.Errorf("message %q says %q, which does not apply", err, unwanted)
 				}
+			}
+		})
+	}
+}
+
+// The SSH gateway wakes a closed session and waits for a starting one
+// (w10/m597) by reading the refusal's params: which of the two it is, and
+// the workspace its held login's audit row names. A canceled or archived
+// session carries neither, so the gateway keeps its banner.
+func TestSSHRefusalTellsTheGatewayWhatAWakeCanDo(t *testing.T) {
+	archived := new(time.Now())
+	for _, tc := range []struct {
+		name    string
+		row     store.AgentSession
+		sandbox string
+	}{
+		{"completed, sandbox closed", store.AgentSession{Phase: PhaseCompleted}, SSHSandboxClosed},
+		{"failed, sandbox closed", store.AgentSession{Phase: PhaseFailed}, SSHSandboxClosed},
+		{"resuming", store.AgentSession{Phase: PhaseResuming, SandboxID: "os-starting"}, SSHSandboxStarting},
+		{"creating", store.AgentSession{Phase: PhaseCreating}, SSHSandboxStarting},
+		{"redispatching", store.AgentSession{Phase: PhaseRedispatching}, SSHSandboxStarting},
+		{"canceled", store.AgentSession{Phase: PhaseCanceled}, ""},
+		{"canceling", store.AgentSession{Phase: PhaseCanceling, SandboxID: "os-dying"}, ""},
+		{"archived", store.AgentSession{Phase: PhaseCompleted, ArchivedAt: archived}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			id := liveSession(st, "tea-a", tc.row.SandboxID, tc.row.Phase)
+			row := st.rows[id]
+			row.ArchivedAt = tc.row.ArchivedAt
+			st.rows[id] = row
+			_, err := sshResolver(map[string]bool{"alice": true}, st).ResolveSSHSession(caller("alice"), id)
+			var coded *core.CodedError
+			if !errors.As(err, &coded) || coded.Code != core.CodeAgentSessionNotAttachable {
+				t.Fatalf("err = %v, want %s", err, core.CodeAgentSessionNotAttachable)
+			}
+			sandbox, _ := coded.Params[SSHSandboxParam].(string)
+			workspace, _ := coded.Params[SSHWorkspaceParam].(string)
+			if sandbox != tc.sandbox {
+				t.Errorf("sandbox param = %q, want %q", sandbox, tc.sandbox)
+			}
+			if wantWorkspace := map[bool]string{true: "tea-a", false: ""}[tc.sandbox != ""]; workspace != wantWorkspace {
+				t.Errorf("workspace param = %q, want %q", workspace, wantWorkspace)
 			}
 		})
 	}
@@ -304,10 +347,28 @@ func TestSSHAddressFollowsTheSandboxOfAFinishedSession(t *testing.T) {
 	}
 }
 
-func TestSSHAddressAbsentWhenSandboxless(t *testing.T) {
-	sandboxless := liveRecord()
-	sandboxless.SandboxID = ""
-	if v := viewFor(t, "ssh.bex.co", sandboxless); v.SSHAddress != "" {
-		t.Errorf("sshAddress = %q, want empty when no sandbox id", v.SSHAddress)
+// An SSH login opens a sandbox that is up, waits for one that is starting
+// and wakes one that closed (w10/m597), so the address shows whenever the
+// session is neither canceled nor archived, sandbox or not, as Devin offers
+// SSH into a sleeping session.
+func TestSSHAddressShowsWheneverALoginGetsAShell(t *testing.T) {
+	for _, phase := range []string{PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching, PhaseCompleted, PhaseFailed} {
+		sandboxless := liveRecord()
+		sandboxless.SandboxID, sandboxless.Phase = "", phase
+		if v := viewFor(t, "ssh.bex.co", sandboxless); v.SSHAddress != "ags-d9example0000000000@ssh.bex.co" {
+			t.Errorf("%s with no sandbox: sshAddress = %q, want the address a login wakes or waits on", phase, v.SSHAddress)
+		}
+	}
+	for _, phase := range []string{PhaseCanceling, PhaseCanceled} {
+		gone := liveRecord()
+		gone.SandboxID, gone.Phase = "", phase
+		if v := viewFor(t, "ssh.bex.co", gone); v.SSHAddress != "" {
+			t.Errorf("%s: sshAddress = %q, want none", phase, v.SSHAddress)
+		}
+	}
+	archived := liveRecord()
+	archived.SandboxID, archived.Phase, archived.ArchivedAt = "", PhaseCompleted, new(time.Now())
+	if v := viewFor(t, "ssh.bex.co", archived); v.SSHAddress != "" {
+		t.Errorf("archived: sshAddress = %q, want none", v.SSHAddress)
 	}
 }

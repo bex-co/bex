@@ -60,28 +60,8 @@ func serveKindedVerb[Req kindedRequest, Resp any](w http.ResponseWriter, r *http
 		WritePullRequestError(w, refuse(PullRequestUnavailable, kind+" is not configured"))
 		return
 	}
-	at := time.Now()
-	if now != nil {
-		at = now()
-	}
-	raw, err := io.ReadAll(io.LimitReader(r.Body, maxPullRequestInternalBody+1))
-	if err != nil || len(raw) == 0 || len(raw) > maxPullRequestInternalBody {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if err := Verify(secret, kindMACInput(kind, raw), r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), at, mintClockSkew); err != nil {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	var req Req
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil || decoder.More() || req.verbKind() != kind {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if !claimNonce(r.Context(), nonce, req.verbNonce(), at) {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
+	req, ok := readKindedRequest[Req](w, r, secret, nonce, now, kind, maxPullRequestInternalBody)
+	if !ok {
 		return
 	}
 	response, err := run(r.Context(), req)
@@ -94,6 +74,39 @@ func serveKindedVerb[Req kindedRequest, Resp any](w http.ResponseWriter, r *http
 		return
 	}
 	WriteNoStoreJSON(w, http.StatusOK, response)
+}
+
+// readKindedRequest is the verification half of a kind-tagged verb: at most
+// maxBody bytes, the HMAC under the kind's MAC domain within the clock skew,
+// exactly the verb's envelope (its kind, no unknown field, one JSON value),
+// and its nonce claimed once. On any failure it writes the response itself
+// and reports false.
+func readKindedRequest[Req kindedRequest](w http.ResponseWriter, r *http.Request, secret []byte, nonce NonceClaimer, now func() time.Time, kind string, maxBody int) (Req, bool) {
+	var req Req
+	at := time.Now()
+	if now != nil {
+		at = now()
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, int64(maxBody)+1))
+	if err != nil || len(raw) == 0 || len(raw) > maxBody {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return req, false
+	}
+	if err := Verify(secret, kindMACInput(kind, raw), r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), at, mintClockSkew); err != nil {
+		http.Error(w, "invalid signature", http.StatusUnauthorized)
+		return req, false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil || decoder.More() || req.verbKind() != kind {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return req, false
+	}
+	if !claimNonce(r.Context(), nonce, req.verbNonce(), at) {
+		http.Error(w, "invalid signature", http.StatusUnauthorized)
+		return req, false
+	}
+	return req, true
 }
 
 // postKindedVerb is the gateway half: sign req (already tagged with kind and

@@ -178,8 +178,14 @@ func claimNonce(ctx context.Context, claimer NonceClaimer, nonce string, now tim
 // decode a validated response. valid rejects a well-formed-but-empty response so
 // a broker bug can't hand back a credential-less body.
 func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req Req, valid func(Resp) bool) (Resp, error) {
+	return postSignedVerb(ctx, url, secret, "", now, httpClient, req, valid)
+}
+
+// postSignedVerb is postSignedMint for a kind-tagged verb: the MAC covers the
+// body behind the verb's domain (kindMACInput). kind "" signs the bare body.
+func postSignedVerb[Req, Resp any](ctx context.Context, url string, secret []byte, kind string, now time.Time, httpClient *http.Client, req Req, valid func(Resp) bool) (Resp, error) {
 	var zero Resp
-	resp, err := signedPost(ctx, url, secret, now, httpClient, req)
+	resp, err := signedPostDomain(ctx, url, secret, kind, now, httpClient, req)
 	if err != nil {
 		return zero, err
 	}

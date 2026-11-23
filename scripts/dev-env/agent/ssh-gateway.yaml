@@ -191,6 +191,11 @@ spec:
             # and every native SSH login is refused (fail closed).
             - name: BEX_API_KEY_GRANT_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/api-key-grant
+            # w10/m597: an SSH login into a closed agent session starts its
+            # sandbox through bex-api's internal verb on the same listener.
+            # Unreachable, the login keeps the "not running" banner.
+            - name: BEX_AGENT_SESSION_WAKE_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-wake
             # Agent-session conversation transport (ADR047 D9). dev-env.sh
             # port-forwards this listener to the host so the dashboard's
             # useChat can reach it; the CORS origin is the dev-N dashboard.

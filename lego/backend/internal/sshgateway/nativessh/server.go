@@ -36,6 +36,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -52,6 +53,9 @@ const (
 	// permissionKeyAction is the action a connection whose key's owner is a
 	// bex API key is held to (w9/125); absent for a person's connection.
 	permissionKeyAction = "bex.key-action"
+	// permissionWaking marks a login held for its agent session's sandbox
+	// (w10/m597): its target names the session but no pod yet.
+	permissionWaking = "bex.waking"
 )
 
 // Store is the native SSH transport's deliberately small database authority:
@@ -149,6 +153,18 @@ type Server struct {
 	// authentication. nil skips the check (unit tests exercising transport
 	// behavior — cmd/ssh-gateway always wires it).
 	KeyGrants *sshgateway.KeyGrantGate
+
+	// Wakes starts a closed agent session's sandbox for a login that may
+	// start it (w10/m597, ADR054 D9): the login is held, its channels wait
+	// for the sandbox, then run in it. nil keeps w10/043's banner for every
+	// session with no sandbox to open, as does MaxChannelsPerConn 0.
+	Wakes SessionWaker
+	// WakeTimeout bounds a held login's wait; 0 gets the start's own ceiling,
+	// agentsessions.SSHWakeTimeout.
+	WakeTimeout time.Duration
+	// wakePollInterval is how often a held login reads whether its session
+	// settled; 0 gets defaultWakePollInterval (tests shorten it).
+	wakePollInterval time.Duration
 
 	// mu guards the drain state (w6/m482): the listener Serve accepts on, which
 	// Shutdown closes, and the open connections Shutdown waits for.
@@ -264,6 +280,12 @@ func (s *Server) defaults() {
 	if s.ChannelLimits == nil {
 		s.ChannelLimits = sshgateway.NewChannelLimiter(0, 0)
 	}
+	if s.WakeTimeout <= 0 {
+		s.WakeTimeout = agentsessions.SSHWakeTimeout
+	}
+	if s.wakePollInterval <= 0 {
+		s.wakePollInterval = defaultWakePollInterval
+	}
 }
 
 func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
@@ -318,14 +340,21 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		authCtx := core.WithIdentity(core.WithRequestOrigin(ctx, core.RequestOrigin{SourceIP: sourceIP(conn.RemoteAddr())}), keyIdentity(registered))
 		authCtx, cancel := context.WithTimeout(authCtx, s.HandshakeTimeout)
 		defer cancel()
-		target, err := s.Apps.ResolveSSHSession(authCtx, conn.User())
-		if err != nil {
+		tell := func(r refusal) (*ssh.Permissions, error) {
+			s.Metrics.Authentication(r.metric)
+			if pre, ok := conn.(ssh.ServerPreAuthConn); ok {
+				_ = pre.SendAuthBanner(r.banner)
+			}
+			return nil, errors.New("public key rejected: " + r.reason)
+		}
+		target, resolveErr := s.Apps.ResolveSSHSession(authCtx, conn.User())
+		// A session whose sandbox closed or is starting may still be
+		// reached: the login is held for it once it passed every check an
+		// admitted login passes (w10/m597).
+		wake := s.wakeOf(conn.User(), resolveErr)
+		if err := resolveErr; err != nil && wake.state == "" {
 			if r, ok := s.toldRefusal(authCtx, subject, conn.User(), err); ok {
-				s.Metrics.Authentication(r.metric)
-				if pre, ok := conn.(ssh.ServerPreAuthConn); ok {
-					_ = pre.SendAuthBanner(r.banner)
-				}
-				return nil, errors.New("public key rejected: " + r.reason)
+				return tell(r)
 			}
 			s.Metrics.Authentication("rejected_target")
 			return nil, errors.New("public key rejected")
@@ -337,6 +366,13 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		}
 		if keyAction != "" {
 			permissions.Extensions[permissionKeyAction] = keyAction
+		}
+		if wake.state != "" {
+			var told *refusal
+			if target, told = s.wakeSession(authCtx, conn, registered, wake, resolveErr); told != nil {
+				return tell(*told)
+			}
+			permissions.Extensions[permissionWaking] = "1"
 		}
 		s.Metrics.Authentication("accepted")
 		// The fingerprint rides the transport so every later channel can re-read
@@ -522,7 +558,8 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	// records a refusal with the client's address too.
 	ctx = core.WithRequestOrigin(ctx, core.RequestOrigin{SourceIP: clientIP})
 	connUser := conn.User()
-	target, err := decodeTarget(conn.Permissions.Extensions[permissionTarget])
+	waking := conn.Permissions.Extensions[permissionWaking] != ""
+	target, err := decodeTarget(conn.Permissions.Extensions[permissionTarget], waking)
 	if err != nil {
 		return err
 	}
@@ -578,7 +615,11 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	// pods/exec stream, bounded per connection. Every other target — and a sandbox
 	// target when the cap is disabled (0) — keeps the single-channel contract.
 	if target.Sandbox && s.MaxChannelsPerConn > 0 {
-		result = s.serveMultiChannel(sessionCtx, channels, subject, fingerprint, connUser, sticky)
+		var wait *sandboxWait
+		if waking {
+			wait = s.awaitSandbox(sessionCtx, subject, fingerprint, connUser)
+		}
+		result = s.serveMultiChannel(sessionCtx, channels, subject, fingerprint, connUser, sticky, wait)
 		return nil
 	}
 
@@ -638,8 +679,8 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// codex round-9 #6: keep re-running the channel-open reauthorization
 		// while the exec is LIVE, not only at admission — a revocation cancels
 		// the stream's context from below. sessionCtx still bounds the lifetime.
-		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky))
-		err = serveSession(streamCtx, channel, channelRequests, s.Executor, resolved)
+		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky, nil))
+		err = serveSession(streamCtx, channel, channelRequests, s.Executor, resolved, nil)
 		cancelStream()
 		s.ChannelLimits.ReleaseChannel(subject)
 		s.Metrics.ChannelClosed()
@@ -684,7 +725,12 @@ const clientCloseGrace = 30 * time.Second
 // no new exec starts on a decision that may be hours stale. A connection that
 // opens no channels (Zed's `-N` master) is valid and simply idles until the
 // client closes it or the session times out.
-func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewChannel, subject, fingerprint, connUser string, sticky *connectionTarget) string {
+//
+// A held login (wait non-nil, w10/m597) accepts the channels opened before
+// its session's sandbox is up without a target: each waits for it, then
+// re-authorizes as any channel does before its command runs. A wait that
+// ends without a sandbox ends the connection once they told the client why.
+func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewChannel, subject, fingerprint, connUser string, sticky *connectionTarget, wait *sandboxWait) string {
 	// Cancellable view of the session ctx for the channel goroutines: a
 	// revocation must end ACTIVE channels too, not just stop new ones. Defer
 	// order is load-bearing (LIFO): mcancel fires BEFORE wg.Wait, so the wait
@@ -695,9 +741,14 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 	// reauthorization on the interval, so a revocation ends EVERY live channel
 	// at once (each new channel still rechecks on open, round-8 #5). One
 	// watchdog per connection, not per channel.
-	mctx, mcancel := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky))
+	mctx, mcancel := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky, wait))
 	defer mcancel()
 	sem := make(chan struct{}, s.MaxChannelsPerConn)
+	var waited <-chan struct{}
+	if wait != nil {
+		waited = wait.done
+	}
+	held := 0 // channels accepted while the login was held
 	for {
 		var newChannel ssh.NewChannel
 		select {
@@ -706,6 +757,16 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 				return "failed"
 			}
 			return "revoked" // the watchdog, not the client, ended the transport
+		case <-waited:
+			waited = nil
+			var failure *wakeFailure
+			if errors.As(wait.err, &failure) && held > 0 {
+				endWithoutSandbox(mctx, channels, failure.reason)
+			}
+			if wait.err != nil {
+				return "failed"
+			}
+			continue
 		case channel, ok := <-channels:
 			if !ok {
 				return "completed"
@@ -724,16 +785,24 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 			_ = newChannel.Reject(ssh.ResourceShortage, "channel limit reached")
 			continue
 		}
-		resolved, err := s.reauthorize(mctx, subject, fingerprint, connUser, sticky)
-		if err != nil {
-			<-sem
-			_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
-			if definiteRefusal(err) {
-				return "revoked"
+		// A channel opened while the login is held waits for its target.
+		var resolved apps.SSHInstanceTarget
+		var pending pendingTarget
+		if wait.pending() {
+			held++
+			resolved, pending = sticky.Get(), s.pendingTarget(wait, subject, fingerprint, connUser, sticky)
+		} else {
+			var err error
+			if resolved, err = s.reauthorize(mctx, subject, fingerprint, connUser, sticky); err != nil {
+				<-sem
+				_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
+				if definiteRefusal(err) {
+					return "revoked"
+				}
+				// No answer refuses this channel only: the live ones stay under
+				// the watchdog, which retries the same checks (w6/147).
+				continue
 			}
-			// No answer refuses this channel only: the live ones stay under
-			// the watchdog, which retries the same checks (w6/147).
-			continue
 		}
 		if ok, scope := s.ChannelLimits.AcquireChannel(subject); !ok {
 			<-sem
@@ -754,7 +823,7 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 			defer s.Metrics.ChannelClosed()
 			defer s.ChannelLimits.ReleaseChannel(subject)
 			defer func() { <-sem }()
-			_ = serveSession(mctx, channel, channelRequests, s.Executor, resolved)
+			_ = serveSession(mctx, channel, channelRequests, s.Executor, resolved, pending)
 		}()
 	}
 }
@@ -839,12 +908,9 @@ func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser
 func (s *Server) reassert(ctx context.Context, subject, fingerprint, connUser string, sticky *connectionTarget) (apps.SSHInstanceTarget, *reauthFailure) {
 	lookupCtx, cancel := context.WithTimeout(ctx, s.HandshakeTimeout)
 	defer cancel()
-	registered, err := s.Store.SSHKeyByFingerprint(lookupCtx, fingerprint)
-	switch {
-	case err != nil && !errors.Is(err, store.ErrNotFound):
-		return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeKeyLookup, err: fmt.Errorf("public key lookup: %w", err)}
-	case err != nil || registered.Subject == "" || registered.Subject != subject:
-		return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeKeyGone, definite: true, err: errors.New("public key rejected")}
+	registered, failure := s.rereadKey(lookupCtx, subject, fingerprint)
+	if failure != nil {
+		return apps.SSHInstanceTarget{}, failure
 	}
 	if err := s.verifiedOwner(ctx, subject); err != nil {
 		if errors.Is(err, agentsession.ErrEmailUnverified) {
@@ -869,6 +935,19 @@ func (s *Server) reassert(ctx context.Context, subject, fingerprint, connUser st
 		}
 	}
 	return target, nil
+}
+
+// rereadKey reads the connection's key again: still registered, and still
+// its subject's.
+func (s *Server) rereadKey(ctx context.Context, subject, fingerprint string) (store.SSHKey, *reauthFailure) {
+	registered, err := s.Store.SSHKeyByFingerprint(ctx, fingerprint)
+	switch {
+	case err != nil && !errors.Is(err, store.ErrNotFound):
+		return store.SSHKey{}, &reauthFailure{cause: causeKeyLookup, err: fmt.Errorf("public key lookup: %w", err)}
+	case err != nil || registered.Subject == "" || registered.Subject != subject:
+		return store.SSHKey{}, &reauthFailure{cause: causeKeyGone, definite: true, err: errors.New("public key rejected")}
+	}
+	return registered, nil
 }
 
 // keyOwnerAction asks, at authentication, whether the key's owner is a bex
@@ -942,9 +1021,14 @@ func boundedError(err error) string {
 // definite refusal ends the session at once; a reauthorization that got no
 // answer is retried on the next tick, until maxUnansweredRevalidations in a
 // row end the session too (w6/147). The watchdog calls it from one goroutine.
-func (s *Server) revalidator(subject, fingerprint, connUser string, sticky *connectionTarget) func(context.Context) error {
+// While a held login waits (w10/m597) it skips: the wait re-reads the key and
+// the authorization itself, and nothing runs until a channel re-authorized.
+func (s *Server) revalidator(subject, fingerprint, connUser string, sticky *connectionTarget, wait *sandboxWait) func(context.Context) error {
 	unanswered := 0
 	return func(ctx context.Context) error {
+		if wait.pending() {
+			return nil
+		}
 		_, err := s.reauthorize(ctx, subject, fingerprint, connUser, sticky)
 		switch {
 		case err == nil:
@@ -997,9 +1081,12 @@ func encodeTarget(target apps.SSHInstanceTarget) string {
 	return string(b)
 }
 
-func decodeTarget(raw string) (apps.SSHInstanceTarget, error) {
+// decodeTarget reads the target the login was authorized for. A held login's
+// (waking) names its session but no pod yet.
+func decodeTarget(raw string, waking bool) (apps.SSHInstanceTarget, error) {
 	var target apps.SSHInstanceTarget
-	if err := json.Unmarshal([]byte(raw), &target); err != nil || target.PodName == "" || target.ID == "" {
+	if err := json.Unmarshal([]byte(raw), &target); err != nil || target.ID == "" ||
+		(target.PodName == "" && !(waking && target.Sandbox)) {
 		return apps.SSHInstanceTarget{}, errors.New("invalid authorized target")
 	}
 	return target, nil

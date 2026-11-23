@@ -132,7 +132,7 @@ func TestSSHIntoASessionWhoseSandboxClosedSaysHowToStartIt(t *testing.T) {
 	g := startSessionGateway(t, "user-1", rows, []string{closed, running}, nil)
 
 	banner := g.refused(t, closed)
-	for _, want := range []string{"bex: agent session " + closed + " is not running", "send the session a message", "Start the sandbox", "connect again"} {
+	for _, want := range []string{"bex: agent session " + closed + " is not running", "send the session a message", "connect again"} {
 		if !strings.Contains(banner, want) {
 			t.Fatalf("banner = %q, want it to say %q", banner, want)
 		}

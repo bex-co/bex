@@ -368,6 +368,7 @@ func main() {
 	shareFiles := &lateHandler{}
 	agentResults := &lateHandler{}
 	agentSpawns := &lateHandler{}
+	sessionWakes := &lateHandler{}
 	sandboxBroker := &lateHandler{}
 	identityClaims := identityClaimsHandler(cfg, deps.Identities)
 
@@ -479,7 +480,7 @@ func main() {
 		// ADR112 D4: the public bucket gateway's two verbs, mounted on :8091 when
 		// BEX_OBJECT_STORAGE_GATEWAY_TOKEN is set.
 		objectGateway := (&objectgw.Verbs{Token: cfg.ObjectGatewayToken, Service: deps.ObjectStorage, BaseDomain: cfg.BaseDomain}).Handler()
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, settingsGuardHandler(cfg, st, deps.Identities), platformRebuild, logicalReplication, shareFiles, agentResults, agentSpawns, sandboxBroker, objectGateway, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, settingsGuardHandler(cfg, st, deps.Identities), platformRebuild, logicalReplication, shareFiles, agentResults, agentSpawns, sessionWakes, sandboxBroker, objectGateway, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -532,6 +533,7 @@ func main() {
 		shareFiles.set(&agentsession.ShareFileHandler{Secret: []byte(cfg.SandboxExecSecret), Files: srv.AgentSessions, Nonce: st})
 		agentResults.set(&agentsession.ResultHandler{Secret: []byte(cfg.SandboxExecSecret), Results: srv.AgentSessions, Nonce: st})
 		agentSpawns.set(&agentsession.SpawnHandler{Secret: []byte(cfg.SandboxExecSecret), Spawns: srv.AgentSessions, Nonce: st})
+		sessionWakes.set(&agentsession.SessionWakeHandler{Secret: []byte(cfg.SandboxExecSecret), Sessions: srv.AgentSessions, Keys: st, Grants: st, Nonce: st})
 	}
 	if st != nil && cfg.SandboxExecSecret != "" {
 		sandboxBroker.set(&sandbox.BrokerLookupHandler{
@@ -1364,7 +1366,7 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, settingsGuard *settingsguard.Handler, platformRebuild, logicalReplication, shareFiles, agentResults, agentSpawns, sandboxBroker, objectGateway http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, settingsGuard *settingsguard.Handler, platformRebuild, logicalReplication, shareFiles, agentResults, agentSpawns, sessionWakes, sandboxBroker, objectGateway http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1474,6 +1476,12 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		// ADR102 D9: a running agent starts and reads its child sessions. Same
 		// gateway-only HMAC (a `spawn-session` MAC domain) and late binding.
 		internalRoot.Handle(agentsession.InternalSpawnPath, agentSpawns)
+		// ADR054 D9 (w10/m597): an SSH login into a closed session starts its
+		// sandbox here, as the key's owner, through the resume a person's own
+		// dashboard calls. Same gateway-only HMAC (a `wake-session` MAC
+		// domain) and late binding; unbound, it answers 503 and the gateway
+		// keeps w10/043's banner.
+		internalRoot.Handle(agentsession.InternalSessionWakePath, sessionWakes)
 		// ADR122 D6 (w2/m534): the sandbox credential broker in ssh-gateway
 		// asks here for a verified /v1/sandboxes Pod's networkPolicy and
 		// enabled group credentials (with OpenBao secrets). Gateway-only HMAC

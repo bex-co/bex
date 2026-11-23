@@ -53,8 +53,9 @@ func (e *retainEnv) resumeReady(t *testing.T) store.AgentSession {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Phase != PhaseResuming || view.SSHAddress != "" {
-		t.Fatalf("resume = phase %s address %q, want resuming with no address yet", view.Phase, view.SSHAddress)
+	// The address stays while it starts: an SSH login to it waits (w10/m597).
+	if view.Phase != PhaseResuming || view.SSHAddress != e.id+"@ssh.bex.co" {
+		t.Fatalf("resume = phase %s address %q, want resuming with the address", view.Phase, view.SSHAddress)
 	}
 	started := e.session(t)
 	if started.Phase != PhaseResuming || !started.EditorSandbox() {

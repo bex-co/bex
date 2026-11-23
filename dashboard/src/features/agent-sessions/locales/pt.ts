@@ -1329,30 +1329,9 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
       "Connect menu — hotlink that opens the sandbox as a Zed remote project",
   },
   "agentSessions.openInZedHint": {
-    message: "Abre o /workspace do sandbox por SSH. Requer o editor Zed.",
-    description: "Connect menu — helper text under the Open-in-Zed action",
-  },
-  "agentSessions.openInZedStart": {
-    message: "Iniciar o sandbox",
+    message: "Abre o /workspace do sandbox por SSH. Requer o editor Zed. Um sandbox fechado é iniciado quando você se conecta.",
     description:
-      "Connect menu — button that starts a closed session's sandbox so Zed can open it (ADR054 D8)",
-  },
-  "agentSessions.openInZedClosed": {
-    message:
-      "O sandbox foi fechado porque a sessão ficou ociosa. Inicie-o para abrir o trabalho da sessão no Zed novamente: leva alguns segundos e não executa nenhum turno do agente.",
-    description:
-      "Connect menu — why a closed session needs its sandbox started before Zed can open it",
-  },
-  "agentSessions.openInZedStarting": {
-    message:
-      "Iniciando o sandbox… O link do Zed aparece aqui quando ele estiver pronto.",
-    description:
-      "Connect menu — shown while a closed session's sandbox starts for the editor",
-  },
-  "agentSessions.openInZedStartFailed": {
-    message: "O sandbox não iniciou. Tente novamente.",
-    description:
-      "Connect menu — the sandbox started for the editor did not come up",
+      "Connect menu — helper text under the Open-in-Zed action; a closed sandbox starts when the editor or ssh connects (ADR054 D9)",
   },
   "agentSessions.connectSSH": {
     message: "SSH",

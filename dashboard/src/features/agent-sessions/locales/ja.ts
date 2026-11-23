@@ -1189,30 +1189,9 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.openInZedHint": {
     message:
-      "SSH 経由でサンドボックスの /workspace を開きます。Zed エディターが必要です。",
-    description: "Connect menu — helper text under the Open-in-Zed action",
-  },
-  "agentSessions.openInZedStart": {
-    message: "サンドボックスを起動",
+      "SSH 経由でサンドボックスの /workspace を開きます。Zed エディターが必要です。閉じたサンドボックスは接続すると起動します。",
     description:
-      "Connect menu — button that starts a closed session's sandbox so Zed can open it (ADR054 D8)",
-  },
-  "agentSessions.openInZedClosed": {
-    message:
-      "セッションがアイドル状態だったため、サンドボックスは閉じられました。起動すると、セッションの作業を再び Zed で開けます。数秒で起動し、エージェントのターンは実行しません。",
-    description:
-      "Connect menu — why a closed session needs its sandbox started before Zed can open it",
-  },
-  "agentSessions.openInZedStarting": {
-    message:
-      "サンドボックスを起動しています… 起動すると、ここに Zed のリンクが表示されます。",
-    description:
-      "Connect menu — shown while a closed session's sandbox starts for the editor",
-  },
-  "agentSessions.openInZedStartFailed": {
-    message: "サンドボックスを起動できませんでした。もう一度お試しください。",
-    description:
-      "Connect menu — the sandbox started for the editor did not come up",
+      "Connect menu — helper text under the Open-in-Zed action; a closed sandbox starts when the editor or ssh connects (ADR054 D9)",
   },
   "agentSessions.connectSSH": {
     message: "SSH",

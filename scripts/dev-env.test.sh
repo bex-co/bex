@@ -134,6 +134,9 @@ assert "ssh-gateway asks the host bex-api about workspace two-factor" \
 # w9/125: the API key grant verb likewise, or every native SSH login is refused.
 assert "ssh-gateway asks the host bex-api about API key grants" \
   "grep -A1 'name: BEX_API_KEY_GRANT_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/api-key-grant'"
+# w10/m597: the session wake verb likewise, or a closed session's login gets the banner.
+assert "ssh-gateway asks the host bex-api to wake a closed agent session" \
+  "grep -A1 'name: BEX_AGENT_SESSION_WAKE_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-wake'"
 assert "local sandboxes co-locate with the gateway on the control-plane node" \
   "grep -q 'node-role.kubernetes.io/control-plane' scripts/dev-env/agent/batchsandbox-template.local.yaml"
 assert "agent-stub refreshes both gateway forwards after its rollout" \

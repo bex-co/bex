@@ -82,6 +82,18 @@ func newTwoFactorGate(secret, apiURL string, sessions sshgateway.TwoFactorSessio
 	return gate
 }
 
+// newSessionWaker builds the native SSH gateway's wake of a closed agent
+// session (w10/m597) over bex-api's internal verb, under the same
+// BEX_SANDBOX_EXEC_SECRET HMAC as the gateway's other verbs. Without the
+// secret there is none: a login into a closed session gets the banner.
+func newSessionWaker(secret, apiURL string) nativessh.SessionWaker {
+	if secret == "" {
+		log.Printf("ssh gateway: BEX_SANDBOX_EXEC_SECRET is unset, so an SSH login into a closed agent session cannot start its sandbox")
+		return nil
+	}
+	return &agentsession.SessionWakeClient{URL: apiURL, Secret: []byte(secret), HTTP: &http.Client{Timeout: 5 * time.Second}}
+}
+
 // newKeyGrantGate builds the gateway's hold on a bex API key's grant (w9/125)
 // over bex-api's internal verb, authenticated with the same
 // BEX_SANDBOX_EXEC_SECRET HMAC as the two-factor verb. Without the secret the
@@ -272,6 +284,11 @@ func main() {
 		// (w9/m451), through the role's INSERT-only audit_events grant.
 		Audit:     st,
 		KeyGrants: keyGrants,
+		// An SSH login into an agent session whose sandbox closed starts it
+		// through bex-api as the key's owner and waits for it (w10/m597,
+		// ADR054 D9); unwired without the secret, so such a login keeps
+		// w10/043's banner.
+		Wakes: newSessionWaker(os.Getenv("BEX_SANDBOX_EXEC_SECRET"), env.Or("BEX_AGENT_SESSION_WAKE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalSessionWakePath)),
 	}
 	shell := &webshell.Server{
 		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),

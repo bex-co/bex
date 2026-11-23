@@ -176,8 +176,9 @@ type Capabilities struct {
 	Ready         bool                `json:"ready"`
 	Attachments   AttachmentLimits    `json:"attachments"`
 	// SSHEnabled says sessions here can be opened in an editor over SSH
-	// (ADR054): a session's sshAddress appears while its sandbox is up, and
-	// resume starts one for a session whose sandbox closed (D8).
+	// (ADR054): a session's sshAddress appears unless it is canceled or
+	// archived, and connecting to it wakes a sandbox that closed (D9), as
+	// resume does (D8).
 	SSHEnabled bool `json:"sshEnabled"`
 	TemplateOffer
 }
@@ -399,10 +400,12 @@ type View struct {
 	UpdatedAt    time.Time  `json:"updatedAt"`
 	CanceledAt   *time.Time `json:"canceledAt,omitempty"`
 	// SSHAddress is the Render-shaped `ags-<xid>@<BEX_SSH_HOST>` an editor uses to
-	// open the session's sandbox over SSH (ADR054 D5 — "Open in Zed"). Present only
-	// when BEX_SSH_HOST is configured AND the sandbox is live (the exact condition
-	// the gateway resolver enforces), so a surfaced address always connects; empty
-	// otherwise. It carries no credential — auth is the caller's own SSH key.
+	// open the session's sandbox over SSH (ADR054 D5 — "Open in Zed"). Present
+	// when BEX_SSH_HOST is configured and the session is neither canceled nor
+	// archived: a login opens a sandbox that is up, waits for one that is
+	// starting, and wakes a closed one (ADR054 D9, w10/m597), so a surfaced
+	// address always connects; empty otherwise. It carries no credential — auth
+	// is the caller's own SSH key.
 	SSHAddress string `json:"sshAddress,omitempty"`
 	Ticket     string `json:"ticket,omitempty"`
 	// URL is the phase-2 raw-ACP WebSocket gateway origin (BEX_AGENT_SESSION_GATEWAY_URL)

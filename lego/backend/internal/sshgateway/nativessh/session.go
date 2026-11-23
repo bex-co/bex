@@ -70,10 +70,31 @@ const sftpServerPath = "/usr/lib/openssh/sftp-server"
 // caller input — the sole variability is the runtime $HOME the shell expands.
 const sftpServerCommand = `cd "${HOME:-/home/bex}" && exec ` + sftpServerPath
 
-func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor sshgateway.Executor, target apps.SSHInstanceTarget) error {
+// serveSession serves one session channel against target. A channel held
+// for a waking session (pending non-nil, w10/m597) runs its command against
+// the target pending resolves once the sandbox is up; a wait that ended
+// without one is told on stderr with exit status 1.
+func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor sshgateway.Executor, target apps.SSHInstanceTarget, pending pendingTarget) error {
 	defer channel.Close()
 	var tty bool
 	var initial *remotecommand.TerminalSize
+	// run starts command once its request is accepted, so a held channel's
+	// progress reaches every client while it waits for its target.
+	run := func(command []string, tty bool, initial *remotecommand.TerminalSize) error {
+		if pending != nil {
+			resolved, err := pending(ctx, channel.Stderr())
+			var failure *wakeFailure
+			if errors.As(err, &failure) {
+				_, _ = io.WriteString(channel.Stderr(), "bex: "+failure.reason+".\n")
+				_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{Status: 1}))
+			}
+			if err != nil {
+				return err
+			}
+			target = resolved
+		}
+		return runExec(ctx, channel, requests, executor, target, command, tty, initial)
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -102,7 +123,7 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 					continue
 				}
 				_ = request.Reply(true, nil)
-				return runExec(ctx, channel, requests, executor, target, []string{"/bin/sh"}, tty, initial)
+				return run([]string{"/bin/sh"}, tty, initial)
 			case "exec":
 				var payload execRequest
 				if err := ssh.Unmarshal(request.Payload, &payload); err != nil || strings.TrimSpace(payload.Command) == "" {
@@ -114,7 +135,7 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 					continue
 				}
 				_ = request.Reply(true, nil)
-				return runExec(ctx, channel, requests, executor, target, []string{"/bin/sh", "-lc", payload.Command}, tty, initial)
+				return run([]string{"/bin/sh", "-lc", payload.Command}, tty, initial)
 			case "subsystem":
 				// The ONLY honored subsystem, and only for an agent-session sandbox
 				// target (ADR054 D4): the fixed sftp-server binary, so Zed can upload
@@ -126,7 +147,7 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 					continue
 				}
 				_ = request.Reply(true, nil)
-				return runExec(ctx, channel, requests, executor, target, []string{"/bin/sh", "-c", sftpServerCommand}, false, nil)
+				return run([]string{"/bin/sh", "-c", sftpServerCommand}, false, nil)
 			default:
 				// env, agent/X11 forwarding, and every other extension are unsupported.
 				// None reaches Kubernetes.

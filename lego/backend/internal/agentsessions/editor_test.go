@@ -50,8 +50,9 @@ func TestResumeStartsAnEditorSandboxForAClosedSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Phase != PhaseResuming || view.SSHAddress != "" || view.Ticket != "" {
-		t.Fatalf("resume = phase %s address %q, want resuming with no address yet", view.Phase, view.SSHAddress)
+	// The address stays: an SSH login to it waits for the start (w10/m597).
+	if view.Phase != PhaseResuming || view.SSHAddress != id+"@ssh.bex.co" || view.Ticket != "" {
+		t.Fatalf("resume = phase %s address %q, want resuming with the address an SSH login waits on", view.Phase, view.SSHAddress)
 	}
 	row := st.rows[id]
 	if lc.created != created+1 || row.SandboxID == "" || row.EditorSandboxID != row.SandboxID || row.Phase != PhaseResuming {

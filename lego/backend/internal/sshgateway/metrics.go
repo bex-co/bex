@@ -35,6 +35,7 @@ type Metrics struct {
 	channels                   prometheus.Counter
 	activeChannels             prometheus.Gauge
 	reauths                    *prometheus.CounterVec
+	sessionWakes               *prometheus.CounterVec
 	twoFactor                  *prometheus.CounterVec
 	gitUpstream                *prometheus.CounterVec
 	modelUsage                 *prometheus.CounterVec
@@ -97,6 +98,10 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channel_reauthorizations_total",
 			Help: "Native SSH reassertions of the transport-auth-time key + target authorization (codex round-8 #5), at each channel open and revalidation tick, by bounded result: accepted, rejected (a definite no), or unavailable (no answer; a live session retries it, w6/147).",
 		}, []string{"result"}),
+		sessionWakes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "session_wakes_total",
+			Help: "Native SSH logins into an agent session whose sandbox was closed or starting (w10/m597), once each, by bounded result: refused (the caller may not start it), refused_start (bex-api refused the start: admission, or the session's state), unavailable (no answer from bex-api; the login got the banner), opened (the sandbox came up), no_sandbox (the start ended without one), timed_out (the start's ceiling passed), abandoned (the connection, its authorization or the gateway ended first). No session, workspace or subject label.",
+		}, []string{"result"}),
 		twoFactor: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "two_factor_refusals_total",
 			Help: "Gateway authorizations (native SSH, web shell, agent attach, sandbox exec and files) refused by a workspace's login requirements, by bounded result: not_enrolled (two-factor), not_google (Google login, w7/m465), or unavailable (bex-api could not answer, failed closed). No workspace or subject label.",
@@ -147,7 +152,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Help: "Exec output writes forwarded unbuffered because the process-wide drain budget was spent.",
 		}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.sessionWakes, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
 	return m
 }
 
@@ -179,6 +184,14 @@ func (m *Metrics) SessionEnded(result string, elapsed time.Duration) {
 		m.activeSessions.Dec()
 		m.sessions.WithLabelValues(result).Inc()
 		m.durations.WithLabelValues(result).Observe(elapsed.Seconds())
+	}
+}
+
+// SessionWake records how one login into an agent session with no sandbox to
+// open ended (w10/m597): a refusal at login, or its wait's outcome.
+func (m *Metrics) SessionWake(result string) {
+	if m != nil {
+		m.sessionWakes.WithLabelValues(result).Inc()
 	}
 }
 

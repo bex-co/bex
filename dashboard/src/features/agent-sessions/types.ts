@@ -158,8 +158,9 @@ export interface AgentSessionCapabilitiesView {
   };
   attachments: AttachmentLimitsView;
   /**
-   * Sessions open in an editor over SSH here (ADR054): `sshAddress` while a
-   * sandbox is up, and `resume` starts one for a closed session (D8).
+   * Sessions open in an editor over SSH here (ADR054): every session that is
+   * neither canceled nor archived has an `sshAddress`, and connecting to it
+   * starts a sandbox that closed (D9), as `resume` does (D8).
    */
   sshEnabled: boolean;
 }
@@ -229,9 +230,11 @@ export interface AgentSessionView {
   sandboxId: string | null;
   /**
    * `ags-<id>@<ssh-host>` for opening the session's sandbox over SSH — the
-   * "Open in Zed" affordance (ADR054 D5). Non-null only while the sandbox is live
-   * and BEX_SSH_HOST is configured; the backend omits it otherwise, so its mere
-   * presence gates the button.
+   * "Open in Zed" affordance (ADR054 D5). Non-null when BEX_SSH_HOST is
+   * configured and the session is neither canceled nor archived: connecting
+   * opens a live sandbox, waits for a starting one and wakes a closed one
+   * (D9). The backend omits it otherwise, so its mere presence gates the
+   * button.
    */
   sshAddress: string | null;
   /** The title the caller gave the session (REST/GraphQL/MCP create); null if none. */

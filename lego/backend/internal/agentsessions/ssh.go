@@ -88,31 +88,60 @@ func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (a
 	}, nil
 }
 
+// The SSH gateway reads what an SSH login into a session with no sandbox to
+// open can do from its refusal's params (w10/m597): SSHSandboxParam is
+// SSHSandboxClosed for a finished session the caller may wake, or
+// SSHSandboxStarting for one whose sandbox is on its way, and
+// SSHWorkspaceParam names the session's workspace for the held login's audit
+// row. A canceled or archived session carries neither.
+const (
+	SSHSandboxParam    = "sandbox"
+	SSHWorkspaceParam  = "workspaceId"
+	SSHSandboxClosed   = "closed"
+	SSHSandboxStarting = "starting"
+	// SSHWakeTimeout bounds how long the gateway holds a login for a sandbox
+	// that is starting: the editor start's own bound, past which the
+	// Completer has settled the session either way.
+	SSHWakeTimeout = editorStartBound
+)
+
 // errNoSandboxToOpen is the refusal of a session that openableSandbox turns
-// down. The gateway prints its message in the SSH auth banner (w10/043), so it
-// says what is wrong and what brings the sandbox back, as Devin answered SSH
-// into a sleeping session with "not running" before that started waking it
-// (docs.devin.ai/release-notes/2026, 2026-09-25). It is reached only after
-// can_view_sensitive passed, so it says no more than the caller's own read of
-// the session would.
+// down. The gateway wakes a closed session for a caller who may start it,
+// and waits for one that is starting (w10/m597), as SSH into a sleeping
+// Devin session wakes the machine and completes the request
+// (docs.devin.ai/release-notes/2026, 2026-09-25). Otherwise it prints the
+// message in the SSH auth banner (w10/043), so the message says what is
+// wrong and what brings the sandbox back. It is reached only after
+// can_view_sensitive passed, so it says no more than the caller's own read
+// of the session would.
 func errNoSandboxToOpen(record store.AgentSession) error {
 	session := "agent session " + record.ID
+	params := map[string]any{"phase": record.Phase}
 	var msg string
 	switch {
 	case record.Phase == PhaseCanceling || record.Phase == PhaseCanceled:
 		msg = session + " was canceled, so it has no sandbox to open and takes no more messages"
 	case record.ArchivedAt != nil:
-		msg = session + " is archived, and its sandbox has closed. Unarchive it on its page in the dashboard, " +
-			"start it again (send it a message, or choose Connect > Start the sandbox), then connect again"
-	case steerable(record.Phase, record.ArchivedAt != nil):
-		msg = session + " is not running, and its sandbox has closed. To start it again, send the session a message, " +
-			"or choose Connect > Start the sandbox on its page in the dashboard. Then connect again"
+		msg = session + " is archived, and its sandbox has closed. Unarchive it on its page in the dashboard, then connect again"
+	case steerable(record.Phase, false):
+		msg = session + " is not running, and its sandbox has closed. To start it again, send the session a message, then connect again"
+		params[SSHSandboxParam], params[SSHWorkspaceParam] = SSHSandboxClosed, record.WorkspaceID
 	case liveSandboxPhase(record.Phase):
 		msg = session + " is still starting its sandbox. Connect again in a moment"
+		params[SSHSandboxParam], params[SSHWorkspaceParam] = SSHSandboxStarting, record.WorkspaceID
 	default:
 		msg = session + " has no sandbox to open now"
 	}
-	return core.NewConflictError(core.CodeAgentSessionNotAttachable, msg, map[string]any{"phase": record.Phase})
+	return core.NewConflictError(core.CodeAgentSessionNotAttachable, msg, params)
+}
+
+// sshReachable reports whether an SSH login into the session gets a shell,
+// at once or once its sandbox is up (w10/m597): a turn's live phase or a
+// start under way waits for the sandbox, and a finished, unarchived session
+// is woken. sshAddress shows exactly then. A canceled or archived session
+// has nothing to open.
+func sshReachable(record store.AgentSession) bool {
+	return liveSandboxPhase(record.Phase) || steerable(record.Phase, record.ArchivedAt != nil)
 }
 
 // openableSandbox reports whether an editor may open the session's sandbox now

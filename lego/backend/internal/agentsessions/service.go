@@ -2442,13 +2442,14 @@ func (s *Service) toView(record store.AgentSession) (View, error) {
 	return view, nil
 }
 
-// sshAddress returns `ags-<xid>@<BEX_SSH_HOST>` when an editor could actually
-// open the sandbox: a valid public host is configured AND the session's
-// sandbox is up (openableSandbox) — the exact condition the gateway resolver
-// enforces, so a surfaced address never dangles. Empty otherwise.
+// sshAddress returns `ags-<xid>@<BEX_SSH_HOST>` when an editor's SSH login
+// gets a shell: a valid public host is configured AND the session's sandbox
+// is up, starting, or closed and woken by the login (sshReachable, w10/m597),
+// as Devin offers SSH into a sleeping session. A canceled or archived
+// session has no address, so a surfaced one never dangles.
 func (s *Service) sshAddress(record store.AgentSession) string {
 	host := s.sshHost()
-	if host == "" || !openableSandbox(record) {
+	if host == "" || !sshReachable(record) {
 		return ""
 	}
 	return record.ID + "@" + host
