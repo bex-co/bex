@@ -40,6 +40,10 @@ var renderLines = []struct {
 		"\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1m///////////////////////////////////////////////////////////\x1b[0m"},
 	{PlatformSuccess, "Available at your primary URL https://tretta-server.onrender.com",
 		"\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1mAvailable at your primary URL https://tretta-server.onrender.com\x1b[0m"},
+	{PlatformSuccess, "Detected service running on port 8000",
+		"\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1mDetected service running on port 8000\x1b[0m"},
+	{PlatformSuccess, "Docs on specifying a port: https://render.com/docs/web-services#port-binding",
+		"\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1mDocs on specifying a port: https://render.com/docs/web-services#port-binding\x1b[0m"},
 	{PlatformFailure, "Exited with status 1", "\x1b[0;31m\x1b[1m==> Exited with status 1\x1b[0m"},
 	{PlatformFailure, "Timed Out", "\x1b[0;31m\x1b[1m==> Timed Out\x1b[0m"},
 	{PlatformFailure, "Port scan timeout reached, no open ports detected. Bind your service to at least one port. " +

@@ -45,7 +45,9 @@ const (
 	rendersTroubleshoot = "\x1b[0;34m\x1b[1m==> \x1b[0m\x1b[1mCommon ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys\x1b[0m"
 	rendersPortTimeout  = "\x1b[0;31m\x1b[1m==> Port scan timeout reached, no open ports detected. Bind your service to at least one port. " +
 		"If you don't need to receive traffic on any port, create a background worker instead.\x1b[0m"
-	rendersPortDocs = "\x1b[0;31m\x1b[1m==> Docs on specifying a port: https://render.com/docs/web-services#port-binding\x1b[0m"
+	rendersPortDocs         = "\x1b[0;31m\x1b[1m==> Docs on specifying a port: https://render.com/docs/web-services#port-binding\x1b[0m"
+	rendersDetectedPort     = "\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1mDetected service running on port 8080\x1b[0m"
+	rendersDetectedPortDocs = "\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1mDocs on specifying a port: https://render.com/docs/web-services#port-binding\x1b[0m"
 )
 
 // rendersURLLine is the block's URL line for url, green as the live line.
@@ -194,7 +196,7 @@ func TestEveryPlatformLineCarriesItsForm(t *testing.T) {
 		{portScanNoHTTPTimeoutLine, plain},
 		{fmt.Sprintf(portScanEnvPortLine, 8080), plain},
 		{fmt.Sprintf(portScanEnvPortTimeoutLine, 8080, 8080), plain},
-		{"==> Detected HTTP on port 8080; serving it", plain},
+		{"==> Detected service running on port 8080", success},
 		{"==> Your service is live 🎉", success},
 		{"==> Your site is live 🎉", plain},
 		{"==> Cron job deployed — runs on schedule 🎉", plain},
@@ -222,9 +224,9 @@ func TestEveryPlatformLineCarriesItsForm(t *testing.T) {
 	for _, e := range formStory() {
 		written[displayText(e.Message)] = e.Message
 	}
-	// The scan's docs line is written in two forms, plain after a scan line
-	// and red after the plain wording's timeout line, which
-	// TestRendersPlatformLinesByteForByte checks.
+	// The port docs line is written in three forms: plain after a scan line,
+	// red after the plain wording's timeout line, and green after port
+	// detection, which TestRendersPlatformLinesByteForByte checks.
 	delete(written, portScanDocsLine)
 	for _, w := range want {
 		msg, ok := written[w.shown]
@@ -251,22 +253,24 @@ func TestRendersPlatformLinesByteForByte(t *testing.T) {
 	}
 	for _, capture := range []string{
 		rendersDeploying, rendersWebConc1, rendersLive, rendersURLBlank, rendersURLRule, rendersTimedOut,
-		rendersTroubleshoot, rendersPortTimeout, rendersPortDocs, rendersExited1, rendersRunningLine("node main.js"),
+		rendersTroubleshoot, rendersPortTimeout, rendersPortDocs, rendersDetectedPort, rendersDetectedPortDocs,
+		rendersExited1, rendersRunningLine("node main.js"),
 		rendersURLLine("https://hello.onbex.co + 1 more domain"),
 	} {
 		if !messages[capture] {
 			t.Errorf("no narrated line is Render's %q", capture)
 		}
 	}
-	// The two docs lines after the plain timeout: red, as Render's capture.
+	// The port docs line appears in three forms: plain after a scan line, red
+	// after the plain timeout, and green after Detected service running on port.
 	var docs []string
 	for _, e := range formStory() {
 		if displayText(e.Message) == portScanDocsLine {
 			docs = append(docs, e.Message)
 		}
 	}
-	if !slices.Contains(docs, rendersPortDocs) || !slices.Contains(docs, portScanDocsLine) {
-		t.Errorf("the scan's docs lines are %q, want plain after a scan line and %q after the timeout", docs, rendersPortDocs)
+	if !slices.Contains(docs, rendersPortDocs) || !slices.Contains(docs, rendersDetectedPortDocs) || !slices.Contains(docs, portScanDocsLine) {
+		t.Errorf("the port docs lines are %q, want plain after a scan line, %q after the timeout, and %q after port detection", docs, rendersPortDocs, rendersDetectedPortDocs)
 	}
 }
 

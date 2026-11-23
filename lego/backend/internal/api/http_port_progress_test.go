@@ -47,18 +47,28 @@ func TestHTTPPortProgressHistoryKeepsEachDeploysListener(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wantOld := renderlog.PlatformSuccess.Line("Detected service running on port 15672")
+	wantNew := renderlog.PlatformSuccess.Line("Detected service running on port 80")
+	wantDocs := renderlog.PlatformSuccess.Line("Docs on specifying a port: https://render.com/docs/web-services#port-binding")
 	found := map[string]logs.LogEntry{}
+	docsByDeploy := map[string]logs.LogEntry{}
 	for _, entry := range entries {
-		if entry.Message == "==> Detected HTTP on port 15672; serving it" || entry.Message == "==> Detected HTTP on port 80; serving it" {
+		if entry.Message == wantOld || entry.Message == wantNew {
 			found[entry.Message] = entry
 		}
-		if entry.Message == "==> Detected HTTP on port 9999; serving it" {
+		if entry.Message == wantDocs {
+			docsByDeploy[entry.Labels[logs.LabelBuild]] = entry
+		}
+		if strings.Contains(entry.Message, "9999") {
 			t.Fatal("history borrowed the current candidate's listener")
 		}
 	}
-	oldLine, newLine := found["==> Detected HTTP on port 15672; serving it"], found["==> Detected HTTP on port 80; serving it"]
+	oldLine, newLine := found[wantOld], found[wantNew]
 	if oldLine.Timestamp != oldEnd.Format(time.RFC3339Nano) || newLine.Timestamp != newEnd.Format(time.RFC3339Nano) || oldLine.Labels[logs.LabelInstance] == newLine.Labels[logs.LabelInstance] {
 		t.Fatalf("historical narration=%v entries=%+v", found, entries)
+	}
+	if docsByDeploy[old.ID].Timestamp != oldEnd.Format(time.RFC3339Nano) || docsByDeploy[latest.ID].Timestamp != newEnd.Format(time.RFC3339Nano) {
+		t.Fatalf("port docs narration=%v entries=%+v", docsByDeploy, entries)
 	}
 }
 

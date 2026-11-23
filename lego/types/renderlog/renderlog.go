@@ -69,8 +69,9 @@ var (
 	// The platform's deploy narration. A step and a success colour the marker
 	// and its space, reset, then bold the text: `==> Deploying...`, the
 	// WEB_CONCURRENCY line and the troubleshooting line are blue (tretta,
-	// Sentry-AI, upmyrank-poc); `==> Your service is live 🎉` and each line of
-	// the primary URL block are green (tretta, Sentry-AI), the blank one
+	// Sentry-AI, upmyrank-poc); `==> Your service is live 🎉`, each line of
+	// the primary URL block, `==> Detected service running on port N` and its
+	// port docs line are green (tretta, Sentry-AI), the blank one
 	// `\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1m\x1b[0m`. A failure is the whole
 	// line in red and bold, no reset after the marker: `==> Exited with status
 	// 1`, the port scan's timeout and its docs line (Sentry-AI), `==> Timed

@@ -492,9 +492,8 @@ func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, ho
 	out = append(out, rolloutLinesWith(d, repo != "" && d.Built, includeClosing)...)
 	out = append(out, portScanLines(d)...)
 	if includeClosing && !d.FinishedAt.IsZero() {
-		if (d.Status == "live" || d.Status == "deactivated") && d.DetectedHTTPPort > 0 && d.DetectedHTTPPort <= 65535 {
-			add(d.FinishedAt, "==> "+appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected,
-				appv1alpha1.DeployReasonParam{Name: "port", Value: fmt.Sprint(d.DetectedHTTPPort)}))
+		for _, msg := range detectedPortLines(d) {
+			add(d.FinishedAt, msg)
 		}
 		for _, msg := range closingLines(d, pc.serviceType) {
 			add(d.FinishedAt, msg)
@@ -759,9 +758,13 @@ func runningLine(command string) string {
 // The wording and the count are Render's own, read from deploy logs users
 // quoted in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs).
 const (
-	portScanLine        = "==> No open ports detected, continuing to scan..."
-	portScanDocsLine    = "==> Docs on specifying a port: https://render.com/docs/web-services#port-binding"
-	portScanTimeoutLine = "==> Port scan timeout reached, no open ports detected. Bind your service to at least one port. " +
+	// w32/099: Render's green port-detection pair (kush252/Sentry-AI
+	// investigation_data.jsonl at 13d4e291cc; render.com/tutorials/
+	// when-deploys-go-wrong/boot-and-port-binding).
+	detectedPortLineFormat = "==> Detected service running on port %d"
+	portScanLine           = "==> No open ports detected, continuing to scan..."
+	portScanDocsLine       = "==> Docs on specifying a port: https://render.com/docs/web-services#port-binding"
+	portScanTimeoutLine    = "==> Port scan timeout reached, no open ports detected. Bind your service to at least one port. " +
 		"If you don't need to receive traffic on any port, create a background worker instead."
 	// w8/388: Render's wording when the scan finds listeners only on
 	// localhost (rkendel1/freq#97, 2026-01) and when its open ports answer
@@ -829,6 +832,20 @@ func portScanWordingAt(d DeployProgress, t time.Time) portScanWording {
 		return w
 	}
 	return portScanPlain
+}
+
+// detectedPortLines are Render's two green lines when a web service's deploy
+// detected its serving port (kush252/Sentry-AI investigation_data.jsonl at
+// 13d4e291cc; w32/099): `==> Detected service running on port <N>` followed by
+// the port-binding docs line, both in PlatformSuccess green.
+func detectedPortLines(d DeployProgress) []string {
+	if (d.Status != "live" && d.Status != "deactivated") || d.DetectedHTTPPort <= 0 || d.DetectedHTTPPort > 65535 {
+		return nil
+	}
+	return []string{
+		styled(renderlog.PlatformSuccess, fmt.Sprintf(detectedPortLineFormat, d.DetectedHTTPPort)),
+		styled(renderlog.PlatformSuccess, portScanDocsLine),
+	}
 }
 
 // portScanLines are the scan lines d has earned: one when its stall first
