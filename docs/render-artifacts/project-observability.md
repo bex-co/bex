@@ -141,6 +141,30 @@ Read-only, from the same signed-in workspace's private GraphQL and dashboard bun
 - **Lines.** A JSON line with `"level":"warn"` carries `LEVEL` `warning`; one with `"level":"info"` and the word `fatal:` in its message carries `info`. No line in the 30 days read carried `notice`, `critical`, `alert` or `emergency`. A line whose `LEVEL` is not one of the eight is drawn as `info`.
 - **Marks.** The level mark is the info icon for `info` and `notice`, a debug icon for `debug`, the warning icon for `warning` and the error icon for `error`, `critical`, `alert` and `emergency`. Its colour is info's purple for `info`, debug's grey (`--logs-v2-log-line-icon-debug`, `#8f8f8f` light, `#c7c7c7` dark) for `debug` and `notice`, orange for `warning` and red for the error four. The `debug`, `info` and `notice` marks show only while the row is hovered or highlighted. Rows take debug's, info's, warning's or error's tint by the same grouping, `notice` with `debug`.
 
+## Line detail view (read 2026-11-22, w4/m552)
+
+Render's changelog of 2025-12-17, "Improved logs UX in the Render dashboard and CLI", says _"Click individual log lines to open a detail view"_. Render's dashboard no longer has one. This section was read without sign-in from Render's public dashboard bundle on 2026-11-22: `index-BR2q8yex.js` and its imports followed to a fixpoint, 457 chunks, with the log explorer in `Logs-CxB-g50N.js`.
+
+- **What the changelog showed.** The entry's dashboard GIF (`8993b320…-908x720.gif`, recorded 2025-12-18) shows a panel over the right part of the explorer. Clicking a line opens it, and the line stays highlighted in the list.
+  - The header holds the level (`INFO`), the local date and time (`Dec 18, 2025 at 10:41:32 EST`), a `…` menu and a close `×`.
+  - **Log data** is a table of the line's labels as `name value` rows, each with its own `…`. An app line has `level` and `instance_id`. A request line has `level`, `method`, `status_code`, `host` and `path`.
+  - **Raw log** is the message in a box with a copy button.
+  - The footer reads _Press ↑ ↓ to navigate logs_ and links **Docs**.
+  - The same GIF's Options menu (Copy logs, Share log view, Newest last, Display) is not today's (Copy logs, Order by, Display, Theme Settings; [§ The view page](#the-view-page)), so the explorer has been rebuilt since.
+- **What the bundle has now: no detail view.**
+  - A row (`data-testid="log-line"`, `role="option"`) has no click handler. The list (`role="listbox"`) handles only scroll, mouse move and mouse leave, which track the hovered row for its row menu. A row is `aria-selected` only while it is the View in context line or its row menu is open.
+  - No chunk of the 457 contains `Raw log`, `Log data` or `navigate logs`.
+  - The arrow keys, Page Up/Down, Home and End (`NAVIGATE_VIEWER`) scroll the list by 50 px, by 200 px or to an end. There is no row cursor to open a line from.
+  - The one trace left is `LogViewerDateHeader`'s `isLogLineSelected` prop, which the list passes as `false` on every date row.
+  - [render.com/docs/logging](https://render.com/docs/logging) § Inspecting a log line names no detail view. The time shows the full timestamp on hover, and the service and instance add a search filter on click.
+- **So every point w4/m552 set out to record is absent:** what opens the view, how a click is told from a text selection, its layout at each width, its fields with their labels and order, its actions, how it closes, and whether it follows Live tail. bex builds no detail view ([ADR018](../ADR018-render-parity.md) "Log explorer display and shortcuts").
+- **What a line offers instead** (the same chunk):
+  - the row menu ([§ The view page](#the-view-page));
+  - a click on the instance (`LogLineInstanceId`, tooltip _Click to filter to instance `<id>`_), which adds it as a filter;
+  - in a project view, the `[resource]` tag's hover card, `name (id)` (`LogLineFieldLabel`);
+  - the time's hover card (`TimestampTooltipContent`), a list with a copy button on every value (named `Copy <label>`): the local zone's abbreviation (`Local` when it has none) with the local time, copied as `YYYY-MM-DDTHH:mm:ss.SSSZ`; **UTC**, unless the local zone is UTC, copied as the ISO string; **Timestamp**, in Unix milliseconds; **From previous**, the gap since the line before; and **From start**, the time since a deploy's or build's log began, on those logs only. The two gaps read `42ms`, `1.2s`, `3m 4s`, `2h 5m` or `1d 3h`.
+- **bex's time card** lists Local, UTC and Timestamp in Unix seconds, with no copy buttons and no gaps ([w4/716](../../.pm/w4/716.md)).
+
 ## The log query
 
 The page asks Render's private GraphQL for the whole project in one query, not one per service:
