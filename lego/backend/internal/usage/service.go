@@ -44,6 +44,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -301,8 +302,10 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	if err != nil {
 		return Summary{}, fmt.Errorf("usage: %w", err)
 	}
+	sandboxes := s.sandboxUsageMetadata(ctx, tenantID, sandboxIDs(rows))
+	applySandboxPlans(rows, sandboxes)
 	sum := summarise(tenantID, rows)
-	s.resolveServiceNames(ctx, tenantID, sum.Services)
+	s.resolveServiceNames(ctx, tenantID, sum.Services, sandboxes)
 	sum.Period = now.Format(periodLayout)
 	sum.FreeInstanceHours = s.freeInstanceHours(rows)
 	included, err := pricing.IncludedForWorkspace(ctx, s.Base, tenantID)
@@ -406,11 +409,68 @@ func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Tim
 	return b
 }
 
+// sandboxIDs lists the sandboxes rows charge, once each.
+func sandboxIDs(rows []store.UsageSummaryRow) []string {
+	var ids []string
+	seen := map[string]bool{}
+	for _, r := range rows {
+		if store.NormalizeResourceKind(r.ResourceKind) == store.ResourceKindSandbox && !seen[r.ServiceID] {
+			seen[r.ServiceID] = true
+			ids = append(ids, r.ServiceID)
+		}
+	}
+	return ids
+}
+
+// sandboxUsageMetadata is what the agent sessions and the meter recorded about
+// each of ids; empty when there are none or the read fails, which is logged and
+// leaves every sandbox unattributed rather than failing the usage read.
+func (s *Service) sandboxUsageMetadata(ctx context.Context, tenantID string, ids []string) map[string]store.SandboxUsageMetadata {
+	if len(ids) == 0 {
+		return nil
+	}
+	metadata, err := s.Store.SandboxUsageMetadata(ctx, tenantID, ids)
+	if err != nil {
+		log.Printf("usage: resolve names: sandbox metadata: %v", err)
+		return nil
+	}
+	return metadata
+}
+
+// sandboxPlan is the plan a sandbox's charges name: the tier it was metered
+// under, except a starter one whose recorded weight is another plan's. Until
+// w6/m565 every agent sandbox was metered as starter whatever its size, and its
+// weight is what says which plan it ran at. Display only: usage_hourly keeps
+// starter, the tier the Stripe export keyed its events by.
+func sandboxPlan(tier string, weightMilli int64) string {
+	if tier != string(sandbox.PlanStarter) {
+		return tier
+	}
+	if plan, ok := sandbox.PlanOfWeight(weightMilli); ok {
+		return string(plan)
+	}
+	return tier
+}
+
+// applySandboxPlans sets every sandbox row's tier to its sandboxPlan.
+func applySandboxPlans(rows []store.UsageSummaryRow, sandboxes map[string]store.SandboxUsageMetadata) {
+	for i, r := range rows {
+		if store.NormalizeResourceKind(r.ResourceKind) == store.ResourceKindSandbox {
+			rows[i].Tier = sandboxPlan(r.Tier, sandboxes[r.ServiceID].WeightMilli)
+		}
+	}
+}
+
+// starterChargeLabel is how a sandbox's retained `plan · image` charge label
+// (sandbox.Meter.Label) begins when it was created as starter.
+const starterChargeLabel = string(sandbox.PlanStarter) + " · "
+
 // resolveServiceNames keeps attribution separate from existence: retained names
 // survive deletion, while only successful inventory reads establish absence.
 // Read-time capture refreshes names; collectors retain datastore names before
 // recording usage so deletion before the first billing read cannot lose them.
-func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs []ServiceUsage) {
+// sandboxes is sandboxUsageMetadata for svcs' sandboxes.
+func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs []ServiceUsage, sandboxes map[string]store.SandboxUsageMetadata) {
 	if len(svcs) == 0 {
 		return
 	}
@@ -465,25 +525,13 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 		}
 	}
 	refs := make([]store.ResourceDisplayName, 0, len(svcs))
-	var sandboxIDs []string
 	for _, svc := range svcs {
 		refs = append(refs, store.ResourceDisplayName{Kind: svc.ResourceKind, ID: svc.ServiceID})
-		if svc.ResourceKind == store.ResourceKindSandbox {
-			sandboxIDs = append(sandboxIDs, svc.ServiceID)
-		}
 	}
-	sandboxMetadata := map[string]store.SandboxUsageMetadata{}
-	if len(sandboxIDs) > 0 {
-		if metadata, err := s.Store.SandboxUsageMetadata(ctx, tenantID, sandboxIDs); err != nil {
-			log.Printf("usage: resolve names: sandbox metadata: %v", err)
-		} else {
-			sandboxMetadata = metadata
-			for id, m := range metadata {
-				key := store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)
-				names[key] = m.Name
-				live[key] = m.Phase != "" && m.Phase != "terminated"
-			}
-		}
+	for id, m := range sandboxes {
+		key := store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)
+		names[key] = m.Name
+		live[key] = m.Phase != "" && m.Phase != "terminated"
 	}
 	retained, err := s.Store.ResourceDisplayNames(ctx, tenantID, refs)
 	if err != nil {
@@ -504,9 +552,13 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 			svc.ServiceName = placeholder
 		}
 		if svc.ResourceKind == store.ResourceKindSandbox {
-			svc.Deleted = sandboxMetadata[svc.ServiceID].Phase == "terminated"
+			m := sandboxes[svc.ServiceID]
+			svc.Deleted = m.Phase == "terminated"
+			if strings.HasPrefix(svc.ServiceName, starterChargeLabel) {
+				svc.ServiceName = sandboxPlan(string(sandbox.PlanStarter), m.WeightMilli) + svc.ServiceName[len(sandbox.PlanStarter):]
+			}
 			if svc.ServiceName == "" {
-				tier := sandboxMetadata[svc.ServiceID].Tier
+				tier := sandboxPlan(m.Tier, m.WeightMilli)
 				if tier == "" {
 					candidates := map[string]bool{}
 					for _, row := range svc.Rows {

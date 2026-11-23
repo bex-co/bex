@@ -372,7 +372,7 @@ func TestNameResolutionSeparatesAbsenceFromAttribution(t *testing.T) {
 			svc.Client = failedNameInventoryClient{svc.Client}
 		}
 		rows := []ServiceUsage{{ServiceID: "gone", ResourceKind: "service"}, {ServiceID: "foreign", ResourceKind: "service"}, {ServiceID: "db", ResourceKind: "postgres"}, {ServiceID: "old", ResourceKind: "sandbox"}, {ServiceID: "active", ResourceKind: "sandbox"}, {ServiceID: "paused", ResourceKind: "sandbox"}, {ServiceID: "historic", ResourceKind: "sandbox"}}
-		svc.resolveServiceNames(context.Background(), tenant, rows)
+		svc.resolveServiceNames(context.Background(), tenant, rows, svc.sandboxUsageMetadata(context.Background(), tenant, []string{"old", "active", "paused", "historic"}))
 		for _, row := range rows {
 			wantDeleted := !fail && (row.ResourceKind != "sandbox" || row.ServiceID == "old")
 			if row.Deleted != wantDeleted {
@@ -494,7 +494,7 @@ func TestSandboxOnlyNameResolutionSkipsUnrelatedInventory(t *testing.T) {
 	svc := svcWithTenant(st, "tea-a")
 	svc.Client = unexpectedNameInventoryClient{t: t}
 	rows := []ServiceUsage{{ServiceID: "sbx", ResourceKind: store.ResourceKindSandbox}}
-	svc.resolveServiceNames(context.Background(), "tea-a", rows)
+	svc.resolveServiceNames(context.Background(), "tea-a", rows, svc.sandboxUsageMetadata(context.Background(), "tea-a", []string{"sbx"}))
 	if st.appsLists != 0 {
 		t.Fatalf("sandbox-only summary listed apps %d times", st.appsLists)
 	}

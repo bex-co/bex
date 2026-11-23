@@ -900,6 +900,164 @@ func TestRetainedNamesAgreeAcrossAdapters(t *testing.T) {
 	}
 }
 
+// w6/m565: until then every agent sandbox was metered and labelled starter
+// whatever its size, so a 4 CPU / 8 GiB sandbox's charge read as Render's half
+// CPU plan. Its recorded weight says which plan it ran at, and every surface
+// reads that plan on its name, its rows and its charge lines, while
+// usage_hourly keeps starter and every amount stays what it was.
+func TestPastAgentSandboxReadsItsRealSizeAcrossAdapters(t *testing.T) {
+	const tenant = "tea-size"
+	const agentImage = "ghcr.io/bex-co/bex-agent-sandbox:v2"
+	st := newMemUsageStore()
+	for id, tier := range map[string]string{
+		"sbx-4c8g": "starter", "sbx-session": "starter", "sbx-starter": "starter", "sbx-unmetered": "starter", "sbx-pro": "pro",
+	} {
+		if err := st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+			WorkspaceID: tenant, ServiceID: id, ResourceKind: store.ResourceKindSandbox,
+			Kind: store.UsageKindSandboxComputeSeconds, Tier: tier,
+			WindowStart: time.Date(2026, 7, 10, 8, 0, 0, 0, time.UTC), Quantity: 4845 * 3600,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	st.retained = map[string]map[string]string{tenant: {
+		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-4c8g"):      "starter · " + agentImage,
+		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-starter"):   "starter · alpine:3",
+		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-unmetered"): "starter · " + agentImage,
+		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-pro"):       "pro · alpine:3",
+	}}
+	weighed := map[string]store.SandboxUsageMetadata{
+		"sbx-4c8g":    {Phase: "terminated", Tier: "starter", WeightMilli: 4845},
+		"sbx-session": {Name: "bex-co/bex (bex-agent/fix)", Phase: "terminated", Tier: "starter", WeightMilli: 2422},
+		"sbx-starter": {Phase: "terminated", Tier: "starter", WeightMilli: 553},
+		// A deprecated alias a Render sandbox was created on keeps its name.
+		"sbx-pro": {Phase: "terminated", Tier: "pro", WeightMilli: 2422},
+	}
+	svc := svcWithTenant(st, tenant)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rest := func() usageResponse {
+		t.Helper()
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest("GET", "/v1/usage", nil).WithContext(ctx))
+		if w.Code != http.StatusOK {
+			t.Fatalf("REST: status %d: %s", w.Code, w.Body.String())
+		}
+		var resp usageResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+	// What each sandbox reads as: its name, its rows' tiers, its charge lines'
+	// tiers and its cost.
+	type reading struct{ name, rowTier, chargeTier, cost string }
+	read := func(resp usageResponse) (map[string]reading, string) {
+		got := map[string]reading{}
+		for _, e := range resp.Services {
+			r := got[e.ServiceID]
+			r.name = e.ServiceName
+			for _, row := range e.Rows {
+				r.rowTier += row.Tier
+			}
+			got[e.ServiceID] = r
+		}
+		for _, e := range resp.EstimatedCost.Resources {
+			r := got[e.ServiceID]
+			r.cost = e.CostUSD
+			for _, c := range e.Charges {
+				r.chargeTier += c.Tier
+			}
+			got[e.ServiceID] = r
+		}
+		return got, resp.EstimatedCost.TotalUSD
+	}
+
+	before, beforeTotal := read(rest())
+	st.sandboxMetadata = weighed
+	after, afterTotal := read(rest())
+	if afterTotal != beforeTotal {
+		t.Errorf("total = %s, was %s", afterTotal, beforeTotal)
+	}
+	for id, b := range before {
+		if after[id].cost != b.cost {
+			t.Errorf("%s cost = %s, was %s", id, after[id].cost, b.cost)
+		}
+	}
+	cost := before["sbx-4c8g"].cost
+	want := map[string]reading{
+		"sbx-4c8g":    {"4c-8g · " + agentImage, "4c-8g", "4c-8g", cost},
+		"sbx-session": {"bex-co/bex (bex-agent/fix)", "2c-4g", "2c-4g", cost},
+		"sbx-starter": {"starter · alpine:3", "starter", "starter", cost},
+		// No recorded weight: nothing to say it was not starter.
+		"sbx-unmetered": {"starter · " + agentImage, "starter", "starter", cost},
+		"sbx-pro":       {"pro · alpine:3", "pro", "pro", cost},
+	}
+	if !reflect.DeepEqual(after, want) {
+		t.Fatalf("REST = %+v, want %+v", after, want)
+	}
+	for _, row := range st.rows {
+		if row.ServiceID != "sbx-pro" && row.Tier != "starter" {
+			t.Fatalf("usage_hourly row rewritten: %+v", row)
+		}
+	}
+
+	// GraphQL
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	gql := graphql.Do(graphql.Params{
+		Schema: schema,
+		RequestString: `{ usage { services { serviceId serviceName rows { tier } }
+			estimatedCost { totalUsd resources { serviceId costUsd charges { tier } } } } }`,
+		Context: ctx,
+	})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", gql.Errors)
+	}
+	raw, err := json.Marshal(gql.Data.(map[string]any)["usage"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gqlResp usageResponse
+	if err := json.Unmarshal(raw, &gqlResp); err != nil {
+		t.Fatalf("GraphQL decode: %v (%s)", err, raw)
+	}
+	if got, total := read(gqlResp); !reflect.DeepEqual(got, want) || total != afterTotal {
+		t.Errorf("GraphQL = %+v (total %s), want %+v (total %s)", got, total, want, afterTotal)
+	}
+
+	// MCP
+	srv := mcp.NewServer(&mcp.Implementation{Name: "usage-test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("MCP server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "usage-test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("MCP client connect: %v", err)
+	}
+	defer cs.Close()
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_usage"})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_usage: err=%v result=%+v", err, result)
+	}
+	rawMCP, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mcpResp usageResponse
+	if err := json.Unmarshal(rawMCP, &mcpResp); err != nil {
+		t.Fatalf("MCP decode: %v (%s)", err, rawMCP)
+	}
+	if got, total := read(mcpResp); !reflect.DeepEqual(got, want) || total != afterTotal {
+		t.Errorf("MCP = %+v (total %s), want %+v (total %s)", got, total, want, afterTotal)
+	}
+}
+
 // w22/m314 t004, t006: a sandbox billed on use reads the same on REST, GraphQL
 // and MCP: the CPU and memory recorded before the switch as unbilled rows and
 // lines at a rate of 0, the hours after it priced, and the switch instant

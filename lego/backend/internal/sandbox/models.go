@@ -94,6 +94,42 @@ func PlanLimits(p Plan) (cpu, memory string, ok bool) {
 	return size.CPU, size.Memory, ok
 }
 
+// planOfSize is the plan whose size is exactly cpu and memory, a spec-named
+// plan before the deprecated alias of the same size; "" for a size no plan has.
+func planOfSize(cpu, memory string) Plan {
+	wantCPU, wantMemory := quantity(cpu), quantity(memory)
+	for _, name := range planNames() {
+		size := planResources[Plan(name)]
+		if wantCPU.Cmp(quantity(size.CPU)) == 0 && wantMemory.Cmp(quantity(size.Memory)) == 0 {
+			return Plan(name)
+		}
+	}
+	return ""
+}
+
+// planByWeight maps each plan's meter weight (computeWeightMilli) to the plan
+// planOfSize names for its size.
+var planByWeight = func() map[int64]Plan {
+	out := map[int64]Plan{}
+	for _, name := range planNames() {
+		size := planResources[Plan(name)]
+		if w, err := computeWeightMilli(size.CPU, size.Memory); err == nil {
+			if _, taken := out[w]; !taken {
+				out[w] = Plan(name)
+			}
+		}
+	}
+	return out
+}()
+
+// PlanOfWeight is the plan whose size meters at weight. Until w6/m565 every
+// agent sandbox was stamped starter whatever its size, and its recorded weight
+// is what still says which plan it ran at.
+func PlanOfWeight(weight int64) (Plan, bool) {
+	plan, ok := planByWeight[weight]
+	return plan, ok
+}
+
 // ValidPlan reports whether p is a known Render sandbox plan.
 func ValidPlan(p Plan) bool {
 	_, ok := planResources[p]

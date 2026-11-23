@@ -112,6 +112,43 @@ func TestPlanSizesTheSandbox(t *testing.T) {
 	}
 }
 
+// w6/m565: a size or a recorded weight names the plan of that size, the
+// spec-named one before the deprecated alias Render documents with the same
+// size, and no plan when none has it. An agent sandbox's plan is the first, and
+// the plan a past starter-labelled one ran at is the second.
+func TestPlanOfSizeAndOfWeight(t *testing.T) {
+	for _, tc := range []struct {
+		cpu, memory string
+		weight      int64
+		want        Plan
+	}{
+		{"500m", "512Mi", 553, PlanStarter},
+		{"1", "2Gi", 1211, Plan1C2G},
+		{"2", "4Gi", 2422, Plan2C4G},
+		{"4", "8Gi", 4845, Plan4C8G},
+		{"8", "16Gi", 9689, Plan8C16G},
+		// Quantities, not spellings.
+		{"2000m", "4096Mi", 2422, Plan2C4G},
+	} {
+		if got := planOfSize(tc.cpu, tc.memory); got != tc.want {
+			t.Errorf("planOfSize(%s, %s) = %q, want %q", tc.cpu, tc.memory, got, tc.want)
+		}
+		if got, ok := PlanOfWeight(tc.weight); !ok || got != tc.want {
+			t.Errorf("PlanOfWeight(%d) = %q, %v; want %q", tc.weight, got, ok, tc.want)
+		}
+	}
+	for _, size := range [][2]string{{"3", "6Gi"}, {"2", "8Gi"}, {"", ""}, {"bad", "4Gi"}} {
+		if got := planOfSize(size[0], size[1]); got != "" {
+			t.Errorf("planOfSize(%s, %s) = %q, want none", size[0], size[1], got)
+		}
+	}
+	for _, weight := range []int64{0, 1000, 3634} {
+		if got, ok := PlanOfWeight(weight); ok {
+			t.Errorf("PlanOfWeight(%d) = %q, want none", weight, got)
+		}
+	}
+}
+
 // w7/063: the agent template's driver cannot start without a session's env,
 // which a public create cannot set, so the public create refuses it as an
 // unknown template before reaching OpenSandbox.

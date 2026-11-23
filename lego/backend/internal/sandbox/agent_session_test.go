@@ -39,7 +39,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	// DefaultPlan is the Render sandbox default (1c-2g): an agent session's
 	// sandbox must not take it (w8/247, asserted below).
 	svc := &Service{Base: &core.Base{}, Client: NewClient(upstream.URL), DefaultPlan: DefaultPlan,
-		Templates: map[string]Template{"agent": {Image: "bex/agent:1", Entrypoint: []string{"driver"}, SessionOnly: true}}}
+		Templates: map[string]Template{"agent": {Image: "bex/agent:1", Entrypoint: []string{"driver"}, CPU: "2", Memory: "4Gi", SessionOnly: true}}}
 	eg := &fakeSessionEgress{}
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
@@ -59,10 +59,10 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 		create.Metadata[agentsession.LabelBranch] != bindings[agentsession.LabelBranch] {
 		t.Fatalf("reserved metadata = %#v", create.Metadata)
 	}
-	// An agent session's sandbox keeps its starter label whatever the Render
-	// sandbox default is (w8/247): its size and price are the agent template's.
-	if create.Metadata[metadataPlan] != string(PlanStarter) || created.Plan != PlanStarter {
-		t.Fatalf("agent-session sandbox plan = metadata %q / %q, want starter under a %s default", create.Metadata[metadataPlan], created.Plan, DefaultPlan)
+	// An agent session's sandbox is labeled with its template's size whatever
+	// the Render sandbox default is (w8/247, w6/m565).
+	if create.Metadata[metadataPlan] != string(Plan2C4G) || created.Plan != Plan2C4G {
+		t.Fatalf("agent-session sandbox plan = metadata %q / %q, want 2c-4g under a %s default", create.Metadata[metadataPlan], created.Plan, DefaultPlan)
 	}
 	// Regression guard (w3/m43, caught live on prod): OpenSandbox persists
 	// metadata as Kubernetes LABELS, so no value may contain a label-invalid
@@ -95,6 +95,69 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	}
 	if len(eg.calls) != 3 || eg.calls[0].op != "setup" || eg.calls[1].op != "agent" || eg.calls[2].op != "delete" {
 		t.Fatalf("egress lifecycle = %#v", eg.calls)
+	}
+}
+
+// An agent sandbox's plan, charge label and usage tier name its template's
+// size (w6/m565): every one used to read starter, Render's half-CPU plan, so a
+// 4 CPU / 8 GiB sandbox's charge said the smallest size there is. Its weighted
+// charge is the template's, as before.
+func TestAgentSandboxIsLabeledWithItsTemplateSize(t *testing.T) {
+	const image = "ghcr.io/bex-co/bex-agent-sandbox:v2"
+	sized := func(plan Plan) Template {
+		cpu, memory, _ := PlanLimits(plan)
+		return Template{Image: image, Entrypoint: []string{"driver"}, CPU: cpu, Memory: memory, SessionOnly: true}
+	}
+	for _, tc := range []struct {
+		template string
+		tmpl     Template
+		plan     Plan
+		weight   string
+	}{
+		{"agent", sized(Plan2C4G), Plan2C4G, "2422"},
+		{"agent-4c-8g", sized(Plan4C8G), Plan4C8G, "4845"},
+		// A template that names no size runs at half a CPU and 512Mi, which is
+		// starter's size.
+		{"agent-default", Template{Image: image, Entrypoint: []string{"driver"}, SessionOnly: true}, PlanStarter, "553"},
+		// A size no plan has names no plan rather than a wrong one.
+		{"agent-odd", Template{Image: image, Entrypoint: []string{"driver"}, CPU: "3", Memory: "6Gi", SessionOnly: true}, "", "3634"},
+	} {
+		t.Run(tc.template, func(t *testing.T) {
+			var create createRequest
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
+					t.Fatal(err)
+				}
+				_, _ = fmt.Fprint(w, `{"id":"sandbox-1","status":{"state":"Running"}}`)
+			}))
+			t.Cleanup(upstream.Close)
+			meter := &fakeMeterStore{}
+			svc := &Service{Base: &core.Base{}, Client: NewClient(upstream.URL), DefaultPlan: DefaultPlan,
+				Templates: map[string]Template{tc.template: tc.tmpl}, Meter: &Meter{Store: meter}}
+			svc.SessionEgress = &fakeSessionEgress{}
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
+			created, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(ctx, AgentSessionSandbox{WorkspaceID: "tea-a", Template: tc.template, SessionID: "ags-session",
+				Repository: "bex-co/example", Branch: "bex-agent/session-test", ModelEndpoint: "https://api.openai.com/v1", ModelAPIKey: agentsession.ModelKeyPlaceholder("ags-session")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if create.Metadata[metadataPlan] != string(tc.plan) || created.Plan != tc.plan {
+				t.Errorf("plan = metadata %q / %q, want %q", create.Metadata[metadataPlan], created.Plan, tc.plan)
+			}
+			if create.Metadata[metadataComputeWeight] != tc.weight {
+				t.Errorf("weight = %q, want %s", create.Metadata[metadataComputeWeight], tc.weight)
+			}
+			wantLabel := image
+			if tc.plan != "" {
+				wantLabel = string(tc.plan) + " · " + image
+			}
+			if got := meter.labels["tea-a/sandbox-1"]; got != wantLabel {
+				t.Errorf("charge label = %q, want %q", got, wantLabel)
+			}
+			if len(meter.observations) != 1 || meter.observations[0].Tier != string(tc.plan) || fmt.Sprint(meter.observations[0].WeightMilli) != tc.weight {
+				t.Errorf("meter observations = %+v, want one at tier %q and weight %s", meter.observations, tc.plan, tc.weight)
+			}
+		})
 	}
 }
 

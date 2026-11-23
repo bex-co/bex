@@ -235,13 +235,13 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 		t.Errorf("an unknown sandbox resolved to %+v, want absent", label)
 	}
 	for sandboxID, want := range map[string]SandboxUsageMetadata{
-		"sbx-current":  {Name: "bex-co/bex (main)", Phase: "running", Tier: "starter"},
-		"sbx-previous": {Name: "bex-co/bex (main)", Phase: "terminated", Tier: "starter"},
+		"sbx-current":  {Name: "bex-co/bex (main)", Phase: "running", Tier: "starter", WeightMilli: 553},
+		"sbx-previous": {Name: "bex-co/bex (main)", Phase: "terminated", Tier: "starter", WeightMilli: 553},
 		"sbx-nobranch": {Name: "acme/site"},
 		// A repo-less session names itself by id (w1/112).
 		"sbx-norepo":    {Name: "agent session ags-3"},
-		"sbx-suspended": {Phase: "suspended", Tier: "standard"},
-		"sbx-deleted":   {Phase: "terminated", Tier: "standard"},
+		"sbx-suspended": {Phase: "suspended", Tier: "standard", WeightMilli: 553},
+		"sbx-deleted":   {Phase: "terminated", Tier: "standard", WeightMilli: 553},
 	} {
 		if got[sandboxID] != want {
 			t.Errorf("metadata %s = %+v, want %+v", sandboxID, got[sandboxID], want)
@@ -254,7 +254,7 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 	if _, exists := foreign["sbx-current"]; exists {
 		t.Fatal("foreign session name or meter leaked")
 	}
-	if foreign["sbx-nobranch"] != (SandboxUsageMetadata{Phase: "terminated", Tier: "pro"}) {
+	if foreign["sbx-nobranch"] != (SandboxUsageMetadata{Phase: "terminated", Tier: "pro", WeightMilli: 553}) {
 		t.Fatalf("foreign metadata = %+v", foreign)
 	}
 	for _, args := range []struct {
@@ -267,6 +267,83 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 		}
 	}
 
+}
+
+// A session's turns each run in a fresh sandbox, and the session row names only
+// the newest. agent_session_sandboxes keeps every one, so a first turn's
+// sandbox reaped after the second turn moved the session on, with no dispatch
+// row naming it, still reads as its session (w6/m565): it used to fall back to
+// its `plan · image` label.
+func TestSandboxUsageMetadataNamesASandboxTheSessionMovedOffPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE agent_session_dispatches, agent_session_sandboxes, agent_sessions, sandbox_meter_states, tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	st := NewPGStore(pool)
+	tenant, err := st.CreateWorkspace(ctx, "moved-on", PlanPro, "identity-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := st.CreateWorkspace(ctx, "moved-on-other", PlanPro, "identity-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO agent_sessions (id, workspace_id, repo, branch, sandbox_id, phase)
+		 VALUES ('ags-moved', $1, 'bex-co/bex', 'bex-agent/fix', 'sbx-turn-1', 'running'),
+		        ('ags-norepo', $1, '', '', 'sbx-norepo-1', 'running'),
+		        ('ags-foreign', $2, 'acme/site', 'main', 'sbx-foreign-1', 'running')`, tenant.ID, other.ID); err != nil {
+		t.Fatalf("seed sessions: %v", err)
+	}
+	// The second turn adopts a new sandbox through the session row alone.
+	if _, err := pool.Exec(ctx,
+		`UPDATE agent_sessions SET sandbox_id = 'sbx-' || substr(id, 5) || '-2', turns = 2`); err != nil {
+		t.Fatalf("second turn: %v", err)
+	}
+	var dispatches int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM agent_session_dispatches`).Scan(&dispatches); err != nil || dispatches != 0 {
+		t.Fatalf("dispatch rows = %d, %v; want none", dispatches, err)
+	}
+	at := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	for _, id := range []string{"sbx-turn-1", "sbx-norepo-1"} {
+		if err := st.ObserveSandboxMeter(ctx, SandboxMeterObservation{WorkspaceID: tenant.ID, SandboxID: id, Phase: "running", Tier: "starter", WeightMilli: 4845, ObservedAt: at}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The first turns' sandboxes are reaped.
+	if err := st.TerminateMissingSandboxMeters(ctx, tenant.ID, []string{}, at.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := st.SandboxUsageMetadata(ctx, tenant.ID, []string{"sbx-turn-1", "sbx-moved-2", "sbx-norepo-1", "sbx-foreign-1"})
+	if err != nil {
+		t.Fatalf("SandboxUsageMetadata: %v", err)
+	}
+	for sandboxID, want := range map[string]SandboxUsageMetadata{
+		"sbx-turn-1":   {Name: "bex-co/bex (bex-agent/fix)", Phase: "terminated", Tier: "starter", WeightMilli: 4845},
+		"sbx-moved-2":  {Name: "bex-co/bex (bex-agent/fix)"},
+		"sbx-norepo-1": {Name: "agent session ags-norepo", Phase: "terminated", Tier: "starter", WeightMilli: 4845},
+	} {
+		if got[sandboxID] != want {
+			t.Errorf("metadata %s = %+v, want %+v", sandboxID, got[sandboxID], want)
+		}
+	}
+	// Another workspace's session names none of this workspace's sandboxes.
+	if leaked, ok := got["sbx-foreign-1"]; ok {
+		t.Errorf("another workspace's sandbox resolved to %+v, want absent", leaked)
+	}
 }
 
 // Meter phases answer the question historical session labels cannot: whether
@@ -313,10 +390,10 @@ func TestSandboxUsageMetadataMeterOnlyPG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SandboxUsageMetadata: %v", err)
 	}
-	if metadata, ok := got["sbx-running"]; !ok || metadata != (SandboxUsageMetadata{Phase: "running", Tier: "standard"}) {
+	if metadata, ok := got["sbx-running"]; !ok || metadata != (SandboxUsageMetadata{Phase: "running", Tier: "standard", WeightMilli: 1000}) {
 		t.Errorf("sbx-running = %+v (present %v), want running standard", metadata, ok)
 	}
-	if metadata, ok := got["sbx-terminated"]; !ok || metadata != (SandboxUsageMetadata{Phase: "terminated", Tier: "standard"}) {
+	if metadata, ok := got["sbx-terminated"]; !ok || metadata != (SandboxUsageMetadata{Phase: "terminated", Tier: "standard", WeightMilli: 1000}) {
 		t.Errorf("sbx-terminated = %+v (present %v), want terminated standard", metadata, ok)
 	}
 	// Absent, not false: nothing is known, so nothing may be claimed.

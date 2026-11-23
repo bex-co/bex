@@ -130,6 +130,9 @@ type SandboxUsageMetadata struct {
 	Name  string
 	Phase string
 	Tier  string
+	// WeightMilli is the weight the meter last recorded for the sandbox
+	// (sandbox_meter_states.weight_milli); 0 when it has no meter state.
+	WeightMilli int64
 }
 
 // SandboxUsageMetadata resolves labels for both current and previous session
@@ -141,27 +144,28 @@ func (s *PGStore) SandboxUsageMetadata(ctx context.Context, tenantID string, san
 	if tenantID == "" || len(sandboxIDs) == 0 {
 		return nil, nil
 	}
+	// agent_session_sandboxes holds every sandbox a session has run on since
+	// migration 0206, whether or not the session still names it (w6/m565); a
+	// dispatch's previous sandbox also names the ones reaped before it.
 	rows, err := s.Pool.Query(ctx,
-		`WITH labels AS (SELECT DISTINCT ON (sandbox) sandbox, label FROM (
-		     SELECT s.sandbox_id AS sandbox,
-		            CASE WHEN s.repo = '' THEN 'agent session ' || s.id WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
-		            s.updated_at
-		     FROM agent_sessions s
-		     WHERE s.workspace_id = $1 AND s.sandbox_id = ANY($2::text[])
-		     UNION ALL
-		     SELECT d.previous_sandbox_id AS sandbox,
-		            CASE WHEN s.repo = '' THEN 'agent session ' || s.id WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
-		            s.updated_at
-		     FROM agent_session_dispatches d
-		     JOIN agent_sessions s ON s.id = d.session_id
-		     WHERE s.workspace_id = $1 AND d.previous_sandbox_id = ANY($2::text[])
-		 ) AS labelled
-		 ORDER BY sandbox, updated_at DESC), meters AS (
-		 SELECT sandbox_id, phase, tier FROM sandbox_meter_states
-		 WHERE workspace_id = $1 AND sandbox_id = ANY($2::text[])
+		`WITH links AS (
+		     SELECT sandbox_id AS sandbox, session_id FROM agent_session_sandboxes
+		     WHERE workspace_id = $1 AND sandbox_id = ANY($2::text[])
+		     UNION
+		     SELECT previous_sandbox_id, session_id FROM agent_session_dispatches
+		     WHERE previous_sandbox_id = ANY($2::text[])
+		 ), labels AS (
+		     SELECT DISTINCT ON (l.sandbox) l.sandbox,
+		            CASE WHEN s.repo = '' THEN 'agent session ' || s.id WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label
+		     FROM links l JOIN agent_sessions s ON s.id = l.session_id
+		     WHERE s.workspace_id = $1
+		     ORDER BY l.sandbox, s.updated_at DESC
+		 ), meters AS (
+		     SELECT sandbox_id, phase, tier, weight_milli FROM sandbox_meter_states
+		     WHERE workspace_id = $1 AND sandbox_id = ANY($2::text[])
 		 )
 		 SELECT COALESCE(l.sandbox, m.sandbox_id), COALESCE(l.label, ''),
-		        COALESCE(m.phase, ''), COALESCE(m.tier, '')
+		        COALESCE(m.phase, ''), COALESCE(m.tier, ''), COALESCE(m.weight_milli, 0)
 		 FROM labels l FULL JOIN meters m ON m.sandbox_id = l.sandbox`,
 		tenantID, sandboxIDs)
 	if err != nil {
@@ -172,7 +176,7 @@ func (s *PGStore) SandboxUsageMetadata(ctx context.Context, tenantID string, san
 	for rows.Next() {
 		var id string
 		var metadata SandboxUsageMetadata
-		if err := rows.Scan(&id, &metadata.Name, &metadata.Phase, &metadata.Tier); err != nil {
+		if err := rows.Scan(&id, &metadata.Name, &metadata.Phase, &metadata.Tier, &metadata.WeightMilli); err != nil {
 			return nil, classify("sandbox usage metadata", err)
 		}
 		out[id] = metadata

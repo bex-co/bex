@@ -113,6 +113,12 @@ type Template struct {
 	SessionOnly bool
 }
 
+// limits is the CPU and memory limit t gives its sandbox: its own, else half a
+// CPU and 512Mi.
+func (t Template) limits() (cpu, memory string) {
+	return cmp.Or(t.CPU, "500m"), cmp.Or(t.Memory, "512Mi")
+}
+
 // SessionEgress is the network-mechanism seam used by the agent-session
 // lifecycle (ADR047 D5). Implementations must install setup policy before Pod
 // creation, make the setup→agent transition one-way, and leave the structural
@@ -1009,13 +1015,7 @@ func (s *Service) withRules(ctx context.Context, workspace string, box Sandbox) 
 // is called once while the create waits, as soon as its pod is seen waiting
 // for room on the sandbox pool.
 func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string, poolFull func()) (Sandbox, error) {
-	cpu, mem := tmpl.CPU, tmpl.Memory
-	if cpu == "" {
-		cpu = "500m"
-	}
-	if mem == "" {
-		mem = "512Mi"
-	}
+	cpu, mem := tmpl.limits()
 	weight, err := computeWeightMilli(cpu, mem)
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("sandbox template resources: %w", err)
@@ -1252,10 +1252,10 @@ func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandb
 		tmpl.Image = ref
 	}
 	// An agent session's sandbox is the agent template's own size, and its
-	// plan label stays starter whatever a Render sandbox defaults to: what an
-	// agent sandbox costs is ADR047's and ADR091's decision, not the sandbox
-	// product's default plan (w8/247).
-	plan := PlanStarter
+	// plan names that size, whatever a Render sandbox defaults to (w8/247):
+	// `agent` is 2c-4g and `agent-4c-8g` is 4c-8g, so its charge reads what
+	// ran (w6/m565). What it costs is its weight's, not its plan's (ADR047 D6).
+	plan := planOfSize(tmpl.limits())
 	bindings, err := agentsession.BindingLabels(a.principal, a.repository, a.branch)
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("%w: invalid agent session binding: %v", core.ErrBadRequest, err)

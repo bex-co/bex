@@ -1,17 +1,17 @@
 # w6 · m565 — Each agent sandbox's billing line names its real size and its session
 
-**Worker:** worker6 **Goal:** a person reading the billing page can tell what each agent sandbox charge was: its real CPU and memory, and the session (repository and branch) it ran for. Today they read `starter · ghcr.io/bex-co/bex-agent-sandbox · <uuid>`. **Status:** todo
+**Worker:** worker6 **Goal:** a person reading the billing page can tell what each agent sandbox charge was: its real CPU and memory, and the session (repository and branch) it ran for. Today they read `starter · ghcr.io/bex-co/bex-agent-sandbox · <uuid>`. **Status:** todo (t001, t002, t004–t006 done; t003 code shipped, its production check waits for the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [An agent sandbox is labeled with its template's size, not `starter`](t001.md) | 45m | — |
-| t002 | [Every agent sandbox's row names its session, even after the session moved on](t002.md) | 45m | — |
+| t001 | [An agent sandbox is labeled with its template's size, not `starter`](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Every agent sandbox's row names its session, even after the session moved on](done/t002.md) — **DONE** | 45m | — |
 | t003 | [Past rows read their real size from the recorded weight](t003.md) | 45m | t001 |
-| t004 | [Render parity](t004.md) | 30m | t002, t003 |
-| t005 | [Simplify](t005.md) | 20m | t004 |
-| t006 | [Test coverage](t006.md) | 45m | t004 |
+| t004 | [Render parity](done/t004.md) — **DONE** | 30m | t002, t003 |
+| t005 | [Simplify](done/t005.md) — **DONE** | 20m | t004 |
+| t006 | [Test coverage](done/t006.md) — **DONE** | 45m | t004 |
 | t007 | [Closeout](t007.md) | 10m | t005, t006 |
 
 ## Definition of done
