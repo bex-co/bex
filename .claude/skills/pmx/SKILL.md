@@ -47,3 +47,5 @@ Draining is not the end. Unless `--no-listen` was given, `/loopx` writes a drain
 ## Report
 
 Head `/loopx`'s **first drained report** with the filing (or its Exit report, if the run exits before it ever drains, e.g. with `--no-listen` or a hard stop): the new ids with their titles, the skipped items with their reasons, and every recommendation recorded in place of an open user decision. Later drained and exit reports in the same run need no header.
+
+Under that header, and in every later report, carry **Decisions made for you** exactly as [`/loopx` defines it](../loopx/SKILL.md#decisions-made-for-you): the choices the workers made that the user will meet in their own account or output, each worker line copied word for word with its alternative and where it is changed, ahead of the shipped list, and nothing at all when every worker reported `-`. `/pmx` adds no decisions of its own to it: the recommendations recorded at filing stay in the filing header, where they are today. The first report therefore reads: the filing, then Decisions made for you, then the items.

@@ -44,7 +44,7 @@ Rules for triage:
   - If a pending user decision is not required to reach Render's behavior in every workspace, it is not a gate. Ship the parity-sufficient option, and file the open variant as its own item.
   - Example: m149's seccomp choice did not block `render-v1` under RuntimeDefault.
   - An older ADR that conflicts with parity is likewise not a gate. Amend it as part of the work.
-- **Cloud coding-agent work matches Devin the same way** (user preference 2026-10-30; [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)). For agent sessions, `/agents`, sandboxes and PR delivery, Devin's observable behavior is the reference, and the same rules apply: ship the Devin-consistent option instead of waiting on an optional decision, and file variants separately. Whenever an item leaves a design choice open, pick the option that matches the reference product (render.com for hosting, Devin for coding agents). Verify how that product actually behaves before picking, and cite it in the item.
+- **Cloud coding-agent work matches Devin the same way** (user preference 2026-10-30; [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)). For agent sessions, `/agents`, sandboxes and PR delivery, Devin's observable behavior is the reference, and the same rules apply: ship the Devin-consistent option instead of waiting on an optional decision, and file variants separately. Whenever an item leaves a design choice open, pick the option that matches the reference product (render.com for hosting, Devin for coding agents). Verify how that product actually behaves before picking, and cite it in the item. A choice made this way that the user will meet in their own account or output also goes in the result's `decisions:` ([Decisions the user will meet](#decisions-the-user-will-meet)).
 - **When torn between blocked and invalid, choose blocked.** Deleting is the only outcome that destroys information. An item the user explicitly routed or approved that you merely _suspect_ is unwanted is parked with the question as its gate, never deleted.
 - **Non-implementation notes have preset verdicts. Apply them without asking.** Many inbox notes are not "build this"; they are records, withdrawals, or debris. Route them by shape, in this order (first match wins):
 
@@ -67,6 +67,7 @@ The last tasks of every milestone are the standing closing tasks defined in the 
 Do the actual engineering, task by task, in `depends_on` order:
 
 - Follow all `AGENTS.md` rules, root and the scoped guide of every module you touch (id minting, boilerplate headers, `.env.example` sync, prettier on markdown, skill layout, etc.).
+- Keep a running list of the user-visible choices you make ([Decisions the user will meet](#decisions-the-user-will-meet)) as you make them, not from memory at the end. Each goes in the result block's `decisions:`. Recording it in an ADR, a ledger or the item does not replace that.
 - Milestones ship features **end to end**: include the frontend tasks alongside the backend ones; do not stop at the API.
 - Run the suites the change touches and make them pass before considering a task done. Never mark a task complete on unverified code.
   - `lego/operator/`, `lego/types/` → `make test` (from `lego/operator/`)
@@ -179,7 +180,7 @@ When the dispatch says you are a **CI-fix worker**, there is no board item eithe
 - A flake or infra fault has no code to fix on the first occurrence: rerun the failed jobs in the background (`gh run rerun <id> --failed`), do not wait, and report `outcome: shipped` with no commits and the rerun in `notes`. If it has repeated, land the repo-side root-cause fix instead.
 - If the cause is outside this repository (an expired secret, runner or host access, an upstream release, a decision only the user has), there is nothing to fix here. File one inbox note with `/pm add` in the dispatching workstream, with the run URL and what a person has to do, ship it, and report `outcome: blocked`.
 
-End with the LOOPX-RESULT block, with `item: <the label from the dispatch, e.g. ci:test-backend>` and `outcome: shipped` or `blocked`.
+End with the LOOPX-RESULT block, with `item: <the label from the dispatch, e.g. ci:test-backend>` and `outcome: shipped` or `blocked`. Its `decisions:` follows [Decisions the user will meet](#decisions-the-user-will-meet) like any worker's: `-` unless the fix chose something the user will meet (a retry count or a timeout a command now has, a default it now uses).
 
 ## Result block
 
@@ -192,5 +193,27 @@ outcome: shipped|closed|blocked|dropped|promoted
 commits: <short SHA, comma-separated; - if none>
 gate: <exactly what is needed from whom; - unless blocked>
 promoted_to: <the new milestone, e.g. w4/m415; - unless promoted>
+decisions: <- if none; otherwise nothing after the colon, and one "- " line per decision under it>
 notes: <at most two lines: deviations, flakes, skipped steps, stash name, a red main you met, proposed DO_NOT_DO rule>
 ```
+
+### Decisions the user will meet
+
+The orchestrator copies the `decisions:` lines word for word into the report the user reads ([`SKILL.md`](SKILL.md#decisions-made-for-you)). A choice that stays in an ADR, a ledger, the item or a commit message reaches the user only when they run into it. So list every choice you made that the user will meet, whatever the outcome (a blocked item may still have shipped one), or write `decisions: -`.
+
+A choice is **user-visible** when the user will meet its result in their own account or output without having been asked: a name, a default, a flag, the shape of a command or a response, a limit, a price, a program the product starts for them, an entry that shows up in a listing. Two choices reached the user only in use, which is why this line exists:
+
+- `bex s3` launched the user's own `aws`. A worker chose that, and it was described as available at release.
+- `bex s3 ls` shows the `render-<region>` system buckets beside the user's own. A worker chose that too. [ADR112](../../../docs/ADR112-object-storage.md) lists it under "Decisions the user can still change without blocking the code", and the user was never asked.
+
+A decision an ADR calls changeable is still reported, not left in the ADR. "The user can still change it" is a promise the user can keep only once they have been told, and the ADR is read by the next worker, not by the user.
+
+Not a decision: a result the item states or the reference product dictates (the note names the flag and you used it; Render behaves this way and your commit cites where, which covers what Render itself shows and not a surface bex adds around it, such as the system buckets in an S3 listing), and anything the user cannot see, such as an internal name, a file layout, a test or a refactor. When in doubt, report it: an extra line costs the user a second, and a missing one costs them a surprise in use.
+
+Write each decision as one line that stands alone, because the user reads it without the item:
+
+```
+- <the choice, in the words the user will meet it>. Instead of: <the alternative you did not take>. Change it: <the file, flag, setting or ADR section>
+```
+
+For example: `- bex s3 ls shows the system buckets render-oregon and render-frankfurt beside the user's own. Instead of: listing only the buckets the user created. Change it: the ListBuckets route, ADR112 D1`. No decision gets a line without both its alternative and where it is changed; if there was no alternative, it was not a choice.

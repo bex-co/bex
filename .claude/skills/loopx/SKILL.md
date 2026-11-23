@@ -92,7 +92,9 @@ If the check fails, or the result block is missing, send the **same** worker one
 
 If it still fails, stop trusting the worker. Keep the changes it left in a named stash (`git stash push -u -m "loopx/<wN>/<id>" -- <leftover paths>`); never stash, stage, or discard a teammate's files. Park the item yourself the way [`worker.md`](worker.md#3-land-the-outcome) lands a **blocked** outcome, with the gate `worker did not reach a verified outcome: <what is wrong>; needs <the concrete fix>`. Ship that move alone with `/ship`, then run `python3 scripts/loopx-guard.py settle`. If the item ended up shipped but red or half-done, record the commits in the gate; do not revert them yourself.
 
-Record one line per item: id, verified outcome, SHAs, and for parked items the gate. That run-local list is all the orchestrator keeps. Do not paste worker reports into the conversation.
+Record one line per item: id, verified outcome, SHAs, and for parked items the gate. That run-local list is all the orchestrator keeps, together with the decisions below. Do not paste worker reports into the conversation.
+
+Also keep the result's `decisions:`, as its own run-local list. A `decisions: -` adds nothing to it. Otherwise copy every `- ` line under `decisions:` into the list **word for word**, each prefixed with the item's id (`<wN>/<id>: <the worker's line>`). Do not shorten, merge or reword a line, and do not drop its `Instead of:` or `Change it:` part, because the user reads these lines without the item. Keep the lines of every worker whose outcome you verified, whatever the outcome: a parked or promoted item may still have shipped a choice, and a CI-fix worker's count as any other. A block with no `decisions:` line (a worker briefed from an older `worker.md`) counts as `-`: it is not a reason to hold the outcome or to send a follow-up. [Decisions made for you](#decisions-made-for-you) says when the list is printed.
 
 ### 4. Continue
 
@@ -150,11 +152,20 @@ To run one:
 5. If the worker reported `followups` (work the command surfaced but did not file or fix itself: a STOP that needs a person, a finding outside the command's scope, a candidate too large for one run), file each as an inbox note with `/pm add <wN> …`, then ship those additions as one board commit (`docs(pm): file <wN>/<ids> — follow-ups from routine <name>`). They become board work, and board work comes first on the next pick.
 6. Write one line (routine name, result, SHAs, follow-ups filed), then `git pull --rebase --autostash origin main` and go back to **step 1**, not to the next routine. Recording the run already cleared the in-flight mark. Items that arrived while the routine ran, including anything the routine just filed, are picked before any further routine.
 
+## Decisions made for you
+
+Workers make choices the user will meet in their own account or output (a name, a default, a flag, a limit, an entry in a listing), and a choice recorded only in an ADR or a commit reaches the user in use. So every report the user reads, the drained report and every Exit report (the hard stop included), carries a **Decisions made for you** section ahead of its item groups, the shipped list first among them (`/pmx`'s filing header, when the run has one, still comes before it). [`worker.md`](worker.md#decisions-the-user-will-meet) defines what counts as one.
+
+- **Print the heading only when the run-local decisions list holds at least one line.** With no line, print neither the heading nor an empty section nor "none": a run whose workers all wrote `decisions: -` shows nothing.
+- **Copy each kept line verbatim,** as one bullet, in the order the outcomes were verified: `- <wN>/<id>: <the worker's line, unchanged>`. Its alternative (`Instead of:`) and the place to change it (`Change it:`) are the worker's words, so the user sees the line exactly as the worker wrote it. Do not summarize, group or soften it. A line that lacks its alternative or its place to change it is printed as it is, with the gap: do not fill it in from memory.
+- **Print each line once,** in the first report after it was kept, then drop it from the list. A later drained report lists only lines kept since the last one.
+- A decision is reported even when its ADR calls it changeable, and even when its item went to `done/`: the section is the only place the user is told.
+
 ## Listen
 
 When the board is drained and no routine is due:
 
-1. Write the **drained report**: every item and routine this run handled with its verified outcome, grouped: shipped (SHAs), closed as already met (evidence), parked in `blocked/` (each gate and who clears it), deleted (each reason), promoted. Then what is still parked, with a pointer to `/unblock <wN>` for the gates that need the user. The user reads this one while the loop idles, so it is the full report, not a teaser. If nothing happened since the last drained report, one line is enough.
+1. Write the **drained report**: first **Decisions made for you** ([above](#decisions-made-for-you)), then every item and routine this run handled with its verified outcome, grouped: shipped (SHAs), closed as already met (evidence), parked in `blocked/` (each gate and who clears it), deleted (each reason), promoted. Then what is still parked, with a pointer to `/unblock <wN>` for the gates that need the user. The user reads this one while the loop idles, so it is the full report, not a teaser. If nothing happened since the last drained report, one line is enough.
 2. Confirm nothing of this loop's is uncommitted or unpushed. A leftover or an unpushed commit here is a fault: resolve it the way step 3 does before listening. A teammate's files stay where they are.
 3. Start the listener: `python3 scripts/loopx-guard.py wait <wN>`. It fetches `origin/main` every 2 minutes at first, doubling up to 30 minutes with jitter. Each poll checks this loop's own pushes on CI, then the board (on `origin/main`, and in this checkout for an item a teammate filed and has not pushed), then the parked items' pin and date gates, then the routine schedule. It never sleeps past the next routine's due time, so a routine runs on schedule even while the board poll is backed off, and it polls at least every five minutes while one of this loop's pushes is still running CI. Its 24-hour idle window, measured on the wall clock, applies only when no routine is scheduled. A network outage does not end it: it keeps backing off, and gives up only after fetch has failed for two hours straight.
    - **Claude Code:** run it as a background command (`run_in_background`), then end the turn. The Stop hook lets the turn end because the listener is alive, and the harness wakes this session when the command exits. Waiting costs nothing.
@@ -176,9 +187,9 @@ A gate that clears without any board change wakes the loop too when it is writte
 
 Stop the loop and give a final summary **only** when one of these holds:
 
-- **Done:** nothing actionable remains in `<wN>`, and either `--no-listen` was given or the listener's 24-hour idle window ran out with no due routine. Report what happened since the last drained report, or the full per-item report if there was none.
-- **Blocked (`--no-listen` only):** open items remain, but every one waits on parked work, directly or transitively. Report items shipped this run (with SHAs), each gate and what is needed to clear it, the waiting dependents, and where partial work was preserved. Without `--no-listen`, this state listens instead.
-- **Hard stop only:** the user explicitly interrupts, or the runtime forces a stop (session or tool limit, killed process, a listener that exited `4`, a rebase conflict that needs the user, lost push access that blocks every remaining ship). Report progress (verified, in-flight, parked, **next actionable pick**) so a later `/loopx <wN>` can resume. **Never** choose this exit yourself while step 1 still has a known next item.
+- **Done:** nothing actionable remains in `<wN>`, and either `--no-listen` was given or the listener's 24-hour idle window ran out with no due routine. Report what happened since the last drained report, or the full per-item report if there was none. Open it with **Decisions made for you** ([the rules](#decisions-made-for-you)) whenever the list still holds a line.
+- **Blocked (`--no-listen` only):** open items remain, but every one waits on parked work, directly or transitively. Report **Decisions made for you** first ([the rules](#decisions-made-for-you)), then items shipped this run (with SHAs), each gate and what is needed to clear it, the waiting dependents, and where partial work was preserved. Without `--no-listen`, this state listens instead.
+- **Hard stop only:** the user explicitly interrupts, or the runtime forces a stop (session or tool limit, killed process, a listener that exited `4`, a rebase conflict that needs the user, lost push access that blocks every remaining ship). Report progress (**Decisions made for you** first, then verified, in-flight, parked, **next actionable pick**) so a later `/loopx <wN>` can resume; the decisions go first because a later session cannot recover them. **Never** choose this exit yourself while step 1 still has a known next item.
 
 **Not an exit:** "checkpoint", "budget", "long enough", "several items shipped already", "the queue is empty for now" (that is **Listen**), "resume with `/loopx <wN>` to pick up at NNN" while actionable items remain, a red main or a slow CI, new work arriving while you drain, a peer session busy on the same workstream, or a queue that grows faster than you drain it. Listing parked gates in a report is a reminder, never a reason to stop: they are parked precisely so the loop continues past them. If you can name the next pick, dispatch it and continue.
 
@@ -197,7 +208,7 @@ When one of the three exits genuinely holds, clear the guard with `python3 scrip
 - **One worker, one item, one board outcome per ship.** Never run two workers at once, and never let one worker take two items. Parallel loops run in separate clones, not in worktrees of this one.
 - **The tree is shared.** Never stash, stage, discard, or rewrite a teammate's uncommitted work.
 - **Stay in `<wN>`.** Only pick items from the requested workstream. Fixing a red main is the one piece of work that is in scope for every workstream.
-- **Report honestly.** Relay what workers flagged (skipped steps, mocks, flakes) in the drained and final reports. Do not present a close-by-triage as implemented work, or a fallback park as the worker's.
+- **Report honestly.** Relay what workers flagged (skipped steps, mocks, flakes) in the drained and final reports, and every line of their `decisions:` word for word under **Decisions made for you**. Do not present a close-by-triage as implemented work, or a fallback park as the worker's.
 
 ## Arguments
 
