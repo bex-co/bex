@@ -1,6 +1,6 @@
 # w33 · m571 — A native build's image export takes less than half its 7 minutes
 
-**Worker:** worker33 **Goal:** the time between a native build command's last line and `==> Build successful 🎉` on a 1.4 GB Node image falls from 7m09s–7m42s to under 3m30s. Each build records which part of its export the time went to, so the cut is chosen from measurements, and pulls and cache hits get no worse. **Status:** todo (t001 done)
+**Worker:** worker33 **Goal:** the time between a native build command's last line and `==> Build successful 🎉` on a 1.4 GB Node image falls from 7m09s–7m42s to under 3m30s. Each build records which part of its export the time went to, so the cut is chosen from measurements, and pulls and cache hits get no worse. **Status:** blocked (t001 done in `9fe2896295`; t002, the measurement, waits for a production pin carrying it)
 
 ## Tasks (in order)
 
