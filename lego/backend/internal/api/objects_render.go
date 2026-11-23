@@ -24,6 +24,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 )
 
 // objectStorageNotOffered is the answer to every Render object storage call
@@ -209,7 +210,7 @@ func objectsError(err error) error {
 			fmt.Sprintf("the object key is not valid: it must be 1 to %d bytes of UTF-8, must not start with /, and must have no . or .. segment, backslash or control character", objectstorage.MaxKeyBytes),
 			map[string]any{"field": "key"})
 	case errors.Is(err, objectstorage.ErrInvalidCursor):
-		return core.NewBadRequestError("INVALID_CURSOR", "the cursor is not one this list returned", map[string]any{"field": "cursor"})
+		return core.NewBadRequestError(sandbox.CodeInvalidCursor, "the cursor is not one this list returned", map[string]any{"field": "cursor"})
 	case errors.Is(err, objectstorage.ErrObjectTooLarge):
 		return core.NewTooLargeError("OBJECT_TOO_LARGE",
 			fmt.Sprintf("an object must be between 0 and %d bytes", objectstorage.MaxObjectBytesPresigned),

@@ -1058,13 +1058,38 @@ func (c *renderOpenAPIContract) renderOperation(pattern string, r *http.Request)
 	return route, pathParams, validationRequest, true
 }
 
+// renderCLIOperationsOutsideSpec names the Render CLI REST patterns bex serves
+// that are not yet published in the embedded render-public-api-1.json (w32/100).
+// They are still Render operations from the pinned render-oss/cli client, so
+// withRenderErrorCodes holds their error bodies to Render's errorCode
+// vocabulary just like operations matched by renderOperation.
+// TestRenderCLIOperationsOutsideSpecAreLiveAndDisjoint guards that every entry
+// is a live route pattern and none duplicates an operation already in the spec.
+var renderCLIOperationsOutsideSpec = map[string]bool{
+	"POST /v1/blueprints":                                  true,
+	"POST /v1/blueprints/{id}/syncs":                       true,
+	"POST /v1/blueprints/{id}/approve":                     true,
+	"DELETE /v1/sandbox-groups/{sandboxGroupId}":           true,
+	"POST /v1/sandbox-groups/{sandboxGroupId}/set-default": true,
+	"GET /v1/objects/{ownerId}/{region}":                   true,
+	"PUT /v1/objects/{ownerId}/{region}/{key...}":          true,
+	"GET /v1/objects/{ownerId}/{region}/{key...}":          true,
+	"DELETE /v1/objects/{ownerId}/{region}/{key...}":       true,
+	"GET /v1/postgres/{id}/parameter-overrides":            true,
+	"POST /v1/cli-telemetry-events":                        true,
+	"POST /v1/services/{id}/ephemeral-shell":               true,
+}
+
 // withRenderErrorCodes drops from an error on one of Render's operations any
-// code outside the errorCode vocabulary (w8/411). Render's 404 carries none,
-// and the pinned CLI prints whatever code it gets: `received response code 404
-// (NOT_FOUND): …` where Render's reads `received response code 404: …`.
-// bex-native routes keep bex's codes, which the bex CLI's own commands read.
-// It wraps the whole REST mount, so the gate's and the middlewares' refusals
-// answer alike, and routes the request only when an error is written.
+// code outside the errorCode vocabulary (w8/411, w32/100). Render's 404 carries
+// none, and the pinned CLI prints whatever code it gets: `received response
+// code 404 (NOT_FOUND): …` where Render's reads `received response code 404: …`.
+// Both operations matched by the pinned OpenAPI spec (renderOperation) and
+// Render CLI operations served outside that spec (renderCLIOperationsOutsideSpec)
+// are filtered. bex-native routes keep bex's codes, which the bex CLI's own
+// commands read. It wraps the whole REST mount, so the gate's and the
+// middlewares' refusals answer alike, and routes the request only when an error
+// is written.
 func withRenderErrorCodes(rest *http.ServeMux, contract *renderOpenAPIContract, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resolved, onRender := false, false
@@ -1073,6 +1098,9 @@ func withRenderErrorCodes(rest *http.ServeMux, contract *renderOpenAPIContract, 
 				resolved = true
 				if _, pattern := rest.Handler(r); pattern != "" {
 					_, _, _, onRender = contract.renderOperation(pattern, r)
+					if !onRender {
+						onRender = renderCLIOperationsOutsideSpec[pattern]
+					}
 				}
 			}
 			return !onRender || contract.errorCodes[code]

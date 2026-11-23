@@ -33,6 +33,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage/fakes3"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -377,7 +378,7 @@ func TestRenderObjectsRefusals(t *testing.T) {
 		{"a negative size", http.MethodPut, h.path("oregon", "k"), `{"sizeBytes":-1}`, 413, "OBJECT_TOO_LARGE"},
 		{"limit zero", http.MethodGet, h.path("oregon", "") + "?limit=0", "", 400, ""},
 		{"limit not a number", http.MethodGet, h.path("oregon", "") + "?limit=many", "", 400, ""},
-		{"a cursor it did not mint", http.MethodGet, h.path("oregon", "") + "?cursor=!!!", "", 400, "INVALID_CURSOR"},
+		{"a cursor it did not mint", http.MethodGet, h.path("oregon", "") + "?cursor=!!!", "", 400, sandbox.CodeInvalidCursor},
 	}
 	for _, c := range cases {
 		got := h.do(t, c.method, c.path, c.body)

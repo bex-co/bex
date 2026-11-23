@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -26,15 +27,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -80,6 +86,202 @@ func TestRenderOperationsAnswerOnlyRendersErrorCodes(t *testing.T) {
 				t.Fatalf("%s %s = %s, want no params: null", c.method, c.path, res.Body)
 			}
 		})
+	}
+}
+
+type blueprintPlanFixtureStore struct {
+	*blueprintFixtureStore
+}
+
+func (f *blueprintPlanFixtureStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, error) {
+	return b, nil
+}
+
+func (f *blueprintPlanFixtureStore) UndoPlannedBlueprintCreate(context.Context, store.Blueprint) error {
+	return nil
+}
+
+func (f *blueprintPlanFixtureStore) InsertPlannedBlueprintSync(_ context.Context, p store.PlannedBlueprintSync) (store.PlannedBlueprintSync, error) {
+	return p, nil
+}
+
+func (f *blueprintPlanFixtureStore) LatestBlueprintPlan(context.Context, string, time.Time) (store.PlannedBlueprintSync, error) {
+	return store.PlannedBlueprintSync{}, store.ErrNotFound
+}
+
+func (f *blueprintPlanFixtureStore) BlueprintPlannedSync(context.Context, string, string) (store.PlannedBlueprintSync, error) {
+	return store.PlannedBlueprintSync{}, store.ErrNotFound
+}
+
+func (f *blueprintPlanFixtureStore) SettleNoChangesPlan(_ context.Context, id, tenantID, _ string) (store.Blueprint, error) {
+	return f.GetBlueprint(context.Background(), id, tenantID)
+}
+
+type errBlueprintFetcher struct{ err error }
+
+func (f errBlueprintFetcher) ResolveBlueprintCommit(context.Context, string, string, string) (string, error) {
+	return "", f.err
+}
+
+func (f errBlueprintFetcher) FetchBlueprintFileAtCommit(context.Context, string, string, string, string) (string, error) {
+	return "", f.err
+}
+
+type stubSandboxGroupStore struct {
+	sandbox.GroupStore
+	ws        string
+	defaultID string
+}
+
+func (s *stubSandboxGroupStore) SandboxGroupWorkspace(_ context.Context, id string) (string, error) {
+	if id == s.defaultID {
+		return s.ws, nil
+	}
+	return "", store.ErrNotFound
+}
+
+func (s *stubSandboxGroupStore) MarkSandboxGroupDeleting(_ context.Context, _, id string) (store.SandboxGroup, error) {
+	if id == s.defaultID {
+		return store.SandboxGroup{}, store.ErrSandboxGroupIsDefault
+	}
+	return store.SandboxGroup{}, store.ErrNotFound
+}
+
+func (s *stubSandboxGroupStore) SetDefaultSandboxGroup(_ context.Context, _, _ string) (store.SandboxGroup, error) {
+	return store.SandboxGroup{}, store.ErrNotFound
+}
+
+// TestRenderCLIOperationsOutsideSpecErrorCodes pins w32/100: Render CLI REST
+// operations served outside the embedded render-public-api-1.json (EA
+// Blueprints create/plan/approve, sandbox-groups delete/set-default, EA
+// Objects, Postgres parameter-overrides, CLI telemetry, and ephemeral-shell)
+// are filtered by withRenderErrorCodes just like spec-listed operations.
+// Bex-internal codes leave the REST body, Render's own errorCode vocabulary
+// values stay, and bex-native routes keep bex's codes.
+func TestRenderCLIOperationsOutsideSpecErrorCodes(t *testing.T) {
+	objSvc, ws := newObjectService(t)
+	defaultGroupID := ids.New(ids.SandboxGroup)
+	existingBP := store.Blueprint{ID: "blp-existing000000000000", TenantID: ws, Name: "taken-bp"}
+	bpStore := &blueprintPlanFixtureStore{blueprintFixtureStore: &blueprintFixtureStore{rows: map[string]store.Blueprint{existingBP.ID: existingBP}}}
+
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelTenant: ws, core.LabelServiceName: "web", core.LabelAppID: "srv-web"}
+
+	baseAllow := &core.Base{
+		Client:    (&admission{}).client(web),
+		Namespace: "default",
+		Authz:     &fakeChecker{allow: true},
+		Workspace: fakeWorkspace{"client-1": ws},
+	}
+	baseDeny := &core.Base{
+		Client:    (&admission{}).client(web),
+		Namespace: "default",
+		Authz:     &fakeChecker{allow: false},
+		Workspace: fakeWorkspace{"client-1": ws},
+	}
+
+	deps := Deps{
+		BlueprintsStore: bpStore,
+		SandboxClient:   &sandbox.Client{},
+		SandboxGroups:   &stubSandboxGroupStore{ws: ws, defaultID: defaultGroupID},
+		ObjectStorage:   objSvc,
+	}
+	h, srv := serverWith(t, baseAllow, deps)
+	srv.Apps.GitFetcher = errBlueprintFetcher{err: fmt.Errorf("%w: %w", github.ErrRepoNotFoundOrNoAccess, &github.APIError{Status: http.StatusNotFound})}
+	hDeny, _ := serverWith(t, baseDeny, deps)
+
+	for _, c := range []struct {
+		h                  http.Handler
+		name, method, path string
+		body               string
+		status             int
+		code               string // "" when the body must carry none
+	}{
+		// EA Blueprints create / plan / approve
+		{h, "plan unknown blueprint", http.MethodPost, "/v1/blueprints/exs-00000000000000000000/syncs", `{}`, http.StatusNotFound, ""},
+		{h, "approve unknown blueprint", http.MethodPost, "/v1/blueprints/exs-00000000000000000000/approve", `{}`, http.StatusNotFound, ""},
+		{hDeny, "create blueprint forbidden", http.MethodPost, "/v1/blueprints",
+			`{"ownerId":"` + ws + `","name":"x","source":{"repo":"https://github.com/acme/app","branch":"main","path":"render.yaml"}}`,
+			http.StatusForbidden, ""},
+		{h, "create blueprint name taken", http.MethodPost, "/v1/blueprints",
+			`{"ownerId":"` + ws + `","name":"taken-bp","source":{"repo":"https://github.com/acme/app","branch":"main","path":"render.yaml"}}`,
+			http.StatusConflict, ""},
+		{h, "create blueprint repo not found drops bex preview reason", http.MethodPost, "/v1/blueprints",
+			`{"ownerId":"` + ws + `","name":"new-bp","source":{"repo":"https://github.com/acme/nope","branch":"main","path":"render.yaml"}}`,
+			http.StatusBadRequest, ""},
+
+		// Sandbox groups delete / set-default
+		{h, "delete unknown sandbox group", http.MethodDelete, "/v1/sandbox-groups/sbg-00000000000000000000", "", http.StatusNotFound, ""},
+		{h, "delete malformed sandbox group keeps Render code", http.MethodDelete, "/v1/sandbox-groups/nope", "", http.StatusBadRequest, sandbox.CodeInvalidSandboxGroupID},
+		{h, "delete default sandbox group keeps Render code", http.MethodDelete, "/v1/sandbox-groups/" + defaultGroupID, "", http.StatusConflict, sandbox.CodeDefaultSandboxGroupNotDeletable},
+		{h, "set-default unknown sandbox group", http.MethodPost, "/v1/sandbox-groups/sbg-00000000000000000000/set-default", "", http.StatusNotFound, ""},
+		{h, "set-default malformed sandbox group keeps Render code", http.MethodPost, "/v1/sandbox-groups/nope/set-default", "", http.StatusBadRequest, sandbox.CodeInvalidSandboxGroupID},
+
+		// EA Objects list / put / get / delete
+		{h, "list objects unoffered region", http.MethodGet, "/v1/objects/" + ws + "/ohio", "", http.StatusBadRequest, ""},
+		{h, "list objects bad cursor keeps Render code", http.MethodGet, "/v1/objects/" + ws + "/oregon?cursor=!!!", "", http.StatusBadRequest, sandbox.CodeInvalidCursor},
+		{h, "put object missing sizeBytes", http.MethodPut, "/v1/objects/" + ws + "/oregon/k", `{}`, http.StatusBadRequest, ""},
+		{h, "get missing object", http.MethodGet, "/v1/objects/" + ws + "/oregon/missing", "", http.StatusNotFound, ""},
+		{h, "delete missing object", http.MethodDelete, "/v1/objects/" + ws + "/oregon/missing", "", http.StatusNotFound, ""},
+
+		// Other Render CLI operations outside the pinned spec
+		{h, "postgres parameter-overrides unknown db", http.MethodGet, "/v1/postgres/dpg-00000000000000000000/parameter-overrides", "", http.StatusNotFound, ""},
+		{h, "ephemeral-shell unknown service", http.MethodPost, "/v1/services/srv-doesnotexist000000000/ephemeral-shell", "", http.StatusNotFound, ""},
+		{h, "ephemeral-shell unsupported drops bex code", http.MethodPost, "/v1/services/web/ephemeral-shell", "", http.StatusGone, ""},
+		{hDeny, "cli-telemetry-events forbidden", http.MethodPost, "/v1/cli-telemetry-events", `{"command":"services"}`, http.StatusForbidden, ""},
+
+		// Controls: bex-native REST routes keep bex's own codes
+		{h, "bex-native object-storage bucket keeps code", http.MethodGet, "/v1/object-storage/" + ws + "/buckets/missing", "", http.StatusNotFound, "BUCKET_NOT_FOUND"},
+		{h, "bex-native git connections keeps code", http.MethodGet, "/v1/git/connections?ownerId=" + ws, "", http.StatusServiceUnavailable, "GITHUB_UNAVAILABLE"},
+		{hDeny, "bex-native blueprints preview keeps code", http.MethodPost, "/v1/blueprints/preview", `{"ownerId":"` + ws + `","repo":"https://github.com/acme/app"}`, http.StatusForbidden, "FORBIDDEN"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			res := do(t, c.h, c.method, c.path, testToken, c.body)
+			var body map[string]any
+			if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
+				t.Fatalf("%s %s answered %d %s: %v", c.method, c.path, res.Code, res.Body, err)
+			}
+			code, hasCode := body["code"]
+			if res.Code != c.status || hasCode != (c.code != "") || (hasCode && code != c.code) {
+				t.Fatalf("%s %s = %d %s, want %d with code %q", c.method, c.path, res.Code, res.Body, c.status, c.code)
+			}
+			if id, _ := body["id"].(string); id == "" || body["message"] == "" {
+				t.Fatalf("%s %s = %s, want Render's id and message", c.method, c.path, res.Body)
+			}
+		})
+	}
+}
+
+// TestRenderCLIOperationsOutsideSpecAreLiveAndDisjoint guards that every
+// pattern in renderCLIOperationsOutsideSpec matches a real route registered on
+// the REST mux (preventing silent drift when a path parameter is renamed) and
+// is not already covered by the embedded render-public-api-1.json (so future
+// OpenAPI re-pins prune entries that enter the spec).
+func TestRenderCLIOperationsOutsideSpecAreLiveAndDisjoint(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := map[string]bool{}
+	for _, pattern := range serveMuxPatterns(matrixServer(t).restHandler()) {
+		live[pattern] = true
+	}
+	paramRe := regexp.MustCompile(`\{[^}]+\}`)
+	for pattern := range renderCLIOperationsOutsideSpec {
+		if !live[pattern] {
+			t.Errorf("renderCLIOperationsOutsideSpec pattern %q is not registered on the REST mux", pattern)
+			continue
+		}
+		method, path, ok := strings.Cut(pattern, " ")
+		if !ok {
+			t.Errorf("renderCLIOperationsOutsideSpec pattern %q must be \"METHOD /v1/...\"", pattern)
+			continue
+		}
+		probePath := paramRe.ReplaceAllString(path, "fixture")
+		req := httptest.NewRequest(method, probePath, nil)
+		if _, _, _, inSpec := contract.renderOperation(pattern, req); inSpec {
+			t.Errorf("renderCLIOperationsOutsideSpec pattern %q is now in render-public-api-1.json; remove the redundant entry", pattern)
+		}
 	}
 }
 
