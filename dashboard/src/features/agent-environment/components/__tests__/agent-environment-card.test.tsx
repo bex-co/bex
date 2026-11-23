@@ -1134,6 +1134,72 @@ describe("AgentEnvironmentCard", () => {
       expect(update).not.toHaveBeenCalled();
     });
 
+    // w10/m568: once a model is off the list is an allowlist, so a model
+    // added to the catalog later is off and labelled new until a switch
+    // turns it on, apart from the ones an admin turned off.
+    it("labels only a model off because it is new in the catalog", () => {
+      setup({
+        ...ROUTED,
+        enabledModels: [CATALOG[0], CATALOG[1]],
+        newModels: [CATALOG[3]],
+      });
+      const section = screen.getByTestId("enabled-models-section");
+      expect(section).toHaveTextContent(
+        /models added to the platform later stay off until you turn them on/,
+      );
+      expect(modelSwitch(CATALOG[3])).not.toBeChecked();
+      expect(modelSwitch(CATALOG[3])).toBeEnabled();
+      expect(modelSwitch(CATALOG[3])).toHaveAccessibleDescription(
+        "New in the catalog",
+      );
+      for (const model of CATALOG.slice(1, 3)) {
+        expect(modelSwitch(model)).not.toHaveAccessibleDescription(
+          "New in the catalog",
+        );
+      }
+      expect(within(section).getAllByText("New in the catalog")).toHaveLength(
+        1,
+      );
+    });
+
+    it("turns a model new in the catalog on into the list, dropping its label", async () => {
+      const NEW = {
+        ...ROUTED,
+        enabledModels: [CATALOG[0], CATALOG[1]],
+        newModels: [CATALOG[3]],
+      };
+      const { user, update, rerender } = setupWithCache(NEW);
+      // The server answers with the model on and no longer new.
+      let answer!: () => void;
+      update.mockImplementationOnce(
+        () =>
+          new Promise<AgentEnvironmentView>((resolve) => {
+            answer = () => {
+              const next = {
+                ...NEW,
+                enabledModels: [CATALOG[0], CATALOG[1], CATALOG[3]],
+                newModels: [],
+              };
+              rerender(next);
+              resolve(next);
+            };
+          }),
+      );
+      await user.click(modelSwitch(CATALOG[3]));
+      expect(update).toHaveBeenLastCalledWith({
+        enabledModels: [CATALOG[0], CATALOG[1], CATALOG[3]],
+      });
+      // On while it saves, so no longer labelled new.
+      expect(modelSwitch(CATALOG[3])).toBeChecked();
+      expect(screen.queryByText("New in the catalog")).toBeNull();
+      await act(async () => answer());
+      expect(modelSwitch(CATALOG[3])).toBeChecked();
+      expect(screen.queryByText("New in the catalog")).toBeNull();
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "anthropic/claude-opus-5.5 turned on for members",
+      );
+    });
+
     it("lets an admin turn a model off and back on, saving the whole list", async () => {
       const { user, update } = setupWithCache(ROUTED);
       await user.click(modelSwitch(CATALOG[3]));

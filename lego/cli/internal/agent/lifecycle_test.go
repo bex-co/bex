@@ -524,9 +524,11 @@ func TestEnvShowsTheGitHubCLIBindings(t *testing.T) {
 }
 
 // TestEnvShowsTheEnabledModels: `bex agent env` lists the models members may
-// choose with the catalog's default marked, the ones an admin turned off, and
-// a saved default that is off with the model that runs instead (w10/m527). A
-// bex-api that predates the list offers every catalog model.
+// choose with the catalog's default marked, the ones an admin turned off, the
+// ones off because they are new in the catalog (w10/m568), and a saved
+// default that is off with the model that runs instead (w10/m527). A bex-api
+// that predates the list offers every catalog model, and one that predates
+// newModels reads every off model as an admin's.
 func TestEnvShowsTheEnabledModels(t *testing.T) {
 	catalog := []any{"deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-haiku-5.5", "anthropic/claude-opus-5.5"}
 	for _, tc := range []struct {
@@ -547,6 +549,15 @@ func TestEnvShowsTheEnabledModels(t *testing.T) {
 		{"the default off", map[string]any{"models": catalog, "enabledModels": catalog[:1], "defaultModel": "anthropic/claude-opus-5.5"}, []string{
 			`(?m)^Default model\s+anthropic/claude-opus-5.5 \(turned off: sessions run deepseek/deepseek-v4.1-flash-1017, the platform default\)$`,
 			`(?m)^Models off\s+anthropic/claude-haiku-5.5, anthropic/claude-opus-5.5 \(turned off by an admin\)$`,
+		}, ""},
+		// w10/m568: a model off because it joined the catalog after the list
+		// was narrowed reads apart from the one an admin turned off.
+		{"a model new in the catalog", map[string]any{"models": catalog, "enabledModels": catalog[:1], "newModels": []any{catalog[2]}}, []string{
+			`(?m)^Models\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default, always on\)$`,
+			`(?m)^Models off\s+anthropic/claude-haiku-5.5 \(turned off by an admin\); anthropic/claude-opus-5.5 \(new in the catalog\)$`,
+		}, ""},
+		{"only models new in the catalog off", map[string]any{"models": catalog, "enabledModels": catalog[:2], "newModels": []any{catalog[2]}}, []string{
+			`(?m)^Models off\s+anthropic/claude-opus-5.5 \(new in the catalog\)$`,
 		}, ""},
 		{"a default the catalog dropped", map[string]any{"models": catalog, "enabledModels": catalog, "defaultModel": "anthropic/claude-sonnet-4.5"}, []string{
 			`(?m)^Default model\s+anthropic/claude-sonnet-4.5 \(no longer offered: sessions run deepseek/deepseek-v4.1-flash-1017, the platform default\)$`,
@@ -661,7 +672,7 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 	}
 	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
 		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled ||
-		len(e.EnabledModels) != 2 || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
+		len(e.EnabledModels) != 2 || len(e.NewModels) != 1 || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {

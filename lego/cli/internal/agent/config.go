@@ -383,7 +383,11 @@ type agentEnvironment struct {
 	EnabledAgents                 []string          `json:"enabledAgents"`
 	// EnabledModels are the catalog models members may choose (w10/m527);
 	// nil from a bex-api that predates the list, which offers every one.
+	// NewModels are the ones off only because they joined the catalog after
+	// an admin narrowed the list (w10/m568); nil from a bex-api that predates
+	// them, which has none.
 	EnabledModels []string `json:"enabledModels"`
+	NewModels     []string `json:"newModels"`
 	// GitHubCLIEnabled is whether the workspace's sessions get a `gh`
 	// (w10/m524); nil from a bex-api that predates the setting, which
 	// cannot turn it off, so it reads as on.
@@ -448,10 +452,13 @@ func envCommand(d deps) *cobra.Command {
 			"AGENT_SESSION_GITHUB_CLI_LOCKED (reason mandatory). It has no effect while\n" +
 			"gh is on; off lets them choose again.\n" +
 			"--models replaces the platform catalog models members may choose; the\n" +
-			"catalog's others are turned off. It must keep the catalog's default (the\n" +
-			"first of `bex agent env`'s Models). A session, message or automation naming\n" +
-			"a turned-off model is refused, and one already on it runs the workspace\n" +
-			"default from its next turn.",
+			"catalog's others are turned off. Every catalog model on allows all models,\n" +
+			"one added to the catalog later included; any model off makes the list an\n" +
+			"allowlist, and a model added to the catalog later stays off (\"new in the\n" +
+			"catalog\" in `bex agent env`) until an admin turns it on. It must keep the\n" +
+			"catalog's default (the first of `bex agent env`'s Models). A session,\n" +
+			"message or automation naming a turned-off model is refused, and one already\n" +
+			"on it runs the workspace default from its next turn.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			f := c.Flags()
@@ -548,7 +555,7 @@ func envCommand(d deps) *cobra.Command {
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
 	f.StringSliceVar(&agents, "agents", nil, "the agents members can start sessions with, comma-separated; replaces the list (\"\" turns every agent off)")
-	f.StringSliceVar(&models, "models", nil, "the platform catalog models members may choose, comma-separated; replaces the list and must keep the catalog's default")
+	f.StringSliceVar(&models, "models", nil, "the platform catalog models members may choose, comma-separated; replaces the list and must keep the catalog's default. Every model allows all, a later one included; any model left out leaves a later one off")
 	f.StringArrayVar(&acks, "acknowledge-data-use", nil, "acknowledge, as an admin, that this agent's model provider may train on what its sessions send; repeatable")
 	root.AddCommand(set)
 	return root
@@ -600,14 +607,25 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 			on = append(on, m)
 		}
 		tw.row("Models", strings.Join(on, ", "))
-		var off []string
+		var byAdmin, added []string
 		for _, m := range e.Models {
-			if !slices.Contains(enabled, m) {
-				off = append(off, m)
+			switch {
+			case slices.Contains(enabled, m):
+			case slices.Contains(e.NewModels, m):
+				added = append(added, m)
+			default:
+				byAdmin = append(byAdmin, m)
 			}
 		}
+		var off []string
+		if len(byAdmin) > 0 {
+			off = append(off, strings.Join(byAdmin, ", ")+" (turned off by an admin)")
+		}
+		if len(added) > 0 {
+			off = append(off, strings.Join(added, ", ")+" (new in the catalog)")
+		}
 		if len(off) > 0 {
-			tw.row("Models off", strings.Join(off, ", ")+" (turned off by an admin)")
+			tw.row("Models off", strings.Join(off, "; "))
 		}
 	}
 	if e.DefaultTemplate != "" {

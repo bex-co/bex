@@ -313,7 +313,7 @@ export type AgentEnvironment = {
   defaultTemplate: Scalars['String']['output'];
   /** The agent profiles members can start sessions with, as the workspace's admins chose. */
   enabledAgents: Array<Scalars['String']['output']>;
-  /** The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model unless an admin turned some off; a model added to the catalog later starts on. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key. */
+  /** The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model, one added to the catalog later included, until an admin turns one off; from then on it is an allowlist, and a model added to the catalog later is off (newModels) until an admin turns it on. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key. */
   enabledModels: Array<Scalars['String']['output']>;
   /** Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. */
   githubCliEnabled: Scalars['Boolean']['output'];
@@ -326,6 +326,8 @@ export type AgentEnvironment = {
   /** The whole platform model catalog, its default first; enabledModels is the part members may choose. Empty on the workspace's own key, where any model id is accepted. */
   models: Array<Scalars['String']['output']>;
   networkTier: AgentNetworkTier;
+  /** The catalog models off only because they joined the catalog after an admin narrowed the list (the allowlist predates them), apart from the ones an admin turned off; an admin turns one on through enabledModels. Empty while every model is allowed and on the workspace's own key. */
+  newModels: Array<Scalars['String']['output']>;
   /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
   nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
@@ -358,7 +360,7 @@ export type AgentEnvironmentInput = {
   defaultTemplate?: InputMaybe<Scalars['String']['input']>;
   /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
   enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Replaces the catalog models members may choose; the catalog's others are turned off. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn. */
+  /** Replaces the catalog models members may choose; the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, which leaves a model added to the catalog later off until an admin turns it on. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn. */
   enabledModels?: InputMaybe<Array<Scalars['String']['input']>>;
   /** false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on. */
   githubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;

@@ -350,7 +350,10 @@ export function AgentEnvironmentCardSkeleton({
         {/* The models members can choose (w10/m527). The ready card draws
             them on the platform catalog only, the case the default-model
             help above holds: representative rows, the first the catalog's
-            locked default with its static note. */}
+            locked default with its static note. A model's "New in the
+            catalog" note (w10/m568) is data-dependent and only follows an
+            admin narrowing the list before the catalog grew, so the rows
+            hold the usual state without it. */}
         <div
           className="space-y-3 border-t pt-6"
           data-testid="enabled-models-section-skeleton"

@@ -27,10 +27,12 @@ interface EnabledModelsSectionProps {
  * Settings → Agents' model list (w10/m527, Devin's allowlisted models): one
  * switch per platform catalog model, on while members may pick it for a
  * session, a message or an automation. The catalog's default (models[0])
- * stays on and locked, since sessions fall back to it. Each switch saves the
- * whole list on toggle, as the available-agents switches do; members see
- * them disabled. Drawn only on the platform catalog: on the workspace's own
- * key any model id stands and there is no list.
+ * stays on and locked, since sessions fall back to it. A model off only
+ * because it joined the catalog after an admin narrowed the list (newModels,
+ * w10/m568) is labelled "New in the catalog" until a switch turns it on.
+ * Each switch saves the whole list on toggle, as the available-agents
+ * switches do; members see them disabled. Drawn only on the platform catalog:
+ * on the workspace's own key any model id stands and there is no list.
  */
 export function EnabledModelsSection({
   saved,
@@ -39,7 +41,6 @@ export function EnabledModelsSection({
 }: EnabledModelsSectionProps) {
   const { t } = useTranslations();
   const ids = useId();
-  const lockedId = `${ids}-model-locked`;
   // The list while it saves; a refused save leaves the stored list.
   const { pending, errorKey, save } = useToggleSave<string[]>(
     update,
@@ -72,6 +73,13 @@ export function EnabledModelsSection({
         {saved.models.map((model, i) => {
           const id = `${ids}-model-${i}`;
           const locked = i === 0;
+          const checked = locked || enabled.includes(model);
+          const note = locked
+            ? t("agentEnvironment.modelsDefaultLocked")
+            : !checked && saved.newModels.includes(model)
+              ? t("agentEnvironment.modelsNew")
+              : null;
+          const noteId = `${id}-note`;
           return (
             <SwitchListRow
               key={model}
@@ -80,14 +88,14 @@ export function EnabledModelsSection({
                   {model}
                 </Label>
               }
-              note={locked ? t("agentEnvironment.modelsDefaultLocked") : null}
-              noteId={lockedId}
+              note={note}
+              noteId={noteId}
               control={
                 <Switch
                   id={id}
-                  checked={locked || enabled.includes(model)}
+                  checked={checked}
                   disabled={locked || !canManage || pending !== null}
-                  aria-describedby={locked ? lockedId : undefined}
+                  aria-describedby={note ? noteId : undefined}
                   onCheckedChange={(on) => toggle(model, on)}
                 />
               }

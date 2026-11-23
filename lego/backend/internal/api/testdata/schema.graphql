@@ -245,6 +245,7 @@ type AgentEnvironment {
   modelSource: AgentModelSource!
   models: [String!]!
   networkTier: AgentNetworkTier!
+  newModels: [String!]!
   nextChargeThresholdUsd: Float
   ownerId: String!
   pinnedModel: String

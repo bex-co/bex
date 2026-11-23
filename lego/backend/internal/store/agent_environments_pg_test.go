@@ -23,6 +23,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -281,5 +282,69 @@ func TestAgentEnvironmentDisabledModelsRoundTrip(t *testing.T) {
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, other.ID) })
 	if got, err = s.UpsertAgentEnvironment(ctx, other.ID, AgentEnvironmentPatch{DisabledModels: &off}); err != nil || !slices.Equal(got.DisabledModels, off) || got.NetworkTier != "registries" || got.GitHubCLIDisabled {
 		t.Fatalf("first write turning models off = %+v err=%v", got, err)
+	}
+}
+
+// w10/m568: known_models is written with disabled_models, NULL (allow all)
+// included, and kept by a write of another field. A row a bex-api before
+// m568 narrowed (no known_models) converts once to the catalog it is given,
+// keeping its turned-off list and updated_at; a second run with a grown
+// catalog leaves it, and a row that allows all stays NULL. The CHECK bounds
+// the list.
+func TestAgentEnvironmentKnownModelsAndTheLegacyConversion(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "agent-known-models")
+	ctx := context.Background()
+	catalog := []string{"deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"}
+	off := []string{"anthropic/claude-opus-5.5"}
+	got, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &off, KnownModels: catalog})
+	if err != nil || !slices.Equal(got.KnownModels, catalog) || !slices.Equal(got.DisabledModels, off) {
+		t.Fatalf("a narrowing write = %+v err=%v", got, err)
+	}
+	tier := "full"
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &tier}); err != nil || !slices.Equal(got.KnownModels, catalog) {
+		t.Fatalf("a network-tier write lost the known models: %+v err=%v", got, err)
+	}
+	none := []string{}
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &none}); err != nil || got.KnownModels != nil || len(got.DisabledModels) != 0 {
+		t.Fatalf("every model back on = known %#v disabled %v err=%v, want NULL and none", got.KnownModels, got.DisabledModels, err)
+	}
+
+	// Rows as migration 0315's bex-api leaves them: one narrowed, one not.
+	legacy := tenant.ID
+	if _, err := pool.Exec(ctx, `UPDATE agent_environments SET disabled_models = $2, updated_at = '2026-11-21T10:00:00Z' WHERE workspace_id = $1`, legacy, off); err != nil {
+		t.Fatal(err)
+	}
+	other, err := s.CreateTenant(ctx, "agent-known-models-all", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, other.ID) })
+	allowAll := other.ID
+	if _, err := pool.Exec(ctx, `INSERT INTO agent_environments (workspace_id) VALUES ($1)`, allowAll); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.ConvertLegacyModelLists(ctx, catalog); err != nil || n < 1 {
+		t.Fatalf("conversion = %d err=%v, want the legacy row converted", n, err)
+	}
+	read, err := s.GetAgentEnvironment(ctx, legacy)
+	if err != nil || !slices.Equal(read.KnownModels, catalog) || !slices.Equal(read.DisabledModels, off) || !read.UpdatedAt.Equal(time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("converted row = %+v err=%v", read, err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, allowAll); err != nil || read.KnownModels != nil {
+		t.Fatalf("a row that allows all = known %#v err=%v, want NULL", read.KnownModels, err)
+	}
+	if _, err := s.ConvertLegacyModelLists(ctx, append(slices.Clone(catalog), "anthropic/claude-haiku-5.5")); err != nil {
+		t.Fatal(err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, legacy); err != nil || !slices.Equal(read.KnownModels, catalog) {
+		t.Fatalf("a second run changed the converted row: known %v err=%v", read.KnownModels, err)
+	}
+
+	tooMany := make([]string, 65)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("vendor/model-%d", i)
+	}
+	if _, err := s.UpsertAgentEnvironment(ctx, allowAll, AgentEnvironmentPatch{DisabledModels: &off, KnownModels: tooMany}); err == nil {
+		t.Fatal("65 known models were stored")
 	}
 }

@@ -17,6 +17,10 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   # order with the catalog's default always among them: the choices for
   # defaultModel and every member's model pickers. Empty on the own key.
   enabledModels
+  # The catalog models off only because they joined the catalog after an
+  # admin narrowed the list (w10/m568); Settings labels them "New in the
+  # catalog". Empty while every model is allowed and on the own key.
+  newModels
   # The sandbox template a session or automation run that names none runs on
   # (w10/m519), and every agent template a session may name, smallest first.
   defaultTemplate

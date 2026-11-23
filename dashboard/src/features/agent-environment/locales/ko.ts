@@ -1408,15 +1408,20 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 고릅니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다.",
+      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 고릅니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다. 모델을 하나라도 끄면, 이후 플랫폼에 추가되는 모델은 켤 때까지 꺼진 상태로 유지됩니다.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
       "세션이 대신 사용하는 모델이므로 플랫폼 기본 모델은 항상 켜져 있습니다.",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "카탈로그에 새로 추가됨",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "멤버용 {model} 모델을 켰습니다",

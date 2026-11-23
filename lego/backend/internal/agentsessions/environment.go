@@ -72,7 +72,10 @@ type EnvironmentStore interface {
 // catalog (w10/m516), empty off the route, where any model is free-form;
 // EnabledModels is the part of it the workspace's admins left on (w10/m527),
 // the models a claude session, an automation and DefaultModel may name, the
-// catalog's default always among them. A DefaultModel outside EnabledModels
+// catalog's default always among them: every catalog model until an admin
+// turns one off, then the allowlist that write left on (w10/m568). NewModels
+// are the catalog models off because that allowlist predates them, apart from
+// the ones an admin turned off. A DefaultModel outside EnabledModels
 // is stored but does not take effect: the catalog's default runs. ModelPinned
 // is true on the route, whose gateway pins each session to its chosen model;
 // PinnedModel is the catalog's default, kept for clients older than Models.
@@ -84,6 +87,7 @@ type Environment struct {
 	DefaultModel  *string  `json:"defaultModel"`
 	Models        []string `json:"models"`
 	EnabledModels []string `json:"enabledModels"`
+	NewModels     []string `json:"newModels"`
 	ModelPinned   bool     `json:"modelPinned"`
 	PinnedModel   *string  `json:"pinnedModel"`
 	TemplateOffer
@@ -180,8 +184,10 @@ type EnvironmentInput struct {
 	ResetAutomationsGitHubCLI bool  `json:"resetAutomationsGithubCli,omitempty" jsonschema:"true returns the automations default to inheriting githubCliEnabled, as an explicit null automationsGithubCliEnabled does"`
 	GitHubCLIMandatory        *bool `json:"githubCliMandatory,omitempty" jsonschema:"true makes the workspace's gh off mandatory (admins only): while githubCliEnabled is false, no automations default, automation or session turns gh back on, and saving one that would is refused with a GITHUB_CLI_LOCKED code; it has no effect while githubCliEnabled is true. false lets lower levels choose again"`
 	// EnabledModels replaces the platform catalog models members may choose;
-	// the catalog's others are turned off (w10/m527).
-	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off. It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
+	// the catalog's others are turned off (w10/m527). Every catalog model on
+	// allows all, a later one included; any model off makes it an allowlist
+	// that leaves a model added to the catalog later off (w10/m568).
+	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, and a model added to the catalog later stays off until an admin turns it on (it reads in newModels). It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
@@ -576,15 +582,18 @@ func validateEnvironmentInput(input EnvironmentInput, templates []sandbox.AgentT
 // modelOfferPatch checks an update's model fields against the platform
 // catalog the workspace is on after it (byoKey: its own key then) and fills
 // patch (w10/m527). enabledModels replaces the turned-off list with every
-// catalog model it leaves out, so a model added to the catalog later starts
-// on; it must keep the catalog's default and name only catalog models, and
+// catalog model it leaves out. Leaving none out is Devin's "Allow all
+// models": a model added to the catalog later is on too. Leaving any out is
+// its "Allowlist specific models" (w10/m568): the write records the catalog
+// it saw, and a model added later is off until an admin turns it on. It
+// must keep the catalog's default and name only catalog models, and
 // is refused off the route, where there is no catalog to narrow. defaultModel
 // must be one of the models offered after the update. Turning off the model
 // the stored default names is allowed, as Devin's allowlist overrides a
 // pinned default: that default stops taking effect and the catalog's runs.
 func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byoKey bool, patch *store.AgentEnvironmentPatch) error {
 	catalog, routed := agentsession.PlatformModels(byoKey)
-	disabled := current.DisabledModels
+	after := current
 	if input.EnabledModels != nil {
 		invalid := func(msg, model string) error {
 			return core.NewBadRequestError(ModelListInvalidCode, msg,
@@ -608,16 +617,21 @@ func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byo
 		if !enabled[catalog[0]] {
 			return invalid(fmt.Sprintf("enabledModels must keep %s, the platform catalog's default, on", catalog[0]), catalog[0])
 		}
-		disabled = []string{}
+		disabled := []string{}
 		for _, model := range catalog {
 			if !enabled[model] {
 				disabled = append(disabled, model)
 			}
 		}
-		patch.DisabledModels = &disabled
+		var known []string // nil: allow all
+		if len(disabled) > 0 {
+			known = catalog
+		}
+		patch.DisabledModels, patch.KnownModels = &disabled, known
+		after.DisabledModels, after.KnownModels = disabled, known
 	}
 	if input.DefaultModel != nil && *input.DefaultModel != "" && routed {
-		if offered := leftOn(catalog, disabled); !slices.Contains(offered, *input.DefaultModel) {
+		if offered, _ := leftOn(catalog, after); !slices.Contains(offered, *input.DefaultModel) {
 			return modelNotOfferedError(CodeEnvironmentModelNotOffered, "defaultModel", *input.DefaultModel, offered)
 		}
 	}
@@ -687,14 +701,14 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.DefaultModel = &model
 	}
 	view.TemplateOffer = s.templateOffer(row)
-	view.Models, view.EnabledModels = []string{}, []string{}
+	view.Models, view.EnabledModels, view.NewModels = []string{}, []string{}, []string{}
 	switch models, ok := agentsession.PlatformModels(row.ModelKeySet()); {
 	case row.ModelKeySet():
 		view.ModelSource = ModelSourceBYO
 	case ok:
 		view.ModelSource = ModelSourcePlatform
 		view.Models = models
-		view.EnabledModels = leftOn(models, row.DisabledModels)
+		view.EnabledModels, view.NewModels = leftOn(models, row)
 		view.ModelPinned = true
 		view.PinnedModel = &models[0]
 	default:
@@ -828,15 +842,16 @@ const (
 )
 
 // offeredModels is what a workspace's claude sessions may choose from on the
-// platform model route (w10/m527): the catalog in its order, its default
-// first, less the models the workspace's admins turned off, and whether the
+// platform model route (w10/m527): the catalog models its list allows
+// (leftOn), in catalog order with its default first, and whether the
 // workspace is on the route at all (never with its own key, where any model is
 // free-form). Every place that offers or checks a stored workspace's model
 // takes it from here; an update checks the list it is about to store
 // (modelOfferPatch).
 func offeredModels(env store.AgentEnvironment) ([]string, bool) {
 	catalog, routed := agentsession.PlatformModels(env.ModelKeySet())
-	return leftOn(catalog, env.DisabledModels), routed
+	offered, _ := leftOn(catalog, env)
+	return offered, routed
 }
 
 // inPlatformCatalog reports whether model is one of the platform route's
@@ -847,17 +862,52 @@ func inPlatformCatalog(model string) bool {
 	return slices.Contains(catalog, model)
 }
 
-// leftOn is catalog less disabled, as a new slice. The catalog's default is
-// never turned off, even by a list stored before the catalog's default
-// changed.
-func leftOn(catalog, disabled []string) []string {
-	out := make([]string, 0, len(catalog))
+// leftOn is what env's stored list allows of catalog, as new slices in
+// catalog order: on, the models members may choose, and added, the ones off
+// only because they are new in the catalog since an admin narrowed the list
+// (w10/m568). Devin's rule: a model is allowed when the allowlist names it.
+// The allowlist is KnownModels, the catalog the narrowing write saw, less
+// DisabledModels. A list with no known models (none narrowed, or narrowed
+// under migration 0315 and not yet converted) or none turned off (an
+// all-on write by a bex-api before m568) allows every catalog model but the
+// turned-off ones, as the opt-out did. The catalog's default is never off,
+// even by a list stored before the catalog's default changed.
+func leftOn(catalog []string, env store.AgentEnvironment) (on, added []string) {
+	allowAll := env.KnownModels == nil || len(env.DisabledModels) == 0
+	on, added = make([]string, 0, len(catalog)), []string{}
 	for i, model := range catalog {
-		if i == 0 || !slices.Contains(disabled, model) {
-			out = append(out, model)
+		switch {
+		case i == 0:
+			on = append(on, model)
+		case slices.Contains(env.DisabledModels, model):
+		case allowAll || slices.Contains(env.KnownModels, model):
+			on = append(on, model)
+		default:
+			added = append(added, model)
 		}
 	}
-	return out
+	return on, added
+}
+
+// LegacyModelListStore converts the model lists narrowed under migration
+// 0315's opt-out; *store.PGStore satisfies it.
+type LegacyModelListStore interface {
+	ConvertLegacyModelLists(ctx context.Context, catalog []string) (int64, error)
+}
+
+// ConvertLegacyModelLists makes every workspace model list narrowed under
+// the opt-out an allowlist of the platform catalog this bex-api runs
+// (w10/m568), so its offer is unchanged and a model added to the catalog
+// later is off there. It reports how many rows it converted and whether it
+// ran: off the platform route there is no catalog to convert with, and the
+// rows keep reading as the opt-out. A second run converts none.
+func ConvertLegacyModelLists(ctx context.Context, st LegacyModelListStore) (int64, bool, error) {
+	catalog, routed := agentsession.PlatformModels(false)
+	if !routed {
+		return 0, false, nil
+	}
+	n, err := st.ConvertLegacyModelLists(ctx, catalog)
+	return n, true, err
 }
 
 // modelNotOfferedError refuses model in field, listing the models offered.

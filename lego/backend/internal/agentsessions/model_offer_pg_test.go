@@ -19,9 +19,16 @@ package agentsessions
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
+	"slices"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // w10/m527 t003: a message queued with a model that an admin turns off while
@@ -72,4 +79,58 @@ func TestAQueuedMessageOnATurnedOffModelRunsTheDefault(t *testing.T) {
 	if got := e.pending(t); len(got) != 0 {
 		t.Fatalf("the message is still queued: %v", got)
 	}
+}
+
+// w10/m568 DoD 4, 6: a list narrowed under migration 0315 converts with its
+// offer unchanged, and a model added to the catalog afterwards is off there
+// and read as new. Off the platform route the conversion does not run, and
+// the row keeps reading as the opt-out. The row is the real one.
+func TestALegacyNarrowedListConvertsWithItsOfferUnchanged(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	ws, err := pg.CreateTenant(ctx, fmt.Sprintf("agent-legacy-model-list-%d", time.Now().UnixNano()), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = pg.DeleteTenant(ctx, ws.ID) })
+	svc := environmentService(ws.ID, pg)
+	// What a bex-api before m568 writes: the opt-out alone.
+	if _, err := pool.Exec(ctx, `INSERT INTO agent_environments (workspace_id, disabled_models) VALUES ($1, $2)`, ws.ID, []string{catalogOpus}); err != nil {
+		t.Fatal(err)
+	}
+	offer := func(label string, enabled, added []string) {
+		t.Helper()
+		env, err := svc.Environment(caller("admin"), ws.ID)
+		if err != nil || !slices.Equal(env.EnabledModels, enabled) || !slices.Equal(env.NewModels, added) {
+			t.Fatalf("%s: enabledModels %v newModels %v err=%v, want %v and %v", label, env.EnabledModels, env.NewModels, err, enabled, added)
+		}
+	}
+
+	if n, ran, err := ConvertLegacyModelLists(ctx, pg); ran || n != 0 || err != nil {
+		t.Fatalf("conversion off the route = %d ran=%v err=%v, want skipped", n, ran, err)
+	}
+	enablePlatformCatalog(t)
+	offer("before the conversion", withoutOpus, []string{})
+	if n, ran, err := ConvertLegacyModelLists(ctx, pg); !ran || n < 1 || err != nil {
+		t.Fatalf("conversion = %d ran=%v err=%v", n, ran, err)
+	}
+	offer("after the conversion", withoutOpus, []string{})
+	growCatalog(t, catalogAdded)
+	offer("after the catalog grew", withoutOpus, []string{catalogAdded})
+	if _, _, err := ConvertLegacyModelLists(ctx, pg); err != nil {
+		t.Fatal(err)
+	}
+	offer("after a second conversion", withoutOpus, []string{catalogAdded})
 }

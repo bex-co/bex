@@ -474,6 +474,7 @@ func main() {
 		}
 
 		go backfillSkillVersionContent(ctx, st)
+		go convertLegacyModelLists(ctx, st)
 
 		// ADR112 D4: the public bucket gateway's two verbs, mounted on :8091 when
 		// BEX_OBJECT_STORAGE_GATEWAY_TOKEN is set.
@@ -2341,6 +2342,34 @@ func backfillModelKeyFlags(ctx context.Context, keys core.SecretKV, st *store.PG
 		log.Printf("bex-api: agent model key flag backfill failed (retrying next start): %v", err)
 	}
 	log.Printf("bex-api: agent model key flag backfill: workspaces=%d keys=%d flags_set=%d platform_routed=%d failed=%d", r.Workspaces, r.Keys, r.Marked, r.PlatformRouted, r.Failed)
+}
+
+// convertLegacyModelLists makes the workspace model lists narrowed under
+// migration 0315's opt-out allowlists of this bex-api's platform catalog
+// (agentsessions.ConvertLegacyModelLists, w10/m568), at start and then
+// hourly: a previous-release Pod still serving during the rollout writes the
+// opt-out, and converting it before a later deploy changes the catalog keeps
+// its offer. Off the platform route it stops at once. It logs counts only;
+// a failure is retried on the next pass.
+func convertLegacyModelLists(ctx context.Context, st *store.PGStore) {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		n, ran, err := agentsessions.ConvertLegacyModelLists(ctx, st)
+		switch {
+		case !ran:
+			return
+		case err != nil:
+			log.Printf("bex-api: agent model list conversion failed (retrying in an hour): %v", err)
+		case n > 0:
+			log.Printf("bex-api: agent model list conversion: converted=%d", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 // backfillBillingTrust is the startup pass that counts the paid invoices the

@@ -1441,15 +1441,20 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Wähle, welche Plattformmodelle Mitglieder für Sitzungen, Nachrichten und Automationen nutzen können. Eine Sitzung oder Automation, die schon ein Modell nutzt, das du ausschaltest, läuft ab ihrem nächsten Durchgang mit dem Standardmodell.",
+      "Wähle, welche Plattformmodelle Mitglieder für Sitzungen, Nachrichten und Automationen nutzen können. Eine Sitzung oder Automation, die schon ein Modell nutzt, das du ausschaltest, läuft ab ihrem nächsten Durchgang mit dem Standardmodell. Sobald du ein Modell ausschaltest, bleiben Modelle, die die Plattform später hinzufügt, aus, bis du sie einschaltest.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
       "Das Standardmodell der Plattform bleibt immer eingeschaltet, weil Sitzungen darauf zurückfallen.",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "Neu im Katalog",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "{model} für Mitglieder eingeschaltet",

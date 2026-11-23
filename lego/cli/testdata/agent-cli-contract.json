@@ -209,6 +209,9 @@
       "deepseek/deepseek-v4.1-flash-1017",
       "anthropic/claude-sonnet-5.5"
     ],
+    "newModels": [
+      "anthropic/claude-opus-5.5"
+    ],
     "modelSource": "platform",
     "modelKeySet": false,
     "agentModelMonthlySpendCapUsd": 50,

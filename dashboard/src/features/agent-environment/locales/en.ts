@@ -1408,15 +1408,20 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Choose which platform models members can pick for sessions, messages and automations. A session or automation already on a model you turn off runs the default model from its next turn.",
+      "Choose which platform models members can pick for sessions, messages and automations. A session or automation already on a model you turn off runs the default model from its next turn. Once you turn a model off, models added to the platform later stay off until you turn them on.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
       "The platform's default model always stays on, as sessions fall back to it.",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "New in the catalog",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "{model} turned on for members",

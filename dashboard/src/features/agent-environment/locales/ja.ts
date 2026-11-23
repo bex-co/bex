@@ -1428,15 +1428,20 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを選択します。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。",
+      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを選択します。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。モデルを1つでもオフにすると、後からプラットフォームに追加されたモデルは、オンにするまでオフのままです。",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
       "セッションのフォールバック先となるため、プラットフォームのデフォルトモデルは常にオンのままです。",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "カタログに新規追加",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "メンバー向けに {model} をオンにしました",

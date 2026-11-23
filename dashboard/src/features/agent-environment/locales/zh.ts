@@ -1380,14 +1380,19 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "选择成员在会话、消息和自动化中可以选用的平台模型。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。",
+      "选择成员在会话、消息和自动化中可以选用的平台模型。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。一旦关闭任一模型，之后加入平台的模型会保持关闭，直到你将其开启。",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message: "平台的默认模型始终保持开启，因为会话会回退到它。",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "目录中新增",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "已为成员开启 {model}",

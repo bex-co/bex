@@ -1438,15 +1438,20 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Escolha quais modelos da plataforma os membros podem usar em sessões, mensagens e automações. Uma sessão ou automação que já usa um modelo que você desativar passa para o modelo padrão a partir do próximo turno.",
+      "Escolha quais modelos da plataforma os membros podem usar em sessões, mensagens e automações. Uma sessão ou automação que já usa um modelo que você desativar passa para o modelo padrão a partir do próximo turno. Depois que você desativa um modelo, os modelos que a plataforma adicionar mais tarde ficam desativados até você ativá-los.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
       "O modelo padrão da plataforma fica sempre ativado, porque as sessões recorrem a ele.",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "Novo no catálogo",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "{model} ativado para os membros",

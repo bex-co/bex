@@ -1,20 +1,20 @@
 # w10 · m568 — A model added to the platform catalog stays off in a workspace whose admins narrowed its list, as Devin's allowlist leaves a model it does not list off
 
-**Worker:** worker10 **Goal:** the workspace model list becomes Devin's two modes. A workspace whose admins have turned no model off allows every catalog model, including one added later. Once an admin turns any model off, the list is an allowlist: a model added to the catalog afterwards is off there until an admin turns it on. Settings → Agents and `bex agent env` show such a model as off because it is new in the catalog. No workspace's offer changes when this ships. **Status:** todo
+**Worker:** worker10 **Goal:** the workspace model list becomes Devin's two modes. A workspace whose admins have turned no model off allows every catalog model, including one added later. Once an admin turns any model off, the list is an allowlist: a model added to the catalog afterwards is off there until an admin turns it on. Settings → Agents and `bex agent env` show such a model as off because it is new in the catalog. No workspace's offer changes when this ships. **Status:** in progress (t001–t005, t007–t009 done; t006's production half and t010 wait for the pin to carry the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: storage of the allowlist, when a workspace allows every model, the read field naming new models, the legacy-row conversion and the rolling deploy; ADR047, ADR090 and ADR018 amended | 45m | — |
-| [t002](t002.md) | Backend: the migration, the store, and the one-shot conversion of rows narrowed under the opt-out | 1h15m | t001 |
-| [t003](t003.md) | Backend: the offered set reads the allowlist, and the environment read names the models that are new in the catalog on REST, GraphQL and MCP | 1h30m | t002 |
-| [t004](t004.md) | CLI: `bex agent env` shows a new catalog model as off, "new in the catalog" | 45m | t003 |
-| [t005](t005.md) | Dashboard: Settings → Agents shows a new catalog model off with a "New in the catalog" label | 1h | t003 |
+| [t001](done/t001.md) | Design: storage of the allowlist, when a workspace allows every model, the read field naming new models, the legacy-row conversion and the rolling deploy; ADR047, ADR090 and ADR018 amended — **DONE** | 45m | — |
+| [t002](done/t002.md) | Backend: the migration, the store, and the one-shot conversion of rows narrowed under the opt-out — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | Backend: the offered set reads the allowlist, and the environment read names the models that are new in the catalog on REST, GraphQL and MCP — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | CLI: `bex agent env` shows a new catalog model as off, "new in the catalog" — **DONE** | 45m | t003 |
+| [t005](done/t005.md) | Dashboard: Settings → Agents shows a new catalog model off with a "New in the catalog" label — **DONE** | 1h | t003 |
 | [t006](t006.md) | Live check: a catalog gaining a model on `dev-10`, then production's offers unchanged by the deploy | 45m | t003, t004, t005 |
-| [t007](t007.md) | Render parity (Devin) | 30m | t006 |
-| [t008](t008.md) | Simplify | 20m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 7h45m**.
@@ -49,6 +49,67 @@ Total: **10 tasks, about 7h45m**.
 7. **Live.**
    - On `dev-10`, a bex-api restarted with one more catalog model offers it to an un-narrowed workspace and not to a narrowed one, as the capabilities read and a refused create show.
    - On production, once the pin carries the milestone, `tian-personal` still offers the four catalog models. Every narrowed row, counted read-only with hashed ids, offers the same set it offered before the deploy.
+
+## Design record (t001, 2026-11-22)
+
+Against Devin's team settings, "Allow all models" beside "Allowlist specific models" ([Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-settings)), and its rule "A model is allowed when its UID is listed or it carries a listed tag" over "Model UIDs on your team's allowlist, as stored" ([List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models)), both re-read 2026-11-22.
+
+- **Storage.** Migration 0330 adds a nullable `agent_environments.known_models text[]` (at most 64), the catalog the last narrowing write saw. `disabled_models` stays the models an admin turned off. The allowlist is `known_models − disabled_models`, and `catalog − known_models` are the new ones. This beat a nullable `enabled_models`: an allowlist column that a previous-release Pod never writes would go stale under its writes, and a write that turns a model on could not be told apart from a model new in the catalog. With `known_models`, a previous-release write (`disabled_models` alone, against the same catalog) reads exactly as that Pod reads it.
+- **When a workspace allows every model.** The mode follows the list. A write leaving no catalog model off stores `known_models` NULL ("Allow all models"): no row, a row that never narrowed, and a write turning every model back on all allow a later model. Any model off stores the catalog as `known_models` ("Allowlist specific models"). No explicit mode: DoD 1 asks that "turned every model back on" allows all, and Devin's allowlist that lists every current model is a narrower variant, filed as [w10/046](../046.md).
+- **The read.** `newModels` on REST `GET /v1/agent-environment`, GraphQL `AgentEnvironment.newModels: [String!]!` and MCP `get_agent_environment`: the catalog models off only because the allowlist predates them, in catalog order. It is `[]` off the route, on the workspace's own key and in "allow all". `enabledModels` stays the effective offered list, the catalog default always first. A write records every model it leaves off as an admin's, a new one included: the admin saw it in the list.
+- **Legacy rows and the rollout.**
+  - The read rule: a row with `known_models` NULL or `disabled_models` empty reads as the opt-out did, `catalog − disabled_models`. That covers a row narrowed under 0315 and not yet converted, and every row a previous-release Pod writes: one narrowing an "allow all" row, one turning every model on, and one changing which models an allowlist has.
+  - New writes keep `disabled_models` exact (`catalog − enabledModels`), so a previous-release Pod reads them as the new code does while the catalog is unchanged.
+  - The conversion: bex-api records the catalog it starts with as `known_models` on every row with `known_models` NULL and `disabled_models` not empty (`PGStore.ConvertLegacyModelLists`, one idempotent `UPDATE` that keeps `updated_at`). It runs at start and hourly, so a row a previous-release Pod narrows during this rollout converts before a later deploy can grow the catalog. It is skipped off the platform route. It is exact because production's catalog last changed in `1988962c01` (2026-11-19), before 0315 shipped (`68e848a935`, 2026-11-20), and re-checked 2026-11-22. The deploy that first ships m568 must add no catalog model.
+- **Unchanged:** the catalog default always on (`leftOn`'s `i == 0`), `AGENT_ENVIRONMENT_MODELS_INVALID`, the next-turn fallback, and `retiredTemplateModel`'s "turned off in this workspace" note, which a new model gets too because `inPlatformCatalog` holds for it.
+- **ADRs amended:** ADR047 D7's w10/m527 amendment ("Two modes, as Devin's", "Storage"), ADR090 § Model pin ("A workspace narrows the catalog") and the ADR018 agent-model row. Each drops "a model added to the catalog later starts on" and the w10/036 divergence.
+
+## Live check (t006)
+
+**`dev-10`, 2026-11-22 (DoD 7, first half — holds).** bex-api built from the tree with the m568 changes, on production's catalog (`BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter`, a placeholder key, `BEX_AGENT_PLATFORM_MODELS=anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5`). The agent-session leg on the shared cluster is held by `dev-9`, so `dev-10` ran its agent dependencies as stand-ins: enforced authz on this checkout's `scripts/backend-test-deps.sh` OpenFGA (`DEV_OPENFGA_URL`), and unreachable OpenSandbox, model-proxy and gateway URLs. That is enough for the capabilities read and a create's model check, which come before any sandbox work. Two Kratos users (`dev-10.local`, emails verified through the Kratos admin API) own workspaces A `tea-dc1ntc9jg4r42mh7uko0` (disposable) and B `tea-dc1ntc9jg4r42mh7ukog` (disposable).
+
+1. A turned opus off (`PATCH /v1/agent-environment`), and B wrote only `networkTier`. A's REST environment read `enabledModels` the other three models and `newModels: []`. B's read all four.
+2. bex-api restarted (`bash scripts/dev-env.sh 10 up`) with `moonshotai/kimi-k3` appended to the catalog:
+   - **A** read five `models`, the same three `enabledModels` and `newModels: ["moonshotai/kimi-k3"]`. The capabilities read's claude `models` left kimi out.
+   - `bex agent env` (the CLI built from the tree, `BEX_HOST` + `BEX_API_KEY`) printed `Models off  anthropic/claude-opus-5.5 (turned off by an admin); moonshotai/kimi-k3 (new in the catalog)`.
+   - `POST /v1/agent-sessions` naming kimi answered `400 AGENT_SESSION_MODEL_NOT_OFFERED`: "moonshotai/kimi-k3 is turned off in this workspace, whose members may choose …; a workspace admin can turn it on in Settings → Agents". `bex agent run --model moonshotai/kimi-k3` printed the same.
+   - **B** read all five as `enabledModels`, `newModels: []` and the capabilities `models` all five, and a create naming kimi was accepted (`201`; deleted at once).
+3. `bex agent env set --models …,moonshotai/kimi-k3` in A turned it on. A then read `newModels: []`, and its capabilities read and a create offered kimi (session deleted). Opus stayed "(turned off by an admin)".
+4. Settings → Agents (the dashboard from the tree against `dev-10`, signed in with a third disposable user whose row was set so kimi is new) showed kimi switched off with "New in the catalog" under it at 1280 px and 390 px. The section's heading and description wrapped identically in the skeleton and the ready state. The skeleton holds four representative rows, so the ready list differs only by the catalog's fifth row and the data-dependent label.
+5. Torn down: `bash scripts/dev-env.sh 10 down` (2026-11-22).
+
+**Production before the deploy, 2026-11-22 (read-only, `hetzner-prod`, pin `19fdb46f1758`).** `agent_environments` has 3 rows. None is narrowed (`cardinality(disabled_models) > 0`: 0) and none is on its own key, so every workspace offers the whole catalog of four. `tian-personal`'s row turns no model off. Reproduce with `kubectl --context hetzner-prod -n bex-system exec bex-db-2 -c postgres -- psql -U postgres -d bex -At -c "SET default_transaction_read_only = on; SELECT count(*), count(*) FILTER (WHERE cardinality(disabled_models) > 0), count(*) FILTER (WHERE known_models IS NOT NULL) FROM agent_environments"` (the last column exists once 0330 runs). The conversion therefore has no row to convert there.
+
+**Production after the deploy:** pending. Once the pin carries the milestone, run the same read. Every row must offer what it did, the narrowed count stays 0 unless an admin narrowed a list since, and `tian-personal`'s `GET /v1/agent-environment` must read the four catalog models as `enabledModels` with `newModels: []`.
+
+## Render parity (t007, Devin, 2026-11-22)
+
+Devin's pages re-read 2026-11-22: [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-settings) ("Allowlist specific models": "Restrict users to a curated list of approved models"; "Allow all models": "Give users access to all available models"), [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) ("A model is allowed when its UID is listed or it carries a listed tag"), [Devin Desktop admin controls](https://docs.devin.ai/desktop/controls) (a model outside the allowlist is hidden "from the relevant picker or settings page"; a default "Must be in the allowlist to take effect").
+
+| Surface | bex after m568 | Devin |
+| --- | --- | --- |
+| REST `GET /v1/agent-environment`, GraphQL `agentEnvironment`, MCP `get_agent_environment` | `enabledModels` the effective list; `newModels` the models off because the allowlist predates them (`TestAModelAddedAfterANarrowingWriteStaysOff`, all three surfaces) | an allowlist of stored UIDs; a model it does not list is not allowed ✅ |
+| REST `PATCH`, GraphQL `updateAgentEnvironment`, MCP `update_agent_environment`, `bex agent env set --models` | every model on allows all; any model off is an allowlist; the descriptions and `--models` help say so | "Allow all models" / "Allowlist specific models" ✅ (the mode follows the list: w10/046) |
+| Capabilities `models` (REST, GraphQL, MCP), `bex agent models`, the composer, steering composer and automation form pickers | a new model is left out, as any turned-off one (the pickers read the capabilities `models`) | a model outside the allowlist is hidden from pickers ✅ |
+| Create, message, automation create and update, `defaultModel` | `AGENT_SESSION_MODEL_NOT_OFFERED` / `AGENT_ENVIRONMENT_MODEL_NOT_OFFERED`, "turned off in this workspace … an admin can turn it on" | not allowed; a default outside the list does not take effect ✅ |
+| `bex agent env`, Settings → Agents | "(new in the catalog)" beside "(turned off by an admin)"; "New in the catalog" under the switch | Devin shows no such label; bex's is extra information, not a divergence |
+
+No drift beyond w10/037 (allow by provider tag) and the new w10/046 (an explicit allowlist that lists every current model).
+
+## Simplify (t008, 2026-11-22)
+
+`/simplify` over the backend, CLI and dashboard changes. Taken: the conversion passes the catalog as is, so a nil catalog writes no change instead of an empty allowlist, and the model switch row computes its note once with one id per row. Nothing else was worth changing.
+
+## Test coverage (t009, 2026-11-22)
+
+- `lego/backend/internal/agentsessions/model_allowlist_test.go`:
+  - `TestAModelAddedAfterANarrowingWriteStaysOff`: a model added after a narrowing write is left out of the capabilities `models` and listed in `newModels` on REST, GraphQL and MCP. Create, message, automation create and update are refused, as is `defaultModel` and the automation run's note. Turning it on offers it, and every model on allows all, so the next model is on.
+  - `TestAModelAddedToAWorkspaceThatNeverNarrowedIsOffered`: no row, a row turning nothing off, and every model turned back on.
+  - `TestTheModelListRolloutReadRule`: a previous-release write reads as the opt-out under the same catalog. A 0315 row and a previous-release all-on write allow a later model, an allowlist does not, and the old default stays on. A model leaving the catalog drops out of the reads and of the next write.
+- `TestALegacyNarrowedListConvertsWithItsOfferUnchanged` (real Postgres): skipped off the route, offer unchanged after the conversion, a later model off and new, a second run idempotent.
+- `TestAgentEnvironmentKnownModelsAndTheLegacyConversion` (store, real Postgres): the column round trip, NULL for allow all, the conversion keeping `updated_at`, the 64 cap.
+- CLI `TestEnvShowsTheEnabledModels` (new-in-the-catalog cases) and the contract fixture's `newModels`. Dashboard: the label renders only for a new model, and turning one on saves it into `enabledModels` and drops the label while it saves.
+- Proved real by reverting: with `leftOn` allowing every model, `TestAModelAddedAfterANarrowingWriteStaysOff` and `TestTheModelListRolloutReadRule` fail. Without the empty-`disabled_models` rule the rollout test fails. Without the dashboard's pending guard the label test fails.
 
 ## Source + Goal linkage
 

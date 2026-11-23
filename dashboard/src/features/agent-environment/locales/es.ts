@@ -1444,15 +1444,20 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Elige qué modelos de la plataforma pueden usar los miembros en sesiones, mensajes y automatizaciones. Una sesión o automatización que ya usa un modelo que desactivas pasa al modelo predeterminado desde su siguiente turno.",
+      "Elige qué modelos de la plataforma pueden usar los miembros en sesiones, mensajes y automatizaciones. Una sesión o automatización que ya usa un modelo que desactivas pasa al modelo predeterminado desde su siguiente turno. Cuando desactivas un modelo, los modelos que la plataforma añada después siguen desactivados hasta que los actives.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that once one is off a model added to the catalog later stays off (w10/m568)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
       "El modelo predeterminado de la plataforma siempre sigue activado, porque las sesiones recurren a él.",
     description:
       "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsNew": {
+    message: "Nuevo en el catálogo",
+    description:
+      "Note under a platform model that is off because it joined the catalog after an admin narrowed the list; an admin turns it on with its switch (w10/m568)",
   },
   "agentEnvironment.modelsTurnedOn": {
     message: "{model} activado para los miembros",
