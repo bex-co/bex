@@ -159,10 +159,11 @@ type DeployProgressSource func(ctx context.Context, resource string, end time.Ti
 // string), so the values the tail branches on are restated here rather than
 // imported.
 const (
-	deployStatusCreated         = "created"
-	deployStatusQueued          = "queued"
-	deployStatusBuildInProgress = "build_in_progress"
-	deployStatusPreDeployFailed = "pre_deploy_failed"
+	deployStatusCreated             = "created"
+	deployStatusQueued              = "queued"
+	deployStatusBuildInProgress     = "build_in_progress"
+	deployStatusPreDeployInProgress = "pre_deploy_in_progress"
+	deployStatusPreDeployFailed     = "pre_deploy_failed"
 	// store.PreDeploySucceeded, a row's pre_deploy_status.
 	preDeploySucceeded = "succeeded"
 )
@@ -414,10 +415,10 @@ func styled(f renderlog.Form, line string) string {
 // CHANGED reason is a new id — which is what makes the tail's dedupe "re-emit
 // on change, never per tick" for free.
 func progressLines(d DeployProgress, pc progressContext) []LogEntry {
-	return buildProgressLines(d, pc, true)
+	return buildProgressLines(d, pc, true, false)
 }
 
-func buildProgressLines(d DeployProgress, pc progressContext, includeClosing bool) []LogEntry {
+func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, holdPreDeployEnd bool) []LogEntry {
 	repo := pc.repo
 	// A build story is owed only by a deploy that actually built (w4/m110
 	// t004). Every repo-backed deploy used to get one, so a rollback and a
@@ -484,7 +485,10 @@ func buildProgressLines(d DeployProgress, pc progressContext, includeClosing boo
 			}
 		}
 	}
-	out = append(out, preDeployLines(d)...)
+	out = append(out, preDeployLinesWith(d, !holdPreDeployEnd)...)
+	if holdPreDeployEnd {
+		return out
+	}
 	out = append(out, rolloutLinesWith(d, repo != "" && d.Built, includeClosing)...)
 	out = append(out, portScanLines(d)...)
 	if includeClosing && !d.FinishedAt.IsZero() {
@@ -544,7 +548,7 @@ const (
 // before its close, which records the step's failure after the operator
 // settled it. The operator starts the rollout after it settles a passing
 // step, so the rollout's lines follow these.
-func preDeployLines(d DeployProgress) []LogEntry {
+func preDeployLinesWith(d DeployProgress, includeVerdict bool) []LogEntry {
 	run, last := d.PreDeploy, d.StartedAt
 	if run.StartedAt.IsZero() || run.Command == "" {
 		return nil
@@ -563,6 +567,9 @@ func preDeployLines(d DeployProgress) []LogEntry {
 	add(run.StartedAt, fmt.Sprintf(preDeployStartingLineFormat, run.Command))
 	if run.Native && !run.ContainerStartedAt.IsZero() {
 		add(run.ContainerStartedAt, runningLine(run.Command))
+	}
+	if !includeVerdict {
+		return out
 	}
 	switch {
 	case run.FinishedAt.IsZero():
@@ -1204,6 +1211,53 @@ type progressFollower struct {
 	// followed is the deploy whose build pod the tail attached to; the reads
 	// while the build streams and the close wait read its row, not a newer one.
 	followed string
+	// streamPreDeploy is true for Render's WebSocket build tail (followBuilds):
+	// a deploy whose pre-deploy step has started holds its step verdict and
+	// everything after it until the step's pod has been streamed (w32/092).
+	streamPreDeploy  bool
+	preDeployDrained map[string]bool
+}
+
+// preDeployOpen reports that d is currently in its pre-deploy step.
+func preDeployOpen(d DeployProgress) bool {
+	return d.Status == deployStatusPreDeployInProgress && d.FinishedAt.IsZero()
+}
+
+// needsPreDeploy reports that this tail still owes d's pre-deploy pod output
+// before emitting d's pre-deploy verdict or anything after it. An older deploy
+// whose step already finished before the tail's lower bound is never replayed.
+func (f *progressFollower) needsPreDeploy(d DeployProgress) bool {
+	if f == nil || !f.streamPreDeploy || d.ID == "" || f.preDeployDrained[d.ID] || !f.q.keepPod(d.ID) {
+		return false
+	}
+	if preDeployOpen(d) {
+		return true
+	}
+	if d.PreDeploy.StartedAt.IsZero() {
+		return false
+	}
+	if from := f.q.readFrom(); !from.IsZero() {
+		if !d.PreDeploy.FinishedAt.IsZero() && d.PreDeploy.FinishedAt.Before(from) {
+			return false
+		}
+		if !d.FinishedAt.IsZero() && d.FinishedAt.Before(from) {
+			return false
+		}
+	}
+	if !f.q.End.IsZero() && d.PreDeploy.StartedAt.After(f.q.End) {
+		return false
+	}
+	return true
+}
+
+func (f *progressFollower) markPreDeployDrained(deployID string) {
+	if f == nil || deployID == "" {
+		return
+	}
+	if f.preDeployDrained == nil {
+		f.preDeployDrained = map[string]bool{}
+	}
+	f.preDeployDrained[deployID] = true
 }
 
 // buildOpen reports that the followed deploy has not finished building: its
@@ -1333,12 +1387,18 @@ func (f *progressFollower) awaitClose(ctx context.Context, emit func(LogEntry) e
 // readFollowed re-reads the followed deploy's row into f.row. A newer deploy
 // does not displace it: its lines are not this build's.
 func (f *progressFollower) readFollowed(ctx context.Context) bool {
+	return f.readRow(ctx, f.followed)
+}
+
+// readRow re-reads id's deploy row into f.row without letting a newer deploy
+// displace it.
+func (f *progressFollower) readRow(ctx context.Context, id string) bool {
 	rows, err := f.s.DeployProgress(ctx, f.resource, time.Time{})
 	if err != nil {
 		return false
 	}
 	for _, d := range rows {
-		if d.ID == f.followed {
+		if d.ID == id {
 			f.row = d
 			return true
 		}
@@ -1346,12 +1406,43 @@ func (f *progressFollower) readFollowed(ctx context.Context) bool {
 	return false
 }
 
+// awaitPreDeployClose waits for deployID's row to leave pre_deploy_in_progress
+// after its pre-deploy pod has finished streaming, emitting the step's verdict
+// (and any rollout or closing lines earned since). Bounded by buildCloseWait.
+func (f *progressFollower) awaitPreDeployClose(ctx context.Context, deployID string, emit func(LogEntry) error) error {
+	if f == nil || deployID == "" {
+		return nil
+	}
+	deadline := time.Now().Add(f.s.buildCloseWait())
+	for {
+		if f.readRow(ctx, deployID) {
+			if err := f.emitRow(f.row, false, emit); err != nil {
+				return err
+			}
+			if !preDeployOpen(f.row) {
+				return nil
+			}
+		}
+		if !time.Now().Before(deadline) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(f.s.buildPodWait()):
+		}
+	}
+}
+
 // emitRow sends the lines d has earned that this tail has not sent yet. With
 // holdClosing it keeps back the lines d earned by closing: a first-exit
-// verdict, the verdict at its close and the primary URL block after it.
+// verdict, the verdict at its close and the primary URL block after it. When
+// needsPreDeploy holds, it also keeps back the pre-deploy verdict and
+// everything after it until the step's pod has been streamed.
 func (f *progressFollower) emitRow(d DeployProgress, holdClosing bool, emit func(LogEntry) error) error {
+	holdPreDeploy := f.needsPreDeploy(d)
 	hold := holdClosing && !d.FinishedAt.IsZero()
-	for _, e := range buildProgressLines(d, f.pc, !holdClosing) {
+	for _, e := range buildProgressLines(d, f.pc, !holdClosing && !holdPreDeploy, holdPreDeploy) {
 		if hold {
 			if at, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil && !at.Before(d.FinishedAt) {
 				continue

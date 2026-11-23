@@ -1693,9 +1693,23 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 		}()
 	}
 	prog := s.newProgressFollower(q, resource, pc)
+	if prog != nil {
+		prog.streamPreDeploy = true
+	}
+	seenPreDeploy := map[string]bool{}
 	for {
 		passStart := time.Now()
 		_ = s.followBuild(ctx, q, resource, prog, send)
+		mu.Lock()
+		failed := writeErr
+		mu.Unlock()
+		if failed != nil {
+			return failed
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		_ = s.followPreDeploy(ctx, q, resource, pc.namespace, prog, seenPreDeploy, send)
 		mu.Lock()
 		failed, resume := writeErr, last.Add(time.Nanosecond)
 		mu.Unlock()
@@ -1719,6 +1733,166 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(wait):
+		}
+	}
+}
+
+// followPreDeploy streams the active deploy's pre-deploy Job pod from the App's
+// own namespace (ADR043 D8) onto a WebSocket build tail (w32/092). It emits
+// each line as type=build with the pod's projected instance id — matching the
+// Alloy-shipped history read's labels and logID — between the step's start/
+// Running narration and its verdict. When DeployProgress is wired, progressFollower
+// holds the step's verdict and everything after it until this pod finishes
+// streaming (or the step settles with no started container), so even a fast
+// step prints its output before `==> Pre-deploy has failed` or `==> Pre-deploy
+// complete!`.
+func (s *Service) followPreDeploy(ctx context.Context, q LogQuery, resource, appNS string, prog *progressFollower, seenPods map[string]bool, emit func(LogEntry) error) error {
+	if prog == nil {
+		pod, found := s.findPreDeployPod(ctx, q, appNS, 0, q.readFrom(), seenPods)
+		if !found || !containerStarted(&pod, core.PreDeployContainer) {
+			return nil
+		}
+		opened, err := s.streamPreDeployPod(ctx, q, appNS, resource, pod.Name, "", q.readFrom(), nil, emit)
+		if opened || podFinished(&pod) {
+			seenPods[podFollowKey(&pod)] = true
+		}
+		return err
+	}
+	if !prog.needsPreDeploy(prog.row) {
+		return nil
+	}
+	deployID, gen := prog.row.ID, prog.row.Generation
+	since := prog.q.readFrom()
+	wait := s.buildPodWait()
+	// On a native runtime, wait briefly for the operator/reconciler to record
+	// ContainerStartedAt so `==> Running '<command>'` prints before the
+	// command's first output line. Kubelet keeps the container's log from
+	// `since`, so delaying open loses no lines.
+	runningWaitLeft := 2
+	for {
+		if prog.readRow(ctx, deployID) {
+			if err := prog.emitRow(prog.row, false, emit); err != nil {
+				return err
+			}
+			if gen <= 0 && prog.row.Generation > 0 {
+				gen = prog.row.Generation
+			}
+		}
+		pod, found := s.findPreDeployPod(ctx, q, appNS, gen, since, seenPods)
+		if found && containerStarted(&pod, core.PreDeployContainer) {
+			if prog.row.PreDeploy.Native && prog.row.PreDeploy.ContainerStartedAt.IsZero() && preDeployOpen(prog.row) && runningWaitLeft > 0 {
+				runningWaitLeft--
+			} else {
+				opened, err := s.streamPreDeployPod(ctx, prog.q, appNS, resource, pod.Name, deployID, since, prog, emit)
+				if err != nil {
+					return err
+				}
+				if opened || podFinished(&pod) || !preDeployOpen(prog.row) {
+					seenPods[podFollowKey(&pod)] = true
+					prog.markPreDeployDrained(deployID)
+					return prog.awaitPreDeployClose(ctx, deployID, emit)
+				}
+			}
+		} else if !preDeployOpen(prog.row) {
+			// The step already settled and no started pod exists (e.g.,
+			// StartError, ImagePullBackOff, or pod already reaped).
+			prog.markPreDeployDrained(deployID)
+			return prog.emitRow(prog.row, false, emit)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+}
+
+// findPreDeployPod resolves the newest unseen pre-deploy step pod for q.App in
+// appNS. When gen > 0 it matches the exact Job name for that release
+// generation, excluding other deploys' pods and initialDeployHook pods.
+func (s *Service) findPreDeployPod(ctx context.Context, q LogQuery, appNS string, gen int64, since time.Time, seenPods map[string]bool) (corev1.Pod, bool) {
+	pods, err := s.PreDeployPods(ctx, q.App, appNS)
+	if err != nil {
+		return corev1.Pod{}, false
+	}
+	var job string
+	if gen > 0 {
+		job = appv1alpha1.PreDeployJobName(q.App, appv1alpha1.BuildRevision(gen))
+	}
+	var matches []corev1.Pod
+	for i := range pods {
+		p := pods[i]
+		if !q.keepPod(p.Name) || seenPods[podFollowKey(&p)] {
+			continue
+		}
+		if job != "" {
+			if !isJobPod(p.Name, job) {
+				continue
+			}
+		} else if isInitialDeployHookPod(&p) || terminatedBefore(p, since)[core.PreDeployContainer] {
+			continue
+		}
+		matches = append(matches, p)
+	}
+	if len(matches) == 0 {
+		return corev1.Pod{}, false
+	}
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].CreationTimestamp.Time.Equal(matches[j].CreationTimestamp.Time) {
+			return matches[i].Name < matches[j].Name
+		}
+		return matches[i].CreationTimestamp.Time.Before(matches[j].CreationTimestamp.Time)
+	})
+	return matches[len(matches)-1], true
+}
+
+func isInitialDeployHookPod(pod *corev1.Pod) bool {
+	return pod.Labels["app.bex.co/predeploy-step"] == "initial-deploy-hook" || strings.Contains(pod.Name, "-hook-")
+}
+
+// streamPreDeployPod follows one pre-deploy pod's `predeploy` container onto
+// emit as LogTypeBuild lines, while polling deployID's row for start-phase
+// narration (verdict held until EOF).
+func (s *Service) streamPreDeployPod(ctx context.Context, q LogQuery, appNS, resource, podName, deployID string, since time.Time, prog *progressFollower, emit func(LogEntry) error) (bool, error) {
+	ns := appNS
+	if ns == "" {
+		ns = s.Namespace
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ch := make(chan LogEntry, 64)
+	var opened atomic.Bool
+	go func() {
+		defer close(ch)
+		s.streamContainerLogs(ctx, ns, q.App, podName, core.PreDeployContainer, LogTypeBuild, since, false, ch, &opened)
+	}()
+	var narrateC <-chan time.Time
+	if prog != nil && deployID != "" {
+		ticker := time.NewTicker(s.buildPodWait())
+		defer ticker.Stop()
+		narrateC = ticker.C
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return opened.Load(), ctx.Err()
+		case <-narrateC:
+			if prog.readRow(ctx, deployID) {
+				if err := prog.emitRow(prog.row, false, emit); err != nil {
+					return opened.Load(), err
+				}
+			}
+		case e, ok := <-ch:
+			if !ok {
+				return opened.Load(), nil
+			}
+			if !q.keep(e) {
+				continue
+			}
+			setLogEntryResource(&e, resource)
+			if err := emit(e); err != nil {
+				return opened.Load(), err
+			}
 		}
 	}
 }
