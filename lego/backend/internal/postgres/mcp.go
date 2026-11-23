@@ -324,6 +324,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "recover_postgres",
 		Description: "Recover a managed Postgres database to a NEW instance restored to a point in time (the source is never modified).",
+		Annotations: mcputil.NonDestructiveAnnotations(false, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in recoverPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.Recover(ctx, in.PostgresID, RecoverRequest{
 			Name:          in.Name,

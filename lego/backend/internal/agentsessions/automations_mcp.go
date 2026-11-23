@@ -56,12 +56,6 @@ type listAutomationRunsArgs struct {
 
 // registerAutomationMCP adds the ADR101 D8 agent automation tools.
 func (s *Service) registerAutomationMCP(server *mcp.Server) {
-	no := false
-	// A verb outside get/list/create/update/delete defaults to destructive;
-	// these are not, so the hints are explicit.
-	safe := func(idempotent, openWorld bool) *mcp.ToolAnnotations {
-		return &mcp.ToolAnnotations{IdempotentHint: idempotent, DestructiveHint: &no, OpenWorldHint: &openWorld}
-	}
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_automations", Description: "List a workspace's agent automations, newest first: a schedule plus a session template that starts a cloud agent session on each fire, as the member who created it. mine=true keeps only yours. Page with cursor (the previous nextCursor)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listAutomationsArgs) (*mcp.CallToolResult, AgentAutomationList, error) {
 			out, err := s.AgentAutomations(ctx, in.OwnerID, in.Mine, in.Cursor, in.Limit)
@@ -89,22 +83,22 @@ func (s *Service) registerAutomationMCP(server *mcp.Server) {
 			}
 			return nil, deleteResult{Deleted: true}, nil
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "pause_agent_automation", Description: "Stop an agent automation firing (its creator or a workspace admin). Pausing a paused automation changes nothing.", Annotations: safe(true, false)},
+	mcputil.AddTool(server, &mcp.Tool{Name: "pause_agent_automation", Description: "Stop an agent automation firing (its creator or a workspace admin). Pausing a paused automation changes nothing.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in automationToolArgs) (*mcp.CallToolResult, AgentAutomation, error) {
 			out, err := s.PauseAgentAutomation(ctx, in.OwnerID, in.Automation)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "resume_agent_automation", Description: "Re-enable a paused agent automation (its creator or a workspace admin): clears the pause reason and failure count and schedules the next fire.", Annotations: safe(true, false)},
+	mcputil.AddTool(server, &mcp.Tool{Name: "resume_agent_automation", Description: "Re-enable a paused agent automation (its creator or a workspace admin): clears the pause reason and failure count and schedules the next fire.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in automationToolArgs) (*mcp.CallToolResult, AgentAutomation, error) {
 			out, err := s.ResumeAgentAutomation(ctx, in.OwnerID, in.Automation)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "run_agent_automation", Description: "Fire an agent automation now, as a normal run that starts a cloud agent session under the same authorization, overlap and spend rules as a scheduled fire. Each call is a new run.", Annotations: safe(false, true)},
+	mcputil.AddTool(server, &mcp.Tool{Name: "run_agent_automation", Description: "Fire an agent automation now, as a normal run that starts a cloud agent session under the same authorization, overlap and spend rules as a scheduled fire. Each call is a new run.", Annotations: mcputil.NonDestructiveAnnotations(false, true)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in automationToolArgs) (*mcp.CallToolResult, AgentAutomationRun, error) {
 			out, err := s.RunAgentAutomationNow(ctx, in.OwnerID, in.Automation)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "take_over_agent_automation", Description: "Make yourself (a workspace admin) the creator of an agent automation, so its fires run as you. Use it when the creator left or lost access.", Annotations: safe(true, false)},
+	mcputil.AddTool(server, &mcp.Tool{Name: "take_over_agent_automation", Description: "Make yourself (a workspace admin) the creator of an agent automation, so its fires run as you. Use it when the creator left or lost access.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in automationToolArgs) (*mcp.CallToolResult, AgentAutomation, error) {
 			out, err := s.TakeOverAgentAutomation(ctx, in.OwnerID, in.Automation)
 			return nil, out, err

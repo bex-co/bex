@@ -314,7 +314,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.ToolOutput(ctx, in.ID, in.Turn, in.ToolCallID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_session_tags", Description: "Replace all tags on a cloud coding-agent session (tags filter list_agent_sessions). Pass the complete new set; [] clears them. Refused on an archived session."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_session_tags", Description: "Replace all tags on a cloud coding-agent session (tags filter list_agent_sessions). Pass the complete new set; [] clears them. Refused on an archived session.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in setTagsArgs) (*mcp.CallToolResult, View, error) {
 			if in.Tags == nil {
 				return nil, View{}, errTagsRequired() // null is not [] here, as on REST
@@ -327,12 +327,12 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.UpdateSession(ctx, in.ID, in.SessionUpdate)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Archive(ctx, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Unarchive(ctx, in.ID)
 			return nil, out, err
@@ -349,7 +349,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Resume(ctx, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in attachTicketArgs) (*mcp.CallToolResult, View, error) {
 			action := in.Action
 			if action == "" {
@@ -369,8 +369,8 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, IdempotencyKey: in.IdempotencyKey, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs, OutputSchema: in.OutputSchema, OutputRequired: in.OutputRequired, SessionSecretsInput: in.SessionSecretsInput, Skills: in.Skills, Model: in.Model})
 		return nil, out, err
 	}
-	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session. On an idle session (state succeeded or failed) it runs a new turn, re-dispatches the sandbox on the same branch and updates the same pull request. While a turn is running, or behind messages already queued, it is queued instead: the answer carries queuedMessage (its id and place), and it runs as its own turn when the turn before it settles, one message per turn in order, at most 10 queued per session (AGENT_SESSION_QUEUE_FULL). The session must not be archived or canceled. Manage queued messages with list/edit/delete/move_agent_session_queued_message; interrupt_agent_session stops the running turn so a queued message runs now. Pass outputSchema to require a machine-readable result for this turn, read from outcome.result; inline secrets cannot be queued (name workspace secrets in secretNames)."}, sendMessage)
-	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same pull request."}, sendMessage)
+	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session. On an idle session (state succeeded or failed) it runs a new turn, re-dispatches the sandbox on the same branch and updates the same pull request. While a turn is running, or behind messages already queued, it is queued instead: the answer carries queuedMessage (its id and place), and it runs as its own turn when the turn before it settles, one message per turn in order, at most 10 queued per session (AGENT_SESSION_QUEUE_FULL). The session must not be archived or canceled. Manage queued messages with list/edit/delete/move_agent_session_queued_message; interrupt_agent_session stops the running turn so a queued message runs now. Pass outputSchema to require a machine-readable result for this turn, read from outcome.result; inline secrets cannot be queued (name workspace secrets in secretNames).", Annotations: mcputil.NonDestructiveAnnotations(false, true)}, sendMessage)
+	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same pull request.", Annotations: mcputil.NonDestructiveAnnotations(false, true)}, sendMessage)
 	s.registerQueueMCP(server)
 	s.registerAttachmentMCP(server)
 	s.registerSecretMCP(server)
@@ -442,7 +442,7 @@ func (s *Service) registerRepoEnvironmentMCP(server *mcp.Server) {
 			out, err := s.RepoEnvironmentBuild(ctx, in.OwnerID, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "build_agent_repo_environment", Description: "Build a repository environment now (workspace admins only): the setup steps run once with the repository's secrets (workspace- and repo-scoped), at most 3 hours, and the result becomes the image its sessions boot from with the steps already run. Files a step writes are kept in the image. A queued build is replaced; a running one finishes first. At most 12 builds start per repository in 24 hours (AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED)."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "build_agent_repo_environment", Description: "Build a repository environment now (workspace admins only): the setup steps run once with the repository's secrets (workspace- and repo-scoped), at most 3 hours, and the result becomes the image its sessions boot from with the steps already run. Files a step writes are kept in the image. A queued build is replaced; a running one finishes first. At most 12 builds start per repository in 24 hours (AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED).", Annotations: mcputil.NonDestructiveAnnotations(false, true)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in repoEnvironmentArgs) (*mcp.CallToolResult, RepoEnvironmentBuild, error) {
 			out, err := s.BuildRepoEnvironment(ctx, in.OwnerID, in.Repo)
 			return nil, out, err
@@ -485,7 +485,7 @@ func (s *Service) registerAttachmentMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{
 		Name:        "upload_agent_attachment",
 		Description: fmt.Sprintf("Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most %d MiB decoded (use REST POST /v1/agent-attachments for up to %d MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.", maxMCPUploadBytes>>20, maxAttachmentBytes>>20),
-		Annotations: mcputil.DefaultAnnotations("create_"),
+		Annotations: mcputil.NonDestructiveAnnotations(false, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in uploadAttachmentArgs) (*mcp.CallToolResult, Attachment, error) {
 		data, err := decodeMCPUpload(in.ContentBase64)
 		if err != nil {

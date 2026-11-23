@@ -255,6 +255,7 @@ func (s *Service) registerOrganizationMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_workspace_privacy",
 		Description: "Set an organization workspace's privacy to public (any org Member may join it) or invite_only (workspace admins only). bex extension over Render's MCP.",
+		Annotations: mcputil.NonDestructiveAnnotations(true, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setWorkspacePrivacyArgs) (*mcp.CallToolResult, WorkspaceView, error) {
 		w, err := s.SetWorkspacePrivacy(ctx, in.WorkspaceID, in.Privacy)
 		return nil, w, err

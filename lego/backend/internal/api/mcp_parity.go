@@ -19,6 +19,8 @@ package api
 import (
 	"fmt"
 	"slices"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // mcp_parity.go classifies bex's MCP tools against the pinned upstream surface
@@ -153,6 +155,55 @@ var mcpAcceptedTypeDivergences = map[string]string{}
 // the reason (w5/m600). An enum mismatch not listed here fails
 // TestMCPArgumentEnumsMatchUpstream.
 var mcpAcceptedEnumDivergences = map[string]string{}
+
+// mcpAcceptedAnnotationDivergences records each "tool.hint" whose bex behavior
+// hint deliberately differs from upstream's, with the reason (w5/m145, narrowed
+// to per-hint keys in w5/m602). A hint mismatch not listed here fails
+// TestMCPAnnotationsMatchUpstream, and a stale entry fails too.
+var mcpAcceptedAnnotationDivergences = map[string]string{
+	// Upstream marks list_workspaces readOnlyHint:false (its session-selection
+	// lineage); listing workspaces modifies nothing, and bex has no selection.
+	// Its other three hints (destructiveHint:false, idempotentHint:true,
+	// openWorldHint:false) still match upstream and remain guarded.
+	"list_workspaces.readOnlyHint": "a pure read in bex (no session selection); upstream's readOnlyHint:false is its select_workspace lineage",
+}
+
+// mcpAnnotationMismatches lists the MCP behavior hints pinned in up.Annotations
+// where got disagrees with upstream (w5/m602). Per the MCP specification, nil
+// DestructiveHint and OpenWorldHint pointers (or nil Annotations) default to
+// true, while ReadOnlyHint and IdempotentHint default to false.
+func mcpAnnotationMismatches(got *mcp.ToolAnnotations, up renderMCPTool) []string {
+	var (
+		readOnly    bool
+		destructive = true
+		idempotent  bool
+		openWorld   = true
+	)
+	if got != nil {
+		readOnly = got.ReadOnlyHint
+		if got.DestructiveHint != nil {
+			destructive = *got.DestructiveHint
+		}
+		idempotent = got.IdempotentHint
+		if got.OpenWorldHint != nil {
+			openWorld = *got.OpenWorldHint
+		}
+	}
+	actual := map[string]bool{
+		"readOnlyHint":    readOnly,
+		"destructiveHint": destructive,
+		"idempotentHint":  idempotent,
+		"openWorldHint":   openWorld,
+	}
+	var out []string
+	for hint, want := range up.Annotations {
+		if have, ok := actual[hint]; ok && have != want {
+			out = append(out, hint)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
 
 // mcpArgTypeMismatches lists the upstream arguments bex accepts in a JSON type
 // upstream does not send, including arguments where bex emits an untyped {}

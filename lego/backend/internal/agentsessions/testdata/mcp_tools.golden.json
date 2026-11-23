@@ -1,9 +1,9 @@
 [
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": false
     },
     "description": "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn.",
@@ -645,9 +645,9 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": false
     },
     "description": "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'.",
@@ -1292,7 +1292,7 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
+      "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": true,
       "readOnlyHint": false
@@ -3774,9 +3774,9 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": false
     },
     "description": "Replace a queued message's text. The turn then runs as you, so you need the access a send needs. AGENT_QUEUED_MESSAGE_DISPATCHED when it already ran, was dropped or is being started.",
@@ -9472,9 +9472,9 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": false
     },
     "description": "Move a queued message to a place in the queue (1 runs next; past the end is last) and get the queue back. To run a message now: interrupt_agent_session, then move it to 1.",
@@ -10217,8 +10217,8 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
       "openWorldHint": true,
       "readOnlyHint": false
     },
@@ -10957,7 +10957,7 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
+      "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": true,
       "readOnlyHint": false
@@ -12017,9 +12017,9 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": false
     },
     "description": "Replace all tags on a cloud coding-agent session (tags filter list_agent_sessions). Pass the complete new set; [] clears them. Refused on an archived session.",
@@ -12672,7 +12672,7 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
+      "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": true,
       "readOnlyHint": false
@@ -13469,7 +13469,7 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
+      "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": true,
       "readOnlyHint": false
@@ -14510,9 +14510,9 @@
   },
   {
     "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": false
     },
     "description": "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer.",

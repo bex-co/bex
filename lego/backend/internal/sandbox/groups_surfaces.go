@@ -23,6 +23,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // The GraphQL and MCP surfaces of sandbox groups (w22/m311). Both call the same
@@ -172,7 +173,7 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err
 		})
-	addTool(s, server, &mcp.Tool{Name: "set_default_sandbox_group", Description: "Make a sandbox group the workspace's default: a sandbox create or image import that names no group then uses it. The previous default stays as an ordinary group."},
+	addTool(s, server, &mcp.Tool{Name: "set_default_sandbox_group", Description: "Make a sandbox group the workspace's default: a sandbox create or image import that names no group then uses it. The previous default stays as an ordinary group.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, Group, error) {
 			g, err := s.SetDefaultGroup(ctx, in.ID)
 			return nil, g, err

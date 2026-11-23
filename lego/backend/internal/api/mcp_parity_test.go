@@ -569,42 +569,201 @@ func TestMCPArgEnumCompatibility(t *testing.T) {
 	}
 }
 
-// mcpAcceptedAnnotationDivergences records a shared tool whose behavior hints
-// deliberately differ from upstream's, with the reason (w5/m145).
-var mcpAcceptedAnnotationDivergences = map[string]string{
-	// Upstream marks list_workspaces readOnlyHint:false (its session-selection
-	// lineage); listing workspaces modifies nothing, and bex has no selection.
-	"list_workspaces": "a pure read in bex (no session selection); upstream's readOnlyHint:false is its select_workspace lineage",
-}
-
-// TestMCPAnnotationsMatchUpstream is w5/m145's annotation half of the parity
-// guard: every bex tool carries behavior hints (without them a client treats
-// list_services as a destructive write and prompts), and a tool sharing an
-// upstream name agrees with upstream's readOnly and destructive hints.
+// TestMCPAnnotationsMatchUpstream is w5/m145 + w5/m602's annotation parity
+// guard: every bex tool carries explicit behavior hints with non-nil
+// DestructiveHint and OpenWorldHint pointers (without them a client falls back
+// to MCP spec defaults and treats list_services as a destructive write), and
+// every tool sharing an upstream name agrees with upstream on all four pinned
+// hints (readOnlyHint, destructiveHint, idempotentHint, openWorldHint) unless
+// explicitly listed in mcpAcceptedAnnotationDivergences.
 func TestMCPAnnotationsMatchUpstream(t *testing.T) {
 	pin, err := loadRenderMCPContract()
 	if err != nil {
 		t.Fatalf("load pin: %v", err)
 	}
 	res := listBexTools(t, fullyWiredServer())
+	byName := make(map[string]*mcp.Tool, len(res.Tools))
+	sharedChecked := 0
 	for _, x := range res.Tools {
+		byName[x.Name] = x
 		if x.Annotations == nil {
 			t.Errorf("%s has no annotations", x.Name)
 			continue
+		}
+		if x.Annotations.DestructiveHint == nil {
+			t.Errorf("%s has nil DestructiveHint — set an explicit pointer rather than relying on MCP spec default true", x.Name)
+		}
+		if x.Annotations.OpenWorldHint == nil {
+			t.Errorf("%s has nil OpenWorldHint — set an explicit pointer rather than relying on MCP spec default true", x.Name)
 		}
 		up, ok := pin.Tool(x.Name)
 		if !ok || len(up.Annotations) == 0 {
 			continue
 		}
-		if _, accepted := mcpAcceptedAnnotationDivergences[x.Name]; accepted {
+		sharedChecked++
+		for _, hint := range mcpAnnotationMismatches(x.Annotations, up) {
+			if _, accepted := mcpAcceptedAnnotationDivergences[x.Name+"."+hint]; accepted {
+				continue
+			}
+			t.Errorf("%s.%s disagrees with upstream (upstream=%v) — fix the annotation or record the reason in mcpAcceptedAnnotationDivergences",
+				x.Name, hint, up.Annotations[hint])
+		}
+	}
+	if sharedChecked != 28 {
+		t.Fatalf("checked %d shared tools with upstream annotations, want 28 (check the upstream pin)", sharedChecked)
+	}
+	// Every accepted annotation divergence must still diverge, so the list cannot rot.
+	for key := range mcpAcceptedAnnotationDivergences {
+		name, hint, ok := strings.Cut(key, ".")
+		if !ok || name == "" || hint == "" {
+			t.Errorf("mcpAcceptedAnnotationDivergences[%q] must use \"tool.hint\" format", key)
 			continue
 		}
-		destructive := x.Annotations.DestructiveHint == nil || *x.Annotations.DestructiveHint
-		if want, set := up.Annotations["readOnlyHint"]; set && x.Annotations.ReadOnlyHint != want {
-			t.Errorf("%s readOnlyHint = %v, upstream %v", x.Name, x.Annotations.ReadOnlyHint, want)
+		tool, live := byName[name]
+		if !live {
+			t.Errorf("mcpAcceptedAnnotationDivergences[%q] names %q, which bex no longer registers; remove it", key, name)
+			continue
 		}
-		if want, set := up.Annotations["destructiveHint"]; set && !x.Annotations.ReadOnlyHint && destructive != want {
-			t.Errorf("%s destructiveHint = %v, upstream %v", x.Name, destructive, want)
+		up, pinned := pin.Tool(name)
+		if !pinned || !slices.Contains(mcpAnnotationMismatches(tool.Annotations, up), hint) {
+			t.Errorf("mcpAcceptedAnnotationDivergences[%q] no longer diverges; remove it", key)
+		}
+	}
+}
+
+func TestMCPAnnotationCompatibility(t *testing.T) {
+	up := renderMCPTool{Annotations: map[string]bool{
+		"readOnlyHint":    false,
+		"destructiveHint": false,
+		"idempotentHint":  true,
+		"openWorldHint":   false,
+	}}
+	// Exact match produces no mismatches.
+	if got := mcpAnnotationMismatches(&mcp.ToolAnnotations{
+		ReadOnlyHint:    false,
+		DestructiveHint: new(false),
+		IdempotentHint:  true,
+		OpenWorldHint:   new(false),
+	}, up); len(got) != 0 {
+		t.Errorf("exact match mismatches = %v, want empty", got)
+	}
+	// Perturbing idempotentHint or openWorldHint alone must surface them.
+	if got := mcpAnnotationMismatches(&mcp.ToolAnnotations{
+		ReadOnlyHint:    false,
+		DestructiveHint: new(false),
+		IdempotentHint:  false,
+		OpenWorldHint:   new(false),
+	}, up); !slices.Equal(got, []string{"idempotentHint"}) {
+		t.Errorf("perturbed idempotentHint = %v, want [idempotentHint]", got)
+	}
+	if got := mcpAnnotationMismatches(&mcp.ToolAnnotations{
+		ReadOnlyHint:    false,
+		DestructiveHint: new(false),
+		IdempotentHint:  true,
+		OpenWorldHint:   new(true),
+	}, up); !slices.Equal(got, []string{"openWorldHint"}) {
+		t.Errorf("perturbed openWorldHint = %v, want [openWorldHint]", got)
+	}
+	// Nil pointer fields default to MCP spec true, catching omitted pointers even on read-only tools.
+	readUp := renderMCPTool{Annotations: map[string]bool{
+		"readOnlyHint":    true,
+		"destructiveHint": false,
+		"openWorldHint":   false,
+	}}
+	if got := mcpAnnotationMismatches(&mcp.ToolAnnotations{
+		ReadOnlyHint: true,
+	}, readUp); !slices.Equal(got, []string{"destructiveHint", "openWorldHint"}) {
+		t.Errorf("nil pointers on read-only tool = %v, want [destructiveHint openWorldHint]", got)
+	}
+	// Nil Annotations treats all four hints as MCP spec defaults.
+	if got := mcpAnnotationMismatches(nil, up); !slices.Equal(got, []string{"destructiveHint", "idempotentHint", "openWorldHint"}) {
+		t.Errorf("nil annotations = %v, want [destructiveHint idempotentHint openWorldHint]", got)
+	}
+}
+
+// TestMCPExtensionAnnotations locks w5/m602's audit of extension tools whose
+// verbs previously fell through mcputil.DefaultAnnotations to destructive
+// defaults, while verifying truly destructive tools keep DestructiveHint: true.
+func TestMCPExtensionAnnotations(t *testing.T) {
+	res := listBexTools(t, fullyWiredServer())
+	byName := make(map[string]*mcp.ToolAnnotations, len(res.Tools))
+	for _, x := range res.Tools {
+		byName[x.Name] = x.Annotations
+	}
+
+	want := map[string]struct {
+		readOnly    bool
+		destructive bool
+		idempotent  bool
+		openWorld   bool
+	}{
+		// Audited non-destructive / read-only / idempotent extensions
+		"verify_custom_domain":              {false, false, true, true},
+		"attach_agent_session":              {false, false, true, false},
+		"archive_agent_session":             {false, false, true, false},
+		"unarchive_agent_session":           {false, false, true, false},
+		"wait_agent_sessions":               {true, false, true, false},
+		"generate_blueprint":                {true, false, true, false},
+		"set_agent_session_tags":            {false, false, true, false},
+		"set_default_sandbox_group":         {false, false, true, false},
+		"set_workspace_privacy":             {false, false, true, false},
+		"rename_env_group":                  {false, false, true, false},
+		"move_env_group":                    {false, false, true, false},
+		"edit_agent_session_queued_message": {false, false, true, false},
+		"move_agent_session_queued_message": {false, false, true, false},
+		"join_workspace":                    {false, false, true, false},
+		"join_workspace_as_admin":           {false, false, true, false},
+		"resume_service":                    {false, false, true, true},
+		"resume_postgres":                   {false, false, true, true},
+		"resume_keyvalue":                   {false, false, true, true},
+		"resume_agent_session":              {false, false, true, true},
+		"pause_agent_automation":            {false, false, true, false},
+		"resume_agent_automation":           {false, false, true, false},
+		"take_over_agent_automation":        {false, false, true, false},
+		// Audited additive non-destructive extensions
+		"spawn_agent_session":          {false, false, false, true},
+		"spawn_sandbox":                {false, false, false, true},
+		"clone_env_group":              {false, false, false, true},
+		"recover_postgres":             {false, false, false, true},
+		"import_sandbox_image":         {false, false, false, true},
+		"invite_workspace_member":      {false, false, false, true},
+		"invite_organization_member":   {false, false, false, true},
+		"accept_workspace_invite":      {false, false, false, false},
+		"accept_organization_invite":   {false, false, false, false},
+		"send_agent_session_message":   {false, false, false, true},
+		"steer_agent_session":          {false, false, false, true},
+		"build_agent_repo_environment": {false, false, false, true},
+		"resend_webhook_delivery":      {false, false, false, true},
+		"resend_workspace_invite":      {false, false, false, true},
+		"upload_agent_attachment":      {false, false, false, true},
+		"run_agent_automation":         {false, false, false, true},
+		// Truly destructive/disruptive tools stay DestructiveHint: true
+		"suspend_sandbox":               {false, true, true, true},
+		"delete_sandbox_image":          {false, true, true, true},
+		"delete_sandbox_snapshot":       {false, true, true, true},
+		"delete_service":                {false, true, false, true},
+		"suspend_service":               {false, true, false, true},
+		"cancel_deploy":                 {false, true, false, true},
+		"revoke_api_key":                {false, true, false, true},
+		"enable_keyvalue_internal_auth": {false, true, false, true},
+		"link_service_to_build_source":  {false, true, false, true},
+	}
+
+	for name, w := range want {
+		ann, ok := byName[name]
+		if !ok || ann == nil {
+			t.Errorf("%s missing from Server.MCPServer() or has nil annotations", name)
+			continue
+		}
+		if ann.DestructiveHint == nil || ann.OpenWorldHint == nil {
+			t.Errorf("%s has nil DestructiveHint or OpenWorldHint", name)
+			continue
+		}
+		if ann.ReadOnlyHint != w.readOnly || *ann.DestructiveHint != w.destructive ||
+			ann.IdempotentHint != w.idempotent || *ann.OpenWorldHint != w.openWorld {
+			t.Errorf("%s annotations = {readOnly:%v destructive:%v idempotent:%v openWorld:%v}, want {readOnly:%v destructive:%v idempotent:%v openWorld:%v}",
+				name, ann.ReadOnlyHint, *ann.DestructiveHint, ann.IdempotentHint, *ann.OpenWorldHint,
+				w.readOnly, w.destructive, w.idempotent, w.openWorld)
 		}
 	}
 }

@@ -254,6 +254,7 @@ func (s *Service) registerOrganizationMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "accept_organization_invite",
 		Description: "Redeem an organization invite token for the authenticated caller: joins the organization at the invited role even when the caller signed up under a different email. bex extension over Render's MCP.",
+		Annotations: mcputil.NonDestructiveAnnotations(false, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, AcceptedOrganizationInviteView, error) {
 		acc, err := s.AcceptOrganizationInvite(ctx, in.Token)
 		return nil, acc, err
@@ -282,6 +283,7 @@ func (s *Service) registerOrganizationMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "join_workspace",
 		Description: "Join a Public workspace of your organization as a Developer. bex extension over Render's MCP.",
+		Annotations: mcputil.NonDestructiveAnnotations(true, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in joinArgs) (*mcp.CallToolResult, JoinedWorkspaceView, error) {
 		j, err := s.JoinWorkspace(ctx, in.WorkspaceID)
 		return nil, j, err
@@ -289,6 +291,7 @@ func (s *Service) registerOrganizationMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "join_workspace_as_admin",
 		Description: "As an Owner of its organization, join any of the org's workspaces as admin. bex extension over Render's MCP.",
+		Annotations: mcputil.NonDestructiveAnnotations(true, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in joinArgs) (*mcp.CallToolResult, JoinedWorkspaceView, error) {
 		j, err := s.JoinWorkspaceAsAdmin(ctx, in.WorkspaceID)
 		return nil, j, err

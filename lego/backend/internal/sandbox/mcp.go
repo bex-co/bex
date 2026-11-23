@@ -23,6 +23,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // spawnSandboxArgs is the MCP input for spawn_sandbox. Template selects a
@@ -143,7 +144,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			err := s.Terminate(core.WithWorkspace(ctx, in.OwnerID), in.ID)
 			return nil, stopSandboxResult{Stopped: err == nil}, err
 		})
-	addTool(s, server, &mcp.Tool{Name: "suspend_sandbox", Description: "Suspend a running sandbox by id (idempotent when already suspending or suspended). Open commands and connections end; the next connection resumes it."},
+	addTool(s, server, &mcp.Tool{Name: "suspend_sandbox", Description: "Suspend a running sandbox by id (idempotent when already suspending or suspended). Open commands and connections end; the next connection resumes it.", Annotations: mcputil.DestructiveAnnotations(true)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, suspendSandboxResult, error) {
 			err := s.Suspend(core.WithWorkspace(ctx, in.OwnerID), in.ID)
 			return nil, suspendSandboxResult{Suspended: err == nil}, err

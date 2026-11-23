@@ -177,3 +177,65 @@ func TestAddToolBoundsTheCallWithTheRequestBudget(t *testing.T) {
 		t.Fatalf("timed-out tool answered %q, want REQUEST_TIMEOUT", got)
 	}
 }
+
+func TestDefaultAnnotations(t *testing.T) {
+	cases := []struct {
+		name        string
+		readOnly    bool
+		destructive bool
+		idempotent  bool
+		openWorld   bool
+	}{
+		{"get_service", true, false, true, false},
+		{"list_services", true, false, true, false},
+		{"query_render_postgres", true, false, true, false},
+		{"describe_plan", true, false, true, false},
+		{"search_logs", true, false, true, false},
+		{"preview_blueprint", true, false, true, false},
+		{"estimate_cost", true, false, true, false},
+		{"validate_bex_yml", true, false, true, false},
+		{"create_web_service", false, false, false, true},
+		{"add_custom_domain", false, false, false, true},
+		{"generate_token", false, false, false, true},
+		{"clone_env_group", false, false, false, true},
+		{"import_sandbox_image", false, false, false, true},
+		{"invite_workspace_member", false, false, false, true},
+		{"spawn_sandbox", false, false, false, true},
+		{"resume_service", false, false, true, true},
+		{"delete_service", false, true, false, true},
+		{"update_service", false, true, false, true},
+		{"trigger_deploy", false, true, false, true},
+		{"suspend_service", false, true, false, true},
+	}
+
+	for _, tc := range cases {
+		ann := mcputil.DefaultAnnotations(tc.name)
+		if ann == nil {
+			t.Fatalf("DefaultAnnotations(%q) = nil", tc.name)
+		}
+		if ann.DestructiveHint == nil || ann.OpenWorldHint == nil {
+			t.Fatalf("DefaultAnnotations(%q) returned nil pointer hints: %+v", tc.name, ann)
+		}
+		if ann.ReadOnlyHint != tc.readOnly || *ann.DestructiveHint != tc.destructive ||
+			ann.IdempotentHint != tc.idempotent || *ann.OpenWorldHint != tc.openWorld {
+			t.Errorf("DefaultAnnotations(%q) = {readOnly:%v destructive:%v idempotent:%v openWorld:%v}, want {readOnly:%v destructive:%v idempotent:%v openWorld:%v}",
+				tc.name, ann.ReadOnlyHint, *ann.DestructiveHint, ann.IdempotentHint, *ann.OpenWorldHint,
+				tc.readOnly, tc.destructive, tc.idempotent, tc.openWorld)
+		}
+	}
+}
+
+func TestAnnotationConstructors(t *testing.T) {
+	ro := mcputil.ReadOnlyAnnotations()
+	if !ro.ReadOnlyHint || !ro.IdempotentHint || ro.DestructiveHint == nil || *ro.DestructiveHint || ro.OpenWorldHint == nil || *ro.OpenWorldHint {
+		t.Errorf("ReadOnlyAnnotations() = %+v", ro)
+	}
+	nd := mcputil.NonDestructiveAnnotations(true, false)
+	if nd.ReadOnlyHint || !nd.IdempotentHint || nd.DestructiveHint == nil || *nd.DestructiveHint || nd.OpenWorldHint == nil || *nd.OpenWorldHint {
+		t.Errorf("NonDestructiveAnnotations(true, false) = %+v", nd)
+	}
+	d := mcputil.DestructiveAnnotations(true)
+	if d.ReadOnlyHint || !d.IdempotentHint || d.DestructiveHint == nil || !*d.DestructiveHint || d.OpenWorldHint == nil || !*d.OpenWorldHint {
+		t.Errorf("DestructiveAnnotations(true) = %+v", d)
+	}
+}

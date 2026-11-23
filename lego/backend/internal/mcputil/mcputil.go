@@ -220,22 +220,55 @@ func annotate(t *mcp.Tool) {
 	}
 }
 
+// ReadOnlyAnnotations marks a pure read tool: no state changes, idempotent,
+// non-destructive, closed-world.
+func ReadOnlyAnnotations() *mcp.ToolAnnotations {
+	return &mcp.ToolAnnotations{
+		ReadOnlyHint:    true,
+		IdempotentHint:  true,
+		DestructiveHint: new(false),
+		OpenWorldHint:   new(false),
+	}
+}
+
+// NonDestructiveAnnotations marks a tool that does not destroy or overwrite
+// existing state (additive creates, idempotent state toggles/resumes,
+// verification triggers, credential/ticket mints).
+func NonDestructiveAnnotations(idempotent, openWorld bool) *mcp.ToolAnnotations {
+	return &mcp.ToolAnnotations{
+		IdempotentHint:  idempotent,
+		DestructiveHint: new(false),
+		OpenWorldHint:   new(openWorld),
+	}
+}
+
+// DestructiveAnnotations marks a tool that may destroy, overwrite, or disrupt
+// existing state or running workloads.
+func DestructiveAnnotations(idempotent bool) *mcp.ToolAnnotations {
+	return &mcp.ToolAnnotations{
+		IdempotentHint:  idempotent,
+		DestructiveHint: new(true),
+		OpenWorldHint:   new(true),
+	}
+}
+
 // DefaultAnnotations is the behavior hint set for a tool named by verb:
-// reads are read-only, idempotent and closed-world; creates are additive;
-// every other write may be destructive.
+// reads are read-only, idempotent and closed-world; creates/adds/clones/
+// imports/invites/spawns are additive; resumes are non-destructive and
+// idempotent; every other write may be destructive.
 func DefaultAnnotations(name string) *mcp.ToolAnnotations {
 	verb, _, _ := strings.Cut(name, "_")
 	switch verb {
 	case "get", "list", "query", "describe", "search", "preview", "estimate", "validate":
-		return &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, DestructiveHint: boolPtr(false), OpenWorldHint: boolPtr(false)}
-	case "create", "add", "generate":
-		return &mcp.ToolAnnotations{DestructiveHint: boolPtr(false), OpenWorldHint: boolPtr(true)}
+		return ReadOnlyAnnotations()
+	case "create", "add", "generate", "clone", "import", "invite", "spawn":
+		return NonDestructiveAnnotations(false, true)
+	case "resume":
+		return NonDestructiveAnnotations(true, true)
 	default:
-		return &mcp.ToolAnnotations{DestructiveHint: boolPtr(true), OpenWorldHint: boolPtr(true)}
+		return DestructiveAnnotations(false)
 	}
 }
-
-func boolPtr(b bool) *bool { return &b }
 
 // Scoped is gqlutil.ScopeArg for an MCP tool: h runs in scope(ctx, idOf(in)),
 // the context a feature resolves that id in (a build source's id scoped to

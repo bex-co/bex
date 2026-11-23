@@ -855,7 +855,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Description: "Cancel the in-progress run of a cron job. Canceling stops the run partway, which can leave its work half done, so confirm with the user first. It does not pause the schedule: the next scheduled run still starts on time. " +
 			"With no run in progress it returns a conflict. Pass runId (a bex extension) to cancel one pending run by its crr- id instead; a run that already ended returns a conflict. " +
 			"Returns {serviceId, canceled: true, run}, where run is the canceled run. Tracks Render's MCP tool.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: new(true), IdempotentHint: true, OpenWorldHint: new(true)},
+		Annotations: mcputil.DestructiveAnnotations(true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cancelCronJobRunArgs) (*mcp.CallToolResult, cancelCronJobRunResult, error) {
 		var run CronRunView
 		var err error
@@ -1071,6 +1071,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "verify_custom_domain",
 		Description: "Trigger a DNS verification check for a custom domain now (it also runs automatically). If the traffic record points at the service, the domain is promoted into serving intent and returned verified; otherwise it is returned still unverified. Already-verified domains are idempotent.",
+		Annotations: mcputil.NonDestructiveAnnotations(true, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.VerifyDomain(ctx, in.ServiceID, in.Name))
 	})
@@ -1150,6 +1151,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "generate_blueprint",
 		Description: "Export selected existing resources (services, Postgres, Key Value, environment groups) as a render.yaml Blueprint manifest — Render's dashboard-only Generate Blueprint as an API. Env vars keep literal values; secret-backed ones emit sync:false name-only (no secret value is ever included); datastore wiring emits fromDatabase/fromService references when the target is in the same selection; selected env groups emit root envVarGroups (keys as generateValue) and per-service fromGroup links (unselected linked groups degrade to sync:false keys). The manifest is self-validated against bex's own Blueprint contract before it is returned, and creating it as a blueprint against a repo adopts the same resources by name. bex extension (Render has no generate API).",
+		Annotations: mcputil.ReadOnlyAnnotations(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in generateBlueprintArgs) (*mcp.CallToolResult, GenerateBlueprintResult, error) {
 		out, err := s.GenerateBlueprint(ctx, GenerateBlueprintRequest{
 			OwnerID:     core.NamedWorkspace(ctx),

@@ -132,6 +132,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resend_webhook_delivery",
 		Description: "Queue one immediate manual attempt using the source event's byte-identical request body. The endpoint must be enabled. Reusing the idempotency key returns the same reservation and never fans out another send. bex extension — Render exposes Resend only in its dashboard.",
+		Annotations: mcputil.NonDestructiveAnnotations(false, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in resendDeliveryArgs) (*mcp.CallToolResult, DeliveryView, error) {
 		view, err := s.Resend(ctx, core.NamedWorkspace(ctx), in.EndpointID, in.AttemptID, in.IdempotencyKey)
 		return nil, view, err

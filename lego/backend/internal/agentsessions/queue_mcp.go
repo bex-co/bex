@@ -46,7 +46,7 @@ func (s *Service) registerQueueMCP(server *mcp.Server) {
 			out, err := s.QueuedMessages(ctx, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "edit_agent_session_queued_message", Description: "Replace a queued message's text. The turn then runs as you, so you need the access a send needs. AGENT_QUEUED_MESSAGE_DISPATCHED when it already ran, was dropped or is being started."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "edit_agent_session_queued_message", Description: "Replace a queued message's text. The turn then runs as you, so you need the access a send needs. AGENT_QUEUED_MESSAGE_DISPATCHED when it already ran, was dropped or is being started.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in editQueuedMessageArgs) (*mcp.CallToolResult, QueuedMessage, error) {
 			out, err := s.EditQueuedMessage(ctx, in.ID, in.MessageID, in.Prompt)
 			return nil, out, err
@@ -58,7 +58,7 @@ func (s *Service) registerQueueMCP(server *mcp.Server) {
 			}
 			return nil, deleteResult{Deleted: true}, nil
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "move_agent_session_queued_message", Description: "Move a queued message to a place in the queue (1 runs next; past the end is last) and get the queue back. To run a message now: interrupt_agent_session, then move it to 1."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "move_agent_session_queued_message", Description: "Move a queued message to a place in the queue (1 runs next; past the end is last) and get the queue back. To run a message now: interrupt_agent_session, then move it to 1.", Annotations: mcputil.NonDestructiveAnnotations(true, false)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in moveQueuedMessageArgs) (*mcp.CallToolResult, QueuedMessageList, error) {
 			out, err := s.MoveQueuedMessage(ctx, in.ID, in.MessageID, in.Position)
 			return nil, out, err

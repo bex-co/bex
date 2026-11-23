@@ -28,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // The REST, GraphQL and MCP surfaces of sandbox snapshots (w32/m285). All
@@ -224,7 +225,7 @@ func (s *Service) registerSnapshotMCP(server *mcp.Server) {
 			snap, err := s.GetSnapshot(ctx, in.SandboxGroupID, in.ID)
 			return nil, snap, err
 		})
-	addTool(s, server, &mcp.Tool{Name: "delete_sandbox_snapshot", Description: "Delete a snapshot of a sandbox group, as Render's delete-sandbox-snapshot. It no longer lists, reads or starts sandboxes; sandboxes already created from it are not affected, and deleting it again succeeds. Refused with snapshot_creating while its capture is still in flight."},
+	addTool(s, server, &mcp.Tool{Name: "delete_sandbox_snapshot", Description: "Delete a snapshot of a sandbox group, as Render's delete-sandbox-snapshot. It no longer lists, reads or starts sandboxes; sandboxes already created from it are not affected, and deleting it again succeeds. Refused with snapshot_creating while its capture is still in flight.", Annotations: mcputil.DestructiveAnnotations(true)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in getSnapshotArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.DeleteSnapshot(ctx, in.SandboxGroupID, in.ID); err != nil {
 				return nil, deleteResult{}, err

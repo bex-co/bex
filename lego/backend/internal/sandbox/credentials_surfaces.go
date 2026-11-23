@@ -23,6 +23,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // GraphQL and MCP surfaces for sandbox group credentials (w2/m533, ADR122).
@@ -265,18 +266,10 @@ type restoreGroupCredentialArgs struct {
 }
 
 func (s *Service) registerCredentialMCP(server *mcp.Server) {
-	readOnly := func() *mcp.ToolAnnotations {
-		return &mcp.ToolAnnotations{
-			ReadOnlyHint:    true,
-			IdempotentHint:  true,
-			DestructiveHint: new(false),
-			OpenWorldHint:   new(false),
-		}
-	}
 	addTool(s, server, &mcp.Tool{
 		Name:        "list_sandbox_group_credentials",
 		Description: "List all credentials configured on a sandbox group, sorted lexicographically by id. Returns routing, injection settings, enabled state, and current version metadata; secret values are write-only and never returned.",
-		Annotations: readOnly(),
+		Annotations: mcputil.ReadOnlyAnnotations(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listGroupCredentialsArgs) (*mcp.CallToolResult, listGroupCredentialsResult, error) {
 		out, err := s.ListGroupCredentials(ctx, in.SandboxGroupID)
 		return nil, listGroupCredentialsResult{Credentials: out}, err
@@ -285,7 +278,7 @@ func (s *Service) registerCredentialMCP(server *mcp.Server) {
 	addTool(s, server, &mcp.Tool{
 		Name:        "get_sandbox_group_credential",
 		Description: "Get one sandbox group credential's routing, injection settings, enabled state, and current version metadata by sandboxGroupId and credentialId. Secret values are write-only and never returned.",
-		Annotations: readOnly(),
+		Annotations: mcputil.ReadOnlyAnnotations(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getGroupCredentialArgs) (*mcp.CallToolResult, GroupCredential, error) {
 		cred, err := s.GetGroupCredential(ctx, in.SandboxGroupID, in.CredentialID)
 		return nil, cred, err
@@ -294,7 +287,7 @@ func (s *Service) registerCredentialMCP(server *mcp.Server) {
 	addTool(s, server, &mcp.Tool{
 		Name:        "list_sandbox_group_credential_versions",
 		Description: "List retained versions of a sandbox group credential, newest version id first, including updatedAt, updatedBy, fingerprint, and restoredFromVersionId. Secret values are never returned.",
-		Annotations: readOnly(),
+		Annotations: mcputil.ReadOnlyAnnotations(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getGroupCredentialArgs) (*mcp.CallToolResult, listGroupCredentialVersionsResult, error) {
 		out, err := s.ListGroupCredentialVersions(ctx, in.SandboxGroupID, in.CredentialID)
 		return nil, listGroupCredentialVersionsResult{Versions: out}, err
@@ -303,10 +296,7 @@ func (s *Service) registerCredentialMCP(server *mcp.Server) {
 	addTool(s, server, &mcp.Tool{
 		Name:        "create_sandbox_group_credential",
 		Description: "Create a write-only outbound credential on a sandbox group (workspace Admin required). id is case-sensitive ([A-Za-z0-9._~-]+, never ., .., or rnd-*). domain must be a public DNS hostname. value is write-only (up to 5 KiB UTF-8) and never returned. injection.type is header, basic, cookie, or query (name is required for header/cookie/query and forbidden for basic; template defaults to ${SECRET}). methods and paths default to matching all requests.",
-		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: new(false),
-			OpenWorldHint:   new(true),
-		},
+		Annotations: mcputil.NonDestructiveAnnotations(false, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createGroupCredentialArgs) (*mcp.CallToolResult, GroupCredential, error) {
 		cred, err := s.CreateGroupCredential(ctx, in.SandboxGroupID, in.CreateGroupCredentialRequest)
 		return nil, cred, err
@@ -315,10 +305,7 @@ func (s *Service) registerCredentialMCP(server *mcp.Server) {
 	addTool(s, server, &mcp.Tool{
 		Name:        "update_sandbox_group_credential",
 		Description: "Update a sandbox group credential. Omitted fields keep their current values; providing injection replaces the entire injection object; passing empty methods or paths clears that filter. Developers may update injection, methods, paths, and enabled; changing domain or value requires a workspace Admin. Creates a new version when configuration or value changes; secret values are never returned.",
-		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: new(true),
-			OpenWorldHint:   new(true),
-		},
+		Annotations: mcputil.DestructiveAnnotations(false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateGroupCredentialArgs) (*mcp.CallToolResult, GroupCredential, error) {
 		cred, err := s.UpdateGroupCredential(ctx, in.SandboxGroupID, in.CredentialID, in.UpdateGroupCredentialRequest)
 		return nil, cred, err
@@ -327,11 +314,7 @@ func (s *Service) registerCredentialMCP(server *mcp.Server) {
 	addTool(s, server, &mcp.Tool{
 		Name:        "delete_sandbox_group_credential",
 		Description: "Delete a sandbox group credential and purge all of its retained versions and secret values (workspace Admin required). Idempotent: deleting an absent credential in an existing group succeeds.",
-		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: new(true),
-			IdempotentHint:  true,
-			OpenWorldHint:   new(true),
-		},
+		Annotations: mcputil.DestructiveAnnotations(true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getGroupCredentialArgs) (*mcp.CallToolResult, deleteResult, error) {
 		if err := s.DeleteGroupCredential(ctx, in.SandboxGroupID, in.CredentialID); err != nil {
 			return nil, deleteResult{}, err
@@ -342,10 +325,7 @@ func (s *Service) registerCredentialMCP(server *mcp.Server) {
 	addTool(s, server, &mcp.Tool{
 		Name:        "restore_sandbox_group_credential",
 		Description: "Restore a retained version of a sandbox group credential by versionId as a new current version with restoredFromVersionId set (workspace Admin required). Secret values are never returned.",
-		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: new(true),
-			OpenWorldHint:   new(true),
-		},
+		Annotations: mcputil.DestructiveAnnotations(false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in restoreGroupCredentialArgs) (*mcp.CallToolResult, GroupCredential, error) {
 		cred, err := s.RestoreGroupCredential(ctx, in.SandboxGroupID, in.CredentialID, in.VersionID)
 		return nil, cred, err

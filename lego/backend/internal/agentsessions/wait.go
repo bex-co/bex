@@ -254,7 +254,7 @@ func (s *Service) registerWaitMCP(server *mcp.Server) {
 			"ids: 1-20 sessions. until: all (default) returns when every session has left state working, any when the first does. " +
 			"timeoutSeconds: 1-25 (default 25). Returns each session's id, state and outcome, the ids that settled, and timedOut. " +
 			"When timedOut is true the sessions are still working: call again.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, DestructiveHint: boolPtr(false), OpenWorldHint: boolPtr(false)},
+		Annotations: mcputil.ReadOnlyAnnotations(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in WaitRequest) (*mcp.CallToolResult, WaitResult, error) {
 		var progress func(string)
 		if req != nil && req.Params != nil && req.Session != nil {
@@ -270,5 +270,3 @@ func (s *Service) registerWaitMCP(server *mcp.Server) {
 		return nil, out, err
 	})
 }
-
-func boolPtr(b bool) *bool { return &b }

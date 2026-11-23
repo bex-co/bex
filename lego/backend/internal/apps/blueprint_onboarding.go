@@ -1058,7 +1058,7 @@ func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "plan_blueprint",
 		Description: "Preview infrastructure changes for an existing Blueprint using its configured branch and Blueprint file path; push local changes first. Planning applies nothing: review the plan with the user before calling approve_blueprint, even when auto-sync is enabled. Returns {planningOutcome, sync, notices}. " + planningGuidance,
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: new(false), OpenWorldHint: new(true)},
+		Annotations: mcputil.NonDestructiveAnnotations(false, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in blueprintIDArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
 		res, err := s.PlanBlueprint(ctx, in.BlueprintID, core.NamedWorkspace(ctx))
 		return nil, res, err

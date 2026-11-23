@@ -147,6 +147,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resend_workspace_invite",
 		Description: "Re-send a pending workspace invite's email and refresh its expiry; the invite id is unchanged but the emailed link is freshly minted and supersedes the original. bex extension over Render's MCP.",
+		Annotations: mcputil.NonDestructiveAnnotations(false, true),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, InviteView, error) {
 		inv, err := s.ResendInvite(ctx, core.NamedWorkspace(ctx), in.InviteID)
 		return nil, inv, err
@@ -163,6 +164,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "accept_workspace_invite",
 		Description: "Redeem a workspace invite token for the authenticated caller — joins the inviting workspace at the invited role even when the caller signed up under a different email. bex extension over Render's MCP.",
+		Annotations: mcputil.NonDestructiveAnnotations(false, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, AcceptedInviteView, error) {
 		acc, err := s.AcceptInvite(ctx, in.Token)
 		return nil, acc, err

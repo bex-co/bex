@@ -162,6 +162,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "rename_env_group",
 		Description: "Rename an environment group without changing its id, contents, or service links.",
+		Annotations: mcputil.NonDestructiveAnnotations(true, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
 		g, err := s.committed(ctx)(s.RenameEnvGroup(ctx, in.ID, in.Name))
 		return nil, g, err
@@ -170,6 +171,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "move_env_group",
 		Description: "Move an environment group to a compatible Environment or back to workspace scope without changing sibling memberships.",
+		Annotations: mcputil.NonDestructiveAnnotations(true, false),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in moveEnvGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
 		group, err := s.committed(ctx)(s.MoveEnvGroup(ctx, in.ID, in.EnvironmentID))
 		return nil, group, err

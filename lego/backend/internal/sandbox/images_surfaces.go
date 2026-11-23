@@ -25,6 +25,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // The REST, GraphQL and MCP surfaces of imported sandbox images (w2/m358).
@@ -201,7 +202,7 @@ func (s *Service) registerImageMCP(server *mcp.Server) {
 			b, err := s.GetImage(ctx, in.SandboxGroupID, in.ID)
 			return nil, b, err
 		})
-	addTool(s, server, &mcp.Tool{Name: "delete_sandbox_image", Description: "Delete an image imported into a sandbox group, as Render's delete-sandbox-build. It no longer lists, reads or starts sandboxes, by id or by name; deleting it again succeeds. Refused with image_in_use while sandboxes that have not terminated were started from it: terminate them first."},
+	addTool(s, server, &mcp.Tool{Name: "delete_sandbox_image", Description: "Delete an image imported into a sandbox group, as Render's delete-sandbox-build. It no longer lists, reads or starts sandboxes, by id or by name; deleting it again succeeds. Refused with image_in_use while sandboxes that have not terminated were started from it: terminate them first.", Annotations: mcputil.DestructiveAnnotations(true)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in getImageArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.DeleteImage(ctx, in.SandboxGroupID, in.ID); err != nil {
 				return nil, deleteResult{}, err
