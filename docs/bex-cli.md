@@ -120,6 +120,36 @@ In GitHub Actions, keep the key in a repository secret and pass it to the step t
 
 `bex logout` manages the stored interactive OAuth session only. It neither revokes nor unsets `BEX_API_KEY` or `BEX_ACCESS_TOKEN`: unset the variable when the job ends, and revoke a key in the dashboard or with `DELETE /v1/api-keys/{id}`.
 
+## Reading a whole build log
+
+A non-interactive `bex logs` (`-o json`, `yaml` or `text`, which is also what a pipe or a CI job gets) prints one page and exits. bex serves at most 100 entries a page, whatever `--limit` says: `--limit` takes up to 1000 for the interactive viewer's sake and is still answered with 100 (w3/m475). The response says when more follow (`hasMore` and its cursors), but the pinned Render CLI prints only the entries and drops that, so nothing tells you the page is not the whole log. A Node build easily logs more than 1,000 lines, and its first 100 stop partway through the install. Whether Render's own server fills a larger page is unverified ([ADR018](ADR018-render-parity.md), Application logs).
+
+There are three ways to read all of it:
+
+- **Page forward through the deploy's window.** Take the deploy's `createdAt` and `finishedAt` from `bex deploys list <service> -o json`, then read with `--direction forward` from the first. After each page, read again with `--start` set to the last entry's `timestamp`. Both bounds are inclusive, so each page starts with the entries already printed at that instant: drop them by `id`. The log is complete when a page adds no new `id`. Use `-o json`, because `-o text` prints whole seconds, which are too coarse to resume from.
+
+  ```bash
+  set -eo pipefail
+  svc=srv-… dep=dep-…
+  read -r start end < <(bex deploys list "$svc" -o json |
+    jq -r --arg dep "$dep" '.[] | select(.id == $dep) | "\(.createdAt) \(.finishedAt)"')
+  : > build.jsonl
+  while :; do
+    new=$(bex logs -r "$svc" --type build --direction forward \
+        --start "$start" --end "$end" --limit 100 -o json |
+      jq -c --slurpfile seen <(jq .id build.jsonl) 'select(.id | IN($seen[]) | not)')
+    [ -n "$new" ] || break
+    printf '%s\n' "$new" >> build.jsonl
+    start=$(tail -n1 build.jsonl | jq -r .timestamp)
+  done
+  jq -r '"\(.timestamp)  \(.message)"' build.jsonl
+  ```
+
+  On a production Node build of 2026-11-14 this printed all 1,142 entries in order, from `==> Build queued` to `==> Your service is live 🎉`. A single `--limit 1000` read of the same window, in either direction, printed 100. A deploy still building has no `finishedAt` yet, so follow it instead.
+
+- **Follow a running build with `--tail`.** `bex logs -r <service> --type build --tail` streams each line the build prints, with no page limit. A tail shows only lines printed after it opens. Start it before `bex deploys create`, since it waits for the next build, and stop it with Ctrl-C when the build ends.
+- **Use the interactive viewer.** In a terminal, `bex logs -r <service> --type build --start <createdAt> --end <finishedAt>` without `-o` opens the viewer. It loads the older pages as you scroll up.
+
 ## Bex-native commands
 
 **A wrong command line exits `2`.** `bex code`, `bex upgrade`, `bex agent` and `bex s3` exit `2`, with nothing on stdout, for a word after a group that names none of its subcommands, arguments a command refuses, and a flag it does not have. The unknown word gets cobra's suggestions: `bex agent wiat ags-…` prints `unknown command "wiat" for "bex agent"` and `Did you mean this?` with `wait`. Without a word, a group prints its help, and `bex code` its providers' status, and exits `0`. The provider launchers and `bex edit` hand every argument to another program, so they refuse none. The imported Render commands keep the pinned Render CLI's codes, which differ: a refused argument or flag exits `1` (`bex pg get` with no id, `bex services --bogus`), and a word after a group that does nothing itself prints that group's help and exits `0` (`bex workspace frob`, `bex pg frob`). `bex skills` keeps Render's `skills` commands and flags, and exits `1` the same way (w8/368).
