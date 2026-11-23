@@ -71,27 +71,57 @@ type DeployLister interface {
 // flight is not in progress, so a newer write replaces it, as Render's newest
 // pending deploy replaces an older one. A stale App read errs toward waiting.
 func DeployAheadUnadopted(ctx context.Context, lister DeployLister, a *appv1alpha1.App) (bool, error) {
-	appID := a.Labels[store.LabelAppID]
-	if lister == nil || appID == "" {
-		return false, nil
-	}
-	open, err := lister.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
+	executing, waiting, aheadEnded, err := scanAhead(ctx, lister, a)
 	if err != nil {
 		return false, err
 	}
+	return executing || (aheadEnded && waiting), nil
+}
+
+// HoldAheadUnadopted reports that a change held for a's next deploy must wait:
+// an executing release the operator has not adopted, or a release waiting in
+// the latest-pending slot it has not adopted. Unlike DeployAheadUnadopted it
+// does not ask whether the deploy ahead has ended: a held change starts no
+// release, so it replaces nothing, and written before the waiting release is
+// adopted the pending save holds that release too — or, once the deploy ahead
+// is adopted, the waiting release runs and consumes the save, deploying
+// settings it was requested without. The executing row's adoption is not the
+// all-clear while a newer release still waits unadopted behind it.
+func HoldAheadUnadopted(ctx context.Context, lister DeployLister, a *appv1alpha1.App) (bool, error) {
+	executing, waiting, _, err := scanAhead(ctx, lister, a)
+	if err != nil {
+		return false, err
+	}
+	return executing || waiting, nil
+}
+
+// scanAhead reads a's open deploys once and reports the three facts the wait
+// rules decide on: an executing release ahead of the adopted one, a release
+// waiting in the latest-pending slot ahead of it, and whether the deploy
+// ahead has ended (no row executing, or the App serving the still-recorded
+// row's release).
+func scanAhead(ctx context.Context, lister DeployLister, a *appv1alpha1.App) (executing, waiting, aheadEnded bool, err error) {
+	appID := a.Labels[store.LabelAppID]
+	if lister == nil || appID == "" {
+		return false, false, true, nil
+	}
+	open, err := lister.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
+	if err != nil {
+		return false, false, true, err
+	}
 	served, _ := appv1alpha1.RevisionGeneration(a.Status.ActiveRevision)
-	aheadEnded, waitingUnadopted := true, false
+	aheadEnded = true
 	for _, o := range open {
 		switch {
 		case o.OverlapPending:
-			waitingUnadopted = waitingUnadopted || o.Generation > a.Status.ReleaseGeneration
+			waiting = waiting || o.Generation > a.Status.ReleaseGeneration
 		case o.Generation > a.Status.ReleaseGeneration:
-			return true, nil
+			executing = true
 		case o.Generation <= 0 || o.Generation > served:
 			aheadEnded = false
 		}
 	}
-	return aheadEnded && waitingUnadopted, nil
+	return executing, waiting, aheadEnded, nil
 }
 
 // DefaultAdoptionWait bounds AwaitAdoption. The operator adopts a release
@@ -119,14 +149,29 @@ func AwaitAdoption(ctx context.Context, cl client.Reader, lister DeployLister, a
 	if a.Labels[appv1alpha1.LabelOverlappingDeployPolicy] == appv1alpha1.OverlappingDeployPolicyOverride {
 		return nil
 	}
-	return AwaitAdoptionBeforeHold(ctx, cl, lister, a, wait)
+	return awaitAdoption(ctx, cl, lister, a, wait, DeployAheadUnadopted)
 }
 
 // AwaitAdoptionBeforeHold is AwaitAdoption for a write that holds a change for
 // a's next deploy (w6/163): a save-only write, or the source-pending marker.
 // It waits under Render's Override policy too, since a held change starts no
-// release that could replace the deploy ahead; it would only hold it.
+// release that could replace the deploy ahead; it would only hold it. And it
+// waits on the hold rule (HoldAheadUnadopted) rather than the deploy-ahead
+// rule: a rolling write pends behind the release in flight, but a held change
+// starts no release, so the executing row's adoption is not its all-clear
+// while a newer release still waits unadopted behind it.
 func AwaitAdoptionBeforeHold(ctx context.Context, cl client.Reader, lister DeployLister, a *appv1alpha1.App, wait time.Duration) error {
+	return awaitAdoption(ctx, cl, lister, a, wait, HoldAheadUnadopted)
+}
+
+// awaitAdoption holds the calling write while ahead reports an unadopted
+// release ahead of a, re-reading the App until none is, or wait has passed
+// (DefaultAdoptionWait when zero, no wait when negative).
+//
+// It never refuses the write: a read that fails, a service the operator has
+// never adopted a release of, and a wait that runs out write through as
+// before, so a stuck operator cannot wedge saves. a itself is not changed.
+func awaitAdoption(ctx context.Context, cl client.Reader, lister DeployLister, a *appv1alpha1.App, wait time.Duration, ahead func(context.Context, DeployLister, *appv1alpha1.App) (bool, error)) error {
 	if wait < 0 || lister == nil || a.Labels[store.LabelAppID] == "" {
 		return nil
 	}
@@ -146,7 +191,7 @@ func AwaitAdoptionBeforeHold(ctx context.Context, cl client.Reader, lister Deplo
 		if live.Status.ReleaseGeneration == 0 {
 			return nil
 		}
-		behind, err := DeployAheadUnadopted(ctx, lister, live)
+		behind, err := ahead(ctx, lister, live)
 		if err != nil || !behind {
 			return ctx.Err()
 		}
