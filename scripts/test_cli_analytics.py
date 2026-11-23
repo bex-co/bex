@@ -333,7 +333,10 @@ class CLIAnalyticsTest(unittest.TestCase):
         released = RELEASED_VIEW_COLUMNS + ["bex_version"]
         types = ["timestamptz"] + ["text"] * 5 + ["boolean", "bigint"] + ["text"] * 5 + [
             "boolean", "text[]", "text[]", "text"]
-        shape = ", ".join(f"NULL::{t} AS {c}" for c, t in zip(released, types, strict=True))
+        # An explicit length check, not zip(strict=True): that needs Python 3.10,
+        # and macOS ships 3.9, where /ship's gate runs this suite.
+        self.assertEqual(len(released), len(types))
+        shape = ", ".join(f"NULL::{t} AS {c}" for c, t in zip(released, types))
         self.psql(f"DROP VIEW cli_analytics.events; CREATE VIEW cli_analytics.events AS SELECT {shape}")
         self.psql((ROOT / "scripts/cli-analytics.sql").read_text())
         self.assertEqual(self.read_as_reader("SELECT count(*) AS n FROM cli_analytics.events"), [{"n": 32}])

@@ -138,6 +138,36 @@ PY
 git -C "$repo" init -q -b main
 commit() { git -C "$repo" add -A && git -C "$repo" -c user.name=t -c user.email=t@t -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm "$1"; }
 echo '{}' >"$repo/dashboard/package.json"
+# What the CLI and analytics gates read from the tree they test: cli-test.yml's
+# own trigger paths, gitops.yml's Postgres pin, the CLI pin check and the two
+# analytics suites, as stubs that log what ran and fail on demand, and the
+# backend dependencies' script.
+cp "$root/.github/workflows/cli-test.yml" "$repo/.github/workflows/"
+printf 'steps:\n  - run: |\n      image=postgres:17@sha256:%s\n' "$(printf '0123456789abcdef%.0s' 1 2 3 4)" >"$repo/.github/workflows/gitops.yml"
+mkdir -p "$repo/lego/types" "$repo/lego/backend"
+echo stub >"$repo/lego/types/doc.txt"
+echo stub >"$repo/lego/backend/doc.txt"
+cat >"$repo/scripts/bex-cli-validate.sh" <<STUB
+#!/bin/sh
+echo "validate CI=\${CI:-} KUBECONFIG=\${KUBECONFIG:-}" >>"$tmp/cli.log"
+[ ! -e "$tmp/validate-fails" ]
+STUB
+cat >"$repo/scripts/backend-test-deps.sh" <<STUB
+#!/bin/sh
+echo "deps \$1" >>"$tmp/cli.log"
+[ "\$1" != env ] || echo "export BEX_TEST_DB_URI=stub"
+STUB
+for suite in cli product; do
+  cat >"$repo/scripts/test_${suite}_analytics.py" <<PY
+import os, time, unittest
+class Analytics(unittest.TestCase):
+    def test_analytics(self):
+        open("$tmp/analytics.log", "a").write("$suite %s\\n" % os.environ.get("BEX_CLI_ANALYTICS_TEST_CONTAINER"))
+        if os.path.exists("$tmp/analytics-hangs"):
+            time.sleep(60)
+        self.assertFalse(os.path.exists("$tmp/analytics-fails"))
+PY
+done
 commit base
 stub "[$(r success completed 10)]"
 cat >"$tmp/yarn" <<YARN
@@ -254,7 +284,7 @@ cat >"$tmp/gostub/go" <<STUB
 #!/bin/sh
 echo "\$GOTOOLCHAIN \$*" >>"$tmp/go.log"
 [ ! -e "$tmp/noroot" ] || exit 1
-[ "\$*" = "env GOROOT" ] && echo "$tmp/goroot"
+[ "\$*" != "env GOROOT" ] || echo "$tmp/goroot"
 STUB
 cat >"$tmp/goroot/bin/gofmt" <<'STUB'
 #!/bin/sh
@@ -278,6 +308,145 @@ commit "an unformatted go file"
 if fmt_gate HEAD~1; then fail "a file the pinned gofmt rejects passed the gate"; fi
 grep -q "run $tmp/goroot/bin/gofmt -w on them" "$tmp/err" || fail "the refusal did not name the pinned gofmt: $(cat "$tmp/err")"
 grep -qx "lego/x.go" "$tmp/err" || fail "the refusal did not name the file: $(cat "$tmp/err")"
+
+# The CLI gate (gate 14, w21/117): a push that changes a path cli-test.yml runs
+# on runs that job's steps as a hosted runner does, with CI=true and no
+# cluster of the caller's, and a failing step blocks. The path list is the
+# workflow's own. What the backend suite already runs (lego/backend/internal,
+# the authz model) never starts it, and when both run, the backend suite alone
+# runs the cliauth and api packages. The stubs log their working directory.
+# A runner's own CI=true must not reach the stubs' record of what the gate set.
+unset CI
+mkdir -p "$tmp/clistub"
+cat >"$tmp/clistub/go" <<STUB
+#!/bin/sh
+echo "\${PWD#$tmp/tree/} CI=\${CI:-} KUBECONFIG=\${KUBECONFIG:-} go \$*" >>"$tmp/cli.log"
+[ "\$*" != "\${CLI_FAIL:-}" ] || exit 1
+exit 0
+STUB
+cat >"$tmp/clistub/docker" <<STUB
+#!/bin/sh
+echo "\$*" >>"$tmp/docker.log"
+case "\$1" in
+  run) [ ! -e "$tmp/docker-run-fails" ] || exit 1 ;;
+  exec) [ ! -e "$tmp/docker-not-ready" ] || exit 1 ;;
+esac
+exit 0
+STUB
+mkdir -p "$tmp/nosleep"
+printf '#!/bin/sh\nexit 0\n' >"$tmp/nosleep/sleep"
+chmod +x "$tmp/clistub/go" "$tmp/clistub/docker" "$tmp/nosleep/sleep"
+cli_gate() { KUBECONFIG=/live/cluster PATH="$tmp/clistub:$PATH" gate "$@"; }
+cli_push() { # <path> <content line>
+  mkdir -p "$(dirname "$repo/$1")"
+  echo "$2" >>"$repo/$1"
+  commit "$1"
+  rm -f "$tmp/cli.log" "$tmp/docker.log" "$tmp/analytics.log"
+}
+cli_push docs/cli-compatibility-checklist.md "a checklist line"
+cli_gate HEAD~1 || fail "a passing CLI push failed the gate: $(cat "$tmp/err")"
+for want in "validate CI=true KUBECONFIG=" "lego/cli CI=true KUBECONFIG= go test ./..." \
+  "lego/backend CI=true KUBECONFIG= go test ./internal/cliauth ./internal/api"; do
+  grep -qxF "$want" "$tmp/cli.log" || fail "the CLI gate did not run '$want': $(cat "$tmp/cli.log")"
+done
+[ ! -e "$tmp/docker.log" ] || fail "a CLI push started Docker: $(cat "$tmp/docker.log")"
+rm -f "$tmp/cli.log"
+CLI_FAIL="test ./..." cli_gate HEAD~1 && fail "a failing CLI suite did not block the push"
+grep -q "ship-gates: ok" "$tmp/err" && fail "a failing CLI suite still reported ok"
+grep -q "internal/cliauth" "$tmp/cli.log" && fail "the adapter packages ran after the CLI suite failed"
+rm -f "$tmp/cli.log"
+touch "$tmp/validate-fails"
+cli_gate HEAD~1 && fail "a failing upstream pin check did not block the push"
+grep -q "go test" "$tmp/cli.log" && fail "the CLI suite ran after the pin check failed"
+rm -f "$tmp/validate-fails" "$tmp/cli.log"
+CLI_FAIL="test ./internal/cliauth ./internal/api" cli_gate HEAD~1 && fail "failing adapter tests did not block the push"
+# A path the workflow does not list starts nothing; one it lists that the
+# backend suite does not run (a markdown note under internal/) does.
+cli_push docs/c.md "unrelated"
+cli_gate HEAD~1 || fail "an unrelated push failed the gate: $(cat "$tmp/err")"
+[ ! -e "$tmp/cli.log" ] || fail "an unrelated push ran the CLI gate: $(cat "$tmp/cli.log")"
+cli_push lego/backend/internal/api/NOTES.md "a note the backend suite excludes"
+cli_gate HEAD~1 || fail "a backend note push failed the gate: $(cat "$tmp/err")"
+grep -qxF "lego/cli CI=true KUBECONFIG= go test ./..." "$tmp/cli.log" || fail "a path cli-test.yml lists did not start the CLI gate: $(cat "$tmp/cli.log")"
+grep -q "deps " "$tmp/cli.log" && fail "a markdown note started the backend suite"
+# The backend suite covers lego/backend/internal alone: no CLI, and with a CLI
+# change beside it no second run of the adapter packages.
+cli_push lego/backend/internal/api/x.txt "a backend input"
+cli_gate HEAD~1 || fail "a backend push failed the gate: $(cat "$tmp/err")"
+grep -qxF "lego/backend CI= KUBECONFIG= go test -p 1 ./..." "$tmp/cli.log" || fail "the backend suite did not run: $(cat "$tmp/cli.log")"
+grep -q "lego/cli " "$tmp/cli.log" && fail "a backend-only push ran the CLI suite: $(cat "$tmp/cli.log")"
+echo "a CLI doc" >>"$repo/lego/cli/README.md"
+echo "more backend" >>"$repo/lego/backend/internal/api/x.txt"
+commit "a CLI doc beside a backend input"
+rm -f "$tmp/cli.log"
+cli_gate HEAD~1 || fail "a CLI plus backend push failed the gate: $(cat "$tmp/err")"
+grep -qxF "lego/cli CI=true KUBECONFIG= go test ./..." "$tmp/cli.log" || fail "the CLI suite did not run beside the backend suite: $(cat "$tmp/cli.log")"
+grep -q "internal/cliauth" "$tmp/cli.log" && fail "the adapter packages ran twice: $(cat "$tmp/cli.log")"
+grep -q "go test -p 1 ./..." "$tmp/cli.log" || fail "the backend suite did not run beside the CLI suite: $(cat "$tmp/cli.log")"
+
+# The analytics gate (gate 15, w21/117): a push that changes a file the two
+# analytics suites read runs them against a Postgres container of its own, from
+# the digest gitops.yml pins, and removes it however the gate ends. A new
+# migration is no read (the suites apply a fixed list); an edited one is.
+pin="postgres:17@sha256:$(printf '0123456789abcdef%.0s' 1 2 3 4)"
+analytics_container() { sed -n 's/^run -d --rm --name \([^ ]*\) .*/\1/p' "$tmp/docker.log"; }
+cli_push scripts/cli-analytics.sql "SELECT 1;"
+cli_gate HEAD~1 || fail "a passing analytics push failed the gate: $(cat "$tmp/err")"
+name=$(analytics_container)
+case "$name" in bex-ship-gates-analytics-*) ;; *) fail "no analytics container was started: $(cat "$tmp/docker.log")" ;; esac
+grep -qxF "run -d --rm --name $name --label bex-ship-gates=analytics -e POSTGRES_PASSWORD=pw $pin" "$tmp/docker.log" || fail "the container is not the pinned image: $(cat "$tmp/docker.log")"
+grep -qx "exec $name pg_isready -U postgres -h 127.0.0.1" "$tmp/docker.log" || fail "the gate did not wait for Postgres: $(cat "$tmp/docker.log")"
+grep -qx "rm -f -v $name" "$tmp/docker.log" || fail "the container was left running: $(cat "$tmp/docker.log")"
+grep -qx "cli $name" "$tmp/analytics.log" && grep -qx "product $name" "$tmp/analytics.log" || fail "both suites did not run against the container: $(cat "$tmp/analytics.log")"
+grep -q "go test" "$tmp/cli.log" 2>/dev/null && fail "an analytics push ran the CLI suite"
+touch "$tmp/analytics-fails"
+rm -f "$tmp/docker.log"
+cli_gate HEAD~1 && fail "failing analytics tests did not block the push"
+grep -q "ship-gates: ok" "$tmp/err" && fail "failing analytics tests still reported ok"
+grep -qx "rm -f -v $(analytics_container)" "$tmp/docker.log" || fail "a failed analytics run left its container: $(cat "$tmp/docker.log")"
+rm -f "$tmp/analytics-fails" "$tmp/docker.log" "$tmp/analytics.log"
+touch "$tmp/docker-run-fails"
+cli_gate HEAD~1 && fail "a Postgres that could not start did not block the push"
+grep -q "could not start $pin" "$tmp/err" || fail "the failed start was not named: $(cat "$tmp/err")"
+[ ! -e "$tmp/analytics.log" ] || fail "the suites ran without a database"
+rm -f "$tmp/docker-run-fails"
+touch "$tmp/docker-not-ready"
+(PATH="$tmp/nosleep:$PATH" cli_gate HEAD~1) && fail "a Postgres that never became ready did not block the push"
+grep -q "the analytics Postgres did not become ready" "$tmp/err" || fail "readiness was not named: $(cat "$tmp/err")"
+rm -f "$tmp/docker-not-ready" "$tmp/docker.log" "$tmp/analytics.log"
+# A hung suite is killed at the step limit, and the gate still removes the container.
+touch "$tmp/analytics-hangs"
+(BEX_SHIP_GATES_STEP_TIMEOUT=2 cli_gate HEAD~1) && fail "a hung analytics suite did not block the push"
+rm -f "$tmp/analytics-hangs"
+grep -q "still running after 2s; killed" "$tmp/err" || fail "the timeout was not named: $(cat "$tmp/err")"
+grep -qx "rm -f -v $(analytics_container)" "$tmp/docker.log" || fail "a hung analytics run left its container: $(cat "$tmp/docker.log")"
+# Which files start it.
+for changed in scripts/product-analytics.sql scripts/test_cli_analytics.py scripts/test_product_analytics.py deploy/gitops/base/values/grafana.values.yaml; do
+  cli_push "$changed" "# $RANDOM"
+  cli_gate HEAD~1 || fail "$changed: a passing push failed the gate: $(cat "$tmp/err")"
+  [ -s "$tmp/analytics.log" ] || fail "$changed: the analytics suites did not run"
+done
+cli_push scripts/cli-analytics-bootstrap.sh "# not a read"
+cli_gate HEAD~1 || fail "an unrelated script failed the gate: $(cat "$tmp/err")"
+[ ! -e "$tmp/docker.log" ] || fail "an unrelated script started Docker: $(cat "$tmp/docker.log")"
+migrations="$repo/lego/backend/internal/store/migrations"
+mkdir -p "$migrations"
+echo 'SELECT 1;' >"$migrations/0001_core.up.sql"
+commit "a migration the suites apply"
+rm -f "$tmp/cli.log" "$tmp/docker.log" "$tmp/analytics.log"
+echo 'SELECT 2;' >"$migrations/0002_later.up.sql"
+commit "a new migration"
+cli_gate HEAD~1 || fail "a new migration failed the gate: $(cat "$tmp/err")"
+[ ! -e "$tmp/docker.log" ] || fail "a new migration, which the suites never apply, started Docker"
+echo 'SELECT 3;' >>"$migrations/0001_core.up.sql"
+commit "an edited migration"
+cli_gate HEAD~1 || fail "an edited migration failed the gate: $(cat "$tmp/err")"
+[ -s "$tmp/analytics.log" ] || fail "an edited migration did not run the analytics suites"
+rm -f "$tmp/cli.log" "$tmp/docker.log" "$tmp/analytics.log"
+git -C "$repo" rm -qr lego/backend/internal/store lego/backend/internal/api
+commit "the migration and backend fixtures go"
+git -C "$repo" rm -q scripts/cli-analytics-bootstrap.sh
+commit "the bootstrap fixture goes"
 
 # The migration order gate (gate 10, w4/701): a migration numbered below the
 # base's highest blocks before any suite runs, naming the file and the rule.

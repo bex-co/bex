@@ -65,6 +65,7 @@ checks every suite.
 
   python3 scripts/ci_test_inputs.py [--repo DIR] [WORKFLOW ...]   # default: every suite
   python3 scripts/ci_test_inputs.py --affected < changed-paths    # which could open a gap
+  python3 scripts/ci_test_inputs.py --triggered WORKFLOW < changed-paths  # which run it on a push
   python3 scripts/ci_test_inputs.py --suites                      # the suite workflows
 
 Exit 0 covered, 1 a gap (each printed), 2 unusable.
@@ -513,6 +514,15 @@ def affected(paths: list[str], scripts: set[str] | frozenset[str] = frozenset())
             or any(suite.is_test(p) for suite in SUITES.values())]
 
 
+def triggered(paths: list[str], filters: dict[str, list[str] | None]) -> list[str]:
+    """The changed paths that run the workflow on a push: every one when push
+    has no `paths`, none when the workflow is not run by a push."""
+    if "push" not in filters:
+        return []
+    patterns = filters["push"]
+    return [p for p in paths if patterns is None or covered(p, patterns)]
+
+
 def _tracked(repo: pathlib.Path) -> set[str]:
     return set(subprocess.run(["git", "-C", str(repo), "ls-files", "-z"], capture_output=True,
                               text=True, check=True).stdout.split("\0")) - {""}
@@ -524,6 +534,8 @@ def main(argv: list[str]) -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--affected", action="store_true", help="print the stdin paths that could open a gap")
     mode.add_argument("--suites", action="store_true", help="print the suite workflow file names")
+    mode.add_argument("--triggered", action="store_true",
+                      help="print the stdin paths that run the one WORKFLOW given on a push")
     parser.add_argument("workflows", nargs="*", default=sorted(SUITES))
     args = parser.parse_args(argv)
     repo = pathlib.Path(args.repo)
@@ -539,6 +551,18 @@ def main(argv: list[str]) -> int:
         return 0
     if args.suites:
         print("\n".join(os.path.basename(w) for w in sorted(SUITES)))
+        return 0
+    if args.triggered:
+        if len(args.workflows) != 1 or args.workflows[0] not in SUITES:
+            print(f"ci-test-inputs: --triggered takes one suite workflow; known: {', '.join(sorted(SUITES))}",
+                  file=sys.stderr)
+            return 2
+        try:
+            filters = path_filters((repo / args.workflows[0]).read_text())
+        except (OSError, ValueError) as exc:
+            print(f"ci-test-inputs: unusable: {exc}", file=sys.stderr)
+            return 2
+        print("\n".join(triggered(sys.stdin.read().split(), filters)))
         return 0
     unknown = [w for w in args.workflows if w not in SUITES]
     if unknown:

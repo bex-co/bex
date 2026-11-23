@@ -64,8 +64,23 @@
 #      never a stop: the board is public, so another tenant's id is hashed or
 #      left out (.pm/AGENTS.md), but most ids a push adds are disposable QA and
 #      drill workspaces.
+#  14. The push changes a path cli-test.yml runs on (read from the workflow's
+#      own push paths, less those the backend suite of gate 2 already covers)
+#      and a step of its job fails, run with CI=true as a hosted runner sets
+#      it: scripts/bex-cli-validate.sh, `go test ./...` in lego/cli, and
+#      `go test ./internal/cliauth ./internal/api` in lego/backend (left to
+#      gate 2 when that runs). Blocks: ed70568c4 turned test (bex CLI) red
+#      with a test that fails only under CI=true, and nothing here ran the
+#      CLI (w21/117).
+#  15. The push changes a file scripts/test_cli_analytics.py or
+#      scripts/test_product_analytics.py reads (the two analytics SQL files,
+#      the Grafana values, an edited migration) or either test, and they fail
+#      against the postgres:17 digest gitops.yml's cli-analytics job pins, in
+#      a container of its own that every way out of the gate removes. Blocks:
+#      ed1452f75 turned gitops.yml red through scripts/cli-analytics.sql
+#      (w21/117).
 #
-# Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
+# Gates 2, 3, 5, 6, 14 and 15 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
 # edit (a false failure), and an uncommitted file a test needed would pass a
 # push whose commit lacks it. One worktree per checkout, reused so Go's build
@@ -192,11 +207,51 @@ native_changed=$({
   grep -xF -f <(printf '%s\n' "$native_sources") <<<"$all_changed"
   grep -E '^\.github/(scripts/[^/]*native[^/]*|workflows/native-[^/]*)$' <<<"$all_changed"
 } || true)
+# Gate 14: the paths cli-test.yml runs on, from the workflow itself so a path
+# added there is never missed here, less what gate 2 covers: the backend suite
+# runs lego/backend/internal and the authz model in full, and the CLI suite
+# reads none of it.
+cli_triggered=$(python3 -B scripts/ci_test_inputs.py --triggered .github/workflows/cli-test.yml <<<"$all_changed")
+cli_changed=$(grep -vxF -f <(printf '%s\n' "$backend_changed") <<<"$cli_triggered" || true)
+# Gate 15: what the cli-analytics job's two test files read. gitops.yml's own
+# paths are all of lego/, scripts/ and deploy/ and would start Postgres on
+# nearly every push. The tests apply a fixed list of migrations, so only an
+# edit of an existing one is a read, never a new migration.
+analytics_changed=$({
+  git diff --name-only "$base"..HEAD -- scripts/cli-analytics.sql scripts/product-analytics.sql \
+    scripts/test_cli_analytics.py scripts/test_product_analytics.py deploy/gitops/base/values/grafana.values.yaml
+  git diff --name-only --diff-filter=MDR "$base"..HEAD -- lego/backend/internal/store/migrations
+})
+
+# The longest any one step that can wait on Docker or a test may run, so a
+# hung pull, container or test cannot hang the gate; 15 minutes covers a cold
+# pull of the Postgres image.
+step_timeout=${BEX_SHIP_GATES_STEP_TIMEOUT:-900}
+# timeout(1) is not on macOS: run a command for at most <seconds>, then kill it
+# and fail 124 as timeout does.
+bounded() {
+  python3 -B -c 'import subprocess, sys
+try:
+    sys.exit(subprocess.run(sys.argv[2:], timeout=float(sys.argv[1])).returncode)
+except subprocess.TimeoutExpired:
+    shown = " ".join(sys.argv[2:4])
+    print(f"ship-gates: {shown} ... still running after {sys.argv[1]}s; killed", file=sys.stderr)
+    sys.exit(124)
+except OSError as exc:
+    print(f"ship-gates: cannot run {sys.argv[2]}: {exc}", file=sys.stderr)
+    sys.exit(127)' "$@"
+}
 
 tree=""
 lock=""
 throwaway=""
+analytics_db=""
 release_tree() {
+  # The analytics Postgres goes however the gate ends: a failed suite, a
+  # signal or a timeout.
+  if [ -n "$analytics_db" ]; then
+    bounded 60 docker rm -f -v "$analytics_db" >/dev/null 2>&1 || true
+  fi
   if [ -n "$throwaway" ]; then
     git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1 || true
     rm -rf "$throwaway"
@@ -206,7 +261,7 @@ release_tree() {
 trap release_tree EXIT
 common_dir() { (cd "$1" && cd "$(git rev-parse --git-common-dir)" && pwd -P) 2>/dev/null; }
 # Every gate below that reads the tree must appear here.
-if [ -n "$go_changed$backend_changed$dashboard_changed$suite_inputs_changed$native_changed" ]; then
+if [ -n "$go_changed$backend_changed$dashboard_changed$suite_inputs_changed$native_changed$cli_changed$analytics_changed" ]; then
   # Keyed on the repository, not the checkout: linked worktrees (agent
   # checkouts) share one warm worktree instead of each leaving its own.
   common=$(common_dir .)
@@ -258,6 +313,53 @@ if [ -n "$go_changed" ]; then
 fi
 if [ -n "$suite_inputs_changed" ]; then
   python3 -B scripts/ci_test_inputs.py >&2
+fi
+if [ -n "$analytics_changed" ]; then
+  echo "ship-gates: CLI/product analytics inputs changed — running their SQL suites against the CI-pinned Postgres" >&2
+  # The digest gitops.yml's cli-analytics job runs, read from it so the two
+  # cannot drift.
+  analytics_image=$(grep -m1 -oE 'postgres:17@sha256:[0-9a-f]{64}' .github/workflows/gitops.yml) || {
+    echo "ship-gates: no postgres:17 digest pin in .github/workflows/gitops.yml" >&2
+    exit 1
+  }
+  analytics_db="bex-ship-gates-analytics-$$"
+  # Unpublished: the suites reach it through `docker exec`, as in CI.
+  bounded "$step_timeout" docker run -d --rm --name "$analytics_db" --label bex-ship-gates=analytics \
+    -e POSTGRES_PASSWORD=pw "$analytics_image" >/dev/null || {
+    echo "ship-gates: could not start $analytics_image (is Docker running?)" >&2
+    exit 1
+  }
+  analytics_ready=0
+  for _ in $(seq 1 90); do
+    if bounded 10 docker exec "$analytics_db" pg_isready -U postgres -h 127.0.0.1 >/dev/null 2>&1; then
+      analytics_ready=1
+      break
+    fi
+    sleep 1
+  done
+  [ "$analytics_ready" = 1 ] || {
+    echo "ship-gates: the analytics Postgres did not become ready" >&2
+    exit 1
+  }
+  BEX_CLI_ANALYTICS_TEST_CONTAINER="$analytics_db" bounded "$step_timeout" \
+    python3 -B -m unittest scripts/test_cli_analytics.py scripts/test_product_analytics.py
+  bounded 60 docker rm -f -v "$analytics_db" >/dev/null 2>&1 || true
+  analytics_db=""
+fi
+if [ -n "$cli_changed" ]; then
+  echo "ship-gates: bex CLI inputs changed — running cli-test.yml's steps with CI=true" >&2
+  (
+    # As a hosted runner runs them: CI=true, which ed70568c4's test failed
+    # only under, and no cluster of the caller's.
+    export CI=true
+    unset KUBECONFIG
+    bash scripts/bex-cli-validate.sh
+    (cd lego/cli && go test ./...)
+    # Gate 2 runs these two packages in full, against real dependencies.
+    if [ -z "$backend_changed" ]; then
+      (cd lego/backend && go test ./internal/cliauth ./internal/api)
+    fi
+  )
 fi
 if [ -n "$backend_changed" ]; then
   echo "ship-gates: backend/types/authz changed — running the backend suite against real dependencies" >&2

@@ -342,6 +342,40 @@ class Affected(unittest.TestCase):
                                                  ".github/workflows/dashboard-test.yml", "scripts/ci_test_inputs.py"])
 
 
+class Triggered(unittest.TestCase):
+    """What a push runs, for /ship's gate: the workflow's own push paths decide, so no copy drifts."""
+
+    def test_a_push_runs_the_workflow_on_the_paths_it_lists(self):
+        filters = cti.path_filters(workflow(["pr/**"], ["lego/cli/**", "docs/untracked-guide.md", "scripts/bex-cli-*.sh"]))
+        changed = ["lego/cli/a/b.go", "docs/untracked-guide.md", "docs/other.md", "scripts/bex-cli-build.sh",
+                   "scripts/bex-cli-x/y.sh", "pr/a.go", "lego/backend/a.go"]
+        self.assertEqual(cti.triggered(changed, filters), ["lego/cli/a/b.go", "docs/untracked-guide.md", "scripts/bex-cli-build.sh"])
+
+    def test_a_push_without_paths_runs_on_every_change_and_a_missing_one_on_none(self):
+        every = "name: x\non:\n  push:\n    branches: [main]\n  workflow_dispatch: {}\n"
+        self.assertEqual(cti.triggered(["a", "b/c"], cti.path_filters(every)), ["a", "b/c"])
+        pull_only = "name: x\non:\n  pull_request:\n    paths:\n      - \"a\"\n"
+        self.assertEqual(cti.triggered(["a"], cti.path_filters(pull_only)), [])
+
+    def test_main_prints_what_the_named_suite_workflow_runs_on(self):
+        name = ".github/workflows/cli-test.yml"
+        with tempfile.TemporaryDirectory() as repo:
+            (pathlib.Path(repo) / name).parent.mkdir(parents=True)
+            (pathlib.Path(repo) / name).write_text(workflow(["lego/cli/**"]))
+            out = io.StringIO()
+            with mock.patch("sys.stdin", io.StringIO("lego/cli/a.go\nlego/operator/b.go\n")), contextlib.redirect_stdout(out):
+                self.assertEqual(cti.main(["--repo", repo, "--triggered", name]), 0)
+            self.assertEqual(out.getvalue().split(), ["lego/cli/a.go"])
+
+    def test_one_known_suite_workflow_is_required(self):
+        for argv in (["--triggered"], ["--triggered", ".github/workflows/not-a-suite.yml"],
+                     ["--triggered", ".github/workflows/cli-test.yml", ".github/workflows/scripts.yml"]):
+            err = io.StringIO()
+            with mock.patch("sys.stdin", io.StringIO("a\n")), contextlib.redirect_stderr(err):
+                self.assertEqual(cti.main(argv), 2, argv)
+            self.assertIn("--triggered takes one suite workflow", err.getvalue())
+
+
 class RealTree(unittest.TestCase):
     def test_every_suite_covers_its_reads(self):
         out = io.StringIO()
