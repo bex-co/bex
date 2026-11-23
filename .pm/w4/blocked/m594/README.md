@@ -1,6 +1,6 @@
 # w4 · m594 — In a protected environment only Admins read datastore passwords, change datastore IP rules or touch environment groups' variables, as on Render
 
-**Worker:** worker4 **Goal:** in a protected environment, the remaining actions Render reserves to Admins are Admin-only on bex too: viewing a Postgres's or Key Value's password and connection URLs, changing a Postgres's or Key Value's inbound IP rules, and viewing or changing an environment group's variables and secret files (and deleting the group). A non-Admin is refused with `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` on REST, GraphQL and MCP, and the dashboard shows each control disabled with Render's _This action is limited to admins._ before the click. A Blueprint's own sync keeps Render's exception. **Status:** todo (t001–t005 and t007–t009 done; t006 replaying on dev-4)
+**Worker:** worker4 **Goal:** in a protected environment, the remaining actions Render reserves to Admins are Admin-only on bex too: viewing a Postgres's or Key Value's password and connection URLs, changing a Postgres's or Key Value's inbound IP rules, and viewing or changing an environment group's variables and secret files (and deleting the group). A non-Admin is refused with `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` on REST, GraphQL and MCP, and the dashboard shows each control disabled with Render's _This action is limited to admins._ before the click. A Blueprint's own sync keeps Render's exception. **Status:** blocked (pin must carry `3329f5eaff`: t006's production walk as the QA user, then t010; t001–t005 and t007–t009 done, and t006 passed on dev-4)
 
 ## Tasks (in order)
 
@@ -44,7 +44,40 @@ Verified by the backend and dashboard suites, then on dev-4 with OpenFGA enforce
   - **Shared gate (w4/m578).** `core.RequireEnvironmentAdmin`, `core.ProtectedVerbRestricted` and `core.RestrictedDecision` (`core/confirmation.go`), and `ReasonProtectedEnvironmentAdmin` (`core/decision.go`). The coded refusal is `core.ProtectedPlacementRefusal` (`PROTECTED_ENVIRONMENT_ADMIN_REQUIRED`), today used only for placement; suspend, resume and delete still answer a bare `FORBIDDEN`.
   - **Dashboard.** The connection-info reveals gate on the workspace `canViewSensitive` (`dashboard/src/features/databases/components/connection-info-panel.tsx:68`, `keyvalue/components/connection-info-panel.tsx:87`). The IP-rule editors (`databases/components/access-control-panel.tsx`, `keyvalue/components/key-value-networking-panel.tsx`) and the env-group editors (`env-groups/components/env-group-editors.tsx`, over `services/components/service-environment-editor.tsx`) read no protection; a refused env read shows "Not authorized — You don't have permission to view this service's environment variables." `useProtectedPlacement` (`environments/hooks/use-protected-placement.ts`) already gates an env group's Move on its environment's `protectedStatus` and the workspace `canManage`.
   - **ADR032** (`docs/ADR032-environments.md:109`) records "a linked environment group's content is workspace-scoped, not per protected service, and stays editable by anyone who may edit the group" as a residual with no sign-off.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). A divergence stands only with the user's sign-off in ADR018, and this one has none. The capability projections exist so a client never offers a verb the server refuses ([ADR087](../../../docs/ADR087-mobile-role-views.md)).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). A divergence stands only with the user's sign-off in ADR018, and this one has none. The capability projections exist so a client never offers a verb the server refuses ([ADR087](../../../../docs/ADR087-mobile-role-views.md)).
 - **Expected outcome:** a workspace that protects its production environment keeps its database passwords, its datastores' IP rules and its production env groups' secrets to Admins, as on Render. A Developer sees why before clicking.
 - **Why now:** w4/m578 shipped the per-resource admin-only rule and copy for Suspend and Resume on 2026-11-23, and w4/724–726 cover Delete, maintenance mode and Shell. These three are the last items on Render's protected-environment list with no gate at all, so a Developer can read the very credentials protection exists to guard.
 - **Render parity:** included (t007). The change faces tenants on REST, GraphQL, MCP and the dashboard.
+
+## Live check (2026-11-23)
+
+**dev-4 (t006).** bex-api built from this change, with authorization enforced by an OpenFGA seeded with `deploy/gitops/authz/model.json` and an OpenBao for the environment groups' values, both in `dev-4-auth` (the agent leg's templates, without its sandbox half); the dashboard from this tree on :50040. Three throwaway Kratos identities: an Admin on a Scale workspace, and a Developer and a Viewer it invited. Fixtures: project `m594-protected` (disposable) with `staging` and a protected `production`, each holding a Postgres with IP rules (free in staging, `basic_256mb` in production), a Key Value with external access, and an environment group with a variable and a secret file; production also held an image web service linked to its group.
+
+**REST, GraphQL and MCP**, every verb as each role in each environment:
+
+| Verb | Admin, both | Developer, production | Developer, staging | Viewer, both |
+| --- | --- | --- | --- | --- |
+| Postgres and Key Value connection info (REST, GraphQL) | 200 / ok | 403 (REST), `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` (GraphQL) | 200 / ok | 403 / `FORBIDDEN` |
+| IP rules: REST `PATCH`, GraphQL `setDatabaseIpAllowList`, MCP `update_postgres` / `update_key_value` | applied | 403, the code on GraphQL and MCP | applied | 403 / `FORBIDDEN` |
+| Group: per-key and per-file reveal, variable write (REST, GraphQL, MCP) | ok | 403, the code on GraphQL and MCP | ok | 403 / `FORBIDDEN` |
+| Group: REST `GET` | values | 200 without `envVars` and `secretFiles` | values | 200 without them |
+| Group: delete (REST, GraphQL, MCP) | — | 403, the code on GraphQL and MCP | 204 | 403 / `FORBIDDEN` |
+| `databaseActions`, `keyValueActions`, `envGroupActions` rows | `allowed` | `denied` / `protected_environment_admin_required` | `allowed` | `denied` / `insufficient_permission` |
+
+REST's `403` carries no code on these Render operations (w8/411 keeps Render's vocabulary there) and names the action in its message. No refusal body carried a value.
+
+- **Fixed by the replay:** the Developer's REST read of the protected group first answered `403` instead of the group without values. The group's view spells its environment by the public `evm-` id, and `GetEnvironmentProtectedStatus` read that as an environment that does not exist, so the probe saw no protection and the read went on to the audited path, which refused. `valuesWithheld` now passes the storage id, and the store resolves either spelling; both have tests. Rerun after the fix: 200 without values.
+
+**Dashboard**, headless Chromium as each role at 1440 and 390 (both widths gave the same results):
+
+| Control | Admin, production | Developer, production | Developer, staging | Viewer, both |
+| --- | --- | --- | --- | --- |
+| Postgres and Key Value **Reveal connection info** | enabled | disabled, _This action is limited to admins._, nothing sent | enabled | disabled, "Your role can’t reveal secret values. Ask a workspace admin." |
+| Postgres Access control and Key Value Networking IP rules | inputs enabled | rules listed, every input disabled, Save says _This action is limited to admins._, nothing sent | inputs enabled | inputs disabled, Save says "Your role can’t perform this action. Ask a workspace admin." |
+| Group **Edit**, **Reveal** (variable and file) | enabled | disabled with the admin-only reason, nothing sent | enabled | disabled with the role reasons |
+| Group **Unlink** and Manage → **Delete** | enabled | disabled with the admin-only reason, nothing opened | enabled | disabled with the role reason |
+
+The pooled-string reveal was not shown (no pooler on these plans); its gate is covered by `admin-only-controls.test.tsx`. A raced coded `403` was not forced live; the API rows above show the code reaching GraphQL, and the component tests show each control reading it as the admin-only reason.
+
+- **Cleanup:** the services, datastores, groups, project, the three workspaces and the three identities were deleted, the OpenFGA and OpenBao deployments removed, the dashboard stopped, and bex-api restarted with its defaults.
+- **Production:** waits for a pin that carries this change. The QA user is an Admin in `bex-canary`, so the walk checks that an Admin keeps every control in a protected environment of a disposable project.

@@ -1,6 +1,6 @@
 # In a protected environment only Admins read datastore passwords, change datastore IP rules or touch environment groups' variables, as on Render
 
-Why: Render's protected environments keep these to Admins, and on bex a Developer can do all three. Found by w4/m553 t002 on 2026-11-22 from the changelog entries of 2024-04-16 ("Designate environments as protected") and 2024-08-14 ("Added restrictions and audit tracking for viewing secret values") ([disposition table](../../../docs/render-artifacts/render-changelog.md)).
+Why: Render's protected environments keep these to Admins, and on bex a Developer can do all three. Found by w4/m553 t002 on 2026-11-22 from the changelog entries of 2024-04-16 ("Designate environments as protected") and 2024-08-14 ("Added restrictions and audit tracking for viewing secret values") ([disposition table](../../../../docs/render-artifacts/render-changelog.md)).
 
 - **Render** ([render.com/docs/projects](https://render.com/docs/projects), read 2026-11-22). Only Admins in a protected environment may do these:
   - modify access control IPs for any Postgres or Key Value instance;
