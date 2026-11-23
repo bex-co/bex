@@ -412,11 +412,24 @@ var servicePatchTable = []servicePatchOp{
 				probe.Spec.Schedule = strings.TrimSpace(*p.Schedule)
 			}
 			if p.Command != nil {
-				setCronCommand(&probe.Spec, *p.Command)
+				strat := targetBuildStrategy(probe.Spec, patchTargetRuntime(ctx))
+				if p.StartCommand == nil && p.Runtime != nil && nativeBuild(strat) {
+					setStartCommandForStrategy(&probe.Spec, *p.Command, strat)
+				} else {
+					setCronCommand(&probe.Spec, *p.Command)
+				}
 			}
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+			if p.Command != nil && p.StartCommand == nil && p.Runtime != nil && blueprintNativeRuntime(strings.ToLower(strings.TrimSpace(*p.Runtime))) {
+				if p.Schedule != nil {
+					if _, err := s.SetCronJob(ctx, id, p.Schedule, nil); err != nil {
+						return AppView{}, err
+					}
+				}
+				return s.SetCommands(ctx, id, nil, p.Command)
+			}
 			return s.SetCronJob(ctx, id, p.Schedule, p.Command)
 		},
 	},
@@ -472,7 +485,7 @@ var servicePatchTable = []servicePatchOp{
 				setBuildCommand(&probe.Spec, *p.BuildCommand)
 			}
 			if p.StartCommand != nil {
-				setStartCommand(&probe.Spec, *p.StartCommand)
+				setStartCommandForStrategy(&probe.Spec, *p.StartCommand, targetBuildStrategy(probe.Spec, patchTargetRuntime(ctx)))
 			}
 			return nil
 		},
@@ -486,10 +499,13 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"Runtime"},
 		present:  func(p ServicePatch) bool { return p.Runtime != nil },
 		relation: canCreate,
-		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+		check: func(ctx context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			runtime, builder, err := checkRuntime(probe, *p.Runtime)
-			probe.Spec.Runtime, probe.Spec.Builder = runtime, builder
-			return err
+			if err != nil {
+				return err
+			}
+			applyRuntimeChange(&probe.Spec, runtime, builder, !patchHasExplicitStart(ctx))
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetRuntime(ctx, id, *p.Runtime)
@@ -725,6 +741,8 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 	if err != nil {
 		return ctx, nil, nil, err
 	}
+	ctx = withPatchTargetRuntime(ctx, p.Runtime)
+	ctx = withPatchExplicitStart(ctx, p.StartCommand != nil || p.Command != nil)
 	probe := a.DeepCopy()
 	for _, row := range rows {
 		if err := row.check(ctx, s, probe, id, p); err != nil {
@@ -851,6 +869,34 @@ type patchJudgedKey struct{}
 func patchJudged(ctx context.Context) bool {
 	judged, _ := ctx.Value(patchJudgedKey{}).(bool)
 	return judged
+}
+
+type patchTargetRuntimeKey struct{}
+
+func withPatchTargetRuntime(ctx context.Context, runtime *string) context.Context {
+	if runtime == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, patchTargetRuntimeKey{}, strings.ToLower(strings.TrimSpace(*runtime)))
+}
+
+func patchTargetRuntime(ctx context.Context) string {
+	r, _ := ctx.Value(patchTargetRuntimeKey{}).(string)
+	return r
+}
+
+type patchExplicitStartKey struct{}
+
+func withPatchExplicitStart(ctx context.Context, hasStart bool) context.Context {
+	if !hasStart {
+		return ctx
+	}
+	return context.WithValue(ctx, patchExplicitStartKey{}, true)
+}
+
+func patchHasExplicitStart(ctx context.Context) bool {
+	has, _ := ctx.Value(patchExplicitStartKey{}).(bool)
+	return has
 }
 
 // ApplyServicePatchDryRun is ApplyServicePatch stopped before its first write

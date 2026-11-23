@@ -2545,7 +2545,12 @@ const koServices: Record<string, TranslationEntry> = {
   "services.sourceUpdateSuccess": {
     message: "소스를 업데이트했습니다.",
     description:
-      "Toast after a repository, branch, or image source update succeeds",
+      "Toast after a repository, branch, or image source update saves without triggering a deploy (e.g. suspended service or unbuilt build source)",
+  },
+  "services.sourceUpdateDeploying": {
+    message: "소스를 업데이트했습니다. 새 배포를 시작합니다.",
+    description:
+      "Toast after Update Source saves and immediately triggers a new deploy",
   },
   "services.sourceUpdateError": {
     message: "소스를 업데이트하지 못했습니다. 다시 시도하세요.",
@@ -2568,11 +2573,17 @@ const koServices: Record<string, TranslationEntry> = {
     message: "이미지",
     description: "Source card: container image path field label",
   },
-  "services.sourceNoAutoDeploy": {
+  "services.sourceDialogDescription": {
     message:
-      "변경 사항은 자동으로 배포되지 않으며, 다음 배포부터 새 소스가 사용됩니다.",
+      "Git 리포지토리, 기존 빌드 소스 또는 Docker 이미지를 선택하세요. 제출하면 새 배포가 시작됩니다.",
     description:
-      "Shared note (Render parity): a source change doesn't trigger a deploy",
+      "Update Source dialog description for non-static services (Render parity)",
+  },
+  "services.sourceDialogDescriptionStatic": {
+    message:
+      "이 Static Site의 기반이 될 Git 리포지토리를 선택하세요. 제출하면 새 배포가 시작됩니다.",
+    description:
+      "Update Source dialog description for static sites (Render parity)",
   },
   "services.sourceMissing": {
     message: "구성되지 않음",
@@ -2648,15 +2659,36 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
-  "services.sourceNativeCommandsHint": {
+  "services.sourceBuildCommandOptionalHint": {
     message:
-      "이 서비스는 네이티브 런타임으로 빌드하므로 Git으로 되돌리려면 빌드 명령과 시작 명령이 필요합니다.",
+      "선택 사항입니다. 비워 두면 리포지토리의 파일이 그대로 게시됩니다.",
     description:
-      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+      "Update Source static-site Build Command helper: build command is optional",
   },
-  "services.sourceUpdateSave": {
-    message: "소스 업데이트",
-    description: "Save button in the Update Source dialog",
+  "services.sourcePublishDirectoryRequired": {
+    message: "게시 디렉터리를 입력하세요.",
+    description:
+      "Update Source static-site Publish Directory validation error when blank",
+  },
+  "services.sourceDeploy": {
+    message: "배포",
+    description:
+      "Primary submit button in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceDeploying": {
+    message: "배포 중",
+    description:
+      "In-flight submit button label in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceConnect": {
+    message: "연결",
+    description:
+      "Primary submit button in Update Source for the Existing Image tab",
+  },
+  "services.sourceConnecting": {
+    message: "연결 중",
+    description:
+      "In-flight submit button label in Update Source for the Existing Image tab",
   },
   "services.startCommandLabel": {
     message: "시작 명령",

@@ -1,39 +1,46 @@
 import { SetImageDocument } from "@/graphql/definitions";
-import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
+import {
+  useSourceMutation,
+  type SourceMutationResult,
+} from "@/features/services/hooks/use-source-mutation";
 
 export interface UseSetImageResult {
   /**
-   * Fires setImage; resolves true on success (toasted either way). An optional
-   * registryCredentialId binds a private-registry pull credential to the image.
+   * Fires setImage; resolves `{ ok, deployId }` (toasted either way). An
+   * optional registryCredentialId binds a private-registry pull credential to
+   * the image.
    */
   setImage: (
     id: string,
     image: string,
     registryCredentialId?: string,
-  ) => Promise<boolean>;
+    deploy?: boolean,
+  ) => Promise<SourceMutationResult>;
   busy: boolean;
   /** The server's refusal from the last failed setImage, else null. */
   lastError: string | null;
 }
 
 /**
- * Wires the Settings Source control's "switch to a container image" path to
- * bex-api's `setImage` (w5/m76, Render's Update Source repo→image). The shared
- * source verb persists `spec.image` and clears the repo/branch source; the next
- * deploy uses the new image (no automatic deploy on change).
+ * Wires Settings → Update Source's Existing Image path to bex-api's `setImage`
+ * (w5/m76, w4/m593). Persists `spec.image`, clears the repo/branch source, and
+ * when `deploy` is true (default) immediately triggers one deploy.
  */
 export function useSetImage(): UseSetImageResult {
-  const { run, busy, lastError } = useFieldMutation(
+  const { run, busy, lastError } = useSourceMutation(
     SetImageDocument,
-    (id: string, image: string, registryCredentialId?: string) => ({
+    (
+      id: string,
+      image: string,
+      registryCredentialId?: string,
+      deploy?: boolean,
+    ) => ({
       id,
       image,
       registryCredentialId: registryCredentialId ?? null,
+      deploy: deploy ?? true,
     }),
-    {
-      success: "services.sourceUpdateSuccess",
-      error: "services.sourceUpdateError",
-    },
+    (data) => data?.setImage?.latestDeployId ?? null,
   );
 
   return { setImage: run, busy, lastError };

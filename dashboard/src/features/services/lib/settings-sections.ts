@@ -75,7 +75,7 @@ export function serviceSettingsSections(
     if (runtime) sections.push("runtime");
     if (repo) sections.push("build");
   } else {
-    if (!staticSite) sections.push("source");
+    sections.push("source");
     // An Existing Image service has no build: its Deploy card stands alone.
     if (!repo && !staticSite) sections.push("deploy");
     if (runtime) sections.push("runtime");

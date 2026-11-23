@@ -2543,7 +2543,12 @@ const enServices: Record<string, TranslationEntry> = {
   "services.sourceUpdateSuccess": {
     message: "Source updated.",
     description:
-      "Toast after a repository, branch, or image source update succeeds",
+      "Toast after a repository, branch, or image source update saves without triggering a deploy (e.g. suspended service or unbuilt build source)",
+  },
+  "services.sourceUpdateDeploying": {
+    message: "Source updated. Starting a new deploy.",
+    description:
+      "Toast after Update Source saves and immediately triggers a new deploy",
   },
   "services.sourceUpdateError": {
     message: "Couldn't update the source. Please try again.",
@@ -2566,11 +2571,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Image",
     description: "Source card: container image path field label",
   },
-  "services.sourceNoAutoDeploy": {
+  "services.sourceDialogDescription": {
     message:
-      "Changes aren't deployed automatically — your next deploy will use the new source.",
+      "Select a Git repository, an existing build source, or a Docker image. Submitting starts a new deploy.",
     description:
-      "Shared note (Render parity): a source change doesn't trigger a deploy",
+      "Update Source dialog description for non-static services (Render parity)",
+  },
+  "services.sourceDialogDescriptionStatic": {
+    message:
+      "Select a Git repository to back this static site. Submitting starts a new deploy.",
+    description:
+      "Update Source dialog description for static sites (Render parity)",
   },
   "services.sourceMissing": {
     message: "Not configured",
@@ -2646,15 +2657,35 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
-  "services.sourceNativeCommandsHint": {
-    message:
-      "This service builds with a native runtime, so switching it back to Git needs its build and start commands.",
+  "services.sourceBuildCommandOptionalHint": {
+    message: "Optional. Leave blank to publish repository files directly.",
     description:
-      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+      "Update Source static-site Build Command helper: build command is optional",
   },
-  "services.sourceUpdateSave": {
-    message: "Update source",
-    description: "Save button in the Update Source dialog",
+  "services.sourcePublishDirectoryRequired": {
+    message: "Enter a publish directory.",
+    description:
+      "Update Source static-site Publish Directory validation error when blank",
+  },
+  "services.sourceDeploy": {
+    message: "Deploy",
+    description:
+      "Primary submit button in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceDeploying": {
+    message: "Deploying",
+    description:
+      "In-flight submit button label in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceConnect": {
+    message: "Connect",
+    description:
+      "Primary submit button in Update Source for the Existing Image tab",
+  },
+  "services.sourceConnecting": {
+    message: "Connecting",
+    description:
+      "In-flight submit button label in Update Source for the Existing Image tab",
   },
   "services.startCommandLabel": {
     message: "Start Command",

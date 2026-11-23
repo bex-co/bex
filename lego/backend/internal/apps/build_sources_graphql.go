@@ -223,8 +223,10 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 			},
 		},
 		// linkBuildSource is REST's PATCH buildSourceId: the service builds from
-		// the source from now on, saved without deploying; startCommand is the
-		// only setting that may ride along (Render).
+		// the source from now on; startCommand is the only setting that may ride
+		// along (Render). Passing deploy: true (used by Settings → Update Source,
+		// w4/m593) immediately starts one deploy when the build source already
+		// has a succeeded build and the service is not suspended.
 		"linkBuildSource": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -233,10 +235,23 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 				"startCommand":  gqlutil.Arg(graphql.String),
 				// dryRun runs every check and writes nothing (REST's ?dryRun).
 				"dryRun": gqlutil.Arg(graphql.Boolean),
+				"deploy": &graphql.ArgumentConfig{Type: graphql.Boolean, DefaultValue: false},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				serviceID := p.Args["serviceId"].(string)
+				buildSourceID := p.Args["buildSourceId"].(string)
 				dryRun, _ := p.Args["dryRun"].(bool)
-				return s.LinkBuildSource(p.Context, p.Args["serviceId"].(string), p.Args["buildSourceId"].(string), gqlutil.StrPtr(p.Args, "startCommand"), dryRun)
+				deploy, _ := p.Args["deploy"].(bool)
+				updated, err := s.LinkBuildSource(p.Context, serviceID, buildSourceID, gqlutil.StrPtr(p.Args, "startCommand"), dryRun)
+				if err != nil {
+					return nil, err
+				}
+				if deploy && !dryRun {
+					if carrier := s.linkedBuildSource(p.Context, updated.OwnerID, buildSourceID); carrier != nil && core.CurrentBuild(carrier) != "" {
+						return s.triggerSourceDeploy(p.Context, serviceID, updated)
+					}
+				}
+				return updated, nil
 			},
 		},
 		"deleteBuildSource": &graphql.Field{

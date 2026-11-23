@@ -2,10 +2,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServiceSourceCard } from "@/features/services/components/service-source-card";
+import type { SourceMutationResult } from "@/features/services/hooks/use-source-mutation";
 
-const setImage = vi.fn(async () => true);
-const setRepo = vi.fn(async () => true);
-const linkBuildSource = vi.fn(async () => true);
+const navigate = vi.fn();
+let currentBase: "/services" | "/static" = "/services";
+
+const setImage = vi.fn(
+  async (): Promise<SourceMutationResult> => ({
+    ok: true,
+    deployId: "dep-img-1",
+  }),
+);
+const setRepo = vi.fn(
+  async (): Promise<SourceMutationResult> => ({
+    ok: true,
+    deployId: "dep-git-1",
+  }),
+);
+const linkBuildSource = vi.fn(
+  async (): Promise<SourceMutationResult> => ({
+    ok: true,
+    deployId: "dep-bds-1",
+  }),
+);
+let repoLastError: string | null = null;
+let imageLastError: string | null = null;
+let linkLastError: string | null = null;
 let buildSourcesError: Error | undefined;
 const buildSources = [
   {
@@ -44,6 +66,13 @@ const repos = [
   },
 ];
 
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => navigate,
+}));
+vi.mock("@/features/services/lib/service-base", () => ({
+  useServiceBase: () => currentBase,
+}));
 vi.mock(
   "@/features/services/hooks/use-build-sources",
   async (importOriginal) => ({
@@ -61,13 +90,17 @@ vi.mock(
   }),
 );
 vi.mock("@/features/services/hooks/use-link-build-source", () => ({
-  useLinkBuildSource: () => ({ linkBuildSource, busy: false }),
+  useLinkBuildSource: () => ({
+    linkBuildSource,
+    busy: false,
+    lastError: linkLastError,
+  }),
 }));
 vi.mock("@/features/services/hooks/use-set-image", () => ({
-  useSetImage: () => ({ setImage, busy: false }),
+  useSetImage: () => ({ setImage, busy: false, lastError: imageLastError }),
 }));
 vi.mock("@/features/services/hooks/use-set-repo", () => ({
-  useSetRepo: () => ({ setRepo, busy: false }),
+  useSetRepo: () => ({ setRepo, busy: false, lastError: repoLastError }),
 }));
 vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({
@@ -120,21 +153,28 @@ vi.mock("@/features/services/components/registry-credential-select", () => ({
 }));
 
 beforeEach(() => {
+  currentBase = "/services";
+  navigate.mockClear();
   setImage.mockClear();
   setRepo.mockClear();
   linkBuildSource.mockClear();
+  repoLastError = null;
+  imageLastError = null;
+  linkLastError = null;
   buildSourcesError = undefined;
 });
 
 describe("ServiceSourceCard", () => {
-  it("keeps the source draft open when the backend rejects access", async () => {
+  it("keeps the source draft open and navigates nowhere when the backend rejects access", async () => {
     const user = userEvent.setup();
-    setRepo.mockResolvedValueOnce(false);
+    setRepo.mockResolvedValueOnce({ ok: false });
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/acme/api"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -146,17 +186,20 @@ describe("ServiceSourceCard", () => {
     const input = screen.getByDisplayValue("https://github.com/acme/api");
     await user.clear(input);
     await user.type(input, "https://github.com/unconnected/private");
-    await user.click(screen.getByRole("button", { name: "Update source" }));
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
 
     await waitFor(() =>
       expect(setRepo).toHaveBeenCalledWith("srv-1", {
         repo: "https://github.com/unconnected/private",
         branch: "main",
+        runtime: "docker",
+        deploy: true,
       }),
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(input).toHaveValue("https://github.com/unconnected/private");
     expect(setImage).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   // w10/m490: a repository the GitHub app connected and can no longer read
@@ -199,13 +242,15 @@ describe("ServiceSourceCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows a repo and branch, then atomically repoints both from the grouped picker", async () => {
+  it("shows a repo and branch, repoints both from the grouped picker, deploys, and navigates", async () => {
     const user = userEvent.setup();
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/acme/api"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -218,11 +263,9 @@ describe("ServiceSourceCard", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
 
     expect(
-      screen.getByText(/changes aren't deployed automatically/i),
+      screen.getByText(/Submitting starts a new deploy/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Update source" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeDisabled();
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     expect(screen.getByText("acme")).toBeInTheDocument();
     expect(screen.getByText("puncsky")).toBeInTheDocument();
@@ -232,14 +275,20 @@ describe("ServiceSourceCard", () => {
     expect(branch).toHaveValue("trunk");
     await user.clear(branch);
     await user.type(branch, "release");
-    await user.click(screen.getByRole("button", { name: "Update source" }));
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
 
     await waitFor(() =>
       expect(setRepo).toHaveBeenCalledWith("srv-1", {
         repo: "https://github.com/puncsky/site",
         branch: "release",
+        runtime: "docker",
+        deploy: true,
       }),
     );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/services/$serviceId/deploys/$deployId",
+      params: { serviceId: "srv-1", deployId: "dep-git-1" },
+    });
   });
 
   // A service on a repository the workspace's GitHub connection grants used
@@ -249,8 +298,10 @@ describe("ServiceSourceCard", () => {
     const connected = (overrides: { repo?: string; branch?: string } = {}) => (
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo={overrides.repo ?? "https://github.com/acme/api"}
         branch={overrides.branch ?? "main"}
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -277,9 +328,7 @@ describe("ServiceSourceCard", () => {
       expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
         "main",
       );
-      expect(
-        screen.getByRole("button", { name: "Update source" }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Deploy" })).toBeDisabled();
 
       // Its URL is not offered as a public one.
       await user.click(screen.getByRole("tab", { name: /Public Git/ }));
@@ -288,9 +337,7 @@ describe("ServiceSourceCard", () => {
           name: /Git repository URL|Repository URL/,
         }),
       ).toHaveValue("");
-      expect(
-        screen.getByRole("button", { name: "Update source" }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Deploy" })).toBeDisabled();
     });
 
     it("changes the branch alone, keeping the URL the service stores", async () => {
@@ -305,12 +352,14 @@ describe("ServiceSourceCard", () => {
       const branch = screen.getByRole("combobox", { name: "Branch" });
       await user.clear(branch);
       await user.type(branch, "release");
-      await user.click(screen.getByRole("button", { name: "Update source" }));
+      await user.click(screen.getByRole("button", { name: "Deploy" }));
 
       await waitFor(() =>
         expect(setRepo).toHaveBeenCalledWith("srv-1", {
           repo: "https://github.com/acme/api.git",
           branch: "release",
+          runtime: "docker",
+          deploy: true,
         }),
       );
     });
@@ -324,7 +373,7 @@ describe("ServiceSourceCard", () => {
         }),
       );
       await user.click(screen.getByRole("button", { name: "Edit" }));
-      const save = screen.getByRole("button", { name: "Update source" });
+      const save = screen.getByRole("button", { name: "Deploy" });
 
       // Its own repository keeps the branch it deploys, not the default one.
       await user.click(screen.getByRole("button", { name: /acme\/api/i }));
@@ -345,6 +394,8 @@ describe("ServiceSourceCard", () => {
         expect(setRepo).toHaveBeenCalledWith("srv-1", {
           repo: "https://github.com/puncsky/site",
           branch: "trunk",
+          runtime: "docker",
+          deploy: true,
         }),
       );
     });
@@ -352,13 +403,15 @@ describe("ServiceSourceCard", () => {
 
   // A disabled primary action with no reason beside it read as a broken form,
   // and an enabled one never said what it was about to save.
-  it("says why Update source is disabled, then what it will save", async () => {
+  it("says why Deploy is disabled, then what it will deploy", async () => {
     const user = userEvent.setup();
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/acme/api"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -367,7 +420,7 @@ describe("ServiceSourceCard", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    const save = screen.getByRole("button", { name: "Update source" });
+    const save = screen.getByRole("button", { name: "Deploy" });
     expect(save).toBeDisabled();
     expect(save).toHaveAccessibleDescription("No changes to save.");
 
@@ -386,8 +439,10 @@ describe("ServiceSourceCard", () => {
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/acme/api"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -402,7 +457,7 @@ describe("ServiceSourceCard", () => {
       "zzzz",
     );
     expect(screen.queryByRole("button", { name: /puncsky\/site/i })).toBeNull();
-    const save = screen.getByRole("button", { name: "Update source" });
+    const save = screen.getByRole("button", { name: "Deploy" });
     expect(save).toBeEnabled();
     expect(save).toHaveAccessibleDescription(
       "New source: puncsky/site · trunk",
@@ -414,8 +469,10 @@ describe("ServiceSourceCard", () => {
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/acme/api"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -432,7 +489,7 @@ describe("ServiceSourceCard", () => {
       "https://forge.example/acme/api.git",
     );
     expect(
-      screen.getByRole("button", { name: "Update source" }),
+      screen.getByRole("button", { name: "Deploy" }),
     ).toHaveAccessibleDescription(
       "New source: forge.example · acme / api · main",
     );
@@ -445,8 +502,10 @@ describe("ServiceSourceCard", () => {
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/acme/api"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -460,14 +519,12 @@ describe("ServiceSourceCard", () => {
       name: /Git repository URL|Repository URL/,
     });
     const branch = () => screen.getByRole("combobox", { name: "Branch" });
-    const save = screen.getByRole("button", { name: "Update source" });
+    const save = screen.getByRole("button", { name: "Deploy" });
     expect(branch()).toBeDisabled();
     expect(save).toHaveAccessibleDescription("Enter a repository URL.");
 
     await user.type(url, "not a repository");
     expect(branch()).toBeDisabled();
-    // The field says what is wrong with it; the footer still says the form
-    // is not ready, where it used to go blank.
     expect(save).toHaveAccessibleDescription(
       "Complete the fields above to continue.",
     );
@@ -494,7 +551,6 @@ describe("ServiceSourceCard", () => {
     const animate = vi.fn();
     const originalAnimate = Element.prototype.animate;
     Element.prototype.animate = animate;
-    // What the browser does after layout: tell each observer its box changed.
     const resized: (() => void)[] = [];
     const OriginalResizeObserver = globalThis.ResizeObserver;
     globalThis.ResizeObserver = class {
@@ -506,15 +562,15 @@ describe("ServiceSourceCard", () => {
       disconnect() {}
     };
     const layout = () => act(() => resized.forEach((report) => report()));
-    // Assigned, not spied on: the setup's matchMedia is itself a mock, and
-    // restoring a spy on it would strip its implementation for later tests.
     const matchMedia = window.matchMedia;
     try {
       render(
         <ServiceSourceCard
           serviceId="srv-1"
+          serviceType="web_service"
           repo="https://github.com/acme/api"
           branch="main"
+          runtime="docker"
           imagePath={null}
           registryCredentialId={null}
           buildSourceId={null}
@@ -524,8 +580,6 @@ describe("ServiceSourceCard", () => {
       );
       await user.click(screen.getByRole("button", { name: "Edit" }));
       const dialog = screen.getByRole("dialog");
-      // A change of size that no switch caused (the list arriving, the
-      // window resizing) is not animated.
       layout();
       expect(animate).not.toHaveBeenCalled();
 
@@ -561,6 +615,7 @@ describe("ServiceSourceCard", () => {
     render(
       <ServiceSourceCard
         serviceId="srv-2"
+        serviceType="web_service"
         repo={null}
         branch={null}
         imagePath="nginx:stable"
@@ -572,11 +627,11 @@ describe("ServiceSourceCard", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     expect(
-      screen.getByRole("button", { name: "Update source" }),
+      screen.getByRole("button", { name: "Deploy" }),
     ).toHaveAccessibleDescription("Select a repository.");
     await user.click(screen.getByRole("button", { name: /acme\/api/i }));
     expect(screen.queryByText("Select a repository.")).toBeNull();
-    expect(screen.getByRole("button", { name: "Update source" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeEnabled();
   });
 
   it("opens a repository the GitHub connection does not grant as its URL", async () => {
@@ -584,8 +639,10 @@ describe("ServiceSourceCard", () => {
     render(
       <ServiceSourceCard
         serviceId="srv-1"
+        serviceType="web_service"
         repo="https://github.com/elsewhere/public"
         branch="main"
+        runtime="docker"
         imagePath={null}
         registryCredentialId={null}
         buildSourceId={null}
@@ -611,11 +668,12 @@ describe("ServiceSourceCard", () => {
     }
   });
 
-  it("repoints an image and forwards its registry credential", async () => {
+  it("repoints an image, forwards its registry credential, deploys, and navigates", async () => {
     const user = userEvent.setup();
     render(
       <ServiceSourceCard
         serviceId="srv-2"
+        serviceType="web_service"
         repo={null}
         branch={null}
         imagePath="nginx:stable"
@@ -630,18 +688,28 @@ describe("ServiceSourceCard", () => {
     const input = screen.getByDisplayValue("nginx:stable");
     await user.clear(input);
     await user.type(input, "nginx:1.27");
-    await user.click(screen.getByRole("button", { name: "Update source" }));
+    await user.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() =>
-      expect(setImage).toHaveBeenCalledWith("srv-2", "nginx:1.27", "rgc-1"),
+      expect(setImage).toHaveBeenCalledWith(
+        "srv-2",
+        "nginx:1.27",
+        "rgc-1",
+        true,
+      ),
     );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/services/$serviceId/deploys/$deployId",
+      params: { serviceId: "srv-2", deployId: "dep-img-1" },
+    });
   });
 
-  it("switches an image-backed service to a connected repo and its default branch", async () => {
+  it("switches an image-backed service to a connected Docker repo and deploys", async () => {
     const user = userEvent.setup();
     render(
       <ServiceSourceCard
         serviceId="srv-3"
+        serviceType="web_service"
         repo={null}
         branch={null}
         imagePath="nginx:stable"
@@ -654,12 +722,14 @@ describe("ServiceSourceCard", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     await user.click(screen.getByRole("button", { name: /acme\/api/i }));
-    await user.click(screen.getByRole("button", { name: "Update source" }));
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
 
     await waitFor(() =>
       expect(setRepo).toHaveBeenCalledWith("srv-3", {
         repo: "https://github.com/acme/api",
         branch: "main",
+        runtime: "docker",
+        deploy: true,
       }),
     );
     expect(
@@ -667,14 +737,14 @@ describe("ServiceSourceCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  // w32/052: an image service that built natively keeps its native builder
-  // for a switch back (w4/m202) but not its commands (w8/m461), and bex-api
-  // refuses the switch without both, so the dialog asks for them.
+  // w32/052 + w4/m593: an image service that built natively defaults back to a
+  // native runtime and requires both build and start commands.
   it("asks an image service that built natively for its commands to switch back to Git", async () => {
     const user = userEvent.setup();
     render(
       <ServiceSourceCard
         serviceId="srv-5"
+        serviceType="web_service"
         repo=""
         branch=""
         imagePath="nginx:stable"
@@ -693,36 +763,236 @@ describe("ServiceSourceCard", () => {
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     await user.click(screen.getByRole("button", { name: /acme\/api/i }));
 
-    const commands = screen.getByTestId("source-native-commands");
-    expect(commands).toHaveTextContent("needs its build and start commands");
+    expect(screen.getByTestId("source-native-commands")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
       "main",
     );
-    const update = screen.getByRole("button", { name: "Update source" });
-    expect(update).toBeDisabled();
+    const deploy = screen.getByRole("button", { name: "Deploy" });
+    expect(deploy).toBeDisabled();
     await user.type(screen.getByLabelText("Build Command"), "yarn");
-    expect(update).toBeDisabled();
+    expect(deploy).toBeDisabled();
     await user.type(screen.getByLabelText("Start Command"), "node app.js");
-    await user.click(update);
+    await user.click(deploy);
 
     await waitFor(() =>
       expect(setRepo).toHaveBeenCalledWith("srv-5", {
         repo: "https://github.com/acme/api",
         branch: "main",
+        runtime: "node",
         buildCommand: "yarn",
         startCommand: "node app.js",
+        deploy: true,
       }),
     );
+  });
+
+  // w4/m593: switching runtime in Update Source toggles native commands vs Docker.
+  it("reconfirms Runtime and commands when moving between Docker and native runtimes", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-rt"
+        serviceType="web_service"
+        repo="https://github.com/acme/api"
+        branch="main"
+        runtime="docker"
+        builder="dockerfile"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        buildCommand={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(
+      screen.queryByTestId("source-native-commands"),
+    ).not.toBeInTheDocument();
+
+    // Switch Runtime from Docker to Python: native commands appear pre-seeded.
+    await user.click(screen.getByRole("combobox", { name: "Runtime" }));
+    await user.click(screen.getByRole("option", { name: "Python 3" }));
+    const build = screen.getByLabelText("Build Command");
+    const start = screen.getByLabelText("Start Command");
+    expect(build).toHaveValue("pip install -r requirements.txt");
+    expect(start).toHaveValue("gunicorn app:app");
+
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-rt", {
+        repo: "https://github.com/acme/api",
+        branch: "main",
+        runtime: "python",
+        buildCommand: "pip install -r requirements.txt",
+        startCommand: "gunicorn app:app",
+        deploy: true,
+      }),
+    );
+  });
+
+  // w4/m593: cron jobs label the native command "Command" and submit `command`.
+  it("labels a cron job's native command field as Command and deploys on submit", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-cron"
+        serviceType="cron_job"
+        repo="https://github.com/acme/api"
+        branch="main"
+        runtime="node"
+        builder="native"
+        buildCommand="npm ci"
+        startCommand="node cron.js"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const cmd = screen.getByLabelText("Command");
+    expect(cmd).toHaveValue("node cron.js");
+    await user.clear(cmd);
+    await user.type(cmd, "node nightly.js");
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
+
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-cron", {
+        repo: "https://github.com/acme/api",
+        branch: "main",
+        runtime: "node",
+        buildCommand: "npm ci",
+        command: "node nightly.js",
+        deploy: true,
+      }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/services/$serviceId/deploys/$deployId",
+      params: { serviceId: "srv-cron", deployId: "dep-git-1" },
+    });
+  });
+
+  // w4/m593: static sites show only Git tabs, reconfirm Build Command (optional)
+  // + Publish Directory (required), deploy on submit, and navigate under /static.
+  it("limits static-site Update Source to Git tabs, validates Publish Directory, and deploys under /static", async () => {
+    currentBase = "/static";
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-site"
+        serviceType="static_site"
+        repo="https://github.com/acme/api"
+        branch="main"
+        buildCommand="npm run build"
+        publishPath="dist"
+        rootDir=""
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(
+      screen.getByText(/Select a Git repository to back this static site/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "GitHub" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Public Git/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: /Existing Image/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: /Build source/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "Runtime" }),
+    ).not.toBeInTheDocument();
+
+    const build = screen.getByLabelText("Build Command");
+    const publish = screen.getByLabelText("Publish directory");
+    const deploy = screen.getByRole("button", { name: "Deploy" });
+    expect(build).toHaveValue("npm run build");
+    expect(publish).toHaveValue("dist");
+    expect(deploy).toBeDisabled();
+
+    // Clearing Build Command is allowed (optional), clearing Publish Directory is refused.
+    await user.clear(build);
+    expect(deploy).toBeEnabled();
+
+    await user.clear(publish);
+    expect(deploy).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter a publish directory.",
+    );
+
+    // Escaping repo root via ../ is rejected inline.
+    await user.type(publish, "../outside");
+    expect(deploy).toBeDisabled();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await user.clear(publish);
+    await user.type(publish, "public");
+    expect(deploy).toBeEnabled();
+    await user.click(deploy);
+
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-site", {
+        repo: "https://github.com/acme/api",
+        branch: "main",
+        buildCommand: "",
+        publishPath: "public",
+        deploy: true,
+      }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/static/$serviceId/deploys/$deployId",
+      params: { serviceId: "srv-site", deployId: "dep-git-1" },
+    });
+  });
+
+  // Suspended service or unbuilt build source: server saves cleanly and returns
+  // deployId: null — dialog closes without navigating.
+  it("closes without navigating when the backend saves without opening a deploy", async () => {
+    const user = userEvent.setup();
+    setRepo.mockResolvedValueOnce({ ok: true, deployId: null });
+    render(
+      <ServiceSourceCard
+        serviceId="srv-susp"
+        serviceType="web_service"
+        repo="https://github.com/acme/api"
+        branch="main"
+        runtime="docker"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: /puncsky\/site/i }));
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
 
 // w4/275: bex-api sends an image-backed service's repo as "", which the
 // dirty check read as a repository, so an untouched image draft enabled
-// Update source and re-saved the same image.
+// Connect and re-saved the same image.
 describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
   const card = (repo: string | null) => (
     <ServiceSourceCard
       serviceId="srv-4"
+      serviceType="web_service"
       repo={repo}
       branch={repo === null ? null : ""}
       imagePath="docker.io/library/busybox:1.37.0"
@@ -731,13 +1001,13 @@ describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
       startCommand={null}
     />
   );
-  const update = () => screen.getByRole("button", { name: "Update source" });
+  const connect = () => screen.getByRole("button", { name: "Connect" });
 
   it.each([
     ["an empty-string repo", ""],
     ["a null repo", null],
   ])(
-    "keeps Update source disabled for %s until the image really changes",
+    "keeps Connect disabled for %s until the image really changes",
     async (_label, repo) => {
       const user = userEvent.setup();
       render(card(repo));
@@ -746,49 +1016,51 @@ describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
       const input = screen.getByDisplayValue(
         "docker.io/library/busybox:1.37.0",
       );
-      expect(update()).toBeDisabled();
+      expect(connect()).toBeDisabled();
 
       await user.type(input, "  ");
-      expect(update()).toBeDisabled();
+      expect(connect()).toBeDisabled();
 
       await user.clear(input);
-      expect(update()).toBeDisabled();
+      expect(connect()).toBeDisabled();
 
       await user.type(input, "docker.io/library/busybox:1.36.1");
-      expect(update()).toBeEnabled();
+      expect(connect()).toBeEnabled();
 
       await user.click(screen.getByRole("button", { name: "Cancel" }));
       await user.click(screen.getByRole("button", { name: "Edit" }));
       expect(
         screen.getByDisplayValue("docker.io/library/busybox:1.37.0"),
       ).toBeInTheDocument();
-      expect(update()).toBeDisabled();
+      expect(connect()).toBeDisabled();
       expect(setImage).not.toHaveBeenCalled();
     },
   );
 
   it("keeps a refused image change open for a retry", async () => {
     const user = userEvent.setup();
-    setImage.mockResolvedValueOnce(false);
+    setImage.mockResolvedValueOnce({ ok: false });
     render(card(""));
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const input = screen.getByDisplayValue("docker.io/library/busybox:1.37.0");
     await user.clear(input);
     await user.type(input, "docker.io/library/busybox:1.36.1");
-    await user.click(update());
+    await user.click(connect());
 
     await waitFor(() =>
       expect(setImage).toHaveBeenCalledWith(
         "srv-4",
         "docker.io/library/busybox:1.36.1",
         undefined,
+        true,
       ),
     );
     expect(
       screen.getByDisplayValue("docker.io/library/busybox:1.36.1"),
     ).toBeInTheDocument();
-    expect(update()).toBeEnabled();
+    expect(connect()).toBeEnabled();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("still enables a switch from an empty-string repo image service to a repo", async () => {
@@ -798,17 +1070,19 @@ describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     await user.click(screen.getByRole("button", { name: /acme\/api/i }));
-    expect(update()).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeEnabled();
   });
 });
 
-// w2/m254 t008: Update Source links a service to a build source, as on Render.
+// w2/m254 t008 + w4/m593: Update Source links a service to a build source and deploys.
 describe("ServiceSourceCard — build sources", () => {
   const card = (buildSourceId: string | null) => (
     <ServiceSourceCard
       serviceId="srv-5"
+      serviceType="web_service"
       repo={buildSourceId ? null : "https://github.com/acme/api"}
       branch={buildSourceId ? null : "main"}
+      runtime="docker"
       imagePath={null}
       registryCredentialId={null}
       buildSourceId={buildSourceId}
@@ -823,7 +1097,7 @@ describe("ServiceSourceCard — build sources", () => {
     expect(screen.getByText("github.com · acme / mono")).toBeInTheDocument();
   });
 
-  it("links a native build source with the service's start command", async () => {
+  it("links a native build source with the service's start command, deploys, and navigates", async () => {
     const user = userEvent.setup();
     render(card(null));
     await user.click(screen.getByRole("button", { name: "Edit" }));
@@ -833,7 +1107,7 @@ describe("ServiceSourceCard — build sources", () => {
     const start = screen.getByLabelText("Start Command");
     expect(start).toHaveValue("node server.js");
     await user.clear(start);
-    const save = screen.getByRole("button", { name: "Update source" });
+    const save = screen.getByRole("button", { name: "Deploy" });
     expect(save).toBeDisabled();
     await user.type(start, "npm start");
     await user.click(save);
@@ -842,8 +1116,13 @@ describe("ServiceSourceCard — build sources", () => {
         "srv-5",
         "bds-mono",
         "npm start",
+        true,
       ),
     );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/services/$serviceId/deploys/$deployId",
+      params: { serviceId: "srv-5", deployId: "dep-bds-1" },
+    });
   });
 
   it("unlinks by switching to a public Git repository", async () => {
@@ -854,7 +1133,7 @@ describe("ServiceSourceCard — build sources", () => {
       "aria-selected",
       "true",
     );
-    const save = screen.getByRole("button", { name: "Update source" });
+    const save = screen.getByRole("button", { name: "Deploy" });
     expect(save).toBeDisabled();
     await user.click(screen.getByRole("tab", { name: /Public Git/ }));
     await user.type(
@@ -868,6 +1147,8 @@ describe("ServiceSourceCard — build sources", () => {
       expect(setRepo).toHaveBeenCalledWith("srv-5", {
         repo: "https://github.com/acme/api",
         branch: "main",
+        runtime: "docker",
+        deploy: true,
       }),
     );
     expect(linkBuildSource).not.toHaveBeenCalled();
@@ -892,12 +1173,13 @@ describe("ServiceSourceCard — build sources", () => {
     await user.click(screen.getByRole("combobox", { name: "Build source" }));
     await user.click(screen.getByRole("option", { name: /Docker/ }));
     expect(screen.queryByLabelText("Start Command")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Update source" }));
+    await user.click(screen.getByRole("button", { name: "Deploy" }));
     await waitFor(() =>
       expect(linkBuildSource).toHaveBeenCalledWith(
         "srv-5",
         "bds-docker",
         undefined,
+        true,
       ),
     );
   });

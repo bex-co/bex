@@ -2565,7 +2565,12 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.sourceUpdateSuccess": {
     message: "ソースを更新しました。",
     description:
-      "Toast after a repository, branch, or image source update succeeds",
+      "Toast after a repository, branch, or image source update saves without triggering a deploy (e.g. suspended service or unbuilt build source)",
+  },
+  "services.sourceUpdateDeploying": {
+    message: "ソースを更新しました。新しいデプロイを開始します。",
+    description:
+      "Toast after Update Source saves and immediately triggers a new deploy",
   },
   "services.sourceUpdateError": {
     message: "ソースを更新できませんでした。もう一度お試しください。",
@@ -2588,11 +2593,17 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "イメージ",
     description: "Source card: container image path field label",
   },
-  "services.sourceNoAutoDeploy": {
+  "services.sourceDialogDescription": {
     message:
-      "変更は自動的にはデプロイされません。次回のデプロイから新しいソースが使用されます。",
+      "Git リポジトリ、既存のビルドソース、または Docker イメージを選択してください。送信すると新しいデプロイが開始されます。",
     description:
-      "Shared note (Render parity): a source change doesn't trigger a deploy",
+      "Update Source dialog description for non-static services (Render parity)",
+  },
+  "services.sourceDialogDescriptionStatic": {
+    message:
+      "この Static Site の元となる Git リポジトリを選択してください。送信すると新しいデプロイが開始されます。",
+    description:
+      "Update Source dialog description for static sites (Render parity)",
   },
   "services.sourceMissing": {
     message: "未設定",
@@ -2668,15 +2679,36 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
-  "services.sourceNativeCommandsHint": {
+  "services.sourceBuildCommandOptionalHint": {
     message:
-      "このサービスはネイティブランタイムでビルドするため、Git に戻すにはビルドコマンドと開始コマンドが必要です。",
+      "任意です。空のままにするとリポジトリのファイルがそのまま公開されます。",
     description:
-      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+      "Update Source static-site Build Command helper: build command is optional",
   },
-  "services.sourceUpdateSave": {
-    message: "ソースを更新",
-    description: "Save button in the Update Source dialog",
+  "services.sourcePublishDirectoryRequired": {
+    message: "公開ディレクトリを入力してください。",
+    description:
+      "Update Source static-site Publish Directory validation error when blank",
+  },
+  "services.sourceDeploy": {
+    message: "デプロイ",
+    description:
+      "Primary submit button in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceDeploying": {
+    message: "デプロイ中",
+    description:
+      "In-flight submit button label in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceConnect": {
+    message: "接続",
+    description:
+      "Primary submit button in Update Source for the Existing Image tab",
+  },
+  "services.sourceConnecting": {
+    message: "接続中",
+    description:
+      "In-flight submit button label in Update Source for the Existing Image tab",
   },
   "services.startCommandLabel": {
     message: "開始コマンド",

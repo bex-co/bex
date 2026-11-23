@@ -2493,7 +2493,12 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.sourceUpdateSuccess": {
     message: "源已更新。",
     description:
-      "Toast after a repository, branch, or image source update succeeds",
+      "Toast after a repository, branch, or image source update saves without triggering a deploy (e.g. suspended service or unbuilt build source)",
+  },
+  "services.sourceUpdateDeploying": {
+    message: "源已更新，正在开始新部署。",
+    description:
+      "Toast after Update Source saves and immediately triggers a new deploy",
   },
   "services.sourceUpdateError": {
     message: "无法更新源，请重试。",
@@ -2516,10 +2521,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "镜像",
     description: "Source card: container image path field label",
   },
-  "services.sourceNoAutoDeploy": {
-    message: "更改不会自动部署——下次部署时将使用新的源。",
+  "services.sourceDialogDescription": {
+    message: "选择 Git 仓库、现有构建源或 Docker 镜像。提交后会立即开始新部署。",
     description:
-      "Shared note (Render parity): a source change doesn't trigger a deploy",
+      "Update Source dialog description for non-static services (Render parity)",
+  },
+  "services.sourceDialogDescriptionStatic": {
+    message: "选择此静态站点使用的 Git 仓库。提交后会立即开始新部署。",
+    description:
+      "Update Source dialog description for static sites (Render parity)",
   },
   "services.sourceMissing": {
     message: "未配置",
@@ -2592,15 +2602,35 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
-  "services.sourceNativeCommandsHint": {
-    message:
-      "此服务使用原生运行时构建，因此切回 Git 需要它的构建命令和启动命令。",
+  "services.sourceBuildCommandOptionalHint": {
+    message: "可选。留空以直接发布仓库中的文件。",
     description:
-      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+      "Update Source static-site Build Command helper: build command is optional",
   },
-  "services.sourceUpdateSave": {
-    message: "更新源",
-    description: "Save button in the Update Source dialog",
+  "services.sourcePublishDirectoryRequired": {
+    message: "请输入发布目录。",
+    description:
+      "Update Source static-site Publish Directory validation error when blank",
+  },
+  "services.sourceDeploy": {
+    message: "部署",
+    description:
+      "Primary submit button in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceDeploying": {
+    message: "正在部署",
+    description:
+      "In-flight submit button label in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceConnect": {
+    message: "连接",
+    description:
+      "Primary submit button in Update Source for the Existing Image tab",
+  },
+  "services.sourceConnecting": {
+    message: "正在连接",
+    description:
+      "In-flight submit button label in Update Source for the Existing Image tab",
   },
   "services.startCommandLabel": {
     message: "启动命令",

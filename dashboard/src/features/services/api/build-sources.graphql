@@ -30,11 +30,13 @@ mutation LinkBuildSource(
   $serviceId: String!
   $buildSourceId: String!
   $startCommand: String
+  $deploy: Boolean
 ) {
   linkBuildSource(
     serviceId: $serviceId
     buildSourceId: $buildSourceId
     startCommand: $startCommand
+    deploy: $deploy
   ) {
     # Linking clears the service's own source and build settings.
     id
@@ -51,6 +53,7 @@ mutation LinkBuildSource(
     dockerfilePath
     dockerContext
     registryCredentialId
+    latestDeployId
     buildFilter {
       paths
       ignoredPaths

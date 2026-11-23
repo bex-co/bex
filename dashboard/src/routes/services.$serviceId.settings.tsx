@@ -244,16 +244,22 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
         return (
           <ServiceSourceCard
             serviceId={serviceId}
+            serviceType={service.type}
             repo={service.repo ?? null}
             branch={service.branch ?? null}
             imagePath={service.imagePath ?? null}
             registryCredentialId={service.registryCredentialId ?? null}
             buildSourceId={service.buildSourceId ?? null}
             startCommand={
-              (cron ? service.command : service.startCommand) ?? null
+              (cron
+                ? service.command || service.startCommand
+                : service.startCommand) ?? null
             }
+            runtime={service.runtime ?? null}
             builder={service.builder ?? null}
             buildCommand={service.buildCommand ?? null}
+            publishPath={service.publishPath ?? null}
+            rootDir={service.rootDir ?? null}
             repoAccessLost={service.repoAccessLost ?? false}
             pushDeliveryMethod={service.pushDeliveryMethod ?? null}
           />

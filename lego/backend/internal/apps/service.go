@@ -215,6 +215,11 @@ type Service struct {
 	// restart surface picks up the branch head (w1/m148). nil (tests, store off)
 	// => Restart only re-rolls the pods on the current spec.
 	RestartDeploy func(ctx context.Context, name string) error
+	// TriggerSourceDeploy starts one deploy after a dashboard Update Source save
+	// (w4/m593). Wired in the composition root to deploys.Service.TriggerManual
+	// when the deploy store is active; returns the opened deploy id. nil (tests,
+	// store off) skips the deploy.
+	TriggerSourceDeploy func(ctx context.Context, name string) (string, error)
 	// DeferNewCommit, when set (the composition root wires
 	// deploys.Service.DeferNewCommit), opens a git push's deploy as a queued
 	// deploy behind one the operator has not adopted yet, as a deploy trigger
@@ -5284,7 +5289,7 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 			setBuildCommand(spec, *buildCommand)
 		}
 		if startCommand != nil {
-			setStartCommand(spec, *startCommand)
+			setStartCommandForStrategy(spec, *startCommand, targetBuildStrategy(*spec, patchTargetRuntime(ctx)))
 		}
 	}
 	if !patchJudged(ctx) {
@@ -5398,6 +5403,22 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		s.recordSourceChanged(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
 	}
 	return updated, nil
+}
+
+// triggerSourceDeploy starts one deploy after a dashboard Update Source save
+// (w4/m593) and stamps the opened deploy id onto view.LatestDeployID. A
+// suspended service (or a storeless server with no TriggerSourceDeploy hook)
+// saves cleanly with no deploy.
+func (s *Service) triggerSourceDeploy(ctx context.Context, id string, view AppView) (AppView, error) {
+	if s.TriggerSourceDeploy == nil || view.Suspended {
+		return view, nil
+	}
+	depID, err := s.TriggerSourceDeploy(ctx, id)
+	if err != nil {
+		return AppView{}, err
+	}
+	view.LatestDeployID = depID
+	return view, nil
 }
 
 // recordSourceChanged records a service's source change: source_changed, and

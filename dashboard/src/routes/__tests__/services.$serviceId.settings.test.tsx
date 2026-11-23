@@ -575,6 +575,7 @@ describe("settings skeleton parity", () => {
       "repo",
       [
         "general",
+        "source",
         "build",
         "static-site",
         "domains",

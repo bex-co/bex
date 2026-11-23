@@ -1223,6 +1223,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// Without a deploy store there is no live commit, so apps keeps its CR-only
 	// restart.
 	var restartDeploy func(ctx context.Context, service string) error
+	// Settings → Update Source triggers one deploy immediately when deploy=true
+	// (w4/m593), matching Render's dashboard flow while REST/MCP stay save-only.
+	var triggerSourceDeploy func(ctx context.Context, service string) (string, error)
 	// A git push waits behind a deploy the operator has not adopted, as the
 	// deploy verbs do (w8/390).
 	var deferNewCommit func(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) (bool, error)
@@ -1230,6 +1233,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		restartDeploy = func(ctx context.Context, service string) error {
 			_, err := deploysSvc.Restart(ctx, service)
 			return err
+		}
+		triggerSourceDeploy = func(ctx context.Context, service string) (string, error) {
+			dep, err := deploysSvc.TriggerManual(ctx, service, deploys.TriggerParams{})
+			if err != nil {
+				return "", err
+			}
+			return dep.ID, nil
 		}
 		deferNewCommit = deploysSvc.DeferNewCommit
 	}
@@ -1268,7 +1278,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 		Settler: d.WorkspaceSettler, Mailer: d.Mailer, Emails: identityEmailLookup{d.Identities},
 	}
-	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, PrivateImagePortsDisabled: d.PrivateImagePortsDisabled, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, CronRunHistory: d.CronRunHistory, CronRunActors: d.CronRunActors, ActorEmails: identityEmailLookup{d.Identities}, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, ACMEDelegationZone: d.ACMEDelegationZone, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, EnvironmentWorkspace: environmentsSvc.OwnerWorkspace, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy, DeferNewCommit: deferNewCommit, ManagedOIDC: d.OIDCIssuer != nil}
+	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, PrivateImagePortsDisabled: d.PrivateImagePortsDisabled, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, CronRunHistory: d.CronRunHistory, CronRunActors: d.CronRunActors, ActorEmails: identityEmailLookup{d.Identities}, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, ACMEDelegationZone: d.ACMEDelegationZone, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, EnvironmentWorkspace: environmentsSvc.OwnerWorkspace, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy, TriggerSourceDeploy: triggerSourceDeploy, DeferNewCommit: deferNewCommit, ManagedOIDC: d.OIDCIssuer != nil}
 	// Environment deletes call the normal service delete (w4/m264); the apps
 	// service is built after environments, so the seam is closed here.
 	environmentsSvc.Services = appsSvc

@@ -3363,6 +3363,7 @@ export type MutationLeaveWorkspaceArgs = {
 
 export type MutationLinkBuildSourceArgs = {
   buildSourceId: Scalars['String']['input'];
+  deploy?: InputMaybe<Scalars['Boolean']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   serviceId: Scalars['String']['input'];
   startCommand?: InputMaybe<Scalars['String']['input']>;
@@ -3861,6 +3862,7 @@ export type MutationSetIdleTimeoutArgs = {
 
 export type MutationSetImageArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
+  deploy?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   image: Scalars['String']['input'];
   registryCredentialId?: InputMaybe<Scalars['String']['input']>;
@@ -4005,9 +4007,13 @@ export type MutationSetRegistryCredentialArgs = {
 export type MutationSetRepoArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
   buildCommand?: InputMaybe<Scalars['String']['input']>;
+  command?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;
+  deploy?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
+  publishPath?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
+  runtime?: InputMaybe<Scalars['String']['input']>;
   startCommand?: InputMaybe<Scalars['String']['input']>;
 };
 

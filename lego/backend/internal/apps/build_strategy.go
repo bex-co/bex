@@ -331,8 +331,12 @@ func cronCommand(spec appv1alpha1.AppSpec) string {
 // of running the image's own (w4/m194); a native or buildpack cron keeps its
 // baked start command.
 func setCronCommand(spec *appv1alpha1.AppSpec, command string) {
+	setCronCommandForStrategy(spec, command, buildStrategy(*spec))
+}
+
+func setCronCommandForStrategy(spec *appv1alpha1.AppSpec, command, strategy string) {
 	spec.Command = commandText(command)
-	if spec.Command == "" && cronStartCommandOverrides(*spec) {
+	if spec.Command == "" && spec.Type == appv1alpha1.TypeCronJob && readsDockerCommand(strategy) {
 		spec.StartCommand = ""
 	}
 }
@@ -404,16 +408,34 @@ func nativeBuild(build string) bool {
 	return strings.HasPrefix(build, buildNative)
 }
 
-// setStartCommand is Render's runtime-specific start command write: a
-// container cron calls it its command, every other runtime-backed type,
-// a native cron included, spec.startCommand. A native cron's write also drops
+// targetBuildStrategy returns the build strategy spec will have once a
+// runtime change in the same ServicePatch (targetRuntime) is applied, or
+// spec's current strategy when no runtime change rides along.
+func targetBuildStrategy(spec appv1alpha1.AppSpec, targetRuntime string) string {
+	if targetRuntime == "" {
+		return buildStrategy(spec)
+	}
+	next := spec
+	next.Runtime = targetRuntime
+	switch {
+	case targetRuntime == "docker":
+		next.Builder = buildDockerfile
+	case blueprintNativeRuntime(targetRuntime):
+		next.Builder = buildNative
+	}
+	return buildStrategy(next)
+}
+
+// setStartCommandForStrategy is Render's runtime-specific start command write:
+// a container cron calls it its command, every other runtime-backed type, a
+// native cron included, spec.startCommand. A native cron's write also drops
 // any command override, which would otherwise keep running in its place; a
 // blank one drops only the override, as the native build needs its start
 // command (w8/m69).
-func setStartCommand(spec *appv1alpha1.AppSpec, command string) {
+func setStartCommandForStrategy(spec *appv1alpha1.AppSpec, command, strategy string) {
 	if spec.Type == appv1alpha1.TypeCronJob {
-		if !nativeBuild(buildStrategy(*spec)) {
-			setCronCommand(spec, command)
+		if !nativeBuild(strategy) {
+			setCronCommandForStrategy(spec, command, strategy)
 			return
 		}
 		spec.Command = ""

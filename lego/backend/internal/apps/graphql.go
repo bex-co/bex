@@ -1750,43 +1750,69 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		// setRepo switches the Git repository a service builds from (Render's
-		// editable Source field, w5/m54). Delegates to the same shared source
-		// verb as setBranch/REST PATCH `repo`, so validation and deferred-until-
-		// next-deploy semantics stay identical across surfaces. buildCommand and
-		// startCommand save with the switch, as REST PATCH takes them beside
-		// `repo`: an image service whose runtime builds natively switches back
-		// with the commands its switch to the image kept (w32/056), and needs
-		// both when it kept none (w32/052).
+		// editable Source field, w5/m54, w4/m593). Accepts the confirmed build
+		// settings Render's Update Source dialog collects (runtime, buildCommand,
+		// startCommand / cron command, static-site publishPath) and applies them
+		// atomically through ApplyServicePatch. When deploy is true (used by the
+		// dashboard's Update Source), starts one deploy immediately and returns
+		// its id in latestDeployId (null when the service is suspended); REST
+		// PATCH and default callers keep save-without-deploy.
 		"setRepo": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
 				"id":           gqlutil.ReqArg(graphql.String),
 				"repo":         gqlutil.ReqArg(graphql.String),
 				"branch":       gqlutil.Arg(graphql.String),
+				"runtime":      gqlutil.Arg(graphql.String),
 				"buildCommand": gqlutil.Arg(graphql.String),
 				"startCommand": gqlutil.Arg(graphql.String),
+				"command":      gqlutil.Arg(graphql.String),
+				"publishPath":  gqlutil.Arg(graphql.String),
 				"confirm":      gqlutil.Arg(graphql.String),
+				"deploy":       &graphql.ArgumentConfig{Type: graphql.Boolean, DefaultValue: false},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				id, repo := p.Args["id"].(string), p.Args["repo"].(string)
 				branch := gqlutil.StrPtr(p.Args, "branch")
-				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
-				buildCommand, startCommand := gqlutil.StrPtr(p.Args, "buildCommand"), gqlutil.StrPtr(p.Args, "startCommand")
-				if buildCommand != nil || startCommand != nil {
-					return s.ApplyServicePatch(ctx, id, ServicePatch{
-						Repo: &repo, Branch: branch, BuildCommand: buildCommand, StartCommand: startCommand,
-					})
+				runtime := gqlutil.StrPtr(p.Args, "runtime")
+				buildCommand := gqlutil.StrPtr(p.Args, "buildCommand")
+				startCommand := gqlutil.StrPtr(p.Args, "startCommand")
+				command := gqlutil.StrPtr(p.Args, "command")
+				publishPath := gqlutil.StrPtr(p.Args, "publishPath")
+				deploy, _ := p.Args["deploy"].(bool)
+				if startCommand != nil && command != nil {
+					return nil, fmt.Errorf("%w: cannot set both startCommand and command", core.ErrBadRequest)
 				}
-				return s.SetSourceAndRegistryCredential(ctx, id, sourcePatch{Repo: &repo, Branch: branch})
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				var (
+					updated AppView
+					err     error
+				)
+				if runtime != nil || buildCommand != nil || startCommand != nil || command != nil || publishPath != nil {
+					updated, err = s.ApplyServicePatch(ctx, id, ServicePatch{
+						Repo: &repo, Branch: branch, Runtime: runtime,
+						BuildCommand: buildCommand, StartCommand: startCommand,
+						Command: command, PublishPath: publishPath,
+					})
+				} else {
+					updated, err = s.SetSourceAndRegistryCredential(ctx, id, sourcePatch{Repo: &repo, Branch: branch})
+				}
+				if err != nil {
+					return nil, err
+				}
+				if deploy {
+					return s.triggerSourceDeploy(ctx, id, updated)
+				}
+				return updated, nil
 			},
 		},
 		// setImage switches a service to a prebuilt container image (Render's
-		// Update-Source repo→image half, w5/m76). The same shared source verb as
-		// setRepo/setBranch and REST PATCH `image`, so mutual exclusion (setting
-		// the image clears repo/branch source) and validation (ValidateImage) cannot
-		// drift; optional registryCredentialId is validated against the image host
-		// before either reaches the App. Neither this nor setRepo triggers a
-		// deploy — the next deploy uses the new source (Render's semantics).
+		// Update-Source repo→image half, w5/m76, w4/m593). The same shared source
+		// verb as setRepo/setBranch and REST PATCH `image`, so mutual exclusion
+		// and validation cannot drift; optional registryCredentialId is validated
+		// against the image host before either reaches the App. When deploy is
+		// true (used by Settings → Update Source), starts one deploy immediately
+		// and returns its id in latestDeployId.
 		"setImage": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -1794,15 +1820,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"image":                gqlutil.ReqArg(graphql.String),
 				"registryCredentialId": gqlutil.Arg(graphql.String),
 				"confirm":              gqlutil.Arg(graphql.String),
+				"deploy":               &graphql.ArgumentConfig{Type: graphql.Boolean, DefaultValue: false},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				id := p.Args["id"].(string)
 				image := p.Args["image"].(string)
+				deploy, _ := p.Args["deploy"].(bool)
 				patch := sourcePatch{Image: &image}
 				if cred, ok := p.Args["registryCredentialId"].(string); ok {
 					patch.RegistryCredentialID = &cred
 				}
 				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
-				return s.SetSourceAndRegistryCredential(ctx, p.Args["id"].(string), patch)
+				updated, err := s.SetSourceAndRegistryCredential(ctx, id, patch)
+				if err != nil {
+					return nil, err
+				}
+				if deploy {
+					return s.triggerSourceDeploy(ctx, id, updated)
+				}
+				return updated, nil
 			},
 		},
 		// setBuildCommand changes the build command for a repo-backed service.

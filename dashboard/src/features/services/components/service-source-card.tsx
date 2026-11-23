@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2, TriangleAlert } from "lucide-react";
 import {
   Alert,
@@ -58,11 +59,24 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useSetImage } from "@/features/services/hooks/use-set-image";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { commandText } from "@/features/services/lib/command-text";
+import { publishDirectoryError } from "@/features/services/lib/publish-directory";
 import {
   formatRepoLabel,
   repoSlug,
   sameRepo,
 } from "@/features/services/lib/repo";
+import {
+  isNativeRuntime,
+  RUNTIME_COMMANDS,
+  RUNTIME_DEFS,
+  type GitRuntime,
+} from "@/features/services/lib/runtime";
+import { useServiceBase } from "@/features/services/lib/service-base";
+import {
+  isCronType,
+  isDockerBuild,
+  isStaticSiteType,
+} from "@/features/services/lib/service-type";
 
 // 44 px on a phone, where the two share the row; a ring that reads on the
 // dialog's surface (the default is the ring colour at half strength).
@@ -77,23 +91,45 @@ const FOOTER_PRIMARY_CLASS = cn(
   "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
 );
 
+const DEFAULT_BUILD_COMMANDS = new Set(
+  Object.values(RUNTIME_COMMANDS).map((c) => c.build),
+);
+const DEFAULT_START_COMMANDS = new Set(
+  Object.values(RUNTIME_COMMANDS).map((c) => c.start),
+);
+
+function resolveSavedRuntime(
+  runtime: string | null | undefined,
+  builder: string | null | undefined,
+  repo: string | null,
+): GitRuntime | null {
+  const known = RUNTIME_DEFS.find((d) => d.id === runtime)?.id;
+  if (known) return known;
+  if (repo && isDockerBuild({ runtime, builder })) return "docker";
+  return null;
+}
+
 export interface ServiceSourceCardProps {
   serviceId: string;
+  /** The service type (`web_service`, `static_site`, `cron_job`, etc.). */
+  serviceType?: string | null;
   repo: string | null;
   branch: string | null;
   imagePath: string | null;
   registryCredentialId: string | null;
   /** The build source this service builds from (w2/m254), else null. */
   buildSourceId: string | null;
-  /** The service's start command, kept when it links a native source. */
+  /** The service's start command (or cron command), prefilled for native builds. */
   startCommand: string | null;
-  /**
-   * The service's builder and build command. An image service keeps a native
-   * builder for a switch back to Git (w4/m202) but not the commands its build
-   * baked in (w8/m461), so that switch asks for both (w32/052).
-   */
+  /** The service's configured runtime (docker or a native runtime), else null. */
+  runtime?: string | null;
+  /** Legacy build strategy fallback when runtime is unset. */
   builder?: string | null;
   buildCommand?: string | null;
+  /** Static site publish directory (spec.publishPath). */
+  publishPath?: string | null;
+  /** Repository subdirectory used to validate static-site Publish Directory. */
+  rootDir?: string | null;
   /**
    * bex's GitHub app connected the repository and can no longer read it, so
    * no push reaches bex (w10/m490): the card says so and what to do.
@@ -109,11 +145,10 @@ export interface ServiceSourceCardProps {
 }
 
 /**
- * Render-style Settings → Source card. The ready state has one stable card for
- * both source kinds; Edit opens the shared account-grouped picker and lets the
- * user repoint repo+branch atomically, switch to a prebuilt image, or build
- * from a build source (w2/m254). Updating source intent never deploys it — the
- * next explicit/push deploy consumes it.
+ * Render-style Settings → Source card (w5/m76, w4/m593). Shown for every
+ * service type — including static sites — with Edit opening the Update Source
+ * dialog to reconfirm build settings, deploy immediately, and navigate to the
+ * new deploy.
  */
 export function ServiceSourceCard(props: ServiceSourceCardProps) {
   const { t } = useTranslations();
@@ -212,25 +247,44 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
 
 function SourceEditDialog({
   serviceId,
+  serviceType,
   repo,
   branch: currentBranch,
   imagePath,
   registryCredentialId,
   buildSourceId,
   startCommand: currentStartCommand,
+  runtime: currentRuntime,
   builder,
   buildCommand: currentBuildCommand,
+  publishPath: currentPublishPath,
+  rootDir,
   pushDeliveryMethod,
   disabled,
 }: ServiceSourceCardProps & { disabled: boolean }) {
   const { t } = useTranslations();
-  const { setRepo, busy: repoBusy } = useSetRepo();
-  const { linkBuildSource, busy: linkBusy } = useLinkBuildSource();
+  const navigate = useNavigate();
+  const base = useServiceBase();
+  const { setRepo, busy: repoBusy, lastError: repoError } = useSetRepo();
+  const {
+    linkBuildSource,
+    busy: linkBusy,
+    lastError: linkError,
+  } = useLinkBuildSource();
   const { setImage, busy: imageBusy, lastError: imageError } = useSetImage();
+
+  const staticSite = isStaticSiteType(serviceType ?? "");
+  const cron = isCronType(serviceType ?? "");
+  const commandLabelKey = cron
+    ? "services.deployCommandLabel"
+    : "services.startCommandLabel";
+
   // The value the server last refused; editing away from it clears the
   // under-field message (w4/406).
   const [refusedImage, setRefusedImage] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
   const [open, setOpen] = useState(false);
+
   // The service's repository when the workspace's GitHub connection grants it:
   // a repository to pick on the GitHub tab, not a URL to paste, a private one
   // least of all.
@@ -238,23 +292,38 @@ function SourceEditDialog({
     !buildSourceId && repo && pushDeliveryMethod === "github_app" ? repo : null;
   const isOwnRepo = (picked: RepoView) =>
     Boolean(repo && sameRepo(picked.htmlUrl, repo));
-  const initialTab: SourceTab = buildSourceId
-    ? "build-source"
-    : connectedRepo
+  const initialTab: SourceTab = staticSite
+    ? connectedRepo
       ? "github"
-      : repo
-        ? "git"
-        : "image";
+      : "git"
+    : buildSourceId
+      ? "build-source"
+      : connectedRepo
+        ? "github"
+        : repo
+          ? "git"
+          : "image";
   const initialGitUrl = connectedRepo ? "" : (repo ?? "");
+  const savedRuntime = staticSite
+    ? null
+    : resolveSavedRuntime(currentRuntime, builder, repo);
+  const defaultRuntime: GitRuntime =
+    savedRuntime ?? (builder === "native" ? "node" : "docker");
+
   const [tab, setTab] = useState<SourceTab>(initialTab);
   const [sourceId, setSourceId] = useState(buildSourceId ?? "");
+  const [selectedRuntime, setSelectedRuntime] =
+    useState<GitRuntime>(defaultRuntime);
   const [startCommand, setStartCommand] = useState(currentStartCommand ?? "");
   const [buildCommand, setBuildCommand] = useState(currentBuildCommand ?? "");
+  const [publishPath, setPublishPath] = useState(currentPublishPath ?? "");
+  const [publishTouched, setPublishTouched] = useState(false);
+
   const {
     sources,
     loading: sourcesLoading,
     error: sourcesError,
-  } = useBuildSources(open);
+  } = useBuildSources(open && !staticSite);
   const selectedSource = sources.find((source) => source.id === sourceId);
   const needsStart = selectedSource?.nativeRuntime != null;
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
@@ -273,14 +342,10 @@ function SourceEditDialog({
     : (connectedRepo ?? "");
   const sourceRepo = tab === "github" ? githubRepo : gitUrl;
   const gitTab = tab === "github" || tab === "git";
-  // A switch from an image back to Git builds natively again, which bex-api
-  // refuses without both commands, as create does (w32/052).
-  const needsCommands =
-    gitTab && !repo && !buildSourceId && builder === "native";
-  const commandsGiven =
-    buildCommand.trim() !== "" && startCommand.trim() !== "";
+  const nativeGit = gitTab && !staticSite && isNativeRuntime(selectedRuntime);
+
   const { branches } = useRepoBranches(
-    open && tab !== "image" ? sourceRepo || null : null,
+    open && gitTab ? sourceRepo || null : null,
   );
   const branchOptions = useMemo(
     () => branches.map((value) => ({ value, label: value })),
@@ -290,16 +355,34 @@ function SourceEditDialog({
     tab === "github"
       ? githubRepo !== ""
       : isValidGitUrl(gitUrl) && !parseGitHubPage(gitUrl)?.file;
+
+  const publishPathErrorKey = staticSite
+    ? publishPath.trim() === ""
+      ? publishTouched
+        ? "services.sourcePublishDirectoryRequired"
+        : null
+      : publishDirectoryError(publishPath, { rootDir, repoBacked: true })
+    : null;
+  const publishPathValid =
+    !staticSite ||
+    (publishPath.trim() !== "" &&
+      publishDirectoryError(publishPath, { rootDir, repoBacked: true }) ===
+        null);
+  const nativeCommandsValid =
+    !nativeGit || (buildCommand.trim() !== "" && startCommand.trim() !== "");
+
   const valid =
     tab === "build-source"
       ? selectedSource !== undefined &&
         (!needsStart || startCommand.trim() !== "")
       : tab === "image"
         ? isValidDockerImageRef(image)
-        : repoValid && (!needsCommands || commandsGiven);
+        : repoValid && publishPathValid && nativeCommandsValid;
+
   // An image-backed service's repo arrives as "" (bex-api), not null, so
   // source kind is repo presence — as the tab and the card already decide it
-  // (w4/275).
+  // (w4/275). Build-setting confirmation changes also mark the form dirty so
+  // reconfirming with a new runtime, command, or publish directory deploys.
   const dirty =
     tab === "build-source"
       ? sourceId !== (buildSourceId ?? "") ||
@@ -307,15 +390,35 @@ function SourceEditDialog({
           startCommand.trim() !== (currentStartCommand ?? "").trim())
       : tab === "image"
         ? Boolean(repo) ||
+          Boolean(buildSourceId) ||
           image.trim() !== (imagePath ?? "").trim() ||
           (credentialId.trim() || null) !==
             (registryCredentialId?.trim() || null)
         : !repo ||
           sourceRepo.trim() !== repo.trim() ||
-          (branch.trim() || "main") !== (currentBranch?.trim() || "main");
+          (branch.trim() || "main") !== (currentBranch?.trim() || "main") ||
+          (staticSite
+            ? commandText(buildCommand) !==
+                commandText(currentBuildCommand ?? "") ||
+              publishPath.trim() !== (currentPublishPath ?? "").trim()
+            : selectedRuntime !== savedRuntime ||
+              (isNativeRuntime(selectedRuntime) &&
+                (commandText(buildCommand) !==
+                  commandText(currentBuildCommand ?? "") ||
+                  commandText(startCommand) !==
+                    commandText(currentStartCommand ?? ""))));
+
   const busy = repoBusy || imageBusy || linkBusy;
-  // Why Update source is disabled. A malformed URL or image also has its own
-  // message under the field; the footer still says the form is not ready.
+  const inlineError =
+    !showError || tab === "image"
+      ? null
+      : tab === "build-source"
+        ? linkError
+        : repoError;
+
+  // Why the primary action is disabled. A malformed URL, publish directory, or
+  // image also has its own message under the field; the footer still says the
+  // form is not ready.
   const idleReason =
     tab === "github" && !repoValid
       ? t("services.sourceSelectRepo")
@@ -336,7 +439,8 @@ function SourceEditDialog({
               : !dirty
                 ? t("services.sourceNoChanges")
                 : null;
-  // What Update source will save. The choice is otherwise a check mark on one
+
+  // What submitting will deploy. The choice is otherwise a check mark on one
   // row of a list that scrolls and filters: out of sight, nothing named it.
   // A GitHub tab's repository reads "owner/name": the tab names the forge. A
   // typed URL keeps its host in view (formatRepoLabel).
@@ -359,13 +463,17 @@ function SourceEditDialog({
   function resetDraft() {
     setTab(initialTab);
     setSourceId(buildSourceId ?? "");
+    setSelectedRuntime(defaultRuntime);
     setStartCommand(currentStartCommand ?? "");
     setBuildCommand(currentBuildCommand ?? "");
+    setPublishPath(currentPublishPath ?? "");
+    setPublishTouched(false);
     setSelectedRepo(null);
     setGitUrl(initialGitUrl);
     setBranch(currentBranch || "main");
     setImageValue(imagePath ?? "");
     setCredentialId(registryCredentialId ?? "");
+    setShowError(false);
   }
 
   function changeOpen(next: boolean) {
@@ -375,6 +483,7 @@ function SourceEditDialog({
 
   function selectRepo(next: RepoView) {
     setSelectedRepo(next);
+    setShowError(false);
     // Another repository starts on its default branch; the service's own
     // keeps the branch the service deploys.
     setBranch((isOwnRepo(next) ? currentBranch : next.defaultBranch) || "main");
@@ -382,9 +491,37 @@ function SourceEditDialog({
 
   function selectSource(id: string) {
     setSourceId(id);
+    setShowError(false);
     const next = sources.find((source) => source.id === id);
     if (next && !startCommand.trim())
       setStartCommand(defaultStartCommand(next));
+  }
+
+  function changeRuntime(next: GitRuntime) {
+    setSelectedRuntime(next);
+    setShowError(false);
+    if (!isNativeRuntime(next)) return;
+    const defaults = RUNTIME_COMMANDS[next];
+    const targetBuild =
+      next === savedRuntime && currentBuildCommand
+        ? currentBuildCommand
+        : defaults.build;
+    const targetStart =
+      next === savedRuntime && currentStartCommand
+        ? currentStartCommand
+        : defaults.start;
+    if (
+      !buildCommand.trim() ||
+      DEFAULT_BUILD_COMMANDS.has(buildCommand.trim())
+    ) {
+      setBuildCommand(targetBuild);
+    }
+    if (
+      !startCommand.trim() ||
+      DEFAULT_START_COMMANDS.has(startCommand.trim())
+    ) {
+      setStartCommand(targetStart);
+    }
   }
 
   // Each tab is a different height, and CSS cannot ease between two `auto`
@@ -422,36 +559,67 @@ function SourceEditDialog({
   function changeTab(next: SourceTab) {
     tabSwitchedRef.current = true;
     setTab(next);
+    setShowError(false);
     if (next === "github" && selectedRepo && !branch) {
       setBranch(selectedRepo.defaultBranch || "main");
     }
   }
 
   async function save() {
-    const ok =
+    setShowError(false);
+    const result =
       tab === "build-source"
         ? await linkBuildSource(
             serviceId,
             sourceId,
             needsStart ? startCommand.trim() : undefined,
+            true,
           )
         : tab === "image"
-          ? await setImage(serviceId, image.trim(), credentialId || undefined)
+          ? await setImage(
+              serviceId,
+              image.trim(),
+              credentialId || undefined,
+              true,
+            )
           : await setRepo(serviceId, {
               repo: sourceRepo.trim(),
               branch: branch.trim() || "main",
-              ...(needsCommands && {
-                buildCommand: commandText(buildCommand),
-                startCommand: commandText(startCommand),
-              }),
+              deploy: true,
+              ...(staticSite
+                ? {
+                    buildCommand: commandText(buildCommand),
+                    publishPath: publishPath.trim(),
+                  }
+                : {
+                    runtime: selectedRuntime,
+                    ...(isNativeRuntime(selectedRuntime) && {
+                      buildCommand: commandText(buildCommand),
+                      ...(cron
+                        ? { command: commandText(startCommand) }
+                        : { startCommand: commandText(startCommand) }),
+                    }),
+                  }),
             });
-    if (!ok) {
+    if (!result.ok) {
       if (tab === "image") setRefusedImage(image.trim());
+      else setShowError(true);
       return;
     }
     setRefusedImage(null);
     setOpen(false);
+    if (result.deployId) {
+      void navigate({
+        to: `${base}/$serviceId/deploys/$deployId`,
+        params: { serviceId, deployId: result.deployId },
+      });
+    }
   }
+
+  const primaryLabel =
+    tab === "image"
+      ? t(busy ? "services.sourceConnecting" : "services.sourceConnect")
+      : t(busy ? "services.sourceDeploying" : "services.sourceDeploy");
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
@@ -480,7 +648,11 @@ function SourceEditDialog({
             {t("services.sourceDialogTitle")}
           </DialogTitle>
           <DialogDescription className="text-pretty">
-            {t("services.sourceNoAutoDeploy")}
+            {t(
+              staticSite
+                ? "services.sourceDialogDescriptionStatic"
+                : "services.sourceDialogDescription",
+            )}
           </DialogDescription>
         </DialogHeader>
         {/* On a phone the repository list fills what the screen has left,
@@ -506,27 +678,34 @@ function SourceEditDialog({
             onGitHubPage={(page) => {
               if (branch === (currentBranch || "main")) setBranch(page.branch);
             }}
-            image={{
-              value: image,
-              onChange: setImageValue,
-              registryCredentialId: credentialId,
-              onRegistryCredentialChange: setCredentialId,
-              showPortHint: false,
-              serverError:
-                refusedImage !== null && refusedImage === image.trim()
-                  ? imageError
-                  : null,
-            }}
+            image={
+              staticSite
+                ? undefined
+                : {
+                    value: image,
+                    onChange: setImageValue,
+                    registryCredentialId: credentialId,
+                    onRegistryCredentialChange: setCredentialId,
+                    showPortHint: false,
+                    serverError:
+                      refusedImage !== null && refusedImage === image.trim()
+                        ? imageError
+                        : null,
+                  }
+            }
             buildSource={
-              <BuildSourceTab
-                sources={sources}
-                loading={sourcesLoading}
-                failed={sourcesError !== undefined}
-                value={sourceId}
-                onValueChange={selectSource}
-                startCommand={needsStart ? startCommand : null}
-                onStartCommandChange={setStartCommand}
-              />
+              staticSite ? undefined : (
+                <BuildSourceTab
+                  sources={sources}
+                  loading={sourcesLoading}
+                  failed={sourcesError !== undefined}
+                  value={sourceId}
+                  onValueChange={selectSource}
+                  startCommand={needsStart ? startCommand : null}
+                  onStartCommandChange={setStartCommand}
+                  commandLabelKey={commandLabelKey}
+                />
+              )
             }
             titleKey="services.sourcePickerLabel"
             idPrefix="update-source"
@@ -563,11 +742,8 @@ function SourceEditDialog({
               </p>
             </div>
           )}
-          {needsCommands && (
-            <div className="space-y-4" data-testid="source-native-commands">
-              <p className="text-xs text-muted-foreground">
-                {t("services.sourceNativeCommandsHint")}
-              </p>
+          {gitTab && staticSite && (
+            <div className="space-y-4" data-testid="source-static-settings">
               <div className="space-y-2">
                 <Label htmlFor="update-source-git-build-command">
                   {t("services.buildCommandLabel")}
@@ -579,20 +755,101 @@ function SourceEditDialog({
                   className={cn(CREATE_INPUT_CLASS, "font-mono")}
                   autoComplete="off"
                 />
+                <p className="text-xs text-muted-foreground">
+                  {t("services.sourceBuildCommandOptionalHint")}
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="update-source-git-start-command">
-                  {t("services.startCommandLabel")}
+                <Label htmlFor="update-source-publish-directory">
+                  {t("services.publishPathLabel")}
                 </Label>
                 <Input
-                  id="update-source-git-start-command"
-                  value={startCommand}
-                  onChange={(e) => setStartCommand(e.target.value)}
+                  id="update-source-publish-directory"
+                  value={publishPath}
+                  onChange={(e) => {
+                    setPublishPath(e.target.value);
+                    setPublishTouched(true);
+                  }}
+                  onBlur={() => setPublishTouched(true)}
+                  placeholder={t("services.publishPathPlaceholder")}
+                  aria-invalid={publishPathErrorKey !== null}
                   className={cn(CREATE_INPUT_CLASS, "font-mono")}
                   autoComplete="off"
                 />
+                {publishPathErrorKey && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {t(publishPathErrorKey)}
+                  </p>
+                )}
               </div>
             </div>
+          )}
+          {gitTab && !staticSite && (
+            <div className="space-y-4" data-testid="source-git-build-settings">
+              <div className="space-y-2">
+                <Label htmlFor="update-source-runtime">
+                  {t("services.runtimeLabel")}
+                </Label>
+                <Select
+                  value={selectedRuntime}
+                  onValueChange={(value) => changeRuntime(value as GitRuntime)}
+                >
+                  <SelectTrigger
+                    id="update-source-runtime"
+                    aria-label={t("services.runtimeLabel")}
+                    className={CREATE_SELECT_CLASS}
+                  >
+                    <SelectValue
+                      placeholder={t("services.runtimePlaceholder")}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUNTIME_DEFS.map((def) => (
+                      <SelectItem key={def.id} value={def.id}>
+                        {t(def.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {nativeGit && (
+                <div
+                  className="space-y-4"
+                  data-testid="source-native-commands"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="update-source-git-build-command">
+                      {t("services.buildCommandLabel")}
+                    </Label>
+                    <Input
+                      id="update-source-git-build-command"
+                      value={buildCommand}
+                      onChange={(e) => setBuildCommand(e.target.value)}
+                      className={cn(CREATE_INPUT_CLASS, "font-mono")}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="update-source-git-start-command">
+                      {t(commandLabelKey)}
+                    </Label>
+                    <Input
+                      id="update-source-git-start-command"
+                      value={startCommand}
+                      onChange={(e) => setStartCommand(e.target.value)}
+                      className={cn(CREATE_INPUT_CLASS, "font-mono")}
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {inlineError && (
+            <Alert variant="destructive" data-testid="source-submit-error">
+              <TriangleAlert />
+              <AlertDescription>{inlineError}</AlertDescription>
+            </Alert>
           )}
         </div>
         {/* Side by side on a phone too: stacked, the two buttons cost the
@@ -626,7 +883,7 @@ function SourceEditDialog({
             onClick={() => void save()}
           >
             {busy && <Loader2 className="animate-spin" />}
-            {t("services.sourceUpdateSave")}
+            {primaryLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -648,6 +905,7 @@ function BuildSourceTab({
   onValueChange,
   startCommand,
   onStartCommandChange,
+  commandLabelKey,
 }: {
   sources: BuildSourceOption[];
   loading: boolean;
@@ -658,6 +916,7 @@ function BuildSourceTab({
   /** null when the selected source takes no start command. */
   startCommand: string | null;
   onStartCommandChange: (command: string) => void;
+  commandLabelKey: "services.startCommandLabel" | "services.deployCommandLabel";
 }) {
   const { t } = useTranslations();
   if (loading && sources.length === 0) {
@@ -714,7 +973,7 @@ function BuildSourceTab({
       {startCommand !== null && (
         <div className="space-y-2">
           <Label htmlFor="update-source-start-command">
-            {t("services.startCommandLabel")}
+            {t(commandLabelKey)}
           </Label>
           <Input
             id="update-source-start-command"

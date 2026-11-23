@@ -41,6 +41,22 @@ func checkRuntime(a *appv1alpha1.App, runtime string) (string, string, error) {
 	})
 }
 
+// applyRuntimeChange applies a validated runtime/builder change to spec.
+// Moving from a non-Docker build (native or buildpack) to docker clears the
+// stale native buildCommand and, unless the caller explicitly supplied a
+// command in the same patch, clears startCommand so the old native command
+// does not become a /bin/sh Docker Command override on the new Dockerfile.
+func applyRuntimeChange(spec *appv1alpha1.AppSpec, runtime, builder string, dropNativeStart bool) {
+	wasDocker := readsDockerCommand(buildStrategy(*spec))
+	spec.Runtime, spec.Builder = runtime, builder
+	if runtime == "docker" && !wasDocker {
+		spec.BuildCommand = ""
+		if dropNativeStart {
+			spec.StartCommand = ""
+		}
+	}
+}
+
 // SetRuntime changes a service's runtime and rebuilds it with the builder the
 // runtime selects, as Render does when a service's runtime changes.
 func (s *Service) SetRuntime(ctx context.Context, name, runtime string) (AppView, error) {
@@ -52,8 +68,9 @@ func (s *Service) SetRuntime(ctx context.Context, name, runtime string) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
+	dropNativeStart := !patchHasExplicitStart(ctx)
 	return s.recordedPatch(ctx, core.AuditVerbSetRuntime, a, func(a *appv1alpha1.App) {
-		a.Spec.Runtime, a.Spec.Builder = runtime, builder
+		applyRuntimeChange(&a.Spec, runtime, builder, dropNativeStart)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }

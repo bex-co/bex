@@ -2068,7 +2068,7 @@ type Mutation {
   joinWorkspace(workspaceId: String!): JoinedWorkspace
   joinWorkspaceAsAdmin(workspaceId: String!): JoinedWorkspace
   leaveWorkspace(workspaceId: String!): Boolean
-  linkBuildSource(buildSourceId: String!, dryRun: Boolean, serviceId: String!, startCommand: String): Service
+  linkBuildSource(buildSourceId: String!, deploy: Boolean = false, dryRun: Boolean, serviceId: String!, startCommand: String): Service
   linkEnvGroup(id: String!, serviceId: String!): Boolean
   markPushNotificationRead(id: String!, ownerId: String): Boolean!
   moveEnvGroup(confirm: String, environmentId: String!, id: String!): EnvGroup
@@ -2142,7 +2142,7 @@ type Mutation {
   setEnvironmentServices(id: String!, serviceIds: [String!]!): Environment
   setHealthCheckPath(confirm: String, id: String!, path: String!): Service
   setIdleTimeout(id: String!, idleTTLSeconds: Int!): Service
-  setImage(confirm: String, id: String!, image: String!, registryCredentialId: String): Service
+  setImage(confirm: String, deploy: Boolean = false, id: String!, image: String!, registryCredentialId: String): Service
   setKeyValueIpAllowList(cidrs: [String], confirm: String, entries: [IPAllowListEntryInput!], id: String!): KeyValue
   setKeyValueMaxmemoryPolicy(confirm: String, dryRun: Boolean, id: String!, maxmemoryPolicy: String!): KeyValue
   setKeyValuePersistenceMode(confirm: String, dryRun: Boolean, id: String!, persistenceMode: String!): KeyValue
@@ -2163,7 +2163,7 @@ type Mutation {
   setProjectServices(id: String!, serviceIds: [String!]!): Project
   setPublishPath(confirm: String, id: String!, publishPath: String!): Service
   setRegistryCredential(confirm: String, id: String!, registryCredentialId: String!): Service
-  setRepo(branch: String, buildCommand: String, confirm: String, id: String!, repo: String!, startCommand: String): Service
+  setRepo(branch: String, buildCommand: String, command: String, confirm: String, deploy: Boolean = false, id: String!, publishPath: String, repo: String!, runtime: String, startCommand: String): Service
   setRootDir(confirm: String, id: String!, rootDir: String!): Service
   setRuntime(confirm: String, id: String!, runtime: String!): Service
   setSecretFile(content: String, name: String!, serviceId: String!): Boolean

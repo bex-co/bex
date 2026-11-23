@@ -2560,7 +2560,12 @@ const ruServices: Record<string, TranslationEntry> = {
   "services.sourceUpdateSuccess": {
     message: "Источник обновлён.",
     description:
-      "Toast after a repository, branch, or image source update succeeds",
+      "Toast after a repository, branch, or image source update saves without triggering a deploy (e.g. suspended service or unbuilt build source)",
+  },
+  "services.sourceUpdateDeploying": {
+    message: "Источник обновлён. Запускается новый деплой.",
+    description:
+      "Toast after Update Source saves and immediately triggers a new deploy",
   },
   "services.sourceUpdateError": {
     message: "Не удалось обновить источник. Попробуйте ещё раз.",
@@ -2583,11 +2588,17 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Образ",
     description: "Source card: container image path field label",
   },
-  "services.sourceNoAutoDeploy": {
+  "services.sourceDialogDescription": {
     message:
-      "Изменения не развёртываются автоматически — следующий деплой будет использовать новый источник.",
+      "Выберите Git-репозиторий, существующий источник сборки или Docker-образ. Отправка запустит новый деплой.",
     description:
-      "Shared note (Render parity): a source change doesn't trigger a deploy",
+      "Update Source dialog description for non-static services (Render parity)",
+  },
+  "services.sourceDialogDescriptionStatic": {
+    message:
+      "Выберите Git-репозиторий для этого Static Site. Отправка запустит новый деплой.",
+    description:
+      "Update Source dialog description for static sites (Render parity)",
   },
   "services.sourceMissing": {
     message: "Не настроено",
@@ -2663,15 +2674,36 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
-  "services.sourceNativeCommandsHint": {
+  "services.sourceBuildCommandOptionalHint": {
     message:
-      "Этот сервис собирается в нативной среде выполнения, поэтому для возврата к Git нужны команда сборки и команда запуска.",
+      "Необязательно. Оставьте пустым, чтобы публиковать файлы репозитория напрямую.",
     description:
-      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+      "Update Source static-site Build Command helper: build command is optional",
   },
-  "services.sourceUpdateSave": {
-    message: "Обновить источник",
-    description: "Save button in the Update Source dialog",
+  "services.sourcePublishDirectoryRequired": {
+    message: "Укажите каталог публикации.",
+    description:
+      "Update Source static-site Publish Directory validation error when blank",
+  },
+  "services.sourceDeploy": {
+    message: "Задеплоить",
+    description:
+      "Primary submit button in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceDeploying": {
+    message: "Идёт деплой",
+    description:
+      "In-flight submit button label in Update Source for Git and Build Source tabs",
+  },
+  "services.sourceConnect": {
+    message: "Подключить",
+    description:
+      "Primary submit button in Update Source for the Existing Image tab",
+  },
+  "services.sourceConnecting": {
+    message: "Подключение",
+    description:
+      "In-flight submit button label in Update Source for the Existing Image tab",
   },
   "services.startCommandLabel": {
     message: "Команда запуска",

@@ -663,7 +663,7 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/static.$serviceId.settings.tsx",
     shape: "static-settings",
-    regions: ["general", "section-navigation"],
+    regions: ["general", "source", "section-navigation"],
   },
   "/webhook/$webhookId/settings": {
     kind: "render",

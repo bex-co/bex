@@ -1,19 +1,21 @@
 # setImage switches a service to a prebuilt container image (Render's Update
-# Source repo→image, w5/m76). The shared source verb persists spec.image and
-# clears the repo/branch source (mutual exclusion); the optional
-# registryCredentialId is validated against the image host. Neither this nor
-# setRepo triggers a deploy — the next deploy uses the new source. REST PATCH
-# `image` and MCP are the sibling surfaces (backend/internal/apps/graphql.go).
+# Source repo→image, w5/m76, w4/m593). The shared source verb persists
+# spec.image and clears the repo/branch source (mutual exclusion); the optional
+# registryCredentialId is validated against the image host. When deploy is true
+# (Settings → Update Source), immediately triggers one deploy and returns its
+# id in latestDeployId. REST PATCH `image` and MCP stay save-without-deploy.
 mutation SetImage(
   $id: String!
   $image: String!
   $registryCredentialId: String
+  $deploy: Boolean
   $confirm: String
 ) {
   setImage(
     id: $id
     image: $image
     registryCredentialId: $registryCredentialId
+    deploy: $deploy
     confirm: $confirm
   ) {
     id
@@ -22,5 +24,11 @@ mutation SetImage(
     imagePath
     buildSourceId
     registryCredentialId
+    runtime
+    builder
+    buildCommand
+    startCommand
+    command
+    latestDeployId
   }
 }
