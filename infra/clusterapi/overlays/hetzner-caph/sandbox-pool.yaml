@@ -254,10 +254,10 @@ spec:
       # disabled control character matches no input (stock gVisor did none of
       # this, and a repository's terminal tests failed only in sandboxes).
       # Source: github.com/bex-co/gvisor branch
-      # bex/release-20260622.0-echo-signal-chars at 44a08e148. runsc was built
+      # bex/release-20260622.0-echo-signal-chars at e90ac895d. runsc was built
       # with `go build` from the go-branch tree of that source (GitHub had
       # disabled Actions on the fork), reproducibly, as the release notes of
-      # release-20260622.0-bex.2 say (runsc --version: 44a08e148eae). The shim
+      # release-20260622.0-bex.3 say (runsc --version: e90ac895dca8). The shim
       # is release-20260622.0-bex.1's, built by the fork's CI (run 44955648773).
       # .github/workflows/sandbox-runsc-pty.yml runs a PTY probe under the
       # binary this item installs, so a gVisor change that loses any of these
@@ -271,8 +271,8 @@ spec:
       # When changing the gVisor build, verify the new binaries (upstream's
       # versioned .sha512 files for a stock release, the fork's build log for
       # a bex build) and update the two pinned digests in the same commit.
-      - ARCH=$(uname -m); GVURL="https://github.com/bex-co/gvisor/releases/download/release-20260622.0-bex.2";
-        RUNSC_SHA512=a907f14a771a05befd239f20eb4bc1d4badd8c3524f549ba0229263d39ea45caee9bd7980e868ad1e44da6c45df3ac030a420e23f2fe396aa8275353b807c96a;
+      - ARCH=$(uname -m); GVURL="https://github.com/bex-co/gvisor/releases/download/release-20260622.0-bex.3";
+        RUNSC_SHA512=1dcb247c44c2ac2e43ef0b0690906b4e0f1809693beb80fed87bd8a9562b62af0e4eacc3c7ac2ef0a8c1b3d906beadd0ecdbbde6a939a5fe4a8deab9e0381a2f;
         SHIM_SHA512=6670b23959486010b727143678d6c3d915b00c83efa4bd5642600efcbc071072747e4bd2d6bd8dedce279c871be4233f427d7f855d1c94f3770616cc92d4049a;
         for attempt in 1 2 3 4 5; do cd /tmp && rm -f runsc containerd-shim-runsc-v1 &&
         wget -q -T 60 "${GVURL}/runsc" "${GVURL}/containerd-shim-runsc-v1" && break;

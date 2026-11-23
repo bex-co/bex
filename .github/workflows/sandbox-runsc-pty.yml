@@ -3,11 +3,14 @@ name: sandbox runsc (pty)
 # w4/m545: a terminal in a bex sandbox must echo Ctrl-C, Ctrl-\ and Ctrl-Z as
 # Linux does ("^C"), or a repository's own interrupt tests fail only in bex.
 # w4/m574: Ctrl-C must also throw away the line typed so far (unless `stty
-# noflsh`), and Ctrl-U erase it. Stock gVisor did neither until bex's patched
-# runsc; this runs the PTY probe under the exact runsc the sandbox pool
-# installs (URL + pinned digests from sandbox-pool.yaml), so a gVisor bump
-# that loses any of them turns red before the pool rolls onto it. The pool's
-# runsc is x86_64 only, hence ubuntu-latest.
+# noflsh`), and Ctrl-U erase it.
+# w4/m598: canonical typeahead must be processed immediately (so Ctrl-C after
+# a typed-ahead line interrupts at once), tab erase, ECHOPRT and tcflow() must
+# match Linux. Stock gVisor lacked these until bex's patched runsc; this runs
+# the PTY probe under the exact runsc the sandbox pool installs (URL + pinned
+# digests from sandbox-pool.yaml), so a gVisor bump that loses any of them
+# turns red before the pool rolls onto it. The pool's runsc is x86_64 only,
+# hence ubuntu-latest.
 # Run locally on Linux x86_64 with: bash scripts/sandbox-runsc-pty-check.sh
 on:
   pull_request:

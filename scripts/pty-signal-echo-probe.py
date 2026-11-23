@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Checks that a terminal handles Ctrl-C, Ctrl-\\, Ctrl-Z and Ctrl-U as Linux does.
+"""Checks that a terminal handles signals, line editing, typeahead and flow control as Linux does.
 
 The signal cases open a fresh PTY whose foreground process waits for a signal,
 type one signal character into it, and check what the terminal shows and which
@@ -21,15 +21,23 @@ line discipline showed nothing until bex's runsc carried the fix, so a
 repository's interrupt tests failed only in a sandbox.
 
 The line cases type a line at a process that reads one, and check what the
-terminal shows and what the process reads (w4/m574). On Linux, Ctrl-C throws
-away the line typed so far unless `stty noflsh` is set, and Ctrl-U erases it
-from the line and the screen; stock gVisor kept the line and queued Ctrl-U as
-a character.
+terminal shows and what the process reads (w4/m574, w4/m598). On Linux, Ctrl-C
+throws away the line typed so far unless `stty noflsh` is set, Ctrl-U erases it
+from the line and the screen, erasing a tab moves back to where the tab began,
+and ECHOPRT echoes erased characters as `\\.../`.
+
+The typeahead case types a complete line and a partial line while the foreground
+process is not reading, then presses Ctrl-C (w4/m598): Linux echoes the
+typeahead, delivers SIGINT at once, and flushes both lines.
+
+The tcflow case checks TCXONC (TCOOFF/TCOON) output flow control (w4/m598).
 
 Run it natively, under runsc, or in a bex sandbox. It prints one line per case
 and exits 1 when any case differs from Linux.
 """
 
+import errno
+import fcntl
 import os
 import pty
 import re
@@ -60,6 +68,8 @@ LINE_CASES = [
     ("ctrl-c flushes the line", 0, [(b"abc", b"abc"), (b"\x03", b"^C"), (b"\n", b"\r\n")], b"\n"),
     ("ctrl-c noflsh", termios.NOFLSH, [(b"abc", b"abc"), (b"\x03", b"^C"), (b"\n", b"\r\n")], b"abc\n"),
     ("ctrl-u erases the line", 0, [(b"abc", b"abc"), (b"\x15", b"\b \b" * 3), (b"def\n", b"def\r\n")], b"def\n"),
+    ("tab erase", 0, [(b"a\t", b"a\t"), (b"\x7f", b"\b" * 7), (b"\n", b"\r\n")], b"a\n"),
+    ("echoprt", termios.ECHOPRT, [(b"abc", b"abc"), (b"\x7f\x7f", b"\\cb"), (b"d\n", b"/d\r\n")], b"ad\n"),
 ]
 ERASE_LFLAGS = termios.ECHOE | termios.ECHOK | termios.ECHOKE
 
@@ -184,9 +194,107 @@ def run_line(lflags, steps, want_line):
     return ok, "screen %r (want %r and %r), child status %#x" % (screen, want_echo, got, status)
 
 
+def typeahead_child():
+    """Waits for SIGINT without reading stdin, then checks stdin is empty."""
+    set_lflags(ERASE_LFLAGS, 0)
+    sigs = {signal.SIGINT}
+    signal.pthread_sigmask(signal.SIG_BLOCK, sigs)
+    os.write(1, READY + b"\n")
+    sig = signal.sigwait(sigs)
+    fl = fcntl.fcntl(0, fcntl.F_GETFL)
+    fcntl.fcntl(0, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+    try:
+        leftover = os.read(0, 1024)
+    except OSError as exc:
+        if exc.errno != errno.EAGAIN:
+            os.write(1, b"ERR %d\n" % exc.errno)
+            os._exit(3)
+        leftover = b""
+    os.write(1, b"GOT %s %s\n" % (signal.Signals(sig).name.encode(), leftover.hex().encode()))
+    os._exit(0)
+
+
+def run_typeahead():
+    pid, fd = pty.fork()
+    if pid == 0:
+        typeahead_child()
+    deadline = time.monotonic() + TIMEOUT
+    got = b"GOT SIGINT \r\n"
+    steps = [(b"ls\n", b"ls\r\n"), (b"ab", b"ab"), (b"\x03", b"^C")]
+    screen = b""
+    try:
+        before = read_until(fd, lambda b: READY + b"\r\n" in b, deadline)
+        if READY in before:
+            for i, (typed, shows) in enumerate(steps):
+                os.write(fd, typed)
+                if i < len(steps) - 1:
+                    done = lambda b, shows=shows: shows in b
+                    step_deadline = min(deadline, time.monotonic() + STEP_TIMEOUT)
+                else:
+                    done = lambda b: got in b and b"^C" in b
+                    step_deadline = min(deadline, time.monotonic() + STEP_TIMEOUT)
+                screen += read_until(fd, done, step_deadline)
+    finally:
+        if got not in screen:
+            os.kill(pid, signal.SIGKILL)
+        _, status = os.waitpid(pid, 0)
+        os.close(fd)
+    if READY not in before:
+        return False, "child not ready: %r" % before
+    echo = screen.replace(got, b"", 1)
+    want_echo = b"".join(shows for _, shows in steps)
+    ok = got in screen and echo == want_echo and os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+    return ok, "screen %r (want %r and %r), child status %#x" % (screen, want_echo, got, status)
+
+
+def tcflow_child():
+    """Stops and resumes replica output via tcflow(TCOOFF/TCOON)."""
+    set_lflags(0, 0)
+    fl = fcntl.fcntl(1, fcntl.F_GETFL)
+    fcntl.fcntl(1, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+    try:
+        termios.tcflow(1, termios.TCOOFF)
+        try:
+            os.write(1, b"BAD")
+            stopped_ok = False
+        except OSError as exc:
+            stopped_ok = exc.errno == errno.EAGAIN
+        termios.tcflow(1, termios.TCOON)
+    except (OSError, termios.error) as exc:
+        err = exc.errno if isinstance(exc, OSError) else exc.args[0]
+        os.write(1, b"ERR %d\n" % err)
+        os._exit(3)
+    fcntl.fcntl(1, fcntl.F_SETFL, fl)
+    os.write(1, b"GOT %s\n" % (b"OK" if stopped_ok else b"NOTSTOPPED"))
+    os._exit(0)
+
+
+def run_tcflow():
+    pid, fd = pty.fork()
+    if pid == 0:
+        tcflow_child()
+    deadline = time.monotonic() + TIMEOUT
+    got = b"GOT OK\r\n"
+    screen = b""
+    try:
+        screen = read_until(fd, lambda b: b"GOT " in b or b"ERR " in b, deadline)
+    finally:
+        if b"GOT " not in screen and b"ERR " not in screen:
+            os.kill(pid, signal.SIGKILL)
+        _, status = os.waitpid(pid, 0)
+        os.close(fd)
+    ok = screen == got and os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+    return ok, "screen %r (want %r), child status %#x" % (screen, got, status)
+
+
 def main():
     failed = 0
-    cases = [(run, case) for case in CASES] + [(run_line, case) for case in LINE_CASES]
+    cases = (
+        [(run, case) for case in CASES]
+        + [(run_line, case) for case in LINE_CASES]
+        + [(run_typeahead, ("canonical typeahead ctrl-c",))]
+        + [(run_tcflow, ("tcflow TCOOFF/TCOON",))]
+    )
     for check, (name, *args) in cases:
         ok, detail = check(*args)
         print("%s %s: %s" % ("ok  " if ok else "FAIL", name, detail), flush=True)
