@@ -1999,6 +1999,33 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     message: "태그를 저장했습니다",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "설정",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "세션 설정",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message: "실행 중인 이 세션에 적용되는 설정입니다. 워크스페이스 관리자만 변경할 수 있습니다.",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "끄기를 선택하면 이 세션과 이 세션이 시작한 세션에서 다음 gh 호출부터 gh가 꺼집니다. 켜기 또는 상속을 선택하면 세션의 다음 턴부터 gh가 돌아옵니다.",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "설정 저장",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "설정을 저장했습니다",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default koAgentSessions;

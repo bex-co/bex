@@ -12,6 +12,8 @@ import {
   repoLessAgentSessionView,
 } from "@/test/mocks/agent-session";
 import { AgentModelSource } from "@/graphql/definitions";
+import { agentEnvironment } from "@/test/mocks/agent-environment";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { AgentSessionModelCost } from "@/features/agent-sessions/hooks/use-agent-session-model-cost";
 import type { AppliedSecret } from "@/features/agent-sessions/hooks/use-agent-session-applied-secrets";
 
@@ -35,6 +37,7 @@ const archiveMock = vi.fn().mockResolvedValue(undefined);
 const unarchiveMock = vi.fn().mockResolvedValue(undefined);
 const deleteMock = vi.fn().mockResolvedValue(undefined);
 const setTagsMock = vi.fn().mockResolvedValue(undefined);
+const setGithubCliMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({
     cancel: vi.fn(),
@@ -42,7 +45,26 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
     unarchive: unarchiveMock,
     deleteSession: deleteMock,
     setTags: setTagsMock,
+    setGithubCli: setGithubCliMock,
   }),
+}));
+// The session's settings (w10/m599) read the agent environment and the
+// caller's role.
+vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
+  useAgentEnvironment: () => ({
+    environment: agentEnvironment(),
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    update: vi.fn(),
+    saving: false,
+  }),
+}));
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => mockCapabilities(),
+}));
+vi.mock("@/features/agent-sessions/hooks/use-agent-session-tree", () => ({
+  useAgentSessionTree: () => ({ sessions: [], loading: false }),
 }));
 // Who started it (w7/m296) resolves through the workspace roster.
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
@@ -266,6 +288,51 @@ describe("SessionDetailHeader", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("menuitem", { name: "Edit tags" }),
+    ).not.toBeInTheDocument();
+  });
+
+  // w10/m599: Devin's session profile is "changed later from the session's
+  // settings"; bex's are the header menu's Settings.
+  it("changes the session's GitHub CLI from Settings", async () => {
+    render(<SessionDetailHeader session={view({ id: "as-9" })} />);
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Settings" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Session settings",
+    });
+    const picker = within(dialog).getByRole("combobox", {
+      name: "GitHub CLI (gh)",
+    });
+    expect(picker).toHaveTextContent("Inherit (on)");
+    await userEvent.click(picker);
+    await userEvent.click(await screen.findByRole("option", { name: "Off" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Save settings" }),
+    );
+    await waitFor(() =>
+      expect(setGithubCliMock).toHaveBeenCalledWith("as-9", "off"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Session settings" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it.each([
+    ["a repo-less session, which has no gh", () => repoLessView()],
+    [
+      "an archived session",
+      () => view({ archivedAt: "2026-08-05T00:00:00Z", isArchived: true }),
+    ],
+  ])("offers no Settings on %s", async (_, session) => {
+    render(<SessionDetailHeader session={session()} />);
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(await screen.findAllByRole("menuitem")).not.toHaveLength(0);
+    expect(
+      screen.queryByRole("menuitem", { name: "Settings" }),
     ).not.toBeInTheDocument();
   });
 
@@ -876,6 +943,7 @@ describe("SessionDetailHeader sandbox (w10/m519)", () => {
         modelEndpoint: null,
         task: "refactor the mapper",
         template,
+        githubCli: null,
       },
     });
 

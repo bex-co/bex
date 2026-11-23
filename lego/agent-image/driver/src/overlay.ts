@@ -175,14 +175,17 @@ function readyOrMergeStep(leave: string): string {
   return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark a draft ready for review. To merge, mark a draft ready first, then call \`${mergePullRequestToolName}\`; it acts on the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. When asked to merge once the checks pass or CI is green, call it with \`auto: true\` as soon as the pull request is ready and end your turn: do not wait for or watch the checks, before or after the call. GitHub merges the pull request when its required checks pass (the tool answers that auto-merge is armed, or that the pull request joined the merge queue), and your final reply says so, not that it merged. Without \`auto\` it merges now if GitHub allows it. GitHub also merges a head you push after arming once that head's checks pass, so if a person asks you not to merge after all, call \`${mergePullRequestToolName}\` with \`disableAuto: true\`. When the task or a person asks you to mark ready or merge another pull request of this repository, pass its \`number\` to either tool; that merge is pinned to the head GitHub reports for it when you call, so it never merges a commit pushed after that, and your own pull request is left as it is. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
 }
 
-// githubCliOffBy says who turned gh off, by binding level (w10/m561).
+// githubCliOffBy says who turned gh off, by binding level (w10/m561). A
+// session's own setting changes after create (w10/m599), so its line names
+// the setting, not when it was chosen.
 const githubCliOffBy: Record<GitHubCliLevel, string> = {
   workspace: "this workspace's admins turned `gh` off for its agent sessions",
   "automations-default":
     "this workspace's admins turned `gh` off for the sessions its automations start",
   automation:
     "the automation that started this session turned `gh` off for its sessions",
-  session: "`gh` is turned off for this session, which was started with it off",
+  session:
+    "this session's GitHub CLI setting, or that of the session that started it, turned `gh` off",
 };
 
 // githubCliLine says what the session's gh can do (w10/m513, w10/m522,

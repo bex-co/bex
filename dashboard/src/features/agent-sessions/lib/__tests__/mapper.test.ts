@@ -129,6 +129,7 @@ describe("toAgentSessionView", () => {
           modelEndpoint: "https://api.example.com",
           task: "ship it",
           template: "tpl-1",
+          githubCli: false,
         },
       }),
     );
@@ -156,6 +157,7 @@ describe("toAgentSessionView", () => {
       modelEndpoint: "https://api.example.com",
       task: "ship it",
       template: "tpl-1",
+      githubCli: false,
     });
   });
 

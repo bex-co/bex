@@ -106,6 +106,7 @@ export function toAgentSessionView(
       modelEndpoint: config?.modelEndpoint ?? null,
       task: config?.task ?? "",
       template: config?.template ?? null,
+      githubCli: config?.githubCli ?? null,
     },
     sandboxId: wire.sandboxId ?? null,
     sshAddress: wire.sshAddress ?? null,

@@ -2010,6 +2010,33 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     message: "タグを保存しました",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "設定",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "セッション設定",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message: "実行中のこのセッションに適用される設定です。変更できるのはワークスペースの管理者のみです。",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "オフにすると、このセッションとそれが開始したセッションでは次の gh 呼び出しから gh が使えなくなります。オンまたは継承にすると、セッションの次のターンから gh が戻ります。",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "設定を保存",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "設定を保存しました",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default jaAgentSessions;

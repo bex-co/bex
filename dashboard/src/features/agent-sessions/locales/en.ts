@@ -2105,6 +2105,34 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Tags saved",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "Settings",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "Session settings",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message:
+      "What applies to this session while it runs. Only a workspace admin changes it.",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "Off turns gh off for this session and the sessions it starts from their next gh call. On or Inherit gives gh back from the session's next turn.",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "Save settings",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "Settings saved",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default enAgentSessions;

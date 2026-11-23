@@ -138,6 +138,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		s.fillQueue(r.Context(), &view) // the REST read inlines the messages that wait
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	// A session's settings after create (w10/m599): its own gh binding, where
+	// an explicit null agentConfig.githubCli returns it to inherit.
+	mux.HandleFunc("PATCH /v1/agent-sessions/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var in SessionUpdate
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &in); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		view, err := s.UpdateSession(r.Context(), r.PathValue("id"), in)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
 	// The tree the session belongs to (ADR102 D8), whichever node the id names.
 	mux.HandleFunc("GET /v1/agent-sessions/{id}/tree", core.HandleByID(s.Tree))
 	mux.HandleFunc("GET /v1/agent-sessions/{id}/model-cost", core.HandleByID(s.ModelCost))

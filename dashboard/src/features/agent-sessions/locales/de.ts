@@ -2114,6 +2114,34 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     message: "Tags gespeichert",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "Einstellungen",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "Sitzungseinstellungen",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message:
+      "Was für diese Sitzung gilt, während sie läuft. Nur Workspace-Admins können das ändern.",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "Aus schaltet gh für diese Sitzung und die von ihr gestarteten Sitzungen ab ihrem nächsten gh-Aufruf ab. Ein oder Übernehmen gibt gh ab dem nächsten Durchgang der Sitzung zurück.",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "Einstellungen speichern",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "Einstellungen gespeichert",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default deAgentSessions;

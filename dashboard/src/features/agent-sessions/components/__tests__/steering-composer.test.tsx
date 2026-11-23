@@ -563,6 +563,7 @@ describe("SteeringComposer model switch", () => {
         modelEndpoint: null,
         task: "t",
         template: null,
+        githubCli: null,
       },
     });
   }

@@ -34,7 +34,16 @@ var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"modelEndpoint": &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"task":          &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"template":      &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"githubCli":     &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Omit (or null) to inherit the workspace's GitHub CLI setting. Only a workspace admin may name a binding (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required). false turns gh off for this session. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off."},
+		"githubCli":     &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Omit (or null) to inherit the workspace's GitHub CLI setting. Only a workspace admin may name a binding (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required). false turns gh off for this session. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with updateAgentSession."},
+	},
+})
+
+// agentConfigUpdateGQLInput is the agentConfig a session update changes
+// (w10/m599): today only its gh binding.
+var agentConfigUpdateGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "AgentSessionConfigUpdateInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"githubCli": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "This session's gh binding, which only a workspace admin changes (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required; saving the stored binding is never refused). false turns gh off for it, true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory); resetGithubCli returns it to inheriting. Omit it (or null, which this input cannot carry) to keep the binding. An off refuses the session's next gh call; gh returns from its next turn. A child session can only turn gh off."},
 	},
 })
 
@@ -1132,6 +1141,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ReplaceTags(p.Context, gqlutil.Str(p.Args, "id"), gqlutil.StringList(p.Args["tags"]))
+			},
+		},
+		"updateAgentSession": &graphql.Field{
+			Type:        agentSessionGQLType,
+			Description: "Changes a session's settings after create, as Devin's session settings do: today its own gh binding (agentConfig.githubCli), which only a workspace admin changes. Refused on an archived session.",
+			Args: graphql.FieldConfigArgument{
+				"id":             gqlutil.ReqArg(graphql.String),
+				"agentConfig":    &graphql.ArgumentConfig{Type: agentConfigUpdateGQLInput},
+				"resetGithubCli": &graphql.ArgumentConfig{Type: graphql.Boolean, Description: "true returns the session's gh to inheriting (the explicit null githubCli cannot carry here)."},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				// graphql-go drops a null, so a named binding is a non-nil one.
+				var in SessionUpdate
+				if raw, ok := p.Args["agentConfig"].(map[string]any); ok {
+					binding := gqlutil.BoolPtr(raw, "githubCli")
+					in.AgentConfig = &SessionConfigUpdate{GitHubCLI: binding, GitHubCLISet: binding != nil}
+				}
+				in.ResetGitHubCLI, _ = p.Args["resetGithubCli"].(bool)
+				return s.UpdateSession(p.Context, gqlutil.Str(p.Args, "id"), in)
 			},
 		},
 		"archiveAgentSession":   gqlutil.IDVerb(agentSessionGQLType, s.Archive),

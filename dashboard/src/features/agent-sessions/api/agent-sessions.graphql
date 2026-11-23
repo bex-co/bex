@@ -37,6 +37,9 @@ fragment AgentSessionFields on AgentSession {
     modelEndpoint
     task
     template
+    # The session's own gh binding (w10/m561); null inherits. A workspace
+    # admin changes it from the session's settings (w10/m599).
+    githubCli
   }
   sandboxId
   sshAddress
@@ -390,6 +393,22 @@ mutation ArchiveAgentSession($id: String!) {
 # Replaces all of a session's tags (w7/m296, Devin's PUT …/tags); [] clears them.
 mutation SetAgentSessionTags($id: String!, $tags: [String!]!) {
   setAgentSessionTags(id: $id, tags: $tags) {
+    ...AgentSessionFields
+  }
+}
+
+# A session's settings after create (w10/m599): today its own gh binding.
+# resetGithubCli returns it to inherit, the null GraphQL cannot carry.
+mutation UpdateAgentSession(
+  $id: String!
+  $agentConfig: AgentSessionConfigUpdateInput
+  $resetGithubCli: Boolean
+) {
+  updateAgentSession(
+    id: $id
+    agentConfig: $agentConfig
+    resetGithubCli: $resetGithubCli
+  ) {
     ...AgentSessionFields
   }
 }

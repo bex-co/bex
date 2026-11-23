@@ -30,7 +30,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -677,7 +677,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -1447,7 +1447,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -2603,7 +2603,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -2769,7 +2769,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -4773,7 +4773,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -5988,7 +5988,7 @@
                     "type": "string"
                   },
                   "githubCli": {
-                    "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+                    "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
                     "type": [
                       "null",
                       "boolean"
@@ -6808,7 +6808,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -8641,7 +8641,7 @@
                     "type": "string"
                   },
                   "githubCli": {
-                    "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+                    "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
                     "type": [
                       "null",
                       "boolean"
@@ -10246,7 +10246,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -11087,7 +11087,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -12057,7 +12057,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -12688,7 +12688,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -12854,7 +12854,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -13599,7 +13599,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -14539,7 +14539,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
               "type": [
                 "null",
                 "boolean"
@@ -16146,6 +16146,671 @@
         "billingBalanceDue",
         "agentModelSpendCapReached",
         "agentModelChargesAtThreshold"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Change a cloud coding-agent session's settings after create, as Devin's session settings do: today its own gh binding, agentConfig.githubCli. Only a workspace admin changes it, in either direction (else AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required); a call that keeps the stored binding is never refused. false turns gh off for the session, true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory), and null or resetGithubCli: true returns it to inheriting. An off refuses the session's next gh call, and its child sessions'; gh returns from its next turn. A child's own true never turns gh on. Refused on an archived session.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "description": "the session settings to change; an omitted field keeps its value",
+          "properties": {
+            "githubCli": {
+              "description": "this session's gh binding, which only a workspace admin changes (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required; saving the stored binding is never refused): false turns gh off for it, true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory), and null returns it to inheriting. An off refuses the session's next gh call; gh returns from its next turn. A child session can only turn gh off",
+              "type": [
+                "null",
+                "boolean"
+              ]
+            }
+          },
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "resetGithubCli": {
+          "description": "true returns the session's gh to inheriting, as an explicit null agentConfig.githubCli does",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "update_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "githubCli": {
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session",
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "appliedSecrets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "automationId": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureCause": {
+          "type": "string"
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxSpendUSD": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
+                "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "result": true,
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "parentSessionId": {
+          "type": "string"
+        },
+        "pendingMessages": {
+          "type": "integer"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "appliedSecrets",
+        "status",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     }

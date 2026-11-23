@@ -278,8 +278,12 @@ func writeSession(w io.Writer, s session) {
 		row("Repo", repoBranch(s.Repo, s.Branch))
 	}
 	row("Sandbox", s.AgentConfig.Template)
-	// Shown only when the session binds gh itself (w10/m561).
-	row("GitHub CLI", bindingWord(s.AgentConfig.GitHubCLI))
+	// The session's own gh binding (w10/m561), and inherit for a repo session
+	// that names none (w10/m599: `bex agent update --github-cli` changes it);
+	// a repo-less session has no gh to inherit.
+	if binding := bindingWord(s.AgentConfig.GitHubCLI); binding != "" || s.Repo != "" {
+		row("GitHub CLI", firstNonEmpty(binding, "inherit"))
+	}
 	o := s.Outcome
 	if o == nil {
 		o = &outcome{}

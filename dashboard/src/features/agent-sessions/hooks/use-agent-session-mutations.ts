@@ -17,6 +17,7 @@ import {
   ArchiveAgentSessionDocument,
   UnarchiveAgentSessionDocument,
   SetAgentSessionTagsDocument,
+  UpdateAgentSessionDocument,
   DeleteAgentSessionDocument,
   AgentSessionDocument,
 } from "@/graphql/definitions";
@@ -26,6 +27,10 @@ import {
   toSteerResult,
 } from "@/features/agent-sessions/lib/mapper";
 import { toAgentSessionError } from "@/features/agent-sessions/lib/errors";
+import {
+  githubCliBinding,
+  type GithubCliChoice,
+} from "@/features/agent-sessions/lib/github-cli";
 import {
   patchCachedQueue,
   withQueuedMessage,
@@ -138,6 +143,15 @@ export interface UseAgentSessionMutationsResult {
   deleteSession: (id: string) => Promise<void>;
   /** Replaces all of a session's tags (w7/m296); [] clears them. */
   setTags: (id: string, tags: string[]) => Promise<AgentSessionView>;
+  /**
+   * Changes a session's own gh binding (w10/m599), which only a workspace
+   * admin may; inherit resets it. Refusals arrive coded
+   * AGENT_SESSION_GITHUB_CLI_LOCKED or AGENT_SESSION_ARCHIVED.
+   */
+  setGithubCli: (
+    id: string,
+    choice: GithubCliChoice,
+  ) => Promise<AgentSessionView>;
 }
 
 /**
@@ -421,6 +435,26 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     [setTagsById],
   );
 
+  const updateById = useByIdViewMutation(
+    UpdateAgentSessionDocument,
+    (d) => d.updateAgentSession,
+    "updateAgentSession",
+    reconcileSession,
+  );
+  // GraphQL cannot carry githubCli's null, so inherit is resetGithubCli.
+  const setGithubCli = useCallback(
+    (id: string, choice: GithubCliChoice) => {
+      const binding = githubCliBinding(choice);
+      return updateById(
+        id,
+        binding === undefined
+          ? { resetGithubCli: true }
+          : { agentConfig: { githubCli: binding } },
+      );
+    },
+    [updateById],
+  );
+
   return {
     create,
     steer,
@@ -432,5 +466,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     unarchive,
     deleteSession,
     setTags,
+    setGithubCli,
   };
 }

@@ -465,6 +465,10 @@ input AgentSessionConfigInput {
   template: String
 }
 
+input AgentSessionConfigUpdateInput {
+  githubCli: Boolean
+}
+
 type AgentSessionCost {
   computeUSD: String!
   modelUSD: String!
@@ -2214,6 +2218,7 @@ type Mutation {
   unregisterNotificationWebPushSubscription(browserId: String!): Boolean
   updateAgentAutomation(id: String!, input: AgentAutomationInput!, ownerId: String): AgentAutomation!
   updateAgentEnvironment(input: AgentEnvironmentInput!, ownerId: String): AgentEnvironment!
+  updateAgentSession(agentConfig: AgentSessionConfigUpdateInput, id: String!, resetGithubCli: Boolean): AgentSession
   updateAgentSkill(input: AgentSkillInput!, ownerId: String, skill: String!): AgentSkill!
   updateApiKeyPermissions(id: String!, ownerId: String, permissions: ApiKeyPermissionsInput!): ApiKey
   updateBlueprint(autoSync: Boolean, branch: String, id: String!, name: String, ownerId: String, path: String): Blueprint

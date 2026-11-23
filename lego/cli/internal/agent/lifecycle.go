@@ -132,6 +132,58 @@ func tagsCommand(d deps) *cobra.Command {
 	return c
 }
 
+// updateCommand changes a session's settings after it started (w10/m599),
+// as Devin's session profile is "changed later from the session's settings":
+// today its own gh binding, PATCH /v1/agent-sessions/{id}.
+func updateCommand(d deps) *cobra.Command {
+	var flags sessionFlags
+	c := &cobra.Command{
+		Use:   "update <ags-id> --github-cli on|off|inherit",
+		Short: "Change an agent session's settings",
+		Long: "Changes a session's settings after it started, as its Settings in the\n" +
+			"dashboard do.\n\n" +
+			"--github-cli sets the session's own gh (agentConfig.githubCli): on, off,\n" +
+			"or inherit to follow the workspace's setting, or the automation's or the\n" +
+			"parent session's that started it. Only a workspace admin changes it\n" +
+			"(AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required); on is refused\n" +
+			"while the workspace's gh off is mandatory (reason mandatory). An off\n" +
+			"refuses the session's next gh call and its child sessions'; gh returns\n" +
+			"at its next turn. A child session can only turn gh off. An archived\n" +
+			"session is refused.",
+		Example: "  bex agent update ags-… --github-cli off\n" +
+			"  bex agent update ags-… --github-cli inherit",
+		Args: sessionArgs(0),
+		RunE: func(c *cobra.Command, args []string) error {
+			given, binding, err := flags.gitHubCLI(c.Flags())
+			if err != nil {
+				return err
+			}
+			if !given {
+				return usageError("name a setting to change: --github-cli on|off|inherit")
+			}
+			inv, cancel, err := d.start(c)
+			if err != nil {
+				return err
+			}
+			defer cancel()
+			// inherit sends the explicit null, which returns the session to
+			// inheriting; an omitted field would keep the binding.
+			raw, err := inv.api.send(inv.ctx, http.MethodPatch, request{path: []string{"agent-sessions", args[0]}},
+				map[string]any{"agentConfig": map[string]any{"githubCli": binding}})
+			if err != nil {
+				return fmt.Errorf("update agent session %s: %w", args[0], err)
+			}
+			s, raw, err := decodeSession(raw)
+			if err != nil {
+				return err
+			}
+			return inv.show(s, raw)
+		},
+	}
+	c.Flags().StringVar(&flags.githubCLI, githubCLIFlag, "", "on, off or inherit: this session's gh, agentConfig.githubCli (a workspace admin's change)")
+	return c
+}
+
 // sessionTree is the ADR102 tree a session belongs to, root first.
 type sessionTree struct {
 	RootSessionID string    `json:"rootSessionId"`

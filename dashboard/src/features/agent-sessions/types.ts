@@ -211,6 +211,8 @@ export interface AgentSessionConfigView {
   modelEndpoint: string | null;
   task: string;
   template: string | null;
+  /** The session's own gh binding (w10/m561); null inherits. */
+  githubCli: boolean | null;
 }
 
 /**

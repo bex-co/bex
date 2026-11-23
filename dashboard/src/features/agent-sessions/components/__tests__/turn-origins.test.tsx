@@ -283,6 +283,7 @@ function detail(
         modelEndpoint: null,
         task: "fix it",
         template: null,
+        githubCli: null,
       },
       outcome: null,
     },

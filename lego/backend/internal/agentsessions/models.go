@@ -120,7 +120,7 @@ type AgentConfig struct {
 	ModelEndpoint string `json:"modelEndpoint,omitempty"`
 	Task          string `json:"task"`
 	Template      string `json:"template,omitempty"`
-	GitHubCLI     *bool  `json:"githubCli,omitempty" jsonschema:"this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off"`
+	GitHubCLI     *bool  `json:"githubCli,omitempty" jsonschema:"this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with update_agent_session"`
 }
 
 // AgentProfile is a selectable, secret-free agent option for the phone composer

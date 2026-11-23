@@ -192,3 +192,81 @@ describe("useAgentSessionMutations create agentConfig.githubCli", () => {
     );
   });
 });
+
+// w10/m599: a session's gh binding changes after create through
+// updateAgentSession; inherit is resetGithubCli, the null GraphQL cannot
+// carry, and the server's view lands in the detail cache.
+describe("useAgentSessionMutations setGithubCli", () => {
+  const updated = {
+    __typename: "AgentSession",
+    id: "ags-1",
+    ownerId: "tea-1",
+    repo: "acme/widgets",
+    branch: "bex-agent/fix",
+    phase: "running",
+    status: "running",
+    turns: 1,
+    createdAt: "2026-11-23T00:00:00Z",
+    updatedAt: "2026-11-23T01:00:00Z",
+    agentConfig: {
+      __typename: "AgentSessionConfig",
+      agent: "claude",
+      model: null,
+      modelEndpoint: null,
+      task: "fix it",
+      template: null,
+      githubCli: false,
+    },
+  };
+
+  beforeEach(() => {
+    mutate.mockReset();
+    writeQuery.mockReset();
+    mutate.mockResolvedValue({ data: { updateAgentSession: updated } });
+  });
+
+  const sent = () =>
+    (mutate.mock.calls[0][0] as { variables: Record<string, unknown> })
+      .variables;
+
+  it.each([
+    ["off", { id: "ags-1", agentConfig: { githubCli: false } }],
+    ["on", { id: "ags-1", agentConfig: { githubCli: true } }],
+    ["inherit", { id: "ags-1", resetGithubCli: true }],
+  ] as const)("sends %s", async (choice, variables) => {
+    const { result } = renderHook(() => useAgentSessionMutations());
+    const view = await act(() => result.current.setGithubCli("ags-1", choice));
+    expect(sent()).toEqual(variables);
+    expect(view.agentConfig.githubCli).toBe(false);
+    expect(writeQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ variables: { id: "ags-1" } }),
+    );
+  });
+
+  it("rethrows a refusal as a coded AgentSessionError", async () => {
+    const { CombinedGraphQLErrors } = await import("@apollo/client/errors");
+    mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: "only a workspace admin chooses or changes gh",
+            extensions: {
+              code: "AGENT_SESSION_GITHUB_CLI_LOCKED",
+              field: "agentConfig.githubCli",
+              reason: "admin_required",
+            },
+          },
+        ],
+      } as never),
+    );
+    const { result } = renderHook(() => useAgentSessionMutations());
+    await expect(
+      act(() => result.current.setGithubCli("ags-1", "off")),
+    ).rejects.toMatchObject({
+      code: "AGENT_SESSION_GITHUB_CLI_LOCKED",
+      params: { reason: "admin_required" },
+    });
+    expect(writeQuery).not.toHaveBeenCalled();
+  });
+});

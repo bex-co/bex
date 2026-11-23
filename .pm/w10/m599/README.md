@@ -1,19 +1,19 @@
 # w10 · m599 — A workspace admin changes a session's `gh` binding from its settings after it starts, as Devin changes a session's security profile
 
-**Worker:** worker10 **Goal:** an admin who started a session with `gh` off, or on, changes it without starting a new session. A workspace admin sets a session's `agentConfig.githubCli` to inherit, on or off after create on REST, GraphQL, MCP, the CLI and the session's settings in the dashboard. A member is refused, and nobody turns `gh` on under a mandatory off. The session's next `gh` mint and next dispatch follow the change, and a child still only tightens its tree. **Status:** todo
+**Worker:** worker10 **Goal:** an admin who started a session with `gh` off, or on, changes it without starting a new session. A workspace admin sets a session's `agentConfig.githubCli` to inherit, on or off after create on REST, GraphQL, MCP, the CLI and the session's settings in the dashboard. A member is refused, and nobody turns `gh` on under a mandatory off. The session's next `gh` mint and next dispatch follow the change, and a child still only tightens its tree. **Status:** todo (t001–t004, t006–t008 done 2026-11-23; t005, the live check, waits for production to run this milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: the verb's shape on each surface, which sessions take a change, who may make one, when it applies, what the session level's refusal and overlay say, and what the session's settings show; ADR047 D2, ADR094 and ADR018 amended | 45m | — |
-| [t002](t002.md) | Backend: the change verb on REST, GraphQL and MCP over the store, with the refusals, the audit, and the session level's refusal text | 1h45m | t001 |
-| [t003](t003.md) | CLI: change a session's binding with `--github-cli on\|off\|inherit`, and `bex agent get` shows it | 45m | t002 |
-| [t004](t004.md) | Dashboard: the session's settings offer the GitHub CLI binding, admin-only, and the GraphQL clients are regenerated | 1h15m | t002 |
+| [t001](done/t001.md) | Design: the verb's shape on each surface, which sessions take a change, who may make one, when it applies, what the session level's refusal and overlay say, and what the session's settings show; ADR047 D2, ADR094 and ADR018 amended — **DONE** | 45m | — |
+| [t002](done/t002.md) | Backend: the change verb on REST, GraphQL and MCP over the store, with the refusals, the audit, and the session level's refusal text — **DONE** | 1h45m | t001 |
+| [t003](done/t003.md) | CLI: change a session's binding with `--github-cli on\|off\|inherit`, and `bex agent get` shows it — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | Dashboard: the session's settings offer the GitHub CLI binding, admin-only, and the GraphQL clients are regenerated — **DONE** | 1h15m | t002 |
 | [t005](t005.md) | Live check: an admin turns a running repo session's `gh` off and back to inherit, and a member is refused | 45m | t002, t003, t004 |
-| [t006](t006.md) | Render parity (Devin) | 30m | t005 |
-| [t007](t007.md) | Simplify | 20m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 7h**.
@@ -44,6 +44,85 @@ Total: **9 tasks, about 7h**.
    - On production, once the pin carries the milestone, a workspace admin in `tian-personal` turns one short repo session's `gh` off and its next `gh` call is refused naming the session level, then back to inherit and the next turn has `gh`.
    - A member's change is refused there or on `dev-10`.
    - Every session the check creates is deleted.
+
+## Design record (t001, 2026-11-23)
+
+Checked against Devin's [Security profiles](https://docs.devin.ai/product-guides/security-profiles), re-read 2026-11-23: a session's profile is "chosen for an individual session when it's created" or "changed later from the session's settings"; "Changes take effect for new sessions immediately, and for existing sessions the next time they resume"; "Members without the permission can't enumerate, select, or change profiles", but "anyone can see whether their session is governed by a profile". Devin's API pins a profile only at create, so the settings are its one place to change it. bex also serves the change on its API surfaces, as every bex dashboard verb is.
+
+- **One general session update, not a `gh`-only verb.** Later session fields can join it without a new route, as Devin's session settings hold more than the profile.
+  - **REST** `PATCH /v1/agent-sessions/{id}` with `{"agentConfig": {"githubCli": true|false|null}}`, decoded strictly. An explicit `null`, or `"resetGithubCli": true` beside `agentConfig`, returns the session to inherit; an omitted field keeps the binding. Any other `agentConfig` key is `400` (an unknown field); naming a binding and `resetGithubCli` together is `400 AGENT_SESSION_INPUT_INVALID` (`field: resetGithubCli`). An empty update returns the session unchanged.
+  - **GraphQL** `updateAgentSession(id: String!, agentConfig: AgentSessionConfigUpdateInput, resetGithubCli: Boolean): AgentSession`, with `AgentSessionConfigUpdateInput { githubCli: Boolean }`. `resetGithubCli` stands for the null, as `resetAutomationsGithubCli` does.
+  - **MCP** `update_agent_session` with `id`, `agentConfig.githubCli` (an explicit `null` inherits) and `resetGithubCli`, on `/mcp` only: it is an admin verb, and `/mcp/cloud-agents` keeps admin tools off.
+  - **CLI** `bex agent update <ags-id> --github-cli on|off|inherit`, where `inherit` sends the explicit `null`. With no flag it is a usage error. `bex agent get` shows `GitHub CLI` for every repo session: `on`, `off`, or `inherit`.
+  - **Audit.** The verb authorizes `can_operate` on the session (`AuthorizeOn`), which records it as every session verb is. The admin probe in `refuseGitHubCLIBinding` records nothing, as at create.
+  - **Scopes.** Each surface is a write needing `agents:manage` on a bex API key, as tags are.
+- **Which sessions take a change.** Every session that is not archived, in any phase, the binding being stored config that the next mint and dispatch read:
+  - A completed or failed session takes it: its next turn, and an editor sandbox `resume_agent_session` starts, mint `gh` under it, as Devin's change reaches a session "the next time [it] resume[s]". A canceled session takes it too, as its tags do, though it runs no more turns.
+  - A session still `creating` takes it: the mint reads it at once, and its first turn's driver gets what the chain resolved at create.
+  - A repo-less session takes it, as create already stores a binding on one. It has no `gh`, so nothing reads it.
+  - A child session takes it. Its own `true` is stored and read back but never turns `gh` on, as at create.
+  - An archived session is refused `409 AGENT_SESSION_ARCHIVED`, as tags and every other mutation verb are (ADR065 D1), and keeps its binding. An unknown or deleted session is `404`.
+- **Who.** The caller needs `can_operate` on the session (contributor and up, so a viewer is refused `403` before anything is read) and, for any change, `can_manage` on the workspace: `refuseGitHubCLIBinding(stored, new)` refuses a member's change `403 AGENT_SESSION_GITHUB_CLI_LOCKED` with `reason: admin_required` in either direction, inherit included, and anyone's `true` under a mandatory off with `reason: mandatory`. A save that keeps the stored binding is never refused and writes nothing, so a member's unchanged save cannot overwrite an admin's concurrent change. A workspace admin holds `can_operate` on every session of the workspace (`agent_session#can_operate` is `can_operate from workspace`), so no other rule is needed.
+- **When it applies.** The resolver reads `agent_config` live at every mint and dispatch (`agentsession.LoadGitHubCLIChain`), so no new code is needed past the write.
+  - An off refuses the session's next `gh` call at once, naming the session level, whether the call comes from the agent, the web Shell, SSH or Zed: all four reach the same `github-api` route. That is sooner than Devin's next resume, the safe direction ADR047 already records for an automation or environment edit.
+  - An on, or an inherit that resolves on, serves the next mint at once, but a turn dispatched with `gh` off has no `gh` configured in its sandbox, so `gh` returns at the session's next turn (the next dispatch's driver env). Nothing else is needed for a running turn.
+  - A change on a root reaches its whole tree, whose children resolve through it at their next mint and turn.
+- **The words.**
+  - The session level's `gh` refusal: "bex: gh is turned off for this agent session (its agentConfig.githubCli, or that of the session that started it). A workspace admin turns it back on by setting that session's GitHub CLI to inherit or on in its settings in the dashboard or with `bex agent update <session> --github-cli inherit`." followed by the sentence on pushes and the `bex` tools, as today.
+  - The overlay's session line: "this session's GitHub CLI setting, or that of the session that started it, turned `gh` off". It ships in the agent image that `deploy.yml` builds from the same commit, so no separate pin is needed. An older driver's "which was started with it off" is wrong only about when, and still says `gh` is off.
+  - The create field descriptions and help stop saying a binding is fixed at create, and the update verb's descriptions and help say only a workspace admin changes it and when it applies.
+- **The dashboard.** A **Settings** item in the session header's "…" menu opens a **Session settings** dialog holding the GitHub CLI field (`GithubCliPicker`, field variant), shown for every repo session that is not archived (a repo-less session has no `gh`, and an archived one is read-only, as its tags are).
+  - Every member sees it, so "anyone can see whether their session is governed by a profile" holds. A member's picker keeps every choice but the stored one disabled with "Only a workspace admin can change this.", as the composer does since w10/044; `on` under a mandatory off is disabled with its reason for everyone.
+  - Inherit names what it resolves to, walking the chain as `agentsession.LoadGitHubCLIChain` does: a mandatory off wins; then the workspace's switch, or for a tree an automation started that automation's binding, else the automations default, else the switch; then the root's own binding; then any off below it. A child reads the sessions above it from the session page's tree query (cache-first), at most three, and an ancestor missing from the loaded tree ends the walk, as a deleted parent does. Session reads gain no resolved field: the dialog derives it, and the route's refusal and the overlay already name the level that turned `gh` off.
+  - Save is enabled only for a change. A refusal is shown in the dialog with its mapped message, and a success writes the server's view into the cache, as tags do.
+- **ADRs.** ADR047 D2's binding bullet, "Who may set a binding", "Where it resolves" and the session refusal text are amended; ADR094 lists `update_agent_session`; the ADR018 row drops the gap. ADR106 and `docs/bex-cli.md` list `bex agent update`.
+
+## Implementation record (t002–t004, 2026-11-23)
+
+- **Backend (t002).** `store.SetAgentSessionGitHubCLI` sets `agent_config.githubCli` with `jsonb_set` or removes the key, in one statement that leaves an archived row unchanged. `Service.UpdateSession` (`agentsessions/githubcli.go`) authorizes `can_operate` on the session, refuses an archived session, reads the stored binding, runs `refuseGitHubCLIBinding(stored, new)`, writes only a change, and logs `agent-session gh binding changed (… from=… to=…)`. REST `PATCH /v1/agent-sessions/{id}` decodes strictly (`SessionConfigUpdate.UnmarshalJSON` records whether `githubCli` was named and refuses any other key), GraphQL `updateAgentSession` takes `agentConfig: AgentSessionConfigUpdateInput` and `resetGithubCli` (graphql-go drops a null, so a null variable keeps the binding), and MCP `update_agent_session` is on `/mcp` only. Scope-matrix and key-permission rows (`agents:manage`), the swept-verb count (503), the MCP parity inventory (289, 261 `Extension`) and both goldens are updated. The session level's refusal and the overlay say what the design record says.
+- **CLI (t003).** `bex agent update <ags-id> --github-cli on|off|inherit` sends `PATCH` with the explicit `null` for inherit and prints the session; with no flag it is a usage error. `bex agent get` shows `GitHub CLI inherit` for a repo session that names none. `run`'s help, `docs/bex-cli.md` and ADR106 name the verb.
+- **Dashboard (t004).** A **Settings** item in the session header's "…" menu, for repo sessions that are not archived, opens `SessionSettingsDialog` (`components/session-settings-dialog.tsx`) with the field variant of `GithubCliPicker`, the composer's lock (`githubCliLock` with the stored choice) and `inheritedSessionGithubCli` over `githubCliChainOf`. Save sends `setGithubCli` (`resetGithubCli` for inherit), which writes the server's view into the cache. The fragment reads `agentConfig.githubCli`. Six strings in all eight languages. The dashboard's `definitions.ts` and `schema-types.ts` (this feature's hunks only) and `mobile/src/generated-graphql/index.ts` are regenerated from the schema dump. The dialog is a plain `Dialog` opened from a loaded page, so it adds no route skeleton. Its look at 1280 px and 390 px is checked on production in t005: the offline `local-bex` stub no longer serves a session page (its sessions lack a dozen fields the fragment reads, and it has no `agentSessionTree`).
+
+## Render parity (Devin) record (t006, 2026-11-23)
+
+Walked on the code at the working tree of this milestone against [Security profiles](https://docs.devin.ai/product-guides/security-profiles) (re-read 2026-11-23). t005's production run re-checks the dashboard and the refusal text live.
+
+| Surface | bex | Devin | Verdict |
+| --- | --- | --- | --- |
+| Session settings in the dashboard | **Settings** in the session's "…" menu, GitHub CLI inherit, on or off | "changed later from the session's settings" | match |
+| Who changes it | workspace admin (`can_manage`); a member's change is `AGENT_SESSION_GITHUB_CLI_LOCKED`, `admin_required`, in every direction | "Members without the permission can't … change profiles" | match |
+| What a member sees | the stored binding and what inherit resolves to, every other choice disabled with "Only a workspace admin can change this." | "anyone can see whether their session is governed by a profile" | match |
+| Mandatory floor | `true` under a mandatory off is refused `mandatory` for everyone | "Lower-level selections can only tighten, never loosen" | match |
+| When it applies | an off refuses the next `gh` call; an on reaches the next turn | "for existing sessions the next time they resume" | sooner for an off, recorded in ADR047 D2 as the safe direction; same for an on |
+| Child sessions | a change on a root reaches its tree; a child's own `true` never turns `gh` on | "child sessions are governed by the same chain as their parent" | match |
+| REST `PATCH /v1/agent-sessions/{id}`, GraphQL `updateAgentSession`, MCP `update_agent_session` | the same verb, refusals and fields on all three | v3 pins a profile only at create, no change verb | bex-only API extension of the settings change; consistent across the three |
+| CLI `bex agent update --github-cli`, `bex agent get` | change and read the binding | no CLI | bex-only, consistent with the API |
+| Session reads (REST, GraphQL, MCP, `bex agent get`) | return the changed binding | the session shows its profile | match |
+| `gh` refusal (session level) and overlay | name the setting and how a workspace admin changes it, no "start a new session" | — | consistent with the verb |
+
+No drift left to file: the one gap the design first left (a child's inherit unnamed) was closed in t004 by walking the tree.
+
+## Simplify record (t007, 2026-11-23)
+
+`/simplify` over the backend, CLI and dashboard changes: the GraphQL resolver reads the binding with `gqlutil.BoolPtr` (graphql-go drops a null, so named means non-nil) instead of a hand-rolled presence check. Nothing else needed changing: no existing helper names a binding in a log line, and the dialog reuses `GithubCliPicker`, `githubCliLock` and the tags dialog's shape.
+
+## Test coverage record (t008, 2026-11-23)
+
+| DoD 5 case | Test |
+| --- | --- |
+| an admin's change in each direction on REST, GraphQL and MCP, read back on all three | `TestSessionGitHubCLIUpdateOnEverySurface` (`agentsessions/githubcli_test.go`) |
+| a member refused `admin_required`, inherit included; a member's unchanged save passes | same |
+| `mandatory` refusing a `true`; a stored `true` kept by a save that leaves it | same |
+| an archived session refused and unchanged; another workspace never reaches it; REST's `resetGithubCli`, both-named `400`, unknown `agentConfig` keys and an empty `PATCH` | same |
+| the store write: set, remove, rest of `agent_config` kept, archived unchanged, missing session | `TestPGSetAgentSessionGitHubCLI` (`store`, real Postgres) |
+| the next mint after a change, a child under a changed root, a child's own `true` | `TestPGMintFollowsAChangedSessionBinding` (`agentsession`, real Postgres) |
+| the next dispatch's driver env after off and inherit, and a child's under its root | `TestDispatchFollowsAChangedSessionBinding` |
+| the session level's refusal text | `TestGitHubAPIRouteRefusalNamesTheBindingLevel` (no "start a new session") |
+| the overlay line | `github-cli.test.ts` (driver) |
+| the CLI change, inherit's `null`, `get`, usage errors and a member's refusal | `TestUpdateChangesTheSessionGitHubCLI`, `TestSessionTextShowsItsGitHubCLIBinding` (`lego/cli`) |
+| the dashboard dialog: inherit named, an admin's off and inherit, a member's lock, the mandatory lock, both refusals, an automation's and a child's chain | `session-settings-dialog.test.tsx`, `github-cli.test.ts`, `use-agent-session-mutations.test.ts`, `session-detail-header.test.tsx` |
+
+Reverts, each watched failing and restored: dropping `UpdateSession`'s `refuseGitHubCLIBinding` call fails the surface test at "REST: a member's off"; disabling the mandatory check fails it at "an admin's on under a mandatory off"; letting a child's own `true` count in `GitHubCLIChain.Resolve` fails `TestPGMintFollowsAChangedSessionBinding` at "a child's own on under its root's off". The next-mint test fails by construction if the write does nothing (its first refusal is the off).
 
 ## Source + Goal linkage
 

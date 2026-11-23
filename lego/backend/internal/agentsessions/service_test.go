@@ -720,6 +720,35 @@ func (f *fakeStore) ReplaceAgentSessionTags(_ context.Context, id string, tags [
 	}
 	return row, nil
 }
+func (f *fakeStore) SetAgentSessionGitHubCLI(_ context.Context, id string, binding *bool) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	if row.ArchivedAt == nil {
+		var config map[string]any
+		if len(row.AgentConfig) > 0 {
+			if err := json.Unmarshal(row.AgentConfig, &config); err != nil {
+				return store.AgentSession{}, err
+			}
+		}
+		if config == nil {
+			config = map[string]any{}
+		}
+		if binding == nil {
+			delete(config, "githubCli")
+		} else {
+			config["githubCli"] = *binding
+		}
+		raw, err := json.Marshal(config)
+		if err != nil {
+			return store.AgentSession{}, err
+		}
+		row.AgentConfig = raw
+		f.rows[id] = row
+	}
+	return row, nil
+}
 func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, phase, status string, canceled bool) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {

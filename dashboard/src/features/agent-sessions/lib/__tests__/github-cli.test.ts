@@ -6,7 +6,9 @@ import {
   githubCliChoice,
   githubCliLock,
   githubCliMandatoryOff,
+  githubCliChainOf,
   inheritedGithubCli,
+  inheritedSessionGithubCli,
   type GithubCliChoice,
 } from "@/features/agent-sessions/lib/github-cli";
 
@@ -104,5 +106,125 @@ describe("the gh binding", () => {
     expect(locks(floor, true, "on")).toEqual([null, null, null]);
     expect(locks(floor, false, "on")).toEqual(["admin", null, "admin"]);
     expect(locks(open, false, "off")).toEqual(["admin", "admin", null]);
+  });
+});
+
+// w10/m599: what a started session's inherit resolves to in its settings,
+// through the chain bex-api walks.
+describe("a started session's inherit", () => {
+  type Node = Parameters<typeof githubCliChainOf>[0];
+  const node = (
+    id: string,
+    githubCli: boolean | null,
+    parentSessionId: string | null = null,
+    automationId: string | null = null,
+  ): Node => ({
+    id,
+    automationId,
+    parentSessionId,
+    agentConfig: { githubCli },
+  });
+
+  it("walks a child's tree up to its root, at most three sessions", () => {
+    const tree = [
+      node("ags-0", true, null, "aut-1"),
+      node("ags-1", false, "ags-0"),
+      node("ags-2", null, "ags-1"),
+      node("ags-3", null, "ags-2"),
+    ];
+    expect(githubCliChainOf(node("ags-x", null), null)).toEqual({
+      ancestors: [],
+      rootAutomationId: null,
+    });
+    expect(githubCliChainOf(node("ags-2", null, "ags-1"), tree)).toEqual({
+      ancestors: [true, false],
+      rootAutomationId: "aut-1",
+    });
+    // Three ancestors deep, the walk stops at ags-1: ags-0 is not read.
+    expect(githubCliChainOf(node("ags-4", null, "ags-3"), tree)).toEqual({
+      ancestors: [false, null, null],
+      rootAutomationId: null,
+    });
+    // A deleted parent makes the child a top-level session.
+    expect(githubCliChainOf(node("ags-y", false, "ags-gone"), tree)).toEqual({
+      ancestors: [],
+      rootAutomationId: null,
+    });
+    expect(githubCliChainOf(node("ags-2", null, "ags-1"), null)).toBeNull();
+  });
+
+  const person = { ancestors: [], rootAutomationId: null };
+  const automated = { ancestors: [], rootAutomationId: "aut-1" };
+
+  it("follows the workspace's switch for a session a person started", () => {
+    expect(inheritedSessionGithubCli(agentEnvironment(), person)).toBe(true);
+    expect(
+      inheritedSessionGithubCli(
+        agentEnvironment({
+          githubCliEnabled: false,
+          automationsGithubCliEnabled: true,
+        }),
+        person,
+      ),
+    ).toBe(false);
+  });
+
+  it("follows the automation, then the automations default, for an automation's session", () => {
+    const env = agentEnvironment({ automationsGithubCliEnabled: false });
+    expect(inheritedSessionGithubCli(env, automated, true)).toBe(true);
+    expect(inheritedSessionGithubCli(env, automated, null)).toBe(false);
+    expect(inheritedSessionGithubCli(agentEnvironment(), automated, null)).toBe(
+      true,
+    );
+    // Unknown until the automation is read.
+    expect(inheritedSessionGithubCli(env, automated)).toBeNull();
+  });
+
+  it("lets a child's root turn gh on or off, and any off below it win", () => {
+    const off = agentEnvironment({ githubCliEnabled: false });
+    expect(
+      inheritedSessionGithubCli(off, {
+        ancestors: [true],
+        rootAutomationId: null,
+      }),
+    ).toBe(true);
+    expect(
+      inheritedSessionGithubCli(agentEnvironment(), {
+        ancestors: [false],
+        rootAutomationId: null,
+      }),
+    ).toBe(false);
+    // Below the root only an off counts: a middle session's on does not.
+    expect(
+      inheritedSessionGithubCli(off, {
+        ancestors: [null, true],
+        rootAutomationId: null,
+      }),
+    ).toBe(false);
+    expect(
+      inheritedSessionGithubCli(agentEnvironment(), {
+        ancestors: [true, false],
+        rootAutomationId: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("knows nothing before the environment or the tree loads, and off under a mandatory off", () => {
+    expect(inheritedSessionGithubCli(null, person)).toBeNull();
+    expect(inheritedSessionGithubCli(agentEnvironment(), null)).toBeNull();
+    const floor = agentEnvironment({
+      githubCliEnabled: false,
+      githubCliMandatory: true,
+      automationsGithubCliEnabled: true,
+    });
+    for (const chain of [person, automated, null]) {
+      expect(inheritedSessionGithubCli(floor, chain, true)).toBe(false);
+    }
+    expect(
+      inheritedSessionGithubCli(floor, {
+        ancestors: [true],
+        rootAutomationId: null,
+      }),
+    ).toBe(false);
   });
 });

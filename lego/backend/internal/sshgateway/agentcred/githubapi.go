@@ -82,8 +82,8 @@ func githubCLIOffRefusal(level agentsession.GitHubCLILevel) string {
 	var head string
 	switch level {
 	case agentsession.GitHubCLISession:
-		head = "bex: gh is turned off for this agent session (its agentConfig.githubCli, chosen when it or the session that started it was created). " +
-			"A session keeps that choice: start a new session without `--github-cli off` to have gh. "
+		head = "bex: gh is turned off for this agent session (its agentConfig.githubCli, or that of the session that started it). " +
+			"A workspace admin turns it back on by setting that session's GitHub CLI to inherit or on in its settings in the dashboard or with `bex agent update <session> --github-cli inherit`. "
 	case agentsession.GitHubCLIAutomation:
 		head = "bex: gh is turned off for the sessions of the automation that started this session (its template's agentConfig.githubCli). " +
 			"A workspace admin turns it back on by setting it to inherit or on in the automation's settings or with `bex agent automations update <automation> --github-cli inherit`, after `bex agent automations take-over <automation>` when someone else created it. "

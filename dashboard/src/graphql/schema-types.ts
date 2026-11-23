@@ -626,12 +626,17 @@ export type AgentSessionConfig = {
 
 export type AgentSessionConfigInput = {
   agent: Scalars['String']['input'];
-  /** Omit (or null) to inherit the workspace's GitHub CLI setting. Only a workspace admin may name a binding (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required). false turns gh off for this session. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. */
+  /** Omit (or null) to inherit the workspace's GitHub CLI setting. Only a workspace admin may name a binding (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required). false turns gh off for this session. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. A workspace admin changes it later with updateAgentSession. */
   githubCli?: InputMaybe<Scalars['Boolean']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;
   modelEndpoint?: InputMaybe<Scalars['String']['input']>;
   task: Scalars['String']['input'];
   template?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AgentSessionConfigUpdateInput = {
+  /** This session's gh binding, which only a workspace admin changes (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required; saving the stored binding is never refused). false turns gh off for it, true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory); resetGithubCli returns it to inheriting. Omit it (or null, which this input cannot carry) to keep the binding. An off refuses the session's next gh call; gh returns from its next turn. A child session can only turn gh off. */
+  githubCli?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /** What the session has cost so far, in USD decimal strings: its platform-route model requests and its attributed sandbox compute (ADR094 D7). */
@@ -2601,6 +2606,8 @@ export type Mutation = {
   /** Change an automation (its creator only). */
   updateAgentAutomation: AgentAutomation;
   updateAgentEnvironment: AgentEnvironment;
+  /** Changes a session's settings after create, as Devin's session settings do: today its own gh binding (agentConfig.githubCli), which only a workspace admin changes. Refused on an archived session. */
+  updateAgentSession: Maybe<AgentSession>;
   /** Change a workspace skill (admins only). */
   updateAgentSkill: AgentSkill;
   updateApiKeyPermissions: Maybe<ApiKey>;
@@ -4230,6 +4237,13 @@ export type MutationUpdateAgentAutomationArgs = {
 export type MutationUpdateAgentEnvironmentArgs = {
   input: AgentEnvironmentInput;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateAgentSessionArgs = {
+  agentConfig?: InputMaybe<AgentSessionConfigUpdateInput>;
+  id: Scalars['String']['input'];
+  resetGithubCli?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 

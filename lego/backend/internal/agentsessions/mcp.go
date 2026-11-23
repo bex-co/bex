@@ -107,6 +107,11 @@ func (a *updateEnvironmentArgs) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type updateSessionArgs struct {
+	ID string `json:"id"`
+	SessionUpdate
+}
+
 type idArgs struct {
 	ID string `json:"id"`
 }
@@ -315,6 +320,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				return nil, View{}, errTagsRequired() // null is not [] here, as on REST
 			}
 			out, err := s.ReplaceTags(ctx, in.ID, in.Tags)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_session", Description: "Change a cloud coding-agent session's settings after create, as Devin's session settings do: today its own gh binding, agentConfig.githubCli. Only a workspace admin changes it, in either direction (else AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required); a call that keeps the stored binding is never refused. false turns gh off for the session, true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory), and null or resetGithubCli: true returns it to inheriting. An off refuses the session's next gh call, and its child sessions'; gh returns from its next turn. A child's own true never turns gh on. Refused on an archived session."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in updateSessionArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.UpdateSession(ctx, in.ID, in.SessionUpdate)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},

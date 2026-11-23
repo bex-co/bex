@@ -869,7 +869,7 @@ func TestGitHubAPIRouteRefusalNamesTheBindingLevel(t *testing.T) {
 		"enterprise":          workspace,
 		"automations-default": {"gh is turned off for the sessions this workspace's automations start", "automationsGithubCliEnabled", "bex agent env set --automations-github-cli inherit"},
 		"automation":          {"gh is turned off for the sessions of the automation that started this session", "template's agentConfig.githubCli", "bex agent automations update <automation> --github-cli inherit", "workspace admin", "bex agent automations take-over <automation>"},
-		"session":             {"gh is turned off for this agent session", "agentConfig.githubCli", "start a new session without `--github-cli off`"},
+		"session":             {"gh is turned off for this agent session", "agentConfig.githubCli", "workspace admin", "in its settings", "bex agent update <session> --github-cli inherit"},
 	} {
 		mint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set(agentsession.RefusalHeader, agentsession.RefusalGitHubCLIOff)
@@ -889,6 +889,11 @@ func TestGitHubAPIRouteRefusalNamesTheBindingLevel(t *testing.T) {
 			if !strings.Contains(message, phrase) {
 				t.Fatalf("level %q refusal %q does not say %q", level, message, phrase)
 			}
+		}
+		// A session's binding changes after create (w10/m599): nothing sends
+		// the reader to start over.
+		if strings.Contains(message, "start a new session") {
+			t.Fatalf("level %q refusal %q says to start a new session", level, message)
 		}
 		if level != "" && level != "workspace" && level != "enterprise" && strings.Contains(message, workspace[0]) {
 			t.Fatalf("level %q refusal %q speaks for the workspace", level, message)

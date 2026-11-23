@@ -731,3 +731,78 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 		t.Fatalf("capabilities lost: %+v", c)
 	}
 }
+
+// w10/m599: `bex agent update --github-cli` changes a session's own gh
+// binding with PATCH /v1/agent-sessions/{id}, inherit sending the explicit
+// null; `get` shows the binding, inherit included; a member's change prints
+// the admin_required refusal; and no flag is a usage error.
+func TestUpdateChangesTheSessionGitHubCLI(t *testing.T) {
+	var member bool
+	var stored any
+	view := func(id string) map[string]any {
+		v := sessionJSON(id, stateSucceeded)
+		v["repo"] = "acme/api"
+		config := map[string]any{"agent": "claude"}
+		if stored != nil {
+			config["githubCli"] = stored
+		}
+		v["agentConfig"] = config
+		return v
+	}
+	f := newRouteFake(t, map[string]http.HandlerFunc{
+		"PATCH /v1/agent-sessions/{id}": func(w http.ResponseWriter, r *http.Request) {
+			if member {
+				writeJSON(w, http.StatusForbidden, map[string]any{"code": "AGENT_SESSION_GITHUB_CLI_LOCKED",
+					"message": "only a workspace admin chooses or changes gh for an automation or a session; leave it out to inherit, or unchanged on an update",
+					"params":  map[string]any{"field": "agentConfig.githubCli", "reason": "admin_required"}})
+				return
+			}
+			var body struct {
+				AgentConfig map[string]any `json:"agentConfig"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			stored = body.AgentConfig["githubCli"]
+			writeJSON(w, http.StatusOK, view(r.PathValue("id")))
+		},
+		"GET /v1/agent-sessions/{id}": func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(w, http.StatusOK, view(r.PathValue("id")))
+		},
+	})
+	d := f.deps()
+	getShows := func(t *testing.T, want string) {
+		t.Helper()
+		stdout, stderr, code := run(t, d, "-o", "text", "get", "ags-root")
+		if code != 0 || !regexp.MustCompile(`GitHub CLI\s+`+want+`\n`).MatchString(stdout) {
+			t.Fatalf("get: exit %d, stdout\n%s\nstderr %s; want GitHub CLI %s", code, stdout, stderr, want)
+		}
+	}
+	getShows(t, "inherit")
+	for _, value := range []string{"off", "on", "inherit"} {
+		stdout, stderr, code := run(t, d, "-o", "text", "update", "ags-root", "--github-cli", value)
+		if code != 0 || !regexp.MustCompile(`GitHub CLI\s+`+value+`\n`).MatchString(stdout) {
+			t.Fatalf("update --github-cli %s: exit %d, stdout\n%s\nstderr %s", value, code, stdout, stderr)
+		}
+		getShows(t, value)
+	}
+	var bodies []string
+	for _, c := range f.callsTo(http.MethodPatch) {
+		bodies = append(bodies, asJSON(t, c.body))
+	}
+	if want := `{"agentConfig":{"githubCli":false}} {"agentConfig":{"githubCli":true}} {"agentConfig":{"githubCli":null}}`; strings.Join(bodies, " ") != want {
+		t.Fatalf("PATCH bodies\n got %v\nwant %s", bodies, want)
+	}
+	if _, stderr, code := run(t, d, "update", "ags-root"); code != exitUsage || !strings.Contains(stderr, "--github-cli") {
+		t.Fatalf("update with no setting: exit %d: %s", code, stderr)
+	}
+	if _, stderr, code := run(t, d, "update", "ags-root", "--github-cli", "maybe"); code != exitUsage {
+		t.Fatalf("update --github-cli maybe: exit %d: %s", code, stderr)
+	}
+	member = true
+	_, stderr, code := run(t, d, "update", "ags-root", "--github-cli", "off")
+	if code != 1 || !strings.Contains(stderr, "AGENT_SESSION_GITHUB_CLI_LOCKED") || !strings.Contains(stderr, "only a workspace admin") {
+		t.Fatalf("a member's update: exit %d, stderr %q", code, stderr)
+	}
+	if len(f.callsTo(http.MethodPatch)) != 4 {
+		t.Fatalf("PATCH calls = %d, want the three changes and the member's", len(f.callsTo(http.MethodPatch)))
+	}
+}

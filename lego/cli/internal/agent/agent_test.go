@@ -1323,7 +1323,13 @@ func TestSessionTextShowsItsGitHubCLIBinding(t *testing.T) {
 	var out strings.Builder
 	writeSession(&out, session{ID: "ags-g2", State: stateWorking, AgentConfig: agentConfig{Agent: "claude"}})
 	if strings.Contains(out.String(), "GitHub CLI") {
-		t.Fatalf("text view of a session that inherits gh:\n%s", out.String())
+		t.Fatalf("text view of a repo-less session that inherits gh:\n%s", out.String())
+	}
+	// A repo session that names none inherits, and says so (w10/m599).
+	out.Reset()
+	writeSession(&out, session{ID: "ags-g3", State: stateWorking, Repo: "acme/api", AgentConfig: agentConfig{Agent: "claude"}})
+	if !regexp.MustCompile(`(?m)^GitHub CLI\s+inherit$`).MatchString(out.String()) {
+		t.Fatalf("text view of a repo session that inherits gh:\n%s", out.String())
 	}
 }
 

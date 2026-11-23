@@ -344,16 +344,19 @@ bex agent stop <session>
 - It ends the running turn only and asks for no confirmation, on a terminal or not, because it is not `cancel`: the session stays open, and queued messages run next. The wording is chat's `/stop` (hence `/cancel` in the first line). The `202` is the request delivered, not the turn ended: the Completer settles it within a few seconds (it reads that session's status every 2 s once bex-api has delivered the request; its 15 s tick that watches every running session is only the fallback for a request another replica served or a lost signal), so a script that needs the turn over runs `bex agent wait` next.
 - Session picker, dashboard URLs and shell completion work as for `cancel`.
 
-### `bex agent archive | unarchive | delete | tags | tree | cost`
+### `bex agent archive | unarchive | delete | tags | update | tree | cost`
 
 ```
 bex agent archive   <session>…
 bex agent unarchive <session>…
 bex agent delete    <session> [--confirm]
 bex agent tags      <session> (<tag>… | --clear)
+bex agent update    <session> --github-cli on|off|inherit
 bex agent tree      <session>
 bex agent cost      <session>
 ```
+
+- `update` changes a session's settings after it started (w10/m599): today `--github-cli`, its own `gh` binding, which only a workspace admin changes ([ADR047 D2](ADR047-cloud-coding-agent-sessions.md#automations-and-sessions-bind-their-own-gh-over-a-mandatory-workspace-floor-amendment-w10m561-2026-11-22)). `inherit` sends an explicit `null`; with no flag it is a usage error. `get` shows the binding, and `inherit` for a repo session that names none.
 
 ### `bex agent ssh` and `bex agent forward`
 

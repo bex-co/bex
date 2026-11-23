@@ -2250,6 +2250,34 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     message: "Теги сохранены",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "Настройки",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "Настройки сессии",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message:
+      "Что действует для этой сессии, пока она работает. Изменить это может только администратор рабочего пространства.",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "«Выкл.» отключает gh для этой сессии и запущенных ею сессий со следующего вызова gh. «Вкл.» или «Наследовать» возвращает gh со следующего хода сессии.",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "Сохранить настройки",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "Настройки сохранены",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default ruAgentSessions;

@@ -44,6 +44,7 @@ export function agentSessionView({
       modelEndpoint: null,
       task,
       template: null,
+      githubCli: null,
     },
     sandboxId: null,
     sshAddress: null,

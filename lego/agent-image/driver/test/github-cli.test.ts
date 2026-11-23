@@ -487,7 +487,7 @@ test("the overlay of a session with gh off names the level that turned it off, a
     ],
     [
       "session",
-      /`gh` is turned off for this session, which was started with it off, so `gh` and direct GitHub API calls do not work here/,
+      /this session's GitHub CLI setting, or that of the session that started it, turned `gh` off, so `gh` and direct GitHub API calls do not work here/,
     ],
   ] as const) {
     const text = platformOverlay({ ...context, githubCliLevel: level });

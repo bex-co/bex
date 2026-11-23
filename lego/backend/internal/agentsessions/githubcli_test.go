@@ -685,3 +685,284 @@ func TestDispatchResolvesTheGitHubCLIBindingChain(t *testing.T) {
 	}
 	expect("a repo-less session", "")
 }
+
+// w10/m599: a workspace admin changes a session's own gh binding after
+// create on REST, GraphQL and MCP, as Devin's session profile is "changed
+// later from the session's settings". A member's change is refused
+// admin_required in every direction, inherit included, while a member's save
+// that keeps the stored binding passes; nobody turns gh on under a mandatory
+// off; an archived session is refused and keeps its binding; and every read
+// returns the changed binding.
+func TestSessionGitHubCLIUpdateOnEverySurface(t *testing.T) {
+	svc, st, _ := adminAndMembers(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries})
+	schema := environmentSchema(t, svc)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	type outcome struct {
+		ok      bool
+		binding any
+		code    string
+		reason  string
+	}
+	rest := func(id, who string, body any) (int, map[string]any) {
+		raw, _ := json.Marshal(body)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/agent-sessions/"+id, strings.NewReader(string(raw))).WithContext(caller(who)))
+		var out map[string]any
+		_ = json.Unmarshal(rec.Body.Bytes(), &out)
+		return rec.Code, out
+	}
+	updates := map[string]func(id string, binding *bool, who string) outcome{
+		// REST sends the explicit null for inherit.
+		"REST": func(id string, binding *bool, who string) outcome {
+			status, out := rest(id, who, map[string]any{"agentConfig": map[string]any{"githubCli": binding}})
+			if status == http.StatusOK {
+				return outcome{ok: true, binding: out["agentConfig"].(map[string]any)["githubCli"]}
+			}
+			params, _ := out["params"].(map[string]any)
+			reason, _ := params["reason"].(string)
+			code, _ := out["code"].(string)
+			return outcome{code: code, reason: reason}
+		},
+		// GraphQL sends resetGithubCli for inherit.
+		"GraphQL": func(id string, binding *bool, who string) outcome {
+			query := `mutation($id: String!, $b: Boolean) { updateAgentSession(id: $id, agentConfig: {githubCli: $b}) { agentConfig { githubCli } } }`
+			vars := map[string]any{"id": id}
+			if binding == nil {
+				query = `mutation($id: String!) { updateAgentSession(id: $id, resetGithubCli: true) { agentConfig { githubCli } } }`
+			} else {
+				vars["b"] = *binding
+			}
+			result := graphql.Do(graphql.Params{Schema: schema, Context: caller(who), RequestString: query, VariableValues: vars})
+			if len(result.Errors) != 0 {
+				code, _ := result.Errors[0].Extensions["code"].(string)
+				reason, _ := result.Errors[0].Extensions["reason"].(string)
+				return outcome{code: code, reason: reason}
+			}
+			view := result.Data.(map[string]any)["updateAgentSession"].(map[string]any)
+			return outcome{ok: true, binding: view["agentConfig"].(map[string]any)["githubCli"]}
+		},
+		// MCP sends the explicit null for inherit.
+		"MCP": func(id string, binding *bool, who string) outcome {
+			res, err := newMCPClient(t, caller(who), svc).CallTool(caller(who), &mcp.CallToolParams{Name: "update_agent_session",
+				Arguments: map[string]any{"id": id, "agentConfig": map[string]any{"githubCli": binding}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.IsError {
+				text := res.Content[0].(*mcp.TextContent).Text
+				code, _, _ := strings.Cut(text, ":")
+				return outcome{code: code, reason: refusalReason(text)}
+			}
+			return outcome{ok: true, binding: res.StructuredContent.(map[string]any)["agentConfig"].(map[string]any)["githubCli"]}
+		},
+	}
+	stored := func(id string) any {
+		if b := githubCliOf(t, st.rows[id].AgentConfig); b != nil {
+			return *b
+		}
+		return nil
+	}
+	readBack := func(t *testing.T, surface, id string, want any) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-sessions/"+id, nil).WithContext(caller("alice")))
+		var view map[string]any
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil {
+			t.Fatalf("REST read = %d %s", rec.Code, rec.Body.String())
+		}
+		result := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `{ agentSession(id: "` + id + `") { agentConfig { githubCli } } }`})
+		if len(result.Errors) != 0 {
+			t.Fatalf("GraphQL read: %v", result.Errors)
+		}
+		res, err := newMCPClient(t, caller("alice"), svc).CallTool(caller("alice"), &mcp.CallToolParams{Name: "get_agent_session", Arguments: map[string]any{"id": id}})
+		if err != nil || res.IsError {
+			t.Fatalf("MCP read = %+v err=%v", res, err)
+		}
+		got := []any{
+			view["agentConfig"].(map[string]any)["githubCli"],
+			result.Data.(map[string]any)["agentSession"].(map[string]any)["agentConfig"].(map[string]any)["githubCli"],
+			res.StructuredContent.(map[string]any)["agentConfig"].(map[string]any)["githubCli"],
+		}
+		for _, g := range got {
+			if g != want {
+				t.Fatalf("%s: read back REST %v GraphQL %v MCP %v, want %v", surface, got[0], got[1], got[2], want)
+			}
+		}
+	}
+	envs := svc.Environments.(*fakeEnvironments)
+	setEnv := func(row store.AgentEnvironment) {
+		row.WorkspaceID, row.NetworkTier = "tea-a", NetworkTierRegistries
+		envs.rows["tea-a"] = row
+	}
+	off, on := ptr(false), ptr(true)
+	for surface, update := range updates {
+		setEnv(store.AgentEnvironment{})
+		// A member's session, started with nothing bound.
+		created, err := svc.Create(caller("alice"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := created.ID
+		refused := func(what string, got outcome, reason string, want any) {
+			t.Helper()
+			if got.ok || got.code != CodeSessionGitHubCLILocked || got.reason != reason {
+				t.Fatalf("%s: %s = %+v, want %s (%s)", surface, what, got, CodeSessionGitHubCLILocked, reason)
+			}
+			if s := stored(id); s != want {
+				t.Fatalf("%s: %s left githubCli %v, want %v", surface, what, s, want)
+			}
+		}
+		changed := func(what string, got outcome, want any) {
+			t.Helper()
+			if !got.ok || got.binding != want || stored(id) != want {
+				t.Fatalf("%s: %s = %+v (stored %v), want githubCli %v", surface, what, got, stored(id), want)
+			}
+		}
+		refused("a member's off", update(id, off, "alice"), "admin_required", nil)
+		refused("a member's on", update(id, on, "alice"), "admin_required", nil)
+		changed("a member's inherit that keeps inherit", update(id, nil, "alice"), nil)
+		changed("an admin's off", update(id, off, "admin"), false)
+		readBack(t, surface, id, false)
+		changed("a member's save that keeps the off", update(id, off, "alice"), false)
+		refused("a member's inherit", update(id, nil, "alice"), "admin_required", false)
+		refused("a member's on over an off", update(id, on, "alice"), "admin_required", false)
+		changed("an admin's on", update(id, on, "admin"), true)
+		readBack(t, surface, id, true)
+		changed("an admin's inherit", update(id, nil, "admin"), nil)
+		readBack(t, surface, id, nil)
+
+		// Under a mandatory off nobody turns gh on, an admin still turns it
+		// off, and a stored on is kept by a save that leaves it alone.
+		changed("an admin's on before the off is mandatory", update(id, on, "admin"), true)
+		setEnv(store.AgentEnvironment{GitHubCLIDisabled: true, GitHubCLIMandatory: true})
+		changed("a member's save keeping a stored on under a mandatory off", update(id, on, "alice"), true)
+		changed("an admin's off under a mandatory off", update(id, off, "admin"), false)
+		refused("an admin's on under a mandatory off", update(id, on, "admin"), "mandatory", false)
+		refused("a member's on under a mandatory off", update(id, on, "alice"), "mandatory", false)
+		changed("an admin's inherit under a mandatory off", update(id, nil, "admin"), nil)
+
+		// Another workspace's member never reaches the session.
+		if got := update(id, off, "bob"); got.ok || stored(id) != nil {
+			t.Fatalf("%s: another workspace's change = %+v (stored %v)", surface, got, stored(id))
+		}
+		// An archived session is refused and keeps its binding.
+		if _, err := svc.Archive(caller("admin"), id); err != nil {
+			t.Fatal(err)
+		}
+		if got := update(id, off, "admin"); got.ok || got.code != codeArchived || stored(id) != nil {
+			t.Fatalf("%s: an archived session's change = %+v (stored %v), want %s", surface, got, stored(id), codeArchived)
+		}
+	}
+
+	// REST's resetGithubCli inherits too, naming both is a 400, any other
+	// agentConfig key is refused, and an empty update returns the session.
+	created, err := svc.Create(caller("admin"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: off}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := created.ID
+	setEnv(store.AgentEnvironment{})
+	if status, out := rest(id, "admin", map[string]any{"agentConfig": map[string]any{"githubCli": true}, "resetGithubCli": true}); status != http.StatusBadRequest || out["code"] != "AGENT_SESSION_INPUT_INVALID" || stored(id) != false {
+		t.Fatalf("a binding and resetGithubCli = %d %v (stored %v)", status, out, stored(id))
+	}
+	for _, body := range []string{`{"agentConfig": {"model": "gpt-5"}}`, `{"agentConfig": {"githubCli": false, "task": "x"}}`, `{"title": "x"}`} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/agent-sessions/"+id, strings.NewReader(body)).WithContext(caller("admin")))
+		if rec.Code != http.StatusBadRequest || stored(id) != false {
+			t.Fatalf("PATCH %s = %d %s (stored %v), want 400", body, rec.Code, rec.Body.String(), stored(id))
+		}
+	}
+	for _, body := range []any{map[string]any{}, map[string]any{"agentConfig": map[string]any{}}} {
+		if status, out := rest(id, "alice", body); status != http.StatusOK || out["id"] != id || stored(id) != false {
+			t.Fatalf("an empty PATCH %v = %d %v (stored %v)", body, status, out, stored(id))
+		}
+	}
+	if status, _ := rest(id, "admin", map[string]any{"resetGithubCli": true}); status != http.StatusOK || stored(id) != nil {
+		t.Fatalf("resetGithubCli = %d (stored %v), want inherit", status, stored(id))
+	}
+	// GraphQL cannot carry the null (graphql-go drops it), so a null
+	// variable keeps the binding and resetGithubCli is its inherit.
+	if _, err := svc.UpdateSession(caller("admin"), id, SessionUpdate{AgentConfig: &SessionConfigUpdate{GitHubCLI: off, GitHubCLISet: true}}); err != nil {
+		t.Fatal(err)
+	}
+	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), VariableValues: map[string]any{"id": id, "b": nil},
+		RequestString: `mutation($id: String!, $b: Boolean) { updateAgentSession(id: $id, agentConfig: {githubCli: $b}) { agentConfig { githubCli } } }`})
+	if len(result.Errors) != 0 || stored(id) != false {
+		t.Fatalf("GraphQL githubCli: null from a member = %v (stored %v), want the off kept", result.Errors, stored(id))
+	}
+}
+
+// w10/m599: the next dispatch follows a changed session binding. An admin's
+// off reaches the session's next turn as the session level, inherit gives
+// gh back at the turn after, a change on a root reaches its child's next
+// turn, and a child's own true never turns gh on under its root's off.
+func TestDispatchFollowsAChangedSessionBinding(t *testing.T) {
+	svc, st, lifecycle := adminAndMembers(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries})
+	expect := func(when, level string) {
+		t.Helper()
+		got, present := lifecycle.driverEnv[envGitHubCLI]
+		if level == "" {
+			if present {
+				t.Fatalf("%s: %s = %q, want gh on", when, envGitHubCLI, got)
+			}
+			return
+		}
+		if got != "0" || lifecycle.driverEnv[envGitHubCLILevel] != level {
+			t.Fatalf("%s: %s=%q %s=%q, want 0 and %q", when, envGitHubCLI, got, envGitHubCLILevel, lifecycle.driverEnv[envGitHubCLILevel], level)
+		}
+	}
+	steer := func(t *testing.T, id string) {
+		t.Helper()
+		row := st.rows[id]
+		row.Phase = PhaseCompleted
+		st.rows[id] = row
+		if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: id, Prompt: "again"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	change := func(t *testing.T, id string, binding *bool, reset bool) {
+		t.Helper()
+		in := SessionUpdate{ResetGitHubCLI: reset}
+		if !reset {
+			in.AgentConfig = &SessionConfigUpdate{GitHubCLI: binding, GitHubCLISet: true}
+		}
+		if _, err := svc.UpdateSession(caller("admin"), id, in); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	root, err := svc.Create(caller("alice"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect("a session with nothing bound", "")
+	change(t, root.ID, ptr(false), false)
+	steer(t, root.ID)
+	expect("the turn after an admin turned gh off", "session")
+	change(t, root.ID, nil, true)
+	steer(t, root.ID)
+	expect("the turn after an admin returned it to inherit", "")
+
+	// A child spawned while the root has gh, then the root turned off.
+	row := st.rows[root.ID]
+	row.Phase = PhaseRunning
+	st.rows[root.ID] = row
+	child, err := svc.SpawnChild(context.Background(), root.ID, SpawnRequest{Task: "a sub-task"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect("a child under a root with gh", "")
+	change(t, root.ID, ptr(false), false)
+	steer(t, child.ID)
+	expect("a child's turn after its root was turned off", "session")
+	change(t, child.ID, ptr(true), false)
+	if b := githubCliOf(t, st.rows[child.ID].AgentConfig); b == nil || !*b {
+		t.Fatalf("the child's stored binding = %v, want the true an admin set", b)
+	}
+	steer(t, child.ID)
+	expect("a child's own on under its root's off", "session")
+	change(t, root.ID, nil, false)
+	steer(t, child.ID)
+	expect("a child's turn after its root returned to inherit", "")
+}

@@ -2182,6 +2182,34 @@ const esAgentSessions: Record<string, TranslationEntry> = {
     message: "Etiquetas guardadas",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "Configuración",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "Configuración de la sesión",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message:
+      "Lo que se aplica a esta sesión mientras se ejecuta. Solo un administrador del espacio de trabajo puede cambiarlo.",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "Desactivado apaga gh para esta sesión y las sesiones que inicia desde su próxima llamada a gh. Activado o Heredar devuelve gh desde el próximo turno de la sesión.",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "Guardar configuración",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "Configuración guardada",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default esAgentSessions;

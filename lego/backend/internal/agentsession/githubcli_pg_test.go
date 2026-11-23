@@ -143,3 +143,81 @@ func TestPGMintFollowsLiveBindingEdits(t *testing.T) {
 		t.Fatalf("with everything back on: %v", err)
 	}
 }
+
+// w10/m599 against the real store: a session's own binding changed after
+// create is what its next `gh` mint resolves. An off refuses the next mint
+// naming the session level, and its child's; a child's own on stays refused
+// under its root's off; inherit gives both `gh` back at the next mint.
+func TestPGMintFollowsAChangedSessionBinding(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "gh-session-change-"+time.Now().Format("150405.000000000"), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
+
+	running := func(t *testing.T, in store.AgentSession, sandbox string) store.AgentSession {
+		t.Helper()
+		in.WorkspaceID, in.Repo, in.InitialPrompt = tenant.ID, "octo/repo", "t"
+		created, err := pg.CreateAgentSession(ctx, in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if created, err = pg.SetAgentSessionLifecycle(ctx, created.ID, sandbox, "running", "running", false); err != nil {
+			t.Fatal(err)
+		}
+		return created
+	}
+	minter := &Minter{
+		GitHub: &fakeSessionGitHub{}, Sessions: pg, Environments: pg, Automations: pg,
+		Connections: fakeConnections{row: store.GitConnection{WorkspaceID: tenant.ID, InstallationID: 42, AccountLogin: "octo"}},
+	}
+	mint := func(session store.AgentSession, sandbox string) error {
+		_, err := minter.MintGitHubRead(ctx, MintRequest{SessionID: session.ID, Workspace: tenant.ID, Repository: "octo/repo",
+			Branch: session.Branch, PodName: sandbox + "-0", PodUID: "uid-" + sandbox})
+		return err
+	}
+	change := func(t *testing.T, session store.AgentSession, binding *bool) {
+		t.Helper()
+		if _, err := pg.SetAgentSessionGitHubCLI(ctx, session.ID, binding); err != nil {
+			t.Fatal(err)
+		}
+	}
+	expectOff := func(t *testing.T, when string, err error) {
+		t.Helper()
+		if level, ok := GitHubCLIOffLevel(err); !ok || level != GitHubCLISession {
+			t.Fatalf("%s: err=%v level=%q, want gh off at the session", when, err, level)
+		}
+	}
+
+	root := running(t, store.AgentSession{AgentConfig: sessionConfig(nil)}, "sbx-root")
+	child := running(t, store.AgentSession{AgentConfig: sessionConfig(nil), ParentSessionID: root.ID}, "sbx-child")
+	if err := mint(root, "sbx-root"); err != nil {
+		t.Fatalf("a session with nothing bound: %v", err)
+	}
+	change(t, root, off)
+	expectOff(t, "the root after an admin turned it off", mint(root, "sbx-root"))
+	expectOff(t, "its child", mint(child, "sbx-child"))
+	change(t, child, on)
+	expectOff(t, "a child's own on under its root's off", mint(child, "sbx-child"))
+	change(t, root, nil)
+	if err := mint(root, "sbx-root"); err != nil {
+		t.Fatalf("the root after an admin returned it to inherit: %v", err)
+	}
+	if err := mint(child, "sbx-child"); err != nil {
+		t.Fatalf("its child after the root returned to inherit: %v", err)
+	}
+}

@@ -76,6 +76,9 @@ type Store interface {
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	ReplaceAgentSessionTags(context.Context, string, []string) (store.AgentSession, error)
+	// SetAgentSessionGitHubCLI sets or removes (nil) the session's own `gh`
+	// binding (w10/m599); an archived session comes back unchanged.
+	SetAgentSessionGitHubCLI(context.Context, string, *bool) (store.AgentSession, error)
 	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string, []store.TurnSkill, *string) (store.AgentSession, error)
 	// RecordAgentSessionResult stores the structured result submitted for the
 	// session's current turn (ADR094 D5); false when the turn takes none.

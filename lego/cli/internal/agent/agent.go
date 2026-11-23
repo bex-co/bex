@@ -164,7 +164,7 @@ func newCommand(d deps) *cobra.Command {
 		pick(logsCommand(d)), pick(filesCommand(d)), pick(cancelCommand(d)), pick(stopCommand(d)), pick(openCommand(d)),
 		completeAll(archiveCommand(d, "archive", "Archived", "Archive agent sessions (hidden from the default list, read-only)")),
 		completeAll(archiveCommand(d, "unarchive", "Unarchived", "Unarchive agent sessions")),
-		pick(deleteCommand(d)), completeFirst(tagsCommand(d)), pick(treeCommand(d)), pick(costCommand(d)),
+		pick(deleteCommand(d)), completeFirst(tagsCommand(d)), pick(updateCommand(d)), pick(treeCommand(d)), pick(costCommand(d)),
 		completeFirst(chatCommand(d)), handoffCommand(d), pick(pickupCommand(d)), completeFirst(sshCommand(d)),
 		automationsCommand(d), secretsCommand(d), skillsCommand(d), envCommand(d), modelsCommand(d),
 	} {
@@ -693,7 +693,8 @@ func runCommand(d deps) *cobra.Command {
 			"whose gh is off, which nobody may while that off is mandatory (reason\n" +
 			"mandatory). A child session (--parent) can only turn gh off. Without the\n" +
 			"flag (or with inherit) the session follows its parent's, else the\n" +
-			"workspace's setting (`bex agent env`).",
+			"workspace's setting (`bex agent env`). A workspace admin changes it\n" +
+			"later with `bex agent update <ags-id> --github-cli`.",
 		Example: "  bex agent run --repo acme/api \"Upgrade the Go toolchain to 1.26\"\n" +
 			"  bex agent run --attach screenshot.png --wait -o json \"Fix the layout bug in the screenshot\"\n" +
 			"  bex agent run --output-schema schema.json --max-spend 2 --follow -f task.md",

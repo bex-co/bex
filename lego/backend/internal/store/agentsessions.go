@@ -1128,6 +1128,28 @@ func (s *PGStore) ReplaceAgentSessionTags(ctx context.Context, id string, tags [
 	return out, nil
 }
 
+// SetAgentSessionGitHubCLI sets a session's own `gh` binding,
+// agent_config.githubCli (w10/m599): true or false, or nil to remove the key
+// so the session inherits. The rest of agent_config is kept. An archived
+// session is returned unchanged, as ReplaceAgentSessionTags returns one, and
+// the check and the write are one statement.
+func (s *PGStore) SetAgentSessionGitHubCLI(ctx context.Context, id string, binding *bool) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET agent_config = CASE
+		      WHEN archived_at IS NOT NULL THEN agent_config
+		      WHEN $2::boolean IS NULL THEN agent_config - 'githubCli'
+		      ELSE jsonb_set(agent_config, '{githubCli}', to_jsonb($2::boolean))
+		    END,
+		    updated_at = CASE WHEN archived_at IS NULL THEN now() ELSE updated_at END
+		WHERE id=$1
+		RETURNING `+agentSessionColumns, id, binding))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
 // SetAgentSessionLifecycle advances the durable session state. canceled=true
 // stamps canceled_at exactly once; every transition advances updated_at.
 func (s *PGStore) SetAgentSessionLifecycle(ctx context.Context, id, sandboxID, phase, status string, canceled bool) (AgentSession, error) {

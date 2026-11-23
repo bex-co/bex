@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   PackageCheck,
   Server,
+  Settings2,
   Tag,
   Terminal,
   Trash2,
@@ -65,6 +66,7 @@ import {
   AgentSessionPrMergeBadge,
 } from "@/features/agent-sessions/components/session-list";
 import { EditTagsDialog } from "@/features/agent-sessions/components/edit-tags-dialog";
+import { SessionSettingsDialog } from "@/features/agent-sessions/components/session-settings-dialog";
 import { SandboxWaitStatus } from "@/features/agent-sessions/components/sandbox-wait-status";
 
 export interface SessionDetailHeaderProps {
@@ -97,8 +99,7 @@ export function SessionDetailHeader({
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { cancel, interrupt, deleteSession } =
-    useAgentSessionMutations();
+  const { cancel, interrupt, deleteSession } = useAgentSessionMutations();
   const handleArchiveChanged = useCallback(async () => {
     if (session.isArchived) {
       await onChanged?.();
@@ -119,6 +120,7 @@ export function SessionDetailHeader({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Who started it (w7/m296): the roster label, or the raw subject for an API
   // key or a removed member. "" skips the roster read.
   const startedBy = useWorkspaceSubjectLabel(session.createdBy ?? "");
@@ -404,6 +406,14 @@ export function SessionDetailHeader({
               {t("agentSessions.editTags")}
             </DropdownMenuItem>
           )}
+          {/* The session's settings (w10/m599): its gh binding, which only a
+              repo session has; every member sees what applies. */}
+          {session.isArchived || !session.repo ? null : (
+            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+              <Settings2 className="size-4" />
+              {t("agentSessions.settings")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             disabled={archiveBusyId === session.id}
             onClick={() => void toggleArchive(session)}
@@ -437,6 +447,13 @@ export function SessionDetailHeader({
           sessionId={session.id}
           tags={session.tags}
           onOpenChange={setTagsOpen}
+        />
+      ) : null}
+
+      {settingsOpen ? (
+        <SessionSettingsDialog
+          session={session}
+          onOpenChange={setSettingsOpen}
         />
       ) : null}
 

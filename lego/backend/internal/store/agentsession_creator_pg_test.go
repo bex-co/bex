@@ -18,6 +18,8 @@ package store
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"slices"
 	"testing"
 
@@ -102,6 +104,66 @@ func TestPGReplaceAgentSessionTags(t *testing.T) {
 	}
 	if _, err := s.ReplaceAgentSessionTags(ctx, ids.New(ids.AgentSession), []string{"x"}); err == nil {
 		t.Fatal("replacing tags on a missing session succeeded")
+	}
+}
+
+// w10/m599: a session's own `gh` binding is set to true or false or removed
+// (inherit), the rest of agent_config is kept, and an archived row comes back
+// unchanged so the service can refuse it.
+func TestPGSetAgentSessionGitHubCLI(t *testing.T) {
+	s, _, tenant := agentSessionPGStore(t, "set-github-cli")
+	ctx := context.Background()
+	row := creatorSession(t, s, tenant.ID, "alice", "")
+	config := func(got AgentSession) map[string]any {
+		t.Helper()
+		var out map[string]any
+		if err := json.Unmarshal(got.AgentConfig, &out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	expect := func(when string, got AgentSession, want any) {
+		t.Helper()
+		cfg := config(got)
+		binding, present := cfg["githubCli"]
+		if want == nil && present || want != nil && binding != want {
+			t.Fatalf("%s: agentConfig = %v, want githubCli %v", when, cfg, want)
+		}
+		if cfg["agent"] != "claude" || cfg["task"] != "x" {
+			t.Fatalf("%s: the rest of agentConfig changed: %v", when, cfg)
+		}
+	}
+	off, on := false, true
+	got, err := s.SetAgentSessionGitHubCLI(ctx, row.ID, &off)
+	if err != nil || !got.UpdatedAt.After(row.UpdatedAt) {
+		t.Fatalf("set off = %+v err=%v", got, err)
+	}
+	expect("off", got, false)
+	if got, err = s.SetAgentSessionGitHubCLI(ctx, row.ID, &on); err != nil {
+		t.Fatal(err)
+	}
+	expect("on", got, true)
+	if got, err = s.GetAgentSession(ctx, row.ID); err != nil {
+		t.Fatal(err)
+	}
+	expect("read back", got, true)
+	if got, err = s.SetAgentSessionGitHubCLI(ctx, row.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	expect("inherit", got, nil)
+	if _, err := s.SetAgentSessionGitHubCLI(ctx, row.ID, &off); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SetAgentSessionArchived(ctx, row.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	got, err = s.SetAgentSessionGitHubCLI(ctx, row.ID, &on)
+	if err != nil || got.ArchivedAt == nil {
+		t.Fatalf("archived set = %+v err=%v, want the unchanged row", got, err)
+	}
+	expect("archived", got, false)
+	if _, err := s.SetAgentSessionGitHubCLI(ctx, ids.New(ids.AgentSession), &on); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a missing session = %v, want ErrNotFound", err)
 	}
 }
 

@@ -1991,6 +1991,32 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "标签已保存",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "设置",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "会话设置",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message: "此会话运行期间适用的设置。只有工作区管理员可以更改。",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message: "关闭后，此会话及其启动的会话从下一次 gh 调用起无法使用 gh。开启或继承后，gh 从会话的下一轮起恢复。",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "保存设置",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "设置已保存",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default zhAgentSessions;

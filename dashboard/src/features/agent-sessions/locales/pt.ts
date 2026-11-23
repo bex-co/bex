@@ -2181,6 +2181,34 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     message: "Tags salvas",
     description: "Toast after the tags were replaced",
   },
+  "agentSessions.settings": {
+    message: "Configurações",
+    description: "Session header menu — open the session's settings (w10/m599)",
+  },
+  "agentSessions.settingsTitle": {
+    message: "Configurações da sessão",
+    description: "Session settings dialog title (w10/m599)",
+  },
+  "agentSessions.settingsDescription": {
+    message:
+      "O que se aplica a esta sessão enquanto ela é executada. Somente um administrador do workspace pode alterar isso.",
+    description:
+      "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
+  },
+  "agentSessions.settingsGithubCliHint": {
+    message:
+      "Desativado desliga o gh para esta sessão e as sessões que ela inicia a partir da próxima chamada ao gh. Ativado ou Herdar devolve o gh a partir do próximo turno da sessão.",
+    description:
+      "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
+  },
+  "agentSessions.settingsSave": {
+    message: "Salvar configurações",
+    description: "Session settings dialog — save button (w10/m599)",
+  },
+  "agentSessions.settingsSaved": {
+    message: "Configurações salvas",
+    description: "Toast after a session's settings were saved (w10/m599)",
+  },
 };
 
 export default ptAgentSessions;
