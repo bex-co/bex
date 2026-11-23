@@ -1,0 +1,9 @@
+# The CloudNativePG release the bex operator build patches (w21/m606,
+# docs/ADR092 § The CloudNativePG build). The Dockerfile fetches the tag, checks
+# that it names this commit, and applies every patches/*.patch to it. A
+# CloudNativePG bump changes these lines and the Dockerfile's runtime image
+# together, and carries each patch forward or drops it once an upstream release
+# holds the fix. BEX_REVISION counts bex builds of one upstream version.
+CNPG_VERSION=1.30.1
+CNPG_COMMIT=2a35abb4628f209d149825ef3c38011e0701ff2f
+BEX_REVISION=1

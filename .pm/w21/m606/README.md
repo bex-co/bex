@@ -1,12 +1,12 @@
 # w21 · m606 — An owner's `pgaudit` survives a restart: CloudNativePG leaves an extension whose library the cluster preloads, from a bex build until upstream releases it
 
-**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** todo
+**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** in progress (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Patch CloudNativePG's instance manager: an unused managed extension whose library the cluster's own `shared_preload_libraries` lists is not dropped, and a change to that list runs the check again | 1h | — |
+| [t001](done/t001.md) | Patch CloudNativePG's instance manager: an unused managed extension whose library the cluster's own `shared_preload_libraries` lists is not dropped, and a change to that list runs the check again — **DONE** | 1h | — |
 | [t002](t002.md) | Build and publish the patched operator image from the pinned upstream tag plus `deploy/cnpg-operator/patches/`, for arm64 and amd64, by digest | 1h30m | t001 |
 | [t003](t003.md) | `TestApplicationDatabaseExtensionsOnCNPG` covers the restart, CI runs it on kind against the patched image, and it fails on stock 1.30.1 | 1h15m | t002 |
 | [t004](t004.md) | Adopt the patched image: `cnpg-operator.yaml`, `gitops-validate.sh`, the qualification pin, mock-cluster and dev-env, ADR092 and ADR018 | 45m | t003 |

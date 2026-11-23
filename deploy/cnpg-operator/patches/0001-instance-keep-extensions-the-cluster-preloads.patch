@@ -1,0 +1,267 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tian Pan <puncsky@gmail.com>
+Date: Mon, 23 Nov 2026 15:09:38 -0800
+Subject: [PATCH] fix(instance-manager): keep a managed extension whose library
+ the cluster preloads
+
+The instance manager drops a managed extension (pgaudit,
+pg_stat_statements) that is installed in a database while no parameter
+of its namespace is set. The check runs in every database on the first
+reconciliation after the instance manager starts, so a user who
+preloads the library through `spec.postgresql.shared_preload_libraries`
+and runs `CREATE EXTENSION pgaudit` loses the extension at the next pod
+restart, failover or in-place instance manager upgrade.
+
+The drop exists because an installed extension whose library is no
+longer preloaded breaks the statements that load it: pgaudit's event
+triggers call into a library that refuses to load outside
+shared_preload_libraries. A library the cluster preloads itself does not
+have that problem, so leave such an extension in place. Creation is
+unchanged.
+
+The status that triggers the check now includes whether the cluster
+preloads the library, so removing it from shared_preload_libraries runs
+the check again and drops the extension, as before.
+---
+ .../controller/instance_controller.go         | 63 ++++++++++++----
+ .../instance_controller_sql_test.go           | 75 ++++++++++++++++++-
+ internal/management/controller/manager.go     |  4 +-
+ 3 files changed, 124 insertions(+), 18 deletions(-)
+
+diff --git a/internal/management/controller/instance_controller.go b/internal/management/controller/instance_controller.go
+index b54a796..217a8bd 100644
+--- a/internal/management/controller/instance_controller.go
++++ b/internal/management/controller/instance_controller.go
+@@ -24,9 +24,11 @@ import (
+ 	"database/sql"
+ 	"errors"
+ 	"fmt"
++	"maps"
+ 	"math"
+ 	"path"
+ 	"path/filepath"
++	"slices"
+ 	"strconv"
+ 	"time"
+ 
+@@ -721,14 +723,8 @@ func (r *InstanceReconciler) reconcileDatabases(ctx context.Context, cluster *ap
+ 		return fmt.Errorf("getting the superuserdb: %w", err)
+ 	}
+ 
+-	extensionStatusChanged := false
+-	for _, extension := range postgres.ManagedExtensions {
+-		extensionIsUsed := extension.IsUsed(cluster.Spec.PostgresConfiguration.Parameters)
+-		if lastStatus, ok := r.extensionStatus[extension.Name]; !ok || lastStatus != extensionIsUsed {
+-			extensionStatusChanged = true
+-			break
+-		}
+-	}
++	extensionStatus := getExtensionStatus(&cluster.Spec.PostgresConfiguration)
++	extensionStatusChanged := !maps.Equal(r.extensionStatus, extensionStatus)
+ 
+ 	databases, errors := r.getAllAccessibleDatabases(ctx, db)
+ 	for _, databaseName := range databases {
+@@ -739,7 +735,8 @@ func (r *InstanceReconciler) reconcileDatabases(ctx context.Context, cluster *ap
+ 			continue
+ 		}
+ 		if extensionStatusChanged {
+-			if err = r.reconcileExtensions(ctx, db, cluster.Spec.PostgresConfiguration.Parameters); err != nil {
++			if err = r.reconcileExtensions(ctx, db, cluster.Spec.PostgresConfiguration.Parameters,
++				cluster.Spec.PostgresConfiguration.AdditionalLibraries); err != nil {
+ 				errors = append(errors,
+ 					fmt.Errorf("could not reconcile extensions for database %s: %w", databaseName, err))
+ 			}
+@@ -749,12 +746,45 @@ func (r *InstanceReconciler) reconcileDatabases(ctx context.Context, cluster *ap
+ 		return fmt.Errorf("got errors while reconciling databases: %v", errors)
+ 	}
+ 
++	r.extensionStatus = extensionStatus
++
++	return nil
++}
++
++// managedExtensionStatus is what reconcileExtensions decides the fate of a
++// managed extension from
++type managedExtensionStatus struct {
++	// used is true when the configuration sets a parameter in one of the
++	// extension namespaces
++	used bool
++
++	// preloaded is true when the cluster itself lists one of the extension
++	// libraries in shared_preload_libraries
++	preloaded bool
++}
++
++// getExtensionStatus returns the status of every managed extension under
++// the given configuration
++func getExtensionStatus(configuration *apiv1.PostgresConfiguration) map[string]managedExtensionStatus {
++	status := make(map[string]managedExtensionStatus, len(postgres.ManagedExtensions))
+ 	for _, extension := range postgres.ManagedExtensions {
+-		extensionIsUsed := extension.IsUsed(cluster.Spec.PostgresConfiguration.Parameters)
+-		r.extensionStatus[extension.Name] = extensionIsUsed
++		status[extension.Name] = managedExtensionStatus{
++			used:      extension.IsUsed(configuration.Parameters),
++			preloaded: isPreloadedByCluster(extension, configuration.AdditionalLibraries),
++		}
+ 	}
++	return status
++}
+ 
+-	return nil
++// isPreloadedByCluster checks whether one of the extension libraries is in
++// the shared_preload_libraries the cluster lists itself
++func isPreloadedByCluster(extension postgres.ManagedExtension, additionalLibraries []string) bool {
++	for _, library := range extension.SharedPreloadLibraries {
++		if slices.Contains(additionalLibraries, library) {
++			return true
++		}
++	}
++	return false
+ }
+ 
+ // getAllAccessibleDatabases returns the list of all the accessible databases using the superuser
+@@ -783,7 +813,7 @@ func (r *InstanceReconciler) getAllAccessibleDatabases(
+ // ReconcileExtensions reconciles the expected extensions for this
+ // PostgreSQL instance
+ func (r *InstanceReconciler) reconcileExtensions(
+-	ctx context.Context, db *sql.DB, userSettings map[string]string,
++	ctx context.Context, db *sql.DB, userSettings map[string]string, additionalLibraries []string,
+ ) (err error) {
+ 	tx, err := db.BeginTx(ctx, nil)
+ 	if err != nil {
+@@ -824,7 +854,12 @@ func (r *InstanceReconciler) reconcileExtensions(
+ 				break
+ 			}
+ 			_, err = tx.Exec(fmt.Sprintf("CREATE EXTENSION %s", extension.Name))
+-		} else if !extensionIsUsed && extensionIsInstalled {
++		} else if !extensionIsUsed && extensionIsInstalled &&
++			!isPreloadedByCluster(extension, additionalLibraries) {
++			// An installed extension whose library is no longer preloaded
++			// breaks the statements that load it, so it is dropped. When the
++			// cluster preloads the library itself, the extension keeps working
++			// and may have been created by a user: leave it in place.
+ 			_, err = tx.Exec(fmt.Sprintf("DROP EXTENSION %s", extension.Name))
+ 		}
+ 		if err != nil {
+diff --git a/internal/management/controller/instance_controller_sql_test.go b/internal/management/controller/instance_controller_sql_test.go
+index 62e6b95..23f6497 100644
+--- a/internal/management/controller/instance_controller_sql_test.go
++++ b/internal/management/controller/instance_controller_sql_test.go
+@@ -22,6 +22,7 @@ package controller
+ import (
+ 	"database/sql"
+ 	"fmt"
++	"maps"
+ 
+ 	"github.com/DATA-DOG/go-sqlmock"
+ 	corev1 "k8s.io/api/core/v1"
+@@ -91,7 +92,7 @@ var _ = Describe("reconcileExtensions search_path", func() {
+ 		dbMock.ExpectCommit()
+ 
+ 		r := &InstanceReconciler{}
+-		Expect(r.reconcileExtensions(ctx, db, userSettings)).To(Succeed())
++		Expect(r.reconcileExtensions(ctx, db, userSettings, nil)).To(Succeed())
+ 	})
+ 
+ 	It("does not touch search_path when no extension needs to be created", func(ctx SpecContext) {
+@@ -105,7 +106,77 @@ var _ = Describe("reconcileExtensions search_path", func() {
+ 		dbMock.ExpectCommit()
+ 
+ 		r := &InstanceReconciler{}
+-		Expect(r.reconcileExtensions(ctx, db, map[string]string{})).To(Succeed())
++		Expect(r.reconcileExtensions(ctx, db, map[string]string{}, nil)).To(Succeed())
++	})
++})
++
++var _ = Describe("reconcileExtensions for an extension the cluster preloads", func() {
++	const existenceQuery = "SELECT COUNT(*) > 0 FROM pg_catalog.pg_extension WHERE extname = $1"
++
++	var (
++		dbMock sqlmock.Sqlmock
++		db     *sql.DB
++		err    error
++	)
++
++	BeforeEach(func() {
++		db, dbMock, err = sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
++		Expect(err).ToNot(HaveOccurred())
++	})
++
++	AfterEach(func() {
++		Expect(dbMock.ExpectationsWereMet()).To(Succeed())
++		_ = db.Close()
++	})
++
++	// expectInstalled reports only pgaudit as installed, and expects
++	// statements right after its existence check
++	expectInstalled := func(pgauditInstalled bool, pgauditStatements ...string) {
++		dbMock.ExpectBegin()
++		for _, ext := range postgresSpec.ManagedExtensions {
++			installed := ext.Name == "pgaudit" && pgauditInstalled
++			dbMock.ExpectQuery(existenceQuery).WithArgs(ext.Name).
++				WillReturnRows(sqlmock.NewRows([]string{"?column?"}).AddRow(installed))
++			if ext.Name == "pgaudit" {
++				for _, statement := range pgauditStatements {
++					dbMock.ExpectExec(statement).WillReturnResult(sqlmock.NewResult(0, 0))
++				}
++			}
++		}
++		dbMock.ExpectCommit()
++	}
++
++	It("does not drop an unused extension whose library the cluster preloads", func(ctx SpecContext) {
++		expectInstalled(true)
++
++		r := &InstanceReconciler{}
++		Expect(r.reconcileExtensions(ctx, db, map[string]string{}, []string{"pgaudit"})).To(Succeed())
++	})
++
++	It("drops an unused extension whose library the cluster does not preload", func(ctx SpecContext) {
++		expectInstalled(true, "DROP EXTENSION pgaudit")
++
++		r := &InstanceReconciler{}
++		Expect(r.reconcileExtensions(ctx, db, map[string]string{}, []string{"pg_stat_statements"})).To(Succeed())
++	})
++
++	It("creates a used extension whether or not the cluster preloads its library", func(ctx SpecContext) {
++		for _, additionalLibraries := range [][]string{nil, {"pgaudit"}} {
++			expectInstalled(false, `SET LOCAL search_path TO "$user", public`, "CREATE EXTENSION pgaudit")
++
++			r := &InstanceReconciler{}
++			Expect(r.reconcileExtensions(ctx, db, map[string]string{"pgaudit.log": "all"}, additionalLibraries)).
++				To(Succeed())
++		}
++	})
++
++	It("reports a status change when the cluster stops preloading the library", func() {
++		preloading := getExtensionStatus(&apiv1.PostgresConfiguration{AdditionalLibraries: []string{"pgaudit"}})
++		Expect(preloading).To(HaveKeyWithValue("pgaudit", managedExtensionStatus{preloaded: true}))
++
++		notPreloading := getExtensionStatus(&apiv1.PostgresConfiguration{})
++		Expect(notPreloading).To(HaveKeyWithValue("pgaudit", managedExtensionStatus{}))
++		Expect(maps.Equal(preloading, notPreloading)).To(BeFalse())
+ 	})
+ })
+ 
+diff --git a/internal/management/controller/manager.go b/internal/management/controller/manager.go
+index 158fcd6..8325639 100644
+--- a/internal/management/controller/manager.go
++++ b/internal/management/controller/manager.go
+@@ -55,7 +55,7 @@ type InstanceReconciler struct {
+ 	runningImages *stringset.Data
+ 
+ 	secretVersions  map[string]string
+-	extensionStatus map[string]bool
++	extensionStatus map[string]managedExtensionStatus
+ 
+ 	systemInitialization  *concurrency.Executed
+ 	firstReconcileDone    atomic.Bool
+@@ -81,7 +81,7 @@ func NewInstanceReconciler(
+ 		instance:              instance,
+ 		client:                client,
+ 		secretVersions:        make(map[string]string),
+-		extensionStatus:       make(map[string]bool),
++		extensionStatus:       make(map[string]managedExtensionStatus),
+ 		systemInitialization:  concurrency.NewExecuted(),
+ 		metricsServerExporter: metricsExporter,
+ 		certificateReconciler: instancecertificate.NewReconciler(client, instance),
