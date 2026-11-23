@@ -1,6 +1,6 @@
 # w6 · m566 — An agent session's sandbox is billed for the CPU it uses and the memory it is allocated, as a Render sandbox is
 
-**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** todo (t001's code shipped: agent sandboxes' used CPU and allocated memory are recorded as unbilled rows; its production check and t002 wait for production to carry it)
+**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** blocked (t001's code shipped in `506b9b40ef`: agent sandboxes' used CPU and allocated memory are recorded as unbilled rows; t001's production check and t002 wait for production to carry it and for a day of readings, t003 also for w22/m314's accuracy run)
 
 ## Tasks (in order)
 
@@ -26,11 +26,11 @@
 
 ## Source + Goal linkage
 
-- **Source:** the recommendation the user approved on 2026-11-22 ("其他的按照你推荐的修"). Since 2026-11-18 a `/v1/sandboxes` sandbox is billed on use ([ADR030 §17](../../../docs/ADR030-pricing.md)), but an agent session's keeps the weighted meter (`UsageBilled: idleTracked(raw)` in `lego/backend/internal/sandbox/meter.go`, and ADR030 §17's "Agent sessions" line). The billing page tells every reader that "a running sandbox is billed for the CPU it uses and the memory it is allocated", which is untrue for the largest sandbox line on it.
+- **Source:** the recommendation the user approved on 2026-11-22 ("其他的按照你推荐的修"). Since 2026-11-18 a `/v1/sandboxes` sandbox is billed on use ([ADR030 §17](../../../../docs/ADR030-pricing.md)), but an agent session's keeps the weighted meter (`UsageBilled: idleTracked(raw)` in `lego/backend/internal/sandbox/meter.go`, and ADR030 §17's "Agent sessions" line). The billing page tells every reader that "a running sandbox is billed for the CPU it uses and the memory it is allocated", which is untrue for the largest sandbox line on it.
 - **Evidence (production, 2026-11-22):** November's agent sandboxes in the `bex` workspace billed $231.64 on the weighted meter; their turns ran 21% of the billed hours.
-- **Reference:** Render bills a running sandbox for actively used CPU and allocated memory ([ADR104 D8](../../../docs/ADR104-sandbox-render-parity.md), render.com/blog/introducing-render-sandboxes, published 2026-11-04). Devin bills a session's awake time in ACUs and lets it sleep after 5 minutes (docs.devin.ai/admin/billing/usage). With m563 an agent sandbox is awake for little more than its turn, so billing on use and Devin's awake-time model come to nearly the same idle charge. The user approved billing on use.
+- **Reference:** Render bills a running sandbox for actively used CPU and allocated memory ([ADR104 D8](../../../../docs/ADR104-sandbox-render-parity.md), render.com/blog/introducing-render-sandboxes, published 2026-11-04). Devin bills a session's awake time in ACUs and lets it sleep after 5 minutes (docs.devin.ai/admin/billing/usage). With m563 an agent sandbox is awake for little more than its turn, so billing on use and Devin's awake-time model come to nearly the same idle charge. The user approved billing on use.
 - **Depends on:** w22/m314, the used-CPU meter for `/v1/sandboxes`. Production already carries it (`dcf1f1991`), and it bills since 2026-11-18. Its last accuracy run (`sandbox-measure.yml`, `leg=usage`) is still pending. t003's cutover waits until that run passes; t001 and t002 do not.
-- **Goal linkage:** ADR023 usage metering, ADR030 pricing, ADR047 D6: one billing model for one product's sandboxes ([ADR008](../../../docs/ADR008-vision.md)).
+- **Goal linkage:** ADR023 usage metering, ADR030 pricing, ADR047 D6: one billing model for one product's sandboxes ([ADR008](../../../../docs/ADR008-vision.md)).
 - **Expected outcome:** agent sandbox charges follow use. After m563 removes most idle time, the remaining running time is charged at memory plus the CPU actually used.
 - **Why now:** the billing page's copy already promises it, and customers' agent sessions are the largest sandbox line.
 - **Render parity:** included: the `cost` fields on REST, GraphQL and MCP, and the billing page.
