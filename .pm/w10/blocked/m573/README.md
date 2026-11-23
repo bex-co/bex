@@ -1,6 +1,6 @@
 # w10 · m573 — A workspace admin allows the platform catalog's models by provider, as Devin's allowlist filters by provider
 
-**Worker:** worker10 **Goal:** the workspace model list gains Devin's second filter type. An admin allows whole providers (`enabledProviders: ["anthropic"]`, the provider being a model id's prefix before `/`) instead of naming models one by one, as the one filter type in force. Every model of an allowed provider is offered, one added to the catalog later included, and the catalog default still always is. REST, GraphQL, MCP, `bex agent env set` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** in progress (t001–t005 and t007–t009 done 2026-11-22, the `dev-10` half of t006 too; t006's production read and t010 follow the deploy)
+**Worker:** worker10 **Goal:** the workspace model list gains Devin's second filter type. An admin allows whole providers (`enabledProviders: ["anthropic"]`, the provider being a model id's prefix before `/`) instead of naming models one by one, as the one filter type in force. Every model of an allowed provider is offered, one added to the catalog later included, and the catalog default still always is. REST, GraphQL, MCP, `bex agent env set` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** blocked (pin must carry `022753057f`; t001–t005 and t007–t009 done 2026-11-22, the `dev-10` half of t006 too; t006's production read and t010 follow the deploy)
 
 ## Tasks (in order)
 
@@ -52,7 +52,7 @@ Total: **10 tasks, about 7h30m**.
 
 ## Design record (t001, 2026-11-22)
 
-Against [Devin Desktop admin controls](https://docs.devin.ai/desktop/controls) ("Filter by specific models or by provider (one filter type at a time)"; a model outside the allowlist is hidden "from the relevant picker or settings page") and [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) (`allowed_model_tags` "including provider tags such as `provider-anthropic`"; `allowed_model_uids` "Empty when the team allows models by tag only"; "A model is allowed when its UID is listed or it carries a listed tag"), both re-read 2026-11-22, and m568's read rule ([design record](../blocked/m568/README.md#design-record-t001-2026-11-22)).
+Against [Devin Desktop admin controls](https://docs.devin.ai/desktop/controls) ("Filter by specific models or by provider (one filter type at a time)"; a model outside the allowlist is hidden "from the relevant picker or settings page") and [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) (`allowed_model_tags` "including provider tags such as `provider-anthropic`"; `allowed_model_uids` "Empty when the team allows models by tag only"; "A model is allowed when its UID is listed or it carries a listed tag"), both re-read 2026-11-22, and m568's read rule ([design record](../m568/README.md#design-record-t001-2026-11-22)).
 
 - **A model's provider** is its catalog id's prefix before the first `/` (`anthropic/claude-opus-5.5` → `anthropic`), Devin's `provider-anthropic` tag. An id with no `/` has no provider, so no provider filter allows it unless it is the catalog default.
 - **Storage.** Migration 0333 adds a nullable `agent_environments.enabled_providers text[]` (at most 64). NULL filters by model, m568's two modes. A provider write stores three columns together:
@@ -191,7 +191,7 @@ No drift beyond w10/046 (an explicit allowlist that lists every current model), 
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/037](../done/037.md), filed by w10/m527 t007 (Devin comparison) on 2026-11-20 and promoted by `/loopx w10` on 2026-11-22.
+- **Source:** inbox note [w10/037](../../done/037.md), filed by w10/m527 t007 (Devin comparison) on 2026-11-20 and promoted by `/loopx w10` on 2026-11-22.
 - **Triage evidence (2026-11-22, `0641b3b97e`):**
   - **The premise holds.** `EnvironmentInput.EnabledModels` (`lego/backend/internal/agentsessions/environment.go:190`) is the agent environment's only list field. `modelOfferPatch` (`:594`) refuses any entry that is not a catalog model id. `leftOn` (`:875`), behind `offeredModels` (`:851`), matches by model id alone. No `enabledProviders` exists in `lego/backend/internal/api/testdata/schema.graphql`, `mcp.go`, `lego/cli/internal/agent/config.go` or the dashboard.
   - **The note's conditions are met.**
@@ -202,6 +202,6 @@ No drift beyond w10/046 (an explicit allowlist that lists every current model), 
     - [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models): `allowed_model_tags` are "Model tags on your team's allowlist, as stored, including provider tags such as `provider-anthropic`", `allowed_model_uids` is "Empty when the team allows models by tag only", and "A model is allowed when its UID is listed or it carries a listed tag".
   - **Parity-first applies.** The ADR018 agent-model row (`docs/ADR018-render-parity.md:440`) records "Devin Desktop also filters by provider (w10/037)" as a filed divergence with no user sign-off. ADR047:305's "filed by t007 if users would miss them" is the older hedge this milestone amends (AGENTS.md Rules, ADR008 § Render parity first).
   - **It is more than one sitting.** It touches a migration, the store, the offer logic, three API surfaces, the CLI, the dashboard, two GraphQL clients, three ADRs and a live check.
-- **Goal linkage:** cloud coding-agent sessions ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md), ADR008 pillar 5), where Devin is the reference product.
+- **Goal linkage:** cloud coding-agent sessions ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), ADR008 pillar 5), where Devin is the reference product.
 - **Expected outcome:** an admin who trusts a provider allows it in one step, and that provider's next model is offered to members as soon as the catalog adds it, while every other provider's new model stays off.
 - **Why now:** m568 made every narrowed list an allowlist, so the provider filter is the only way left to narrow and keep a trusted provider current. Shipping it before the catalog next grows means no admin has to turn the new model on by hand. The milestone includes the Render parity task because it changes the REST, GraphQL, MCP, CLI and dashboard reads and writes of the agent environment.

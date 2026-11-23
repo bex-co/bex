@@ -120,7 +120,7 @@ No drift beyond w10/037 (allow by provider tag) and the new w10/046 (an explicit
     - [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) (read 2026-11-22) describes the allowlist as "Model UIDs on your team's allowlist, as stored" and "Model tags on your team's allowlist, as stored, including provider tags such as `provider-anthropic`". Its rule is "A model is allowed when its UID is listed or it carries a listed tag".
     - A newly released model's UID is on no stored list, so under a by-model allowlist it stays off.
     - [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-settings) (read 2026-11-22) offers that "Allowlist specific models" option ("Restrict users to a curated list of approved models") beside "Allow all models" ("Give users access to all available models").
-    - Allowing by provider tag, the other half of the rule, is [w10/037](../../done/037.md), promoted to [w10/m573](../../m573/README.md).
+    - Allowing by provider tag, the other half of the rule, is [w10/037](../../done/037.md), promoted to [w10/m573](../m573/README.md).
   - **Legacy rows convert exactly today.** Production's `BEX_AGENT_PLATFORM_MODELS` (`lego/operator/config/api/deployment.yaml:652`) last changed in `1988962c01` (w10/m516, 2026-11-19), before w10/m527 shipped the list (2026-11-20). Every row narrowed so far was written against today's catalog, so converting it with the catalog bex-api starts with keeps its offer. Re-check that history before shipping.
   - **Surfaces to touch:**
     - Backend: `Environment`/`EnvironmentInput` (`environment.go:73-186`), `environmentView` (`:675`) and `retiredTemplateModel` (`automation_scheduler.go:248`).
