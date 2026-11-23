@@ -1,6 +1,6 @@
 # w22 · m314 — Sandbox CPU billed on use, as on Render: a gVisor accuracy spike, then the cutover
 
-**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** blocked (waits for w22/024: the post-switch usage leg, run 44867679299 on 2026-11-21, failed one check, the used-CPU meter read 307 CPU-seconds from a pod whose counter totals 298.42; every other check passed; t001, t002, t004, t006, t007 and t008 done; t003 and t005 have their production readings and stay open until the leg prints PASS; see "解阻记录 2026-11-21")
+**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** done (2026-11-23: the usage leg printed PASS on production with the w22/024 fix, sandbox-measure run 45147416800; see "解阻与结案记录 2026-11-23")
 
 ## Tasks (in order)
 
@@ -8,13 +8,13 @@
 | --- | --- | --- | --- |
 | t001 | Spike: does gVisor report usable per-sandbox CPU? Fix the thresholds, run, record the verdict — **DONE (verdict: fail)** | 1h30m | — |
 | t002 | Record the pod name on every running interval — **DONE** | 1h | t001 |
-| t003 | Meter used CPU from Prometheus: sandbox_cpu_seconds | 2h | t001, t002, w22/m313/t002 |
+| t003 | Meter used CPU from Prometheus: sandbox_cpu_seconds — **DONE** | 2h | t001, t002, w22/m313/t002 |
 | t004 | Bill on use: price CPU and memory, stop billing the folded meter (or take the recorded fallback) — **DONE** | 1h30m | t003, w22/m313/t005 |
-| t005 | Production check with a known load, and amend ADR023, ADR030 and ADR104 | 1h30m | t004 |
+| t005 | Production check with a known load, and amend ADR023, ADR030 and ADR104 — **DONE** | 1h30m | t004 |
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 40m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -115,6 +115,30 @@
   - **清理：** 运行结束时删除一个一次性 workspace 失败（日志里的 WARNING）；它不计费，下一次运行的过期清扫会重试。
 - **结论：停靠。** t003 和 t005 的验收条目按读数都成立，但这条腿是它们的检查手段，它没有打印 PASS，失败的那项正是 t003 的计量器；DoD 的"在生产上用已知负载验证"不能靠一次失败的运行成立。t003、t005 保持未完成，读数已记在任务里。
 - **剩余闸门（不需要用户）：** w22/024 落地并到生产之后，再跑一次 `gh workflow run sandbox-measure.yml -f leg=usage -f usage_idle_seconds=600`，打印 PASS 后把数字记进 t003、t005 和 ADR104 D8，然后 t009 收尾。
+
+## 解阻与结案记录 2026-11-23（/loopx w22，UTC）
+
+- **来源：** 复核证据，不是用户决定。涉及 t003、t005、t009。
+- **原闸门已清：** 生产的镜像 pin 是 `9fdf7e0a1171`（`cded300699`，17:33Z），`git merge-base --is-ancestor ceb23ce81 9fdf7e0a1171` 成立。第一个带上 `ceb23ce81`（w22/024 的修复）的 pin 是 `cce6c749f6ff`（2026-11-21T09:00Z）。
+- **这条腿已经在生产上打印过 PASS：[sandbox-measure run 45147416800](https://github.com/bex-co/bex/actions/runs/45147416800)**（`leg=usage`，`usage_idle_seconds=600`，2026-11-23T09:29Z）。当时的 pin `1a5a8e872398` 带 `ceb23ce81`，脚本带 w22/024 的修复 `42ed010012`。所有检查都通过，最后一行是 `PASS: usage leg: a busy, an idle and a suspended sandbox are metered as designed (billed on use: true)`。这次运行是为 w22/024 的验收派发的，没有记到板上，本记录补上。读数：
+  - **忙碌**（5 轮 60 秒单核，请求 300 秒）：负载自己用了 291.64 秒；节点 cAdvisor 上 pod 计数器在负载期间走了 296.73，总数 297.08；计量 **297**。这是负载自己的 1.018 倍、请求的 0.99 倍，在 t001 的 1.098 倍和 1.053 倍之内，并且不超过计数器（2026-11-21 是 307 对 298.42，w22/024 的修复生效）。运行区间 342 秒，`cpuSettled`，没有延后；内存 683 GiB 秒（2 GiB × 342 秒）。
+  - **空闲** 602 秒：1 CPU 秒，0.17% 单核（线为 2%）；内存 1203 GiB 秒，全额。
+  - **暂停后：** CPU 和内存停在 297 和 683，只有快照存储增长，没有加权行。
+  - **`GET /v1/usage`：** `sandboxUsageBilledFrom` 是 2026-11-18T00:00:00Z。忙碌 sandbox 的 CPU 行 0.0825 CPU 小时 × $0.084 = $0.01，内存行 0.19 GiB 小时 × $0.0133 = $0.00；空闲 sandbox 的 CPU 行 0.000278 CPU 小时、$0.00，内存行 0.334 GiB 小时、$0.00。两个 sandbox 都没有 `sandbox_compute_seconds` 行，也没有 `unbilled`。
+  - **配额**（w22/020 的检查）：`1c-2g` 的 pod 配额 1 核，`starter` 0.5 核；`starter` 上四个 syscall 重循环 60 秒用了 29.51 CPU 秒（0.492 核）；安装步骤 0 秒，创建到容器启动 2 秒。
+- **本次派发的三次重跑没有走到计量检查。** [45275218820](https://github.com/bex-co/bex/actions/runs/45275218820)、[45276212231](https://github.com/bex-co/bex/actions/runs/45276212231)、[45277163478](https://github.com/bex-co/bex/actions/runs/45277163478)（22:00Z 到 22:13Z）都失败在忙碌负载的 exec 流上：`curl: (56) Recv failure: Connection reset by peer`，分别在流开始后约 46、16、15.5 秒。
+  - Traefik 的访问日志里这三条流都是 200，结束得比客户端被重置晚 2 到 6 秒；bex-api、ssh-gateway、Traefik 都没有重启。所以断在客户端和 Traefik 之间（Cloudflare、负载均衡器、NodePort），不在计量器。另开为 **w22/028**。
+  - 三次运行的 sandbox 都已删除，生产上没有残留的 sandbox pod。两个一次性 workspace 删除失败（日志里的 WARNING），下一次运行的过期清扫会删除它们；09:29Z 那次留下的两个就是在 22:00Z 被清掉的。
+- **PASS 之后计量路径上的改动：**
+  - 抓取配置 `6d5b219bd3`（w6/167，20:56Z）改写了产生 `sandbox_pod_cpu_usage_seconds_total` 的 relabel。重跑之后在生产的 Prometheus 上读到，这三次运行的六个 pod 都有这条序列。
+  - `506b9b40ef`（w6/m566 t001，agent session 的 sandbox 的 CPU 和内存记为不计费行）在 PASS 之后的 pin 里，由它自己的条目和测试覆盖（`TestSandboxUsageSwitchPG` 随之更新）。这次 PASS 不覆盖它。
+- **发票预览：** 一次性 workspace 按 ADR046 不计费，没有 Stripe 订阅，所以没有发票预览可读。CPU 和内存折成加权单位导出到 Stripe 的一步由 `TestSandboxUsageWeightedUnitsCostTheSame` 和 `TestSandboxBilledOnUseAcrossAdapters` 覆盖。
+- **结论：完成。** DoD 逐条核对：
+  1. spike 有结论（fail），按 2026-11-16 的修订按测得的 CPU 计费，2026-11-18T00:00:00Z 起每个 workspace 同时生效，并在生产上用已知负载验证（run 45147416800）。
+  2. CPU 按用量、内存按分配计费，暂停的 sandbox 只付存储（同一次运行）。
+  3. `sandbox_compute_seconds` 的历史和 agent session 的成本不变（t004、t008 的测试；agent session 仍走加权计量）。
+  4. ADR023、ADR030、ADR018、ADR104 D8 与代码一致（t005 第 5 步；ADR104 D8 的生产检查和 gap 8 本次更新）。
+- **留给别的条目：** w22/024 和 w22/020 等的是同一次 PASS（run 45147416800），由它们自己的 worker 落地。
 
 ## Render parity, 2026-11-17 (t006)
 

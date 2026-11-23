@@ -60,11 +60,11 @@ rect.b{stroke-width:1.5;rx:8}
 <text class="s" x="55" y="338">OpenFGA verb + owner check</text>
 <text class="s" x="55" y="354">runtime timeout 86400 s,</text>
 <text class="s" x="55" y="370">resumable 30 days</text>
-<rect class="b plan" x="260" y="300" width="210" height="92"/>
-<text class="t" x="270" y="320">🚧 Metering (D8)</text>
-<text class="s" x="270" y="338">today: allocated shape, running only</text>
-<text class="s" x="270" y="354">planned: used CPU + memory,</text>
-<text class="s" x="270" y="370">+ snapshot storage (Render model)</text>
+<rect class="b ok" x="260" y="300" width="210" height="92"/>
+<text class="t" x="270" y="320">✅ Metering (D8)</text>
+<text class="s" x="270" y="338">running: used CPU + allocated memory</text>
+<text class="s" x="270" y="354">suspended: snapshot storage only</text>
+<text class="s" x="270" y="370">Render's model (m313, m314)</text>
 <rect class="b plan" x="485" y="300" width="410" height="92"/>
 <text class="t" x="495" y="320">🚧 Snapshots · groups · images</text>
 <text class="s" x="495" y="338">named 4xx today (SANDBOX_*_UNSUPPORTED)</text>
@@ -126,7 +126,7 @@ rect.b{stroke-width:1.5;rx:8}
 <text class="s" x="460" y="680">same id, plan, policy and timeouts</text>
 <text class="s" x="460" y="696">exec / upload / download resume it</text>
 <text class="s" x="460" y="712">⚠ memory + processes lost, /tmp empty (D5)</text>
-<text class="s" x="460" y="728">billing: storage only, planned (D8)</text>
+<text class="s" x="460" y="728">billing: snapshot storage only (D8)</text>
 <path class="ln dash" d="M430,690 L450,690"/>
 <path class="ln dash" d="M600,576 L600,626"/>
 <text class="s" x="610" y="606">creates / recreates pods</text>
