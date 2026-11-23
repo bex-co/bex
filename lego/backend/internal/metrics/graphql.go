@@ -263,8 +263,8 @@ var metricsFiltersResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// metricsPathFilterSuggestionsInputType mirrors Render's input; bex always
-// answers with no suggestions (Traefik service-level metrics carry no path label).
+// metricsPathFilterSuggestionsInputType mirrors Render's input; served by
+// Service.PathFilterSuggestions from the request-log store (Loki, w34/m587).
 var metricsPathFilterSuggestionsInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "MetricsPathFilterSuggestionsInput",
 	Fields: graphql.InputObjectConfigFieldMap{
@@ -479,7 +479,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"query": gqlutil.ReqArg(metricsPathFilterSuggestionsInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return metricsPathFilterSuggestionsResult{Paths: []string{}}, nil
+				q, err := metricsPathFilterSuggestionsQueryFromArgs(p.Args["query"])
+				if err != nil {
+					return nil, err
+				}
+				paths, err := s.PathFilterSuggestions(p.Context, q)
+				if err != nil {
+					return nil, err
+				}
+				return metricsPathFilterSuggestionsResult{Paths: paths}, nil
 			},
 		},
 	}
@@ -683,4 +691,19 @@ func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
 		return MetricsFiltersQuery{}, fmt.Errorf("%w: filters must include a RESOURCE entry", core.ErrBadRequest)
 	}
 	return MetricsFiltersQuery{App: app, OutputFilters: gqlutil.StringList(input["outputFilters"])}, nil
+}
+
+func metricsPathFilterSuggestionsQueryFromArgs(raw any) (PathFilterSuggestionsQuery, error) {
+	input, ok := raw.(map[string]any)
+	if !ok {
+		return PathFilterSuggestionsQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
+	}
+	serviceIDs := nonBlankStrings(gqlutil.StringList(input["serviceIDs"]))
+	if len(serviceIDs) == 0 {
+		return PathFilterSuggestionsQuery{}, fmt.Errorf("%w: serviceIDs must include at least one service", core.ErrBadRequest)
+	}
+	return PathFilterSuggestionsQuery{
+		Apps:  serviceIDs,
+		Paths: nonEmptyValues(gqlutil.StringList(input["paths"])),
+	}, nil
 }

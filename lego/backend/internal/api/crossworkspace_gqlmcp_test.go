@@ -153,7 +153,6 @@ var callerScopedGQLFields = map[string]bool{
 	"Query.serviceNameAvailable": true,
 	// Static vocabularies / stubs — return a fixed list, read no resource.
 	"Query.webhookEventTypes":                            true, // the webhook event-type vocabulary
-	"Query.metricsPathFilterSuggestions":                 true, // bex stub: always an empty path list
 	"Query.pushNotificationsAvailable":                   true, // caller-scoped transport capability, no resource argument
 	"Query.pushEventUrgencies":                           true, // the push event → urgency vocabulary
 	"Query.webPushAvailable":                             true, // caller-scoped VAPID capability, no resource argument

@@ -73,10 +73,10 @@ var renderMetricsParamVerdicts = map[string]map[string]string{
 		"host": "refused: bex cannot narrow one filter's values by another", "statusCode": "refused: bex cannot narrow one filter's values by another",
 	},
 	"/metrics/filters/path": {
-		"startTime": metricsParamWindow, "endTime": metricsParamWindow, "resolutionSeconds": metricsParamWindow, "resource": metricsParamServed, "service": metricsParamServed,
-		"host":       "ignored: bex has no path suggestions, so the answer is always []",
-		"statusCode": "ignored: bex has no path suggestions, so the answer is always []",
-		"path":       "ignored: bex has no path suggestions, so the answer is always []",
+		"startTime": metricsParamServed, "endTime": metricsParamServed,
+		"resolutionSeconds": "ignored: path suggestions scan raw access-log lines rather than stepped buckets",
+		"resource":          metricsParamServed, "service": metricsParamServed,
+		"host": metricsParamServed, "statusCode": metricsParamServed, "path": metricsParamServed,
 	},
 	"/metrics/http-latency": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,

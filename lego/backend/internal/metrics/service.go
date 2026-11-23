@@ -30,6 +30,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -322,6 +323,33 @@ type MetricsFilterValuesRequest struct {
 	Since time.Time
 }
 
+// PathFilterSuggestionsRequest is the backend-neutral request handed to a
+// PathFilterSuggestionsSource for one authorized App.
+type PathFilterSuggestionsRequest struct {
+	Namespace   string
+	App         string
+	Start, End  time.Time
+	Hosts       []string
+	StatusCodes []string
+	Paths       []string
+	Limit       int
+}
+
+// PathFilterSuggestionsSource discovers distinct HTTP request paths observed
+// in an App's recent Traefik access logs (Loki). nil => PathFilterSuggestions
+// reports core.ErrLogStoreUnavailable (503).
+type PathFilterSuggestionsSource func(ctx context.Context, req PathFilterSuggestionsRequest) ([]string, error)
+
+// PathFilterSuggestionsQuery is the shared service input for REST
+// GET /v1/metrics/filters/path and GraphQL metricsPathFilterSuggestions.
+type PathFilterSuggestionsQuery struct {
+	Apps        []string
+	Start, End  time.Time
+	Hosts       []string
+	StatusCodes []string
+	Paths       []string
+}
+
 // Service is the single metrics read every adapter calls, plus the dashboard's
 // month-to-date bandwidth and filter-population helpers.
 type Service struct {
@@ -351,6 +379,11 @@ type Service struct {
 	// reports core.ErrLogStoreUnavailable (the Logs-tab 503 pattern), never a
 	// silently-unfiltered Prometheus result. Same signature as RequestMetrics.
 	RequestLogMetrics RequestMetricsSource
+	// PathFilterSuggestionsSource derives HTTP path filter suggestions from the
+	// most recent 5,000 matching Traefik access-log lines in Loki (w34/m587).
+	// nil (BEX_LOKI_URL unset) => PathFilterSuggestions reports
+	// core.ErrLogStoreUnavailable (503).
+	PathFilterSuggestionsSource PathFilterSuggestionsSource
 	// MonthToDateBandwidthSource reads cumulative composed egress since a given time.
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
@@ -526,6 +559,16 @@ func (s *Service) metricsInWindow(ctx context.Context, q MetricQuery) ([]MetricS
 		if q.Metric != MetricHTTPRequests && q.Metric != MetricHTTPLatency {
 			return nil, fmt.Errorf("%w: host/path filters apply only to http_requests and http_latency", core.ErrBadRequest)
 		}
+		hosts, err := normalizeHostFilters(q.Hosts)
+		if err != nil {
+			return nil, err
+		}
+		q.Hosts = hosts
+		paths, err := normalizePathFilters(q.Paths)
+		if err != nil {
+			return nil, err
+		}
+		q.Paths = paths
 	}
 	if err := checkCPUAggregation(q.Metric, q.CPUAggregation); err != nil {
 		return nil, err
@@ -1452,4 +1495,208 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 		values = []string{} // an empty discovery serializes as [], never null
 	}
 	return values, err
+}
+
+// Bounds on host/path filter patterns so a caller cannot send unbounded lists
+// or pathological wildcard regexes to Loki's RE2 engine (w34/m587).
+const (
+	maxHostFilters    = 64
+	maxHostPatternLen = 512
+	maxPathFilters    = 64
+	maxPathPatternLen = 512
+	maxPathWildcards  = 8
+)
+
+func normalizeStringFilters(name string, values []string, maxCount, maxLen int) ([]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	if len(values) > maxCount {
+		return nil, fmt.Errorf("%w: at most %d %s values per request", core.ErrBadRequest, maxCount, name)
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+		if len(v) > maxLen {
+			return nil, fmt.Errorf("%w: %s filter exceeds %d bytes", core.ErrBadRequest, name, maxLen)
+		}
+		if _, dup := seen[v]; dup {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out, nil
+}
+
+func normalizeHostFilters(hosts []string) ([]string, error) {
+	return normalizeStringFilters("host", hosts, maxHostFilters, maxHostPatternLen)
+}
+
+func normalizePathFilters(paths []string) ([]string, error) {
+	out, err := normalizeStringFilters("path", paths, maxPathFilters, maxPathPatternLen)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range out {
+		if strings.Count(p, "*") > maxPathWildcards {
+			return nil, fmt.Errorf("%w: path filter accepts at most %d wildcards", core.ErrBadRequest, maxPathWildcards)
+		}
+	}
+	return out, nil
+}
+
+func nonBlankStrings(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, raw := range values {
+		if strings.TrimSpace(raw) != "" {
+			out = append(out, raw)
+		}
+	}
+	return out
+}
+
+// PathFilterSuggestions derives distinct HTTP path filter suggestions for one
+// or more authorized services from the most recent 5,000 matching Traefik
+// access-log lines in Loki within each workspace plan's metrics retention
+// floor (w34/m587). Shared by REST GET /v1/metrics/filters/path and GraphQL
+// metricsPathFilterSuggestions so authz, bounds, and results stay identical.
+func (s *Service) PathFilterSuggestions(ctx context.Context, q PathFilterSuggestionsQuery) ([]string, error) {
+	if err := s.checkWindow(q.Start, q.End); err != nil {
+		return nil, err
+	}
+	apps := nonBlankStrings(q.Apps)
+	if len(apps) == 0 {
+		// Authorize before rejecting an empty selection so the reflection
+		// authz sweep (which invokes every verb with zero-valued args) observes
+		// ErrForbidden on a denied caller, while an authorized caller gets 400.
+		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: at least one resource is required", core.ErrBadRequest)
+	}
+	if err := checkFanOut(len(apps), 1, 1); err != nil {
+		return nil, err
+	}
+	resolved := make([]*appv1alpha1.App, 0, len(apps))
+	seenApp := make(map[string]struct{}, len(apps))
+	for _, name := range apps {
+		app, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+		if err != nil {
+			return nil, err
+		}
+		key := app.Namespace + "/" + app.Name
+		if _, dup := seenApp[key]; dup {
+			continue
+		}
+		seenApp[key] = struct{}{}
+		resolved = append(resolved, app)
+	}
+	statusCodes, err := normalizeStatusCodeFilters(q.StatusCodes)
+	if err != nil {
+		return nil, err
+	}
+	hosts, err := normalizeHostFilters(q.Hosts)
+	if err != nil {
+		return nil, err
+	}
+	paths, err := normalizePathFilters(q.Paths)
+	if err != nil {
+		return nil, err
+	}
+	now := s.Now()
+	if q.End.IsZero() {
+		q.End = now
+	}
+	if q.Start.IsZero() {
+		q.Start = q.End.Add(-defaultMetricSpan)
+	}
+	if err := core.ValidateQueryRange(q.Start, q.End); err != nil {
+		return nil, err
+	}
+	if s.PathFilterSuggestionsSource == nil {
+		return nil, core.ErrLogStoreUnavailable
+	}
+	perApp := make([][]string, 0, len(resolved))
+	for _, app := range resolved {
+		appStart := q.Start
+		if created := core.AppNotBefore(app); !created.IsZero() {
+			if created.After(q.End) {
+				continue
+			}
+			if created.After(appStart) {
+				appStart = created
+			}
+		}
+		clampedStart, kept, err := s.withinRetention(ctx, app.Labels[core.LabelTenant], appStart, q.End, 0)
+		if err != nil {
+			return nil, err
+		}
+		if !kept {
+			continue
+		}
+		got, err := s.PathFilterSuggestionsSource(ctx, PathFilterSuggestionsRequest{
+			Namespace:   app.Namespace,
+			App:         app.Name,
+			Start:       clampedStart,
+			End:         q.End,
+			Hosts:       hosts,
+			StatusCodes: statusCodes,
+			Paths:       paths,
+			Limit:       lokiPathSuggestionsLimit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(got) > 0 {
+			perApp = append(perApp, got)
+		}
+	}
+	return mergePathSuggestions(perApp, maxPathFilterSuggestions), nil
+}
+
+// mergePathSuggestions combines per-App ranked suggestion lists into one
+// deduplicated slice of at most limit entries. Interleaving by rank keeps a
+// single-App result byte-identical to its source order while ensuring no
+// resource in a multi-resource query is starved by an earlier one.
+func mergePathSuggestions(lists [][]string, limit int) []string {
+	if len(lists) == 0 || limit <= 0 {
+		return []string{}
+	}
+	maxLen, total := 0, 0
+	for _, l := range lists {
+		total += len(l)
+		if len(l) > maxLen {
+			maxLen = len(l)
+		}
+	}
+	capHint := min(limit, total)
+	out := make([]string, 0, capHint)
+	seen := make(map[string]struct{}, capHint)
+	for rank := 0; rank < maxLen && len(out) < limit; rank++ {
+		for _, l := range lists {
+			if rank >= len(l) {
+				continue
+			}
+			p := l[rank]
+			if p == "" {
+				continue
+			}
+			if _, dup := seen[p]; dup {
+				continue
+			}
+			seen[p] = struct{}{}
+			out = append(out, p)
+			if len(out) >= limit {
+				return out
+			}
+		}
+	}
+	return out
 }

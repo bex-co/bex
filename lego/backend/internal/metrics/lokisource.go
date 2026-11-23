@@ -17,10 +17,14 @@ limitations under the License.
 package metrics
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -124,19 +128,23 @@ func lokiStepBounds(start, end time.Time, step int64) (int64, int64) {
 // break out of a matcher (the same label-injection guard as logs/loki.go).
 // Returns "" for any metric that has no per-request host/path axis (bandwidth)
 // — those are rejected upstream anyway.
-func lokiRequestQueryFor(req RequestMetricsRequest) string {
+func lokiRequestSelector(namespace, app string, statusCodes []string) string {
 	matchers := []string{
-		fmt.Sprintf("namespace=%q", req.Namespace),
-		fmt.Sprintf("app=%q", req.App),
+		fmt.Sprintf("namespace=%q", namespace),
+		fmt.Sprintf("app=%q", app),
 		fmt.Sprintf("type=%q", "request"),
 	}
 	// StatusCodes filters the `status` stream label on request streams;
 	// codesMatcher expands class shorthands (`2xx` -> `2..`) and ORs multiple
 	// values (`^(4..|500|502)$`).
-	if c := codesMatcher(req.StatusCodes); c != "" {
+	if c := codesMatcher(statusCodes); c != "" {
 		matchers = append(matchers, fmt.Sprintf("status=~%q", c))
 	}
-	selector := "{" + strings.Join(matchers, ", ") + "}"
+	return "{" + strings.Join(matchers, ", ") + "}"
+}
+
+func lokiRequestQueryFor(req RequestMetricsRequest) string {
+	selector := lokiRequestSelector(req.Namespace, req.App, req.StatusCodes)
 	window := stepSeconds(req.Resolution)
 
 	switch req.Metric {
@@ -163,16 +171,16 @@ func lokiRequestQueryFor(req RequestMetricsRequest) string {
 // fields the read filters on and applies the host/path line filters. latency adds
 // the numeric Duration field the quantile read unwraps.
 func lokiRequestPipeline(req RequestMetricsRequest, latency bool) string {
-	fields := []string{lokiLabelRequestHost + `="RequestHost"`, `request_path="RequestPath"`}
+	fields := []string{lokiLabelRequestHost + `="RequestHost"`, lokiLabelRequestPath + `="RequestPath"`}
 	if latency {
 		fields = append([]string{`latency_ns="Duration"`}, fields...)
 	}
 	p := " | json " + strings.Join(fields, ", ")
-	if len(req.Hosts) > 0 {
-		p += " | " + lokiOrFilter(lokiLabelRequestHost, req.Hosts)
+	if f := lokiOrFilter(lokiLabelRequestHost, req.Hosts); f != "" {
+		p += " | " + f
 	}
-	if len(req.Paths) > 0 {
-		p += " | " + lokiOrFilter("request_path", req.Paths)
+	if f := lokiPathFilter(lokiLabelRequestPath, req.Paths); f != "" {
+		p += " | " + f
 	}
 	// Last, so the timestamp templates run only on lines the filters kept.
 	return p + lokiEntryWindow(req.Start, req.End)
@@ -193,6 +201,55 @@ func lokiOrFilter(field string, values []string) string {
 		parts = append(parts, fmt.Sprintf("%s=%q", field, v))
 	}
 	return strings.Join(parts, " or ")
+}
+
+// lokiPathFilter renders one path label filter supporting `*` glob wildcards
+// (w34/m587). A path without `*` keeps exact equality `field="v"` byte-for-byte;
+// a path containing `*` compiles to an anchored RE2 regex (`field=~"^...$"`)
+// with every literal segment escaped via regexp.QuoteMeta and `%q`-escaped so
+// regex metacharacters are literal and LogQL injection is impossible.
+func lokiPathFilter(field string, paths []string) string {
+	parts := make([]string, 0, len(paths))
+	seen := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		if p == "" || seen[p] {
+			continue
+		}
+		seen[p] = true
+		if !strings.Contains(p, "*") {
+			parts = append(parts, fmt.Sprintf("%s=%q", field, p))
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s=~%q", field, wildcardPathRegex(p)))
+	}
+	return strings.Join(parts, " or ")
+}
+
+// wildcardPathRegex turns a `*`-glob path pattern (such as `/api/*/items`) into
+// an anchored RE2 regular expression (`^/api/.*/items$`). Consecutive `*` runs
+// collapse into one `.*`, and every literal segment is escaped with
+// regexp.QuoteMeta so `.`, `+`, `?`, `(`, `)`, etc. match literally.
+func wildcardPathRegex(pattern string) string {
+	var b strings.Builder
+	b.WriteByte('^')
+	for i := 0; i < len(pattern); {
+		if pattern[i] == '*' {
+			b.WriteString(".*")
+			for i < len(pattern) && pattern[i] == '*' {
+				i++
+			}
+			continue
+		}
+		next := strings.IndexByte(pattern[i:], '*')
+		if next < 0 {
+			b.WriteString(regexp.QuoteMeta(pattern[i:]))
+			break
+		}
+		b.WriteString(regexp.QuoteMeta(pattern[i : i+next]))
+		i += next
+	}
+	b.WriteByte('$')
+	return b.String()
 }
 
 // lokiTSSec and lokiTSNano are lokiEntryWindow's temporary entry-timestamp
@@ -227,9 +284,133 @@ func lokiEntryWindow(start, end time.Time) string {
 		lokiTSSec, lokiTSNano, strings.Join(conds, " and "))
 }
 
-// lokiLabelRequestHost is the label lokiRequestPipeline extracts each line's
-// request host into — the host filter's and the host breakdown's axis.
-const lokiLabelRequestHost = "request_host"
+// lokiLabelRequestHost and lokiLabelRequestPath are the labels extracted from
+// each Traefik access-log line's RequestHost / RequestPath fields.
+const (
+	lokiLabelRequestHost = "request_host"
+	lokiLabelRequestPath = "request_path"
+
+	// lokiPathSuggestionsLimit is Render's documented scan window for
+	// GET /metrics/filters/path ("the most recent 5000 log lines as filtered
+	// by the provided filters").
+	lokiPathSuggestionsLimit = 5000
+	// maxPathFilterSuggestions caps the distinct path suggestions returned per
+	// request so high-cardinality routes stay bounded while surfacing the most
+	// frequent paths first.
+	maxPathFilterSuggestions = 100
+)
+
+// lokiStreamResponse is the subset of Loki's stream query_range reply read by
+// NewLokiPathFilterSuggestionsSource.
+type lokiStreamResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Stream map[string]string `json:"stream"`
+			Values [][]string        `json:"values"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
+// NewLokiPathFilterSuggestionsSource returns the production
+// PathFilterSuggestionsSource backed by Loki's /loki/api/v1/query_range over
+// the App's Traefik request-log streams (direction=backward, limit<=5000).
+// Each matched line is projected to its RequestPath so the transport transfers
+// only paths, then deduplicated and ordered by frequency descending then
+// lexicographically ascending, bounded to maxPathFilterSuggestions.
+func NewLokiPathFilterSuggestionsSource(base string, hc *http.Client) PathFilterSuggestionsSource {
+	if hc == nil {
+		hc = core.UpstreamClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req PathFilterSuggestionsRequest) ([]string, error) {
+		if req.Start.After(req.End) {
+			return []string{}, nil
+		}
+		limit := req.Limit
+		if limit <= 0 || limit > lokiPathSuggestionsLimit {
+			limit = lokiPathSuggestionsLimit
+		}
+		end := req.End
+		if !end.IsZero() {
+			// Loki's query_range end is exclusive; bump by 1 ns so entries
+			// stamped exactly at req.End are included.
+			end = end.Add(time.Nanosecond)
+		}
+		u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+			"query":     {lokiPathSuggestionsQueryFor(req)},
+			"start":     {strconv.FormatInt(req.Start.UnixNano(), 10)},
+			"end":       {strconv.FormatInt(end.UnixNano(), 10)},
+			"limit":     {strconv.Itoa(limit)},
+			"direction": {"backward"},
+		}.Encode())
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := hc.Do(httpReq)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("loki: status %d", resp.StatusCode)
+		}
+		var lr lokiStreamResponse
+		if err := core.DecodeUpstreamJSON(resp.Body, &lr); err != nil {
+			return nil, fmt.Errorf("decode loki response: %w", err)
+		}
+		if lr.Status != "" && lr.Status != promStatusSuccess {
+			return nil, fmt.Errorf("loki status %q", lr.Status)
+		}
+		counts := map[string]int{}
+		for _, st := range lr.Data.Result {
+			for _, pair := range st.Values {
+				if len(pair) == 2 && pair[1] != "" {
+					counts[pair[1]]++
+				}
+			}
+		}
+		return topPathSuggestions(counts, maxPathFilterSuggestions), nil
+	}
+}
+
+// lokiPathSuggestionsQueryFor builds the LogQL stream query for HTTP path
+// filter suggestions: scoped to the authorized App's request-log streams,
+// applying optional statusCode, host, and path (exact or `*` wildcard) filters,
+// and projecting each matching line to its RequestPath.
+func lokiPathSuggestionsQueryFor(req PathFilterSuggestionsRequest) string {
+	q := lokiRequestSelector(req.Namespace, req.App, req.StatusCodes)
+	q += ` | json ` + lokiLabelRequestHost + `="RequestHost", ` + lokiLabelRequestPath + `="RequestPath"`
+	if f := lokiOrFilter(lokiLabelRequestHost, req.Hosts); f != "" {
+		q += " | " + f
+	}
+	if f := lokiPathFilter(lokiLabelRequestPath, req.Paths); f != "" {
+		q += " | " + f
+	}
+	q += fmt.Sprintf(` | %s!="" | line_format "{{.%s}}"`, lokiLabelRequestPath, lokiLabelRequestPath)
+	return q
+}
+
+// topPathSuggestions returns up to limit distinct paths ordered by frequency
+// descending, breaking ties lexicographically ascending.
+func topPathSuggestions(counts map[string]int, limit int) []string {
+	if len(counts) == 0 || limit <= 0 {
+		return []string{}
+	}
+	paths := slices.Collect(maps.Keys(counts))
+	slices.SortFunc(paths, func(a, b string) int {
+		if c := cmp.Compare(counts[b], counts[a]); c != 0 {
+			return c
+		}
+		return strings.Compare(a, b)
+	})
+	if len(paths) > limit {
+		paths = paths[:limit]
+	}
+	return paths
+}
 
 // lokiGroupLabel maps a Render groupBy onto the request-log stream label. Both
 // status and method ride stream labels the shipper attaches; the status series is

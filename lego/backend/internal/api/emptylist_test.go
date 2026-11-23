@@ -325,6 +325,9 @@ func emptyListFixture(t *testing.T, withApp bool) (http.Handler, *Server) {
 		MetricsFilterValues: func(context.Context, metrics.MetricsFilterValuesRequest) ([]string, error) {
 			return nil, nil
 		},
+		PathFilterSuggestions: func(context.Context, metrics.PathFilterSuggestionsRequest) ([]string, error) {
+			return nil, nil
+		},
 		MonthToDateBandwidth: func(context.Context, string, []string, bool, time.Time, time.Time) (metrics.BandwidthBytes, []string, error) {
 			return metrics.BandwidthBytes{}, nil, nil
 		},

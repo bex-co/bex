@@ -454,9 +454,17 @@ func TestRESTFilterPathsUseRenderShapes(t *testing.T) {
 		t.Errorf("narrowed filters/http with leading empty statusCode = %d, want 400", rec.Code)
 	}
 
+	// Unwired Loki returns 503 for path filter suggestions instead of a silent [].
+	rec = serveREST(svc, "/v1/metrics/filters/path?resource=web")
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("filters/path without Loki = %d %s, want 503", rec.Code, rec.Body)
+	}
+	svc.PathFilterSuggestionsSource = func(_ context.Context, _ PathFilterSuggestionsRequest) ([]string, error) {
+		return nil, nil
+	}
 	rec = serveREST(svc, "/v1/metrics/filters/path?resource=web")
 	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
-		t.Errorf("filters/path = %d %s, want []", rec.Code, rec.Body)
+		t.Errorf("filters/path empty = %d %s, want []", rec.Code, rec.Body)
 	}
 
 	// Every filter read authorizes its resource: an unknown one is 404, never [].

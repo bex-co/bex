@@ -815,6 +815,9 @@ func TestRenderConformanceMetricsRemaining(t *testing.T) {
 					return []string{"pod-1"}, nil
 				}
 			},
+			PathFilterSuggestions: func(_ context.Context, _ metrics.PathFilterSuggestionsRequest) ([]string, error) {
+				return []string{"/api/v1/users", "/api/health"}, nil
+			},
 			Region:       "fsn1",
 			DashboardURL: "https://dashboard.bex.co",
 		},
@@ -824,6 +827,7 @@ func TestRenderConformanceMetricsRemaining(t *testing.T) {
 	conformDo(t, h, http.MethodGet, "/v1/metrics/disk-capacity?resource="+db.Name+"&startTime="+start+"&endTime="+end, "", http.StatusOK)
 	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/application?resource="+webID, "", http.StatusOK)
 	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/http?resource="+webID, "", http.StatusOK)
+	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/path?resource="+webID+"&startTime="+start+"&endTime="+end+"&host=metrics-web.onbex.co&statusCode=200&path=/api/*", "", http.StatusOK)
 }
 
 type conformNonceStore struct{}

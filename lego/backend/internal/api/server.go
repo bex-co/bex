@@ -393,9 +393,14 @@ type Deps struct {
 	// request metrics from the Traefik access log in Loki — the only store with a
 	// per-request host/path axis (w5/m58). nil => a host/path-filtered read
 	// reports core.ErrLogStoreUnavailable (the Logs-tab 503 pattern).
-	RequestLogMetrics    metrics.RequestMetricsSource
-	MonthToDateBandwidth metrics.MonthToDateBandwidthSource
-	MetricsFilterValues  metrics.MetricsFilterValuesSource
+	RequestLogMetrics metrics.RequestMetricsSource
+	// PathFilterSuggestions, when set (BEX_LOKI_URL), backs
+	// GET /v1/metrics/filters/path and GraphQL metricsPathFilterSuggestions
+	// from the most recent 5,000 matching Traefik access-log lines (w34/m587).
+	// nil => core.ErrLogStoreUnavailable (503).
+	PathFilterSuggestions metrics.PathFilterSuggestionsSource
+	MonthToDateBandwidth  metrics.MonthToDateBandwidthSource
+	MetricsFilterValues   metrics.MetricsFilterValuesSource
 	// DiskUsage/DBConnections/ReplicationLag (w3/m10) back the datastore-scoped
 	// metrics (Database/KeyValue disk usage; Postgres connections + replication
 	// lag). nil => those metrics report core.ErrMetricsUnavailable, same as the
@@ -1322,21 +1327,22 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Apps: appsSvc,
 		Logs: logSvc,
 		Metrics: &metrics.Service{
-			Base:                       base,
-			ResourceMetrics:            d.ResourceMetrics,
-			ResourceMetricsRange:       d.ResourceMetricsRange,
-			ResourceLimitRange:         d.ResourceLimitRange,
-			RequestMetrics:             d.RequestMetrics,
-			RequestLogMetrics:          d.RequestLogMetrics,
-			MonthToDateBandwidthSource: d.MonthToDateBandwidth,
-			MetricsFilterValuesSource:  d.MetricsFilterValues,
-			DiskUsage:                  d.DiskUsage,
-			DBConnections:              d.DBConnections,
-			ReplicationLag:             d.ReplicationLag,
-			KeyValueStats:              d.KeyValueStats,
-			DatastoreResource:          d.DatastoreResource,
-			DatastoreActivity:          d.DatastoreActivity,
-			LockWaits:                  d.LockWaits,
+			Base:                        base,
+			ResourceMetrics:             d.ResourceMetrics,
+			ResourceMetricsRange:        d.ResourceMetricsRange,
+			ResourceLimitRange:          d.ResourceLimitRange,
+			RequestMetrics:              d.RequestMetrics,
+			RequestLogMetrics:           d.RequestLogMetrics,
+			PathFilterSuggestionsSource: d.PathFilterSuggestions,
+			MonthToDateBandwidthSource:  d.MonthToDateBandwidth,
+			MetricsFilterValuesSource:   d.MetricsFilterValues,
+			DiskUsage:                   d.DiskUsage,
+			DBConnections:               d.DBConnections,
+			ReplicationLag:              d.ReplicationLag,
+			KeyValueStats:               d.KeyValueStats,
+			DatastoreResource:           d.DatastoreResource,
+			DatastoreActivity:           d.DatastoreActivity,
+			LockWaits:                   d.LockWaits,
 		},
 		APIKeys:               apiKeysSvc,
 		Accounts:              accountSvc,

@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -101,13 +100,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // "resource is required" 400) instead of letting an empty id flow into lookup
 // and surface as a 500 (w4/370).
 func requestedResources(v url.Values) []string {
-	out := []string{}
-	for _, raw := range append(append([]string{}, v["resource"]...), v["service"]...) {
-		if strings.TrimSpace(raw) != "" {
-			out = append(out, raw)
-		}
-	}
-	return out
+	return nonBlankStrings(append(append([]string{}, v["resource"]...), v["service"]...))
 }
 
 // datastoreKindFor infers a datastore metric's kind from the resource id's
@@ -260,15 +253,35 @@ func (s *Service) httpFilters(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// pathFilters is Render's "List queryable paths". bex has no path suggestions:
-// the request path is a log-line field, not a discoverable label, and GraphQL
-// metricsPathFilterSuggestions answers the same empty list. The resource is
-// still authorized, so the route is no existence oracle.
+// pathFilters is Render's "List queryable paths" (GET /v1/metrics/filters/path):
+// returns deduplicated, bounded path suggestions derived from the most recent
+// 5,000 matching Traefik access-log lines in Loki across one or more
+// authorized resources (w34/m587). Empty results always serialize as [].
 func (s *Service) pathFilters(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.filterValues(w, r, filterFieldResource); !ok {
+	v := r.URL.Query()
+	resources := requestedResources(v)
+	if len(resources) == 0 {
+		core.WriteErrStatus(w, http.StatusBadRequest, "resource is required")
 		return
 	}
-	core.WriteJSON(w, http.StatusOK, []string{})
+	start, end, _, err := parseTimeWindow(v)
+	if err != nil {
+		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	paths, err := s.PathFilterSuggestions(r.Context(), PathFilterSuggestionsQuery{
+		Apps:        resources,
+		Start:       start,
+		End:         end,
+		Hosts:       nonEmptyValues(v["host"]),
+		StatusCodes: nonEmptyValues(v["statusCode"]),
+		Paths:       nonEmptyValues(v["path"]),
+	})
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, paths)
 }
 
 // metricQuery serves one Render metrics endpoint. Render's `resource` is an array

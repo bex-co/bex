@@ -812,10 +812,11 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 	if lokiURL := cfg.LokiURL; lokiURL != "" {
 		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
 		deps.LogLabelValues = logs.NewLokiLabelValuesSource(lokiURL, nil)
-		// Host/path-filtered request metrics are served from the same Traefik
-		// access log in Loki (w5/m58) — the only store with a per-request
-		// host/path axis; unset => a host/path-filtered metrics read 503s.
+		// Host/path-filtered request metrics and path-filter suggestions are
+		// served from the same Traefik access log in Loki (w5/m58, w34/m587) —
+		// the only store with a per-request host/path axis; unset => 503.
 		deps.RequestLogMetrics = metrics.NewLokiRequestMetricsSource(lokiURL, nil)
+		deps.PathFilterSuggestions = metrics.NewLokiPathFilterSuggestionsSource(lokiURL, nil)
 		// Lock-delayed queries are counted from the Postgres log lines
 		// (w7/m430); unset => that graph answers LOG_STORE_UNAVAILABLE.
 		deps.LockWaits = metrics.NewLokiLockWaitsSource(lokiURL, nil)

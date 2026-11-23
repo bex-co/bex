@@ -52,7 +52,7 @@ type getMetricsArgs struct {
 	// HTTPHost/HTTPPath are Render's spellings; Host/Path are legacy bex aliases.
 	HTTPHost string `json:"httpHost,omitempty" jsonschema:"filter http_requests/http_latency to one request Host — Render's MCP spelling; served from the request-log store (Loki). Other metric types in the same call are read unfiltered"`
 	Host     string `json:"host,omitempty" jsonschema:"legacy bex alias of httpHost; ignored when httpHost is also set"`
-	HTTPPath string `json:"httpPath,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — Render's MCP spelling; served from the request-log store (Loki). Other metric types in the same call are read unfiltered"`
+	HTTPPath string `json:"httpPath,omitempty" jsonschema:"filter http_requests/http_latency to one request Path (supports * wildcards such as /api/*) — Render's MCP spelling; served from the request-log store (Loki). Other metric types in the same call are read unfiltered"`
 	Path     string `json:"path,omitempty" jsonschema:"legacy bex alias of httpPath; ignored when httpPath is also set"`
 	// CPUUsageAggregationMethod is Render's interval aggregation for CPU usage,
 	// passed through to REST aggregationMethod as Render's own MCP server does

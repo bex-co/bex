@@ -269,4 +269,90 @@ func TestLokiRequestMetricsClipToWindowOnLoki(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("wildcard path matching and path filter suggestions on Loki", func(t *testing.T) {
+		// Push distinct paths under a fresh app so earlier count assertions stay untouched.
+		wildLines := []line{
+			{mid, "200", "GET", "/api/users", 5_000_000},
+			{mid.Add(time.Millisecond), "200", "GET", "/api/users", 6_000_000},
+			{mid.Add(2 * time.Millisecond), "404", "GET", "/api/health", 7_000_000},
+			{mid.Add(3 * time.Millisecond), "200", "GET", "/v2/api/health", 8_000_000},
+			{mid.Add(4 * time.Millisecond), "200", "GET", "/v1.0/(a+b)?ok", 9_000_000},
+		}
+		var wildStreams []stream
+		for _, l := range wildLines {
+			msg, _ := json.Marshal(map[string]any{
+				"RequestHost": "api.example.com", "RequestPath": l.path, "RequestMethod": l.method,
+				"DownstreamStatus": l.status, "Duration": l.durationNs,
+			})
+			wildStreams = append(wildStreams, stream{
+				Stream: map[string]string{"namespace": ns, "app": "wild", "type": "request", "status": l.status, "method": l.method},
+				Values: [][2]string{{strconv.FormatInt(l.at.UnixNano(), 10), string(msg)}},
+			})
+		}
+		wildBody, _ := json.Marshal(map[string]any{"streams": wildStreams})
+		resp, err := hc.Post(base+"/loki/api/v1/push", "application/json", bytes.NewReader(wildBody))
+		if err != nil {
+			t.Fatalf("push wild: %v", err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			t.Fatalf("push wild: HTTP %d", resp.StatusCode)
+		}
+
+		suggestionsSrc := NewLokiPathFilterSuggestionsSource(base, hc)
+		var got []string
+		for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(500 * time.Millisecond) {
+			got, err = suggestionsSrc(context.Background(), PathFilterSuggestionsRequest{
+				Namespace: ns, App: "wild", Start: start, End: end,
+			})
+			if err == nil && len(got) == 4 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("Loki never returned the 4 distinct wild paths: %v, %v", got, err)
+			}
+		}
+		// /api/users appears twice, so it must rank first.
+		if got[0] != "/api/users" {
+			t.Errorf("top suggestion = %q, want /api/users (all: %v)", got[0], got)
+		}
+
+		// Wildcard path=/api/* on http_requests matches /api/users (2) + /api/health (1) = 3, excluding /v2/api/health.
+		wildReq := RequestMetricsRequest{
+			Namespace: ns, App: "wild", Metric: MetricHTTPRequests,
+			Paths: []string{"/api/*"}, Start: start, End: end, Resolution: time.Minute,
+		}
+		series, err := source(context.Background(), wildReq)
+		if err != nil {
+			t.Fatalf("wildcard http_requests: %v", err)
+		}
+		if gotTotal := total(series); gotTotal != 3 {
+			t.Errorf("wildcard /api/* count = %v, want 3", gotTotal)
+		}
+
+		// RE2 metacharacters in a wildcard pattern match literally.
+		metaSeries, err := source(context.Background(), RequestMetricsRequest{
+			Namespace: ns, App: "wild", Metric: MetricHTTPRequests,
+			Paths: []string{"/v1.0/(a+b)?*"}, Start: start, End: end, Resolution: time.Minute,
+		})
+		if err != nil {
+			t.Fatalf("metacharacter wildcard: %v", err)
+		}
+		if gotTotal := total(metaSeries); gotTotal != 1 {
+			t.Errorf("metacharacter wildcard count = %v, want 1", gotTotal)
+		}
+
+		// Path suggestions honor host, statusCode, and wildcard path filters together.
+		filtered, err := suggestionsSrc(context.Background(), PathFilterSuggestionsRequest{
+			Namespace: ns, App: "wild", Start: start, End: end,
+			Hosts: []string{"api.example.com"}, StatusCodes: []string{"4xx"}, Paths: []string{"/api/*"},
+		})
+		if err != nil {
+			t.Fatalf("filtered suggestions: %v", err)
+		}
+		if len(filtered) != 1 || filtered[0] != "/api/health" {
+			t.Errorf("filtered suggestions = %v, want [/api/health]", filtered)
+		}
+	})
 }
