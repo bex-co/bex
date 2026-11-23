@@ -3507,72 +3507,40 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "サービス",
     description: "Service-type badge fallback for an unrecognized type",
   },
-  "services.cronRunsTitle": {
-    message: "実行",
-    description:
-      "Cron job Runs page: card title over the run history (w2/m360)",
-  },
-  "services.cronRunViewLogs": {
-    message: "ログを表示",
-    description:
-      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
-  },
-  "services.cronRunsEmpty": {
-    message: "実行履歴はまだありません。",
-    description: "Cron job overview: shown when a cron has no run history",
-  },
-  "services.cronRunColStarted": {
-    message: "開始",
-    description: "Cron runs table column header (run start time)",
-  },
   "services.cronRunColDuration": {
     message: "所要時間",
-    description: "Cron runs table column header (elapsed run time)",
-  },
-  "services.cronRunColStatus": {
-    message: "ステータス",
-    description: "Cron runs table column header (run outcome)",
-  },
-  "services.cronRunColActions": {
-    message: "操作",
-    description: "Cron runs table column header (row actions)",
-  },
-  "services.cronRunStatusPending": {
-    message: "待機中",
     description:
-      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
-  },
-  "services.cronRunStatusRunning": {
-    message: "実行中",
-    description: "Cron run status badge",
+      "Cron Runs page: the Duration column's header, and a row's duration for assistive tech (Render's DURATION, w3/m556)",
   },
   "services.cronRunStatusSucceeded": {
-    message: "成功",
-    description: "Cron run status badge",
+    message: "実行成功",
+    description:
+      "Cron Runs page: a successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusFailed": {
-    message: "失敗",
-    description: "Cron run status badge",
+    message: "実行失敗",
+    description:
+      "Cron Runs page: a failed run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusCanceled": {
     message: "キャンセル済み",
-    description: "Cron run status badge",
+    description:
+      "Cron Runs page: a canceled run's status in its icon's tooltip, and its line when no one is named as canceling it (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusInProgress": {
+    message: "進行中",
+    description:
+      "Cron Runs page: the status of a run that has not ended, started or not, in its icon's tooltip (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusLastSuccessful": {
+    message: "最後に成功した実行",
+    description:
+      "Cron Runs page: the newest successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunCancel": {
     message: "キャンセル",
-    description: "Cancel an in-flight cron run",
-  },
-  "services.cronRunCancelConfirmTitle": {
-    message: "この実行をキャンセルしますか？",
-    description: "Cron run cancellation confirmation title",
-  },
-  "services.cronRunCancelConfirmBody": {
-    message: "実行中のジョブは終了されます。この操作は元に戻せません。",
-    description: "Cron run cancellation confirmation body",
-  },
-  "services.cronRunCancelSuccess": {
-    message: "Cron の実行をキャンセルしました。",
-    description: "Toast after cron run cancellation is accepted",
+    description:
+      "Cron Runs page: a run in progress's Cancel button, which cancels it at once (Render's text, w3/m556)",
   },
   "services.cronRunCancelError": {
     message: "Cron の実行をキャンセルできませんでした。",
@@ -3598,51 +3566,10 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
-  "services.cronRunDetailToggle": {
-    message: "実行の詳細、開始 {when}",
+  "services.cronTriggerSuspended": {
+    message: "実行をトリガーするには、この Cron Job を再開してください。",
     description:
-      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, with the row number when another listed run shares it (w4/213, w4/m300)",
-  },
-  "services.cronRunDetailToggleNotStarted": {
-    message: "実行の詳細、未開始（{n} 行目）",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailToggleNeverStarted": {
-    message: "実行の詳細、開始されず（{n} 行目）",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailError": {
-    message: "この実行の詳細を読み込めませんでした。",
-    description: "Shown when the single-run detail read fails (e.g. stale id)",
-  },
-  "services.cronRunDetailLoading": {
-    message: "実行の詳細を読み込み中…",
-    description:
-      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
-  },
-  "services.cronRunDetailStarted": {
-    message: "開始",
-    description: "Run detail: absolute start timestamp label",
-  },
-  "services.cronRunDetailFinished": {
-    message: "終了",
-    description: "Run detail: absolute finish timestamp label",
-  },
-  "services.cronRunDetailTriggeredBy": {
-    message: "実行したユーザー",
-    description:
-      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
-  },
-  "services.cronRunDetailCanceledBy": {
-    message: "キャンセルしたユーザー",
-    description:
-      "Run detail: label for the email of the user who canceled the run",
-  },
-  "services.cronRunDetailId": {
-    message: "実行 ID",
-    description: "Run detail: the run's opaque id label",
+      "Tooltip of a disabled Trigger Run while the cron job is suspended, shown in the Runs page's empty states (Render's text, w3/m556)",
   },
   "services.cronRunsLoadMore": {
     message: "さらに読み込む",
@@ -3655,6 +3582,114 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.cronRunsLoadError": {
     message: "Cron の実行履歴を読み込めませんでした。",
     description: "Cron run history read error",
+  },
+  "services.cronRunsLoadFailed": {
+    message:
+      "申し訳ありません。この Cron Job の実行を読み込めませんでした。ページを更新してもう一度お試しください。",
+    description:
+      "Cron Runs page: the warning shown in place of the list when the runs could not be read (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchPlaceholder": {
+    message: "Cron Job の実行を検索",
+    description:
+      "Cron Runs page: the search field's placeholder and name (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchClear": {
+    message: "検索をクリア",
+    description:
+      "Cron Runs page: the search field's clear button, for assistive tech (w3/m556)",
+  },
+  "services.cronRunsColRun": {
+    message: "実行",
+    description:
+      "Cron Runs page: the list's first column header, before the count (Render's RUN, w3/m556)",
+  },
+  "services.cronRunsColTrigger": {
+    message: "トリガー",
+    description:
+      "Cron Runs page: the Trigger column's header, and a row's trigger for assistive tech (Render's TRIGGER, w3/m556)",
+  },
+  "services.cronRunTitle": {
+    message: "Cron Job の実行",
+    description: "Cron Runs page: a run row's title (Render's text, w3/m556)",
+  },
+  "services.cronRunStartedAgo": {
+    message: "{timestamp} に実行",
+    description:
+      'Cron Runs page: when a run started, under its title; {timestamp} is elapsed text like "2 hours ago" (Render\'s "Run 21h ago", w3/m556)',
+  },
+  "services.cronRunBy": {
+    message: "{user} が実行",
+    description:
+      'Cron Runs page: after when a run started, the email of the user who triggered it (Render\'s "by <user>", w3/m556)',
+  },
+  "services.cronRunByYou": {
+    message: "あなたが実行",
+    description:
+      'Cron Runs page: after when a run started, when the viewer triggered it (Render\'s "by you", w3/m556)',
+  },
+  "services.cronRunCanceledBy": {
+    message: "{user} がキャンセル",
+    description:
+      "Cron Runs page: a canceled run's line naming the email of the user who canceled it (Render's text, w3/m556)",
+  },
+  "services.cronRunCanceledByYou": {
+    message: "あなたがキャンセル",
+    description:
+      "Cron Runs page: a canceled run's line when the viewer canceled it (Render's \"Canceled by you\", w3/m556)",
+  },
+  "services.cronRunTriggerScheduled": {
+    message: "スケジュール",
+    description:
+      "Cron Runs page: the trigger of a run the schedule started (Render's text, w3/m556)",
+  },
+  "services.cronRunTriggerManual": {
+    message: "手動",
+    description:
+      "Cron Runs page: the trigger of a run a user started (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchTitle": {
+    message: "一致する結果はありません",
+    description:
+      "Cron Runs page: title when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchBody": {
+    message:
+      "お探しのものが見つかりませんか？検索語を変えるか、入力ミスがないか確認してください。",
+    description:
+      "Cron Runs page: body when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsResetSearch": {
+    message: "検索をリセット",
+    description:
+      "Cron Runs page: the button that clears a search that matched nothing (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentTitle": {
+    message: "この Cron Job は過去 90 日間実行されていません。",
+    description:
+      "Cron Runs page: title when a cron job whose build succeeded lists no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentBody": {
+    message:
+      "手動で実行をトリガーするか、次のスケジュール実行を待ってください。",
+    description:
+      "Cron Runs page: body when a cron job whose build succeeded lists no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverTitle": {
+    message: "この Cron Job はまだ実行されていません。",
+    description:
+      "Cron Runs page: title when a cron job whose build never succeeded has no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverBody": {
+    message:
+      "最初のビルドが完了すると実行されます。手動で実行をトリガーすることもできます。",
+    description:
+      "Cron Runs page: body when a cron job whose build never succeeded has no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsCount_other": {
+    message: "{count} 件の実行",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
   },
   "services.suspendCardTitle": {
     message: "サービスを一時停止",

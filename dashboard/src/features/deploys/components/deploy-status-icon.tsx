@@ -34,8 +34,7 @@ const KIND_ICON: Record<
  */
 export function DeployStatusIcon({
   status,
-  label,
-  className,
+  ...rest
 }: {
   status: string;
   /** The status's name; omitted where the status is already spelled beside
@@ -43,7 +42,24 @@ export function DeployStatusIcon({
   label?: string;
   className?: string;
 }) {
-  const { Icon, tone } = KIND_ICON[deployStatusKind(status)];
+  return <StatusKindIcon kind={deployStatusKind(status)} {...rest} />;
+}
+
+/**
+ * One of Render's status icons by kind. A cron run draws its status with the
+ * same set (w3/m556): Render's run list and deploy list share their icons,
+ * the filled check marking the newest success.
+ */
+export function StatusKindIcon({
+  kind,
+  label,
+  className,
+}: {
+  kind: DeployStatusKind;
+  label?: string;
+  className?: string;
+}) {
+  const { Icon, tone } = KIND_ICON[kind];
   return (
     <Icon
       role={label ? "img" : undefined}

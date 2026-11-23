@@ -3482,72 +3482,40 @@ const koServices: Record<string, TranslationEntry> = {
     message: "서비스",
     description: "Service-type badge fallback for an unrecognized type",
   },
-  "services.cronRunsTitle": {
-    message: "실행",
-    description:
-      "Cron job Runs page: card title over the run history (w2/m360)",
-  },
-  "services.cronRunViewLogs": {
-    message: "로그 보기",
-    description:
-      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
-  },
-  "services.cronRunsEmpty": {
-    message: "아직 실행 기록이 없습니다.",
-    description: "Cron job overview: shown when a cron has no run history",
-  },
-  "services.cronRunColStarted": {
-    message: "시작 시각",
-    description: "Cron runs table column header (run start time)",
-  },
   "services.cronRunColDuration": {
     message: "소요 시간",
-    description: "Cron runs table column header (elapsed run time)",
-  },
-  "services.cronRunColStatus": {
-    message: "상태",
-    description: "Cron runs table column header (run outcome)",
-  },
-  "services.cronRunColActions": {
-    message: "작업",
-    description: "Cron runs table column header (row actions)",
-  },
-  "services.cronRunStatusPending": {
-    message: "대기 중",
     description:
-      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
-  },
-  "services.cronRunStatusRunning": {
-    message: "실행 중",
-    description: "Cron run status badge",
+      "Cron Runs page: the Duration column's header, and a row's duration for assistive tech (Render's DURATION, w3/m556)",
   },
   "services.cronRunStatusSucceeded": {
-    message: "성공",
-    description: "Cron run status badge",
+    message: "실행 성공",
+    description:
+      "Cron Runs page: a successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusFailed": {
-    message: "실패",
-    description: "Cron run status badge",
+    message: "실행 실패",
+    description:
+      "Cron Runs page: a failed run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusCanceled": {
     message: "취소됨",
-    description: "Cron run status badge",
+    description:
+      "Cron Runs page: a canceled run's status in its icon's tooltip, and its line when no one is named as canceling it (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusInProgress": {
+    message: "진행 중",
+    description:
+      "Cron Runs page: the status of a run that has not ended, started or not, in its icon's tooltip (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusLastSuccessful": {
+    message: "마지막 성공 실행",
+    description:
+      "Cron Runs page: the newest successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunCancel": {
     message: "취소",
-    description: "Cancel an in-flight cron run",
-  },
-  "services.cronRunCancelConfirmTitle": {
-    message: "이 실행을 취소하시겠습니까?",
-    description: "Cron run cancellation confirmation title",
-  },
-  "services.cronRunCancelConfirmBody": {
-    message: "실행 중인 작업이 종료됩니다. 이 작업은 되돌릴 수 없습니다.",
-    description: "Cron run cancellation confirmation body",
-  },
-  "services.cronRunCancelSuccess": {
-    message: "Cron 실행을 취소했습니다.",
-    description: "Toast after cron run cancellation is accepted",
+    description:
+      "Cron Runs page: a run in progress's Cancel button, which cancels it at once (Render's text, w3/m556)",
   },
   "services.cronRunCancelError": {
     message: "Cron 실행을 취소하지 못했습니다.",
@@ -3572,51 +3540,10 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
-  "services.cronRunDetailToggle": {
-    message: "실행 상세 정보, {when}에 시작됨",
+  "services.cronTriggerSuspended": {
+    message: "실행을 트리거하려면 이 Cron Job을 재개하세요.",
     description:
-      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, with the row number when another listed run shares it (w4/213, w4/m300)",
-  },
-  "services.cronRunDetailToggleNotStarted": {
-    message: "실행 상세 정보, 아직 시작되지 않음({n}번째 행)",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailToggleNeverStarted": {
-    message: "실행 상세 정보, 시작되지 않음({n}번째 행)",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailError": {
-    message: "이 실행의 상세 정보를 불러오지 못했습니다.",
-    description: "Shown when the single-run detail read fails (e.g. stale id)",
-  },
-  "services.cronRunDetailLoading": {
-    message: "실행 상세 정보를 불러오는 중…",
-    description:
-      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
-  },
-  "services.cronRunDetailStarted": {
-    message: "시작 시각",
-    description: "Run detail: absolute start timestamp label",
-  },
-  "services.cronRunDetailFinished": {
-    message: "종료 시각",
-    description: "Run detail: absolute finish timestamp label",
-  },
-  "services.cronRunDetailTriggeredBy": {
-    message: "실행한 사람",
-    description:
-      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
-  },
-  "services.cronRunDetailCanceledBy": {
-    message: "취소한 사람",
-    description:
-      "Run detail: label for the email of the user who canceled the run",
-  },
-  "services.cronRunDetailId": {
-    message: "실행 ID",
-    description: "Run detail: the run's opaque id label",
+      "Tooltip of a disabled Trigger Run while the cron job is suspended, shown in the Runs page's empty states (Render's text, w3/m556)",
   },
   "services.cronRunsLoadMore": {
     message: "더 보기",
@@ -3629,6 +3556,112 @@ const koServices: Record<string, TranslationEntry> = {
   "services.cronRunsLoadError": {
     message: "Cron 실행 기록을 불러오지 못했습니다.",
     description: "Cron run history read error",
+  },
+  "services.cronRunsLoadFailed": {
+    message:
+      "죄송합니다. 이 Cron Job의 실행 기록을 불러오지 못했습니다. 새로고침 후 다시 시도해 보세요.",
+    description:
+      "Cron Runs page: the warning shown in place of the list when the runs could not be read (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchPlaceholder": {
+    message: "Cron Job 실행 검색",
+    description:
+      "Cron Runs page: the search field's placeholder and name (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchClear": {
+    message: "검색 지우기",
+    description:
+      "Cron Runs page: the search field's clear button, for assistive tech (w3/m556)",
+  },
+  "services.cronRunsColRun": {
+    message: "실행",
+    description:
+      "Cron Runs page: the list's first column header, before the count (Render's RUN, w3/m556)",
+  },
+  "services.cronRunsColTrigger": {
+    message: "트리거",
+    description:
+      "Cron Runs page: the Trigger column's header, and a row's trigger for assistive tech (Render's TRIGGER, w3/m556)",
+  },
+  "services.cronRunTitle": {
+    message: "Cron Job 실행",
+    description: "Cron Runs page: a run row's title (Render's text, w3/m556)",
+  },
+  "services.cronRunStartedAgo": {
+    message: "{timestamp} 실행됨",
+    description:
+      'Cron Runs page: when a run started, under its title; {timestamp} is elapsed text like "2 hours ago" (Render\'s "Run 21h ago", w3/m556)',
+  },
+  "services.cronRunBy": {
+    message: "{user}님이 실행",
+    description:
+      'Cron Runs page: after when a run started, the email of the user who triggered it (Render\'s "by <user>", w3/m556)',
+  },
+  "services.cronRunByYou": {
+    message: "내가 실행",
+    description:
+      'Cron Runs page: after when a run started, when the viewer triggered it (Render\'s "by you", w3/m556)',
+  },
+  "services.cronRunCanceledBy": {
+    message: "{user}님이 취소함",
+    description:
+      "Cron Runs page: a canceled run's line naming the email of the user who canceled it (Render's text, w3/m556)",
+  },
+  "services.cronRunCanceledByYou": {
+    message: "내가 취소함",
+    description:
+      "Cron Runs page: a canceled run's line when the viewer canceled it (Render's \"Canceled by you\", w3/m556)",
+  },
+  "services.cronRunTriggerScheduled": {
+    message: "예약됨",
+    description:
+      "Cron Runs page: the trigger of a run the schedule started (Render's text, w3/m556)",
+  },
+  "services.cronRunTriggerManual": {
+    message: "수동",
+    description:
+      "Cron Runs page: the trigger of a run a user started (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchTitle": {
+    message: "일치하는 결과가 없습니다",
+    description:
+      "Cron Runs page: title when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchBody": {
+    message: "찾는 항목이 없나요? 검색어를 바꾸거나 오타가 없는지 확인하세요.",
+    description:
+      "Cron Runs page: body when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsResetSearch": {
+    message: "검색 초기화",
+    description:
+      "Cron Runs page: the button that clears a search that matched nothing (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentTitle": {
+    message: "이 Cron Job은 지난 90일 동안 실행되지 않았습니다.",
+    description:
+      "Cron Runs page: title when a cron job whose build succeeded lists no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentBody": {
+    message: "수동으로 실행을 트리거하거나 다음 예약 실행을 기다리세요.",
+    description:
+      "Cron Runs page: body when a cron job whose build succeeded lists no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverTitle": {
+    message: "이 Cron Job은 아직 실행되지 않았습니다.",
+    description:
+      "Cron Runs page: title when a cron job whose build never succeeded has no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverBody": {
+    message:
+      "첫 빌드가 완료되면 실행됩니다. 수동으로 실행을 트리거할 수도 있습니다.",
+    description:
+      "Cron Runs page: body when a cron job whose build never succeeded has no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsCount_other": {
+    message: "실행 {count}건",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
   },
   "services.suspendCardTitle": {
     message: "서비스 일시 중지",

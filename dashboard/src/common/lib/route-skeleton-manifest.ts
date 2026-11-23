@@ -610,7 +610,7 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/services.$serviceId.runs.tsx",
     shape: "cron-runs",
-    regions: ["cron-runs-table"],
+    regions: ["cron-runs-list"],
   },
   "/services/$serviceId/scaling": {
     kind: "redirect",

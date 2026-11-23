@@ -112,3 +112,45 @@ The docs and the changelog still say Builds. The signed-in dashboard says **Depl
 | "Runs `<command>` `<schedule in words>`" | `CronRunFacts`: the command override, else a native runtime's start command, else "`CMD` in `<Dockerfile path>`" (Render's wording, the image-backed case included); the schedule in Render's cronstrue words for the shapes `describeCronRun` names (every minute, every N minutes, every hour, at M minutes past the hour, every N hours, daily, weekly and monthly times, "at 09:00 AM UTC"). Other languages use their own words and a 24-hour clock |
 | "Last successful run `<local date>`", "No successful runs yet." | "Last successful run November 22, 2026 at 1:00 AM" in the viewer's zone, with local, UTC and Unix time in its tooltip (`InstantTooltip`); "No successful runs yet." before the first. The header's next run is gone (`nextRunAt` stays a REST, GraphQL and MCP extension) |
 | Deploys: "Search deploys and commits"; Manual Build for a cron job that is not image-backed | Every Deploys page's search reads "Search deploys and commits". A repo-backed cron job's has `ManualBuildButton` beside the search and filter once the list is wide, on the count's line on a phone: the deploy trigger at once, then the new deploy's page; disabled with the `deploy` decision's reason. An image-backed cron job has none |
+
+## The Runs page (2026-11-22, w3/m556)
+
+**Evidence.** The 2026-11-21 walk above (four cron jobs, nothing that acts clicked), and Render's public dashboard bundle re-read on 2026-11-22 without sign-in: `index-BR2q8yex.js` (`PF` the Runs page, `lhe` its state and cancel dispatch, `ohe` empty-state selection, `ahe` the 30-run slice with `build: void 0`, `vhe` and `jF` the list and header, `ghe` one row with `hhe = false` (`data-has-menu: false`), `yF` the relative timestamp line), `CronJob-D3WeWa8V.js` (`Hr`/`Sre` the Logs window URL, `Ur`/`Wr`/`Gr`/`xre` status icons and tooltips, `gi`/`Ere` client-side search, `li`/`si` search fields), `helpers-C_tFPHBn.js` (`Nv` trigger labels, `Pv` trigger user), `Duration-DvaXAync.js` / `LiveDuration-lHQuOv8Z.js`, and `CancelReasonText-Bio2zVo0.js`. Each source below is **walk** (seen signed in) or **bundle** (read in code only).
+
+**Note on the earlier brainstorm's row menu.** `Copy run ID` and `Cancel run` in `index-*.js` belong to Render Workflows' `taskRun` table (`resource_type: "taskRun"`, `source: "table_row_menu"`), not cron job runs. On a cron job's Runs page (`ghe`), `hhe` is hardcoded `false` (`data-has-menu: false`) and the row's only action is an inline `Cancel` button while the run can be canceled.
+
+**The list and rows** (`PF`, `vhe`, `jF`, `ghe`, `Gr`).
+
+| Fact | Source |
+| --- | --- |
+| Search input above the list: placeholder "Search cron job runs", with an inline clear button once non-empty | walk (field), bundle (clear) |
+| List header: **RUN** with a count badge (`t.toLocaleString()`), **TRIGGER**, **DURATION**; Trigger and Duration are columns from container width `50rem` (`@container(min-width:50rem)`) and fold under the run below that | walk, bundle |
+| Each row: status icon with tooltip, title **"Cron job run"** (`ahe` passes `build: void 0`, so `e.build?.commit` is never populated for cron runs), subtitle "Run `<relative time>`" (with timestamp tooltip) plus `by you` / `by <email>` when manually triggered and `• Canceled …` when canceled, Trigger (`Scheduled`, `Manual`, `API`, …), and Duration (`14.5s`, `1m 5s`, `1h 2m`, `1d 4h`, live per-second while running, `—` before start) | walk (title, age, Scheduled, 14.5s), bundle (the rest) |
+| Status icons and tooltips (`Gr`, `Ur`, `Wr`): filled green check **"Last successful run"** on the newest successful run only, outline green check **"Run succeeded"** on older successes, red X **"Run failed"** (`unsuccessful`), neutral X **"Canceled"** (`canceled`), spinner **"In progress"** (`pending`) | bundle |
+| Both the status icon and the row link to `<cron>/logs?r=<start-1m>~<end+1m>` (or `now + 1m` while running; `end - 1h ~ end + 1m` if the run never started) | walk (row link), bundle (`Hr` formula) |
+| Row action: inline destructive-ghost **Cancel** button (close icon) shown only when `canCancel` is true; clicks dispatch `cancelCronJobRun` immediately with no confirm dialog, silent on success and persistent error toast (`autoDismiss: false`) on failure. No row menu and no Copy run ID | bundle (`ghe`, `lhe`) |
+| Loaded slice: Render slices the newest **30** runs (`ihe({allRuns, limit: 30})`) | walk (count 30), bundle (`ahe`) |
+
+**Search** (`Ere`/`gi`, `li`, `si`).
+
+| Fact | Source |
+| --- | --- |
+| Filters the loaded runs client-side on: status tooltip + API status word (`__search__statusText`, e.g. `Run failed failed`), `"Last successful run"` on the newest success (`__search__latestLabel`), trigger label (`__search__triggerLabel`), trigger user email (`__search__triggerUserEmail`), image ref/SHA when present, and run ID (`id`) when the query matches an ID shape | bundle |
+| No matches: **"No matching results"** / "Not finding what you're looking for? Try adjusting your search and checking for typos." and a **Reset search** button | bundle |
+
+**Empty and error states** (`PF`, `ohe`).
+
+| Fact | Source |
+| --- | --- |
+| Built cron job with no runs (`empty-data`): **"This cron job hasn't run in the last 90 days."** / "You can trigger a run manually, or wait for the next scheduled run." over Trigger Run (disabled while suspended with "Resume this cron job to trigger a run.") | walk (suspended empty state), bundle |
+| Unbuilt cron job with no runs (`empty-never-run`): **"This cron job hasn't run yet."** / "It will run once its first build finishes, or you can trigger a run manually." over Trigger Run | bundle |
+| Both empty states keep the search input above the empty box | walk, bundle |
+| Load failure (`!i.runs && !loading`): standalone warning banner **"We're sorry. We weren't able to load runs for this cron job. Refresh and try again?"** with no search input | bundle |
+
+| Render (Runs page) | bex (w3/m556) |
+| --- | --- |
+| "Search cron job runs" over the loaded runs (30); fuzzysort ranking | `cron-runs-section.tsx`, `cron-run-list.ts`: "Search cron job runs" with inline clear button; matches whitespace/slash-separated words across status label, API status word, "Last successful run", trigger label, trigger user email, and a full `crr-…` run ID (exact word matching, matching bex's Deploys search). Page size is Render's 30; bex keeps **Load more** (even while a search has no match) because bex's durable run history (w3/m366) extends past 30 runs and past 90 days |
+| RUN (count), TRIGGER, DURATION; rows of icon, "Cron job run", relative time + actor + cancel reason, Trigger, Duration | `cron-runs-frame.tsx`, `cron-runs-section.tsx`: shared container-query grid (`@3xl/runs`, 48rem vs Render's 50rem) used by both ready rows and skeleton placeholders. Status icons share `StatusKindIcon` with Deploys; newest success gets the filled check and "Last successful run". Whole row and icon link to `/services/<id>/logs?range=custom&rangeStart=<start-1m>&rangeEnd=<end+1m>` (`now+1m` while running; `end-1h..end+1m` if never started) |
+| Inline Cancel on in-progress runs, no confirm, persistent error toast, no row menu | Inline destructive-ghost **Cancel** button gated by `cron_cancel_run` (re-read when active runs change, w4/249); cancels at once with no dialog, silent on success, `duration: Infinity` error toast on failure. No row menu or Copy run ID (matches Render's `hhe = false`) |
+| Never-run, 90-day empty states over Trigger Run (with suspended tooltip); standalone load error | Exact Render copy in 8 languages; `CronTriggerRunButton` reused with `"Resume this cron job to trigger a run."` when suspended (`cron-header-actions.tsx`) and `"No successful build detected. View Deploys."` when unbuilt. Standalone amber alert on initial load error; preserves loaded runs if a background poll fails. Old single-run expand detail (`use-cron-run.ts`, `CronJobRun` query) removed |
+| Pending skeleton matches ready geometry | `CronRunsFrameSkeleton` (`cron-runs-frame.tsx`) / `ServiceCronRunsSkeleton` (`route-skeletons.tsx`): search box + header + 30 row placeholders + reserved Load more slot |

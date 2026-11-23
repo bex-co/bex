@@ -941,8 +941,14 @@ describe("ServiceDetailHeader", () => {
     ],
     [
       "a precondition the server reports",
+      { precondition: "billing_blocked" },
+      "Billing needs attention before this action can run. Resolve it in Billing.",
+    ],
+    // w3/m556: Render's own words for a suspended cron job.
+    [
+      "a suspended cron job",
       { precondition: "suspended" },
-      "Unavailable while the service is suspended. Resume it first.",
+      "Resume this cron job to trigger a run.",
     ],
   ])("disables Trigger Run for %s, with its reason", async (_, gate, text) => {
     resourceActions = mockAllowedResourceActions("app", { cron_run_now: gate });

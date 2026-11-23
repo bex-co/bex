@@ -3395,72 +3395,40 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务",
     description: "Service-type badge fallback for an unrecognized type",
   },
-  "services.cronRunsTitle": {
-    message: "运行",
-    description:
-      "Cron job Runs page: card title over the run history (w2/m360)",
-  },
-  "services.cronRunViewLogs": {
-    message: "查看日志",
-    description:
-      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
-  },
-  "services.cronRunsEmpty": {
-    message: "暂无运行记录。",
-    description: "Cron job overview: shown when a cron has no run history",
-  },
-  "services.cronRunColStarted": {
-    message: "开始时间",
-    description: "Cron runs table column header (run start time)",
-  },
   "services.cronRunColDuration": {
     message: "持续时间",
-    description: "Cron runs table column header (elapsed run time)",
-  },
-  "services.cronRunColStatus": {
-    message: "状态",
-    description: "Cron runs table column header (run outcome)",
-  },
-  "services.cronRunColActions": {
-    message: "操作",
-    description: "Cron runs table column header (row actions)",
-  },
-  "services.cronRunStatusPending": {
-    message: "等待中",
     description:
-      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
-  },
-  "services.cronRunStatusRunning": {
-    message: "运行中",
-    description: "Cron run status badge",
+      "Cron Runs page: the Duration column's header, and a row's duration for assistive tech (Render's DURATION, w3/m556)",
   },
   "services.cronRunStatusSucceeded": {
-    message: "成功",
-    description: "Cron run status badge",
+    message: "运行成功",
+    description:
+      "Cron Runs page: a successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusFailed": {
-    message: "失败",
-    description: "Cron run status badge",
+    message: "运行失败",
+    description:
+      "Cron Runs page: a failed run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusCanceled": {
     message: "已取消",
-    description: "Cron run status badge",
+    description:
+      "Cron Runs page: a canceled run's status in its icon's tooltip, and its line when no one is named as canceling it (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusInProgress": {
+    message: "进行中",
+    description:
+      "Cron Runs page: the status of a run that has not ended, started or not, in its icon's tooltip (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusLastSuccessful": {
+    message: "上次成功运行",
+    description:
+      "Cron Runs page: the newest successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunCancel": {
     message: "取消",
-    description: "Cancel an in-flight cron run",
-  },
-  "services.cronRunCancelConfirmTitle": {
-    message: "取消此次运行？",
-    description: "Cron run cancellation confirmation title",
-  },
-  "services.cronRunCancelConfirmBody": {
-    message: "正在运行的任务将被终止，且无法撤销。",
-    description: "Cron run cancellation confirmation body",
-  },
-  "services.cronRunCancelSuccess": {
-    message: "定时任务运行已取消。",
-    description: "Toast after cron run cancellation is accepted",
+    description:
+      "Cron Runs page: a run in progress's Cancel button, which cancels it at once (Render's text, w3/m556)",
   },
   "services.cronRunCancelError": {
     message: "无法取消定时任务运行。",
@@ -3485,51 +3453,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
-  "services.cronRunDetailToggle": {
-    message: "运行详情，开始于 {when}",
+  "services.cronTriggerSuspended": {
+    message: "恢复此定时任务后才能触发运行。",
     description:
-      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, or the run id (w4/213)",
-  },
-  "services.cronRunDetailToggleNotStarted": {
-    message: "运行详情，尚未开始（第 {n} 行）",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailToggleNeverStarted": {
-    message: "运行详情，未曾开始（第 {n} 行）",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailError": {
-    message: "无法加载该运行的详情。",
-    description: "Shown when the single-run detail read fails (e.g. stale id)",
-  },
-  "services.cronRunDetailLoading": {
-    message: "正在加载运行详情…",
-    description:
-      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
-  },
-  "services.cronRunDetailStarted": {
-    message: "开始时间",
-    description: "Run detail: absolute start timestamp label",
-  },
-  "services.cronRunDetailFinished": {
-    message: "结束时间",
-    description: "Run detail: absolute finish timestamp label",
-  },
-  "services.cronRunDetailTriggeredBy": {
-    message: "触发者",
-    description:
-      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
-  },
-  "services.cronRunDetailCanceledBy": {
-    message: "取消者",
-    description:
-      "Run detail: label for the email of the user who canceled the run",
-  },
-  "services.cronRunDetailId": {
-    message: "运行 ID",
-    description: "Run detail: the run's opaque id label",
+      "Tooltip of a disabled Trigger Run while the cron job is suspended, shown in the Runs page's empty states (Render's text, w3/m556)",
   },
   "services.cronRunsLoadMore": {
     message: "加载更多",
@@ -3542,6 +3469,110 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.cronRunsLoadError": {
     message: "无法加载定时任务运行记录。",
     description: "Cron run history read error",
+  },
+  "services.cronRunsLoadFailed": {
+    message: "抱歉，无法加载此定时任务的运行记录。要刷新后重试吗？",
+    description:
+      "Cron Runs page: the warning shown in place of the list when the runs could not be read (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchPlaceholder": {
+    message: "搜索定时任务运行",
+    description:
+      "Cron Runs page: the search field's placeholder and name (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchClear": {
+    message: "清除搜索",
+    description:
+      "Cron Runs page: the search field's clear button, for assistive tech (w3/m556)",
+  },
+  "services.cronRunsColRun": {
+    message: "运行",
+    description:
+      "Cron Runs page: the list's first column header, before the count (Render's RUN, w3/m556)",
+  },
+  "services.cronRunsColTrigger": {
+    message: "触发方式",
+    description:
+      "Cron Runs page: the Trigger column's header, and a row's trigger for assistive tech (Render's TRIGGER, w3/m556)",
+  },
+  "services.cronRunTitle": {
+    message: "定时任务运行",
+    description: "Cron Runs page: a run row's title (Render's text, w3/m556)",
+  },
+  "services.cronRunStartedAgo": {
+    message: "{timestamp}运行",
+    description:
+      'Cron Runs page: when a run started, under its title; {timestamp} is elapsed text like "2 hours ago" (Render\'s "Run 21h ago", w3/m556)',
+  },
+  "services.cronRunBy": {
+    message: "由 {user} 触发",
+    description:
+      'Cron Runs page: after when a run started, the email of the user who triggered it (Render\'s "by <user>", w3/m556)',
+  },
+  "services.cronRunByYou": {
+    message: "由你触发",
+    description:
+      'Cron Runs page: after when a run started, when the viewer triggered it (Render\'s "by you", w3/m556)',
+  },
+  "services.cronRunCanceledBy": {
+    message: "已由 {user} 取消",
+    description:
+      "Cron Runs page: a canceled run's line naming the email of the user who canceled it (Render's text, w3/m556)",
+  },
+  "services.cronRunCanceledByYou": {
+    message: "已由你取消",
+    description:
+      "Cron Runs page: a canceled run's line when the viewer canceled it (Render's \"Canceled by you\", w3/m556)",
+  },
+  "services.cronRunTriggerScheduled": {
+    message: "定时",
+    description:
+      "Cron Runs page: the trigger of a run the schedule started (Render's text, w3/m556)",
+  },
+  "services.cronRunTriggerManual": {
+    message: "手动",
+    description:
+      "Cron Runs page: the trigger of a run a user started (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchTitle": {
+    message: "没有匹配的结果",
+    description:
+      "Cron Runs page: title when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchBody": {
+    message: "没有找到想要的内容？请调整搜索词并检查拼写。",
+    description:
+      "Cron Runs page: body when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsResetSearch": {
+    message: "重置搜索",
+    description:
+      "Cron Runs page: the button that clears a search that matched nothing (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentTitle": {
+    message: "此定时任务在过去 90 天内没有运行过。",
+    description:
+      "Cron Runs page: title when a cron job whose build succeeded lists no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentBody": {
+    message: "你可以手动触发一次运行，或等待下一次定时运行。",
+    description:
+      "Cron Runs page: body when a cron job whose build succeeded lists no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverTitle": {
+    message: "此定时任务还没有运行过。",
+    description:
+      "Cron Runs page: title when a cron job whose build never succeeded has no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverBody": {
+    message: "它会在首次构建完成后运行，你也可以手动触发一次运行。",
+    description:
+      "Cron Runs page: body when a cron job whose build never succeeded has no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsCount_other": {
+    message: "{count} 次运行",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
   },
   "services.suspendCardTitle": {
     message: "暂停服务",

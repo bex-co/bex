@@ -102,6 +102,7 @@ import {
   serviceTypeFromCreatePath,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
+import { CronRunsFrameSkeleton } from "@/features/services/components/cron-runs-frame";
 import {
   ObservabilityViewHeader,
   ViewActionButtons,
@@ -2467,13 +2468,13 @@ export function DeployDetailSkeleton() {
   );
 }
 
-/** A cron job's Runs page (w2/m360): the runs card's title over the
- *  four-column run table. Trigger Run is the header's (w3/m555). */
+/** A cron job's Runs page (w3/m556): the search's box, then the list's
+ *  header and a full page of rows, on the ready page's own frame. */
 export function ServiceCronRunsSkeleton() {
   return (
     <PendingFrame route="cron-runs">
-      <Region name="cron-runs-table">
-        <TableCardSkeleton rows={3} columns={4} action={false} />
+      <Region name="cron-runs-list">
+        <CronRunsFrameSkeleton />
       </Region>
     </PendingFrame>
   );

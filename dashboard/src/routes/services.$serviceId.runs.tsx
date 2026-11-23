@@ -13,10 +13,10 @@ export const Route = createFileRoute("/services/$serviceId/runs")({
   pendingComponent: ServiceCronRunsSkeleton,
 });
 
-// A cron job's Runs page (w2/m360), as on Render: run history, each run's
-// detail and logs, Trigger Run and cancel. It used to be a section under the
-// Events feed, and it is where a cron job's bare URL lands, as Render shows
-// Runs at `/cron/<id>` (w3/m554).
+// A cron job's Runs page (w2/m360), as on Render: its runs, searchable, each
+// opening the Logs over its window, with cancel (w3/m556). It used to be a
+// section under the Events feed, and it is where a cron job's bare URL lands,
+// as Render shows Runs at `/cron/<id>` (w3/m554).
 function RouteComponent() {
   const { serviceId } = Route.useParams();
   return <CronRunsSection key={serviceId} serviceId={serviceId} />;

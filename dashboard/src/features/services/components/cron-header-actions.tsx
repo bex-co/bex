@@ -4,7 +4,10 @@ import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
-import { projectionReason } from "@/features/capabilities/lib/resource-actions";
+import {
+  projectionReason,
+  resourceDecision,
+} from "@/features/capabilities/lib/resource-actions";
 import { ResumeServiceButton } from "@/features/services/components/resume-service-button";
 import { useTriggerCronRun } from "@/features/services/hooks/use-trigger-cron-run";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
@@ -36,9 +39,24 @@ export function CronTriggerRunButton({ service }: { service: ServiceView }) {
     "cron_run_now",
     t,
   );
+  // Render names the suspended case in its own words, after a missing
+  // permission (w3/m556): the button shows while suspended only in the Runs
+  // page's empty states.
+  const decision =
+    serverActions.status === "ready"
+      ? resourceDecision(
+          serverActions.snapshot,
+          currentWorkspaceId,
+          service.id,
+          "cron_run_now",
+        )
+      : null;
+  const suspended =
+    decision?.outcome === "allowed" && decision.precondition === "suspended";
   const noBuild = Boolean(service.repo) && !hasServed(service);
-  const reason =
-    blocked ?? (noBuild ? <NoBuildReason serviceId={service.id} /> : null);
+  const reason = suspended
+    ? t("services.cronTriggerSuspended")
+    : (blocked ?? (noBuild ? <NoBuildReason serviceId={service.id} /> : null));
 
   return (
     <PermissionTooltip reason={reason}>

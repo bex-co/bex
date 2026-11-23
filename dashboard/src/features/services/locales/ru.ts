@@ -3496,73 +3496,40 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Сервис",
     description: "Service-type badge fallback for an unrecognized type",
   },
-  "services.cronRunsTitle": {
-    message: "Запуски",
-    description:
-      "Cron job Runs page: card title over the run history (w2/m360)",
-  },
-  "services.cronRunViewLogs": {
-    message: "Смотреть логи",
-    description:
-      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
-  },
-  "services.cronRunsEmpty": {
-    message: "Запусков пока нет.",
-    description: "Cron job overview: shown when a cron has no run history",
-  },
-  "services.cronRunColStarted": {
-    message: "Начало",
-    description: "Cron runs table column header (run start time)",
-  },
   "services.cronRunColDuration": {
     message: "Длительность",
-    description: "Cron runs table column header (elapsed run time)",
-  },
-  "services.cronRunColStatus": {
-    message: "Статус",
-    description: "Cron runs table column header (run outcome)",
-  },
-  "services.cronRunColActions": {
-    message: "Действия",
-    description: "Cron runs table column header (row actions)",
-  },
-  "services.cronRunStatusPending": {
-    message: "Ожидает",
     description:
-      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
-  },
-  "services.cronRunStatusRunning": {
-    message: "Выполняется",
-    description: "Cron run status badge",
+      "Cron Runs page: the Duration column's header, and a row's duration for assistive tech (Render's DURATION, w3/m556)",
   },
   "services.cronRunStatusSucceeded": {
-    message: "Успешно",
-    description: "Cron run status badge",
+    message: "Запуск успешен",
+    description:
+      "Cron Runs page: a successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusFailed": {
-    message: "Ошибка",
-    description: "Cron run status badge",
+    message: "Запуск не удался",
+    description:
+      "Cron Runs page: a failed run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunStatusCanceled": {
     message: "Отменён",
-    description: "Cron run status badge",
+    description:
+      "Cron Runs page: a canceled run's status in its icon's tooltip, and its line when no one is named as canceling it (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusInProgress": {
+    message: "Выполняется",
+    description:
+      "Cron Runs page: the status of a run that has not ended, started or not, in its icon's tooltip (Render's text, w3/m556)",
+  },
+  "services.cronRunStatusLastSuccessful": {
+    message: "Последний успешный запуск",
+    description:
+      "Cron Runs page: the newest successful run's status, in its icon's tooltip (Render's text, w3/m556)",
   },
   "services.cronRunCancel": {
     message: "Отменить",
-    description: "Cancel an in-flight cron run",
-  },
-  "services.cronRunCancelConfirmTitle": {
-    message: "Отменить этот запуск?",
-    description: "Cron run cancellation confirmation title",
-  },
-  "services.cronRunCancelConfirmBody": {
-    message:
-      "Выполняющееся задание будет прервано. Это действие нельзя отменить.",
-    description: "Cron run cancellation confirmation body",
-  },
-  "services.cronRunCancelSuccess": {
-    message: "Запуск Cron Job отменён.",
-    description: "Toast after cron run cancellation is accepted",
+    description:
+      "Cron Runs page: a run in progress's Cancel button, which cancels it at once (Render's text, w3/m556)",
   },
   "services.cronRunCancelError": {
     message: "Не удалось отменить запуск Cron Job.",
@@ -3587,51 +3554,10 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Tooltip of a disabled Trigger Run on a repo-backed cron job whose build never succeeded; {deploys} is a link to its Deploys page, named by services.navDeploys (Render's text, w3/m555)",
   },
-  "services.cronRunDetailToggle": {
-    message: "Сведения о запуске, начат {when}",
+  "services.cronTriggerSuspended": {
+    message: "Возобновите этот Cron Job, чтобы запустить его.",
     description:
-      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, with the row number when another listed run shares it (w4/213, w4/m300)",
-  },
-  "services.cronRunDetailToggleNotStarted": {
-    message: "Сведения о запуске, ещё не начат (строка {n})",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailToggleNeverStarted": {
-    message: "Сведения о запуске, так и не начат (строка {n})",
-    description:
-      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
-  },
-  "services.cronRunDetailError": {
-    message: "Не удалось загрузить сведения об этом запуске.",
-    description: "Shown when the single-run detail read fails (e.g. stale id)",
-  },
-  "services.cronRunDetailLoading": {
-    message: "Загрузка сведений о запуске…",
-    description:
-      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
-  },
-  "services.cronRunDetailStarted": {
-    message: "Начало",
-    description: "Run detail: absolute start timestamp label",
-  },
-  "services.cronRunDetailFinished": {
-    message: "Завершение",
-    description: "Run detail: absolute finish timestamp label",
-  },
-  "services.cronRunDetailTriggeredBy": {
-    message: "Запустил",
-    description:
-      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
-  },
-  "services.cronRunDetailCanceledBy": {
-    message: "Отменил",
-    description:
-      "Run detail: label for the email of the user who canceled the run",
-  },
-  "services.cronRunDetailId": {
-    message: "ID запуска",
-    description: "Run detail: the run's opaque id label",
+      "Tooltip of a disabled Trigger Run while the cron job is suspended, shown in the Runs page's empty states (Render's text, w3/m556)",
   },
   "services.cronRunsLoadMore": {
     message: "Загрузить ещё",
@@ -3644,6 +3570,128 @@ const ruServices: Record<string, TranslationEntry> = {
   "services.cronRunsLoadError": {
     message: "Не удалось загрузить запуски Cron Job.",
     description: "Cron run history read error",
+  },
+  "services.cronRunsLoadFailed": {
+    message:
+      "К сожалению, не удалось загрузить запуски этого Cron Job. Обновите страницу и попробуйте ещё раз.",
+    description:
+      "Cron Runs page: the warning shown in place of the list when the runs could not be read (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchPlaceholder": {
+    message: "Поиск запусков Cron Job",
+    description:
+      "Cron Runs page: the search field's placeholder and name (Render's text, w3/m556)",
+  },
+  "services.cronRunsSearchClear": {
+    message: "Очистить поиск",
+    description:
+      "Cron Runs page: the search field's clear button, for assistive tech (w3/m556)",
+  },
+  "services.cronRunsColRun": {
+    message: "Запуск",
+    description:
+      "Cron Runs page: the list's first column header, before the count (Render's RUN, w3/m556)",
+  },
+  "services.cronRunsColTrigger": {
+    message: "Триггер",
+    description:
+      "Cron Runs page: the Trigger column's header, and a row's trigger for assistive tech (Render's TRIGGER, w3/m556)",
+  },
+  "services.cronRunTitle": {
+    message: "Запуск Cron Job",
+    description: "Cron Runs page: a run row's title (Render's text, w3/m556)",
+  },
+  "services.cronRunStartedAgo": {
+    message: "Запущен {timestamp}",
+    description:
+      'Cron Runs page: when a run started, under its title; {timestamp} is elapsed text like "2 hours ago" (Render\'s "Run 21h ago", w3/m556)',
+  },
+  "services.cronRunBy": {
+    message: "пользователем {user}",
+    description:
+      'Cron Runs page: after when a run started, the email of the user who triggered it (Render\'s "by <user>", w3/m556)',
+  },
+  "services.cronRunByYou": {
+    message: "вами",
+    description:
+      'Cron Runs page: after when a run started, when the viewer triggered it (Render\'s "by you", w3/m556)',
+  },
+  "services.cronRunCanceledBy": {
+    message: "Отменён пользователем {user}",
+    description:
+      "Cron Runs page: a canceled run's line naming the email of the user who canceled it (Render's text, w3/m556)",
+  },
+  "services.cronRunCanceledByYou": {
+    message: "Отменён вами",
+    description:
+      "Cron Runs page: a canceled run's line when the viewer canceled it (Render's \"Canceled by you\", w3/m556)",
+  },
+  "services.cronRunTriggerScheduled": {
+    message: "По расписанию",
+    description:
+      "Cron Runs page: the trigger of a run the schedule started (Render's text, w3/m556)",
+  },
+  "services.cronRunTriggerManual": {
+    message: "Вручную",
+    description:
+      "Cron Runs page: the trigger of a run a user started (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchTitle": {
+    message: "Ничего не найдено",
+    description:
+      "Cron Runs page: title when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsNoMatchBody": {
+    message: "Не нашли нужное? Измените запрос и проверьте, нет ли опечаток.",
+    description:
+      "Cron Runs page: body when the search matches none of the loaded runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsResetSearch": {
+    message: "Сбросить поиск",
+    description:
+      "Cron Runs page: the button that clears a search that matched nothing (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentTitle": {
+    message: "Этот Cron Job не запускался последние 90 дней.",
+    description:
+      "Cron Runs page: title when a cron job whose build succeeded lists no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyRecentBody": {
+    message:
+      "Можно запустить его вручную или дождаться следующего запуска по расписанию.",
+    description:
+      "Cron Runs page: body when a cron job whose build succeeded lists no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverTitle": {
+    message: "Этот Cron Job ещё не запускался.",
+    description:
+      "Cron Runs page: title when a cron job whose build never succeeded has no runs (Render's text, w3/m556)",
+  },
+  "services.cronRunsEmptyNeverBody": {
+    message:
+      "Он запустится после завершения первой сборки, или его можно запустить вручную.",
+    description:
+      "Cron Runs page: body when a cron job whose build never succeeded has no runs, above Trigger Run (Render's text, w3/m556)",
+  },
+  "services.cronRunsCount_one": {
+    message: "{count} запуск",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
+  },
+  "services.cronRunsCount_few": {
+    message: "{count} запуска",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
+  },
+  "services.cronRunsCount_many": {
+    message: "{count} запусков",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
+  },
+  "services.cronRunsCount_other": {
+    message: "{count} запуска",
+    description:
+      "Cron Runs page: the list's count, for assistive tech, beside RUN (Render's \"30 runs\", w3/m556)",
   },
   "services.suspendCardTitle": {
     message: "Приостановить сервис",

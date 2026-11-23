@@ -4,9 +4,14 @@ import type { ReactNode } from "react";
 import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
 import { MockLink } from "@apollo/client/testing";
-import { CronJobRunsDocument } from "@/graphql/definitions";
+import {
+  CancelCronJobRunDocument,
+  CronJobRunsDocument,
+} from "@/graphql/definitions";
+import { toast } from "sonner";
 import { apolloCacheConfig } from "@/common/apollo/cache";
 import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
+import { CRON_RUNS_PAGE_SIZE as P } from "@/features/services/lib/cron-run-list";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -23,26 +28,33 @@ vi.mock("@/common/hooks/use-translations", () => ({
 // a reload added them. These exercise the real cache and link, because the
 // defect lives exactly in that entity-versus-array-membership distinction.
 
+// Run n started n minutes after 05:00, so a higher n is a newer run.
 function cronRun(n: number, status = "successful") {
+  const started = Date.UTC(2026, 8, 22, 5, 0) + n * 60_000;
   return {
     __typename: "CronRun" as const,
     id: `crr-${n}`,
     status,
-    startedAt: `2026-09-22T05:${String(40 + n).padStart(2, "0")}:00Z`,
+    startedAt: new Date(started).toISOString(),
     finishedAt:
-      status === "successful"
-        ? `2026-09-22T05:${String(40 + n).padStart(2, "0")}:05Z`
-        : null,
+      status === "successful" ? new Date(started + 5_000).toISOString() : null,
+    triggeredBy: null as string | null,
+    canceledBy: null as string | null,
   };
 }
 
 type Run = ReturnType<typeof cronRun>;
 
+const ids = (runs: { id: string }[]) => runs.map((r) => r.id);
+/** Runs `from` down to `to`, newest first: a page of history. */
+const range = (from: number, to: number) =>
+  Array.from({ length: from - to + 1 }, (_, i) => cronRun(from - i));
+
 function firstPage(serviceId: string, runs: Run[]) {
   return {
     request: {
       query: CronJobRunsDocument,
-      variables: { serviceId, limit: 5 },
+      variables: { serviceId, limit: P },
     },
     result: { data: { cronJobRuns: runs } },
   };
@@ -52,7 +64,7 @@ function olderPage(serviceId: string, cursor: string, runs: Run[]) {
   return {
     request: {
       query: CronJobRunsDocument,
-      variables: { serviceId, cursor, limit: 5 },
+      variables: { serviceId, cursor, limit: P },
     },
     result: { data: { cronJobRuns: runs } },
   };
@@ -132,10 +144,10 @@ describe("useCronRuns freshness (w4/138)", () => {
 
   it("keeps loaded older rows when a poll refreshes the first page", async () => {
     // The regression the note insisted on: adding a pollInterval alone would
-    // rewrite the merged cache entry with a fresh 5-row first page, silently
+    // rewrite the merged cache entry with a fresh one-page first page, silently
     // dropping the rows Load more had fetched.
-    const head = [cronRun(9), cronRun(8), cronRun(7), cronRun(6), cronRun(5)];
-    const tail = [cronRun(4), cronRun(3), cronRun(2), cronRun(1)];
+    const head = range(P + 4, 5);
+    const tail = range(4, 1);
     const { result } = renderHook(() => useCronRuns("srv-1"), {
       wrapper: wrapperFor([
         firstPage("srv-1", head),
@@ -145,46 +157,30 @@ describe("useCronRuns freshness (w4/138)", () => {
       ]),
     });
 
-    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P));
     expect(result.current.hasMore).toBe(true);
 
     await act(async () => {
       await result.current.loadMore();
     });
-    await waitFor(() => expect(result.current.runs).toHaveLength(9));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P + 4));
     // A short last page means there is nothing further to load.
     expect(result.current.hasMore).toBe(false);
 
     await tickSettledPoll();
-    // Still nine rows, in order, after the refresh.
-    expect(result.current.runs.map((r) => r.id)).toEqual([
-      "crr-9",
-      "crr-8",
-      "crr-7",
-      "crr-6",
-      "crr-5",
-      "crr-4",
-      "crr-3",
-      "crr-2",
-      "crr-1",
-    ]);
+    // Every row still there, in order, after the refresh.
+    expect(ids(result.current.runs)).toEqual(ids(range(P + 4, 1)));
   });
 
   it("drops a tail the refreshed head no longer joins, and restores Load more", async () => {
-    // One arrival moves page 1 from [9…5] to [10…6], so the tail read from
-    // crr-5 no longer joins the head — crr-5 itself belongs to neither.
+    // One arrival moves page 1 from [P+4…5] to [P+5…6], so the tail read
+    // from crr-5 no longer joins the head — crr-5 itself belongs to neither.
     // Concatenating anyway would hide a run in the MIDDLE of the history with
     // hasMore already false, so it could not be recovered. Dropping the tail
     // shows a correct first page and makes Load more work again.
-    const head = [cronRun(9), cronRun(8), cronRun(7), cronRun(6), cronRun(5)];
-    const tail = [cronRun(4), cronRun(3), cronRun(2), cronRun(1)];
-    const shifted = [
-      cronRun(10),
-      cronRun(9),
-      cronRun(8),
-      cronRun(7),
-      cronRun(6),
-    ];
+    const head = range(P + 4, 5);
+    const tail = range(4, 1);
+    const shifted = range(P + 5, 6);
     const { result } = renderHook(() => useCronRuns("srv-1"), {
       wrapper: wrapperFor([
         firstPage("srv-1", head),
@@ -194,23 +190,17 @@ describe("useCronRuns freshness (w4/138)", () => {
       ]),
     });
 
-    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P));
     await act(async () => {
       await result.current.loadMore();
     });
-    await waitFor(() => expect(result.current.runs).toHaveLength(9));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P + 4));
     expect(result.current.hasMore).toBe(false);
 
     await tickSettledPoll();
 
     await waitFor(() =>
-      expect(result.current.runs.map((r) => r.id)).toEqual([
-        "crr-10",
-        "crr-9",
-        "crr-8",
-        "crr-7",
-        "crr-6",
-      ]),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 5, 6))),
     );
     // No hole, no duplicate, and the tail is reachable again.
     expect(result.current.hasMore).toBe(true);
@@ -224,7 +214,7 @@ describe("useCronRuns freshness (w4/138)", () => {
         {
           request: {
             query: CronJobRunsDocument,
-            variables: { serviceId: "srv-1", limit: 5 },
+            variables: { serviceId: "srv-1", limit: P },
           },
           error: new Error("ERR_CONNECTION_CLOSED"),
         },
@@ -240,8 +230,8 @@ describe("useCronRuns freshness (w4/138)", () => {
   });
 
   it("does not carry one service's loaded tail onto another service", async () => {
-    const aHead = [cronRun(9), cronRun(8), cronRun(7), cronRun(6), cronRun(5)];
-    const aTail = [cronRun(4), cronRun(3)];
+    const aHead = range(P + 4, 5);
+    const aTail = range(4, 3);
     const bHead = [cronRun(2)];
     const { result, rerender } = renderHook(
       ({ id }: { id: string }) => useCronRuns(id),
@@ -256,11 +246,11 @@ describe("useCronRuns freshness (w4/138)", () => {
       },
     );
 
-    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P));
     await act(async () => {
       await result.current.loadMore();
     });
-    await waitFor(() => expect(result.current.runs).toHaveLength(7));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P + 2));
 
     rerender({ id: "srv-2" });
     await waitFor(() =>
@@ -283,7 +273,7 @@ describe("useCronRuns freshness (w4/138)", () => {
           {
             request: {
               query: CronJobRunsDocument,
-              variables: { serviceId: "srv-2", limit: 5 },
+              variables: { serviceId: "srv-2", limit: P },
             },
             error: new Error("ERR_CONNECTION_CLOSED"),
           },
@@ -299,36 +289,32 @@ describe("useCronRuns freshness (w4/138)", () => {
     expect(shown.filter((s) => s.id === "srv-2" && s.runs.length)).toEqual([]);
   });
 
-  const ids = (runs: { id: string }[]) => runs.map((r) => r.id);
-  const range = (from: number, to: number) =>
-    Array.from({ length: from - to + 1 }, (_, i) => cronRun(from - i));
-
   it("recovers the whole history with Load more after an arrival shifts the head (w4/230)", async () => {
-    // The live capture: head [7…3] + tail [2,1], then run 8 arrives. The
-    // shifted head [8…4] drops the tail, and the next Load more — read past 4 —
-    // must replace it, not be discarded against the stale anchor 3.
+    // The live capture: head [P+2…3] + tail [2,1], then run P+3 arrives. The
+    // shifted head [P+3…4] drops the tail, and the next Load more — read past
+    // 4 — must replace it, not be discarded against the stale anchor 3.
     const { result } = renderHook(() => useCronRuns("srv-1"), {
       wrapper: wrapperFor([
-        firstPage("srv-1", range(7, 3)),
+        firstPage("srv-1", range(P + 2, 3)),
         olderPage("srv-1", "crr-3", range(2, 1)),
-        firstPage("srv-1", range(8, 4)),
+        firstPage("srv-1", range(P + 3, 4)),
         olderPage("srv-1", "crr-4", range(3, 1)),
-        firstPage("srv-1", range(9, 5)),
+        firstPage("srv-1", range(P + 4, 5)),
         olderPage("srv-1", "crr-5", range(4, 1)),
-        firstPage("srv-1", range(9, 5)),
+        firstPage("srv-1", range(P + 4, 5)),
       ]),
     });
 
-    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P));
     await act(async () => {
       await result.current.loadMore();
     });
-    await waitFor(() => expect(result.current.runs).toHaveLength(7));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P + 2));
     expect(result.current.hasMore).toBe(false);
 
     await tickSettledPoll();
     await waitFor(() =>
-      expect(ids(result.current.runs)).toEqual(ids(range(8, 4))),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 3, 4))),
     );
     expect(result.current.hasMore).toBe(true);
 
@@ -336,60 +322,60 @@ describe("useCronRuns freshness (w4/138)", () => {
       await result.current.loadMore();
     });
     await waitFor(() =>
-      expect(ids(result.current.runs)).toEqual(ids(range(8, 1))),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 3, 1))),
     );
     expect(result.current.hasMore).toBe(false);
 
     // Another arrival stays recoverable the same way.
     await tickSettledPoll();
     await waitFor(() =>
-      expect(ids(result.current.runs)).toEqual(ids(range(9, 5))),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 4, 5))),
     );
     expect(result.current.hasMore).toBe(true);
     await act(async () => {
       await result.current.loadMore();
     });
     await waitFor(() =>
-      expect(ids(result.current.runs)).toEqual(ids(range(9, 1))),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 4, 1))),
     );
     expect(result.current.hasMore).toBe(false);
   });
 
   it("discards a Load more answer that lands after the head shifted", async () => {
-    // The older page is read past 3 from head [7…3]; before it answers, run 8
-    // arrives. The late page must not reattach under the shifted head.
+    // The older page is read past 3 from head [P+2…3]; before it answers, run
+    // P+3 arrives. The late page must not reattach under the shifted head.
     const { result } = renderHook(() => useCronRuns("srv-1"), {
       wrapper: wrapperFor([
-        firstPage("srv-1", range(7, 3)),
+        firstPage("srv-1", range(P + 2, 3)),
         { ...olderPage("srv-1", "crr-3", range(2, 1)), delay: 40_000 },
-        firstPage("srv-1", range(8, 4)),
-        firstPage("srv-1", range(8, 4)),
+        firstPage("srv-1", range(P + 3, 4)),
+        firstPage("srv-1", range(P + 3, 4)),
         olderPage("srv-1", "crr-4", range(3, 1)),
       ]),
     });
 
-    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P));
     let pending: Promise<void> = Promise.resolve();
     act(() => {
       pending = result.current.loadMore();
     });
     await tickSettledPoll();
     await waitFor(() =>
-      expect(ids(result.current.runs)).toEqual(ids(range(8, 4))),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 3, 4))),
     );
     // Now the older page read past crr-3 answers.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000);
       await pending;
     });
-    expect(ids(result.current.runs)).toEqual(ids(range(8, 4)));
+    expect(ids(result.current.runs)).toEqual(ids(range(P + 3, 4)));
     expect(result.current.hasMore).toBe(true);
 
     await act(async () => {
       await result.current.loadMore();
     });
     await waitFor(() =>
-      expect(ids(result.current.runs)).toEqual(ids(range(8, 1))),
+      expect(ids(result.current.runs)).toEqual(ids(range(P + 3, 1))),
     );
     expect(result.current.hasMore).toBe(false);
   });
@@ -397,22 +383,87 @@ describe("useCronRuns freshness (w4/138)", () => {
   it("an errored Load more read is a failure, not an exhausted history", async () => {
     const { result } = renderHook(() => useCronRuns("srv-1"), {
       wrapper: wrapperFor([
-        firstPage("srv-1", range(7, 3)),
+        firstPage("srv-1", range(P + 2, 3)),
         {
           request: {
             query: CronJobRunsDocument,
-            variables: { serviceId: "srv-1", cursor: "crr-3", limit: 5 },
+            variables: { serviceId: "srv-1", cursor: "crr-3", limit: P },
           },
           result: { errors: [{ message: "boom" }] },
         },
       ]),
     });
 
-    await waitFor(() => expect(result.current.runs).toHaveLength(5));
+    await waitFor(() => expect(result.current.runs).toHaveLength(P));
     await act(async () => {
       await result.current.loadMore();
     });
-    expect(ids(result.current.runs)).toEqual(ids(range(7, 3)));
+    expect(ids(result.current.runs)).toEqual(ids(range(P + 2, 3)));
     expect(result.current.hasMore).toBe(true);
+  });
+});
+
+// w3/m556: Render's Cancel acts at once and says nothing when it lands (the
+// row turns Canceled); a failure stays up until it is dismissed.
+describe("useCronRuns cancel (w3/m556)", () => {
+  const cancelMock = (result: object) => ({
+    request: {
+      query: CancelCronJobRunDocument,
+      variables: { serviceId: "srv-1", runId: "crr-2" },
+    },
+    ...result,
+  });
+
+  beforeEach(() => {
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+  });
+
+  it("cancels with no toast, and the answer turns the row Canceled", async () => {
+    const { result } = renderHook(() => useCronRuns("srv-1"), {
+      wrapper: wrapperFor([
+        firstPage("srv-1", [cronRun(2, "running"), cronRun(1)]),
+        cancelMock({
+          result: {
+            data: {
+              cancelCronJobRun: {
+                ...cronRun(2, "canceled"),
+                canceledBy: "me@example.com",
+              },
+            },
+          },
+        }),
+      ]),
+    });
+    await waitFor(() => expect(result.current.runs).toHaveLength(2));
+
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.cancel("crr-2");
+    });
+    expect(ok).toBe(true);
+    expect(result.current.runs[0]?.status).toBe("canceled");
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failure up until it is dismissed", async () => {
+    const { result } = renderHook(() => useCronRuns("srv-1"), {
+      wrapper: wrapperFor([
+        firstPage("srv-1", [cronRun(2, "running"), cronRun(1)]),
+        cancelMock({ error: new Error("boom") }),
+      ]),
+    });
+    await waitFor(() => expect(result.current.runs).toHaveLength(2));
+
+    let ok = true;
+    await act(async () => {
+      ok = await result.current.cancel("crr-2");
+    });
+    expect(ok).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ duration: Infinity, closeButton: true }),
+    );
   });
 });

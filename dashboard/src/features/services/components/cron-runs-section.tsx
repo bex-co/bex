@@ -1,105 +1,96 @@
-import { Fragment, useEffect, useEffectEvent, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { makeCustomRange, rangeToSearch } from "@/features/metrics/lib/range";
-import { Badge } from "@/common/components/ui/badge";
+import { Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
-import { ConfirmDialog } from "@/common/components/confirm-dialog";
-import { Skeleton } from "@/common/components/ui/skeleton";
-import { TableRowsSkeleton } from "@/common/components/route-skeletons";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/common/components/ui/table";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/common/components/ui/tooltip";
+import { InstantTooltip } from "@/common/components/instant-tooltip";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
-import { formatShortDateTime } from "@/common/lib/format";
+import { useNow } from "@/common/hooks/use-now";
+import { useRootContext } from "@/common/hooks/use-root-context";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
-import { useCronRun } from "@/features/services/hooks/use-cron-run";
-import { RelativeAge } from "@/common/components/relative-time";
-import type {
-  CronRunView,
-  ServiceBadgeVariant,
-} from "@/features/services/types";
+import { formatTimeAgo } from "@/common/lib/format";
+import { STRETCHED_LINK_CLASS } from "@/common/lib/stretched-link";
+import { cn } from "@/common/lib/utils/utils";
+import { StatusKindIcon } from "@/features/deploys/components/deploy-status-icon";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { projectionReason } from "@/features/capabilities/lib/resource-actions";
+import { CronTriggerRunButton } from "@/features/services/components/cron-header-actions";
+import {
+  CRON_RUN_ICON_CELL,
+  CRON_RUN_LINE,
+  CRON_RUN_MAIN_CELL,
+  CRON_RUN_ROW_CLASS,
+  CRON_RUNS_COUNT_CLASS,
+  CRON_RUNS_SEARCH_CLASS,
+  CronRunRowsFrame,
+  CronRunsFrame,
+  CronRunsListHeader,
+  cronRunRowGrid,
+} from "@/features/services/components/cron-runs-frame";
+import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
+import { useServer } from "@/features/services/hooks/use-server";
+import {
+  CRON_RUN_STATUS_WORD,
+  type CronRunStatus,
+  cronRunElapsedMs,
+  cronRunIconKind,
+  cronRunLogsSearch,
+  cronRunMatchesSearch,
+  cronRunStatus,
+  formatCronRunDuration,
+  latestSuccessfulRunId,
+} from "@/features/services/lib/cron-run-list";
+import { hasServed } from "@/features/services/lib/status";
+import type { CronRunView } from "@/features/services/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import type { en } from "@/i18n";
 
-const RUN_STATUS: Record<
-  string,
-  { label: keyof typeof en; variant: ServiceBadgeVariant }
-> = {
-  pending: { label: "services.cronRunStatusRunning", variant: "outline" },
-  running: { label: "services.cronRunStatusRunning", variant: "outline" },
-  successful: {
-    label: "services.cronRunStatusSucceeded",
-    variant: "default",
-  },
-  succeeded: {
-    label: "services.cronRunStatusSucceeded",
-    variant: "default",
-  },
-  unsuccessful: {
-    label: "services.cronRunStatusFailed",
-    variant: "destructive",
-  },
-  failed: {
-    label: "services.cronRunStatusFailed",
-    variant: "destructive",
-  },
-  canceled: {
-    label: "services.cronRunStatusCanceled",
-    variant: "secondary",
-  },
-};
+type Translate = ReturnType<typeof useTranslations>["t"];
 
-// The same active set useCronRuns' hasActiveRun uses.
-const ACTIVE_STATUSES = new Set(["pending", "running"]);
-const isActive = (run: CronRunView) =>
-  ACTIVE_STATUSES.has(run.status.toLowerCase());
+// A run's status as Render's tooltip names it.
+const STATUS_LABEL = {
+  successful: "services.cronRunStatusSucceeded",
+  unsuccessful: "services.cronRunStatusFailed",
+  canceled: "services.cronRunStatusCanceled",
+  pending: "services.cronRunStatusInProgress",
+} as const satisfies Record<CronRunStatus, string>;
 
-// Render's `pending` covers a run that has not started and one that is
-// running, so an active run with no start yet reads "Pending" (w4/m300 t011).
-function CronRunStatusBadge({ run }: { run: CronRunView }) {
-  const { t } = useTranslations();
-  const value = RUN_STATUS[run.status.toLowerCase()] ?? RUN_STATUS.pending;
-  const waiting = !run.startedAt && isActive(run);
-  return (
-    <Badge variant={value.variant}>
-      {t(waiting ? "services.cronRunStatusPending" : value.label)}
-    </Badge>
+function statusLabel(
+  status: CronRunStatus,
+  latestSuccessful: boolean,
+  t: Translate,
+): string {
+  return latestSuccessful
+    ? t("services.cronRunStatusLastSuccessful")
+    : t(STATUS_LABEL[status]);
+}
+
+// Render names a run Manual when a user started it, else Scheduled.
+function triggerLabel(run: CronRunView, t: Translate): string {
+  return t(
+    run.triggeredBy
+      ? "services.cronRunTriggerManual"
+      : "services.cronRunTriggerScheduled",
   );
 }
 
-function duration(run: CronRunView): string {
-  if (!run.startedAt || !run.finishedAt) return "—";
-  const milliseconds =
-    new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime();
-  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—";
-  const seconds = Math.round(milliseconds / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m ${seconds % 60}s`;
-}
-
-/** Cursor-paged cron run objects with per-run detail and a confirmed cancel
- *  action for pending rows. Trigger Run is the header's, as on Render
- *  (w3/m555): one per page, with no confirm. */
+/**
+ * A cron job's Runs page as Render's (w3/m556): "Search cron job runs" over
+ * the loaded runs, then RUN with the count, TRIGGER and DURATION. Each row is
+ * the run's status icon, "Cron job run", when it ran and who started it, its
+ * trigger and its duration, and the whole row opens the Logs over the run's
+ * window. A run in progress has Cancel, at once as on Render. With no runs the
+ * page says why in Render's words and offers Trigger Run; Load more reads
+ * older runs, which bex keeps past Render's 30.
+ */
 export function CronRunsSection({ serviceId }: { serviceId: string }) {
-  const { t, i18n } = useTranslations();
-  const clockLanguage = useIsHydrated() ? i18n.language : null;
+  const { t } = useTranslations();
+  const hydrated = useIsHydrated();
   const {
     runs,
     loading,
@@ -110,15 +101,152 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
     loadMore,
     cancel,
   } = useCronRuns(serviceId);
-  // The server's own decision gates Cancel (w4/203).
+  // The layout already holds the service: its build decides which empty
+  // state shows, and the empty states carry its Trigger Run.
+  const { service } = useServer(serviceId, { poll: false });
+  const [query, setQuery] = useState("");
+  const cancelBlocked = useCancelBlocked(serviceId, runs);
+  const latestSuccessfulId = latestSuccessfulRunId(runs);
+  const visibleRuns = useMemo(
+    () =>
+      runs.filter((run) => {
+        const status = cronRunStatus(run);
+        const latest = run.id === latestSuccessfulId;
+        return cronRunMatchesSearch(
+          run,
+          [
+            t(STATUS_LABEL[status]),
+            CRON_RUN_STATUS_WORD[status],
+            latest ? t("services.cronRunStatusLastSuccessful") : null,
+            triggerLabel(run, t),
+            run.triggeredBy,
+          ],
+          query,
+        );
+      }),
+    [runs, latestSuccessfulId, query, t],
+  );
+
+  if (loading && runs.length === 0) {
+    return (
+      <CronRunsFrame
+        search={<CronRunsSearch value="" onChange={() => {}} disabled />}
+      >
+        <CronRunRowsFrame />
+      </CronRunsFrame>
+    );
+  }
+  if (error && runs.length === 0) {
+    // Render's load failure stands alone, with no search to type into.
+    return (
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
+      >
+        <TriangleAlert
+          aria-hidden="true"
+          className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+        />
+        <p>{t("services.cronRunsLoadFailed")}</p>
+      </div>
+    );
+  }
+
+  let body;
+  if (runs.length === 0) {
+    // Render's two empty states: a cron job whose build never succeeded has
+    // never run; one with a build has not run lately.
+    const built = !service || hasServed(service);
+    body = (
+      <CronRunsEmpty
+        title={t(
+          built
+            ? "services.cronRunsEmptyRecentTitle"
+            : "services.cronRunsEmptyNeverTitle",
+        )}
+        body={t(
+          built
+            ? "services.cronRunsEmptyRecentBody"
+            : "services.cronRunsEmptyNeverBody",
+        )}
+        action={service ? <CronTriggerRunButton service={service} /> : null}
+      />
+    );
+  } else if (visibleRuns.length === 0) {
+    body = (
+      <CronRunsEmpty
+        title={t("services.cronRunsNoMatchTitle")}
+        body={t("services.cronRunsNoMatchBody")}
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            className="max-lg:h-11"
+            onClick={() => setQuery("")}
+          >
+            {t("services.cronRunsResetSearch")}
+          </Button>
+        }
+      />
+    );
+  } else {
+    body = (
+      <CronRunList
+        serviceId={serviceId}
+        runs={visibleRuns}
+        latestSuccessfulId={latestSuccessfulId}
+        cancelBlocked={cancelBlocked}
+        cancelingId={cancelingId}
+        onCancel={(run) => void cancel(run.id)}
+      />
+    );
+  }
+
+  return (
+    <CronRunsFrame
+      search={
+        <CronRunsSearch
+          value={query}
+          onChange={setQuery}
+          // Uneditable until handlers attach: a query typed into the server
+          // HTML is wiped by hydration (w4/m219).
+          disabled={!hydrated}
+        />
+      }
+    >
+      {body}
+      {hasMore && runs.length > 0 ? (
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            className="max-lg:h-11"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
+            {loadingMore
+              ? t("services.cronRunsLoadingMore")
+              : t("services.cronRunsLoadMore")}
+          </Button>
+        </div>
+      ) : null}
+    </CronRunsFrame>
+  );
+}
+
+/**
+ * Why Cancel is unavailable, from the server's own decision (w4/203). The
+ * action snapshot is a separate no-cache read that history polling never
+ * replaces, so a run arriving after it kept a settled "no active run" Cancel
+ * (w4/249). It is re-read whenever the set of active runs changes, and Cancel
+ * stays checking until that re-read settles.
+ */
+function useCancelBlocked(serviceId: string, runs: CronRunView[]) {
+  const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const serverActions = useServerActions(serviceId);
-  // The action snapshot is a separate no-cache read that history polling never
-  // replaces, so a run arriving after it kept a settled "no active run" Cancel
-  // (w4/249). Re-read it whenever the set of active runs changes, and treat
-  // Cancel as checking until that re-read settles.
   const activeRunKey = runs
-    .filter(isActive)
+    .filter((run) => cronRunStatus(run) === "pending")
     .map((run) => run.id)
     .join(" ");
   const [checkedRunKey, setCheckedRunKey] = useState(activeRunKey);
@@ -133,336 +261,317 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
       live = false;
     };
   }, [activeRunKey, checkedRunKey]);
-  const cancelBlocked = projectionReason(
+  return projectionReason(
     activeRunKey === checkedRunKey ? serverActions : { status: "checking" },
     currentWorkspaceId,
     serviceId,
     "cron_cancel_run",
     t,
   );
-  const [confirmRun, setConfirmRun] = useState<CronRunView | null>(null);
-  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+}
 
-  async function handleCancel() {
-    if (!confirmRun) return;
-    await cancel(confirmRun.id);
-    setConfirmRun(null);
-  }
-
+/** "Search cron job runs", with Render's clear button once it has text. */
+function CronRunsSearch({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslations();
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("services.cronRunsTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading && runs.length === 0 ? (
-            // The route skeleton's table, so the page does not change shape
-            // between the route's pending state and the runs read (w2/m360).
-            <TableRowsSkeleton rows={3} columns={4} />
-          ) : error && runs.length === 0 ? (
-            <p className="text-sm text-destructive">
-              {t("services.cronRunsLoadError")}
-            </p>
-          ) : runs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("services.cronRunsEmpty")}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("services.cronRunColStarted")}</TableHead>
-                    <TableHead>{t("services.cronRunColDuration")}</TableHead>
-                    <TableHead>{t("services.cronRunColStatus")}</TableHead>
-                    <TableHead className="text-right">
-                      {t("services.cronRunColActions")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {runs.map((run) => {
-                    const expanded = expandedRunId === run.id;
-                    return (
-                      <Fragment key={run.id}>
-                        <TableRow>
-                          <TableCell className="tabular-nums text-muted-foreground">
-                            <button
-                              type="button"
-                              className="flex items-center gap-1 hover:text-foreground"
-                              aria-expanded={expanded}
-                              onClick={() =>
-                                setExpandedRunId(expanded ? null : run.id)
-                              }
-                            >
-                              {expanded ? (
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              ) : (
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              )}
-                              <RelativeAge value={run.startedAt} />
-                              {/* The name follows the visible age, so each row
-                                  names its own run (w4/213: every button was
-                                  "Toggle run detail"). */}
-                              <span className="sr-only">
-                                {run.startedAt
-                                  ? t("services.cronRunDetailToggle", {
-                                      when: runToggleWhen(
-                                        run,
-                                        runs,
-                                        clockLanguage,
-                                      ),
-                                    })
-                                  : t(
-                                      isActive(run)
-                                        ? "services.cronRunDetailToggleNotStarted"
-                                        : "services.cronRunDetailToggleNeverStarted",
-                                      { n: runs.indexOf(run) + 1 },
-                                    )}
-                              </span>
-                            </button>
-                          </TableCell>
-                          <TableCell className="tabular-nums text-muted-foreground">
-                            {duration(run)}
-                          </TableCell>
-                          <TableCell>
-                            <CronRunStatusBadge run={run} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {isActive(run) ? (
-                              <PermissionTooltip reason={cancelBlocked}>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={
-                                    cancelingId === run.id || !!cancelBlocked
-                                  }
-                                  onClick={() => setConfirmRun(run)}
-                                >
-                                  {t("services.cronRunCancel")}
-                                </Button>
-                              </PermissionTooltip>
-                            ) : null}
-                          </TableCell>
-                        </TableRow>
-                        {expanded ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="bg-muted/30">
-                              <CronRunDetail serviceId={serviceId} run={run} />
-                            </TableCell>
-                          </TableRow>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              {hasMore ? (
-                <Button
-                  variant="outline"
-                  disabled={loadingMore}
-                  onClick={() => void loadMore()}
-                >
-                  {loadingMore
-                    ? t("services.cronRunsLoadingMore")
-                    : t("services.cronRunsLoadMore")}
-                </Button>
-              ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <ConfirmDialog
-        open={confirmRun !== null}
-        onOpenChange={(open) => !open && setConfirmRun(null)}
-        title={t("services.cronRunCancelConfirmTitle")}
-        description={t("services.cronRunCancelConfirmBody")}
-        cancelLabel={t("services.eventsConfirmCancel")}
-        confirmLabel={t("services.eventsConfirmProceed")}
-        pending={confirmRun ? cancelingId === confirmRun.id : false}
-        onConfirm={() => void handleCancel()}
+      <Search
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
       />
+      <Input
+        type="search"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={t("services.cronRunsSearchPlaceholder")}
+        aria-label={t("services.cronRunsSearchPlaceholder")}
+        className={cn(
+          "truncate pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden",
+          CRON_RUNS_SEARCH_CLASS,
+        )}
+      />
+      {value ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("services.cronRunsSearchClear")}
+          className="absolute top-1/2 right-1 size-8 -translate-y-1/2 pointer-coarse:size-10"
+          onClick={() => onChange("")}
+        >
+          <X />
+        </Button>
+      ) : null}
     </>
   );
 }
 
-/** What a started run's detail toggle names it by: its absolute start time,
- *  with its row number when another listed run shares it. The run id is never
- *  part of the name (w4/m300). */
-function runToggleWhen(
-  run: CronRunView,
-  runs: CronRunView[],
-  language: string | null,
-): string {
-  const when = absoluteTime(run.startedAt, language);
-  const shared = runs.some(
-    (other) =>
-      other.id !== run.id && absoluteTime(other.startedAt, language) === when,
+/** Render's empty state: a title, a line on what to do, and its action. */
+function CronRunsEmpty({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-10 text-center">
+      <h3 className="font-medium text-balance">{title}</h3>
+      <p className="max-w-md text-sm text-balance text-muted-foreground">
+        {body}
+      </p>
+      {action ? <div className="mt-3">{action}</div> : null}
+    </div>
   );
-  return shared ? `${when} (#${runs.indexOf(run) + 1})` : when;
 }
 
-/** Absolute local timestamp in the dashboard language, or an em dash when the
- *  run hasn't reached it yet or the page hasn't hydrated (`language` null:
- *  the SSR pass has no viewer clock, w6/m107). */
-function absoluteTime(value: string | null, language: string | null): string {
-  if (!value || language === null) return "—";
-  return formatShortDateTime(value, language) || "—";
-}
-
-/**
- * One run's detail, freshly read via `cronJobRun` (w5/m60) when its row is
- * expanded: status, absolute start/finish timestamps, computed duration, and the
- * run id. A stale/unknown run id renders an explicit error, never a blank panel.
- *
- * While that first read is in flight the panel renders the same five-field grid
- * with every value masked (w4/305): the history row's run sizes the hidden
- * values so columns, wrapping and table widths match the ready detail, but none
- * of it is shown or announced as the fresh detail.
- */
-function CronRunDetail({
+function CronRunList({
   serviceId,
-  run: historyRun,
+  runs,
+  latestSuccessfulId,
+  cancelBlocked,
+  cancelingId,
+  onCancel,
+}: {
+  serviceId: string;
+  runs: CronRunView[];
+  latestSuccessfulId: string | null;
+  cancelBlocked: React.ReactNode;
+  cancelingId: string | null;
+  onCancel: (run: CronRunView) => void;
+}) {
+  const { t, i18n } = useTranslations();
+  const viewerEmail = useViewerEmail();
+  // One clock for the list: by the second while a run's duration counts up,
+  // else by the minute for the rows' ages.
+  const running = runs.some(
+    (run) => cronRunStatus(run) === "pending" && run.startedAt,
+  );
+  const now = useNow(running ? 1000 : 60_000);
+  return (
+    <div>
+      <CronRunsListHeader
+        count={
+          <span
+            className={CRON_RUNS_COUNT_CLASS}
+            aria-label={t("services.cronRunsCount", { count: runs.length })}
+          >
+            {runs.length.toLocaleString(i18n.language)}
+          </span>
+        }
+      />
+      <ul className="divide-y">
+        {runs.map((run) => (
+          <CronRunRow
+            key={run.id}
+            serviceId={serviceId}
+            run={run}
+            latestSuccessful={run.id === latestSuccessfulId}
+            viewerEmail={viewerEmail}
+            now={now}
+            cancel={
+              cronRunStatus(run) === "pending" ? (
+                <PermissionTooltip reason={cancelBlocked}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive max-lg:h-11"
+                    disabled={cancelingId === run.id || !!cancelBlocked}
+                    onClick={() => onCancel(run)}
+                  >
+                    {cancelingId === run.id ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <X />
+                    )}
+                    {t("services.cronRunCancel")}
+                  </Button>
+                </PermissionTooltip>
+              ) : null
+            }
+          />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Kratos identity traits: bex's schema is `{ email, name? }`.
+function useViewerEmail(): string | null {
+  const { session } = useRootContext();
+  const traits = session?.identity?.traits as { email?: string } | undefined;
+  return traits?.email ?? null;
+}
+
+function CronRunRow({
+  serviceId,
+  run,
+  latestSuccessful,
+  viewerEmail,
+  now,
+  cancel,
 }: {
   serviceId: string;
   run: CronRunView;
+  latestSuccessful: boolean;
+  viewerEmail: string | null;
+  now: number;
+  cancel: React.ReactNode;
 }) {
-  const { t } = useTranslations();
-  const { run, loading, error } = useCronRun(serviceId, historyRun.id);
-
-  if (loading && !run) {
-    return (
-      <>
-        <span role="status" className="sr-only">
-          {t("services.cronRunDetailLoading")}
-        </span>
-        <CronRunFields run={historyRun} masked />
-      </>
-    );
-  }
-  if (error || !run) {
-    return (
-      <p className="text-sm text-destructive">
-        {t("services.cronRunDetailError")}
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <CronRunFields run={run} masked={false} />
-      {run.startedAt ? (
-        <Link
-          to="/services/$serviceId/logs"
-          params={{ serviceId }}
-          search={runLogsSearch(run)}
-          className="text-sm font-medium underline-offset-4 hover:underline"
-        >
-          {t("services.cronRunViewLogs")}
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-/** How far a run's log window extends past its recorded start and end:
- *  its container logs a little before the run is marked started and after it
- *  is marked finished, and a one-second run has equal timestamps. */
-const RUN_LOG_PAD_MS = 5_000;
-
-/** A run's logs are the cron job's logs over the run's window: runs never
- *  overlap (one execution at a time), so the window is the run (w2/m360). A
- *  run still going opens the live view, which follows it. */
-function runLogsSearch(run: CronRunView) {
-  if (!run.startedAt || !run.finishedAt) return {};
-  const pad = (iso: string, ms: number) =>
-    new Date(new Date(iso).getTime() + ms).toISOString();
-  const range = makeCustomRange(
-    pad(run.startedAt, -RUN_LOG_PAD_MS),
-    pad(run.finishedAt, RUN_LOG_PAD_MS),
-  );
-  return typeof range === "string" ? {} : rangeToSearch(range);
-}
-
-/** The detail's field grid (five fields, plus the run's actors when it has
- *  them) — one layout for the masked preview and the
- *  ready detail, so the two cannot drift apart. */
-function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
   const { t, i18n } = useTranslations();
-  const clockLanguage = useIsHydrated() ? i18n.language : null;
-  return (
-    <dl
-      aria-busy={masked || undefined}
-      className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4"
-    >
-      <DetailField label={t("services.cronRunColStatus")} masked={masked}>
-        <CronRunStatusBadge run={run} />
-      </DetailField>
-      <DetailField label={t("services.cronRunDetailStarted")} masked={masked}>
-        <span className="tabular-nums">
-          {absoluteTime(run.startedAt, clockLanguage)}
-        </span>
-      </DetailField>
-      <DetailField label={t("services.cronRunDetailFinished")} masked={masked}>
-        <span className="tabular-nums">
-          {absoluteTime(run.finishedAt, clockLanguage)}
-        </span>
-      </DetailField>
-      <DetailField label={t("services.cronRunColDuration")} masked={masked}>
-        <span className="tabular-nums">{duration(run)}</span>
-      </DetailField>
-      <DetailField label={t("services.cronRunDetailId")} masked={masked}>
-        <span className="font-mono text-xs">{run.id}</span>
-      </DetailField>
-      {/* w4/631: who started and who stopped the run, as Render names them.
-          A scheduled run has no trigger. The history row the masked preview
-          draws from carries the same actors, so the two grids match. */}
-      {run.triggeredBy ? (
-        <DetailField
-          label={t("services.cronRunDetailTriggeredBy")}
-          masked={masked}
-        >
-          <span className="break-all">{run.triggeredBy}</span>
-        </DetailField>
-      ) : null}
-      {run.canceledBy ? (
-        <DetailField
-          label={t("services.cronRunDetailCanceledBy")}
-          masked={masked}
-        >
-          <span className="break-all">{run.canceledBy}</span>
-        </DetailField>
-      ) : null}
-    </dl>
-  );
-}
+  const status = cronRunStatus(run);
+  const label = statusLabel(status, latestSuccessful, t);
+  const logs = cronRunLogsSearch(run, now);
+  const elapsed = cronRunElapsedMs(run, now);
+  const duration =
+    elapsed === null ? "—" : formatCronRunDuration(elapsed, i18n.language);
+  const trigger = triggerLabel(run, t);
+  const ago = run.startedAt
+    ? formatTimeAgo(run.startedAt, {
+        now,
+        language: i18n.language,
+        justNow: t("common.justNow"),
+      })
+    : null;
+  const ranAt = ago
+    ? t("services.cronRunStartedAgo", { timestamp: ago })
+    : null;
+  const isViewer = (email: string | null) =>
+    Boolean(email && viewerEmail && email === viewerEmail);
+  const canceledBy =
+    status !== "canceled"
+      ? null
+      : run.canceledBy
+        ? isViewer(run.canceledBy)
+          ? t("services.cronRunCanceledByYou")
+          : t("services.cronRunCanceledBy", { user: run.canceledBy })
+        : t("services.cronRunStatusCanceled");
+  const logsLink = {
+    to: "/services/$serviceId/logs",
+    params: { serviceId },
+    search: logs,
+  } as const;
 
-/** A labelled value. Masked, the value still lays out — sizing the cell exactly
- *  as the ready value would — but is invisible, hidden from assistive tech, and
- *  covered by a skeleton. */
-function DetailField({
-  label,
-  masked,
-  children,
-}: {
-  label: string;
-  masked: boolean;
-  children: React.ReactNode;
-}) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      {masked ? (
-        <dd className="relative">
-          <span aria-hidden="true" className="invisible">
-            {children}
-          </span>
-          <Skeleton aria-hidden="true" className="absolute inset-0" />
-        </dd>
-      ) : (
-        <dd>{children}</dd>
+    <li
+      className={cn(
+        cronRunRowGrid,
+        CRON_RUN_ROW_CLASS,
+        "group/row hover:bg-muted/40 active:bg-muted/60",
       )}
-    </div>
+    >
+      <div className={CRON_RUN_ICON_CELL}>
+        {/* Render's icon opens the same Logs, with the status in a tooltip.
+            The row's link names the status for keyboard and assistive tech,
+            so the icon stays out of the Tab order. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              {...logsLink}
+              tabIndex={-1}
+              aria-hidden="true"
+              className="relative z-10 rounded-full"
+              suppressHydrationWarning
+            >
+              <StatusKindIcon
+                kind={cronRunIconKind(status, latestSuccessful)}
+              />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
+      </div>
+      <div className={CRON_RUN_MAIN_CELL}>
+        {/* The whole row opens the Logs over the run's window; its ::after
+            covers the row, and the time and Cancel sit above it. */}
+        <Link
+          {...logsLink}
+          className={cn("min-w-0 after:rounded-md", STRETCHED_LINK_CLASS)}
+          suppressHydrationWarning
+        >
+          <span className="block h-5 truncate text-sm font-medium text-foreground underline-offset-2 group-hover/row:underline">
+            {t("services.cronRunTitle")}
+          </span>
+          <span className="sr-only" suppressHydrationWarning>
+            {[label, ranAt].filter(Boolean).join(", ")}
+          </span>
+        </Link>
+        {ranAt || canceledBy ? (
+          <p
+            className={cn(
+              CRON_RUN_LINE,
+              "flex-wrap gap-x-1 text-muted-foreground",
+            )}
+          >
+            {ranAt && run.startedAt ? (
+              <InstantTooltip
+                value={run.startedAt}
+                // A touch has no hover: a tap falls through to the row.
+                className="relative z-10 no-underline hover:underline pointer-coarse:pointer-events-none"
+              >
+                {ranAt}
+              </InstantTooltip>
+            ) : null}
+            {ranAt && run.triggeredBy ? (
+              <span className="min-w-0 break-all">
+                {isViewer(run.triggeredBy)
+                  ? t("services.cronRunByYou")
+                  : t("services.cronRunBy", { user: run.triggeredBy })}
+              </span>
+            ) : null}
+            {canceledBy ? (
+              <span className="min-w-0 break-all">
+                {ranAt ? (
+                  <span aria-hidden="true" className="mr-1">
+                    ·
+                  </span>
+                ) : null}
+                {canceledBy}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        {/* Below the wide list, Trigger and Duration fold into a line. */}
+        <p
+          className={cn(
+            CRON_RUN_LINE,
+            "whitespace-nowrap text-muted-foreground @3xl/runs:hidden",
+          )}
+        >
+          <span className="truncate">{trigger}</span>
+          <span
+            className="shrink-0 tabular-nums before:mx-1.5 before:content-['·']"
+            suppressHydrationWarning
+          >
+            {duration}
+          </span>
+        </p>
+      </div>
+      <p className="hidden truncate text-sm text-muted-foreground @3xl/runs:block">
+        <span className="sr-only">{t("services.cronRunsColTrigger")}: </span>
+        {trigger}
+      </p>
+      <p
+        className="hidden text-sm whitespace-nowrap tabular-nums text-muted-foreground @3xl/runs:block"
+        suppressHydrationWarning
+      >
+        <span className="sr-only">{t("services.cronRunColDuration")}: </span>
+        {duration}
+      </p>
+      <div className="relative z-10 flex justify-end empty:hidden @3xl/runs:empty:block">
+        {cancel}
+      </div>
+    </li>
   );
 }

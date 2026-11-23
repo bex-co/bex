@@ -16,8 +16,7 @@ import {
   type AppendedPages,
 } from "@/common/lib/appended-pages";
 import type { CronRunView } from "@/features/services/types";
-
-const PAGE_SIZE = 5;
+import { CRON_RUNS_PAGE_SIZE as PAGE_SIZE } from "@/features/services/lib/cron-run-list";
 
 // A run that hasn't reached a terminal status yet: the history polls fast
 // while one is listed.
@@ -55,6 +54,7 @@ function toRuns(
 
 /**
  * Cursor-paged cron history + cancellation over the dedicated run-object API.
+ * A page is Render's 30 runs; Load more reads 30 older ones (w3/m556).
  *
  * Polls page 1 on the shared visible-tab cadence, because the operator creates
  * scheduled runs with no dashboard mutation to hang a refetch on. Without this,
@@ -70,8 +70,8 @@ function toRuns(
  *
  * Appended pages live in React state rather than being concatenated into the
  * cache entry with `fetchMore`. That is load-bearing, not a style choice: a
- * poll writes a fresh five-row first page under the original variables, so a
- * merged ten-row entry would be truncated back to five on the next tick,
+ * poll writes a fresh first page under the original variables, so a
+ * merged two-page entry would be truncated back to one page on the next tick,
  * silently dropping loaded older rows and their Load more affordance.
  */
 export function useCronRuns(serviceId: string): UseCronRunsResult {
@@ -169,12 +169,15 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     async (runId: string) => {
       setCancelingId(runId);
       try {
+        // The answer is the canceled run, which rewrites its row in the cache;
+        // like Render's, a cancel that lands says nothing more.
         await cancelRun({ variables: { serviceId, runId } });
-        toast.success(t("services.cronRunCancelSuccess"));
         return true;
       } catch (err) {
+        // Render keeps the failure up until it is dismissed.
         toast.error(
           mutationErrorMessage(err, t("services.cronRunCancelError")),
+          { duration: Infinity, closeButton: true },
         );
         return false;
       } finally {
