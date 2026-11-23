@@ -189,7 +189,7 @@ func newS3Terminal(t *testing.T, args func(dir string) []string, extraEnv ...str
 	seedNoticeMarker(t, home)
 	dir := t.TempDir()
 	command := exec.Command(buildBex(), args(dir)...)
-	command.Env = s3Env(t, home, api.URL, endpoint.srv.URL, append([]string{"TERM=xterm", "BEX_CLI_DISABLE_ANALYTICS=1"}, extraEnv...)...)
+	command.Env = s3QuietEnv(t, home, api.URL, endpoint.srv.URL, append([]string{"TERM=xterm"}, extraEnv...)...)
 	return &s3Terminal{command: command, endpoint: endpoint, api: stub, dir: dir}
 }
 

@@ -113,9 +113,6 @@ func TestBeginLeavesTheSenderAloneWhenTheGateIsOpen(t *testing.T) {
 		{"CI=true bypasses the gate", func(t *testing.T, _ string) { t.Setenv("CI", "true") }},
 		{"CI=1 bypasses the gate", func(t *testing.T, _ string) { t.Setenv("CI", "1") }},
 		{"the Bex notice was shown", func(t *testing.T, markers string) { seed(t, markers, bexMarker) }},
-		{"the send subprocess of a parent that passed", func(t *testing.T, _ string) {
-			t.Setenv("RENDER_CLI_ANALYTICS_SUBPROCESS", "1")
-		}},
 		{"an opted-out user sends nothing anyway", func(t *testing.T, _ string) { t.Setenv("DO_NOT_TRACK", "1") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -133,6 +130,26 @@ func TestBeginLeavesTheSenderAloneWhenTheGateIsOpen(t *testing.T) {
 				t.Error("upstream's marker missing; it is written on every run")
 			}
 		})
+	}
+}
+
+// The send subprocess is started by a parent that passed the gate and wrote
+// upstream's marker, and it outlives that parent: a caller that removed its
+// home once the command returned (a test's temp dir, a script's) must not see
+// the child write the marker back and recreate the state directory.
+func TestBeginInTheSendSubprocessWritesNothing(t *testing.T) {
+	markers := cleanEnv(t)
+	t.Setenv("RENDER_CLI_ANALYTICS_SUBPROCESS", "1")
+
+	gate := Begin(nil)
+	if value, set := os.LookupEnv(renderDisableAnalytics); set {
+		t.Errorf("%s = %q, want untouched", renderDisableAnalytics, value)
+	}
+	if gate.restore != nil {
+		t.Error("Begin recorded an override it did not need")
+	}
+	if exists(t, filepath.Dir(markers)) {
+		t.Error("the send subprocess created the state directory")
 	}
 }
 

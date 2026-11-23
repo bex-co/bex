@@ -108,6 +108,13 @@ func s3Env(t *testing.T, home, apiURL, endpoint string, extra ...string) []strin
 	}, extra...)...)
 }
 
+// s3QuietEnv is s3Env for a test that does not look at what was reported: it
+// opts out, so no detached sender outlives the command into the test's cleanup.
+func s3QuietEnv(t *testing.T, home, apiURL, endpoint string, extra ...string) []string {
+	t.Helper()
+	return s3Env(t, home, apiURL, endpoint, append([]string{"BEX_CLI_DISABLE_ANALYTICS=1"}, extra...)...)
+}
+
 // s3LaunchEnv is s3Env for a test that does not look at the fake S3 itself.
 func s3LaunchEnv(t *testing.T) []string {
 	t.Helper()
@@ -176,7 +183,6 @@ func TestBexS3RunsWithNoOtherProgramInstalled(t *testing.T) {
 	t.Cleanup(api.Close)
 	endpoint := newFakeS3Endpoint(t)
 	home := t.TempDir()
-	seedNoticeMarker(t, home)
 
 	// A program named aws that records being run, on a PATH that is only that.
 	bin := t.TempDir()
@@ -188,7 +194,7 @@ func TestBexS3RunsWithNoOtherProgramInstalled(t *testing.T) {
 		}
 	}
 	command := exec.Command(buildBex(), "s3", "ls")
-	command.Env = append(s3Env(t, home, api.URL, endpoint.srv.URL), "PATH="+bin)
+	command.Env = append(s3QuietEnv(t, home, api.URL, endpoint.srv.URL), "PATH="+bin)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bex s3 ls: %v\n%s", err, output)
@@ -216,7 +222,6 @@ func TestBexS3SignsWithBexsKeyAndTouchesNoAWSFile(t *testing.T) {
 	t.Cleanup(api.Close)
 	endpoint := newFakeS3Endpoint(t)
 	home := t.TempDir()
-	seedNoticeMarker(t, home)
 	if err := os.MkdirAll(filepath.Join(home, ".aws"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +233,7 @@ func TestBexS3SignsWithBexsKeyAndTouchesNoAWSFile(t *testing.T) {
 	}
 
 	command := exec.Command(buildBex(), "s3", "ls")
-	command.Env = s3Env(t, home, api.URL, endpoint.srv.URL,
+	command.Env = s3QuietEnv(t, home, api.URL, endpoint.srv.URL,
 		"AWS_PROFILE=personal", "AWS_SESSION_TOKEN=their-token", "AWS_ACCESS_KEY_ID=AKIATHEIRS", "AWS_SECRET_ACCESS_KEY="+theirSecret,
 		"AWS_ENDPOINT_URL_S3=https://elsewhere.invalid", "AWS_REGION=eu-west-1")
 	if output, err := command.CombinedOutput(); err != nil {
@@ -274,17 +279,16 @@ func TestBexS3APIIsGone(t *testing.T) {
 	api := httptest.NewServer(stub.handler())
 	t.Cleanup(api.Close)
 	home := t.TempDir()
-	seedNoticeMarker(t, home)
 	for _, args := range [][]string{{"s3api", "list-buckets"}, {"s3", "s3api", "list-buckets"}, {"s3", "nonsense"}} {
 		command := exec.Command(buildBex(), args...)
-		command.Env = s3Env(t, home, api.URL, "http://127.0.0.1:1")
+		command.Env = s3QuietEnv(t, home, api.URL, "http://127.0.0.1:1")
 		output, err := command.CombinedOutput()
 		if err == nil || !strings.Contains(string(output), "unknown command") {
 			t.Errorf("bex %v: err %v, output %q, want unknown command", args, err, output)
 		}
 	}
 	command := exec.Command(buildBex(), "s3", "nonsense")
-	command.Env = s3Env(t, home, api.URL, "http://127.0.0.1:1")
+	command.Env = s3QuietEnv(t, home, api.URL, "http://127.0.0.1:1")
 	if output, _ := command.CombinedOutput(); !strings.Contains(string(output), "bex s3 env") {
 		t.Errorf("an unknown s3 command does not point at bex s3 env: %q", output)
 	}

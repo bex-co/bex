@@ -25,10 +25,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -214,6 +216,50 @@ func TestCIBypassesTheDisclosureGate(t *testing.T) {
 	}
 	if fileExists(t, filepath.Join(analyticsState(home), "bex-notice-shown")) {
 		t.Error("CI recorded the Bex notice as shown")
+	}
+}
+
+// TestTheDetachedSenderWritesNothingButConsumesItsEventFile: the sender is a
+// bex process the launcher starts detached as it exits, so it outlives the
+// command, and a caller may have removed its home by the time it starts (a
+// test's temp dir, a script's). It reports its event and writes nothing into
+// the home: any file it adds, upstream's notice marker included, would recreate
+// a state directory the caller deleted or fail that deletion as not empty.
+func TestTheDetachedSenderWritesNothingButConsumesItsEventFile(t *testing.T) {
+	stub := &telemetryStub{}
+	api := httptest.NewServer(stub.handler())
+	t.Cleanup(api.Close)
+	home := t.TempDir()
+	events := filepath.Join(analyticsState(home), "events")
+	if err := os.MkdirAll(events, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	event := filepath.Join(events, "event-00000000-0000-4000-8000-000000000001.json")
+	if err := os.WriteFile(event, []byte(`{"command":"bex workspaces"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	command := exec.Command(buildBex(), "analytics", "send", event)
+	command.Env = telemetryEnv(t, home, api.URL, "RENDER_CLI_ANALYTICS_SUBPROCESS=1", "BEX_NO_UPDATE_NOTIFIER=1")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex analytics send: %v\n%s", err, output)
+	}
+
+	if got := stub.count(); got != 1 {
+		t.Errorf("telemetry events = %d, want the one in the file", got)
+	}
+	var left []string
+	if err := filepath.WalkDir(home, func(path string, _ fs.DirEntry, err error) error {
+		if err == nil && path != home {
+			left = append(left, strings.TrimPrefix(path, home))
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"/.bex", "/.bex/state", "/.bex/state/analytics", "/.bex/state/analytics/events"}
+	if !slices.Equal(left, want) {
+		t.Errorf("the home holds %v after the sender ran, want only the directories it started with and an empty events directory: %v", left, want)
 	}
 }
 

@@ -22,7 +22,7 @@ limitations under the License.
 // upstream:
 //
 //   - upstream's marker (<state>/analytics/notice-shown) is written on every
-//     run, so upstream's notice never prints;
+//     run but the detached send subprocess's, so upstream's notice never prints;
 //   - bex's marker (<state>/analytics/bex-notice-shown) is the gate: a run
 //     sends only in CI or once the Bex notice was shown on this machine;
 //   - an undisclosed run builds upstream's sender with consent denied, and
@@ -185,10 +185,17 @@ type Gate struct {
 // filled is bridge.FilledFromBex.
 func Begin(filled map[string]string) *Gate {
 	g := &Gate{optOut: optOutVariable(filled)}
+	// The send subprocess re-executes this binary for a parent that already
+	// passed the gate and wrote upstream's marker. It outlives that parent, so
+	// writing the marker again would recreate the state directory of a home the
+	// caller removed once the command returned: the child's one job is to
+	// consume its event file.
+	if analytics.IsSendSubprocess() {
+		return g
+	}
 	ensureUpstreamMarker()
-	// An opted-out user sends nothing anyway. The send subprocess re-executes
-	// this binary for a parent that already passed the gate.
-	if g.optOut != "" || CanSend() || analytics.IsSendSubprocess() {
+	// An opted-out user sends nothing anyway.
+	if g.optOut != "" || CanSend() {
 		return g
 	}
 	previous, had := os.LookupEnv(renderDisableAnalytics)
