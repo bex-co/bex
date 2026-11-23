@@ -90,9 +90,14 @@ func cmpRoot(rootDir string) string {
 }
 
 // viewDockerContext is AppView's dockerContext: the wire value for a Dockerfile
-// build ("." when unset, as Render reports it), and for any other build only a
-// context it still stores from before create refused one (w5/090).
+// build ("." when unset, as Render reports it), empty for a prebuilt image
+// (whose retained spec.dockerContext is kept only for a switch back to Git,
+// w32/103), and for any other Git build only a context it still stores from
+// before create refused one (w5/090).
 func viewDockerContext(spec appv1alpha1.AppSpec) string {
+	if prebuiltImageSource(spec) {
+		return ""
+	}
 	if spec.DockerContext == "" && buildStrategy(spec) != buildDockerfile {
 		return ""
 	}

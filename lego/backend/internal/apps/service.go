@@ -957,6 +957,16 @@ func imageBackedBranch(a *appv1alpha1.App) string {
 	return a.Spec.Branch
 }
 
+// viewRootDir reports the root directory a service actually builds from: empty
+// when it runs a prebuilt image, since spec.RootDir is retained only for a
+// later switch back to Git (w4/m202, w32/103).
+func viewRootDir(spec appv1alpha1.AppSpec) string {
+	if prebuiltImageSource(spec) {
+		return ""
+	}
+	return spec.RootDir
+}
+
 func validateMaintenanceEligibility(serviceType, tier string, mode *MaintenanceModeView) error {
 	if mode == nil || !mode.Enabled {
 		return nil
@@ -1223,6 +1233,19 @@ func view(a *appv1alpha1.App) AppView {
 		url = ""
 		urls = nil
 	}
+	// Switching from Git to a prebuilt image retains Git-only build settings on
+	// App.Spec for a switch back (w4/m202, w32/056), but a prebuilt-image
+	// service has no build and create refuses those fields
+	// (prebuiltImageSourceFields). Hide them on every read surface here — like
+	// Branch (w9/069) and AutoDeploy (w4/418) — so REST, GraphQL, MCP and
+	// `services create --from` never read values create rejects (w32/103).
+	buildCommand := a.Spec.BuildCommand
+	builder := a.Spec.Builder
+	dockerfilePath := a.Spec.DockerfilePath
+	buildFilter := buildFilterView(a.Spec.BuildFilter)
+	if prebuiltImageSource(a.Spec) {
+		buildCommand, builder, dockerfilePath, buildFilter = "", "", "", nil
+	}
 	return AppView{
 		ID:                        appID,
 		Name:                      name,
@@ -1252,9 +1275,9 @@ func view(a *appv1alpha1.App) AppView {
 		SourceImage:          store.RenderImagePath(a.Spec.Image),
 		RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
 		Runtime:              core.EffectiveRuntime(a.Spec, svcType),
-		BuildCommand:         a.Spec.BuildCommand,
+		BuildCommand:         buildCommand,
 		StartCommand:         a.Spec.StartCommand,
-		Builder:              a.Spec.Builder,
+		Builder:              builder,
 		Replicas:             a.Spec.Replicas,
 		Suspended:            a.Spec.Suspended,
 		BillingSuspended:     a.Annotations[core.AnnotFreeHoursSuspended] != "" || a.Annotations[core.AnnotBandwidthSuspended] != "",
@@ -1272,8 +1295,8 @@ func view(a *appv1alpha1.App) AppView {
 		ProjectID:            a.Labels[core.LabelProject],
 		EnvironmentID:        ids.EnvironmentPublicID(a.Labels[core.LabelEnvironment]),
 		BlueprintID:          ids.BlueprintPublicID(a.Labels[core.LabelBlueprint]),
-		RootDir:              a.Spec.RootDir,
-		DockerfilePath:       a.Spec.DockerfilePath,
+		RootDir:              viewRootDir(a.Spec),
+		DockerfilePath:       dockerfilePath,
 		DockerContext:        viewDockerContext(a.Spec),
 		// Redact any legacy embedded userinfo before the URL reaches a viewer
 		// (round-6 #13); create/update now reject such URLs outright.
@@ -1287,7 +1310,7 @@ func view(a *appv1alpha1.App) AppView {
 		// correct), making `services create --from <image service>` impossible.
 		// Same class as w9/068: never publish a value the write side rejects.
 		Branch:            imageBackedBranch(a),
-		BuildFilter:       buildFilterView(a.Spec.BuildFilter),
+		BuildFilter:       buildFilter,
 		BuildSourceID:     core.BuildSourceIDOf(a),
 		Autoscaling:       asView,
 		Disk:              serviceDiskView(a.Spec.Disk),

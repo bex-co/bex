@@ -211,7 +211,7 @@ func (s *Service) checkRootDir(ctx context.Context, a *appv1alpha1.App, name, ro
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
 		return false, err
 	}
-	if rootDir == a.Spec.RootDir {
+	if rootDir == viewRootDir(a.Spec) {
 		return false, nil
 	}
 	if err := requireRepoBacked(a, name, "root directory only applies to build-from-git"); err != nil {
