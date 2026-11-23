@@ -1,6 +1,6 @@
 # w32 · m576 — Every `==>` line bex writes carries Render's ANSI colour codes, in the API, the CLI and the dashboard
 
-**Worker:** worker32 **Goal:** each `==>` line bex writes itself (the platform's deploy narration, a native build's narration, the instance's `==> Running '<command>'`) carries the ANSI codes Render's log API returns for that kind of line, byte for byte where a Render capture shows the line. REST `GET /v1/logs`, the subscribe stream, GraphQL, MCP `list_logs` and `bex logs -o json` return the codes, as Render's API, MCP server and CLI do. `bex logs` on a terminal shows the lines coloured, and the dashboard draws them coloured with the visible text it shows today. **Status:** todo (t001–t007, t010 and t011 done; t008 ships them and walks production once the pin carries them)
+**Worker:** worker32 **Goal:** each `==>` line bex writes itself (the platform's deploy narration, a native build's narration, the instance's `==> Running '<command>'`) carries the ANSI codes Render's log API returns for that kind of line, byte for byte where a Render capture shows the line. REST `GET /v1/logs`, the subscribe stream, GraphQL, MCP `list_logs` and `bex logs -o json` return the codes, as Render's API, MCP server and CLI do. `bex logs` on a terminal shows the lines coloured, and the dashboard draws them coloured with the visible text it shows today. **Status:** blocked (t001–t007, t010 and t011 done and shipped as `059fe69101`; t008 walks production once the pin carries it; t009 and t012 follow)
 
 ## Tasks (in order)
 
@@ -36,8 +36,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w32/089](../done/089.md), filed 2026-11-22 from w32/085's search of public Render logs, and promoted the same day by `/loopx w32`.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)) in what `GET /v1/logs`, MCP and the CLI return. A script or agent that reads Render's logs gets coloured `==>` lines and a terminal shows them coloured; bex's read as plain text, so the same reader sees a different stream.
+- **Source:** inbox note [w32/089](../../done/089.md), filed 2026-11-22 from w32/085's search of public Render logs, and promoted the same day by `/loopx w32`.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) in what `GET /v1/logs`, MCP and the CLI return. A script or agent that reads Render's logs gets coloured `==>` lines and a terminal shows them coloured; bex's read as plain text, so the same reader sees a different stream.
 - **Expected outcome:** a bex deploy's log reads like Render's in a terminal and in every API read: a blue `==>` for a step, green for a success, red for a failure, bold text.
 - **Why now:** w32/m560, m567, m572, m575, w32/081 and w33/m570 settled the words of the deploy log on 2026-11-22, so the codes can now go onto a stable set of lines. The note estimated ~1h for the platform's lines, but the lines come from three writers (the control plane's narration, the build pod's shell and awk, native-init), Render uses six forms across them, and about half of bex's lines have no Render capture yet: about 10h over twelve tasks, so it is a milestone.
 - **Render parity task included:** the codes are a tenant-facing surface (REST, SSE, GraphQL and MCP log reads, the CLI, the dashboard's Logs page and deploy page).
