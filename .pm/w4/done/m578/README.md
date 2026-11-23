@@ -1,6 +1,6 @@
 # w4 · m578 — In a protected environment a Developer sees every per-resource Suspend and Resume disabled with Render's reason, never a 403 after the click
 
-**Worker:** worker4 **Goal:** the per-resource lifecycle projections (`serverActions`, `databaseActions`, `keyValueActions`) answer suspend and resume by the same rule the verbs enforce: in a protected environment only a workspace Admin may run them, as on Render. Every per-resource Suspend and Resume in the dashboard (the service row menu, the service header and Settings card, the database header menu and Info actions, the Key Value Info actions) is then disabled with Render's _This action is limited to admins._ for a Developer there, and enabled for an Admin. The bulk toolbar already gates this way (w4/m550). **Status:** blocked (pin must carry `ec45a8ebec`; t001–t003 and t005–t007 done 2026-11-22; t004 passed on dev-4, and its production half and t008 follow the deploy)
+**Worker:** worker4 **Goal:** the per-resource lifecycle projections (`serverActions`, `databaseActions`, `keyValueActions`) answer suspend and resume by the same rule the verbs enforce: in a protected environment only a workspace Admin may run them, as on Render. Every per-resource Suspend and Resume in the dashboard (the service row menu, the service header and Settings card, the database header menu and Info actions, the Key Value Info actions) is then disabled with Render's _This action is limited to admins._ for a Developer there, and enabled for an Admin. The bulk toolbar already gates this way (w4/m550). **Status:** done (2026-11-23: the DoD held on dev-4 and, as far as its one Admin identity allows, on production pin `ac882b5f557f`)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | The three lifecycle projections deny suspend and resume to a non-Admin on a protected member, by the verbs' own rule — **DONE** | 50m | — |
 | [t002](done/t002.md) | The service row menu, header and Settings card read Render's admin-only reason — **DONE** | 30m | t001 |
 | [t003](done/t003.md) | Database and Key Value Suspend and Resume gate on their projections — **DONE** | 1h | t001 |
-| [t004](t004.md) | Live check on dev-4 as an Admin, a Developer and a Viewer at 1440 and 390 | 30m | t002, t003 |
+| [t004](done/t004.md) | Live check on dev-4 as an Admin, a Developer and a Viewer at 1440 and 390 — **DONE** | 30m | t002, t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 Total: **8 tasks, about 4h05m**.
 
@@ -63,4 +63,23 @@ On dev-4 with OpenFGA enforced (w4/m550 t005's recipe), then on production once 
 - **Not this change, noted:** a free web service that has idled to sleep reads "Suspended" in the project list while REST says `not_suspended`. A Viewer's database Restart tooltip says "this service".
 - **Cleanup:** the fixtures, project, workspaces and identities were deleted, the OpenFGA container was removed, and bex-api was restarted with its defaults.
 
-**Production.** This waits for a pin that carries the change, `ec45a8ebec`. As the QA user (an Admin) in `bex-canary`, suspend and resume one service, one Postgres and one Key Value in a protected environment of a disposable project, at 1440 and 390, then close with t008. Production has one QA identity, so the Developer and Viewer lines ran on dev-4 only.
+**Production (2026-11-23, pin `ac882b5f557f`, carrying `ec45a8ebec`).** Signed in as the QA user with `bash scripts/qa-login.sh`, in `bex-canary`, where the QA user is an Admin. The fixtures were project `qa-20261123-m578` (disposable) with one protected environment, `production`, holding a free image web service (`traefik/whoami`), a free Postgres 16 and a free Key Value. Headless Chromium drove each surface at 1440 and 390, and both widths gave the same results:
+
+| Surface (Admin, protected) | 1440 and 390 |
+| --- | --- |
+| Service row menu Suspend, then Resume | Enabled. Suspend opened "Suspend qa-20261123-m578-web?" with no typed phrase and sent `SuspendService`; Resume ran with no dialog and sent `ResumeService`. REST read `suspended`, then `not_suspended`, within 0.3 s of each. |
+| Service Settings card Suspend and Resume, header Resume | Enabled. The same dialog and mutations; each cycled. |
+| Database header menu and Info actions | Enabled. Suspend and _Suspend Database_ opened "Suspend qa-20261123-m578-pg?" and sent `SuspendDatabase`; Resume and _Resume Database_ sent `ResumeDatabase`. REST read `suspended` in 0.4–2.1 s and `available` again in 39–53 s. |
+| Key Value Info actions | Enabled. _Suspend Key Value Instance_ asked for Render's `sudo suspend key value qa-20261123-m578-kv` and sent `SuspendKeyValue`; _Resume Key Value Instance_ sent `ResumeKeyValue`. `suspended` in about 2 s, `available` again in about 30 s. |
+
+- **GraphQL as the Admin.** Before and after the cycles, the three running resources read suspend `allowed`/`protected_confirmation_required` and resume `allowed`/`not_suspended`, as on dev-4.
+- **Timing.** Every control was enabled within about 1 s of its page loading or of the previous change, and none showed a gate reason.
+- **Scope.** Production has one QA identity, so the Developer and Viewer lines rest on dev-4's run above.
+- **Not this change, noted:** at 390 the protected environment's name still stacks one letter per line in the card header ([w4/715](../../715.md), open).
+- **Cleanup:** the service, Postgres, Key Value and project were deleted (each by-id `GET` answers 404), the session was logged out (`--logout`: `ok logged-out`), and its jar and state file were removed. The other resources in `bex-canary` were not touched.
+
+## Unblocked (2026-11-23)
+
+- **Finding (verified evidence):** production's pin `ac882b5f557f` (`87ea4b0ee5`, `chore(deploy): pin platform images to ac882b5f557f`) carries `ec45a8ebec`: `git merge-base --is-ancestor ec45a8ebec ac882b5f557f` holds. The live dashboard bundle on `dashboard.bex.co` carries the change: its entry chunk holds `protected_environment_admin_required`, a reason `ec45a8ebec` introduced (`git log -S`).
+- **Gate:** none left. The pin gate cleared by itself; no user action was involved.
+- **Next:** as the QA user (an Admin) in `bex-canary`, suspend and resume one service, one Postgres and one Key Value in a protected environment of a disposable project at 1440 and 390 (t004 step 2), delete the fixtures and log out, then close with t008.
