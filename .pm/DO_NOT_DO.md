@@ -66,6 +66,13 @@ Use this file as a hard constraint when running `/pm-brainstorm` and `/pm`. If a
   - The mobile client (w11/m7) must not depend on a decision-request contract.
   - Re-open only on an explicit user decision.
 
+- **#GIT-WORKSPACE-OWNED — Do not move Git access to per-member credentials, and do not file work to build Render's Git Deployment Credentials, its Git Credentials row with Use My Credentials, or its credential hand-over flows.** _(The `#GIT-WORKSPACE-OWNED` label is stable: [ADR078](../docs/ADR078-github-workspace-connections.md) §1 and the Git connections row of [ADR018](../docs/ADR018-render-parity.md) cite this item by that anchor.)_ User decision 2026-11-22, after a full design for the move was drafted and withdrawn the same day. A workspace's GitHub connection stays workspace-owned (ADR078) for hosting and for cloud agents. This is a signed-off divergence under the first anti-goal above, not an exception to it.
+  - A deploy is the team's, not one member's. Render's per-member model stops a service's deploys when the member who set it up loses access, and most of what it builds on top (Use My Credentials, the member-removal warning, the disconnect dialog's affected services, account deletion's hand-over) manages that.
+  - Cloud agents follow Devin, which connects GitHub once per organization, so per-member credentials for hosting would leave two models.
+  - API keys, MCP clients and agent sessions create services with no person present, and a per-member model has to borrow one for each.
+  - A parity scan that reports "no Git Credentials row", "no Use My Credentials" or "no per-member deploy credentials" is dispositioned **signed-off divergence**.
+  - Re-open only on an explicit user decision. The natural trigger is a workspace that requires a member's own GitHub access before a repository is attached. That is a check at attach time on top of the workspace model, not a standing credential that belongs to a person.
+
 ## Minimum bar for a meaningful milestone
 
 Every proposed milestone must include:
