@@ -557,9 +557,11 @@ type Deps struct {
 	// AgentEgressProxyURL (BEX_AGENT_EGRESS_PROXY_URL) is the gateway egress
 	// proxy origin full-tier sandboxes use (w10/m19); empty uses the default.
 	AgentEgressProxyURL string
-	// AgentSandboxIdleTTL is the idle grace (w2/m67, w10/m15): a finished
-	// session's sandbox is terminated once it has been idle this long. Zero ⇒
-	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
+	// AgentSandboxIdleTTL is the idle grace (w2/m67, w10/m15, w6/m563): a
+	// finished turn's sandbox of a session a person started is terminated once
+	// it has been idle this long (an Enterprise workspace may set its own; an
+	// automation's or a child's closes at once). Zero ⇒ no grace (reap as soon
+	// as no editor is connected, ADR054 D6 behavior).
 	AgentSandboxIdleTTL time.Duration
 	// AgentTurnTimeout bounds one agent turn (w5/m80 t002, BEX_AGENT_TURN_TIMEOUT).
 	// Injected into the sandbox as BEX_AGENT_TURN_TIMEOUT_MS so a hung turn is
@@ -1302,6 +1304,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	}
 	agentSessionsSvc.Completer = agentCompleter
 	agentCompleter.Waits = agentSessionsSvc
+	agentCompleter.IdleTimeouts = agentsessions.IdleTimeouts{Service: agentSessionsSvc}
 	// A membership exit ends the sessions the member started (w5/186).
 	memberExit := agentsessions.MemberExit{Service: agentSessionsSvc}
 	membersSvc.Sessions = memberExit

@@ -254,7 +254,8 @@ const longest = (...texts: string[]) =>
  * button labels — renders as real text through the same pieces the ready card
  * uses, so it wraps identically. Only data-dependent values are skeletons, and
  * a value that can wrap holds its longest variant's line count. The Custom
- * hostname list and Remove key are data-dependent and omitted, and the model
+ * hostname list, Remove key and the Enterprise-only idle timeout (w6/m563)
+ * are data-dependent and omitted, and the model
  * list holds a representative count of rows; every action is disabled until
  * the data arrives. `readOnly` is a caller known not to manage the workspace,
  * whose card opens with the Admin-only note (w7/094).

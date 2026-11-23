@@ -1881,7 +1881,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// ADR095: nil when BEX_AGENT_ATTACHMENTS_S3_* is unset.
 	deps.AgentAttachments = agentsessions.NewS3AttachmentObjects(cfg.AgentAttachments)
 	// Sandbox lifecycle (w2/m67, w10/m15): idle grace before a finished
-	// session's sandbox is terminated (default 2h; 0 ⇒ ADR054 D6 immediate
+	// session's sandbox is terminated (default 5m; 0 ⇒ ADR054 D6 immediate
 	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
 	// uncapped).
 	deps.AgentSandboxIdleTTL = cfg.AgentSandboxIdleTTL

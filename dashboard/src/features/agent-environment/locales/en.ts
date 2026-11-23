@@ -1460,6 +1460,46 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "Idle timeout",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "How long a session's sandbox stays up after its turn ends or its last editor disconnects. A message to a closed session starts a fresh sandbox that continues the conversation. Sandboxes of automations and of sessions another session started close as soon as their turn ends.",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "Minutes",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "Save timeout",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message: "From {min} to {max} minutes. Workspaces that set none use {min}.",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "Enter a whole number of minutes from {min} to {max}.",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message: "Only Enterprise workspaces can change the idle timeout.",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "Idle timeout set to {minutes} minutes",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message: "Couldn't save the idle timeout. Try again.",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default enAgentEnvironment;

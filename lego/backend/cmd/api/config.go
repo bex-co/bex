@@ -686,9 +686,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.ShellWSURL = getenv("BEX_SHELL_WS_URL")
 	cfg.AgentSessionGatewayURL = getenv("BEX_AGENT_SESSION_GATEWAY_URL")
 	cfg.AgentGitProxyURL = getenv("BEX_AGENT_GIT_PROXY_URL")
-	// w10/m15: a finished session's sandbox is terminated after 2h idle; the
-	// transcript stays and the next message continues in a fresh sandbox.
-	cfg.AgentSandboxIdleTTL = p.zeroableDuration("BEX_AGENT_SANDBOX_IDLE_TTL", 2*time.Hour)
+	// w10/m15, w6/m563: a finished turn's sandbox of a session a person
+	// started is terminated after 5 minutes idle, as a Devin session sleeps
+	// (an automation's or a child's at once); the transcript stays and the next
+	// message continues in a fresh sandbox.
+	cfg.AgentSandboxIdleTTL = p.zeroableDuration("BEX_AGENT_SANDBOX_IDLE_TTL", agentsessions.DefaultIdleTimeout)
 	// w22/m413: a turn a person stopped keeps its disk this long, and the
 	// session's next message continues from it (ADR047 D12); 0 keeps nothing.
 	// Never longer than the cap below Devin's 14 days.

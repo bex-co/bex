@@ -1491,6 +1491,49 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "Tempo limite de inatividade",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "Por quanto tempo o sandbox de uma sessão continua ativo depois que o turno termina ou o último editor se desconecta. Uma mensagem para uma sessão encerrada inicia um sandbox novo que continua a conversa. Os sandboxes de automações e de sessões iniciadas por outra sessão são encerrados assim que o turno termina.",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "Minutos",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "Salvar tempo limite",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message:
+      "De {min} a {max} minutos. Workspaces sem valor próprio usam {min}.",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "Insira um número inteiro de minutos entre {min} e {max}.",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message:
+      "Somente workspaces Enterprise podem alterar o tempo limite de inatividade.",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "Tempo limite de inatividade definido para {minutes} minutos",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message:
+      "Não foi possível salvar o tempo limite de inatividade. Tente novamente.",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default ptAgentEnvironment;

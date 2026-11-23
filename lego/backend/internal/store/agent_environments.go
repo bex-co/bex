@@ -27,9 +27,10 @@ import (
 // (w10/m17): the sandbox network tier, the custom hostnames the `custom` tier
 // opens, the default model, the default sandbox template (w10/m519; empty
 // means the platform's), whether its sessions get a `gh` (w10/m524), its
-// automations default and mandatory flag for `gh` (w10/m561) and the catalog
-// models its members may choose (w10/m527, w10/m568). A workspace with no row
-// has the defaults.
+// automations default and mandatory flag for `gh` (w10/m561), the catalog
+// models its members may choose (w10/m527, w10/m568) and its own idle timeout
+// for the sessions people start (w6/m563). A workspace with no row has the
+// defaults.
 type AgentEnvironment struct {
 	WorkspaceID     string
 	NetworkTier     string
@@ -67,7 +68,11 @@ type AgentEnvironment struct {
 	// but DisabledModels (the opt-out a row written before m568 stores).
 	DisabledModels []string
 	KnownModels    []string
-	UpdatedAt      time.Time
+	// IdleTimeoutMinutes is the workspace's own idle timeout for the sessions
+	// people start in it, 5 to 120 minutes (w6/m563); nil keeps the
+	// platform's. It applies only while the workspace's plan includes it.
+	IdleTimeoutMinutes *int
+	UpdatedAt          time.Time
 }
 
 // AgentDataUseAck is one admin's acknowledgement that a profile's provider
@@ -116,6 +121,8 @@ type AgentEnvironmentPatch struct {
 	// DisabledModels keeps both.
 	DisabledModels *[]string
 	KnownModels    []string
+	// IdleTimeoutMinutes sets the workspace's idle timeout; nil keeps it.
+	IdleTimeoutMinutes *int
 }
 
 // GetAgentEnvironment returns the workspace's explicit row — ErrNotFound when
@@ -171,10 +178,10 @@ func (s *PGStore) UpsertAgentEnvironmentLocked(ctx context.Context, workspaceID 
 }
 
 // agentEnvironmentColumns are the columns AgentEnvironment.dest scans.
-const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, default_template, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, github_cli_disabled, automations_github_cli_enabled, github_cli_mandatory, disabled_models, known_models, updated_at`
+const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, default_template, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, github_cli_disabled, automations_github_cli_enabled, github_cli_mandatory, disabled_models, known_models, idle_timeout_minutes, updated_at`
 
 func (e *AgentEnvironment) dest() []any {
-	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.DefaultTemplate, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.GitHubCLIDisabled, &e.AutomationsGitHubCLI, &e.GitHubCLIMandatory, &e.DisabledModels, &e.KnownModels, &e.UpdatedAt}
+	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.DefaultTemplate, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.GitHubCLIDisabled, &e.AutomationsGitHubCLI, &e.GitHubCLIMandatory, &e.DisabledModels, &e.KnownModels, &e.IdleTimeoutMinutes, &e.UpdatedAt}
 }
 
 func upsertAgentEnvironment(ctx context.Context, q interface {
@@ -200,13 +207,13 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 	}
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := q.QueryRow(ctx, `
-		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, default_template, github_cli_disabled, disabled_models, automations_github_cli_enabled, github_cli_mandatory, known_models)
+		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, default_template, github_cli_disabled, disabled_models, automations_github_cli_enabled, github_cli_mandatory, known_models, idle_timeout_minutes)
 		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''),
 		        CASE WHEN $6::boolean THEN NULL ELSE $5::bigint END,
 		        CASE WHEN $7::boolean THEN now() END,
 		        COALESCE($8::text[], '{}'), $9::jsonb, COALESCE($10, ''), COALESCE($11::boolean, false),
 		        COALESCE($12::text[], '{}'),
-		        CASE WHEN $13::boolean THEN $14::boolean END, COALESCE($15::boolean, false), $16::text[])
+		        CASE WHEN $13::boolean THEN $14::boolean END, COALESCE($15::boolean, false), $16::text[], $17::integer)
 		ON CONFLICT (workspace_id) DO UPDATE
 			SET network_tier  = COALESCE($2, agent_environments.network_tier),
 			    custom_hosts  = COALESCE($3::text[], agent_environments.custom_hosts),
@@ -225,6 +232,7 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 			    disabled_models = COALESCE($12::text[], agent_environments.disabled_models),
 			    -- Written with disabled_models, NULL included (allow all).
 			    known_models = CASE WHEN $12::text[] IS NULL THEN agent_environments.known_models ELSE $16::text[] END,
+			    idle_timeout_minutes = COALESCE($17::integer, agent_environments.idle_timeout_minutes),
 			    automations_github_cli_enabled = CASE
 			        WHEN $13::boolean THEN $14::boolean
 			        ELSE agent_environments.automations_github_cli_enabled END,
@@ -233,7 +241,7 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 		RETURNING `+agentEnvironmentColumns,
 		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel, patch.SpendCapOverrideMicroUSD, patch.ClearSpendCapOverride, patch.ModelKeySet,
 		disabled, acks, patch.DefaultTemplate, patch.GitHubCLIDisabled, disabledModels,
-		patch.SetAutomationsGitHubCLI, patch.AutomationsGitHubCLI, patch.GitHubCLIMandatory, knownModels,
+		patch.SetAutomationsGitHubCLI, patch.AutomationsGitHubCLI, patch.GitHubCLIMandatory, knownModels, patch.IdleTimeoutMinutes,
 	).Scan(e.dest()...)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)

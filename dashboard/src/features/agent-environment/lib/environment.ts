@@ -381,3 +381,36 @@ export function enabledModelsErrorKey(err: unknown): string {
     AGENT_ENVIRONMENT_MODELS_INVALID: "agentEnvironment.modelsInvalid",
   });
 }
+
+/**
+ * The bounds of a workspace's own idle timeout, in minutes (w6/m563, as
+ * Devin's Enterprise customers can set 5 to 120): the lower one is also the
+ * platform default every other plan keeps.
+ */
+export const IDLE_TIMEOUT_MIN = 5;
+export const IDLE_TIMEOUT_MAX = 120;
+
+/**
+ * The idle timeout an admin typed, as whole minutes within the bounds, or
+ * null for anything the server would refuse.
+ */
+export function parseIdleTimeout(text: string): number | null {
+  const trimmed = text.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const minutes = Number(trimmed);
+  return minutes >= IDLE_TIMEOUT_MIN && minutes <= IDLE_TIMEOUT_MAX
+    ? minutes
+    : null;
+}
+
+/**
+ * The locale key for a failed idle timeout write (w6/m563): out of bounds,
+ * or a workspace no longer on Enterprise.
+ */
+export function idleTimeoutErrorKey(err: unknown): string {
+  return sectionErrorKey(err, "agentEnvironment.idleTimeoutSaveFailed", {
+    AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID:
+      "agentEnvironment.idleTimeoutInvalid",
+    PLAN_FEATURE_REQUIRED: "agentEnvironment.idleTimeoutEnterpriseOnly",
+  });
+}

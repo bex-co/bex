@@ -1,18 +1,18 @@
 # w6 · m563 — An agent session's sandbox closes 5 minutes after its turn, as Devin's session sleeps; an automation's closes at once
 
-**Worker:** worker6 **Goal:** a finished turn's sandbox stops costing money within minutes, as a Devin session sleeps after 5 minutes of inactivity, instead of running for two more hours that nothing uses. **Status:** todo
+**Worker:** worker6 **Goal:** a finished turn's sandbox stops costing money within minutes, as a Devin session sleeps after 5 minutes of inactivity, instead of running for two more hours that nothing uses. **Status:** todo (t001–t003, t005–t007 done; t004 waits for production)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [A person's session closes 5 minutes after its turn, and an automation's or a child's at its harvest](t001.md) | 1h | — |
-| t002 | [An Enterprise workspace sets its own idle timeout, 5 to 120 minutes, as Devin's Enterprise customers can](t002.md) | 2h | t001 |
-| t003 | [ADR059, ADR047, `lego/backend/AGENTS.md` and the dashboard say 5 minutes](t003.md) | 30m | t001, t002 |
+| t001 | [A person's session closes 5 minutes after its turn, and an automation's or a child's at its harvest](done/t001.md) — **DONE** | 1h | — |
+| t002 | [An Enterprise workspace sets its own idle timeout, 5 to 120 minutes, as Devin's Enterprise customers can](done/t002.md) — **DONE** | 2h | t001 |
+| t003 | [ADR059, ADR047, `lego/backend/AGENTS.md` and the dashboard say 5 minutes](done/t003.md) — **DONE** | 30m | t001, t002 |
 | t004 | [Production check: idle time per sandbox falls to the new bounds, and an idle close keeps undelivered work](t004.md) | 1h | t003 |
-| t005 | [Render parity (Devin for agent sessions)](t005.md) | 30m | t004 |
-| t006 | [Simplify](t006.md) | 20m | t005 |
-| t007 | [Test coverage](t007.md) | 45m | t005 |
+| t005 | [Render parity (Devin for agent sessions)](done/t005.md) — **DONE** | 30m | t004 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 20m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 45m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done

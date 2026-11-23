@@ -1490,6 +1490,48 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "Тайм-аут простоя",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "Сколько времени песочница сессии остаётся запущенной после окончания хода или отключения последнего редактора. Сообщение в закрытую сессию запускает новую песочницу, которая продолжает разговор. Песочницы автоматизаций и сессий, запущенных другой сессией, закрываются сразу после окончания хода.",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "Минуты",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "Сохранить тайм-аут",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message:
+      "От {min} до {max} минут. Рабочие пространства без своего значения используют {min}.",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "Введите целое число минут от {min} до {max}.",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message:
+      "Изменять тайм-аут простоя могут только рабочие пространства Enterprise.",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "Тайм-аут простоя: {minutes} мин.",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message: "Не удалось сохранить тайм-аут простоя. Попробуйте ещё раз.",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default ruAgentEnvironment;

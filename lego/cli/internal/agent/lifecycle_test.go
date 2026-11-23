@@ -373,7 +373,7 @@ func TestEnvSet(t *testing.T) {
 		"defaultTemplate": "agent-8c-16g", "templates": []any{
 			map[string]any{"name": "agent", "cpu": 2, "memoryGb": 4},
 			map[string]any{"name": "agent-8c-16g", "cpu": 8, "memoryGb": 16},
-		}}
+		}, "idleTimeoutMinutes": 5, "idleTimeoutConfigurable": false}
 	f := newRouteFake(t, map[string]http.HandlerFunc{
 		"GET /v1/agent-environment":   answer(http.StatusOK, env),
 		"PATCH /v1/agent-environment": answer(http.StatusOK, env),
@@ -387,7 +387,9 @@ func TestEnvSet(t *testing.T) {
 		// and one that predates the automations default and the mandatory
 		// flag reads as inherit and not mandatory (w10/m561).
 		!regexp.MustCompile(`(?m)^GitHub CLI\s+on$`).MatchString(stdout) ||
-		!regexp.MustCompile(`(?m)^Automations GitHub CLI\s+inherit$`).MatchString(stdout) {
+		!regexp.MustCompile(`(?m)^Automations GitHub CLI\s+inherit$`).MatchString(stdout) ||
+		// w6/m563: the idle close, and that only Enterprise can change it.
+		!regexp.MustCompile(`(?m)^Idle timeout\s+5 minutes after a turn \(automations and child sessions close at once\); Enterprise workspaces can change it$`).MatchString(stdout) {
 		t.Fatalf("env:\n%s", stdout)
 	}
 	// Each body is compared whole, so githubCliEnabled is sent only when
@@ -416,6 +418,7 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--github-cli", "off", "--github-cli-mandatory", "on", "--automations-github-cli", "inherit"},
 			`{"automationsGithubCliEnabled":null,"githubCliEnabled":false,"githubCliMandatory":true}`},
 		{[]string{"--models", "deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5"}, `{"enabledModels":["deepseek/deepseek-v4.1-flash-1017","anthropic/claude-haiku-5.5"]}`},
+		{[]string{"--idle-timeout", "30"}, `{"idleTimeoutMinutes":30}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil

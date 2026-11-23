@@ -240,6 +240,8 @@ type AgentEnvironment {
   enabledModels: [String!]!
   githubCliEnabled: Boolean!
   githubCliMandatory: Boolean!
+  idleTimeoutConfigurable: Boolean!
+  idleTimeoutMinutes: Int!
   modelKeySet: Boolean!
   modelPinned: Boolean!
   modelSource: AgentModelSource!
@@ -268,6 +270,7 @@ input AgentEnvironmentInput {
   enabledModels: [String!]
   githubCliEnabled: Boolean
   githubCliMandatory: Boolean
+  idleTimeoutMinutes: Int
   modelApiKey: String
   networkTier: AgentNetworkTier
   resetAgentModelMonthlySpendCap: Boolean

@@ -14,7 +14,7 @@ export interface SessionPhaseView {
 }
 
 // The eight server phases (agentsessions/models.go). Since w10/m15 an idle
-// session's sandbox closes after 2h and the session stays completed/failed. Only non-terminal, non-canceling phases are
+// session's sandbox closes after its idle grace (5m since w6/m563) and the session stays completed/failed. Only non-terminal, non-canceling phases are
 // cancelable — a completed/failed/canceled session cannot be canceled again,
 // matching the server's idempotent Cancel.
 const PHASES: Record<string, SessionPhaseView> = {

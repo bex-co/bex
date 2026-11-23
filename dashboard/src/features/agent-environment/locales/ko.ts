@@ -1461,6 +1461,47 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "유휴 시간 제한",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "턴이 끝나거나 마지막 편집기 연결이 끊긴 뒤 세션의 샌드박스가 유지되는 시간입니다. 닫힌 세션에 메시지를 보내면 대화를 이어 가는 새 샌드박스가 시작됩니다. 자동화의 세션과 다른 세션이 시작한 세션의 샌드박스는 턴이 끝나는 즉시 닫힙니다.",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "분",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "시간 제한 저장",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message:
+      "{min}~{max}분. 설정하지 않은 워크스페이스는 {min}분을 사용합니다.",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "{min}에서 {max} 사이의 정수 분을 입력하세요.",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message: "Enterprise 워크스페이스만 유휴 시간 제한을 변경할 수 있습니다.",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "유휴 시간 제한을 {minutes}분으로 설정했습니다",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message: "유휴 시간 제한을 저장하지 못했습니다. 다시 시도하세요.",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default koAgentEnvironment;

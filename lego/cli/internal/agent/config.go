@@ -398,7 +398,13 @@ type agentEnvironment struct {
 	// neither, which reads as inherit and not mandatory.
 	AutomationsGitHubCLIEnabled *bool `json:"automationsGithubCliEnabled"`
 	GitHubCLIMandatory          bool  `json:"githubCliMandatory"`
-	AgentDataUse                []struct {
+	// IdleTimeoutMinutes is how long the sandbox of a session a person
+	// started stays up after its turn (w6/m563), nil from a bex-api that
+	// predates it; IdleTimeoutConfigurable is whether the workspace's plan
+	// (Enterprise) lets an admin change it.
+	IdleTimeoutMinutes      *int `json:"idleTimeoutMinutes"`
+	IdleTimeoutConfigurable bool `json:"idleTimeoutConfigurable"`
+	AgentDataUse            []struct {
 		Agent          string     `json:"agent"`
 		AcknowledgedAt *time.Time `json:"acknowledgedAt"`
 		AcknowledgedBy *string    `json:"acknowledgedBy"`
@@ -423,6 +429,7 @@ func envCommand(d deps) *cobra.Command {
 		models                []string
 		noHosts, keyStdin     bool
 		clearKey              bool
+		idleTimeout           int
 	)
 	set := &cobra.Command{
 		Use:   "set [flags]",
@@ -458,7 +465,11 @@ func envCommand(d deps) *cobra.Command {
 			"catalog\" in `bex agent env`) until an admin turns it on. It must keep the\n" +
 			"catalog's default (the first of `bex agent env`'s Models). A session,\n" +
 			"message or automation naming a turned-off model is refused, and one already\n" +
-			"on it runs the workspace default from its next turn.",
+			"on it runs the workspace default from its next turn.\n" +
+			"--idle-timeout sets how many minutes the sandbox of a session a person\n" +
+			"started stays up after its turn ends or its last editor disconnects, 5 to\n" +
+			"120 (Enterprise workspaces only; every other plan keeps 5). Automations'\n" +
+			"and child sessions' sandboxes close when their turn ends.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			f := c.Flags()
@@ -536,6 +547,9 @@ func envCommand(d deps) *cobra.Command {
 			if len(acks) > 0 {
 				patch["acknowledgeAgentDataUse"] = acks
 			}
+			if f.Changed("idle-timeout") {
+				patch["idleTimeoutMinutes"] = idleTimeout
+			}
 			if len(patch) == 0 {
 				return usageError("nothing to change: give a flag")
 			}
@@ -556,6 +570,7 @@ func envCommand(d deps) *cobra.Command {
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
 	f.StringSliceVar(&agents, "agents", nil, "the agents members can start sessions with, comma-separated; replaces the list (\"\" turns every agent off)")
 	f.StringSliceVar(&models, "models", nil, "the platform catalog models members may choose, comma-separated; replaces the list and must keep the catalog's default. Every model allows all, a later one included; any model left out leaves a later one off")
+	f.IntVar(&idleTimeout, "idle-timeout", 0, "minutes the sandbox of a session a person started stays up after its turn, 5 to 120 (Enterprise only)")
 	f.StringArrayVar(&acks, "acknowledge-data-use", nil, "acknowledge, as an admin, that this agent's model provider may train on what its sessions send; repeatable")
 	root.AddCommand(set)
 	return root
@@ -630,6 +645,13 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	}
 	if e.DefaultTemplate != "" {
 		tw.row("Default sandbox", templateSize(e.DefaultTemplate, e.Templates))
+	}
+	if e.IdleTimeoutMinutes != nil {
+		idle := fmt.Sprintf("%d minutes after a turn (automations and child sessions close at once)", *e.IdleTimeoutMinutes)
+		if !e.IdleTimeoutConfigurable {
+			idle += "; Enterprise workspaces can change it"
+		}
+		tw.row("Idle timeout", idle)
 	}
 	source := e.ModelSource
 	if e.ModelKeySet {

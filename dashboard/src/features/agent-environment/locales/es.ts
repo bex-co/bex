@@ -1497,6 +1497,48 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "Tiempo de inactividad",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "Cuánto tiempo sigue activo el sandbox de una sesión después de que termina su turno o se desconecta su último editor. Un mensaje a una sesión cerrada inicia un sandbox nuevo que continúa la conversación. Los sandboxes de las automatizaciones y de las sesiones que inició otra sesión se cierran en cuanto termina su turno.",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "Minutos",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "Guardar tiempo",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message:
+      "De {min} a {max} minutos. Los espacios de trabajo que no lo configuran usan {min}.",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "Introduce un número entero de minutos entre {min} y {max}.",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message:
+      "Solo los espacios de trabajo Enterprise pueden cambiar el tiempo de inactividad.",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "Tiempo de inactividad fijado en {minutes} minutos",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message: "No se pudo guardar el tiempo de inactividad. Inténtalo de nuevo.",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default esAgentEnvironment;

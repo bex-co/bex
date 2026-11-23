@@ -1481,6 +1481,48 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "アイドルタイムアウト",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "ターンの終了後、または最後のエディターが切断された後に、セッションのサンドボックスが起動したままになる時間です。終了したセッションにメッセージを送ると、会話を引き継ぐ新しいサンドボックスが起動します。自動化のセッションと、別のセッションが開始したセッションのサンドボックスは、ターンが終わるとすぐに終了します。",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "分",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "タイムアウトを保存",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message: "{min}〜{max} 分。設定していないワークスペースは {min} 分です。",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "{min}〜{max} の整数で分数を入力してください。",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message:
+      "アイドルタイムアウトを変更できるのは Enterprise ワークスペースのみです。",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "アイドルタイムアウトを {minutes} 分に設定しました",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message:
+      "アイドルタイムアウトを保存できませんでした。もう一度お試しください。",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default jaAgentEnvironment;

@@ -286,7 +286,8 @@ export interface AgentSessionView {
   /**
    * Set on a completed session whose work the agent left undelivered — an
    * uncommitted tree, unpushed commits, or a pushed branch with no PR (ADR090
-   * D5). The work stays in the sandbox only until it closes after 2h idle.
+   * D5). The sandbox closes 5 minutes after the turn (w6/m563); a checkout
+   * holding the work keeps its disk for the next message (w10/m491).
    */
   deliveryNote: string | null;
   createdAt: string;

@@ -80,7 +80,7 @@ export function SessionChatColumn({
   // turn is recorded (turns advanced past the submit-time count) and the
   // conversation is attachable again, by which point replay carries the durable
   // prompt. It must not key on a live sandbox: an idle session's sandbox closes
-  // after 2h and clears sandboxId, which would bring the echo back as a
+  // after 5m (w6/m563) and clears sandboxId, which would bring the echo back as a
   // duplicate of the replayed prompt.
   const [pendingSteer, setPendingSteer] = useState<{
     prompt: string;

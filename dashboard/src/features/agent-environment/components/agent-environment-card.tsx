@@ -35,6 +35,7 @@ import { SpendCapSection } from "@/features/agent-environment/components/spend-c
 import { AvailableAgentsSection } from "@/features/agent-environment/components/available-agents-section";
 import { GithubCliSection } from "@/features/agent-environment/components/github-cli-section";
 import { EnabledModelsSection } from "@/features/agent-environment/components/enabled-models-section";
+import { IdleTimeoutSection } from "@/features/agent-environment/components/idle-timeout-section";
 import { templateLabel } from "@/features/agent-sessions/lib/templates";
 import {
   AgentEnvironmentCardSkeleton,
@@ -68,7 +69,8 @@ const PLATFORM_DEFAULT = "__platform_default__";
  * sandbox network tier, the Custom tier's extra hostnames, the sessions' gh
  * (w10/m524), the default model and the catalog models members can choose
  * (w10/m527), the default sandbox template (w10/m519, Devin's default
- * platform), the model source with the write-only provider key (ADR091 D7),
+ * platform), on Enterprise the idle timeout of the sessions people start
+ * (w6/m563), the model source with the write-only provider key (ADR091 D7),
  * and the agent-model spend against its monthly cap (ADR091 D5, D6). Any
  * member sees it; only admins (can_manage) can change it.
  */
@@ -473,6 +475,14 @@ function AgentEnvironmentForm({
               </p>
             ) : null}
           </div>
+        ) : null}
+
+        {saved.idleTimeoutConfigurable ? (
+          <IdleTimeoutSection
+            saved={saved}
+            update={update}
+            canManage={canManage}
+          />
         ) : null}
 
         <ModelKeySection saved={saved} update={update} canManage={canManage} />

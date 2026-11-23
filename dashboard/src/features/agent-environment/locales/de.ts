@@ -1494,6 +1494,48 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "Leerlauf-Timeout",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "Wie lange die Sandbox einer Sitzung weiterläuft, nachdem ihr Durchgang endet oder sich der letzte Editor trennt. Eine Nachricht an eine geschlossene Sitzung startet eine neue Sandbox, die das Gespräch fortsetzt. Die Sandboxes von Automationen und von Sitzungen, die eine andere Sitzung gestartet hat, werden geschlossen, sobald ihr Durchgang endet.",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "Minuten",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "Timeout speichern",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message:
+      "{min} bis {max} Minuten. Workspaces ohne eigenen Wert verwenden {min}.",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "Gib eine ganze Zahl von {min} bis {max} Minuten ein.",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message: "Nur Enterprise-Workspaces können das Leerlauf-Timeout ändern.",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "Leerlauf-Timeout auf {minutes} Minuten gesetzt",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message:
+      "Das Leerlauf-Timeout konnte nicht gespeichert werden. Versuche es erneut.",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default deAgentEnvironment;

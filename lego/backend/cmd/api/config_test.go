@@ -85,7 +85,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AuthFailureRPM", cfg.AuthFailureRPM, 60.0},
 		{"AuthMaxInflight", cfg.AuthMaxInflight, 64},
 		{"AuthMaxInflightPerCredential", cfg.AuthMaxInflightPerCredential, 64},
-		{"AgentSandboxIdleTTL", cfg.AgentSandboxIdleTTL, 2 * time.Hour},
+		{"AgentSandboxIdleTTL", cfg.AgentSandboxIdleTTL, 5 * time.Minute},
 		{"AgentInterruptRetention", cfg.AgentInterruptRetention, 24 * time.Hour},
 		{"AgentTurnTimeout", cfg.AgentTurnTimeout, 30 * time.Minute},
 		{"AgentTurnIdleTimeout", cfg.AgentTurnIdleTimeout, 30 * time.Minute},
@@ -367,8 +367,8 @@ func TestLoadConfigWarnKnobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("warn-policy knobs must not be fatal: %v", err)
 	}
-	if cfg.AgentSandboxIdleTTL != 2*time.Hour {
-		t.Errorf("AgentSandboxIdleTTL = %v, want the 2h default kept", cfg.AgentSandboxIdleTTL)
+	if cfg.AgentSandboxIdleTTL != 5*time.Minute {
+		t.Errorf("AgentSandboxIdleTTL = %v, want the 5m default kept", cfg.AgentSandboxIdleTTL)
 	}
 	if cfg.MaxEnvGroupsPerWorkspace != 100 {
 		t.Errorf("MaxEnvGroupsPerWorkspace = %d, want the 100 default kept", cfg.MaxEnvGroupsPerWorkspace)

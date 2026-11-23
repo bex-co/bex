@@ -206,6 +206,10 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 			func(v Environment) *bool { return v.AutomationsGitHubCLIEnabled }),
 		"githubCliMandatory": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "Whether the workspace's gh off is mandatory: while githubCliEnabled is false, no automations default, automation or session turns gh back on. No effect while githubCliEnabled is true.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.GitHubCLIMandatory })},
+		idleTimeoutField: &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Description: "How long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects: the workspace's own timeout on Enterprise, else the platform's 5. A closed session's next message runs in a fresh sandbox. Automations' and child sessions' sandboxes close when their turn ends.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.IdleTimeoutMinutes })},
+		"idleTimeoutConfigurable": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "Whether the workspace's plan lets its admins set idleTimeoutMinutes (Enterprise).",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.IdleTimeoutConfigurable })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
 				return nil
@@ -264,6 +268,7 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		automationsGitHubCLIField:        &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "The gh binding of the sessions automations start: false turns gh off for them, true turns it on for them, resetAutomationsGithubCli returns it to inheriting githubCliEnabled. true is refused with AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory."},
 		"resetAutomationsGithubCli":      &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the automations default to inheriting githubCliEnabled (the explicit null this input cannot carry)."},
 		"githubCliMandatory":             &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true makes the workspace's gh off mandatory: while githubCliEnabled is false nothing below turns gh back on, and saving an automations default, automation or session that would is refused with a GITHUB_CLI_LOCKED code. false lets lower levels choose again."},
+		idleTimeoutField:                 &graphql.InputObjectFieldConfig{Type: graphql.Int, Description: "How long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects: 5 to 120 (AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID). Enterprise only: any other plan is refused with PLAN_FEATURE_REQUIRED."},
 		"enabledModels":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the catalog models members may choose; the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, which leaves a model added to the catalog later off until an admin turns it on. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn."},
 	},
 })
@@ -313,6 +318,7 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 		input.ResetAutomationsGitHubCLI = reset
 	}
 	input.GitHubCLIMandatory = gqlutil.BoolPtr(raw, "githubCliMandatory")
+	input.IdleTimeoutMinutes = gqlutil.IntPtr(raw, idleTimeoutField)
 	if models, ok := raw["enabledModels"].([]any); ok {
 		list := gqlutil.StringList(models)
 		input.EnabledModels = &list

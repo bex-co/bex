@@ -128,16 +128,25 @@ type Completer struct {
 	// gateway's SSH session cap; 0 => the 4h default (BEX_SSH_SESSION_TIMEOUT's).
 	SSHGraceTTL time.Duration
 
-	// IdleTTL is the idle grace (w2/m67, w10/m15): a finished session's sandbox
-	// is kept alive until it has been idle this long, where idle = now − max(last
-	// turn end, last SSH disconnect) and a currently-open editor SSH session pins
-	// idle at zero regardless. Past it the sandbox is terminated; the durable
-	// transcript stays and the next message continues the conversation in a
-	// fresh sandbox (ADR047 D3). 0 ⇒ no extra grace (reap as soon as no editor is
-	// connected — byte-identical to ADR054 D6). Set from
-	// BEX_AGENT_SANDBOX_IDLE_TTL (main.go default 2h); the zero value here keeps
-	// tests on the pre-m67 behavior so the ADR054 D6 suite is unchanged.
+	// IdleTTL is the idle grace of a session a person started (w2/m67,
+	// w10/m15, w6/m563): its finished turn's sandbox is kept alive until it has
+	// been idle this long, where idle = now − max(last turn end, last SSH
+	// disconnect) and a currently-open editor SSH session pins idle at zero
+	// regardless. Past it the sandbox is terminated; the durable transcript
+	// stays and the next message continues the conversation in a fresh sandbox
+	// (ADR047 D3). An automation's session and a child session get no grace
+	// (idleGrace). 0 ⇒ no extra grace (reap as soon as no editor is connected —
+	// byte-identical to ADR054 D6). Set from BEX_AGENT_SANDBOX_IDLE_TTL
+	// (default DefaultIdleTimeout, 5m, as a Devin session sleeps); the zero
+	// value here keeps tests on the pre-m67 behavior so the ADR054 D6 suite is
+	// unchanged.
 	IdleTTL time.Duration
+	// IdleTimeouts reads a workspace's own idle timeout for the sessions people
+	// start in it (an Enterprise setting, w6/m563), which wins over IdleTTL.
+	// nil applies IdleTTL everywhere.
+	IdleTimeouts interface {
+		WorkspaceIdleTimeout(ctx context.Context, workspaceID string) (time.Duration, bool, error)
+	}
 
 	// StatusReadFailureTTL is the retry window: how long status reads may keep
 	// failing transiently (sandbox.Transient — a node that is not ready, a
@@ -398,7 +407,7 @@ func (c *Completer) withIdle(record store.AgentSession, fn func(*idleSandbox)) {
 }
 
 // logDeferral logs a deferred teardown only when its reason changes, so a
-// sandbox waiting out a 2h grace logs once, not every tick.
+// sandbox waiting out its idle grace logs once, not every tick.
 func (c *Completer) logDeferral(record store.AgentSession, reason string) {
 	changed := false
 	c.withIdle(record, func(e *idleSandbox) {
@@ -429,6 +438,42 @@ func (c *Completer) idleTTL() time.Duration {
 		return c.IdleTTL
 	}
 	return 0
+}
+
+// idleGrace is how long record's finished turn keeps its sandbox past its
+// last interaction, given it has been idle for idle (w6/m563). A Devin session
+// sleeps after 5 minutes of inactivity; bex closes the sandbox:
+//   - none for an ARCHIVED session (ADR065 D1): archive is an explicit
+//     disinterest signal.
+//   - none for a FAILED session (w5/m80 t004): the grace exists to let a user
+//     reopen a successful result in an editor; a failed turn has none, so
+//     holding its sandbox only pins plan quota.
+//   - none for a session an automation or a parent session started: no person
+//     opens an editor on it, so the sandbox closes at the harvest.
+//   - for a session a person started, its workspace's own timeout (an
+//     Enterprise setting) when set, else IdleTTL.
+//
+// The open-editor pin in teardown applies to every case first — a live edit
+// is never killed — and a checkout holding undelivered work keeps its disk at
+// the close (retainOnClose). A workspace's own timeout is never under
+// MinIdleTimeout, so a turn idle for less than that and IdleTTL is kept
+// without reading it.
+func (c *Completer) idleGrace(ctx context.Context, record store.AgentSession, idle time.Duration) (time.Duration, error) {
+	if record.ArchivedAt != nil || record.Phase == PhaseFailed || record.AutomationID != "" || record.ParentSessionID != "" {
+		return 0, nil
+	}
+	grace := c.idleTTL()
+	if c.IdleTimeouts == nil || idle < min(grace, MinIdleTimeout) {
+		return grace, nil
+	}
+	own, ok, err := c.IdleTimeouts.WorkspaceIdleTimeout(ctx, record.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	if ok {
+		grace = own
+	}
+	return grace, nil
 }
 
 // transcriptQuota is the per-session cumulative transcript byte cap the
@@ -1034,9 +1079,9 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		ok := c.captureTranscript(ctx, record)
 		c.withIdle(record, func(e *idleSandbox) { e.harvested = ok })
 	}
-	// Idle grace (w2/m67, w10/m15), generalizing ADR054 D6. The sandbox is
-	// kept alive while an editor SSH session is connected (never kill a live edit)
-	// AND for IdleTTL past the last interaction, where idle is measured from the
+	// Idle grace (w2/m67, w10/m15, w6/m563), generalizing ADR054 D6. The sandbox
+	// is kept alive while an editor SSH session is connected (never kill a live
+	// edit) AND for idleGrace past the last interaction, where idle is measured from the
 	// later of this session's turn-end (record.UpdatedAt, stamped by the finalize
 	// that produced this row) and the last editor SSH disconnect. The transcript
 	// is already captured above, delivery already happened, and the session is
@@ -1053,22 +1098,19 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		return
 	}
 	// idleSince is the most recent interaction: the turn end (this finalized row's
-	// updated_at) or a later SSH disconnect. IdleTTL=0 reduces this to "reap as
-	// soon as no editor is connected" — byte-identical to ADR054 D6. Two cases
-	// skip the grace entirely and reclaim at this very tick (the still-open-editor
-	// pin above still applies to both — never kill a live edit):
-	//   - an ARCHIVED session (ADR065 D1): archive is an explicit disinterest signal.
-	//   - a FAILED session (w5/m80 t004): the idle grace exists to let a user
-	//     reopen a SUCCESSFUL result in an editor; a failed turn has no such result,
-	//     so holding its sandbox for the full IdleTTL only pins plan quota (a bad-key
-	//     workspace could wedge itself under the ~2-sandbox hobby cap). A user who
-	//     still wants to debug it keeps it alive with an open SSH via the pin above.
-	skipGrace := record.ArchivedAt != nil || record.Phase == PhaseFailed
+	// updated_at) or a later SSH disconnect. A zero grace reduces this to "reap as
+	// soon as no editor is connected" — byte-identical to ADR054 D6.
 	idleSince := record.UpdatedAt
 	if lastEnded != nil && lastEnded.After(idleSince) {
 		idleSince = *lastEnded
 	}
-	if grace := c.idleTTL(); !skipGrace && grace > 0 && c.now().Sub(idleSince) < grace {
+	idle := c.now().Sub(idleSince)
+	grace, err := c.idleGrace(ctx, record, idle)
+	if err != nil {
+		log.Printf("agent-session completer: idle timeout read failed (session=%s): %v", record.ID, err)
+		return // transient store error: retry next tick rather than tear down early
+	}
+	if grace > 0 && idle < grace {
 		c.logDeferral(record, "idle grace not elapsed")
 		return
 	}

@@ -1431,6 +1431,46 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
   },
+  "agentEnvironment.idleTimeoutTitle": {
+    message: "空闲超时",
+    description: "Heading of the Enterprise idle timeout section (w6/m563)",
+  },
+  "agentEnvironment.idleTimeoutDescription": {
+    message:
+      "会话的沙箱在其轮次结束或最后一个编辑器断开后保持运行的时长。向已关闭的会话发送消息会启动一个新的沙箱并继续对话。自动化的会话以及由其他会话启动的会话，其沙箱会在轮次结束后立即关闭。",
+    description:
+      "Description of the idle timeout section: what it bounds, and that automations' and child sessions' sandboxes close at once",
+  },
+  "agentEnvironment.idleTimeoutLabel": {
+    message: "分钟",
+    description: "Label of the idle timeout's minutes field",
+  },
+  "agentEnvironment.idleTimeoutSave": {
+    message: "保存超时",
+    description: "Button that saves the idle timeout",
+  },
+  "agentEnvironment.idleTimeoutHelp": {
+    message: "{min} 到 {max} 分钟。未设置的工作区使用 {min} 分钟。",
+    description: "Help under the idle timeout field; {min} is also the default",
+  },
+  "agentEnvironment.idleTimeoutInvalid": {
+    message: "请输入 {min} 到 {max} 之间的整数分钟数。",
+    description:
+      "Client/server refusal of an idle timeout outside {min}-{max} minutes",
+  },
+  "agentEnvironment.idleTimeoutEnterpriseOnly": {
+    message: "只有 Enterprise 工作区可以更改空闲超时。",
+    description:
+      "Server refusal of an idle timeout on a workspace no longer on Enterprise",
+  },
+  "agentEnvironment.idleTimeoutSaved": {
+    message: "空闲超时已设为 {minutes} 分钟",
+    description: "Toast after the idle timeout saved",
+  },
+  "agentEnvironment.idleTimeoutSaveFailed": {
+    message: "无法保存空闲超时，请重试。",
+    description: "Generic idle timeout write failure",
+  },
 };
 
 export default zhAgentEnvironment;

@@ -108,6 +108,10 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 		row.DisabledModels = slices.Clone(*patch.DisabledModels)
 		row.KnownModels = slices.Clone(patch.KnownModels)
 	}
+	if patch.IdleTimeoutMinutes != nil {
+		minutes := *patch.IdleTimeoutMinutes
+		row.IdleTimeoutMinutes = &minutes
+	}
 	for _, agent := range patch.AcknowledgeDataUse {
 		if _, kept := row.DataUseAcks[agent]; kept {
 			continue
@@ -198,7 +202,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, EnabledModels: []string{}, NewModels: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
 		TemplateOffer: offerOf("agent"),
 		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}},
-		GitHubCLIEnabled: true}
+		GitHubCLIEnabled: true, IdleTimeoutMinutes: 5, IdleTimeoutConfigurable: true}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}
@@ -342,6 +346,8 @@ func exerciseEnvironmentValidation(t *testing.T, newService func() (*Service, st
 		{"model id", EnvironmentInput{DefaultModel: ptr("claude sonnet")}, "AGENT_ENVIRONMENT_MODEL_INVALID"},
 		{"unregistered template", EnvironmentInput{DefaultTemplate: ptr("agent-8c-16g")}, CodeEnvironmentTemplateInvalid},
 		{"internal template", EnvironmentInput{DefaultTemplate: ptr("base")}, CodeEnvironmentTemplateInvalid},
+		{"idle timeout under 5 minutes", EnvironmentInput{IdleTimeoutMinutes: ptr(4)}, IdleTimeoutInvalidCode},
+		{"idle timeout over 120 minutes", EnvironmentInput{IdleTimeoutMinutes: ptr(121)}, IdleTimeoutInvalidCode},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ws := newService()
@@ -397,6 +403,9 @@ func gqlInput(in EnvironmentInput) map[string]any {
 	}
 	if in.DefaultTemplate != nil {
 		out["defaultTemplate"] = *in.DefaultTemplate
+	}
+	if in.IdleTimeoutMinutes != nil {
+		out[idleTimeoutField] = *in.IdleTimeoutMinutes
 	}
 	return out
 }

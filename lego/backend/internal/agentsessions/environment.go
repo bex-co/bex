@@ -41,8 +41,9 @@ import (
 // cloud, Claude Code on the web, Devin and Copilot configure theirs: the
 // sandbox network tier, the custom hostnames the `custom` tier opens, the
 // default model, the default sandbox template (w10/m519), whether its
-// sessions get a `gh` (w10/m524) and which platform catalog models its members
-// may choose (w10/m527).
+// sessions get a `gh` (w10/m524), which platform catalog models its members
+// may choose (w10/m527) and, on Enterprise, how long the sandbox of a session
+// a person started stays up after its turn (w6/m563).
 const (
 	// NetworkTierRegistries (the default, including for every workspace with
 	// no row): GitHub, the gateway hops and the built-in package registries,
@@ -111,9 +112,16 @@ type Environment struct {
 	// inherits GitHubCLIEnabled for the sessions automations start.
 	// GitHubCLIMandatory makes the workspace's off a floor no automation or
 	// session turns back on; it has no effect while GitHubCLIEnabled is true.
-	AutomationsGitHubCLIEnabled *bool      `json:"automationsGithubCliEnabled"`
-	GitHubCLIMandatory          bool       `json:"githubCliMandatory"`
-	UpdatedAt                   *time.Time `json:"updatedAt"`
+	AutomationsGitHubCLIEnabled *bool `json:"automationsGithubCliEnabled"`
+	GitHubCLIMandatory          bool  `json:"githubCliMandatory"`
+	// IdleTimeoutMinutes is how long the sandbox of a session a person started
+	// stays up after its turn ends or its last editor disconnects (w6/m563):
+	// the workspace's own timeout on Enterprise, else the platform's 5
+	// minutes. IdleTimeoutConfigurable is whether the plan lets the
+	// workspace's admins set it.
+	IdleTimeoutMinutes      int        `json:"idleTimeoutMinutes"`
+	IdleTimeoutConfigurable bool       `json:"idleTimeoutConfigurable"`
+	UpdatedAt               *time.Time `json:"updatedAt"`
 	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
 	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
 	// min(the admin override or the plan default, the trust tier's ceiling).
@@ -188,6 +196,8 @@ type EnvironmentInput struct {
 	// allows all, a later one included; any model off makes it an allowlist
 	// that leaves a model added to the catalog later off (w10/m568).
 	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, and a model added to the catalog later stays off until an admin turns it on (it reads in newModels). It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
+	// IdleTimeoutMinutes sets the workspace's own idle timeout (w6/m563).
+	IdleTimeoutMinutes *int `json:"idleTimeoutMinutes,omitempty" jsonschema:"how long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects (admins only, Enterprise plan only): 5 to 120, else AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID; any other plan is refused with PLAN_FEATURE_REQUIRED and keeps 5. A closed session's next message runs in a fresh sandbox. Automations' and child sessions' sandboxes close when their turn ends whatever it says"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
@@ -385,7 +395,11 @@ func (s *Service) Environment(ctx context.Context, ownerID string) (Environment,
 	if err != nil {
 		return Environment{}, err
 	}
-	view := s.environmentView(row)
+	configurable, err := s.idleTimeoutConfigurable(ctx, workspaceID)
+	if err != nil {
+		return Environment{}, err
+	}
+	view := s.withIdleTimeout(s.environmentView(row), row, configurable)
 	if s.Spend == nil {
 		return view, nil
 	}
@@ -420,6 +434,13 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	patch, err := validateEnvironmentInput(input, s.agentTemplates())
 	if err != nil {
 		return Environment{}, err
+	}
+	idleRefusal, err := s.idleTimeoutRefusal(ctx, workspaceID)
+	if err != nil {
+		return Environment{}, err
+	}
+	if patch.IdleTimeoutMinutes != nil && idleRefusal != nil {
+		return Environment{}, idleRefusal
 	}
 	keySet := key != "" // whether a key change leaves the workspace its own key
 	// The model and agent lists and an automations `gh` default turning it on
@@ -481,7 +502,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 		}
 		return Environment{}, core.NewAgentSessionDependencyUnavailableError()
 	}
-	view := s.environmentView(row)
+	view := s.withIdleTimeout(s.environmentView(row), row, idleRefusal == nil)
 	if s.Spend == nil {
 		return view, nil
 	}
@@ -552,6 +573,12 @@ func validateEnvironmentInput(input EnvironmentInput, templates []sandbox.AgentT
 		patch.SetAutomationsGitHubCLI, patch.AutomationsGitHubCLI = true, input.AutomationsGitHubCLIEnabled
 	}
 	patch.GitHubCLIMandatory = input.GitHubCLIMandatory
+	if input.IdleTimeoutMinutes != nil {
+		if err := validIdleTimeout(*input.IdleTimeoutMinutes); err != nil {
+			return patch, err
+		}
+		patch.IdleTimeoutMinutes = input.IdleTimeoutMinutes
+	}
 	if input.NetworkTier != nil {
 		switch *input.NetworkTier {
 		case NetworkTierRegistries, NetworkTierCustom, NetworkTierFull:

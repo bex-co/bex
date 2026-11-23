@@ -319,6 +319,10 @@ export type AgentEnvironment = {
   githubCliEnabled: Scalars['Boolean']['output'];
   /** Whether the workspace's gh off is mandatory: while githubCliEnabled is false, no automations default, automation or session turns gh back on. No effect while githubCliEnabled is true. */
   githubCliMandatory: Scalars['Boolean']['output'];
+  /** Whether the workspace's plan lets its admins set idleTimeoutMinutes (Enterprise). */
+  idleTimeoutConfigurable: Scalars['Boolean']['output'];
+  /** How long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects: the workspace's own timeout on Enterprise, else the platform's 5. A closed session's next message runs in a fresh sandbox. Automations' and child sessions' sandboxes close when their turn ends. */
+  idleTimeoutMinutes: Scalars['Int']['output'];
   modelKeySet: Scalars['Boolean']['output'];
   /** True on the platform model route, whose gateway pins each claude session to the catalog model it chose. */
   modelPinned: Scalars['Boolean']['output'];
@@ -366,6 +370,8 @@ export type AgentEnvironmentInput = {
   githubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;
   /** true makes the workspace's gh off mandatory: while githubCliEnabled is false nothing below turns gh back on, and saving an automations default, automation or session that would is refused with a GITHUB_CLI_LOCKED code. false lets lower levels choose again. */
   githubCliMandatory?: InputMaybe<Scalars['Boolean']['input']>;
+  /** How long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects: 5 to 120 (AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID). Enterprise only: any other plan is refused with PLAN_FEATURE_REQUIRED. */
+  idleTimeoutMinutes?: InputMaybe<Scalars['Int']['input']>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
   modelApiKey?: InputMaybe<Scalars['String']['input']>;
   networkTier?: InputMaybe<AgentNetworkTier>;

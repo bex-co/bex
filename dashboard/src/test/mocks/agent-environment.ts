@@ -34,6 +34,11 @@ export function agentEnvironment(
     // is not mandatory.
     automationsGithubCliEnabled: null,
     githubCliMandatory: false,
+    // The idle close (w6/m563): the platform's 5 minutes, on a plan that
+    // cannot change it, so Settings draws no idle timeout section unless a
+    // test puts the workspace on Enterprise.
+    idleTimeoutMinutes: 5,
+    idleTimeoutConfigurable: false,
     enabledAgents: ["claude", "codex", "gemini"],
     agentDataUse: [
       {

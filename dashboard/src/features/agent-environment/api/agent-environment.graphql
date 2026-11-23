@@ -43,6 +43,13 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   # githubCliEnabled is false, no automations default, automation or session
   # turns gh back on. No effect while githubCliEnabled is true.
   githubCliMandatory
+  # How long, in minutes, the sandbox of a session a person started stays up
+  # after its turn ends or its last editor disconnects (w6/m563): the
+  # workspace's own on Enterprise, else the platform's 5. Automations' and
+  # child sessions' sandboxes close when their turn ends.
+  idleTimeoutMinutes
+  # Whether the plan lets admins set idleTimeoutMinutes (Enterprise only).
+  idleTimeoutConfigurable
   # The agent profiles members can start sessions with, and each profile
   # whose model provider may train on session data with its admin
   # acknowledgement (w7/m392).
@@ -88,7 +95,9 @@ query AgentEnvironment($ownerId: String!) {
 # to the platform's; githubCliEnabled false turns the sessions' gh off;
 # automationsGithubCliEnabled null returns automations to inheriting it and
 # githubCliMandatory true makes its off a floor (w10/m561); enabledModels
-# replaces the catalog models members may choose (w10/m527).
+# replaces the catalog models members may choose (w10/m527);
+# idleTimeoutMinutes (5 to 120, Enterprise only) sets the idle close
+# (w6/m563).
 mutation UpdateAgentEnvironment(
   $ownerId: String!
   $input: AgentEnvironmentInput!

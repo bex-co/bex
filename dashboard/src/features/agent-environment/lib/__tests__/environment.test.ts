@@ -10,9 +10,11 @@ import {
   githubCliAutomationsErrorKey,
   githubCliErrorKey,
   githubCliMandatoryErrorKey,
+  idleTimeoutErrorKey,
   modelKeyErrorKey,
   normalizeModelKey,
   parseHostLines,
+  parseIdleTimeout,
   saveErrorFrom,
   validModel,
   validateCustomHosts,
@@ -341,6 +343,40 @@ describe("the GitHub CLI section's other writes", () => {
     );
     expect(githubCliMandatoryErrorKey(uncodedGraphQLError("boom"))).toBe(
       "agentEnvironment.githubCliMandatorySaveFailed",
+    );
+  });
+});
+
+// w6/m563: the Enterprise idle timeout is whole minutes from 5 to 120.
+describe("parseIdleTimeout", () => {
+  it.each([
+    ["5", 5],
+    [" 30 ", 30],
+    ["120", 120],
+    ["4", null],
+    ["121", null],
+    ["7.5", null],
+    ["-10", null],
+    ["", null],
+    ["1e2", null],
+  ])("%j is %j", (text, want) => {
+    expect(parseIdleTimeout(text)).toBe(want);
+  });
+
+  it("maps each refusal to its message", () => {
+    expect(
+      idleTimeoutErrorKey(
+        codedGraphQLError("AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID"),
+      ),
+    ).toBe("agentEnvironment.idleTimeoutInvalid");
+    expect(
+      idleTimeoutErrorKey(codedGraphQLError("PLAN_FEATURE_REQUIRED")),
+    ).toBe("agentEnvironment.idleTimeoutEnterpriseOnly");
+    expect(idleTimeoutErrorKey(codedGraphQLError("FORBIDDEN"))).toBe(
+      "agentEnvironment.forbidden",
+    );
+    expect(idleTimeoutErrorKey(uncodedGraphQLError("boom"))).toBe(
+      "agentEnvironment.idleTimeoutSaveFailed",
     );
   });
 });

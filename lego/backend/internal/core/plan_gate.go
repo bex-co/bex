@@ -73,6 +73,12 @@ const (
 	// (render.com/docs/postgresql-logical-replication, read 2026-11-20). Only
 	// the operators' internal verb checks it, as only Render's support enables it.
 	FeatureLogicalReplication PlanFeature = "logical replication"
+	// FeatureAgentIdleTimeout is a workspace's own idle timeout for the agent
+	// sessions people start in it (w6/m563): "Enterprise customers can … set a
+	// different timeout (between 5 and 120 minutes)"
+	// (docs.devin.ai/admin/billing/usage, read 2026-11-22). Every other plan
+	// keeps the 5-minute default.
+	FeatureAgentIdleTimeout PlanFeature = "agent session idle timeouts"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
@@ -100,6 +106,7 @@ var planFeatures = map[PlanFeature]struct {
 	FeatureOrganizations:          {minimum: planScale, key: "organizations"},
 	FeatureManagedOIDC:            {minimum: planPro, key: "managedOIDC", singular: true},
 	FeatureLogicalReplication:     {minimum: planPro, key: "logicalReplication", singular: true},
+	FeatureAgentIdleTimeout:       {minimum: planEnterprise, key: "agentIdleTimeout"},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's
