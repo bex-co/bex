@@ -482,9 +482,22 @@ func withoutRenderEnv(environment []string) []string {
 //     CI (the root reads it as "not a terminal" and never asks; GitHub Actions
 //     sets it), TERM (dumb reads the same way), and COLORTERM, NO_COLOR,
 //     CLICOLOR and CLICOLOR_FORCE (whether the output carries color escapes).
-var droppedEnv = []string{
+//   - Every coding provider's key variables, read from the catalog so a new
+//     provider is covered: a developer's ZAI_API_KEY would otherwise turn
+//     `bex code`'s "no key" hint into "key from ZAI_API_KEY (environment)"
+//     (w4/727). A test that needs a key sets it after this.
+var droppedEnv = append([]string{
 	"BEX_API_KEY", "BEX_ACCESS_TOKEN",
 	"CI", "TERM", "COLORTERM", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE",
+}, providerKeyEnvs()...)
+
+// providerKeyEnvs is every variable a coding provider reads its key from.
+func providerKeyEnvs() []string {
+	var names []string
+	for _, provider := range code.Catalog() {
+		names = append(names, provider.KeyEnvs...)
+	}
+	return names
 }
 
 // updateTestEnv strips everything that gates or targets the update check so
@@ -509,11 +522,18 @@ func updateTestEnv(home string) []string {
 // and on a CI runner (w21/115: bexAgainst inherited CI=true, the root saw no
 // terminal and never asked). The names are those the root command reads: CI and
 // TERM in pkg/command/outputresolver.go and pkg/cfg, the rest in termenv.
+// Every coding provider's key variable is ambient too, taken from the catalog,
+// so a provider whose key a helper would hand on fails here (w4/727).
 func TestChildEnvironmentsIgnoreTheRunnersOutputSettings(t *testing.T) {
 	ambient := map[string]string{
 		"CI": "true", "TERM": "dumb", "COLORTERM": "truecolor",
 		"NO_COLOR": "1", "CLICOLOR": "0", "CLICOLOR_FORCE": "1",
 		"RENDER_OUTPUT": "json", "BEX_API_KEY": "ambient-key",
+	}
+	for _, provider := range code.Catalog() {
+		for _, name := range provider.KeyEnvs {
+			ambient[name] = "ambient-" + provider.Name + "-key"
+		}
 	}
 	for name, value := range ambient {
 		t.Setenv(name, value)
