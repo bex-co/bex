@@ -401,6 +401,13 @@ type Deps struct {
 	PathFilterSuggestions metrics.PathFilterSuggestionsSource
 	MonthToDateBandwidth  metrics.MonthToDateBandwidthSource
 	MetricsFilterValues   metrics.MetricsFilterValuesSource
+	// InstanceFilterValues, when set (BEX_PROM_URL), discovers historical pod
+	// names from Prometheus cAdvisor series over [start, end] (w34/m588).
+	InstanceFilterValues metrics.InstanceFilterValuesSource
+	// HTTPFilterValues, when set (BEX_LOKI_URL), discovers observed HTTP hosts
+	// and status codes (including host/statusCode cross-filtering) from Loki's
+	// Traefik access-log streams (w34/m588).
+	HTTPFilterValues metrics.HTTPFilterValuesSource
 	// DiskUsage/DBConnections/ReplicationLag (w3/m10) back the datastore-scoped
 	// metrics (Database/KeyValue disk usage; Postgres connections + replication
 	// lag). nil => those metrics report core.ErrMetricsUnavailable, same as the
@@ -1336,6 +1343,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			PathFilterSuggestionsSource: d.PathFilterSuggestions,
 			MonthToDateBandwidthSource:  d.MonthToDateBandwidth,
 			MetricsFilterValuesSource:   d.MetricsFilterValues,
+			InstanceFilterValuesSource:  d.InstanceFilterValues,
+			HTTPFilterValuesSource:      d.HTTPFilterValues,
 			DiskUsage:                   d.DiskUsage,
 			DBConnections:               d.DBConnections,
 			ReplicationLag:              d.ReplicationLag,

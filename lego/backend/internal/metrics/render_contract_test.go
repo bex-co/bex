@@ -444,14 +444,43 @@ func TestRESTFilterPathsUseRenderShapes(t *testing.T) {
 	rec = serveREST(svc, "/v1/metrics/filters/http?resource=web")
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &httpFilters) != nil ||
 		len(httpFilters) != 2 || httpFilters[0].Filter != "statusCode" ||
-		strings.Join(httpFilters[0].Values, ",") != "200,404" || httpFilters[1].Filter != "host" {
-		t.Fatalf("filters/http = %d %s, want statusCode [200 404] and host", rec.Code, rec.Body)
+		strings.Join(httpFilters[0].Values, ",") != "200,404" || httpFilters[1].Filter != "host" || len(httpFilters[1].Values) != 0 {
+		t.Fatalf("filters/http (Prom-only) = %d %s, want statusCode [200 404] and empty host []", rec.Code, rec.Body)
 	}
-	if rec := serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=404"); rec.Code != http.StatusBadRequest {
-		t.Errorf("narrowed filters/http = %d, want a coded 400 rather than an ignored narrowing", rec.Code)
+	// Cross-filtering with Loki unwired reports 503 LOG_STORE_UNAVAILABLE rather than silently ignoring the filter.
+	if rec := serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=404"); rec.Code != http.StatusServiceUnavailable ||
+		!strings.Contains(rec.Body.String(), "LOG_STORE_UNAVAILABLE") {
+		t.Errorf("narrowed filters/http without Loki = %d %s, want 503 LOG_STORE_UNAVAILABLE", rec.Code, rec.Body)
 	}
-	if rec := serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=&statusCode=404"); rec.Code != http.StatusBadRequest {
-		t.Errorf("narrowed filters/http with leading empty statusCode = %d, want 400", rec.Code)
+	if rec := serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=&statusCode=404"); rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("narrowed filters/http with leading empty statusCode without Loki = %d, want 503", rec.Code)
+	}
+	// With Loki wired, filters/http discovers real observed hosts and honors host/statusCode cross-filtering.
+	svc.HTTPFilterValuesSource = func(_ context.Context, req HTTPFilterValuesRequest) (HTTPFilterValues, error) {
+		switch {
+		case slices.Equal(req.Hosts, []string{"api.example.com"}):
+			return HTTPFilterValues{Hosts: []string{"api.example.com"}, StatusCodes: []string{"200", "404"}}, nil
+		case slices.Equal(req.StatusCodes, []string{"5xx"}):
+			return HTTPFilterValues{Hosts: []string{"err.example.com"}, StatusCodes: []string{"502"}}, nil
+		default:
+			return HTTPFilterValues{Hosts: []string{"api.example.com", "err.example.com"}, StatusCodes: []string{"200", "404", "502"}}, nil
+		}
+	}
+	rec = serveREST(svc, "/v1/metrics/filters/http?resource=web")
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &httpFilters) != nil ||
+		len(httpFilters) != 2 || strings.Join(httpFilters[0].Values, ",") != "200,404,502" ||
+		strings.Join(httpFilters[1].Values, ",") != "api.example.com,err.example.com" {
+		t.Fatalf("filters/http with Loki = %d %s, want observed statusCodes and hosts", rec.Code, rec.Body)
+	}
+	rec = serveREST(svc, "/v1/metrics/filters/http?resource=web&host=api.example.com")
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &httpFilters) != nil ||
+		strings.Join(httpFilters[0].Values, ",") != "200,404" || strings.Join(httpFilters[1].Values, ",") != "api.example.com" {
+		t.Fatalf("filters/http narrowed by host = %d %s, want statusCode [200 404] and host [api.example.com]", rec.Code, rec.Body)
+	}
+	rec = serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=5xx")
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &httpFilters) != nil ||
+		strings.Join(httpFilters[0].Values, ",") != "502" || strings.Join(httpFilters[1].Values, ",") != "err.example.com" {
+		t.Fatalf("filters/http narrowed by statusCode = %d %s, want statusCode [502] and host [err.example.com]", rec.Code, rec.Body)
 	}
 
 	// Unwired Loki returns 503 for path filter suggestions instead of a silent [].

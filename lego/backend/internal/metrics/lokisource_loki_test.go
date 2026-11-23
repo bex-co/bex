@@ -355,4 +355,82 @@ func TestLokiRequestMetricsClipToWindowOnLoki(t *testing.T) {
 			t.Errorf("filtered suggestions = %v, want [/api/health]", filtered)
 		}
 	})
+
+	t.Run("HTTP filter discovery and cross-filtering on Loki", func(t *testing.T) {
+		httpLines := []struct {
+			at           time.Time
+			status, host string
+			rawLine      string
+		}{
+			{mid, "200", "api.example.com", ""},
+			{mid.Add(time.Millisecond), "404", "api.example.com", ""},
+			{mid.Add(2 * time.Millisecond), "502", "edge.example.com", ""},
+			// A line without RequestHost must still contribute status without emitting "<no value>".
+			{mid.Add(3 * time.Millisecond), "204", "", `{"RequestPath":"/no-host"}`},
+		}
+		var httpStreams []stream
+		for _, l := range httpLines {
+			msg := l.rawLine
+			if msg == "" {
+				b, _ := json.Marshal(map[string]any{
+					"RequestHost": l.host, "RequestPath": "/", "RequestMethod": "GET",
+					"DownstreamStatus": l.status, "Duration": 5_000_000,
+				})
+				msg = string(b)
+			}
+			httpStreams = append(httpStreams, stream{
+				Stream: map[string]string{"namespace": ns, "app": "httpfilt", "type": "request", "status": l.status, "method": "GET"},
+				Values: [][2]string{{strconv.FormatInt(l.at.UnixNano(), 10), msg}},
+			})
+		}
+		httpBody, _ := json.Marshal(map[string]any{"streams": httpStreams})
+		resp, err := hc.Post(base+"/loki/api/v1/push", "application/json", bytes.NewReader(httpBody))
+		if err != nil {
+			t.Fatalf("push httpfilt: %v", err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			t.Fatalf("push httpfilt: HTTP %d", resp.StatusCode)
+		}
+
+		httpSrc := NewLokiHTTPFilterValuesSource(base, hc)
+		var all HTTPFilterValues
+		for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(500 * time.Millisecond) {
+			all, err = httpSrc(context.Background(), HTTPFilterValuesRequest{
+				Namespace: ns, App: "httpfilt", Start: start, End: end,
+			})
+			if err == nil && len(all.StatusCodes) == 4 && len(all.Hosts) == 2 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("Loki never returned all 4 codes & 2 hosts: %+v, %v", all, err)
+			}
+		}
+		if strings.Join(all.Hosts, ",") != "api.example.com,edge.example.com" {
+			t.Errorf("unfiltered hosts = %v, want [api.example.com edge.example.com]", all.Hosts)
+		}
+		if strings.Join(all.StatusCodes, ",") != "200,204,404,502" {
+			t.Errorf("unfiltered statusCodes = %v, want [200 204 404 502]", all.StatusCodes)
+		}
+
+		byHost, err := httpSrc(context.Background(), HTTPFilterValuesRequest{
+			Namespace: ns, App: "httpfilt", Start: start, End: end, Hosts: []string{"api.example.com"},
+		})
+		if err != nil {
+			t.Fatalf("host-narrowed discovery: %v", err)
+		}
+		if strings.Join(byHost.StatusCodes, ",") != "200,404" || strings.Join(byHost.Hosts, ",") != "api.example.com" {
+			t.Errorf("host-narrowed = %+v, want codes [200 404] hosts [api.example.com]", byHost)
+		}
+
+		byCode, err := httpSrc(context.Background(), HTTPFilterValuesRequest{
+			Namespace: ns, App: "httpfilt", Start: start, End: end, StatusCodes: []string{"5xx"},
+		})
+		if err != nil {
+			t.Fatalf("statusCode-narrowed discovery: %v", err)
+		}
+		if strings.Join(byCode.Hosts, ",") != "edge.example.com" || strings.Join(byCode.StatusCodes, ",") != "502" {
+			t.Errorf("statusCode-narrowed = %+v, want hosts [edge.example.com] codes [502]", byCode)
+		}
+	})
 }

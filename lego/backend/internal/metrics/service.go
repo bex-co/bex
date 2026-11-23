@@ -28,6 +28,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
+	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -317,11 +320,56 @@ type MetricsFilterValuesRequest struct {
 	// RequestMetricsRequest.
 	Routers []string
 	Label   string
-	// Since bounds discovery to values observed at or after it: the workspace
-	// plan's metrics floor (w7/m427), so the dropdown never offers a value
-	// only data the plan no longer shows carried. Zero: every stored value.
+	// Since bounds discovery to values observed at or after it (clamped to the
+	// workspace plan's metrics retention floor and App creation time, w7/m427,
+	// w34/m588). Zero: unbounded lower bound.
 	Since time.Time
+	// End bounds discovery to values observed at or before it (w34/m588). Zero:
+	// unbounded upper bound.
+	End time.Time
 }
+
+// InstanceFilterValuesRequest asks Prometheus for pod names observed in
+// cAdvisor for one authorized service or managed datastore over [Start, End]
+// (w34/m588).
+type InstanceFilterValuesRequest struct {
+	Kind      string // "" for App service; DatastoreDatabase | DatastoreKeyValue
+	Namespace string
+	Resource  string // App, Database, or KeyValue metadata.name
+	Start     time.Time
+	End       time.Time
+}
+
+// InstanceFilterValuesSource discovers pod names observed in Prometheus
+// cAdvisor series over [Start, End] so historical instances replaced by
+// deploys, restarts, crashes, or scale-ins remain discoverable. nil =>
+// MetricsFilters falls back gracefully to live pods only.
+type InstanceFilterValuesSource func(ctx context.Context, req InstanceFilterValuesRequest) ([]string, error)
+
+// HTTPFilterValuesRequest asks Loki for distinct observed HTTP request hosts
+// and status codes from an App's Traefik access logs over [Start, End], with
+// optional host/statusCode cross-filtering (w34/m588).
+type HTTPFilterValuesRequest struct {
+	Namespace   string
+	App         string
+	Start, End  time.Time
+	Hosts       []string
+	StatusCodes []string
+	Limit       int
+}
+
+// HTTPFilterValues holds the distinct observed hosts and status codes
+// discovered from Loki's Traefik access logs for one App.
+type HTTPFilterValues struct {
+	Hosts       []string
+	StatusCodes []string
+}
+
+// HTTPFilterValuesSource discovers observed HTTP host and status-code values
+// (and supports cross-filtering one by the other) from Loki's Traefik access
+// logs. nil => cross-filtered HTTP discovery reports core.ErrLogStoreUnavailable
+// (503), while unfiltered HOST discovery returns an honest [].
+type HTTPFilterValuesSource func(ctx context.Context, req HTTPFilterValuesRequest) (HTTPFilterValues, error)
 
 // PathFilterSuggestionsRequest is the backend-neutral request handed to a
 // PathFilterSuggestionsSource for one authorized App.
@@ -388,6 +436,13 @@ type Service struct {
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
 	MetricsFilterValuesSource MetricsFilterValuesSource
+	// InstanceFilterValuesSource discovers historical pod names observed in
+	// Prometheus cAdvisor series over [Start, End] (w34/m588). nil => live pods only.
+	InstanceFilterValuesSource InstanceFilterValuesSource
+	// HTTPFilterValuesSource discovers observed HTTP host and status-code values
+	// (including host/statusCode cross-filtering) from Loki's Traefik access
+	// logs (w34/m588). nil => 503 on cross-filtered queries, honest [] on unfiltered HOST.
+	HTTPFilterValuesSource HTTPFilterValuesSource
 	// DiskUsage reads a managed Database/KeyValue's backing-PVC usage/capacity
 	// (w3/m10); nil => disk/disk_capacity report core.ErrMetricsUnavailable.
 	DiskUsage DiskUsageSource
@@ -1398,12 +1453,17 @@ func appResourceID(app *appv1alpha1.App, fallback string) string {
 	return fallback
 }
 
-// --- metricsFilters (Status Code/Host/Path filter-dropdown population) ---
+// --- metricsFilters (Status Code/Host/Instance filter-dropdown population) ---
 
 // MetricsFiltersQuery asks which values are available for a set of output filter
-// fields, for one App.
+// fields across one or more resources over [Start, End] (default now-1h..now,
+// clamped to plan retention), with optional Hosts/StatusCodes cross-filters.
 type MetricsFiltersQuery struct {
 	App           string
+	Resources     []string
+	Start, End    time.Time
+	Hosts         []string
+	StatusCodes   []string
 	OutputFilters []string
 }
 
@@ -1418,83 +1478,366 @@ type MetricsFilterValues struct {
 // room for extensions while preventing repeated Kubernetes/Prometheus scans.
 const maxMetricsOutputFilters = 8
 
-// MetricsFilters resolves available values for each requested output filter.
-// RESOURCE/INSTANCE are answered from data the service already has;
-// STATUS_CODE needs MetricsFilterValuesSource; BUILD/HOST/PATH always report
-// empty here — this Prometheus-backed discovery has no build/host/path axis.
-// Since w5/m58 the Metrics verb DOES accept host/path (for http_requests/
-// http_latency, served from the request-log store), but their values are
-// discovered from the logs label-values read instead (host from the App's URLs,
-// path is a free-text filter), never from this verb.
+type filterTarget struct {
+	kind       string // "" for App service; DatastoreDatabase | DatastoreKeyValue
+	namespace  string
+	name       string // CR metadata.name (Prometheus/Loki/K8s selector identity)
+	resourceID string // canonical public ID (srv-/dpg-/red-, or fallback)
+	tenant     string
+	notBefore  time.Time
+	app        *appv1alpha1.App
+	db         *appv1alpha1.Database
+}
+
+// normalizeFilterWindow fills default [now-1h, now] bounds for filter-discovery
+// verbs and validates the resulting range.
+func (s *Service) normalizeFilterWindow(start, end time.Time) (time.Time, time.Time, error) {
+	if end.IsZero() {
+		end = s.Now()
+	}
+	if start.IsZero() {
+		start = end.Add(-defaultMetricSpan)
+	}
+	if err := core.ValidateQueryRange(start, end); err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return start, end, nil
+}
+
+// filterResourceWindow clamps [start, end] against notBefore (App creation)
+// and the workspace plan's metrics retention floor. kept is false when the
+// requested window ends before creation or falls wholly before retention.
+func (s *Service) filterResourceWindow(ctx context.Context, tenant string, notBefore, start, end time.Time) (time.Time, bool, error) {
+	if !notBefore.IsZero() {
+		if notBefore.After(end) {
+			return time.Time{}, false, nil
+		}
+		if notBefore.After(start) {
+			start = notBefore
+		}
+	}
+	return s.withinRetention(ctx, tenant, start, end, 0)
+}
+
+// MetricsFilters resolves available values for each requested output filter
+// across one or more authorized resources over [Start, End] (w34/m588):
+//   - RESOURCE: canonical public IDs of the resolved resources.
+//   - INSTANCE: deduplicated union of Prometheus cAdvisor pods observed during
+//     [Start, End] and live pods (services excluding static sites, plus
+//     managed Postgres/Key Value datastores).
+//   - STATUS_CODE / HOST: observed HTTP status codes and hosts over [Start, End],
+//     with host/statusCode cross-filtering via Loki (503 when cross-filtering
+//     with Loki unwired; unfiltered statusCode still works on Prometheus-only
+//     servers with honest [] for HOST).
 func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]MetricsFilterValues, error) {
+	if err := s.checkWindow(q.Start, q.End); err != nil {
+		return nil, err
+	}
 	if len(q.OutputFilters) > maxMetricsOutputFilters {
 		return nil, fmt.Errorf("%w: outputFilters accepts at most %d entries", core.ErrBadRequest, maxMetricsOutputFilters)
 	}
-	seen := make(map[string]struct{}, len(q.OutputFilters))
+	seenField := make(map[string]struct{}, len(q.OutputFilters))
+	var needsStatusCode, needsHost bool
 	for _, field := range q.OutputFilters {
-		if _, ok := seen[field]; ok {
+		if _, ok := seenField[field]; ok {
 			return nil, fmt.Errorf("%w: outputFilters contains duplicate %q", core.ErrBadRequest, field)
 		}
-		seen[field] = struct{}{}
+		seenField[field] = struct{}{}
+		switch field {
+		case filterFieldStatusCode:
+			needsStatusCode = true
+		case filterFieldHost:
+			needsHost = true
+		}
 	}
-	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
+
+	resources := nonBlankStrings(q.Resources)
+	if len(resources) == 0 && strings.TrimSpace(q.App) != "" {
+		resources = []string{q.App}
+	}
+	if len(resources) == 0 {
+		// Authorize before rejecting an empty selection so the reflection
+		// authz sweep observes ErrForbidden on a denied caller.
+		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: at least one resource is required", core.ErrBadRequest)
+	}
+	if err := checkFanOut(len(resources), 1, 1); err != nil {
+		return nil, err
+	}
+
+	targets, err := s.authorizeFilterTargets(ctx, resources)
 	if err != nil {
 		return nil, err
 	}
-	q.App = appResourceID(app, q.App) // as Metrics does (w8/380)
+	statusCodes, err := normalizeStatusCodeFilters(q.StatusCodes)
+	if err != nil {
+		return nil, err
+	}
+	hosts, err := normalizeHostFilters(q.Hosts)
+	if err != nil {
+		return nil, err
+	}
+	hasCrossFilter := len(hosts) > 0 || len(statusCodes) > 0
+	needsHTTP := needsStatusCode || needsHost
+	if needsHTTP || hasCrossFilter {
+		for _, t := range targets {
+			if t.kind != "" {
+				return nil, fmt.Errorf("%w: HTTP filters apply to services, not %s %s",
+					core.ErrBadRequest, datastoreNoun(t.kind), t.resourceID)
+			}
+		}
+	}
+
+	q.Start, q.End, err = s.normalizeFilterWindow(q.Start, q.End)
+	if err != nil {
+		return nil, err
+	}
+
+	// Precompute HTTP filter values once when STATUS_CODE or HOST is requested
+	// so requesting both in one call performs a single Loki scan per resource.
+	var httpCodes, httpHosts []string
+	if needsHTTP {
+		httpCodes, httpHosts, err = s.discoverHTTPFilterValues(ctx, targets, q.Start, q.End, hosts, statusCodes, needsStatusCode, needsHost)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	out := make([]MetricsFilterValues, 0, len(q.OutputFilters))
 	for _, field := range q.OutputFilters {
 		switch field {
 		case filterFieldResource:
-			out = append(out, MetricsFilterValues{Field: field, Values: []string{q.App}})
+			idsOut := make([]string, 0, len(targets))
+			for _, t := range targets {
+				idsOut = append(idsOut, t.resourceID)
+			}
+			out = append(out, MetricsFilterValues{Field: field, Values: idsOut})
 		case filterFieldInstance:
-			pods, err := s.OwnAppPods(ctx, app)
+			instances, err := s.discoverInstanceFilterValues(ctx, targets, q.Start, q.End)
 			if err != nil {
 				return nil, err
-			}
-			// A static site has no pods, so this list is honestly empty — the
-			// w5/m48 type-gating already drops the instance UI for it. Do not
-			// "fix" that by inventing a router-derived instance (w4/m113).
-			instances := make([]string, 0, len(pods))
-			for _, p := range pods {
-				instances = append(instances, ids.ServiceInstanceID(q.App, p.Name))
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: instances})
 		case filterFieldStatusCode:
-			values, err := s.filterValuesOrEmpty(ctx, app, "code")
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, MetricsFilterValues{Field: field, Values: values})
-		default: // BUILD, HOST, PATH — filters Metrics can't honor stay unoffered
+			out = append(out, MetricsFilterValues{Field: field, Values: httpCodes})
+		case filterFieldHost:
+			out = append(out, MetricsFilterValues{Field: field, Values: httpHosts})
+		default: // BUILD, PATH — path suggestions live on PathFilterSuggestions
 			out = append(out, MetricsFilterValues{Field: field, Values: []string{}})
 		}
 	}
 	return out, nil
 }
 
-func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App, label string) ([]string, error) {
-	if s.MetricsFilterValuesSource == nil {
-		return []string{}, nil
+func (s *Service) authorizeFilterTargets(ctx context.Context, resources []string) ([]filterTarget, error) {
+	targets := make([]filterTarget, 0, len(resources))
+	seen := make(map[string]struct{}, len(resources))
+	for _, raw := range resources {
+		var t filterTarget
+		if core.IsDatastoreResource(raw) {
+			kind := datastoreKindFor(raw)
+			switch kind {
+			case DatastoreDatabase:
+				db, err := s.AuthorizeDatabase(ctx, core.RelCanView, raw)
+				if err != nil {
+					return nil, err
+				}
+				if err := core.NotFoundIfDeleting(db); err != nil {
+					return nil, err
+				}
+				t = filterTarget{
+					kind: DatastoreDatabase, namespace: db.Namespace, name: db.Name,
+					resourceID: db.Name, tenant: db.Labels[core.LabelTenant], db: db,
+				}
+			default:
+				kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, raw)
+				if err != nil {
+					return nil, err
+				}
+				if err := core.NotFoundIfDeleting(kv); err != nil {
+					return nil, err
+				}
+				t = filterTarget{
+					kind: DatastoreKeyValue, namespace: kv.Namespace, name: kv.Name,
+					resourceID: kv.Name, tenant: kv.Labels[core.LabelTenant],
+				}
+			}
+		} else {
+			app, err := s.AuthorizeApp(ctx, core.RelCanView, raw)
+			if err != nil {
+				return nil, err
+			}
+			t = filterTarget{
+				namespace: app.Namespace, name: app.Name,
+				resourceID: appResourceID(app, raw),
+				tenant:     app.Labels[core.LabelTenant],
+				notBefore:  core.AppNotBefore(app),
+				app:        app,
+			}
+		}
+		key := t.kind + ":" + t.namespace + "/" + t.name
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		targets = append(targets, t)
 	}
-	// app.Namespace is the App's per-tenant `<ws>` namespace (ADR043), where
-	// its series live — never the shared s.Namespace.
-	routers, err := s.TraefikRouterNames(ctx, app)
-	if err != nil {
-		return nil, err // unclassified on purpose: see requestMetric (w5/112)
+	return targets, nil
+}
+
+func (s *Service) discoverInstanceFilterValues(ctx context.Context, targets []filterTarget, start, end time.Time) ([]string, error) {
+	found := map[string]struct{}{}
+	for _, t := range targets {
+		clampedStart, kept, err := s.filterResourceWindow(ctx, t.tenant, t.notBefore, start, end)
+		if err != nil {
+			return nil, err
+		}
+		if !kept {
+			continue
+		}
+		switch t.kind {
+		case "":
+			// A static site has no pods, so this list is honestly empty — the
+			// w5/m48 type-gating already drops the instance UI for it. Do not
+			// "fix" that by inventing a router-derived instance (w4/m113).
+			if t.app.Spec.Type == appv1alpha1.TypeStaticSite {
+				continue
+			}
+			pods, err := s.OwnAppPods(ctx, t.app)
+			if err != nil {
+				return nil, err
+			}
+			for _, p := range pods {
+				if p.Name != "" {
+					found[ids.ServiceInstanceID(t.resourceID, p.Name)] = struct{}{}
+				}
+			}
+		case DatastoreDatabase:
+			pods, err := s.DatabasePods(ctx, t.db)
+			if err != nil {
+				return nil, err
+			}
+			addMatchingInstancePods(found, t.resourceID, pods, instancePods(DatastoreDatabase, t.name))
+		case DatastoreKeyValue:
+			pods, err := s.KeyValuePods(ctx, t.namespace, t.name)
+			if err != nil {
+				return nil, err
+			}
+			addMatchingInstancePods(found, t.resourceID, pods, instancePods(DatastoreKeyValue, t.name))
+		}
+		if s.InstanceFilterValuesSource != nil {
+			promPods, err := s.InstanceFilterValuesSource(ctx, InstanceFilterValuesRequest{
+				Kind:      t.kind,
+				Namespace: t.namespace,
+				Resource:  t.name,
+				Start:     clampedStart,
+				End:       end,
+			})
+			if err != nil {
+				return nil, err
+			}
+			for _, podName := range promPods {
+				if podName != "" {
+					found[ids.ServiceInstanceID(t.resourceID, podName)] = struct{}{}
+				}
+			}
+		}
 	}
-	// Discovery has no range of its own, so it always takes the plan's floor.
-	since, err := s.planFloor(ctx, app.Labels[core.LabelTenant], s.Now())
-	if err != nil {
-		return nil, err
+	return sortedStringSet(found), nil
+}
+
+func addMatchingInstancePods(out map[string]struct{}, resourceID string, pods []corev1.Pod, pattern string) {
+	re := regexp.MustCompile("^" + pattern + "$")
+	for _, p := range pods {
+		if p.Name != "" && re.MatchString(p.Name) {
+			out[ids.ServiceInstanceID(resourceID, p.Name)] = struct{}{}
+		}
 	}
-	req := MetricsFilterValuesRequest{Namespace: app.Namespace, App: app.Name, Routers: routers, Label: label, Since: since}
-	values, err := s.MetricsFilterValuesSource(ctx, req)
-	if err == nil && values == nil {
-		values = []string{} // an empty discovery serializes as [], never null
+}
+
+func (s *Service) discoverHTTPFilterValues(
+	ctx context.Context,
+	targets []filterTarget,
+	start, end time.Time,
+	hosts, statusCodes []string,
+	needsStatusCode, needsHost bool,
+) ([]string, []string, error) {
+	hasCrossFilter := len(hosts) > 0 || len(statusCodes) > 0
+	if hasCrossFilter && s.HTTPFilterValuesSource == nil {
+		return nil, nil, core.ErrLogStoreUnavailable
 	}
-	return values, err
+	useLoki := s.HTTPFilterValuesSource != nil && (hasCrossFilter || needsHost || (needsStatusCode && s.MetricsFilterValuesSource == nil))
+	useProm := !hasCrossFilter && needsStatusCode && s.MetricsFilterValuesSource != nil
+
+	codeSet := map[string]struct{}{}
+	hostSet := map[string]struct{}{}
+	for _, t := range targets {
+		clampedStart, kept, err := s.filterResourceWindow(ctx, t.tenant, t.notBefore, start, end)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !kept {
+			continue
+		}
+		if useProm {
+			// t.app.Namespace is the App's per-tenant `<ws>` namespace (ADR043),
+			// where its series live — never the shared s.Namespace.
+			routers, err := s.TraefikRouterNames(ctx, t.app)
+			if err != nil {
+				return nil, nil, err // unclassified on purpose: see requestMetric (w5/112)
+			}
+			vals, err := s.MetricsFilterValuesSource(ctx, MetricsFilterValuesRequest{
+				Namespace: t.namespace,
+				App:       t.name,
+				Routers:   routers,
+				Label:     "code",
+				Since:     clampedStart,
+				End:       end,
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+			for _, v := range vals {
+				if v != "" {
+					codeSet[v] = struct{}{}
+				}
+			}
+		}
+		if useLoki {
+			got, err := s.HTTPFilterValuesSource(ctx, HTTPFilterValuesRequest{
+				Namespace:   t.namespace,
+				App:         t.name,
+				Start:       clampedStart,
+				End:         end,
+				Hosts:       hosts,
+				StatusCodes: statusCodes,
+				Limit:       lokiHTTPFilterValuesLimit,
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+			for _, v := range got.StatusCodes {
+				if v != "" {
+					codeSet[v] = struct{}{}
+				}
+			}
+			for _, v := range got.Hosts {
+				if v != "" {
+					hostSet[v] = struct{}{}
+				}
+			}
+		}
+	}
+	return sortedStringSet(codeSet), sortedStringSet(hostSet), nil
+}
+
+func sortedStringSet(set map[string]struct{}) []string {
+	if len(set) == 0 {
+		return []string{}
+	}
+	return slices.Sorted(maps.Keys(set))
 }
 
 // Bounds on host/path filter patterns so a caller cannot send unbounded lists
@@ -1610,14 +1953,8 @@ func (s *Service) PathFilterSuggestions(ctx context.Context, q PathFilterSuggest
 	if err != nil {
 		return nil, err
 	}
-	now := s.Now()
-	if q.End.IsZero() {
-		q.End = now
-	}
-	if q.Start.IsZero() {
-		q.Start = q.End.Add(-defaultMetricSpan)
-	}
-	if err := core.ValidateQueryRange(q.Start, q.End); err != nil {
+	q.Start, q.End, err = s.normalizeFilterWindow(q.Start, q.End)
+	if err != nil {
 		return nil, err
 	}
 	if s.PathFilterSuggestionsSource == nil {
@@ -1625,16 +1962,7 @@ func (s *Service) PathFilterSuggestions(ctx context.Context, q PathFilterSuggest
 	}
 	perApp := make([][]string, 0, len(resolved))
 	for _, app := range resolved {
-		appStart := q.Start
-		if created := core.AppNotBefore(app); !created.IsZero() {
-			if created.After(q.End) {
-				continue
-			}
-			if created.After(appStart) {
-				appStart = created
-			}
-		}
-		clampedStart, kept, err := s.withinRetention(ctx, app.Labels[core.LabelTenant], appStart, q.End, 0)
+		clampedStart, kept, err := s.filterResourceWindow(ctx, app.Labels[core.LabelTenant], core.AppNotBefore(app), q.Start, q.End)
 		if err != nil {
 			return nil, err
 		}

@@ -809,11 +809,20 @@ func TestRenderConformanceMetricsRemaining(t *testing.T) {
 				switch req.Label {
 				case "host":
 					return []string{"metrics-web.onbex.co"}, nil
-				case "statusCode":
+				case "statusCode", "code":
 					return []string{"200"}, nil
 				default:
 					return []string{"pod-1"}, nil
 				}
+			},
+			InstanceFilterValues: func(_ context.Context, _ metrics.InstanceFilterValuesRequest) ([]string, error) {
+				return []string{"web-old-11111"}, nil
+			},
+			HTTPFilterValues: func(_ context.Context, _ metrics.HTTPFilterValuesRequest) (metrics.HTTPFilterValues, error) {
+				return metrics.HTTPFilterValues{
+					Hosts:       []string{"metrics-web.onbex.co"},
+					StatusCodes: []string{"200"},
+				}, nil
 			},
 			PathFilterSuggestions: func(_ context.Context, _ metrics.PathFilterSuggestionsRequest) ([]string, error) {
 				return []string{"/api/v1/users", "/api/health"}, nil
@@ -825,8 +834,8 @@ func TestRenderConformanceMetricsRemaining(t *testing.T) {
 
 	conformDo(t, h, http.MethodGet, "/v1/metrics/bandwidth-sources?resource="+webID+"&startTime="+start+"&endTime="+end, "", http.StatusOK)
 	conformDo(t, h, http.MethodGet, "/v1/metrics/disk-capacity?resource="+db.Name+"&startTime="+start+"&endTime="+end, "", http.StatusOK)
-	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/application?resource="+webID, "", http.StatusOK)
-	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/http?resource="+webID, "", http.StatusOK)
+	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/application?resource="+webID+"&startTime="+start+"&endTime="+end, "", http.StatusOK)
+	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/http?resource="+webID+"&startTime="+start+"&endTime="+end+"&host=metrics-web.onbex.co&statusCode=200", "", http.StatusOK)
 	conformDo(t, h, http.MethodGet, "/v1/metrics/filters/path?resource="+webID+"&startTime="+start+"&endTime="+end+"&host=metrics-web.onbex.co&statusCode=200&path=/api/*", "", http.StatusOK)
 }
 

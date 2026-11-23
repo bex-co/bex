@@ -396,29 +396,51 @@ func TestDatastoreMetricsTakeThePlanFloor(t *testing.T) {
 	}
 }
 
-// Status-code discovery has no range of its own, so it is always bounded at the
-// plan's floor: the dropdown offers no value the charts cannot show.
+// Filter discovery defaults to [now-1h, now], clamps start to the workspace
+// plan's retention floor, and returns empty cleanly for windows wholly before
+// the floor without querying Prometheus or Loki (w7/m427, w34/m588).
 func TestFilterDiscoveryIsBoundedAtThePlanFloor(t *testing.T) {
-	discover := func(plan string) time.Time {
+	discover := func(plan string, start, end time.Time) (MetricsFilterValuesRequest, bool) {
 		svc, _, _ := retentionService(plan, ingressFor("web", "web", "web.onbex.co"))
-		var since time.Time
+		var got MetricsFilterValuesRequest
+		called := false
 		svc.MetricsFilterValuesSource = func(_ context.Context, req MetricsFilterValuesRequest) ([]string, error) {
-			since = req.Since
+			called = true
+			got = req
 			return []string{"200"}, nil
 		}
-		if _, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{App: "web", OutputFilters: []string{filterFieldStatusCode}}); err != nil {
+		out, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{
+			App: "web", Start: start, End: end, OutputFilters: []string{filterFieldStatusCode},
+		})
+		if err != nil {
 			t.Fatalf("%s: %v", plan, err)
 		}
-		return since
-	}
-	if got, want := discover("pro"), retentionNow.Add(-14*retentionDay); !got.Equal(want) {
-		t.Fatalf("pro discovery since %s, want %s", rfc(got), rfc(want))
-	}
-	if got := discover(""); !got.IsZero() {
-		t.Fatalf("store off: discovery since %s, want unbounded", rfc(got))
+		if !called && (len(out) != 1 || len(out[0].Values) != 0) {
+			t.Fatalf("%s: uncalled source returned %+v, want empty []", plan, out)
+		}
+		return got, called
 	}
 
-	// The Prometheus source turns the bound into the label API's start.
+	// Default window (omitted Start/End) is [now-1h, now].
+	if got, called := discover("pro", time.Time{}, time.Time{}); !called ||
+		!got.Since.Equal(retentionNow.Add(-time.Hour)) || !got.End.Equal(retentionNow) {
+		t.Fatalf("default discovery = (%v, %s..%s), want [now-1h, now]", called, rfc(got.Since), rfc(got.End))
+	}
+	// A start before Pro's 14-day floor clamps to now-14d; store-off stays unclamped.
+	wideStart := retentionNow.Add(-20 * retentionDay)
+	if got, called := discover("pro", wideStart, retentionNow); !called ||
+		!got.Since.Equal(retentionNow.Add(-14*retentionDay)) || !got.End.Equal(retentionNow) {
+		t.Fatalf("pro clamped discovery = (%v, %s..%s), want floor %s", called, rfc(got.Since), rfc(got.End), rfc(retentionNow.Add(-14*retentionDay)))
+	}
+	if got, called := discover("", wideStart, retentionNow); !called || !got.Since.Equal(wideStart) {
+		t.Fatalf("store off: discovery since %s (called=%v), want requested %s", rfc(got.Since), called, rfc(wideStart))
+	}
+	// A range wholly before Pro's 14-day floor returns empty cleanly without calling the store.
+	if _, called := discover("pro", retentionNow.Add(-20*retentionDay), retentionNow.Add(-15*retentionDay)); called {
+		t.Fatal("range wholly before plan retention must not query the metrics store")
+	}
+
+	// The Prometheus source turns Since and End into the label API's start and end.
 	var query url.Values
 	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query = r.URL.Query()
@@ -427,12 +449,15 @@ func TestFilterDiscoveryIsBoundedAtThePlanFloor(t *testing.T) {
 	defer prom.Close()
 	req := MetricsFilterValuesRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Label: "code"}
 	source := NewPrometheusFilterValuesSource(prom.URL, prom.Client())
-	if _, err := source(context.Background(), req); err != nil || query.Has("start") {
-		t.Fatalf("unbounded discovery: err %v, start %q; want no start", err, query.Get("start"))
+	if _, err := source(context.Background(), req); err != nil || query.Has("start") || query.Has("end") {
+		t.Fatalf("unbounded discovery: err %v, start %q, end %q; want neither", err, query.Get("start"), query.Get("end"))
 	}
 	req.Since = retentionNow.Add(-7 * retentionDay)
-	if _, err := source(context.Background(), req); err != nil || query.Get("start") != strconv.FormatInt(req.Since.Unix(), 10) {
-		t.Fatalf("bounded discovery: err %v, start %q; want %d", err, query.Get("start"), req.Since.Unix())
+	req.End = retentionNow
+	if _, err := source(context.Background(), req); err != nil ||
+		query.Get("start") != strconv.FormatInt(req.Since.Unix(), 10) ||
+		query.Get("end") != strconv.FormatInt(req.End.Unix(), 10) {
+		t.Fatalf("bounded discovery: err %v, start=%q end=%q; want %d..%d", err, query.Get("start"), query.Get("end"), req.Since.Unix(), req.End.Unix())
 	}
 }
 

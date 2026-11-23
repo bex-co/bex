@@ -917,33 +917,86 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 		if match == "" {
 			return []string{}, nil
 		}
-		params := url.Values{"match[]": {match}}
-		if !req.Since.IsZero() {
-			params.Set("start", strconv.FormatInt(req.Since.Unix(), 10))
-		}
-		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(req.Label), params.Encode())
-
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := hc.Do(httpReq)
-		if err != nil {
-			return nil, err
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
-		}
-		var lr promLabelValuesResponse
-		if err := core.DecodeUpstreamJSON(resp.Body, &lr); err != nil {
-			return nil, fmt.Errorf("decode prometheus response: %w", err)
-		}
-		if lr.Status != "" && lr.Status != promStatusSuccess {
-			return nil, fmt.Errorf("prometheus status %q", lr.Status)
-		}
-		return lr.Data, nil
+		return promLabelValues(ctx, hc, base, req.Label, match, req.Since, req.End)
 	}
+}
+
+// instanceFilterValuesMatch builds the Prometheus cAdvisor series selector for
+// historical pod discovery over [Start, End] (w34/m588). It mirrors the exact
+// namespace, pod, and container matchers used by cpu/memory so historical
+// instances returned by /filters/application match what cpu/memory charts.
+func instanceFilterValuesMatch(req InstanceFilterValuesRequest) string {
+	if req.Namespace == "" || req.Resource == "" {
+		return ""
+	}
+	switch req.Kind {
+	case DatastoreDatabase:
+		return fmt.Sprintf(`container_cpu_usage_seconds_total{namespace=%q,pod=~%q,container=%q}`,
+			req.Namespace, instancePods(DatastoreDatabase, req.Resource), postgresContainer)
+	case DatastoreKeyValue:
+		return fmt.Sprintf(`container_cpu_usage_seconds_total{namespace=%q,pod=~%q,container=%q}`,
+			req.Namespace, instancePods(DatastoreKeyValue, req.Resource), keyValueContainer)
+	default:
+		return fmt.Sprintf(`container_cpu_usage_seconds_total{%s,container!="POD"}`,
+			serviceContainers(req.Namespace, req.Resource))
+	}
+}
+
+// NewPrometheusInstanceFilterValuesSource returns the production
+// InstanceFilterValuesSource backed by Prometheus's /api/v1/label/pod/values
+// endpoint over cAdvisor series (w34/m588).
+func NewPrometheusInstanceFilterValuesSource(base string, hc *http.Client) InstanceFilterValuesSource {
+	if hc == nil {
+		hc = core.UpstreamClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req InstanceFilterValuesRequest) ([]string, error) {
+		match := instanceFilterValuesMatch(req)
+		if match == "" {
+			return []string{}, nil
+		}
+		return promLabelValues(ctx, hc, base, "pod", match, req.Start, req.End)
+	}
+}
+
+// promLabelValues queries Prometheus's /api/v1/label/<label>/values endpoint
+// bounded by match[] and optional [start, end] Unix timestamps.
+func promLabelValues(ctx context.Context, hc *http.Client, base, label, match string, start, end time.Time) ([]string, error) {
+	if !start.IsZero() && !end.IsZero() && start.After(end) {
+		return []string{}, nil
+	}
+	params := url.Values{"match[]": {match}}
+	if !start.IsZero() {
+		params.Set("start", strconv.FormatInt(start.Unix(), 10))
+	}
+	if !end.IsZero() {
+		params.Set("end", strconv.FormatInt(end.Unix(), 10))
+	}
+	u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(label), params.Encode())
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := hc.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+	}
+	var lr promLabelValuesResponse
+	if err := core.DecodeUpstreamJSON(resp.Body, &lr); err != nil {
+		return nil, fmt.Errorf("decode prometheus response: %w", err)
+	}
+	if lr.Status != "" && lr.Status != promStatusSuccess {
+		return nil, fmt.Errorf("prometheus status %q", lr.Status)
+	}
+	if lr.Data == nil {
+		return []string{}, nil
+	}
+	return lr.Data, nil
 }
 
 // promLabelValuesResponse is Prometheus's /api/v1/label/<name>/values shape.

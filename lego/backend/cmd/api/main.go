@@ -817,6 +817,7 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 		// the only store with a per-request host/path axis; unset => 503.
 		deps.RequestLogMetrics = metrics.NewLokiRequestMetricsSource(lokiURL, nil)
 		deps.PathFilterSuggestions = metrics.NewLokiPathFilterSuggestionsSource(lokiURL, nil)
+		deps.HTTPFilterValues = metrics.NewLokiHTTPFilterValuesSource(lokiURL, nil)
 		// Lock-delayed queries are counted from the Postgres log lines
 		// (w7/m430); unset => that graph answers LOG_STORE_UNAVAILABLE.
 		deps.LockWaits = metrics.NewLokiLockWaitsSource(lokiURL, nil)
@@ -833,6 +834,7 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 		deps.ResourceLimitRange = metrics.NewPrometheusResourceLimitSource(promURL, nil)
 		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
 		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
+		deps.InstanceFilterValues = metrics.NewPrometheusInstanceFilterValuesSource(promURL, nil)
 		// Datastore metrics (w3/m10): PVC usage (kubelet, already scraped
 		// cluster-wide) and CNPG's postgres_exporter (connections, replication
 		// lag — deploy/gitops/base/prometheus.yaml's cnpg-tenant-db job).

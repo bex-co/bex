@@ -294,6 +294,9 @@ const (
 	// GET /metrics/filters/path ("the most recent 5000 log lines as filtered
 	// by the provided filters").
 	lokiPathSuggestionsLimit = 5000
+	// lokiHTTPFilterValuesLimit bounds the Loki access-log scan for HTTP
+	// host/statusCode discovery and cross-filtering (w34/m588).
+	lokiHTTPFilterValuesLimit = 5000
 	// maxPathFilterSuggestions caps the distinct path suggestions returned per
 	// request so high-cardinality routes stay bounded while surfacing the most
 	// frequent paths first.
@@ -301,7 +304,7 @@ const (
 )
 
 // lokiStreamResponse is the subset of Loki's stream query_range reply read by
-// NewLokiPathFilterSuggestionsSource.
+// NewLokiPathFilterSuggestionsSource and NewLokiHTTPFilterValuesSource.
 type lokiStreamResponse struct {
 	Status string `json:"status"`
 	Data   struct {
@@ -311,6 +314,48 @@ type lokiStreamResponse struct {
 			Values [][]string        `json:"values"`
 		} `json:"result"`
 	} `json:"data"`
+}
+
+// lokiStreamQuery executes a bounded backward stream query_range against Loki.
+func lokiStreamQuery(ctx context.Context, hc *http.Client, base, query string, start, end time.Time, limit, defaultLimit int) (lokiStreamResponse, error) {
+	if !start.IsZero() && !end.IsZero() && start.After(end) {
+		return lokiStreamResponse{}, nil
+	}
+	if limit <= 0 || limit > defaultLimit {
+		limit = defaultLimit
+	}
+	if !end.IsZero() {
+		// Loki's query_range end is exclusive; bump by 1 ns so entries
+		// stamped exactly at end are included.
+		end = end.Add(time.Nanosecond)
+	}
+	u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+		"query":     {query},
+		"start":     {strconv.FormatInt(start.UnixNano(), 10)},
+		"end":       {strconv.FormatInt(end.UnixNano(), 10)},
+		"limit":     {strconv.Itoa(limit)},
+		"direction": {"backward"},
+	}.Encode())
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return lokiStreamResponse{}, err
+	}
+	resp, err := hc.Do(httpReq)
+	if err != nil {
+		return lokiStreamResponse{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return lokiStreamResponse{}, fmt.Errorf("loki: status %d", resp.StatusCode)
+	}
+	var lr lokiStreamResponse
+	if err := core.DecodeUpstreamJSON(resp.Body, &lr); err != nil {
+		return lokiStreamResponse{}, fmt.Errorf("decode loki response: %w", err)
+	}
+	if lr.Status != "" && lr.Status != promStatusSuccess {
+		return lokiStreamResponse{}, fmt.Errorf("loki status %q", lr.Status)
+	}
+	return lr, nil
 }
 
 // NewLokiPathFilterSuggestionsSource returns the production
@@ -325,44 +370,9 @@ func NewLokiPathFilterSuggestionsSource(base string, hc *http.Client) PathFilter
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req PathFilterSuggestionsRequest) ([]string, error) {
-		if req.Start.After(req.End) {
-			return []string{}, nil
-		}
-		limit := req.Limit
-		if limit <= 0 || limit > lokiPathSuggestionsLimit {
-			limit = lokiPathSuggestionsLimit
-		}
-		end := req.End
-		if !end.IsZero() {
-			// Loki's query_range end is exclusive; bump by 1 ns so entries
-			// stamped exactly at req.End are included.
-			end = end.Add(time.Nanosecond)
-		}
-		u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
-			"query":     {lokiPathSuggestionsQueryFor(req)},
-			"start":     {strconv.FormatInt(req.Start.UnixNano(), 10)},
-			"end":       {strconv.FormatInt(end.UnixNano(), 10)},
-			"limit":     {strconv.Itoa(limit)},
-			"direction": {"backward"},
-		}.Encode())
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		lr, err := lokiStreamQuery(ctx, hc, base, lokiPathSuggestionsQueryFor(req), req.Start, req.End, req.Limit, lokiPathSuggestionsLimit)
 		if err != nil {
 			return nil, err
-		}
-		resp, err := hc.Do(httpReq)
-		if err != nil {
-			return nil, err
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("loki: status %d", resp.StatusCode)
-		}
-		var lr lokiStreamResponse
-		if err := core.DecodeUpstreamJSON(resp.Body, &lr); err != nil {
-			return nil, fmt.Errorf("decode loki response: %w", err)
-		}
-		if lr.Status != "" && lr.Status != promStatusSuccess {
-			return nil, fmt.Errorf("loki status %q", lr.Status)
 		}
 		counts := map[string]int{}
 		for _, st := range lr.Data.Result {
@@ -374,6 +384,60 @@ func NewLokiPathFilterSuggestionsSource(base string, hc *http.Client) PathFilter
 		}
 		return topPathSuggestions(counts, maxPathFilterSuggestions), nil
 	}
+}
+
+// NewLokiHTTPFilterValuesSource returns the production HTTPFilterValuesSource
+// backed by Loki's /loki/api/v1/query_range over the App's Traefik request-log
+// streams (direction=backward, limit<=5000, w34/m588). It discovers distinct
+// observed RequestHost and status values and honors optional host/statusCode
+// cross-filtering.
+func NewLokiHTTPFilterValuesSource(base string, hc *http.Client) HTTPFilterValuesSource {
+	if hc == nil {
+		hc = core.UpstreamClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req HTTPFilterValuesRequest) (HTTPFilterValues, error) {
+		lr, err := lokiStreamQuery(ctx, hc, base, lokiHTTPFilterValuesQueryFor(req), req.Start, req.End, req.Limit, lokiHTTPFilterValuesLimit)
+		if err != nil {
+			return HTTPFilterValues{}, err
+		}
+		hostSet := map[string]struct{}{}
+		codeSet := map[string]struct{}{}
+		for _, st := range lr.Data.Result {
+			if len(st.Values) == 0 {
+				continue
+			}
+			if code := st.Stream["status"]; code != "" {
+				codeSet[code] = struct{}{}
+			}
+			if host := st.Stream[lokiLabelRequestHost]; host != "" {
+				hostSet[host] = struct{}{}
+			}
+			for _, pair := range st.Values {
+				if len(pair) == 2 && pair[1] != "" {
+					hostSet[pair[1]] = struct{}{}
+				}
+			}
+		}
+		return HTTPFilterValues{
+			Hosts:       sortedStringSet(hostSet),
+			StatusCodes: sortedStringSet(codeSet),
+		}, nil
+	}
+}
+
+// lokiHTTPFilterValuesQueryFor builds the LogQL stream query for HTTP host and
+// status-code filter discovery (and cross-filtering): scoped to the authorized
+// App's request-log streams, applying optional statusCode and host filters, and
+// projecting each line to its RequestHost (empty when absent, never "<no value>").
+func lokiHTTPFilterValuesQueryFor(req HTTPFilterValuesRequest) string {
+	q := lokiRequestSelector(req.Namespace, req.App, req.StatusCodes)
+	q += ` | json ` + lokiLabelRequestHost + `="RequestHost"`
+	if f := lokiOrFilter(lokiLabelRequestHost, req.Hosts); f != "" {
+		q += " | " + f
+	}
+	q += fmt.Sprintf(` | line_format "{{with .%s}}{{.}}{{end}}"`, lokiLabelRequestHost)
+	return q
 }
 
 // lokiPathSuggestionsQueryFor builds the LogQL stream query for HTTP path

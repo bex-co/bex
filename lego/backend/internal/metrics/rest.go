@@ -198,24 +198,28 @@ type renderFilterValues struct {
 	Values []string `json:"values"`
 }
 
-// filterResource is the single resource a filters/* read names.
-func filterResource(v url.Values) (string, error) {
-	resources := requestedResources(v)
-	if len(resources) != 1 {
-		return "", fmt.Errorf("exactly one resource is required")
-	}
-	return resources[0], nil
-}
-
 // filterValues reads the requested filter fields through the same verb GraphQL
 // metricsFilters uses, so the surfaces cannot disagree about what is queryable.
-func (s *Service) filterValues(w http.ResponseWriter, r *http.Request, fields ...string) ([]MetricsFilterValues, bool) {
-	resource, err := filterResource(r.URL.Query())
+func (s *Service) filterValues(w http.ResponseWriter, r *http.Request, hosts, statusCodes []string, fields ...string) ([]MetricsFilterValues, bool) {
+	v := r.URL.Query()
+	resources := requestedResources(v)
+	if len(resources) == 0 {
+		core.WriteErrStatus(w, http.StatusBadRequest, "resource is required")
+		return nil, false
+	}
+	start, end, _, err := parseTimeWindow(v)
 	if err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return nil, false
 	}
-	values, err := s.MetricsFilters(r.Context(), MetricsFiltersQuery{App: resource, OutputFilters: fields})
+	values, err := s.MetricsFilters(r.Context(), MetricsFiltersQuery{
+		Resources:     resources,
+		Start:         start,
+		End:           end,
+		Hosts:         hosts,
+		StatusCodes:   statusCodes,
+		OutputFilters: fields,
+	})
 	if err != nil {
 		core.WriteErr(w, err)
 		return nil, false
@@ -225,25 +229,19 @@ func (s *Service) filterValues(w http.ResponseWriter, r *http.Request, fields ..
 
 // applicationFilters is Render's "List queryable instance values".
 func (s *Service) applicationFilters(w http.ResponseWriter, r *http.Request) {
-	values, ok := s.filterValues(w, r, filterFieldInstance)
+	values, ok := s.filterValues(w, r, nil, nil, filterFieldInstance)
 	if !ok {
 		return
 	}
 	core.WriteJSON(w, http.StatusOK, []renderFilterValues{{Filter: "instance", Values: values[0].Values}})
 }
 
-// httpFilters is Render's "List queryable status codes and host values". bex
-// cannot narrow one filter's values by another's, so a narrowing parameter is
-// refused rather than ignored; host values are discovered from the logs label
-// read (the App's URLs), not here, exactly as in GraphQL metricsFilters.
+// httpFilters is Render's "List queryable status codes and host values",
+// honoring repeatable resource/service, startTime/endTime, and host/statusCode
+// cross-filtering (w34/m588).
 func (s *Service) httpFilters(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
-	if len(nonEmptyValues(v["statusCode"])) > 0 || len(nonEmptyValues(v["host"])) > 0 {
-		core.WriteErrStatus(w, http.StatusBadRequest,
-			"narrowing filter values by statusCode or host is unsupported: omit them to list every queryable value")
-		return
-	}
-	values, ok := s.filterValues(w, r, filterFieldStatusCode, filterFieldHost)
+	values, ok := s.filterValues(w, r, nonEmptyValues(v["host"]), nonEmptyValues(v["statusCode"]), filterFieldStatusCode, filterFieldHost)
 	if !ok {
 		return
 	}

@@ -41,7 +41,6 @@ var renderMetricsNonGoals = map[string]string{
 
 const (
 	metricsParamServed = "served"
-	metricsParamWindow = "ignored: filter discovery lists what is queryable now; a time window does not narrow it"
 )
 
 // renderMetricsParamVerdicts records, per Render /metrics path, what each
@@ -66,11 +65,15 @@ var renderMetricsParamVerdicts = map[string]map[string]string{
 	"/metrics/disk-capacity": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
 	"/metrics/disk-usage":    {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
 	"/metrics/filters/application": {
-		"startTime": metricsParamWindow, "endTime": metricsParamWindow, "resolutionSeconds": metricsParamWindow, "resource": metricsParamServed, "service": metricsParamServed,
+		"startTime": metricsParamServed, "endTime": metricsParamServed,
+		"resolutionSeconds": "ignored: instance filter discovery reads pod label values over the window rather than stepped buckets",
+		"resource":          metricsParamServed, "service": metricsParamServed,
 	},
 	"/metrics/filters/http": {
-		"startTime": metricsParamWindow, "endTime": metricsParamWindow, "resolutionSeconds": metricsParamWindow, "resource": metricsParamServed, "service": metricsParamServed,
-		"host": "refused: bex cannot narrow one filter's values by another", "statusCode": "refused: bex cannot narrow one filter's values by another",
+		"startTime": metricsParamServed, "endTime": metricsParamServed,
+		"resolutionSeconds": "ignored: HTTP filter discovery reads label values and access-log streams over the window rather than stepped buckets",
+		"resource":          metricsParamServed, "service": metricsParamServed,
+		"host": metricsParamServed, "statusCode": metricsParamServed,
 	},
 	"/metrics/filters/path": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed,

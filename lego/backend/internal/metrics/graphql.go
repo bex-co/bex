@@ -648,18 +648,9 @@ func metricsFilterValues(input map[string]any) map[string][]string {
 			continue
 		}
 		field, _ := filter["field"].(string)
-		values[field] = gqlutil.StringList(filter["values"])
+		values[field] = append(values[field], gqlutil.StringList(filter["values"])...)
 	}
 	return values
-}
-
-// firstValue takes the single value out of a filter that Render models as a
-// list but bex honors as a scalar.
-func firstValue(values []string) string {
-	if len(values) == 0 {
-		return ""
-	}
-	return values[0]
 }
 
 // windowFromInput parses the start/end/resolution window shared by both
@@ -686,11 +677,23 @@ func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
 	if !ok {
 		return MetricsFiltersQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
 	}
-	app := firstValue(metricsFilterValues(input)[filterFieldResource])
-	if app == "" {
+	filters := metricsFilterValues(input)
+	resources := nonBlankStrings(filters[filterFieldResource])
+	if len(resources) == 0 {
 		return MetricsFiltersQuery{}, fmt.Errorf("%w: filters must include a RESOURCE entry", core.ErrBadRequest)
 	}
-	return MetricsFiltersQuery{App: app, OutputFilters: gqlutil.StringList(input["outputFilters"])}, nil
+	start, end, _, err := windowFromInput(input)
+	if err != nil {
+		return MetricsFiltersQuery{}, err
+	}
+	return MetricsFiltersQuery{
+		Resources:     resources,
+		Start:         start,
+		End:           end,
+		Hosts:         nonEmptyValues(filters[filterFieldHost]),
+		StatusCodes:   nonEmptyValues(filters[filterFieldStatusCode]),
+		OutputFilters: gqlutil.StringList(input["outputFilters"]),
+	}, nil
 }
 
 func metricsPathFilterSuggestionsQueryFromArgs(raw any) (PathFilterSuggestionsQuery, error) {
