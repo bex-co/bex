@@ -9,13 +9,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import { Input } from "@/common/components/ui/input";
@@ -62,6 +56,7 @@ import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-e
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
 import { EnvironmentSettingsDialog } from "@/features/environments/components/environment-settings-dialog";
+import { EnvironmentCardHeader } from "@/features/environments/components/environment-card-header";
 import type { ServiceView } from "@/features/services/types";
 import type {
   PendingLifecycle,
@@ -223,65 +218,75 @@ export function EnvironmentCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {environment.name}
-          {environment.protectedStatus === "protected" ? (
-            <Badge variant="secondary">
-              <LockKeyhole />
-              {t("environments.protectedBadge")}
-            </Badge>
-          ) : null}
-          <span className="text-xs font-normal text-muted-foreground">
-            {counts.all !== null
-              ? t("environments.resourceCount", { count: counts.all })
-              : unknown.some((family) => unread.failed.includes(family))
-                ? t("environments.resourceCountUnknown")
-                : t("environments.resourceCountLoading")}
-          </span>
-        </CardTitle>
-        <CardAction className="flex items-center gap-2">
-          <PermissionTooltip reason={placementReason}>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={placementReason !== undefined}
-              onClick={() => setAssignOpen(true)}
+      <EnvironmentCardHeader
+        title={
+          <>
+            {/* leading-snug: the 22px line keeps descenders unclipped. */}
+            <span
+              className="min-w-0 truncate leading-snug"
+              title={environment.name}
             >
-              <Settings2 />
-              {t("environments.manageButton")}
-            </Button>
-          </PermissionTooltip>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+              {environment.name}
+            </span>
+            {environment.protectedStatus === "protected" ? (
+              <Badge variant="secondary">
+                <LockKeyhole />
+                {t("environments.protectedBadge")}
+              </Badge>
+            ) : null}
+            <span className="shrink-0 whitespace-nowrap text-xs font-normal text-muted-foreground">
+              {counts.all !== null
+                ? t("environments.resourceCount", { count: counts.all })
+                : unknown.some((family) => unread.failed.includes(family))
+                  ? t("environments.resourceCountUnknown")
+                  : t("environments.resourceCountLoading")}
+            </span>
+          </>
+        }
+        actions={
+          <>
+            <PermissionTooltip reason={placementReason}>
               <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t("environments.moreActions")}
+                variant="outline"
+                size="sm"
+                disabled={placementReason !== undefined}
+                onClick={() => setAssignOpen(true)}
               >
-                <MoreVertical />
+                <Settings2 />
+                {t("environments.manageButton")}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={openRename}>
-                <Pencil />
-                {t("environments.renameAction")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                <ShieldCheck />
-                {t("environments.settingsAction")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 />
-                {t("environments.deleteAction")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </CardAction>
-      </CardHeader>
+            </PermissionTooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("environments.moreActions")}
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={openRename}>
+                  <Pencil />
+                  {t("environments.renameAction")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                  <ShieldCheck />
+                  {t("environments.settingsAction")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 />
+                  {t("environments.deleteAction")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
       <CardContent className="space-y-4">
         <ProjectResourceFilters
           environmentName={environment.name}

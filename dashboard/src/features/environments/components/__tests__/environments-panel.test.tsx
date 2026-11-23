@@ -203,6 +203,20 @@ describe("EnvironmentsPanel", () => {
     expect(screen.queryByTestId("env-card")).not.toBeInTheDocument();
   });
 
+  // Without the picker's box the card rose 40px (44px at 390) while the
+  // environments loaded, then dropped when the picker appeared (w4/715).
+  it("reserves the environment picker's box while environments load", () => {
+    environmentsState.loading = true;
+    renderPanel();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "Environments" });
+    const titleColumn = heading.parentElement!.parentElement!;
+    expect(titleColumn.querySelector('[data-slot="skeleton"]')).toHaveClass(
+      "h-9",
+      "w-64",
+    );
+  });
+
   it("shows an error state when the query fails", () => {
     environmentsState.error = new Error("boom");
     renderPanel();

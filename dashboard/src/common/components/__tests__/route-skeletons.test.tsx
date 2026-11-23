@@ -22,6 +22,7 @@ import {
   KeyValueCreatePageSkeleton,
   KeyValueOverviewSkeleton,
   NotificationsPageSkeleton,
+  ProjectOverviewPageSkeleton,
   ServiceEnvironmentSkeleton,
   ServiceCreatePageSkeleton,
   ServiceLogsSkeleton,
@@ -574,6 +575,27 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       unmount();
     },
   );
+
+  // The ready header is the eyebrow's 16px line over the 32px name row, and
+  // the environments row's buttons wrap under the picker at 390px; a 12px
+  // eyebrow with an 8px gap and a 20px heading put the card 4px off (w4/715).
+  it("reserves the project page's header and environments row at their ready heights", () => {
+    const { container } = render(<ProjectOverviewPageSkeleton />);
+    const header = container.querySelector<HTMLElement>(
+      '[data-skeleton-region="project-header"]',
+    )!;
+    expect(header).not.toHaveClass("space-y-2");
+    const eyebrow = header.firstElementChild!;
+    expect(eyebrow).toHaveClass("text-xs", "uppercase", "tracking-wide");
+    expect(eyebrow).toHaveTextContent("Project");
+
+    const environments = container.querySelector<HTMLElement>(
+      '[data-skeleton-region="environments"]',
+    )!;
+    expect(environments.querySelector(".h-7 > .h-5")).not.toBeNull();
+    expect(environments).toHaveTextContent("New Service");
+    expect(environments).toHaveTextContent("New Environment");
+  });
 
   it("uses editor-card geometry for the service environment skeleton", () => {
     const { container } = render(<ServiceEnvironmentSkeleton />);

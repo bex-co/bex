@@ -75,7 +75,7 @@ On dev-4 with OpenFGA enforced (w4/m550 t005's recipe), then on production once 
 - **GraphQL as the Admin.** Before and after the cycles, the three running resources read suspend `allowed`/`protected_confirmation_required` and resume `allowed`/`not_suspended`, as on dev-4.
 - **Timing.** Every control was enabled within about 1 s of its page loading or of the previous change, and none showed a gate reason.
 - **Scope.** Production has one QA identity, so the Developer and Viewer lines rest on dev-4's run above.
-- **Not this change, noted:** at 390 the protected environment's name still stacks one letter per line in the card header ([w4/715](../../715.md), open).
+- **Not this change, noted:** at 390 the protected environment's name still stacks one letter per line in the card header ([w4/715](../../done/715.md), open).
 - **Cleanup:** the service, Postgres, Key Value and project were deleted (each by-id `GET` answers 404), the session was logged out (`--logout`: `ok logged-out`), and its jar and state file were removed. The other resources in `bex-canary` were not touched.
 
 ## Unblocked (2026-11-23)

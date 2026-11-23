@@ -2,6 +2,8 @@ import { useRef } from "react";
 import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
+import { EnvironmentCardHeader } from "@/features/environments/components/environment-card-header";
+import { ProjectResourceFiltersSkeleton } from "@/features/projects/components/project-resource-filters";
 import { WebhooksPageHeader } from "@/features/webhooks/components/webhooks-panel";
 import { ServiceCreateHeader } from "@/features/services/components/service-create-header";
 import {
@@ -11,7 +13,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { useRouterState } from "@tanstack/react-router";
-import { Bell, Pencil, Plus, Webhook } from "lucide-react";
+import { Bell, Pencil, Plus, Settings2, Webhook } from "lucide-react";
 import { PushNotificationEvent } from "@/graphql/definitions";
 import {
   pushEventKeys,
@@ -1239,12 +1241,20 @@ export function WebhookCreatePageSkeleton() {
   );
 }
 
+/**
+ * The project page while its route loads (w4/715): the eyebrow's own 16px
+ * line over the 32px name row (the ready header is 48px), then the
+ * environments section and card at their ready heights.
+ */
 export function ProjectOverviewPageSkeleton() {
+  const { t } = useTranslations();
   return (
     <PageScroll>
       <PendingFrame route="project-overview" className="w-full space-y-6">
-        <Region name="project-header" className="space-y-2">
-          <Skeleton className="h-3 w-20" />
+        <Region name="project-header">
+          <p className="relative w-fit text-xs font-semibold uppercase tracking-wide">
+            <ReservedText>{t("projects.eyebrow")}</ReservedText>
+          </p>
           <div className="flex items-center gap-2">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="size-8" />
@@ -1256,17 +1266,31 @@ export function ProjectOverviewPageSkeleton() {
   );
 }
 
+/**
+ * The environments section: the 28px heading over the 256px environment
+ * picker, and the New Service and New Environment buttons at their ready
+ * boxes, so they wrap under the picker where the ready row does (390px).
+ */
 export function ProjectEnvironmentsSkeleton() {
+  const { t } = useTranslations();
   return (
     <Region name="environments" className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-2">
-          <Skeleton className="h-5 w-32" />
+          <div className="flex h-7 items-center">
+            <Skeleton className="h-5 w-32" />
+          </div>
           <Skeleton className="h-9 w-64" />
         </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-28" />
-          <Skeleton className="h-8 w-32" />
+        <div className="flex flex-wrap gap-2">
+          <ReservedButton variant="default" size="sm">
+            <Plus />
+            {t("projects.newService")}
+          </ReservedButton>
+          <ReservedButton variant="outline" size="sm">
+            <Plus />
+            {t("environments.newButton")}
+          </ReservedButton>
         </div>
       </div>
       <ProjectEnvironmentCardSkeleton />
@@ -1274,24 +1298,38 @@ export function ProjectEnvironmentsSkeleton() {
   );
 }
 
+/**
+ * An environment card while its environment loads (w4/715): the ready card's
+ * own header layout (`EnvironmentCardHeader`: the actions beside the title
+ * line, or under it in a narrow card) with Manage resources at its ready box
+ * and the kebab, the five type pills over the search box
+ * (`ProjectResourceFiltersSkeleton`), then the selection toolbar and rows. So
+ * the toolbar starts at the same y pending and ready, at 1440px and at 390px.
+ */
 export function ProjectEnvironmentCardSkeleton() {
+  const { t } = useTranslations();
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-16" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-24" />
-          <Skeleton className="size-8" />
-        </div>
-      </CardHeader>
+      <EnvironmentCardHeader
+        titleAs="div"
+        title={
+          <>
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3 w-16" />
+          </>
+        }
+        actions={
+          <>
+            <ReservedButton variant="outline" size="sm">
+              <Settings2 />
+              {t("environments.manageButton")}
+            </ReservedButton>
+            <Skeleton className="size-8" />
+          </>
+        }
+      />
       <CardContent className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Skeleton className="h-9 min-w-0 flex-1" />
-          <Skeleton className="h-9 w-full sm:w-36" />
-        </div>
+        <ProjectResourceFiltersSkeleton />
         <div className="space-y-3">
           <SelectionToolbarSkeleton />
           <TableRowsSkeleton rows={3} columns={5} />

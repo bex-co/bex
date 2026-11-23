@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { ProjectEnvironmentCardSkeleton } from "@/common/components/route-skeletons";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -210,7 +211,11 @@ export function EnvironmentsPanel({
               {t("environments.heading")}
             </h2>
           </div>
-          {selectedId ? (
+          {loading ? (
+            // The picker's box until there is an environment to pick, so the
+            // card below lands where it will stay (w4/715).
+            <Skeleton className="h-9 w-64" />
+          ) : selectedId ? (
             <Select
               value={selectedId}
               onValueChange={(environmentId) =>

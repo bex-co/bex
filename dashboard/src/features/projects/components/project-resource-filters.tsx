@@ -1,6 +1,8 @@
 import { Search } from "lucide-react";
 import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
+import { Skeleton } from "@/common/components/ui/skeleton";
+import { ReservedButton } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type {
   ProjectResourceDisplayCounts,
@@ -78,6 +80,27 @@ export function ProjectResourceFilters({
           className="pl-8"
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * The filters' loading preview (w4/715): the five type pills at their ready
+ * boxes, each count reserved as one digit, so they wrap onto the same rows
+ * (two at 390px), over the full-width search box.
+ */
+export function ProjectResourceFiltersSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1">
+        {KIND_KEYS.map(({ kind, key }) => (
+          <ReservedButton key={kind} variant="outline" size="sm">
+            {t(key)} (0)
+          </ReservedButton>
+        ))}
+      </div>
+      <Skeleton className="h-9 w-full" />
     </div>
   );
 }

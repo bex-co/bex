@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
+import { ProjectEnvironmentCardSkeleton } from "@/common/components/route-skeletons";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
@@ -808,5 +809,82 @@ describe("EnvironmentCard", () => {
     expect(
       within(dialog).queryByTestId("ip-allow-list-proxied-notice"),
     ).toBeNull();
+  });
+});
+
+// At 390px the header's title column was squeezed beside the actions until
+// "production" read one letter per line, and the loading preview drew neither
+// that header nor the five type pills, so the card jumped 64px on load
+// (w4/715). jsdom has no layout: these pin the classes the browser measured.
+describe("EnvironmentCard header and loading preview (w4/715)", () => {
+  const protectedEnv: EnvironmentView = {
+    ...env,
+    name: "production",
+    protectedStatus: "protected",
+  };
+
+  function headerParts(container: HTMLElement) {
+    const row = container.querySelector<HTMLElement>(
+      '[data-slot="card-header"] > div',
+    )!;
+    const [title, actions] = Array.from(row.children) as HTMLElement[];
+    return { row, title, actions };
+  }
+
+  function filterRows(container: HTMLElement) {
+    const filters = container.querySelector<HTMLElement>(
+      '[data-slot="card-content"] > div',
+    )!;
+    const [pills, search] = Array.from(filters.children) as HTMLElement[];
+    // The kind labels without their counts, which only the ready card knows.
+    const labels = Array.from(pills.children).map((pill) =>
+      (pill.textContent ?? "").replace(/\s*\(.*\)$/, ""),
+    );
+    return { filters, labels, search };
+  }
+
+  it("keeps the name and count whole on one line, with the actions under it in a narrow card", () => {
+    renderCard({ environment: protectedEnv });
+    const heading = screen.getByRole("heading", { name: /^production/ });
+    const name = within(heading).getByText("production");
+    expect(name).toHaveClass("min-w-0", "truncate");
+    expect(name).toHaveAttribute("title", "production");
+    expect(within(heading).getByText("0 resources")).toHaveClass(
+      "shrink-0",
+      "whitespace-nowrap",
+    );
+    expect(heading).toHaveClass("h-[1.375rem]");
+    expect(heading.parentElement).toHaveClass(
+      "flex-col",
+      "@md/card-header:flex-row",
+    );
+  });
+
+  it("previews the ready card's header, filter rows and search row", () => {
+    const ready = renderCard({ environment: protectedEnv }).container;
+    const pending = render(<ProjectEnvironmentCardSkeleton />).container;
+
+    const readyHeader = headerParts(ready);
+    const pendingHeader = headerParts(pending);
+    expect(pendingHeader.row.className).toBe(readyHeader.row.className);
+    expect(pendingHeader.title.className).toBe(readyHeader.title.className);
+    expect(pendingHeader.actions.className).toBe(readyHeader.actions.className);
+    // Manage resources at its ready box, then the kebab.
+    expect(pendingHeader.actions.children).toHaveLength(2);
+    expect(pendingHeader.actions.children[0]).toHaveTextContent(
+      readyHeader.actions.children[0].textContent ?? "",
+    );
+    expect(pendingHeader.actions.children[1]).toHaveClass("size-8");
+
+    const readyFilters = filterRows(ready);
+    const pendingFilters = filterRows(pending);
+    expect(pendingFilters.filters.className).toBe(
+      readyFilters.filters.className,
+    );
+    expect(pendingFilters.labels).toEqual(readyFilters.labels);
+    expect(pendingFilters.labels).toHaveLength(5);
+    // One full-width search box, and nothing beside it.
+    expect(pendingFilters.search).toHaveClass("h-9", "w-full");
+    expect(pending.querySelector('[class*="sm:w-36"]')).toBeNull();
   });
 });
