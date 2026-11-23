@@ -1,6 +1,6 @@
 # w10 · m577 — A session told to merge once CI is green arms GitHub auto-merge or the merge queue and ends its turn, as Devin can
 
-**Worker:** worker10 **Goal:** "merge once CI is green" no longer keeps a session in its turn watching the checks, and a repository whose base branch requires a merge queue no longer refuses the session's merge outright. `merge_pull_request` takes one option (t001 names it, for example `auto: true`, after `gh pr merge --auto`). With it, bex enables GitHub auto-merge on the session's own recorded pull request, pinned to the head bex recorded, and on a merge-queue branch the pull request goes into the queue. GitHub then lands it when its checks pass, and the session's `prState` reads `merged` once the PR-state poller or a `pull_request` delivery sees it. **Status:** blocked (pin must carry `1c868643c6`; t001–t004 and t006–t008 done 2026-11-22, t010 done 2026-11-23; t005's first production run on 2026-11-23 held everything but the session ending its turn after arming, which t010 fixes; t005 re-runs its step 1 once the pin carries t010, then t009)
+**Worker:** worker10 **Goal:** "merge once CI is green" no longer keeps a session in its turn watching the checks, and a repository whose base branch requires a merge queue no longer refuses the session's merge outright. `merge_pull_request` takes one option (t001 names it, for example `auto: true`, after `gh pr merge --auto`). With it, bex enables GitHub auto-merge on the session's own recorded pull request, pinned to the head bex recorded, and on a merge-queue branch the pull request goes into the queue. GitHub then lands it when its checks pass, and the session's `prState` reads `merged` once the PR-state poller or a `pull_request` delivery sees it. **Status:** done (t001–t010; live on pin `9fdf7e0a1171`, 2026-11-23: told to merge once CI is green, a session armed auto-merge, got the answer's `next` and ended its turn 89 s before the check finished, without `gh`; GitHub merged as `bex-co[bot]` and REST, GraphQL and MCP read `prState: merged`)
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | [t002](done/t002.md) | Backend: the GitHub client enables and disables auto-merge and enqueues, pinned to the head — **DONE** | 1h15m | t001 |
 | [t003](done/t003.md) | Backend: the merge verb and the gateway route take the option and answer an armed or queued pull request — **DONE** | 1h15m | t002 |
 | [t004](done/t004.md) | Driver: the tool's option, its answer, the overlay's "arm it and end your turn" and the `gh pr merge --auto` refusal — **DONE** | 1h | t001, t003 |
-| [t005](t005.md) | Live check on production: a session arms auto-merge and ends its turn, GitHub merges after the check, and `prState` reads merged | 45m | t003, t004, t010 |
+| [t005](done/t005.md) | Live check on production: a session arms auto-merge and ends its turn, GitHub merges after the check, and `prState` reads merged — **DONE** | 45m | t003, t004, t010 |
 | [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t010](done/t010.md) | The armed answer, the overlay and the tool description make the agent end its turn instead of watching the checks (from t005's first run) — **DONE** | 45m | t004 |
-| [t009](t009.md) | Closeout | 10m | t008, t010 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008, t010 |
 
 Total: **10 tasks, about 7h45m**.
 
@@ -182,3 +182,27 @@ Workspace `tian-personal`, 11:45–12:01Z, on pin `ac882b5f557f`, which carries 
 
 **Verdict.** DoD 1–3 and 6 hold live, and the queue leg rests on tests. DoD 9 does not: the session armed auto-merge and then waited for the checks anyway. t010 makes the armed answer, the merge step, the `gh` line and the tool description say to end the turn. t005 re-runs step 1 once a pin carries t010.
 
+
+## Unblocked again (2026-11-23)
+
+- **Finding (verified evidence):** production's pin `9fdf7e0a1171` (`cded300699`, `chore(deploy): pin platform images to 9fdf7e0a1171`, the newest pin on `origin/main`) carries `1c868643c6` (t010): `git merge-base --is-ancestor 1c868643c6 9fdf7e0a1171` holds. The running pods match the pin: both `bex-api` and both `bex-ssh-gateway` replicas run `ghcr.io/bex-co/bex-operator@sha256:df6e69bd31bf…` (the pin's `controller` image, ready, started 17:38Z), and `bex-api`'s `BEX_AGENT_SESSION_IMAGE` is `ghcr.io/bex-co/bex-agent-sandbox@sha256:b04181dd2f88…`, the pin's sandbox image, which carries t010's driver change.
+- **Gate:** none left. The pin gate cleared by itself; no user action was involved.
+- **Next:** t005 re-runs step 1 in `tian-personal` with one short session, then t009.
+
+## Live check (t005, production, re-run, 2026-11-23)
+
+Workspace `tian-personal`, 19:10–19:19Z, on pin `9fdf7e0a1171`, which carries `1c868643c6` (t010) and, after it, w10/047 and w10/048. Step 1 alone, as t005's re-run section says; steps 2–4 held in the first run.
+
+- **Fixture.** A new public repository, `puncsky/qa-20261123-m577-rerun` (disposable), shaped as the first run's: `main` required the status check `test` (classic branch protection, no reviews, not strict), from a workflow `ci` whose one job sleeps 90 s, on `pull_request` and pushes to `main`. Settings: "Allow auto-merge" on, merge, squash and rebase allowed.
+- **Session.** `bex agent run --repo puncsky/qa-20261123-m577-rerun --max-spend 1 --follow --reasoning` (the CLI built from `main` at `a46ff006cd`, `claude` on the default `deepseek/deepseek-v4.1-flash-1017`, template `agent`, `gh` on) started `ags-dc28vnmurl5c7380qua0` at 19:11:24Z with the first run's task, word for word: "Make a one-line change to README.md (add a line saying 'Checked by bex QA w10/m577'), open the PR, and merge it once CI is green." The sandbox node had no other session. One turn cost $0.006.
+- **Armed, and the turn ended before the check finished (DoD 9).**
+  - The agent read the README and the workflow, committed and pushed (19:11:45–47Z), and `open_or_update_draft_pr` opened #1 ready for review at 19:11:52.9Z with head `5237bfd28557`.
+  - Its reasoning then read "Now merge once CI green — use auto: true and end turn." `merge_pull_request({auto: true})` (19:11:54.7–58.9Z) answered `{merged: false, autoMerge: true, method: "merge", headSha: "5237bfd28557…", next: "Auto-merge is armed: GitHub merges this pull request once its required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed, not that the pull request merged."}`. GitHub's timeline shows `auto_merge_enabled` by `bex-co[bot]` at 19:11:57Z (`autoMergeRequest.enabledBy` `app/bex-co`, `mergeMethod` `MERGE`).
+  - The final reply at 19:12:00.6Z said "Auto-merge is armed, so GitHub will merge it as soon as the required `ci` check passes", and the turn finished at 19:12:02.3Z (session `succeeded`). The turn's three shell commands were `git status`, `cat` and the commit and push: no `gh` at all, so no `gh pr checks --watch`.
+  - `test` ran 19:11:59–19:13:31Z, so the turn ended 89 s before the check finished. At 19:12:16Z the pull request was open, `mergeStateStatus` `BLOCKED`, `test` in progress.
+- **Merged by GitHub.** GitHub merged #1 as `bex-co[bot]` at 19:13:36Z, 5 s after `test` passed: merge commit `da8b8d2e78d8`, parents `6060c6fa7557` and `5237bfd28557`.
+- **Audited.** `audit_events` (read-only, the `bex-db-1` replica) has `agentsessions.PullRequestMerge` allowed at 19:11:58.905Z and .910Z for target `agent-session:ags-dc28vnmurl5c7380qua0`, target name `puncsky/qa-20261123-m577-rerun#1`, on both hops, after the two `agentsessions.PullRequest` rows of the open at 19:11:52.9Z.
+- **The state.** While armed, REST and GraphQL read `prState: open` with w10/047's `prAutoMerge {method: "merge", enabledBy: "bex-co", enabledAt: 19:11:57Z}` and `prMergeQueued: false`. The PR-state poller recorded `merged` at 19:17:26.3Z, 3 min 50 s after GitHub's merge and inside its five minutes, and cleared `prAutoMerge`. Then REST `GET /v1/agent-sessions/<id>` and the `prState=merged` list filter, GraphQL `agentSession { prState prStateAt prAutoMerge prMergeQueued }` and MCP `get_agent_session` all read `prState: merged`. They were read with a QA key minted for the workspace, revoked afterwards.
+- **Cleanup.** The session deleted (`404 AGENT_SESSION_NOT_FOUND`), the repository deleted (`404`), the QA key revoked and the QA sign-in logged out.
+
+**Verdict.** DoD 9 holds: told to merge once CI is green, the session armed auto-merge while the check ran, got `next`, and ended its turn 89 s before the check finished, without `gh pr checks --watch`; GitHub merged as `bex-co[bot]` and REST, GraphQL and MCP read `prState: merged`. With the first run's DoD 1–3 and 6 and the shipped DoD 4, 5, 7 and 8, the definition of done holds, and t009 closed the milestone on 2026-11-23.
