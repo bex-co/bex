@@ -30,12 +30,14 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Render's rollout lines (w32/m560), restated so the tests pin the wire text.
+// Render's rollout lines (w32/m560), restated so the tests pin the wire text:
+// the bytes Render's log API returns (w32/m576), from ivanseibel/tretta's and
+// kush252/Sentry-AI's captures.
 const (
-	rendersDeploying = "==> Deploying..."
-	rendersWebConc1  = "==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance"
-	rendersRunning   = "==> Running 'npm start'"
-	rendersLive      = "==> Your service is live 🎉"
+	rendersDeploying = "\x1b[0;34m\x1b[1m==> \x1b[0m\x1b[1mDeploying...\x1b[0m"
+	rendersWebConc1  = "\x1b[0;34m\x1b[1m==> \x1b[0m\x1b[1mSetting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance\x1b[0m"
+	rendersRunning   = "\x1b[32m\x1b[1m==>\x1b(B\x1b[m \x1b[1mRunning 'npm start'\x1b(B\x1b[m"
+	rendersLive      = "\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1mYour service is live 🎉\x1b[0m"
 	rolloutRepo      = "https://github.com/x/y"
 	rolloutBuilding  = "==> Building from https://github.com/x/y@abc1234"
 )
@@ -118,9 +120,9 @@ func TestRolloutLinesFollowRendersLogByServiceTypeAndOutcome(t *testing.T) {
 		{"a start command that exited, then started again", with(nativeRollout("update_failed"), func(d *DeployProgress) {
 			d.ExitCode, d.AppStartedAt = &exited, []time.Time{firstAppStart, firstAppStart.Add(2 * time.Second)}
 		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersRunning, rendersRunning,
-			"==> Exited with status 1", troubleshootLine})},
+			rendersExited1, rendersTroubleshoot})},
 		{"a rollout that ran out of its budget", with(nativeRollout("update_failed"), func(d *DeployProgress) { d.TimedOut = true }), web,
-			slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersRunning, timedOutLine, troubleshootLine})},
+			slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersRunning, rendersTimedOut, rendersTroubleshoot})},
 		{"a build that failed", with(nativeRollout("build_failed"), noRecord), web,
 			slices.Concat(built, []string{"==> Build failed"})},
 		{"a deploy canceled before its rollout", with(nativeRollout("canceled"), noRecord), web,
@@ -151,11 +153,11 @@ func TestRolloutLinesFollowRendersLogByServiceTypeAndOutcome(t *testing.T) {
 		{"an announcing start command that exited, then started again", with(nativeRollout("update_failed"), func(d *DeployProgress) {
 			announcing(d)
 			d.ExitCode, d.AppStartedAt = &exited, []time.Time{firstAppStart, firstAppStart.Add(2 * time.Second)}
-		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, "==> Exited with status 1", troubleshootLine})},
+		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersExited1, rendersTroubleshoot})},
 		{"an announcing rollout that ran out of its budget", with(nativeRollout("update_failed"), func(d *DeployProgress) {
 			announcing(d)
 			d.TimedOut = true
-		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, timedOutLine, troubleshootLine})},
+		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersTimedOut, rendersTroubleshoot})},
 		{"an announcing rollout still running", with(nativeRollout("update_in_progress"), func(d *DeployProgress) {
 			announcing(d)
 			d.FinishedAt = time.Time{}
@@ -191,7 +193,7 @@ func TestRolloutLinesQuoteTheCommandAtItsRecordedStarts(t *testing.T) {
 		got = append(got, e.Timestamp+" "+e.Message)
 	}
 	stamp := func(t time.Time) string { return t.Format(time.RFC3339Nano) + " " }
-	running := "==> Running 'uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
+	running := rendersRunningLine("uvicorn app.main:app --host 0.0.0.0 --port $PORT")
 	want := []string{
 		stamp(rolloutStart) + rendersDeploying,
 		stamp(rolloutStart.Add(rolloutLineStep)) + rendersWebConc1,

@@ -36,16 +36,13 @@ import (
 
 // Render's block, byte for byte as falcon-Z/z0-auth#12 reads it through
 // Render's API: the blank lines keep their space, the rule is 59 slashes, and
-// the URL ends at its host.
-const (
-	rendersBlank = "==> "
-	rendersRule  = "==> ///////////////////////////////////////////////////////////"
-	rendersURL   = "==> Available at your primary URL https://z0-auth.onbex.co"
-)
+// the URL ends at its host. Each line is green, the blank ones with the
+// marker's space inside its colour (rendersURLBlank, rendersURLRule; w32/m576).
+var rendersURL = rendersURLLine("https://z0-auth.onbex.co")
 
 // rendersBlock is Render's six lines for url, the line that names it.
 func rendersBlock(url string) []string {
-	return []string{rendersBlank, rendersRule, rendersBlank, url, rendersBlank, rendersRule}
+	return []string{rendersURLBlank, rendersURLRule, rendersURLBlank, url, rendersURLBlank, rendersURLRule}
 }
 
 // webLive is a deploy of a web service that went live at
@@ -60,7 +57,7 @@ func webLive() DeployProgress {
 // lines naming its primary URL, each a line of its own a moment after the one
 // before it (falcon-Z/z0-auth#12: 17.712 live, then 17.947 to 17.965).
 func TestPrimaryURLBlockFollowsTheLiveLineInRendersBytes(t *testing.T) {
-	if n := strings.Count(rendersRule, "/"); n != 59 {
+	if n := strings.Count(rendersURLRule, "/"); n != 59 {
 		t.Fatalf("the test's rule has %d slashes, want Render's 59", n)
 	}
 	d := webLive()
@@ -119,15 +116,15 @@ func TestPrimaryURLBlockByDeployAndOutcome(t *testing.T) {
 		{"a deploy a newer one replaced", with(func(d *DeployProgress) { d.Status = "deactivated" }), web, block},
 		{"a custom domain and the platform URL", with(func(d *DeployProgress) {
 			d.LiveURLs = []string{"https://bookorbit.example", "https://z0-auth.onbex.co"}
-		}), web, rendersBlock("==> Available at your primary URL https://bookorbit.example + 1 more domain")},
+		}), web, rendersBlock(rendersURLLine("https://bookorbit.example + 1 more domain"))},
 		{"a root domain, its www redirect and the platform URL", with(func(d *DeployProgress) {
 			d.LiveURLs = []string{"https://teranga-ai.example", "https://z0-auth.onbex.co", "https://www.teranga-ai.example"}
-		}), web, rendersBlock("==> Available at your primary URL https://teranga-ai.example + 2 more domains")},
+		}), web, rendersBlock(rendersURLLine("https://teranga-ai.example + 2 more domains"))},
 		{"a row with no record", with(func(d *DeployProgress) { d.LiveURLs = nil }), web, nil},
 		{"a static site, which records none", with(func(d *DeployProgress) { d.LiveURLs = nil }),
 			progressContext{repo: rolloutRepo, serviceType: appv1alpha1.TypeStaticSite}, nil},
-		{"a start command that exited", with(func(d *DeployProgress) { d.Status, d.ExitCode = "update_failed", &exited }), web, []string{troubleshootLine}},
-		{"a rollout out of its budget", with(func(d *DeployProgress) { d.Status, d.TimedOut = "update_failed", true }), web, []string{troubleshootLine}},
+		{"a start command that exited", with(func(d *DeployProgress) { d.Status, d.ExitCode = "update_failed", &exited }), web, []string{rendersTroubleshoot}},
+		{"a rollout out of its budget", with(func(d *DeployProgress) { d.Status, d.TimedOut = "update_failed", true }), web, []string{rendersTroubleshoot}},
 		{"a failed build", with(func(d *DeployProgress) { d.Status = "build_failed" }), web, nil},
 		{"a failed pre-deploy", with(func(d *DeployProgress) { d.Status = "pre_deploy_failed" }), web, nil},
 		{"a cancel", with(func(d *DeployProgress) { d.Status = "canceled" }), web, nil},
@@ -153,7 +150,7 @@ func TestPrimaryURLBlockComesBeforeTheInitialDeployHook(t *testing.T) {
 	svc := hookService(rows, hookRun1(appv1alpha1.PreDeploySucceeded, "", true), nil)
 	got := inOrder(buildRead(t, svc, LogQuery{Deploy: "dep-first", Since: hookLive.Add(-2 * time.Minute), End: hookLive.Add(time.Minute)}))
 	want := slices.Concat([]string{"==> Deploy queued", "==> Rolling out the current release", rendersLive},
-		rendersBlock("==> Available at your primary URL https://web.onbex.co"), []string{hookLineRunning, hookLineSucceeded})
+		rendersBlock(rendersURLLine("https://web.onbex.co")), []string{hookLineRunning, hookLineSucceeded})
 	if !slices.Equal(got, want) {
 		t.Fatalf("first deploy's log = %q\nwant %q", got, want)
 	}
@@ -174,7 +171,7 @@ func TestPrimaryURLBlockSurvivesAWindowOpenedInsideIt(t *testing.T) {
 	}
 	// A window that closes inside it keeps the lines before its end.
 	got = inOrder(buildRead(t, svc, LogQuery{Since: d.FinishedAt, End: d.FinishedAt.Add(2 * time.Millisecond)}))
-	if want := []string{rendersLive, rendersBlank, rendersRule}; !slices.Equal(got, want) {
+	if want := []string{rendersLive, rendersURLBlank, rendersURLRule}; !slices.Equal(got, want) {
 		t.Fatalf("log = %q, want %q", got, want)
 	}
 }
@@ -272,7 +269,9 @@ func TestWebSocketBuildTailSendsThePrimaryURLBlockOnce(t *testing.T) {
 	mu.Lock()
 	row.Status, row.FinishedAt, row.LiveURLs = "live", soon(72*time.Minute), []string{"https://z0-auth.onbex.co"}
 	mu.Unlock()
-	read(func() bool { return len(got) > 0 && got[len(got)-1] == rendersRule && slices.Contains(got, rendersURL) }, 5*time.Second)
+	read(func() bool {
+		return len(got) > 0 && got[len(got)-1] == rendersURLRule && slices.Contains(got, rendersURL)
+	}, 5*time.Second)
 	// Let a few more passes read the same row again.
 	read(func() bool { return false }, 150*time.Millisecond)
 
@@ -329,7 +328,9 @@ func TestPrimaryURLBlockReadsTheSameOnRESTGraphQLAndMCP(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
 		t.Fatalf("REST = %d %s (%v)", rec.Code, rec.Body, err)
 	}
-	if !strings.Contains(rec.Body.String(), `"message":"==\u003e "`) {
+	// The blank line as Render's API writes it in JSON (ivanseibel/tretta's
+	// capture): green, the marker's space inside its colour.
+	if !strings.Contains(rec.Body.String(), `"message":"\u001b[0;32m\u001b[1m==\u003e \u001b[0m\u001b[1m\u001b[0m"`) {
 		t.Fatalf("REST body has no blank marker with its space: %s", rec.Body)
 	}
 	var messages, ids []string

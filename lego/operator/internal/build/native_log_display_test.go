@@ -175,7 +175,7 @@ func TestNativeBuildLogShowsTheCommandAndItsOutput(t *testing.T) {
 	if exit != 0 {
 		t.Fatalf("exit %d, log:\n%s", exit, log)
 	}
-	want := "==> Running build command '" + command + "'...\n" + nativeCommandOutput + "==> Uploading build...\n"
+	want := rendersShellLine("Running build command '"+command+"'...") + "\n" + nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n"
 	if log != want {
 		t.Fatalf("log:\n%q\nwant:\n%q", log, want)
 	}
@@ -193,7 +193,8 @@ func TestNativeBuildLogSaysACachedCommandWasReused(t *testing.T) {
 	if exit != 0 {
 		t.Fatalf("exit %d, log:\n%s", exit, log)
 	}
-	if want := "==> Running build command 'npm install'...\n==> Reusing the cached result: nothing the build command reads has changed since an earlier build\n==> Uploading build...\n"; log != want {
+	if want := rendersShellLine("Running build command 'npm install'...") + "\n" + "==> Reusing the cached result: nothing the build command reads has changed since an earlier build\n" +
+		rendersRuntimeLine("Uploading build...") + "\n"; log != want {
 		t.Fatalf("log:\n%q\nwant:\n%q", log, want)
 	}
 }
@@ -262,8 +263,8 @@ func uploadStamp(t *testing.T, output string) (int64, bool) {
 // that moment for the push phase. A build with no command says it too.
 func TestNativeBuildLogSaysUploadingOnceTheCommandsStepEnds(t *testing.T) {
 	for name, tc := range map[string]struct{ command, want string }{
-		"command":    {"npm install", "==> Running build command 'npm install'...\n" + nativeCommandOutput + "==> Uploading build...\n"},
-		"no command": {"", nativeCommandOutput + "==> Uploading build...\n"},
+		"command":    {"npm install", rendersShellLine("Running build command 'npm install'...") + "\n" + nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n"},
+		"no command": {"", nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n"},
 	} {
 		volume := t.TempDir()
 		before := time.Now().Unix()
@@ -336,7 +337,7 @@ func TestNativeBuildSaysUploadingBeforeTheExportEnds(t *testing.T) {
 		_, _ = f.WriteString(nativeAfterCommand)
 	}()
 	log, _, exit := runBuildkitFrom(t, nativeLogOptions("npm install"), fifo, 0, volume)
-	if exit != 0 || !strings.HasSuffix(log, "  run `npm fund` for details\n==> Uploading build...\n") {
+	if exit != 0 || !strings.HasSuffix(log, "  run `npm fund` for details\n"+rendersRuntimeLine("Uploading build...")+"\n") {
 		t.Fatalf("exit %d, log:\n%s", exit, log)
 	}
 	select {
@@ -358,7 +359,7 @@ func TestNativeBuildLogSaysAnUploadThatFailsAfterTheCommand(t *testing.T) {
 	head := nativeThroughCommand(t, "npm install")
 	for name, transcript := range map[string]string{"export": head + nativeExportFailure, "silent": head} {
 		log, message, exit := runBuildkit(t, o, transcript, 1)
-		want := "==> Running build command 'npm install'...\n" + nativeCommandOutput + "==> Uploading build...\n==> Uploading build failed\n"
+		want := rendersShellLine("Running build command 'npm install'...") + "\n" + nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n" + "==> Uploading build failed\n"
 		if exit == 0 || log != want {
 			t.Fatalf("%s: exit %d, log:\n%q\nwant:\n%q", name, exit, log, want)
 		}
@@ -375,7 +376,7 @@ func TestNativeBuildLogSaysAnUploadThatFailsAfterTheCommand(t *testing.T) {
 func TestNativeBuildLogLeavesTheUploadLineToThePushWithoutItsMoment(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing")
 	log, _, exit := runBuildkitWithOutput(t, nativeLogOptions("npm install"), nativeTranscript("npm install", ""), 0, missing)
-	if want := "==> Running build command 'npm install'...\n" + nativeCommandOutput; exit != 0 || log != want {
+	if want := rendersShellLine("Running build command 'npm install'...") + "\n" + nativeCommandOutput; exit != 0 || log != want {
 		t.Fatalf("exit %d, log:\n%q\nwant:\n%q", exit, log, want)
 	}
 }
@@ -384,7 +385,8 @@ func TestNativeBuildLogLeavesTheUploadLineToThePushWithoutItsMoment(t *testing.T
 // `Uploading build...`, and `Uploaded in` counts from that moment: the
 // export and the push together. A moment that is not a number is ignored.
 func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
-	uploaded := regexp.MustCompile(`^==> Uploaded in ([0-9]+)s\n==> Build successful \x{1F389}\n$`)
+	uploaded := regexp.MustCompile("^" + strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s")), "\x00", "([0-9]+)", 1) +
+		"\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
 	withStamp := func(content string) string {
 		output := t.TempDir()
 		if err := os.WriteFile(filepath.Join(output, filepath.Base(uploadStartedFile)), []byte(content), 0o600); err != nil {
@@ -403,7 +405,7 @@ func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
 	}
 	for _, stamp := range []string{"", "\n", "soon\n", "12a\n", "$(echo 1)\n"} {
 		log, err := runNativePush(t, withStamp(stamp), 0)
-		rest, ok := strings.CutPrefix(log, "==> Uploading build...\n")
+		rest, ok := strings.CutPrefix(log, rendersRuntimeLine("Uploading build...")+"\n")
 		if m := uploaded.FindStringSubmatch(rest); err != nil || !ok || m == nil || m[1] != "0" && m[1] != "1" {
 			t.Errorf("stamp %q: err %v, log %q; want the push's own line and its own count", stamp, err, log)
 		}
@@ -421,7 +423,8 @@ func TestANativeBuildSaysUploadingOnce(t *testing.T) {
 	build, _, exit := runBuildkitWithOutput(t, nativeLogOptions("npm install"), nativeTranscript("npm install", ""), 0, volume)
 	push, err := runNativePush(t, volume, 0)
 	log := build + push
-	whole := regexp.MustCompile("run `npm fund` for details\n==> Uploading build...\n==> Uploaded in [0-9]+s\n==> Build successful \U0001F389\n$")
+	whole := regexp.MustCompile(regexp.QuoteMeta("run `npm fund` for details\n"+rendersRuntimeLine("Uploading build...")+"\n") +
+		strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s")), "\x00", "[0-9]+", 1) + "\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
 	if exit != 0 || err != nil || strings.Count(log, "Uploading build") != 1 || !whole.MatchString(log) {
 		t.Fatalf("exit %d, push err %v, log:\n%s", exit, err, log)
 	}
@@ -459,11 +462,11 @@ func runNativePush(t *testing.T, output string, code int) (string, error) {
 func TestNativeBuildPushSaysSuccessOnlyAfterTheUpload(t *testing.T) {
 	for name, code := range map[string]int{"pushed": 0, "refused": 1} {
 		log, err := runNativePush(t, t.TempDir(), code)
-		if strings.Contains(log, "Copying blob") || !strings.HasPrefix(log, "==> Uploading build...\n") {
+		if strings.Contains(log, "Copying blob") || !strings.HasPrefix(log, rendersRuntimeLine("Uploading build...")+"\n") {
 			t.Fatalf("%s: log %q, want the narration without skopeo's transcript", name, log)
 		}
 		if code == 0 {
-			if err != nil || !strings.Contains(log, "==> Uploaded in ") || !strings.HasSuffix(log, "==> Build successful \U0001F389\n") {
+			if err != nil || !strings.Contains(shown(log), "==> Uploaded in ") || !strings.HasSuffix(log, rendersBuildSuccessful+"\n") {
 				t.Fatalf("pushed: err %v log %q", err, log)
 			}
 			continue

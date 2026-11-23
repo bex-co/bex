@@ -44,7 +44,7 @@ func TestManagedOIDCRefusalIsALineInTheDeployThatAskedForIt(t *testing.T) {
 	hobby := &appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}}
 
 	got := read(hobby, "dep-second")
-	want := []string{"==> Deploy queued", "==> Rolling out the current release", refused, "==> Your service is live 🎉"}
+	want := []string{"==> Deploy queued", "==> Rolling out the current release", refused, rendersLive}
 	if !slices.Equal(got, want) {
 		t.Fatalf("the refused release's deploy log = %q\nwant %q", got, want)
 	}
@@ -80,12 +80,12 @@ func TestManagedOIDCRefusalIsALineInTheDeployThatAskedForIt(t *testing.T) {
 	gcp := appv1alpha1.NewManagedOIDCGCP("projects/my-project/locations/global/workloadIdentityPools/p/providers/x", "")
 	const projectID = `==> GCP_WORKLOAD_IDENTITY_PROVIDER names project "my-project" by its ID: Google Cloud expects the project number (IAM & Admin > Settings) in the provider's audience, so no Google Cloud credential configuration is mounted`
 	got = read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}, PlanAllowed: true, GCP: &gcp}, "dep-second")
-	want = []string{"==> Deploy queued", "==> Rolling out the current release", projectID, "==> Your service is live 🎉"}
+	want = []string{"==> Deploy queued", "==> Rolling out the current release", projectID, rendersLive}
 	if !slices.Equal(got, want) {
 		t.Errorf("a Pro release with a project id: log %q\nwant %q", got, want)
 	}
 	got = read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}, GCP: &gcp}, "dep-second")
-	want = []string{"==> Deploy queued", "==> Rolling out the current release", refused, projectID, "==> Your service is live 🎉"}
+	want = []string{"==> Deploy queued", "==> Rolling out the current release", refused, projectID, rendersLive}
 	if !slices.Equal(got, want) {
 		t.Errorf("a Hobby release with a project id: log %q\nwant %q", got, want)
 	}

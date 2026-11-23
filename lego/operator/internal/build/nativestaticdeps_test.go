@@ -492,7 +492,7 @@ func TestNativeStaticGemfileAddsRuby(t *testing.T) {
 	// A Ruby no line serves (a CocoaPods Gemfile's, say) leaves Ruby out and
 	// says so, rather than failing a site that may never run Ruby.
 	df, choices = resolveFixture(t, static, nil, map[string]string{"Gemfile": staticGemfile, ".ruby-version": "2.7.8\n"})
-	if strings.Contains(df, "/usr/local/lib/ruby") || len(choices) != 2 || !strings.HasPrefix(choices[1].Narration(), "==> Not adding Ruby: ") {
+	if strings.Contains(df, "/usr/local/lib/ruby") || len(choices) != 2 || !strings.HasPrefix(shown(choices[1].Narration()), "==> Not adding Ruby: ") {
 		t.Fatalf("Ruby 2.7 choices %+v, want Ruby declined and absent:\n%s", choices, df)
 	}
 }

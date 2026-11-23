@@ -30,6 +30,13 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/build"
 )
 
+// Render's runtime form for the Node.js version and docs lines, as
+// ivanseibel/tretta's capture of Render's log API has them (w32/m576).
+const (
+	rendersOpen  = "\x1b[34;1m==>\x1b[0;22m \x1b[1m"
+	rendersClose = "\x1b[22m"
+)
+
 // stubExact answers every tag with one digest, so no test reaches the registry.
 type stubExact struct{}
 
@@ -94,8 +101,8 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 		"==> Docs on specifying a Python version: https://render.com/docs/python-version\n" +
 		"==> Using Poetry version 2.1.3 (default)\n" +
 		"==> Docs on specifying a Poetry version: https://render.com/docs/poetry-version\n" +
-		"==> Using Node.js version 24.22.3 (default)\n" +
-		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
+		rendersOpen + "Using Node.js version 24.22.3 (default)" + rendersClose + "\n" +
+		rendersOpen + "Docs on specifying a Node.js version: https://render.com/docs/node-version" + rendersClose
 	if got := strings.TrimSpace(out.String()); got != wantPython {
 		t.Errorf("narration = %q", got)
 	}
@@ -135,8 +142,8 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	if code := run(time.Time{}, "node", dir, build.NativeWorkdir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node.js version 24.22.3 (default)\n" +
-		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version\n" +
+	const want = rendersOpen + "Using Node.js version 24.22.3 (default)" + rendersClose + "\n" +
+		rendersOpen + "Docs on specifying a Node.js version: https://render.com/docs/node-version" + rendersClose + "\n" +
 		"==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)\n" +
 		"==> Docs on specifying a Bun version: https://render.com/docs/bun-version"
 	if got := strings.TrimSpace(out.String()); got != want {
@@ -162,8 +169,9 @@ func TestRunNamesAVersionFileUnderTheProjectDir(t *testing.T) {
 	if code := run(time.Time{}, "node", dir, projectDir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node.js version 22.23.5 via /opt/render/project/src/apps/web/.nvmrc\n" +
-		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
+	const want = rendersOpen + "Using Node.js version 22.23.5 via /opt/render/project/src/apps/web/.nvmrc" +
+		rendersClose + "\n" +
+		rendersOpen + "Docs on specifying a Node.js version: https://render.com/docs/node-version" + rendersClose
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q, want %q", got, want)
 	}
@@ -189,8 +197,8 @@ func TestRunEchoesANodeRangeBeforeItsVersion(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
 	const want = "==> Requesting Node.js version >=22.12.0 <23\n" +
-		"==> Using Node.js version 22.23.5 via /opt/render/project/src/package.json\n" +
-		"==> Docs on specifying a Node.js version: https://render.com/docs/node-version"
+		rendersOpen + "Using Node.js version 22.23.5 via /opt/render/project/src/package.json" + rendersClose + "\n" +
+		rendersOpen + "Docs on specifying a Node.js version: https://render.com/docs/node-version" + rendersClose
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q, want %q", got, want)
 	}

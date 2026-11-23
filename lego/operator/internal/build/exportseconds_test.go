@@ -76,7 +76,7 @@ func TestNativeBuildReportsWhatItsExportCost(t *testing.T) {
 		before := time.Now().Unix()
 		log, message, exit := runBuildkit(t, o, transcript, 0)
 		elapsed := time.Now().Unix() - before
-		if want := "==> Running build command 'npm install'...\n" + nativeCommandOutput + "==> Uploading build...\n"; exit != 0 || log != want {
+		if want := rendersShellLine("Running build command 'npm install'...") + "\n" + nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n"; exit != 0 || log != want {
 			t.Fatalf("exit %d, log:\n%q\nwant:\n%q", exit, log, want)
 		}
 		m := exportReport.FindStringSubmatch(message)

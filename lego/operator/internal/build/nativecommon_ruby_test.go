@@ -302,10 +302,10 @@ func assertRubyQualificationRecipe(t *testing.T, tc nativeRubyQualificationCase,
 	if choices[0].Image != ruby || choices[1].Image != node.image || !strings.Contains(recipe, o.StartCommand) || !strings.Contains(recipe, "ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH="+nativeRubyGems) {
 		t.Fatalf("primary Ruby defaults, Node companion or runtime command lost: %+v\n%s", choices, recipe)
 	}
-	if tc.line == "" && !tc.locked && (choices[0].Line != tc.version || choices[0].Narration() != "==> Using Ruby version "+tc.version+" (default)"+rubyDocs) {
+	if tc.line == "" && !tc.locked && (choices[0].Line != tc.version || shown(choices[0].Narration()) != "==> Using Ruby version "+tc.version+" (default)"+rubyDocs) {
 		t.Fatalf("creation default was replaced by a reviewed-line patch: %+v", choices)
 	}
-	if tc.locked && (choices[0].Line != tc.version || !strings.HasPrefix(choices[0].Narration(), "==> Using Ruby version "+tc.version+" via /opt/render/project/src/Gemfile.lock"+rubyDocs+"\n") ||
+	if tc.locked && (choices[0].Line != tc.version || !strings.HasPrefix(shown(choices[0].Narration()), "==> Using Ruby version "+tc.version+" via /opt/render/project/src/Gemfile.lock"+rubyDocs+"\n") ||
 		!strings.Contains(recipe, `[ "$primary_os" = bullseye ] && [ "$VERSION_CODENAME" = bookworm ]`)) {
 		t.Fatalf("locked release lost its bullseye tree or narration: %+v\n%s", choices, recipe)
 	}

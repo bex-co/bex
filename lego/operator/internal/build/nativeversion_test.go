@@ -420,7 +420,7 @@ func TestNativeChoiceNarration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := c.Narration(); got != tc.want {
+			if got := shown(c.Narration()); got != tc.want {
 				t.Errorf("narration = %q, want %q", got, tc.want)
 			}
 		})
@@ -429,11 +429,11 @@ func TestNativeChoiceNarration(t *testing.T) {
 	// Render names a version file under the service's root directory
 	// ("…/backend/.python-version"); a variable has no path.
 	c, _ := ResolveNativeVersion("node", nil, files(map[string]string{".nvmrc": "18\n"}))
-	if got, want := c.NarrationIn(src+"apps/web"), "==> Using Node.js version "+reviewed("node", "18")+" via "+src+"apps/web/.nvmrc"+nodeDocs; got != want {
+	if got, want := shown(c.NarrationIn(src+"apps/web")), "==> Using Node.js version "+reviewed("node", "18")+" via "+src+"apps/web/.nvmrc"+nodeDocs; got != want {
 		t.Errorf("root directory narration = %q, want %q", got, want)
 	}
 	c, _ = ResolveNativeVersion("node", map[string]string{"NODE_VERSION": "18"}, files(nil))
-	if got := c.NarrationIn(src + "apps/web"); !strings.HasSuffix(got, " via environment variable NODE_VERSION"+nodeDocs) {
+	if got := shown(c.NarrationIn(src + "apps/web")); !strings.HasSuffix(got, " via environment variable NODE_VERSION"+nodeDocs) {
 		t.Errorf("root directory env narration = %q", got)
 	}
 }
@@ -767,7 +767,7 @@ func TestResolveNativeBun(t *testing.T) {
 		t.Errorf("canary choice = %+v, want the reviewed default image with Exact canary", canary)
 	}
 	choice, _, _ := ResolveNativeBun(time.Time{}, map[string]string{"BUN_VERSION": "1.3"}, func(string) ([]byte, bool) { return nil, false })
-	if got := choice.Narration(); got != "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)"+bunDocs {
+	if got := shown(choice.Narration()); got != "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
 }
@@ -833,8 +833,8 @@ func TestResolveNativeBuildPinsBunCanary(t *testing.T) {
 	if err != nil || len(choices) != 2 || choices[1].Line != "canary" || choices[1].Image != "oven/bun:canary@"+exactDigest {
 		t.Fatalf("choices = %+v, %v; want Bun canary pinned to its digest", choices, err)
 	}
-	if !strings.Contains(choices[1].Narration(), "==> Bun canary is oven/bun:canary@"+exactDigest) {
-		t.Errorf("narration = %q, want the pinned digest", choices[1].Narration())
+	if !strings.Contains(shown(choices[1].Narration()), "==> Bun canary is oven/bun:canary@"+exactDigest) {
+		t.Errorf("narration = %q, want the pinned digest", shown(choices[1].Narration()))
 	}
 	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:canary@"+exactDigest+" /usr/local/bin/bun") {
 		t.Fatalf("Dockerfile does not copy the pinned canary:\n%s", df)
@@ -847,14 +847,14 @@ func TestResolveNativeBuildPinsBunCanary(t *testing.T) {
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image {
 		t.Fatalf("offline choices = %+v, %v; want the reviewed default Bun", choices, err)
 	}
-	if !strings.Contains(choices[1].Narration(), "Could not look up oven/bun:canary") {
-		t.Errorf("offline narration = %q", choices[1].Narration())
+	if !strings.Contains(shown(choices[1].Narration()), "Could not look up oven/bun:canary") {
+		t.Errorf("offline narration = %q", shown(choices[1].Narration()))
 	}
 
 	missing := &fakeExact{}
 	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "canary"}, nil)
 	choices, err = ResolveNativeBuildExact(t.Context(), missing, time.Time{}, "node", bundle, dockerfile, src)
-	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(choices[1].Narration(), "No official image oven/bun:canary") {
+	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(shown(choices[1].Narration()), "No official image oven/bun:canary") {
 		t.Fatalf("missing tag choices = %+v, %v", choices, err)
 	}
 }
@@ -871,7 +871,7 @@ func TestResolveNativeBuildPinsAnExactBun(t *testing.T) {
 	if err != nil || len(choices) != 2 || choices[1].Line != "1.3.0" || choices[1].Image != "oven/bun:1.3.0@"+exactDigest {
 		t.Fatalf("choices = %+v, %v; want Bun 1.3.0 pinned to its digest", choices, err)
 	}
-	if got := choices[1].Narration(); got != "==> Using Bun 1.3.0 (from BUN_VERSION=1.3.0)"+bunDocs {
+	if got := shown(choices[1].Narration()); got != "==> Using Bun 1.3.0 (from BUN_VERSION=1.3.0)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
 	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.3.0@"+exactDigest+" /usr/local/bin/bun") {
@@ -881,7 +881,7 @@ func TestResolveNativeBuildPinsAnExactBun(t *testing.T) {
 	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.0"}, nil)
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, time.Time{}, "node", bundle, dockerfile, src)
 	reviewed, _ := nativeBun.find("1.3")
-	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(choices[1].Narration(), "No official image oven/bun:1.3.0") {
+	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(shown(choices[1].Narration()), "No official image oven/bun:1.3.0") {
 		t.Fatalf("missing tag choices = %+v, %v; want the reviewed 1.3 line, said", choices, err)
 	}
 }
@@ -912,7 +912,7 @@ func TestResolveNativeBuildInstallsAnyBunRelease(t *testing.T) {
 			if err != nil || len(choices) != 2 || choices[1].Line != tc.release || choices[1].Image != image {
 				t.Fatalf("choices = %+v, %v; want Bun %s pinned to its digest", choices, err, tc.release)
 			}
-			if got := choices[1].Narration(); got != tc.log+bunDocs {
+			if got := shown(choices[1].Narration()); got != tc.log+bunDocs {
 				t.Errorf("narration = %q, want %q", got, tc.log+bunDocs)
 			}
 			if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from="+image+" /usr/local/bin/bun /usr/local/bin/bun\n") {
@@ -1002,8 +1002,8 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 			if reviewed, _ := nativeBun.find(tc.line); choice.Image != reviewed.image {
 				t.Errorf("image = %q, want the reviewed %s line's %q", choice.Image, tc.line, reviewed.image)
 			}
-			if tc.log != "" && choice.Narration() != tc.log+bunDocs {
-				t.Errorf("narration = %q, want %q", choice.Narration(), tc.log+bunDocs)
+			if tc.log != "" && shown(choice.Narration()) != tc.log+bunDocs {
+				t.Errorf("narration = %q, want %q", shown(choice.Narration()), tc.log+bunDocs)
 			}
 		})
 	}
@@ -1023,7 +1023,7 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 		t.Fatalf("choices = %+v, %v; want Bun 1.4.5 pinned to its digest", choices, err)
 	}
 	// The lockfile names no version, so Render's line says its default (w9/139).
-	if got := choices[1].Narration(); got != "==> Using Bun version 1.4.5 (default)"+bunDocs {
+	if got := shown(choices[1].Narration()); got != "==> Using Bun version 1.4.5 (default)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
 	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.4.5@"+exactDigest+" /usr/local/bin/bun") {
@@ -1034,7 +1034,7 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, created, "node", bundle, dockerfile, src)
 	reviewed, _ := nativeBun.find("1.4")
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
-		choices[1].Narration() != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.4.5; using the reviewed Bun 1.4 image" {
+		shown(choices[1].Narration()) != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.4.5; using the reviewed Bun 1.4 image" {
 		t.Fatalf("missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
 	}
 
@@ -1043,13 +1043,13 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	old := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{digests: map[string]string{bunRepo + ":1.1.0": exactDigest}}, old, "node", bundle, dockerfile, src)
-	if err != nil || len(choices) != 2 || choices[1].Image != "oven/bun:1.1.0@"+exactDigest || choices[1].Narration() != "==> Using Bun version 1.1.0 (default)"+bunDocs {
+	if err != nil || len(choices) != 2 || choices[1].Image != "oven/bun:1.1.0@"+exactDigest || shown(choices[1].Narration()) != "==> Using Bun version 1.1.0 (default)"+bunDocs {
 		t.Fatalf("pre-2025-08-18 choices = %+v, %v; want Bun 1.1.0 pinned to its digest", choices, err)
 	}
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, old, "node", bundle, dockerfile, src)
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
-		choices[1].Narration() != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
+		shown(choices[1].Narration()) != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
 		t.Fatalf("pre-2025-08-18 missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
 	}
 }
@@ -1084,7 +1084,7 @@ func TestResolveNativePoetry(t *testing.T) {
 		})
 	}
 	choice, _ := ResolveNativePoetry(map[string]string{"POETRY_VERSION": "2.1.3"})
-	if got := choice.Narration(); got != "==> Using Poetry 2.1.3 (from POETRY_VERSION=2.1.3)"+poetryDocs {
+	if got := shown(choice.Narration()); got != "==> Using Poetry 2.1.3 (from POETRY_VERSION=2.1.3)"+poetryDocs {
 		t.Errorf("narration = %q", got)
 	}
 }
@@ -1177,7 +1177,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 		bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "27"}, nil)
 		choices, err = resolveNativeBuild(runtime, bundle, dockerfile, src)
 		if df, _ := os.ReadFile(dockerfile); err != nil || choices[len(choices)-1].Source != "" ||
-			!strings.Contains(choices[len(choices)-1].Narration(), "==> NODE_VERSION=27 is not a supported Node version;") ||
+			!strings.Contains(shown(choices[len(choices)-1].Narration()), "==> NODE_VERSION=27 is not a supported Node version;") ||
 			!strings.Contains(string(df), nativeJSToolLines(nativeToolchains["node"].defaultImage(), nativeToolchains["node"].defaultLine)) {
 			t.Fatalf("%s NODE_VERSION=27: %+v, %v\n%s", runtime, choices, err, df)
 		}

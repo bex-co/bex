@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/types/renderlog"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -43,21 +44,20 @@ func scanRow(status string, finished, until, read time.Time) DeployProgress {
 }
 
 // rendersTimeout is how Render's log closes a deploy that ran out its rollout
-// budget (w8/391), restated so the tests pin the wire text.
-var rendersTimeout = []string{
-	"==> Timed Out",
-	"==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys",
-}
+// budget (w8/391), in the bytes Render's log API returns (w32/m576).
+var rendersTimeout = []string{rendersTimedOut, rendersTroubleshoot}
 
 // at is scanSince plus d, as a line's timestamp.
 func at(d time.Duration) string { return scanSince.Add(d).Format(time.RFC3339Nano) }
 
 // Render's three narrations, restated here so the tests pin which lines and
-// which docs line each finding carries.
+// which docs line each finding carries, and the form the timeout takes: red
+// for the plain wording, as Render's log API returns it (kush252/Sentry-AI),
+// plain for the two no capture shows (w32/m576).
 var (
-	plainScan  = portScanWording{portScanLine, portScanTimeoutLine, portScanDocsLine}
-	localScan  = portScanWording{portScanLocalhostLine, portScanLocalhostTimeoutLine, portScanDocsLine}
-	noHTTPScan = portScanWording{portScanNoHTTPLine, portScanNoHTTPTimeoutLine, ""}
+	plainScan  = portScanWording{portScanLine, portScanTimeoutLine, portScanDocsLine, renderlog.PlatformFailure}
+	localScan  = portScanWording{portScanLocalhostLine, portScanLocalhostTimeoutLine, portScanDocsLine, renderlog.Plain}
+	noHTTPScan = portScanWording{portScanNoHTTPLine, portScanNoHTTPTimeoutLine, "", renderlog.Plain}
 )
 
 // said is msgs stamped at scanSince plus d, as scanStory lists them.
@@ -69,12 +69,12 @@ func said(d time.Duration, msgs ...string) []string {
 	return out
 }
 
-// withDocs is line, then w's docs line when it has one.
-func (w portScanWording) withDocs(line string) []string {
+// withDocs is line, then w's docs line when it has one, both in form f.
+func (w portScanWording) withDocs(line string, f renderlog.Form) []string {
 	if w.docs == "" {
-		return []string{line}
+		return []string{styled(f, line)}
 	}
-	return []string{line, w.docs}
+	return []string{styled(f, line), styled(f, w.docs)}
 }
 
 // scanPairs is w's scan line, with its docs line, at each of the given
@@ -82,13 +82,15 @@ func (w portScanWording) withDocs(line string) []string {
 func scanPairs(w portScanWording, minutes ...int) []string {
 	var out []string
 	for _, m := range minutes {
-		out = append(out, said(time.Duration(m)*time.Minute, w.withDocs(w.scan)...)...)
+		out = append(out, said(time.Duration(m)*time.Minute, w.withDocs(w.scan, renderlog.Plain)...)...)
 	}
 	return out
 }
 
 // timedOut is w's timeout line, with its docs line, at d into the scan.
-func timedOut(w portScanWording, d time.Duration) []string { return said(d, w.withDocs(w.timeout)...) }
+func timedOut(w portScanWording, d time.Duration) []string {
+	return said(d, w.withDocs(w.timeout, w.timeoutForm)...)
+}
 
 // scanStory is the platform lines of a row from its first scan line on.
 func scanStory(d DeployProgress) []string {
@@ -137,10 +139,10 @@ func TestPortScanLinesKeepRendersCadence(t *testing.T) {
 		{"open, read 14 minutes in, nothing after the timeout", open(14 * time.Minute),
 			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute))},
 		{"the port appeared", scanRow("live", scanSince.Add(3*time.Minute), scanSince.Add(90*time.Second), scanSince.Add(time.Hour)),
-			slices.Concat(scanPairs(plainScan, 0, 1), said(3*time.Minute, "==> Your service is live 🎉"))},
+			slices.Concat(scanPairs(plainScan, 0, 1), said(3*time.Minute, rendersLive))},
 		{"the port appeared after the timeout line", scanRow("live", scanSince.Add(7*time.Minute+10*time.Second), scanSince.Add(7*time.Minute), scanSince.Add(time.Hour)),
 			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute),
-				said(7*time.Minute+10*time.Second, "==> Your service is live 🎉"))},
+				said(7*time.Minute+10*time.Second, rendersLive))},
 		{"canceled while scanning", scanRow("canceled", scanSince.Add(2*time.Minute), time.Time{}, scanSince.Add(time.Hour)),
 			slices.Concat(scanPairs(plainScan, 0, 1), said(2*time.Minute, "==> Deploy canceled"))},
 		{"failed at the budget, scanning", atBudget(failedScanning(14*time.Minute + 30*time.Second)),
@@ -274,7 +276,7 @@ func TestPortScanLinesNameWhatTheScanFound(t *testing.T) {
 			slices.Concat(scanPairs(plainScan, 0, 1, 2, 3, 4), timedOut(plainScan, 5*time.Minute), said(end, "==> Deploy failed"))},
 		{"no HTTP from the start, then a port answered", found(scanRow("live", scanSince.Add(3*time.Minute), scanSince.Add(170*time.Second), scanSince.Add(time.Hour)),
 			appv1alpha1.PortScanFoundNoHTTP, 0),
-			slices.Concat(scanPairs(noHTTPScan, 0, 1, 2), said(3*time.Minute, "==> Your service is live 🎉"))},
+			slices.Concat(scanPairs(noHTTPScan, 0, 1, 2), said(3*time.Minute, rendersLive))},
 		{"open, read before the finding's moment", found(scanRow("update_in_progress", time.Time{}, time.Time{}, scanSince.Add(70*time.Second)),
 			appv1alpha1.PortScanFoundLocalhost, 2*time.Minute), scanPairs(plainScan, 0, 1)},
 	} {
@@ -323,6 +325,8 @@ func TestPortScanLinesNameThePortPORTSets(t *testing.T) {
 		scan: "==> Continuing to scan for open port 8080 (from PORT environment variable)...",
 		timeout: "==> Port scan timeout reached, failed to detect open port 8080 from PORT environment variable. " +
 			"Bind your service to port 8080 or update the PORT environment variable to the correct port.",
+		// No capture shows Render's codes on the PORT wording (w32/m576).
+		timeoutForm: renderlog.Plain,
 	}
 	const end = 14*time.Minute + 30*time.Second
 	onPORT := func(d DeployProgress) DeployProgress {
@@ -341,7 +345,7 @@ func TestPortScanLinesNameThePortPORTSets(t *testing.T) {
 		{"failed at the budget", atBudget,
 			slices.Concat(scanPairs(envScan, 0, 1, 2, 3, 4), timedOut(envScan, 5*time.Minute), said(end, rendersTimeout...))},
 		{"PORT was bound 3 minutes in", onPORT(scanRow("live", scanSince.Add(3*time.Minute+5*time.Second), scanSince.Add(3*time.Minute), scanSince.Add(time.Hour))),
-			slices.Concat(scanPairs(envScan, 0, 1, 2), said(3*time.Minute+5*time.Second, "==> Your service is live 🎉"))},
+			slices.Concat(scanPairs(envScan, 0, 1, 2), said(3*time.Minute+5*time.Second, rendersLive))},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if got := scanStory(c.row); !slices.Equal(got, c.want) {

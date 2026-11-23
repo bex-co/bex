@@ -200,8 +200,8 @@ func TestResolveNativeBuildInstallsAnyNodeRelease(t *testing.T) {
 				}
 				choices, dockerfile := resolveExact(t, fake, nativeNodeRuntime, tc.env, tc.files)
 				image := tc.image + "@" + exactDigest
-				if choices[0].Image != image || choices[0].Narration() != tc.log+nodeDocs {
-					t.Fatalf("choice %+v narration %q; want %s and %q", choices[0], choices[0].Narration(), image, tc.log+nodeDocs)
+				if choices[0].Image != image || shown(choices[0].Narration()) != tc.log+nodeDocs {
+					t.Fatalf("choice %+v narration %q; want %s and %q", choices[0], shown(choices[0].Narration()), image, tc.log+nodeDocs)
 				}
 				assertExactNativePrimary(t, dockerfile, reviewed.image, image, []string{"NODE_VERSION=" + choices[0].Line})
 				if !strings.Contains(dockerfile, nativePnpmInstall()) {
@@ -244,8 +244,8 @@ func TestNodeReleaseOnAnOddLineWithoutBookwormImages(t *testing.T) {
 					copyFrom = "COPY --link --from=" + donor + " /usr/local/ /usr/local/"
 				}
 				release, _ := strings.CutPrefix(strings.Split(tc.donor, "-")[0], "node:")
-				if choices[0].Line != release || !strings.Contains(dockerfile, copyFrom) || !strings.Contains(choices[0].Narration(), "does not exist") {
-					t.Fatalf("choice %+v narration %q; want Node %s from %s\n%s", choices[0], choices[0].Narration(), release, tc.donor, dockerfile)
+				if choices[0].Line != release || !strings.Contains(dockerfile, copyFrom) || !strings.Contains(shown(choices[0].Narration()), "does not exist") {
+					t.Fatalf("choice %+v narration %q; want Node %s from %s\n%s", choices[0], shown(choices[0].Narration()), release, tc.donor, dockerfile)
 				}
 				if got := strings.Contains(dockerfile, nativeLegacyPnpmInstall()); got != tc.legacyPnpm || got == strings.Contains(dockerfile, nativePnpmInstall()) {
 					t.Errorf("legacy pnpm = %t, want %t:\n%s", got, tc.legacyPnpm, dockerfile)
@@ -268,7 +268,7 @@ func TestNodeCompanionInstallsAnyNodeRelease(t *testing.T) {
 				fake := &fakeExact{digests: map[string]string{"node:25.8.1-bookworm": exactDigest}}
 				choices, dockerfile := resolveExact(t, fake, runtime, map[string]string{"NODE_VERSION": "25.8.1"}, nil)
 				i := slices.IndexFunc(choices, func(c NativeChoice) bool { return c.Label == "Node" })
-				if i < 0 || choices[i].Image != image || choices[i].Narration() != "==> Using Node.js version 25.8.1 via environment variable NODE_VERSION"+nodeDocs ||
+				if i < 0 || choices[i].Image != image || shown(choices[i].Narration()) != "==> Using Node.js version 25.8.1 via environment variable NODE_VERSION"+nodeDocs ||
 					!strings.Contains(dockerfile, "COPY --link --from="+image+" /usr/local/bin/node /usr/local/bin/node") {
 					t.Fatalf("choices %+v; want the companion Node 25.8.1 copied in\n%s", choices, dockerfile)
 				}
@@ -286,7 +286,7 @@ func TestStaticSiteInstallsAnyNodeRelease(t *testing.T) {
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, map[string]string{"package.json": `{"engines":{"node":">=20 <22"}}`})
 	fake := &fakeExact{digests: map[string]string{"node:21.7.3-bookworm": exactDigest}}
 	choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, nativeRuntime(o), bundle, dockerfile, src)
-	if err != nil || choices[0].Image != image || !strings.Contains(choices[0].Narration(), "==> Using Node.js version 21.7.3 via /opt/render/project/src/package.json") {
+	if err != nil || choices[0].Image != image || !strings.Contains(shown(choices[0].Narration()), "==> Using Node.js version 21.7.3 via /opt/render/project/src/package.json") {
 		t.Fatalf("choices %+v, %v; want the static site's Node 21.7.3", choices, err)
 	}
 	out, _ := os.ReadFile(dockerfile)

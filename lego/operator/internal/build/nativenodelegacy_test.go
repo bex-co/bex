@@ -150,7 +150,7 @@ func TestResolveNativeBuildInstallsNodeBefore14(t *testing.T) {
 				choices, dockerfile := resolveExact(t, fake, nativeNodeRuntime, tc.env, tc.files)
 				donor := tc.donor + "@" + exactDigest
 				release := strings.TrimPrefix(strings.Split(tc.donor, "-")[0], "node:")
-				narration := choices[0].Narration()
+				narration := shown(choices[0].Narration())
 				if choices[0].Line != release || !strings.HasPrefix(narration, tc.log+nodeDocs+"\n") || !strings.Contains(narration, "node:"+release+"-bookworm does not exist") {
 					t.Fatalf("choice %+v narration %q; want Node %s from %s", choices[0], narration, release, tc.donor)
 				}
@@ -235,8 +235,8 @@ func TestNodeCompanionInstallsANodeReleaseBefore14(t *testing.T) {
 					choices, dockerfile := resolveExact(t, fake, primary, tc.env, tc.files)
 					i := slices.IndexFunc(choices, func(c NativeChoice) bool { return c.Label == "Node" })
 					donor := tc.donor + "@" + exactDigest
-					if i < 0 || choices[i].Image != donor && choices[i].nodeDonor != donor || !strings.HasPrefix(choices[i].Narration(), tc.log+nodeDocs) ||
-						strings.Contains(choices[i].Narration(), "using the default Node.js version instead") {
+					if i < 0 || choices[i].Image != donor && choices[i].nodeDonor != donor || !strings.HasPrefix(shown(choices[i].Narration()), tc.log+nodeDocs) ||
+						strings.Contains(shown(choices[i].Narration()), "using the default Node.js version instead") {
 						t.Fatalf("choices %+v; want the companion Node from %s", choices, tc.donor)
 					}
 					if !strings.Contains(dockerfile, "COPY --link --from="+donor+" /usr/local/bin/node /usr/local/bin/node\n") || !strings.Contains(dockerfile, nativeLegacyPnpmInstall()) {
@@ -267,7 +267,7 @@ func TestStaticSiteInstallsANodeReleaseBefore14(t *testing.T) {
 			fake := &fakeExact{digests: map[string]string{tc.donor: exactDigest}}
 			choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, nativeRuntime(o), bundle, dockerfile, src)
 			release := strings.TrimPrefix(strings.Split(tc.donor, "-")[0], "node:")
-			if err != nil || choices[0].Line != release || !strings.Contains(choices[0].Narration(), tc.log) {
+			if err != nil || choices[0].Line != release || !strings.Contains(shown(choices[0].Narration()), tc.log) {
 				t.Fatalf("choices %+v, %v; want the static site's Node %s from %s", choices, err, release, tc.donor)
 			}
 			out, _ := os.ReadFile(dockerfile)

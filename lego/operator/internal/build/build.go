@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/identity"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	"github.com/bex-co/bex/lego/types/deploybudgets"
+	"github.com/bex-co/bex/lego/types/renderlog"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -271,7 +272,7 @@ bex_display() {
       if (step == "" && index($0, "] ` + nativeEnvRunMount + `") > 0) {
         step = n
         if (ENVIRON["BEX_BUILD_COMMAND"] != "") {
-          printf "==> Running build command %c%s%c...\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39
+          printf "` + awkString(renderlog.BuildShell, "Running build command %c%s%c...") + `\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39
           fflush()
         }
         next
@@ -282,7 +283,7 @@ bex_display() {
         }
         if (!uploading && system("{ date +%s > " stamp "; } 2>/dev/null") == 0) {
           uploading = 1
-          print "==> Uploading build..."
+          print "` + awkString(renderlog.BuildRuntime, "Uploading build...") + `"
         }
         fflush()
         next
@@ -410,13 +411,15 @@ const skopeoQuiet = `bex_skopeo() {
 // failure follows the verdict. The buildkit phase has already said
 // `==> Uploading build...` when it left its moment in uploadStartedFile, and
 // `Uploaded in` then counts the export before the push as well (w33/m570).
-const nativePushNarration = skopeoQuiet + `bex_started=$(cat ` + uploadStartedFile + ` 2>/dev/null)
+// Render's upload lines and verdict are in its runtime forms (w32/m576);
+// bex's own failure line is plain.
+var nativePushNarration = skopeoQuiet + `bex_started=$(cat ` + uploadStartedFile + ` 2>/dev/null)
 case $bex_started in
-''|*[!0-9]*) echo '==> Uploading build...'; bex_started=$(date +%s) ;;
+''|*[!0-9]*) ` + shellLine(renderlog.BuildRuntime, "Uploading build...") + `; bex_started=$(date +%s) ;;
 esac
 bex_skopeo "$@" >/dev/null || { bex_failed=$?; echo '==> Uploading build failed'; exit $bex_failed; }
-echo "==> Uploaded in $(( $(date +%s) - bex_started ))s"
-` + "echo '==> Build successful \U0001F389'"
+` + shellLine(renderlog.BuildRuntime, "Uploaded in $(( $(date +%s) - bex_started ))s") + `
+` + shellLine(renderlog.BuildRuntimeSuccess, "Build successful \U0001F389")
 
 // dockerfilePush is a Dockerfile build's push phase: skopeo's transcript as
 // before, its own error records kept out (bex_skopeo).

@@ -185,7 +185,7 @@ func TestNativeInitLinksSecretFilesBeforeTheCommand(t *testing.T) {
 	cmd.Dir = root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	const want = "==> Running 'cat qa-grp.txt'\nqa-rt9-4ca8-grp-v1"
+	want := running("cat qa-grp.txt") + "\nqa-rt9-4ca8-grp-v1"
 	if status := exitStatus(t, cmd.Run()); status != 0 || stdout.String() != want {
 		t.Fatalf("status %d stdout %q stderr %q", status, stdout.String(), stderr.String())
 	}

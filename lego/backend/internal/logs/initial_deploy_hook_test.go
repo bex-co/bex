@@ -114,7 +114,7 @@ func TestInitialDeployHookLinesFollowTheDeploysLiveLine(t *testing.T) {
 	svc := hookService(hookRows(), hookRun1(appv1alpha1.PreDeploySucceeded, "", true), func(LogQuery) []LogEntry { return []LogEntry{output} })
 
 	got := inOrder(buildRead(t, svc, LogQuery{Deploy: "dep-first", Since: hookLive.Add(-2 * time.Minute), End: hookLive.Add(time.Minute)}))
-	want := []string{"==> Deploy queued", "==> Rolling out the current release", "==> Your service is live 🎉",
+	want := []string{"==> Deploy queued", "==> Rolling out the current release", rendersLive,
 		hookLineRunning, "seeded 42 rows", hookLineSucceeded}
 	if !slices.Equal(got, want) {
 		t.Fatalf("first deploy's log = %q\nwant %q", got, want)
@@ -133,7 +133,7 @@ func TestInitialDeployHookFailureIsALineThatNamesTheHookAndItsExitCode(t *testin
 	svc := hookService(hookRows(), hookRun1(appv1alpha1.PreDeployFailed, "the initial deploy hook exited with code 3", true), nil)
 	entries := buildRead(t, svc, LogQuery{Deploy: "dep-first", Since: hookLive.Add(-2 * time.Minute), End: hookLive.Add(time.Minute)})
 	got := inOrder(entries)
-	want := []string{"==> Deploy queued", "==> Rolling out the current release", "==> Your service is live 🎉", hookLineRunning,
+	want := []string{"==> Deploy queued", "==> Rolling out the current release", rendersLive, hookLineRunning,
 		"==> Initial deploy hook failed: the initial deploy hook exited with code 3", hookLineRetry}
 	if !slices.Equal(got, want) {
 		t.Fatalf("log = %q\nwant %q", got, want)

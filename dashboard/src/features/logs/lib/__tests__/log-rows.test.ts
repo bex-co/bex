@@ -185,6 +185,33 @@ describe("logLineText (w3/m528)", () => {
     ).toBe("ready");
   });
 
+  it("copies Render's coloured `==>` lines as their words, as Render's copy reads (w32/m576)", () => {
+    for (const [message, words] of [
+      [
+        "\u001b[0;34m\u001b[1m==> \u001b[0m\u001b[1mDeploying...\u001b[0m",
+        "==> Deploying...",
+      ],
+      [
+        "\u001b[32m\u001b[1m==>\u001b(B\u001b[m \u001b[1mRunning 'node main.js'\u001b(B\u001b[m",
+        "==> Running 'node main.js'",
+      ],
+      [
+        "\u001b[32;1m==>\u001b[0;22m \u001b[1mBuild successful 🎉\u001b[22m",
+        "==> Build successful 🎉",
+      ],
+    ]) {
+      expect(
+        logLineText(
+          line("r", "2026-11-22T10:00:00Z", {
+            type: "build",
+            message,
+            spans: parseAnsi(message),
+          }),
+        ),
+      ).toBe(words);
+    }
+  });
+
   it("leads a request line with its method, status, host and path", () => {
     expect(
       logLineText(

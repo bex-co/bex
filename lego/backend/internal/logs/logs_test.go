@@ -44,6 +44,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/types/renderlog"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -892,15 +893,15 @@ func TestQueryLogsProgressTerminalLineIsTypeAware(t *testing.T) {
 		{appv1alpha1.TypeStaticSite, repo, []string{
 			"==> Build queued", "==> Building from " + repo + "@24b25a6", "==> Your site is live 🎉"}},
 		{appv1alpha1.TypeWebService, repo, []string{
-			"==> Build queued", "==> Building from " + repo + "@24b25a6", "==> Your service is live 🎉"}},
+			"==> Build queued", "==> Building from " + repo + "@24b25a6", rendersLive}},
 		{appv1alpha1.TypeWebService, "", []string{
-			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+			"==> Deploy queued", "==> Deploying image busybox:latest", rendersLive}},
 		{"", "", []string{ // an empty spec.type is a web service
-			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+			"==> Deploy queued", "==> Deploying image busybox:latest", rendersLive}},
 		{appv1alpha1.TypePrivateService, "", []string{
-			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+			"==> Deploy queued", "==> Deploying image busybox:latest", rendersLive}},
 		{appv1alpha1.TypeBackgroundWorker, "", []string{
-			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Your service is live 🎉"}},
+			"==> Deploy queued", "==> Deploying image busybox:latest", rendersLive}},
 		{appv1alpha1.TypeCronJob, "", []string{
 			"==> Deploy queued", "==> Deploying image busybox:latest", "==> Cron job deployed — runs on schedule 🎉"}},
 	} {
@@ -1095,7 +1096,7 @@ func TestTerminalLinesAppendFailureReason(t *testing.T) {
 	if got := terminalLines("update_failed", "web_service", "==> rollout stalled"); !slices.Equal(got, []string{"==> Deploy failed: rollout stalled"}) {
 		t.Fatalf("marked first line = %v", got)
 	}
-	if got := terminalLines("live", "web_service", "should-not-appear"); !slices.Equal(got, []string{"==> Your service is live 🎉"}) {
+	if got := terminalLines("live", "web_service", "should-not-appear"); !slices.Equal(got, []string{rendersLive}) {
 		t.Fatalf("success must ignore a stray reason: %v", got)
 	}
 }
@@ -1121,7 +1122,7 @@ func TestTerminalLinesCloseARolloutTimeoutAsRendersDo(t *testing.T) {
 		{"the pre-deploy window ran out", "pre_deploy_failed", "the pre-deploy command did not finish within its window; check the pre-deploy logs", true,
 			[]string{"==> Pre-deploy failed: the pre-deploy command did not finish within its window; check the pre-deploy logs"}},
 		{"canceled", "canceled", "", true, []string{"==> Deploy canceled"}},
-		{"live", "live", "", true, []string{"==> Your service is live 🎉"}},
+		{"live", "live", "", true, []string{rendersLive}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if got := closingLines(DeployProgress{Status: c.status, FailureReason: c.reason, TimedOut: c.timedOut}, "web_service"); !slices.Equal(got, c.want) {
@@ -1141,9 +1142,10 @@ func TestTerminalLinesCloseARolloutTimeoutAsRendersDo(t *testing.T) {
 // build log, so its missing publish directory's line comes first (w8/395).
 func TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo(t *testing.T) {
 	exit := func(code int32) *int32 { return &code }
-	const troubleshoot = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
-	rendersBuildFailed := []string{"==> Build failed 😞", troubleshoot}
-	exited := func(code string) []string { return []string{"==> Exited with status " + code, troubleshoot} }
+	rendersBuildFailed := []string{"==> Build failed 😞", rendersTroubleshoot}
+	exited := func(code string) []string {
+		return []string{renderlog.PlatformFailure.Line("Exited with status " + code), rendersTroubleshoot}
+	}
 	const (
 		command   = "build failed in the build command step:\n==> Running build command 'exit 3'...\nerror: build command 'exit 3' exited with code 3"
 		crash     = "container exited shortly after start and its instance has stopped (last exit code 1) — check the service logs for the crash output."
@@ -1184,7 +1186,7 @@ func TestClosingLinesCloseAFailedBuildAndAnExitAsRendersDo(t *testing.T) {
 		{"an image pull failure", DeployProgress{Status: "update_failed", FailureReason: pull}, []string{"==> Deploy failed: " + pull}},
 		{"a pre-deploy command that exited", DeployProgress{Status: "pre_deploy_failed", FailureReason: "the pre-deploy command exited with code 3; check the pre-deploy logs", ExitCode: exit(3)},
 			[]string{"==> Pre-deploy failed: the pre-deploy command exited with code 3; check the pre-deploy logs"}},
-		{"a build failure's reason on a live deploy", DeployProgress{Status: "live", FailureReason: command, ExitCode: exit(1)}, []string{"==> Your service is live 🎉"}},
+		{"a build failure's reason on a live deploy", DeployProgress{Status: "live", FailureReason: command, ExitCode: exit(1)}, []string{rendersLive}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if got := closingLines(c.d, "web_service"); !slices.Equal(got, c.want) {
@@ -1222,7 +1224,7 @@ func TestNoBuildPublishFailureReadsAsRendersLog(t *testing.T) {
 		"==> Building from https://github.com/x/site@abc1234",
 		"==> Publish directory nope does not exist!",
 		"==> Build failed 😞",
-		"==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys",
+		rendersTroubleshoot,
 	}
 	got := make([]string, len(entries))
 	for i, e := range entries {

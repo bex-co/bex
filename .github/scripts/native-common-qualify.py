@@ -124,8 +124,8 @@ FACTORY_PATHS = (
 SOURCE_PACKAGES = (
     "operator/cmd/native-init", "operator/internal/execution", "operator/internal/execution/executiontest",
     "operator/internal/httpclient", "operator/internal/identity", "operator/internal/publish",
-    "operator/internal/registry", "types/deploybudgets", "types/k8sname", "types/netutil", "types/toolchains",
-    "types/v1alpha1",
+    "operator/internal/registry", "types/deploybudgets", "types/k8sname", "types/netutil", "types/renderlog",
+    "types/toolchains", "types/v1alpha1",
 )
 # Inside the recorded build tree, and also named: bootstrap reads its BuildKit pin.
 BUILDKIT_POLICY = "lego/operator/internal/build/toolchain-freshness.json"

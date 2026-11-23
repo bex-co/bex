@@ -216,8 +216,8 @@ func TestExactVersionPinsTheRequestedPatch(t *testing.T) {
 			}
 			assertExactNativePrimary(t, dockerfile, reviewed.Image, tc.tag+"@"+exactDigest, tc.metadata)
 			_, version, _ := strings.Cut(strings.SplitN(tc.tag, "-", 2)[0], ":")
-			if choices[0].Line != version || choices[0].Image != tc.tag+"@"+exactDigest || !strings.Contains(choices[0].Narration(), version) {
-				t.Errorf("narration %q does not name %s", choices[0].Narration(), version)
+			if choices[0].Line != version || choices[0].Image != tc.tag+"@"+exactDigest || !strings.Contains(shown(choices[0].Narration()), version) {
+				t.Errorf("narration %q does not name %s", shown(choices[0].Narration()), version)
 			}
 		})
 	}
@@ -275,7 +275,7 @@ func TestExactVersionFallsBackToTheReviewedPatch(t *testing.T) {
 			if choices[0].Image != line.image || !strings.Contains(dockerfile, "FROM "+expectedNativeBase(line.image)+"\n") || !kept {
 				t.Errorf("Dockerfile left the reviewed image:\n%s", dockerfile)
 			}
-			narration := choices[0].Narration()
+			narration := shown(choices[0].Narration())
 			if !strings.HasPrefix(narration, "==> Using Python version "+line.version+" via environment variable PYTHON_VERSION\n") || !strings.Contains(narration, "python:3.11.9-bookworm") {
 				t.Errorf("narration %q does not explain the fallback", narration)
 			}
@@ -349,8 +349,8 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 	}
 
 	got := run(rubyDefaultCutoff.Add(time.Hour), nil)
-	if got.Line != "3.4.4" || !strings.Contains(got.Image, "ruby:3.4.4-bookworm@"+exactDigest) || got.Narration() != "==> Using Ruby version 3.4.4 (default)"+rubyDocs {
-		t.Errorf("new service: %+v narration %q", got, got.Narration())
+	if got.Line != "3.4.4" || !strings.Contains(got.Image, "ruby:3.4.4-bookworm@"+exactDigest) || shown(got.Narration()) != "==> Using Ruby version 3.4.4 (default)"+rubyDocs {
+		t.Errorf("new service: %+v narration %q", got, shown(got.Narration()))
 	}
 	// w4/620: Render's default moved to 3.4.12, the line's reviewed patch, for
 	// services created since 2026-11-03; one created before keeps 3.4.4.
@@ -363,11 +363,11 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 	// w9/138: Render's default moved to 3.4.13 for services created since
 	// 2026-11-19, past the line's reviewed 3.4.12, so the official 3.4.13 image
 	// stands in; one created the hour before keeps the reviewed 3.4.12.
-	if c := run(renderRubyDefault20261119.Add(time.Hour), nil); c.Line != "3.4.13" || c.Image != "ruby:3.4.13-bookworm@"+exactDigest || c.Narration() != "==> Using Ruby version 3.4.13 (default)"+rubyDocs {
-		t.Errorf("service created after 2026-11-19 must build on 3.4.13: %+v narration %q", c, c.Narration())
+	if c := run(renderRubyDefault20261119.Add(time.Hour), nil); c.Line != "3.4.13" || c.Image != "ruby:3.4.13-bookworm@"+exactDigest || shown(c.Narration()) != "==> Using Ruby version 3.4.13 (default)"+rubyDocs {
+		t.Errorf("service created after 2026-11-19 must build on 3.4.13: %+v narration %q", c, shown(c.Narration()))
 	}
-	if c := run(renderRubyDefault20261119.Add(-time.Hour), nil); c.Line != "3.4" || c.Image != reviewed.image || c.Narration() != "==> Using Ruby version 3.4.12 (default)"+rubyDocs {
-		t.Errorf("service created just before 2026-11-19 must keep the reviewed 3.4.12: %+v narration %q", c, c.Narration())
+	if c := run(renderRubyDefault20261119.Add(-time.Hour), nil); c.Line != "3.4" || c.Image != reviewed.image || shown(c.Narration()) != "==> Using Ruby version 3.4.12 (default)"+rubyDocs {
+		t.Errorf("service created just before 2026-11-19 must keep the reviewed 3.4.12: %+v narration %q", c, shown(c.Narration()))
 	}
 	for name, c := range map[string]NativeChoice{
 		"older service":                    run(rubyDefaultCutoff.Add(-time.Hour), nil),
@@ -386,7 +386,7 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		o.Runtime = "ruby"
 		bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
 		choices, err := ResolveNativeBuildExact(context.Background(), missing, created, "ruby", bundle, dockerfile, src)
-		if err != nil || choices[0].Line != "3.4" || choices[0].Image != reviewed.image || !strings.Contains(choices[0].Narration(), "No official image ruby:"+version+"-bookworm") {
+		if err != nil || choices[0].Line != "3.4" || choices[0].Image != reviewed.image || !strings.Contains(shown(choices[0].Narration()), "No official image ruby:"+version+"-bookworm") {
 			t.Errorf("a missing %s tag must fall back to the reviewed patch and say so: %+v %v", version, choices[0], err)
 		}
 	}
@@ -424,8 +424,8 @@ func TestNodeAndElixirDefaultsAreRendersExactPatch(t *testing.T) {
 			}
 
 			got := run(tc.from.Add(time.Hour), nil)
-			if got.Line != tc.exact || got.Image != tc.tag+"@"+exactDigest || got.Narration() != tc.narration {
-				t.Errorf("new service: %+v narration %q, want %q", got, got.Narration(), tc.narration)
+			if got.Line != tc.exact || got.Image != tc.tag+"@"+exactDigest || shown(got.Narration()) != tc.narration {
+				t.Errorf("new service: %+v narration %q, want %q", got, shown(got.Narration()), tc.narration)
 			}
 			for name, c := range map[string]NativeChoice{
 				"unknown age":     run(time.Time{}, nil),
@@ -439,7 +439,7 @@ func TestNodeAndElixirDefaultsAreRendersExactPatch(t *testing.T) {
 
 			missing := &fakeExact{digests: map[string]string{}}
 			choices, _ := resolveExactAt(t, missing, tc.from.Add(time.Hour), tc.runtime, nil, nil)
-			if choices[0].Line != tc.line || !strings.Contains(choices[0].Narration(), "No official image "+tc.tag) {
+			if choices[0].Line != tc.line || !strings.Contains(shown(choices[0].Narration()), "No official image "+tc.tag) {
 				t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v", choices[0])
 			}
 		})
@@ -473,8 +473,8 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	}
 
 	got := run(toolchains.PythonCreationCutoff, nil)
-	if got.Line != "3.14.8" || !strings.Contains(got.Image, "python:3.14.8-bookworm@"+exactDigest) || got.Narration() != "==> Using Python version 3.14.8 (default)"+pythonDocs {
-		t.Errorf("new service: %+v narration %q", got, got.Narration())
+	if got.Line != "3.14.8" || !strings.Contains(got.Image, "python:3.14.8-bookworm@"+exactDigest) || shown(got.Narration()) != "==> Using Python version 3.14.8 (default)"+pythonDocs {
+		t.Errorf("new service: %+v narration %q", got, shown(got.Narration()))
 	}
 	// w4/620: Render's default moved to 3.14.10, the line's reviewed patch, for
 	// services created since 2026-11-03; one created before keeps 3.14.8.
@@ -482,8 +482,8 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 		t.Errorf("service created after 2026-11-03 must build on the reviewed 3.14.10: %+v (reviewed %s)", c, reviewed.version)
 	}
 	// …and its log names that exact patch, not the bare line (w4/668).
-	if c := run(toolchains.RenderDefaults20261103.Add(time.Hour), nil); c.Narration() != "==> Using Python version 3.14.10 (default)"+pythonDocs {
-		t.Errorf("narration = %q, want the exact 3.14.10", c.Narration())
+	if c := run(toolchains.RenderDefaults20261103.Add(time.Hour), nil); shown(c.Narration()) != "==> Using Python version 3.14.10 (default)"+pythonDocs {
+		t.Errorf("narration = %q, want the exact 3.14.10", shown(c.Narration()))
 	}
 	if c := run(toolchains.RenderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.14.8" {
 		t.Errorf("service created just before 2026-11-03 must keep 3.14.8: %+v", c)
@@ -505,7 +505,7 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
 	choices, err := ResolveNativeBuildExact(context.Background(), missing, toolchains.PythonCreationCutoff.Add(time.Hour), "python", bundle, dockerfile, src)
-	if err != nil || choices[0].Line != "3.14" || !strings.Contains(choices[0].Narration(), "No official image python:3.14.8-bookworm") {
+	if err != nil || choices[0].Line != "3.14" || !strings.Contains(shown(choices[0].Narration()), "No official image python:3.14.8-bookworm") {
 		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
 	}
 }
@@ -540,8 +540,8 @@ func TestNodeRangePinsTheNewestOfficialReleaseInside(t *testing.T) {
 				history: []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"},
 			}
 			choices, _ := resolveExact(t, fake, "node", tc.env, tc.files)
-			if choices[0].Image != "node:18.17.1-bookworm@"+exactDigest || choices[0].Narration() != tc.requesting+"==> Using Node.js version 18.17.1 via "+tc.via+nodeDocs {
-				t.Fatalf("choice = %+v, narration %q; want node:18.17.1-bookworm", choices[0], choices[0].Narration())
+			if choices[0].Image != "node:18.17.1-bookworm@"+exactDigest || shown(choices[0].Narration()) != tc.requesting+"==> Using Node.js version 18.17.1 via "+tc.via+nodeDocs {
+				t.Fatalf("choice = %+v, narration %q; want node:18.17.1-bookworm", choices[0], shown(choices[0].Narration()))
 			}
 			if !slices.Contains(fake.asked, "list node:18.") || !slices.Contains(fake.asked, "node:18.17.1-bookworm") {
 				t.Errorf("asked %v, want the listing and the chosen tag", fake.asked)
@@ -556,7 +556,7 @@ func TestNodeRangeWithoutAnOfficialReleaseSaysSo(t *testing.T) {
 	fake := &fakeExact{digests: map[string]string{"node:16.20.2-bookworm": exactDigest}}
 	choices, _ := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "~16.13.0"}, nil)
 	line, _ := nativeToolchains["node"].find("16")
-	narration := choices[0].Narration()
+	narration := shown(choices[0].Narration())
 	if choices[0].Image != line.image || !strings.Contains(narration, "No official node:16.x (bookworm, bullseye or buster) image satisfies ~16.13.0") || !strings.Contains(narration, "(16.20.2)") {
 		t.Fatalf("choice image %q, narration %q; want the reviewed image and a line naming the substitution", choices[0].Image, narration)
 	}
@@ -582,8 +582,8 @@ func TestNodeRangeListingFailureSaysSo(t *testing.T) {
 	fake := &fakeExact{err: errors.New("hub answered 503")}
 	choices, _ := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "~18.17.0"}, nil)
 	line, _ := nativeToolchains["node"].find("18")
-	if choices[0].Image != line.image || !strings.Contains(choices[0].Narration(), "Could not list node releases for ~18.17.0 (hub answered 503)") {
-		t.Fatalf("choice image %q, narration %q", choices[0].Image, choices[0].Narration())
+	if choices[0].Image != line.image || !strings.Contains(shown(choices[0].Narration()), "Could not list node releases for ~18.17.0 (hub answered 503)") {
+		t.Fatalf("choice image %q, narration %q", choices[0].Image, shown(choices[0].Narration()))
 	}
 }
 
@@ -604,7 +604,7 @@ func TestNodeReleaseOlderThanBookwormIsCopiedOntoTheLine(t *testing.T) {
 			fake := &fakeExact{digests: map[string]string{"node:16.13.1-bullseye": exactDigest, "node:16.13.2-bullseye": exactDigest, "node:16.20.2-bookworm": exactDigest}}
 			choices, dockerfile := resolveExact(t, fake, "node", tc.env, nil)
 			line, _ := nativeToolchains["node"].find("16")
-			narration := choices[0].Narration()
+			narration := shown(choices[0].Narration())
 			// On the common base the release's own image is the copied primary;
 			// on the official line image only its node is copied in.
 			wantImage, wantNote, wantCopy := line.image, "copying Node 16.13.2 from node:16.13.2-bullseye onto the Node 16 image", " /usr/local/bin/node /usr/local/bin/node"
@@ -672,12 +672,12 @@ func TestNodeCompanionDefaultFollowsTheServiceCreationDate(t *testing.T) {
 		for runtime := range nativeJSCompanionRuntimes {
 			t.Run(fmt.Sprintf("%s/common base %t", runtime, base != ""), func(t *testing.T) {
 				node, dockerfile := companion(t, runtime, renderNodeDefault20261021.Add(time.Hour))
-				if node.Image != image || node.Narration() != "==> Using Node.js version 24.22.1 (default)"+nodeDocs || !strings.Contains(dockerfile, "COPY --link --from="+image+" ") {
-					t.Errorf("new service: %+v narration %q\n%s", node, node.Narration(), dockerfile)
+				if node.Image != image || shown(node.Narration()) != "==> Using Node.js version 24.22.1 (default)"+nodeDocs || !strings.Contains(dockerfile, "COPY --link --from="+image+" ") {
+					t.Errorf("new service: %+v narration %q\n%s", node, shown(node.Narration()), dockerfile)
 				}
 				for name, created := range map[string]time.Time{"unknown age": {}, "before the step": renderNodeDefault20261021.Add(-time.Hour)} {
-					if node, _ := companion(t, runtime, created); node.Image != reviewed.image || node.Narration() != "==> Using Node.js version "+reviewed.version+" (default)"+nodeDocs {
-						t.Errorf("%s must keep the reviewed %s: %+v narration %q", name, reviewed.version, node, node.Narration())
+					if node, _ := companion(t, runtime, created); node.Image != reviewed.image || shown(node.Narration()) != "==> Using Node.js version "+reviewed.version+" (default)"+nodeDocs {
+						t.Errorf("%s must keep the reviewed %s: %+v narration %q", name, reviewed.version, node, shown(node.Narration()))
 					}
 				}
 			})
@@ -702,7 +702,7 @@ func TestOlderNodeReleaseRunsOnTheLineImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(choices[0].Narration())
+	t.Log(shown(choices[0].Narration()))
 	// A toolchain container without buildx hands the resolved context to the
 	// host's docker instead, and checks nothing itself.
 	if root := os.Getenv("BEX_NATIVE_TEST_HANDOFF"); root != "" {
@@ -771,8 +771,8 @@ func TestRubyReleaseOlderThanBookwormComesFromBullseye(t *testing.T) {
 	choices, dockerfile := resolveExact(t, fake, nativeRubyRuntime, nil, sidekiq)
 	want := "==> Using Ruby version 3.2.0 via /opt/render/project/src/Gemfile.lock" + rubyDocs + "\n" +
 		"==> ruby:3.2.0-bookworm does not exist; using Ruby 3.2.0 from ruby:3.2.0-bullseye"
-	if choices[0].Image != donor || choices[0].Line != "3.2.0" || choices[0].Narration() != want {
-		t.Fatalf("choice %+v, narration %q; want %s and %q", choices[0], choices[0].Narration(), donor, want)
+	if choices[0].Image != donor || choices[0].Line != "3.2.0" || shown(choices[0].Narration()) != want {
+		t.Fatalf("choice %+v, narration %q; want %s and %q", choices[0], shown(choices[0].Narration()), donor, want)
 	}
 	if slices.Contains(fake.asked, "ruby:3.2.0-buster") {
 		t.Errorf("a buster Ruby needs libffi6, which no base carries; asked %v", fake.asked)
@@ -798,8 +798,8 @@ func TestRubyReleaseOlderThanBookwormComesFromBullseye(t *testing.T) {
 	missing, _ := resolveExact(t, &fakeExact{digests: map[string]string{}}, nativeRubyRuntime, nil, sidekiq)
 	want = "==> Using Ruby version " + line.version + " via /opt/render/project/src/Gemfile.lock" + rubyDocs + "\n" +
 		"==> No official image ruby:3.2.0-bookworm; using the reviewed Ruby 3.2 image"
-	if missing[0].Image != line.image || missing[0].Narration() != want {
-		t.Errorf("no image in any variant: %+v narration %q, want %q", missing[0], missing[0].Narration(), want)
+	if missing[0].Image != line.image || shown(missing[0].Narration()) != want {
+		t.Errorf("no image in any variant: %+v narration %q, want %q", missing[0], shown(missing[0].Narration()), want)
 	}
 }
 

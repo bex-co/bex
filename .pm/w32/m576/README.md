@@ -1,22 +1,22 @@
 # w32 · m576 — Every `==>` line bex writes carries Render's ANSI colour codes, in the API, the CLI and the dashboard
 
-**Worker:** worker32 **Goal:** each `==>` line bex writes itself (the platform's deploy narration, a native build's narration, the instance's `==> Running '<command>'`) carries the ANSI codes Render's log API returns for that kind of line, byte for byte where a Render capture shows the line. REST `GET /v1/logs`, the subscribe stream, GraphQL, MCP `list_logs` and `bex logs -o json` return the codes, as Render's API, MCP server and CLI do. `bex logs` on a terminal shows the lines coloured, and the dashboard draws them coloured with the visible text it shows today. **Status:** todo
+**Worker:** worker32 **Goal:** each `==>` line bex writes itself (the platform's deploy narration, a native build's narration, the instance's `==> Running '<command>'`) carries the ANSI codes Render's log API returns for that kind of line, byte for byte where a Render capture shows the line. REST `GET /v1/logs`, the subscribe stream, GraphQL, MCP `list_logs` and `bex logs -o json` return the codes, as Render's API, MCP server and CLI do. `bex logs` on a terminal shows the lines coloured, and the dashboard draws them coloured with the visible text it shows today. **Status:** todo (t001–t007, t010 and t011 done; t008 ships them and walks production once the pin carries them)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Settle Render's codes for every `==>` line bex writes](t001.md) | 1h | — |
-| t002 | [The platform's narration carries Render's platform forms](t002.md) | 2h | t001 |
-| t003 | [A native build's narration carries Render's build forms](t003.md) | 2h | t001 |
-| t004 | [The instance's `==> Running '<command>'` carries Render's instance form](t004.md) | 30m | t001 |
-| t005 | [The dashboard draws the coloured lines with today's text](t005.md) | 45m | t002, t003, t004 |
-| t006 | [The CLI, MCP, GraphQL and text search on coloured lines](t006.md) | 45m | t002, t003, t004 |
-| t007 | [Record the forms in the progress-line contract and ADR018](t007.md) | 30m | t005, t006 |
+| t001 | [Settle Render's codes for every `==>` line bex writes](done/t001.md) — **DONE** | 1h | — |
+| t002 | [The platform's narration carries Render's platform forms](done/t002.md) — **DONE** | 2h | t001 |
+| t003 | [A native build's narration carries Render's build forms](done/t003.md) — **DONE** | 2h | t001 |
+| t004 | [The instance's `==> Running '<command>'` carries Render's instance form](done/t004.md) — **DONE** | 30m | t001 |
+| t005 | [The dashboard draws the coloured lines with today's text](done/t005.md) — **DONE** | 45m | t002, t003, t004 |
+| t006 | [The CLI, MCP, GraphQL and text search on coloured lines](done/t006.md) — **DONE** | 45m | t002, t003, t004 |
+| t007 | [Record the forms in the progress-line contract and ADR018](done/t007.md) — **DONE** | 30m | t005, t006 |
 | t008 | [Ship and verify on production](t008.md) | 1h | t007 |
 | t009 | [Render parity](t009.md) | 30m | t008 |
-| t010 | [Simplify](t010.md) | 15m | t009 |
-| t011 | [Test coverage](t011.md) | 30m | t009 |
+| t010 | [Simplify](done/t010.md) — **DONE** | 15m | t009 |
+| t011 | [Test coverage](done/t011.md) — **DONE** | 30m | t009 |
 | t012 | [Closeout](t012.md) | 10m | t010, t011 |
 
 ## Definition of done
@@ -28,7 +28,7 @@
   - REST `GET /v1/logs`, the subscribe stream, GraphQL `logs` and MCP `list_logs` return the same messages, codes included.
   - The dashboard's deploy page and the service's Logs page show the same visible text as before, coloured, with no stray `(B` or escape bytes.
   - Every fixture is deleted by ID, and each delete is confirmed by a 404.
-- Every `==>` line bex writes has a form: Render's own where a capture shows it, otherwise the form of its kind (step, success, failure) chosen by t001 and recorded as bex's reading.
+- Every `==>` line bex writes has a form: Render's own where a capture shows it, otherwise plain until w32/085's capture shows Render's (t001's table; the dispatch of 2026-11-22 ruled out a form "of its kind" bex would invent).
 - `textMode=display` finds every coloured line by its visible text (`==> Deploying...`), and the raw default keeps matching the stored bytes, as for any coloured app line (w4/m189).
 - Nothing that reads bex's own lines back breaks: the operator's parsers of the build's output (the publish-directory check, the upload moment), the failure classifier, and the backend's handling of reasons that already open with `==>` (`unmarked`).
 - Unit tests pin each form byte for byte against the Render lines below, and each surface's test reads the codes through.
@@ -67,3 +67,34 @@ So every machine-readable Render surface carries the codes. bex's REST, subscrib
 | Instance (green) | `\x1b[32m\x1b[1m==>\x1b(B\x1b[m \x1b[1m<text>\x1b(B\x1b[m` | `Running '<command>'` at each start of the command |
 
 No capture yet shows Render's codes on: `Build failed 😞`, `Deploy failed`, a canceled deploy, the pre-deploy lines (`Starting pre-deploy: …`, the step's `Running '…'`, `Pre-deploy complete!`, `Pre-deploy has failed`, `Pre-deploy timed out`), the port scan's `continuing to scan...` lines and its localhost and no-HTTP variants, `Your site is live 🎉`, a cron job's lines, and Render's other build lines (`Build failed 😞` from the build itself, `Using Python version …`, `Installing dependencies …`). bex's own lines (`Build queued`, `Building from …`, `Deploying image …`, the build-slot and initial-deploy-hook lines, `Reusing the cached result …`, `Transferred …`, `Uploading build failed`, `Preparing the build failed: …`, the version-resolution notes) have no Render counterpart at all. t001 settles a form for each.
+
+## Every `==>` line bex writes, and its form (t001, 2026-11-22)
+
+A line takes Render's form when a capture of Render's log API shows that line (its words, with its parameters free) from the same writer and the captures agree on one form for it. Every other line stays plain (`renderlog.Plain`), Render's lines included: w32/m576's dispatch of 2026-11-22 ruled that bex invents no colours, so a line no capture shows coloured waits for w32/085's Render capture, and ADR018 § Logs, Build logs records each one. This replaces the "form of its kind, as bex's reading" the definition of done first asked for. The bytes live once, in `lego/types/renderlog`, which the control plane, the build pod's scripts, native-resolve and native-init all write from.
+
+A search of GitHub code on 2026-11-22 (`gh api search/code` for `u001b` with each unseen line's words: `continuing to scan`, `Pre-deploy complete`, `Starting pre-deploy`, `Pre-deploy has failed`, `Your site is live`, `Build failed 😞`, `Deploy cancelled`, `Using Python version`, `Using Bun version`, `Uploading build`, `Build successful`, `Running build command`) found no new capture: only the three above, control-theory/gonzo `guides/RENDER_USAGE_GUIDE.md` at `c0a37852d5` (a `sed` that strips the codes Render's CLI stream carries, `\u001b[32m` around `==> Build successful 🎉`, so a fourth witness that the stream carries codes), and a synthetic fixture (Pschmetzer/deploy-center `ios/Tests/fixtures/render-logs.json`, plain and hand-written).
+
+| Writer | bex line | Form | Source |
+| --- | --- | --- | --- |
+| Platform | `==> Deploying...` | step | tretta, Sentry-AI |
+| Platform | `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` | step | tretta, Sentry-AI (N = 1) |
+| Platform | `==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys`, after every verdict that writes it | step | Sentry-AI (after `Exited`), upmyrank-poc (after `Timed Out`) |
+| Platform | `==> Your service is live 🎉` (web, private service, worker) | success | tretta, Sentry-AI |
+| Platform | the URL block: `==> ` (its space inside the colour, `\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1m\x1b[0m`), the 59-slash rule, `==> Available at your primary URL <url>[ + N more domain(s)]` | success | tretta, Sentry-AI |
+| Platform | `==> Exited with status N`, after a start command's exit and after a pre-deploy command's | failure | Sentry-AI (a start command's exit); the same line from the same writer after a pre-deploy step |
+| Platform | `==> Timed Out` | failure | upmyrank-poc |
+| Platform | `==> Port scan timeout reached, no open ports detected. …` and the docs line after it | failure | Sentry-AI, upmyrank-poc |
+| Platform | `==> Running '<command>'`, the narration's copy for an image built before w32/m575 and for a pre-deploy step | instance | tretta: the instance's own line, whatever command it starts (w32/m575) |
+| Platform | `==> Build failed 😞`; `==> Your site is live 🎉`; `==> Starting pre-deploy: <command>`, `==> Pre-deploy complete!`, `==> Pre-deploy has failed`; `==> No open ports detected, continuing to scan...` and the docs line after it (Render colours that line as the one before it: red after the timeout, green after `Detected service running on port N`); the localhost and no-HTTP scan and timeout lines, and the `PORT` ones (w8/416); `==> Publish directory <dir> does not exist!` | plain | Render's lines, no capture shows their codes (w32/085) |
+| Platform | `==> Build queued`, `==> Deploy queued`, the build-slot and registry waits, `==> Building from …`, `==> Deploying image …`, `==> Rolling out the current release`, the Managed OIDC lines, `==> Detected HTTP on port N; serving it` (Render's `Detected service running on port N` is green, Sentry-AI, but bex's words differ), `==> Cron job deployed — runs on schedule 🎉`, `==> Build failed[: reason]`, `==> Pre-deploy failed[: reason]`, `==> Deploy failed[: reason]`, `==> Deploy canceled` and each further reason line, the initial deploy hook's four lines, `logsGoneMessage`, the stream's refusal line | plain | bex's own |
+| Build, shell | `==> Downloading cache...` (Dockerfile and native builds) | build shell | tretta |
+| Build, shell | `==> Transferred <size> in Ns. Extraction took Ns.` (Dockerfile and native builds) | build shell | tretta's `Downloaded 160MB in 7s. Extraction took 4s.`: the cache's second line, which Render now words `Downloaded` (t009 checks the words) |
+| Build, shell | `==> Running build command '<command>'...` | build shell | tretta |
+| Build, runtime | `==> Using Node.js version <v> <how>` and `==> Docs on specifying a Node.js version: https://render.com/docs/node-version` | build runtime | tretta (`via environment variable NODE_VERSION`; the same line for a default or a version file) |
+| Build, runtime | `==> Uploading build...` (the BuildKit container's, or the push phase's when it has no moment) and `==> Uploaded in Ns` | build runtime | tretta (`Uploaded in 9.9s. Compression took 2.4s`) |
+| Build, runtime | `==> Build successful 🎉` | build runtime success | tretta |
+| Build | `==> Requesting Node.js version <range>`; every other runtime's version and docs lines, the Erlang line; `==> Installing dependencies with …` and the other dependency lines; the Bundler lines; `==> Publish directory … does not exist!` | plain | Render's lines, no capture shows their codes (w32/085) |
+| Build | bex's version lines (`==> Using <runtime> <v> (from …)`, `==> Not adding …`, the image-resolution notes, the Bun notes), `==> Reusing the cached result: …`, `==> Uploading build failed`, `==> Preparing the build failed: …`, `==> error: …`, the transfer retry line | plain | bex's own |
+| Instance | `==> Running '<command>'` at each `<shell> -c` launch native-init names (start command, cron run, initial deploy hook) | instance | tretta |
+
+Two edge cases t001 named: no multi-line reason carries the failure form, since only Render's own verdicts take it and bex's cause-bearing closes stay plain; and the URL block's blank line keeps its trailing space inside the marker's colour, as tretta's and Sentry-AI's captures do. A Dockerfile build keeps BuildKit's own output, which carries no `==>` line.

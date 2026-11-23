@@ -410,7 +410,7 @@ func TestBuildlessDeployNarratesTheRolloutNotABuild(t *testing.T) {
 			t.Fatalf("buildless deploy claims a build: %v", got)
 		}
 	}
-	want := []string{"==> Deploy queued", "==> Rolling out the current release", "==> Your service is live 🎉"}
+	want := []string{"==> Deploy queued", "==> Rolling out the current release", rendersLive}
 	if !slices.Equal(got, want) {
 		t.Fatalf("buildless narration = %v, want %v", got, want)
 	}
@@ -432,7 +432,7 @@ func TestRollbackNarratesTheRestoredImage(t *testing.T) {
 	want := []string{
 		"==> Deploy queued",
 		"==> Deploying image zot.example/ws/web:gen-1@sha256:f825b7",
-		"==> Your service is live 🎉",
+		rendersLive,
 	}
 	if got := buildNarration(t, svc, "web"); !slices.Equal(got, want) {
 		t.Fatalf("rollback narration = %v, want %v", got, want)
@@ -454,7 +454,7 @@ func TestBuiltDeployKeepsItsBuildNarration(t *testing.T) {
 	want := []string{
 		"==> Build queued",
 		"==> Building from https://github.com/x/y.git@abc1234",
-		"==> Your service is live 🎉",
+		rendersLive,
 	}
 	if got := buildNarration(t, svc, "web"); !slices.Equal(got, want) {
 		t.Fatalf("built narration = %v, want %v", got, want)

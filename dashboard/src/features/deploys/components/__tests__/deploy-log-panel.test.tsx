@@ -467,6 +467,76 @@ describe("DeployLogPanel", () => {
     ).not.toBeInTheDocument();
   });
 
+  // Render's log API returns its `==>` lines coloured, and bex writes the same
+  // bytes (w32/m576): the pane draws each with the words it showed before, the
+  // marker in its colour, and finds it by those words.
+  it("draws Render's coloured `==>` lines with their words and finds them by those words", async () => {
+    const esc = "\u001b";
+    const colored = (key: string, message: string): LogLine => ({
+      ...line(message, "build"),
+      key,
+      spans: parseAnsi(message),
+    });
+    logState.lines = [
+      colored(
+        "1",
+        `${esc}[0;34m${esc}[1m==> ${esc}[0m${esc}[1mDeploying...${esc}[0m`,
+      ),
+      colored(
+        "2",
+        `${esc}[32m${esc}[1m==>${esc}(B${esc}[m ${esc}[1mRunning 'node main.js'${esc}(B${esc}[m`,
+      ),
+      colored(
+        "3",
+        `${esc}[0;32m${esc}[1m==> ${esc}[0m${esc}[1mYour service is live 🎉${esc}[0m`,
+      ),
+    ];
+
+    const { container } = render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    const shown = container.textContent ?? "";
+    for (const words of [
+      "==> Deploying...",
+      "==> Running 'node main.js'",
+      "==> Your service is live 🎉",
+    ]) {
+      expect(shown).toContain(words);
+    }
+    expect(shown).not.toContain(esc);
+    expect(shown).not.toContain("(B");
+    const markers = screen.getAllByText("==>");
+    expect(markers.map((m) => m.className.includes("text-blue-700"))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(
+      markers.slice(1).every((m) => m.className.includes("text-green-700")),
+    ).toBe(true);
+    expect(screen.getByText("Deploying...").className).toContain(
+      "font-semibold",
+    );
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText("Search logs…"),
+      "==> Deploying",
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Running 'node main.js'"),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Deploying...")).toBeInTheDocument();
+  });
+
   it("shows a short clickable instance and exposes its removable exact filter", async () => {
     const selectedInstance = "eden-cms-v2-6f7d8f9c4b-bv612";
     logState.lines = [

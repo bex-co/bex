@@ -149,7 +149,7 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 			if choices[0].Image != "erlang:"+tc.erlang+"@"+exactDigest {
 				t.Errorf("exact OTP identity changed: %+v", choices[0])
 			}
-			if got := choices[0].Narration(); got != tc.narration+elixirDocs {
+			if got := shown(choices[0].Narration()); got != tc.narration+elixirDocs {
 				t.Errorf("narration %q, want %q", got, tc.narration+elixirDocs)
 			}
 			for _, asked := range fake.asked {
@@ -245,7 +245,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 	choices, dockerfile := resolveExactAt(t, fake, created, nativeElixirRuntime, nil, nil)
 	// Render names the default Erlang on a line of its own, before Elixir
 	// (w9/139).
-	if got, want := choices[0].Narration(), "==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)"+elixirDocs; got != want {
+	if got, want := shown(choices[0].Narration()), "==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)"+elixirDocs; got != want {
 		t.Errorf("narration %q, want %q", got, want)
 	}
 	if choices[0].Image != erlangImage || choices[0].Line != "1.18.4" {
@@ -279,7 +279,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 			choices, _ := resolveExactAt(t, published(), tc.created, nativeElixirRuntime, tc.env, nil)
 			// Only Render's docs line, which names Elixir and Erlang's page,
 			// may mention Erlang.
-			narration, docs := strings.CutSuffix(choices[0].Narration(), elixirDocs)
+			narration, docs := strings.CutSuffix(shown(choices[0].Narration()), elixirDocs)
 			if c := choices[0]; c.Image != tc.image || c.Line != tc.line || c.otp != "" || !docs || strings.Contains(narration, "Erlang") {
 				t.Errorf("must keep %s %s with the image's own OTP: %+v", tc.image, tc.line, c)
 			}
@@ -289,7 +289,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 		fake := published()
 		fake.envByImage["erlang:28.0.3.0@"+exactDigest] = fakeExactMetadata{[]string{"OTP_VERSION=28.0.3"}, commonOTPSyntheticHistory("bookworm")}
 		choices, _ := resolveExactAt(t, fake, created, nativeElixirRuntime, map[string]string{"ERLANG_VERSION": "28.0"}, nil)
-		if got, want := choices[0].Narration(), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.3 (from ERLANG_VERSION=28.0)"+elixirDocs; got != want {
+		if got, want := shown(choices[0].Narration()), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.3 (from ERLANG_VERSION=28.0)"+elixirDocs; got != want {
 			t.Errorf("narration %q, want %q", got, want)
 		}
 	})
@@ -300,8 +300,8 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 	t.Run("no image carries it", func(t *testing.T) {
 		choices, _ := resolveExactAt(t, &fakeExact{digests: map[string]string{"elixir:1.18.4": exactDigest}}, created, nativeElixirRuntime, nil, nil)
 		want := "==> Using Elixir version 1.18.4 (default)" + elixirDocs + "\n==> Could not install the default Erlang/OTP 28.0.2 (no published image carries it); using the Erlang/OTP of the Elixir image"
-		if c := choices[0]; c.Image != "elixir:1.18.4@"+exactDigest || c.otp != "" || c.Narration() != want {
-			t.Errorf("fallback %+v narration %q, want %q", c, c.Narration(), want)
+		if c := choices[0]; c.Image != "elixir:1.18.4@"+exactDigest || c.otp != "" || shown(c.Narration()) != want {
+			t.Errorf("fallback %+v narration %q, want %q", c, shown(c.Narration()), want)
 		}
 	})
 	t.Run("registry failure", func(t *testing.T) {
@@ -311,8 +311,8 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 		want := "==> Using Elixir version " + reviewed.lineVersion + " (default)" + elixirDocs + "\n" +
 			"==> Could not install the default Erlang/OTP 28.0.2 (look up Elixir 1.18.4 on Erlang/OTP 28.0.2.0: registry answered 500); using the Erlang/OTP of the Elixir image\n" +
 			"==> Could not look up elixir:1.18.4 (registry answered 500); using the reviewed Elixir 1.18 image"
-		if got.Image != reviewed.Image || got.erlang != "" || got.Narration() != want {
-			t.Errorf("fallback %+v narration %q, want %q", got, got.Narration(), want)
+		if got.Image != reviewed.Image || got.erlang != "" || shown(got.Narration()) != want {
+			t.Errorf("fallback %+v narration %q, want %q", got, shown(got.Narration()), want)
 		}
 	})
 }

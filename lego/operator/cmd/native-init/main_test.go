@@ -81,11 +81,11 @@ func TestNativeInitRunsTheCommandAsIs(t *testing.T) {
 			"output, environment and cwd",
 			[]string{"/bin/sh", "-c", `printf '%s|%s|' "$QA_MARKER" "$1"; pwd; echo oops >&2; exit 7`,
 				"sh", "arg with 'quotes'"},
-			7, `==> Running 'printf '%s|%s|' "$QA_MARKER" "$1"; pwd; echo oops >&2; exit 7'` + "\n" +
+			7, running(`printf '%s|%s|' "$QA_MARKER" "$1"; pwd; echo oops >&2; exit 7`) + "\n" +
 				"kept as is|arg with 'quotes'|" + dir + "\n", "oops\n",
 		},
-		{"killed by a signal", []string{"/bin/sh", "-c", "kill -KILL $$"}, 137, "==> Running 'kill -KILL $$'\n", ""},
-		{"found on PATH", []string{"sh", "-c", "exit 3"}, 3, "==> Running 'exit 3'\n", ""},
+		{"killed by a signal", []string{"/bin/sh", "-c", "kill -KILL $$"}, 137, running("kill -KILL $$") + "\n", ""},
+		{"found on PATH", []string{"sh", "-c", "exit 3"}, 3, running("exit 3") + "\n", ""},
 		{"missing executable", []string{"/nonexistent/app"}, 127, "", "native-init: "},
 		{"not executable", []string{notExecutable}, 126, "", "native-init: "},
 		{"no command", nil, 2, "", "native-init: no command to run\n"},
@@ -124,7 +124,7 @@ func started(t *testing.T, script string) (*exec.Cmd, *bufio.Scanner) {
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
 	lines := bufio.NewScanner(out)
-	want := append(strings.Split("==> Running '"+script+"'", "\n"), "ready")
+	want := append(strings.Split(running(script), "\n"), "ready")
 	first := make(chan []string, 1)
 	go func() {
 		var read []string
@@ -246,6 +246,13 @@ sleep 0.2; echo ready; wait`)
 	}
 }
 
+// running is the native instance's line for command as Render's log API
+// returns it, byte for byte from ivanseibel/tretta's capture
+// (04b-render-logs.json at b0f216c985; w32/m576): green in tput's form.
+func running(command string) string {
+	return "\x1b[32m\x1b[1m==>\x1b(B\x1b[m \x1b[1mRunning '" + command + "'\x1b(B\x1b[m"
+}
+
 // w32/m575: Render's native instance writes `==> Running '<command>'` each
 // time it starts the command. native-init writes it once, before the
 // command's own first output, quoted as configured: $PORT and every other
@@ -266,7 +273,7 @@ func TestNativeInitNamesTheCommandBeforeItsOutput(t *testing.T) {
 			if status := exitStatus(t, cmd.Run()); status != 0 {
 				t.Fatalf("status %d stderr %q", status, stderr.String())
 			}
-			want := "==> Running '" + command + "'\nlistening on 10000\ndone\n"
+			want := running(command) + "\nlistening on 10000\ndone\n"
 			if stdout.String() != want {
 				t.Fatalf("stdout %q, want %q", stdout.String(), want)
 			}
@@ -282,7 +289,7 @@ func TestNativeInitNamesACommandThatCannotRun(t *testing.T) {
 	cmd := nativeInit("/bin/sh", "-c", "qa-no-such-program-m575")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if status := exitStatus(t, cmd.Run()); status != 127 || stdout.String() != "==> Running 'qa-no-such-program-m575'\n" ||
+	if status := exitStatus(t, cmd.Run()); status != 127 || stdout.String() != running("qa-no-such-program-m575")+"\n" ||
 		!strings.Contains(stderr.String(), "qa-no-such-program-m575") {
 		t.Fatalf("status %d stdout %q stderr %q, want 127, the line and the shell's error",
 			status, stdout.String(), stderr.String())
@@ -336,7 +343,7 @@ func TestNativeInitQuietLaunchNamesNothingAndHidesTheSignal(t *testing.T) {
 	}{
 		{"quiet", []string{"BEX_NATIVE_INIT_QUIET=1"}, "unset\n0\n"},
 		{"quiet, empty", []string{"BEX_NATIVE_INIT_QUIET="}, "unset\n0\n"},
-		{"announced", nil, "==> Running '" + command + "'\nunset\n0\n"},
+		{"announced", nil, running(command) + "\nunset\n0\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

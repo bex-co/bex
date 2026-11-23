@@ -126,7 +126,7 @@ error: failed to solve: process ` + process + verdict + `
 			if exit != ExitTenantError {
 				t.Fatalf("exit %d, want the tenant-error class %d; log:\n%s", exit, ExitTenantError, log)
 			}
-			if want := "==> Running build command 'mkdir -p out'...\n==> Publish directory nope does not exist!\n"; log != want {
+			if want := rendersShellLine("Running build command 'mkdir -p out'...") + "\n==> Publish directory nope does not exist!\n"; log != want {
 				t.Errorf("log:\n%q\nwant:\n%q", log, want)
 			}
 			obs := failedBuildkit(t, o, exit, message)

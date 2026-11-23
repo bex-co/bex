@@ -29,6 +29,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
+	"github.com/bex-co/bex/lego/types/renderlog"
 	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
@@ -128,7 +129,7 @@ func (c NativeChoice) NarrationIn(dir string) string {
 	}
 	lines = append(lines, line)
 	if docs := renderDocs[c.Label]; docs != "" {
-		lines = append(lines, "==> Docs on specifying "+docs)
+		lines = append(lines, renderFormOf(c.Label).Line("Docs on specifying "+docs))
 	}
 	if c.note != "" {
 		lines = append(lines, c.note)
@@ -182,10 +183,24 @@ var renderSignals = map[string]map[string]renderSignalFrom{
 // renderNames are Render's names for the toolchains whose label differs.
 var renderNames = map[string]string{"Node": "Node.js"}
 
-// renderNarration is the choice's line as Render's build log words it:
-// `==> Using Ruby version 3.4.1 via /opt/render/project/src/Gemfile.lock`.
-// ok is false for a signal Render's logs do not show. Render names Erlang on a
-// line of its own, before Elixir's.
+// renderFormOf is the form Render's version and docs lines for a toolchain
+// label take (w32/m576): Node.js's are in Render's blue runtime form, as
+// ivanseibel/tretta's capture of Render's log API shows `==> Using Node.js
+// version 22.23.1 via environment variable NODE_VERSION` and its docs line.
+// No capture shows another runtime's with its codes, so those stay plain
+// until w32/085's does, as do the Node request line and bex's own lines.
+func renderFormOf(label string) renderlog.Form {
+	if label == nativeToolchains[nativeNodeRuntime].label {
+		return renderlog.BuildRuntime
+	}
+	return renderlog.Plain
+}
+
+// renderNarration is the choice's line as Render's build log words it, in
+// its form (renderFormOf): `==> Using Ruby version 3.4.1 via
+// /opt/render/project/src/Gemfile.lock`. ok is false for a signal Render's
+// logs do not show. Render names Erlang on a line of its own, before
+// Elixir's.
 func (c NativeChoice) renderNarration(version, dir string) (line string, ok bool) {
 	signal, engines := strings.CutSuffix(c.Source, enginesNodeSuffix) // "backend/package.json engines.node"
 	if !engines {
@@ -204,9 +219,10 @@ func (c NativeChoice) renderNarration(version, dir string) (line string, ok bool
 	case renderFromFile:
 		how = "via " + path.Join(dir, signal)
 	}
-	line = fmt.Sprintf("==> Using %s version %s %s", cmp.Or(renderNames[c.Label], c.Label), version, how)
+	f := renderFormOf(c.Label)
+	line = f.Line(fmt.Sprintf("Using %s version %s %s", cmp.Or(renderNames[c.Label], c.Label), version, how))
 	if c.otp != "" {
-		line = fmt.Sprintf("==> Using Erlang version %s %s\n%s", c.otp, how, line)
+		line = f.Line(fmt.Sprintf("Using Erlang version %s %s", c.otp, how)) + "\n" + line
 	}
 	return line, true
 }

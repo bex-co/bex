@@ -26,6 +26,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/renderlog"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -80,11 +81,11 @@ func TestPrimaryURLBlockReadsEachDeploysOwnRecord(t *testing.T) {
 	}
 	urls := map[string][]string{}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Message, "==> Available at your primary URL ") {
+		if strings.Contains(e.Message, "Available at your primary URL ") {
 			urls[e.Labels[logs.LabelBuild]] = append(urls[e.Labels[logs.LabelBuild]], e.Message)
 		}
 	}
-	if want := []string{"==> Available at your primary URL https://shop.example + 1 more domain"}; len(urls) != 1 || !slices.Equal(urls["dep-new"], want) {
+	if want := []string{renderlog.PlatformSuccess.Line("Available at your primary URL https://shop.example + 1 more domain")}; len(urls) != 1 || !slices.Equal(urls["dep-new"], want) {
 		t.Fatalf("primary URL lines by deploy = %q, want only dep-new's %q", urls, want)
 	}
 }
@@ -114,11 +115,12 @@ func TestPreDeployLinesReadEachDeploysOwnRecord(t *testing.T) {
 	}
 	lines := map[string][]string{}
 	for _, e := range entries {
-		if strings.Contains(strings.ToLower(e.Message), "pre-deploy") || strings.HasPrefix(e.Message, "==> Running") || strings.HasPrefix(e.Message, "==> Exited") {
+		if strings.Contains(strings.ToLower(e.Message), "pre-deploy") || strings.Contains(e.Message, "Running '") || strings.Contains(e.Message, "Exited with") {
 			lines[e.Labels[logs.LabelBuild]] = append(lines[e.Labels[logs.LabelBuild]], e.Message)
 		}
 	}
-	want := []string{"==> Starting pre-deploy: alembic upgrade head", "==> Running 'alembic upgrade head'", "==> Pre-deploy has failed", "==> Exited with status 127"}
+	want := []string{"==> Starting pre-deploy: alembic upgrade head", renderlog.Instance.Line("Running 'alembic upgrade head'"), "==> Pre-deploy has failed",
+		renderlog.PlatformFailure.Line("Exited with status 127")}
 	if !slices.Equal(lines["dep-new"], want) {
 		t.Fatalf("dep-new's step lines = %q, want %q", lines["dep-new"], want)
 	}
@@ -153,11 +155,11 @@ func TestRolloutRunningLineReadsEachDeploysOwnRecord(t *testing.T) {
 	}
 	running := map[string][]string{}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Message, "==> Running ") {
+		if strings.Contains(e.Message, "Running '") {
 			running[e.Labels[logs.LabelBuild]] = append(running[e.Labels[logs.LabelBuild]], e.Message)
 		}
 	}
-	if want := []string{"==> Running 'node main.js'"}; len(running) != 1 || !slices.Equal(running["dep-old"], want) {
+	if want := []string{renderlog.Instance.Line("Running 'node main.js'")}; len(running) != 1 || !slices.Equal(running["dep-old"], want) {
 		t.Fatalf("narrated Running lines by deploy = %q, want only dep-old's %q", running, want)
 	}
 }

@@ -321,7 +321,7 @@ func TestWebSocketBuildTailNarratesEachBuildOnce(t *testing.T) {
 	readUntil("first build line")
 	first.Status, first.FinishedAt = "live", opened.Add(90*time.Minute)
 	setRows(first, rows[0])
-	readUntil("==> Your service is live 🎉")
+	readUntil(rendersLive)
 
 	second := DeployProgress{ID: "dep-b", Status: "build_in_progress", Built: true, Commit: "bbbbbbb2222",
 		CreatedAt: opened.Add(100 * time.Minute), StartedAt: opened.Add(101 * time.Minute)}

@@ -51,8 +51,8 @@ func TestRustNarratesTheToolchainRustupApplies(t *testing.T) {
 			if err != nil {
 				t.Fatalf("resolve: %v", err)
 			}
-			if got.Narration() != tc.want {
-				t.Errorf("narration %q, want %q", got.Narration(), tc.want)
+			if shown(got.Narration()) != tc.want {
+				t.Errorf("narration %q, want %q", shown(got.Narration()), tc.want)
 			}
 			if got.Line != "1" || got.Image != rust.image || got.Exact != "" {
 				t.Errorf("choice line %q image %q exact %q, want the one pinned image, unswapped", got.Line, got.Image, got.Exact)

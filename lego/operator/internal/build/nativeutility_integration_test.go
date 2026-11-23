@@ -94,7 +94,7 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			must(t, os.Mkdir(evidence, 0o700))
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), recipe, 0o600))
 			for _, choice := range choices {
-				t.Logf("%s; image=%s", choice.Narration(), choice.Image)
+				t.Logf("%s; image=%s", shown(choice.Narration()), choice.Image)
 			}
 			selection, selectionErr := nativeUtilitySelectionReceipt(choices, tc.expectedPythonVersion)
 			must(t, os.WriteFile(filepath.Join(evidence, "resolved-choices.json"), selection, 0o600))
@@ -240,7 +240,7 @@ func nativeUtilitySelectionReceipt(choices []NativeChoice, expectedPython string
 		}
 		selected = append(selected, map[string]any{"label": choice.Label, "line": choice.Line, "image": choice.Image,
 			"source": choice.Source, "requested_exact": choice.Exact, "primary_image": choice.primaryImage,
-			"runtime_environment": versions, "narration": choice.Narration()})
+			"runtime_environment": versions, "narration": shown(choice.Narration())})
 	}
 	var selectionErr error
 	if expectedPython != "" {
@@ -249,7 +249,7 @@ func nativeUtilitySelectionReceipt(choices []NativeChoice, expectedPython string
 		} else {
 			version, err := commonImageVariable(choices[0].imageEnv, "PYTHON_VERSION")
 			if err != nil || version != expectedPython {
-				selectionErr = fmt.Errorf("exact-default qualification requires Python %s; resolved line %s with PYTHON_VERSION=%q: %s", expectedPython, choices[0].Line, version, choices[0].Narration())
+				selectionErr = fmt.Errorf("exact-default qualification requires Python %s; resolved line %s with PYTHON_VERSION=%q: %s", expectedPython, choices[0].Line, version, shown(choices[0].Narration()))
 			}
 		}
 	}

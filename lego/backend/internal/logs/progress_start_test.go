@@ -62,7 +62,7 @@ func TestImageRestartWithUnknownStartNarratesNoStartBanner(t *testing.T) {
 	}
 
 	got := read(restart)
-	want := []string{"==> Deploy queued", "==> Your service is live 🎉"}
+	want := []string{"==> Deploy queued", rendersLive}
 	if !slices.Equal(messages(got), want) {
 		t.Fatalf("unknown-start narration = %v, want %v", messages(got), want)
 	}

@@ -260,3 +260,98 @@ describe("shared display vectors (w4/327)", () => {
     expect(spans[0]).not.toEqual(spans[1]);
   });
 });
+
+// Render's log API returns every `==>` line its platform, build and native
+// instance write in one of seven forms (w32/m576), copied byte for byte from
+// public captures (ivanseibel/tretta, kush252/Sentry-AI). bex writes the same
+// bytes, and Render's viewer draws them coloured: the marker in its colour and
+// bold, the text bold, and nothing after the line styled.
+describe("Render's `==>` forms (w32/m576)", () => {
+  const blue = "text-blue-700 dark:text-blue-400";
+  const green = "text-green-700 dark:text-green-400";
+  const red = "text-red-700 dark:text-red-400";
+  const forms = [
+    {
+      name: "platform step",
+      line: `${ESC}[0;34m${ESC}[1m==> ${ESC}[0m${ESC}[1mDeploying...${ESC}[0m`,
+      shown: "==> Deploying...",
+      marker: blue,
+      text: "Deploying...",
+      textColor: "",
+    },
+    {
+      name: "platform success",
+      line: `${ESC}[0;32m${ESC}[1m==> ${ESC}[0m${ESC}[1mYour service is live 🎉${ESC}[0m`,
+      shown: "==> Your service is live 🎉",
+      marker: green,
+      text: "Your service is live",
+      textColor: "",
+    },
+    {
+      name: "platform failure",
+      line: `${ESC}[0;31m${ESC}[1m==> Exited with status 1${ESC}[0m`,
+      shown: "==> Exited with status 1",
+      marker: red,
+      text: "Exited with status 1",
+      textColor: red,
+    },
+    {
+      name: "build shell",
+      line: `${ESC}[34m${ESC}[1m==>${ESC}(B${ESC}[m ${ESC}[1mDownloading cache...${ESC}(B${ESC}[m`,
+      shown: "==> Downloading cache...",
+      marker: blue,
+      text: "Downloading cache...",
+      textColor: "",
+    },
+    {
+      name: "build runtime",
+      line: `${ESC}[34;1m==>${ESC}[0;22m ${ESC}[1mUploading build...${ESC}[22m`,
+      shown: "==> Uploading build...",
+      marker: blue,
+      text: "Uploading build...",
+      textColor: "",
+    },
+    {
+      name: "build runtime success",
+      line: `${ESC}[32;1m==>${ESC}[0;22m ${ESC}[1mBuild successful 🎉${ESC}[22m`,
+      shown: "==> Build successful 🎉",
+      marker: green,
+      text: "Build successful",
+      textColor: "",
+    },
+    {
+      name: "instance",
+      line: `${ESC}[32m${ESC}[1m==>${ESC}(B${ESC}[m ${ESC}[1mRunning 'node main.js'${ESC}(B${ESC}[m`,
+      shown: "==> Running 'node main.js'",
+      marker: green,
+      text: "Running 'node main.js'",
+      textColor: "",
+    },
+  ];
+
+  it.each(forms.map((f) => [f.name, f] as const))("%s", (_, f) => {
+    const spans = parseAnsi(`${f.line}after`);
+    expect(text(spans)).toBe(`${f.shown}after`);
+    expect(stripAnsi(f.line)).toBe(f.shown);
+    expect(text(spans)).not.toContain(ESC);
+    expect(text(spans)).not.toContain("(B");
+    expect(text(spans)).not.toMatch(/\[[0-9;]*m/);
+    const marker = classOf(spans, "==>");
+    expect(marker).toContain(f.marker);
+    expect(marker).toContain("font-semibold");
+    const words = classOf(spans, f.text);
+    expect(words).toContain("font-semibold");
+    if (f.textColor) expect(words).toContain(f.textColor);
+    else expect(words).not.toMatch(/text-(blue|green|red)-/);
+    // The line closes every style it opened: what follows is unstyled.
+    expect(classOf(spans, "after")).toBe("");
+  });
+
+  it("draws the blank line of Render's URL block as its marker alone", () => {
+    const spans = parseAnsi(
+      `${ESC}[0;32m${ESC}[1m==> ${ESC}[0m${ESC}[1m${ESC}[0m`,
+    );
+    expect(text(spans)).toBe("==> ");
+    expect(classOf(spans, "==>")).toContain(green);
+  });
+});

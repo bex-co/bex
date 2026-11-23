@@ -120,8 +120,8 @@ func TestNodeReadsTheFirstSubdirectoryPackageJSON(t *testing.T) {
 			if node.Source != tc.source || node.Line != tc.line {
 				t.Fatalf("Node choice = %+v; want line %s from %q", node, tc.line, tc.source)
 			}
-			if tc.want != "" && node.Narration() != tc.want {
-				t.Errorf("narration = %q, want %q", node.Narration(), tc.want)
+			if tc.want != "" && shown(node.Narration()) != tc.want {
+				t.Errorf("narration = %q, want %q", shown(node.Narration()), tc.want)
 			}
 		})
 	}
@@ -173,7 +173,7 @@ func TestNodeCompanionFallsBackOnARequestBexCannotInstall(t *testing.T) {
 				t.Run(name+"/"+runtime+"/common base "+boolName(base != ""), func(t *testing.T) {
 					choices, out := resolveExactAt(t, fake, created, runtime, tc.env, tc.files)
 					i := slices.IndexFunc(choices, func(c NativeChoice) bool { return c.Label == "Node" })
-					if i < 0 || choices[i].Image != image || choices[i].Source != "" || choices[i].Narration() != want || !strings.Contains(out, "COPY --link --from="+image+" ") {
+					if i < 0 || choices[i].Image != image || choices[i].Source != "" || shown(choices[i].Narration()) != want || !strings.Contains(out, "COPY --link --from="+image+" ") {
 						t.Fatalf("choices %+v; want the default Node with %q\n%s", choices, want, out)
 					}
 				})

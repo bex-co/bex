@@ -56,6 +56,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+
+	"github.com/bex-co/bex/lego/types/renderlog"
 )
 
 // forwarded are the signals a container runtime or operator sends a service.
@@ -112,10 +114,11 @@ func run(argv []string, secrets string, stdout, stderr io.Writer) int {
 // cron run, a pre-deploy step and the initial deploy hook. Render's native
 // instance writes it each time it starts the command, at a deploy, after a
 // crash and at a free instance's spin-up (ivanseibel/tretta's log capture,
-// DerekSopok/EMS-Kahoot#3). The command is quoted as configured, $PORT
-// unexpanded, and the line is one write before the command starts, so its
-// own output never splits it. Any other argument shape names nothing, and a
-// shell that cannot be found starts nothing to name.
+// DerekSopok/EMS-Kahoot#3), in green as that capture of Render's log API has
+// it (renderlog.Instance, w32/m576). The command is quoted as configured,
+// $PORT unexpanded, and the line is one write before the command starts, so
+// its own output never splits it. Any other argument shape names nothing, and
+// a shell that cannot be found starts nothing to name.
 func announce(argv []string, stdout io.Writer) {
 	if len(argv) < 3 || argv[1] != "-c" {
 		return
@@ -123,7 +126,7 @@ func announce(argv []string, stdout io.Writer) {
 	if shell := filepath.Base(argv[0]); shell != "bash" && shell != "sh" {
 		return
 	}
-	_, _ = io.WriteString(stdout, "==> Running '"+argv[2]+"'\n")
+	_, _ = io.WriteString(stdout, renderlog.Instance.Line("Running '"+argv[2]+"'")+"\n")
 }
 
 // start launches the command, found at path, with the inherited stdio,

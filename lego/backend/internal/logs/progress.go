@@ -26,6 +26,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/types/renderlog"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -383,6 +384,15 @@ func progressEntry(deployID string, t time.Time, msg string) LogEntry {
 	}
 }
 
+// styled is line, a plain `==> <text>` narration line, written in Render's
+// form f (w32/m576). Each line is given its form where it is written: Render's
+// own where a capture of Render's log API shows the line, renderlog.Plain for
+// bex's own lines and for Render's lines no capture shows with their codes
+// (w32/085). The constants keep the plain words, which displayText gives back.
+func styled(f renderlog.Form, line string) string {
+	return f.Line(strings.TrimPrefix(line, renderlog.Plain.Open))
+}
+
 // progressLines renders the platform lines a deploy row has earned so far.
 // Only observed moments produce lines — no invented clone/checkout stages
 // (those arrive as real BuildKit stdout once the pod runs). `deactivated`
@@ -531,7 +541,7 @@ func preDeployLines(d DeployProgress) []LogEntry {
 	}
 	add(run.StartedAt, fmt.Sprintf(preDeployStartingLineFormat, run.Command))
 	if run.Native && !run.ContainerStartedAt.IsZero() {
-		add(run.ContainerStartedAt, fmt.Sprintf(runningLineFormat, run.Command))
+		add(run.ContainerStartedAt, runningLine(run.Command))
 	}
 	switch {
 	case run.FinishedAt.IsZero():
@@ -603,10 +613,10 @@ func rolloutLines(d DeployProgress, built bool) []LogEntry {
 		out = append(out, progressEntry(d.ID, t, msg))
 	}
 	if built {
-		add(d.RolloutStartedAt, deployingLine)
+		add(d.RolloutStartedAt, styled(renderlog.PlatformStep, deployingLine))
 	}
 	if d.WebConcurrencyDefault > 0 {
-		add(d.RolloutStartedAt, fmt.Sprintf(webConcurrencyLineFormat, d.WebConcurrencyDefault))
+		add(d.RolloutStartedAt, styled(renderlog.PlatformStep, fmt.Sprintf(webConcurrencyLineFormat, d.WebConcurrencyDefault)))
 	}
 	if d.StartCommand == "" || d.InstanceAnnounces {
 		return out
@@ -615,9 +625,18 @@ func rolloutLines(d DeployProgress, built bool) []LogEntry {
 		if !d.FinishedAt.IsZero() && start.After(d.FinishedAt) {
 			break
 		}
-		add(start, fmt.Sprintf(runningLineFormat, d.StartCommand))
+		add(start, runningLine(d.StartCommand))
 	}
 	return out
+}
+
+// runningLine is the narration's copy of the native instance's `==> Running
+// '<command>'`, in the instance's own form (renderlog.Instance), as
+// native-init writes it for a newer image: a start command whose image
+// predates that line, and a pre-deploy step's command, which native-init
+// leaves to the narration (w32/m575).
+func runningLine(command string) string {
+	return styled(renderlog.Instance, fmt.Sprintf(runningLineFormat, command))
 }
 
 // Render's port-scan narration (w8/385, w8/389). While a web service listens
@@ -652,23 +671,33 @@ const (
 )
 
 // portScanWording is one of Render's scan narrations: the line it repeats,
-// its timeout line, and the docs line that follows them ("" for none).
-type portScanWording struct{ scan, timeout, docs string }
+// its timeout line, the docs line that follows them ("" for none), and the
+// form its timeout line and that line's docs line take (w32/m576). Render's
+// log API returns the plain wording's timeout and docs lines in red
+// (kush252/Sentry-AI, Ishan2036924/upmyrank-poc). No capture shows the codes
+// on a scan line, on the docs line after it, which Render colours as the
+// line before it, or on the other wordings' timeouts, so those stay plain
+// (w32/085).
+type portScanWording struct {
+	scan, timeout, docs string
+	timeoutForm         renderlog.Form
+}
 
-// entries is line at at, followed by w's docs line when w has one.
-func (w portScanWording) entries(id string, at time.Time, line string) []LogEntry {
-	out := []LogEntry{progressEntry(id, at, line)}
+// entries is line at at, followed by w's docs line when w has one, both in
+// form f.
+func (w portScanWording) entries(id string, at time.Time, line string, f renderlog.Form) []LogEntry {
+	out := []LogEntry{progressEntry(id, at, styled(f, line))}
 	if w.docs != "" {
-		out = append(out, progressEntry(id, at, w.docs))
+		out = append(out, progressEntry(id, at, styled(f, w.docs)))
 	}
 	return out
 }
 
 var (
-	portScanPlain    = portScanWording{portScanLine, portScanTimeoutLine, portScanDocsLine}
+	portScanPlain    = portScanWording{portScanLine, portScanTimeoutLine, portScanDocsLine, renderlog.PlatformFailure}
 	portScanWordings = map[appv1alpha1.PortScanFinding]portScanWording{
-		appv1alpha1.PortScanFoundLocalhost: {portScanLocalhostLine, portScanLocalhostTimeoutLine, portScanDocsLine},
-		appv1alpha1.PortScanFoundNoHTTP:    {portScanNoHTTPLine, portScanNoHTTPTimeoutLine, ""},
+		appv1alpha1.PortScanFoundLocalhost: {portScanLocalhostLine, portScanLocalhostTimeoutLine, portScanDocsLine, renderlog.Plain},
+		appv1alpha1.PortScanFoundNoHTTP:    {portScanNoHTTPLine, portScanNoHTTPTimeoutLine, "", renderlog.Plain},
 	}
 )
 
@@ -680,7 +709,8 @@ func portScanWordingAt(d DeployProgress, t time.Time) portScanWording {
 		return portScanPlain
 	}
 	if port := d.PortScanFound.EnvPort(); port > 0 {
-		return portScanWording{scan: fmt.Sprintf(portScanEnvPortLine, port), timeout: fmt.Sprintf(portScanEnvPortTimeoutLine, port, port)}
+		return portScanWording{scan: fmt.Sprintf(portScanEnvPortLine, port), timeout: fmt.Sprintf(portScanEnvPortTimeoutLine, port, port),
+			timeoutForm: renderlog.Plain}
 	}
 	if w, ok := portScanWordings[d.PortScanFound]; ok {
 		return w
@@ -717,7 +747,7 @@ func portScanLines(d DeployProgress) []LogEntry {
 			break
 		}
 		w := portScanWordingAt(d, at)
-		out = append(out, w.entries(d.ID, at, w.scan)...)
+		out = append(out, w.entries(d.ID, at, w.scan, renderlog.Plain)...)
 	}
 	timeoutAt := since.Add(portScanMaxLines * portScanInterval)
 	if !due(timeoutAt) {
@@ -727,7 +757,7 @@ func portScanLines(d DeployProgress) []LogEntry {
 		timeoutAt = d.FinishedAt
 	}
 	w := portScanWordingAt(d, timeoutAt)
-	return append(out, w.entries(d.ID, timeoutAt, w.timeout)...)
+	return append(out, w.entries(d.ID, timeoutAt, w.timeout, w.timeoutForm)...)
 }
 
 // The initial deploy hook's narration (w33/m435). Render runs the hook after
@@ -838,7 +868,9 @@ const (
 // row recorded when it went live: the first is the primary, the rest are
 // counted. A deploy that did not go live and a row with no record (a static
 // site, a private service, a worker, a cron job, a row closed before the
-// record existed) get none.
+// record existed) get none. Each line is green, as the live line is, the
+// blank ones with the marker's space inside its colour (ivanseibel/tretta's
+// and kush252/Sentry-AI's captures of Render's log API, w32/m576).
 func primaryURLLines(d DeployProgress) []string {
 	if (d.Status != "live" && d.Status != "deactivated") || d.FinishedAt.IsZero() || len(d.LiveURLs) == 0 {
 		return nil
@@ -851,7 +883,11 @@ func primaryURLLines(d DeployProgress) []string {
 	default:
 		url += fmt.Sprintf(" + %d more domains", more)
 	}
-	return []string{primaryURLBlank, primaryURLRule, primaryURLBlank, url, primaryURLBlank, primaryURLRule}
+	block := []string{primaryURLBlank, primaryURLRule, primaryURLBlank, url, primaryURLBlank, primaryURLRule}
+	for i, line := range block {
+		block[i] = styled(renderlog.PlatformSuccess, line)
+	}
+	return block
 }
 
 // closingLines is a finished deploy's closing line(s): Render's verdict and
@@ -864,7 +900,7 @@ func primaryURLLines(d DeployProgress) []string {
 // directory <dir> does not exist!` before its verdict (EthanM32122/cloaket#1;
 // w8/395). A build's own output is in the log already.
 func closingLines(d DeployProgress, serviceType string) []string {
-	verdict := rendersVerdict(d)
+	verdict, form := rendersVerdict(d)
 	if verdict == "" {
 		return terminalLines(d.Status, serviceType, d.FailureReason)
 	}
@@ -872,7 +908,7 @@ func closingLines(d DeployProgress, serviceType string) []string {
 	if output, ok := appv1alpha1.PublishOutput(strings.TrimSpace(d.FailureReason)); ok && verdict == buildFailedLine {
 		out = narrated(strings.Split(output, "\n"))
 	}
-	return append(out, verdict, troubleshootLine)
+	return append(out, styled(form, verdict), styled(renderlog.PlatformStep, troubleshootLine))
 }
 
 // rendersVerdict is Render's verdict line for a failed deploy whose close
@@ -882,26 +918,29 @@ func closingLines(d DeployProgress, serviceType string) []string {
 // for memory, and a pre-deploy command that exited (preDeployExitStatus).
 // Render's lines for a pre-deploy step that never ran its command, an image
 // pull failure and an out-of-memory kill are not observed, so those keep
-// bex's.
-func rendersVerdict(d DeployProgress) string {
+// bex's. form is the line's form (w32/m576): `==> Timed Out` and `==> Exited
+// with status N` are red, as Render's log API returns them
+// (Ishan2036924/upmyrank-poc, kush252/Sentry-AI); no capture shows the codes
+// on `==> Build failed 😞`, which stays plain (w32/085).
+func rendersVerdict(d DeployProgress) (verdict string, form renderlog.Form) {
 	switch d.Status {
 	case "build_failed":
 		if appv1alpha1.IsBuildFailed(strings.TrimSpace(d.FailureReason)) {
-			return buildFailedLine
+			return buildFailedLine, renderlog.Plain
 		}
 	case deployStatusPreDeployFailed:
 		if code := preDeployExitStatus(d); code != nil {
-			return fmt.Sprintf(exitedLineFormat, *code)
+			return fmt.Sprintf(exitedLineFormat, *code), renderlog.PlatformFailure
 		}
 	case "update_failed":
 		switch {
 		case d.TimedOut:
-			return timedOutLine
+			return timedOutLine, renderlog.PlatformFailure
 		case d.ExitCode != nil && !d.OOMKilled:
-			return fmt.Sprintf(exitedLineFormat, *d.ExitCode)
+			return fmt.Sprintf(exitedLineFormat, *d.ExitCode), renderlog.PlatformFailure
 		}
 	}
-	return ""
+	return "", renderlog.Plain
 }
 
 // terminalLines maps a terminal deploy status to bex's closing line(s). An
@@ -948,9 +987,14 @@ func narrated(lines []string) []string {
 // unmarked trims a reason line and drops any "==>" markers it already opens
 // with: a native build's failure tail quotes bex's own narration lines
 // ("==> Installing Bundler …"), and the marker terminalLines adds must be the
-// line's only one (w8/369).
+// line's only one (w8/369). A quoted line written in one of Render's coloured
+// forms (w32/m576) opens with its marker only once its codes are read, so
+// such a line is taken as the text it shows.
 func unmarked(line string) string {
 	line = strings.TrimSpace(line)
+	if shown := strings.TrimSpace(displayText(line)); strings.HasPrefix(shown, "==>") {
+		line = shown
+	}
 	for strings.HasPrefix(line, "==>") {
 		line = strings.TrimSpace(strings.TrimPrefix(line, "==>"))
 	}
@@ -964,7 +1008,10 @@ func unmarked(line string) string {
 // live (background workers keep the "live" line: they run continuously). A
 // static site closes with Render's site wording (w32/081): Render's static
 // site logs end `==> Uploading build...` then `==> Your site is live 🎉`,
-// where a web service's end `==> Your service is live 🎉`.
+// where a web service's end `==> Your service is live 🎉`. The service's line
+// is green, as Render's log API returns it (ivanseibel/tretta,
+// kush252/Sentry-AI; w32/m576); no capture shows the codes on the site's
+// line, and the rest are bex's own, so they stay plain.
 func terminalLine(status, serviceType string) string {
 	switch status {
 	case "live", "deactivated":
@@ -974,7 +1021,7 @@ func terminalLine(status, serviceType string) string {
 		case appv1alpha1.TypeStaticSite:
 			return "==> Your site is live 🎉"
 		}
-		return "==> Your service is live 🎉"
+		return styled(renderlog.PlatformSuccess, "==> Your service is live 🎉")
 	case "build_failed":
 		return "==> Build failed"
 	case "pre_deploy_failed":

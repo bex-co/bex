@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
+	"github.com/bex-co/bex/lego/types/renderlog"
 )
 
 // CacheStore is the object store BEX_BUILD_CACHE=s3 keeps each App's layer
@@ -178,8 +179,8 @@ bex_layer_rc=$?
 // before anything is fetched, and only when the store holds a cache to fetch:
 // the layout, or on a native build the archive (xdgCacheList). A first build
 // says nothing, as on Render.
-const s3CacheDownloading = `if [ "$bex_layer_rc" = 0 ] || [ -n "${bex_xdg_get:-}" ]; then
-  echo "==> Downloading cache..." >&2
+var s3CacheDownloading = `if [ "$bex_layer_rc" = 0 ] || [ -n "${bex_xdg_get:-}" ]; then
+  ` + shellLine(renderlog.BuildShell, "Downloading cache...") + ` >&2
 fi
 `
 
@@ -243,8 +244,8 @@ const cacheSizeFunc = `bex_size() {
 // extracted, and Render's own Docker builds read "Extraction took 0s." too.
 // A listed layout that did not arrive whole, or a store that could not be
 // listed, says the build runs clean instead.
-const s3CacheRestored = cacheSizeFunc + `if [ -s ` + cacheInMount + `/index.json ]; then
-  echo "==> Transferred $(bex_size "$(du -sb ` + cacheInMount + ` | cut -f1)") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s." >&2
+var s3CacheRestored = cacheSizeFunc + `if [ -s ` + cacheInMount + `/index.json ]; then
+  ` + shellLine(renderlog.BuildShell, `Transferred $(bex_size "$(du -sb `+cacheInMount+` | cut -f1)") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s.`) + ` >&2
 elif [ "$bex_layer_rc" != 1 ]; then
   echo "bex: no usable build cache; building clean" >&2
 fi

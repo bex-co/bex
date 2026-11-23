@@ -118,5 +118,45 @@
     "name": "styled astral overwrite",
     "in": "\u001b[31m𝒜\u001b[0mZ\rAB",
     "want": "AB"
+  },
+  {
+    "name": "Render platform step (w32/m576)",
+    "in": "\u001b[0;34m\u001b[1m==> \u001b[0m\u001b[1mDeploying...\u001b[0m",
+    "want": "==> Deploying..."
+  },
+  {
+    "name": "Render platform success (w32/m576)",
+    "in": "\u001b[0;32m\u001b[1m==> \u001b[0m\u001b[1mYour service is live 🎉\u001b[0m",
+    "want": "==> Your service is live 🎉"
+  },
+  {
+    "name": "Render platform success, blank (w32/m576)",
+    "in": "\u001b[0;32m\u001b[1m==> \u001b[0m\u001b[1m\u001b[0m",
+    "want": "==> "
+  },
+  {
+    "name": "Render platform failure (w32/m576)",
+    "in": "\u001b[0;31m\u001b[1m==> Exited with status 1\u001b[0m",
+    "want": "==> Exited with status 1"
+  },
+  {
+    "name": "Render build shell (w32/m576)",
+    "in": "\u001b[34m\u001b[1m==>\u001b(B\u001b[m \u001b[1mDownloading cache...\u001b(B\u001b[m",
+    "want": "==> Downloading cache..."
+  },
+  {
+    "name": "Render build runtime (w32/m576)",
+    "in": "\u001b[34;1m==>\u001b[0;22m \u001b[1mUploading build...\u001b[22m",
+    "want": "==> Uploading build..."
+  },
+  {
+    "name": "Render build runtime success (w32/m576)",
+    "in": "\u001b[32;1m==>\u001b[0;22m \u001b[1mBuild successful 🎉\u001b[22m",
+    "want": "==> Build successful 🎉"
+  },
+  {
+    "name": "Render instance (w32/m576)",
+    "in": "\u001b[32m\u001b[1m==>\u001b(B\u001b[m \u001b[1mRunning 'node main.js'\u001b(B\u001b[m",
+    "want": "==> Running 'node main.js'"
   }
 ]

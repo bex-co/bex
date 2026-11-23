@@ -54,7 +54,7 @@ func TestHTTPPortNarrationUsesTheClosedDeployRecord(t *testing.T) {
 			if (found >= 0) != tc.want {
 				t.Fatalf("narration=%+v, wantedHTTP=%v", entries, tc.want)
 			}
-			if tc.want && (found+1 >= len(entries) || entries[found+1].Message != "==> Your service is live 🎉") {
+			if tc.want && (found+1 >= len(entries) || entries[found+1].Message != rendersLive) {
 				t.Fatalf("HTTP selection must precede live: %+v", entries)
 			}
 		})

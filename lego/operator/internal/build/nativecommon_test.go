@@ -88,8 +88,8 @@ func TestCommonFoundationPreservesDefaultAndExactSelections(t *testing.T) {
 			if !slices.Contains(fake.asked, "env "+primary) {
 				t.Fatalf("default/exact source metadata not read: %v", fake.asked)
 			}
-			if tc.missing && !strings.Contains(choices[0].Narration(), "No official image "+tc.tag) {
-				t.Fatalf("existing fallback explanation lost: %s", choices[0].Narration())
+			if tc.missing && !strings.Contains(shown(choices[0].Narration()), "No official image "+tc.tag) {
+				t.Fatalf("existing fallback explanation lost: %s", shown(choices[0].Narration()))
 			}
 			if strings.Contains(recipe, "apt-get") {
 				t.Fatal("common tools are being installed during a tenant build")
@@ -457,7 +457,7 @@ func TestCommonNodeRuntimeArtifactPolicy(t *testing.T) {
 				if [3]string{node.Image, node.Line, version} != [3]string{tc.image, tc.line, tc.version} {
 					t.Fatalf("selected official identity/version changed: %+v", node)
 				}
-				if tc.missing && !strings.Contains(node.Narration(), "No official image node:14.21.1-bullseye") {
+				if tc.missing && !strings.Contains(shown(node.Narration()), "No official image node:14.21.1-bullseye") {
 					t.Fatal("missing exact tag lost its existing fallback explanation")
 				}
 				raw, err := os.ReadFile(path)

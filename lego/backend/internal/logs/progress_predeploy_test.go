@@ -29,6 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/types/renderlog"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
@@ -38,7 +39,7 @@ import (
 // text, for a step whose command is `npx prisma migrate deploy`.
 const (
 	rendersStepStart    = "==> Starting pre-deploy: npx prisma migrate deploy"
-	rendersStepRunning  = "==> Running 'npx prisma migrate deploy'"
+	rendersStepRunning  = "\x1b[32m\x1b[1m==>\x1b(B\x1b[m \x1b[1mRunning 'npx prisma migrate deploy'\x1b(B\x1b[m"
 	rendersStepComplete = "==> Pre-deploy complete!"
 	rendersStepFailed   = "==> Pre-deploy has failed"
 	stepCommand         = "npx prisma migrate deploy"
@@ -102,7 +103,7 @@ func TestPreDeployLinesFollowRendersLogByOutcomeLaunchAndServiceType(t *testing.
 		})
 	}
 	code := func(c int32) *int32 { return &c }
-	exited := []string{rendersStepFailed, "==> Exited with status 1", troubleshootLine}
+	exited := []string{rendersStepFailed, rendersExited1, rendersTroubleshoot}
 	for _, c := range []struct {
 		name string
 		row  DeployProgress
@@ -113,7 +114,7 @@ func TestPreDeployLinesFollowRendersLogByOutcomeLaunchAndServiceType(t *testing.
 			slices.Concat(built, []string{rendersStepStart, rendersStepRunning}, exited)},
 		{"a native step that exited 127", failedWith("the pre-deploy command exited with code 127; check the pre-deploy logs",
 			func(r *PreDeployRun) { r.ExitCode = code(127) }), web,
-			slices.Concat(built, []string{rendersStepStart, rendersStepRunning, rendersStepFailed, "==> Exited with status 127", troubleshootLine})},
+			slices.Concat(built, []string{rendersStepStart, rendersStepRunning, rendersStepFailed, renderlog.PlatformFailure.Line("Exited with status 127"), rendersTroubleshoot})},
 		{"a Dockerfile step, which gets no Running line", failedWith(stepDeploy().FailureReason, func(r *PreDeployRun) { r.Native = false }), web,
 			slices.Concat(built, []string{rendersStepStart}, exited)},
 		{"a prebuilt image's step", with(stepDeploy(), func(d *DeployProgress) {
@@ -196,8 +197,8 @@ func TestPreDeployLinesCarryTheRecordedMoments(t *testing.T) {
 		stamp(stepLaunch) + rendersStepStart,
 		stamp(stepContainer) + rendersStepRunning,
 		stamp(stepSettled) + rendersStepFailed,
-		stamp(stepClose) + "==> Exited with status 1",
-		stamp(stepClose) + troubleshootLine,
+		stamp(stepClose) + rendersExited1,
+		stamp(stepClose) + rendersTroubleshoot,
 	}
 	if !slices.Equal(got[2:], want) {
 		t.Fatalf("lines:\n got %q\nwant %q", got[2:], want)
@@ -225,7 +226,7 @@ func TestPreDeployLinesKeepTheirOrderInsideTheDeploy(t *testing.T) {
 		prev = at
 		order = append(order, e.Message)
 	}
-	if !slices.Equal(order[2:], []string{rendersStepStart, rendersStepRunning, rendersStepFailed, "==> Exited with status 1", troubleshootLine}) {
+	if !slices.Equal(order[2:], []string{rendersStepStart, rendersStepRunning, rendersStepFailed, rendersExited1, rendersTroubleshoot}) {
 		t.Fatalf("order = %q", order)
 	}
 	if running := lines[3].Timestamp; running != stepLaunch.Add(rolloutLineStep).Format(time.RFC3339Nano) {
@@ -267,7 +268,7 @@ func TestPreDeployLinesReadAroundTheBuildAndTheStepsOutput(t *testing.T) {
 	last := stepOutput(stepSettled.Add(-400*time.Millisecond), "Error: P3009 migrate found failed migrations")
 
 	if got, want := read(stepDeploy(), buildEnd, first, last), []string{"==> Build successful 🎉", rendersStepStart, rendersStepRunning,
-		first.Message, last.Message, rendersStepFailed, "==> Exited with status 1", troubleshootLine}; !slices.Equal(got, want) {
+		first.Message, last.Message, rendersStepFailed, rendersExited1, rendersTroubleshoot}; !slices.Equal(got, want) {
 		t.Fatalf("a failed step reads\n %q\nwant %q", got, want)
 	}
 	if strings.Contains(strings.Join(read(stepDeploy(), buildEnd, first, last), "\n"), rendersDeploying) {
@@ -348,7 +349,7 @@ func TestWebSocketBuildTailSendsThePreDeployLinesAsTheyAreRecorded(t *testing.T)
 		d.PreDeploy.Status, d.PreDeploy.FinishedAt, d.PreDeploy.ExitCode = "failed", soon(72*time.Minute), &code
 		d.Status, d.FinishedAt = deployStatusPreDeployFailed, soon(72*time.Minute+time.Second)
 	})
-	readUntil(troubleshootLine)
+	readUntil(rendersTroubleshoot)
 	// Let a few more passes read the same row again.
 	_ = conn.SetReadDeadline(time.Now().Add(150 * time.Millisecond))
 	for {
@@ -361,7 +362,7 @@ func TestWebSocketBuildTailSendsThePreDeployLinesAsTheyAreRecorded(t *testing.T)
 		got = append(got, line.Message)
 	}
 
-	step := []string{rendersStepStart, rendersStepRunning, rendersStepFailed, "==> Exited with status 1", troubleshootLine}
+	step := []string{rendersStepStart, rendersStepRunning, rendersStepFailed, rendersExited1, rendersTroubleshoot}
 	var sent []string
 	for _, m := range got {
 		if slices.Contains(step, m) {
@@ -399,7 +400,7 @@ func TestPreDeployLinesReadTheSameOnRESTGraphQLAndMCP(t *testing.T) {
 	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
 	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) { return []DeployProgress{d}, nil }
 	start, end := stepLaunch.Add(-time.Second).Format(time.RFC3339), stepClose.Add(time.Second).Format(time.RFC3339)
-	step := []string{rendersStepStart, rendersStepRunning, rendersStepFailed, "==> Exited with status 1", troubleshootLine}
+	step := []string{rendersStepStart, rendersStepRunning, rendersStepFailed, rendersExited1, rendersTroubleshoot}
 	// lines is the step's ids, oldest first, once its messages read as step.
 	lines := func(surface string, messages, ids []string) []string {
 		t.Helper()
