@@ -109,7 +109,7 @@ Two OpenAPI-inventory-guarded tests prevent schema-vs-struct drift and validator
 
 ## Rejection and secrecy rules
 
-Kin validates declared path/query/body types, required fields, enums, formats, patterns, ranges, and media types with format validation enabled, default injection disabled, and fail-fast errors. The wrapper separately rejects:
+Kin validates declared path/query/body types, required fields, enums, formats, patterns, ranges, and media types with format validation enabled, default injection disabled, and fail-fast errors. Because kin's `explode=false` query decoder validates only the first repeated key, the gate precomputes every operation's `form`/`explode=false` array query parameters (excluding `name`, which preserves raw percent-encoded literal commas per `w8/m55`, and including `renderCommaListQueryCompatibility` rewrites) and joins repeated keys on the validation clone before calling kin so every repeated value is checked while the handler receives the unmodified request (w5/199). The wrapper separately rejects:
 
 - a body on an operation with no request body;
 - query names absent from the path/operation parameters and reviewed query-extension map;

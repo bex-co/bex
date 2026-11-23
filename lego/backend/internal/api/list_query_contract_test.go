@@ -194,16 +194,6 @@ func TestListOperationsConsumeAdmittedQueries(t *testing.T) {
 	}
 }
 
-func isExplodeFalseArray(p *openapi3.Parameter) bool {
-	if p == nil || p.Schema == nil || p.Schema.Value == nil {
-		return false
-	}
-	if p.Schema.Value.Type == nil || !p.Schema.Value.Type.Is(openapi3.TypeArray) {
-		return false
-	}
-	return p.Explode != nil && !*p.Explode
-}
-
 type queryReadSummary struct {
 	reads          map[string]bool
 	commaListReads map[string]bool

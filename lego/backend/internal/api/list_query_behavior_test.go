@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -31,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/events"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -369,5 +371,222 @@ func TestListLogsOwnerIDComposed(t *testing.T) {
 	rec = do(t, h, http.MethodGet, "/v1/logs/values?ownerId=tea-bbbbbbbbbbbbbbbbbbbb&resource=web&label=instance&startTime="+start, testToken, "")
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "srv-bbbbbbbbbbbbbbbbbbbb") || strings.Contains(rec.Body.String(), "srv-aaaaaaaaaaaaaaaaaaaa") {
 		t.Fatalf("GET /v1/logs/values?ownerId=tea-b&resource=web = %d %s, want srv-b only", rec.Code, rec.Body.String())
+	}
+}
+
+// w5/199: kin-openapi's explode=false query decoder validates only the first
+// repeated key. Verify the composed REST OpenAPI gate joins repeated values for
+// every non-`name` explode=false array query parameter across served lists so
+// an invalid second value returns HTTP 400 (instead of slipping through as 200
+// or reaching the handler), while literal percent-encoded commas in `name`
+// filters remain intact.
+func TestRepeatedExplodeFalseEnumQueriesRejectedComposed(t *testing.T) {
+	commaSvc := tenantWebApp("tea-aaaaaaaaaaaaaaaaaaaa", "srv-aaaaaaaaaaaaaaaaaaaa", "comma")
+	commaSvc.Spec.DisplayName = "a,b"
+	commaSvc.Spec.Repo, commaSvc.Spec.Image = "https://github.com/bex-co/example", ""
+	commaSvc.Spec.Runtime = "go"
+
+	fragA := tenantWebApp("tea-aaaaaaaaaaaaaaaaaaaa", "srv-bbbbbbbbbbbbbbbbbbbb", "frag-a")
+	fragA.Spec.DisplayName = "a"
+	fragA.Spec.Repo, fragA.Spec.Image = "https://github.com/bex-co/example", ""
+	fragA.Spec.Runtime = "go"
+
+	fragB := tenantWebApp("tea-aaaaaaaaaaaaaaaaaaaa", "srv-cccccccccccccccccccc", "frag-b")
+	fragB.Spec.DisplayName = "b"
+	fragB.Spec.Repo, fragB.Spec.Image = "https://github.com/bex-co/example", ""
+	fragB.Spec.Runtime = "go"
+
+	site := tenantWebApp("tea-aaaaaaaaaaaaaaaaaaaa", "srv-dddddddddddddddddddd", "site")
+	site.Spec.Type = appv1alpha1.TypeStaticSite
+	site.Spec.Repo, site.Spec.Image = "https://github.com/bex-co/example", ""
+	site.Spec.PublishPath = "dist"
+	site.Spec.Routes = []appv1alpha1.StaticRoute{
+		{Type: "redirect", Source: "/old", Destination: "/"},
+		{Type: "rewrite", Source: "/app/*", Destination: "/index.html"},
+	}
+
+	jobStore := &listQueryJobStore{}
+	eventStore := &listQueryEventStore{}
+	sandboxUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("refused sandbox list request reached upstream: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(sandboxUpstream.Close)
+	base := &core.Base{
+		Client:    fakeClient(commaSvc, fragA, fragB, site),
+		Namespace: "default",
+		Workspace: coretest.Workspaces{"tea-aaaaaaaaaaaaaaaaaaaa"},
+	}
+	h, _ := serverWith(t, base, Deps{
+		Region:                 "fsn1",
+		JobStore:               jobStore,
+		EventStore:             eventStore,
+		SandboxClient:          sandbox.NewClient(sandboxUpstream.URL),
+		SandboxTemplates:       map[string]sandbox.Template{"base": {Image: "alpine:3", CPU: "500m", Memory: "512Mi"}},
+		SandboxDefaultTemplate: "base",
+		SandboxDefaultPlan:     sandbox.PlanStarter,
+	})
+
+	for _, tc := range []struct {
+		name     string
+		path     string
+		wantText string
+		wantCode string
+	}{
+		{
+			name:     "list-services region",
+			path:     "/v1/services?region=frankfurt&region=BOGUS",
+			wantText: "region must be one of",
+		},
+		{
+			name:     "list-services type",
+			path:     "/v1/services?type=web_service&type=BOGUS",
+			wantText: "type must be one of",
+		},
+		{
+			name:     "list-services env",
+			path:     "/v1/services?env=go&env=BOGUS",
+			wantText: "env must be one of",
+		},
+		{
+			name:     "list-services suspended",
+			path:     "/v1/services?suspended=suspended&suspended=BOGUS",
+			wantText: "suspended must be one of",
+		},
+		{
+			name:     "list-events type",
+			path:     "/v1/services/srv-aaaaaaaaaaaaaaaaaaaa/events?type=deploy_ended&type=BOGUS",
+			wantText: "type must be one of",
+		},
+		{
+			name:     "list-routes type",
+			path:     "/v1/services/srv-dddddddddddddddddddd/routes?type=redirect&type=BOGUS",
+			wantText: "type must be one of",
+		},
+		{
+			name:     "list-job status",
+			path:     "/v1/services/srv-aaaaaaaaaaaaaaaaaaaa/jobs?status=pending&status=BOGUS",
+			wantText: "status must be one of",
+		},
+		{
+			name:     "list-postgres suspended",
+			path:     "/v1/postgres?suspended=suspended&suspended=BOGUS",
+			wantText: "suspended must be one of",
+		},
+		{
+			name:     "list-registry-credentials type",
+			path:     "/v1/registrycredentials?type=DOCKER&type=BOGUS",
+			wantText: "type must be one of",
+		},
+		{
+			name:     "list-sandboxes status",
+			path:     "/v1/sandboxes?status=running&status=BOGUS",
+			wantText: "status must be one of",
+		},
+		{
+			name:     "list-sandbox-builds status",
+			path:     "/v1/sandbox-groups/sbg-aaaaaaaaaaaaaaaaaaaa/builds?status=succeeded&status=BOGUS",
+			wantText: "status must be one of",
+			wantCode: "invalid_status",
+		},
+		{
+			name:     "list-sandbox-snapshots status",
+			path:     "/v1/sandbox-groups/sbg-aaaaaaaaaaaaaaaaaaaa/snapshots?ownerId=tea-aaaaaaaaaaaaaaaaaaaa&status=available&status=BOGUS",
+			wantText: "status must be one of",
+			wantCode: "invalid_status",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, h, http.MethodGet, tc.path, testToken, "")
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("GET %s = %d %s, want 400", tc.path, rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tc.wantText) {
+				t.Errorf("GET %s body = %s, want %q", tc.path, rec.Body.String(), tc.wantText)
+			}
+			if tc.wantCode != "" {
+				var errBody struct {
+					Code string `json:"code"`
+				}
+				if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
+					t.Fatalf("unmarshal error body: %v", err)
+				}
+				if errBody.Code != tc.wantCode {
+					t.Errorf("GET %s error code = %q, want %q", tc.path, errBody.Code, tc.wantCode)
+				}
+			}
+		})
+	}
+
+	// Valid repeated enum values continue to pass the gate and return 200.
+	for _, path := range []string{
+		"/v1/services?region=frankfurt&region=oregon",
+		"/v1/services?type=web_service&type=static_site",
+		"/v1/services?env=go&env=node",
+		"/v1/services/srv-dddddddddddddddddddd/routes?type=redirect&type=rewrite",
+	} {
+		if rec := do(t, h, http.MethodGet, path, testToken, ""); rec.Code != http.StatusOK {
+			t.Errorf("valid repeated query GET %s = %d %s, want 200", path, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Literal percent-encoded commas in `name` remain intact, both standalone
+	// and alongside repeated non-`name` explode=false parameters.
+	for _, query := range []string{
+		"name=a%2Cb",
+		"name=a%2Cb&region=frankfurt&region=oregon",
+	} {
+		rec := do(t, h, http.MethodGet, "/v1/services?"+query, testToken, "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /v1/services?%s = %d %s, want 200", query, rec.Code, rec.Body.String())
+		}
+		var rows []struct {
+			Service struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"service"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 1 || rows[0].Service.ID != "srv-aaaaaaaaaaaaaaaaaaaa" || rows[0].Service.Name != "a,b" {
+			t.Errorf("GET /v1/services?%s = %+v, want only srv-aaaaaaaaaaaaaaaaaaaa (a,b)", query, rows)
+		}
+	}
+}
+
+func TestExplodeFalseQueryIndexExcludesName(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byOpID := map[string][]string{}
+	for op, names := range contract.explodeFalseQuery {
+		if slices.Contains(names, "name") {
+			t.Errorf("operation %s included \"name\" in explodeFalseQuery: %v", op.OperationID, names)
+		}
+		if op.OperationID != "" {
+			byOpID[op.OperationID] = names
+		}
+	}
+	for opID, want := range map[string][]string{
+		"list-services":             {"env", "region", "suspended", "type"},
+		"list-postgres":             {"region", "suspended"},
+		"list-key-value":            {"region"},
+		"list-redis":                {"region"},
+		"list-events":               {"type"},
+		"list-routes":               {"type"},
+		"list-job":                  {"status"},
+		"list-registry-credentials": {"type"},
+		"list-sandboxes":            {"status"},
+		"list-sandbox-builds":       {"status"},
+		"list-sandbox-snapshots":    {"status"},
+	} {
+		got := byOpID[opID]
+		for _, param := range want {
+			if !slices.Contains(got, param) {
+				t.Errorf("%s missing %q in explodeFalseQuery (got %v)", opID, param, got)
+			}
+		}
 	}
 }

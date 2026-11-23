@@ -66,6 +66,11 @@ type renderOpenAPIContract struct {
 	// once at load time. Keyed by the operation pointer rather than its id so
 	// operations the upstream document leaves unnamed cannot collide on "".
 	allowedQuery map[*openapi3.Operation]map[string]struct{}
+	// explodeFalseQuery is the per-operation list of form/explode=false array
+	// query parameter names (excluding "name", whose raw percent-encoded commas
+	// stay untouched per w8/m55), resolved once at load time after
+	// applyRenderCompatibility.
+	explodeFalseQuery map[*openapi3.Operation][]string
 	// errorCodes is the errorCode vocabulary: the only codes Render's error
 	// body carries (w8/411).
 	errorCodes map[string]bool
@@ -418,7 +423,13 @@ func loadRenderOpenAPIContractData(data []byte, expectedSHA256 string) (*renderO
 	if err != nil {
 		return nil, err
 	}
-	return &renderOpenAPIContract{document: doc, router: router, allowedQuery: buildAllowedQueryNames(doc), errorCodes: errorCodes}, nil
+	return &renderOpenAPIContract{
+		document:          doc,
+		router:            router,
+		allowedQuery:      buildAllowedQueryNames(doc),
+		explodeFalseQuery: buildExplodeFalseQueryNames(doc),
+		errorCodes:        errorCodes,
+	}, nil
 }
 
 // renderErrorCodes reads the spec's errorCode vocabulary, so a re-pin carries
@@ -461,6 +472,75 @@ func buildAllowedQueryNames(doc *openapi3.T) map[*openapi3.Operation]map[string]
 		}
 	}
 	return index
+}
+
+// isExplodeFalseArray reports whether p is a form-style explode=false array
+// query parameter.
+func isExplodeFalseArray(p *openapi3.Parameter) bool {
+	if p == nil || p.Schema == nil || p.Schema.Value == nil {
+		return false
+	}
+	if p.Style != "" && p.Style != openapi3.SerializationForm {
+		return false
+	}
+	if p.Schema.Value.Type == nil || !p.Schema.Value.Type.Is(openapi3.TypeArray) {
+		return false
+	}
+	return p.Explode != nil && !*p.Explode
+}
+
+// buildExplodeFalseQueryNames resolves every operation's form/explode=false
+// array query parameters (excluding "name", whose percent-encoded literal
+// commas stay raw per w8/m55) once at load time, after applyRenderCompatibility
+// has rewritten comma-list compatibility parameters such as list-events' `type`.
+func buildExplodeFalseQueryNames(doc *openapi3.T) map[*openapi3.Operation][]string {
+	index := map[*openapi3.Operation][]string{}
+	for _, item := range doc.Paths.Map() {
+		for _, operation := range item.Operations() {
+			byName := map[string]*openapi3.Parameter{}
+			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
+				for _, ref := range parameters {
+					if ref != nil && ref.Value != nil && ref.Value.In == openapi3.ParameterInQuery {
+						byName[ref.Value.Name] = ref.Value
+					}
+				}
+			}
+			var names []string
+			for name, param := range byName {
+				if name != "name" && isExplodeFalseArray(param) {
+					names = append(names, name)
+				}
+			}
+			if len(names) > 0 {
+				slices.Sort(names)
+				index[operation] = names
+			}
+		}
+	}
+	return index
+}
+
+// joinExplodeFalseQuery combines repeated keys for every precomputed
+// form/explode=false array query parameter on the validation clone. kin's
+// explode=false decoder validates only the first repeated value, so without
+// this repeated keys like ?region=frankfurt&region=BOGUS bypass enum checks.
+// The original request passed to the handler is untouched.
+func (c *renderOpenAPIContract) joinExplodeFalseQuery(route *routers.Route, validationRequest *http.Request) {
+	names := c.explodeFalseQuery[route.Operation]
+	if len(names) == 0 || validationRequest.URL.RawQuery == "" {
+		return
+	}
+	query := validationRequest.URL.Query()
+	changed := false
+	for _, name := range names {
+		if values := query[name]; len(values) > 1 {
+			query.Set(name, strings.Join(values, ","))
+			changed = true
+		}
+	}
+	if changed {
+		validationRequest.URL.RawQuery = query.Encode()
+	}
 }
 
 func applyRenderCompatibility(doc *openapi3.T) {
@@ -891,17 +971,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		core.WriteErrStatus(w, http.StatusBadRequest, unsupportedQueryMessage(unknown, route.Operation.OperationID))
 		return
 	}
-	// Datastore region filters accept repeated keys as well as comma lists.
-	// kin's explode=false decoder validates only the first repeated value, so
-	// combine them on the clone to check every region against the pinned enum.
 	operationID := compatOperationID(route.Operation.OperationID)
-	if operationID == "list-postgres" || operationID == "list-key-value" {
-		query := validationRequest.URL.Query()
-		if regions := query["region"]; len(regions) > 1 {
-			query.Set("region", strings.Join(regions, ","))
-			validationRequest.URL.RawQuery = query.Encode()
-		}
-	}
+	v.contract.joinExplodeFalseQuery(route, validationRequest)
 
 	if check := sandboxListQueryChecks[operationID]; check != nil {
 		if err := check(r.URL.Query()); err != nil {
