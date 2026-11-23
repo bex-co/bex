@@ -16,6 +16,7 @@ on:
   pull_request:
     paths:
       - "deploy/gitops/base/cnpg-operator.yaml"
+      - "deploy/gitops/base/datastore-priority.yaml"
       - "deploy/cnpg-operator/**"
       - "deploy/helm-artifacts.lock"
       - "deploy/pg-operand/matrix.json"
@@ -31,6 +32,7 @@ on:
     branches: [main]
     paths:
       - "deploy/gitops/base/cnpg-operator.yaml"
+      - "deploy/gitops/base/datastore-priority.yaml"
       - "deploy/cnpg-operator/**"
       - "deploy/helm-artifacts.lock"
       - "deploy/pg-operand/matrix.json"

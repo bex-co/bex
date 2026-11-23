@@ -62,6 +62,9 @@ trap cleanup EXIT
 echo "==> kind cluster $cluster ($node_image)"
 kind create cluster --name "$cluster" --image "$node_image" --kubeconfig "$kubeconfig" --wait 3m
 export KUBECONFIG="$kubeconfig"
+# The operator stamps this class on every Postgres pod, and admission refuses
+# a pod naming a class that does not exist (production applies the same file).
+kubectl apply -f deploy/gitops/base/datastore-priority.yaml
 
 echo "==> CloudNativePG operator $repository:$tag"
 chart=$(fetch_pinned_chart cloudnative-pg "$work") || exit 1
@@ -97,6 +100,12 @@ for attempt in 1 2 3; do
 done
 
 echo "==> TestApplicationDatabaseExtensionsOnCNPG/PG$major against $operator"
-cd lego/operator
-GOWORK=off BEX_CNPG_KUBECONFIG="$kubeconfig" BEX_PG_OPERAND_IMAGES="$major=$operand" BEX_CNPG_MAJORS="$major" \
-  go test ./internal/controller -run "^TestApplicationDatabaseExtensionsOnCNPG$/^PG$major$" -count=1 -v -timeout 40m
+rc=0
+(cd lego/operator && GOWORK=off BEX_CNPG_KUBECONFIG="$kubeconfig" BEX_PG_OPERAND_IMAGES="$major=$operand" BEX_CNPG_MAJORS="$major" \
+  go test ./internal/controller -run "^TestApplicationDatabaseExtensionsOnCNPG$/^PG$major$" -count=1 -v -timeout 40m) || rc=$?
+if [ "$rc" -ne 0 ]; then
+  # The test deletes its namespace; the operator's log is what is left.
+  echo "==> CloudNativePG operator log (test failed)"
+  kubectl -n cnpg-system logs deploy/cnpg-cloudnative-pg --tail=300 || true
+fi
+exit "$rc"
