@@ -6,7 +6,15 @@
 
 ## Context
 
-Render documents a fixed set of [Postgres extensions](https://render.com/docs/postgresql-extensions) per major version. A database user enables one by running `CREATE EXTENSION <name>;` in their own database. Nothing is preinstalled into every database, and no ticket is needed. Six of them fail on bex today because the CNPG operand images bex pins carry none of them:
+Render documents a fixed set of [Postgres extensions](https://render.com/docs/postgresql-extensions) per major version. A database user enables one by running `CREATE EXTENSION <name>;` in their own database. Nothing is preinstalled into every database, and no ticket is needed.
+
+When this ADR was accepted it counted six failures, the extensions the CNPG operand images bex pins do not carry at all (the table below). The real count was about thirty, and it still is on production, which runs those upstream images until w21/m584's adoption deploys. On a PostgreSQL 18 database (w8/276's sweep, 2026-11-11), `CREATE EXTENSION` fails for 31 names on Render's list:
+
+- 8 are not in the image: PostGIS's four names, `pg_partman`, `pg_duckdb`, `pg_ivm` and `timescaledb` (the table below; Render offers the table's sixth, `pg_similarity`, only on 13–15).
+- `pg_repack` (16+) is in no image (D1 § Beyond the six). Neither is the `wal2json` output plugin, which a replication slot names instead.
+- 22 contrib modules that are in the image are refused with `permission denied`, because PostgreSQL does not mark them `trusted` (D1 § Render's untrusted contrib modules). So are `adminpack` and `old_snapshot` on the majors that have them.
+
+Render's literal `CREATE EXTENSION vector;` fails too, on the preinstall (`already exists`, D1 § pgvector). [ADR018's "Postgres extensions (`CREATE EXTENSION`)" row](ADR018-render-parity.md#managed-postgres) lists every name, what `main` already changes, what waits for the deploy, and the owner of what remains. The six the upstream images lack:
 
 | Extension     | Render's restriction          | bex milestone |
 | ------------- | ----------------------------- | ------------- |
@@ -153,7 +161,7 @@ Adopting D1 restarts every managed Postgres pod once. The user approved that one
 
 ## Consequences
 
-- Render's documented `CREATE EXTENSION` flows (Django/GeoDjango, Rails PostGIS adapters, pg_partman schedules, TimescaleDB hypertables) run unchanged. Each extension's milestone then closes its own ADR018 row.
+- Render's documented `CREATE EXTENSION` flows (Django/GeoDjango, Rails PostGIS adapters, pg_partman schedules, TimescaleDB hypertables) run unchanged. Each extension's milestone then closes its part of ADR018's "Postgres extensions (`CREATE EXTENSION`)" row.
 - bex now owns per-major operand images and their refresh cadence: each CNPG or PGDG update is publish, then pin.
 - These images are also where `pg_failover_slots` would come from. On PostgreSQL 13–16, CloudNativePG keeps a logical-replication publisher's slots through a failover or switchover only with that extension loaded (CNPG v1.30.1 `docs/src/replication.md` § Logical Decoding Slot Synchronization), so an HA publisher on those majors loses every slot at a failover until an image here carries it. It is a requirement of [ADR009 § Lifecycle](ADR009-postgresql-management.md#lifecycle-w34m543) (w34/m543), owned with this image by w8/m92; 17 and later need no extension.
 - The allowlist is a new privileged surface inside every tenant database. Its closed list and tests (D3) are what security reviews check. Adding an extension later means amending D1's table here.
