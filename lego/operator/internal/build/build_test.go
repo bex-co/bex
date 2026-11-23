@@ -24,6 +24,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -1371,6 +1372,98 @@ func TestBuildPhasesCaptureFailureTail(t *testing.T) {
 		if c.TerminationMessagePolicy != corev1.TerminationMessageFallbackToLogsOnError {
 			t.Errorf("phase %q has TerminationMessagePolicy %q, want FallbackToLogsOnError", c.Name, c.TerminationMessagePolicy)
 		}
+	}
+}
+
+// w8/412: a deleted build pod's running phase is stopped with SIGTERM, which a
+// shell running as the container's PID 1 never received, so the phase ran on
+// to the end of a 30 s grace period: a build canceled a few seconds in logged
+// `==> Downloading cache...` after `==> Deploy canceled`. Every shell phase
+// now takes the signal, and the pod is killed at the kubelet's floor.
+func TestABuildPodStopsWhenItIsDeleted(t *testing.T) {
+	native := s3CacheOpts()
+	native.Builder, native.Runtime, native.BuildCommand, native.StartCommand = BuilderNative, "node", "npm ci", "npm start"
+	native.RuntimeEnvSecret, native.NativeResolverImage = "env", "bex:resolver"
+	for name, o := range map[string]Options{
+		"dockerfile, signed": {Name: "app", Revision: "r1", Repo: "https://github.com/o/r", SignKeySecret: "signing", PushSecret: "push"},
+		"native, s3 cache":   native,
+	} {
+		t.Run(name, func(t *testing.T) {
+			spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
+			if g := spec.TerminationGracePeriodSeconds; g == nil || *g != 1 {
+				t.Errorf("terminationGracePeriodSeconds = %v, want 1", g)
+			}
+			shells := 0
+			for _, c := range append(slices.Clone(spec.InitContainers), spec.Containers...) {
+				if c.Command[0] != "sh" {
+					if c.Name != signContainer && c.Name != nativeResolveContainer {
+						t.Errorf("phase %q runs %q, which nothing here shows stops on SIGTERM", c.Name, c.Command[0])
+					}
+					continue
+				}
+				shells++
+				// The clone and the native preparer carry their scripts in Args.
+				script := ""
+				if c.Command[len(c.Command)-1] == "-c" {
+					script = c.Args[0]
+				} else {
+					script = scriptOf(t, &c)
+				}
+				if !strings.HasPrefix(script, phaseStopTrap) || strings.Count(script, phaseStopTrap) != 1 {
+					t.Errorf("phase %q does not open with the stop trap once:\n%.120s", c.Name, script)
+				}
+			}
+			if shells < 3 {
+				t.Errorf("only %d shell phases checked", shells)
+			}
+		})
+	}
+}
+
+// A classified phase (the clone's fetch, BuildKit's solve) runs third-party
+// programs for as long as the tenant's build takes. A stop's SIGTERM ends it
+// at once rather than at the kubelet's SIGKILL, and nothing it would print
+// after follows.
+func TestAClassifiedPhaseEndsAtTheStopSignal(t *testing.T) {
+	dir := t.TempDir()
+	started, logf := dir+"/started", dir+"/log"
+	out, err := os.Create(logf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = out.Close() })
+	script := strings.ReplaceAll(phaseStopTrap+classifyPrelude+`bex_run sh -c ': > "$1"; exec sleep 30' sh "$1"
+echo "==> after the build"`, "/tmp/", dir+"/")
+	cmd := exec.Command("sh", "-eu", "-c", script, "bex-buildkit", started)
+	cmd.Stdout, cmd.Stderr = out, out
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// The sleep outlives the shell, as nothing kills the rest of a process
+	// group that is not a container.
+	t.Cleanup(func() { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) })
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		if _, err := os.Stat(started); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the phase's command never started")
+		}
+	}
+	stopped := time.Now()
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	err = cmd.Wait()
+	if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != 143 {
+		t.Errorf("a stopped phase ended with %v, want its trap's exit status 143", err)
+	}
+	if took := time.Since(stopped); took > 5*time.Second {
+		t.Errorf("a stopped phase took %s to end", took)
+	}
+	if b, _ := os.ReadFile(logf); len(b) != 0 {
+		t.Errorf("a stopped phase said:\n%s", b)
 	}
 }
 

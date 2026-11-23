@@ -18,6 +18,7 @@ package build
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -185,7 +187,7 @@ func TestS3BuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 				if tc.o.Builder == BuilderNative {
 					script = nativeLogDisplay + script + nativeExportReport
 				}
-				c.Command[scriptIndex(t, c)] = classifyPrelude + script
+				c.Command[scriptIndex(t, c)] = phaseStopTrap + classifyPrelude + script
 				if j := slices.Index(c.Args, "--export-cache"); j >= 0 {
 					c.Args = slices.Delete(c.Args, j, j+2)
 				}
@@ -410,8 +412,10 @@ func TestCachePhaseSignalsReadOnlyOurOwnOutcomes(t *testing.T) {
 // --no-follow-symlinks (without it, symlinks are followed, so a dropped flag
 // leaks), the blobs include filter, and --delete. Every call is logged, and
 // FAKE_S3_FAIL=<subcommand> makes that subcommand fail, with exit status
-// FAKE_S3_FAIL_RC (default 1). ls answers as aws-cli does: one line per
-// matching key, and exit 1 when none matches.
+// FAKE_S3_FAIL_RC (default 1). FAKE_S3_HOLD=<subcommand> holds that
+// subcommand in flight: it creates $FAKE_S3_HOLD_AT.held and waits for
+// $FAKE_S3_HOLD_AT.go. ls answers as aws-cli does: one line per matching key,
+// and exit 1 when none matches.
 const fakeAWS = `#!/bin/sh
 shift 2 # --endpoint-url <url>
 [ "$1" = s3 ] || exit 64
@@ -420,6 +424,10 @@ cmd=$1
 shift
 echo "$cmd $*" >> "$FAKE_S3_LOG"
 [ "$FAKE_S3_FAIL" = "$cmd" ] && exit "${FAKE_S3_FAIL_RC:-1}"
+if [ "${FAKE_S3_HOLD:-}" = "$cmd" ]; then
+  : > "$FAKE_S3_HOLD_AT.held"
+  while [ ! -e "$FAKE_S3_HOLD_AT.go" ]; do sleep 0.05; done
+fi
 local_of() { printf '%s/%s' "$FAKE_S3" "${1#s3://}"; }
 case "$cmd" in
 rm)
@@ -512,6 +520,13 @@ func newCacheScriptRig(t *testing.T) *cacheScriptRig {
 // retargeted at the rig, returning its exit error and stderr.
 func (r *cacheScriptRig) run(phase *corev1.Container, extraEnv ...string) (string, error) {
 	r.t.Helper()
+	out, err := r.command(phase, extraEnv...).CombinedOutput()
+	return string(out), err
+}
+
+// command is run's process, not yet started.
+func (r *cacheScriptRig) command(phase *corev1.Container, extraEnv ...string) *exec.Cmd {
+	r.t.Helper()
 	script := scriptOf(r.t, phase)
 	script = strings.ReplaceAll(script, cacheInMount, r.in)
 	script = strings.ReplaceAll(script, cacheOutMount, r.out)
@@ -526,8 +541,7 @@ func (r *cacheScriptRig) run(phase *corev1.Container, extraEnv ...string) (strin
 		cmd.Env = append(cmd.Env, e.Name+"="+e.Value)
 	}
 	cmd.Env = append(cmd.Env, extraEnv...)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return cmd
 }
 
 func (r *cacheScriptRig) outcomeLine() string {
@@ -712,6 +726,54 @@ func TestS3CacheRestoreSaysRendersRestoreLinesOnADockerfileBuild(t *testing.T) {
 	// Nor does a store that cannot be asked offer one.
 	if out, _ := r.run(restore, "FAKE_S3_FAIL=ls", "FAKE_S3_FAIL_RC=255"); out != "bex: no usable build cache; building clean\n" {
 		t.Errorf("an unreachable store's log:\n%s", out)
+	}
+}
+
+// w8/412: a build canceled a few seconds in logged `==> Downloading cache...`
+// after `==> Deploy canceled`. The cancel deleted the Job, and the kubelet
+// sent cache-restore, then asking the store for a cache, SIGTERM, which its
+// shell, the container's PID 1, never received: the phase said the line once
+// the listing returned, and fetched the cache. It now exits there, saying and
+// fetching nothing. Off PID 1, as here, a shell without the trap dies of the
+// signal at once instead, so the exit status is what shows the trap ran.
+func TestS3CacheRestoreStoppedWhileListingSaysAndFetchesNothing(t *testing.T) {
+	r := newCacheScriptRig(t)
+	restore, save := s3Phases(t, false)
+	r.writeLayout(r.out)
+	if _, err := r.run(save); err != nil {
+		t.Fatal(err)
+	}
+	hold := filepath.Join(r.dir, "hold")
+	cmd := r.command(restore, "FAKE_S3_HOLD=ls", "FAKE_S3_HOLD_AT="+hold)
+	var out strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	release := func() { _ = os.WriteFile(hold+".go", nil, 0o644) }
+	t.Cleanup(release)
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		if _, err := os.Stat(hold + ".held"); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			release()
+			t.Fatalf("the restore never asked the store; it said:\n%s", out.String())
+		}
+	}
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	release()
+	err := cmd.Wait()
+	if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != 143 {
+		t.Errorf("a stopped restore ended with %v, want its trap's exit status 143", err)
+	}
+	if out.Len() != 0 {
+		t.Errorf("a stopped restore said:\n%s", out.String())
+	}
+	if calls := r.calls(); len(calls) != 1 || !strings.HasPrefix(calls[0], "ls ") {
+		t.Errorf("a stopped restore went on past the listing: %q", calls)
 	}
 }
 

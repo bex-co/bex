@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -150,12 +151,20 @@ const transientLogPattern = `dial tcp|connection refused|connection reset|networ
 // A phase may redefine bex_display, which turns the stream into what its log
 // shows (nativeLogDisplay), and set bex_message so a failure's raw tail still
 // reaches the termination message when the log is no longer the raw stream.
+//
+// The pipeline runs in the background and the phase waits on it, so a stop's
+// SIGTERM ends the phase at once (phaseStopTrap): a shell takes its trap during
+// `wait`, where a foreground pipeline would hold it until the tenant's build
+// or the fetch ended. bex_display is the pipeline's last process, and it reads
+// to the end of a stream every other part writes into, so the exit code file
+// and the captured tail are written by the time it exits.
 var classifyPrelude = fmt.Sprintf(`bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log; bex_message=/dev/termination-log
 bex_display() { cat; }
 bex_run() {
   rm -f "$bex_rc_file" "$bex_log"
   set +e
-  { { "$@" 2>&1; echo $? > "$bex_rc_file"; } | tee /dev/stderr | tail -c %d > "$bex_log"; } 2>&1 | bex_display >&2
+  { { "$@" 2>&1; echo $? > "$bex_rc_file"; } | tee /dev/stderr | tail -c %d > "$bex_log"; } 2>&1 | bex_display >&2 &
+  wait $!
   bex_rc="$(cat "$bex_rc_file" 2>/dev/null || echo missing)"
   set -e
   [ "$bex_rc" = 0 ] && return 0
@@ -1703,6 +1712,8 @@ fi
 		// No legacy Docker-link env vars (w4/m123) — the build — runs tenant Dockerfile/buildpack code.
 		EnableServiceLinks: new(false),
 		RestartPolicy:      corev1.RestartPolicyNever,
+		// A stopped build stops now (w8/412): see stopGraceSeconds.
+		TerminationGracePeriodSeconds: new(int64(stopGraceSeconds)),
 		InitContainers: []corev1.Container{
 			clone,
 		},
@@ -1793,6 +1804,7 @@ fi
 	// InitContainers and replaces Containers wholesale — applying it any earlier
 	// silently misses both of those phases.
 	captureFailureTail(&podSpec)
+	endPhasesOnStop(&podSpec)
 	podSpec.Volumes = volumes
 
 	return &batchv1.Job{
@@ -2127,7 +2139,9 @@ if [ -d ` + outputMount + ` ]; then printf '%s' "$commit" > ` + revisionFile + `
 //     cannot succeed and would hold a 7 GiB node-exclusive slot to prove it.
 //   - a failed cache-save => FailJob (w33/m569), when the build has one. Its
 //     script exits 0 on every failure it sees, so only the kernel fails it (an
-//     OOM kill), and a pod fails only once the push beside it has exited too.
+//     OOM kill; a stop's SIGTERM, phaseStopTrap, comes only to a pod whose Job
+//     is gone or failed, or to a disruption the first rule ignores), and a pod
+//     fails only once the push beside it has exited too.
 //     A push that succeeded already settled the build, whose release rolls out
 //     from that image: a retry would rebuild it and push the release's tag
 //     again. A push that failed fails the build here instead of retrying,
@@ -2190,6 +2204,53 @@ func captureFailureTail(spec *corev1.PodSpec) {
 	for i := range spec.Containers {
 		spec.Containers[i].TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
 		spec.Containers[i].Env = append(spec.Containers[i].Env, budget)
+	}
+}
+
+// A cancel, a newer build or the cap deletes a build Job while its pod runs
+// (StopRevision, TrimOvershoot), and the kubelet then stops the phase that is
+// running with SIGTERM: it starts no later phase. Every phase is a shell
+// script, and Linux delivers a signal from outside a container to its PID 1
+// only when that process handles it, so the shell went on as if nothing had
+// happened until the SIGKILL at the end of the pod's grace period, 30 s by
+// default. A build canceled a few seconds in kept restoring its cache, and
+// logged `==> Downloading cache...` after `==> Deploy canceled` (w8/412); one
+// canceled mid-build kept running the tenant's build steps, and one canceled
+// during its push kept uploading.
+//
+// stopGraceSeconds is the pod's grace period: nothing in a build needs one,
+// since every phase starts over in a new pod, and a cache-save cut short leaves
+// the layout cache-restore checks blob by blob. The kubelet still waits its
+// own floor of 2 s before the SIGKILL. 1 rather than 0, which would remove the
+// pod object before its containers stop.
+const stopGraceSeconds = 1
+
+// phaseStopTrap makes a phase's shell handle SIGTERM by exiting, so the
+// signal reaches it as PID 1. The shell takes the trap at once while it waits
+// on a background job, and otherwise as soon as its current command returns,
+// so it never starts another; the command in flight stops at the SIGKILL. When
+// a container's PID 1 exits, the kernel kills everything else in it.
+const phaseStopTrap = "trap 'exit 143' TERM\n"
+
+// endPhasesOnStop opens every shell phase's script with phaseStopTrap. Applied
+// once the pod is assembled, as captureFailureTail is, so no phase misses it.
+func endPhasesOnStop(spec *corev1.PodSpec) {
+	for _, phases := range [][]corev1.Container{spec.InitContainers, spec.Containers} {
+		for i := range phases {
+			c := &phases[i]
+			if len(c.Command) == 0 || c.Command[0] != "sh" {
+				continue // a binary of its own (cosign, the version resolver) exits on SIGTERM
+			}
+			switch at := slices.Index(c.Command, "-c"); {
+			case at < 0:
+			case at+1 < len(c.Command):
+				c.Command = slices.Clone(c.Command)
+				c.Command[at+1] = phaseStopTrap + c.Command[at+1]
+			case len(c.Args) > 0:
+				c.Args = slices.Clone(c.Args)
+				c.Args[0] = phaseStopTrap + c.Args[0]
+			}
+		}
 	}
 }
 
