@@ -331,20 +331,10 @@ for ext in ${carried//,/ }; do
   [ "$(as app restored "SELECT count(*) FROM pg_extension WHERE extname = '${ext}'")" = 1 ] ||
     fail "restore lost extension ${ext}"
 done
-if has postgis; then
-  [ "$(as app restored "SELECT count(*) FROM places")" = 50 ] || fail "PostGIS rows did not restore"
-  [ "$(as app restored "SELECT count(*) FROM spatial_ref_sys WHERE srid = 990001")" = 1 ] || fail "custom SRID did not restore"
-fi
-if has pg_ivm; then
-  [ "$(as app restored "SELECT s FROM base_sum")" = 60 ] || fail "pg_ivm rows did not restore"
-  as app restored "INSERT INTO base VALUES (4, 40)" >/dev/null
-  [ "$(as app restored "SELECT s FROM base_sum")" = 100 ] || fail "original IMMV is not incremental after restore"
-fi
-if has timescaledb; then
-  [ "$(as app restored 'SELECT count(*) FROM metrics')" = 2 ] || fail 'hypertable rows did not restore'
-  as app restored 'INSERT INTO metrics VALUES (now(), 3)' >/dev/null
-  [ "$(as app restored 'SELECT sum(v) FROM metrics')" = 6 ] || fail 'restored hypertable is not writable'
-fi
+# appdb holds the same PostGIS, IMMV and hypertable fixtures as their seeds.
+for ext in postgis pg_ivm timescaledb; do
+  ! has "$ext" || restored "$ext" restored || fail "the platform restore did not give ${ext}'s data back working"
+done
 [ "$(as app restored "SELECT rolsuper, current_setting('is_superuser') FROM pg_roles WHERE rolname = current_user")" = 'f|off' ] || fail 'restore elevated the owner'
 sample_memory
 if [ -r /sys/fs/cgroup/memory.peak ]; then echo "cgroup_memory_peak_bytes=$(cat /sys/fs/cgroup/memory.peak)"; fi

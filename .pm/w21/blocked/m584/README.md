@@ -1,6 +1,6 @@
 # w21 · m584 — Adopt the bex Postgres operand image with each extension gated on its own, so PostGIS and the rest stop waiting on TimescaleDB's restore
 
-**Worker:** worker21 **Goal:** production managed Postgres runs the bex operand image on every major 13–18; each extension whose own ADR092 gate passes is in the owner allowlist; `pg_repack`, `wal2json` and the `pgaudit` preload ride the same digest, so every managed cluster restarts once. **Status:** todo (t001–t004 done)
+**Worker:** worker21 **Goal:** production managed Postgres runs the bex operand image on every major 13–18; each extension whose own ADR092 gate passes is in the owner allowlist; `pg_repack`, `wal2json` and the `pgaudit` preload ride the same digest, so every managed cluster restarts once. **Status:** blocked — `pin must carry` `b8c7ac47b2` (t001–t004, t007, t008 done; t005's adoption commit shipped)
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | [t004](done/t004.md) | Run the gate on 13–18 × arm64 and amd64, and record each digest and each extension's verdict — **DONE** | 45m | t002, t003 |
 | [t005](t005.md) | Write the gated digests into `bexOperandImages` and restart every managed cluster once, off-peak, under ADR092 D4 | 1h | t004 |
 | [t006](t006.md) | Production acceptance, and the w8 extension items told what they wait on now | 45m | t005 |
-| [t007](t007.md) | Simplify | 20m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
 ## Definition of done

@@ -174,5 +174,44 @@ class GateTests(unittest.TestCase):
                 self.assertEqual(result.returncode, code, result.stderr.decode())
 
 
+def workflow_jobs():
+    """The publish workflow's jobs as raw text blocks, keyed by job id."""
+    text = (ROOT.parent.parent / ".github/workflows/pg-operand-image.yml").read_text()
+    jobs, name = {}, None
+    for line in text.split("\njobs:\n", 1)[1].splitlines():
+        if line[:2] == "  " and line[2:3] not in (" ", "#") and line.rstrip().endswith(":"):
+            name = line.strip()[:-1]
+            jobs[name] = ""
+        elif name:
+            jobs[name] += line + "\n"
+    return jobs
+
+
+class WorkflowTests(unittest.TestCase):
+    """Every published digest was gated on both architectures, each natively."""
+
+    def test_each_architecture_is_gated_on_its_own_hardware_before_publish(self):
+        jobs = workflow_jobs()
+        for job, runner, arch in (("build", "ubuntu-24.04-arm", "arm64"), ("gate-amd64", "ubuntu-latest", "amd64")):
+            with self.subTest(job=job):
+                self.assertIn("    runs-on: %s\n" % runner, jobs[job])
+                gate = [line for line in jobs[job].splitlines() if "deploy/pg-operand/gate.sh" in line]
+                self.assertEqual(len(gate), 1, gate)
+                self.assertTrue(gate[0].rstrip().endswith(" " + arch), gate[0])
+        # The arm64 gate runs before the layout leaves the build job.
+        build = jobs["build"]
+        self.assertLess(build.index("gate.sh"), build.index("actions/upload-artifact"))
+        # amd64's marker is written only after its gate, and publish needs it.
+        amd64 = jobs["gate-amd64"]
+        self.assertLess(amd64.index("gate.sh"), amd64.index("-amd64-gated"))
+        publish = jobs["publish"]
+        self.assertIn("    needs: [matrix, gate-amd64]\n", publish)
+        self.assertIn("name: pg-operand-${{ matrix.major }}-amd64-gated", publish)
+        self.assertLess(publish.index("-amd64-gated"), publish.index("oras cp"))
+        # Only publish holds a registry write token.
+        for job, body in jobs.items():
+            self.assertEqual("packages: write" in body, job == "publish", job)
+
+
 if __name__ == "__main__":
     unittest.main()

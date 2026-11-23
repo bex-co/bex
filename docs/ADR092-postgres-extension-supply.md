@@ -1,6 +1,6 @@
 # ADR092 — Managed Postgres extensions: built into the image, enabled per database by the owner
 
-**Status:** Accepted, 2026-10-29 (user decision in `/unblock w8`, topic 2). The initial recipe, allowlist and operator projection shipped with w8/m92 t008 (2026-10-31). Amended 2026-11-23 by [w21/m584](../.pm/w21/m584/README.md), as the plan's recommendation under [ADR008 § Render parity first](ADR008-vision.md#render-parity-first) and not as a user decision: D3 property 5 is judged per extension, an extension that fails it stays out of the allowlist, and the image is adopted with the rest (D3 amendment, D4). Adoption and production acceptance are w21/m584's.
+**Status:** Accepted, 2026-10-29 (user decision in `/unblock w8`, topic 2). The initial recipe, allowlist and operator projection shipped with w8/m92 t008 (2026-10-31). Amended 2026-11-23 by [w21/m584](../.pm/w21/blocked/m584/README.md), as the plan's recommendation under [ADR008 § Render parity first](ADR008-vision.md#render-parity-first) and not as a user decision: D3 property 5 is judged per extension, an extension that fails it stays out of the allowlist, and the image is adopted with the rest (D3 amendment, D4). Adoption and production acceptance are w21/m584's.
 
 **Related decisions:** [ADR009](ADR009-postgresql-management.md) owns managed Postgres (its § pgvector in every application database stays as written); [ADR018](ADR018-render-parity.md) is the parity ledger; [ADR060](ADR060-build-worker-reliability-and-performance.md) D7 governs reviewed digest pins.
 
