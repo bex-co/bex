@@ -1,6 +1,6 @@
 # w10 · m568 — A model added to the platform catalog stays off in a workspace whose admins narrowed its list, as Devin's allowlist leaves a model it does not list off
 
-**Worker:** worker10 **Goal:** the workspace model list becomes Devin's two modes. A workspace whose admins have turned no model off allows every catalog model, including one added later. Once an admin turns any model off, the list is an allowlist: a model added to the catalog afterwards is off there until an admin turns it on. Settings → Agents and `bex agent env` show such a model as off because it is new in the catalog. No workspace's offer changes when this ships. **Status:** blocked (pin must carry `343ae3da8d`; t001–t005 and t007–t009 done 2026-11-22; t006's production read and t010 follow the deploy)
+**Worker:** worker10 **Goal:** the workspace model list becomes Devin's two modes. A workspace whose admins have turned no model off allows every catalog model, including one added later. Once an admin turns any model off, the list is an allowlist: a model added to the catalog afterwards is off there until an admin turns it on. Settings → Agents and `bex agent env` show such a model as off because it is new in the catalog. No workspace's offer changes when this ships. **Status:** done (t001–t010 done; t006's production read held on pin `1a5a8e872398` on 2026-11-23)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Backend: the offered set reads the allowlist, and the environment read names the models that are new in the catalog on REST, GraphQL and MCP — **DONE** | 1h30m | t002 |
 | [t004](done/t004.md) | CLI: `bex agent env` shows a new catalog model as off, "new in the catalog" — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Dashboard: Settings → Agents shows a new catalog model off with a "New in the catalog" label — **DONE** | 1h | t003 |
-| [t006](t006.md) | Live check: a catalog gaining a model on `dev-10`, then production's offers unchanged by the deploy | 45m | t003, t004, t005 |
+| [t006](done/t006.md) | Live check: a catalog gaining a model on `dev-10`, then production's offers unchanged by the deploy — **DONE** | 45m | t003, t004, t005 |
 | [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 7h45m**.
 
@@ -80,7 +80,12 @@ Against Devin's team settings, "Allow all models" beside "Allowlist specific mod
 
 **Production before the deploy, 2026-11-22 (read-only, `hetzner-prod`, pin `19fdb46f1758`).** `agent_environments` has 3 rows. None is narrowed (`cardinality(disabled_models) > 0`: 0) and none is on its own key, so every workspace offers the whole catalog of four. `tian-personal`'s row turns no model off. Reproduce with `kubectl --context hetzner-prod -n bex-system exec bex-db-2 -c postgres -- psql -U postgres -d bex -At -c "SET default_transaction_read_only = on; SELECT count(*), count(*) FILTER (WHERE cardinality(disabled_models) > 0), count(*) FILTER (WHERE known_models IS NOT NULL) FROM agent_environments"` (the last column exists once 0330 runs). The conversion therefore has no row to convert there.
 
-**Production after the deploy:** pending. Once the pin carries the milestone, run the same read. Every row must offer what it did, the narrowed count stays 0 unless an admin narrowed a list since, and `tian-personal`'s `GET /v1/agent-environment` must read the four catalog models as `enabledModels` with `newModels: []`.
+**Production after the deploy, 2026-11-23 (read-only, `hetzner-prod`, pin `1a5a8e872398`, DoD 7 second half — holds).**
+
+- **The image.** Both `bex-api` Pods (started 04:30Z, 2/2 updated and ready) run `bex-operator@sha256:65ef4f0d…`, the digest pin commit `e6c65f5c62` set. Its `BEX_AGENT_PLATFORM_MODELS` is unchanged (`anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5` after the default `deepseek/deepseek-v4.1-flash-1017`), so the deploy added no catalog model. The schema is at migration 0334, so 0330's `known_models` exists.
+- **Every row offers what it did.** `agent_environments` still has 3 rows, all bex's own fixtures (`bex-canary`, `bex`, `tian-personal`). Narrowed (`cardinality(disabled_models) > 0`): 0. `known_models` set: 0. On their own key: 0. Each row has `disabled_models` `{}` and `known_models` NULL, "allow all", so each offers the whole catalog of four, as before. The conversion had nothing to convert, and neither Pod logged a conversion or a failure. (`tian-personal`'s `updated_at` moved to 05:07Z with w10/m561's `gh` live check, which left its model list untouched. Its `enabled_providers` is NULL too; that column is w10/m573's check.)
+- **`tian-personal`.** Signed in with `bash scripts/qa-login.sh` (logged out afterwards), `GET https://api.bex.co/v1/agent-environment?ownerId=tea-da2isimlm39c739m4ofg` answered `200` with `models` and `enabledModels` both the four catalog models in catalog order and `newModels: []`. `GET /v1/agent-sessions/capabilities` gave claude the same four `models`.
+- **Reproduce.** Run the read above, adding `count(*) FILTER (WHERE model_key_set_at IS NOT NULL)` for rows on their own key. Pipe any per-row read through `python3 scripts/lib/public_log.py`. Make the REST read with the cookie jar `qa-login.sh` prints on its `logout` line, then run `--logout` on it.
 
 ## Render parity (t007, Devin, 2026-11-22)
 
@@ -111,6 +116,12 @@ No drift beyond w10/037 (allow by provider tag) and the new w10/046 (an explicit
 - CLI `TestEnvShowsTheEnabledModels` (new-in-the-catalog cases) and the contract fixture's `newModels`. Dashboard: the label renders only for a new model, and turning one on saves it into `enabledModels` and drops the label while it saves.
 - Proved real by reverting: with `leftOn` allowing every model, `TestAModelAddedAfterANarrowingWriteStaysOff` and `TestTheModelListRolloutReadRule` fail. Without the empty-`disabled_models` rule the rollout test fails. Without the dashboard's pending guard the label test fails.
 
+## Unblock record (2026-11-23)
+
+- **Affected:** w10/m568 t006 (step 3) and t010.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `e6c65f5c62` (pin `1a5a8e872398`, 04:25Z on 2026-11-23), and `git merge-base --is-ancestor 343ae3da8d 1a5a8e872398` holds. Both `bex-api` Pods run `bex-operator@sha256:65ef4f0d…`, the digest that pin set (read-only `kubectl`). The pin gate was the only one.
+- **Next:** t006 step 3's read-only production read and `tian-personal`'s `GET /v1/agent-environment`, then t010 closes the milestone if DoD 7 holds. Done the same day: see Live check (t006), "Production after the deploy".
+
 ## Source + Goal linkage
 
 - **Source:** inbox note [w10/036](../../done/036.md), filed by w10/m527 t007 (Devin comparison) on 2026-11-20 and promoted by `/loopx w10` on 2026-11-22.
@@ -120,7 +131,7 @@ No drift beyond w10/037 (allow by provider tag) and the new w10/046 (an explicit
     - [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) (read 2026-11-22) describes the allowlist as "Model UIDs on your team's allowlist, as stored" and "Model tags on your team's allowlist, as stored, including provider tags such as `provider-anthropic`". Its rule is "A model is allowed when its UID is listed or it carries a listed tag".
     - A newly released model's UID is on no stored list, so under a by-model allowlist it stays off.
     - [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-settings) (read 2026-11-22) offers that "Allowlist specific models" option ("Restrict users to a curated list of approved models") beside "Allow all models" ("Give users access to all available models").
-    - Allowing by provider tag, the other half of the rule, is [w10/037](../../done/037.md), promoted to [w10/m573](../m573/README.md).
+    - Allowing by provider tag, the other half of the rule, is [w10/037](../../done/037.md), promoted to [w10/m573](../../blocked/m573/README.md).
   - **Legacy rows convert exactly today.** Production's `BEX_AGENT_PLATFORM_MODELS` (`lego/operator/config/api/deployment.yaml:652`) last changed in `1988962c01` (w10/m516, 2026-11-19), before w10/m527 shipped the list (2026-11-20). Every row narrowed so far was written against today's catalog, so converting it with the catalog bex-api starts with keeps its offer. Re-check that history before shipping.
   - **Surfaces to touch:**
     - Backend: `Environment`/`EnvironmentInput` (`environment.go:73-186`), `environmentView` (`:675`) and `retiredTemplateModel` (`automation_scheduler.go:248`).
