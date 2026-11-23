@@ -412,6 +412,9 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			// (w7/m464); its workspace memberships go with the account
 			// workspace disposition.
 			`DELETE FROM organization_members WHERE subject = $1`,
+			// Ephemeral log-subscription leases expire within 60 s; deleting
+			// them on account cleanup leaves no subject reference behind (w8/m579).
+			`DELETE FROM log_subscription_slots WHERE subject = $1`,
 		}
 		for _, statement := range deletes {
 			if _, err := tx.Exec(ctx, statement, subject); err != nil {

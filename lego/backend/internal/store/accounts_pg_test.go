@@ -289,6 +289,7 @@ var accountDeletionDispositions = map[string]string{
 	"device_push_subscriptions.subject":            "cascade: membership deletion removes personal push endpoints",
 	"github_claim_selections.subject":              "delete: CleanupAccountSubject removes pending authorization choices",
 	"github_connect_transactions.subject":          "delete: CleanupAccountSubject removes transient authorization state",
+	"log_subscription_slots.subject":               "delete: CleanupAccountSubject removes active log-subscription leases (which also expire within 60s, w8/m579)",
 	"membership_role_reconciliations.subject":      "cascade: membership deletion removes pending role reconciliation",
 	"notification_settings.subject":                "delete: CleanupAccountSubject removes personal preferences",
 	"oauth_revocations.client_id":                  "retain: client identifier preserves revoked machine credentials and OAuth application correlation; never a bearer secret",
