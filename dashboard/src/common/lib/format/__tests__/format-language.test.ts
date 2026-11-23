@@ -27,13 +27,19 @@ describe("absolute times follow the dashboard language", () => {
     expect(formatDateLong(INSTANT, "zh-CN")).toBe("2026年11月12日");
   });
 
+  // Render's card reads `MMM D hh:mm:ss A`; a viewer outside UTC gets the
+  // UTC row too (w4/716).
   it("formatInstantDetails", () => {
-    expect(formatInstantDetails(INSTANT, "en")?.utc).toBe(
-      "November 12, 2026 at 7:06:22 AM UTC",
-    );
-    const zh = formatInstantDetails(INSTANT, "zh");
-    expect(zh?.utc).toMatch(/^2026年11月12日 .*上午7:06:22/);
-    expect(zh?.unix).toBe("1794467182");
+    const en = formatInstantDetails(INSTANT, "en", "Asia/Shanghai");
+    expect(en?.local).toBe("Nov 12 03:06:22 PM");
+    expect(en?.utc).toBe("Nov 12 07:06:22 AM");
+    const zh = formatInstantDetails(INSTANT, "zh", "Asia/Shanghai");
+    expect(zh?.local).toBe("11月12日 下午03:06:22");
+    expect(zh?.utc).toBe("11月12日 上午07:06:22");
+    // The copied strings and the zone's name are Render's in every language.
+    expect(zh?.zone).toBe("GMT+8");
+    expect(zh?.localCopy).toBe("2026-11-12T15:06:22.000+08:00");
+    expect(zh?.unix).toBe("1794467182000");
   });
 
   it("formatClockTime, the log line clock", () => {
@@ -79,8 +85,8 @@ describe("absolute times follow the dashboard language", () => {
     "a 24-hour clock in %s",
     (language) => {
       expect(formatClockTime(INSTANT, language)).toBe("07:06:22");
-      const utc = formatInstantDetails(INSTANT, language)?.utc;
-      expect(utc).toMatch(/\b0?7:06:22 UTC/);
+      const utc = formatInstantDetails(INSTANT, language, "Asia/Tokyo")?.utc;
+      expect(utc).toMatch(/\b07:06:22$/);
       expect(utc).not.toMatch(/AM|PM/);
     },
   );

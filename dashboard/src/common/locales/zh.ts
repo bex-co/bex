@@ -535,7 +535,32 @@ const zhCommon: Record<string, TranslationEntry> = {
   "common.timeUnix": {
     message: "时间戳",
     description:
-      "Timestamp tooltip: label of the row showing the instant as Unix seconds",
+      "Timestamp tooltip: label of the row showing the instant as Unix milliseconds",
+  },
+  "common.timeFromPrevious": {
+    message: "距上一行",
+    description:
+      "Timestamp tooltip (w4/716): label of a log line's row showing the time since the line before it, Render's 'From previous'",
+  },
+  "common.timeFromStart": {
+    message: "距开始",
+    description:
+      "Timestamp tooltip (w4/716): label of a deploy log line's row showing the time since the deploy began, Render's 'From start'",
+  },
+  "common.timeRowLabel": {
+    message: "{label}：",
+    description:
+      "Timestamp tooltip (w4/716): a row's label followed by Render's colon; {label} is the zone ('PST'), UTC, Timestamp, From previous or From start",
+  },
+  "common.timeCopied": {
+    message: "已复制！",
+    description:
+      "Timestamp tooltip (w4/716): toast after a row's copy button copied its value, Render's 'Copied!'",
+  },
+  "common.timeCopyFailed": {
+    message: "无法复制时间",
+    description:
+      "Timestamp tooltip (w4/716): toast when the clipboard refused a row's value",
   },
   "common.ipAllowListProxiedTitle_other": {
     message: "白名单在 {count} 个自定义域名上无法识别客户端",

@@ -600,6 +600,34 @@ describe("DeployLogPanel", () => {
     expect(screen.getByText("other instance")).toBeInTheDocument();
   });
 
+  // Render's deploy log passes the deploy's start to each line's time card
+  // (w4/716): From previous on every line but the first, then From start.
+  it("puts From start on a line's time card, after From previous", async () => {
+    logState.lines = [
+      line("first", "build"),
+      { ...line("second", "app"), timestamp: "2026-07-14T00:01:01.5Z" },
+    ];
+    const user = userEvent.setup();
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime="2026-07-14T00:05:00Z"
+        startedAt="2026-07-14T00:00:00Z"
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    const row = screen
+      .getByText("second")
+      .closest<HTMLElement>("[data-index]")!;
+    await user.hover(row.querySelector("time")!);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent(
+      "Timestamp:1783987261500From previous:1.5sFrom start:1m 2s",
+    );
+  });
+
   it("reports a refused live build stream instead of leaving an empty pane unexplained", () => {
     logState.buildLiveStatus = "error";
 

@@ -43,4 +43,4 @@ t001 read Render's public dashboard bundle (2026-11-22, `Logs-CxB-g50N.js` among
 
 - **Done:** t001 (the capture). t006: ADR018's "Log explorer display and shortcuts" row names the view as gone from Render, with the capture and this milestone.
 - **Withdrawn, not built:** t002–t005, the query fields, the view, its keyboard path and the dev-4 visual check. t007 and t008 had no code to simplify or test. The definition of done above describes a view Render no longer has, so it was not replayed.
-- **Filed:** [w4/716](../../716.md). Render's line time card lists From previous, From start and Timestamp in milliseconds, each with a copy button. bex's lists Local, UTC and Timestamp in seconds as selectable text.
+- **Filed:** [w4/716](../../done/716.md). Render's line time card lists From previous, From start and Timestamp in milliseconds, each with a copy button. bex's lists Local, UTC and Timestamp in seconds as selectable text.

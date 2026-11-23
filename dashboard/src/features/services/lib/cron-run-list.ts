@@ -80,43 +80,6 @@ export function cronRunLogsSearch(
 }
 
 /**
- * A run's duration as Render writes it: tenths of a second under a minute
- * ("14.5s"), then "1m 5s", "2h 3m" and "1d 4h", dropping a zero second
- * part; milliseconds below a tenth.
- */
-export function formatCronRunDuration(ms: number, language?: string): string {
-  if (ms < 0) return `-${formatCronRunDuration(-ms, language)}`;
-  if (ms < 1) {
-    return `${ms.toLocaleString(language, { maximumSignificantDigits: 1, useGrouping: false })}ms`;
-  }
-  if (Math.round(ms) < 100) return `${Math.round(ms)}ms`;
-  const tenths = Math.round(ms / 100);
-  if (tenths < 600) {
-    return `${(tenths / 10).toLocaleString(language, { maximumFractionDigits: 1 })}s`;
-  }
-  const seconds = Math.round(ms / 1000);
-  if (seconds < 3600)
-    return pair(Math.floor(seconds / 60), "m", seconds % 60, "s");
-  if (seconds < 86_400) {
-    const minutes = Math.round(ms / MINUTE_MS);
-    return pair(Math.floor(minutes / 60), "h", minutes % 60, "m");
-  }
-  const hours = Math.round(ms / (60 * MINUTE_MS));
-  return pair(Math.floor(hours / 24), "d", hours % 24, "h");
-}
-
-function pair(
-  major: number,
-  majorUnit: string,
-  minor: number,
-  minorUnit: string,
-) {
-  return minor === 0
-    ? `${major}${majorUnit}`
-    : `${major}${majorUnit} ${minor}${minorUnit}`;
-}
-
-/**
  * A run's elapsed milliseconds: start to end, or to `now` in whole seconds
  * while it runs (Render's live duration ticks by the second). Null before it
  * starts.

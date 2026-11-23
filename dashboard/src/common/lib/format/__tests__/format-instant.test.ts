@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatInstantDetails, formatTimeAgo } from "../";
+import {
+  formatDuration,
+  formatInstantDetails,
+  formatInstantGap,
+  formatTimeAgo,
+} from "../";
 
 const INSTANT = "2026-07-16T00:01:30Z";
 const AT = Date.parse(INSTANT);
@@ -86,31 +91,113 @@ describe("formatTimeAgo", () => {
   });
 });
 
+// Render's time card (`TimestampTooltipContent`, w4/716). vitest runs with
+// TZ=UTC; a zone is passed to read the card as a viewer elsewhere would.
 describe("formatInstantDetails", () => {
-  it("renders the same instant as UTC and as Unix seconds", () => {
-    const details = formatInstantDetails(INSTANT)!;
-    expect(details.utc).toBe("July 16, 2026 at 12:01:30 AM UTC");
-    expect(details.unix).toBe("1784160090");
+  it("reads Render's rows for a viewer in UTC, with no second UTC row", () => {
+    expect(formatInstantDetails(INSTANT, "en")).toEqual({
+      zone: "UTC",
+      local: "Jul 16 12:01:30 AM",
+      localCopy: "2026-07-16T00:01:30.000+00:00",
+      utc: null,
+      utcCopy: "2026-07-16T00:01:30.000Z",
+      unix: "1784160090000",
+    });
   });
 
-  it("renders the local reading in the same calendar style, with seconds and a zone", () => {
-    const details = formatInstantDetails(INSTANT)!;
-    // The runner's timezone decides the clock reading and zone name; the
-    // shape ("<Month> <d>, <yyyy> at <h:mm:ss> <AM|PM> <zone>") does not.
-    expect(details.local).toMatch(
-      /^[A-Z][a-z]+ \d{1,2}, \d{4} at \d{1,2}:\d{2}:\d{2} [AP]M \S+/,
-    );
+  it("names the viewer's zone and adds the UTC row outside UTC", () => {
     expect(
-      new Intl.DateTimeFormat("en-US", {
-        dateStyle: "long",
-        timeStyle: "long",
-      }).format(new Date(INSTANT)),
-    ).toBe(details.local);
+      formatInstantDetails(
+        "2026-07-16T00:01:30.042Z",
+        "en",
+        "America/Los_Angeles",
+      ),
+    ).toEqual({
+      zone: "PDT",
+      local: "Jul 15 05:01:30 PM",
+      localCopy: "2026-07-15T17:01:30.042-07:00",
+      utc: "Jul 16 12:01:30 AM",
+      utcCopy: "2026-07-16T00:01:30.042Z",
+      unix: "1784160090042",
+    });
+  });
+
+  it("copies a half-hour offset, and a zone with no abbreviation by its offset", () => {
+    const details = formatInstantDetails(INSTANT, "en", "Asia/Kolkata")!;
+    expect(details.zone).toBe("GMT+5:30");
+    expect(details.local).toBe("Jul 16 05:31:30 AM");
+    expect(details.localCopy).toBe("2026-07-16T05:31:30.000+05:30");
+  });
+
+  it("keeps the line's milliseconds, dropping finer digits", () => {
+    expect(
+      formatInstantDetails("2026-11-19T10:36:01.709123456Z", "en")?.unix,
+    ).toBe("1795084561709");
   });
 
   it("returns null for a missing or unparseable instant", () => {
     expect(formatInstantDetails(null)).toBeNull();
     expect(formatInstantDetails(undefined)).toBeNull();
     expect(formatInstantDetails("garbage")).toBeNull();
+  });
+});
+
+describe("formatInstantGap", () => {
+  it("is the time since the earlier instant, in Render's duration format", () => {
+    expect(formatInstantGap(INSTANT, "2026-07-16T00:00:20Z")).toBe("1m 10s");
+    expect(formatInstantGap(INSTANT, INSTANT)).toBe("0ms");
+  });
+
+  it("reads a negative gap with a minus, as Render's does", () => {
+    expect(formatInstantGap("2026-07-16T00:01:29.958Z", INSTANT)).toBe("-42ms");
+  });
+
+  it("is null when either instant is missing", () => {
+    expect(formatInstantGap(INSTANT, "")).toBeNull();
+    expect(formatInstantGap("", INSTANT)).toBeNull();
+    expect(formatInstantGap(INSTANT, "garbage")).toBeNull();
+  });
+});
+
+// Render's duration format (`utils-*.js`), shared by a cron run's duration
+// and a log line's From previous and From start (w4/716).
+describe("formatDuration", () => {
+  it.each([
+    [0, "0ms"],
+    [42, "42ms"],
+    [99, "99ms"],
+    [99.4, "99ms"],
+    [99.5, "0.1s"],
+    [100, "0.1s"],
+    [999, "1s"],
+    [1_200, "1.2s"],
+    [14_500, "14.5s"],
+    [59_900, "59.9s"],
+    [59_940, "59.9s"],
+    [59_950, "1m"],
+    [60_000, "1m"],
+    [65_000, "1m 5s"],
+    [184_000, "3m 4s"],
+    [3_599_000, "59m 59s"],
+    [3_600_000, "1h"],
+    [3_723_000, "1h 2m"],
+    [7_500_000, "2h 5m"],
+    [86_399_000, "24h"],
+    [86_400_000, "1d"],
+    [90_000_000, "1d 1h"],
+    [97_200_000, "1d 3h"],
+  ])("%d ms reads %s", (ms, want) => {
+    expect(formatDuration(ms, "en")).toBe(want);
+  });
+
+  it("reads a fraction of a millisecond to one digit", () => {
+    expect(formatDuration(0.04, "en")).toBe("0.04ms");
+    expect(formatDuration(0.5, "en")).toBe("0.5ms");
+  });
+
+  it("writes the decimal the dashboard's language writes, keeping Render's units", () => {
+    expect(formatDuration(14_500, "de")).toBe("14,5s");
+    expect(formatDuration(14_500, "zh")).toBe("14.5s");
+    expect(formatDuration(-1_200, "en")).toBe("-1.2s");
   });
 });

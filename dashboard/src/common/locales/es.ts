@@ -551,7 +551,32 @@ const esCommon: Record<string, TranslationEntry> = {
   "common.timeUnix": {
     message: "Marca de tiempo",
     description:
-      "Timestamp tooltip: label of the row showing the instant as Unix seconds",
+      "Timestamp tooltip: label of the row showing the instant as Unix milliseconds",
+  },
+  "common.timeFromPrevious": {
+    message: "Desde la línea anterior",
+    description:
+      "Timestamp tooltip (w4/716): label of a log line's row showing the time since the line before it, Render's 'From previous'",
+  },
+  "common.timeFromStart": {
+    message: "Desde el inicio",
+    description:
+      "Timestamp tooltip (w4/716): label of a deploy log line's row showing the time since the deploy began, Render's 'From start'",
+  },
+  "common.timeRowLabel": {
+    message: "{label}:",
+    description:
+      "Timestamp tooltip (w4/716): a row's label followed by Render's colon; {label} is the zone ('PST'), UTC, Timestamp, From previous or From start",
+  },
+  "common.timeCopied": {
+    message: "¡Copiado!",
+    description:
+      "Timestamp tooltip (w4/716): toast after a row's copy button copied its value, Render's 'Copied!'",
+  },
+  "common.timeCopyFailed": {
+    message: "No se pudo copiar la hora",
+    description:
+      "Timestamp tooltip (w4/716): toast when the clipboard refused a row's value",
   },
   "common.ipAllowListProxiedTitle_one": {
     message:

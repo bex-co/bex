@@ -208,6 +208,9 @@ export function DeployDetailPage({
           deployId={deployId}
           startTime={window ? window.start : deployStart}
           endTime={window ? window.end : deployEnd}
+          // Render's deploy page passes the deploy's creation whatever the
+          // range: its log lines' From start (w4/716).
+          startedAt={deploy?.createdAt ?? undefined}
           hasPreDeploy={
             !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
           }

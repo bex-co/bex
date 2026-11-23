@@ -62,6 +62,10 @@ export interface DeployLogPanelProps {
   deployId?: string;
   startTime: string | undefined;
   endTime: string | undefined;
+  /** When the deploy began (its creation, whatever range is shown): each
+   *  line's time card says how long after it the line came, Render's From
+   *  start (w4/716). */
+  startedAt?: string;
   /** Whether this deploy has a pre-deploy step — skips the predeploy log leg when false. */
   hasPreDeploy: boolean;
   /** Follow the active build pod while this deploy is build_in_progress. */
@@ -106,6 +110,7 @@ export function DeployLogPanel({
   deployId,
   startTime,
   endTime,
+  startedAt,
   hasPreDeploy,
   followBuild,
   range,
@@ -224,6 +229,7 @@ export function DeployLogPanel({
         hasMore={hasMore}
         loadingOlder={loadingOlder}
         onLoadOlder={loadOlder}
+        startedAt={startedAt}
       />
     );
   }

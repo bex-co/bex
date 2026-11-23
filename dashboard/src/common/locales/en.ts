@@ -545,7 +545,32 @@ const enCommon: Record<string, TranslationEntry> = {
   "common.timeUnix": {
     message: "Timestamp",
     description:
-      "Timestamp tooltip: label of the row showing the instant as Unix seconds",
+      "Timestamp tooltip: label of the row showing the instant as Unix milliseconds",
+  },
+  "common.timeFromPrevious": {
+    message: "From previous",
+    description:
+      "Timestamp tooltip (w4/716): label of a log line's row showing the time since the line before it, Render's 'From previous'",
+  },
+  "common.timeFromStart": {
+    message: "From start",
+    description:
+      "Timestamp tooltip (w4/716): label of a deploy log line's row showing the time since the deploy began, Render's 'From start'",
+  },
+  "common.timeRowLabel": {
+    message: "{label}:",
+    description:
+      "Timestamp tooltip (w4/716): a row's label followed by Render's colon; {label} is the zone ('PST'), UTC, Timestamp, From previous or From start",
+  },
+  "common.timeCopied": {
+    message: "Copied!",
+    description:
+      "Timestamp tooltip (w4/716): toast after a row's copy button copied its value, Render's 'Copied!'",
+  },
+  "common.timeCopyFailed": {
+    message: "Couldn't copy the time",
+    description:
+      "Timestamp tooltip (w4/716): toast when the clipboard refused a row's value",
   },
   "common.ipAllowListProxiedTitle_one": {
     message: "The allowlist can't see clients on {count} custom domain",

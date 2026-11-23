@@ -556,7 +556,32 @@ const ruCommon: Record<string, TranslationEntry> = {
   "common.timeUnix": {
     message: "Метка времени",
     description:
-      "Timestamp tooltip: label of the row showing the instant as Unix seconds",
+      "Timestamp tooltip: label of the row showing the instant as Unix milliseconds",
+  },
+  "common.timeFromPrevious": {
+    message: "С предыдущей строки",
+    description:
+      "Timestamp tooltip (w4/716): label of a log line's row showing the time since the line before it, Render's 'From previous'",
+  },
+  "common.timeFromStart": {
+    message: "С начала",
+    description:
+      "Timestamp tooltip (w4/716): label of a deploy log line's row showing the time since the deploy began, Render's 'From start'",
+  },
+  "common.timeRowLabel": {
+    message: "{label}:",
+    description:
+      "Timestamp tooltip (w4/716): a row's label followed by Render's colon; {label} is the zone ('PST'), UTC, Timestamp, From previous or From start",
+  },
+  "common.timeCopied": {
+    message: "Скопировано",
+    description:
+      "Timestamp tooltip (w4/716): toast after a row's copy button copied its value, Render's 'Copied!'",
+  },
+  "common.timeCopyFailed": {
+    message: "Не удалось скопировать время",
+    description:
+      "Timestamp tooltip (w4/716): toast when the clipboard refused a row's value",
   },
   "common.ipAllowListProxiedTitle_one": {
     message:

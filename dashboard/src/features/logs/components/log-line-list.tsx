@@ -225,6 +225,10 @@ interface LogLineListProps {
   /** Render's "New logs in Live Tail": a paused explorer's tail has a new
    *  line. Absent while there is none, or once dismissed. */
   newLogsInLiveTail?: { onSwitch: () => void; onDismiss: () => void };
+  /** When a deploy's log began (the deploy's creation, as Render's deploy
+   *  page passes it): each line's time card then says how long after it the
+   *  line came, Render's From start (w4/716). Absent on every other log. */
+  startedAt?: string;
 }
 
 /**
@@ -277,9 +281,9 @@ function shownWhileHeld(lines: LogLine[], view: HeldView): LogLine[] {
  * Live Tail", and View in context's marked line.
  *
  * Each row leads with its level's mark (Render's gutter: warning and error
- * rows tinted, the info mark shown on hover), its time opens the full local,
- * UTC and Unix timestamp on hover (or under the keyboard's row cursor), and a
- * list spanning several days marks each with a date row (w3/m509).
+ * rows tinted, the info mark shown on hover), its time opens Render's time
+ * card on hover (or under the keyboard's row cursor; w4/716), and a list
+ * spanning several days marks each with a date row (w3/m509).
  *
  * The rows are **virtualized** (`@tanstack/react-virtual`, w9/m83): only the
  * visible window (plus overscan) is in the DOM, so a busy live tail no longer
@@ -313,6 +317,7 @@ export function LogLineList({
   rowMenu,
   markedKey,
   newLogsInLiveTail,
+  startedAt,
 }: LogLineListProps) {
   const { t, i18n } = useTranslations();
   const language = i18n.language;
@@ -834,6 +839,8 @@ export function LogLineList({
                 rowMenu={rowMenu}
                 measureRef={virtualizer.measureElement}
                 line={row.line}
+                previousTimestamp={row.previous}
+                startedAt={startedAt}
                 wrap={wrap}
                 showTimestamps={showTimestamps}
                 onInstanceFilter={onInstanceFilter}
@@ -943,6 +950,8 @@ const LogRow = memo(function LogRow({
   rowMenu,
   measureRef,
   line,
+  previousTimestamp,
+  startedAt,
   wrap,
   showTimestamps,
   onInstanceFilter,
@@ -967,6 +976,11 @@ const LogRow = memo(function LogRow({
   rowMenu: LogRowMenuItems | undefined;
   measureRef: (node: Element | null) => void;
   line: LogLine;
+  /** The time of the line before this one (empty for the first): the time
+   *  card's From previous. */
+  previousTimestamp: string;
+  /** A deploy log's start: the time card's From start. */
+  startedAt: string | undefined;
   wrap: boolean;
   showTimestamps: boolean;
   onInstanceFilter?: (instance: string) => void;
@@ -1024,6 +1038,8 @@ const LogRow = memo(function LogRow({
       {showTimestamps ? (
         <LineTime
           timestamp={line.timestamp}
+          previous={previousTimestamp}
+          startedAt={startedAt}
           active={active}
           language={language}
         />
@@ -1167,16 +1183,21 @@ function LevelMark({
   );
 }
 
-// A row's time. The full local, UTC and Unix timestamp opens on hover, as on
-// Render's log, or under the keyboard's row cursor (the time is out of the
-// Tab order, like the instance tag). The tooltip mounts only then: a Radix
+// A row's time. Render's time card (the full timestamp, From previous and,
+// on a deploy's log, From start, each with a copy button; w4/716) opens on
+// hover, or under the keyboard's row cursor (the time is out of the Tab
+// order, like the instance tag). The tooltip mounts only then: a Radix
 // tooltip in every row cost each appended or scrolled-in row its mount.
 function LineTime({
   timestamp,
+  previous,
+  startedAt,
   active,
   language,
 }: {
   timestamp: string;
+  previous: string;
+  startedAt: string | undefined;
   active: boolean;
   language: string;
 }) {
@@ -1199,6 +1220,8 @@ function LineTime({
   return (
     <InstantTooltip
       value={timestamp}
+      previous={previous}
+      startedAt={startedAt}
       open={active}
       initiallyOpen={hovered}
       tabIndex={-1}

@@ -7,7 +7,14 @@ export type LogOrder = "asc" | "desc";
 
 /** One row of a log list: a line, or the date separator over a new day. */
 export type LogListRow =
-  | { kind: "line"; key: string; line: LogLine }
+  | {
+      kind: "line";
+      key: string;
+      line: LogLine;
+      /** The time of the line before it in time order, whichever order the
+       *  list shows: Render's From previous (w4/716). Empty for the first. */
+      previous: string;
+    }
   | {
       kind: "day";
       key: string;
@@ -45,17 +52,23 @@ export function logListRows(
   lines: readonly LogLine[],
   order: LogOrder,
 ): LogListRow[] {
-  const ordered = order === "desc" ? [...lines].reverse() : lines;
+  const lineRow = (index: number): LogListRow => ({
+    kind: "line",
+    key: lines[index].key,
+    line: lines[index],
+    previous: index > 0 ? lines[index - 1].timestamp : "",
+  });
+  const indices = lines.map((_, index) => index);
+  if (order === "desc") indices.reverse();
   if (edgeDay(lines, 0, 1) === edgeDay(lines, lines.length - 1, -1)) {
-    return ordered.map((line) => ({ kind: "line", key: line.key, line }));
+    return indices.map(lineRow);
   }
-  const days = ordered.map((line) => dayOf(line.timestamp));
   const rows: LogListRow[] = [];
   // A separator's key is its day, so it survives pages arriving around it.
   const seen = new Map<number, number>();
   let current: number | null = null;
-  ordered.forEach((line, index) => {
-    const day = days[index];
+  for (const index of indices) {
+    const day = dayOf(lines[index].timestamp);
     if (day !== null && day !== current) {
       const repeat = seen.get(day) ?? 0;
       seen.set(day, repeat + 1);
@@ -66,8 +79,8 @@ export function logListRows(
       });
       current = day;
     }
-    rows.push({ kind: "line", key: line.key, line });
-  });
+    rows.push(lineRow(index));
+  }
   return rows;
 }
 

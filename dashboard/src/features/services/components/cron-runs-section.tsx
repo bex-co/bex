@@ -13,7 +13,7 @@ import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useNow } from "@/common/hooks/use-now";
 import { useRootContext } from "@/common/hooks/use-root-context";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatTimeAgo } from "@/common/lib/format";
+import { formatDuration, formatTimeAgo } from "@/common/lib/format";
 import { STRETCHED_LINK_CLASS } from "@/common/lib/stretched-link";
 import { cn } from "@/common/lib/utils/utils";
 import { StatusKindIcon } from "@/features/deploys/components/deploy-status-icon";
@@ -43,7 +43,6 @@ import {
   cronRunLogsSearch,
   cronRunMatchesSearch,
   cronRunStatus,
-  formatCronRunDuration,
   latestSuccessfulRunId,
 } from "@/features/services/lib/cron-run-list";
 import { hasServed } from "@/features/services/lib/status";
@@ -435,7 +434,7 @@ function CronRunRow({
   const logs = cronRunLogsSearch(run, now);
   const elapsed = cronRunElapsedMs(run, now);
   const duration =
-    elapsed === null ? "—" : formatCronRunDuration(elapsed, i18n.language);
+    elapsed === null ? "—" : formatDuration(elapsed, i18n.language);
   const trigger = triggerLabel(run, t);
   const ago = run.startedAt
     ? formatTimeAgo(run.startedAt, {

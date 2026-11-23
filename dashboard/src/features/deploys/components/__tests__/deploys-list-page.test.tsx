@@ -190,9 +190,8 @@ describe("DeploysListPage", () => {
       const tooltip = screen.getByRole("tooltip");
       const exactText = tooltip.textContent;
       const details = formatInstantDetails("2026-07-16T02:55:00Z")!;
-      expect(tooltip).toHaveTextContent(`Local${details.local}`);
-      expect(tooltip).toHaveTextContent(`UTC${details.utc}`);
-      expect(tooltip).toHaveTextContent(`Timestamp${details.unix}`);
+      expect(tooltip).toHaveTextContent(`${details.zone}:${details.local}`);
+      expect(tooltip).toHaveTextContent(`Timestamp:${details.unix}`);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(120_000);
       });
@@ -394,7 +393,9 @@ describe("DeploysListPage", () => {
     expect(screen.getAllByText(/^Deployed /)).toHaveLength(1);
   });
 
-  it("reveals the exact instant — local, UTC, Unix — on hover, selectable for copying", async () => {
+  // Render's time card is the one behind its "Deployed … ago" too (w4/716):
+  // under vitest the viewer's zone is UTC, so there is no second UTC row.
+  it("reveals Render's time card on hover, each value with its copy button", async () => {
     state.deploys = [row({ id: "dep-shipped", status: "live" })];
     const user = userEvent.setup();
 
@@ -402,10 +403,13 @@ describe("DeploysListPage", () => {
     await user.hover(await screen.findByText("Deployed 3 hours ago"));
 
     const tooltip = await screen.findByRole("tooltip");
-    const details = formatInstantDetails("2026-07-16T00:01:30Z")!;
-    expect(tooltip).toHaveTextContent(`Local${details.local}`);
-    expect(tooltip).toHaveTextContent("UTCJuly 16, 2026 at 12:01:30 AM UTC");
-    expect(tooltip).toHaveTextContent("Timestamp1784160090");
+    expect(tooltip).toHaveTextContent("UTC:Jul 16 12:01:30 AM");
+    expect(tooltip).toHaveTextContent("Timestamp:1784160090000");
+    expect(tooltip).not.toHaveTextContent("From previous");
+    await user.click(
+      within(tooltip).getByRole("button", { name: "Copy Timestamp" }),
+    );
+    expect(await navigator.clipboard.readText()).toBe("1784160090000");
   });
 
   it("links each commit SHA to its diff on the repo, outside the deploy link", async () => {

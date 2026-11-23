@@ -117,7 +117,8 @@ export function perLanguage(options: Intl.DateTimeFormatOptions) {
   };
 }
 
-function languageOptions(
+/** `options` as `perLanguage` reads them in `lang` (see there). */
+export function languageOptions(
   lang: SupportedLanguage,
   options: Intl.DateTimeFormatOptions,
 ): Intl.DateTimeFormatOptions {

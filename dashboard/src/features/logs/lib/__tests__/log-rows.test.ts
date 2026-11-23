@@ -80,6 +80,24 @@ describe("logListRows (w3/m509)", () => {
     ]);
   });
 
+  // Render's From previous (w4/716): the line before in time order, whatever
+  // the order shown, across a date row; none for the first line.
+  it.each(["asc", "desc"] as const)(
+    "gives each line the time of the one before it in time order (%s)",
+    (order) => {
+      const previous = Object.fromEntries(
+        logListRows(acrossMidnight, order).flatMap((row) =>
+          row.kind === "line" ? [[row.key, row.previous]] : [],
+        ),
+      );
+      expect(previous).toEqual({
+        a: "",
+        b: "2026-11-18T23:59:58Z",
+        c: "2026-11-18T23:59:59Z",
+      });
+    },
+  );
+
   it("keys a separator by its day, so it survives pages arriving around it", () => {
     const before = logListRows(acrossMidnight, "asc");
     const after = logListRows(

@@ -1,6 +1,12 @@
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LogLineList, type LogLineListHandle } from "../log-line-list";
 import type { LogLine } from "../../types";
@@ -36,6 +42,13 @@ const buffer = (n: number) =>
   Array.from({ length: n }, (_, i) =>
     line({ key: `k${i}`, message: `line ${i}` }),
   );
+
+/** A time card's rows, `[label, value]` in order. */
+const cardRows = (tooltip: HTMLElement) =>
+  [...tooltip.querySelectorAll("dt")].map((dt) => [
+    dt.textContent,
+    dt.nextElementSibling?.textContent,
+  ]);
 
 const viewportOf = (container: HTMLElement) =>
   container.querySelector<HTMLElement>("[data-log-viewport]")!;
@@ -137,10 +150,12 @@ describe("LogLineList timestamp hover (w3/m509)", () => {
     expect(time).not.toHaveAttribute("data-state");
     await user.hover(time);
     const tooltip = await screen.findByRole("tooltip");
-    expect(tooltip).toHaveTextContent(
-      "UTCNovember 19, 2026 at 10:36:01 AM UTC",
-    );
-    expect(tooltip).toHaveTextContent("Timestamp1795084561");
+    // Render's card (w4/716): the viewer's zone (UTC under vitest, so no
+    // second UTC row) and Unix milliseconds; the only line has no previous.
+    expect(cardRows(tooltip)).toEqual([
+      ["UTC:", "Nov 19 10:36:01 AM"],
+      ["Timestamp:", "1795084561709"],
+    ]);
   });
 
   it("opens it for the keyboard's row cursor", async () => {
@@ -154,8 +169,63 @@ describe("LogLineList timestamp hover (w3/m509)", () => {
     act(() => viewport.focus());
     fireEvent.keyDown(viewport, { key: "ArrowDown" });
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Timestamp1795084561",
+      "Timestamp:1795084561709",
     );
+  });
+});
+
+// Render's From previous and From start (w4/716): the gap since the line
+// before in time order, whichever order is shown, on every line but the
+// first; the time since a deploy's start only where the list is given one.
+describe("LogLineList time card gaps (w4/716)", () => {
+  setupVirtualGeometry();
+
+  const timed = [
+    line({ key: "a", timestamp: "2026-11-19T10:36:01.000Z" }),
+    line({ key: "b", timestamp: "2026-11-19T10:36:01.042Z" }),
+    line({ key: "c", timestamp: "2026-11-19T10:39:05.042Z" }),
+  ];
+
+  // The card a line's time describes (an earlier line's may still be open).
+  // Hovering swaps the bare time for the tooltip's trigger, so it is read
+  // again after.
+  async function card(user: ReturnType<typeof userEvent.setup>, key: string) {
+    const timeOf = () => rowOf(key).querySelector("time")!;
+    await user.hover(timeOf());
+    const id = await waitFor(() => {
+      const described = timeOf().getAttribute("aria-describedby");
+      expect(described).toBeTruthy();
+      return described!;
+    });
+    return cardRows(document.getElementById(id)!);
+  }
+
+  it.each(["asc", "desc"] as const)(
+    "gives every line but the first the gap since the one before it (%s)",
+    async (order) => {
+      const user = userEvent.setup();
+      render(<LogLineList lines={timed} order={order} />);
+      expect((await card(user, "a")).map(([label]) => label)).toEqual([
+        "UTC:",
+        "Timestamp:",
+      ]);
+      expect(await card(user, "b")).toContainEqual(["From previous:", "42ms"]);
+      expect(await card(user, "c")).toContainEqual(["From previous:", "3m 4s"]);
+    },
+  );
+
+  it("adds From start, after From previous, on a log given its start", async () => {
+    const user = userEvent.setup();
+    render(<LogLineList lines={timed} startedAt="2026-11-19T10:35:00.000Z" />);
+    expect(await card(user, "a")).toEqual([
+      ["UTC:", "Nov 19 10:36:01 AM"],
+      ["Timestamp:", "1795084561000"],
+      ["From start:", "1m 1s"],
+    ]);
+    expect((await card(user, "c")).slice(2)).toEqual([
+      ["From previous:", "3m 4s"],
+      ["From start:", "4m 5s"],
+    ]);
   });
 });
 

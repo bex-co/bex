@@ -14,8 +14,10 @@ export {
 } from "./format-clock-time";
 export { isValidTimeZone } from "./language";
 export { formatDateTime, formatDateLong } from "./format-date-time";
+export { formatDuration } from "./format-duration";
 export {
   formatInstantDetails,
+  formatInstantGap,
   formatTimeAgo,
   type InstantDetails,
   type TimeAgoOptions,

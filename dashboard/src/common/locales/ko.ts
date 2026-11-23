@@ -539,7 +539,32 @@ const koCommon: Record<string, TranslationEntry> = {
   "common.timeUnix": {
     message: "타임스탬프",
     description:
-      "Timestamp tooltip: label of the row showing the instant as Unix seconds",
+      "Timestamp tooltip: label of the row showing the instant as Unix milliseconds",
+  },
+  "common.timeFromPrevious": {
+    message: "이전 줄부터",
+    description:
+      "Timestamp tooltip (w4/716): label of a log line's row showing the time since the line before it, Render's 'From previous'",
+  },
+  "common.timeFromStart": {
+    message: "시작부터",
+    description:
+      "Timestamp tooltip (w4/716): label of a deploy log line's row showing the time since the deploy began, Render's 'From start'",
+  },
+  "common.timeRowLabel": {
+    message: "{label}:",
+    description:
+      "Timestamp tooltip (w4/716): a row's label followed by Render's colon; {label} is the zone ('PST'), UTC, Timestamp, From previous or From start",
+  },
+  "common.timeCopied": {
+    message: "복사됨",
+    description:
+      "Timestamp tooltip (w4/716): toast after a row's copy button copied its value, Render's 'Copied!'",
+  },
+  "common.timeCopyFailed": {
+    message: "시간을 복사할 수 없습니다",
+    description:
+      "Timestamp tooltip (w4/716): toast when the clipboard refused a row's value",
   },
   "common.ipAllowListProxiedTitle_other": {
     message:

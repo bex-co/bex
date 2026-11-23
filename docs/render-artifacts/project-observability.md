@@ -162,8 +162,21 @@ Render's changelog of 2025-12-17, "Improved logs UX in the Render dashboard and 
   - the row menu ([§ The view page](#the-view-page));
   - a click on the instance (`LogLineInstanceId`, tooltip _Click to filter to instance `<id>`_), which adds it as a filter;
   - in a project view, the `[resource]` tag's hover card, `name (id)` (`LogLineFieldLabel`);
-  - the time's hover card (`TimestampTooltipContent`), a list with a copy button on every value (named `Copy <label>`): the local zone's abbreviation (`Local` when it has none) with the local time, copied as `YYYY-MM-DDTHH:mm:ss.SSSZ`; **UTC**, unless the local zone is UTC, copied as the ISO string; **Timestamp**, in Unix milliseconds; **From previous**, the gap since the line before; and **From start**, the time since a deploy's or build's log began, on those logs only. The two gaps read `42ms`, `1.2s`, `3m 4s`, `2h 5m` or `1d 3h`.
-- **bex's time card** lists Local, UTC and Timestamp in Unix seconds, with no copy buttons and no gaps ([w4/716](../../.pm/w4/716.md)).
+  - the time's hover card (`TimestampTooltipContent`), described in [§ The time card](#the-time-card-re-read-2026-11-23-w4716).
+
+## The time card (re-read 2026-11-23, w4/716)
+
+Re-read without sign-in from the same bundle (`index-BR2q8yex.js`, 457 chunks): `TimestampTooltipContent` in `Logs-CxB-g50N.js`, its duration format in `utils-BdmSGzxa.js` and its copy button in `CopyableText-punsDGpP.js`.
+
+- **Rows.** A `dl` of `label:` and value pairs, in this order. Each value sits in a copy button whose accessible name is `Copy <label>`; its tooltip reads _Copy_, then _Copied!_ for 2 seconds after a click.
+  - The viewer's zone, named by en-US's short zone name (`PST`, `GMT+8`, `UTC`; `Local` when there is none). It shows `MMM D hh:mm:ss A` on the viewer's clock (`Nov 22 06:41:32 PM`) and copies `YYYY-MM-DDTHH:mm:ss.SSSZ` (`2026-11-22T10:41:32.123-08:00`).
+  - **UTC**, left out when the zone row is already `UTC`. It shows `MMM D hh:mm:ss A` in UTC and copies the ISO string (`2026-11-22T18:41:32.123Z`).
+  - **Timestamp**, the instant's Unix milliseconds, shown and copied.
+  - **From previous**, the time since the line before. The list passes each line its predecessor in the loaded logs, which run oldest first whichever order is shown, so it is the older neighbour, and the oldest loaded line has none.
+  - **From start**, the time since the `startedAt` the explorer is given. A service's deploy page and a cron job's deploy page pass `new Date(deploy.createdAt)` whatever range is picked, and a cron job's build page (`buildForCronJobWithTrigger`) and the build-source drawer pass `new Date(build.createdAt)`. Runtime, project, job and datastore logs pass none.
+- **The gaps** use Render's duration format, the one its cron runs use: under 1 ms one significant digit (`0ms`), whole milliseconds under 100 ms (`42ms`), tenths of a second under a minute (`1.2s`, `59.9s`), then whole seconds as `3m 4s`, minutes as `2h 5m` and hours as `1d 3h`, a zero second part dropped (`1m`). A negative span reads `-` and its size.
+- **The same card behind other times.** The chunk's generic `TimestampTooltip` wraps any trigger in this card without the gaps. Render shows it behind a deploy's, build's or run's `<n> ago`, a Postgres snapshot's and restore's time, the build-source drawer's time and the inspector timeline.
+- **bex** has matched it since [w4/716](../../.pm/w4/done/716.md) (2026-11-23). Every bex time card (`InstantTooltip`) shows these rows, and a log line's adds From previous and, on a deploy's log, From start. Two choices are bex's own. The time reads in the dashboard language (`11月22日 下午06:41:32`), the zone name and the copied strings stay Render's. A copy confirms with a check mark and a _Copied!_ toast rather than a tooltip.
 
 ## The log query
 

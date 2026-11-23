@@ -5,7 +5,6 @@ import {
   cronRunLogsSearch,
   cronRunMatchesSearch,
   cronRunStatus,
-  formatCronRunDuration,
   latestSuccessfulRunId,
 } from "@/features/services/lib/cron-run-list";
 import type { CronRunView } from "@/features/services/types";
@@ -93,28 +92,6 @@ describe("cronRunLogsSearch", () => {
       rangeStart: "2026-11-22T09:00:00.000Z",
       rangeEnd: "2026-11-22T10:01:00.000Z",
     });
-  });
-});
-
-describe("formatCronRunDuration (Render's duration)", () => {
-  it.each([
-    [0, "0ms"],
-    [42, "42ms"],
-    [999, "1s"],
-    [14_500, "14.5s"],
-    [59_940, "59.9s"],
-    [59_960, "1m"],
-    [65_000, "1m 5s"],
-    [3_600_000, "1h"],
-    [3_723_000, "1h 2m"],
-    [86_400_000, "1d"],
-    [90_000_000, "1d 1h"],
-  ])("%d ms reads %s", (ms, want) => {
-    expect(formatCronRunDuration(ms, "en")).toBe(want);
-  });
-
-  it("writes the decimal the dashboard's language writes", () => {
-    expect(formatCronRunDuration(14_500, "de")).toBe("14,5s");
   });
 });
 

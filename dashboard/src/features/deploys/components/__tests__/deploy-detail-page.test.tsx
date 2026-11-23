@@ -89,10 +89,12 @@ vi.mock("../deploy-log-panel", async () => {
     DeployLogPanel: ({
       followBuild,
       endTime,
+      startedAt,
       hasPreDeploy,
     }: {
       followBuild: boolean;
       endTime: string | undefined;
+      startedAt: string | undefined;
       hasPreDeploy: boolean;
     }) => {
       const [mount] = useState(() => ++panelMounts);
@@ -101,6 +103,7 @@ vi.mock("../deploy-log-panel", async () => {
           data-testid="build-log"
           data-follow-build={String(followBuild)}
           data-end-time={endTime ?? "open"}
+          data-started-at={startedAt ?? "none"}
           data-has-pre-deploy={String(hasPreDeploy)}
           data-mount={mount}
         />
@@ -134,6 +137,23 @@ describe("DeployDetailPage", () => {
     expect(screen.getByTestId("build-log")).toHaveAttribute(
       "data-follow-build",
       "false",
+    );
+  });
+
+  // Render's deploy page passes the deploy's creation as its log's start
+  // whatever the range: each line's From start (w4/716).
+  it("gives the log the deploy's creation as its start, under a picked range too", () => {
+    const { rerender } = render(
+      <DeployDetailPage serviceId="web" deployId="dep-1" />,
+    );
+    expect(screen.getByTestId("build-log")).toHaveAttribute(
+      "data-started-at",
+      "2026-07-14T00:00:00Z",
+    );
+    rerender(<DeployDetailPage serviceId="web" deployId="dep-1" range="1h" />);
+    expect(screen.getByTestId("build-log")).toHaveAttribute(
+      "data-started-at",
+      "2026-07-14T00:00:00Z",
     );
   });
 
