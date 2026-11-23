@@ -166,16 +166,15 @@ def normalize(tools):
 # string, and a type of None leaves the items unchecked (query_render_postgres'
 # row objects are keyed by the caller's own columns).
 RESULT_FORMS = {
-    "approve_blueprint": {"form": "object"},
-    # json.Marshal of map[string]any{"serviceId": ..., "canceled": true}, no named type.
-    "cancel_cron_job_run": {"form": "object"},
-    "create_blueprint": {"form": "object"},
+    "approve_blueprint": {"form": "object", "type": "ApprovedSync"},
+    "cancel_cron_job_run": {"form": "object", "type": "CancelCronJobRunResult"},
+    "create_blueprint": {"form": "object", "type": "CreateBlueprintResponse"},
     "create_cron_job": {"form": "object", "type": "ServiceAndDeploy"},
     "create_key_value": {"form": "object", "type": "KeyValueDetail"},
     "create_postgres": {"form": "object", "type": "PostgresDetail"},
     "create_static_site": {"form": "object", "type": "ServiceAndDeploy"},
     "create_web_service": {"form": "object", "type": "ServiceAndDeploy"},
-    "get_blueprint": {"form": "object"},
+    "get_blueprint": {"form": "object", "type": "BlueprintDetail"},
     "get_deploy": {"form": "object", "type": "Deploy"},
     "get_key_value": {"form": "object", "type": "KeyValueDetail"},
     "get_metrics": {"form": "object", "type": "MetricsResponse"},
@@ -189,7 +188,7 @@ RESULT_FORMS = {
     "list_postgres_instances": {"form": "array", "type": "Postgres", "emptyText": "No Postgres instances found"},
     "list_services": {"form": "array", "type": "Service"},
     "list_workspaces": {"form": "array", "type": "Owner"},
-    "plan_blueprint": {"form": "object"},
+    "plan_blueprint": {"form": "object", "type": "CreateBlueprintSyncResponse"},
     "query_render_postgres": {"form": "array", "type": None},
     "run_cron_job": {"form": "object", "type": "CronJobRunResult"},
     # A 202 Queued trigger has no deploy to marshal: the handler answers a sentence.
@@ -198,7 +197,7 @@ RESULT_FORMS = {
         "type": "Deploy",
         "emptyText": "The deploy request was accepted, but the deploy has not been created yet. Use list_deploys to check on the service's deploys.",
     },
-    "update_blueprint": {"form": "object"},
+    "update_blueprint": {"form": "object", "type": "UpdateBlueprintResponse"},
     "update_environment_variables": {"form": "text"},
 }
 
@@ -206,6 +205,19 @@ RESULT_FORMS = {
 # fields hold another recorded type (an array field's items, or an object).
 RESULT_TYPES = {
     "ActiveCronJobRun": ("pkg/service/repo.go", {}),
+    "ApprovedSync": ("pkg/client/blueprints/blueprints_gen.go", {"commit": "CommitRef"}),
+    "Blueprint": ("pkg/client/blueprints/blueprints_gen.go", {}),
+    "BlueprintDetail": ("pkg/client/blueprints/blueprints_gen.go", {"resources": "ResourceRef"}),
+    "BlueprintNotice": ("pkg/client/blueprints/blueprints_gen.go", {}),
+    "CommitRef": ("pkg/client/blueprints/blueprints_gen.go", {}),
+    "CreateBlueprintResponse": (
+        "pkg/client/blueprints/blueprints_gen.go",
+        {"blueprint": "Blueprint", "notices": "BlueprintNotice", "sync": "SyncWithPlan"},
+    ),
+    "CreateBlueprintSyncResponse": (
+        "pkg/client/blueprints/blueprints_gen.go",
+        {"notices": "BlueprintNotice", "sync": "SyncWithPlan"},
+    ),
     "CronJobRun": ("pkg/client/types_gen.go", {}),
     "CronJobRunResult": ("pkg/service/repo.go", {"canceledRun": "ActiveCronJobRun", "run": "CronJobRun"}),
     "Deploy": ("pkg/client/types_gen.go", {}),
@@ -220,19 +232,43 @@ RESULT_TYPES = {
     "Owner": ("pkg/client/types_gen.go", {}),
     "Postgres": ("pkg/client/types_gen.go", {"owner": "Owner"}),
     "PostgresDetail": ("pkg/client/types_gen.go", {"owner": "Owner"}),
+    "RequiredManualEnvVar": ("pkg/client/blueprints/blueprints_gen.go", {}),
+    "ResourceRef": ("pkg/client/blueprints/blueprints_gen.go", {}),
     "Service": ("pkg/client/types_gen.go", {}),
     "ServiceAndDeploy": ("pkg/client/types_gen.go", {"service": "Service"}),
     "ServiceEvent": ("pkg/client/events/events_gen.go", {}),
+    "SyncWithPlan": (
+        "pkg/client/blueprints/blueprints_gen.go",
+        {"commit": "CommitRef", "requiredManualEnvVars": "RequiredManualEnvVar"},
+    ),
     "TimeSeries": ("pkg/client/metrics/metrics_gen.go", {"labels": "TimeSeriesLabel", "values": "TimeSeriesValue"}),
     "TimeSeriesLabel": ("pkg/client/metrics/metrics_gen.go", {}),
     "TimeSeriesValue": ("pkg/client/metrics/metrics_gen.go", {}),
+    "UpdateBlueprintError": ("pkg/blueprint/update.go", {}),
+    "UpdateBlueprintResponse": (
+        "pkg/blueprint/update.go",
+        {"blueprint": "Blueprint", "error": "UpdateBlueprintError", "notices": "BlueprintNotice", "sync": "SyncWithPlan"},
+    ),
+}
+
+# RESULT_MAP_LITERAL_TYPES records handlers whose upstream json.Marshal argument
+# is an inline map[string]any{...} literal rather than a named Go struct.
+RESULT_MAP_LITERAL_TYPES = {
+    "CancelCronJobRunResult": ("pkg/service/tools.go", "cancelCronJobRun", {}),
 }
 
 # Go type names that differ from the recorded name (metrics' Label would
-# collide with nothing today, but reads better qualified).
-GO_TYPE_NAME = {"TimeSeriesLabel": "Label"}
+# collide with nothing today, but reads better qualified; upstream's
+# updateBlueprintResponse/Error are unexported).
+GO_TYPE_NAME = {
+    "TimeSeriesLabel": "Label",
+    "UpdateBlueprintError": "updateBlueprintError",
+    "UpdateBlueprintResponse": "updateBlueprintResponse",
+}
 
 JSON_TAG = re.compile(r'`json:"([^",]*)(,[^"]*)?"`')
+MAP_LITERAL_MARSHAL = re.compile(r"json\.Marshal\(\s*map\[string\](?:any|interface\{\})\s*\{([^}]*)\}\s*\)")
+MAP_LITERAL_KEY = re.compile(r'"([^"]+)"\s*:')
 
 
 def struct_keys(source, go_name):
@@ -268,6 +304,33 @@ def struct_keys(source, go_name):
     return sorted(required), sorted(optional)
 
 
+def map_literal_keys(source, func_name):
+    """Return sorted keys of a json.Marshal(map[string]any{...}) inside func_name."""
+    lines = source.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if re.match(rf"^func {re.escape(func_name)}\(", line):
+            start = i
+            break
+    if start is None:
+        raise SystemExit(f"render-mcp-capture: no func {func_name}")
+    depth = 0
+    body_lines = []
+    for line in lines[start:]:
+        before = depth
+        depth += line.count("{") - line.count("}")
+        body_lines.append(line)
+        if depth == 0 and before > 0:
+            break
+    m = MAP_LITERAL_MARSHAL.search("\n".join(body_lines))
+    if not m:
+        raise SystemExit(f"render-mcp-capture: no map literal json.Marshal in func {func_name}")
+    keys = sorted(set(MAP_LITERAL_KEY.findall(m.group(1))))
+    if not keys:
+        raise SystemExit(f"render-mcp-capture: empty map literal in func {func_name}")
+    return keys, []
+
+
 def capture_results(ref):
     """Clone upstream at `ref` and return (provenance, results document)."""
     workdir = tempfile.mkdtemp(prefix="render-mcp-results-")
@@ -278,15 +341,22 @@ def capture_results(ref):
         commit_date = run(
             ["git", "log", "-1", "--format=%cI", "HEAD"], cwd=workdir
         ).stdout.strip()
-        types = {}
-        for name in sorted(RESULT_TYPES):
-            path, fields = RESULT_TYPES[name]
+        raw_types = {}
+        for name, (path, fields) in RESULT_TYPES.items():
             with open(os.path.join(workdir, path), encoding="utf-8") as fh:
                 required, optional = struct_keys(fh.read(), GO_TYPE_NAME.get(name, name))
             entry = {"required": required, "optional": optional}
             if fields:
                 entry["fields"] = dict(sorted(fields.items()))
-            types[name] = entry
+            raw_types[name] = entry
+        for name, (path, func_name, fields) in RESULT_MAP_LITERAL_TYPES.items():
+            with open(os.path.join(workdir, path), encoding="utf-8") as fh:
+                required, optional = map_literal_keys(fh.read(), func_name)
+            entry = {"required": required, "optional": optional}
+            if fields:
+                entry["fields"] = dict(sorted(fields.items()))
+            raw_types[name] = entry
+        types = {name: raw_types[name] for name in sorted(raw_types)}
         source = {"repo": REPO, "ref": ref, "commit": commit, "commitDate": commit_date}
         tools = {}
         for name in sorted(RESULT_FORMS):

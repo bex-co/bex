@@ -3,17 +3,20 @@
     "repo": "github.com/render-oss/render-mcp-server",
     "ref": "a18ef3ee866716933710fa5054323fd5c1ed0eb1",
     "commit": "a18ef3ee866716933710fa5054323fd5c1ed0eb1",
-    "commitDate": "2026-11-16T17:33:18Z"
+    "commitDate": "2026-11-16T17:33:18+00:00"
   },
   "tools": {
     "approve_blueprint": {
-      "form": "object"
+      "form": "object",
+      "type": "ApprovedSync"
     },
     "cancel_cron_job_run": {
-      "form": "object"
+      "form": "object",
+      "type": "CancelCronJobRunResult"
     },
     "create_blueprint": {
-      "form": "object"
+      "form": "object",
+      "type": "CreateBlueprintResponse"
     },
     "create_cron_job": {
       "form": "object",
@@ -36,7 +39,8 @@
       "type": "ServiceAndDeploy"
     },
     "get_blueprint": {
-      "form": "object"
+      "form": "object",
+      "type": "BlueprintDetail"
     },
     "get_deploy": {
       "form": "object",
@@ -93,7 +97,8 @@
       "type": "Owner"
     },
     "plan_blueprint": {
-      "form": "object"
+      "form": "object",
+      "type": "CreateBlueprintSyncResponse"
     },
     "query_render_postgres": {
       "form": "array"
@@ -108,7 +113,8 @@
       "emptyText": "The deploy request was accepted, but the deploy has not been created yet. Use list_deploys to check on the service's deploys."
     },
     "update_blueprint": {
-      "form": "object"
+      "form": "object",
+      "type": "UpdateBlueprintResponse"
     },
     "update_environment_variables": {
       "form": "text"
@@ -121,6 +127,105 @@
         "startedAt"
       ],
       "optional": []
+    },
+    "ApprovedSync": {
+      "required": [
+        "commit",
+        "dashboardUrl",
+        "id",
+        "state"
+      ],
+      "optional": [
+        "completedAt",
+        "startedAt"
+      ],
+      "fields": {
+        "commit": "CommitRef"
+      }
+    },
+    "Blueprint": {
+      "required": [
+        "autoSync",
+        "branch",
+        "id",
+        "name",
+        "ownerId",
+        "path",
+        "repo",
+        "status"
+      ],
+      "optional": [
+        "lastSync"
+      ]
+    },
+    "BlueprintDetail": {
+      "required": [
+        "autoSync",
+        "branch",
+        "id",
+        "name",
+        "ownerId",
+        "path",
+        "repo",
+        "resources",
+        "status"
+      ],
+      "optional": [
+        "lastSync"
+      ],
+      "fields": {
+        "resources": "ResourceRef"
+      }
+    },
+    "BlueprintNotice": {
+      "required": [
+        "message",
+        "severity"
+      ],
+      "optional": [
+        "column",
+        "line",
+        "path"
+      ]
+    },
+    "CancelCronJobRunResult": {
+      "required": [
+        "canceled",
+        "serviceId"
+      ],
+      "optional": []
+    },
+    "CommitRef": {
+      "required": [
+        "id"
+      ],
+      "optional": []
+    },
+    "CreateBlueprintResponse": {
+      "required": [
+        "blueprint",
+        "notices",
+        "planningOutcome",
+        "sync"
+      ],
+      "optional": [],
+      "fields": {
+        "blueprint": "Blueprint",
+        "notices": "BlueprintNotice",
+        "sync": "SyncWithPlan"
+      }
+    },
+    "CreateBlueprintSyncResponse": {
+      "required": [
+        "notices",
+        "planningOutcome",
+        "sync"
+      ],
+      "optional": [],
+      "fields": {
+        "notices": "BlueprintNotice",
+        "sync": "SyncWithPlan"
+      }
     },
     "CronJobRun": {
       "required": [
@@ -348,6 +453,22 @@
         "owner": "Owner"
       }
     },
+    "RequiredManualEnvVar": {
+      "required": [
+        "key",
+        "serviceName",
+        "serviceType"
+      ],
+      "optional": []
+    },
+    "ResourceRef": {
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "optional": []
+    },
     "Service": {
       "required": [
         "autoDeploy",
@@ -396,6 +517,24 @@
       ],
       "optional": []
     },
+    "SyncWithPlan": {
+      "required": [
+        "commit",
+        "dashboardUrl",
+        "id",
+        "rawPlan",
+        "requiredManualEnvVars",
+        "state"
+      ],
+      "optional": [
+        "completedAt",
+        "startedAt"
+      ],
+      "fields": {
+        "commit": "CommitRef",
+        "requiredManualEnvVars": "RequiredManualEnvVar"
+      }
+    },
     "TimeSeries": {
       "required": [
         "labels",
@@ -421,6 +560,29 @@
         "value"
       ],
       "optional": []
+    },
+    "UpdateBlueprintError": {
+      "required": [
+        "message",
+        "stage"
+      ],
+      "optional": []
+    },
+    "UpdateBlueprintResponse": {
+      "required": [
+        "blueprint",
+        "error",
+        "notices",
+        "planningOutcome",
+        "sync"
+      ],
+      "optional": [],
+      "fields": {
+        "blueprint": "Blueprint",
+        "error": "UpdateBlueprintError",
+        "notices": "BlueprintNotice",
+        "sync": "SyncWithPlan"
+      }
     }
   }
 }

@@ -152,13 +152,44 @@ func TestRenderBlueprintMCPTools(t *testing.T) {
 			t.Errorf("update_blueprint %v was accepted", args)
 		}
 	}
-	// The stored path is the normalized one: a padded spelling is no change.
-	same, refused := call("update_blueprint", map[string]any{"blueprintId": id, "name": "app", "path": " render.yaml"})
-	if refused || same["planningOutcome"] != nil || same["error"] != nil {
+	// The stored path is the normalized one: a padded spelling is no change,
+	// and upstream appends its no-op notice as a second text block alongside
+	// the JSON result (pkg/blueprint/tools.go:179-181).
+	noOpRes, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "update_blueprint",
+		Arguments: map[string]any{"blueprintId": id, "name": "app", "path": " render.yaml"},
+	})
+	if err != nil || noOpRes.IsError {
+		t.Fatalf("no-op update_blueprint: err=%v res=%+v", err, noOpRes)
+	}
+	rendertest.AssertRenderMCPResult(t, "update_blueprint", noOpRes)
+	if len(noOpRes.Content) != 2 {
+		t.Fatalf("no-op update_blueprint content blocks = %d, want 2 (JSON + no-op notice)", len(noOpRes.Content))
+	}
+	if notice, ok := noOpRes.Content[1].(*mcp.TextContent); !ok || notice.Text != blueprintUpdateNoOpNotice {
+		t.Fatalf("no-op update_blueprint content[1] = %#v, want %q", noOpRes.Content[1], blueprintUpdateNoOpNotice)
+	}
+	var same map[string]any
+	rawNoOp, _ := json.Marshal(noOpRes.StructuredContent)
+	_ = json.Unmarshal(rawNoOp, &same)
+	if same["planningOutcome"] != nil || same["error"] != nil {
 		t.Fatalf("no-op update_blueprint = %v, want planning skipped", same)
 	}
-	renamed, refused := call("update_blueprint", map[string]any{"blueprintId": id, "name": "stack", "autoSync": false})
-	if refused || renamed["planningOutcome"] != nil || renamed["blueprint"].(map[string]any)["name"] != "stack" {
+	renamedRes, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "update_blueprint",
+		Arguments: map[string]any{"blueprintId": id, "name": "stack", "autoSync": false},
+	})
+	if err != nil || renamedRes.IsError {
+		t.Fatalf("rename update_blueprint: err=%v res=%+v", err, renamedRes)
+	}
+	rendertest.AssertRenderMCPResult(t, "update_blueprint", renamedRes)
+	if len(renamedRes.Content) != 1 {
+		t.Fatalf("changed update_blueprint content blocks = %d, want 1 (no no-op notice)", len(renamedRes.Content))
+	}
+	var renamed map[string]any
+	rawRenamed, _ := json.Marshal(renamedRes.StructuredContent)
+	_ = json.Unmarshal(rawRenamed, &renamed)
+	if renamed["planningOutcome"] != nil || renamed["blueprint"].(map[string]any)["name"] != "stack" {
 		t.Fatalf("rename update_blueprint = %v, want renamed without a plan", renamed)
 	}
 	if got := renamed["blueprint"].(map[string]any)["status"]; got != store.BlueprintStatusPaused {

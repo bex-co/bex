@@ -19,6 +19,7 @@ package rendertest
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -67,6 +68,8 @@ type MCPResultType struct {
 // not in Render's type fails AssertRenderMCPResult; add one only with its
 // ADR018 record.
 var MCPResultExtensions = map[string][]string{
+	"BlueprintDetail":        {"createdAt", "manifest", "updatedAt"},
+	"CancelCronJobRunResult": {"run"},
 	"Deploy": {"bexTrigger", "cancelReason", "failureReason", "initialDeployHookFinishedAt", "initialDeployHookStatus",
 		"preDeployStatus", "rollbackOf", "serviceId", "stallReason"},
 	"KeyValue": {"blueprintId", "externalHost", "internalAuth", "projectId", "public", "statusReason", "statusReasonCode",
@@ -112,6 +115,21 @@ func AssertRenderMCPResult(t testing.TB, tool string, res *mcp.CallToolResult, f
 	}
 }
 
+// mcpTextOnlyObjectTools lists shared form:"object" tools that intentionally
+// omit structuredContent (Out = any via mcputil.RenderText). Every other
+// shared object tool returns a typed Go struct so the MCP Go SDK emits both
+// Content[0].Text and matching StructuredContent (ADR018).
+var mcpTextOnlyObjectTools = map[string]string{
+	"get_metrics": "legacy multi-resource array mode returns a JSON array while single resourceId returns a JSON object (ADR018)",
+}
+
+// mcpEmptyTextWithStructuredContent lists shared tools whose emptyText answer
+// deliberately carries a typed object in structuredContent beside Render's
+// sentence (ADR018, w8/378).
+var mcpEmptyTextWithStructuredContent = map[string]string{
+	"trigger_deploy": "queued 202 deploy returns Render's sentence as text and the queued Deploy in structuredContent (w8/378)",
+}
+
 // CheckRenderMCPResult is AssertRenderMCPResult's verdict as an error.
 func CheckRenderMCPResult(tool string, res *mcp.CallToolResult, fixtureLacks ...string) error {
 	pin, err := LoadMCPResults()
@@ -130,21 +148,55 @@ func CheckRenderMCPResult(tool string, res *mcp.CallToolResult, fixtureLacks ...
 		return fmt.Errorf("first content is %T, want text", res.Content[0])
 	}
 	text := first.Text
+	c := resultChecker{pin: pin, lacks: fixtureLacks}
 	if spec.EmptyText != "" && text == spec.EmptyText {
+		if _, keepStructured := mcpEmptyTextWithStructuredContent[tool]; keepStructured {
+			if res.StructuredContent == nil {
+				return fmt.Errorf("emptyText answer lacks structuredContent carrying %s", spec.Type)
+			}
+			raw, err := json.Marshal(res.StructuredContent)
+			if err != nil {
+				return fmt.Errorf("marshal structuredContent: %w", err)
+			}
+			return c.checkValue(spec.Type, raw, "$.structuredContent")
+		}
+		if res.StructuredContent != nil {
+			return fmt.Errorf("emptyText answer must not carry structuredContent, got %v", res.StructuredContent)
+		}
 		return nil
 	}
-	c := resultChecker{pin: pin, lacks: fixtureLacks}
 	switch spec.Form {
 	case "text":
+		if res.StructuredContent != nil {
+			return fmt.Errorf("text tool must not carry structuredContent, got %v", res.StructuredContent)
+		}
 		if text == "" || strings.HasPrefix(text, "{") || strings.HasPrefix(text, "[") {
 			return fmt.Errorf("text %q, want Render's sentence", clip(text))
 		}
 		return nil
 	case "object":
-		return c.checkValue(spec.Type, json.RawMessage(text), "$")
+		if err := c.checkValue(spec.Type, json.RawMessage(text), "$"); err != nil {
+			return err
+		}
+		if _, textOnly := mcpTextOnlyObjectTools[tool]; textOnly {
+			if res.StructuredContent != nil {
+				return fmt.Errorf("text-only object tool must not carry structuredContent, got %v", res.StructuredContent)
+			}
+			return nil
+		}
+		if res.StructuredContent == nil {
+			return fmt.Errorf("typed object tool must carry structuredContent matching Content[0].Text")
+		}
+		return checkStructuredMatchesText(text, res.StructuredContent)
 	case "array":
+		if res.StructuredContent != nil {
+			return fmt.Errorf("array tool must not carry structuredContent, got %v", res.StructuredContent)
+		}
 		return c.checkArray(spec.Type, json.RawMessage(text), "$")
 	case "arrayCursor":
+		if res.StructuredContent != nil {
+			return fmt.Errorf("arrayCursor tool must not carry structuredContent, got %v", res.StructuredContent)
+		}
 		body, _, ok := strings.Cut(text, MCPCursorMarker)
 		if !ok {
 			return fmt.Errorf("text %q lacks Render's %q suffix", clip(text), MCPCursorMarker)
@@ -152,6 +204,24 @@ func CheckRenderMCPResult(tool string, res *mcp.CallToolResult, fixtureLacks ...
 		return c.checkArray(spec.Type, json.RawMessage(body), "$")
 	}
 	return fmt.Errorf("unknown recorded form %q", spec.Form)
+}
+
+func checkStructuredMatchesText(text string, structured any) error {
+	rawStructured, err := json.Marshal(structured)
+	if err != nil {
+		return fmt.Errorf("marshal structuredContent: %w", err)
+	}
+	var textVal, structVal any
+	if err := json.Unmarshal([]byte(text), &textVal); err != nil {
+		return fmt.Errorf("decode Content[0].Text for structuredContent check: %w", err)
+	}
+	if err := json.Unmarshal(rawStructured, &structVal); err != nil {
+		return fmt.Errorf("decode structuredContent: %w", err)
+	}
+	if !reflect.DeepEqual(textVal, structVal) {
+		return fmt.Errorf("structuredContent %s does not match Content[0].Text %s", clip(string(rawStructured)), clip(text))
+	}
+	return nil
 }
 
 // resultChecker walks one answer against the capture.

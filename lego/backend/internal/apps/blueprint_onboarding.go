@@ -966,22 +966,27 @@ func (s *Service) createBlueprintTool(ctx context.Context, in createBlueprintArg
 		Source: RenderBlueprintSource{Repo: repo, Branch: in.Branch, Path: in.Path}, AutoSync: in.AutoSync, ExistingResources: &mode})
 }
 
-func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArgs) (updateBlueprintResult, error) {
+// blueprintUpdateNoOpNotice matches render-oss/render-mcp-server
+// pkg/blueprint/tools.go:180 when update_blueprint receives only settings the
+// Blueprint already has.
+const blueprintUpdateNoOpNotice = "The Blueprint already has the supplied settings. No update was needed, and planning was skipped."
+
+func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArgs) (*mcp.CallToolResult, updateBlueprintResult, error) {
 	for _, c := range []struct {
 		field string
 		v     *string
 	}{{"name", in.Name}, {"branch", in.Branch}, {"path", in.Path}} {
 		if err := blankSetting(c.field, c.v, "keep its current value"); err != nil {
-			return updateBlueprintResult{}, err
+			return nil, updateBlueprintResult{}, err
 		}
 	}
 	if in.Name == nil && in.Branch == nil && in.Path == nil && in.AutoSync == nil {
-		return updateBlueprintResult{}, fmt.Errorf("%w: provide at least one of name, branch, path, or autoSync", core.ErrBadRequest)
+		return nil, updateBlueprintResult{}, fmt.Errorf("%w: provide at least one of name, branch, path, or autoSync", core.ErrBadRequest)
 	}
 	if in.Path != nil {
 		clean, err := approvedBlueprintPath(*in.Path)
 		if err != nil {
-			return updateBlueprintResult{}, err
+			return nil, updateBlueprintResult{}, err
 		}
 		in.Path = &clean
 	}
@@ -992,11 +997,11 @@ func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArg
 	// ("apps.registerOnboardingMCP.func5") would be the verb recorded.
 	scoped, bpID, err := s.blueprintScopeAs(ctx, AuditVerbUpdateBlueprint, core.RelCanCreate, in.BlueprintID, owner)
 	if err != nil {
-		return updateBlueprintResult{}, err
+		return nil, updateBlueprintResult{}, err
 	}
 	stored, err := s.Blueprints.GetBlueprint(scoped, bpID, s.resolveTenantID(scoped))
 	if err != nil {
-		return updateBlueprintResult{}, store.MapError(err)
+		return nil, updateBlueprintResult{}, store.MapError(err)
 	}
 	current := toBlueprintView(stored)
 	branchChanged := in.Branch != nil && strings.TrimSpace(*in.Branch) != current.Branch
@@ -1005,12 +1010,12 @@ func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArg
 		(in.Name != nil && *in.Name != current.Name) || (in.AutoSync != nil && *in.AutoSync != current.AutoSync)
 	out := updateBlueprintResult{Blueprint: toRenderBlueprint(current), Notices: []BlueprintNotice{}}
 	if !changed {
-		return out, nil
+		return mcputil.WithWarning(out, blueprintUpdateNoOpNotice), out, nil
 	}
 	updated, err := s.UpdateBlueprint(ctx, in.BlueprintID, owner, UpdateBlueprintRequest{
 		Name: in.Name, AutoSync: in.AutoSync, Path: in.Path, Branch: in.Branch})
 	if err != nil {
-		return updateBlueprintResult{}, err
+		return nil, updateBlueprintResult{}, err
 	}
 	out.Blueprint = toRenderBlueprint(updated)
 	if branchChanged || pathChanged {
@@ -1018,11 +1023,11 @@ func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArg
 		if err != nil {
 			out.Error = &updateBlueprintFailed{Stage: "planning", Message: fmt.Sprintf(
 				"The Blueprint was updated, but no planning result is available: %v. Review the error before calling plan_blueprint again. Do not approve changes based on this response.", core.MCPError(err))}
-			return out, nil
+			return nil, out, nil
 		}
 		out.PlanningOutcome, out.Sync, out.Notices = &plan.PlanningOutcome, plan.Sync, plan.Notices
 	}
-	return out, nil
+	return nil, out, nil
 }
 
 // planningGuidance is upstream's next-step guidance for a planning outcome.
@@ -1069,7 +1074,6 @@ func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 		Name:        "update_blueprint",
 		Description: "Update a Blueprint's name, Git branch, Blueprint file path, or auto-sync setting; omitted settings keep their values, and blank values are refused. If every supplied value already matches, the Blueprint is returned unchanged and no plan is created. Changing the branch or path also creates a plan (from the remote repository: push first); changing only the name or auto-sync does not. Returns {blueprint, planningOutcome, sync, notices, error}: planningOutcome and error both null means planning was skipped; a non-null error means the Blueprint was updated but no plan is available. " + planningGuidance,
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, updateBlueprintResult, error) {
-		res, err := s.updateBlueprintTool(ctx, in)
-		return nil, res, err
+		return s.updateBlueprintTool(ctx, in)
 	})
 }
