@@ -221,7 +221,10 @@ func (s *PGStore) RecordAgentSessionTurnCheckout(ctx context.Context, sessionID 
 // it, which blanked the session's sandbox id and recorded sandboxID as the
 // dispatch's previous sandbox), and not when a live row exists; and records
 // on the turn the cause and the checkout that decided it, with its retention
-// reset for the save to answer. nil when nothing was begun.
+// reset for the save to answer. A turn whose kept disk already continued
+// into a sandbox is kept again only from the editor sandbox that booted from
+// it (w6/m564): the disk it spent holds the turn's work. nil when nothing was
+// begun.
 func (s *PGStore) BeginAgentSessionRetention(ctx context.Context, sessionID string, turn int, sandboxID, cause string, c TurnCheckout, in NewAgentRetainedImage) (*AgentRetainedImage, error) {
 	var retained *AgentRetainedImage
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
@@ -230,7 +233,8 @@ func (s *PGStore) BeginAgentSessionRetention(ctx context.Context, sessionID stri
 			SELECT $1, s.id, s.workspace_id, t.turn, $5, $6
 			FROM agent_sessions s
 			JOIN agent_session_turns t ON t.session_id = s.id AND t.turn = $3
-			WHERE s.id = $2 AND $4 <> '' AND s.archived_at IS NULL AND t.retention IN ('', 'lost')
+			WHERE s.id = $2 AND $4 <> '' AND s.archived_at IS NULL
+			  AND (t.retention IN ('', 'lost') OR (t.retention = 'continued' AND s.editor_sandbox_id = $4))
 			  AND ((s.turns = $3 AND s.phase IN ('completed', 'failed') AND s.sandbox_id = $4)
 			    OR (s.turns = $3 + 1 AND s.phase = 'redispatching' AND EXISTS (
 			          SELECT 1 FROM agent_session_dispatches d

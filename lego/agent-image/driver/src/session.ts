@@ -60,7 +60,9 @@ interface RunTurnOptions {
 }
 
 interface StatusRecord {
-  state: "running" | "succeeded" | "interrupted" | "failed";
+  // "ready" is an editor's sandbox once its checkout is (ADR054 D8): it runs
+  // no turn.
+  state: "running" | "succeeded" | "interrupted" | "failed" | "ready";
   [key: string]: unknown;
 }
 
@@ -152,6 +154,15 @@ export async function markTurnFailed(
       describeError(error),
     ),
   });
+}
+
+// markEditorReady records that an editor's sandbox (BEX_AGENT_EDITOR, ADR054
+// D8) has its workspace checked out: bex-api then offers it to the person's
+// editor. It runs no turn, so this is its only status.
+export async function markEditorReady(
+  config: Pick<AgentDriverConfig, "statusPath">,
+): Promise<void> {
+  await writeStatus(config.statusPath, { state: "ready" });
 }
 
 // A driver restarted inside the same sandbox (its rootfs intact) finds the

@@ -1299,32 +1299,6 @@ func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, work
 	return s.SessionEgress.TransitionToAgent(ctx, store.SandboxNamespace(workspaceID), sessionID, modelEndpoint, egress)
 }
 
-// ResumeAgentSessionSandbox resumes only a fully hardened sandbox stamped for
-// this exact durable session. Workspace membership is not used as a substitute
-// authorization decision here; the caller feature already checked
-// agent_session:<id> in OpenFGA and this seam only enforces target integrity.
-func (l *AgentSessionLifecycle) ResumeAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
-	s := l.service
-	key, err := s.agentSessionKey(ctx, workspaceID)
-	if err != nil {
-		return err
-	}
-	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
-	if err != nil {
-		return err
-	}
-	s.Meter.Observe(ctx, raw)
-	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
-		return err
-	}
-	if err := s.Client.Resume(ctx, key, sandboxID); err != nil {
-		return err
-	}
-	raw.Status.State = string(StatusResuming)
-	s.Meter.Observe(ctx, raw)
-	return nil
-}
-
 // CancelAgentSessionSandbox terminates the exact session sandbox. OpenSandbox's
 // terminate is idempotent, so a retry can safely converge a canceling record.
 func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {

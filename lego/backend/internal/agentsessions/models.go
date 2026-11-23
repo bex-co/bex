@@ -101,6 +101,9 @@ const (
 	driverStateSucceeded   = "succeeded"
 	driverStateInterrupted = "interrupted" // a person stopped the turn (ADR047 D12)
 	driverStateFailed      = "failed"
+	// driverStateReady is the only status of a sandbox resume started for an
+	// editor (ADR054 D8): its checkout is ready, and it runs no turn.
+	driverStateReady = "ready"
 )
 
 // AgentConfig is the stable cross-surface driver contract. Agent selects the
@@ -171,6 +174,10 @@ type Capabilities struct {
 	Agents        []AgentProfile      `json:"agents"`
 	Ready         bool                `json:"ready"`
 	Attachments   AttachmentLimits    `json:"attachments"`
+	// SSHEnabled says sessions here can be opened in an editor over SSH
+	// (ADR054): a session's sshAddress appears while its sandbox is up, and
+	// resume starts one for a session whose sandbox closed (D8).
+	SSHEnabled bool `json:"sshEnabled"`
 	TemplateOffer
 }
 

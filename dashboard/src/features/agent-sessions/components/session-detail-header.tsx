@@ -96,7 +96,8 @@ export function SessionDetailHeader({
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { cancel, interrupt, deleteSession } = useAgentSessionMutations();
+  const { cancel, interrupt, deleteSession, resume } =
+    useAgentSessionMutations();
   const handleArchiveChanged = useCallback(async () => {
     if (session.isArchived) {
       await onChanged?.();
@@ -347,9 +348,10 @@ export function SessionDetailHeader({
 
       <SessionFilesButton sessionId={session.id} />
 
-      <OpenInZedButton session={session} />
+      <OpenInZedButton session={session} resume={resume} />
 
-      {cancelable ? (
+      {/* resuming starts a sandbox for an editor (ADR054 D8): no turn runs. */}
+      {cancelable && session.phase !== "resuming" ? (
         <StopTurnButton
           disabled={!canStopNow || stopResting}
           stopping={stopResting}
@@ -481,26 +483,68 @@ export function SessionDetailHeader({
 }
 
 /**
- * The "Open in Zed" affordance (ADR054 D5): a Connect-style dropdown offering a
- * `zed://ssh/…/workspace` hotlink that opens the session's sandbox as a Zed
- * remote project, plus a copyable `ssh <address>` command for any other editor
- * or a one-shot shell. Rendered only while the backend surfaces `sshAddress`
- * (BEX_SSH_HOST set AND the sandbox live) — its absence hides the whole control,
- * so a dangling target is never offered. The `zed://` href is an intentional
- * external-protocol link (the first custom scheme in the dashboard); the browser
- * hands it to the OS, which launches Zed.
+ * The "Open in Zed" affordance (ADR054 D5, D8): a Connect-style dropdown
+ * offering a `zed://ssh/…/workspace` hotlink that opens the session's sandbox
+ * as a Zed remote project, plus a copyable `ssh <address>` command for any
+ * other editor or a one-shot shell, while the backend surfaces `sshAddress`
+ * (BEX_SSH_HOST set AND the sandbox up). A finished session whose sandbox
+ * closed at its idle timeout offers to start it again instead, as opening a
+ * sleeping Devin session's workspace wakes it: `resume` boots it from the
+ * kept disk or the branch, the session reads resuming while it starts, and
+ * the link appears once `sshAddress` does. Where the deployment serves no
+ * SSH (`sshEnabled` false) a closed session offers nothing, so a dangling
+ * target is never offered. The `zed://` href is an intentional
+ * external-protocol link (the first custom scheme in the dashboard); the
+ * browser hands it to the OS, which launches Zed.
  */
-function OpenInZedButton({ session }: { session: AgentSessionView }) {
+function OpenInZedButton({
+  session,
+  resume,
+}: {
+  session: AgentSessionView;
+  resume: (id: string) => Promise<unknown>;
+}) {
   const { t } = useTranslations();
-  if (!session.sshAddress) return null;
-  const command = `ssh ${session.sshAddress}`;
-  const zedUrl = `zed://ssh/${session.sshAddress}/workspace`;
+  const { capabilities } = useAgentSessionCapabilities(session.ownerId);
+  const [requesting, setRequesting] = useState(false);
+  // Set once this page asked for a start, so a start that ended without a
+  // sandbox says so instead of quietly offering the button again.
+  const [requested, setRequested] = useState(false);
+  // A start that brought the sandbox up is over: a later idle close offers
+  // the button again without calling it a failure.
+  if (requested && session.sshAddress) setRequested(false);
+  const [error, setError] = useState<string | null>(null);
+  const starting = session.phase === "resuming";
+  const closed =
+    !session.sshAddress &&
+    !session.sandboxId &&
+    session.isSteerable &&
+    capabilities?.sshEnabled === true;
+  if (!session.sshAddress && !starting && !closed) return null;
 
+  async function handleStart() {
+    setRequesting(true);
+    setError(null);
+    try {
+      await resume(session.id);
+      setRequested(true);
+    } catch (err) {
+      setError(agentSessionErrorMessage(err, t));
+    } finally {
+      setRequesting(false);
+    }
+  }
+
+  const busy = requesting || starting;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="shrink-0">
-          <Code2 className="size-4" />
+          {busy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Code2 className="size-4" />
+          )}
           <span className="hidden sm:inline">{t("agentSessions.connect")}</span>
           <ChevronDown className="size-3.5" />
         </Button>
@@ -521,34 +565,81 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
             />
           }
         >
-          <DropdownMenuItem asChild className="mb-2 cursor-pointer">
-            {/* An intentional external-scheme anchor — the OS launches Zed. */}
-            <a href={zedUrl}>
-              <Code2 className="size-4" />
-              {t("agentSessions.openInZed")}
-            </a>
-          </DropdownMenuItem>
-          <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
-            <Terminal className="size-4" />
-            {t("agentSessions.connectSSH")}
-          </DropdownMenuLabel>
-          <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
-            <code className="min-w-0 flex-1 truncate text-xs" title={command}>
-              {command}
-            </code>
-            <CopyButton
-              value={command}
-              label={t("agentSessions.sshCopy")}
-              successText={t("agentSessions.sshCopied")}
-              errorText={t("agentSessions.sshCopyError")}
-            />
-          </div>
-          <p className="text-muted-foreground mt-2 text-xs">
-            {t("agentSessions.openInZedHint")}
-          </p>
+          {session.sshAddress ? (
+            <ZedConnectTargets address={session.sshAddress} />
+          ) : busy ? (
+            <p
+              className="text-muted-foreground flex items-center gap-2 text-xs"
+              role="status"
+            >
+              <Loader2 className="size-3.5 shrink-0 animate-spin" />
+              {t("agentSessions.openInZedStarting")}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p
+                className={
+                  requested || error
+                    ? "text-destructive text-xs"
+                    : "text-muted-foreground text-xs"
+                }
+                role={requested || error ? "alert" : undefined}
+              >
+                {error ??
+                  t(
+                    requested
+                      ? "agentSessions.openInZedStartFailed"
+                      : "agentSessions.openInZedClosed",
+                  )}
+              </p>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => void handleStart()}
+              >
+                <Code2 className="size-4" />
+                {t("agentSessions.openInZedStart")}
+              </Button>
+            </div>
+          )}
         </RequiresSshKey>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** The live sandbox's targets: the `zed://` hotlink and the `ssh` command. */
+function ZedConnectTargets({ address }: { address: string }) {
+  const { t } = useTranslations();
+  const command = `ssh ${address}`;
+  return (
+    <>
+      <DropdownMenuItem asChild className="mb-2 cursor-pointer">
+        {/* An intentional external-scheme anchor — the OS launches Zed. */}
+        <a href={`zed://ssh/${address}/workspace`}>
+          <Code2 className="size-4" />
+          {t("agentSessions.openInZed")}
+        </a>
+      </DropdownMenuItem>
+      <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+        <Terminal className="size-4" />
+        {t("agentSessions.connectSSH")}
+      </DropdownMenuLabel>
+      <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
+        <code className="min-w-0 flex-1 truncate text-xs" title={command}>
+          {command}
+        </code>
+        <CopyButton
+          value={command}
+          label={t("agentSessions.sshCopy")}
+          successText={t("agentSessions.sshCopied")}
+          errorText={t("agentSessions.sshCopyError")}
+        />
+      </div>
+      <p className="text-muted-foreground mt-2 text-xs">
+        {t("agentSessions.openInZedHint")}
+      </p>
+    </>
   );
 }
 

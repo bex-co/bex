@@ -1345,6 +1345,28 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     message: "Открывает /workspace песочницы по SSH. Требуется редактор Zed.",
     description: "Connect menu — helper text under the Open-in-Zed action",
   },
+  "agentSessions.openInZedStart": {
+    message: "Запустить песочницу",
+    description:
+      "Connect menu — button that starts a closed session's sandbox so Zed can open it (ADR054 D8)",
+  },
+  "agentSessions.openInZedClosed": {
+    message:
+      "Песочница закрылась, потому что сессия простаивала. Запустите её, чтобы снова открыть работу сессии в Zed: это займёт несколько секунд, и ход агента не запустится.",
+    description:
+      "Connect menu — why a closed session needs its sandbox started before Zed can open it",
+  },
+  "agentSessions.openInZedStarting": {
+    message:
+      "Песочница запускается… Ссылка на Zed появится здесь, когда она будет готова.",
+    description:
+      "Connect menu — shown while a closed session's sandbox starts for the editor",
+  },
+  "agentSessions.openInZedStartFailed": {
+    message: "Песочница не запустилась. Попробуйте ещё раз.",
+    description:
+      "Connect menu — the sandbox started for the editor did not come up",
+  },
   "agentSessions.connectSSH": {
     message: "SSH",
     description: "Connect menu — label above the copyable ssh command",

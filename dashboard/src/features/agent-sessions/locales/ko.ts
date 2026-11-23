@@ -1140,6 +1140,27 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     message: "SSH로 샌드박스의 /workspace를 엽니다. Zed 편집기가 필요합니다.",
     description: "Connect menu — helper text under the Open-in-Zed action",
   },
+  "agentSessions.openInZedStart": {
+    message: "샌드박스 시작",
+    description:
+      "Connect menu — button that starts a closed session's sandbox so Zed can open it (ADR054 D8)",
+  },
+  "agentSessions.openInZedClosed": {
+    message:
+      "세션이 유휴 상태여서 샌드박스가 닫혔습니다. 시작하면 세션의 작업을 다시 Zed에서 열 수 있습니다. 몇 초면 시작되며 에이전트 턴은 실행하지 않습니다.",
+    description:
+      "Connect menu — why a closed session needs its sandbox started before Zed can open it",
+  },
+  "agentSessions.openInZedStarting": {
+    message: "샌드박스를 시작하는 중… 준비되면 여기에 Zed 링크가 나타납니다.",
+    description:
+      "Connect menu — shown while a closed session's sandbox starts for the editor",
+  },
+  "agentSessions.openInZedStartFailed": {
+    message: "샌드박스를 시작하지 못했습니다. 다시 시도하세요.",
+    description:
+      "Connect menu — the sandbox started for the editor did not come up",
+  },
   "agentSessions.connectSSH": {
     message: "SSH",
     description: "Connect menu — label above the copyable ssh command",

@@ -1138,6 +1138,27 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "通过 SSH 打开沙箱的 /workspace，需要安装 Zed 编辑器。",
     description: "Connect menu — helper text under the Open-in-Zed action",
   },
+  "agentSessions.openInZedStart": {
+    message: "启动沙箱",
+    description:
+      "Connect menu — button that starts a closed session's sandbox so Zed can open it (ADR054 D8)",
+  },
+  "agentSessions.openInZedClosed": {
+    message:
+      "会话闲置后沙箱已关闭。启动它即可再次在 Zed 中打开会话的工作：只需几秒，不会运行智能体轮次。",
+    description:
+      "Connect menu — why a closed session needs its sandbox started before Zed can open it",
+  },
+  "agentSessions.openInZedStarting": {
+    message: "正在启动沙箱… 启动后，Zed 链接会显示在这里。",
+    description:
+      "Connect menu — shown while a closed session's sandbox starts for the editor",
+  },
+  "agentSessions.openInZedStartFailed": {
+    message: "沙箱未能启动，请重试。",
+    description:
+      "Connect menu — the sandbox started for the editor did not come up",
+  },
   "agentSessions.connectSSH": {
     message: "SSH",
     description: "Connect menu — label above the copyable ssh command",

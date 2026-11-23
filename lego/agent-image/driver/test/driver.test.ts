@@ -21,7 +21,7 @@ import path from "node:path";
 import test from "node:test";
 import { loadConfig } from "../src/config.js";
 import { agentEnvironment } from "../src/credentials.js";
-import { runHeadlessTurn } from "../src/session.js";
+import { markEditorReady, runHeadlessTurn } from "../src/session.js";
 import { createSessionProvider } from "../src/acp.js";
 import { startDriverServer } from "../src/server.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
@@ -101,6 +101,19 @@ test("configuration accepts only operator-owned adapter paths", () => {
       ),
     /model credentials must use BEX_AGENT_MODEL_API_KEY/,
   );
+});
+
+test("an editor's sandbox is read from BEX_AGENT_EDITOR and reports ready", async () => {
+  // ADR054 D8: bex-api starts it for a person's editor and settles the
+  // session once the status reads ready; it runs no turn.
+  assert.equal(loadConfig(hosted()).editor, false);
+  assert.equal(loadConfig(hosted({ BEX_AGENT_EDITOR: "1" })).editor, true);
+  assert.equal(loadConfig(hosted({ BEX_AGENT_EDITOR: "true" })).editor, false);
+  const config = await tempConfig();
+  await markEditorReady(config);
+  assert.deepEqual(JSON.parse(await readFile(config.statusPath, "utf8")), {
+    state: "ready",
+  });
 });
 
 test("the driver refuses to start without the model proxy or with a real key", () => {

@@ -1235,6 +1235,28 @@ const deAgentSessions: Record<string, TranslationEntry> = {
       "Öffnet das /workspace der Sandbox über SSH. Erfordert den Zed-Editor.",
     description: "Connect menu — helper text under the Open-in-Zed action",
   },
+  "agentSessions.openInZedStart": {
+    message: "Sandbox starten",
+    description:
+      "Connect menu — button that starts a closed session's sandbox so Zed can open it (ADR054 D8)",
+  },
+  "agentSessions.openInZedClosed": {
+    message:
+      "Die Sandbox wurde geschlossen, weil die Sitzung untätig war. Starte sie, um die Arbeit der Sitzung wieder in Zed zu öffnen: Das dauert ein paar Sekunden und startet keinen Agent-Durchgang.",
+    description:
+      "Connect menu — why a closed session needs its sandbox started before Zed can open it",
+  },
+  "agentSessions.openInZedStarting": {
+    message:
+      "Sandbox wird gestartet… Der Zed-Link erscheint hier, sobald sie läuft.",
+    description:
+      "Connect menu — shown while a closed session's sandbox starts for the editor",
+  },
+  "agentSessions.openInZedStartFailed": {
+    message: "Die Sandbox wurde nicht gestartet. Versuche es erneut.",
+    description:
+      "Connect menu — the sandbox started for the editor did not come up",
+  },
   "agentSessions.connectSSH": {
     message: "SSH",
     description: "Connect menu — label above the copyable ssh command",

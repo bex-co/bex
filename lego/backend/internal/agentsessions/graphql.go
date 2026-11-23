@@ -139,6 +139,7 @@ var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"attachments":   &graphql.Field{Type: graphql.NewNonNull(attachmentLimitsGQLType), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Attachments })},
 		"agents":        gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentProfileGQLType))), func(v Capabilities) any { return v.Agents }),
 		"ready":         gqlutil.ReqBoolField(func(v Capabilities) any { return v.Ready }),
+		"sshEnabled":    gqlutil.ReqBoolField(func(v Capabilities) any { return v.SSHEnabled }),
 	}, func(v Capabilities) TemplateOffer { return v.TemplateOffer }),
 })
 

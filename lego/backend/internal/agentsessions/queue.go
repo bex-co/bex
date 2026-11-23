@@ -413,6 +413,9 @@ func (s *Service) Interrupt(ctx context.Context, sessionID string) (View, error)
 		return View{}, errNotSteerable(record.Phase)
 	case !liveSandboxPhase(record.Phase):
 		return View{}, core.NewConflictError(codeNoTurnRunning, "no turn is running; the session is idle", map[string]any{"phase": record.Phase})
+	case record.Phase == PhaseResuming:
+		// Resume is starting a sandbox for an editor, which runs no turn.
+		return View{}, core.NewConflictError(codeNoTurnRunning, "no turn is running; the session's sandbox is starting for an editor", map[string]any{"phase": record.Phase})
 	case record.Phase != PhaseRunning || record.SandboxID == "":
 		// The turn is accepted but its sandbox is not up: there is no agent to stop yet.
 		return View{}, core.NewConflictError(codeTurnStarting, "the turn is still starting; stop it once it is running", map[string]any{"phase": record.Phase})

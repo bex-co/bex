@@ -92,6 +92,7 @@ export async function tempConfig(
     prTakeover: false,
     turn: 1,
     exitAfterTurn: false,
+    editor: false,
     turnTimeoutMs: 1_000,
     // Out of the way unless a test exercises it: the ceiling above bounds
     // every fixture turn.

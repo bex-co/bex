@@ -37,11 +37,12 @@ Agent choice is configuration, not image logic:
 | `BEX_AGENT_MODEL_PROXY_URL` | gateway model-proxy URL; required (no direct-to-vendor mode) |
 | `BEX_AGENT_MODEL_API_KEY` | must be exactly the session placeholder `bex-model-proxy-placeholder-<session id>`; the driver refuses anything else |
 | `BEX_AGENT_SESSION_LOG` | local JSONL transcript path |
-| `BEX_AGENT_STATUS_FILE` | machine-readable `running`/`succeeded`/`failed` status; the `bex` MCP tool records the PR in `pull-request.json` beside it |
+| `BEX_AGENT_STATUS_FILE` | machine-readable `running`/`succeeded`/`failed` status (`ready` for an editor's sandbox); the `bex` MCP tool records the PR in `pull-request.json` beside it |
 | `BEX_AGENT_TURN_TIMEOUT_MS` | hard wall-clock turn ceiling (default 30 minutes, at most 24 hours, the sandbox's lifetime); bex-api injects it from `BEX_AGENT_TURN_TIMEOUT` |
 | `BEX_AGENT_TURN_IDLE_TIMEOUT_MS` | the turn fails once no ACP update or prompt has happened this long (default 30 minutes, at most the ceiling); the clock is paused while a tool call runs, and held while the commands the agent started use the CPU (sampled from `/proc` every minute, at least 5% of one CPU), so a test suite an agent waits on in the background is not a silent turn |
 | `BEX_AGENT_TOOL_CALL_TIMEOUT_MS` | how long one running tool call, or the agent's commands using the CPU with no update from the agent, may hold that clock before the turn fails (default two hours, at most the ceiling) |
 | `BEX_AGENT_EXIT_AFTER_TURN` | `1` exits after the one headless turn; otherwise listeners stay |
+| `BEX_AGENT_EDITOR` | `1` is a sandbox `resume` started for a person's editor ([ADR054 D8](../../docs/ADR054-open-in-zed.md#d8--a-closed-session-wakes-for-an-editor-w6m564-2026-11-22)): after setup the driver writes the status `ready` and runs no turn |
 | `BEX_AGENT_JAVA_PROXY_OPTIONS` | a full-tier session's egress proxy as JVM system properties (w10/032); the driver points them at its loopback relay (w10/038), and it and every shell put them in front of `JAVA_TOOL_OPTIONS`, and `/etc/mavenrc` writes Maven settings from them |
 
 ## Agent-owned delivery (ADR090)

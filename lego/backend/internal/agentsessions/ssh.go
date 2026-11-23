@@ -51,8 +51,8 @@ type SSHResolver struct {
 }
 
 // ResolveSSHSession authorizes can_view_sensitive on the agent_session object,
-// then — only if a live sandbox exists — returns its pod as a sandbox-marked
-// target. Authorization runs FIRST (403 before 400/404), mirroring
+// then — only if the session's sandbox is up (openableSandbox) — returns its
+// pod as a sandbox-marked target. Authorization runs FIRST (403 before 400/404), mirroring
 // apps.ResolveSSHSession and the repository-wide rule that a refusal never leaks
 // existence. The relation is then re-asserted UNCACHED (codex round-7 F7): the
 // gateway converts a verified SSH key into a new hours-long pods/exec session,
@@ -74,9 +74,9 @@ func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (a
 	if err != nil {
 		return apps.SSHInstanceTarget{}, mapStoreError(id, err)
 	}
-	if !liveSandboxPhase(record.Phase) || record.SandboxID == "" {
+	if !openableSandbox(record) {
 		return apps.SSHInstanceTarget{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
-			"agent session has no live sandbox to open", map[string]any{"phase": record.Phase})
+			"agent session has no live sandbox to open; resume it to start one", map[string]any{"phase": record.Phase})
 	}
 	return apps.SSHInstanceTarget{
 		ID:        record.ID,
@@ -89,10 +89,25 @@ func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (a
 	}, nil
 }
 
-// liveSandboxPhase reports whether a session's phase implies a running sandbox
-// pod the resolver can reach. It is exactly the set the Completer's status watch
-// treats as active (activePhases) — a terminal or canceling session's pod is
-// gone or going, so opening a shell into it must fail closed at handshake.
+// openableSandbox reports whether an editor may open the session's sandbox now
+// (ADR054 D1, D8): the session names one and is either in a turn's live
+// phase or finished (completed or failed) and not archived, its sandbox
+// waiting out the idle close, whether its turn left it or resume started it.
+// A sandbox resume is still starting (resuming) opens once its checkout is
+// ready and the session settles. A canceling or canceled session's pod is
+// gone or going, and an archived finished session's is reclaimed at the next
+// reaper tick, so opening a shell into either fails closed at handshake.
+func openableSandbox(record store.AgentSession) bool {
+	if record.SandboxID == "" || record.Phase == PhaseResuming {
+		return false
+	}
+	return liveSandboxPhase(record.Phase) || steerable(record.Phase, record.ArchivedAt != nil)
+}
+
+// liveSandboxPhase reports whether a session's phase implies a sandbox running
+// or starting: a turn's, or the one resume starts for an editor (resuming). It
+// is exactly the set the Completer's status watch treats as active
+// (activePhases).
 func liveSandboxPhase(phase string) bool {
 	switch phase {
 	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching:

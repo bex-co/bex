@@ -28,8 +28,6 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 			_, _ = fmt.Fprint(w, `{"id":"sandbox-1","status":{"state":"Running"}}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/sandbox-1":
 			_ = json.NewEncoder(w).Encode(osSandbox{ID: "sandbox-1", Metadata: create.Metadata})
-		case r.Method == http.MethodPost && r.URL.Path == "/sandboxes/sandbox-1/resume":
-			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodDelete && r.URL.Path == "/sandboxes/sandbox-1":
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -89,13 +87,10 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1", "https://api.openai.com/v1", sessionegress.Egress{Hosts: []string{"docs.example.com"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := lifecycle.ResumeAgentSessionSandbox(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
-		t.Fatal(err)
-	}
 	if err := lifecycle.CancelAgentSessionSandbox(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
 		t.Fatal(err)
 	}
-	if len(calls) != 6 { // create, get+transition, get+resume, get+delete
+	if len(calls) != 4 { // create, get+transition, get+delete
 		t.Fatalf("lifecycle calls = %v", calls)
 	}
 	if len(eg.calls) != 3 || eg.calls[0].op != "setup" || eg.calls[1].op != "agent" || eg.calls[2].op != "delete" {

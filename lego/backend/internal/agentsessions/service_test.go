@@ -737,6 +737,42 @@ func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, p
 	f.rows[id] = row
 	return row, nil
 }
+
+// The editor start's writes (ADR054 D8), with the PG store's guards.
+func (f *fakeStore) editorWrite(id string, guard func(store.AgentSession) bool, write func(*store.AgentSession)) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || !guard(row) {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	write(&row)
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+func (f *fakeStore) BeginAgentSessionEditorStart(_ context.Context, id string) (store.AgentSession, error) {
+	return f.editorWrite(id, func(r store.AgentSession) bool {
+		return (r.Phase == PhaseCompleted || r.Phase == PhaseFailed) && r.SandboxID == "" && r.ArchivedAt == nil
+	}, func(r *store.AgentSession) { r.Phase, r.Status = PhaseResuming, "resuming" })
+}
+func (f *fakeStore) BindAgentSessionEditorSandbox(_ context.Context, id, sandboxID string) (store.AgentSession, error) {
+	return f.editorWrite(id, func(r store.AgentSession) bool {
+		return r.Phase == PhaseResuming && r.SandboxID == "" && r.ArchivedAt == nil
+	}, func(r *store.AgentSession) { r.SandboxID, r.EditorSandboxID = sandboxID, sandboxID })
+}
+func (f *fakeStore) SettleAgentSessionEditorStart(_ context.Context, id string) (store.AgentSession, error) {
+	return f.editorWrite(id, func(r store.AgentSession) bool { return r.Phase == PhaseResuming }, func(r *store.AgentSession) {
+		r.Phase = PhaseCompleted
+		if r.FailureReason != "" {
+			r.Phase = PhaseFailed
+		}
+		r.Status = r.Phase
+	})
+}
+func (f *fakeStore) KeepAgentSessionSandboxForEditor(_ context.Context, id, sandboxID string) (store.AgentSession, error) {
+	return f.editorWrite(id, func(r store.AgentSession) bool {
+		return r.SandboxID == sandboxID && sandboxID != "" && (r.Phase == PhaseCompleted || r.Phase == PhaseFailed) && r.ArchivedAt == nil
+	}, func(r *store.AgentSession) { r.EditorSandboxID = r.SandboxID })
+}
 func (f *fakeStore) SetAgentSessionCanceled(_ context.Context, id string) (store.AgentSession, store.TerminalTurnFact, error) {
 	row, ok := f.rows[id]
 	if !ok {
@@ -766,19 +802,6 @@ func (f *fakeStore) SetAgentSessionCanceled(_ context.Context, id string) (store
 		}
 	}
 	return row, fact, nil
-}
-func (f *fakeStore) SetAgentSessionFailure(_ context.Context, id, sandboxID, reason string) (store.AgentSession, error) {
-	row, ok := f.rows[id]
-	if !ok {
-		return store.AgentSession{}, store.ErrNotFound
-	}
-	if sandboxID != "" {
-		row.SandboxID = sandboxID
-	}
-	row.Phase, row.Status, row.FailureReason, row.FailureReasonCode = PhaseFailed, "failed", reason, ""
-	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
-	f.rows[id] = row
-	return row, nil
 }
 func (f *fakeStore) ListAgentSessionsByPhases(_ context.Context, phases []string) ([]store.AgentSession, error) {
 	want := map[string]bool{}
@@ -930,25 +953,25 @@ func (r resolver) IsMember(_ context.Context, id core.Identity, workspace string
 }
 
 type fakeLifecycle struct {
-	created, entered, resumed, canceled int
-	modelEndpoint, modelAPIKey          string
-	egressAllowlist                     []string
-	fullInternet                        bool
-	repository, branch                  string
-	template                            string // the last create's agent template
-	driverEnv                           map[string]string
-	image                               sandbox.AgentImage
-	sandboxSeq                          int
-	status                              string
-	statusErr                           error
-	statusReadBudget                    time.Duration // time left on the last status read's context
-	transcriptLog                       string
-	transcriptErr                       error
-	readTranscript                      int
-	readTranscriptBeforeCancel          bool
+	created, entered, canceled int
+	modelEndpoint, modelAPIKey string
+	egressAllowlist            []string
+	fullInternet               bool
+	repository, branch         string
+	template                   string // the last create's agent template
+	driverEnv                  map[string]string
+	image                      sandbox.AgentImage
+	sandboxSeq                 int
+	status                     string
+	statusErr                  error
+	statusReadBudget           time.Duration // time left on the last status read's context
+	transcriptLog              string
+	transcriptErr              error
+	readTranscript             int
+	readTranscriptBeforeCancel bool
 	// Injected background-provisioning failures (w2/m64). createErr aborts the
-	// sandbox create (nothing is counted); resumeErr aborts a resume.
-	createErr, resumeErr, cancelErr error
+	// sandbox create (nothing is counted).
+	createErr, cancelErr error
 	// imageCreateErr fails only a create that boots from an image (a
 	// retained disk or a build), and onCreate runs at the start of every
 	// create, before it answers (ADR047 D12 tests).
@@ -1009,13 +1032,6 @@ func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, spec sandbo
 }
 func (f *fakeLifecycle) EnterAgentSessionPhase(_ context.Context, _, _, _, _ string, _ sessionegress.Egress) error {
 	f.entered++
-	return nil
-}
-func (f *fakeLifecycle) ResumeAgentSessionSandbox(context.Context, string, string, string) error {
-	if f.resumeErr != nil {
-		return f.resumeErr
-	}
-	f.resumed++
 	return nil
 }
 func (f *fakeLifecycle) CancelAgentSessionSandbox(context.Context, string, string, string) error {
@@ -1248,6 +1264,9 @@ func TestSteerRefusedAtLiveSandboxCap(t *testing.T) {
 func TestResumeRefusedAtLiveSandboxCap(t *testing.T) {
 	svc, st, _, id := steerableFixture(t)
 	svc.MaxLiveSandboxes = 1
+	row := st.rows[id]
+	row.SandboxID = "" // closed: resume would start one
+	st.rows[id] = row
 	seedLiveSession(st, "tea-a")
 	if _, err := svc.Resume(caller("alice"), id); !isCode(err, "AGENT_SESSION_LIVE_LIMIT") {
 		t.Fatalf("resume at cap = %v, want AGENT_SESSION_LIVE_LIMIT", err)
@@ -1369,17 +1388,15 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 	fga.parents[created.ID] = "tea-a"
 
-	// Resume returns fast in the resuming phase; the sync runner completes the
-	// wake so the sandbox is resumed and the phase converges to running.
+	// Resume of a session whose turn runs has nothing to start (ADR054 D8):
+	// it returns the session as it is, with no ticket and no second sandbox.
+	createdSandboxes := lifecycle.created
 	resumed, err := svc.Resume(caller("alice"), created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resumed.Phase != PhaseResuming || resumed.Ticket != "" {
-		t.Fatalf("resume should return a fast, ticketless resuming view: %+v", resumed)
-	}
-	if lifecycle.resumed != 1 {
-		t.Fatalf("resume did not run the sandbox: %+v", lifecycle)
+	if resumed.Phase != PhaseRunning || resumed.SandboxID != "sandbox-1" || resumed.Ticket != "" || lifecycle.created != createdSandboxes {
+		t.Fatalf("resume of a running session = %+v (sandboxes created %d, was %d), want it unchanged", resumed, lifecycle.created, createdSandboxes)
 	}
 	// A fresh attach ticket after resume differs from the earlier one (fresh nonce).
 	reattached, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
@@ -1944,32 +1961,6 @@ func TestBackgroundDispatchFailureDoesNotClobberCancel(t *testing.T) {
 	}
 	if got := st.rows[created.ID].Phase; got != PhaseCanceled {
 		t.Fatalf("a failing dispatch clobbered the user's cancel: phase=%q", got)
-	}
-}
-
-// TestResumeReturnsFastAndSurfacesFailure pins the async Resume: it returns fast
-// in resuming, and a background wake failure surfaces as failed with a reason.
-func TestResumeReturnsFastAndSurfacesFailure(t *testing.T) {
-	svc, st, _, lc := fixture()
-	created, err := svc.Create(caller("alice"), createInput())
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Make it idle-but-resumable, then arm a resume failure.
-	row := st.rows[created.ID]
-	row.Phase = PhaseCompleted
-	st.rows[created.ID] = row
-	lc.resumeErr = errors.New("sandbox resume failed")
-
-	resumed, err := svc.Resume(caller("alice"), created.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resumed.Phase != PhaseResuming || resumed.Ticket != "" {
-		t.Fatalf("resume should return fast in resuming with no ticket: %+v", resumed)
-	}
-	if got := st.rows[created.ID]; got.Phase != PhaseFailed || got.Status != "failed" || got.FailureReason != "sandbox resume failed" {
-		t.Fatalf("resume failure should surface failed + failureReason: %+v", got)
 	}
 }
 

@@ -97,13 +97,6 @@ func TestPGAgentSessionFailureCode(t *testing.T) {
 		}
 		want(t, row, "", "")
 	})
-	t.Run("another failure clears it", func(t *testing.T) {
-		row, err := s.SetAgentSessionFailure(ctx, refused(t).ID, "", "egress phase transition failed")
-		if err != nil {
-			t.Fatal(err)
-		}
-		want(t, row, "egress phase transition failed", "")
-	})
 	t.Run("a finalize clears it, even with the same sentence", func(t *testing.T) {
 		// A coded row is already terminal, so the live phase a finalize needs is
 		// set by hand.

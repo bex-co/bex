@@ -476,7 +476,7 @@ func TestDispatcherRunsOneMessagePerSettledTurnInOrder(t *testing.T) {
 	// A failed turn settles the queue too.
 	e.settle(t, e.id)
 	e.send(t, "alice", "after the failure")
-	if _, err := e.pg.SetAgentSessionFailure(ctx, e.id, "", "boom"); err != nil {
+	if _, _, err := e.pg.FinalizeAgentSession(ctx, e.id, PhaseFailed, "", "", "boom"); err != nil {
 		t.Fatal(err)
 	}
 	if err := d.RunOnce(ctx); err != nil || len(e.prompts(t, e.id)) != 5 {

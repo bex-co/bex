@@ -243,9 +243,13 @@ type AgentSession struct {
 	// MarkAgentDispatchWaiting sets it; binding, abandoning and the next turn
 	// clear it.
 	SandboxWaitSince *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	CanceledAt       *time.Time
+	// EditorSandboxID is the sandbox Resume started, or kept, for a person's
+	// editor (w6/m564, ADR054 D8). The session's sandbox is an editor's while
+	// SandboxID equals it (EditorSandbox); a new sandbox ends that on its own.
+	EditorSandboxID string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	CanceledAt      *time.Time
 	// ArchivedAt is the ADR065 D1 archive flag: LIST-state, orthogonal to phase.
 	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
 	// the default list, mutation verbs refused) but still viewable.
@@ -392,7 +396,7 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
 	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
-	applied_secrets, pr_state, pr_state_at, environment_build_id, failure_cause, sandbox_wait_since`
+	applied_secrets, pr_state, pr_state_at, environment_build_id, failure_cause, sandbox_wait_since, editor_sandbox_id`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -408,7 +412,7 @@ func agentSessionDest(s *AgentSession) []any {
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
 		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
-		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID, &s.FailureCause, &s.SandboxWaitSince}
+		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID, &s.FailureCause, &s.SandboxWaitSince, &s.EditorSandboxID}
 }
 
 // CreateAgentSession mints the only valid agent-session id kind and persists
@@ -1134,28 +1138,6 @@ func (s *PGStore) SetAgentSessionLifecycle(ctx context.Context, id, sandboxID, p
 		}
 		return dropSessionQueued(ctx, tx, id, "the session was canceled")
 	})
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// SetAgentSessionFailure terminalizes a still-active session from a background
-// dispatch/resume/steer failure with a named reason. Unlike
-// SetAgentSessionLifecycle it records the reason in failure_reason (the field the
-// dashboard's failed-session callout reads) and sets status to the terminal
-// 'failed', so a provisioning failure surfaces identically to a driver-reported
-// failure via FinalizeAgentSession (w5/m80 t005, closes w5/048). It preserves
-// SetAgentSessionLifecycle's conditional sandbox_id write so an egress-transition
-// failure still records the just-canceled sandbox for the reaper. The caller
-// (setLifecycleIfActive) guards against clobbering a settled/canceling session.
-func (s *PGStore) SetAgentSessionFailure(ctx context.Context, id, sandboxID, reason string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase='failed', status='failed', failure_reason=$3, failure_reason_code='', failure_cause='', updated_at=now()
-		WHERE id=$1
-		RETURNING `+agentSessionColumns, id, sandboxID, reason))
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}

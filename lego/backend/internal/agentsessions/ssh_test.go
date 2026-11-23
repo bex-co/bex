@@ -102,12 +102,23 @@ func TestSSHResolverResolvesLiveSandbox(t *testing.T) {
 }
 
 func TestSSHResolverAllLivePhasesResolve(t *testing.T) {
-	for _, phase := range []string{PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching} {
+	for _, phase := range []string{PhaseCreating, PhaseRunning, PhaseRedispatching} {
 		st := newFakeStore()
 		id := liveSession(st, "tea-a", "os-live", phase)
 		if _, err := sshResolver(map[string]bool{"alice": true}, st).ResolveSSHSession(caller("alice"), id); err != nil {
 			t.Errorf("phase %s should resolve, got %v", phase, err)
 		}
+	}
+}
+
+// A sandbox resume is still starting for an editor opens once its checkout
+// is ready and the session settles, not while /workspace is being written
+// (ADR054 D8).
+func TestSSHResolverWaitsForTheEditorStartToSettle(t *testing.T) {
+	st := newFakeStore()
+	id := liveSession(st, "tea-a", "os-starting", PhaseResuming)
+	if _, err := sshResolver(map[string]bool{"alice": true}, st).ResolveSSHSession(caller("alice"), id); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+		t.Fatalf("resuming = %v, want AGENT_SESSION_NOT_ATTACHABLE until it settles", err)
 	}
 }
 
@@ -137,12 +148,37 @@ func TestSSHResolverAuthorizeRunsBeforeIDValidation(t *testing.T) {
 }
 
 func TestSSHResolverDeadPhaseNotAttachable(t *testing.T) {
-	for _, phase := range []string{PhaseCompleted, PhaseFailed, PhaseCanceled, PhaseCanceling} {
+	for _, phase := range []string{PhaseCanceled, PhaseCanceling} {
 		st := newFakeStore()
 		id := liveSession(st, "tea-a", "os-dead", phase)
 		_, err := sshResolver(map[string]bool{"alice": true}, st).ResolveSSHSession(caller("alice"), id)
 		if !errors.Is(err, core.ErrConflict) {
 			t.Errorf("phase %s: err = %v, want ErrConflict (no live sandbox)", phase, err)
+		}
+	}
+}
+
+// A finished session's sandbox waiting out its idle close, its turn's or the
+// one resume started, opens in an editor (ADR054 D8); once it is closed, or
+// the session archived, it does not.
+func TestSSHResolverFinishedSessionOpensWhileItsSandboxIsUp(t *testing.T) {
+	for _, phase := range []string{PhaseCompleted, PhaseFailed} {
+		st := newFakeStore()
+		id := liveSession(st, "tea-a", "os-idle", phase)
+		r := sshResolver(map[string]bool{"alice": true}, st)
+		if target, err := r.ResolveSSHSession(caller("alice"), id); err != nil || target.PodName != "os-idle-0" {
+			t.Errorf("phase %s with its sandbox up: target=%+v err=%v, want os-idle-0", phase, target, err)
+		}
+		row := st.rows[id]
+		row.SandboxID = ""
+		st.rows[id] = row
+		if _, err := r.ResolveSSHSession(caller("alice"), id); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+			t.Errorf("phase %s after its sandbox closed: err = %v, want AGENT_SESSION_NOT_ATTACHABLE", phase, err)
+		}
+		row.SandboxID, row.ArchivedAt = "os-idle", new(time.Now())
+		st.rows[id] = row
+		if _, err := r.ResolveSSHSession(caller("alice"), id); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+			t.Errorf("phase %s archived: err = %v, want AGENT_SESSION_NOT_ATTACHABLE", phase, err)
 		}
 	}
 }
@@ -203,12 +239,22 @@ func TestSSHAddressAbsentWhenHostMalformed(t *testing.T) {
 	}
 }
 
-func TestSSHAddressAbsentWhenTerminalOrSandboxless(t *testing.T) {
-	terminal := liveRecord()
-	terminal.Phase = PhaseCompleted
-	if v := viewFor(t, "ssh.bex.co", terminal); v.SSHAddress != "" {
-		t.Errorf("sshAddress = %q, want empty for a completed session", v.SSHAddress)
+func TestSSHAddressFollowsTheSandboxOfAFinishedSession(t *testing.T) {
+	finished := liveRecord()
+	finished.Phase = PhaseCompleted
+	if v := viewFor(t, "ssh.bex.co", finished); v.SSHAddress != "ags-d9example0000000000@ssh.bex.co" {
+		t.Errorf("sshAddress = %q, want the address while a completed session's sandbox is up", v.SSHAddress)
 	}
+	for name, record := range map[string]store.AgentSession{"canceled": {Phase: PhaseCanceled}, "archived": {Phase: PhaseCompleted, ArchivedAt: new(time.Now())}} {
+		gone := liveRecord()
+		gone.Phase, gone.ArchivedAt = record.Phase, record.ArchivedAt
+		if v := viewFor(t, "ssh.bex.co", gone); v.SSHAddress != "" {
+			t.Errorf("sshAddress = %q, want empty for a %s session", v.SSHAddress, name)
+		}
+	}
+}
+
+func TestSSHAddressAbsentWhenSandboxless(t *testing.T) {
 	sandboxless := liveRecord()
 	sandboxless.SandboxID = ""
 	if v := viewFor(t, "ssh.bex.co", sandboxless); v.SSHAddress != "" {

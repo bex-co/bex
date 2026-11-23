@@ -1,18 +1,18 @@
 # w6 · m564 — Opening a closed agent session in Zed starts its sandbox again
 
-**Worker:** worker6 **Goal:** a session whose sandbox closed after its idle timeout can still be opened in Zed: the open starts a fresh sandbox with the session's work, as a Devin session wakes when you come back to it, instead of the dashboard hiding the button. **Status:** todo
+**Worker:** worker6 **Goal:** a session whose sandbox closed after its idle timeout can still be opened in Zed: the open starts a fresh sandbox with the session's work, as a Devin session wakes when you come back to it, instead of the dashboard hiding the button. **Status:** todo (t001–t003, t005–t007 done; t004 waits for production)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Decide how a closed session wakes for an editor, and record it in ADR054](t001.md) | 45m | — |
-| t002 | [`resume` on a closed session boots a sandbox for editing, from its kept disk or its branch](t002.md) | 2h30m | t001 |
-| t003 | [The dashboard offers Open in Zed on a closed session and shows it starting](t003.md) | 1h30m | t002 |
+| t001 | [Decide how a closed session wakes for an editor, and record it in ADR054](done/t001.md) — **DONE** | 45m | — |
+| t002 | [`resume` on a closed session boots a sandbox for editing, from its kept disk or its branch](done/t002.md) — **DONE** | 2h30m | t001 |
+| t003 | [The dashboard offers Open in Zed on a closed session and shows it starting](done/t003.md) — **DONE** | 1h30m | t002 |
 | t004 | [Production check: a session closed at its idle timeout opens in Zed with its work](t004.md) | 45m | t003 |
-| t005 | [Render parity (Devin for agent sessions)](t005.md) | 30m | t004 |
-| t006 | [Simplify](t006.md) | 20m | t005 |
-| t007 | [Test coverage](t007.md) | 45m | t005 |
+| t005 | [Render parity (Devin for agent sessions)](done/t005.md) — **DONE** | 30m | t004 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 20m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 45m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done

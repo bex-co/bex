@@ -124,10 +124,13 @@ fragment AgentSessionMintFields on AgentSession {
 # it may name (w10/m516): the platform catalog, a fixed model's one entry, or
 # empty where the workspace's own provider takes any model. `templates` are the
 # sandbox templates a session may name, smallest first, and `defaultTemplate`
-# the one a session that names none runs on (w10/m519).
+# the one a session that names none runs on (w10/m519). `sshEnabled` says
+# sessions here open in an editor over SSH, so a closed one offers to start
+# its sandbox (ADR054 D8).
 query AgentSessionCapabilities($ownerId: String) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
+    sshEnabled
     agents {
       id
       modelKeyReady

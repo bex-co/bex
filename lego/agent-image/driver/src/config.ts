@@ -142,6 +142,9 @@ export interface AgentDriverConfig {
   // which the PR tool fast-forwards to the pushed session branch.
   prTakeover: boolean;
   exitAfterTurn: boolean;
+  // The sandbox is one bex-api started for a person's editor (ADR054 D8): it
+  // checks out the workspace, reports "ready" and runs no turn.
+  editor: boolean;
   // The turn's hard wall-clock ceiling, at most the sandbox's 24h lifetime.
   turnTimeoutMs: number;
   // How long the turn may make no progress, and how long one tool call may
@@ -528,6 +531,7 @@ export function loadConfig(
     prTakeover:
       env.BEX_AGENT_PR_TAKEOVER === "1" && Boolean(env.BEX_AGENT_PR_URL),
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",
+    editor: env.BEX_AGENT_EDITOR === "1",
     ...turnBounds(env),
     credentialEnvName,
     modelCredential,

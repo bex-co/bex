@@ -600,6 +600,7 @@ export type AgentSessionCapabilities = {
   github: AgentSessionGitHubReadiness;
   modelKeyReady: Scalars['Boolean']['output'];
   ready: Scalars['Boolean']['output'];
+  sshEnabled: Scalars['Boolean']['output'];
   /** The agent sandbox templates a session may name, smallest first. */
   templates: Array<AgentSandboxTemplate>;
 };

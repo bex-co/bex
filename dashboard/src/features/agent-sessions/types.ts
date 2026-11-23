@@ -145,6 +145,11 @@ export interface AgentSessionCapabilitiesView {
     connected: boolean;
   };
   attachments: AttachmentLimitsView;
+  /**
+   * Sessions open in an editor over SSH here (ADR054): `sshAddress` while a
+   * sandbox is up, and `resume` starts one for a closed session (D8).
+   */
+  sshEnabled: boolean;
 }
 
 /**

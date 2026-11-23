@@ -39,6 +39,7 @@ export function useAgentSessionCapabilities(
       value
         ? {
             enabled: value.enabled,
+            sshEnabled: value.sshEnabled,
             agents: value.agents.map((agent) => agent.id),
             modelKeyReadyAgents: value.agents
               .filter((agent) => agent.modelKeyReady)

@@ -257,9 +257,11 @@ func (c *Completer) beginRetention(ctx context.Context, record store.AgentSessio
 
 // undelivered reads what the turn record is on left undelivered in its
 // sandbox's checkout, and whether an editor is open on the sandbox now. The
-// facts the turn recorded when it ended are believed unless they are unknown
-// or an editor has connected since, which may have changed the checkout: then
-// the checkout is read in the sandbox. ok is false when it cannot be told.
+// facts the turn recorded when it ended are believed unless they are unknown,
+// an editor has connected since, which may have changed the checkout, or the
+// sandbox is one resume started for an editor, whose checkout is not the
+// turn's (ADR054 D8): then the checkout is read in the sandbox. ok is false
+// when it cannot be told.
 func (c *Completer) undelivered(ctx context.Context, record store.AgentSession) (checkout store.TurnCheckout, editorOpen, ok bool) {
 	turn, found, err := c.currentTurn(ctx, record)
 	if err != nil || !found {
@@ -271,7 +273,7 @@ func (c *Completer) undelivered(ctx context.Context, record store.AgentSession) 
 		return store.TurnCheckout{}, false, false
 	}
 	recorded, known := turn.Checkout()
-	edited := open || (lastEnded != nil && (turn.CompletedAt == nil || lastEnded.After(*turn.CompletedAt)))
+	edited := open || record.EditorSandbox() || (lastEnded != nil && (turn.CompletedAt == nil || lastEnded.After(*turn.CompletedAt)))
 	if known && !edited {
 		return recorded, false, true
 	}

@@ -439,6 +439,7 @@ type AgentSessionCapabilities {
   github: AgentSessionGitHubReadiness!
   modelKeyReady: Boolean!
   ready: Boolean!
+  sshEnabled: Boolean!
   templates: [AgentSandboxTemplate!]!
 }
 

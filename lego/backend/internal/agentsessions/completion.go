@@ -450,8 +450,9 @@ func (c *Completer) idleTTL() time.Duration {
 //     holding its sandbox only pins plan quota.
 //   - none for a session an automation or a parent session started: no person
 //     opens an editor on it, so the sandbox closes at the harvest.
-//   - for a session a person started, its workspace's own timeout (an
-//     Enterprise setting) when set, else IdleTTL.
+//   - for a session a person started, or a sandbox resume started or kept for
+//     a person's editor whoever started the session (ADR054 D8), its
+//     workspace's own timeout (an Enterprise setting) when set, else IdleTTL.
 //
 // The open-editor pin in teardown applies to every case first — a live edit
 // is never killed — and a checkout holding undelivered work keeps its disk at
@@ -459,7 +460,8 @@ func (c *Completer) idleTTL() time.Duration {
 // MinIdleTimeout, so a turn idle for less than that and IdleTTL is kept
 // without reading it.
 func (c *Completer) idleGrace(ctx context.Context, record store.AgentSession, idle time.Duration) (time.Duration, error) {
-	if record.ArchivedAt != nil || record.Phase == PhaseFailed || record.AutomationID != "" || record.ParentSessionID != "" {
+	unattended := record.Phase == PhaseFailed || record.AutomationID != "" || record.ParentSessionID != ""
+	if record.ArchivedAt != nil || (unattended && !record.EditorSandbox()) {
 		return 0, nil
 	}
 	grace := c.idleTTL()
@@ -719,6 +721,11 @@ func (c *Completer) sandboxClaim(ctx context.Context, principal string) (sandbox
 }
 
 func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
+	if record.Phase == PhaseResuming {
+		// Resume is starting an editor's sandbox: there is no turn to settle.
+		c.settleEditorStart(ctx, record)
+		return
+	}
 	if record.SandboxID == "" {
 		return
 	}
@@ -1166,6 +1173,11 @@ const (
 // suppress the rest. It reports whether the log was read and stored, so a
 // failed harvest is retried on the next tick.
 func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) bool {
+	if record.EditorSandbox() {
+		// Resume started it for an editor: it ran no turn, and the turn it
+		// carries on from was harvested when it ended (ADR054 D8).
+		return true
+	}
 	reason, ok := c.harvestTranscript(ctx, record, false)
 	if !ok {
 		c.markTurnHarvestFailed(ctx, record, reason)

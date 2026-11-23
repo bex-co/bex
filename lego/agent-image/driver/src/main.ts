@@ -30,7 +30,11 @@ import {
   startGitHubCliProxy,
   type GitHubCliProxy,
 } from "./github-cli.js";
-import { markTurnFailed, runHeadlessTurn } from "./session.js";
+import {
+  markEditorReady,
+  markTurnFailed,
+  runHeadlessTurn,
+} from "./session.js";
 import { startDriverServer } from "./server.js";
 import { UIMessageStreamHub } from "./stream-hub.js";
 
@@ -167,7 +171,10 @@ async function main(): Promise<void> {
     // workspace is still empty) before the agent runs.
     // Package-registry egress is open here; the agent phase then narrows it (D5).
     await setup;
-    if (!config.prompt) return;
+    // An editor's sandbox (ADR054 D8) runs no turn: it says its checkout is
+    // ready and stays up for the editor until bex-api closes it.
+    if (config.editor) await markEditorReady(config);
+    if (!config.prompt || config.editor) return;
     // codex #9: hold the single-flight guard during the initial headless turn so
     // a concurrent POST /turn gets 409 instead of starting a second agent against
     // the same checkout, transcript, credentials, and Git branch.

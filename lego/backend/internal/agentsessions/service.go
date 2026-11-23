@@ -64,12 +64,15 @@ type Store interface {
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
+	// Resume's editor sandbox (ADR054 D8): a finished session with none goes
+	// to resuming, binds the sandbox the start made, and settles back to its
+	// finished phase with it; one whose sandbox is still up keeps it.
+	BeginAgentSessionEditorStart(ctx context.Context, id string) (store.AgentSession, error)
+	BindAgentSessionEditorSandbox(ctx context.Context, id, sandboxID string) (store.AgentSession, error)
+	SettleAgentSessionEditorStart(ctx context.Context, id string) (store.AgentSession, error)
+	KeepAgentSessionSandboxForEditor(ctx context.Context, id, sandboxID string) (store.AgentSession, error)
 	// SetAgentSessionCanceled terminalizes Cancel with a CAS + turn timing fact.
 	SetAgentSessionCanceled(context.Context, string) (store.AgentSession, store.TerminalTurnFact, error)
-	// SetAgentSessionFailure terminalizes an active session with a reason recorded
-	// in failure_reason (w5/m80 t005): the background failure paths use it so a
-	// provisioning failure carries the same surfaced reason a driver failure does.
-	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	ReplaceAgentSessionTags(context.Context, string, []string) (store.AgentSession, error)
@@ -166,7 +169,6 @@ type SandboxLifecycle interface {
 	ReconcileWorkspaceInventory(ctx context.Context, workspaceID, apiKey string, now time.Time, lookup sandbox.SessionClaimLookup) (sandbox.InventoryCounts, error)
 	CreateAgentSessionSandbox(ctx context.Context, spec sandbox.AgentSessionSandbox) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egress sessionegress.Egress) error
-	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
 	// ReadSessionTranscript streams the driver's per-part session log
@@ -432,41 +434,6 @@ func (s *Service) detach(ctx context.Context, fn func(context.Context)) {
 		defer ceiling.Stop()
 		fn(context.WithValue(ctx, dispatchCeilingKey{}, ceiling))
 	})
-}
-
-// phaseSettledOrCanceling is true for the phases a background provisioning step
-// must not overwrite: a terminal state (completed/failed/canceled) or canceling
-// (converging to canceled). Guarding on it stops a slow provision from
-// resurrecting a session a concurrent Cancel already took, or flipping a
-// user-canceled session to failed.
-func phaseSettledOrCanceling(phase string) bool {
-	switch phase {
-	case PhaseCompleted, PhaseFailed, PhaseCanceled, PhaseCanceling:
-		return true
-	}
-	return false
-}
-
-// setLifecycleIfActive advances a session's phase from the background dispatch
-// unless a concurrent cancel/complete already took it settled/canceling. The
-// read-then-write leaves a small window; the resource-safety-critical
-// resurrection path is closed airtight at the DB by RecordAgentSessionDispatch's
-// CAS, and the Completer's status watch is the backstop that reconciles any
-// residue (a phase left running for a torn-down sandbox reads NotFound and fails).
-// The final argument is a status word for a non-terminal transition (e.g.
-// "running") and a human failure REASON for PhaseFailed. A failure records it in
-// failure_reason (the field the dashboard's failed-session callout reads) with a
-// terminal 'failed' status, matching the Completer's driver-failure path so a
-// provisioning failure never shows a blank card (w5/m80 t005, closes w5/048).
-func (s *Service) setLifecycleIfActive(ctx context.Context, id, sandboxID, phase, statusOrReason string) {
-	if cur, err := s.Store.GetAgentSession(ctx, id); err == nil && phaseSettledOrCanceling(cur.Phase) {
-		return
-	}
-	if phase == PhaseFailed {
-		_, _ = s.Store.SetAgentSessionFailure(ctx, id, sandboxID, statusOrReason)
-		return
-	}
-	_, _ = s.Store.SetAgentSessionLifecycle(ctx, id, sandboxID, phase, statusOrReason, false)
 }
 
 // GitHubReadiness yields a workspace's GitHub App connection as the neutral,
@@ -880,6 +847,9 @@ type dispatchSpec struct {
 	// replica that stopped (w10/022).
 	saved   []byte
 	resumed bool
+	// editor is the sandbox resume starts for a person's editor (ADR054 D8):
+	// one create, which does not wait for room on the pool, and no turn.
+	editor bool
 }
 
 // runDispatch executes the slow sandbox-provisioning half of a create/steer turn
@@ -1148,6 +1118,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 		return Capabilities{}, err
 	}
 	caps := Capabilities{Enabled: s.enabled() && s.modelProxyEnabled() && s.ticketEnabled(), Attachments: s.attachmentLimits()}
+	caps.SSHEnabled = caps.Enabled && s.sshHost() != ""
 	if !caps.Enabled {
 		// An unwired deployment advertises NO profiles (the phone renders a
 		// configuration callout off Enabled:false) — but "none" is an empty
@@ -1689,85 +1660,6 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	// return them (fillQueue, View.queued).
 	s.fillQueueCount(ctx, &view)
 	return view, nil
-}
-
-func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
-		return View{}, err
-	}
-	if !s.enabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
-	}
-	if !s.ticketEnabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
-	}
-	if err := validateSessionID(sessionID); err != nil {
-		return View{}, err
-	}
-	record, err := s.Store.GetAgentSession(ctx, sessionID)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	// Resume can reactivate or provision broker-eligible compute. A contributor
-	// may operate a live session, but cannot use that lifecycle permission to
-	// revive it after losing the workspace's create authority.
-	if err := s.AuthorizeFreshOn(ctx, core.RelCanCreate, sessionObject(sessionID)); err != nil {
-		return View{}, err
-	}
-	if record.ArchivedAt != nil {
-		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
-	}
-	if record.Phase == PhaseCanceled || record.Phase == PhaseCanceling || record.SandboxID == "" {
-		return View{}, core.NewConflictError("AGENT_SESSION_NOT_RESUMABLE", "agent session cannot be resumed from its current phase", map[string]any{"phase": record.Phase})
-	}
-	// ADR059 D6: a terminal session resuming re-enters a live phase, so it counts
-	// toward the workspace's live-sandbox cap; refuse rather than exceed it.
-	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	config, err := decodeAgentConfig(record)
-	if err != nil {
-		return View{}, err
-	}
-	// The BYO flag only matters where the trust tier counts platform-route
-	// sessions; read the environment for it there alone.
-	byoKey := false
-	if s.platformCounted(record.WorkspaceID, config.Agent, false) {
-		workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
-		if err != nil {
-			return View{}, err
-		}
-		byoKey = workspaceEnv.ModelKeySet()
-	}
-	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, byoKey); err != nil {
-		return View{}, err
-	}
-	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
-		return View{}, err
-	}
-	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseResuming, "resuming", false)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	// Accept fast: the same sandbox is woken in the background, converging to
-	// running (or failed). The client re-attaches via AttachTicket once running.
-	s.detach(ctx, func(ctx context.Context) { s.runResume(ctx, record) })
-	return s.toView(record)
-}
-
-// runResume wakes an idle session's existing sandbox in the background and
-// converges the phase. A concurrent cancel is honored: setLifecycleIfActive
-// refuses to flip a session a Cancel already took back to running.
-func (s *Service) runResume(ctx context.Context, record store.AgentSession) {
-	if err := s.Sandbox.ResumeAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
-		log.Printf("agent-session resume: sandbox resume failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
-		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "sandbox resume failed")
-		return
-	}
-	s.setLifecycleIfActive(ctx, record.ID, "", PhaseRunning, "running")
 }
 
 func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
@@ -2551,18 +2443,25 @@ func (s *Service) toView(record store.AgentSession) (View, error) {
 }
 
 // sshAddress returns `ags-<xid>@<BEX_SSH_HOST>` when an editor could actually
-// open the sandbox: a valid public host is configured AND the sandbox is live
-// (liveSandboxPhase + a non-empty sandbox id) — the exact condition the gateway
-// resolver enforces, so a surfaced address never dangles. Empty otherwise.
+// open the sandbox: a valid public host is configured AND the session's
+// sandbox is up (openableSandbox) — the exact condition the gateway resolver
+// enforces, so a surfaced address never dangles. Empty otherwise.
 func (s *Service) sshAddress(record store.AgentSession) string {
-	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
-	if host == "" || !strings.Contains(host, ".") || len(validation.IsDNS1123Subdomain(host)) != 0 {
-		return ""
-	}
-	if !liveSandboxPhase(record.Phase) || record.SandboxID == "" {
+	host := s.sshHost()
+	if host == "" || !openableSandbox(record) {
 		return ""
 	}
 	return record.ID + "@" + host
+}
+
+// sshHost is the public SSH host editors reach sandboxes on (BEX_SSH_HOST),
+// "" when none or not a valid DNS name: then no session offers an editor.
+func (s *Service) sshHost() string {
+	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
+	if !strings.Contains(host, ".") || len(validation.IsDNS1123Subdomain(host)) != 0 {
+		return ""
+	}
+	return host
 }
 
 func viewOf(record store.AgentSession) (View, error) {

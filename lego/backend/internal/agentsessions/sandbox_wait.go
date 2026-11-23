@@ -228,6 +228,12 @@ func startingPhase(phase string) bool { return phase == PhaseCreating || phase =
 // It returns how long the dispatch waited, from the wait's start to the start
 // of its last create.
 func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string) (sb sandbox.Sandbox, waited time.Duration, err error) {
+	if spec.editor {
+		// A person waits on an editor's start, and no turn's dispatch record
+		// keeps a wait alive: it tries once (ADR054 D8).
+		sb, err = s.createSessionSandbox(ctx, record, spec, image, env, nil)
+		return sb, 0, err
+	}
 	w := &sandboxWait{s: s, d: store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn}, saved: spec.saved}
 	outcome := waitOutcomeEnded
 	defer func() {

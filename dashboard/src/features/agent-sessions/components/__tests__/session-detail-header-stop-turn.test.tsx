@@ -45,6 +45,17 @@ vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-applied-secrets",
   () => ({ useAgentSessionAppliedSecrets: () => [] }),
 );
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-capabilities",
+  () => ({
+    useAgentSessionCapabilities: () => ({
+      capabilities: null,
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    }),
+  }),
+);
 
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
@@ -200,7 +211,7 @@ describe("Stop turn button", () => {
     expect(mutations.interrupt).not.toHaveBeenCalled();
   });
 
-  it.each(["creating", "resuming", "redispatching"] as const)(
+  it.each(["creating", "redispatching"] as const)(
     "is offered but rests while the session is %s",
     (phase) => {
       render(<SessionDetailHeader session={view({ phase })} />);
@@ -208,19 +219,23 @@ describe("Stop turn button", () => {
     },
   );
 
-  it.each(["completed", "failed", "canceling", "canceled"] as const)(
-    "is not offered once the session is %s",
-    (phase) => {
-      render(<SessionDetailHeader session={view({ phase })} />);
-      expect(screen.queryByRole("button", { name: "Stop turn" })).toBeNull();
-      fireEvent.keyDown(window, {
-        key: "Backspace",
-        ctrlKey: true,
-        shiftKey: true,
-      });
-      expect(mutations.interrupt).not.toHaveBeenCalled();
-    },
-  );
+  // resuming starts a sandbox for an editor (ADR054 D8): there is no turn.
+  it.each([
+    "resuming",
+    "completed",
+    "failed",
+    "canceling",
+    "canceled",
+  ] as const)("is not offered once the session is %s", (phase) => {
+    render(<SessionDetailHeader session={view({ phase })} />);
+    expect(screen.queryByRole("button", { name: "Stop turn" })).toBeNull();
+    fireEvent.keyDown(window, {
+      key: "Backspace",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(mutations.interrupt).not.toHaveBeenCalled();
+  });
 
   it("stops listening for the shortcut once the turn is over", () => {
     const { rerender } = render(<SessionDetailHeader session={view()} />);
