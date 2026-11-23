@@ -1,6 +1,6 @@
 # w4 · m544 — An agent session runs the Python its repo asks for, chosen by Render's rules, from the official builds with GNU readline
 
-**Worker:** worker4 **Goal:** a cloud agent session picks its Python the way a Render native build does (`PYTHON_VERSION` → `.python-version` → Render's dated default), from the same table the hosted-app build uses, and runs that version from the official Docker Python builds (GNU readline) in every shell and setup step. **Status:** blocked (t001–t010 and t012 done; t011 Closeout waits for production to carry `ca86145d9f`, then replays DoD bullet 2, the exact `3.11.9` patch on the `registries` tier; every other bullet held on pin `19fdb46f1758`, § Live check)
+**Worker:** worker4 **Goal:** a cloud agent session picks its Python the way a Render native build does (`PYTHON_VERSION` → `.python-version` → Render's dated default), from the same table the hosted-app build uses, and runs that version from the official Docker Python builds (GNU readline) in every shell and setup step. **Status:** done
 
 ## Tasks (in order)
 
@@ -17,7 +17,7 @@
 | t009 | Simplify — **DONE** | 20m | t008             |
 | t010 | Test coverage — **DONE** | 30m | t008             |
 | t012 | Docker Hub's blob host joins the registries catalog, so an exact patch's fetch reaches it — **DONE** | 20m | t006 |
-| t011 | Closeout                                                                          | 15m | t009, t010, t012 |
+| t011 | Closeout — **DONE**                                                               | 15m | t009, t010, t012 |
 
 ## Definition of done
 
@@ -87,3 +87,21 @@ What is left is DoD bullet 2 on the `registries` tier, once the platform pin car
 5. **Close.** Delete the sessions, the environment, the secret and the repository, then close with t011.
 
 No user decision is needed.
+
+## Unblocked (2026-11-23)
+
+- **Gate cleared (verified evidence).** The newest pin on `origin/main` is `e6c65f5c62` (`chore(deploy): pin platform images to 1a5a8e872398`), and `git merge-base --is-ancestor ca86145d9f 1a5a8e872398` holds. Production `bex-api` and `bex-ssh-gateway` Pods run `bex-operator@sha256:65ef4f0d90b1…` and `BEX_AGENT_SESSION_IMAGE` is `bex-agent-sandbox@sha256:e374484c04d1…`, matching `e6c65f5c62`. No gate remains and no user decision is needed.
+- **Next.** Replay DoD bullet 2 on the `registries` tier (a phase-1 session and a snapshot-booted session with `PYTHON_VERSION=3.11.9` overriding `.python-version` `3.13`), clean up the fixtures, and close with t011.
+
+## Live check (t011, production, 2026-11-23 — DoD bullet 2 replay)
+
+Workspace `tian-personal` (`tea-da2isimlm39c739m4ofg`, the QA account), 06:42–07:03Z, pin `1a5a8e872398` (`e6c65f5c62`, carrying `ca86145d9f` / t012): `bex-api` and `bex-ssh-gateway` ran `bex-operator@sha256:65ef4f0d90b1…` and the phase-1 sandbox Pod ran `bex-agent-sandbox@sha256:e374484c04d1…`, matching that pin (read-only `kubectl`, `hetzner-prod`). The workspace stayed on its default `registries` tier throughout (`networkTier: REGISTRIES`). Every session ran `claude` on `deepseek/deepseek-v4.1-flash-1017`, template `agent`, `maxSpendUSD` 1.
+
+- **Fixture.** Public repository `puncsky/qa-20261123-m544-pypatch` (disposable) with a root `.python-version` of `3.13`. Repo-scoped secret `PYTHON_VERSION=3.11.9` was set first while no repository environment existed, then an environment was saved with a `python-check` setup step printing `python3 --version`, `python3 -m pip --version`, GNU readline check (Python 3.11 predates `readline.backend`), `command -v python3` and `readlink -f "$(command -v python3)"`.
+- **Repository environment build (`arb-dc1u1g8oodks73aud9s0`).** Ran 06:44:26–06:46:19Z, `status: success` (2.41 GB). Step `Python` (3.35 s, exit 0) read `==> Using Python [redacted:PYTHON_VERSION] (from PYTHON_VERSION)` with no `Could not fetch` line. Step `python-check` (1.40 s, exit 0) printed `Python [redacted:PYTHON_VERSION]`, `pip 24.0 from /opt/bex-python/[redacted:PYTHON_VERSION]/lib/python3.11/site-packages/pip (python 3.11)`, `readline: readline`, `/opt/bex-python/bin/python3` and `/opt/bex-python/[redacted:PYTHON_VERSION]/bin/python3.11`.
+- **Phase-1 sessions (`environmentBuildId: null`).**
+  - `ags-dc1u1gfqbg1c739j1ff0` (started 06:44:17Z, while `arb-dc1u1g8oodks73aud9s0` was still `queued`): `setup: Python` read `==> Using Python [redacted:PYTHON_VERSION] (from PYTHON_VERSION)` with no `Could not fetch` line; `setup: python-check` and the agent's shell both printed `Python [redacted:PYTHON_VERSION]`, `pip 24.0 from /opt/bex-python/[redacted:PYTHON_VERSION]/lib/python3.11/site-packages/pip (python 3.11)` and `/opt/bex-python/[redacted:PYTHON_VERSION]/bin/python3.11` (`readline: readline` in setup).
+  - `ags-dc1u8sooodks73audavg` (pure phase-1 after deleting the repository environment, `environmentBuildId: null`): `setup: Python` read the same line with no `Could not fetch` fallback; the agent's shell printed the same versions and path; over interactive `ssh ags-dc1u8sooodks73audavg@ssh.bex.co` on a 120×24 local pty (`flags=smi`, `uid=10001`, `ENV=/etc/profile.d/bex-agent-tools.sh`, after `setup: Python` finished), `python3 --version` was `Python 3.11.9`, `python3 -m pip --version` was `pip 24.0 from /opt/bex-python/3.11.9/lib/python3.11/site-packages/pip (python 3.11)`, GNU `readline` was active, `/opt/bex-python/bin/python3` resolved to `/opt/bex-python/3.11.9/bin/python3.11`, and `/usr/bin/python3` stayed Debian's `Python 3.11.2`.
+- **Snapshot-booted session (`ags-dc1u2fgoodks73auda9g`, `environmentBuildId: arb-dc1u1g8oodks73aud9s0`).** Booted from the snapshot image (`arb-dc1u1g8oodks73aud9s0@sha256:6f4359aa…`, no `setup: python-check` re-run). `setup: Python` read `==> Using Python [redacted:PYTHON_VERSION] (from PYTHON_VERSION)` with no `Could not fetch` line. The agent's shell and interactive 120×24 SSH PTY both confirmed `Python 3.11.9`, `pip 24.0 from /opt/bex-python/3.11.9/lib/python3.11/site-packages/pip (python 3.11)`, GNU `readline`, `/opt/bex-python/bin/python3` → `/opt/bex-python/3.11.9/bin/python3.11`, and `/usr/bin/python3` `Python 3.11.2`.
+- **Verdict.** DoD bullet 2 holds on the default `registries` tier in both phase-1 and snapshot-booted sessions. Combined with bullets 1 and 3–6 on pin `19fdb46f1758`, the entire definition of done holds.
+- **Cleanup.** All four sessions deleted (`agentSessions: []`), repository environment deleted (`[]`), `PYTHON_VERSION` secret deleted (`[]`), ephemeral SSH key `ssk-dc1tvg0oodks73aud9l0` deleted, workspace left on `REGISTRIES`, disposable repository `puncsky/qa-20261123-m544-pypatch` deleted, `tea-da2isimlm39c739m4ofg-sandbox` has no Pod left, and both QA Kratos sessions logged out. Model spend was ~$0.02.
