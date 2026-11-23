@@ -13,6 +13,16 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-11-23 (brainstorm round 11)
+
+User selection 2026-11-23: all five items of the eleventh `/pm-brainstorm` proposal (Render REST OpenAPI contract & wire parity in `lego/backend/`, `/pmx them all to w5`), verified against `main@3854adf442` and followed by `/loopx w5`. Render parity is included for m580–m583. Enforcing `build_source_region_mismatch` on conflicting declared Render regions in m583 is the proposal's recommendation under ADR008 Render parity first, not a user decision (see m583's README).
+
+- [ ] **m580** — [Served Render REST list filters honor OpenAPI array/query contracts across all 30 list operations](m580/README.md) (8 tasks; 5h35m total) ← round 11 item 1; `list-notification-overrides` scalar `ownerId`, `list-build-sources` raw `q["name"]`, `list-job` unsplit `status`, `list-events` `q.Get("type")`, and 9/30 guard in `list_query_contract_test.go`
+- [ ] **m581** — [Close the Render REST response-conformance blind spot across all served operation families](m581/README.md) (8 tasks; 6h20m total) ← round 11 item 2; `DELETE /v1/build-sources/{id}` `HandleJSON(204)` body defect and 34/219 `TestRenderConformance` coverage
+- [ ] **m582** — [Exhaustive declared-request-field and composed-body-gate coverage across all ~58 served JSON-body operations](m582/README.md) (8 tasks; 5h35m total) ← round 11 item 3; `recover-postgres` `environmentId` refusal and 6/28 vs ~58 body-guard coverage
+- [ ] **m583** — [Render `errorCode` vocabulary parity on served REST refusals, guarded for all 33 pinned codes](m583/README.md) (7 tasks; 4h05m total) ← round 11 item 4; codeless `too_many_resources` on `get-bandwidth-sources`, `build_source_region_mismatch`, and 33-code classification guard
+- [ ] **199** — [The REST OpenAPI gate joins repeated keys for `explode=false` enum queries only on datastore `region`, letting invalid second values slip past validation on other lists](199.md) (~45m–1h) ← round 11 item 5; `render_openapi.go:894-904` `kin-openapi` single-key bypass
+
 ## Approved queue — 2026-11-18 (brainstorm round 10)
 
 User selection 2026-11-18: all five items of the tenth `/pm-brainstorm for w5` proposal (`/pmx them all to w5`), followed by `/loopx w5`, plus the proposal's hand-off action recording m383's production volume check. Item 5's deletion of `hello-static` is the proposal's recommendation, not a user decision.
