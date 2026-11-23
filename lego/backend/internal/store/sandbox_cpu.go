@@ -61,7 +61,9 @@ type SandboxCPUStats struct {
 // opens an interval (or continues the open one), and anything else, or another
 // pod name, closes it at the sample's instant. A pod recreated while the sandbox
 // stays running therefore ends one interval and starts the next at the same
-// instant: no gap and no overlap.
+// instant: no gap and no overlap. The CPU meter reads every interval; one of a
+// sandbox not billed on use (an agent session's) records its CPU unbilled
+// (w6/m566).
 func syncSandboxInterval(ctx context.Context, tx pgx.Tx, obs SandboxMeterObservation) error {
 	at := obs.ObservedAt.UTC()
 	running := obs.Phase == "running" && obs.PodName != ""
@@ -88,7 +90,7 @@ func syncSandboxInterval(ctx context.Context, tx pgx.Tx, obs SandboxMeterObserva
 	_, err = tx.Exec(ctx, `
 		INSERT INTO sandbox_running_intervals
 		    (workspace_id, sandbox_id, pod_name, tier, usage_billed, started_at, cpu_metered_through, cpu_settled)
-		VALUES ($1, $2, $3, $4, $5, $6, $6, NOT $5)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $6, false)`,
 		obs.WorkspaceID, obs.SandboxID, obs.PodName, obs.Tier, obs.UsageBilled, at)
 	return err
 }
@@ -107,7 +109,7 @@ func endSandboxIntervalTx(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID
 }
 
 // ClaimSandboxCPUWindows returns the next window of up to limit running
-// intervals billed on use, the ones tried least recently first, and stamps them
+// intervals, the ones tried least recently first, and stamps them
 // as tried now. A window is due once it ended before readyBefore: the hour
 // closed or the interval did, and Prometheus has had time to scrape its last
 // sample. The rotation keeps an interval Prometheus cannot answer for from
@@ -149,7 +151,9 @@ func (s *PGStore) ClaimSandboxCPUWindows(ctx context.Context, now, readyBefore t
 
 // AccrueSandboxCPUWindow adds the CPU-seconds read for one window to the
 // sandbox's sandbox_cpu_seconds row of the window's hour and advances the
-// interval past it, in one transaction. It reports false, adding nothing, when
+// interval past it, in one transaction. The row is marked unbilled when the
+// interval's sandbox is not billed on use (an agent session's, w6/m566): the
+// weighted meter charged for that hour. It reports false, adding nothing, when
 // the interval is no longer at the window's start: another replica read the
 // same window first, so a replay or a race never counts it twice. Zero seconds
 // is a reading too (an idle window); a window with no reading is deferred with
@@ -165,11 +169,12 @@ func (s *PGStore) AccrueSandboxCPUWindow(ctx context.Context, w SandboxCPUWindow
 	defer func() { _ = tx.Rollback(ctx) }()
 	var through time.Time
 	var remainder int64
+	var usageBilled bool
 	err = tx.QueryRow(ctx, `
-		SELECT cpu_metered_through, cpu_remainder_micros
+		SELECT cpu_metered_through, cpu_remainder_micros, usage_billed
 		FROM sandbox_running_intervals
 		WHERE workspace_id = $1 AND sandbox_id = $2 AND started_at = $3 AND NOT cpu_settled
-		FOR UPDATE`, w.WorkspaceID, w.SandboxID, w.StartedAt.UTC()).Scan(&through, &remainder)
+		FOR UPDATE`, w.WorkspaceID, w.SandboxID, w.StartedAt.UTC()).Scan(&through, &remainder, &usageBilled)
 	if err == pgx.ErrNoRows || (err == nil && !through.Equal(w.From)) {
 		return false, tx.Commit(ctx)
 	}
@@ -179,7 +184,7 @@ func (s *PGStore) AccrueSandboxCPUWindow(ctx context.Context, w SandboxCPUWindow
 	micros := int64(math.Round(cpuSeconds*sandboxCPUMicros)) + remainder
 	chunk := sandboxUsageChunk{window: w.From.UTC().Truncate(time.Hour), quantity: micros / sandboxCPUMicros}
 	if chunk.quantity > 0 {
-		if _, err := addSandboxUsage(ctx, tx, w.WorkspaceID, w.SandboxID, UsageKindSandboxCPUSeconds, w.Tier, []sandboxUsageChunk{chunk}); err != nil {
+		if _, err := addSandboxUsage(ctx, tx, w.WorkspaceID, w.SandboxID, UsageKindSandboxCPUSeconds, w.Tier, !usageBilled, []sandboxUsageChunk{chunk}); err != nil {
 			return false, err
 		}
 	}

@@ -427,8 +427,9 @@ type ChargeLine struct {
 	// common value (free tiers, sub-cent usage) and is never omitted.
 	CostUSD string `json:"costUsd"`
 	// Unbilled marks sandbox CPU or memory recorded before
-	// EstimatedCost.SandboxUsageBilledFrom: shown at a rate of 0, because the
-	// sandbox compute line charged for those hours.
+	// EstimatedCost.SandboxUsageBilledFrom, or for an agent session's sandbox
+	// (w6/m566): shown at a rate of 0, because the sandbox compute line
+	// charged for those hours.
 	Unbilled bool `json:"unbilled,omitempty"`
 }
 

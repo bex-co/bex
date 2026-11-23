@@ -50,7 +50,8 @@ const (
 	// the sandbox ran, read from Prometheus per running interval: the CPU half
 	// of Render's billing model (w22/m314, ADR104 D8, ADR023 § Sandbox CPU
 	// billed on use). Like the memory kind it is shown and not billed before
-	// PGStore.SandboxUsageBilledFrom.
+	// PGStore.SandboxUsageBilledFrom, nor for an agent session's sandbox, whose
+	// rows of both kinds are marked unbilled (w6/m566).
 	UsageKindSandboxCPUSeconds = "sandbox_cpu_seconds"
 	// UsageKindSandboxSnapshotGBSeconds is a suspended sandbox's retained image
 	// in decimal GB multiplied by the seconds it is retained: Render's snapshot
@@ -157,6 +158,10 @@ type HourlyRow struct {
 	// froze (usage_hourly.billing_export_quantity, w6/m308); the outbox read
 	// returns it so a retry sends that same value. nil: none frozen yet.
 	BilledQuantity *int64
+	// Unbilled is usage_hourly.unbilled, which the outbox read returns: a row
+	// shown and never charged, such as an agent session's sandbox's CPU and
+	// memory (w6/m566). The export stamps it emitted without sending it.
+	Unbilled bool
 }
 
 // UsageSourceObservation is one source's accounting health for an hourly
@@ -205,7 +210,8 @@ type UsageSummaryRow struct {
 	ResourceKind string // ResourceKindService / ResourceKindPostgres / ResourceKindKeyValue
 	Total        int64
 	// Unbilled marks sandbox CPU and memory recorded before
-	// PGStore.SandboxUsageBilledFrom: shown, never charged, because the
+	// PGStore.SandboxUsageBilledFrom, or for an agent session's sandbox
+	// (usage_hourly.unbilled, w6/m566): shown, never charged, because the
 	// weighted compute meter billed those hours (w22/m314). Such usage is a
 	// row of its own beside the billed one of the same kind.
 	Unbilled bool
@@ -734,16 +740,17 @@ func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID
 // both — the UNION ALL sum is exact in every state, so period queries never
 // depend on whether compaction has run yet.
 //
-// Sandbox CPU and memory recorded before SandboxUsageBilledFrom come back as
-// rows of their own with Unbilled set. usage_monthly holds none of them:
-// CompactUsage drops them instead of folding them in.
+// Sandbox CPU and memory recorded before SandboxUsageBilledFrom, and rows the
+// meter marked unbilled, come back as rows of their own with Unbilled set.
+// usage_monthly holds none of them: CompactUsage drops them instead of folding
+// them in.
 func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	rows, err := s.Pool.Query(ctx, `
 		SELECT service_id, kind, tier, resource_kind, unbilled, SUM(quantity)
 		FROM (
 			SELECT service_id, kind, tier, resource_kind, quantity,
-			       (kind = ANY($4::text[]) AND ($5::timestamptz IS NULL OR window_start < $5)) AS unbilled
+			       (unbilled OR (kind = ANY($4::text[]) AND ($5::timestamptz IS NULL OR window_start < $5))) AS unbilled
 			FROM usage_hourly
 			WHERE workspace_id = $1
 			  AND window_start >= $2
@@ -775,7 +782,8 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 }
 
 // sandboxUsageKinds are the two meters of Render's sandbox billing model. Their
-// rows before SandboxUsageBilledFrom are shown and never billed.
+// rows before SandboxUsageBilledFrom are shown and never billed, like every
+// row marked usage_hourly.unbilled.
 var sandboxUsageKinds = []string{UsageKindSandboxCPUSeconds, UsageKindSandboxMemoryGBSeconds}
 
 // sandboxUsageBilledFrom is SandboxUsageBilledFrom as a query argument: NULL
@@ -800,8 +808,9 @@ const AgentModelEventRetentionMonths = 13
 // aggregate are atomic and a re-run is a no-op; the additive ON CONFLICT means
 // a straggler row compacted on a later pass adds to its month rather than
 // overwriting it. Sandbox CPU and memory recorded before
-// SandboxUsageBilledFrom were never billed and are purged without being
-// folded in, so a compacted month holds billed usage only.
+// SandboxUsageBilledFrom, and every row marked unbilled, were never billed and
+// are purged without being folded in, so a compacted month holds billed usage
+// only.
 func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error) {
 	var res UsageCompaction
 	err := s.Pool.QueryRow(ctx, `
@@ -822,14 +831,14 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 		), purged AS (
 			DELETE FROM usage_hourly
 			WHERE window_start < $1
-			RETURNING workspace_id, service_id, kind, tier, resource_kind, window_start, quantity
+			RETURNING workspace_id, service_id, kind, tier, resource_kind, window_start, quantity, unbilled
 		), compacted AS (
 			INSERT INTO usage_monthly (workspace_id, service_id, kind, tier, resource_kind, month, quantity)
 			SELECT workspace_id, service_id, kind, tier, resource_kind,
 			       date_trunc('month', window_start AT TIME ZONE 'UTC')::date,
 			       SUM(quantity)
 			FROM purged
-			WHERE NOT (kind = ANY($3::text[]) AND ($4::timestamptz IS NULL OR window_start < $4))
+			WHERE NOT unbilled AND NOT (kind = ANY($3::text[]) AND ($4::timestamptz IS NULL OR window_start < $4))
 			GROUP BY workspace_id, service_id, kind, tier, resource_kind,
 			         date_trunc('month', window_start AT TIME ZONE 'UTC')
 			ON CONFLICT (resource_kind, service_id, kind, tier, month)

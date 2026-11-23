@@ -61,7 +61,8 @@ type SandboxMeterObservation struct {
 	PodName string
 	// UsageBilled marks a sandbox billed as Render bills one: used CPU plus
 	// allocated memory. False keeps the weighted allocated-shape meter (an
-	// agent-session sandbox, whose cost is its session's, ADR047 D6).
+	// agent-session sandbox, whose cost is its session's, ADR047 D6); its used
+	// CPU and allocated memory are still recorded, as unbilled rows (w6/m566).
 	UsageBilled bool
 	ObservedAt  time.Time
 }
@@ -324,18 +325,20 @@ func sandboxIntervalChunks(perSecond, divisor int64, start, end time.Time, remai
 }
 
 // addSandboxUsage adds each chunk to the sandbox's usage_hourly row of one kind
-// and returns the total added.
-func addSandboxUsage(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, kind, tier string, chunks []sandboxUsageChunk) (int64, error) {
+// and returns the total added. unbilled marks the rows shown and never charged
+// (usage_hourly.unbilled): a sandbox is billed one way in a given hour, so a
+// row keeps the mark it was created with.
+func addSandboxUsage(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, kind, tier string, unbilled bool, chunks []sandboxUsageChunk) (int64, error) {
 	var total int64
 	for _, chunk := range chunks {
 		total += chunk.quantity
 		_, err := tx.Exec(ctx, `
 				INSERT INTO usage_hourly
-				    (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity)
-				VALUES ($1, $2, $3, $4, $5, $6, $7)
+				    (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity, unbilled)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				ON CONFLICT (resource_kind, service_id, kind, tier, window_start)
 				DO UPDATE SET quantity = usage_hourly.quantity + EXCLUDED.quantity`,
-			workspaceID, sandboxID, kind, tier, ResourceKindSandbox, chunk.window, chunk.quantity)
+			workspaceID, sandboxID, kind, tier, ResourceKindSandbox, chunk.window, chunk.quantity, unbilled)
 		if err != nil {
 			return total, err
 		}
@@ -351,29 +354,27 @@ func addSandboxUsage(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, kin
 // (SandboxUsageBilledFrom; zero is never). Before it every sandbox writes the
 // weighted compute meter, which is billed, and its allocated memory, which is
 // shown. From it on a sandbox billed on use writes memory only (billed; its
-// CPU comes from the used-CPU meter, AccrueSandboxCPUWindow) and any other
-// sandbox writes the weighted meter only, so no second is billed on two meters.
+// CPU comes from the used-CPU meter, AccrueSandboxCPUWindow). Any other
+// sandbox (an agent session's) keeps the weighted meter, which is billed, and
+// its memory is written marked unbilled, as its CPU is (w6/m566): no second is
+// billed on two meters.
 func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string, prior *sandboxMeterState, end, billedFrom time.Time) error {
-	weightedEnd, memoryEnd := end, end
-	if !billedFrom.IsZero() && billedFrom.Before(end) {
-		if prior.usageBilled {
-			weightedEnd = billedFrom
-		} else {
-			memoryEnd = billedFrom
-		}
+	weightedEnd := end
+	if prior.usageBilled && !billedFrom.IsZero() && billedFrom.Before(end) {
+		weightedEnd = billedFrom
 	}
 	var total int64
 	if prior.observedAt.Before(weightedEnd) {
 		chunks, remainder := sandboxIntervalChunks(prior.weight, sandboxWeightDivisor, prior.observedAt, weightedEnd, prior.remainder)
 		var err error
-		if total, err = addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxComputeSeconds, prior.tier, chunks); err != nil {
+		if total, err = addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxComputeSeconds, prior.tier, false, chunks); err != nil {
 			return err
 		}
 		prior.remainder = remainder
 	}
-	if prior.memoryMiB > 0 && prior.observedAt.Before(memoryEnd) {
-		memChunks, memRemainder := sandboxIntervalChunks(prior.memoryMiB, sandboxMemoryDivisor, prior.observedAt, memoryEnd, prior.memoryRemainder)
-		if _, err := addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxMemoryGBSeconds, prior.tier, memChunks); err != nil {
+	if prior.memoryMiB > 0 {
+		memChunks, memRemainder := sandboxIntervalChunks(prior.memoryMiB, sandboxMemoryDivisor, prior.observedAt, end, prior.memoryRemainder)
+		if _, err := addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxMemoryGBSeconds, prior.tier, !prior.usageBilled, memChunks); err != nil {
 			return err
 		}
 		prior.memoryRemainder = memRemainder
@@ -381,7 +382,7 @@ func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxI
 	// The session that owns this sandbox, if any, carries a running total for
 	// its outcome.cost (w9/m178); a sandbox no session adopted updates nothing.
 	// It stays on the weighted compute basis: the memory and CPU meters never
-	// enter it, and a session's sandbox is never billed on use.
+	// enter it, and a session's sandbox is not billed on use.
 	if total > 0 {
 		if _, err := tx.Exec(ctx, `
 			UPDATE agent_session_sandboxes

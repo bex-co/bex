@@ -145,12 +145,13 @@ func TestSandboxRunningIntervalsPG(t *testing.T) {
 		t.Fatalf("a terminated sandbox's interval = %+v, want it closed at +45m", got)
 	}
 
-	// A sandbox not billed on use has its interval recorded and nothing for the
-	// CPU meter to read; a sample without a pod name records none.
+	// A sandbox not billed on use (an agent session's) has its interval
+	// recorded and read by the CPU meter too, which records its CPU unbilled
+	// (w6/m566); a sample without a pod name records none.
 	observe("sbx-agent", "running", "os-9-0", false, t0)
 	observe("sbx-nopod", "running", "", true, t0)
-	if agent := sandboxIntervals(t, s, ws, "sbx-agent"); len(agent) != 1 || agent[0].billed || !agent[0].settled {
-		t.Errorf("agent sandbox interval = %+v, want one, not billed on use and settled", agent)
+	if agent := sandboxIntervals(t, s, ws, "sbx-agent"); len(agent) != 1 || agent[0].billed || agent[0].settled {
+		t.Errorf("agent sandbox interval = %+v, want one, not billed on use and still to be read", agent)
 	}
 	if nopod := sandboxIntervals(t, s, ws, "sbx-nopod"); len(nopod) != 0 {
 		t.Errorf("a sample without a pod name opened %+v", nopod)
@@ -159,10 +160,17 @@ func TestSandboxRunningIntervalsPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	agentWindows := 0
 	for _, w := range windows {
 		if w.SandboxID == "sbx-agent" {
-			t.Errorf("the CPU meter was handed a sandbox not billed on use: %+v", w)
+			agentWindows++
+			if w.PodName != "os-9-0" || !w.From.Equal(t0) {
+				t.Errorf("agent sandbox window = %+v, want its pod from its start", w)
+			}
 		}
+	}
+	if agentWindows != 1 {
+		t.Errorf("the CPU meter was handed %d windows of the agent sandbox, want 1: %+v", agentWindows, windows)
 	}
 }
 
@@ -315,8 +323,11 @@ func TestSandboxCPUWindowsPG(t *testing.T) {
 
 // w22/m314 t004: billing switches at one instant for every workspace. Before
 // it every sandbox writes the weighted meter (billed) and memory (shown). From
-// it a sandbox billed on use writes memory only, an agent session's sandbox the
-// weighted meter only, and the reads mark what was recorded before as unbilled.
+// it a sandbox billed on use writes memory only, and the reads mark what was
+// recorded before as unbilled. An agent session's sandbox keeps the weighted
+// meter on both sides, and its used CPU and allocated memory are recorded
+// beside it marked unbilled (w6/m566 t001): shown, never priced, exported,
+// settled or compacted, and the weighted charge is what it was.
 func TestSandboxUsageSwitchPG(t *testing.T) {
 	s, ws := sandboxCPUTestStore(t, "sandbox-usage-switch")
 	ctx := context.Background()
@@ -360,14 +371,19 @@ func TestSandboxUsageSwitchPG(t *testing.T) {
 		observe(sb.id, "running", sb.billed, billedFrom.Add(-30*time.Minute)) // a poll before the switch
 		observe(sb.id, "suspended", sb.billed, end)                           // one interval spans the switch
 	}
-	// The used-CPU meter read 600 CPU-seconds in each hour of the Render sandbox.
+	// The used-CPU meter read 600 CPU-seconds in each hour of either sandbox.
 	for i, at := range []time.Time{start, billedFrom} {
-		w, err := s.ClaimSandboxCPUWindows(ctx, end.Add(time.Hour), end.Add(time.Hour), 100)
-		if err != nil || len(w) != 1 || !w[0].From.Equal(at) {
-			t.Fatalf("window %d = %+v err=%v, want one from %s", i, w, err, at)
+		windows, err := s.ClaimSandboxCPUWindows(ctx, end.Add(time.Hour), end.Add(time.Hour), 100)
+		if err != nil || len(windows) != 2 {
+			t.Fatalf("windows %d = %+v err=%v, want one per sandbox", i, windows, err)
 		}
-		if ok, err := s.AccrueSandboxCPUWindow(ctx, w[0], 600); err != nil || !ok {
-			t.Fatal(ok, err)
+		for _, w := range windows {
+			if !w.From.Equal(at) {
+				t.Fatalf("window %d = %+v, want it from %s", i, w, at)
+			}
+			if ok, err := s.AccrueSandboxCPUWindow(ctx, w, 600); err != nil || !ok {
+				t.Fatal(ok, err)
+			}
 		}
 	}
 
@@ -390,7 +406,8 @@ func TestSandboxUsageSwitchPG(t *testing.T) {
 	agent := totals("os-agent")
 	wantAgent := map[line]int64{
 		{UsageKindSandboxComputeSeconds, false}: 2 * 1000 * 3600, // both hours on the weighted meter
-		{UsageKindSandboxMemoryGBSeconds, true}: 2 * 3600,        // shown before the switch, none after
+		{UsageKindSandboxMemoryGBSeconds, true}: 2 * 2 * 3600,    // shown on both sides of the switch
+		{UsageKindSandboxCPUSeconds, true}:      2 * 600,
 	}
 	if len(agent) != len(wantAgent) {
 		t.Errorf("agent sandbox lines = %v, want %v", agent, wantAgent)
@@ -432,9 +449,31 @@ func TestSandboxUsageSwitchPG(t *testing.T) {
 		}
 	}
 
+	// The billing outbox hands the export the agent sandbox's CPU and memory
+	// marked unbilled, which it stamps emitted without sending, and nothing
+	// else marked.
+	pending, err := s.SelectWorkspaceUnemittedUsage(ctx, ws, start.Add(-time.Hour), UsageSeal{Before: end.Add(time.Hour)}, 100, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	marked := map[string]int64{}
+	for _, r := range pending {
+		agentUsage := r.ServiceID == "os-agent" && r.Kind != UsageKindSandboxComputeSeconds
+		if r.Unbilled != agentUsage {
+			t.Errorf("outbox row %s %s %s unbilled=%v, want %v", r.ServiceID, r.Kind, r.WindowStart, r.Unbilled, agentUsage)
+		}
+		if r.Unbilled {
+			marked[r.Kind] += r.Quantity
+		}
+	}
+	if marked[UsageKindSandboxCPUSeconds] != 2*600 || marked[UsageKindSandboxMemoryGBSeconds] != 2*2*3600 {
+		t.Errorf("outbox rows marked unbilled = %v, want the agent sandbox's two hours of CPU and memory", marked)
+	}
+
 	// Settle before delete counts only what was exported: the hours before the
-	// switch are stamped emitted without being sent.
-	if _, err := s.Pool.Exec(ctx, `UPDATE usage_hourly SET billing_export_state = 'emitted', emitted_at = $2 WHERE workspace_id = $1 AND service_id = 'sbx-render'`, ws, end); err != nil {
+	// switch, and the agent sandbox's CPU and memory, are stamped emitted
+	// without being sent.
+	if _, err := s.Pool.Exec(ctx, `UPDATE usage_hourly SET billing_export_state = 'emitted', emitted_at = $2 WHERE workspace_id = $1 AND service_id IN ('sbx-render', 'os-agent')`, ws, end); err != nil {
 		t.Fatal(err)
 	}
 	exported, err := s.ExportedUsageTotals(ctx, ws, start.Add(-time.Hour), end.Add(time.Hour), end)
@@ -445,8 +484,9 @@ func TestSandboxUsageSwitchPG(t *testing.T) {
 	for _, e := range exported {
 		gotExported[e.Kind] += e.Quantity
 	}
-	if gotExported[UsageKindSandboxCPUSeconds] != 600 || gotExported[UsageKindSandboxMemoryGBSeconds] != 2*3600 || gotExported[UsageKindSandboxComputeSeconds] != 1000*3600 {
-		t.Errorf("exported totals = %v, want the billed hour of CPU and memory and the weighted hour before", gotExported)
+	if gotExported[UsageKindSandboxCPUSeconds] != 600 || gotExported[UsageKindSandboxMemoryGBSeconds] != 2*3600 ||
+		gotExported[UsageKindSandboxComputeSeconds] != (1+2)*1000*3600 {
+		t.Errorf("exported totals = %v, want the billed hour of CPU and memory and every weighted hour", gotExported)
 	}
 
 	// Compaction folds a month's billed usage and drops what was only shown.
@@ -461,5 +501,8 @@ func TestSandboxUsageSwitchPG(t *testing.T) {
 	}
 	if after[line{UsageKindSandboxCPUSeconds, true}] != 0 || after[line{UsageKindSandboxMemoryGBSeconds, true}] != 0 {
 		t.Errorf("compaction kept usage that was never billed: %v", after)
+	}
+	if after := totals("os-agent"); len(after) != 1 || after[line{UsageKindSandboxComputeSeconds, false}] != 2*1000*3600 {
+		t.Errorf("after compaction the agent sandbox reads %v, want its weighted charge alone", after)
 	}
 }

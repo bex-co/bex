@@ -1,6 +1,6 @@
 # w6 · m566 — An agent session's sandbox is billed for the CPU it uses and the memory it is allocated, as a Render sandbox is
 
-**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** todo
+**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** todo (t001's code shipped: agent sandboxes' used CPU and allocated memory are recorded as unbilled rows; its production check and t002 wait for production to carry it)
 
 ## Tasks (in order)
 

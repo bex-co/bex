@@ -213,6 +213,16 @@ func TestToEventMapping(t *testing.T) {
 			t.Errorf("Properties[%q] = %q, want %q", k, e.Properties[k], v)
 		}
 	}
+	if e.Unbilled {
+		t.Error("a billed row mapped to an unbilled event")
+	}
+	// w6/m566: a row marked unbilled (an agent session's sandbox's CPU) keeps
+	// its mark, which is what keeps it from being sent.
+	agentCPU := row("tea-abc", "os-agent", store.UsageKindSandboxCPUSeconds, "4c-8g", store.ResourceKindSandbox, 600, w)
+	agentCPU.Unbilled = true
+	if !toEvent(agentCPU).Unbilled {
+		t.Error("an unbilled row lost its mark on the way to the export")
+	}
 }
 
 func TestEmitOnceHappyPathStampsAfterIngest(t *testing.T) {

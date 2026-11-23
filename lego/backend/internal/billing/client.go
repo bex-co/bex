@@ -39,6 +39,10 @@ type Event struct {
 	EventType     string
 	Timestamp     time.Time
 	Properties    map[string]string
+	// Unbilled is a row shown and never charged (usage_hourly.unbilled): an
+	// agent session's sandbox's CPU and memory, which its weighted compute
+	// charge pays for (w6/m566). It is never sent.
+	Unbilled bool
 }
 
 // IngestFailure is one event Stripe did not accept. Permanent means retrying

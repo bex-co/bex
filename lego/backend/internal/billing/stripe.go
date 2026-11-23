@@ -508,8 +508,10 @@ func safeStripeError(err error) (code, message string) {
 // meter (nothing is owed), so it is skipped. Kept in lockstep with
 // scripts/stripe-billing-setup.py.
 func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
-	// An hour a plan's allowance covered owes nothing (docs/ADR030 §13, §14).
-	if pricing.HasAllowance(e.EventType) && e.Properties["value"] == "0" {
+	// An hour a plan's allowance covered owes nothing (docs/ADR030 §13, §14),
+	// and neither does a row only ever shown: an agent session's sandbox's CPU
+	// and memory, which its weighted compute charge pays for (w6/m566).
+	if e.Unbilled || pricing.HasAllowance(e.EventType) && e.Properties["value"] == "0" {
 		return "", "", true
 	}
 	switch e.EventType {

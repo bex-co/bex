@@ -199,7 +199,7 @@ func (s *PGStore) SelectWorkspaceUnemittedUsage(ctx context.Context, workspaceID
 // workspace.
 func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity
+		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity, u.unbilled
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
@@ -217,7 +217,7 @@ func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, fl
 	var out []HourlyRow
 	for rows.Next() {
 		var r HourlyRow
-		if err := rows.Scan(&r.WorkspaceID, &r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.WindowStart, &r.Quantity, &r.BilledQuantity); err != nil {
+		if err := rows.Scan(&r.WorkspaceID, &r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.WindowStart, &r.Quantity, &r.BilledQuantity, &r.Unbilled); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -240,16 +240,16 @@ type ExportedUsageTotal struct {
 // window starts in [from, to), per meter dimension. Settle before delete
 // (ADR091 D10.4) compares it with Stripe's meter event summaries before it
 // invoices. Served by the (workspace_id, window_start) index. Sandbox CPU and
-// memory recorded before SandboxUsageBilledFrom are left out: they are stamped
-// emitted without ever being sent (w22/m314), so every total returned for those
-// kinds was exported.
+// memory recorded before SandboxUsageBilledFrom, and every row marked unbilled,
+// are left out: they are stamped emitted without ever being sent (w22/m314,
+// w6/m566), so every total returned for those kinds was exported.
 func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, from, to, recentSince time.Time) ([]ExportedUsageTotal, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT kind, tier, resource_kind, sum(COALESCE(billing_export_quantity, quantity))::bigint,
 		       COALESCE(sum(COALESCE(billing_export_quantity, quantity)) FILTER (WHERE emitted_at >= $4), 0)::bigint
 		FROM usage_hourly
 		WHERE workspace_id = $1 AND window_start >= $2 AND window_start < $3
-		  AND billing_export_state = 'emitted'
+		  AND billing_export_state = 'emitted' AND NOT unbilled
 		  AND NOT (kind = ANY($5::text[]) AND ($6::timestamptz IS NULL OR window_start < $6))
 		GROUP BY kind, tier, resource_kind`,
 		workspaceID, from.UTC(), to.UTC(), recentSince.UTC(), sandboxUsageKinds, s.sandboxUsageBilledFrom())

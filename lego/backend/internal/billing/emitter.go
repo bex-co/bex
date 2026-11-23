@@ -518,6 +518,7 @@ func toEvent(r store.HourlyRow) Event {
 			"service_id":    r.ServiceID,
 			"value":         strconv.FormatInt(r.Quantity, 10),
 		},
+		Unbilled: r.Unbilled,
 	}
 }
 

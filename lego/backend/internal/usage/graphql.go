@@ -42,7 +42,8 @@ var usageRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// IEEE-754 remains exact for every realistic monthly counter here.
 		"total": gqlutil.FloatField(func(r store.UsageSummaryRow) any { return r.Total }),
 		// unbilled marks sandbox CPU or memory recorded before
-		// estimatedCost.sandboxUsageBilledFrom: shown, never charged (w22/m314).
+		// estimatedCost.sandboxUsageBilledFrom, or for an agent session's
+		// sandbox: shown, never charged (w22/m314, w6/m566).
 		"unbilled": gqlutil.BoolField(func(r store.UsageSummaryRow) any { return r.Unbilled }),
 	},
 })
@@ -81,7 +82,8 @@ var chargeLineGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"included": gqlutil.StrField(func(c pricing.ChargeLine) any { return c.Included }),
 		"costUsd":  gqlutil.StrField(func(c pricing.ChargeLine) any { return c.CostUSD }),
 		// unbilled marks a sandbox CPU or memory line recorded before
-		// EstimatedCost.sandboxUsageBilledFrom: its rate is 0 (w22/m314).
+		// EstimatedCost.sandboxUsageBilledFrom, or for an agent session's
+		// sandbox: its rate is 0 (w22/m314, w6/m566).
 		"unbilled": gqlutil.BoolField(func(c pricing.ChargeLine) any { return c.Unbilled }),
 	},
 })

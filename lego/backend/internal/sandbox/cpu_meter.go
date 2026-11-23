@@ -31,7 +31,9 @@ import (
 // The used-CPU meter (w22/m314, ADR104 D8, ADR023 § Sandbox CPU billed on use).
 //
 // A sandbox billed on use pays for the CPU its pod used, as on Render, so an
-// idle sandbox's CPU charge is close to nothing. The figure is the pod-level
+// idle sandbox's CPU charge is close to nothing. An agent session's sandbox
+// keeps the weighted meter, and its CPU is read the same way and recorded
+// unbilled beside it (w6/m566). The figure is the pod-level
 // cgroup counter: under gVisor the workload container has no CPU series of its
 // own, and the pod's includes the sentry's overhead, which is billed as
 // measured (ADR104 D8). Prometheus keeps that counter for sandbox namespaces as

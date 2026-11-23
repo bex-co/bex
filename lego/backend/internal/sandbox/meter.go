@@ -240,7 +240,9 @@ func meterObservation(raw osSandbox, observedAt time.Time) (store.SandboxMeterOb
 		StorageRef:  storageRef(raw),
 		PodName:     sandboxPodName(raw),
 		// A Render sandbox is billed on use; an agent session's keeps the
-		// weighted meter its outcome.cost is priced on (ADR047 D6).
+		// weighted meter its outcome.cost is priced on (ADR047 D6), and its
+		// used CPU and allocated memory are recorded unbilled beside it
+		// (w6/m566).
 		UsageBilled: idleTracked(raw),
 		ObservedAt:  observedAt.UTC(),
 	}, true
