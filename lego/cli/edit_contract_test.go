@@ -74,7 +74,7 @@ func TestBexBinaryEditShorthand(t *testing.T) {
 	run := func(args ...string) (string, int) {
 		c := exec.Command(bexBinary, args...)
 		c.Dir = dir
-		c.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "BEX_NO_UPDATE_NOTIFIER=1", "CI=")
+		c.Env = append(withoutRenderEnv(os.Environ()), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "BEX_NO_UPDATE_NOTIFIER=1")
 		out, _ := c.CombinedOutput()
 		return string(out), c.ProcessState.ExitCode()
 	}

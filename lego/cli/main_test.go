@@ -456,14 +456,15 @@ func seedNoticeMarkerIn(t *testing.T, dir string) {
 	}
 }
 
-// withoutRenderEnv drops every RENDER_* variable and the two Bex credential
-// variables, so a test sends only the credential it sets: a developer who
-// exports BEX_API_KEY must not have it outrank a test's BEX_ACCESS_TOKEN or
-// stored login, nor reach a test's stub server.
+// withoutRenderEnv is the environment a child bex starts from: the test
+// process's own, less what would make one run differ from another. A test that
+// wants one of the dropped variables passes it after this (the pseudo-terminal
+// runs pass TERM=xterm; TestCIBypassesTheDisclosureGate passes CI=true).
 func withoutRenderEnv(environment []string) []string {
 	filtered := make([]string, 0, len(environment))
 	for _, item := range environment {
-		if strings.HasPrefix(item, "RENDER_") || strings.HasPrefix(item, "BEX_API_KEY=") || strings.HasPrefix(item, "BEX_ACCESS_TOKEN=") {
+		name, _, _ := strings.Cut(item, "=")
+		if strings.HasPrefix(name, "RENDER_") || slices.Contains(droppedEnv, name) {
 			continue
 		}
 		filtered = append(filtered, item)
@@ -471,20 +472,69 @@ func withoutRenderEnv(environment []string) []string {
 	return filtered
 }
 
+// droppedEnv is what withoutRenderEnv drops by name, besides every RENDER_*.
+//
+//   - The two Bex credential variables, so a test sends only the credential it
+//     sets: a developer who exports BEX_API_KEY must not have it outrank a
+//     test's BEX_ACCESS_TOKEN or stored login, nor reach a test's stub server.
+//   - What the root command and the color library under it read to decide how
+//     a run looks, so a laptop, a pseudo-terminal and a runner behave alike:
+//     CI (the root reads it as "not a terminal" and never asks; GitHub Actions
+//     sets it), TERM (dumb reads the same way), and COLORTERM, NO_COLOR,
+//     CLICOLOR and CLICOLOR_FORCE (whether the output carries color escapes).
+var droppedEnv = []string{
+	"BEX_API_KEY", "BEX_ACCESS_TOKEN",
+	"CI", "TERM", "COLORTERM", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE",
+}
+
 // updateTestEnv strips everything that gates or targets the update check so
-// each test controls those inputs explicitly. CI in particular is set on
-// GitHub Actions runners and would silence the check.
+// each test controls those inputs explicitly (CI, which silences the check, is
+// already gone: see withoutRenderEnv).
 func updateTestEnv(home string) []string {
 	filtered := make([]string, 0, len(os.Environ()))
 	for _, item := range withoutRenderEnv(os.Environ()) {
 		name, _, _ := strings.Cut(item, "=")
 		switch name {
-		case "CI", "HOME", "BEX_NO_UPDATE_NOTIFIER", "BEX_UPDATE_API_URL":
+		case "HOME", "BEX_NO_UPDATE_NOTIFIER", "BEX_UPDATE_API_URL":
 			continue
 		}
 		filtered = append(filtered, item)
 	}
 	return append(filtered, "HOME="+home)
+}
+
+// TestChildEnvironmentsIgnoreTheRunnersOutputSettings: whatever CI, TERM or
+// color settings the process running the tests exports, no helper hands one to
+// a child bex, so a test sees the same run on a laptop, in a pseudo-terminal
+// and on a CI runner (w21/115: bexAgainst inherited CI=true, the root saw no
+// terminal and never asked). The names are those the root command reads: CI and
+// TERM in pkg/command/outputresolver.go and pkg/cfg, the rest in termenv.
+func TestChildEnvironmentsIgnoreTheRunnersOutputSettings(t *testing.T) {
+	ambient := map[string]string{
+		"CI": "true", "TERM": "dumb", "COLORTERM": "truecolor",
+		"NO_COLOR": "1", "CLICOLOR": "0", "CLICOLOR_FORCE": "1",
+		"RENDER_OUTPUT": "json", "BEX_API_KEY": "ambient-key",
+	}
+	for name, value := range ambient {
+		t.Setenv(name, value)
+	}
+	const apiURL = "http://127.0.0.1:1"
+	for name, env := range map[string][]string{
+		"withoutRenderEnv": withoutRenderEnv(os.Environ()),
+		"bexAgainst":       bexAgainst(t, apiURL, "workspaces").Env,
+		"telemetryEnv":     telemetryEnv(t, t.TempDir(), apiURL),
+		"s3QuietEnv":       s3QuietEnv(t, t.TempDir(), apiURL, apiURL),
+		"updateTestEnv":    updateTestEnv(t.TempDir()),
+	} {
+		for _, item := range env {
+			if key, _, _ := strings.Cut(item, "="); ambient[key] != "" {
+				t.Errorf("%s hands a child %s", name, item)
+			}
+		}
+		if !slices.ContainsFunc(env, func(item string) bool { return strings.HasPrefix(item, "PATH=") }) {
+			t.Errorf("%s dropped PATH too", name)
+		}
+	}
 }
 
 // releasesServer serves a bex-co/bex releases list whose newest stable
@@ -816,14 +866,12 @@ func awaitEvents(t *testing.T, stub *telemetryStub, want int) []map[string]any {
 
 // telemetryEnv is the child environment for a launcher run that is allowed to
 // report: BEX_CLI_DISABLE_ANALYTICS="" re-enables sending past TestMain's
-// harness-wide opt-out (blank counts as unset in the bridge). CI is dropped,
-// because it bypasses the disclosure gate and runners set it: a test that
-// wants CI passes it in extra.
+// harness-wide opt-out (blank counts as unset in the bridge). CI is not
+// inherited (withoutRenderEnv), because it bypasses the disclosure gate and
+// runners set it: a test that wants CI passes it in extra.
 func telemetryEnv(t *testing.T, home, apiURL string, extra ...string) []string {
 	t.Helper()
-	inherited := withoutRenderEnv(os.Environ())
-	inherited = slices.DeleteFunc(inherited, func(item string) bool { return strings.HasPrefix(item, "CI=") })
-	return append(append(inherited,
+	return append(append(withoutRenderEnv(os.Environ()),
 		"HOME="+home,
 		"BEX_HOST="+apiURL+"/v1/",
 		"BEX_ACCESS_TOKEN=test-access-token",
