@@ -105,7 +105,9 @@ describe("ChartLegend", () => {
 describe("SvgLineChart instance actions (w4/717)", () => {
   const actions = (running: string[]): ChartInstanceActions => ({
     shell: (id) => ({
-      href: running.includes(id) ? `/services/srv-a/shell?instance=${id}` : null,
+      href: running.includes(id)
+        ? `/services/srv-a/shell?instance=${id}`
+        : null,
     }),
     logsHref: (id) => `/services/srv-a/logs?instance=${id}`,
     isFiltered: () => false,
@@ -146,5 +148,28 @@ describe("SvgLineChart instance actions (w4/717)", () => {
     expect(
       screen.queryByRole("button", { name: "SSH into instance" }),
     ).not.toBeInTheDocument();
+  });
+
+  // Render heads the card with the instance's slug; a label that starts with
+  // the service id would truncate to what every instance shares.
+  it("heads the action card with the instance's slug", () => {
+    const id = "srv-d9dd16roviqs738quds0-klmnopqrstuv01234567";
+    render(
+      <SvgLineChart
+        unit="cpu"
+        series={[
+          { points: POINTS, color: "var(--chart-1)", label: id },
+          { points: POINTS, color: "var(--chart-2)", label: `${id}x` },
+        ]}
+        instanceActions={{
+          ...actions([id]),
+          formatLabel: (instance) => `${instance.slice(0, 30)}…`,
+        }}
+      />,
+    );
+    const chart = screen.getByRole("img");
+    fireEvent.keyDown(chart, { key: "ArrowRight" });
+    fireEvent.keyDown(chart, { key: "Enter" });
+    expect(screen.getByTitle(id)).toHaveTextContent(/^klmno$/);
   });
 });

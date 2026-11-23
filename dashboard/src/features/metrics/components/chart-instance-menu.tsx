@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/common/components/ui/tooltip";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { shortInstance } from "@/features/logs/lib/log-rows";
 
 /**
  * Actions for one charted service instance (w4/717; Render's chart action card
@@ -125,8 +126,11 @@ export function ChartInstanceMenu({
             style={{ backgroundColor: color }}
             aria-hidden="true"
           />
+          {/* The instance's slug, as Render's card heads it (and as a log
+              row tags it): the long label truncates to the service id, which
+              every instance of the service shares. */}
           <span className="truncate font-mono" title={instanceId}>
-            {displayName}
+            {shortInstance(instanceId)}
           </span>
         </div>
         <button
