@@ -43,8 +43,11 @@ import (
 // field together. Before, the operator projected the saved spec straight into
 // the template, so a held field rolled the pods with no deploy.
 var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
-	const name = "save-only-settings"
-	nn := types.NamespacedName{Name: name, Namespace: "default"}
+	// Each spec runs its own App: a deleted one lingers in envtest, which runs
+	// no garbage collector.
+	var name string
+	var nn types.NamespacedName
+	use := func(n string) { name, nn = n, types.NamespacedName{Name: n, Namespace: "default"} }
 	var r *AppReconciler
 	BeforeEach(func() {
 		r = &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes}
@@ -115,6 +118,7 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 	})
 
 	It("holds every saved field until a deploy, which applies them together", func() {
+		use("save-only-settings")
 		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
 				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
@@ -185,6 +189,56 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 		By("a later save of the same values is no change")
 		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.HealthCheckPath = "/hz2" })
 		pass(2)
+		Expect(undeployed()).To(BeFalse())
+	})
+
+	// w6/163: a dashboard Settings save deploys at once, and an Update Service
+	// save seconds later waits in bex-api until the operator has adopted that
+	// deploy (rollout.AwaitAdoptionBeforeHold). Written in that order, the
+	// deploy reaches live with the shutdown delay it was opened for, and the
+	// later save waits for the next deploy. Written before the adoption, the
+	// save held the deploy, which stayed created until another deploy
+	// canceled it.
+	It("runs a deploy adopted before a later save with its own settings, and holds the save (w6/163)", func() {
+		use("save-behind-adopted-deploy")
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: "busybox:1.36", Port: 3000, Replicas: 1},
+		})).To(Succeed())
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal("rev-1"), "precondition: generation 1 serves")
+		served := *template().Spec.TerminationGracePeriodSeconds
+		delay := func() int64 { GinkgoHelper(); return *template().Spec.TerminationGracePeriodSeconds - served + 30 }
+
+		By("an Update Service save, then a Settings save that deploys 300 seconds")
+		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.MaxShutdownDelaySeconds = new(int32(1)) })
+		update(func(app *appv1alpha1.App) {
+			app.Spec.MaxShutdownDelaySeconds = new(int32(300))
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, fmt.Sprint(app.Generation+1))
+		})
+		settings := getApp().Generation
+		pass(1)
+		Expect(getApp().Status.ReleaseGeneration).To(Equal(settings), "the operator adopted the Settings deploy")
+
+		By("an Update Service save of 120 seconds once the deploy is adopted")
+		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.MaxShutdownDelaySeconds = new(int32(120)) })
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", settings)), "the Settings deploy reached live")
+		Expect(delay()).To(Equal(int64(300)), "the deploy runs the delay it was opened for")
+		Expect(undeployed()).To(BeTrue(), "the 120-second save waits for the next deploy")
+
+		By("the next deploy applies the saved delay")
+		next := deploy()
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", next)))
+		Expect(delay()).To(Equal(int64(120)))
 		Expect(undeployed()).To(BeFalse())
 	})
 })

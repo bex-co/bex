@@ -112,12 +112,18 @@ type Tracker struct {
 	AdoptionWait time.Duration
 }
 
-// awaitAdoption is AwaitAdoption for a write through this Tracker.
-func (t *Tracker) awaitAdoption(ctx context.Context, cl client.Reader, a *appv1alpha1.App) error {
-	if t == nil {
+// awaitAdoption holds a write through this Tracker, as Stamp decided it,
+// behind a deploy the operator has not adopted: one that rolls a release
+// (AwaitAdoption), or one that held its change for the next deploy and would
+// otherwise hold that deploy too (AwaitAdoptionBeforeHold, w6/163).
+func (t *Tracker) awaitAdoption(ctx context.Context, cl client.Reader, a *appv1alpha1.App, before *Snapshot) error {
+	if t == nil || (!before.rolls && !before.pends) {
 		return nil
 	}
 	lister, _ := t.Store.(DeployLister)
+	if before.pends {
+		return AwaitAdoptionBeforeHold(ctx, cl, lister, a, t.AdoptionWait)
+	}
 	return AwaitAdoption(ctx, cl, lister, a, t.AdoptionWait)
 }
 
@@ -183,6 +189,9 @@ type Snapshot struct {
 	// saveOnly holds a rolling change for the next deploy instead of
 	// stamping one (WithSaveOnly).
 	saveOnly bool
+	// pends is Stamp's verdict for a save-only write to a service that
+	// deploys: it held a rolling change for the next deploy.
+	pends bool
 }
 
 type saveOnlyKey struct{}
@@ -256,6 +265,7 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 		// the annotation the source-update hold (apps.markSourcePending) writes.
 		a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] = strconv.FormatInt(s.generation+1, 10)
 		s.rolls = false
+		s.pends = !a.Spec.Suspended
 		return false
 	}
 	// The release this write mints carries the env-group links staged while the
@@ -291,10 +301,8 @@ func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.Ap
 	if err := t.refresh(ctx, &cloneRefresh{}, before, a); err != nil {
 		return err
 	}
-	if tracked {
-		if err := t.awaitAdoption(ctx, cl, a); err != nil {
-			return err
-		}
+	if err := t.awaitAdoption(ctx, cl, a, &before); err != nil {
+		return err
 	}
 	if err := cl.Patch(ctx, a, base); err != nil {
 		return err
@@ -330,10 +338,7 @@ func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alp
 		}
 		// A wait that ends on the operator's adoption loses this patch's
 		// resourceVersion race, so the mutation runs again on the adopted App.
-		if tracked {
-			return t.awaitAdoption(ctx, cl, a)
-		}
-		return nil
+		return t.awaitAdoption(ctx, cl, a, &before)
 	}); err != nil {
 		return err
 	}

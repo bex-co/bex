@@ -230,3 +230,68 @@ func TestAStagedRollingWriteWaitsOnTheLiveApp(t *testing.T) {
 		t.Fatalf("the staged save took %s; want it to wait for the live App's adoption", took)
 	}
 }
+
+// w6/163: a change saved for the next deploy (Render's Update Service) behind
+// a deploy the operator has not adopted yet waits for that adoption, under
+// either overlap policy, then holds itself without stamping a release. Held
+// first, it held the deploy ahead too: the operator releases no deploy
+// stamped below a pending save, so that deploy stayed created until another
+// deploy canceled it.
+func TestASavedOnlyWriteWaitsForTheDeployAheadToBeAdopted(t *testing.T) {
+	policies := map[string]map[string]string{
+		"wait":     nil,
+		"override": {appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride},
+	}
+	for name, patch := range trackerPatches {
+		for policy, labels := range policies {
+			t.Run(name+"/"+policy, func(t *testing.T) {
+				cl, a, ds, patchedAt := adoptionFixture(t, labels)
+				adoptAfter(t, cl, a, 2, 300*time.Millisecond)
+				start := time.Now()
+				if err := patch(&Tracker{Store: ds, AdoptionWait: 10 * time.Second}, WithSaveOnly(context.Background()), cl, a, healthCheck); err != nil {
+					t.Fatal(err)
+				}
+				if got := patchedAt.Load(); got != 2 || time.Since(start) < 250*time.Millisecond {
+					t.Fatalf("the save reached the App with release %d adopted after %s; want it after the operator adopted release 2", got, time.Since(start))
+				}
+				_, stamped := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]
+				if len(ds.created) != 0 || stamped || a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] == "" {
+					t.Fatalf("rows %d, annotations %v; want the save held for the next deploy, with no row and no release stamp", len(ds.created), a.Annotations)
+				}
+			})
+		}
+	}
+}
+
+// w6/163: a suspended service deploys nothing, so a change held there has no
+// deploy ahead to wait for, and a save-only write the deploy ahead was
+// already adopted for writes through at once.
+func TestAHeldWriteWithNothingToHoldDoesNotWait(t *testing.T) {
+	cases := map[string]struct {
+		suspended bool
+		adopted   int64
+	}{
+		"suspended":       {suspended: true, adopted: 1},
+		"already adopted": {adopted: 2},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cl, a, ds, patchedAt := adoptionFixture(t, nil)
+			a.Spec.Suspended = tc.suspended
+			a.Status.ReleaseGeneration = tc.adopted
+			if err := cl.Update(context.Background(), a); err != nil {
+				t.Fatal(err)
+			}
+			start := time.Now()
+			if err := (&Tracker{Store: ds, AdoptionWait: 10 * time.Second}).PatchLocked(WithSaveOnly(context.Background()), cl, a, store.TriggerSettingsChange, healthCheck); err != nil {
+				t.Fatal(err)
+			}
+			if took := time.Since(start); took > 2*time.Second || patchedAt.Load() != tc.adopted {
+				t.Fatalf("the held save took %s and reached the App with release %d adopted; want it at once", took, patchedAt.Load())
+			}
+			if a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] == "" || len(ds.created) != 0 {
+				t.Fatalf("annotations %v, rows %d; want the change held for the next deploy", a.Annotations, len(ds.created))
+			}
+		})
+	}
+}

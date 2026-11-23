@@ -46,6 +46,14 @@ import (
 //     operator rendering the deploy ahead from it, so it waits here
 //     (AwaitAdoption) until the deploy ahead is adopted, then writes through
 //     and pends behind the operator's pin.
+//   - A change saved for the next deploy (Render's Update Service and Update
+//     Source: a save-only write through a Tracker, the source-pending
+//     marker) waits the same way under either policy
+//     (AwaitAdoptionBeforeHold, w6/163). The operator releases no deploy
+//     stamped below a pending save, so written first the save held the
+//     deploy ahead too, left created until another deploy canceled it.
+//     Written once that deploy is adopted, the save leaves it running the
+//     settings it was requested with and waits for the next deploy.
 
 // DeployLister is the deploy-history read ServedRelease and the Wait rule
 // need; *store.PGStore provides it.
@@ -108,8 +116,18 @@ const adoptionPoll = 200 * time.Millisecond
 // writes after its first deploy opened, such as a Blueprint's copied
 // values, still reach that deploy. a itself is not changed.
 func AwaitAdoption(ctx context.Context, cl client.Reader, lister DeployLister, a *appv1alpha1.App, wait time.Duration) error {
-	if wait < 0 || lister == nil || a.Labels[store.LabelAppID] == "" ||
-		a.Labels[appv1alpha1.LabelOverlappingDeployPolicy] == appv1alpha1.OverlappingDeployPolicyOverride {
+	if a.Labels[appv1alpha1.LabelOverlappingDeployPolicy] == appv1alpha1.OverlappingDeployPolicyOverride {
+		return nil
+	}
+	return AwaitAdoptionBeforeHold(ctx, cl, lister, a, wait)
+}
+
+// AwaitAdoptionBeforeHold is AwaitAdoption for a write that holds a change for
+// a's next deploy (w6/163): a save-only write, or the source-pending marker.
+// It waits under Render's Override policy too, since a held change starts no
+// release that could replace the deploy ahead; it would only hold it.
+func AwaitAdoptionBeforeHold(ctx context.Context, cl client.Reader, lister DeployLister, a *appv1alpha1.App, wait time.Duration) error {
+	if wait < 0 || lister == nil || a.Labels[store.LabelAppID] == "" {
 		return nil
 	}
 	if wait == 0 {

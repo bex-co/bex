@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -201,4 +202,73 @@ func TestWritesThroughNameTheReleaseTheAppAdopted(t *testing.T) {
 		}
 		named(t, ls.recordingStore, 2)
 	})
+}
+
+// w6/163: Render's Update Service (REST PATCH /v1/services/{id}, MCP
+// update_service) saved within seconds of a dashboard Settings save that
+// deploys waits for the operator to adopt that deploy before it holds its own
+// change for the next deploy. Held first, the change held that deploy too:
+// the operator releases no deploy stamped below a pending save, so it stayed
+// created until another deploy canceled it. A saved setting and a saved
+// source (Update Source) wait alike, and the deploy ahead keeps its stamp.
+func TestAnUpdateServiceSaveWaitsForTheDeployAheadToBeAdopted(t *testing.T) {
+	delay, image := int32(120), "new:1"
+	for name, patch := range map[string]ServicePatch{
+		"setting": {MaxShutdownDelaySeconds: &delay},
+		"source":  {Image: &image},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ls := &listingStore{recordingStore: &recordingStore{}, open: []store.Deploy{{ID: "dep-settings", Status: store.DeployCreated, Generation: 3}}}
+			a := managedApp("web", "srv-1")
+			a.Spec.Image = "old:1"
+			a.Generation = 3
+			a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "3"}
+			a.Status.ReleaseGeneration = 1
+			svc, cl := newService(ls, a)
+			var mu sync.Mutex
+			var writtenAt []int64
+			svc.Client = interceptor.NewClient(cl.(client.WithWatch), interceptor.Funcs{
+				Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+					stored := &appv1alpha1.App{}
+					if err := c.Get(ctx, client.ObjectKeyFromObject(obj), stored); err != nil {
+						return err
+					}
+					// The preflight's admission dry-run writes nothing.
+					var po client.PatchOptions
+					if po.ApplyOptions(opts); len(po.DryRun) == 0 {
+						mu.Lock()
+						writtenAt = append(writtenAt, stored.Status.ReleaseGeneration)
+						mu.Unlock()
+					}
+					return c.Patch(ctx, obj, patch, opts...)
+				},
+			})
+			go func() {
+				time.Sleep(300 * time.Millisecond)
+				adopted := getApp(t, cl, "web")
+				adopted.Status.ReleaseGeneration = 3
+				if err := cl.Update(context.Background(), adopted); err != nil {
+					t.Error(err)
+				}
+			}()
+			start := time.Now()
+			if _, err := svc.ApplyServicePatch(context.Background(), "web", patch); err != nil {
+				t.Fatalf("ApplyServicePatch: %v", err)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if took := time.Since(start); len(writtenAt) == 0 || took < 250*time.Millisecond {
+				t.Fatalf("the save wrote the App %d times after %s; want it written after the operator adopted release 3", len(writtenAt), took)
+			}
+			for _, gen := range writtenAt {
+				if gen != 3 {
+					t.Fatalf("the save wrote the App with releases %v adopted; want every write after release 3 was", writtenAt)
+				}
+			}
+			got := getApp(t, cl, "web")
+			if got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "3" || got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "4" || len(ls.deployCalls) != 0 {
+				t.Fatalf("annotations %v, rows %d; want release 3 still stamped and the save pending at 4, with no deploy of its own", got.Annotations, len(ls.deployCalls))
+			}
+		})
+	}
 }

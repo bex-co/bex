@@ -5435,8 +5435,17 @@ func (s *Service) recordSourceChanged(ctx context.Context, a *appv1alpha1.App, f
 
 // markSourcePending stamps the generation a source change will land at, so the
 // operator keeps the active release serving until a deploy verb stamps
-// AnnotationReleaseGeneration at that generation or newer.
+// AnnotationReleaseGeneration at that generation or newer. Behind a deploy
+// the operator has not adopted yet it waits for that adoption first, or the
+// marker would hold that deploy too (rollout.AwaitAdoptionBeforeHold, w6/163).
+// A suspended service deploys nothing, so it has no deploy ahead to wait for.
 func (s *Service) markSourcePending(ctx context.Context, a *appv1alpha1.App) error {
+	if !a.Spec.Suspended {
+		lister, _ := s.Store.(rollout.DeployLister)
+		if err := rollout.AwaitAdoptionBeforeHold(ctx, s.Client, lister, a, 0); err != nil {
+			return err
+		}
+	}
 	base := client.MergeFrom(a.DeepCopy())
 	metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationPendingSourceGeneration,
 		strconv.FormatInt(a.Generation+1, 10))
