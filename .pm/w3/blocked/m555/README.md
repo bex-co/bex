@@ -1,6 +1,6 @@
 # w3 · m555 — A cron job's header and actions are Render's: Trigger Run while it runs, the schedule in words, Manual Build on its Deploys page
 
-**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** todo (t001–t006 and t008–t010 done; t007's production walk waits for a pin that carries the milestone)
+**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** blocked (t001–t006 and t008–t010 done; t007's production walk waits for a pin that carries `ad7f6e2b36`)
 
 ## Tasks (in order)
 
@@ -66,7 +66,7 @@ Waits for a pin that carries the milestone's commit (t007 step 2). Then, as the 
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity for w3` (2026-11-21), filed by `/pmx the verified parity to w3`, item 2.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)).
 - **Expected outcome:** a cron job is run and built from the places Render puts those actions, and its header says what it runs and when in words.
 - **Why now:** it follows w3/m554's routes (Manual Build lives on the Deploys page m554 restores), and w3/m556's empty states reuse the Trigger Run this milestone builds.
 - **Open decision, recorded as a recommendation:** dropping the confirm w4/m114 t003 added follows Render's bundle. That is the proposal's recommendation under ADR008's parity-first rule (parity work is not parked on an optional decision), not a user decision. Keeping the confirm would be a divergence awaiting the user's sign-off in ADR018. Checking the click on Render needs a disposable Render cron job (at least $1 a month), the user's call; until then t001 records the click as bundle-only.
