@@ -24,9 +24,11 @@ import (
 )
 
 func TestSSHSessionAuditCannotCarryTerminalContent(t *testing.T) {
+	// Transport (w6/m564) is a closed set of three names (CHECK in 0339): how
+	// the connection arrived, never what it carried.
 	wantFields := map[string]bool{
 		"ID": true, "Subject": true, "WorkspaceID": true, "ServiceID": true,
-		"InstanceID": true, "RemoteAddress": true, "StartedAt": true,
+		"InstanceID": true, "RemoteAddress": true, "StartedAt": true, "Transport": true,
 	}
 	typeOfAudit := reflect.TypeOf(SSHSessionAudit{})
 	if typeOfAudit.NumField() != len(wantFields) {
@@ -39,14 +41,16 @@ func TestSSHSessionAuditCannotCarryTerminalContent(t *testing.T) {
 		}
 	}
 
-	migration, err := os.ReadFile("migrations/0030_ssh_sessions.up.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema := strings.ToLower(string(migration))
-	for _, forbidden := range []string{"command", "argv", "environment", "stdin", "stdout", "stderr", "terminal"} {
-		if strings.Contains(schema, forbidden) {
-			t.Fatalf("ssh_sessions schema must not persist %q", forbidden)
+	for _, path := range []string{"migrations/0030_ssh_sessions.up.sql", "migrations/0339_ssh_sessions_transport.up.sql"} {
+		migration, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		schema := strings.ToLower(string(migration))
+		for _, forbidden := range []string{"command", "argv", "environment", "stdin", "stdout", "stderr", "terminal"} {
+			if strings.Contains(schema, forbidden) {
+				t.Fatalf("%s: ssh_sessions schema must not persist %q", path, forbidden)
+			}
 		}
 	}
 }

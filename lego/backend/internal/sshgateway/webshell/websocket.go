@@ -325,6 +325,7 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 		ID: sessionID, Subject: claims.Subject, WorkspaceID: workspaceID,
 		ServiceID: target.ServiceID, InstanceID: target.ID,
 		RemoteAddress: remoteAddress, StartedAt: started,
+		Transport: store.SSHTransportWebShell,
 	})
 	cancelAudit()
 	if err != nil {

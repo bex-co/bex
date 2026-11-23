@@ -426,6 +426,9 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		InstanceID:    claims.Pod,
 		RemoteAddress: s.remoteAddress(r),
 		StartedAt:     started.UTC(),
+		// A reader of the conversation, not an editor: it never holds the
+		// sandbox open (w6/m564).
+		Transport: store.SSHTransportAgentAttach,
 	})
 	cancelAudit()
 	if err != nil {

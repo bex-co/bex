@@ -549,6 +549,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		ID: sessionID, Subject: subject, WorkspaceID: workspaceID,
 		ServiceID: auditTarget.ServiceID, InstanceID: auditTarget.ID,
 		RemoteAddress: conn.RemoteAddr().String(), StartedAt: started,
+		Transport: store.SSHTransportSSH,
 	})
 	cancelAudit()
 	if err != nil {

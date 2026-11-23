@@ -356,6 +356,9 @@ func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {
 	if len(started) != 1 || started[0].Subject != "user-1" || started[0].ServiceID == "" || len(ended) != 1 {
 		t.Fatalf("audit start/end = %+v / %+v", started, ended)
 	}
+	if started[0].Transport != store.SSHTransportSSH {
+		t.Fatalf("audit transport = %q, want %q", started[0].Transport, store.SSHTransportSSH)
+	}
 }
 
 // w6/096: a finished exec leaves the transport to the client. The server

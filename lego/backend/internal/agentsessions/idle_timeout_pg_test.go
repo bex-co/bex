@@ -117,6 +117,61 @@ func TestTheIdleCloseDependsOnWhoStartedTheSessionPG(t *testing.T) {
 	}
 }
 
+// w6/m564: the conversation stream (agent attach) is a reader of the
+// transcript, not an editor. On production a dashboard tab left open on a
+// sandbox started for Zed held it for the 4-hour SSH cap, and each page view
+// moved the idle clock, because its audit rows were read as editor SSH.
+func TestTheConversationStreamIsNotAnEditorPG(t *testing.T) {
+	ctx := context.Background()
+	e := newLineageEnv(t)
+	c := &Completer{Store: e.pg, Sandbox: e.lc, IdleTTL: DefaultIdleTimeout}
+	// row records a gateway session of transport on id, started now and,
+	// when endedAt is not zero, ended then.
+	row := func(t *testing.T, id, transport string, endedAt time.Time) {
+		t.Helper()
+		ssn := fmt.Sprintf("ssn-%s-%d", transport, time.Now().UnixNano())
+		if err := e.pg.StartSSHSession(ctx, store.SSHSessionAudit{
+			ID: ssn, Subject: "user:alice", WorkspaceID: e.ws, ServiceID: id,
+			InstanceID: "sandbox-0", StartedAt: time.Now(), Transport: transport,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if !endedAt.IsZero() {
+			if err := e.pg.EndSSHSession(ctx, ssn, "closed", endedAt); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	t.Run("an open conversation stream does not keep the sandbox", func(t *testing.T) {
+		id := e.create(t, "").ID
+		row(t, id, store.SSHTransportAgentAttach, time.Time{})
+		ended := finishTurn(t, c, e.pg, e.lc, id).UpdatedAt
+		if got := sandboxAt(t, c, e.pg, id, ended.Add(5*time.Minute+time.Second)); got != "" {
+			t.Fatalf("sandbox %q at 5m01s under an open conversation stream, want closed", got)
+		}
+	})
+	t.Run("a page view after the turn does not move the idle clock", func(t *testing.T) {
+		id := e.create(t, "").ID
+		ended := finishTurn(t, c, e.pg, e.lc, id).UpdatedAt
+		row(t, id, store.SSHTransportAgentAttach, ended.Add(4*time.Minute))
+		if got := sandboxAt(t, c, e.pg, id, ended.Add(5*time.Minute+time.Second)); got != "" {
+			t.Fatalf("sandbox %q at 5m01s after a page view at 4m, want closed", got)
+		}
+	})
+	t.Run("an SSH disconnect after the turn still moves it", func(t *testing.T) {
+		id := e.create(t, "").ID
+		ended := finishTurn(t, c, e.pg, e.lc, id).UpdatedAt
+		row(t, id, store.SSHTransportSSH, ended.Add(4*time.Minute))
+		if sandboxAt(t, c, e.pg, id, ended.Add(5*time.Minute+time.Second)) == "" {
+			t.Fatal("closed at 5m01s, one minute after an editor disconnected")
+		}
+		if got := sandboxAt(t, c, e.pg, id, ended.Add(9*time.Minute+time.Second)); got != "" {
+			t.Fatalf("sandbox %q 5m01s after the editor disconnected, want closed", got)
+		}
+	})
+}
+
 // An automation's completed turn that leaves an uncommitted file keeps its
 // disk at the harvest close, as a person's does at the idle close (w10/m491),
 // and the next message continues from it.

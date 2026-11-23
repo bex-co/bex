@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const browserUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Safari/605.1.15"
@@ -69,6 +70,9 @@ func TestWebShellRecordsStartAndEndShellEvents(t *testing.T) {
 		t.Fatalf("shell rows = %+v, want one start then one end", rows)
 	}
 	sessionID := st.StartedSessions()[0].ID
+	if transport := st.StartedSessions()[0].Transport; transport != store.SSHTransportWebShell {
+		t.Errorf("session transport = %q, want %q", transport, store.SSHTransportWebShell)
+	}
 	for _, row := range rows {
 		if row.Caller != "user-1" || row.CallerMethod != core.MethodShell || row.Outcome != core.AuditAllowed ||
 			row.Resource != core.WorkspaceObject("tea-workspace") || row.Target != core.ServiceTarget("srv-abcdeabcdeabcdeabcde") ||

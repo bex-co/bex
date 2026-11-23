@@ -21,6 +21,16 @@ import (
 	"time"
 )
 
+// How an audited gateway session reached its target (ssh_sessions.transport,
+// w6/m564): an SSH login (a terminal or an editor such as Zed), a service's
+// browser web shell, or the conversation stream of an agent session (agent
+// attach: the dashboard, `bex agent attach` or an IDE reading the transcript).
+const (
+	SSHTransportSSH         = "ssh"
+	SSHTransportWebShell    = "web_shell"
+	SSHTransportAgentAttach = "agent_attach"
+)
+
 // SSHSessionAudit contains connection metadata only. Its schema deliberately
 // has no command, environment, or stream-content column, making terminal-data
 // capture impossible through this persistence seam.
@@ -32,15 +42,21 @@ type SSHSessionAudit struct {
 	InstanceID    string
 	RemoteAddress string
 	StartedAt     time.Time
+	// Transport is one of the SSHTransport constants; empty records an SSH login.
+	Transport string
 }
 
 func (s *PGStore) StartSSHSession(ctx context.Context, session SSHSessionAudit) error {
+	transport := session.Transport
+	if transport == "" {
+		transport = SSHTransportSSH
+	}
 	_, err := s.Pool.Exec(ctx, `
 		INSERT INTO ssh_sessions
-			(id, subject, workspace_id, service_id, instance_id, remote_address, started_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			(id, subject, workspace_id, service_id, instance_id, remote_address, started_at, transport)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		session.ID, session.Subject, session.WorkspaceID, session.ServiceID,
-		session.InstanceID, session.RemoteAddress, session.StartedAt)
+		session.InstanceID, session.RemoteAddress, session.StartedAt, transport)
 	return err
 }
 
@@ -58,7 +74,10 @@ func (s *PGStore) EndSSHSession(ctx context.Context, sessionID, result string, e
 // time (ended_at), which feeds the idle clock `now − max(last turn end, last SSH
 // disconnect)`. `freshSince` (now − the SSH session cap) discards a leaked row a
 // crashed gateway replica never closed, so an editor pin stays bounded. It
-// subsumes ADR054 D6's earlier open-only check.
+// subsumes ADR054 D6's earlier open-only check. Only SSH logins count: the
+// conversation stream's rows (agent attach) are a reader of the transcript,
+// not an editor, and a dashboard tab left open on a session held its sandbox
+// for the 4-hour cap (w6/m564).
 func (s *PGStore) AgentSessionSSHActivity(ctx context.Context, resourceID string, freshSince time.Time) (hasFreshOpen bool, lastEnded *time.Time, err error) {
 	// COALESCE bool_or so an empty set (no rows for this id) scans as false, not NULL.
 	err = s.Pool.QueryRow(ctx, `
@@ -66,8 +85,8 @@ func (s *PGStore) AgentSessionSSHActivity(ctx context.Context, resourceID string
 			COALESCE(bool_or(ended_at IS NULL AND started_at >= $2), false),
 			max(ended_at)
 		FROM ssh_sessions
-		WHERE service_id = $1`,
-		resourceID, freshSince).Scan(&hasFreshOpen, &lastEnded)
+		WHERE service_id = $1 AND transport = $3`,
+		resourceID, freshSince, SSHTransportSSH).Scan(&hasFreshOpen, &lastEnded)
 	return hasFreshOpen, lastEnded, err
 }
 

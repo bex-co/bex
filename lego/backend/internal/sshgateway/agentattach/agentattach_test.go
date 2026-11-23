@@ -440,6 +440,10 @@ func TestAgentAttachRedeemRecordsContentFreeSessionAudit(t *testing.T) {
 		audit.InstanceID != "sandbox-1-0" || !strings.HasPrefix(audit.RemoteAddress, "127.0.0.1") {
 		t.Fatalf("audit = %+v, want subject/workspace/session/pod/remote metadata only", audit)
 	}
+	// A conversation reader, never an editor: the idle close skips it (w6/m564).
+	if audit.Transport != store.SSHTransportAgentAttach {
+		t.Fatalf("audit transport = %q, want %q", audit.Transport, store.SSHTransportAgentAttach)
+	}
 	st.mu.Lock()
 	ended := append([]string(nil), st.ended...)
 	st.mu.Unlock()
