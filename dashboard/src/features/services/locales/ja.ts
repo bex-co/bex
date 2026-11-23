@@ -3821,6 +3821,16 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "既存のイメージ",
     description: "Create-wizard source-tab label for a pre-built Docker image",
   },
+  "services.createRepoSearchShort": {
+    message: "検索…",
+    description:
+      "Repository search placeholder where the field is narrow (a phone); the field keeps its full accessible name",
+  },
+  "services.createRepoCurrent": {
+    message: "現在",
+    description:
+      "Update Source repository list: tag on the repository the service uses now, shown once another one is chosen",
+  },
   "services.createRepoSearchPlaceholder": {
     message: "リポジトリを検索…",
     description: "Create-wizard GitHub tab repo-search input placeholder",
@@ -3838,6 +3848,88 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "検索に一致するリポジトリがありません。",
     description:
       "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createRepoEmptyHint": {
+    message:
+      "GitHub で bex にリポジトリへのアクセスを許可するか、別のアカウントを接続してください。",
+    description:
+      "Source picker GitHub tab, under the empty state: what to do when the connected accounts grant no repository. Credentials is the menu beside the search field",
+  },
+  "services.createRepoLoadError": {
+    message: "リポジトリを読み込めませんでした。",
+    description:
+      "Source picker GitHub tab: the repository list could not be read, shown with a Try again button. Not the same as having no repositories",
+  },
+  "services.createRepoListLabel": {
+    message: "リポジトリ",
+    description:
+      "Accessible name of the repository list in the source picker's GitHub tab",
+  },
+  "services.createRepoClearSearch": {
+    message: "検索をクリア",
+    description:
+      "Source picker GitHub tab: button under the no-match message that empties the repository search field",
+  },
+  "services.sourceNoChanges": {
+    message: "保存する変更はありません。",
+    description:
+      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+  },
+  "services.sourceSelectRepo": {
+    message: "リポジトリを選択してください。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+  },
+  "services.sourceSelectBuildSource": {
+    message: "ビルドソースを選択してください。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+  },
+  "services.sourceEnterRepoUrl": {
+    message: "リポジトリの URL を入力してください。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+  },
+  "services.sourceEnterImage": {
+    message: "イメージを入力してください。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+  },
+  "services.createRepoOpenCredentials": {
+    message: "認証情報を開く",
+    description:
+      "Source picker GitHub tab: button under the empty repository list that opens the Credentials menu beside the search field",
+  },
+  "services.sourcePending": {
+    message: "新しいソース: {source}",
+    description:
+      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+  },
+  "services.sourceBranchLocked": {
+    message: "リポジトリを選ぶと使えます。",
+    description:
+      "Update Source dialog: helper under the disabled Branch field before a repository is picked or a valid URL entered",
+  },
+  "services.sourceNoBuildSources": {
+    message: "選択できるビルドソースがありません。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+  },
+  "services.sourceFixField": {
+    message: "続けるには、上の項目を入力してください。",
+    description:
+      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+  },
+  "services.createRepoNoMatchHint": {
+    message:
+      "一覧にありませんか？GitHub で bex にアクセスを許可するか、別のアカウントを接続してください。",
+    description:
+      "Source picker GitHub tab, under the no-match message: the usual cause is a repository the connected accounts do not grant. Shown with Clear search and Open Credentials buttons",
+  },
+  "services.sourceBranchLockedUrl": {
+    message: "リポジトリの URL を入力すると使えます。",
+    description:
+      "Update Source dialog, Public Git URL tab: helper under the disabled Branch field before a valid URL is entered",
   },
   "services.createGitConnectPromptTitle": {
     message: "GitHub に接続",

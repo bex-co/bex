@@ -3775,6 +3775,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Existing Image",
     description: "Create-wizard source-tab label for a pre-built Docker image",
   },
+  "services.createRepoSearchShort": {
+    message: "Search…",
+    description:
+      "Repository search placeholder where the field is narrow (a phone); the field keeps its full accessible name",
+  },
+  "services.createRepoCurrent": {
+    message: "Current",
+    description:
+      "Update Source repository list: tag on the repository the service uses now, shown once another one is chosen",
+  },
   "services.createRepoSearchPlaceholder": {
     message: "Search repositories…",
     description: "Create-wizard GitHub tab repo-search input placeholder",
@@ -3792,6 +3802,88 @@ const enServices: Record<string, TranslationEntry> = {
     message: "No repositories match your search.",
     description:
       "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createRepoEmptyHint": {
+    message:
+      "Give bex access to a repository on GitHub, or connect another account.",
+    description:
+      "Source picker GitHub tab, under the empty state: what to do when the connected accounts grant no repository. Credentials is the menu beside the search field",
+  },
+  "services.createRepoLoadError": {
+    message: "Couldn't load your repositories.",
+    description:
+      "Source picker GitHub tab: the repository list could not be read, shown with a Try again button. Not the same as having no repositories",
+  },
+  "services.createRepoListLabel": {
+    message: "Repositories",
+    description:
+      "Accessible name of the repository list in the source picker's GitHub tab",
+  },
+  "services.createRepoClearSearch": {
+    message: "Clear search",
+    description:
+      "Source picker GitHub tab: button under the no-match message that empties the repository search field",
+  },
+  "services.sourceNoChanges": {
+    message: "No changes to save.",
+    description:
+      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+  },
+  "services.sourceSelectRepo": {
+    message: "Select a repository.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+  },
+  "services.sourceSelectBuildSource": {
+    message: "Select a build source.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+  },
+  "services.sourceEnterRepoUrl": {
+    message: "Enter a repository URL.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+  },
+  "services.sourceEnterImage": {
+    message: "Enter an image.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+  },
+  "services.createRepoOpenCredentials": {
+    message: "Open Credentials",
+    description:
+      "Source picker GitHub tab: button under the empty repository list that opens the Credentials menu beside the search field",
+  },
+  "services.sourcePending": {
+    message: "New source: {source}",
+    description:
+      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+  },
+  "services.sourceBranchLocked": {
+    message: "Available once you choose a repository.",
+    description:
+      "Update Source dialog: helper under the disabled Branch field before a repository is picked or a valid URL entered",
+  },
+  "services.sourceNoBuildSources": {
+    message: "No build source to select.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+  },
+  "services.sourceFixField": {
+    message: "Complete the fields above to continue.",
+    description:
+      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+  },
+  "services.createRepoNoMatchHint": {
+    message:
+      "Not listed? Give bex access to it on GitHub, or connect another account.",
+    description:
+      "Source picker GitHub tab, under the no-match message: the usual cause is a repository the connected accounts do not grant. Shown with Clear search and Open Credentials buttons",
+  },
+  "services.sourceBranchLockedUrl": {
+    message: "Available once you enter a repository URL.",
+    description:
+      "Update Source dialog, Public Git URL tab: helper under the disabled Branch field before a valid URL is entered",
   },
   "services.createGitConnectPromptTitle": {
     message: "Connect GitHub",

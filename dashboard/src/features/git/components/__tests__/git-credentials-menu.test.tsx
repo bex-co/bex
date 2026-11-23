@@ -127,9 +127,17 @@ describe("GitCredentialsMenu", () => {
     // Repo counts, grouped by accountLogin.
     expect(screen.getByText("3 repos")).toBeInTheDocument();
     expect(screen.getByText("1 repo")).toBeInTheDocument();
-    // Configure-in-GitHub links carry each installation's grants URL.
-    const configure = screen.getAllByLabelText("Configure in GitHub");
+    // Configure-in-GitHub links carry each installation's grants URL. Each is
+    // named by its own visible words: as a bare glyph it said nothing.
+    const configure = screen.getAllByRole("link", {
+      name: "Configure in GitHub",
+    });
     expect(configure).toHaveLength(2);
+    expect(configure[0]).toHaveTextContent("Configure in GitHub");
+    // So is Disconnect, named for its account to a screen reader.
+    expect(
+      screen.getByRole("button", { name: "Disconnect puncsky" }),
+    ).toHaveTextContent("Disconnect");
     expect(configure[0]).toHaveAttribute(
       "href",
       "https://github.com/settings/installations/111",
@@ -200,6 +208,30 @@ describe("GitCredentialsMenu", () => {
     for (const name of ["Disconnect puncsky", "Disconnect bex-co"]) {
       expect(screen.getByRole("button", { name })).not.toHaveFocus();
     }
+  });
+
+  // The trigger shows beside the repository search before the accounts are
+  // read. "Credentials (0)" there told a connected workspace it had none.
+  it("shows no count until the accounts are read", () => {
+    state.loading = true;
+    const { rerender } = render(<GitCredentialsMenu />);
+    const trigger = screen.getByRole("button", { name: /Credentials/ });
+    expect(trigger).toHaveTextContent(/^Credentials$/);
+    expect(trigger.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+
+    state.loading = false;
+    state.connected = true;
+    state.connections = [
+      {
+        accountLogin: "acme",
+        installationId: 42,
+        createdAt: "",
+        installUrl: "https://github.com/settings/installations/42",
+      },
+    ];
+    rerender(<GitCredentialsMenu />);
+    expect(trigger).toHaveTextContent("Credentials (1)");
+    expect(trigger.querySelector('[data-slot="skeleton"]')).toBeNull();
   });
 
   it("focuses the panel itself while it offers no action", async () => {

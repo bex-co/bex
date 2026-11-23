@@ -123,7 +123,7 @@ function gatedClient(connections: unknown[] = gitConnections) {
   };
 }
 
-function Picker() {
+function Picker({ currentRepo = null }: { currentRepo?: string | null }) {
   const [tab, setTab] = useState<SourceTab>("github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
   const [gitUrl, setGitUrl] = useState("");
@@ -135,6 +135,7 @@ function Picker() {
       onSelectRepo={setSelectedRepo}
       gitUrl={gitUrl}
       onGitUrlChange={setGitUrl}
+      currentRepo={currentRepo}
     />
   );
 }
@@ -309,6 +310,376 @@ describe("ServiceSourcePicker first connections read (w4/434)", () => {
     expect(prompt.className).toBe(preview!.className);
     expect(prompt.children).toHaveLength(3);
     expect(document.querySelector('[data-preview="git-connect"]')).toBeNull();
+  });
+});
+
+// The GitHub tab's repository list. Each state says what it is: a list that
+// failed used to read "No repositories found.", the same words as a workspace
+// with none, and neither said what to do next.
+describe("ServiceSourcePicker repository list states", () => {
+  /** A client whose Repos answer the test scripts, call by call. */
+  function scriptedClient(
+    reposAnswer: () => ApolloLink.Result,
+    connections: unknown[] = gitConnections,
+  ) {
+    const link = new ApolloLink(
+      (operation) =>
+        new Observable<ApolloLink.Result>((observer) => {
+          observer.next(
+            operation.operationName === "GitConnections"
+              ? { data: { gitConnections: connections } }
+              : reposAnswer(),
+          );
+          observer.complete();
+        }),
+    );
+    return new ApolloClient({
+      cache: new InMemoryCache(),
+      link,
+      defaultOptions: apolloDefaultOptions,
+    });
+  }
+  const renderPicker = (client: ApolloClient, currentRepo?: string) =>
+    render(
+      <ApolloProvider client={client}>
+        <Picker currentRepo={currentRepo} />
+      </ApolloProvider>,
+    );
+
+  it("says the list failed and offers another try, not that there are none", async () => {
+    let failing = true;
+    const user = userEvent.setup();
+    renderPicker(
+      scriptedClient(() =>
+        failing
+          ? { errors: [{ message: "upstream unavailable" }] }
+          : { data: { repos } },
+      ),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your repositories.");
+    expect(screen.queryByText("No repositories found.")).toBeNull();
+    // The search and the accounts menu stay in reach.
+    expect(screen.getByRole("textbox", SEARCH)).toBeInTheDocument();
+
+    failing = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByRole("button", { name: /acme\/api/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("tells a workspace whose accounts grant no repository what to do, and opens the way there", async () => {
+    const user = userEvent.setup();
+    renderPicker(scriptedClient(() => ({ data: { repos: [] } })));
+    expect(
+      await screen.findByText("No repositories found."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Give bex access to a repository on GitHub/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    // The accounts menu beside the search field, opened from here.
+    expect(screen.queryByRole("dialog", { name: "Credentials" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Open Credentials" }));
+    expect(
+      await screen.findByRole("dialog", { name: "Credentials" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers to clear a search that matches nothing", async () => {
+    const user = userEvent.setup();
+    renderPicker(scriptedClient(() => ({ data: { repos } })));
+    await screen.findByRole("button", { name: /acme\/api/ });
+    const search = screen.getByRole("textbox", SEARCH);
+    await user.type(search, "zzzz");
+    expect(
+      screen.getByText("No repositories match your search."),
+    ).toBeInTheDocument();
+    // The usual cause is a repository the accounts do not grant: the way to
+    // grant it is offered beside the way back.
+    expect(
+      screen.getByText(/Not listed\? Give bex access/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Credentials" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(search).toHaveValue("");
+    expect(
+      screen.getByRole("button", { name: /puncsky\/site/ }),
+    ).toBeInTheDocument();
+  });
+
+  // A phone shows a lock for a private repository where wider screens show
+  // the word, and the row's parts sit side by side with no space between
+  // them in the markup. Its name says each part, set apart.
+  it("names a row by its repository, Private when it is, and its default branch", async () => {
+    renderPicker(scriptedClient(() => ({ data: { repos } })));
+    const row = await screen.findByRole("button", { name: /acme\/api/ });
+    expect(row).toHaveAccessibleName("acme/api Private main");
+    expect(
+      screen.getByRole("button", { name: /puncsky\/site/ }),
+    ).toHaveAccessibleName("puncsky/site trunk");
+  });
+
+  // Update Source marks the service's repository as chosen. Once another is
+  // chosen that mark moves, and nothing said which one the service uses now.
+  it("tags the repository in use once another is chosen", async () => {
+    const user = userEvent.setup();
+    renderPicker(
+      scriptedClient(() => ({ data: { repos } })),
+      "https://github.com/acme/api",
+    );
+    const inUse = await screen.findByRole("button", { name: /acme\/api/ });
+    const other = screen.getByRole("button", { name: /puncsky\/site/ });
+    expect(inUse).toHaveAttribute("aria-pressed", "true");
+    expect(inUse).toHaveAccessibleName("acme/api Private main");
+
+    await user.click(other);
+    expect(other).toHaveAttribute("aria-pressed", "true");
+    expect(inUse).toHaveAttribute("aria-pressed", "false");
+    expect(inUse).toHaveAccessibleName("acme/api Private Current main");
+    expect(other).toHaveAccessibleName("puncsky/site trunk");
+  });
+
+  it("tags no repository where no service uses one yet", async () => {
+    const user = userEvent.setup();
+    renderPicker(scriptedClient(() => ({ data: { repos } })));
+    await user.click(
+      await screen.findByRole("button", { name: /puncsky\/site/ }),
+    );
+    expect(screen.queryByText("Current")).not.toBeInTheDocument();
+  });
+
+  // The repository in use can sit far down a long list. The dialog opens
+  // scaled, so a row's bounding box read while it opens is short of where the
+  // row will be; the list then rested between two rows. Layout offsets do
+  // not scale.
+  it("rests the list one row above the repository in use, read from layout offsets", async () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      ...repos[0],
+      id: 100 + i,
+      fullName: `acme/r${i}`,
+      htmlUrl: `https://github.com/acme/r${i}`,
+      cloneUrl: `https://github.com/acme/r${i}.git`,
+    }));
+    const rowIndex = (row: Element) =>
+      [...document.querySelectorAll("[data-repo-row]")].indexOf(row);
+    const spies = [
+      vi
+        .spyOn(HTMLElement.prototype, "offsetTop", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.matches("[data-repo-row]") ? rowIndex(this) * 44 : 0;
+        }),
+      vi
+        .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.matches("[data-repo-row]") ? 44 : 0;
+        }),
+      vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.matches("[data-repo-list]") ? 220 : 0;
+        }),
+      // What a box read mid-animation looks like: every row at the top.
+      vi
+        .spyOn(Element.prototype, "getBoundingClientRect")
+        .mockReturnValue(new DOMRect(0, 0, 0, 0)),
+    ];
+    try {
+      renderPicker(
+        scriptedClient(() => ({ data: { repos: many } })),
+        "https://github.com/acme/r12",
+      );
+      const inUse = await screen.findByRole("button", { name: /acme\/r12 / });
+      const list = inUse.closest<HTMLElement>("[data-repo-list]")!;
+      // Row 12 starts at 528 px; one 44 px row stays above it.
+      expect(list.scrollTop).toBe(484);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+
+  // A row already in view is left where it is: choosing a repository must
+  // not move the list under the pointer.
+  it("leaves the list where it is when the chosen row is in view", async () => {
+    const spies = [
+      vi
+        .spyOn(HTMLElement.prototype, "offsetTop", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.matches("[data-repo-row]")
+            ? [...document.querySelectorAll("[data-repo-row]")].indexOf(this) *
+                44
+            : 0;
+        }),
+      vi
+        .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.matches("[data-repo-row]") ? 44 : 0;
+        }),
+      vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.matches("[data-repo-list]") ? 220 : 0;
+        }),
+    ];
+    try {
+      const user = userEvent.setup();
+      renderPicker(scriptedClient(() => ({ data: { repos } })));
+      const second = await screen.findByRole("button", {
+        name: /puncsky\/site/,
+      });
+      const list = second.closest<HTMLElement>("[data-repo-list]")!;
+      await user.click(second);
+      expect(second).toHaveAttribute("aria-pressed", "true");
+      expect(list.scrollTop).toBe(0);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+
+  // From `sm` the list ends on half a row to say it goes on. Choosing that
+  // half row placed it as a mounting list places the repository in use, one
+  // row from the top: the list moved four rows under the pointer.
+  it("brings a chosen row that is partly out of view just into view", async () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      ...repos[0],
+      id: 100 + i,
+      fullName: `acme/r${i}`,
+      htmlUrl: `https://github.com/acme/r${i}`,
+      cloneUrl: `https://github.com/acme/r${i}.git`,
+    }));
+    const rowIndex = (row: Element) =>
+      [...document.querySelectorAll("[data-repo-row]")].indexOf(row);
+    const spies = [
+      vi
+        .spyOn(HTMLElement.prototype, "offsetTop", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.matches("[data-repo-row]") ? rowIndex(this) * 44 : 0;
+        }),
+      vi
+        .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.matches("[data-repo-row]") ? 44 : 0;
+        }),
+      vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.matches("[data-repo-list]") ? 240 : 0;
+        }),
+    ];
+    try {
+      const user = userEvent.setup();
+      renderPicker(scriptedClient(() => ({ data: { repos: many } })));
+      // Row 5 spans 220 to 264 px of a 240 px list: 20 px of it shows.
+      const cut = await screen.findByRole("button", { name: /acme\/r5 / });
+      const list = cut.closest<HTMLElement>("[data-repo-list]")!;
+      await user.click(cut);
+      expect(cut).toHaveAttribute("aria-pressed", "true");
+      expect(list.scrollTop).toBe(24);
+
+      // And one cut by the top edge comes down to it.
+      list.scrollTop = 100;
+      const above = screen.getByRole("button", { name: /acme\/r2 / });
+      await user.click(above);
+      expect(list.scrollTop).toBe(88);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+
+  // Beside the accounts button a phone's search field is narrow: the full
+  // placeholder was cut mid-word. The field's name stays the full one.
+  it("shortens the search placeholder on a phone and keeps the field's name", async () => {
+    const width = window.innerWidth;
+    window.innerWidth = 390;
+    try {
+      renderPicker(scriptedClient(() => ({ data: { repos } })));
+      const search = await screen.findByRole("textbox", SEARCH);
+      expect(search).toHaveAttribute("placeholder", "Search…");
+    } finally {
+      window.innerWidth = width;
+    }
+  });
+
+  // A workspace lists hundreds of repositories; each row as its own tab stop
+  // put them all between the search field and the fields after the list.
+  it("is one tab stop, moved through with the arrow keys", async () => {
+    const user = userEvent.setup();
+    renderPicker(scriptedClient(() => ({ data: { repos } })));
+    const first = await screen.findByRole("button", { name: /acme\/api/ });
+    const second = screen.getByRole("button", { name: /puncsky\/site/ });
+    expect(first).toHaveAttribute("tabindex", "0");
+    expect(second).toHaveAttribute("tabindex", "-1");
+    expect(
+      screen.getByRole("group", { name: "Repositories" }),
+    ).toContainElement(first);
+
+    first.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(second).toHaveFocus();
+    // The tab stop follows the focus, so Shift+Tab then Tab returns here.
+    expect(second).toHaveAttribute("tabindex", "0");
+    expect(first).toHaveAttribute("tabindex", "-1");
+    await user.keyboard("{ArrowDown}");
+    expect(second).toHaveFocus();
+    await user.keyboard("{Home}");
+    expect(first).toHaveFocus();
+    await user.keyboard("{End}");
+    expect(second).toHaveFocus();
+  });
+
+  // Update Source knows the workspace is connected before the connection read
+  // answers: the tab takes the list's shape at once, not the connect prompt's.
+  it("takes the list's shape while the connection read is out for a repository in use", async () => {
+    const apollo = gatedClient();
+    apollo.holdResponses();
+    render(
+      <ApolloProvider client={apollo.client}>
+        <ServiceSourcePicker
+          tab="github"
+          onTabChange={() => {}}
+          selectedRepo={null}
+          onSelectRepo={() => {}}
+          currentRepo="https://github.com/acme/api.git"
+          gitUrl=""
+          onGitUrlChange={() => {}}
+        />
+      </ApolloProvider>,
+    );
+
+    expect(document.querySelector('[data-preview="git-connect"]')).toBeNull();
+    expect(screen.getByRole("textbox", SEARCH)).toBeInTheDocument();
+    const pending = document.querySelector('[aria-busy="true"]');
+    expect(pending).not.toBeNull();
+    expect(pending).toHaveAttribute("inert");
+    // The loaded list sits in a box of the same height, with the repository
+    // in use marked.
+    expect(pending).toHaveClass("h-52", "sm:h-[17rem]", "rounded-md", "border");
+    await act(async () => {
+      apollo.releaseResponses();
+    });
+    const row = await screen.findByRole("button", { name: /acme\/api/ });
+    expect(row).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("group", { name: "Repositories" })).toHaveClass(
+      "h-52",
+      "sm:h-[17rem]",
+      "rounded-md",
+      "border",
+    );
+  });
+
+  it("shows the connect prompt once the read says disconnected, whatever is cached", async () => {
+    renderPicker(scriptedClient(() => ({ data: { repos } }), []));
+    expect(
+      await screen.findByRole("button", { name: /Connect GitHub/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /acme\/api/ })).toBeNull();
   });
 });
 

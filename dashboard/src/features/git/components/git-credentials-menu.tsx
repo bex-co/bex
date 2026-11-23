@@ -42,7 +42,14 @@ import { isGitHubUnavailable } from "@/features/git/lib/errors";
  * source picker refetches repos whenever the connection set changes, so a
  * newly-connected account's repos appear in place when the user returns.
  */
-export function GitCredentialsMenu() {
+export function GitCredentialsMenu({
+  open,
+  onOpenChange,
+}: {
+  /** Controlled by a caller that opens the menu from a control of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t } = useTranslations();
   const { connections, connected, loading, error, refetch } =
     useGitConnections();
@@ -88,17 +95,41 @@ export function GitCredentialsMenu() {
 
   return (
     <>
-      <Popover>
+      <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <GithubIcon className="size-4" />
-            {t("git.credentialsTrigger", { count: connections.length })}
+          {/* The search field's height and border beside it: the two are one
+              row of controls. It says "Credentials (3)" at every width: a
+              bare "3" beside a mark did not say what it counted, and the
+              list's empty states send people to "Credentials" by name. */}
+          <Button
+            variant="outline"
+            className="h-11 gap-1.5 border-muted-foreground/70 focus-visible:ring-ring max-sm:grow sm:h-9 dark:border-muted-foreground/70"
+          >
+            {/* The word names it; on a phone the mark's width goes to the
+                search field beside it. */}
+            <GithubIcon className="size-4 max-sm:hidden" />
+            {/* Until the accounts are read there is no count to show: a bar
+                where it will be, not "Credentials (0)". The bar and its gap
+                take the width " (3)" will, so the search beside it does not
+                move when the count arrives. */}
+            {initialLoading ? (
+              <>
+                <span>{t("git.credentialsMenuLabel")}</span>
+                <Skeleton className="h-3.5 w-[17px]" />
+              </>
+            ) : (
+              <span className="tabular-nums">
+                {t("git.credentialsTrigger", { count: connections.length })}
+              </span>
+            )}
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="w-80 p-0"
+          // On a phone it spans the search row it hangs from (the dialog's or
+          // page's column: the viewport less its margins and padding).
+          className="w-80 p-0 max-sm:w-[calc(100vw-5rem)]"
           aria-label={t("git.credentialsMenuLabel")}
           // Radix focuses the first tabbable element but skips links, and each
           // row's account name and Configure entry are links, so it used to land
@@ -134,7 +165,7 @@ export function GitCredentialsMenu() {
                   <p className="px-3 pt-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     {t("git.credentialsAccountsHeading")}
                   </p>
-                  <ul className="max-h-64 divide-y overflow-y-auto">
+                  <ul className="max-h-72 divide-y overflow-y-auto">
                     {connections.map((c) => (
                       <li key={c.installationId}>
                         <AccountRow
@@ -157,7 +188,7 @@ export function GitCredentialsMenu() {
                   ref={connectRef}
                   variant="ghost"
                   size="sm"
-                  className="justify-start"
+                  className="h-11 justify-start sm:h-8"
                   onClick={connect}
                   disabled={connecting}
                 >
@@ -192,6 +223,11 @@ export function GitCredentialsMenu() {
   );
 }
 
+// An account's two actions: 44 px tall on a phone, and padded so each label
+// starts under the account's mark.
+const ACCOUNT_ACTION_CLASS =
+  "h-11 gap-1 px-1.5 has-[>svg]:px-1.5 focus-visible:ring-ring sm:h-8 sm:gap-1.5 sm:px-2 sm:has-[>svg]:px-2";
+
 function AccountRow({
   connection,
   repoCount,
@@ -205,14 +241,16 @@ function AccountRow({
 }) {
   const { t } = useTranslations();
   return (
-    <div className="flex items-center justify-between gap-2 px-3 py-2">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="flex flex-col px-3 pb-1 sm:pt-2">
+      {/* On a phone the name's link is a 44 px target: it reaches up into the
+          space that sets this account apart from the one above. */}
+      <div className="flex items-center gap-2 max-sm:mt-5 max-sm:mb-1">
         <GithubIcon className="size-4 shrink-0 text-muted-foreground" />
         <a
           href={`https://github.com/${connection.accountLogin}`}
           target="_blank"
           rel="noreferrer"
-          className="flex min-w-0 items-center gap-1 text-sm font-medium hover:underline"
+          className="relative flex min-w-0 items-center gap-1 text-sm font-medium hover:underline max-sm:after:absolute max-sm:after:inset-x-0 max-sm:after:-top-5 max-sm:after:-bottom-1 max-sm:after:content-['']"
           title={t("git.openInGitHub")}
         >
           <span className="truncate">{connection.accountLogin}</span>
@@ -224,37 +262,39 @@ function AccountRow({
           </span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-0.5">
+      {/* Each action is named, on one line under the account: two bare glyphs
+          said nothing, least of all that one of them disconnects. Disconnect
+          is quiet until pointed at: three red labels in a row read as three
+          alarms. The negative margin sets each label's left edge under the
+          account's mark. A phone drops the glyphs so both names fit one line
+          at 360 px; a language too long for that wraps them onto a line each
+          instead of running off the menu. */}
+      <div className="-mx-1.5 flex flex-wrap items-center justify-between sm:-mx-2">
         {connection.installUrl && (
           <Button
             variant="ghost"
-            size="icon"
-            className="size-7"
+            size="sm"
+            className={ACCOUNT_ACTION_CLASS}
             asChild
-            title={t("git.configureInGitHub")}
           >
-            <a
-              href={connection.installUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={t("git.configureInGitHub")}
-            >
-              <Settings2 className="size-4" />
+            <a href={connection.installUrl} target="_blank" rel="noreferrer">
+              <Settings2 className="size-4 max-sm:hidden" />
+              {t("git.configureInGitHub")}
             </a>
           </Button>
         )}
         <Button
           variant="ghost"
-          size="icon"
-          className="size-7 text-destructive hover:text-destructive"
+          size="sm"
+          className={`${ACCOUNT_ACTION_CLASS} text-muted-foreground hover:text-destructive focus-visible:text-destructive`}
           onClick={onDisconnect}
           disabled={disconnecting}
-          title={t("git.disconnectButton")}
           aria-label={t("git.disconnectAccount", {
             account: connection.accountLogin,
           })}
         >
-          <Unplug className="size-4" />
+          <Unplug className="size-4 max-sm:hidden" />
+          {t("git.disconnectButton")}
         </Button>
       </div>
     </div>

@@ -3793,6 +3793,16 @@ const koServices: Record<string, TranslationEntry> = {
     message: "기존 이미지",
     description: "Create-wizard source-tab label for a pre-built Docker image",
   },
+  "services.createRepoSearchShort": {
+    message: "검색…",
+    description:
+      "Repository search placeholder where the field is narrow (a phone); the field keeps its full accessible name",
+  },
+  "services.createRepoCurrent": {
+    message: "현재",
+    description:
+      "Update Source repository list: tag on the repository the service uses now, shown once another one is chosen",
+  },
   "services.createRepoSearchPlaceholder": {
     message: "저장소 검색…",
     description: "Create-wizard GitHub tab repo-search input placeholder",
@@ -3810,6 +3820,88 @@ const koServices: Record<string, TranslationEntry> = {
     message: "검색과 일치하는 저장소가 없습니다.",
     description:
       "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createRepoEmptyHint": {
+    message:
+      "GitHub에서 bex가 저장소에 접근하도록 허용하거나 다른 계정을 연결하세요.",
+    description:
+      "Source picker GitHub tab, under the empty state: what to do when the connected accounts grant no repository. Credentials is the menu beside the search field",
+  },
+  "services.createRepoLoadError": {
+    message: "저장소를 불러오지 못했습니다.",
+    description:
+      "Source picker GitHub tab: the repository list could not be read, shown with a Try again button. Not the same as having no repositories",
+  },
+  "services.createRepoListLabel": {
+    message: "저장소",
+    description:
+      "Accessible name of the repository list in the source picker's GitHub tab",
+  },
+  "services.createRepoClearSearch": {
+    message: "검색 지우기",
+    description:
+      "Source picker GitHub tab: button under the no-match message that empties the repository search field",
+  },
+  "services.sourceNoChanges": {
+    message: "저장할 변경 사항이 없습니다.",
+    description:
+      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+  },
+  "services.sourceSelectRepo": {
+    message: "저장소를 선택하세요.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+  },
+  "services.sourceSelectBuildSource": {
+    message: "빌드 소스를 선택하세요.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+  },
+  "services.sourceEnterRepoUrl": {
+    message: "저장소 URL을 입력하세요.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+  },
+  "services.sourceEnterImage": {
+    message: "이미지를 입력하세요.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+  },
+  "services.createRepoOpenCredentials": {
+    message: "자격 증명 열기",
+    description:
+      "Source picker GitHub tab: button under the empty repository list that opens the Credentials menu beside the search field",
+  },
+  "services.sourcePending": {
+    message: "새 소스: {source}",
+    description:
+      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+  },
+  "services.sourceBranchLocked": {
+    message: "저장소를 선택하면 사용할 수 있습니다.",
+    description:
+      "Update Source dialog: helper under the disabled Branch field before a repository is picked or a valid URL entered",
+  },
+  "services.sourceNoBuildSources": {
+    message: "선택할 빌드 소스가 없습니다.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+  },
+  "services.sourceFixField": {
+    message: "계속하려면 위 필드를 완성하세요.",
+    description:
+      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+  },
+  "services.createRepoNoMatchHint": {
+    message:
+      "목록에 없나요? GitHub에서 bex에 접근 권한을 주거나 다른 계정을 연결하세요.",
+    description:
+      "Source picker GitHub tab, under the no-match message: the usual cause is a repository the connected accounts do not grant. Shown with Clear search and Open Credentials buttons",
+  },
+  "services.sourceBranchLockedUrl": {
+    message: "저장소 URL을 입력하면 사용할 수 있습니다.",
+    description:
+      "Update Source dialog, Public Git URL tab: helper under the disabled Branch field before a valid URL is entered",
   },
   "services.createGitConnectPromptTitle": {
     message: "GitHub 연결",

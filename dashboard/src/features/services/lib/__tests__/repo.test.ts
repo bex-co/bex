@@ -4,6 +4,7 @@ import {
   formatRepoLabel,
   repoBrowseUrl,
   repoCommitUrl,
+  repoSlug,
   sameRepo,
 } from "../repo";
 
@@ -95,5 +96,13 @@ describe("sameRepo", () => {
   it("never matches a URL it cannot read, not even itself", () => {
     expect(sameRepo("", "")).toBe(false);
     expect(sameRepo("not a url", "not a url")).toBe(false);
+  });
+});
+
+describe("repoSlug", () => {
+  it("is the owner and name, whatever the spelling", () => {
+    expect(repoSlug("https://github.com/acme/api.git")).toBe("acme/api");
+    expect(repoSlug("git@github.com:acme/api.git")).toBe("acme/api");
+    expect(repoSlug("not a url")).toBeNull();
   });
 });

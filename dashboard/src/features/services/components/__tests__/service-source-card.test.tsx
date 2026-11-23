@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServiceSourceCard } from "@/features/services/components/service-source-card";
 
@@ -268,10 +268,9 @@ describe("ServiceSourceCard", () => {
         "aria-selected",
         "true",
       );
-      expect(screen.getByRole("button", { name: /acme\/api/i })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(
+        screen.getByRole("button", { name: /acme\/api/i }),
+      ).toHaveAttribute("aria-pressed", "true");
       expect(
         screen.getByRole("button", { name: /puncsky\/site/i }),
       ).toHaveAttribute("aria-pressed", "false");
@@ -300,10 +299,9 @@ describe("ServiceSourceCard", () => {
       await user.click(screen.getByRole("button", { name: "Edit" }));
 
       // The stored clone URL ends in .git; GitHub's page URL does not.
-      expect(screen.getByRole("button", { name: /acme\/api/i })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(
+        screen.getByRole("button", { name: /acme\/api/i }),
+      ).toHaveAttribute("aria-pressed", "true");
       const branch = screen.getByRole("combobox", { name: "Branch" });
       await user.clear(branch);
       await user.type(branch, "release");
@@ -336,10 +334,9 @@ describe("ServiceSourceCard", () => {
       expect(save).toBeDisabled();
 
       await user.click(screen.getByRole("button", { name: /puncsky\/site/i }));
-      expect(screen.getByRole("button", { name: /acme\/api/i })).toHaveAttribute(
-        "aria-pressed",
-        "false",
-      );
+      expect(
+        screen.getByRole("button", { name: /acme\/api/i }),
+      ).toHaveAttribute("aria-pressed", "false");
       expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
         "trunk",
       );
@@ -351,6 +348,235 @@ describe("ServiceSourceCard", () => {
         }),
       );
     });
+  });
+
+  // A disabled primary action with no reason beside it read as a broken form,
+  // and an enabled one never said what it was about to save.
+  it("says why Update source is disabled, then what it will save", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo="https://github.com/acme/api"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const save = screen.getByRole("button", { name: "Update source" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription("No changes to save.");
+
+    const branch = screen.getByRole("combobox", { name: "Branch" });
+    await user.clear(branch);
+    await user.type(branch, "release");
+    expect(save).toBeEnabled();
+    expect(screen.queryByText("No changes to save.")).toBeNull();
+    expect(save).toHaveAccessibleDescription("New source: acme/api · release");
+  });
+
+  // The choice is a check mark on one row of a list that scrolls and filters.
+  // Filtered out of sight, the footer is the only thing that still names it.
+  it("still names the picked repository when a search hides its row", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo="https://github.com/acme/api"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: /puncsky\/site/i }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Search repositories…" }),
+      "zzzz",
+    );
+    expect(screen.queryByRole("button", { name: /puncsky\/site/i })).toBeNull();
+    const save = screen.getByRole("button", { name: "Update source" });
+    expect(save).toBeEnabled();
+    expect(save).toHaveAccessibleDescription(
+      "New source: puncsky/site · trunk",
+    );
+  });
+
+  it("names a typed URL with its host, which a GitHub pick does not need", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo="https://github.com/acme/api"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: /Public Git/ }));
+    await user.type(
+      screen.getByRole("textbox", {
+        name: /Git repository URL|Repository URL/,
+      }),
+      "https://forge.example/acme/api.git",
+    );
+    expect(
+      screen.getByRole("button", { name: "Update source" }),
+    ).toHaveAccessibleDescription(
+      "New source: forge.example · acme / api · main",
+    );
+  });
+
+  // The Branch field came and went with each keystroke of the URL, and the
+  // buttons under it moved with it. It stays, and waits for a repository.
+  it("keeps the Branch field in place, disabled until there is a repository", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo="https://github.com/acme/api"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: /Public Git/ }));
+    const url = screen.getByRole("textbox", {
+      name: /Git repository URL|Repository URL/,
+    });
+    const branch = () => screen.getByRole("combobox", { name: "Branch" });
+    const save = screen.getByRole("button", { name: "Update source" });
+    expect(branch()).toBeDisabled();
+    expect(save).toHaveAccessibleDescription("Enter a repository URL.");
+
+    await user.type(url, "not a repository");
+    expect(branch()).toBeDisabled();
+    // The field says what is wrong with it; the footer still says the form
+    // is not ready, where it used to go blank.
+    expect(save).toHaveAccessibleDescription(
+      "Complete the fields above to continue.",
+    );
+    await user.clear(url);
+    await user.type(url, "https://github.com/elsewhere/public");
+    expect(branch()).toBeEnabled();
+    expect(save).toBeEnabled();
+  });
+
+  // Each source is a different height. The dialog's height is `auto` before
+  // and after a switch, which CSS does not ease between, so it is animated
+  // from the height it had, once the browser reports the new one.
+  it("eases the dialog from one source's height to the next, unless motion is reduced", async () => {
+    const user = userEvent.setup();
+    const height = vi
+      .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        if (!this.matches('[role="dialog"]')) return 0;
+        const selected = this.querySelector(
+          '[role="tab"][aria-selected="true"]',
+        );
+        return selected?.textContent === "GitHub" ? 696 : 438;
+      });
+    const animate = vi.fn();
+    const originalAnimate = Element.prototype.animate;
+    Element.prototype.animate = animate;
+    // What the browser does after layout: tell each observer its box changed.
+    const resized: (() => void)[] = [];
+    const OriginalResizeObserver = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        resized.push(() => callback([], this as unknown as ResizeObserver));
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    const layout = () => act(() => resized.forEach((report) => report()));
+    // Assigned, not spied on: the setup's matchMedia is itself a mock, and
+    // restoring a spy on it would strip its implementation for later tests.
+    const matchMedia = window.matchMedia;
+    try {
+      render(
+        <ServiceSourceCard
+          serviceId="srv-1"
+          repo="https://github.com/acme/api"
+          branch="main"
+          imagePath={null}
+          registryCredentialId={null}
+          buildSourceId={null}
+          startCommand={null}
+          pushDeliveryMethod="github_app"
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      const dialog = screen.getByRole("dialog");
+      // A change of size that no switch caused (the list arriving, the
+      // window resizing) is not animated.
+      layout();
+      expect(animate).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("tab", { name: /Public Git/ }));
+      layout();
+      expect(animate).toHaveBeenCalledWith(
+        [{ height: "696px" }, { height: "438px" }],
+        { duration: 200, easing: "ease-out" },
+      );
+      expect(animate.mock.contexts[0]).toBe(dialog);
+
+      animate.mockClear();
+      window.matchMedia = (query) =>
+        ({
+          matches: query.includes("prefers-reduced-motion"),
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList;
+      await user.click(screen.getByRole("tab", { name: "GitHub" }));
+      layout();
+      expect(animate).not.toHaveBeenCalled();
+    } finally {
+      height.mockRestore();
+      window.matchMedia = matchMedia;
+      globalThis.ResizeObserver = OriginalResizeObserver;
+      Element.prototype.animate = originalAnimate;
+    }
+  });
+
+  it("asks for a repository on the GitHub tab before one is picked", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-2"
+        repo={null}
+        branch={null}
+        imagePath="nginx:stable"
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    expect(
+      screen.getByRole("button", { name: "Update source" }),
+    ).toHaveAccessibleDescription("Select a repository.");
+    await user.click(screen.getByRole("button", { name: /acme\/api/i }));
+    expect(screen.queryByText("Select a repository.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Update source" })).toBeEnabled();
   });
 
   it("opens a repository the GitHub connection does not grant as its URL", async () => {

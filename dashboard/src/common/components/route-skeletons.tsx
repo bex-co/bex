@@ -121,6 +121,7 @@ import {
   ENV_CARD_HEADER_CLASS,
   EnvRowsSkeleton,
 } from "@/features/services/components/env-rows-skeleton";
+import { RepoListSkeleton } from "@/features/services/components/repo-list-skeleton";
 import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
@@ -375,18 +376,19 @@ function FormCardSkeleton({
 }
 
 /**
- * ServiceSourcePicker inside a create row (`titleKey={null}`): its underline
- * tabs — 45 px triggers over the list's 1 px rule — then the GitHub tab's
- * search, connection control and repository list.
+ * ServiceSourcePicker inside a create row (`titleKey={null}`): its source
+ * tabs (from `sm` underline tabs, 45 px triggers over the list's 1 px rule;
+ * on a phone bordered 44 px cells, two to a row), then the GitHub tab's search
+ * beside the accounts button, and the repository list at its fixed height.
  */
 function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
   return (
     <div className="space-y-5">
-      <div className="flex w-full border-b">
+      <div className="flex w-full border-b max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:border-b-0">
         {Array.from({ length: tabs }, (_, index) => (
           <div
             key={index}
-            className="flex h-[2.875rem] flex-1 items-center justify-center"
+            className="flex h-[2.8125rem] flex-1 items-center justify-center max-sm:h-11 max-sm:rounded-md max-sm:border max-sm:last:odd:col-span-2"
           >
             <Skeleton className="h-4 w-20 max-w-[70%]" />
           </div>
@@ -394,23 +396,14 @@ function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
       </div>
       <div className="space-y-2">
         <div
-          className="flex flex-col gap-2 sm:flex-row"
+          className="flex flex-wrap gap-2"
           data-skeleton-region="source-toolbar"
         >
-          <Skeleton className="h-11 min-w-0 flex-1 sm:h-9" />
-          <Skeleton className="h-9 w-full sm:w-48" />
+          <Skeleton className="h-11 min-w-26 flex-[999_1_6.5rem] sm:h-9" />
+          <Skeleton className="h-11 w-36 sm:h-9 sm:w-42" />
         </div>
-        <div
-          className="divide-y rounded-md border"
-          data-skeleton-region="source-repositories"
-        >
-          {Array.from({ length: 3 }, (_, index) => (
-            <div key={index} className="flex items-center gap-3 p-3">
-              <Skeleton className="size-4 shrink-0 rounded-full" />
-              <Skeleton className="h-4 flex-1" />
-              <Skeleton className="h-3 w-12" />
-            </div>
-          ))}
+        <div data-skeleton-region="source-repositories">
+          <RepoListSkeleton />
         </div>
       </div>
     </div>

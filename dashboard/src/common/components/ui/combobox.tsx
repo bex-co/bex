@@ -99,6 +99,10 @@ export function Combobox({
     }
   }
 
+  // A free-text field with no options has nothing to list: a panel there only
+  // said "no matches" about a value the field already accepts.
+  const panelOpen = open && !(allowCustom && options.length === 0);
+
   const handleSelect = (selectedValue: string) => {
     setInputValue(selectedValue);
     onValueChange(selectedValue);
@@ -128,7 +132,10 @@ export function Combobox({
     }
   };
 
-  const handleInputFocus = () => {
+  // The list opens when it is asked for: a click, typing, or an arrow key.
+  // Focus alone does not open it, so tabbing through a form does not drop a
+  // panel over the next field (the ARIA combobox pattern).
+  const handleInputClick = () => {
     setOpen(true);
   };
 
@@ -137,6 +144,11 @@ export function Combobox({
     if (allowCustom && triggerOn === "blur") {
       onValueChange(inputValue);
     }
+    // The list belongs to the focused field: focus leaving closes it. Tabbing
+    // on used to leave it open over the next field, and Escape then closed
+    // the list instead of the dialog around it. A click in the list never
+    // gets here: the list keeps focus in the input (onMouseDown below).
+    setOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -205,14 +217,14 @@ export function Combobox({
 
   return (
     <div ref={containerRef} className="relative">
-      <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <Popover open={panelOpen} onOpenChange={setOpen} modal={false}>
         <PopoverAnchor asChild>
           <div className="relative">
             <Input
               ref={inputRef}
               value={inputValue}
               onChange={handleInputChange}
-              onFocus={handleInputFocus}
+              onClick={handleInputClick}
               onBlur={handleInputBlur}
               onKeyDown={handleKeyDown}
               placeholder={defaultPlaceholder}
@@ -221,7 +233,7 @@ export function Combobox({
               autoComplete="off"
               role="combobox"
               aria-label={ariaLabel}
-              aria-expanded={open}
+              aria-expanded={panelOpen}
               aria-autocomplete="list"
             />
 
@@ -230,7 +242,7 @@ export function Combobox({
                 type="button"
                 onClick={handleClear}
                 onMouseDown={(e) => e.preventDefault()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm hover:bg-muted p-1 z-10 cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm hover:bg-muted p-1 z-10 cursor-pointer after:absolute after:-inset-3 after:content-['']"
                 aria-label={t("common.comboboxClear")}
                 tabIndex={-1}
               >
@@ -246,6 +258,9 @@ export function Combobox({
           style={{ width: popoverWidth ? `${popoverWidth}px` : undefined }}
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          // Choosing an option must not blur the input first: the blur would
+          // close the list before the click lands.
+          onMouseDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             // Prevent closing when interacting with the input or clear button
             if (containerRef.current?.contains(e.target as Node)) {

@@ -36,7 +36,7 @@ describe("Combobox keyboard selection", () => {
       <Combobox options={options} value="" onValueChange={onValueChange} />,
     );
     const input = screen.getByRole("combobox");
-    fireEvent.focus(input);
+    fireEvent.click(input);
     for (let i = 0; i < 3; i++) fireEvent.keyDown(input, { key: "ArrowDown" });
     expect(screen.getByRole("option", { name: "Beta" })).toHaveClass(
       "bg-accent",
@@ -62,7 +62,7 @@ describe("Combobox keyboard selection", () => {
         />,
       );
       const input = screen.getByRole("combobox");
-      fireEvent.focus(input);
+      fireEvent.click(input);
       fireEvent.keyDown(input, { key: "ArrowDown" });
       fireEvent.keyDown(input, { key: "Enter" });
       expect(onValueChange.mock.calls).toEqual(allowCustom ? [["custom"]] : []);
@@ -95,9 +95,83 @@ describe("Combobox keyboard selection", () => {
     fireEvent.keyDown(input, { key: "Escape" });
     expect(input).toHaveAttribute("aria-expanded", "false");
     expect(onValueChange).not.toHaveBeenCalled();
-    fireEvent.focus(input);
+    fireEvent.click(input);
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onValueChange).toHaveBeenCalledWith("");
+  });
+});
+
+// The list opens when it is asked for and belongs to the focused field.
+// Opening on focus dropped a panel over the next field of every form a
+// keyboard user tabbed through, and it stayed there after they tabbed on, so
+// the first Escape closed the panel instead of the dialog around it.
+describe("Combobox opening and closing", () => {
+  it("stays closed on focus alone, and opens on a click", () => {
+    render(<Combobox options={options} value="" onValueChange={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+    fireEvent.focus(input);
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("option")).toBeNull();
+
+    fireEvent.click(input);
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
+  });
+
+  it("opens on typing", () => {
+    render(<Combobox options={options} value="" onValueChange={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "be" } });
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("option", { name: "Beta" })).toBeInTheDocument();
+  });
+
+  it("closes when focus leaves the field", () => {
+    render(<Combobox options={options} value="" onValueChange={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+    fireEvent.click(input);
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    fireEvent.blur(input);
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("option")).toBeNull();
+  });
+
+  it("picks an option with the pointer without losing the field's focus first", () => {
+    const onValueChange = vi.fn();
+    render(
+      <Combobox options={options} value="" onValueChange={onValueChange} />,
+    );
+    const input = screen.getByRole("combobox");
+    fireEvent.click(input);
+    const option = screen.getByRole("option", { name: "Beta" });
+    // A press that blurred the input would close the list before the click.
+    expect(fireEvent.mouseDown(option)).toBe(false);
+    fireEvent.click(option);
+    expect(onValueChange).toHaveBeenCalledWith("beta");
+  });
+
+  it("shows no panel for a free-text field that has nothing to list", () => {
+    render(<Combobox options={[]} value="main" onValueChange={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+    fireEvent.click(input);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.change(input, { target: { value: "release" } });
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByText("No results found")).toBeNull();
+  });
+
+  it("still says so when a pick-only field has nothing to list", () => {
+    render(
+      <Combobox
+        options={[]}
+        value=""
+        allowCustom={false}
+        onValueChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("combobox"));
+    expect(screen.getByText("No results found")).toBeInTheDocument();
   });
 });
 
@@ -120,7 +194,7 @@ describe("Combobox state that follows its inputs", () => {
       <Combobox options={options} value="" onValueChange={onValueChange} />,
     );
     const input = screen.getByRole("combobox");
-    fireEvent.focus(input);
+    fireEvent.click(input);
     fireEvent.keyDown(input, { key: "ArrowDown" });
     expect(screen.getByRole("option", { name: "Alpha" })).toHaveClass(
       "bg-accent",
@@ -140,14 +214,14 @@ describe("Combobox state that follows its inputs", () => {
       <Combobox options={options} value="alpha" onValueChange={vi.fn()} />,
     );
     const input = screen.getByRole("combobox");
-    fireEvent.focus(input);
+    fireEvent.click(input);
     fireEvent.keyDown(input, { key: "ArrowDown" });
     // Re-selecting the option already typed closes the list without
     // changing what it shows.
     fireEvent.keyDown(input, { key: "Enter" });
     expect(input).toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.focus(input);
+    fireEvent.click(input);
     expect(input).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("option", { name: "Alpha" })).not.toHaveClass(
       "bg-accent",
@@ -190,7 +264,7 @@ describe("application-authored copy follows the selected language (w4/313)", () 
 
   const typeMissing = (value: string) => {
     const input = screen.getByRole("combobox");
-    fireEvent.focus(input);
+    fireEvent.click(input);
     fireEvent.change(input, { target: { value } });
     return input;
   };

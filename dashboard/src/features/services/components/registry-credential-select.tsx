@@ -87,7 +87,7 @@ export function RegistryCredentialSelect({
         <Link
           to="/workspace/settings"
           hash="registry-credentials"
-          className="text-primary relative hover:underline after:absolute after:inset-x-0 after:-inset-y-3 after:content-['']"
+          className="text-primary relative hover:underline after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-['']"
         >
           {t("services.registryCredentialManage")}
         </Link>

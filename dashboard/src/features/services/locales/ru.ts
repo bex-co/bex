@@ -3808,6 +3808,16 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Готовый образ",
     description: "Create-wizard source-tab label for a pre-built Docker image",
   },
+  "services.createRepoSearchShort": {
+    message: "Поиск…",
+    description:
+      "Repository search placeholder where the field is narrow (a phone); the field keeps its full accessible name",
+  },
+  "services.createRepoCurrent": {
+    message: "Текущий",
+    description:
+      "Update Source repository list: tag on the repository the service uses now, shown once another one is chosen",
+  },
   "services.createRepoSearchPlaceholder": {
     message: "Поиск репозиториев…",
     description: "Create-wizard GitHub tab repo-search input placeholder",
@@ -3825,6 +3835,88 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Нет репозиториев, соответствующих вашему запросу.",
     description:
       "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createRepoEmptyHint": {
+    message:
+      "Дайте bex доступ к репозиторию на GitHub или подключите другой аккаунт.",
+    description:
+      "Source picker GitHub tab, under the empty state: what to do when the connected accounts grant no repository. Credentials is the menu beside the search field",
+  },
+  "services.createRepoLoadError": {
+    message: "Не удалось загрузить ваши репозитории.",
+    description:
+      "Source picker GitHub tab: the repository list could not be read, shown with a Try again button. Not the same as having no repositories",
+  },
+  "services.createRepoListLabel": {
+    message: "Репозитории",
+    description:
+      "Accessible name of the repository list in the source picker's GitHub tab",
+  },
+  "services.createRepoClearSearch": {
+    message: "Сбросить поиск",
+    description:
+      "Source picker GitHub tab: button under the no-match message that empties the repository search field",
+  },
+  "services.sourceNoChanges": {
+    message: "Нет изменений для сохранения.",
+    description:
+      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+  },
+  "services.sourceSelectRepo": {
+    message: "Выберите репозиторий.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+  },
+  "services.sourceSelectBuildSource": {
+    message: "Выберите источник сборки.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+  },
+  "services.sourceEnterRepoUrl": {
+    message: "Введите URL репозитория.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+  },
+  "services.sourceEnterImage": {
+    message: "Введите образ.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+  },
+  "services.createRepoOpenCredentials": {
+    message: "Открыть «Учётные данные»",
+    description:
+      "Source picker GitHub tab: button under the empty repository list that opens the Credentials menu beside the search field",
+  },
+  "services.sourcePending": {
+    message: "Новый источник: {source}",
+    description:
+      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+  },
+  "services.sourceBranchLocked": {
+    message: "Доступно после выбора репозитория.",
+    description:
+      "Update Source dialog: helper under the disabled Branch field before a repository is picked or a valid URL entered",
+  },
+  "services.sourceNoBuildSources": {
+    message: "Нет источников сборки для выбора.",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+  },
+  "services.sourceFixField": {
+    message: "Заполните поля выше, чтобы продолжить.",
+    description:
+      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+  },
+  "services.createRepoNoMatchHint": {
+    message:
+      "Нет в списке? Дайте bex доступ к нему на GitHub или подключите другой аккаунт.",
+    description:
+      "Source picker GitHub tab, under the no-match message: the usual cause is a repository the connected accounts do not grant. Shown with Clear search and Open Credentials buttons",
+  },
+  "services.sourceBranchLockedUrl": {
+    message: "Доступно после ввода URL репозитория.",
+    description:
+      "Update Source dialog, Public Git URL tab: helper under the disabled Branch field before a valid URL is entered",
   },
   "services.createGitConnectPromptTitle": {
     message: "Подключить GitHub",

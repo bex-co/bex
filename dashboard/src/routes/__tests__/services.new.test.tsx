@@ -569,7 +569,9 @@ describe("NewServicePage", () => {
       );
 
       expect(screen.getByText("acme-corp")).toBeInTheDocument();
-      const configure = screen.getByLabelText("Configure in GitHub");
+      const configure = screen.getByRole("link", {
+        name: "Configure in GitHub",
+      });
       expect(configure).toHaveAttribute(
         "href",
         "https://github.com/settings/installations/42",

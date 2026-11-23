@@ -220,10 +220,15 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       '[data-skeleton-region="source-repositories"]',
     );
 
+    // The picker's own shape: the search and the accounts button on one row,
+    // over the repository list's fixed box (the frame the picker itself shows
+    // while its repositories load).
     expect(toolbar).not.toBeNull();
-    expect(toolbar).toHaveClass("flex-col", "sm:flex-row");
+    expect(toolbar).toHaveClass("flex", "flex-wrap");
     expect(toolbar?.children).toHaveLength(2);
-    expect(repositories?.children).toHaveLength(3);
+    const list = repositories?.querySelector("[data-repo-list]");
+    expect(list).toHaveClass("h-52", "sm:h-[17rem]");
+    expect(list).toHaveAttribute("aria-busy", "true");
   });
 
   // w9/082: the Team region is TeamPanel's own structure (static header,

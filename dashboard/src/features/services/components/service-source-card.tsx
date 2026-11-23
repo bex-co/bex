@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, TriangleAlert } from "lucide-react";
 import {
   Alert,
@@ -33,8 +33,13 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  CREATE_INPUT_CLASS,
+  CREATE_SELECT_CLASS,
+} from "@/common/components/create-form";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { isValidGitUrl, parseGitHubPage } from "@/common/lib/utils/git-url";
+import { cn } from "@/common/lib/utils/utils";
 import { isValidDockerImageRef } from "@/common/lib/utils/docker-image";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
@@ -53,7 +58,24 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useSetImage } from "@/features/services/hooks/use-set-image";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { commandText } from "@/features/services/lib/command-text";
-import { formatRepoLabel, sameRepo } from "@/features/services/lib/repo";
+import {
+  formatRepoLabel,
+  repoSlug,
+  sameRepo,
+} from "@/features/services/lib/repo";
+
+// 44 px on a phone, where the two share the row; a ring that reads on the
+// dialog's surface (the default is the ring colour at half strength).
+const FOOTER_BUTTON_CLASS = cn(
+  CREATE_INPUT_CLASS,
+  "focus-visible:ring-ring max-sm:flex-1",
+);
+// Disabled, the primary action turns neutral: the default half-strength green
+// still read as a button to press, most of all on the dark surface.
+const FOOTER_PRIMARY_CLASS = cn(
+  FOOTER_BUTTON_CLASS,
+  "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
+);
 
 export interface ServiceSourceCardProps {
   serviceId: string;
@@ -292,6 +314,47 @@ function SourceEditDialog({
           sourceRepo.trim() !== repo.trim() ||
           (branch.trim() || "main") !== (currentBranch?.trim() || "main");
   const busy = repoBusy || imageBusy || linkBusy;
+  // Why Update source is disabled. A malformed URL or image also has its own
+  // message under the field; the footer still says the form is not ready.
+  const idleReason =
+    tab === "github" && !repoValid
+      ? t("services.sourceSelectRepo")
+      : tab === "git" && gitUrl.trim() === ""
+        ? t("services.sourceEnterRepoUrl")
+        : tab === "image" && image.trim() === ""
+          ? t("services.sourceEnterImage")
+          : tab === "build-source" && selectedSource === undefined
+            ? sourcesLoading
+              ? null
+              : t(
+                  sources.length > 0
+                    ? "services.sourceSelectBuildSource"
+                    : "services.sourceNoBuildSources",
+                )
+            : !valid
+              ? t("services.sourceFixField")
+              : !dirty
+                ? t("services.sourceNoChanges")
+                : null;
+  // What Update source will save. The choice is otherwise a check mark on one
+  // row of a list that scrolls and filters: out of sight, nothing named it.
+  // A GitHub tab's repository reads "owner/name": the tab names the forge. A
+  // typed URL keeps its host in view (formatRepoLabel).
+  const pendingRepo =
+    tab === "github"
+      ? (repoSlug(sourceRepo) ?? sourceRepo)
+      : formatRepoLabel(sourceRepo.trim());
+  const pendingSource =
+    tab === "build-source"
+      ? (selectedSource?.name ?? "")
+      : tab === "image"
+        ? image.trim()
+        : `${pendingRepo} · ${branch.trim() || "main"}`;
+  const footerStatus =
+    idleReason ??
+    (valid && dirty
+      ? t("services.sourcePending", { source: pendingSource })
+      : "");
 
   function resetDraft() {
     setTab(initialTab);
@@ -324,7 +387,40 @@ function SourceEditDialog({
       setStartCommand(defaultStartCommand(next));
   }
 
+  // Each tab is a different height, and CSS cannot ease between two `auto`
+  // heights: after a switch the dialog's height is animated from what it was.
+  // Read from a ResizeObserver, not an effect on `tab`: Radix mounts the new
+  // panel one render after the tab changes, so an effect still measures the
+  // old height. The body does not scroll meanwhile, or a scrollbar flashes
+  // while a taller tab is still growing into its height.
+  const [dialog, setDialog] = useState<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const tabSwitchedRef = useRef(false);
+  useEffect(() => {
+    if (!dialog) return;
+    let height = dialog.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      const from = height;
+      height = dialog.offsetHeight;
+      if (!tabSwitchedRef.current || from === height) return;
+      tabSwitchedRef.current = false;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const timing = { duration: 200, easing: "ease-out" };
+      dialog.animate(
+        [{ height: `${from}px` }, { height: `${height}px` }],
+        timing,
+      );
+      bodyRef.current?.animate(
+        [{ overflowY: "hidden" }, { overflowY: "hidden" }],
+        timing,
+      );
+    });
+    observer.observe(dialog);
+    return () => observer.disconnect();
+  }, [dialog]);
+
   function changeTab(next: SourceTab) {
+    tabSwitchedRef.current = true;
     setTab(next);
     if (next === "github" && selectedRepo && !branch) {
       setBranch(selectedRepo.defaultBranch || "main");
@@ -367,14 +463,37 @@ function SourceEditDialog({
       >
         {t("services.sourceEdit")}
       </Button>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{t("services.sourceDialogTitle")}</DialogTitle>
-          <DialogDescription>
+      {/* Header and footer stay put and the body between them scrolls, so the
+          primary action is on screen at any height. Hung from where its
+          tallest tab starts, not centred: each tab is a different height, and
+          a centred dialog moved the tab row out from under the pointer on
+          every switch (its height eases to the new tab's, above).
+          A column, not the default grid: a grid track grows to its widest
+          unwrappable line (a long repository name), which pushed the whole
+          dialog sideways on a phone. */}
+      <DialogContent
+        ref={setDialog}
+        className="top-4 flex max-h-[calc(100dvh-2rem)] translate-y-0 flex-col gap-0 overflow-hidden p-0 max-sm:has-[[data-repo-list]]:h-[calc(100dvh-2rem)] sm:top-[max(1rem,calc((100dvh-44rem)/2))] sm:max-h-[min(calc(100dvh-2rem),44rem)] sm:max-w-2xl"
+      >
+        <DialogHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+          <DialogTitle className="pr-8">
+            {t("services.sourceDialogTitle")}
+          </DialogTitle>
+          <DialogDescription className="text-pretty">
             {t("services.sourceNoAutoDeploy")}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        {/* On a phone the repository list fills what the screen has left,
+            in any language: with it showing the dialog is the screen's
+            height (`has-[[data-repo-list]]` above), and the picker grows
+            into this column (`fillHeight`). A height worked out from the
+            viewport fitted English only: German's longer title and source
+            names pushed the Branch hint under the footer. The list never
+            goes under three rows; past that this body scrolls. */}
+        <div
+          ref={bodyRef}
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4"
+        >
           <ServiceSourcePicker
             tab={tab}
             onTabChange={changeTab}
@@ -411,22 +530,36 @@ function SourceEditDialog({
             }
             titleKey="services.sourcePickerLabel"
             idPrefix="update-source"
+            fillHeight
           />
-          {gitTab && repoValid && (
+          {/* Always there on a git tab, waiting for a repository: appearing
+              and disappearing with each keystroke of the URL, it moved the
+              footer under the pointer. */}
+          {gitTab && (
             <div className="space-y-2">
               <Label>{t("services.buildDeployBranchLabel")}</Label>
               <Combobox
                 value={branch}
                 onValueChange={setBranch}
                 options={branchOptions}
+                disabled={!repoValid}
                 allowCustom
                 placeholder={t("services.buildDeployBranchPlaceholder")}
                 emptyText={t("services.sourceBranchEmpty")}
                 ariaLabel={t("services.buildDeployBranchLabel")}
-                className="font-mono"
+                className={cn(
+                  CREATE_INPUT_CLASS,
+                  "font-mono focus-visible:ring-ring",
+                )}
               />
               <p className="text-xs text-muted-foreground">
-                {t("services.sourceBranchHint")}
+                {t(
+                  repoValid
+                    ? "services.sourceBranchHint"
+                    : tab === "git"
+                      ? "services.sourceBranchLockedUrl"
+                      : "services.sourceBranchLocked",
+                )}
               </p>
             </div>
           )}
@@ -443,7 +576,7 @@ function SourceEditDialog({
                   id="update-source-git-build-command"
                   value={buildCommand}
                   onChange={(e) => setBuildCommand(e.target.value)}
-                  className="font-mono"
+                  className={cn(CREATE_INPUT_CLASS, "font-mono")}
                   autoComplete="off"
                 />
               </div>
@@ -455,19 +588,41 @@ function SourceEditDialog({
                   id="update-source-git-start-command"
                   value={startCommand}
                   onChange={(e) => setStartCommand(e.target.value)}
-                  className="font-mono"
+                  className={cn(CREATE_INPUT_CLASS, "font-mono")}
                   autoComplete="off"
                 />
               </div>
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+        {/* Side by side on a phone too: stacked, the two buttons cost the
+            list a row. */}
+        <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-end gap-x-2 gap-y-3 border-t px-6 py-4">
+          {/* Always there, one line tall: why nothing can be saved, or what
+              will be. Coming and going, it moved the buttons at the moment
+              one of them became pressable. */}
+          <p
+            id="update-source-status"
+            aria-live="polite"
+            title={footerStatus}
+            className={cn(
+              "min-h-5 min-w-0 truncate text-sm max-sm:basis-full sm:flex-1",
+              idleReason ? "text-muted-foreground" : "text-foreground",
+            )}
+          >
+            {footerStatus}
+          </p>
+          <Button
+            variant="ghost"
+            className={FOOTER_BUTTON_CLASS}
+            onClick={() => setOpen(false)}
+          >
             {t("services.buildDeployCancel")}
           </Button>
           <Button
+            className={FOOTER_PRIMARY_CLASS}
             disabled={!valid || !dirty || busy}
+            aria-describedby={footerStatus ? "update-source-status" : undefined}
             onClick={() => void save()}
           >
             {busy && <Loader2 className="animate-spin" />}
@@ -509,7 +664,7 @@ function BuildSourceTab({
     return (
       <div className="space-y-2" aria-busy="true">
         <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-9 w-full rounded-md" />
+        <Skeleton className={cn(CREATE_INPUT_CLASS, "w-full rounded-md")} />
       </div>
     );
   }
@@ -534,7 +689,10 @@ function BuildSourceTab({
           {t("services.sourceBuildSourceLabel")}
         </Label>
         <Select value={value} onValueChange={onValueChange}>
-          <SelectTrigger id="update-source-build-source">
+          <SelectTrigger
+            id="update-source-build-source"
+            className={CREATE_SELECT_CLASS}
+          >
             <SelectValue
               placeholder={t("services.sourceBuildSourcePlaceholder")}
             />
@@ -562,7 +720,7 @@ function BuildSourceTab({
             id="update-source-start-command"
             value={startCommand}
             onChange={(e) => onStartCommandChange(e.target.value)}
-            className="font-mono"
+            className={cn(CREATE_INPUT_CLASS, "font-mono")}
             autoComplete="off"
           />
           <p className="text-xs text-muted-foreground">

@@ -3700,6 +3700,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "已有镜像",
     description: "Create-wizard source-tab label for a pre-built Docker image",
   },
+  "services.createRepoSearchShort": {
+    message: "搜索…",
+    description:
+      "Repository search placeholder where the field is narrow (a phone); the field keeps its full accessible name",
+  },
+  "services.createRepoCurrent": {
+    message: "当前",
+    description:
+      "Update Source repository list: tag on the repository the service uses now, shown once another one is chosen",
+  },
   "services.createRepoSearchPlaceholder": {
     message: "搜索仓库…",
     description: "Create-wizard GitHub tab repo-search input placeholder",
@@ -3717,6 +3727,86 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "没有与你的搜索匹配的仓库。",
     description:
       "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createRepoEmptyHint": {
+    message: "在 GitHub 上授权 bex 访问仓库，或连接另一个账号。",
+    description:
+      "Source picker GitHub tab, under the empty state: what to do when the connected accounts grant no repository. Credentials is the menu beside the search field",
+  },
+  "services.createRepoLoadError": {
+    message: "无法加载你的仓库。",
+    description:
+      "Source picker GitHub tab: the repository list could not be read, shown with a Try again button. Not the same as having no repositories",
+  },
+  "services.createRepoListLabel": {
+    message: "仓库",
+    description:
+      "Accessible name of the repository list in the source picker's GitHub tab",
+  },
+  "services.createRepoClearSearch": {
+    message: "清除搜索",
+    description:
+      "Source picker GitHub tab: button under the no-match message that empties the repository search field",
+  },
+  "services.sourceNoChanges": {
+    message: "没有需要保存的更改。",
+    description:
+      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+  },
+  "services.sourceSelectRepo": {
+    message: "请选择一个仓库。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+  },
+  "services.sourceSelectBuildSource": {
+    message: "请选择一个构建源。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+  },
+  "services.sourceEnterRepoUrl": {
+    message: "请输入仓库 URL。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+  },
+  "services.sourceEnterImage": {
+    message: "请输入镜像。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+  },
+  "services.createRepoOpenCredentials": {
+    message: "打开凭据",
+    description:
+      "Source picker GitHub tab: button under the empty repository list that opens the Credentials menu beside the search field",
+  },
+  "services.sourcePending": {
+    message: "新的源：{source}",
+    description:
+      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+  },
+  "services.sourceBranchLocked": {
+    message: "选择仓库后可用。",
+    description:
+      "Update Source dialog: helper under the disabled Branch field before a repository is picked or a valid URL entered",
+  },
+  "services.sourceNoBuildSources": {
+    message: "没有可选的构建源。",
+    description:
+      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+  },
+  "services.sourceFixField": {
+    message: "请先填好上面的字段。",
+    description:
+      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+  },
+  "services.createRepoNoMatchHint": {
+    message: "没有列出？在 GitHub 上授权 bex 访问它，或连接另一个账号。",
+    description:
+      "Source picker GitHub tab, under the no-match message: the usual cause is a repository the connected accounts do not grant. Shown with Clear search and Open Credentials buttons",
+  },
+  "services.sourceBranchLockedUrl": {
+    message: "输入仓库 URL 后可用。",
+    description:
+      "Update Source dialog, Public Git URL tab: helper under the disabled Branch field before a valid URL is entered",
   },
   "services.createGitConnectPromptTitle": {
     message: "连接 GitHub",

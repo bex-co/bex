@@ -35,6 +35,15 @@ export function repoBrowseUrl(
 }
 
 /**
+ * "owner/name" of a clone URL, without its host. Only for a repository whose
+ * forge the page already names (a row picked on the GitHub tab): anywhere
+ * else, use formatRepoLabel, which keeps the host in view.
+ */
+export function repoSlug(repo: string): string | null {
+  return repoPath(repo);
+}
+
+/**
  * Whether two clone URLs name one repository: the same host and path, however
  * each is spelled (https or ssh, a trailing ".git", letter case, which the
  * forges ignore). An unrecognizable URL is the same as nothing.
