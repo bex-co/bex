@@ -1,6 +1,6 @@
 # w32 · m575 — A native service's own log writes `==> Running '<start command>'` each time its instance starts, as Render's does, free spin-ups and restarts included
 
-**Worker:** worker32 **Goal:** the instance of a native service writes `==> Running '<start command>'` to its own output every time it starts the command, as Render's native instances do: at a deploy, after a crash or a restart, and when a free instance wakes after idling. The line reaches every app read (`bex logs -r <srv>`, REST, the subscribe stream, GraphQL, MCP, the service's Logs page) with the instance's own labels. A Dockerfile or prebuilt-image service writes none. A deploy's log shows the line once per start, never twice. **Status:** blocked (t001–t005, t008 and t009 done and shipped as `164e09bdb6`; t006 waits for the production pin to carry it; t007 and t010 follow)
+**Worker:** worker32 **Goal:** the instance of a native service writes `==> Running '<start command>'` to its own output every time it starts the command, as Render's native instances do: at a deploy, after a crash or a restart, and when a free instance wakes after idling. The line reaches every app read (`bex logs -r <srv>`, REST, the subscribe stream, GraphQL, MCP, the service's Logs page) with the instance's own labels. A Dockerfile or prebuilt-image service writes none. A deploy's log shows the line once per start, never twice. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | [Record whether a release's image writes the line itself](done/t003.md) — **DONE** | 1h30m | t002 |
 | t004 | [The deploy narration writes no second copy of the instance's line](done/t004.md) — **DONE** | 1h | t003 |
 | t005 | [Record the line in the progress-line contract and ADR018](done/t005.md) — **DONE** | 20m | t004 |
-| t006 | [Ship and verify on production](t006.md) | 1h | t005 |
-| t007 | [Render parity](t007.md) | 30m | t006 |
+| t006 | [Ship and verify on production](done/t006.md) — **DONE** | 1h | t005 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -81,3 +81,22 @@
 - The command reaches native-init as configured: `execution.KubernetesLiteral` escapes Kubernetes' `$(VAR)` expansion, and `$PORT` is left to bash.
 - The deploy narration writes `==> Running '<command>'` as a `type=build` platform line at each app-container start the operator recorded while the rollout ran, at most ten, none after the close (`rolloutLines`, `lego/backend/internal/logs/progress.go:584`, from `status.releaseRollout.appStarts`, w32/m560). It writes the pre-deploy step's at the step container's start (`preDeployLines`, `progress.go:513`, w32/m572). The pre-deploy pod's own stdout reaches `type=build` reads through Alloy (`LogTypePreDeploy`, `lego/backend/internal/logs/service.go:55`).
 - The dashboard's deploy page interleaves the service's `type=app` lines over the deploy's window with its build and pre-deploy lines, and keeps one copy of a record two legs both return (`dashboard/src/features/deploys/hooks/use-deploy-logs.ts`). The CLI's type-less deploy tail carries the app lines too (w32/084). A line the instance writes and a line the narration writes are two records with different ids, so both would show.
+
+## Unblocked (2026-11-23)
+
+**Source:** verified evidence (`/pm unblock w32/m575`, run by the `/loopx w32` worker for this milestone). **Affected:** t006, t007, t010. **Finding:** the gate ``pin must carry `164e09bdb6` `` holds. The newest pin commit on `origin/main` is `e6c65f5c62` (`chore(deploy): pin platform images to 1a5a8e872398`), and `git merge-base --is-ancestor 164e09bdb6 1a5a8e872398` succeeds. On the control plane (`167.233.216.116`), `bex-controller-manager` and both `bex-api` pods are ready on `ghcr.io/bex-co/bex-operator@sha256:65ef4f0d90b1…` (matching `deploy/gitops/base/bex.yaml`), and `dashboard` is ready on `ghcr.io/bex-co/bex-dashboard@sha256:5829a2c3945e…` (matching `deploy/gitops/base/dashboard.yaml`).
+
+**Remaining gates:** none. **Next:** run t006's live walk on free services in `bex-canary` with the released `bex` v0.9.0 and a human device login (native Node web service through deploy, free spin-down/wake and restart; exiting start command; Dockerfile and prebuilt-image controls; pre-pin build check if one exists), check t007's surfaces (REST, subscribe stream, GraphQL, MCP, CLI, dashboard deploy/Logs queries + client merge), delete all created fixtures by ID, confirm 404s, and close out (t010).
+
+## Closed (2026-11-23)
+
+The definition of done holds:
+
+- **Production walk.** On pin `1a5a8e872398`, the released `bex` v0.9.0 walked the scenarios in `bex-canary` ([t006 § Walk](done/t006.md)):
+  - The free native Node web service (`examples/hello-node`, `node main.js`) logged `==> Running 'node main.js'` once per start with `type=app`, the pod as `instance`, and `level=unknown`, immediately before `hello-node listening on 10000`: at its initial deploy (`09:52:43Z`), after auto-hibernating at `10:07:53Z` and waking on a `GET` request (`10:10:31Z`, observed on both live `--tail` and history), after `bex restart` (`10:10:52Z`), and on a second deploy (`10:14:07Z`), with zero `Running` lines in `--type build`. A fresh Node service's type-less live deploy tail (`bex logs --tail`) delivered `==> Running 'node main.js'` once in order between `WEB_CONCURRENCY=1` and `hello-node listening` / `==> Your service is live 🎉`.
+  - The free exiting native Node service (`timeout 90 node main.js`) logged `==> Running 'timeout 90 node main.js'` at each of three starts (`09:53:10Z`, `09:54:41Z`, `09:56:34Z`) with `type=app` and zero in `--type build`.
+  - The free Dockerfile (`examples/hello-go`) and prebuilt-image (`docker.io/library/nginx:1.27-alpine`) controls answered `200` and logged zero `Running '` lines across unfiltered, `--type build`, and `--type app` reads.
+  - No pre-pin native build existed in `bex-canary` (pre-existing resources are immutable); `TestRolloutLinesFollowRendersLogByServiceTypeAndOutcome`'s rollback case covers it.
+  - All five disposable fixtures were deleted by ID, and each answered `404` on `GET /v1/services/<id>` and its public URL.
+- **Surfaces.** REST `GET /v1/logs`, the subscribe stream (`bex logs --tail`), GraphQL `logs`, and MCP `list_logs` returned the exact same `==> Running 'node main.js'` records (identical IDs, timestamps, and labels) on unfiltered and `type=app` reads and zero on `type=build`. The dashboard's service Logs page and deploy page were checked via their GraphQL `Logs` queries and `useLogHistory`/`useDeployLogs` merge logic (this host has no Playwright browser), showing `Running` once per deploy and all four starts on the Logs page ([t007 § Production walk](done/t007.md)).
+- **Tests and docs.** Unit, envtest, and real-database store tests ([t009](done/t009.md)) and the progress-line contract / ADR018 updates ([t005](done/t005.md)) shipped in `164e09bdb6`.
