@@ -375,9 +375,9 @@ const deMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.replicationLagPendingHA": {
     message:
-      "Nicht verfügbar — kein Replikat (aktiviere High Availability, um die Replikationsverzögerung zu sehen)",
+      "Nicht verfügbar — kein Replikat (aktiviere High Availability oder füge ein Lesereplikat hinzu, um die Replikationsverzögerung zu sehen)",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "Metriken",

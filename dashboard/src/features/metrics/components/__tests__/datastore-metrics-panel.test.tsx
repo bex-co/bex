@@ -345,6 +345,60 @@ describe("DatastoreMetricsPanel", () => {
     );
   });
 
+  // w34/011: non-HA Postgres with read replicas still charts per-replica
+  // replication lag (and renders a legend once there are multiple replicas).
+  it("queries and renders replication lag for a non-HA database with read replicas", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "replication_lag") {
+        return {
+          ...emptyResult(),
+          series: [
+            {
+              unit: "seconds",
+              labels: { INSTANCE: "pg-r-a-1" },
+              points: [
+                {
+                  timestamp: new Date(1_751_800_000_000).toISOString(),
+                  value: 0.2,
+                },
+              ],
+            },
+            {
+              unit: "seconds",
+              labels: { INSTANCE: "pg-r-b-1" },
+              points: [
+                {
+                  timestamp: new Date(1_751_800_000_000).toISOString(),
+                  value: 0.8,
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return emptyResult();
+    });
+
+    render(
+      <DatastoreMetricsPanel
+        kind="database"
+        resource="pg"
+        highAvailabilityEnabled={false}
+        hasReadReplicas={true}
+      />,
+    );
+
+    expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "replication_lag",
+      expect.objectContaining({ skip: false }),
+    );
+    expect(screen.getByText("pg-r-a-1")).toBeInTheDocument();
+    expect(screen.getByText("pg-r-b-1")).toBeInTheDocument();
+  });
+
   it("renders the unavailable state when Prometheus isn't wired for a live HA instance", () => {
     mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
       if (metric === "replication_lag") {

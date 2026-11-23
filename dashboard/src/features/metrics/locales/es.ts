@@ -395,9 +395,9 @@ const esMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.replicationLagPendingHA": {
     message:
-      "N/D: no hay réplica (activa la alta disponibilidad para ver el retraso de replicación)",
+      "N/D: no hay réplica (activa la alta disponibilidad o añade una réplica de lectura para ver el retraso de replicación)",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "Métricas",

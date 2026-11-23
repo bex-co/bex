@@ -462,6 +462,7 @@ function DatabaseMetrics({
       range={range}
       onRangeChange={onRangeChange}
       highAvailabilityEnabled={database.highAvailabilityEnabled}
+      hasReadReplicas={(database.readReplicas?.length ?? 0) > 0}
       connectionLimit={
         instanceTypes.find((it) => it.id === database.plan)?.maxConnections
       }

@@ -87,11 +87,18 @@ interface DatastoreMetricsPanelProps {
   /** The Database or KeyValue typed id (`dpg-…`/`red-…`) — bex-api resolves it as the CR name; never the display name. */
   resource: string;
   /**
-   * Gates the replication-lag chart: omitted for a non-HA instance (no standby
-   * means CNPG's lag query returns 0, not absence — the chart renders a clear
-   * N/A state rather than a fabricated zero). Ignored for keyvalue.
+   * Gates the replication-lag chart together with `hasReadReplicas`: omitted
+   * when a database has neither HA nor read replicas (no standby/replica means
+   * CNPG's lag query returns 0, not absence — the chart renders a clear N/A
+   * state rather than a fabricated zero). Ignored for keyvalue and service.
    */
   highAvailabilityEnabled?: boolean;
+  /**
+   * Whether the database has one or more read replicas (`spec.readReplicas`).
+   * Enables the Replication Lag chart even when HA is off (w34/011). Ignored
+   * for keyvalue and service kinds.
+   */
+  hasReadReplicas?: boolean;
   /** Database-only control rendered beside the disk chart heading. */
   diskHeaderExtra?: ReactNode;
   /**
@@ -145,6 +152,7 @@ export function DatastoreMetricsPanel({
   kind,
   resource,
   highAvailabilityEnabled,
+  hasReadReplicas,
   diskHeaderExtra,
   connectionLimit,
   title,
@@ -157,6 +165,9 @@ export function DatastoreMetricsPanel({
   const isKeyValue = kind === "keyvalue";
   // A service's disk has no datastore process, so no CPU or memory.
   const isDatastore = isDatabase || isKeyValue;
+  const replicationLagEnabled = Boolean(
+    highAvailabilityEnabled || hasReadReplicas,
+  );
 
   const [localRange, setLocalRange] =
     useState<RangeSelection>(DEFAULT_RANGE_PRESET);
@@ -184,7 +195,7 @@ export function DatastoreMetricsPanel({
     kind,
     resource,
     "replication_lag",
-    { ...live, skip: !isDatabase || !highAvailabilityEnabled },
+    { ...live, skip: !isDatabase || !replicationLagEnabled },
   );
   // Key Value only: connected-clients count (w5/011).
   const kvConnections = useDatastoreMetrics(kind, resource, "kv_connections", {
@@ -300,13 +311,8 @@ export function DatastoreMetricsPanel({
     [lockDelayedQueries.series],
   );
 
-  const replicationLagSeries = useMemo<LineSeriesInput[]>(
-    () => [
-      {
-        points: replicationLag.series[0]?.points ?? [],
-        color: "var(--chart-2)",
-      },
-    ],
+  const replicationLagSeries = useMemo(
+    () => toLineSeries(replicationLag.series),
     [replicationLag.series],
   );
 
@@ -457,7 +463,7 @@ export function DatastoreMetricsPanel({
               <div className="mb-2 text-sm font-medium text-foreground">
                 {t("metrics.replicationLagTitle")}
               </div>
-              {!highAvailabilityEnabled ? (
+              {!replicationLagEnabled ? (
                 <EmptyChart message={t("metrics.replicationLagPendingHA")} />
               ) : replicationLag.unavailable ? (
                 <MetricUnavailable />
@@ -466,10 +472,13 @@ export function DatastoreMetricsPanel({
                 // error-vs-empty distinction the shared seam gained (w9/m86).
                 <MetricError />
               ) : (
-                <SvgLineChart
-                  unit={replicationLag.series[0]?.unit ?? "seconds"}
-                  series={replicationLagSeries}
-                />
+                <>
+                  <SvgLineChart
+                    unit={replicationLag.series[0]?.unit ?? "seconds"}
+                    series={replicationLagSeries}
+                  />
+                  <ChartLegend entries={replicationLagSeries} />
+                </>
               )}
             </div>
 

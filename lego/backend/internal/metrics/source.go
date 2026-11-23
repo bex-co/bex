@@ -870,20 +870,24 @@ func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnection
 // — a managed Postgres instance's replication lag (seconds) via query_range
 // over CNPG's postgres_exporter cnpg_pg_replication_lag (verified against
 // CNPG's monitoring reference: the "pg_replication" default query's `lag`
-// column). Only called once a Database's HighAvailabilityEnabled is true
-// (datastore.go) — pre-HA there is no standby, and this metric reports 0 from
-// the lone primary rather than absence, which is exactly the fake-zero the
-// caller gates against.
+// column). Constrained to recovery pods (cnpg_pg_replication_in_recovery == 1)
+// so a primary pod's 0 is never emitted alongside HA standbys or read replicas
+// (w34/011). Only called when a Database has HA or read replicas configured
+// (datastore.go).
 func NewPrometheusReplicationLagSource(base string, hc *http.Client) ReplicationLagSource {
 	if hc == nil {
 		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
-		q := fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{namespace=%q,cnpg_io_cluster=~%q})`,
-			req.Namespace, appv1alpha1.DatabaseClustersPattern(req.Cluster))
+		q := promReplicationLagQuery(req.Namespace, req.Cluster)
 		return promInstanceQuery(ctx, hc, base, q, req.Cluster, unitSeconds, req.Start, req.End, stepSeconds(req.Resolution))
 	}
+}
+
+func promReplicationLagQuery(namespace, cluster string) string {
+	matchers := fmt.Sprintf(`namespace=%q,cnpg_io_cluster=~%q`, namespace, appv1alpha1.DatabaseClustersPattern(cluster))
+	return fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{%s} and on (pod) cnpg_pg_replication_in_recovery{%s} == 1)`, matchers, matchers)
 }
 
 // --- Filter-value discovery: Prometheus's label-values API ---

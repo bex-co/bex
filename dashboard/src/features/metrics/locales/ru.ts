@@ -413,9 +413,9 @@ const ruMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.replicationLagPendingHA": {
     message:
-      "Н/д — нет реплики (включите высокую доступность, чтобы видеть задержку репликации)",
+      "Н/д — нет реплики (включите высокую доступность или добавьте реплику чтения, чтобы видеть задержку репликации)",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "Метрики",

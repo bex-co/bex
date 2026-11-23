@@ -371,9 +371,9 @@ const enMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.replicationLagPendingHA": {
     message:
-      "N/A — no replica (enable High Availability to see replication lag)",
+      "N/A — no replica (enable High Availability or add a read replica to see replication lag)",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "Metrics",

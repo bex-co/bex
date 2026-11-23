@@ -350,9 +350,9 @@ const zhMetrics: Record<string, TranslationEntry> = {
       "Shown instead of the Lock-Delayed Queries chart on a deployment with no durable log store (503): the count comes from Postgres log lines",
   },
   "metrics.replicationLagPendingHA": {
-    message: "不适用——无副本（启用高可用后可查看复制延迟）",
+    message: "不适用——无副本（启用高可用或添加只读副本后可查看复制延迟）",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "指标",

@@ -351,9 +351,9 @@ const jaMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.replicationLagPendingHA": {
     message:
-      "該当なし: レプリカがありません（レプリケーション遅延を表示するには高可用性を有効にしてください）",
+      "該当なし: レプリカがありません（レプリケーション遅延を表示するには高可用性を有効にするかリードレプリカを追加してください）",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "メトリクス",

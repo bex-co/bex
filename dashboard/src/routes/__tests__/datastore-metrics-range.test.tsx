@@ -35,15 +35,20 @@ vi.mock("@/features/metrics/components/datastore-metrics-panel", async () => {
       range,
       onRangeChange,
       connectionLimit,
+      hasReadReplicas,
     }: {
       kind: string;
       range?: RangeSelection;
       onRangeChange?: (range: RangeSelection) => void;
       connectionLimit?: number;
+      hasReadReplicas?: boolean;
     }) => (
       <div>
         <p data-testid="metrics-connection-limit">
           {connectionLimit ?? "none"}
+        </p>
+        <p data-testid="metrics-has-read-replicas">
+          {String(Boolean(hasReadReplicas))}
         </p>
         <p data-testid="metrics-range">
           {kind}:
@@ -83,16 +88,27 @@ vi.mock("@/common/components/deferred-mount", () => ({
 }));
 
 const stub = () => null;
+const mockDatabase: {
+  id: string;
+  name: string;
+  status: string;
+  plan: string;
+  suspended: boolean;
+  highAvailabilityEnabled: boolean;
+  readReplicas?: { name: string }[];
+} = {
+  id: "dpg-main",
+  name: "primary-db",
+  status: "available",
+  plan: "basic-1gb",
+  suspended: false,
+  highAvailabilityEnabled: false,
+  readReplicas: [],
+};
+
 vi.mock("@/features/databases/hooks/use-database", () => ({
   useDatabase: () => ({
-    database: {
-      id: "dpg-main",
-      name: "primary-db",
-      status: "available",
-      plan: "basic-1gb",
-      suspended: false,
-      highAvailabilityEnabled: false,
-    },
+    database: mockDatabase,
     loading: false,
     error: undefined,
     refetch: vi.fn(),
@@ -328,4 +344,22 @@ it("hands the Postgres metrics panel its plan's connection limit", async () => {
   expect(
     await screen.findByTestId("metrics-connection-limit"),
   ).toHaveTextContent(/^100$/);
+});
+
+// w34/011: Postgres overview forwards readReplicas presence so non-HA
+// databases with read replicas query and render Replication Lag.
+it("forwards hasReadReplicas to the Postgres metrics panel", async () => {
+  mockDatabase.readReplicas = [];
+  await renderAt(MOUNTS[1], MOUNTS[1].base);
+  expect(
+    await screen.findByTestId("metrics-has-read-replicas"),
+  ).toHaveTextContent("false");
+
+  cleanup();
+  mockDatabase.readReplicas = [{ name: "reader-a" }];
+  await renderAt(MOUNTS[1], MOUNTS[1].base);
+  expect(
+    await screen.findByTestId("metrics-has-read-replicas"),
+  ).toHaveTextContent("true");
+  mockDatabase.readReplicas = [];
 });

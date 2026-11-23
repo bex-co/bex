@@ -66,8 +66,10 @@ const (
 	MetricDBConnections = "db_connections"
 	// MetricReplicationLag is a managed Postgres instance's replication lag in
 	// seconds behind its primary (CNPG's cnpg_pg_replication_lag). Gated on
-	// Database.status.highAvailabilityEnabled — omitted (not a fake zero) for
-	// a non-HA instance, since CNPG's own query returns 0 from a lone primary.
+	// Database.status.highAvailabilityEnabled || len(Database.spec.readReplicas) > 0
+	// — omitted (not a fake zero) for a lone primary with no standby or read
+	// replicas, and constrained in PromQL to recovery pods
+	// (cnpg_pg_replication_in_recovery == 1) so the primary pod's 0 is excluded.
 	MetricReplicationLag = "replication_lag"
 	// MetricKVMemory/MetricKVConnections are a managed Key Value (Valkey)
 	// instance's used-memory bytes and connected-client count (w5/011, the
@@ -145,7 +147,8 @@ type ReplicationLagRequest struct {
 
 // ReplicationLagSource reads a Postgres instance's replication-lag history
 // (CNPG's cnpg_pg_replication_lag). nil => replication_lag reports
-// core.ErrMetricsUnavailable (only called when HighAvailabilityEnabled is true).
+// core.ErrMetricsUnavailable (only called when HighAvailabilityEnabled is true
+// or at least one read replica is configured).
 type ReplicationLagSource func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error)
 
 // KeyValueStatsRequest is the backend-neutral memory/connections ask for one
@@ -322,7 +325,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	if err := s.checkWindow(q.Start, q.End); err != nil {
 		return nil, err
 	}
-	var isHA bool
+	var hasReplication bool
 	// Prometheus series are namespace-labeled, so every request below must carry
 	// the datastore's OWN namespace (ADR043 D8). Querying the shared one for a
 	// migrated datastore returns an empty series rather than an error — the same
@@ -364,7 +367,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		resourceID = db.Name
 		workspaceID = db.Labels[core.LabelTenant]
 		container = postgresContainer
-		isHA = db.Status.HighAvailabilityEnabled
+		hasReplication = db.Status.HighAvailabilityEnabled || len(db.Spec.ReadReplicas) > 0
 		logicalDiskGB = tiers.Postgres.EffectiveStorageGB(db.Spec.Plan, db.Spec.StorageGB, db.Status.AllocatedStorageGB)
 		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
 			return nil, fmt.Errorf("%w: metric %q is key-value-only, not valid for a database resource", core.ErrBadRequest, q.Metric)
@@ -494,11 +497,12 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	case MetricReplicationLag:
-		// Gated on HighAvailabilityEnabled: a non-HA instance has no standby, and
-		// CNPG's own lag query reports 0 (not absence) from a lone primary —
-		// querying it would be the fake-zero this field is explicitly required to
-		// avoid. An HA Postgres (w1/m22) reaches the real Prometheus source below.
-		if !isHA {
+		// Gated on HA or configured read replicas (w34/011): a lone non-HA
+		// primary has no standby or read replica, so return empty (nil) rather
+		// than querying Prometheus. When HA or read replicas exist, the source
+		// filters to cnpg_pg_replication_in_recovery == 1 so the primary pod's
+		// own 0 is never emitted alongside standby/replica lag.
+		if !hasReplication {
 			return nil, nil
 		}
 		if s.ReplicationLag == nil {

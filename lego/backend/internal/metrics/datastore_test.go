@@ -19,8 +19,10 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
@@ -32,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -259,6 +262,95 @@ func TestReplicationLagUnavailableWhenHAButNoSource(t *testing.T) {
 	svc := newService(nil, nil, sampleDatabase("pg", true))
 	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreDatabase, Resource: "pg", Metric: MetricReplicationLag}); err != core.ErrMetricsUnavailable {
 		t.Errorf("HA on but no source => ErrMetricsUnavailable, got %v", err)
+	}
+}
+
+// w34/011: a non-HA Postgres with read replicas serves per-replica
+// replication_lag identically across REST, GraphQL, and MCP, and reports
+// ErrMetricsUnavailable when no Prometheus source is wired.
+func TestReplicationLagServedForNonHAWithReadReplicasAcrossSurfaces(t *testing.T) {
+	const dbID = "dpg-nonhareplica00000000"
+	db := sampleDatabase(dbID, false)
+	db.Spec.ReadReplicas = []appv1alpha1.DatabaseReadReplica{{Name: "a"}, {Name: "b"}}
+	replicaPodA := appv1alpha1.ReadReplicaClusterName(dbID, "a") + "-1"
+	replicaPodB := appv1alpha1.ReadReplicaClusterName(dbID, "b") + "-1"
+
+	svc := newService(nil, nil, db)
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreDatabase, Resource: dbID, Metric: MetricReplicationLag}); err != core.ErrMetricsUnavailable {
+		t.Fatalf("read replicas without source => ErrMetricsUnavailable, got %v", err)
+	}
+
+	var gotReq ReplicationLagRequest
+	svc.ReplicationLag = func(_ context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
+		gotReq = req
+		return []MetricSeries{
+			{Labels: map[string]string{"resource": dbID, "instance": replicaPodA}, Unit: unitSeconds, Points: []MetricPoint{{Timestamp: "2026-11-23T00:00:00Z", Value: 0.3}}},
+			{Labels: map[string]string{"resource": dbID, "instance": replicaPodB}, Unit: unitSeconds, Points: []MetricPoint{{Timestamp: "2026-11-23T00:00:00Z", Value: 1.2}}},
+		}, nil
+	}
+
+	// Shared verb.
+	verbSeries, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreDatabase, Resource: dbID, Metric: MetricReplicationLag})
+	if err != nil || len(verbSeries) != 2 || verbSeries[0].Points[0].Value != 0.3 || verbSeries[1].Points[0].Value != 1.2 {
+		t.Fatalf("verb replication_lag for non-HA with read replicas: %v %+v", err, verbSeries)
+	}
+	if gotReq.Cluster != dbID || gotReq.Namespace != "default" {
+		t.Errorf("source request = %+v, want cluster=%q namespace=default", gotReq, dbID)
+	}
+
+	// REST /v1/metrics/replication-lag.
+	rec := serveREST(svc, "/v1/metrics/replication-lag?resource="+dbID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("REST replication-lag => %d %s", rec.Code, rec.Body.String())
+	}
+	restSeries := seriesFrom(t, rec.Body.Bytes())
+	if len(restSeries) != 2 || restSeries[0].Values[0].Value != 0.3 || restSeries[1].Values[0].Value != 1.2 {
+		t.Fatalf("REST replication-lag series = %+v", restSeries)
+	}
+	if labelValue(restSeries[0].Labels, LabelResource) != dbID || labelValue(restSeries[0].Labels, "instance") == "" {
+		t.Errorf("REST labels = %+v, want resource=%s and non-empty instance", restSeries[0].Labels, dbID)
+	}
+
+	// GraphQL datastoreMetrics(name: REPLICATION_LAG).
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		Context:       context.Background(),
+		RequestString: `{ datastoreMetrics(query: {kind: "database", resource: "` + dbID + `", name: "REPLICATION_LAG"}) { unit labels { field value } values { value } } }`,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL replication_lag errors: %v", res.Errors)
+	}
+	gqlList := res.Data.(map[string]any)["datastoreMetrics"].([]any)
+	if len(gqlList) != 2 {
+		t.Fatalf("GraphQL replication_lag len = %d, want 2: %+v", len(gqlList), gqlList)
+	}
+	if got := gqlList[0].(map[string]any)["values"].([]any)[0].(map[string]any)["value"].(float64); got != 0.3 {
+		t.Errorf("GraphQL first replica lag = %v, want 0.3", got)
+	}
+
+	// MCP get_datastore_metrics.
+	cs := mcpSession(t, svc)
+	mcpRes, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "get_datastore_metrics",
+		Arguments: map[string]any{
+			"resourceId":  dbID,
+			"metricTypes": []string{MetricReplicationLag},
+		},
+	})
+	if err != nil || mcpRes.IsError {
+		t.Fatalf("MCP get_datastore_metrics: err=%v isError=%v", err, mcpRes != nil && mcpRes.IsError)
+	}
+	var mcpOut datastoreMetricsResult
+	b, _ := json.Marshal(mcpRes.StructuredContent)
+	if err := json.Unmarshal(b, &mcpOut); err != nil {
+		t.Fatalf("MCP structured content: %v", err)
+	}
+	if len(mcpOut.Series) != 2 || mcpOut.Series[0].Points[0].Value != 0.3 || mcpOut.Series[1].Points[0].Value != 1.2 {
+		t.Fatalf("MCP replication_lag series = %+v", mcpOut.Series)
 	}
 }
 
@@ -545,7 +637,9 @@ func TestPrometheusDBConnectionsRoundTrip(t *testing.T) {
 }
 
 func TestPrometheusReplicationLagRoundTrip(t *testing.T) {
+	var gotQuery string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query().Get("query")
 		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"pod":"pg-2"},"values":[[1000000,"0.4"]]}]}}`))
 	}))
 	defer ts.Close()
@@ -555,6 +649,50 @@ func TestPrometheusReplicationLagRoundTrip(t *testing.T) {
 	if err != nil || len(series) != 1 || series[0].Points[0].Value != 0.4 || series[0].Unit != unitSeconds {
 		t.Fatalf("replication lag roundtrip: %v %+v", err, series)
 	}
+	wantQuery := promReplicationLagQuery("default", "pg")
+	if gotQuery != wantQuery {
+		t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+	}
+	if !strings.Contains(gotQuery, "and on (pod) cnpg_pg_replication_in_recovery{") || !strings.Contains(gotQuery, "== 1)") {
+		t.Errorf("replication lag query must exclude primary pod via cnpg_pg_replication_in_recovery == 1: %q", gotQuery)
+	}
+}
+
+// TestReplicationLagQueryOnPrometheus evaluates promReplicationLagQuery in
+// Prometheus's engine (`promtool test rules`) to prove the primary pod's
+// cnpg_pg_replication_lag=0 (in_recovery=0) is excluded while HA standbys and
+// read-replica pods (in_recovery=1) are returned and unrelated clusters stay out.
+func TestReplicationLagQueryOnPrometheus(t *testing.T) {
+	promtool, err := exec.LookPath("promtool")
+	if err != nil {
+		testenv.Skip(t, "promtool not on PATH")
+	}
+	replicaCluster := appv1alpha1.ReadReplicaClusterName("pg", "a")
+	replicaPod := replicaCluster + "-1"
+	expr := promReplicationLagQuery("ns", "pg")
+	var b strings.Builder
+	b.WriteString("rule_files: []\nevaluation_interval: 60s\ntests:\n  - interval: 60s\n    input_series:\n")
+	for _, s := range []struct{ series, values string }{
+		// Primary pod: CNPG reports lag=0 and in_recovery=0 -> must be excluded.
+		{`cnpg_pg_replication_lag{namespace="ns",cnpg_io_cluster="pg",pod="pg-1"}`, "0x5"},
+		{`cnpg_pg_replication_in_recovery{namespace="ns",cnpg_io_cluster="pg",pod="pg-1"}`, "0x5"},
+		// HA standby pod: in_recovery=1 -> included.
+		{`cnpg_pg_replication_lag{namespace="ns",cnpg_io_cluster="pg",pod="pg-2"}`, "0.25x5"},
+		{`cnpg_pg_replication_in_recovery{namespace="ns",cnpg_io_cluster="pg",pod="pg-2"}`, "1x5"},
+		// Read replica cluster pod: in_recovery=1 -> included.
+		{fmt.Sprintf(`cnpg_pg_replication_lag{namespace="ns",cnpg_io_cluster=%q,pod=%q}`, replicaCluster, replicaPod), "1.5x5"},
+		{fmt.Sprintf(`cnpg_pg_replication_in_recovery{namespace="ns",cnpg_io_cluster=%q,pod=%q}`, replicaCluster, replicaPod), "1x5"},
+		// Unrelated cluster with shared prefix -> must be excluded.
+		{`cnpg_pg_replication_lag{namespace="ns",cnpg_io_cluster="pg-extra",pod="pg-extra-2"}`, "9.9x5"},
+		{`cnpg_pg_replication_in_recovery{namespace="ns",cnpg_io_cluster="pg-extra",pod="pg-extra-2"}`, "1x5"},
+	} {
+		fmt.Fprintf(&b, "      - series: '%s'\n        values: '%s'\n", s.series, s.values)
+	}
+	b.WriteString("    promql_expr_test:\n")
+	fmt.Fprintf(&b, "      - expr: '%s'\n        eval_time: 3m\n        exp_samples:\n", strings.ReplaceAll(expr, "'", "''"))
+	fmt.Fprintf(&b, "          - labels: '{pod=\"pg-2\"}'\n            value: 0.25\n")
+	fmt.Fprintf(&b, "          - labels: '{pod=%q}'\n            value: 1.5\n", replicaPod)
+	runPromtoolTests(t, promtool, b.String())
 }
 
 func TestPrometheusDiskUsageRoundTrip(t *testing.T) {

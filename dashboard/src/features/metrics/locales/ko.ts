@@ -352,9 +352,9 @@ const koMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.replicationLagPendingHA": {
     message:
-      "해당 없음 — 복제본이 없습니다 (복제 지연을 보려면 고가용성을 활성화하세요)",
+      "해당 없음 — 복제본이 없습니다 (복제 지연을 보려면 고가용성을 활성화하거나 읽기 복제본을 추가하세요)",
     description:
-      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+      "Shown instead of a chart for replication lag when Postgres has neither HA nor read replicas (w1/m22, w34/011)",
   },
   "metrics.datastoreMetricsTitle": {
     message: "메트릭",

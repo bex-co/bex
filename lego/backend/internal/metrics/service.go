@@ -451,10 +451,10 @@ type Service struct {
 	// core.ErrMetricsUnavailable.
 	DBConnections DBConnectionsSource
 	// ReplicationLag reads a managed Postgres instance's replication-lag
-	// history (w3/m10, CNPG's exporter) — reached only once a Database's
-	// HighAvailabilityEnabled is true (w1/m22); nil => replication_lag reports
-	// core.ErrMetricsUnavailable for an HA instance instead of silently 503ing
-	// on every instance regardless of HA state.
+	// history (w3/m10, CNPG's exporter) — reached when a Database has
+	// HighAvailabilityEnabled or read replicas configured (w1/m22, w34/011);
+	// nil => replication_lag reports core.ErrMetricsUnavailable instead of
+	// silently 503ing on a lone primary with no replicas.
 	ReplicationLag ReplicationLagSource
 	// KeyValueStats reads a managed Key Value (Valkey) instance's used-memory /
 	// connected-clients history (redis_exporter via Prometheus, w5/011); nil =>
