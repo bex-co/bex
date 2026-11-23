@@ -299,6 +299,10 @@ jobs:
         run: |
           bash scripts/build-toolchain-freshness.sh validate
           bash scripts/build-toolchain-freshness.test.sh
+      # w4/719: the native Go bump's smoke build refuses an image that is not
+      # the planned release, downloads a toolchain, or runs off the host's platform.
+      - name: Native Go bump smoke-build unit tests
+        run: bash scripts/go-line-smoke.test.sh
       # The build-pool guards read across three trees (the CAPI overlay, the
       # gitops DaemonSets, and build.go's request constant), so they run here
       # where the triggers already cover all three — clusterapi-validate.yml's
@@ -385,6 +389,7 @@ jobs:
           scripts/stale-key-name-validate.sh scripts/stale-key-name-validate.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
+          scripts/go-line-smoke.sh scripts/go-line-smoke.test.sh
           scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
           scripts/hashicorp-install.sh scripts/hashicorp-install.test.sh

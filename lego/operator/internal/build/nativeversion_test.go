@@ -23,6 +23,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -128,7 +129,7 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"ruby file: directive falls through", "ruby", nil, map[string]string{"Gemfile": `ruby file: ".ruby-version"`, ".ruby-version": "3.3.1"}, "3.3", ".ruby-version"},
 		{"elixir env", "elixir", map[string]string{"ELIXIR_VERSION": "1.17.3"}, nil, "1.17", "ELIXIR_VERSION=1.17.3"},
 		{"elixir with matching erlang", "elixir", map[string]string{"ELIXIR_VERSION": "1.19", "ERLANG_VERSION": "28.1"}, nil, "1.19", "ELIXIR_VERSION=1.19, ERLANG_VERSION=28.1"},
-		{"go ignores go.mod (Render parity)", "go", nil, map[string]string{"go.mod": "module x\n\ngo 1.26\n"}, "1.27", ""},
+		{"go ignores go.mod (Render parity)", "go", nil, map[string]string{"go.mod": "module x\n\ngo 1.26\n"}, nativeToolchains["go"].defaultLine, ""},
 		{"rust stays on its one image, naming rustup's toolchain", "rust", map[string]string{"RUSTUP_TOOLCHAIN": "1.80"}, nil, "1", "RUSTUP_TOOLCHAIN=1.80"},
 	}
 	for _, tc := range cases {
@@ -412,7 +413,7 @@ func TestNativeChoiceNarration(t *testing.T) {
 		{"poetry env", poetry(map[string]string{"POETRY_VERSION": "1.8.4"}), "==> Using Poetry 1.8.4 (from POETRY_VERSION=1.8.4)" + poetryDocs},
 		{"uv env", uv(map[string]string{"UV_VERSION": "0.9.0"}), "==> Using uv 0.9.0 (from UV_VERSION=0.9.0)" + uvDocs},
 		// Render's Go line has no docs line after it; no Rust line is on record.
-		{"go", primary("go", nil, nil), "==> Using Go 1.27 (default)"},
+		{"go", primary("go", nil, nil), "==> Using Go " + nativeToolchains["go"].defaultLine + " (default)"},
 		{"rust", primary("rust", nil, nil), "==> Using Rust " + reviewed("rust", "1") + " (default)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -435,6 +436,32 @@ func TestNativeChoiceNarration(t *testing.T) {
 	c, _ = ResolveNativeVersion("node", map[string]string{"NODE_VERSION": "18"}, files(nil))
 	if got := shown(c.NarrationIn(src + "apps/web")); !strings.HasSuffix(got, " via environment variable NODE_VERSION"+nodeDocs) {
 		t.Errorf("root directory env narration = %q", got)
+	}
+}
+
+// go-line-bump.yml rewrites the Go entry to each new stable Go release
+// (w4/719): it stays one line, the default, whose image is that line's
+// official bookworm tag pinned by digest, and the inventory follows it.
+func TestNativeGoLineIsItsImageTag(t *testing.T) {
+	goLines := nativeToolchains["go"]
+	if len(goLines.lines) != 1 {
+		t.Fatalf("Go has %d lines, want the one tracked line", len(goLines.lines))
+	}
+	line := goLines.lines[0]
+	if line.line != goLines.defaultLine {
+		t.Errorf("Go line %s is not the default %s", line.line, goLines.defaultLine)
+	}
+	if !regexp.MustCompile(`^golang:` + regexp.QuoteMeta(line.line) + `-bookworm@sha256:[a-f0-9]{64}$`).MatchString(line.image) {
+		t.Errorf("Go line %s image %s is not golang:%[1]s-bookworm pinned by digest", line.line, line.image)
+	}
+	inv, err := LoadToolchainInventory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, img := range inv.Images {
+		if img.ID == "native-go" && (img.Committed != line.image || img.Upstream != "docker.io/library/golang:"+line.line+"-bookworm") {
+			t.Errorf("native-go inventory %s (%s) does not follow the Go line %s", img.Committed, img.Upstream, line.image)
+		}
 	}
 }
 

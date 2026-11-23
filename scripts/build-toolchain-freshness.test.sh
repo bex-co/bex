@@ -409,6 +409,154 @@ else
   echo "ok: released lines compare numerically, and current ones are not drift"
 fi
 
+# The native Go line moves itself (w4/719): go-release plans a bump once
+# go.dev's newest stable release is newer than the pinned image's Go and the
+# official golang:<line>-bookworm index carries it on both platforms;
+# go-apply rewrites native.go's Go entry and the inventory, nothing else.
+DIGEST_D='sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
+mkdir -p "$tmp/go"
+python3 - "$root/scripts/lib/toolchain-freshness.py" "$tmp/go" "$root/lego/operator/internal/build/native.go" "$DIGEST_A" "$DIGEST_B" <<'PYFIXTURE'
+import importlib.util, json, sys
+from pathlib import Path
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("freshness_fixture", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+root, real, a, b = Path(sys.argv[2]), Path(sys.argv[3]), *sys.argv[4:]
+inv = {"schema": "bex.build-toolchain-freshness/v1", "images": [
+    {"id": "cnb-builder", "kind": "builder", "upstream": "docker.io/example/builder:latest",
+     "committed": "example/builder@" + a, "resolved_at": "2026-10-20T00:00:00Z", "source": "x", "files": ["pin.go"]},
+    {"id": "native-go", "kind": "native-base", "upstream": "docker.io/library/golang:1.27-bookworm",
+     "committed": "golang:1.27-bookworm@" + b, "resolved_at": "2026-10-20T00:00:00Z", "source": "x", "files": ["native.go"]}]}
+(root / "inv.json").write_text(json.dumps(inv, indent=2) + "\n")
+(root / "pin.go").write_text(f'a := "example/builder@{a}"\n')
+# The real native.go, with its Go entry pointed at the fixture pin, so a
+# change to that entry's shape fails here before it fails a scheduled bump.
+text, count = module.GO_ENTRY_RE.subn(
+    lambda m: f"{m.group(1)}1.27{m.group(2)}1.27{m.group(3)}golang:1.27-bookworm@{b}{m.group(4)}", real.read_text())
+if count != 1:
+    sys.exit("FAIL: native.go's Go entry is not in GO_ENTRY_RE's shape, so go-apply could not bump it")
+(root / "native.go").write_text(text)
+PYFIXTURE
+cp "$tmp/go/native.go" "$tmp/go/native.go.orig"
+cp "$tmp/go/inv.json" "$tmp/go/inv.json.orig"
+printf '{"docker.io/library/golang:1.27-bookworm":"%s","docker.io/library/golang:1.28-bookworm":"%s"}\n' "$DIGEST_C" "$DIGEST_D" >"$tmp/go/digests.json"
+printf '{"%s":"1.27.4","%s":"1.27.5","%s":"1.28.0"}\n' "$DIGEST_B" "$DIGEST_C" "$DIGEST_D" >"$tmp/go/versions.json"
+go_env() {
+  env FRESHNESS_ROOT="$tmp/go" FRESHNESS_INVENTORY="$tmp/go/inv.json" FRESHNESS_PIN_SITES="pin.go" \
+      FRESHNESS_DIGESTS="$tmp/go/digests.json" FRESHNESS_GO_VERSIONS="$tmp/go/versions.json" \
+      FRESHNESS_LATEST_LINES="$tmp/go/latest.json" FRESHNESS_NOW="2026-11-23T12:00:00Z" "$@"
+}
+go_plan() {
+  printf '{"native-go":"%s"}\n' "$1" >"$tmp/go/latest.json"
+  go_env "$SCRIPT" go-release
+}
+plan_field() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$@"; }
+check_plan() {
+  local label="$1" latest="$2" action="$3" image="${4:-}"
+  go_plan "$latest" >"$tmp/go/plan.json" 2>"$tmp/go/plan.err" || { echo "FAIL: $label — go-release failed: $(cat "$tmp/go/plan.err")" >&2; fails=$((fails + 1)); return; }
+  local got_action got_image
+  got_action="$(plan_field "$tmp/go/plan.json" action)"
+  got_image="$(plan_field "$tmp/go/plan.json" image)"
+  if [ "$got_action" != "$action" ] || [ "$got_image" != "$image" ]; then
+    echo "FAIL: $label — action $got_action image '$got_image', want $action '$image'" >&2
+    fails=$((fails + 1))
+  else
+    echo "ok: $label"
+  fi
+}
+check_plan "the pinned image's Go is go.dev's newest: current" go1.27.4 current
+check_plan "an older feed release is no bump" go1.26.11 current
+check_plan "a new patch is a bump within the line" go1.27.5 bump "golang:1.27-bookworm@$DIGEST_C"
+check_plan "a new minor moves to its line" go1.28.0 bump "golang:1.28-bookworm@$DIGEST_D"
+# Go's name for x.y.0 before 1.21 was "go1.y"; 1.28 is 1.28.0.
+check_plan "a release named without its patch is .0" go1.28 bump "golang:1.28-bookworm@$DIGEST_D"
+check_plan "a release with no official image yet waits" go1.29.0 wait
+printf '{"%s":"1.27.4","%s":{"linux/amd64":"1.27.5","linux/arm64":"1.27.4"}}\n' "$DIGEST_B" "$DIGEST_C" >"$tmp/go/versions.json"
+check_plan "an image one platform has not caught up on waits" go1.27.5 wait
+printf '{"%s":"1.27.4","%s":"1.27.5","%s":"1.28.0"}\n' "$DIGEST_B" "$DIGEST_C" "$DIGEST_D" >"$tmp/go/versions.json"
+assert "a release name go.dev would never publish fails the plan" 1 go_plan go1.28rc1
+
+go_plan go1.28.0 >"$tmp/go/bump.json"
+assert "go-apply rewrites the pin to a bump plan" 0 go_env "$SCRIPT" go-apply "$tmp/go/bump.json"
+python3 - "$tmp/go" "$DIGEST_B" "$DIGEST_D" <<'PYCHECK' && echo "ok: go-apply moves the line, its default, the digest and the inventory entry, nothing else" || fails=$((fails + 1))
+import difflib, json, sys
+from pathlib import Path
+root, b, d = Path(sys.argv[1]), *sys.argv[2:]
+before, after = (root / "native.go.orig").read_text(), (root / "native.go").read_text()
+changed = [l for l in difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="", n=0)
+           if l[:1] in "+-" and l[:3] not in ("+++", "---")]
+want = ['-\t"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{',
+        f'-\t\t{{line: "1.27", image: "golang:1.27-bookworm@{b}"}},',
+        '+\t"go": {label: "Go", defaultLine: "1.28", lines: []nativeLine{',
+        f'+\t\t{{line: "1.28", image: "golang:1.28-bookworm@{d}"}},']
+if changed != want:
+    sys.exit(f"FAIL: native.go diff {changed!r}")
+old = json.loads((root / "inv.json.orig").read_text())["images"]
+new = json.loads((root / "inv.json").read_text())["images"]
+if old[0] != new[0]:
+    sys.exit("FAIL: go-apply touched another inventory entry")
+go = new[1]
+want = {"upstream": "docker.io/library/golang:1.28-bookworm", "committed": "golang:1.28-bookworm@" + d,
+        "resolved_at": "2026-11-23T12:00:00Z"}
+if any(go[k] != v for k, v in want.items()) or "Go 1.28.0 (was 1.27.4)" not in go["source"]:
+    sys.exit(f"FAIL: native-go entry {go!r}")
+if list(go) != list(old[1]) or (root / "inv.json").read_text() != json.dumps(json.loads((root / "inv.json").read_text()), indent=2) + "\n":
+    sys.exit("FAIL: the inventory lost its committed layout")
+PYCHECK
+assert "the bumped tree validates" 0 go_env "$SCRIPT" validate
+check_plan "after the bump the pin is current" go1.28.0 current
+cp "$tmp/go/native.go" "$tmp/go/native.go.bumped"
+assert_stdout "the same plan again is a no-op" "noop: native Go already pins" go_env "$SCRIPT" go-apply "$tmp/go/bump.json"
+assert_stdout "a plan made before main moved is a no-op" "noop: native Go moved" \
+  go_env "$SCRIPT" go-apply <(sed "s/1.28-bookworm@$DIGEST_D/1.28-bookworm@$DIGEST_C/" "$tmp/go/bump.json")
+cmp -s "$tmp/go/native.go" "$tmp/go/native.go.bumped" && echo "ok: a no-op leaves native.go alone" \
+  || { echo "FAIL: a no-op go-apply rewrote native.go" >&2; fails=$((fails + 1)); }
+cp "$tmp/go/native.go.orig" "$tmp/go/native.go"
+cp "$tmp/go/inv.json.orig" "$tmp/go/inv.json"
+go_plan go1.27.4 >"$tmp/go/current.json"
+assert "go-apply refuses a plan that is not a bump" 1 go_env "$SCRIPT" go-apply "$tmp/go/current.json"
+sed 's/"golang:1.28-bookworm@/"golang:1.28-alpine@/' "$tmp/go/bump.json" >"$tmp/go/alpine.json"
+assert "go-apply refuses an image that is not the line's bookworm tag" 1 go_env "$SCRIPT" go-apply "$tmp/go/alpine.json"
+sed 's/"line": "1.28"/"line": "1.29"/' "$tmp/go/bump.json" >"$tmp/go/offline.json"
+assert "go-apply refuses a line its image is not tagged with" 1 go_env "$SCRIPT" go-apply "$tmp/go/offline.json"
+cmp -s "$tmp/go/native.go" "$tmp/go/native.go.orig" && echo "ok: a refused plan leaves native.go alone" \
+  || { echo "FAIL: a refused go-apply rewrote native.go" >&2; fails=$((fails + 1)); }
+
+# The bump workflow is the one writer: main-only, no secret, contents:write on
+# the commit job alone, and it pushes only after both smoke builds and the
+# checks pass.
+bump_wf="$root/.github/workflows/go-line-bump.yml"
+python3 - "$bump_wf" <<'PYCHECK' && echo "ok: go-line-bump.yml writes only after its smoke builds and checks" || fails=$((fails + 1))
+import re, sys
+text = open(sys.argv[1]).read()
+problems = []
+if "secrets." in text:
+    problems.append("references a secret")
+if re.search(r"(?m)^permissions:\n  contents: read\n\n", text) is None:
+    problems.append("workflow permissions must be contents: read")
+jobs = re.split(r"(?m)^  (?=[a-z0-9-]+:\n)", text.split("\njobs:\n", 1)[1])[1:]
+writers = [job.split(":", 1)[0] for job in jobs if "contents: write" in job]
+if writers != ["bump"]:
+    problems.append(f"contents: write on {writers}, want the bump job alone")
+for job in jobs:
+    name = job.split(":", 1)[0]
+    if "github.ref == 'refs/heads/main'" not in job and name in ("plan", "bump"):
+        problems.append(f"{name} is not main-only")
+bump = next((job for job in jobs if job.startswith("bump:")), "")
+if "needs: [plan, smoke-arm64, smoke-amd64]" not in bump:
+    problems.append("bump must need plan and both smoke builds")
+order = [bump.find(s) for s in ("go-apply", "toolchain-freshness.py validate", "image-pin-validate.sh", "go test ./internal/build/", "git push")]
+if -1 in order or order != sorted(order):
+    problems.append("bump must apply, validate, run the pin guard and the build tests, then push")
+for name, runner in (("smoke-arm64", "ubuntu-24.04-arm"), ("smoke-amd64", "ubuntu-latest")):
+    job = next((job for job in jobs if job.startswith(name + ":")), "")
+    if f"runs-on: {runner}" not in job or "scripts/go-line-smoke.sh" not in job:
+        problems.append(f"{name} must run go-line-smoke.sh on {runner}")
+if problems:
+    sys.exit("FAIL: go-line-bump.yml: " + "; ".join(problems))
+PYCHECK
+
 if [ "$fails" -ne 0 ]; then
   echo "FAIL: $fails build-toolchain freshness checks" >&2
   exit 1

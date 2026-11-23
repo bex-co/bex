@@ -254,7 +254,7 @@ func TestNativeGoRustCanonicalRecipesAndContracts(t *testing.T) {
 			}
 			line := nativeToolchains[runtime].lines[0]
 			metadata := fake.envByImage[line.image]
-			metadata.env = []string{"PATH=/go/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin", "GOLANG_VERSION=1.27.3", "GOTOOLCHAIN=local", "GOPATH=/go"}
+			metadata.env = []string{"PATH=/go/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin", "GOLANG_VERSION=" + line.line + ".3", "GOTOOLCHAIN=local", "GOPATH=/go"}
 			if runtime == "rust" {
 				metadata.env = []string{"PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin", "RUST_VERSION=" + line.version, "CARGO_HOME=/usr/local/cargo", "RUSTUP_HOME=/usr/local/rustup"}
 			}

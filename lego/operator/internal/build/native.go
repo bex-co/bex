@@ -194,8 +194,10 @@ var nativeToolchains = map[string]nativeToolchain{
 	// Render offers no Go version selection for native services; neither does
 	// bex. Render builds with Go's latest stable release, so this line tracks
 	// it (w5/m144): the image sets GOTOOLCHAIN=local, so a go.mod declaring a
-	// newer `go` than the line refuses to build. The freshness check flags the
-	// next release.
+	// newer `go` than the line refuses to build. go-line-bump.yml moves the
+	// line and its digest to each new stable Go release within hours, as
+	// Render does within a day (w4/719). It rewrites this entry, so keep its
+	// shape: one line, the default, tagged golang:<line>-bookworm.
 	"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{
 		{line: "1.27", image: "golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea"},
 	}},

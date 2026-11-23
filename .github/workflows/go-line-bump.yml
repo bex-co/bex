@@ -1,0 +1,167 @@
+name: Go line bump
+
+# Render's native Go "automatically updates to the latest stable Go 1.x
+# version … usually within 24 hours of a new release" (changelog 2026-04-16).
+# This keeps bex's one native Go line there with nobody's action (w4/719,
+# docs/ADR060 D7). Every three hours it compares go.dev's newest stable release
+# with the GOLANG_VERSION of the pinned image. Once the official
+# golang:<line>-bookworm index carries that release on linux/amd64 and
+# linux/arm64, both architectures build a module declaring it offline, and the
+# bump job rewrites the pin (still by digest) and its inventory entry, runs the
+# inventory validation, the image digest-pin guard and the operator's build
+# package tests, and pushes the commit to main. deploy.yml picks it up like
+# any deployable commit and runs every suite before production gets it. A new
+# digest with the same Go (a Debian rebuild) stays a reviewed change through
+# build-toolchain-freshness.yml. Public registry metadata and github.token
+# only.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 */3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-line-bump
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+      image: ${{ steps.plan.outputs.image }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+          persist-credentials: false
+      - name: Compare go.dev's newest stable release with the pin
+        id: plan
+        run: |
+          for attempt in 1 2 3; do
+            python3 scripts/lib/toolchain-freshness.py go-release > "$RUNNER_TEMP/go.json" && break
+            [ "$attempt" -lt 3 ] || exit 1
+            echo "::warning::go-release attempt $attempt failed; retrying in $((attempt * 30)) s"
+            sleep $((attempt * 30))
+          done
+          echo "::notice::$(jq -r .reason "$RUNNER_TEMP/go.json")"
+          if [ "$(jq -r .action "$RUNNER_TEMP/go.json")" = bump ]; then
+            echo "plan=$(jq -c . "$RUNNER_TEMP/go.json")" >> "$GITHUB_OUTPUT"
+            echo "image=$(jq -r .image "$RUNNER_TEMP/go.json")" >> "$GITHUB_OUTPUT"
+            echo "release=$(jq -r .latest "$RUNNER_TEMP/go.json")" >> "$GITHUB_OUTPUT"
+          fi
+
+  smoke-arm64:
+    needs: plan
+    if: needs.plan.outputs.image != ''
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: The image is the release and builds it offline
+        env:
+          IMAGE: ${{ needs.plan.outputs.image }}
+          RELEASE: ${{ needs.plan.outputs.release }}
+        run: bash scripts/go-line-smoke.sh "$IMAGE" "$RELEASE"
+
+  # Production's build nodes are linux/amd64, which this arm64 runner could
+  # only reach under QEMU.
+  smoke-amd64:
+    needs: plan
+    if: needs.plan.outputs.image != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: The image is the release and builds it offline
+        env:
+          IMAGE: ${{ needs.plan.outputs.image }}
+          RELEASE: ${{ needs.plan.outputs.release }}
+        run: bash scripts/go-line-smoke.sh "$IMAGE" "$RELEASE"
+
+  bump:
+    needs: [plan, smoke-arm64, smoke-amd64]
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.image != ''
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    env:
+      # As operator-test.yml: the module resolves standalone, as the release
+      # image compiles it.
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
+      - name: Rewrite the native Go pin
+        id: apply
+        env:
+          PLAN: ${{ needs.plan.outputs.plan }}
+        run: |
+          printf '%s\n' "$PLAN" > "$RUNNER_TEMP/go.json"
+          python3 scripts/lib/toolchain-freshness.py go-apply "$RUNNER_TEMP/go.json"
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Pin checks and the build package tests
+        if: steps.apply.outputs.changed == 'true'
+        run: |
+          python3 scripts/lib/toolchain-freshness.py validate
+          bash scripts/image-pin-validate.sh
+          cd lego/operator && go test ./internal/build/
+      - name: Push to main
+        if: steps.apply.outputs.changed == 'true'
+        env:
+          RELEASE: ${{ needs.plan.outputs.release }}
+          IMAGE: ${{ needs.plan.outputs.image }}
+        run: |
+          changed="$(git diff --name-only | sort | tr '\n' ' ')"
+          if [ "$changed" != "lego/operator/internal/build/native.go lego/operator/internal/build/toolchain-freshness.json " ]; then
+            echo "::error::go-apply changed more than the Go pin: $changed"
+            exit 1
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -a -q \
+            -m "build(native): native Go builds move to Go ${RELEASE}, its newest stable release" \
+            -m "go-line-bump.yml pins ${IMAGE} after building a go ${RELEASE} module offline on linux/amd64 and linux/arm64 and passing the pin checks and the operator's build package tests (w4/719)."
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            [ "$attempt" -lt 3 ] || break
+            echo "::warning::push attempt $attempt was refused; rebasing onto main"
+            git fetch --no-tags origin main
+            git rebase origin/main
+          done
+          echo "::error::could not push the Go bump; the next run plans again"
+          exit 1

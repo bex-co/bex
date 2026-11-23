@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Build-toolchain freshness inventory: validate, resolve, issue decisions.
 
-Does not edit, commit, or merge digest pins. A changed upstream digest is a
-review request. Public registry metadata only; no cluster or push credentials.
+A changed upstream digest is a review request: nothing here commits or merges
+a pin, and only go-apply edits one, the native Go line that follows each new
+stable Go release (w4/719, go-line-bump.yml). Public registry metadata only;
+no cluster or push credentials.
 """
 from __future__ import annotations
 
@@ -251,11 +253,17 @@ def http_json(url: str, headers: dict[str, str] | None = None) -> dict:
         raise RuntimeError(f"{url}: {err}") from err
 
 
+class NotFound(RuntimeError):
+    """The registry has no such tag (yet)."""
+
+
 def http_digest(url: str, headers: dict[str, str]) -> str:
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             digest = resp.headers.get("Docker-Content-Digest", "")
+    except urllib.error.HTTPError as err:
+        raise (NotFound if err.code == 404 else RuntimeError)(f"{url}: {err}") from err
     except urllib.error.URLError as err:
         raise RuntimeError(f"{url}: {err}") from err
     if not DIGEST_RE.fullmatch(digest.strip()):
@@ -296,7 +304,8 @@ def resolve_upstream(ref: str) -> str:
     fixtures = fixture_digests()
     if fixtures is not None:
         if ref not in fixtures:
-            fail(f"FRESHNESS_DIGESTS has no entry for {ref}")
+            # As the registry answers a tag it does not have.
+            raise NotFound(f"FRESHNESS_DIGESTS has no entry for {ref}")
         try:
             return digest_of(fixtures[ref])
         except ValueError:
@@ -306,9 +315,14 @@ def resolve_upstream(ref: str) -> str:
     if ref.startswith(GITHUB + "/"):
         return resolve_release_asset(ref)
     registry, repo, tag = parse_upstream(ref)
-    api_host = REGISTRY_API.get(registry, registry)
-    auth = REGISTRY_AUTH.get(registry)
+    return http_digest(f"https://{REGISTRY_API.get(registry, registry)}/v2/{repo}/manifests/{tag}",
+                       registry_headers(registry, repo))
+
+
+def registry_headers(registry: str, repo: str) -> dict[str, str]:
+    """Manifest Accept plus an anonymous pull token where the registry wants one."""
     headers = {"Accept": MANIFEST_ACCEPT}
+    auth = REGISTRY_AUTH.get(registry)
     if auth:
         token_url, service = auth
         token_qs = urllib.parse.urlencode(
@@ -319,7 +333,7 @@ def resolve_upstream(ref: str) -> str:
         if not token:
             raise RuntimeError(f"no anonymous token for {registry}")
         headers["Authorization"] = f"Bearer {token}"
-    return http_digest(f"https://{api_host}/v2/{repo}/manifests/{tag}", headers)
+    return headers
 
 
 # LINE_SOURCES are the native toolchains whose pinned LINE (not just digest)
@@ -468,6 +482,170 @@ def resolve(path: Path) -> dict:
     return {"images": images, "schema": SCHEMA}
 
 
+# The native Go line moves itself (w4/719). Render's native Go "automatically
+# updates to the latest stable Go 1.x version … usually within 24 hours of a
+# new release" (changelog 2026-04-16), so go-line-bump.yml runs go-release
+# every few hours and, on a "bump" plan, smoke-builds the image on both
+# architectures and runs go-apply, the one command here that edits the tree.
+# A digest that moves without a new Go release stays a reviewed change.
+GO_ID = "native-go"
+GO_TAG = "golang:{line}-bookworm"
+GO_PLATFORMS = ("linux/amd64", "linux/arm64")
+# native.go's Go entry: one line, which is also the default and its image's tag.
+GO_ENTRY_RE = re.compile(
+    r'(\t"go": \{label: "Go", defaultLine: ")[0-9.]+(", lines: \[\]nativeLine\{\n'
+    r'\t\t\{line: ")[0-9.]+(", image: ")golang:[0-9.]+-bookworm@sha256:[a-f0-9]{64}("\},\n\t\}\},)'
+)
+
+
+def go_release(version: str) -> tuple[int, int, int]:
+    """go1.27.4, 1.27.4 or go1.20 (Go's name for 1.20.0) as numbers."""
+    match = re.fullmatch(r"(?:go)?(\d+)\.(\d+)(?:\.(\d+))?", version.strip())
+    if not match:
+        raise RuntimeError(f"not a stable Go release: {version!r}")
+    return int(match.group(1)), int(match.group(2)), int(match.group(3) or 0)
+
+
+def go_name(release: tuple[int, int, int]) -> str:
+    return ".".join(str(part) for part in release)
+
+
+def latest_go_release() -> tuple[int, int, int]:
+    """go.dev's newest stable release (FRESHNESS_LATEST_LINES native-go in tests)."""
+    fixed, version = fixture_version(GO_ID)
+    if fixed:
+        if not version:
+            raise RuntimeError("FRESHNESS_LATEST_LINES has no native-go release")
+        return go_release(version)
+    feed = http_json(LINE_SOURCES[GO_ID][0])
+    stable = [go_release(item["version"]) for item in feed if isinstance(item, dict) and item.get("stable")]
+    if not stable:
+        raise RuntimeError("go.dev lists no stable release")
+    return max(stable)
+
+
+def image_go_versions(upstream: str, digest: str) -> dict[str, str]:
+    """GOLANG_VERSION of each GO_PLATFORMS image under one golang index digest.
+
+    FRESHNESS_GO_VERSIONS (tests) maps a digest to one version for every
+    platform, or to a platform → version object.
+    """
+    fixture = os.environ.get("FRESHNESS_GO_VERSIONS")
+    if fixture:
+        try:
+            value = json.loads(Path(fixture).read_text(encoding="utf-8")).get(digest, {})
+        except (OSError, json.JSONDecodeError, AttributeError) as err:
+            fail(f"FRESHNESS_GO_VERSIONS is not a readable JSON object: {err}")
+        return {platform: value for platform in GO_PLATFORMS} if isinstance(value, str) else dict(value)
+    registry, repo, _ = parse_upstream(upstream)
+    base = f"https://{REGISTRY_API.get(registry, registry)}/v2/{repo}"
+    headers = registry_headers(registry, repo)
+    versions: dict[str, str] = {}
+    for entry in http_json(f"{base}/manifests/{digest}", headers).get("manifests") or []:
+        platform = entry.get("platform") or {}
+        key = f"{platform.get('os')}/{platform.get('architecture')}"
+        if key not in GO_PLATFORMS or key in versions:
+            continue
+        config = http_json(f"{base}/manifests/{entry['digest']}", headers)["config"]["digest"]
+        for env in (http_json(f"{base}/blobs/{config}", headers).get("config") or {}).get("Env") or []:
+            if env.startswith("GOLANG_VERSION="):
+                versions[key] = env.split("=", 1)[1]
+    return versions
+
+
+def inventory_entry(inventory: dict, ident: str) -> dict:
+    entry = next((image for image in inventory["images"] if image["id"] == ident), None)
+    if entry is None:
+        fail(f"inventory has no {ident!r} entry")
+    return entry
+
+
+def go_plan(path: Path) -> dict:
+    """Whether the native Go pin is behind go.dev's newest stable release.
+
+    action is "current", "wait" (the official image does not carry the
+    release on every platform yet) or "bump" with the image to pin.
+    """
+    entry = inventory_entry(validate(path), GO_ID)
+    committed = entry["committed"]
+    pinned = image_go_versions(entry["upstream"], digest_of(committed))
+    if set(pinned) != set(GO_PLATFORMS):
+        fail(f"{committed}: no GOLANG_VERSION for {sorted(set(GO_PLATFORMS) - set(pinned))}")
+    current = min(go_release(version) for version in pinned.values())
+    latest = latest_go_release()
+    plan = {"action": "current", "committed": committed, "current": go_name(current),
+            "id": GO_ID, "latest": go_name(latest)}
+    if latest <= current:
+        plan["reason"] = f"native Go is on {go_name(current)}, go.dev's newest stable release"
+        return plan
+    line = f"{latest[0]}.{latest[1]}"
+    upstream = "docker.io/library/" + GO_TAG.format(line=line)
+    plan["action"] = "wait"
+    try:
+        digest = resolve_upstream(upstream)
+    except NotFound:
+        plan["reason"] = (f"Go {go_name(latest)} is out, but {upstream} is not published yet "
+                          f"(native Go stays on {go_name(current)})")
+        return plan
+    carried = image_go_versions(upstream, digest)
+    behind = sorted(p for p in GO_PLATFORMS if carried.get(p) is None or go_release(carried[p]) != latest)
+    if behind:
+        plan["reason"] = (f"Go {go_name(latest)} is out, but {upstream}@{digest} does not carry it on "
+                          f"{', '.join(behind)} yet (native Go stays on {go_name(current)})")
+        return plan
+    plan.update({
+        "action": "bump",
+        "image": GO_TAG.format(line=line) + "@" + digest,
+        "line": line,
+        "reason": f"native Go {go_name(current)} → {go_name(latest)}, go.dev's newest stable release",
+        "upstream": upstream,
+    })
+    return plan
+
+
+def go_apply(plan_path: Path, path: Path) -> str:
+    """Rewrite the native Go pin and its inventory entry to a "bump" plan."""
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as err:
+        fail(f"cannot read the Go plan {plan_path}: {err}")
+    if not isinstance(plan, dict) or plan.get("action") != "bump":
+        fail("go-apply needs a go-release plan whose action is bump")
+    image, line, upstream = plan.get("image", ""), plan.get("line", ""), plan.get("upstream", "")
+    tag = GO_TAG.format(line=line)
+    if (not re.fullmatch(r"\d+\.\d+", line) or not DIGEST_RE.search(image)
+            or image != tag + "@" + digest_of(image) or upstream != "docker.io/library/" + tag):
+        fail(f"malformed Go plan: image {image!r}, line {line!r}, upstream {upstream!r}")
+    inventory = validate(path)
+    entry = inventory_entry(inventory, GO_ID)
+    if entry["committed"] == image:
+        return f"noop: native Go already pins {image}"
+    if entry["committed"] != plan.get("committed"):
+        return f"noop: native Go moved to {entry['committed']} since the plan; the next run plans again"
+    if len(entry["files"]) != 1:
+        fail(f"{GO_ID} must list native.go alone, not {entry['files']}")
+    target = repo_root() / entry["files"][0]
+    rewritten, count = GO_ENTRY_RE.subn(
+        lambda m: f"{m.group(1)}{line}{m.group(2)}{line}{m.group(3)}{image}{m.group(4)}",
+        target.read_text(encoding="utf-8"))
+    if count != 1:
+        fail(f"{entry['files'][0]}: want one native Go entry in GO_ENTRY_RE's shape, found {count}")
+    target.write_text(rewritten, encoding="utf-8")
+    now = os.environ.get("FRESHNESS_NOW") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    entry.update({
+        "upstream": upstream,
+        "committed": image,
+        "resolved_at": now,
+        "source": (f"Go {plan['latest']} (was {plan['current']}), go.dev's newest stable release, applied "
+                   f"{now[:10]} by go-line-bump.yml (w4/719): official {tag} carries "
+                   f"GOLANG_VERSION={plan['latest']} on the linux/amd64 and linux/arm64 image configs"),
+    })
+    # As committed: insertion order, two-space indent (dump sorts keys).
+    path.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
+    validate(path)
+    return f"native Go {plan['current']} → {plan['latest']}: {image}"
+
+
 def drifted(report: dict) -> list[dict]:
     return [image for image in report["images"] if image.get("changed")]
 
@@ -498,6 +676,11 @@ def issue_body(report: dict) -> str:
             section.append(
                 f"- **newer line upstream: `{image['newer_line']}`**: move the pin to that"
                 " line's tag and digest (Render builds with the newest), not to the observed digest"
+            )
+        if image["id"] == GO_ID:
+            section.append(
+                "- `go-line-bump.yml` moves this pin by itself once the official image carries a new"
+                " Go release; a new digest with the same Go (a Debian rebuild) still needs review"
             )
         if image.get("missing_line"):
             section.append(
@@ -535,7 +718,9 @@ def main(argv: list[str]) -> None:
             "usage: toolchain-freshness.py validate [inventory]\n"
             "       toolchain-freshness.py resolve [inventory]\n"
             "       toolchain-freshness.py issue-body <resolve.json>\n"
-            "       toolchain-freshness.py issue-action <resolve.json>",
+            "       toolchain-freshness.py issue-action <resolve.json>\n"
+            "       toolchain-freshness.py go-release [inventory]\n"
+            "       toolchain-freshness.py go-apply <go-release.json> [inventory]",
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -557,6 +742,17 @@ def main(argv: list[str]) -> None:
         if not rest:
             fail("issue-action requires a resolve JSON path")
         print(issue_action(load_report(Path(rest[0]))))
+        return
+    if cmd == "go-release":
+        try:
+            sys.stdout.write(dump(go_plan(inventory_path(rest[0] if rest else None))))
+        except (RuntimeError, KeyError, TypeError) as err:
+            fail(f"go-release: {err}")
+        return
+    if cmd == "go-apply":
+        if not rest:
+            fail("go-apply requires a go-release JSON path")
+        print(go_apply(Path(rest[0]), inventory_path(rest[1] if len(rest) > 1 else None)))
         return
     fail(f"unknown command {cmd}")
 
