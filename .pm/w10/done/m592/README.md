@@ -1,6 +1,6 @@
 # w10 · m592 — A workspace admin chooses "Allow all models" or an allowlist, so an allowlist listing every current catalog model still leaves the next one off, as Devin's modes do
 
-**Worker:** worker10 **Goal:** the workspace model list gets Devin's two modes as an explicit setting, not one that follows the list. An admin who turns "Allow all models" off keeps an allowlist even while it lists every current catalog model, so a model added to the catalog later is off there and reads as new. With it on, the workspace offers the whole catalog, a later model included. REST, GraphQL, MCP, `bex agent env set --models all|ID,…` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** blocked (pin must carry `be26a7c6b2`; t001–t004 and t006–t008 done 2026-11-23, and t005's `dev-10` half held; t005 step 4 reads production once the pin carries the milestone, then t009)
+**Worker:** worker10 **Goal:** the workspace model list gets Devin's two modes as an explicit setting, not one that follows the list. An admin who turns "Allow all models" off keeps an allowlist even while it lists every current catalog model, so a model added to the catalog later is off there and reads as new. With it on, the workspace offers the whole catalog, a later model included. REST, GraphQL, MCP, `bex agent env set --models all|ID,…` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** done (2026-11-23: t001–t009 done; production pin `9fdf7e0a1171` carries `be26a7c6b2`, and t005's production read held)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Backend: the mode on REST, GraphQL and MCP, and the offered set honoring it — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | CLI: `bex agent env set --models all` and `bex agent env` show the mode — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | Dashboard: Settings → Agents offers "All models" beside "By model" and "By provider" — **DONE** | 1h15m | t002 |
-| [t005](t005.md) | Live check: a catalog gaining a model on `dev-10` in an allowlist that lists every model, then production's offers unchanged by the deploy | 45m | t002, t003, t004 |
+| [t005](done/t005.md) | Live check: a catalog gaining a model on `dev-10` in an allowlist that lists every model, then production's offers unchanged by the deploy — **DONE** | 45m | t002, t003, t004 |
 | [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 6h45m**.
 
@@ -117,7 +117,23 @@ Against [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-sett
    - With the environment query held (Playwright route), the skeleton's heading, option frame, each of the three options, help line and first four rows had the ready state's boxes exactly at both widths. At 1280 px these were 84, 30, 24/24/24, 32 and 38/20/20/20 px tall, and at 390 px 124, 30, 24/24/24, 48 and 74/20/20/20 px. The ready list's fifth row is the grown catalog's fifth model, and production's catalog has four.
 4. **Torn down** on 2026-11-23: the dashboard and bex-api were stopped, `bash scripts/dev-env.sh 10 down` was run, and the OpenFGA container was removed.
 
-**Production after the deploy:** pending until production's pin carries `be26a7c6b2` (t005 step 4).
+**Production after the deploy, 2026-11-23 (read-only, `hetzner-prod`, pin `9fdf7e0a1171`, DoD 7 second half — holds).**
+
+- **The image.** The newest pin on `origin/main` is `cded300699` (`9fdf7e0a1171`), and `git merge-base --is-ancestor` puts `be26a7c6b2` and `0284e0af2d` in it. Both `bex-api` Pods (started 17:38Z, after the 17:33Z pin) and both `bex-ssh-gateway` Pods run `bex-operator@sha256:df6e69bd…`, the digest that pin set.
+- **No catalog model was added.** `BEX_AGENT_PLATFORM_MODELS` on the live Deployment is still `anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5` after the default `deepseek/deepseek-v4.1-flash-1017` (route `openrouter`), last changed in `1988962c01` (2026-11-19). The schema is at migration 340, not dirty.
+- **Every row offers what it did.** `bex-db-2` was the primary (`pg_is_in_recovery()` false). `agent_environments` still has 3 rows: narrowed 0, own key 0, `enabled_providers` set 0, `known_models` set 0 (`3|0|0|0|0`, as before the deploy). Read per row with the ids hashed by `scripts/lib/public_log.py`, `ws#3eda4c`, `ws#351c84` and `ws#001b90` each have `disabled_models` `{}`, `known_models` and `enabled_providers` NULL, no own key and no default model. All three are bex's own fixtures (bex, tian-personal and bex-canary in `scripts/lib/first_party_workspaces.txt`). Each therefore reads as "allow all" and offers the whole catalog of four, as before.
+- **`tian-personal`.** Signed in with `bash scripts/qa-login.sh` and logged out afterwards (`--logout` answered `ok logged-out`, and this run's jar and state file were deleted). `GET https://api.bex.co/v1/agent-environment?ownerId=tea-da2isimlm39c739m4ofg` answered `200` with:
+  - `allowAllModels: true`;
+  - `models` and `enabledModels` both the four catalog models in catalog order;
+  - `newModels: []`, `providers: ["deepseek","anthropic"]` and `enabledProviders: null`.
+  GraphQL `agentEnvironment(ownerId:)` read the same `allowAllModels`, `enabledModels`, `newModels` and `enabledProviders`, and `GET /v1/agent-sessions/capabilities` gave claude the same four `models`.
+- **Reproduce.** `kubectl --context hetzner-prod -n bex-system exec <primary> -c postgres -- psql -U postgres -d bex -At -c "SET default_transaction_read_only = on; SELECT count(*), count(*) FILTER (WHERE cardinality(disabled_models) > 0), count(*) FILTER (WHERE model_key_set_at IS NOT NULL), count(*) FILTER (WHERE enabled_providers IS NOT NULL), count(*) FILTER (WHERE known_models IS NOT NULL) FROM agent_environments"`. Pipe any per-row read through `python3 scripts/lib/public_log.py` with `PUBLIC_LOG_KEY` set to `hetzner-prod`'s `kube-system` namespace UID: `~/.kube/config` has no current context, and without the key the hashes are random per run (m573's differ for that reason). Make the REST read with the cookie jar `qa-login.sh` prints on its `logout` line, then run `--logout` on it.
+
+## Unblocked (2026-11-23)
+
+- **Affected:** w10/m592 t005 step 4 and t009.
+- **Source:** verified evidence. Production's pin `9fdf7e0a1171` (`cded300699`, the newest `chore(deploy): pin platform images` on `origin/main`) carries `be26a7c6b2` and `0284e0af2d` (`git merge-base --is-ancestor`), and the running `bex-api` image is that pin's digest. The gate `pin must carry be26a7c6b2` cleared by itself, with no user action.
+- **Next, done the same day:** t005 step 4's read-only production read (above, it held), then t009 closed the milestone.
 
 ## Render parity (t006, Devin, 2026-11-23)
 
