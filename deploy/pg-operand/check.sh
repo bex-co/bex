@@ -47,6 +47,8 @@ sample_memory() {
 }
 
 "$bin/initdb" -D "$data" -U postgres --locale=C -E UTF8 >/dev/null
+# dblink's peer: a non-superuser's dblink must authenticate with a password.
+sed -i '1i local all dblink_peer scram-sha-256' "$data/pg_hba.conf"
 cat >>"$data/postgresql.conf" <<EOF
 listen_addresses = ''
 unix_socket_directories = '/tmp'
@@ -77,16 +79,20 @@ expect() { # want sql
 }
 
 super "CREATE ROLE app LOGIN; CREATE ROLE other LOGIN; CREATE DATABASE appdb OWNER app"
+# The operator makes every owner a pg_monitor member for query insights
+# (insightsMonitorRole), which opens the read-only inspection modules.
+super "GRANT pg_monitor TO app"
+super "SET password_encryption = 'scram-sha-256'; CREATE ROLE dblink_peer LOGIN PASSWORD 'gate-peer'"
 super "GRANT CREATE ON DATABASE appdb TO other"
 as app appdb "GRANT CREATE ON SCHEMA public TO other"
 
 # Property 1: the list is the platform's. The owner cannot widen it.
-refused app appdb "SET extwlist.extensions = 'file_fdw'" "permission denied"
-refused app appdb "ALTER ROLE app SET extwlist.extensions = 'file_fdw'" "permission denied"
-# Every other non-trusted extension keeps Postgres's normal refusal, and so
-# does one the image carries that failed its own gate.
-refused app appdb "CREATE EXTENSION file_fdw" "permission denied"
-refused app appdb "CREATE EXTENSION dblink" "permission denied"
+refused app appdb "SET extwlist.extensions = 'postgres_fdw'" "permission denied"
+refused app appdb "ALTER ROLE app SET extwlist.extensions = 'postgres_fdw'" "permission denied"
+# A non-trusted extension Render does not list keeps Postgres's normal refusal
+# (postgres_fdw is in every major's image), and so does one the image carries
+# that failed its own gate.
+refused app appdb "CREATE EXTENSION postgres_fdw" "permission denied to create extension"
 for ext in ${carried//,/ }; do
   admits "$ext" || refused app appdb "CREATE EXTENSION ${ext}" "permission denied to create extension"
 done
@@ -207,16 +213,74 @@ if has pg_repack; then
   as app appdb "CREATE TABLE repacked (id int PRIMARY KEY, v text);
     INSERT INTO repacked SELECT g, md5(g::text) FROM generate_series(1, 1000) g; DELETE FROM repacked WHERE id % 2 = 0" >/dev/null
   filenode="$(as app appdb "SELECT pg_relation_filenode('repacked')")"
+  checksum="SELECT md5(string_agg(id || v, ',' ORDER BY id)) FROM repacked"
+  rows="$(as app appdb "$checksum")"
+  size="$(as app appdb "SELECT pg_relation_size('repacked')")"
   # A table's owner repacks it with the client's superuser check skipped
-  # (pg_repack 1.5.2+); extwlist/pg_repack/after-create.sql is what lets the
-  # owner do that when the extension belongs to the bootstrap superuser.
+  # (pg_repack 1.5.2+), as Render's guide runs it; extwlist/pg_repack/
+  # after-create.sql is what lets the owner do that when the extension belongs
+  # to the bootstrap superuser.
   out="$("$bin/pg_repack" --no-superuser-check -U app -d appdb --table=public.repacked 2>&1)" || fail "owner pg_repack: $out"
-  expect 500 "SELECT count(*) FROM repacked"
+  expect "$rows" "$checksum"
   [ "$(as app appdb "SELECT pg_relation_filenode('repacked')")" != "$filenode" ] || fail "pg_repack did not rewrite the table: $out"
+  [ "$(as app appdb "SELECT pg_relation_size('repacked') < ${size}")" = t ] || fail "pg_repack left the deleted rows' space: $out"
   # Property 2: the SECURITY DEFINER trigger inserts into a log table the owner
   # created, so it must run as the owner, never as the bootstrap superuser.
   expect app "SELECT proowner::regrole FROM pg_proc WHERE oid = 'repack.repack_trigger()'::regprocedure"
+  # Only a table's owner repacks it. The client reports the refusal and still
+  # exits 0, so the table itself is the evidence.
+  as other appdb "CREATE TABLE others (id int PRIMARY KEY); INSERT INTO others SELECT generate_series(1, 10)" >/dev/null
+  filenode="$(as app appdb "SELECT pg_relation_filenode('others')")"
+  out="$("$bin/pg_repack" --no-superuser-check -U app -d appdb --table=public.others 2>&1 || true)"
+  grep -q 'permission denied for table others' <<<"$out" || fail "repacking another role's table: $out"
+  [ "$(as app appdb "SELECT pg_relation_filenode('others')")" = "$filenode" ] || fail "the database owner repacked another role's table: $out"
+  as other appdb "DROP TABLE others" >/dev/null
 fi
+# Render's untrusted contrib modules keep PostgreSQL's own grants (ADR092 D1):
+# each does its ordinary job for the owner, what PostgreSQL keeps for a
+# superuser stays refused, and none reads a server file or borrows the local
+# trust.
+as app appdb "CREATE TABLE contrib_rows (id int PRIMARY KEY, who text, modified timestamptz NOT NULL DEFAULT 'epoch');
+  INSERT INTO contrib_rows (id) SELECT generate_series(1, 10)" >/dev/null
+has earthdistance && expect 111320 "SELECT round(earth_distance(ll_to_earth(0, 0), ll_to_earth(0, 1)))"
+if has moddatetime; then
+  as app appdb "CREATE TRIGGER contrib_modified BEFORE UPDATE ON contrib_rows FOR EACH ROW EXECUTE PROCEDURE moddatetime(modified);
+    UPDATE contrib_rows SET id = id WHERE id = 1" >/dev/null
+  expect 1 "SELECT count(*) FROM contrib_rows WHERE modified > 'epoch'"
+fi
+if has insert_username; then
+  as app appdb "CREATE TRIGGER contrib_who BEFORE INSERT ON contrib_rows FOR EACH ROW EXECUTE PROCEDURE insert_username(who);
+    INSERT INTO contrib_rows (id) VALUES (11)" >/dev/null
+  expect app "SELECT who FROM contrib_rows WHERE id = 11"
+fi
+has bloom && as app appdb "CREATE INDEX contrib_bloom ON contrib_rows USING bloom (id)" >/dev/null
+has intagg && expect "{1,2,3}" "SELECT int_array_aggregate(g) FROM generate_series(1, 3) g"
+has dict_xsyn && expect "{supernova,sn,sne,1987a}" "CREATE TEXT SEARCH DICTIONARY contrib_xsyn (TEMPLATE = xsyn_template, RULES = 'xsyn_sample');
+  SELECT ts_lexize('contrib_xsyn', 'supernova')"
+has sslinfo && expect f "SELECT ssl_is_used()"
+has pg_prewarm && expect t "SELECT pg_prewarm('contrib_rows') > 0"
+has old_snapshot && expect 0 "SELECT count(*) FROM pg_old_snapshot_time_mapping()"
+if has xml2; then
+  expect x "SELECT xpath_string('<a><b>x</b></a>', '/a/b')"
+  expect 0 "SELECT length(xpath_string('<!DOCTYPE a [<!ENTITY e SYSTEM \"file:///etc/passwd\">]><a>&e;</a>', '/a'))"
+  refused app appdb "SELECT xslt_process('<a/>', '<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\"><xsl:template match=\"/\"><xsl:copy-of select=\"document(''/etc/passwd'')\"/></xsl:template></xsl:stylesheet>')" "failed to apply stylesheet"
+fi
+if has dblink; then
+  expect 1 "SELECT x FROM dblink('host=/tmp dbname=appdb user=dblink_peer password=gate-peer', 'SELECT 1') AS r(x int)"
+  refused app appdb "SELECT dblink_connect('host=/tmp dbname=appdb user=postgres')" "password"
+  refused app appdb "SELECT dblink_connect_u('host=/tmp dbname=appdb user=postgres')" "permission denied for function dblink_connect_u"
+fi
+has file_fdw && refused app appdb "CREATE SERVER contrib_files FOREIGN DATA WRAPPER file_fdw" "permission denied for foreign-data wrapper file_fdw"
+has pageinspect && refused app appdb "SELECT get_raw_page('contrib_rows', 0)" "must be superuser"
+has amcheck && refused app appdb "SELECT bt_index_check('contrib_rows_pkey')" "permission denied for function bt_index_check"
+has pg_surgery && refused app appdb "SELECT heap_force_kill('contrib_rows', ARRAY['(0,1)']::tid[])" "permission denied for function heap_force_kill"
+has adminpack && refused app appdb "SELECT pg_file_write('contrib', 'x', false)" "permission denied for function pg_file_write"
+has pgaudit && refused app appdb "SET pgaudit.log = 'all'" "permission denied to set parameter"
+has pg_buffercache && expect t "SELECT count(*) > 0 FROM pg_buffercache"
+has pg_freespacemap && expect t "SELECT count(*) > 0 FROM pg_freespace('contrib_rows')"
+has pg_visibility && expect t "SELECT count(*) > 0 FROM pg_visibility('contrib_rows')"
+has pgstattuple && expect 11 "SELECT tuple_count FROM pgstattuple('contrib_rows')"
+has pgrowlocks && expect 0 "SELECT count(*) FROM pgrowlocks('contrib_rows')"
 if has timescaledb; then
   as app appdb "CREATE TABLE metrics (at timestamptz NOT NULL, v float8);
     SELECT create_hypertable('metrics', 'at'); INSERT INTO metrics VALUES (now(), 1), (now() - interval '9 days', 2)" >/dev/null
@@ -235,7 +299,7 @@ fi
 # Property 2: no superuser leaks to the owner.
 expect "f|off" "SELECT rolsuper, current_setting('is_superuser') FROM pg_roles WHERE rolname = current_user"
 as app appdb "DO \$check\$ BEGIN BEGIN CREATE EXTENSION postgis; EXCEPTION WHEN duplicate_object THEN NULL; END; IF current_user <> 'app' OR current_setting('is_superuser') <> 'off' THEN RAISE EXCEPTION 'extension exception leaked privileges'; END IF; END \$check\$" >/dev/null
-refused app appdb "CREATE EXTENSION adminpack" "permission denied\|not available\|could not open"
+refused app appdb "CREATE EXTENSION postgres_fdw" "permission denied to create extension"
 # The owner manages the extensions it created.
 as app appdb "ALTER EXTENSION hstore UPDATE" >/dev/null
 
@@ -267,6 +331,17 @@ seed() { # ext db: what a database using only this extension holds
       INSERT INTO repacked SELECT g, md5(g::text) FROM generate_series(1, 100) g" ;;
     timescaledb) as app "$2" "CREATE EXTENSION timescaledb; CREATE TABLE metrics (at timestamptz NOT NULL, v float8);
       SELECT create_hypertable('metrics', 'at'); INSERT INTO metrics VALUES (now(), 1), (now() - interval '9 days', 2)" ;;
+    # Render's untrusted contrib modules: three hold the owner's objects (a
+    # domain column, a trigger, an index); the rest come back as the extension.
+    earthdistance) as app "$2" "CREATE EXTENSION cube; CREATE EXTENSION earthdistance;
+      CREATE TABLE spots (id int, at earth); INSERT INTO spots VALUES (1, ll_to_earth(0, 0))" ;;
+    moddatetime) as app "$2" "CREATE EXTENSION moddatetime; CREATE TABLE notes (id int PRIMARY KEY, modified timestamptz NOT NULL DEFAULT 'epoch');
+      CREATE TRIGGER notes_modified BEFORE UPDATE ON notes FOR EACH ROW EXECUTE PROCEDURE moddatetime(modified); INSERT INTO notes VALUES (1)" ;;
+    bloom) as app "$2" "CREATE EXTENSION bloom; CREATE TABLE bloomed (a int, b int);
+      INSERT INTO bloomed SELECT g, g % 7 FROM generate_series(1, 1000) g; CREATE INDEX bloomed_ab ON bloomed USING bloom (a, b)" ;;
+    adminpack | amcheck | autoinc | dblink | dict_xsyn | file_fdw | insert_username | intagg | old_snapshot | pageinspect | \
+      pg_buffercache | pg_freespacemap | pg_prewarm | pg_surgery | pg_visibility | pgaudit | pgrowlocks | pgstattuple | refint | sslinfo | xml2)
+      as app "$2" "CREATE EXTENSION $1" ;;
     *) echo "no property 5 fixture for ${1}" >&2; return 1 ;;
   esac
 }
@@ -288,6 +363,10 @@ restored() { # ext db: the restore gave the data back, and it still works
       [ "$(as app "$2" "SELECT has_schema_privilege('repack', 'CREATE')")" = t ] ;;
     timescaledb) [ "$(as app "$2" "SELECT count(*) FROM metrics")" = 2 ] && as app "$2" "INSERT INTO metrics VALUES (now(), 3)" &&
       [ "$(as app "$2" "SELECT sum(v) FROM metrics")" = 6 ] ;;
+    earthdistance) [ "$(as app "$2" "SELECT round(earth_distance(at, ll_to_earth(0, 1))) FROM spots")" = 111320 ] ;;
+    moddatetime) as app "$2" "UPDATE notes SET id = id" && [ "$(as app "$2" "SELECT modified > 'epoch' FROM notes")" = t ] ;;
+    bloom) [ "$(as app "$2" "SELECT amname FROM pg_class JOIN pg_am ON pg_am.oid = relam WHERE relname = 'bloomed_ab'")" = bloom ] &&
+      [ "$(as app "$2" "SET enable_seqscan = off; SELECT count(*) FROM bloomed WHERE a = 7 AND b = 0")" = 1 ] ;;
   esac
 }
 owner_restore() { # ext
@@ -299,6 +378,7 @@ owner_restore() { # ext
     pg_restore -U app -d "dst_$1" --no-owner --no-privileges --exit-on-error "$dump/src_$1" &&
     { [ "$1" != timescaledb ] || as app "dst_$1" 'SELECT timescaledb_post_restore()' >/dev/null; } &&
     psql -X -q -v ON_ERROR_STOP=1 -U app -d "dst_$1" -f "$dump/pg_ivm_restore.sql" >/dev/null &&
+    [ "$(as app "dst_$1" "SELECT count(*) FROM pg_extension WHERE extname = '$1'")" = 1 ] &&
     restored "$1" "dst_$1" &&
     [ "$(as app "dst_$1" "SELECT rolsuper FROM pg_roles WHERE rolname = current_user")" = f ]
 }

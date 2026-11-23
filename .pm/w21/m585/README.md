@@ -1,17 +1,17 @@
 # w21 · m585 — Every contrib extension on Render's list can be created by the database owner, and `pg_repack` works for a table's owner
 
-**Worker:** worker21 **Goal:** on each major 13–18 the default user runs `CREATE EXTENSION` for every contrib module Render lists for that major (`dblink`, `earthdistance`, `moddatetime`, `bloom`, `pgaudit` and the rest), admitted by a reload of the allowlist with no restart, and a table's owner repacks it with `pg_repack -k` on 16+. **Status:** todo
+**Worker:** worker21 **Goal:** on each major 13–18 the default user runs `CREATE EXTENSION` for every contrib module Render lists for that major (`dblink`, `earthdistance`, `moddatetime`, `bloom`, `pgaudit` and the rest), admitted by a reload of the allowlist with no restart, and a table's owner repacks it with `pg_repack -k` on 16+. **Status:** todo (t001, t002, t005 and t006 done; t004's gate half done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record a disposition per extension in ADR092: the majors Render lists it on, PostgreSQL's default grants kept, and the `dblink` and `file_fdw` review | 1h | w21/m584/t001 |
-| [t002](t002.md) | The allowlist and the gate: the admitted lists per major, `check.sh`'s refusals of `file_fdw`, `dblink` and `adminpack` turned into creations, and a non-listed untrusted extension still refused | 1h | t001 |
+| [t001](done/t001.md) | Record a disposition per extension in ADR092: the majors Render lists it on, PostgreSQL's default grants kept, and the `dblink` and `file_fdw` review — **DONE** | 1h | w21/m584/t001 |
+| [t002](done/t002.md) | The allowlist and the gate: the admitted lists per major, `check.sh`'s refusals of `file_fdw`, `dblink` and `adminpack` turned into creations, and a non-listed untrusted extension still refused — **DONE** | 1h | t001 |
 | [t003](t003.md) | Reload the allowlist on production and run w8/276's acceptance | 45m | t002, w21/m584/t005 |
 | [t004](t004.md) | `pg_repack -k` as a table's owner on 16+ over the external URL, in the gate and on production | 30m | t003 |
-| [t005](t005.md) | Simplify | 20m | t004 |
-| [t006](t006.md) | Test coverage | 40m | t004 |
+| [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
 ## Definition of done

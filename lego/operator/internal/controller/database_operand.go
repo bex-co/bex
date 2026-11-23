@@ -76,9 +76,33 @@ func admittedExtensions(major int) []string {
 	}
 	list = append(list, "pg_ivm")
 	if major < 16 {
-		return append(list, "pg_similarity")
+		list = append(list, "pg_similarity")
+	} else {
+		list = append(list, "pg_duckdb", "pg_repack")
 	}
-	return append(list, "pg_duckdb", "pg_repack")
+	return append(list, untrustedContribExtensions(major)...)
+}
+
+// untrustedContribExtensions are the modules on Render's list that the base
+// image already carries but PostgreSQL does not mark trusted, on the majors
+// where they exist: pg_surgery from 14, adminpack until 16 and old_snapshot on
+// 14-16 (PostgreSQL 17 removed both). Each is admitted with PostgreSQL's own
+// grants unchanged, so a superuser-only function stays superuser-only (ADR092
+// D1, w21/m585).
+func untrustedContribExtensions(major int) []string {
+	list := []string{"amcheck", "autoinc", "bloom", "dblink", "dict_xsyn", "earthdistance", "file_fdw",
+		"insert_username", "intagg", "moddatetime", "pageinspect", "pg_buffercache", "pg_freespacemap", "pg_prewarm"}
+	if major >= 14 {
+		list = append(list, "pg_surgery")
+	}
+	list = append(list, "pg_visibility", "pgaudit", "pgrowlocks", "pgstattuple", "refint", "sslinfo", "xml2")
+	if major <= 16 {
+		list = append(list, "adminpack")
+	}
+	if major >= 14 && major <= 16 {
+		list = append(list, "old_snapshot")
+	}
+	return list
 }
 
 // pgExtensionPreloadLibraries join pg_stat_statements in

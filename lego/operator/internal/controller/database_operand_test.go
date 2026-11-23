@@ -77,6 +77,40 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 // TestCheckShConfiguresTheProjectedSettings: the publish gate's server must be
 // configured exactly as the operator projects a bex operand cluster, or the
 // gate proves a different allowlist than production runs.
+// TestAllowlistIsRendersUntrustedListPerMajor: the owner may create exactly
+// the untrusted extensions Render lists, on exactly the majors it lists them
+// for (render.com/docs/postgresql-extensions, read 2026-11-23; PostgreSQL 17
+// removed adminpack and old_snapshot), less TimescaleDB, whose own gate fails
+// (ADR092 D1, D3 property 1). Nothing else gets the allowlist path.
+func TestAllowlistIsRendersUntrustedListPerMajor(t *testing.T) {
+	all := [2]int{13, 18}
+	render := map[string][2]int{
+		"postgis": all, "postgis_raster": all, "postgis_topology": all, "postgis_tiger_geocoder": all,
+		"pg_partman": {14, 18}, "pg_ivm": all, "pg_similarity": {13, 15}, "pg_duckdb": {16, 18}, "pg_repack": {16, 18},
+		"amcheck": all, "autoinc": all, "bloom": all, "dblink": all, "dict_xsyn": all, "earthdistance": all,
+		"file_fdw": all, "insert_username": all, "intagg": all, "moddatetime": all, "pageinspect": all,
+		"pg_buffercache": all, "pg_freespacemap": all, "pg_prewarm": all, "pg_surgery": {14, 18}, "pg_visibility": all,
+		"pgaudit": all, "pgrowlocks": all, "pgstattuple": all, "refint": all, "sslinfo": all, "xml2": all,
+		"adminpack": {13, 16}, "old_snapshot": {14, 16}, "timescaledb": all,
+	}
+	for _, version := range permittedPostgresVersions(t) {
+		major, _ := strconv.Atoi(version)
+		list := pgExtensionAllowlist[version]
+		for name, majors := range render {
+			// TimescaleDB is on Render's list, but its own owner restore fails.
+			want := majors[0] <= major && major <= majors[1] && name != "timescaledb"
+			if slices.Contains(list, name) != want {
+				t.Errorf("PG%s: %s admitted = %t, want %t (Render lists it on %d-%d)", version, name, !want, want, majors[0], majors[1])
+			}
+		}
+		for _, name := range list {
+			if _, listed := render[name]; !listed {
+				t.Errorf("PG%s: admits %s, which Render does not list as an untrusted extension", version, name)
+			}
+		}
+	}
+}
+
 func TestCheckShConfiguresTheProjectedSettings(t *testing.T) {
 	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
 	for _, version := range permittedPostgresVersions(t) {
@@ -191,7 +225,7 @@ func clusterPostgresql(t *testing.T, version string, tenant map[string]string) (
 func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 	tenant := map[string]string{
 		"work_mem":                "8MB",
-		"extwlist.extensions":     "file_fdw",
+		"extwlist.extensions":     "postgres_fdw",
 		"local_preload_libraries": "",
 		"timescaledb.license":     "timescale",
 	}
@@ -212,8 +246,11 @@ func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 		t.Errorf("shared_preload_libraries = %v, want pg_stat_statements + timescaledb, pg_ivm, pg_duckdb, pgaudit (no pg_partman_bgw)", preload)
 	}
 	want := map[string]any{
-		"local_preload_libraries":             "pgextwlist",
-		"extwlist.extensions":                 "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,pg_repack",
+		"local_preload_libraries": "pgextwlist",
+		"extwlist.extensions": "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,pg_repack," +
+			"amcheck,autoinc,bloom,dblink,dict_xsyn,earthdistance,file_fdw,insert_username,intagg,moddatetime,pageinspect," +
+			"pg_buffercache,pg_freespacemap,pg_prewarm,pg_surgery,pg_visibility,pgaudit,pgrowlocks,pgstattuple,refint,sslinfo,xml2," +
+			"adminpack,old_snapshot",
 		"extwlist.restrict_to_database_owner": "on",
 		"extwlist.custom_path":                "/usr/share/bex/extwlist",
 		"timescaledb.license":                 "apache",
@@ -262,7 +299,7 @@ func TestOperandGuardsDirectParametersAndBoundsDuckDB(t *testing.T) {
 				version = "18"
 			}
 			_, _, params := clusterPostgresql(t, version, map[string]string{
-				" ExTwLiSt.extensions ": "file_fdw", "DuckDB.memory_limit": "9999",
+				" ExTwLiSt.extensions ": "postgres_fdw", "DuckDB.memory_limit": "9999",
 				"session_preload_libraries": "unsafe", "work_mem": "8MB",
 			})
 			for _, key := range []string{" ExTwLiSt.extensions ", "DuckDB.memory_limit", "session_preload_libraries"} {
@@ -313,7 +350,7 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 			// A tenant's own parameter override rides along, as it would in
 			// production, and cannot widen the list.
 			namespace, asOwner := startCNPGDatabase(t, cl, kubeconfig, "bex-operand-it", major, "geo_prod", "geo_app",
-				map[string]string{"extwlist.extensions": "file_fdw", "work_mem": "8MB"})
+				map[string]string{"extwlist.extensions": "postgres_fdw", "work_mem": "8MB"})
 			if out, err := asOwner("SELECT current_setting('server_version_num')"); err != nil || out != operandServerVersionNumber(t, major) {
 				t.Fatalf("actual PG%s server patch differs from reviewed base: %v %s", major, err, out)
 			}
@@ -369,12 +406,30 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 			}
 			verifyCNPGOwnerExportRestore(t, cl, kubeconfig, namespace, timescale)
 
-			for _, refused := range []string{"CREATE EXTENSION file_fdw", "CREATE EXTENSION dblink", "SET extwlist.extensions = 'file_fdw'"} {
+			ownerContribOnCNPG(t, asOwner)
+			for _, refused := range []string{"CREATE EXTENSION postgres_fdw", "SET extwlist.extensions = 'postgres_fdw'"} {
 				if out, err := asOwner(refused); err == nil || !strings.Contains(out, "permission denied") {
 					t.Errorf("%s = %v %q, want permission denied", refused, err, out)
 				}
 			}
 		})
+	}
+}
+
+// ownerContribOnCNPG: Render's untrusted contrib modules, created by the
+// owner as Render's guide writes them, leave the owner a non-superuser.
+func ownerContribOnCNPG(t *testing.T, asOwner func(string) (string, error)) {
+	t.Helper()
+	for _, step := range []struct{ sql, want string }{
+		{"CREATE EXTENSION cube; CREATE EXTENSION earthdistance; SELECT round(earth_distance(ll_to_earth(0,0), ll_to_earth(0,1)))", "111320"},
+		{"CREATE EXTENSION moddatetime; CREATE TABLE notes (id int, modified timestamptz NOT NULL DEFAULT 'epoch');" +
+			" CREATE TRIGGER notes_modified BEFORE UPDATE ON notes FOR EACH ROW EXECUTE PROCEDURE moddatetime(modified);" +
+			" INSERT INTO notes VALUES (1); UPDATE notes SET id = 2; SELECT modified > 'epoch' FROM notes", "t"},
+		{"CREATE EXTENSION dblink; CREATE EXTENSION bloom; CREATE EXTENSION pgaudit; SELECT rolsuper FROM pg_roles WHERE rolname = current_user", "f"},
+	} {
+		if out, err := asOwner(step.sql); err != nil || !strings.HasSuffix(out, step.want) {
+			t.Fatalf("%s = %v %q, want suffix %q", step.sql, err, out, step.want)
+		}
 	}
 }
 
