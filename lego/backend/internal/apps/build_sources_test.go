@@ -1005,3 +1005,59 @@ func TestBuildSourceListNameFilterParsing(t *testing.T) {
 		}
 	}
 }
+
+// w5/m581 t001: DELETE /v1/build-sources/{buildSourceId} answers HTTP 204 with
+// an empty body and no Content-Type header (never core.HandleJSON's `null\n`).
+func TestDeleteBuildSourceRESTNoContent(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	created, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/v1/build-sources/"+created.ID, nil).WithContext(ctx)
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("DELETE /v1/build-sources/%s = %d %q, want 204", created.ID, rec.Code, rec.Body.String())
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("204 body = %q, want empty", rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "" {
+		t.Errorf("204 Content-Type = %q, want empty", ct)
+	}
+}
+
+// w5/m581 t002: POST /v1/build-sources and PATCH /v1/build-sources/{id} decode
+// through core.DecodeBody so malformed JSON or unknown fields return HTTP 400
+// rather than an unwrapped 500 internal_error.
+func TestBuildSourceRESTRejectsBadJSONWith400(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	created, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	strictCtx := core.WithStrictJSONDecoding(ctx)
+	for _, tc := range []struct {
+		method, path, body string
+	}{
+		{http.MethodPost, "/v1/build-sources", `{"ownerId":"tea-a","name":"x","unknownField":1}`},
+		{http.MethodPost, "/v1/build-sources", `{not json`},
+		{http.MethodPatch, "/v1/build-sources/" + created.ID, `{"unknownField":1}`},
+		{http.MethodPatch, "/v1/build-sources/" + created.ID, `{not json`},
+	} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)).WithContext(strictCtx)
+		req.Header.Set("Content-Type", "application/json")
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s %s (%s) = %d %s, want 400", tc.method, tc.path, tc.body, rec.Code, rec.Body.String())
+		}
+	}
+}

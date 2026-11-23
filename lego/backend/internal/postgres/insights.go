@@ -623,8 +623,11 @@ func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Data
 	if err != nil {
 		return QueryResult{}, err
 	}
-	return runReadOnlyQuery(ctx, uri, tagInsight(sql), queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap,
-		serverSettings: serverSettings})
+	lim := queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap, serverSettings: serverSettings}
+	if s.queryExecutor != nil {
+		return s.queryExecutor(ctx, uri, tagInsight(sql), lim, true)
+	}
+	return runReadOnlyQuery(ctx, uri, tagInsight(sql), lim)
 }
 
 // databaseURI is the connection string an insight dials as the owner.

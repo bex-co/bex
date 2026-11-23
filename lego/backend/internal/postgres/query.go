@@ -121,6 +121,19 @@ type queryLimits struct {
 
 type queryExecutor func(context.Context, string, string, queryLimits, bool) (QueryResult, error)
 
+// SetQueryExecutorForTest replaces the SQL transport seam for cross-package
+// tests (such as internal/api conformance checks) that exercise Insights
+// without dialing a live Postgres server.
+func (s *Service) SetQueryExecutorForTest(fn func(ctx context.Context, uri, sql string, readOnly bool) (QueryResult, error)) {
+	if fn == nil {
+		s.queryExecutor = nil
+		return
+	}
+	s.queryExecutor = func(ctx context.Context, uri, sql string, _ queryLimits, readOnly bool) (QueryResult, error) {
+		return fn(ctx, uri, sql, readOnly)
+	}
+}
+
 // Query runs a single read-only SQL statement against a managed database and
 // returns its columns and rows, under Render's limits (query_render_postgres,
 // its one caller). It connects over CNPG's internal URI (bex-api runs

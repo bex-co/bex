@@ -827,8 +827,8 @@ type buildSourceWithCursor struct {
 
 func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/build-sources", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
-		var req CreateBuildSourceRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
+		req, err := core.DecodeBody[CreateBuildSourceRequest](r)
+		if err != nil {
 			return nil, err
 		}
 		return s.CreateBuildSource(r.Context(), req)
@@ -852,14 +852,14 @@ func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 		return s.GetBuildSource(r.Context(), r.PathValue("buildSourceId"))
 	}))
 	mux.HandleFunc("PATCH /v1/build-sources/{buildSourceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		var req UpdateBuildSourceRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
+		req, err := core.DecodeBody[UpdateBuildSourceRequest](r)
+		if err != nil {
 			return nil, err
 		}
 		return s.UpdateBuildSource(r.Context(), r.PathValue("buildSourceId"), req)
 	}))
-	mux.HandleFunc("DELETE /v1/build-sources/{buildSourceId}", core.HandleJSON(http.StatusNoContent, func(r *http.Request) (any, error) {
-		return nil, s.DeleteBuildSource(r.Context(), r.PathValue("buildSourceId"))
+	mux.HandleFunc("DELETE /v1/build-sources/{buildSourceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteBuildSource(r.Context(), r.PathValue("buildSourceId"))
 	}))
 }
 

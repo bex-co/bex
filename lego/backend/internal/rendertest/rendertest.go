@@ -196,16 +196,66 @@ func Validate(route *routers.Route, status int, header http.Header, body []byte)
 	if err := openapi3filter.ValidateResponse(context.Background(), input); err != nil {
 		found = violations(err)
 	}
+	if status == http.StatusNoContent {
+		if len(body) > 0 {
+			found = append(found, fmt.Sprintf("status 204: must not carry a body (%d bytes)", len(body)))
+		}
+		if ct := header.Get("Content-Type"); ct != "" {
+			found = append(found, fmt.Sprintf("status 204: must not set Content-Type (%q)", ct))
+		}
+		return found
+	}
 	if !documentsBody(responses, status) {
 		// Render documents no body here (a 202 lifecycle verb), so whatever
 		// bex sends beyond it is an extension, not a service to check.
 		return found
 	}
+	found = dropUndefinedMetricValueUnit(route, status, found)
 	var root any
 	if json.Unmarshal(body, &root) != nil {
 		return found
 	}
 	return checkEventDetails(route.Spec, root, checkServiceDetails(route.Spec, root, found))
+}
+
+// dropUndefinedMetricValueUnit removes the false-positive violation caused by
+// a typo in Render's pinned /metrics/cpu time-series schema (shared by all 14
+// /metrics/* time-series endpoints): values.items.required lists "unit" even
+// though values.items.properties defines only "timestamp" and "value" ("unit"
+// belongs on the parent series object, as confirmed by Render's own
+// TimeSeriesValue struct in render-mcp-results.json). It only fires while the
+// schema itself still lacks a "unit" property on values.items.
+func dropUndefinedMetricValueUnit(route *routers.Route, status int, found []string) []string {
+	if len(found) == 0 || status != http.StatusOK || !hasUndefinedMetricValueUnit(route) {
+		return found
+	}
+	return slices.DeleteFunc(found, func(v string) bool {
+		return strings.HasSuffix(v, `/unit: property "unit" is missing`) && strings.Contains(v, "/values/")
+	})
+}
+
+func hasUndefinedMetricValueUnit(route *routers.Route) bool {
+	if route == nil || route.Operation == nil || route.Operation.Responses == nil {
+		return false
+	}
+	ref := route.Operation.Responses.Status(http.StatusOK)
+	if ref == nil || ref.Value == nil {
+		return false
+	}
+	media := ref.Value.Content.Get("application/json")
+	if media == nil || media.Schema == nil || media.Schema.Value == nil {
+		return false
+	}
+	items := media.Schema.Value.Items
+	if items == nil || items.Value == nil {
+		return false
+	}
+	vals := items.Value.Properties["values"]
+	if vals == nil || vals.Value == nil || vals.Value.Items == nil || vals.Value.Items.Value == nil {
+		return false
+	}
+	pt := vals.Value.Items.Value
+	return pt.Properties["unit"] == nil && slices.Contains(pt.Required, "unit")
 }
 
 // documentsBody reports whether status's documented response has a schema.
@@ -464,6 +514,36 @@ func violations(err error) []string {
 	return []string{err.Error()}
 }
 
+var (
+	validatedMu       sync.Mutex
+	validatedStatuses = map[string]map[int]bool{}
+)
+
+func recordValidated(opID string, status int) {
+	if opID == "" {
+		return
+	}
+	validatedMu.Lock()
+	defer validatedMu.Unlock()
+	if validatedStatuses[opID] == nil {
+		validatedStatuses[opID] = map[int]bool{}
+	}
+	validatedStatuses[opID][status] = true
+}
+
+// ValidatedStatuses returns a snapshot of every Render operationId whose
+// response passed validation through Wrap in this test binary, mapped to the
+// HTTP status codes observed.
+func ValidatedStatuses() map[string]map[int]bool {
+	validatedMu.Lock()
+	defer validatedMu.Unlock()
+	out := make(map[string]map[int]bool, len(validatedStatuses))
+	for op, statuses := range validatedStatuses {
+		out[op] = maps.Clone(statuses)
+	}
+	return out
+}
+
 // Wrap serves next and validates every response to a request that match
 // names as a Render operation, failing t (with the operation, status and JSON
 // pointer) for each violation the Allowlist does not excuse. Other requests
@@ -490,7 +570,9 @@ func Wrap(t testing.TB, next http.Handler, match Matcher, unconfigured ...Source
 			t.Errorf("Render response conformance: %s %s => %d (operationId=%s)\n"+
 				"Fix the response to match the pinned Render schema (rendertest.Allowlist only shrinks).\n  %s",
 				r.Method, r.URL.Path, status, opID, strings.Join(errs, "\n  "))
+			return
 		}
+		recordValidated(opID, status)
 	})
 }
 

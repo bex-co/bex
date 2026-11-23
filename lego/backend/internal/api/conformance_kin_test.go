@@ -76,11 +76,19 @@ func (rs *renderSpec) validate(operationID string, body []byte) []string {
 // 201 response object, not the 200 one, so a plain validate() would report the
 // operation as having no resolvable response.
 func (rs *renderSpec) validateStatus(operationID string, status int, body []byte) []string {
+	var header http.Header
+	if status != http.StatusNoContent {
+		header = http.Header{"Content-Type": {"application/json"}}
+	}
+	return rs.validateWithHeader(operationID, status, header, body)
+}
+
+func (rs *renderSpec) validateWithHeader(operationID string, status int, header http.Header, body []byte) []string {
 	route, ok := rs.routes[operationID]
 	if !ok {
 		return []string{fmt.Sprintf("unknown operationId %q in pinned spec", operationID)}
 	}
-	return rendertest.Validate(route, status, http.Header{"Content-Type": {"application/json"}}, body)
+	return rendertest.Validate(route, status, header, body)
 }
 
 // validatingRenderResponses wraps a composed bex-api handler so every response

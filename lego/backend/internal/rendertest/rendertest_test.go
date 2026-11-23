@@ -216,6 +216,39 @@ func TestValidateSelectsTheServiceDetailsMember(t *testing.T) {
 	}
 }
 
+func TestValidateNoContent(t *testing.T) {
+	route := Load(t).Operation("delete-build-source")
+	if route == nil {
+		t.Fatal("pinned spec lost delete-build-source")
+	}
+	for _, tc := range []struct {
+		name   string
+		header http.Header
+		body   []byte
+		want   []string
+	}{
+		{"empty body and no content-type conforms", nil, nil, nil},
+		{"non-empty body fails", nil, []byte("null\n"), []string{"status 204: must not carry a body"}},
+		{"content-type header fails", jsonHeader, nil, []string{"status 204: must not set Content-Type"}},
+		{"both body and content-type fail", jsonHeader, []byte("null\n"), []string{"status 204: must not carry a body", "status 204: must not set Content-Type"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Validate(route, http.StatusNoContent, tc.header, tc.body)
+			if len(tc.want) == 0 {
+				if len(got) != 0 {
+					t.Fatalf("violations = %q, want none", got)
+				}
+				return
+			}
+			for _, w := range tc.want {
+				if !slices.ContainsFunc(got, func(v string) bool { return strings.Contains(v, w) }) {
+					t.Errorf("violations = %q, want one containing %q", got, w)
+				}
+			}
+		})
+	}
+}
+
 // Each event's details are checked against the member its type names, with
 // the type named last; a bex-named type is left to its enum violation, and
 // empty details no longer fail as matching several members (w3/m302).
@@ -308,6 +341,62 @@ func TestWrap(t *testing.T) {
 			t.Fatalf("errors = %q, want the allowlisted event type excused", rec.errors)
 		}
 	})
+}
+
+func TestValidateDropsUndefinedMetricValueUnit(t *testing.T) {
+	route := Load(t).Operation("get-disk-capacity")
+	if route == nil {
+		t.Fatal("pinned spec lost get-disk-capacity")
+	}
+	// Render's pinned spec lists `unit` in values.items.required without
+	// defining a `unit` property on values.items (`unit` lives on the parent
+	// series). A datapoint carrying {timestamp, value} conforms.
+	valid := []byte(`[{"unit":"bytes","labels":[{"field":"resource","value":"dpg-1"}],"values":[{"timestamp":"2026-06-01T12:00:00Z","value":1024}]}]`)
+	if got := Validate(route, http.StatusOK, jsonHeader, valid); len(got) != 0 {
+		t.Fatalf("conforming metric datapoint reported %q, want none", got)
+	}
+	// Real datapoint defects are still caught.
+	missingVal := []byte(`[{"unit":"bytes","labels":[{"field":"resource","value":"dpg-1"}],"values":[{"timestamp":"2026-06-01T12:00:00Z"}]}]`)
+	got := Validate(route, http.StatusOK, jsonHeader, missingVal)
+	if !slices.ContainsFunc(got, func(v string) bool { return strings.Contains(v, `/0/values/0/value: property "value" is missing`) }) {
+		t.Fatalf("missing datapoint value reported %q, want /0/values/0/value missing", got)
+	}
+}
+
+func TestWrapRecordsValidatedStatuses(t *testing.T) {
+	c := Load(t)
+	serve := func(status int, body string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			if status != http.StatusNoContent {
+				w.Header().Set("Content-Type", "application/json")
+			}
+			w.WriteHeader(status)
+			if body != "" {
+				_, _ = w.Write([]byte(body))
+			}
+		})
+	}
+	// A failing validation is NOT recorded.
+	failRec := &recordingTB{TB: t}
+	Wrap(failRec, serve(http.StatusNoContent, "null\n"), c.Route).ServeHTTP(
+		httptest.NewRecorder(), httptest.NewRequest(http.MethodDelete, "/v1/build-sources/bds-1", nil))
+	if len(failRec.errors) == 0 {
+		t.Fatal("204 with body did not fail Wrap")
+	}
+	if ValidatedStatuses()["delete-build-source"][http.StatusNoContent] {
+		t.Fatal("failed validation was recorded in ValidatedStatuses")
+	}
+
+	// A passing validation IS recorded.
+	passRec := &recordingTB{TB: t}
+	Wrap(passRec, serve(http.StatusNoContent, ""), c.Route).ServeHTTP(
+		httptest.NewRecorder(), httptest.NewRequest(http.MethodDelete, "/v1/build-sources/bds-1", nil))
+	if len(passRec.errors) != 0 {
+		t.Fatalf("clean 204 failed Wrap: %q", passRec.errors)
+	}
+	if !ValidatedStatuses()["delete-build-source"][http.StatusNoContent] {
+		t.Fatal("passing validation was not recorded in ValidatedStatuses")
+	}
 }
 
 func TestMuxMatcher(t *testing.T) {

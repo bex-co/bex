@@ -46,11 +46,20 @@ func RunSuite(m *testing.M, suite string) int {
 	return 0
 }
 
-func fullRun() bool {
+// FullPackageRun reports whether this test binary is executing the whole
+// package without -run or -skip filtering.
+func FullPackageRun() bool {
 	for _, name := range []string{"test.run", "test.skip"} {
 		if f := flag.Lookup(name); f != nil && f.Value.String() != "" {
 			return false
 		}
+	}
+	return true
+}
+
+func fullRun() bool {
+	if !FullPackageRun() {
+		return false
 	}
 	return os.Getenv(testenv.RequireEnv) == "1" || os.Getenv("BEX_TEST_DB_URI") != ""
 }
