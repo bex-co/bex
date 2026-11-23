@@ -438,23 +438,26 @@ func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
 		"\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
 
 	withEachAwk(t, func(t *testing.T) {
+		const now = 1000.0
 		cases := []struct {
 			name             string
-			ago              float64
+			now, ago         float64
 			comp             string
 			minUpload, maxUp float64
 			wantComp         string
 		}{
-			// Render's tretta shape: 12.3s total with 2.4s compression -> Uploaded in ~9.9s. Compression took 2.4s.
-			{name: "measured", ago: 12.3, comp: "2.4\n", minUpload: 9.5, maxUp: 13.0, wantComp: "2.4"},
+			// Render's tretta shape: 12.3s total with 2.4s compression -> Uploaded in 9.9s. Compression took 2.4s.
+			{name: "measured", now: now, ago: 12.3, comp: "2.4\n", minUpload: 9.8, maxUp: 10.0, wantComp: "2.4"},
 			// Zero compression (all layers cached: `#24 exporting layers done`) still reports 0.0s.
-			{name: "zero_compression", ago: 400.2, comp: "0\n", minUpload: 399.5, maxUp: 405.0, wantComp: "0.0"},
+			{name: "zero_compression", now: now, ago: 400.2, comp: "0\n", minUpload: 400.1, maxUp: 400.3, wantComp: "0.0"},
 			// Compression exceeding elapsed total clamps upload to 0.0s (never negative or -0.0s).
-			{name: "clamped", ago: 12.3, comp: "50.0\n", minUpload: 0.0, maxUp: 0.0, wantComp: "50.0"},
+			{name: "clamped", now: now, ago: 12.3, comp: "50.0\n", minUpload: 0.0, maxUp: 0.0, wantComp: "50.0"},
+			// Freshly booted host with small /proc/uptime still computes upload + compression cleanly.
+			{name: "short_uptime", now: 45.0, ago: 12.3, comp: "2.4\n", minUpload: 9.8, maxUp: 10.0, wantComp: "2.4"},
 		}
 		for _, tc := range cases {
-			stamp := fmt.Sprintf("%.2f\n", monotonicNow(t)-tc.ago)
-			log, err := runNativePush(t, writeUploadFiles(t, stamp, &tc.comp), 0)
+			stamp := fmt.Sprintf("%.2f\n", tc.now-tc.ago)
+			log, err := runNativePushAt(t, writeUploadFiles(t, stamp, &tc.comp), 0, tc.now)
 			m := uploadedWithComp.FindStringSubmatch(log)
 			if err != nil || m == nil {
 				t.Fatalf("%s: err %v, log %q; want Render's Uploaded + Compression line and the verdict", tc.name, err, log)
@@ -466,9 +469,9 @@ func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
 		}
 
 		// Refused push prints no Uploading build..., no Uploaded in, and ends with Uploading build failed.
-		fourHundredAgo := fmt.Sprintf("%.2f\n", monotonicNow(t)-400.2)
+		fourHundredAgo := fmt.Sprintf("%.2f\n", now-400.2)
 		comp := "2.4\n"
-		log, err := runNativePush(t, writeUploadFiles(t, fourHundredAgo, &comp), 1)
+		log, err := runNativePushAt(t, writeUploadFiles(t, fourHundredAgo, &comp), 1, now)
 		if err == nil || strings.Contains(log, "Uploading build...") || strings.Contains(log, "Uploaded in") || !strings.HasSuffix(log, "==> Uploading build failed\n") {
 			t.Errorf("refused: err %v, log %q; want the failure alone", err, log)
 		}
@@ -484,21 +487,22 @@ func TestNativeBuildPushFallbackWithoutCompressionOrMoment(t *testing.T) {
 		"\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
 
 	withEachAwk(t, func(t *testing.T) {
-		fourHundredAgo := fmt.Sprintf("%.2f\n", monotonicNow(t)-400.2)
+		const now = 1000.0
+		fourHundredAgo := fmt.Sprintf("%.2f\n", now-400.2)
 		for _, badComp := range []*string{nil, new(""), new("\n"), new("soon\n"), new("12a\n"), new("$(echo 1)\n")} {
-			log, err := runNativePush(t, writeUploadFiles(t, fourHundredAgo, badComp), 0)
+			log, err := runNativePushAt(t, writeUploadFiles(t, fourHundredAgo, badComp), 0, now)
 			m := uploadedOnly.FindStringSubmatch(log)
 			if err != nil || m == nil {
 				t.Fatalf("badComp %v: err %v, log %q; want fallback Uploaded in N.Ns without Compression took", badComp, err, log)
 			}
-			if u, _ := strconv.ParseFloat(m[1], 64); u < 399.5 || u > 405.0 {
+			if u, _ := strconv.ParseFloat(m[1], 64); u < 400.1 || u > 400.3 {
 				t.Errorf("badComp %v: Uploaded in %ss, want ~400.2s", badComp, m[1])
 			}
 		}
 
 		comp := "2.4\n"
 		for _, stamp := range []string{"", "\n", "soon\n", "12a\n", "$(echo 1)\n"} {
-			log, err := runNativePush(t, writeUploadFiles(t, stamp, &comp), 0)
+			log, err := runNativePushAt(t, writeUploadFiles(t, stamp, &comp), 0, now)
 			rest, ok := strings.CutPrefix(log, rendersRuntimeLine("Uploading build...")+"\n")
 			m := uploadedOnly.FindStringSubmatch(rest)
 			if err != nil || !ok || m == nil {
@@ -545,6 +549,23 @@ func TestANativeBuildSaysUploadingOnce(t *testing.T) {
 // skopeoRegistryRefusal's records when code is not 0, and exits code.
 func runNativePush(t *testing.T, output string, code int) (string, error) {
 	t.Helper()
+	return runNativePushWithUptime(t, output, code, "")
+}
+
+// runNativePushAt is runNativePush with a synthetic /proc/uptime file fixed at
+// uptimeSeconds, so tests with large elapsed windows (e.g. 400.2s) do not
+// subtract past zero on freshly booted CI VMs whose uptime is under 400s.
+func runNativePushAt(t *testing.T, output string, code int, uptimeSeconds float64) (string, error) {
+	t.Helper()
+	uptimeFile := filepath.Join(t.TempDir(), "uptime")
+	if err := os.WriteFile(uptimeFile, []byte(fmt.Sprintf("%.2f %.2f\n", uptimeSeconds, uptimeSeconds)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return runNativePushWithUptime(t, output, code, uptimeFile)
+}
+
+func runNativePushWithUptime(t *testing.T, output string, code int, uptimeFile string) (string, error) {
+	t.Helper()
 	o := nativeLogOptions("npm install")
 	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
 	push := cachePhaseIn(&spec, pushContainer)
@@ -560,6 +581,9 @@ func runNativePush(t *testing.T, output string, code int) (string, error) {
 		t.Fatal(err)
 	}
 	script := strings.ReplaceAll(push.Command[2], outputMount+"/", output+"/")
+	if uptimeFile != "" {
+		script = strings.ReplaceAll(script, "/proc/uptime", uptimeFile)
+	}
 	cmd := exec.Command("sh", append([]string{"-c", script, pushContainer}, push.Args...)...)
 	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
