@@ -77,5 +77,6 @@ The 2025-08-27 changelog entry ("Suspend and resume services in bulk from the Re
 
 - Both lists share one selection (`useResourceSelection`) and one toolbar (`BulkResourceToolbar`).
 - The Overview's ungrouped list moves its selection into any of the workspace's environments, listed as `<project> / <environment>`.
+- Move is disabled for a role without `can_create` (a Viewer), with the role's reason, as Render disables it without `moveResource`. bex-api refuses that role's placement write.
 - The toolbar offers Resume and Suspend under Render's rules: when they show, the kinds they act on, the modals' copy, Render's typed phrase on Suspend, one call per resource with 10 at a time, per-row states and Retry, and **This action is limited to admins.** for a non-Admin in a protected environment.
 - What bex builds differently is recorded in [ADR018](../ADR018-render-parity.md)'s Suspend / Resume row.

@@ -16,6 +16,7 @@ import {
 } from "@/features/projects/types";
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
+import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { Capabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 
@@ -146,6 +147,33 @@ function Harness({
           <li key={row.id}>{row.name}</li>
         ))}
       </ul>
+    </>
+  );
+}
+
+const staging = {
+  id: "evm-staging",
+  projectId: "prj-test",
+  name: "staging",
+  protectedStatus: "unprotected",
+} as EnvironmentView;
+
+/** The Overview's shape: a selection that may move into another environment. */
+function MoveHarness({ rows }: { rows: ResourceRow[] }) {
+  const selection = useResourceSelection(rows);
+  return (
+    <>
+      <BulkResourceToolbar
+        selection={selection}
+        moveTargets={[{ environment: staging, label: "project / staging" }]}
+      />
+      <button
+        onClick={() =>
+          selection.setSelected(new Set(rows.map(resourceSelectionKey)))
+        }
+      >
+        select all
+      </button>
     </>
   );
 }
@@ -325,6 +353,34 @@ describe("BulkResourceToolbar Suspend and Resume (w4/m550)", () => {
     await selectAll([web, worker]);
     expect(screen.getByRole("button", { name: "Suspend" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Resume" })).toBeDisabled();
+  });
+
+  // bex-api refuses a Viewer's placement write (can_create), and Render
+  // disables Move without its moveResource permission: the picker and Move
+  // stay disabled with the role's reason, rather than answering "Forbidden"
+  // after the click (the m550 dev-4 replay, on the Overview's ungrouped list).
+  it.each([
+    ["a Viewer", VIEWER, true],
+    ["a Developer", DEVELOPER, false],
+  ])("gates Move on the role for %s", async (_label, caps, blocked) => {
+    capabilities.current = caps;
+    const user = userEvent.setup();
+    render(<MoveHarness rows={[web]} />);
+    await user.click(screen.getByRole("button", { name: "select all" }));
+    const picker = screen.getByRole("combobox", {
+      name: "Move selected resources to environment",
+    });
+    const move = screen.getByRole("button", { name: "Move" });
+    if (blocked) {
+      expect(picker).toBeDisabled();
+      expect(move).toBeDisabled();
+      await user.hover(move.parentElement!);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Your role can’t make this change. Ask a workspace admin.",
+      );
+    } else {
+      expect(picker).toBeEnabled();
+    }
   });
 
   it("asks an Admin in a protected environment once, for the whole selection", async () => {

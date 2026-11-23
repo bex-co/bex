@@ -65,6 +65,11 @@ export function BulkResourceToolbar({
   } | null>(null);
   const moving = bulkMove.movingTo(moveTargetId);
   const count = selection.selected.size;
+  // bex-api gates placement on can_create, and Render disables Move without
+  // moveResource: a Viewer reads the role's reason, never a 403 after a click.
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const moveBlocked =
+    (createReasonKey ? t(createReasonKey) : undefined) ?? moveReason;
 
   const lifecycleSelection = lifecycleTargets(selection.selectedRows);
   const toResume = targetsFor("resume", lifecycleSelection);
@@ -110,7 +115,7 @@ export function BulkResourceToolbar({
             className="w-48"
             aria-label={t("projects.moveTargetLabel")}
             disabled={
-              moveTargets.length === 0 || moving || moveReason !== undefined
+              moveTargets.length === 0 || moving || moveBlocked !== undefined
             }
           >
             <SelectValue placeholder={t("projects.moveTargetPlaceholder")} />
@@ -135,12 +140,15 @@ export function BulkResourceToolbar({
             )}
           </SelectContent>
         </Select>
-        <PermissionTooltip reason={moveReason}>
+        <PermissionTooltip reason={moveBlocked}>
           <Button
             variant="outline"
             size="sm"
             disabled={
-              count === 0 || !moveTargetId || moving || moveReason !== undefined
+              count === 0 ||
+              !moveTargetId ||
+              moving ||
+              moveBlocked !== undefined
             }
             onClick={() => void bulkMove.move(moveTargetId)}
           >
