@@ -1,6 +1,6 @@
 # w21 · m606 — An owner's `pgaudit` survives a restart: CloudNativePG leaves an extension whose library the cluster preloads, from a bex build until upstream releases it
 
-**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** in progress (t001, t002 and t005 done)
+**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** in progress (t001, t002, t005 and t007 done)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](t004.md) | Adopt the patched image: `cnpg-operator.yaml`, `gitops-validate.sh`, the qualification pin, mock-cluster and dev-env, ADR092 and ADR018 | 45m | t003 |
 | [t005](done/t005.md) | Ready the patch for upstream: an issue text and a PR branch on a `bex-co` fork of `cloudnative-pg`, and an inbox note for the user's DCO sign-off — **DONE** | 30m | t001 |
 | [t006](t006.md) | Production: an owner's `pgaudit` survives a primary restart on a new Free database (disposable), and another new database still creates it | 45m | t004 |
-| [t007](t007.md) | Simplify | 20m | t006 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](t008.md) | Test coverage | 40m | t006 |
 | [t009](t009.md) | Closeout | 10m | t005, t007, t008 |
 

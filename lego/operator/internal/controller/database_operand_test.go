@@ -462,15 +462,7 @@ func ownerPgauditAcrossRestartOnCNPG(t *testing.T, cl client.Client, kubeconfig,
 	}
 	waitFor(t, 5*time.Minute, "a new pg-1 to be ready", func() bool {
 		var current corev1.Pod
-		if err := cl.Get(ctx, key, &current); err != nil || current.UID == before {
-			return false
-		}
-		for _, condition := range current.Status.Conditions {
-			if condition.Type == corev1.PodReady {
-				return condition.Status == corev1.ConditionTrue
-			}
-		}
-		return false
+		return cl.Get(ctx, key, &current) == nil && current.UID != before && podReady(&current)
 	})
 	waitFor(t, 3*time.Minute, "the instance manager's extension pass after the restart", func() bool {
 		out, err := superuser(dbname, "SELECT count(*) FROM pg_extension WHERE extname = 'pg_stat_statements'")
