@@ -212,6 +212,7 @@
     "newModels": [
       "anthropic/claude-opus-5.5"
     ],
+    "allowAllModels": false,
     "enabledProviders": null,
     "modelSource": "platform",
     "modelKeySet": false,

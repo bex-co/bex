@@ -31,7 +31,8 @@ import (
 // w10/m568: the workspace model list is Devin's two modes. Every catalog
 // model is allowed, one added later included, until an admin turns one off;
 // from then on the list is an allowlist, and a model added to the catalog
-// afterwards is off until an admin turns it on.
+// afterwards is off until an admin turns it on. w10/m592 makes the mode
+// explicit: only allowAllModels true allows all again.
 
 // catalogAdded is the model growCatalog appends to testCatalog.
 const catalogAdded = "anthropic/claude-haiku-5.5"
@@ -131,8 +132,9 @@ func refusedAsTurnedOff(err error, code, field string, offered []string) bool {
 
 // DoD 2, 3, 6: a model added to the catalog after a narrowing write is off
 // everywhere a turned-off model is, and the environment reads name it as
-// new, apart from the one an admin turned off. Turning it on offers it, and
-// turning every model on allows all again, so the next added model is on.
+// new, apart from the one an admin turned off. Turning it on offers it.
+// Turning every model on keeps the allowlist (w10/m592), so the next added
+// model is off, and allowAllModels true allows all again, so it is on.
 func TestAModelAddedAfterANarrowingWriteStaysOff(t *testing.T) {
 	enablePlatformCatalog(t)
 	svc, st, _ := adminSession(t, nil)
@@ -194,21 +196,30 @@ func TestAModelAddedAfterANarrowingWriteStaysOff(t *testing.T) {
 		t.Fatalf("create on the model once turned on: %v", err)
 	}
 
-	// Every model back on allows all: the next added model is on too.
+	// Every model back on keeps the allowlist (w10/m592): the next added
+	// model is new and off.
 	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{EnabledModels: &grownCatalog}); err != nil {
 		t.Fatal(err)
 	}
-	if row := svc.Environments.(*fakeEnvironments).rows["tea-a"]; row.KnownModels != nil || len(row.DisabledModels) != 0 {
-		t.Fatalf("every model on stored known %v disabled %v, want allow all", row.KnownModels, row.DisabledModels)
+	if row := svc.Environments.(*fakeEnvironments).rows["tea-a"]; !slices.Equal(row.KnownModels, grownCatalog) || len(row.DisabledModels) != 0 {
+		t.Fatalf("every model on stored known %v disabled %v, want an allowlist of every model", row.KnownModels, row.DisabledModels)
 	}
-	growCatalog(t, catalogAdded, "anthropic/claude-fable-5.5")
-	everything := append(slices.Clone(grownCatalog), "anthropic/claude-fable-5.5")
+	const fable = "anthropic/claude-fable-5.5"
+	growCatalog(t, catalogAdded, fable)
+	everything := append(slices.Clone(grownCatalog), fable)
+	reads.expect("every model listed, the catalog grown again", everything, grownCatalog, []string{fable})
+
+	// allowAllModels true allows all: the model added last is on.
+	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{AllowAllModels: ptr(true)}); err != nil {
+		t.Fatal(err)
+	}
 	reads.expect("allow all, the catalog grown again", everything, everything, []string{})
 }
 
 // DoD 1: a workspace that never narrowed its list offers a model added to the
-// catalog at once: one with no row, one whose row turns no model off, and one
-// whose admins turned every model back on.
+// catalog at once: one with no row, one whose row turns no model off, one
+// whose admins listed every model while it allowed all, and one whose admins
+// chose allowAllModels after narrowing it (w10/m592).
 func TestAModelAddedToAWorkspaceThatNeverNarrowedIsOffered(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -220,9 +231,14 @@ func TestAModelAddedToAWorkspaceThatNeverNarrowedIsOffered(t *testing.T) {
 				t.Fatal(err)
 			}
 		}},
-		{"every model turned back on", func(t *testing.T, svc *Service) {
-			for _, list := range [][]string{withoutOpus, testCatalog} {
-				if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{EnabledModels: &list}); err != nil {
+		{"every model listed while it allows all", func(t *testing.T, svc *Service) {
+			if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{EnabledModels: &testCatalog}); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"allowAllModels after narrowing", func(t *testing.T, svc *Service) {
+			for _, input := range []EnvironmentInput{{EnabledModels: &withoutOpus}, {AllowAllModels: ptr(true)}} {
+				if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", input); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -243,13 +259,14 @@ func TestAModelAddedToAWorkspaceThatNeverNarrowedIsOffered(t *testing.T) {
 	}
 }
 
-// DoD 4 (the rollout read rule): a previous-release bex-api writes only
+// DoD 4 (m568's rollout read rule): a bex-api before m568 writes only
 // disabled_models, the catalog less its list, and leaves known_models as it
 // was. Under the catalog both run, the new read of every row it can leave is
 // the opt-out read it makes itself, with no model new. Against a grown
 // catalog a row narrowed under 0315 and not yet converted still reads as the
-// opt-out, and one it turned every model back on allows all, while an
-// allowlist leaves the added model off.
+// opt-out, while an allowlist leaves the added model off, even one that turns
+// no model off: w10/m592 retired the clause that read it as "allow all",
+// once no Pod before m568 ran.
 func TestTheModelListRolloutReadRule(t *testing.T) {
 	enablePlatformCatalog(t)
 	optOut := func(disabled []string) []string {
@@ -279,7 +296,8 @@ func TestTheModelListRolloutReadRule(t *testing.T) {
 		on, added []string
 	}{
 		{"a 0315 row, not yet converted", store.AgentEnvironment{DisabledModels: []string{catalogOpus}}, []string{catalogDefault, catalogSonnet, catalogAdded}, []string{}},
-		{"a previous-release write turning every model on", store.AgentEnvironment{DisabledModels: []string{}, KnownModels: testCatalog}, grownCatalog, []string{}},
+		{"an allowlist listing every model", store.AgentEnvironment{DisabledModels: []string{}, KnownModels: testCatalog}, testCatalog, []string{catalogAdded}},
+		{"allow all", store.AgentEnvironment{DisabledModels: []string{}}, grownCatalog, []string{}},
 		{"an allowlist", store.AgentEnvironment{DisabledModels: []string{catalogOpus}, KnownModels: testCatalog}, withoutOpus, []string{catalogAdded}},
 		{"an allowlist naming the old default off", store.AgentEnvironment{DisabledModels: []string{catalogDefault, catalogOpus}, KnownModels: testCatalog}, withoutOpus, []string{catalogAdded}},
 	} {

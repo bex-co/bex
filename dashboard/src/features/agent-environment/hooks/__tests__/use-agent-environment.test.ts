@@ -82,6 +82,11 @@ describe("useAgentEnvironment update", () => {
           "anthropic/claude-haiku-5.5",
         ],
       },
+      // The filter by provider (w10/m573) and "Allow all models" (w10/m592)
+      // change the models members may pick too.
+      { enabledProviders: ["anthropic"] },
+      { allowAllModels: true },
+      { allowAllModels: false },
     ]) {
       await act(() => result.current.update(input));
       expect(mutate).toHaveBeenLastCalledWith({

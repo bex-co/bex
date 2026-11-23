@@ -256,7 +256,14 @@ describe("the model list", () => {
   const routed = (
     enabledModels: string[],
     defaultModel: string | null = null,
-  ) => agentEnvironment({ models: CATALOG, enabledModels, defaultModel });
+  ) =>
+    // An allowlist (w10/m568): what the switches by model save.
+    agentEnvironment({
+      models: CATALOG,
+      allowAllModels: false,
+      enabledModels,
+      defaultModel,
+    });
 
   it("sends the whole list in catalog order with the catalog default kept on", () => {
     const all = routed(CATALOG);
@@ -319,6 +326,14 @@ describe("the model list", () => {
         }),
       ),
     ).toBe("agentEnvironment.modelsProvidersInvalid");
+    // w10/m592: on a switch to or from "All models", the model source.
+    expect(
+      enabledModelsErrorKey(
+        codedGraphQLError("AGENT_ENVIRONMENT_MODELS_INVALID", {
+          field: "allowAllModels",
+        }),
+      ),
+    ).toBe("agentEnvironment.modelsAllowAllInvalid");
   });
 });
 
@@ -337,6 +352,7 @@ describe("the filter by provider", () => {
   ) =>
     agentEnvironment({
       models: CATALOG,
+      allowAllModels: false,
       enabledModels,
       providers: PROVIDERS,
       enabledProviders,
@@ -351,14 +367,23 @@ describe("the filter by provider", () => {
     );
   });
 
-  it("reads the filter in force from the environment", () => {
-    expect(modelFilterOf(env(CATALOG.slice(0, 2)))).toEqual({
-      byProvider: false,
-      models: CATALOG.slice(0, 2),
+  it("reads the mode in force from the environment", () => {
+    // Devin's "Allow all models" (w10/m592), every workspace's default.
+    expect(modelFilterOf({ ...env(CATALOG), allowAllModels: true })).toEqual({
+      mode: "all",
+      models: CATALOG,
       providers: [],
     });
+    // An allowlist, even one listing every model.
+    for (const listed of [CATALOG.slice(0, 2), CATALOG]) {
+      expect(modelFilterOf(env(listed))).toEqual({
+        mode: "model",
+        models: listed,
+        providers: [],
+      });
+    }
     expect(modelFilterOf(env(CATALOG.slice(0, 3), ["anthropic"]))).toEqual({
-      byProvider: true,
+      mode: "provider",
       models: CATALOG.slice(0, 3),
       providers: ["anthropic"],
     });

@@ -34,9 +34,13 @@ export const TIER_OPTION_CLASS =
 export const MODEL_LABEL_CLASS = "font-mono leading-5 break-all";
 
 // The skeleton's model list: a representative row count (the platform
-// catalog's size at w10/m527) and a hidden id as long as its longest model.
+// catalog's size at w10/m527) and hidden ids as long as the production
+// catalog's in each slot, so the monospace labels wrap to as many lines: the
+// default's (deepseek/deepseek-v4.1-flash-1017) first, two lines at 390 px,
+// then the anthropic/claude-*-5.5 models', one line at every width.
 const MODEL_ROWS = 4;
-const MODEL_ID_PLACEHOLDER = "provider/model-name-version-00000";
+const DEFAULT_MODEL_ID_PLACEHOLDER = "provider/model-name-version-00000";
+const MODEL_ID_PLACEHOLDER = "provider/model-name-version";
 
 /** A section's heading and description (network, model provider, spend). */
 export function AgentSectionHeading({
@@ -86,9 +90,11 @@ export function ModelSourceLine({ children, ...props }: ComponentProps<"p">) {
 }
 
 /**
- * The model list's filter choice (w10/m573), "By model" or "By provider",
- * Devin's one filter type at a time: its frame, shared by the ready section
- * and this skeleton, and the class of each option inside it.
+ * The model list's choice (w10/m573, w10/m592), "All models", "By model" or
+ * "By provider", Devin's: its frame, shared by the ready section and this
+ * skeleton, and the class of each option inside it. Both draw the same
+ * labels in the same classes, so they wrap alike; every language's three
+ * labels fit one line at 390 px.
  */
 export function ModelFilterFrame({
   className,
@@ -377,11 +383,10 @@ export function AgentEnvironmentCardSkeleton({
         {/* The models members can choose (w10/m527). The ready card draws
             them on the platform catalog only, the case the default-model
             help above holds: representative rows, the first the catalog's
-            locked default with its static note. A model's "New in the
-            catalog" note (w10/m568) is data-dependent and only follows an
-            admin narrowing the list before the catalog grew, so the rows
-            hold the usual state without it. The rows hold the list by model,
-            the default; a list by provider draws one row per provider
+            locked default with its static note. The rows hold "All models"
+            (w10/m592), every workspace's default, which draws a row per
+            model like "By model" and no "New in the catalog" note
+            (w10/m568); a list by provider draws one row per provider
             (w10/m573). */}
         <div
           className="space-y-3 border-t pt-6"
@@ -391,10 +396,10 @@ export function AgentEnvironmentCardSkeleton({
             title={t("agentEnvironment.modelsTitle")}
             description={t("agentEnvironment.modelsDescription")}
           />
-          {/* The filter choice (w10/m573): its labels are static, the
-              selected one is the saved filter's. The help under it and the
-              rows below hold the list by model, every workspace's until an
-              admin filters by provider. */}
+          {/* The choice (w10/m573, w10/m592): its labels are static, the
+              selected one is the saved mode's. The help under it and the
+              rows below hold the first, "All models", every workspace's
+              until an admin filters the list. */}
           <ModelFilterFrame aria-hidden="true">
             {MODEL_FILTERS.map(({ labelKey }) => (
               <span
@@ -409,9 +414,7 @@ export function AgentEnvironmentCardSkeleton({
             ))}
           </ModelFilterFrame>
           <p className="text-muted-foreground text-xs">
-            <SkeletonText>
-              {t("agentEnvironment.modelsByModelHelp")}
-            </SkeletonText>
+            <SkeletonText>{t(MODEL_FILTERS[0].helpKey)}</SkeletonText>
           </p>
           <SkeletonSwitchList
             rows={Array.from({ length: MODEL_ROWS }, (_, i) => ({
@@ -419,7 +422,11 @@ export function AgentEnvironmentCardSkeleton({
               label: (
                 <StaticLabel className={MODEL_LABEL_CLASS}>
                   <span>
-                    <SkeletonText>{MODEL_ID_PLACEHOLDER}</SkeletonText>
+                    <SkeletonText>
+                      {i === 0
+                        ? DEFAULT_MODEL_ID_PLACEHOLDER
+                        : MODEL_ID_PLACEHOLDER}
+                    </SkeletonText>
                   </span>
                 </StaticLabel>
               ),

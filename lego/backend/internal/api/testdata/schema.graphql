@@ -231,6 +231,7 @@ type AgentEnvironment {
   agentModelSpendCapTierLimited: Boolean
   agentModelSpendMonthToDateUsd: Float
   agentModelUnbilledUsd: Float
+  allowAllModels: Boolean!
   automationsGithubCliEnabled: Boolean
   billingBalanceDue: Boolean
   customHosts: [String!]!
@@ -263,6 +264,7 @@ type AgentEnvironment {
 input AgentEnvironmentInput {
   acknowledgeAgentDataUse: [String!]
   agentModelMonthlySpendCapUsd: Float
+  allowAllModels: Boolean
   automationsGithubCliEnabled: Boolean
   clearModelApiKey: Boolean
   customHosts: [String!]

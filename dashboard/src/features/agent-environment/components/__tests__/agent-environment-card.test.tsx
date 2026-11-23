@@ -1090,7 +1090,10 @@ describe("AgentEnvironmentCard", () => {
       "anthropic/claude-sonnet-5.5",
       "anthropic/claude-opus-5.5",
     ];
+    // Devin's "Allow all models" (w10/m592), every workspace's default.
     const ROUTED = { ...ENV, models: CATALOG, enabledModels: CATALOG };
+    // An allowlist (w10/m568), here of every model: what "By model" stores.
+    const LISTED = { ...ROUTED, allowAllModels: false };
     const modelSwitch = (name: string) => screen.getByRole("switch", { name });
     const switches = () =>
       within(screen.getByTestId("enabled-models-section")).getAllByRole(
@@ -1099,8 +1102,65 @@ describe("AgentEnvironmentCard", () => {
     const picker = () =>
       screen.getByRole("combobox", { name: "Default model" });
 
+    const filter = (name: "All models" | "By model" | "By provider") =>
+      screen.getByRole("radio", { name });
+    const filterChoice = () =>
+      screen.getByRole("radiogroup", {
+        name: "Filter the models members can choose",
+      });
+    const ALL_HELP =
+      "Members can pick every platform model, including models added to the platform later. To turn models off, filter by model or by provider.";
+    const BY_MODEL_HELP =
+      "Members can pick only the models turned on here. A model added to the platform later stays off until you turn it on, even when every model here is on.";
+    // A save answers as bex-api does: "Allow all models" lists every model
+    // and none new (w10/m592), false alone keeps the models on now as an
+    // allowlist, a filter by provider replaces the list (w10/m573), and a
+    // list keeps the mode.
+    const setupAsServer = (env: AgentEnvironmentView) => {
+      const harness = setup(env);
+      harness.update.mockImplementation(async (input) => {
+        const current = hook.current.environment!;
+        let next: AgentEnvironmentView;
+        if (input.allowAllModels) {
+          next = {
+            ...current,
+            allowAllModels: true,
+            enabledProviders: null,
+            enabledModels: current.models,
+            newModels: [],
+          };
+        } else if (input.enabledProviders) {
+          const providers: string[] = input.enabledProviders;
+          next = {
+            ...current,
+            allowAllModels: false,
+            enabledProviders: providers,
+            enabledModels: current.models.filter(
+              (m, i) => i === 0 || providers.includes(m.split("/")[0]),
+            ),
+            newModels: [],
+          };
+        } else if (input.enabledModels) {
+          const list: string[] = input.enabledModels;
+          next = {
+            ...current,
+            allowAllModels:
+              current.allowAllModels && list.length === current.models.length,
+            enabledProviders: null,
+            enabledModels: list,
+            newModels: current.newModels.filter((m) => !list.includes(m)),
+          };
+        } else {
+          next = { ...current, allowAllModels: false };
+        }
+        harness.rerender(next);
+        return next;
+      });
+      return harness;
+    };
+
     it("lists the catalog with a switch per model, on while members may choose it", () => {
-      setup({ ...ROUTED, enabledModels: [CATALOG[0], CATALOG[2]] });
+      setup({ ...LISTED, enabledModels: [CATALOG[0], CATALOG[2]] });
       const section = screen.getByTestId("enabled-models-section");
       expect(section).toHaveTextContent("Models members can choose");
       expect(section).toHaveTextContent(
@@ -1123,7 +1183,7 @@ describe("AgentEnvironmentCard", () => {
     });
 
     it("keeps the catalog default on and locked, saying why", async () => {
-      const { user, update } = setup({ ...ROUTED, enabledModels: [] });
+      const { user, update } = setup({ ...LISTED, enabledModels: [] });
       const locked = modelSwitch(CATALOG[0]);
       expect(locked).toBeChecked();
       expect(locked).toBeDisabled();
@@ -1139,14 +1199,12 @@ describe("AgentEnvironmentCard", () => {
     // turns it on, apart from the ones an admin turned off.
     it("labels only a model off because it is new in the catalog", () => {
       setup({
-        ...ROUTED,
+        ...LISTED,
         enabledModels: [CATALOG[0], CATALOG[1]],
         newModels: [CATALOG[3]],
       });
       const section = screen.getByTestId("enabled-models-section");
-      expect(section).toHaveTextContent(
-        /models added to the platform later stay off until you turn them on/,
-      );
+      expect(section).toHaveTextContent(BY_MODEL_HELP);
       expect(modelSwitch(CATALOG[3])).not.toBeChecked();
       expect(modelSwitch(CATALOG[3])).toBeEnabled();
       expect(modelSwitch(CATALOG[3])).toHaveAccessibleDescription(
@@ -1164,7 +1222,7 @@ describe("AgentEnvironmentCard", () => {
 
     it("turns a model new in the catalog on into the list, dropping its label", async () => {
       const NEW = {
-        ...ROUTED,
+        ...LISTED,
         enabledModels: [CATALOG[0], CATALOG[1]],
         newModels: [CATALOG[3]],
       };
@@ -1201,7 +1259,7 @@ describe("AgentEnvironmentCard", () => {
     });
 
     it("lets an admin turn a model off and back on, saving the whole list", async () => {
-      const { user, update } = setupWithCache(ROUTED);
+      const { user, update } = setupWithCache(LISTED);
       await user.click(modelSwitch(CATALOG[3]));
       expect(update).toHaveBeenLastCalledWith({
         enabledModels: CATALOG.slice(0, 3),
@@ -1229,14 +1287,14 @@ describe("AgentEnvironmentCard", () => {
     });
 
     it("holds the switches until the server answers, then shows its answer and newer copies", async () => {
-      const { user, update, rerender } = setupWithCache(ROUTED);
+      const { user, update, rerender } = setupWithCache(LISTED);
       let answer!: () => void;
       update.mockImplementationOnce(
         () =>
           new Promise<AgentEnvironmentView>((resolve) => {
             answer = () => {
               // Another admin turned sonnet off meanwhile: the answer says so.
-              const next = { ...ROUTED, enabledModels: [CATALOG[0]] };
+              const next = { ...LISTED, enabledModels: [CATALOG[0]] };
               rerender(next);
               resolve(next);
             };
@@ -1255,12 +1313,12 @@ describe("AgentEnvironmentCard", () => {
       ]);
       expect(modelSwitch(CATALOG[1])).toBeEnabled();
       // The next read wins.
-      rerender(ROUTED);
+      rerender(LISTED);
       expect(modelSwitch(CATALOG[2])).toBeChecked();
     });
 
     it("returns the switches to the saved list and says why when a save fails", async () => {
-      const { user, update } = setupWithCache(ROUTED);
+      const { user, update } = setupWithCache(LISTED);
       update.mockRejectedValueOnce(uncodedGraphQLError("boom"));
       await user.click(modelSwitch(CATALOG[2]));
       expect(update).toHaveBeenCalledWith({
@@ -1299,7 +1357,7 @@ describe("AgentEnvironmentCard", () => {
         mockCapabilities({ role: "DEVELOPER", canManage: false }),
       );
       const { user, update } = setup({
-        ...ROUTED,
+        ...LISTED,
         enabledModels: [CATALOG[0], CATALOG[3]],
       });
       expect(switches().map((s) => s.getAttribute("aria-checked"))).toEqual([
@@ -1330,7 +1388,7 @@ describe("AgentEnvironmentCard", () => {
 
     it("offers only the models that are on as the default model", async () => {
       const { user } = setup({
-        ...ROUTED,
+        ...LISTED,
         enabledModels: [CATALOG[0], CATALOG[2]],
       });
       await user.click(picker());
@@ -1346,7 +1404,7 @@ describe("AgentEnvironmentCard", () => {
 
     it("keeps a saved default that is off, saying the catalog default runs instead", async () => {
       const { user, update } = setup({
-        ...ROUTED,
+        ...LISTED,
         enabledModels: [CATALOG[0], CATALOG[1]],
         defaultModel: CATALOG[3],
       });
@@ -1377,7 +1435,7 @@ describe("AgentEnvironmentCard", () => {
     });
 
     it("says so when an admin turns off the model the default names", async () => {
-      const { user } = setupWithCache({ ...ROUTED, defaultModel: CATALOG[2] });
+      const { user } = setupWithCache({ ...LISTED, defaultModel: CATALOG[2] });
       expect(picker()).toHaveTextContent(CATALOG[2]);
       expect(screen.queryByRole("note")).toBeNull();
       await user.click(modelSwitch(CATALOG[2]));
@@ -1423,6 +1481,8 @@ describe("AgentEnvironmentCard", () => {
             (option) => option.textContent,
           ),
           help: section.children[2].className,
+          // The help of "All models", every workspace's default (w10/m592).
+          helpText: section.children[2].textContent,
         };
       };
       setup(ROUTED);
@@ -1448,15 +1508,149 @@ describe("AgentEnvironmentCard", () => {
           "shrink-0",
           "rounded-full",
         );
-        // A hidden id at least as long as the catalog's longest, so a
-        // monospace label wraps to as many lines.
         const id = row.querySelector("[data-slot=skeleton-text]")!;
         expect(id).toHaveAttribute("aria-hidden", "true");
-        expect(id.textContent!.length).toBeGreaterThanOrEqual(
-          Math.max(...CATALOG.map((m) => m.length)),
-        );
       }
+      // Hidden ids as long as the catalog's in each slot, so a monospace
+      // label wraps to as many lines at every width: the default's (two
+      // lines at 390 px), then the others' (one).
+      expect(
+        Array.from(
+          skeleton.querySelectorAll("li [data-slot=skeleton-text]"),
+          (id) => id.textContent!.length,
+        ),
+      ).toEqual([
+        CATALOG[0].length,
+        ...CATALOG.slice(1).map(() =>
+          Math.max(...CATALOG.slice(1).map((m) => m.length)),
+        ),
+      ]);
       expect(within(skeleton).queryByRole("switch")).toBeNull();
+    });
+
+    // w10/m592: Devin's "Allow all models", every workspace's default, is a
+    // choice of its own, drawn first; "By model" is an allowlist even when
+    // it lists every model.
+    describe("all models", () => {
+      const PROVIDERS = ["deepseek", "anthropic"];
+      const ALL = { ...ROUTED, providers: PROVIDERS };
+      const allOn = () =>
+        expect(switches().map((s) => s.getAttribute("aria-checked"))).toEqual(
+          CATALOG.map(() => "true"),
+        );
+
+      it("offers every model on and locked, as the first choice", async () => {
+        const { user, update } = setup(ALL);
+        expect(
+          within(filterChoice())
+            .getAllByRole("radio")
+            .map((radio) => radio.parentElement!.textContent),
+        ).toEqual(["All models", "By model", "By provider"]);
+        expect(filter("All models")).toBeChecked();
+        expect(filterChoice()).toHaveAccessibleDescription(ALL_HELP);
+        allOn();
+        for (const s of switches()) expect(s).toBeDisabled();
+        expect(modelSwitch(CATALOG[0])).toHaveAccessibleDescription(
+          "The platform's default model always stays on, as sessions fall back to it.",
+        );
+        // The others are locked by the choice, whose help says why.
+        expect(modelSwitch(CATALOG[2])).toHaveAccessibleDescription(ALL_HELP);
+        expect(screen.queryByText("New in the catalog")).toBeNull();
+        await user.click(modelSwitch(CATALOG[2]));
+        expect(update).not.toHaveBeenCalled();
+      });
+
+      it("switches to By model with only the mode, every model on as the allowlist", async () => {
+        const { user, update } = setupAsServer(ALL);
+        await user.click(filter("By model"));
+        expect(update).toHaveBeenLastCalledWith({ allowAllModels: false });
+        expect(filter("By model")).toBeChecked();
+        expect(filterChoice()).toHaveAccessibleDescription(BY_MODEL_HELP);
+        allOn();
+        for (const model of CATALOG.slice(1)) {
+          expect(modelSwitch(model)).toBeEnabled();
+        }
+        expect(toast.success).toHaveBeenLastCalledWith(
+          "Members now choose from the models you allow",
+        );
+      });
+
+      it("switches to By provider with every provider", async () => {
+        const { user, update } = setupAsServer(ALL);
+        await user.click(filter("By provider"));
+        expect(update).toHaveBeenLastCalledWith({
+          enabledProviders: PROVIDERS,
+        });
+        expect(filter("By provider")).toBeChecked();
+        expect(toast.success).toHaveBeenLastCalledWith(
+          "Members now choose from the models of the providers you allow",
+        );
+      });
+
+      it.each([
+        ["By model", { ...LISTED, enabledModels: [CATALOG[0], CATALOG[2]] }],
+        ["By provider", { ...LISTED, enabledProviders: ["anthropic"] }],
+      ])(
+        "switches back from %s with only the mode, never a list",
+        async (_, env) => {
+          const { user, update } = setupAsServer({
+            ...env,
+            providers: PROVIDERS,
+          });
+          await user.click(filter("All models"));
+          expect(update).toHaveBeenLastCalledWith({ allowAllModels: true });
+          expect(filter("All models")).toBeChecked();
+          allOn();
+          for (const s of switches()) expect(s).toBeDisabled();
+          expect(toast.success).toHaveBeenLastCalledWith(
+            "Members now choose from every model, including models added to the platform later",
+          );
+        },
+      );
+
+      it("keeps an allowlist of every model an allowlist, a later model off and new", async () => {
+        const KIMI = "moonshotai/kimi-k3";
+        const { user, update } = setupAsServer({
+          ...LISTED,
+          models: [...CATALOG, KIMI],
+          newModels: [KIMI],
+        });
+        expect(filter("By model")).toBeChecked();
+        expect(modelSwitch(KIMI)).not.toBeChecked();
+        expect(modelSwitch(KIMI)).toHaveAccessibleDescription(
+          "New in the catalog",
+        );
+        await user.click(modelSwitch(CATALOG[1]));
+        expect(update).toHaveBeenLastCalledWith({
+          enabledModels: [CATALOG[0], ...CATALOG.slice(2)],
+        });
+        // Every earlier model on again sends the list alone: it stays an
+        // allowlist, and the later model stays off.
+        await user.click(modelSwitch(CATALOG[1]));
+        expect(update).toHaveBeenLastCalledWith({ enabledModels: CATALOG });
+        expect(filter("By model")).toBeChecked();
+        expect(modelSwitch(KIMI)).not.toBeChecked();
+        expect(modelSwitch(KIMI)).toHaveAccessibleDescription(
+          "New in the catalog",
+        );
+      });
+
+      it("returns to the saved mode and says why when the server refuses it", async () => {
+        const { user, update } = setupAsServer(ALL);
+        update.mockRejectedValueOnce(
+          codedGraphQLError("AGENT_ENVIRONMENT_MODELS_INVALID", {
+            field: "allowAllModels",
+          }),
+        );
+        await user.click(filter("By model"));
+        expect(update).toHaveBeenLastCalledWith({ allowAllModels: false });
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+          "Couldn't change the models members can choose: this workspace no longer uses the platform model catalog. Reload to see the current settings.",
+        );
+        expect(filter("All models")).toBeChecked();
+        for (const s of switches()) expect(s).toBeDisabled();
+        expect(toast.success).not.toHaveBeenCalled();
+      });
     });
 
     // w10/m573: the list filtered by provider, Devin's other filter type,
@@ -1464,51 +1658,23 @@ describe("AgentEnvironmentCard", () => {
     describe("by provider", () => {
       const KIMI = "moonshotai/kimi-k3";
       const BY_PROVIDER = {
-        ...ROUTED,
+        ...LISTED,
         models: [...CATALOG, KIMI],
         enabledModels: CATALOG,
         providers: ["deepseek", "anthropic", "moonshotai"],
         enabledProviders: ["anthropic"],
-      };
-      const filter = (name: "By model" | "By provider") =>
-        screen.getByRole("radio", { name });
-      const filterChoice = () =>
-        screen.getByRole("radiogroup", {
-          name: "Filter the models members can choose",
-        });
-      // A save answers as bex-api does: one filter type replaces the other.
-      const setupAsServer = (env: AgentEnvironmentView) => {
-        const harness = setup(env);
-        harness.update.mockImplementation(async (input) => {
-          const current = hook.current.environment!;
-          const providers = input.enabledProviders ?? null;
-          const next = {
-            ...current,
-            enabledProviders: providers,
-            enabledModels: providers
-              ? current.models.filter(
-                  (m, i) => i === 0 || providers.includes(m.split("/")[0]),
-                )
-              : (input.enabledModels ?? current.enabledModels),
-          };
-          harness.rerender(next);
-          return next;
-        });
-        return harness;
       };
       const providerSwitch = (name: string) =>
         screen.getByRole("switch", { name });
 
       it("switches to the providers of the models on now, saying what it does", async () => {
         const { user, update } = setupAsServer({
-          ...ROUTED,
+          ...LISTED,
           enabledModels: [CATALOG[0], CATALOG[2]],
           providers: ["deepseek", "anthropic"],
         });
         expect(filter("By model")).toBeChecked();
-        expect(filterChoice()).toHaveAccessibleDescription(
-          "Once you turn a model off, models added to the platform later stay off until you turn them on.",
-        );
+        expect(filterChoice()).toHaveAccessibleDescription(BY_MODEL_HELP);
         await user.click(filter("By provider"));
         expect(update).toHaveBeenLastCalledWith({
           enabledProviders: ["deepseek", "anthropic"],

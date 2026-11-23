@@ -73,9 +73,11 @@ type EnvironmentStore interface {
 // catalog (w10/m516), empty off the route, where any model is free-form;
 // EnabledModels is the part of it the workspace's admins left on (w10/m527),
 // the models a claude session, an automation and DefaultModel may name, the
-// catalog's default always among them: every catalog model until an admin
-// turns one off, then the allowlist that write left on (w10/m568), or under a
-// filter by provider every model of a listed provider (w10/m573). NewModels
+// catalog's default always among them: every catalog model while
+// AllowAllModels (w10/m592), else the allowlist an admin left on (w10/m568),
+// or under a filter by provider every model of a listed provider (w10/m573).
+// AllowAllModels is Devin's "Allow all models" mode, true off the route,
+// where nothing narrows the free-form model. NewModels
 // are the catalog models off because that allowlist predates them, apart from
 // the ones an admin turned off. Providers are the catalog's providers, and
 // EnabledProviders the ones the filter by provider lists, nil while the list
@@ -90,6 +92,7 @@ type Environment struct {
 	CustomHosts      []string `json:"customHosts"`
 	DefaultModel     *string  `json:"defaultModel"`
 	Models           []string `json:"models"`
+	AllowAllModels   bool     `json:"allowAllModels"`
 	EnabledModels    []string `json:"enabledModels"`
 	NewModels        []string `json:"newModels"`
 	Providers        []string `json:"providers"`
@@ -196,14 +199,18 @@ type EnvironmentInput struct {
 	// ResetAutomationsGitHubCLI is the explicit null graphql-go cannot carry.
 	ResetAutomationsGitHubCLI bool  `json:"resetAutomationsGithubCli,omitempty" jsonschema:"true returns the automations default to inheriting githubCliEnabled, as an explicit null automationsGithubCliEnabled does"`
 	GitHubCLIMandatory        *bool `json:"githubCliMandatory,omitempty" jsonschema:"true makes the workspace's gh off mandatory (admins only): while githubCliEnabled is false, no automations default, automation or session turns gh back on, and saving one that would is refused with a GITHUB_CLI_LOCKED code; it has no effect while githubCliEnabled is true. false lets lower levels choose again"`
+	// AllowAllModels is Devin's mode (w10/m592): true allows every catalog
+	// model, one added later included; false alone keeps the models on now
+	// as an allowlist.
+	AllowAllModels *bool `json:"allowAllModels,omitempty" jsonschema:"Devin's \"Allow all models\" mode (admins only): true offers every platform catalog model, one added to the catalog later included, from an allowlist or a filter by provider, and is refused with AGENT_ENVIRONMENT_MODELS_INVALID beside enabledModels or enabledProviders. false alone keeps the models on now as an allowlist, so a model added to the catalog later stays off (newModels) until an admin turns it on; it changes nothing on an allowlist or a filter by provider. With enabledModels, false stores that allowlist even when it lists every catalog model. Applies to the platform model route only"`
 	// EnabledModels replaces the platform catalog models members may choose;
-	// the catalog's others are turned off (w10/m527). Every catalog model on
-	// allows all, a later one included; any model off makes it an allowlist
-	// that leaves a model added to the catalog later off (w10/m568).
-	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off, and a filter by provider is replaced. Every catalog model on allows all models, one added to the catalog later included; any model off makes the list an allowlist, and a model added to the catalog later stays off until an admin turns it on (it reads in newModels). It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
+	// the catalog's others are turned off (w10/m527). The mode stays as it is
+	// (w10/m592): an allowlist listing every catalog model stays one, and a
+	// model off makes a workspace that allows all an allowlist (w10/m568).
+	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off, and a filter by provider is replaced. It keeps the allowAllModels mode: an allowlist stays an allowlist even when it lists every catalog model, and a model added to the catalog later stays off until an admin turns it on (it reads in newModels); on a workspace that allows all models, listing every model changes nothing and leaving any model off makes the list an allowlist. allowAllModels true returns to allowing all. It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
 	// EnabledProviders filters the catalog by provider instead (w10/m573),
 	// Devin's other filter type; one write names one of the two.
-	EnabledProviders *[]string `json:"enabledProviders,omitempty" jsonschema:"filters the platform catalog models members may choose by provider instead of by model (admins only), as Devin's one filter type at a time: the workspace offers every catalog model whose id starts with <provider>/ for a listed provider, one added to the catalog later included, plus the catalog's default, which is always on; a model of any other provider is off. Names providers from the environment's providers (at least one); a write naming enabledModels too is refused with AGENT_ENVIRONMENT_MODELS_INVALID, and a later enabledModels write returns to the by-model list. Applies to the platform model route only"`
+	EnabledProviders *[]string `json:"enabledProviders,omitempty" jsonschema:"filters the platform catalog models members may choose by provider instead of by model (admins only), as Devin's one filter type at a time: the workspace offers every catalog model whose id starts with <provider>/ for a listed provider, one added to the catalog later included, plus the catalog's default, which is always on; a model of any other provider is off, and a workspace that allowed all models no longer does. Names providers from the environment's providers (at least one); a write naming enabledModels or allowAllModels true too is refused with AGENT_ENVIRONMENT_MODELS_INVALID, and a later enabledModels write returns to the by-model list. Applies to the platform model route only"`
 	// IdleTimeoutMinutes sets the workspace's own idle timeout (w6/m563).
 	IdleTimeoutMinutes *int `json:"idleTimeoutMinutes,omitempty" jsonschema:"how long, in minutes, the sandbox of a session a person started stays up after its turn ends or its last editor disconnects (admins only, Enterprise plan only): 5 to 120, else AGENT_ENVIRONMENT_IDLE_TIMEOUT_INVALID; any other plan is refused with PLAN_FEATURE_REQUIRED and keeps 5. A closed session's next message runs in a fresh sandbox. Automations' and child sessions' sandboxes close when their turn ends whatever it says"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
@@ -235,10 +242,11 @@ const (
 	DataUseUnacknowledgedCode = "AGENT_ENVIRONMENT_DATA_USE_UNACKNOWLEDGED"
 	// ModelListInvalidCode refuses an enabledModels that turns the catalog's
 	// default off (an empty list does), names a model outside the catalog, or
-	// is sent where there is no catalog to narrow (w10/m527); and an
+	// is sent where there is no catalog to narrow (w10/m527); an
 	// enabledProviders that is empty, names a provider no catalog model
 	// carries, is sent with enabledModels or where there is no catalog
-	// (w10/m573).
+	// (w10/m573); and an allowAllModels sent where there is no catalog, or
+	// true beside either list (w10/m592).
 	ModelListInvalidCode = "AGENT_ENVIRONMENT_MODELS_INVALID"
 )
 
@@ -459,7 +467,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	// of them.
 	agentsChanged := input.EnabledAgents != nil || len(input.AcknowledgeAgentDataUse) > 0
 	automationsOn := isTrue(patch.AutomationsGitHubCLI)
-	if input.DefaultModel != nil || input.EnabledModels != nil || input.EnabledProviders != nil || agentsChanged || automationsOn {
+	if input.DefaultModel != nil || input.AllowAllModels != nil || input.EnabledModels != nil || input.EnabledProviders != nil || agentsChanged || automationsOn {
 		current, err := s.workspaceEnvironment(ctx, workspaceID)
 		if err != nil {
 			return Environment{}, err
@@ -619,23 +627,34 @@ func validateEnvironmentInput(input EnvironmentInput, templates []sandbox.AgentT
 
 // modelOfferPatch checks an update's model fields against the platform
 // catalog the workspace is on after it (byoKey: its own key then) and fills
-// patch (w10/m527). enabledModels replaces the turned-off list with every
-// catalog model it leaves out. Leaving none out is Devin's "Allow all
-// models": a model added to the catalog later is on too. Leaving any out is
-// its "Allowlist specific models" (w10/m568): the write records the catalog
-// it saw, and a model added later is off until an admin turns it on. It
-// must keep the catalog's default and name only catalog models. Devin's other
-// filter type, enabledProviders (w10/m573), lists providers instead: the
-// write records them, the catalog it saw and, as the turned-off list, every
-// model but the default of an unlisted provider, so a previous-release
-// bex-api offers the same set. One write names one filter type, and both are
-// refused off the route, where there is no catalog to narrow. defaultModel
-// must be one of the models offered after the update. Turning off the model
-// the stored default names is allowed, as Devin's allowlist overrides a
-// pinned default: that default stops taking effect and the catalog's runs.
+// patch (w10/m527). allowAllModels is Devin's mode (w10/m592): true is "Allow
+// all models", stored as no known models and none turned off, so a model
+// added to the catalog later is on too; false on a workspace that allows all
+// is "Allowlist specific models" of the models on now (w10/m568): the write
+// records the catalog it saw, and a model added later is off until an admin
+// turns it on. enabledModels replaces the turned-off list with every catalog
+// model it leaves out and keeps the mode: an allowlist stays one even when it
+// lists every model, and a workspace that allows all stays so unless a model
+// is left out. It must keep the catalog's default and name only catalog
+// models. Devin's other filter type, enabledProviders (w10/m573), lists
+// providers instead: the write records them, the catalog it saw and, as the
+// turned-off list, every model but the default of an unlisted provider, so a
+// previous-release bex-api offers the same set. One write names one filter
+// type, "Allow all models" names none, and every model field is refused off
+// the route, where there is no catalog to narrow. defaultModel must be one of
+// the models offered after the update. Turning off the model the stored
+// default names is allowed, as Devin's allowlist overrides a pinned default:
+// that default stops taking effect and the catalog's runs.
 func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byoKey bool, patch *store.AgentEnvironmentPatch) error {
 	catalog, routed := agentsession.PlatformModels(byoKey)
 	after := current
+	// setLists writes the three model columns together, into the patch and
+	// the row defaultModel is checked against.
+	setLists := func(disabled, known, providers []string) {
+		patch.DisabledModels, patch.KnownModels, patch.EnabledProviders = &disabled, known, providers
+		after.DisabledModels, after.KnownModels, after.EnabledProviders = disabled, known, providers
+	}
+	allowAll := input.AllowAllModels != nil && *input.AllowAllModels
 	field := ""
 	switch {
 	case input.EnabledModels != nil && input.EnabledProviders != nil:
@@ -646,11 +665,18 @@ func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byo
 		field = "enabledModels"
 	case input.EnabledProviders != nil:
 		field = "enabledProviders"
+	case input.AllowAllModels != nil:
+		field = "allowAllModels"
+	}
+	if allowAll && field != "allowAllModels" {
+		return core.NewBadRequestError(ModelListInvalidCode,
+			"set allowAllModels: true or "+field+", not both: allowing all models offers every catalog model, one added to the catalog later included, and lists none",
+			map[string]any{"field": "allowAllModels", "fields": []string{"allowAllModels", field}})
 	}
 	if field != "" && !routed {
-		msg := field + " narrows the platform model catalog, and this workspace runs agents on its own model key, where any model id is accepted"
+		msg := field + " chooses the platform model catalog models members may pick, and this workspace runs agents on its own model key, where any model id is accepted"
 		if !byoKey {
-			msg = field + " narrows the platform model catalog, which this bex-api does not offer"
+			msg = field + " chooses the platform model catalog models members may pick, which this bex-api does not offer"
 		}
 		return core.NewBadRequestError(ModelListInvalidCode, msg, map[string]any{"field": field})
 	}
@@ -676,21 +702,30 @@ func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byo
 				disabled = append(disabled, model)
 			}
 		}
+		// The mode stays: only a workspace that allows all, and is not told
+		// otherwise, keeps allowing all, and only while no model is left out.
 		var known []string // nil: allow all
-		if len(disabled) > 0 {
+		if len(disabled) > 0 || input.AllowAllModels != nil || !allowsAll(current) {
 			known = catalog
 		}
-		patch.DisabledModels, patch.KnownModels = &disabled, known
-		after.DisabledModels, after.KnownModels, after.EnabledProviders = disabled, known, nil
+		setLists(disabled, known, nil)
+	}
+	if allowAll || (field == "allowAllModels" && allowsAll(current)) {
+		// true allows all; false on a workspace that allows all keeps the
+		// models on now, the whole catalog, as the allowlist. false on an
+		// allowlist or a filter by provider changes nothing.
+		var known []string
+		if !allowAll {
+			known = catalog
+		}
+		setLists([]string{}, known, nil)
 	}
 	if input.EnabledProviders != nil {
 		providers, err := listedProviders(catalog, *input.EnabledProviders)
 		if err != nil {
 			return err
 		}
-		disabled := providerFilterOff(catalog, providers)
-		patch.DisabledModels, patch.KnownModels, patch.EnabledProviders = &disabled, catalog, providers
-		after.DisabledModels, after.KnownModels, after.EnabledProviders = disabled, catalog, providers
+		setLists(providerFilterOff(catalog, providers), catalog, providers)
 	}
 	if input.DefaultModel != nil && *input.DefaultModel != "" && routed {
 		if offered, _ := leftOn(catalog, after); !slices.Contains(offered, *input.DefaultModel) {
@@ -789,6 +824,8 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 	}
 	view.TemplateOffer = s.templateOffer(row)
 	view.Models, view.EnabledModels, view.NewModels, view.Providers = []string{}, []string{}, []string{}, []string{}
+	// Nothing narrows the free-form model off the route (w10/m592).
+	view.AllowAllModels = true
 	switch models, ok := agentsession.PlatformModels(row.ModelKeySet()); {
 	case row.ModelKeySet():
 		view.ModelSource = ModelSourceBYO
@@ -796,6 +833,7 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.ModelSource = ModelSourcePlatform
 		view.Models = models
 		view.EnabledModels, view.NewModels = leftOn(models, row)
+		view.AllowAllModels = allowsAll(row)
 		view.Providers = catalogProviders(models)
 		if listed, ok := providerFilter(row); ok {
 			// The catalog's providers it lists, so a write built from the
@@ -962,15 +1000,13 @@ func inPlatformCatalog(model string) bool {
 // it carries a listed provider tag. Under a filter by provider in force
 // (providerFilter, w10/m573) every model of a listed provider is on, a later
 // one included, and none is new. Otherwise the allowlist is KnownModels, the
-// catalog the narrowing write saw, less DisabledModels. A list with no known
-// models (none narrowed, or narrowed under migration 0315 and not yet
-// converted) or none turned off (an all-on write by a bex-api before m568)
-// allows every catalog model but the turned-off ones, as the opt-out did.
-// The catalog's default is never off, even by a list stored before the
-// catalog's default changed.
+// catalog the narrowing write saw, less DisabledModels, even when that turns
+// none off (w10/m592). A list with no known models ("Allow all models", or
+// narrowed under migration 0315 and not yet converted) allows every catalog
+// model but the turned-off ones, as the opt-out did. The catalog's default
+// is never off, even by a list stored before the catalog's default changed.
 func leftOn(catalog []string, env store.AgentEnvironment) (on, added []string) {
 	providers, byProvider := providerFilter(env)
-	allowAll := env.KnownModels == nil || len(env.DisabledModels) == 0
 	on, added = make([]string, 0, len(catalog)), []string{}
 	for i, model := range catalog {
 		switch {
@@ -981,13 +1017,21 @@ func leftOn(catalog []string, env store.AgentEnvironment) (on, added []string) {
 				on = append(on, model)
 			}
 		case slices.Contains(env.DisabledModels, model):
-		case allowAll || slices.Contains(env.KnownModels, model):
+		case env.KnownModels == nil || slices.Contains(env.KnownModels, model):
 			on = append(on, model)
 		default:
 			added = append(added, model)
 		}
 	}
 	return on, added
+}
+
+// allowsAll reports whether env is in Devin's "Allow all models" mode
+// (w10/m592): no known models and none turned off, so every catalog model is
+// offered, one added later included. A row narrowed under migration 0315 and
+// not yet converted turns some off and does not.
+func allowsAll(env store.AgentEnvironment) bool {
+	return env.KnownModels == nil && len(env.DisabledModels) == 0
 }
 
 // modelProvider is a catalog model's provider (w10/m573), Devin's provider

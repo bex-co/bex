@@ -15,6 +15,10 @@ export function agentEnvironment(
     customHosts: [],
     defaultModel: null,
     models: [],
+    // Devin's "Allow all models" (w10/m592), every workspace's default:
+    // enabledModels is the whole catalog and nothing is new in it. A test
+    // that narrows the list by model sets it false.
+    allowAllModels: true,
     // The catalog models members may choose (w10/m527): empty with the
     // catalog, so Settings draws no model list unless a test lists models.
     enabledModels: [],

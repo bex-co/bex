@@ -1428,9 +1428,9 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを、モデルごとまたはプロバイダーごとに選択します。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。",
+      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを選択します。すべてのモデルを許可するか、モデルごとまたはプロバイダーごとに一部だけを許可できます。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that it allows all models (w10/m592) or filters them by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1467,7 +1467,12 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilterLabel": {
     message: "メンバーが選べるモデルの絞り込み方法",
     description:
-      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+      "Settings → Agents: accessible name of the choice between every platform model (w10/m592) and filtering them by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsAll": {
+    message: "全モデル",
+    description:
+      "Settings → Agents: option that lets members choose every platform model, one added to the catalog later included — Devin's “Allow all models”, every workspace's default (w10/m592). Keep it short: the three options share one line on a 390 px phone",
   },
   "agentEnvironment.modelsByModel": {
     message: "モデルごと",
@@ -1479,11 +1484,17 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
   },
+  "agentEnvironment.modelsAllHelp": {
+    message:
+      "メンバーは、後からプラットフォームに追加されたモデルも含め、プラットフォームのすべてのモデルを選べます。モデルをオフにするには、モデルごとまたはプロバイダーごとに絞り込んでください。",
+    description:
+      "Settings → Agents: help under the choice while it is All models — every platform model, a later one included; filtering by model or by provider turns models off (w10/m592)",
+  },
   "agentEnvironment.modelsByModelHelp": {
     message:
-      "モデルを1つでもオフにすると、後からプラットフォームに追加されたモデルは、オンにするまでオフのままです。",
+      "メンバーが選べるのは、ここでオンにしたモデルだけです。後からプラットフォームに追加されたモデルは、ここのモデルがすべてオンでも、オンにするまでオフのままです。",
     description:
-      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+      "Settings → Agents: help under the choice while it is by model — an allowlist: members pick only the models on, and a model added to the catalog later stays off even while every listed model is on (w10/m568, w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsByProviderHelp": {
     message:
@@ -1512,6 +1523,12 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
   },
+  "agentEnvironment.modelsAllowedAll": {
+    message:
+      "メンバーは、後からプラットフォームに追加されたモデルも含め、すべてのモデルから選ぶようになりました",
+    description:
+      "Toast after an admin switches the model list to All models (w10/m592)",
+  },
   "agentEnvironment.modelsFilteredByProvider": {
     message: "メンバーは許可したプロバイダーのモデルから選ぶようになりました",
     description:
@@ -1520,13 +1537,19 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilteredByModel": {
     message: "メンバーは許可したモデルから選ぶようになりました",
     description:
-      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+      "Toast after an admin switches the model list to filtering by model, from All models or from by provider (w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsProvidersInvalid": {
     message:
       "プロバイダーを更新できませんでした。リストにはプラットフォームカタログのプロバイダーを少なくとも1つ含める必要があります。ページを再読み込みして現在のカタログを確認してください。",
     description:
       "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
+  },
+  "agentEnvironment.modelsAllowAllInvalid": {
+    message:
+      "メンバーが選べるモデルを変更できませんでした。このワークスペースは、プラットフォームのモデルカタログを使用しなくなりました。ページを再読み込みして現在の設定を確認してください。",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a switch to or from All models (field allowAllModels): the workspace no longer uses the platform model catalog (w10/m592)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model}（オフ）",

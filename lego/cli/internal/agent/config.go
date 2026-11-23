@@ -388,6 +388,9 @@ type agentEnvironment struct {
 	// them, which has none.
 	EnabledModels []string `json:"enabledModels"`
 	NewModels     []string `json:"newModels"`
+	// AllowAllModels is Devin's "Allow all models" mode (w10/m592), nil from
+	// a bex-api that predates it.
+	AllowAllModels *bool `json:"allowAllModels"`
 	// EnabledProviders is the filter by provider (w10/m573), nil while the
 	// list is by model or from a bex-api that predates it.
 	EnabledProviders []string `json:"enabledProviders"`
@@ -461,20 +464,21 @@ func envCommand(d deps) *cobra.Command {
 			"AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED, AGENT_AUTOMATION_GITHUB_CLI_LOCKED or\n" +
 			"AGENT_SESSION_GITHUB_CLI_LOCKED (reason mandatory). It has no effect while\n" +
 			"gh is on; off lets them choose again.\n" +
-			"--models replaces the platform catalog models members may choose; the\n" +
-			"catalog's others are turned off. Every catalog model on allows all models,\n" +
-			"one added to the catalog later included; any model off makes the list an\n" +
-			"allowlist, and a model added to the catalog later stays off (\"new in the\n" +
-			"catalog\" in `bex agent env`) until an admin turns it on. It must keep the\n" +
-			"catalog's default (the first of `bex agent env`'s Models). A session,\n" +
-			"message or automation naming a turned-off model is refused, and one already\n" +
-			"on it runs the workspace default from its next turn.\n" +
+			"--models all allows every platform catalog model, one added to the catalog\n" +
+			"later included (allowAllModels). --models ID,ID… makes the list an\n" +
+			"allowlist of those models, even when it names every catalog model: the\n" +
+			"catalog's others are turned off, and a model added to the catalog later\n" +
+			"stays off (\"new in the catalog\" in `bex agent env`) until an admin turns it\n" +
+			"on. It must keep the catalog's default (the first of `bex agent env`'s\n" +
+			"Models). A session, message or automation naming a turned-off model is\n" +
+			"refused, and one already on it runs the workspace default from its next\n" +
+			"turn.\n" +
 			"--providers filters the catalog by provider instead, as the one filter\n" +
 			"type in force (a model's provider is its id's prefix before /): members may\n" +
 			"choose every catalog model of a listed provider, one added to the catalog\n" +
 			"later included, plus the catalog's default, and a model of any other\n" +
-			"provider is off. A later --models returns to the list by model, and --models\n" +
-			"naming every catalog model allows all models again.\n" +
+			"provider is off. A later --models returns to the list by model, and\n" +
+			"--models all allows all models again.\n" +
 			"--idle-timeout sets how many minutes the sandbox of a session a person\n" +
 			"started stays up after its turn ends or its last editor disconnects, 5 to\n" +
 			"120 (Enterprise workspaces only; every other plan keeps 5). Automations'\n" +
@@ -557,10 +561,17 @@ func envCommand(d deps) *cobra.Command {
 				patch["enabledProviders"] = providers
 			}
 			if f.Changed("models") {
-				if len(models) == 0 {
-					return usageError("--models takes the models members may choose, comma-separated; the catalog's default always stays on")
+				switch {
+				case len(models) == 0:
+					return usageError("--models takes all, or the models members may choose, comma-separated; the catalog's default always stays on")
+				case slices.Contains(models, modelsAll) && len(models) > 1:
+					return usageError("--models all allows every catalog model and takes no model id beside it")
+				case models[0] == modelsAll:
+					patch["allowAllModels"] = true
+				default:
+					// An explicit allowlist, even naming every catalog model.
+					patch["allowAllModels"], patch["enabledModels"] = false, models
 				}
-				patch["enabledModels"] = models
 			}
 			if len(acks) > 0 {
 				patch["acknowledgeAgentDataUse"] = acks
@@ -587,12 +598,27 @@ func envCommand(d deps) *cobra.Command {
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
 	f.StringSliceVar(&agents, "agents", nil, "the agents members can start sessions with, comma-separated; replaces the list (\"\" turns every agent off)")
-	f.StringSliceVar(&models, "models", nil, "the platform catalog models members may choose, comma-separated; replaces the list and must keep the catalog's default. Every model allows all, a later one included; any model left out leaves a later one off")
+	f.StringSliceVar(&models, "models", nil, "all, to allow every platform catalog model, a later one included; or the models members may choose, comma-separated, as an allowlist that must keep the catalog's default and leaves a later model off")
 	f.StringSliceVar(&providers, "providers", nil, "the providers whose platform catalog models members may choose, comma-separated (anthropic for anthropic/…); replaces the list by model, and a model of another provider is off")
 	f.IntVar(&idleTimeout, "idle-timeout", 0, "minutes the sandbox of a session a person started stays up after its turn, 5 to 120 (Enterprise only)")
 	f.StringArrayVar(&acks, "acknowledge-data-use", nil, "acknowledge, as an admin, that this agent's model provider may train on what its sessions send; repeatable")
 	root.AddCommand(set)
 	return root
+}
+
+// modelsAll is the --models value that turns allowAllModels on (w10/m592).
+const modelsAll = "all"
+
+// modelsAllowed words the workspace's model mode (w10/m592), Devin's "Allow
+// all models" beside its allowlist by model or by provider.
+func modelsAllowed(all, byProvider bool) string {
+	switch {
+	case all:
+		return "all (a model added to the catalog later included)"
+	case byProvider:
+		return "by provider (a later model of an allowed provider included)"
+	}
+	return "allowlist (a model added to the catalog later stays off until an admin turns it on)"
 }
 
 func writeEnvironment(w io.Writer, e agentEnvironment) error {
@@ -639,6 +665,9 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 				m += " (the platform default, always on)"
 			}
 			on = append(on, m)
+		}
+		if e.AllowAllModels != nil {
+			tw.row("Models allowed", modelsAllowed(*e.AllowAllModels, e.EnabledProviders != nil))
 		}
 		tw.row("Models", strings.Join(on, ", "))
 		if e.EnabledProviders != nil {

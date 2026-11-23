@@ -13,6 +13,10 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   # The platform model catalog, its default first (w10/m516). Empty on the
   # workspace's own key, where defaultModel is free-form.
   models
+  # Devin's "Allow all models" mode (w10/m592): true while every catalog
+  # model is offered, a later one included; false under an allowlist, even one
+  # listing every current model, or a filter by provider. True on the own key.
+  allowAllModels
   # The catalog models the workspace's admins left on (w10/m527), in catalog
   # order with the catalog's default always among them: the choices for
   # defaultModel and every member's model pickers. Empty on the own key.

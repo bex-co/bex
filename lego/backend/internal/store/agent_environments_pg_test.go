@@ -289,8 +289,9 @@ func TestAgentEnvironmentDisabledModelsRoundTrip(t *testing.T) {
 // included, and kept by a write of another field. A row a bex-api before
 // m568 narrowed (no known_models) converts once to the catalog it is given,
 // keeping its turned-off list and updated_at; a second run with a grown
-// catalog leaves it, and a row that allows all stays NULL. The CHECK bounds
-// the list.
+// catalog leaves it, and a row that allows all stays NULL. An allowlist that
+// lists every model it saw (w10/m592) keeps its known models with none
+// turned off, and no run converts it. The CHECK bounds the list.
 func TestAgentEnvironmentKnownModelsAndTheLegacyConversion(t *testing.T) {
 	s, pool, tenant := agentSessionPGStore(t, "agent-known-models")
 	ctx := context.Background()
@@ -306,7 +307,7 @@ func TestAgentEnvironmentKnownModelsAndTheLegacyConversion(t *testing.T) {
 	}
 	none := []string{}
 	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &none}); err != nil || got.KnownModels != nil || len(got.DisabledModels) != 0 {
-		t.Fatalf("every model back on = known %#v disabled %v err=%v, want NULL and none", got.KnownModels, got.DisabledModels, err)
+		t.Fatalf("allowing all models = known %#v disabled %v err=%v, want NULL and none", got.KnownModels, got.DisabledModels, err)
 	}
 
 	// Rows as migration 0315's bex-api leaves them: one narrowed, one not.
@@ -323,6 +324,14 @@ func TestAgentEnvironmentKnownModelsAndTheLegacyConversion(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO agent_environments (workspace_id) VALUES ($1)`, allowAll); err != nil {
 		t.Fatal(err)
 	}
+	listed, err := s.CreateTenant(ctx, "agent-known-models-every", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, listed.ID) })
+	if got, err := s.UpsertAgentEnvironment(ctx, listed.ID, AgentEnvironmentPatch{DisabledModels: &none, KnownModels: catalog}); err != nil || !slices.Equal(got.KnownModels, catalog) || got.DisabledModels == nil || len(got.DisabledModels) != 0 {
+		t.Fatalf("an allowlist of every model = known %#v disabled %#v err=%v", got.KnownModels, got.DisabledModels, err)
+	}
 	if n, err := s.ConvertLegacyModelLists(ctx, catalog); err != nil || n < 1 {
 		t.Fatalf("conversion = %d err=%v, want the legacy row converted", n, err)
 	}
@@ -338,6 +347,9 @@ func TestAgentEnvironmentKnownModelsAndTheLegacyConversion(t *testing.T) {
 	}
 	if read, err := s.GetAgentEnvironment(ctx, legacy); err != nil || !slices.Equal(read.KnownModels, catalog) {
 		t.Fatalf("a second run changed the converted row: known %v err=%v", read.KnownModels, err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, listed.ID); err != nil || !slices.Equal(read.KnownModels, catalog) || len(read.DisabledModels) != 0 {
+		t.Fatalf("the conversion changed an allowlist of every model: known %v disabled %v err=%v", read.KnownModels, read.DisabledModels, err)
 	}
 
 	tooMany := make([]string, 65)

@@ -1444,9 +1444,9 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "Elige qué modelos de la plataforma pueden usar los miembros en sesiones, mensajes y automatizaciones, por modelo o por proveedor. Una sesión o automatización que ya usa un modelo que desactivas pasa al modelo predeterminado desde su siguiente turno.",
+      "Elige qué modelos de la plataforma pueden usar los miembros en sesiones, mensajes y automatizaciones: todos, o solo algunos, por modelo o por proveedor. Una sesión o automatización que ya usa un modelo que desactivas pasa al modelo predeterminado desde su siguiente turno.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that it allows all models (w10/m592) or filters them by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1483,7 +1483,12 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilterLabel": {
     message: "Filtrar los modelos que pueden elegir los miembros",
     description:
-      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+      "Settings → Agents: accessible name of the choice between every platform model (w10/m592) and filtering them by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsAll": {
+    message: "Todos",
+    description:
+      "Settings → Agents: option that lets members choose every platform model, one added to the catalog later included — Devin's “Allow all models”, every workspace's default (w10/m592). Keep it short: the three options share one line on a 390 px phone",
   },
   "agentEnvironment.modelsByModel": {
     message: "Por modelo",
@@ -1495,11 +1500,17 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
   },
+  "agentEnvironment.modelsAllHelp": {
+    message:
+      "Los miembros pueden elegir cualquier modelo de la plataforma, incluidos los que la plataforma añada después. Para desactivar modelos, filtra por modelo o por proveedor.",
+    description:
+      "Settings → Agents: help under the choice while it is All models — every platform model, a later one included; filtering by model or by provider turns models off (w10/m592)",
+  },
   "agentEnvironment.modelsByModelHelp": {
     message:
-      "Cuando desactivas un modelo, los modelos que la plataforma añada después siguen desactivados hasta que los actives.",
+      "Los miembros solo pueden elegir los modelos que actives aquí. Un modelo que la plataforma añada después sigue desactivado hasta que lo actives, aunque todos los modelos de aquí estén activados.",
     description:
-      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+      "Settings → Agents: help under the choice while it is by model — an allowlist: members pick only the models on, and a model added to the catalog later stays off even while every listed model is on (w10/m568, w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsByProviderHelp": {
     message:
@@ -1528,6 +1539,12 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
   },
+  "agentEnvironment.modelsAllowedAll": {
+    message:
+      "Ahora los miembros eligen entre todos los modelos, incluidos los que la plataforma añada después",
+    description:
+      "Toast after an admin switches the model list to All models (w10/m592)",
+  },
   "agentEnvironment.modelsFilteredByProvider": {
     message:
       "Ahora los miembros eligen entre los modelos de los proveedores que permites",
@@ -1537,13 +1554,19 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilteredByModel": {
     message: "Ahora los miembros eligen entre los modelos que permites",
     description:
-      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+      "Toast after an admin switches the model list to filtering by model, from All models or from by provider (w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsProvidersInvalid": {
     message:
       "No se pudieron actualizar los proveedores: la lista debe incluir al menos un proveedor del catálogo de la plataforma. Recarga la página para ver el catálogo actual.",
     description:
       "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
+  },
+  "agentEnvironment.modelsAllowAllInvalid": {
+    message:
+      "No se pudieron cambiar los modelos que pueden elegir los miembros: este espacio de trabajo ya no usa el catálogo de modelos de la plataforma. Recarga la página para ver la configuración actual.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a switch to or from All models (field allowAllModels): the workspace no longer uses the platform model catalog (w10/m592)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model} (desactivado)",

@@ -1380,9 +1380,9 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "按模型或按提供商，选择成员在会话、消息和自动化中可以选用的平台模型。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。",
+      "选择成员在会话、消息和自动化中可以选用的平台模型：全部模型，或按模型、按提供商只允许其中一部分。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that it allows all models (w10/m592) or filters them by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message: "平台的默认模型始终保持开启，因为会话会回退到它。",
@@ -1417,7 +1417,12 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilterLabel": {
     message: "筛选成员可选用的模型的方式",
     description:
-      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+      "Settings → Agents: accessible name of the choice between every platform model (w10/m592) and filtering them by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsAll": {
+    message: "全部模型",
+    description:
+      "Settings → Agents: option that lets members choose every platform model, one added to the catalog later included — Devin's “Allow all models”, every workspace's default (w10/m592). Keep it short: the three options share one line on a 390 px phone",
   },
   "agentEnvironment.modelsByModel": {
     message: "按模型",
@@ -1429,10 +1434,17 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
   },
-  "agentEnvironment.modelsByModelHelp": {
-    message: "一旦关闭任一模型，之后加入平台的模型会保持关闭，直到你将其开启。",
+  "agentEnvironment.modelsAllHelp": {
+    message:
+      "成员可以选用所有平台模型，包括之后加入平台的模型。若要关闭某些模型，请按模型或按提供商筛选。",
     description:
-      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+      "Settings → Agents: help under the choice while it is All models — every platform model, a later one included; filtering by model or by provider turns models off (w10/m592)",
+  },
+  "agentEnvironment.modelsByModelHelp": {
+    message:
+      "成员只能选用此处开启的模型。之后加入平台的模型会保持关闭，直到你将其开启，即使此处的模型已全部开启。",
+    description:
+      "Settings → Agents: help under the choice while it is by model — an allowlist: members pick only the models on, and a model added to the catalog later stays off even while every listed model is on (w10/m568, w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsByProviderHelp": {
     message:
@@ -1460,6 +1472,11 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
   },
+  "agentEnvironment.modelsAllowedAll": {
+    message: "成员现在可以从所有模型中选用，包括之后加入平台的模型",
+    description:
+      "Toast after an admin switches the model list to All models (w10/m592)",
+  },
   "agentEnvironment.modelsFilteredByProvider": {
     message: "成员现在从你允许的提供商的模型中选用",
     description:
@@ -1468,13 +1485,19 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilteredByModel": {
     message: "成员现在从你允许的模型中选用",
     description:
-      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+      "Toast after an admin switches the model list to filtering by model, from All models or from by provider (w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsProvidersInvalid": {
     message:
       "无法更新提供商：列表必须至少包含一个平台目录中的提供商。请刷新页面查看当前目录。",
     description:
       "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
+  },
+  "agentEnvironment.modelsAllowAllInvalid": {
+    message:
+      "无法更改成员可选的模型：此工作区已不再使用平台模型目录。请刷新页面查看当前设置。",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a switch to or from All models (field allowAllModels): the workspace no longer uses the platform model catalog (w10/m592)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model}（已关闭）",

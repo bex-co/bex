@@ -1408,9 +1408,9 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelsDescription": {
     message:
-      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 모델별 또는 제공업체별로 고릅니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다.",
+      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 고릅니다. 전체 모델을 허용하거나, 모델별 또는 제공업체별로 일부만 허용할 수 있습니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다.",
     description:
-      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that the list filters by model or by provider (w10/m573)",
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527), and that it allows all models (w10/m592) or filters them by model or by provider (w10/m573)",
   },
   "agentEnvironment.modelsDefaultLocked": {
     message:
@@ -1447,7 +1447,12 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilterLabel": {
     message: "멤버가 선택할 수 있는 모델 필터 방식",
     description:
-      "Settings → Agents: accessible name of the choice between filtering the platform models by model or by provider (w10/m573)",
+      "Settings → Agents: accessible name of the choice between every platform model (w10/m592) and filtering them by model or by provider (w10/m573)",
+  },
+  "agentEnvironment.modelsAll": {
+    message: "전체 모델",
+    description:
+      "Settings → Agents: option that lets members choose every platform model, one added to the catalog later included — Devin's “Allow all models”, every workspace's default (w10/m592). Keep it short: the three options share one line on a 390 px phone",
   },
   "agentEnvironment.modelsByModel": {
     message: "모델별",
@@ -1459,11 +1464,17 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Settings → Agents: option that filters the platform models members can choose by provider, the prefix of a model id before / (w10/m573)",
   },
+  "agentEnvironment.modelsAllHelp": {
+    message:
+      "멤버는 이후 플랫폼에 추가되는 모델을 포함해 모든 플랫폼 모델을 선택할 수 있습니다. 모델을 끄려면 모델별 또는 제공업체별로 필터링하세요.",
+    description:
+      "Settings → Agents: help under the choice while it is All models — every platform model, a later one included; filtering by model or by provider turns models off (w10/m592)",
+  },
   "agentEnvironment.modelsByModelHelp": {
     message:
-      "모델을 하나라도 끄면, 이후 플랫폼에 추가되는 모델은 켤 때까지 꺼진 상태로 유지됩니다.",
+      "멤버는 여기에서 켠 모델만 선택할 수 있습니다. 이후 플랫폼에 추가되는 모델은 여기의 모든 모델이 켜져 있어도 직접 켤 때까지 꺼진 상태로 유지됩니다.",
     description:
-      "Settings → Agents: help under the filter choice while it is by model — once a model is off, models added to the catalog later stay off (w10/m568, w10/m573)",
+      "Settings → Agents: help under the choice while it is by model — an allowlist: members pick only the models on, and a model added to the catalog later stays off even while every listed model is on (w10/m568, w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsByProviderHelp": {
     message:
@@ -1492,6 +1503,12 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Toast after an admin stops allowing a provider's models for members; {provider} is the provider id (w10/m573)",
   },
+  "agentEnvironment.modelsAllowedAll": {
+    message:
+      "이제 멤버는 이후 플랫폼에 추가되는 모델을 포함해 모든 모델 중에서 선택합니다",
+    description:
+      "Toast after an admin switches the model list to All models (w10/m592)",
+  },
   "agentEnvironment.modelsFilteredByProvider": {
     message: "이제 멤버는 허용한 제공업체의 모델 중에서 선택합니다",
     description:
@@ -1500,13 +1517,19 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelsFilteredByModel": {
     message: "이제 멤버는 허용한 모델 중에서 선택합니다",
     description:
-      "Toast after an admin switches the model list back to filtering by model (w10/m573)",
+      "Toast after an admin switches the model list to filtering by model, from All models or from by provider (w10/m573, w10/m592)",
   },
   "agentEnvironment.modelsProvidersInvalid": {
     message:
       "제공업체를 업데이트하지 못했습니다. 목록에는 플랫폼 카탈로그의 제공업체가 하나 이상 있어야 합니다. 페이지를 새로고침해 현재 카탈로그를 확인하세요.",
     description:
       "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a provider filter change (field enabledProviders, w10/m573)",
+  },
+  "agentEnvironment.modelsAllowAllInvalid": {
+    message:
+      "멤버가 선택할 수 있는 모델을 변경하지 못했습니다. 이 워크스페이스는 더 이상 플랫폼 모델 카탈로그를 사용하지 않습니다. 페이지를 새로고침해 현재 설정을 확인하세요.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a switch to or from All models (field allowAllModels): the workspace no longer uses the platform model catalog (w10/m592)",
   },
   "agentEnvironment.modelOffOption": {
     message: "{model} (꺼짐)",

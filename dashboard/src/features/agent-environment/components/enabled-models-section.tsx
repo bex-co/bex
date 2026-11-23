@@ -14,6 +14,7 @@ import {
   withProviderToggled,
   type AgentEnvironmentView,
   type ModelFilter,
+  type ModelFilterMode,
 } from "@/features/agent-environment/lib/environment";
 import {
   AgentSectionHeading,
@@ -33,23 +34,28 @@ interface EnabledModelsSectionProps {
 }
 
 /**
- * Settings → Agents' model list (w10/m527, Devin's allowlisted models): the
- * platform catalog models members may pick for a session, a message or an
- * automation, filtered by model or by provider, one filter type at a time as
- * Devin's (w10/m573).
+ * Settings → Agents' model list (w10/m527): the platform catalog models
+ * members may pick for a session, a message or an automation. As Devin's, it
+ * allows all models, every workspace's default (w10/m592), or filters them by
+ * model or by provider, one filter type at a time (w10/m573).
  *
- * By model, one switch per catalog model, on while members may pick it. The
- * catalog's default (models[0]) stays on and locked, since sessions fall back
- * to it. A model off only because it joined the catalog after an admin
- * narrowed the list (newModels, w10/m568) is labelled "New in the catalog"
- * until a switch turns it on.
+ * All models, one switch per catalog model, each on and locked: members may
+ * pick every one, a model added to the catalog later included.
+ *
+ * By model, an allowlist: one switch per catalog model, on while members may
+ * pick it. The catalog's default (models[0]) stays on and locked, since
+ * sessions fall back to it. A model added to the catalog later is off, even
+ * while every switch is on, and labelled "New in the catalog" (newModels,
+ * w10/m568) until a switch turns it on. Switching to it from "All models"
+ * keeps every model on as the allowlist; from "By provider", the models on
+ * now.
  *
  * By provider, one switch per catalog provider (a model id's prefix before
  * "/"), on while members may pick every model of that provider, a later one
  * included; each lists its models, the default marked always on. The last
  * provider allowed is locked on, since the server refuses an empty filter.
- * Switching to "By provider" allows the providers of the models on now, and
- * switching back keeps the models on now as the list.
+ * Switching to it allows the providers of the models on now (from "All
+ * models", every provider).
  *
  * Each control saves on change, as the available-agents switches do; members
  * see them disabled. Drawn only on the platform catalog: on the workspace's
@@ -69,24 +75,43 @@ export function EnabledModelsSection({
   );
   const shown = pending ?? modelFilterOf(saved);
   const locked = !canManage || pending !== null;
+  const all = shown.mode === "all";
+  const filter =
+    MODEL_FILTERS.find(({ mode }) => mode === shown.mode) ?? MODEL_FILTERS[0];
   const helpId = `${ids}-filter-help`;
 
-  function chooseFilter(byProvider: boolean) {
-    if (byProvider === shown.byProvider) return;
-    if (byProvider) {
-      const providers = providersOfEnabledModels(saved);
-      void save(
-        { byProvider, models: saved.enabledModels, providers },
-        { enabledProviders: providers },
-        () => t("agentEnvironment.modelsFilteredByProvider"),
-      );
-      return;
+  function chooseFilter(mode: ModelFilterMode) {
+    if (mode === shown.mode) return;
+    const models = saved.enabledModels;
+    switch (mode) {
+      case "all":
+        // Never beside a list: the server refuses both in one write.
+        void save(
+          { mode, models: saved.models, providers: [] },
+          { allowAllModels: true },
+          () => t("agentEnvironment.modelsAllowedAll"),
+        );
+        return;
+      case "model":
+        // From "All models", false alone keeps every model on now as the
+        // allowlist; from "By provider", the models on now are the list.
+        void save(
+          { mode, models, providers: [] },
+          shown.mode === "all"
+            ? { allowAllModels: false }
+            : { enabledModels: models },
+          () => t("agentEnvironment.modelsFilteredByModel"),
+        );
+        return;
+      case "provider": {
+        const providers = providersOfEnabledModels(saved);
+        void save(
+          { mode, models, providers },
+          { enabledProviders: providers },
+          () => t("agentEnvironment.modelsFilteredByProvider"),
+        );
+      }
     }
-    void save(
-      { byProvider, models: saved.enabledModels, providers: [] },
-      { enabledModels: saved.enabledModels },
-      () => t("agentEnvironment.modelsFilteredByModel"),
-    );
   }
 
   function toggleModel(model: string, on: boolean) {
@@ -130,7 +155,7 @@ export function EnabledModelsSection({
         aria-label={t("agentEnvironment.modelsFilterLabel")}
         aria-describedby={helpId}
       >
-        {MODEL_FILTERS.map(({ byProvider, labelKey }) => (
+        {MODEL_FILTERS.map(({ mode, labelKey }) => (
           <label
             key={labelKey}
             className={cn(
@@ -145,23 +170,19 @@ export function EnabledModelsSection({
               type="radio"
               className="sr-only"
               name={`${ids}-filter`}
-              checked={shown.byProvider === byProvider}
+              checked={shown.mode === mode}
               disabled={locked}
-              onChange={() => chooseFilter(byProvider)}
+              onChange={() => chooseFilter(mode)}
             />
             {t(labelKey)}
           </label>
         ))}
       </ModelFilterFrame>
       <p id={helpId} className="text-muted-foreground text-xs">
-        {t(
-          shown.byProvider
-            ? "agentEnvironment.modelsByProviderHelp"
-            : "agentEnvironment.modelsByModelHelp",
-        )}
+        {t(filter.helpKey)}
       </p>
       <SwitchList>
-        {shown.byProvider
+        {shown.mode === "provider"
           ? saved.providers.map((provider, i) => {
               const id = `${ids}-provider-${i}`;
               const checked = shown.providers.includes(provider);
@@ -210,13 +231,16 @@ export function EnabledModelsSection({
           : saved.models.map((model, i) => {
               const id = `${ids}-model-${i}`;
               const isDefault = i === 0;
-              const checked = isDefault || shown.models.includes(model);
+              // Under "All models" every model is on, and only a filter
+              // turns one off; the help under the choice says so.
+              const checked = all || isDefault || shown.models.includes(model);
               const note = isDefault
                 ? t("agentEnvironment.modelsDefaultLocked")
                 : !checked && saved.newModels.includes(model)
                   ? t("agentEnvironment.modelsNew")
                   : null;
               const noteId = `${id}-note`;
+              const describedBy = note ? noteId : all ? helpId : undefined;
               return (
                 <SwitchListRow
                   key={model}
@@ -231,8 +255,8 @@ export function EnabledModelsSection({
                     <Switch
                       id={id}
                       checked={checked}
-                      disabled={isDefault || locked}
-                      aria-describedby={note ? noteId : undefined}
+                      disabled={all || isDefault || locked}
+                      aria-describedby={describedBy}
                       onCheckedChange={(on) => toggleModel(model, on)}
                     />
                   }

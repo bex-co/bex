@@ -39,7 +39,8 @@ export function useAgentEnvironment(
       if (ownerId == null) throw new Error("no workspace selected");
       // The capabilities read (agentSessionCapabilities) carries the
       // composer's agent list, each agent's model-key readiness, default
-      // model and the models members may pick (w10/m527), and the default
+      // model and the models members may pick (w10/m527; by model, by
+      // provider, w10/m573, or all of them, w10/m592), and the default
       // sandbox template. Nothing reads it on Settings, and its readers are
       // cache-first, so a change of any of them evicts it: the next composer
       // or automation form reads it afresh.
@@ -48,6 +49,8 @@ export function useAgentEnvironment(
         input.clearModelApiKey === true ||
         input.enabledAgents != null ||
         input.enabledModels != null ||
+        input.enabledProviders != null ||
+        input.allowAllModels != null ||
         input.defaultModel != null ||
         input.defaultTemplate != null;
       const result = await mutate({

@@ -63,9 +63,10 @@ type AgentEnvironment struct {
 	// DisabledModels are the platform catalog models the workspace's admins
 	// turned off (w10/m527). KnownModels is the catalog their last narrowing
 	// write saw (w10/m568): the allowlist is KnownModels less DisabledModels,
-	// and a catalog model outside KnownModels is new in the catalog and off.
-	// KnownModels nil, or DisabledModels empty, allows every catalog model
-	// but DisabledModels (the opt-out a row written before m568 stores).
+	// and a catalog model outside KnownModels is new in the catalog and off,
+	// even when DisabledModels is empty (w10/m592). KnownModels nil allows
+	// every catalog model but DisabledModels: with none, Devin's "Allow all
+	// models"; with some, the opt-out a row written before m568 stores.
 	// EnabledProviders is the filter by provider (w10/m573), nil while the
 	// list is by model; it is in force only while DisabledModels is what its
 	// write derived from KnownModels (agentsessions' leftOn).

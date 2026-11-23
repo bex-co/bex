@@ -417,7 +417,10 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--automations-github-cli", "inherit"}, `{"automationsGithubCliEnabled":null}`},
 		{[]string{"--github-cli", "off", "--github-cli-mandatory", "on", "--automations-github-cli", "inherit"},
 			`{"automationsGithubCliEnabled":null,"githubCliEnabled":false,"githubCliMandatory":true}`},
-		{[]string{"--models", "deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5"}, `{"enabledModels":["deepseek/deepseek-v4.1-flash-1017","anthropic/claude-haiku-5.5"]}`},
+		// w10/m592: a list is an explicit allowlist, even of every model;
+		// all is Devin's "Allow all models".
+		{[]string{"--models", "deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5"}, `{"allowAllModels":false,"enabledModels":["deepseek/deepseek-v4.1-flash-1017","anthropic/claude-haiku-5.5"]}`},
+		{[]string{"--models", "all"}, `{"allowAllModels":true}`},
 		{[]string{"--idle-timeout", "30"}, `{"idleTimeoutMinutes":30}`},
 		// w10/m573: the filter by provider, the other filter type.
 		{[]string{"--providers", "anthropic,moonshotai"}, `{"enabledProviders":["anthropic","moonshotai"]}`},
@@ -447,6 +450,9 @@ func TestEnvSet(t *testing.T) {
 	}{
 		{[]string{"--providers", "", "--network-tier", "full"}, "--providers takes the providers"},
 		{[]string{"--providers", "anthropic", "--models", "deepseek/deepseek-v4.1-flash-1017"}, "use --models or --providers, not both"},
+		{[]string{"--providers", "anthropic", "--models", "all"}, "use --models or --providers, not both"},
+		{[]string{"--models", "all,anthropic/claude-haiku-5.5"}, "--models all allows every catalog model and takes no model id beside it"},
+		{[]string{"--models", "anthropic/claude-haiku-5.5,all"}, "--models all allows every catalog model and takes no model id beside it"},
 	} {
 		f.calls = nil
 		if _, stderr, code := run(t, d, append([]string{"env", "set"}, bad.args...)...); code != exitUsage || !strings.Contains(stderr, bad.want) || len(f.calls) != 0 {
@@ -592,6 +598,21 @@ func TestEnvShowsTheEnabledModels(t *testing.T) {
 		{"a list by model", map[string]any{"models": catalog, "enabledModels": catalog[:2], "newModels": []any{}, "enabledProviders": nil}, []string{
 			`(?m)^Models off\s+anthropic/claude-opus-5.5 \(turned off by an admin\)$`,
 		}, "Providers"},
+		// w10/m592: the mode prints above the models, and an allowlist that
+		// lists every earlier model reads a later one as new.
+		{"allow all models", map[string]any{"models": catalog, "enabledModels": catalog, "newModels": []any{}, "allowAllModels": true}, []string{
+			`(?m)^Models allowed\s+all \(a model added to the catalog later included\)\n^Models\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default, always on\), anthropic/claude-haiku-5.5, anthropic/claude-opus-5.5$`,
+		}, "Models off"},
+		{"an allowlist of every earlier model", map[string]any{"models": catalog, "enabledModels": catalog[:2], "newModels": []any{catalog[2]}, "allowAllModels": false}, []string{
+			`(?m)^Models allowed\s+allowlist \(a model added to the catalog later stays off until an admin turns it on\)$`,
+			`(?m)^Models off\s+anthropic/claude-opus-5.5 \(new in the catalog\)$`,
+		}, ""},
+		{"a bex-api before the mode", map[string]any{"models": catalog, "enabledModels": catalog, "newModels": []any{}}, []string{
+			`(?m)^Models\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default, always on\), anthropic/claude-haiku-5.5, anthropic/claude-opus-5.5$`,
+		}, "Models allowed"},
+		{"by provider", map[string]any{"models": catalog, "enabledModels": catalog, "newModels": []any{}, "enabledProviders": []any{"deepseek", "anthropic"}, "allowAllModels": false}, []string{
+			`(?m)^Models allowed\s+by provider \(a later model of an allowed provider included\)$`,
+		}, ""},
 	} {
 		tc.env["networkTier"], tc.env["modelSource"] = "registries", "platform"
 		f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-environment": answer(http.StatusOK, tc.env)})
@@ -699,7 +720,7 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 	}
 	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
 		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled ||
-		len(e.EnabledModels) != 2 || len(e.NewModels) != 1 || e.EnabledProviders != nil || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
+		len(e.EnabledModels) != 2 || len(e.NewModels) != 1 || e.AllowAllModels == nil || *e.AllowAllModels || e.EnabledProviders != nil || e.AutomationsGitHubCLIEnabled == nil || *e.AutomationsGitHubCLIEnabled || !e.GitHubCLIMandatory {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {

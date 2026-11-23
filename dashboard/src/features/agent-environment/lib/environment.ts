@@ -36,13 +36,34 @@ export const TIERS = [
 ] as const;
 
 /**
- * The model list's filter choices (w10/m573), Devin's one filter type at a
- * time, in the order the ready card and its skeleton draw them.
+ * The model list's choices, in the order the ready card and its skeleton draw
+ * them: Devin's "Allow all models" (w10/m592), every workspace's default,
+ * then its two filter types, one at a time (w10/m573). Each names the help
+ * the section shows under the choice while it is in force.
  */
 export const MODEL_FILTERS = [
-  { byProvider: false, labelKey: "agentEnvironment.modelsByModel" },
-  { byProvider: true, labelKey: "agentEnvironment.modelsByProvider" },
+  {
+    mode: "all",
+    labelKey: "agentEnvironment.modelsAll",
+    helpKey: "agentEnvironment.modelsAllHelp",
+  },
+  {
+    mode: "model",
+    labelKey: "agentEnvironment.modelsByModel",
+    helpKey: "agentEnvironment.modelsByModelHelp",
+  },
+  {
+    mode: "provider",
+    labelKey: "agentEnvironment.modelsByProvider",
+    helpKey: "agentEnvironment.modelsByProviderHelp",
+  },
 ] as const;
+
+/**
+ * How the model list is chosen: every catalog model, one added later
+ * included ("all"), an allowlist ("model") or a filter by provider.
+ */
+export type ModelFilterMode = (typeof MODEL_FILTERS)[number]["mode"];
 
 export type AgentEnvironmentView = AgentEnvironmentFieldsFragment;
 
@@ -399,20 +420,24 @@ export function providerModels(
 }
 
 /**
- * What the model list's controls show (w10/m573): whether it filters by
- * provider, Devin's one filter type at a time, and the models or providers
- * on in each. Saved, it is the environment's; while a change saves, it is
- * that change.
+ * What the model list's controls show (w10/m573, w10/m592): its mode, Devin's
+ * "Allow all models" or one of its two filter types, and the models or
+ * providers on in each. Saved, it is the environment's; while a change saves,
+ * it is that change.
  */
 export interface ModelFilter {
-  byProvider: boolean;
+  mode: ModelFilterMode;
   models: string[];
   providers: string[];
 }
 
 export function modelFilterOf(env: AgentEnvironmentView): ModelFilter {
   return {
-    byProvider: env.enabledProviders != null,
+    mode: env.allowAllModels
+      ? "all"
+      : env.enabledProviders != null
+        ? "provider"
+        : "model",
     models: env.enabledModels,
     providers: env.enabledProviders ?? [],
   };
@@ -436,8 +461,9 @@ export function withProviderToggled(
 
 /**
  * The providers switching the list to "By provider" allows (w10/m573): the
- * providers of the models on now, so the offer stays at least what it was;
- * every provider when none of those models has one.
+ * providers of the models on now, so the offer stays at least what it was
+ * (from "All models", every provider); every provider when none of those
+ * models has one.
  */
 export function providersOfEnabledModels(env: AgentEnvironmentView): string[] {
   const on = env.providers.filter((p) =>
@@ -447,9 +473,9 @@ export function providersOfEnabledModels(env: AgentEnvironmentView): string[] {
 }
 
 /**
- * The locale key for a failed model or provider switch (w10/m527, m573): a
- * list the server refuses means the catalog or the model source changed
- * since the card loaded.
+ * The locale key for a failed model or provider switch or mode change
+ * (w10/m527, m573, m592): a list or mode the server refuses means the
+ * catalog or the model source changed since the card loaded.
  */
 export function enabledModelsErrorKey(err: unknown): string {
   const refusal = graphQLErrorExtensions(
@@ -458,6 +484,9 @@ export function enabledModelsErrorKey(err: unknown): string {
   );
   if (refusal?.["field"] === "enabledProviders") {
     return "agentEnvironment.modelsProvidersInvalid";
+  }
+  if (refusal?.["field"] === "allowAllModels") {
+    return "agentEnvironment.modelsAllowAllInvalid";
   }
   return sectionErrorKey(err, "agentEnvironment.modelsSaveFailed", {
     AGENT_ENVIRONMENT_MODELS_INVALID: "agentEnvironment.modelsInvalid",

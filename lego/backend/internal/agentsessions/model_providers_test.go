@@ -233,9 +233,10 @@ func stringsOf(raw []any) []string {
 }
 
 // DoD 2, 6: one filter type at a time. A provider write replaces a by-model
-// list and a by-model write the provider filter; every model on allows all
-// again. A filter listing every provider stays a filter, so a model of a
-// provider the catalog gains later is off, as Devin's tag rule reads.
+// list and a by-model write the provider filter; allowAllModels true allows
+// all again (w10/m592). A filter listing every provider stays a filter, so a
+// model of a provider the catalog gains later is off, as Devin's tag rule
+// reads, and so does a list naming every model.
 func TestSwitchingBetweenTheFilterTypes(t *testing.T) {
 	enablePlatformCatalog(t)
 	svc, _, _ := adminSession(t, nil)
@@ -276,10 +277,15 @@ func TestSwitchingBetweenTheFilterTypes(t *testing.T) {
 	reads.expect("every provider, the catalog grown", grown, grownCatalog, []string{})
 	reads.expectProviders("every provider, the catalog grown", []string{"deepseek", "anthropic", "moonshotai"}, testProviders)
 
-	// Every model on allows all, the next model and provider included.
+	// Every model listed is an allowlist (w10/m592), allowAllModels true
+	// allows all, the next model and provider included.
 	write("every model", EnvironmentInput{EnabledModels: &grown})
+	if r := row(); r.EnabledProviders != nil || !slices.Equal(r.KnownModels, grown) || len(r.DisabledModels) != 0 {
+		t.Fatalf("every model on stored providers %v known %v disabled %v, want an allowlist of every model", r.EnabledProviders, r.KnownModels, r.DisabledModels)
+	}
+	write("allow all", EnvironmentInput{AllowAllModels: ptr(true)})
 	if r := row(); r.EnabledProviders != nil || r.KnownModels != nil || len(r.DisabledModels) != 0 {
-		t.Fatalf("every model on stored providers %v known %v disabled %v, want allow all", r.EnabledProviders, r.KnownModels, r.DisabledModels)
+		t.Fatalf("allowAllModels stored providers %v known %v disabled %v, want allow all", r.EnabledProviders, r.KnownModels, r.DisabledModels)
 	}
 	growCatalog(t, catalogAdded, otherProvider, "openai/gpt-6")
 	everything := append(slices.Clone(grown), "openai/gpt-6")

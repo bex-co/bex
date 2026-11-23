@@ -200,7 +200,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, EnabledModels: []string{}, NewModels: []string{}, Providers: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, AllowAllModels: true, EnabledModels: []string{}, NewModels: []string{}, Providers: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
 		TemplateOffer: offerOf("agent"),
 		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}},
 		GitHubCLIEnabled: true, IdleTimeoutMinutes: 5, IdleTimeoutConfigurable: true}
