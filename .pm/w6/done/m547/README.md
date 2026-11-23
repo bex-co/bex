@@ -46,7 +46,7 @@
 - **Measured before (t001, production, 2026-11-21):** 15.8–23.3 s on the same node and 39.8–46.8 s across nodes. The time went to node moves (27–32 s each), the 10 s startup period (7–9 s) and the kubelet's 10 s sync (1.7–8.6 s on the same node). LUKS `cryptsetup open` (2.1–2.3 s) is a floor the operator cannot move.
 - **Expected after:** about 6–9 s on the volume's node: stop 0.5 s, a sync of at most 2 s, LUKS 2.2 s, mount 0.8 s, pull 0.6–2.2 s, start 0.3 s, a 1 s probe and Ready 0.4 s. That is above the definition of done's "about 5 s". t005 names the excess phase if the measurement agrees, and t006 records the measured bound.
 - **Gate (clears by itself): pin must carry `e0b731eba`.** Then t005 runs its steps: a tenant node at 2 s (roll `bex-tenant-0` with `rolloutAfter` if none), the fixture, and the runs.
-- **Filed on the way:** [w6/159](../../blocked/159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/m595](../../m595/README.md) (pre-pull for large images).
+- **Filed on the way:** [w6/159](../../blocked/159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/m595](../../blocked/m595/README.md) (pre-pull for large images).
 
 ## UNBLOCKED — 2026-11-21: production pin `cce6c749f6ff` carries `e0b731eba`
 
@@ -60,7 +60,7 @@
 - **Why it does not hold:**
   - One same-node swap in ten (D1, 31.75 s) detached and reattached the volume, because the node's 2 s sync reported it free before the new pod was bound: [w6/161](../161.md).
   - A web image service that names no port waited 25 s after Ready on each image deploy (37.0 and 44.0 s): [w6/162](../162.md).
-  - The rest of the excess over "about 5 s" is the code deploy's pull (0.6–2.2 s, [w6/m595](../../m595/README.md)) and the publish's LUKS open (about 2.2 s).
+  - The rest of the excess over "about 5 s" is the code deploy's pull (0.6–2.2 s, [w6/m595](../../blocked/m595/README.md)) and the publish's LUKS open (about 2.2 s).
 - **Gate:** w6/161 and w6/162 ship. Then t011 re-measures on production once it runs their commits, and t009 closes.
 
 ## UNBLOCKED — 2026-11-23: production runs w6/161's holder and w6/162's port fix
@@ -72,8 +72,8 @@
 ## Done — 2026-11-23: a same-node deploy or restart of a disk service is down about 4 s
 
 - **t011 ([record](done/t011.md)).** On pin `1a5a8e872398`, a fresh 1 GB Starter fixture in `bex-canary` (disposable) took twelve same-node code deploys and restarts with its port named. Every one held its volume on `bex-tenant-0-zdp6v-6p4cg`, and none detached it.
-  - Eleven took 3.99–4.26 s, against t005's 5.74–9.0 s and t001's 15.8–23.3 s. The twelfth, a code deploy of a tag new to the node, took 6.00 s, with a 2.08 s pull ([w6/m595](../../m595/README.md)).
+  - Eleven took 3.99–4.26 s, against t005's 5.74–9.0 s and t001's 15.8–23.3 s. The twelfth, a code deploy of a tag new to the node, took 6.00 s, with a 2.08 s pull ([w6/m595](../../blocked/m595/README.md)).
   - Two code deploys with no port took 7.24 and 9.50 s, against t005's 37.0 and 44.0 s. The operator found the port within 0.06 s of Ready. The rest of the excess is the health-probe install container, which its 20m CPU limit throttles, filed as [w6/170](../../170.md).
   - The cordoned run moved the volume in 39.75 s, most of it Hetzner's detach and attach (16.1 s each that day).
 - **The definition of done holds** for the fixture it names (t009). ADR082, ADR004 and ADR018 record the bound and what it does not cover.
-- **Still open, as their own items.** [w6/m595](../../m595/README.md) (pre-pull), [w6/170](../../170.md) (the install container's CPU) and [w6/165](../../165.md) (a failed rollout's restore takes no hold).
+- **Still open, as their own items.** [w6/m595](../../blocked/m595/README.md) (pre-pull), [w6/170](../../170.md) (the install container's CPU) and [w6/165](../../165.md) (a failed rollout's restore takes no hold).

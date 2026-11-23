@@ -1,6 +1,6 @@
 # w6 · m595 — A disk service's new image is on its node before Recreate stops the old instance
 
-**Worker:** worker6 **Goal:** a code deploy of a disk-bearing service (`Recreate`) pulls its new image onto the volume's node while the old instance still serves, so the downtime stays at m547's same-node bound of about 4 s however large the new layers are, instead of adding a pull of 8–24 s for a typical built image. **Status:** todo (t001, t002, t003, t006, t007 done; t004 step 1 done)
+**Worker:** worker6 **Goal:** a code deploy of a disk-bearing service (`Recreate`) pulls its new image onto the volume's node while the old instance still serves, so the downtime stays at m547's same-node bound of about 4 s however large the new layers are, instead of adding a pull of 8–24 s for a typical built image. **Status:** blocked (t001–t003, t006 and t007 done, t004 step 1 done; t005 waits for production to run `a61572221d`)
 
 ## Tasks (in order)
 
@@ -17,17 +17,17 @@
 
 ## Definition of done
 
-- On production, a disk-bearing Starter fixture in `bex-canary` takes at least two code deploys of an image with at least 100 MB of layers new to the volume's node, measured as in [m547 t011](../done/m547/done/t011.md). In each, containerd fetches no layer of the new digest between the old instance's `SIGTERM` and the new instance's start: its `PullImage` there is the `imagePullPolicy: Always` re-check alone (under 1 s). Each window is within 1 s of the same fixture's restarts.
+- On production, a disk-bearing Starter fixture in `bex-canary` takes at least two code deploys of an image with at least 100 MB of layers new to the volume's node, measured as in [m547 t011](../../done/m547/done/t011.md). In each, containerd fetches no layer of the new digest between the old instance's `SIGTERM` and the new instance's start: its `PullImage` there is the `imagePullPolicy: Always` re-check alone (under 1 s). Each window is within 1 s of the same fixture's restarts.
 - A restart and a plan change start no pre-pull, and a cordoned-node run starts none.
 - No pre-pull Job or pod is left once a rollout ends, and no customer surface shows one: the service's instances (`GET /v1/services/{id}/instances`), SSH targets, metrics, logs and events.
 - ADR082 § D3 describes the pre-pull and its measured window. ADR004 and ADR018 no longer list the pull as an open excess term.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w6/160](../done/160.md), filed by [w6/m547](../done/m547/README.md) t001 on 2026-11-21 as the large-image variant of its t004, and promoted by `/loopx w6` on 2026-11-23. m547 t011 measured a code deploy of a tag new to the node at 6.0 s, against 3.99–4.26 s for a cached image, on a 5 MB image.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)). [Render's persistent disks](https://render.com/docs/disks): "Render stops the old instance before starting the new one, which makes the service unavailable for a few seconds." Under `Recreate`, bex is down for the whole pull.
+- **Source:** inbox note [w6/160](../../done/160.md), filed by [w6/m547](../../done/m547/README.md) t001 on 2026-11-21 as the large-image variant of its t004, and promoted by `/loopx w6` on 2026-11-23. m547 t011 measured a code deploy of a tag new to the node at 6.0 s, against 3.99–4.26 s for a cached image, on a 5 MB image.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). [Render's persistent disks](https://render.com/docs/disks): "Render stops the old instance before starting the new one, which makes the service unavailable for a few seconds." Under `Recreate`, bex is down for the whole pull.
 - **Expected outcome:** a disk service's code deploy is down about 4 s plus its own stop and start, whatever its image size, as its restarts are today.
-- **Why now:** the measurement below shows the pull is the largest term left in a disk service's code deploy. m547 and [m559](../done/m559/README.md) brought the rest of the same-node window to about 4 s, and the holder they shipped already runs on the volume's node before the template changes, so the rollout hook exists.
+- **Why now:** the measurement below shows the pull is the largest term left in a disk service's code deploy. m547 and [m559](../../done/m559/README.md) brought the rest of the same-node window to about 4 s, and the holder they shipped already runs on the volume's node before the template changes, so the rollout hook exists.
 - **Render parity task omitted:** operator mechanism only. No REST, GraphQL, MCP or dashboard field changes. t003 checks that the pre-pull pod appears on none of them.
 
 ## Measured at promotion (2026-11-23)

@@ -626,7 +626,7 @@ Measured on production on 2026-11-21: restarts took 5.7–6.3 s and code deploys
 
 Measured again on 2026-11-23 (pin `1a5a8e872398`, w6/m547 t011), with both fixes, for a Starter disk service whose server listens at once:
 
-- **The port named.** Same-node restarts and code deploys took 3.99–4.26 s, and every one held its volume on its node. A code deploy of a tag new to the node adds its pull, 2.1 s for a 5 MB image (6.0 s in all; [w6/m595](../.pm/w6/m595/README.md)).
+- **The port named.** Same-node restarts and code deploys took 3.99–4.26 s, and every one held its volume on its node. A code deploy of a tag new to the node adds its pull, 2.1 s for a 5 MB image (6.0 s in all; [w6/m595](../.pm/w6/blocked/m595/README.md)).
 - **No port.** Two code deploys took 7.24 and 9.5 s, against 37–44 s before. The extra 3.3 s is the `bex-health-probe-install` init container, most likely throttled by its 20m CPU limit. Every service that probes by exec pays it, a Health Check Path included ([w6/170](../.pm/w6/170.md)).
 - **A move.** It took 39.75 s, most of it Hetzner's detach and attach (16 s each that day). See [ADR082 § D3](ADR082-persistent-disks.md#d3--mechanism-deployment--operator-managed-pvc-recreate-strategy).
 
