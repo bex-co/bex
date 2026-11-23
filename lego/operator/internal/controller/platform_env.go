@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	"github.com/bex-co/bex/lego/types/renderenv"
@@ -88,43 +89,48 @@ func withPlatformEnv(env, platform []corev1.EnvVar) []corev1.EnvVar {
 	return append(out, env[len(env)-1])
 }
 
-// imageCommit is the commit image was built from, for RENDER_GIT_COMMIT. bex's
-// builds stamp it as the image's OCI revision label, so it follows the image a
-// release actually runs (held, rolled back or current). It is read once per
-// image and cached in status; an image outside the App's own built repository
-// (a prebuilt image) has none.
+// imageProvenance is what bex's build stamped on image: the commit it was
+// built from, for RENDER_GIT_COMMIT, as its OCI revision label, and whether
+// its native-init names each command it starts (build.NativeInitAnnouncesLabel,
+// w32/m575). Both follow the image a release actually runs (held, rolled back
+// or current). They are read once per image and cached in status; an image
+// outside the App's own built repository (a prebuilt image) has neither.
 //
-// Best effort: an environment variable never holds a rollout. A failed read
-// is logged, not cached, and retried on the next pass; the variable then
-// appears with the next pod template.
-func (r *AppReconciler) imageCommit(ctx context.Context, app *appv1alpha1.App, image string) string {
+// Best effort: neither holds a rollout. A failed read is logged, not cached,
+// and retried on the next pass; RENDER_GIT_COMMIT then appears with the next
+// pod template, and a rollout stamped meanwhile narrates its own Running line.
+func (r *AppReconciler) imageProvenance(ctx context.Context, app *appv1alpha1.App, image string) appv1alpha1.ImageRevisionStatus {
 	if cached := app.Status.ImageRevision; cached != nil && cached.Image == image {
-		return cached.Commit
+		return *cached
 	}
 	reference, ok := r.ownImageReference(app, image)
 	if !ok {
-		return ""
+		return appv1alpha1.ImageRevisionStatus{Image: image}
 	}
-	commit, err := r.readImageRevision(ctx, app, reference)
+	labels, err := r.readImageLabels(ctx, app, reference)
 	if err != nil {
-		logf.FromContext(ctx).Info("RENDER_GIT_COMMIT unavailable for now", "app", app.Name, "image", image, "error", err.Error())
-		return ""
+		logf.FromContext(ctx).Info("image provenance unavailable for now", "app", app.Name, "image", image, "error", err.Error())
+		return appv1alpha1.ImageRevisionStatus{Image: image}
 	}
-	// A label a user's own Dockerfile set is kept only when it is an object id.
-	commit = strings.ToLower(expectedGitObjectID(commit))
-	app.Status.ImageRevision = &appv1alpha1.ImageRevisionStatus{Image: image, Commit: commit}
-	return commit
+	read := appv1alpha1.ImageRevisionStatus{
+		Image: image,
+		// A label a user's own Dockerfile set is kept only when it is an object id.
+		Commit:              strings.ToLower(expectedGitObjectID(labels[registry.RevisionLabel])),
+		NativeInitAnnounces: labels[build.NativeInitAnnouncesLabel] == "true",
+	}
+	app.Status.ImageRevision = &read
+	return read
 }
 
-func (r *AppReconciler) readImageRevision(ctx context.Context, app *appv1alpha1.App, reference string) (string, error) {
+func (r *AppReconciler) readImageLabels(ctx context.Context, app *appv1alpha1.App, reference string) (map[string]string, error) {
 	authorization, ready, err := r.registryAuthHeader(ctx, app)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if !ready {
-		return "", fmt.Errorf("image registry credential is not active yet")
+		return nil, fmt.Errorf("image registry credential is not active yet")
 	}
-	return registry.ReadImageRevision(ctx, r.HTTPClient, r.Registry, appIdentity(app).Repo(), reference, authorization)
+	return registry.ReadImageLabels(ctx, r.HTTPClient, r.Registry, appIdentity(app).Repo(), reference, authorization)
 }
 
 // withBuildPlatformEnv adds Render's build-time platform variables to a build's

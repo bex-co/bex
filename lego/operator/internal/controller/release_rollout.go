@@ -35,17 +35,21 @@ import (
 // WEB_CONCURRENCY=N by default…` for the instance's default, and, on a native
 // runtime, `==> Running '<start command>'` each time its command starts
 // (w32/m560). bex-api writes those lines from what the operator saw, which it
-// records in status.releaseRollout: the operator is database-free.
+// records in status.releaseRollout: the operator is database-free. The last
+// is the instance's own line: a native image built since w32/m575 writes it
+// from native-init, and the record says so, so the log narrates it only for
+// an older image.
 
 // recordReleaseRollout records the rollout of the release whose serving
 // template this pass wrote to dep (status.releaseRollout). The first pass that
 // writes the release's own template stamps its start, the command its app
-// container launched through native-init and its WEB_CONCURRENCY default;
-// while the rollout runs, each pass adds the starts of the app container its
-// pods show. A cancel's restore writes the served release's template and is
-// not recorded: the caller passes only its own projections.
-func (r *AppReconciler) recordReleaseRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, command string, webConcurrency int) {
-	stampReleaseRollout(app, dep.Spec.Template, command, webConcurrency, time.Now())
+// container launched through native-init, whether that native-init names it
+// itself (announces: the image's label, w32/m575) and its WEB_CONCURRENCY
+// default; while the rollout runs, each pass adds the starts of the app
+// container its pods show. A cancel's restore writes the served release's
+// template and is not recorded: the caller passes only its own projections.
+func (r *AppReconciler) recordReleaseRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, command string, announces bool, webConcurrency int) {
+	stampReleaseRollout(app, dep.Spec.Template, command, announces, webConcurrency, time.Now())
 	if !releaseRolloutRunning(app, dep) || dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
 		return
 	}
@@ -59,10 +63,11 @@ func (r *AppReconciler) recordReleaseRollout(ctx context.Context, app *appv1alph
 
 // stampReleaseRollout starts the record of the release in flight once tmpl is
 // its own: the release's revision label is on it. Only a release newer than
-// the recorded one is stamped, so a resync keeps the start, and neither a
-// cancel's revert to the served release nor a survivor's redispatch, which
-// move the release generation back, gives a release a second start.
-func stampReleaseRollout(app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, command string, webConcurrency int, now time.Time) {
+// the recorded one is stamped, so a resync keeps the start and whether the
+// instance names its command, and neither a cancel's revert to the served
+// release nor a survivor's redispatch, which move the release generation back,
+// gives a release a second start.
+func stampReleaseRollout(app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, command string, announces bool, webConcurrency int, now time.Time) {
 	gen := releaseGeneration(app)
 	if gen <= 0 || tmpl.Labels[labelRevision] != releaseRevision(app) {
 		return
@@ -72,6 +77,7 @@ func stampReleaseRollout(app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, comm
 	}
 	app.Status.ReleaseRollout = &appv1alpha1.ReleaseRolloutStatus{
 		Generation: gen, StartedAt: metav1.NewMicroTime(now), Command: command, WebConcurrency: int32(webConcurrency),
+		InstanceAnnounces: command != "" && announces,
 	}
 }
 

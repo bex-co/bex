@@ -422,11 +422,11 @@ func TestPrivateTCPPortBounds(t *testing.T) {
 	}
 }
 
-// The revision read shares ReadImageConfig's verified fetch but not its port
+// The label read shares ReadImageConfig's verified fetch but not its port
 // rules: an image declaring an invalid port still reports its provenance
-// (w5/m148).
-func TestReadImageRevisionReadsTheLabelWithoutPortRules(t *testing.T) {
-	config := []byte(`{"architecture":"amd64","os":"linux","config":{"ExposedPorts":{"70000/tcp":{}},"Labels":{"org.opencontainers.image.revision":"0123456789abcdef0123456789abcdef01234567"}}}`)
+// (w5/m148) and what its native-init does (w32/m575).
+func TestReadImageLabelsReadsTheLabelsWithoutPortRules(t *testing.T) {
+	config := []byte(`{"architecture":"amd64","os":"linux","config":{"ExposedPorts":{"70000/tcp":{}},"Labels":{"org.opencontainers.image.revision":"0123456789abcdef0123456789abcdef01234567","co.bex.native-init.announces":"true"}}}`)
 	configDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(config))
 	manifest := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q}}`, configDigest))
 	routes := map[string][]byte{
@@ -445,12 +445,12 @@ func TestReadImageRevisionReadsTheLabelWithoutPortRules(t *testing.T) {
 	if _, err := ReadImageConfig(ctx, server, "https://registry.test", "owned/web", "gen-1", ""); err == nil {
 		t.Fatal("fixture must declare a port ReadImageConfig refuses")
 	}
-	got, err := ReadImageRevision(ctx, server, "https://registry.test", "owned/web", "gen-1", "")
-	if err != nil || got != "0123456789abcdef0123456789abcdef01234567" {
-		t.Fatalf("ReadImageRevision = %q, %v", got, err)
+	got, err := ReadImageLabels(ctx, server, "https://registry.test", "owned/web", "gen-1", "")
+	if err != nil || got[RevisionLabel] != "0123456789abcdef0123456789abcdef01234567" || got["co.bex.native-init.announces"] != "true" || len(got) != 2 {
+		t.Fatalf("ReadImageLabels = %v, %v", got, err)
 	}
 	routes["/v2/owned/web/blobs/"+configDigest] = []byte("tampered")
-	if _, err := ReadImageRevision(ctx, server, "https://registry.test", "owned/web", "gen-1", ""); err == nil {
+	if _, err := ReadImageLabels(ctx, server, "https://registry.test", "owned/web", "gen-1", ""); err == nil {
 		t.Fatal("a config blob that does not match its digest must be refused")
 	}
 }

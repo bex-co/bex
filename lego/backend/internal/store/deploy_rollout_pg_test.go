@@ -140,3 +140,90 @@ func TestPGDeployRolloutStampsAnOpenRowOnce(t *testing.T) {
 		t.Fatalf("a closed row changed: %+v", d.Rollout)
 	}
 }
+
+// w32/m575: whether the release's instance names its start command itself is
+// written with the rest of the record, once: a later record never moves it. A
+// row with no record, and one an older control plane stamped before the
+// column existed, read false, so their logs keep the narrated line.
+func TestPGDeployRolloutKeepsWhetherTheInstanceNamesItsCommand(t *testing.T) {
+	ctx := context.Background()
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	ten, err := st.CreateWorkspace(ctx, fmt.Sprintf("announces-%d", time.Now().UnixNano()), PlanHobby, "test-announces")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.DeleteTenant(ctx, ten.ID) }()
+	open := func(name string) App {
+		t.Helper()
+		app, err := st.CreateApp(ctx, App{
+			TenantID: ten.ID, Name: name, Image: "busybox:1.36", Type: "web_service",
+			Branch: "main", Port: 10000, Replicas: 1, Tier: "starter",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ok, err := st.TransitionDeploy(ctx, app.FirstDeployID, DeployUpdateInProgress, RanImage{}, "", "", "", nil); err != nil || !ok {
+			t.Fatalf("start rollout = (%v, %v)", ok, err)
+		}
+		return app
+	}
+	read := func(app App) DeployRollout {
+		t.Helper()
+		d, err := st.GetDeploy(ctx, app.ID, app.FirstDeployID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d.Rollout
+	}
+	started := time.Date(2026, 11, 22, 23, 40, 1, 500000000, time.UTC)
+
+	announced := open("announced")
+	if r := read(announced); r.InstanceAnnounces {
+		t.Fatalf("a row with no record reads %+v", r)
+	}
+	if err := st.SetDeployRollout(ctx, announced.FirstDeployID, DeployRollout{StartedAt: &started, Command: "node main.js", InstanceAnnounces: true}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read(announced); !r.InstanceAnnounces || r.Command != "node main.js" {
+		t.Fatalf("first write: rollout = %+v", r)
+	}
+	start := started.Add(9 * time.Second).Truncate(time.Second)
+	if err := st.SetDeployRollout(ctx, announced.FirstDeployID, DeployRollout{StartedAt: &started, Command: "node main.js", AppStarts: []time.Time{start}}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read(announced); !r.InstanceAnnounces || len(r.AppStarts) != 1 {
+		t.Fatalf("a later record moved it: %+v", r)
+	}
+
+	older := open("older")
+	if err := st.SetDeployRollout(ctx, older.FirstDeployID, DeployRollout{StartedAt: &started, Command: "node main.js"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetDeployRollout(ctx, older.FirstDeployID, DeployRollout{StartedAt: &started, Command: "node main.js", InstanceAnnounces: true, AppStarts: []time.Time{start}}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read(older); r.InstanceAnnounces || len(r.AppStarts) != 1 {
+		t.Fatalf("an older image's row must keep the narrated line: %+v", r)
+	}
+
+	// An older control plane stamped the record and left the column NULL.
+	before := open("before-column")
+	if _, err := pool.Exec(ctx, `UPDATE deploys SET rollout_started_at = $2, rollout_command = 'node main.js' WHERE id = $1`, before.FirstDeployID, started); err != nil {
+		t.Fatal(err)
+	}
+	if r := read(before); r.InstanceAnnounces || r.Command != "node main.js" {
+		t.Fatalf("a row an older control plane wrote reads %+v", r)
+	}
+}

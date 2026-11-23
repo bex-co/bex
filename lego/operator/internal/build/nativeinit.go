@@ -36,6 +36,19 @@ const (
 	NativeInitBinary = "/" + nativeInitFile
 	// NativeInitEnv carries the staging path to the resolve phase.
 	NativeInitEnv = "BEX_NATIVE_INIT"
+	// NativeInitAnnouncesLabel marks an image whose native-init writes
+	// Render's `==> Running '<command>'` itself each time it starts a command
+	// (w32/m575). native-init is copied into each image at build, so an image
+	// built before it, which a rollback or a deploy that reuses its build
+	// still runs, carries no label and writes no line: the deploy log
+	// narrates the line for those only.
+	NativeInitAnnouncesLabel = "co.bex.native-init.announces"
+	// NativeInitQuietEnv, set on a launch, keeps native-init from naming its
+	// command: a pre-deploy step, whose line the deploy log narrates
+	// (w32/m572). native-init removes it from the command's environment, so
+	// it is set only on an image that carries NativeInitAnnouncesLabel,
+	// whose native-init knows it.
+	NativeInitQuietEnv = "BEX_NATIVE_INIT_QUIET"
 
 	nativeInitFile    = "native-init"
 	nativeInitDir     = "/native/init"
@@ -55,13 +68,15 @@ func nativeServingInit(o Options) bool {
 
 // nativeEntrypoint replaces the toolchain image's ENTRYPOINT, whose relative
 // lookup an empty PATH would break (w8/m61), with nothing or with
-// native-init's absolute path; the CMD after it stays the exact command.
+// native-init's absolute path; the CMD after it stays the exact command. The
+// native-init the resolve phase stages is this operator's own, so the image
+// is labelled with what it does (NativeInitAnnouncesLabel).
 func nativeEntrypoint(o Options) string {
 	if !nativeServingInit(o) {
 		return "ENTRYPOINT []\n"
 	}
-	return fmt.Sprintf("COPY --link --from=%s /%s /\nENTRYPOINT [%q]\n",
-		nativeInitContext, nativeInitFile, nativeInitPath)
+	return fmt.Sprintf("LABEL %s=\"true\"\nCOPY --link --from=%s /%s /\nENTRYPOINT [%q]\n",
+		NativeInitAnnouncesLabel, nativeInitContext, nativeInitFile, nativeInitPath)
 }
 
 // StageNativeInit copies native-init from src to dest, in the directory the

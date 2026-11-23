@@ -126,3 +126,38 @@ func TestPreDeployLinesReadEachDeploysOwnRecord(t *testing.T) {
 		t.Fatalf("dep-old's step lines = %q, want bex's %q", lines["dep-old"], want)
 	}
 }
+
+// w32/m575: the composition root hands the narration whether each deploy
+// row's instance names its start command itself, so a release on an image
+// built since native-init does gets no narrated `==> Running '<command>'`,
+// and a row whose image predates it, or that an older control plane wrote,
+// keeps the line at each recorded start.
+func TestRolloutRunningLineReadsEachDeploysOwnRecord(t *testing.T) {
+	at := time.Date(2026, 11, 22, 23, 0, 0, 0, time.UTC)
+	rollout := func(started time.Time, announces bool) store.DeployRollout {
+		return store.DeployRollout{StartedAt: &started, Command: "node main.js", InstanceAnnounces: announces,
+			AppStarts: []time.Time{started.Add(5 * time.Second).Truncate(time.Second)}}
+	}
+	oldEnd, newEnd := at.Add(-time.Minute), at
+	old := store.Deploy{ID: "dep-old", Status: store.DeployDeactivated, CreatedAt: at.Add(-3 * time.Minute), FinishedAt: &oldEnd,
+		Rollout: rollout(at.Add(-2*time.Minute), false)}
+	latest := store.Deploy{ID: "dep-new", Status: store.DeployLive, CreatedAt: at.Add(-90 * time.Second), FinishedAt: &newEnd,
+		Rollout: rollout(at.Add(-40*time.Second), true)}
+	server := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{
+		DeployStore: &conformDeployStore{byApp: map[string][]store.Deploy{"web": {latest, old}}},
+		LogHistory:  func(context.Context, string, logs.LogQuery) ([]logs.LogEntry, error) { return nil, nil },
+	})
+	entries, err := server.Logs.QueryLogs(context.Background(), logs.LogQuery{App: "web", Types: []string{logs.LogTypeBuild}, Since: at.Add(-4 * time.Minute), End: at.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	running := map[string][]string{}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Message, "==> Running ") {
+			running[e.Labels[logs.LabelBuild]] = append(running[e.Labels[logs.LabelBuild]], e.Message)
+		}
+	}
+	if want := []string{"==> Running 'node main.js'"}; len(running) != 1 || !slices.Equal(running["dep-old"], want) {
+		t.Fatalf("narrated Running lines by deploy = %q, want only dep-old's %q", running, want)
+	}
+}

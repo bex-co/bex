@@ -742,6 +742,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		return 0, err
 	}
 	params.launch = launch
+	// Whether the image names its start command itself (w32/m575), read with
+	// its commit below.
+	var announces bool
 	// From the selected runtime, not app: a held, rolled-back or save-only
 	// release reads that release's env sources, and the default must yield to
 	// those. A restore replaces the template verbatim, so it needs no lookup.
@@ -757,7 +760,8 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 			return 0, err
 		}
 		// Cached on app's status, which this pass persists; runtime is a view.
-		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
+		provenance := r.imageProvenance(ctx, app, params.image)
+		params.platform.gitCommit, announces = provenance.Commit, provenance.NativeInitAnnounces
 		params.healthProbeImage = r.BackupHelperImage
 		// The node the disk's volume is on, which a rolling pass prefers.
 		params.diskNode = r.diskNode(ctx, runtime)
@@ -803,7 +807,7 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
 	if restore == nil {
-		r.recordReleaseRollout(ctx, app, dep, nativeLaunchCommand(runtime, params.image, launch), params.webConcurrency)
+		r.recordReleaseRollout(ctx, app, dep, nativeLaunchCommand(runtime, params.image, launch), announces, params.webConcurrency)
 	}
 	return 0, nil
 }

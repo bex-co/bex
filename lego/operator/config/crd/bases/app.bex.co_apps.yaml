@@ -1537,6 +1537,14 @@ spec:
                   image:
                     description: Image is the reference the commit was read for.
                     type: string
+                  nativeInitAnnounces:
+                    description: |-
+                      NativeInitAnnounces reports that the image carries a native build's
+                      co.bex.native-init.announces label: its native-init writes Render's
+                      `==> Running '<command>'` each time it starts a command (w32/m575).
+                      False for every image built before that native-init, and for a read
+                      an older operator cached.
+                    type: boolean
                 required:
                 - image
                 type: object
@@ -2078,6 +2086,16 @@ spec:
                       release's rollout replaces the record.
                     format: int64
                     type: integer
+                  instanceAnnounces:
+                    description: |-
+                      InstanceAnnounces reports that the release's app container writes
+                      `==> Running '<Command>'` itself at each start: its image's native-init
+                      does (ImageRevisionStatus.NativeInitAnnounces, w32/m575). The deploy log
+                      then narrates no copy of its own. False for a release on an image built
+                      before that native-init, whose log keeps the narrated line, and for
+                      every launch with no Command. Decided with the record's start and never
+                      moved.
+                    type: boolean
                   startedAt:
                     description: |-
                       StartedAt is when the operator first wrote the release's serving pod

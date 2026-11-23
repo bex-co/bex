@@ -136,12 +136,47 @@ func TestRolloutLinesFollowRendersLogByServiceTypeAndOutcome(t *testing.T) {
 		{"a start after the close is the service's", with(nativeRollout("live"), func(d *DeployProgress) {
 			d.AppStartedAt = []time.Time{firstAppStart, rolloutClose.Add(5 * time.Second)}
 		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersRunning, rendersLive})},
+		// w32/m575: an image built since native-init names its command writes
+		// the line in the instance's own stream; the narration keeps the rest.
+		{"a native web service whose instance names its command", with(nativeRollout("live"), announcing), web,
+			slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersLive})},
+		{"a native private service whose instance names its command", with(nativeRollout("live"), announcing),
+			progressContext{repo: rolloutRepo, serviceType: appv1alpha1.TypePrivateService},
+			slices.Concat(built, []string{rendersDeploying, rendersWebConc1, rendersLive})},
+		{"a native background worker whose instance names its command", with(nativeRollout("live"), func(d *DeployProgress) {
+			announcing(d)
+			d.WebConcurrencyDefault = 0
+		}), progressContext{repo: rolloutRepo, serviceType: appv1alpha1.TypeBackgroundWorker},
+			slices.Concat(built, []string{rendersDeploying, rendersLive})},
+		{"an announcing start command that exited, then started again", with(nativeRollout("update_failed"), func(d *DeployProgress) {
+			announcing(d)
+			d.ExitCode, d.AppStartedAt = &exited, []time.Time{firstAppStart, firstAppStart.Add(2 * time.Second)}
+		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, "==> Exited with status 1", troubleshootLine})},
+		{"an announcing rollout that ran out of its budget", with(nativeRollout("update_failed"), func(d *DeployProgress) {
+			announcing(d)
+			d.TimedOut = true
+		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1, timedOutLine, troubleshootLine})},
+		{"an announcing rollout still running", with(nativeRollout("update_in_progress"), func(d *DeployProgress) {
+			announcing(d)
+			d.FinishedAt = time.Time{}
+		}), web, slices.Concat(built, []string{rendersDeploying, rendersWebConc1})},
+		{"a rollback to an image built before native-init named its command", with(nativeRollout("live"), func(d *DeployProgress) {
+			d.Built, d.Commit, d.Image = false, "", "zot.bex-registry.svc:5000/tea-ws/web:gen-2"
+		}), web, []string{"==> Deploy queued", "==> Deploying image zot.bex-registry.svc:5000/tea-ws/web:gen-2", rendersWebConc1, rendersRunning, rendersLive}},
+		{"a rollback to an image whose instance names its command", with(nativeRollout("live"), func(d *DeployProgress) {
+			announcing(d)
+			d.Built, d.Commit, d.Image = false, "", "zot.bex-registry.svc:5000/tea-ws/web:gen-3"
+		}), web, []string{"==> Deploy queued", "==> Deploying image zot.bex-registry.svc:5000/tea-ws/web:gen-3", rendersWebConc1, rendersLive}},
 	} {
 		if got := story(c.row, c.pc); !slices.Equal(got, c.want) {
 			t.Errorf("%s:\n got %q\nwant %q", c.name, got, c.want)
 		}
 	}
 }
+
+// announcing marks d's release as one on an image whose native-init writes
+// `==> Running '<command>'` itself (w32/m575).
+func announcing(d *DeployProgress) { d.InstanceAnnounces = true }
 
 // Render prints the command as configured, $PORT unexpanded
 // (frayel/devagent#62), and the lines carry the moments the operator
@@ -308,5 +343,81 @@ func TestWebSocketBuildTailSendsTheRolloutLinesAsTheyAreRecorded(t *testing.T) {
 		if read[m] == "" || read[m] != ids[m] {
 			t.Errorf("%q: history id %q, tail id %q", m, read[m], ids[m])
 		}
+	}
+}
+
+// w32/m575: a deploy's view that carries the instance's own lines beside its
+// narration (the dashboard's deploy page, the CLI's type-less deploy tail, a
+// read of app and build together) shows one `==> Running '<command>'` per
+// start, whichever side writes it: the instance's, with its own labels, on
+// an image whose native-init names the command; the narration's, at the
+// recorded start, on an older image, whose instance writes none.
+func TestADeploysAppAndBuildViewShowsOneRunningLinePerStart(t *testing.T) {
+	second := firstAppStart.Add(4 * time.Second)
+	instanceLine := func(at time.Time) LogEntry {
+		e := typedLine(at, LogTypeApp, rendersRunning)
+		e.Labels[LabelInstance], e.Labels[LabelLevel] = "web-6d9f7c8b5-x2k4p", "info"
+		return e
+	}
+	output := []LogEntry{
+		typedLine(rolloutStart.Add(-200*time.Millisecond), LogTypeBuild, "==> Build successful 🎉"),
+		typedLine(firstAppStart.Add(900*time.Millisecond), LogTypeApp, "listening on 10000"),
+		typedLine(second.Add(900*time.Millisecond), LogTypeApp, "listening on 10000"),
+	}
+	for _, tc := range []struct {
+		name      string
+		announces bool
+		instance  []LogEntry
+		wantType  string
+	}{
+		{"an image whose native-init names the command", true,
+			[]LogEntry{instanceLine(firstAppStart.Add(150 * time.Millisecond)), instanceLine(second.Add(150 * time.Millisecond))}, LogTypeApp},
+		{"an image built before it", false, nil, LogTypeBuild},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := nativeRollout("live")
+			d.AppStartedAt, d.InstanceAnnounces = []time.Time{firstAppStart, second}, tc.announces
+			app := sampleApp("web")
+			app.Spec.Repo = rolloutRepo
+			svc := newService(nil, app, podFor("web", "web-1"))
+			entries := slices.Concat(output, tc.instance)
+			svc.History = func(_ context.Context, _ string, q LogQuery) ([]LogEntry, error) {
+				var in []LogEntry
+				for _, e := range entries {
+					if q.keep(e) && (len(q.Types) == 0 || slices.Contains(q.Types, e.Labels[LabelType])) {
+						in = append(in, e)
+					}
+				}
+				return in, nil
+			}
+			svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) { return []DeployProgress{d}, nil }
+			got, err := svc.QueryLogs(context.Background(), LogQuery{
+				App: "web", Types: []string{LogTypeApp, LogTypeBuild}, Since: rolloutCreated, End: rolloutClose.Add(time.Minute),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var running []LogEntry
+			for _, e := range got {
+				if e.Message == rendersRunning {
+					running = append(running, e)
+				}
+			}
+			if len(running) != 2 {
+				t.Fatalf("Running lines = %d in %q, want one per start", len(running), inOrder(got))
+			}
+			for i, e := range running {
+				if e.Labels[LabelType] != tc.wantType {
+					t.Errorf("Running line %d labels = %v, want type %s", i, e.Labels, tc.wantType)
+				}
+				if tc.announces && (e.Labels[LabelInstance] == "" || e.Labels[LabelLevel] != "info") {
+					t.Errorf("the instance's line lost its instance or level label: %v", e.Labels)
+				}
+			}
+			at := slices.IndexFunc(got, func(e LogEntry) bool { return e.Message == rendersRunning })
+			if at < 0 || at+1 >= len(got) || got[at+1].Message != "listening on 10000" {
+				t.Errorf("log = %q, want each Running line right before the command's own output", inOrder(got))
+			}
+		})
 	}
 }

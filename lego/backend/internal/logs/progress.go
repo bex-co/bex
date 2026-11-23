@@ -96,12 +96,15 @@ type DeployProgress struct {
 	// RolloutStartedAt is when the operator first wrote the release's serving
 	// template, AppStartedAt each start of its app container while the
 	// rollout ran (oldest first), StartCommand the start command that
-	// container ran on a native image, and WebConcurrencyDefault the
-	// WEB_CONCURRENCY default it got (status.releaseRollout, w32/m560). Zero
-	// values are none. They time Render's rollout lines (rolloutLines).
+	// container ran on a native image, InstanceAnnounces whether the
+	// instance writes that command's `==> Running` line itself (w32/m575),
+	// and WebConcurrencyDefault the WEB_CONCURRENCY default it got
+	// (status.releaseRollout, w32/m560). Zero values are none. They time
+	// Render's rollout lines (rolloutLines).
 	RolloutStartedAt      time.Time
 	AppStartedAt          []time.Time
 	StartCommand          string
+	InstanceAnnounces     bool
 	WebConcurrencyDefault int32
 	// LiveURLs are the URLs the deploy went live at, primary first, as its
 	// row recorded them when it closed live (w32/m567); nil is no record.
@@ -575,12 +578,17 @@ const (
 // rollout: `==> Deploying...` at the rollout's start when d built (a deploy
 // that ran no build keeps bex's own rollout line at its start), the
 // WEB_CONCURRENCY line when the release's instance got that default, and one
-// `==> Running '<command>'` at each recorded start of a native start command.
-// A record stamped after d closed, and a start after it, are not d's. Each
-// line is held just after the one before it when its moment does not order
-// it: the row's start is the dispatch, in whole seconds for a deploy that ran
-// no build, and the kubelet stamps a container's start in whole seconds too,
-// so a start in the rollout's first second would read before it.
+// `==> Running '<command>'` at each recorded start of a native start command
+// whose instance does not write that line itself. An image built since
+// w32/m575 does, from native-init, in the instance's own stream with its
+// labels, where Render's line is (ivanseibel/tretta's log capture), so the
+// deploy views that interleave the app's lines show it once; an older image's
+// release keeps the narrated copy. A record stamped after d closed, and a
+// start after it, are not d's. Each line is held just after the one before it
+// when its moment does not order it: the row's start is the dispatch, in
+// whole seconds for a deploy that ran no build, and the kubelet stamps a
+// container's start in whole seconds too, so a start in the rollout's first
+// second would read before it.
 func rolloutLines(d DeployProgress, built bool) []LogEntry {
 	if d.RolloutStartedAt.IsZero() || (!d.FinishedAt.IsZero() && d.RolloutStartedAt.After(d.FinishedAt)) {
 		return nil
@@ -600,7 +608,7 @@ func rolloutLines(d DeployProgress, built bool) []LogEntry {
 	if d.WebConcurrencyDefault > 0 {
 		add(d.RolloutStartedAt, fmt.Sprintf(webConcurrencyLineFormat, d.WebConcurrencyDefault))
 	}
-	if d.StartCommand == "" {
+	if d.StartCommand == "" || d.InstanceAnnounces {
 		return out
 	}
 	for _, start := range d.AppStartedAt {

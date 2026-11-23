@@ -44,39 +44,47 @@ func rolloutTemplate(rev string) corev1.PodTemplateSpec {
 
 // w32/m560: the first write of a release's own template starts its record,
 // once. A resync, a cancel's revert to an older release and a template that is
-// not the release's own leave it; a newer release replaces it.
+// not the release's own leave it; a newer release replaces it. Whether the
+// instance names its command (w32/m575) is decided with the start.
 func TestStampReleaseRolloutStartsEachReleasesRecordOnce(t *testing.T) {
 	t0 := time.Date(2026, 11, 22, 9, 11, 43, 123456000, time.UTC)
 	app := &appv1alpha1.App{Status: appv1alpha1.AppStatus{ReleaseGeneration: 4}}
 
-	stampReleaseRollout(app, rolloutTemplate("rev-3"), "npm start", 1, t0)
+	stampReleaseRollout(app, rolloutTemplate("rev-3"), "npm start", true, 1, t0)
 	if app.Status.ReleaseRollout != nil {
 		t.Fatalf("the served release's template stamped release 4: %+v", app.Status.ReleaseRollout)
 	}
-	stampReleaseRollout(app, rolloutTemplate("rev-4"), "npm start", 1, t0)
-	want := appv1alpha1.ReleaseRolloutStatus{Generation: 4, StartedAt: metav1.NewMicroTime(t0), Command: "npm start", WebConcurrency: 1}
+	stampReleaseRollout(app, rolloutTemplate("rev-4"), "npm start", true, 1, t0)
+	want := appv1alpha1.ReleaseRolloutStatus{Generation: 4, StartedAt: metav1.NewMicroTime(t0), Command: "npm start", WebConcurrency: 1, InstanceAnnounces: true}
 	if rec := app.Status.ReleaseRollout; rec == nil || rec.Generation != want.Generation || !rec.StartedAt.Equal(&want.StartedAt) ||
-		rec.Command != want.Command || rec.WebConcurrency != want.WebConcurrency {
+		rec.Command != want.Command || rec.WebConcurrency != want.WebConcurrency || rec.InstanceAnnounces != want.InstanceAnnounces {
 		t.Fatalf("first write: record = %+v, want %+v", rec, want)
 	}
 	app.Status.ReleaseRollout.AppStarts = []metav1.Time{metav1.NewTime(t0.Add(9 * time.Second).Truncate(time.Second))}
 
-	stampReleaseRollout(app, rolloutTemplate("rev-4"), "node other.js", 2, t0.Add(time.Minute))
-	if rec := app.Status.ReleaseRollout; !rec.StartedAt.Equal(&want.StartedAt) || rec.Command != "npm start" || len(rec.AppStarts) != 1 {
+	stampReleaseRollout(app, rolloutTemplate("rev-4"), "node other.js", false, 2, t0.Add(time.Minute))
+	if rec := app.Status.ReleaseRollout; !rec.StartedAt.Equal(&want.StartedAt) || rec.Command != "npm start" || len(rec.AppStarts) != 1 ||
+		!rec.InstanceAnnounces {
 		t.Fatalf("a resync moved the record: %+v", rec)
 	}
 
 	app.Status.ReleaseGeneration = 3
-	stampReleaseRollout(app, rolloutTemplate("rev-3"), "npm start", 1, t0.Add(2*time.Minute))
-	if rec := app.Status.ReleaseRollout; rec.Generation != 4 || !rec.StartedAt.Equal(&want.StartedAt) {
+	stampReleaseRollout(app, rolloutTemplate("rev-3"), "npm start", false, 1, t0.Add(2*time.Minute))
+	if rec := app.Status.ReleaseRollout; rec.Generation != 4 || !rec.StartedAt.Equal(&want.StartedAt) || !rec.InstanceAnnounces {
 		t.Fatalf("a revert to release 3 restamped the record: %+v", rec)
 	}
 
 	app.Status.ReleaseGeneration = 5
-	stampReleaseRollout(app, rolloutTemplate("rev-5"), "", 0, t0.Add(3*time.Minute))
+	stampReleaseRollout(app, rolloutTemplate("rev-5"), "", true, 0, t0.Add(3*time.Minute))
 	if rec := app.Status.ReleaseRollout; rec.Generation != 5 || !rec.StartedAt.Time.Equal(t0.Add(3*time.Minute)) ||
-		rec.Command != "" || rec.WebConcurrency != 0 || len(rec.AppStarts) != 0 {
-		t.Fatalf("a newer release must replace the record whole: %+v", rec)
+		rec.Command != "" || rec.WebConcurrency != 0 || len(rec.AppStarts) != 0 || rec.InstanceAnnounces {
+		t.Fatalf("a newer release must replace the record whole, and a launch with no command announces nothing: %+v", rec)
+	}
+
+	app.Status.ReleaseGeneration = 6
+	stampReleaseRollout(app, rolloutTemplate("rev-6"), "npm start", false, 1, t0.Add(4*time.Minute))
+	if rec := app.Status.ReleaseRollout; rec.Generation != 6 || rec.Command != "npm start" || rec.InstanceAnnounces {
+		t.Fatalf("a release on an image built before native-init's line must keep the narrated line: %+v", rec)
 	}
 }
 

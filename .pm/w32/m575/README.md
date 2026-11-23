@@ -1,20 +1,20 @@
 # w32 · m575 — A native service's own log writes `==> Running '<start command>'` each time its instance starts, as Render's does, free spin-ups and restarts included
 
-**Worker:** worker32 **Goal:** the instance of a native service writes `==> Running '<start command>'` to its own output every time it starts the command, as Render's native instances do: at a deploy, after a crash or a restart, and when a free instance wakes after idling. The line reaches every app read (`bex logs -r <srv>`, REST, the subscribe stream, GraphQL, MCP, the service's Logs page) with the instance's own labels. A Dockerfile or prebuilt-image service writes none. A deploy's log shows the line once per start, never twice. **Status:** todo
+**Worker:** worker32 **Goal:** the instance of a native service writes `==> Running '<start command>'` to its own output every time it starts the command, as Render's native instances do: at a deploy, after a crash or a restart, and when a free instance wakes after idling. The line reaches every app read (`bex logs -r <srv>`, REST, the subscribe stream, GraphQL, MCP, the service's Logs page) with the instance's own labels. A Dockerfile or prebuilt-image service writes none. A deploy's log shows the line once per start, never twice. **Status:** todo (t001–t005, t008 and t009 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Settle which native launches Render's instance announces, and what else it writes at a start](t001.md) | 45m | — |
-| t002 | [native-init writes `==> Running '<command>'` before it starts the command](t002.md) | 1h | t001 |
-| t003 | [Record whether a release's image writes the line itself](t003.md) | 1h30m | t002 |
-| t004 | [The deploy narration writes no second copy of the instance's line](t004.md) | 1h | t003 |
-| t005 | [Record the line in the progress-line contract and ADR018](t005.md) | 20m | t004 |
+| t001 | [Settle which native launches Render's instance announces, and what else it writes at a start](done/t001.md) — **DONE** | 45m | — |
+| t002 | [native-init writes `==> Running '<command>'` before it starts the command](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [Record whether a release's image writes the line itself](done/t003.md) — **DONE** | 1h30m | t002 |
+| t004 | [The deploy narration writes no second copy of the instance's line](done/t004.md) — **DONE** | 1h | t003 |
+| t005 | [Record the line in the progress-line contract and ADR018](done/t005.md) — **DONE** | 20m | t004 |
 | t006 | [Ship and verify on production](t006.md) | 1h | t005 |
 | t007 | [Render parity](t007.md) | 30m | t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 30m | t007 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
 | t010 | [Closeout](t010.md) | 10m | t008, t009 |
 
 ## Definition of done
@@ -51,6 +51,27 @@
 - **Bubba898/luchadores-web#5** (2026-02-01, native Bun): each start writes `==> Using Bun version 1.3.4 (default)` and its docs line before `==> Running 'yarn start'`. t001 checks whether other runtimes do.
 - **A pre-deploy step** (w32/m572's README): a native step writes `==> Running '<command>'` after `==> Starting pre-deploy: <command>`; a Dockerfile or prebuilt image's step writes none (ClipFarmVB/ClipFarm#173, ganjasan/mapsurvey#72, BerriAI/litellm#9549, briankeane/alloy-client-portal#8). Render's native launcher therefore names whatever command it runs, not only the start command.
 - **Not observed:** a cron job run's log and a one-off job's log on a native runtime, and the type a `type=build` read gives the line (w32/085).
+
+### t001: the launches, and the other start-time lines (2026-11-22)
+
+- **A cron run announces.** Lizo-RoadTown/hcs-coordination `docs/playbook/migration/04-render-cron-orphans.md` at `32b00b16a8` (2026-06-14) quotes a run's log of the `loom-keep-warm` cron, whose `render.yaml` block (quoted in the same repository's `docs/proposals/2026-06-13-skill-vs-agent-conversion-and-self-observer.md`) is `type: cron`, `runtime: python`, `startCommand: python scripts/keep_warm.py`: `==> Running 'python scripts/keep_warm.py'`, then Python's `can't open file '/opt/render/project/src/scripts/keep_warm.py'`, then `❌ Your cronjob failed because of an error: Exited with status 2`. The excerpt is three lines, so it cannot show what precedes the `Running` line.
+- **A one-off job: no log found.** tomer-mayara/Thermus#271 (2026-10-27) reads a job's three log records, all the command's own output, but the service is image-backed. bex does not offer one-off jobs (`ErrOneOffJobsUnsupported`, `lego/backend/internal/jobs/service.go`; `.pm/DO_NOT_DO.md`), so the only other native launch is a cron's manual run (`spec.runAt`), which runs the cron's pod template.
+- **Start-time version lines: Bun only.** A native Node service with a `bun.lock` writes `==> Using Bun version 1.3.4 (default)` and `==> Docs on specifying a Bun version: https://render.com/docs/bun-version` before `==> Running '<command>'` at every start (Pranav7758/AniCircle at `5fac202ebc`, harshagavadi/akshay at `dbfd3ed4b1` before both of its runs, Bubba898/luchadores-web#5). Node services without a Bun lockfile (rohitjana573-hash/Rohit.bot-tryAgain, somen2k0/xtoolkit.live, Anmol498/CRM-PRO, DonCorleone/streetsurfclub-analog), Python (martin7-glitch/LetterMusicBox, bitebox420-creator/BiteBox_3) and Ruby (kkraoi/oshi_no_Co_de) write none: their version lines are the build's. No public start log of a Go, Rust or Elixir service was found. bex writes the Bun line in the build only: filed as [w32/093](../093.md), since native-init would need the build's Bun choice.
+- **Which launches announce** (native-init's line):
+
+  | launch | announces | why |
+  | --- | --- | --- |
+  | a service's start command, at a deploy, a restart, a crash's restart and a free spin-up | yes | tretta's capture, DerekSopok/EMS-Kahoot#3, Sherbivs/SensaiOS#2 |
+  | a cron run and a manual cron run | yes | Lizo-RoadTown/hcs-coordination's cron log |
+  | the initial deploy hook | yes | no Render log; the rule: Render's native launcher names whatever command it runs (the pre-deploy step's line) |
+  | a pre-deploy step | no: the narration keeps its copy | w32/m572's `preDeployLines` writes it at the step container's start, and the CLI's live tail carries it, where the step's own output does not reach yet (w32/092) |
+  | a one-off job | not offered on bex | — |
+
+## Decisions (2026-11-22)
+
+- **t003, the record: a label in the image config.** A native build's Dockerfile now carries `LABEL co.bex.native-init.announces="true"` beside the `COPY` of native-init (`nativeEntrypoint`, `lego/operator/internal/build/nativeinit.go`). The native-init the resolve phase stages and the Dockerfile that labels it both come from the operator's own image, so they cannot disagree. The label travels with the image, so a rollback, a reused build, a Blueprint sync that does not rebuild and a build-source copy all read the same answer, which a fact the build recorded on its release would not. The operator already reads the image's config once per image for `RENDER_GIT_COMMIT`, so it reads the label in the same read and caches both in `status.imageRevision` (`imageProvenance`, `lego/operator/internal/controller/platform_env.go`). A read an older operator cached was always for an older image. The release's rollout records it once with its start (`status.releaseRollout.instanceAnnounces`), the reconciler copies it onto the row with the rest of the record (migration 0334, `rollout_instance_announces`), and `DeployProgress.InstanceAnnounces` carries it. A failed read leaves it false: the deploy then shows the line twice rather than not at all.
+- **t002, the quiet launch: an environment variable only a labelled image gets.** The pre-deploy Job of an image whose native-init announces gets `BEX_NATIVE_INIT_QUIET=1` (`reconcilePreDeploy`, `lego/operator/internal/controller/app_controller.go`). native-init writes no line when it is set and removes it from the command's environment either way. An older image's native-init would pass the variable on, so its step gets none, and it writes no line anyway. No Deployment or CronJob template changes, so the operator upgrade rolls no service.
+- **t004, `type=build` reads.** A release on a new image gets no narrated start-command `Running` line, so `bex logs -r <srv> --type build` no longer shows it. The instance's line is in `bex logs -r <srv>`, the deploy page and the CLI's type-less deploy tail, with `type=app` and the instance's labels, as Render's capture has it. What Render's own `type=build` read returns stays open to w32/085's capture (recorded in ADR018 § Logs, Build logs). The deploy page's window, `createdAt` to `finishedAt` (plus 7 ms for a live close), takes the line in: an instance writes it at its container's start, before readiness or a failed rollout's settling, so no hook change was needed.
 
 ## bex today (`81bfb51e07`)
 

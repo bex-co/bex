@@ -42,13 +42,14 @@ func nativeInitOptions() Options {
 // Every native service whose build has the resolve phase starts under
 // native-init: the resolve phase stages it, BuildKit receives it as a named
 // context, and the image runs it by absolute path in front of the unchanged
-// CMD, on every line of every runtime. Without the resolve phase, or for a
-// static site, nothing about the launch changes.
+// CMD, on every line of every runtime. The image is labelled as one whose
+// native-init names its command (w32/m575). Without the resolve phase, or for
+// a static site, nothing about the launch changes and there is no label.
 func TestNativeServiceStartsUnderNativeInit(t *testing.T) {
 	for runtime, toolchain := range nativeToolchains {
 		o := nativeInitOptions()
 		o.Runtime = runtime
-		tail := "\nCOPY --link --from=bex-init /native-init /\nENTRYPOINT [\"/native-init\"]\nCMD " + shellJSON(o.StartCommand) + "\n"
+		tail := "\nLABEL co.bex.native-init.announces=\"true\"\nCOPY --link --from=bex-init /native-init /\nENTRYPOINT [\"/native-init\"]\nCMD " + shellJSON(o.StartCommand) + "\n"
 		for _, line := range toolchain.lines {
 			t.Run(runtime+"/"+line.line, func(t *testing.T) {
 				env, files := nativeLineSignal(runtime, line.line)
@@ -77,7 +78,7 @@ func TestNativeServiceStartsUnderNativeInit(t *testing.T) {
 	static.StaticSite, static.Runtime, static.StartCommand = true, "", ""
 	for name, other := range map[string]Options{"no resolve phase": nativeOptions(), "static": static} {
 		job := BuildJob(other, other.ImageRef()).Spec.Template.Spec
-		if df := nativeDockerfile(other); strings.Contains(df, "native-init") || strings.Contains(df, nativeInitPath) {
+		if df := nativeDockerfile(other); strings.Contains(df, "native-init") || strings.Contains(df, nativeInitPath) || strings.Contains(df, NativeInitAnnouncesLabel) {
 			t.Errorf("%s: Dockerfile gained native-init:\n%s", name, df)
 		}
 		if args := strings.Join(containerByName(job.InitContainers, "buildkit").Args, " "); strings.Contains(args, nativeInitContext) {

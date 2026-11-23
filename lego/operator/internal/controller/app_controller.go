@@ -5530,7 +5530,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		tmpl = *restore
 		recordManagedOIDCOf(app, tmpl)
 	} else {
-		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageCommit(ctx, app, image))
+		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageProvenance(ctx, app, image).Commit)
 		tmpl.Spec.ImagePullSecrets = r.withLinkedSourcePullSecret(ctx, effectiveApp, image, tmpl.Spec.ImagePullSecrets)
 		// Every run of this release reads its token files (managed_oidc.go).
 		oidc, err := r.managedOIDC(ctx, app, effectiveApp)
@@ -7783,7 +7783,16 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	opts := r.stepJobOptions(app, gen)
 	opts.Image = image
 	opts.Command, opts.Args = preDeployLaunch(selected, image, launch, command)
-	opts.Env = withManagedOIDC(withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})), oidc.providers)
+	native, provenance := runsNativeEntrypoint(selected, image, launch), r.imageProvenance(ctx, app, image)
+	opts.Env = withManagedOIDC(withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: provenance.Commit})), oidc.providers)
+	// The step's `==> Running '<command>'` is the deploy log's (preDeployLines,
+	// w32/m572), which the CLI's live tail carries and the step's own output
+	// does not reach yet (w32/092), so its native-init is told not to write
+	// it. Only a native-init that knows the signal gets it: it removes it
+	// from the command's environment, where an older one would pass it on.
+	if native && provenance.NativeInitAnnounces {
+		opts.Env = append(opts.Env, corev1.EnvVar{Name: build.NativeInitQuietEnv, Value: "1"})
+	}
 	opts.EnvFrom = envFromSources(release)
 	opts.ImagePullSecrets = pullSecrets
 	opts.SecurityContext = appSecCtx(app.Spec)
@@ -7793,7 +7802,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		// The launch the deploy log narrates (w32/m572): stamped by the pass
 		// that creates the Job, from the step's own start.
 		launched := metav1.NewMicroTime(now)
-		step.Command, step.Native, step.LaunchedAt = command, runsNativeEntrypoint(selected, image, launch), &launched
+		step.Command, step.Native, step.LaunchedAt = command, native, &launched
 	}
 	job, err := predeploy.Ensure(ctx, opts)
 	if err != nil {

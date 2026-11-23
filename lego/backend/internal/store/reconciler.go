@@ -1278,7 +1278,7 @@ func releaseRolloutFor(app *appv1alpha1.App, generation int64) (DeployRollout, b
 		return DeployRollout{}, false
 	}
 	started := rec.StartedAt.Time
-	out := DeployRollout{StartedAt: &started, Command: rec.Command, WebConcurrency: rec.WebConcurrency}
+	out := DeployRollout{StartedAt: &started, Command: rec.Command, InstanceAnnounces: rec.InstanceAnnounces, WebConcurrency: rec.WebConcurrency}
 	for _, t := range rec.AppStarts {
 		out.AppStarts = append(out.AppStarts, t.Time)
 	}

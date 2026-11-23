@@ -29,8 +29,9 @@ import (
 )
 
 // w32/m560: the reconciler copies the operator's record of a release's
-// rollout onto that release's own open row: the start, command and default
-// once, the app starts as they grow, and on the pass that closes the row too.
+// rollout onto that release's own open row: the start, command, whether its
+// instance names the command (w32/m575) and default once, the app starts as
+// they grow, and on the pass that closes the row too.
 // A record of another release never stamps a row.
 func TestReconcilerCopiesTheReleasesRolloutOntoItsOwnRow(t *testing.T) {
 	ctx := context.Background()
@@ -45,7 +46,7 @@ func TestReconcilerCopiesTheReleasesRolloutOntoItsOwnRow(t *testing.T) {
 	app.Status.ReleaseGeneration = 2
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	app.Status.ReleaseRollout = &appv1alpha1.ReleaseRolloutStatus{
-		Generation: 2, StartedAt: metav1.NewMicroTime(started), Command: "npm start", WebConcurrency: 1,
+		Generation: 2, StartedAt: metav1.NewMicroTime(started), Command: "npm start", WebConcurrency: 1, InstanceAnnounces: true,
 	}
 	pass := func(id string) Deploy {
 		t.Helper()
@@ -55,16 +56,16 @@ func TestReconcilerCopiesTheReleasesRolloutOntoItsOwnRow(t *testing.T) {
 
 	d := pass("dep-2")
 	if d.Rollout.StartedAt == nil || !d.Rollout.StartedAt.Equal(started) || d.Rollout.Command != "npm start" ||
-		d.Rollout.WebConcurrency != 1 || len(d.Rollout.AppStarts) != 0 {
-		t.Fatalf("first pass: rollout = %+v, want the record's start, command and default", d.Rollout)
+		d.Rollout.WebConcurrency != 1 || len(d.Rollout.AppStarts) != 0 || !d.Rollout.InstanceAnnounces {
+		t.Fatalf("first pass: rollout = %+v, want the record's start, command, whether its instance names it (w32/m575) and default", d.Rollout)
 	}
 	if got := pass("dep-3").Rollout; got.StartedAt != nil {
 		t.Fatalf("release 2's record stamped release 3's row: %+v", got)
 	}
 
 	app.Status.ReleaseRollout.AppStarts = []metav1.Time{first}
-	app.Status.ReleaseRollout.Command = "node other.js"
-	if d := pass("dep-2"); !slices.Equal(d.Rollout.AppStarts, []time.Time{first.Time}) || d.Rollout.Command != "npm start" {
+	app.Status.ReleaseRollout.Command, app.Status.ReleaseRollout.InstanceAnnounces = "node other.js", false
+	if d := pass("dep-2"); !slices.Equal(d.Rollout.AppStarts, []time.Time{first.Time}) || d.Rollout.Command != "npm start" || !d.Rollout.InstanceAnnounces {
 		t.Fatalf("a start: rollout = %+v, want the start added and the command kept", d.Rollout)
 	}
 

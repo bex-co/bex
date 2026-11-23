@@ -1877,11 +1877,13 @@ const MaxReleaseRolloutAppStarts = 10
 // ReleaseRolloutStatus is what the operator saw of one release's rollout
 // (w32/m560): when it first wrote the release's serving pod template, each
 // start of the release's app container while the rollout ran, the start
-// command that container launched on a native image, and the WEB_CONCURRENCY
-// default it got. bex-api copies it onto the release's deploy row, and the
-// deploy log narrates it as Render's does: `==> Deploying...`, `==> Setting
-// WEB_CONCURRENCY=N by default…` and `==> Running '<command>'`. A static site
-// and a cron job run no instance at deploy and get none.
+// command that container launched on a native image, whether that image names
+// the command itself (w32/m575), and the WEB_CONCURRENCY default it got.
+// bex-api copies it onto the release's deploy row, and the deploy log
+// narrates it as Render's does: `==> Deploying...`, `==> Setting
+// WEB_CONCURRENCY=N by default…` and, unless the instance writes it,
+// `==> Running '<command>'`. A static site and a cron job run no instance at
+// deploy and get none.
 type ReleaseRolloutStatus struct {
 	// Generation is the release generation whose rollout this is. A newer
 	// release's rollout replaces the record.
@@ -1916,6 +1918,16 @@ type ReleaseRolloutStatus struct {
 	// no value of its own); zero for none.
 	// +optional
 	WebConcurrency int32 `json:"webConcurrency,omitempty"`
+
+	// InstanceAnnounces reports that the release's app container writes
+	// `==> Running '<Command>'` itself at each start: its image's native-init
+	// does (ImageRevisionStatus.NativeInitAnnounces, w32/m575). The deploy log
+	// then narrates no copy of its own. False for a release on an image built
+	// before that native-init, whose log keeps the narrated line, and for
+	// every launch with no Command. Decided with the record's start and never
+	// moved.
+	// +optional
+	InstanceAnnounces bool `json:"instanceAnnounces,omitempty"`
 }
 
 // RolloutFailureStatus is the structured cause of a failed rollout (w8/m146),
@@ -2034,7 +2046,8 @@ type DiskStatus struct {
 	CapacityGB int32 `json:"capacityGB,omitempty"`
 }
 
-// ImageRevisionStatus is the commit one image was built from.
+// ImageRevisionStatus is the commit one image was built from, and whether its
+// native-init names each command it starts.
 type ImageRevisionStatus struct {
 	// Image is the reference the commit was read for.
 	Image string `json:"image"`
@@ -2043,6 +2056,13 @@ type ImageRevisionStatus struct {
 	// +optional
 	// +kubebuilder:validation:MaxLength=64
 	Commit string `json:"commit,omitempty"`
+	// NativeInitAnnounces reports that the image carries a native build's
+	// co.bex.native-init.announces label: its native-init writes Render's
+	// `==> Running '<command>'` each time it starts a command (w32/m575).
+	// False for every image built before that native-init, and for a read
+	// an older operator cached.
+	// +optional
+	NativeInitAnnounces bool `json:"nativeInitAnnounces,omitempty"`
 }
 
 // AppStatus is the observed state of a App.

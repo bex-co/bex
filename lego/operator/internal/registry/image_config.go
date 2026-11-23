@@ -193,15 +193,17 @@ func readImageConfig(ctx context.Context, httpClient *http.Client, registryHost,
 // image was built from (w5/m148).
 const RevisionLabel = "org.opencontainers.image.revision"
 
-// ReadImageRevision is ReadImageConfig for the image's RevisionLabel: the
-// same authorized, digest-verified, layer-free read, without the port rules,
-// which say nothing about provenance. "" when the image carries no label.
-func ReadImageRevision(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, error) {
+// ReadImageLabels is ReadImageConfig for the image's config labels, which
+// bex's builds stamp with its provenance (RevisionLabel) and with what its
+// entrypoint does (build.NativeInitAnnouncesLabel): the same authorized,
+// digest-verified, layer-free read, without the port rules, which say nothing
+// about either. nil when the image carries no labels.
+func ReadImageLabels(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (map[string]string, error) {
 	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization, hostingPlatform)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return document.Config.Labels[RevisionLabel], nil
+	return document.Config.Labels, nil
 }
 
 // ReadImageRuntimeMetadata reads environment and build provenance through the
