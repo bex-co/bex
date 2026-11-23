@@ -153,7 +153,7 @@ The bound excludes:
 
 - the app's own exit and start time;
 - a node that is gone or unschedulable, where Hetzner's detach (9–16 s) and attach (15–16 s) dominate;
-- the pull of an image the node does not have: 2.0–2.1 s for a 5 MB image from Docker Hub, and more for a large one. [w6/160](../.pm/w6/160.md) would move it before the stop;
+- the pull of an image the node does not have: 2.0–2.1 s for a 5 MB image from Docker Hub, and more for a large one. [w6/m595](../.pm/w6/m595/README.md) would move it before the stop;
 - a service that probes by exec: one with a Health Check Path, or a web image that names no port. bex's `bex-health-probe-install` init container adds about 3.3 s to each start: its own start took 2.05–2.22 s, against 0.17 s for the app container, most likely because its 20m CPU limit throttles runc. It then runs 0.59 s, and the kubelet starts the app about 0.7 s after it exits ([w6/170](../.pm/w6/170.md)).
 
 Two terms were open while m547 was parked. Both are closed:
