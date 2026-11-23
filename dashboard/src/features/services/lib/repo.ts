@@ -34,6 +34,22 @@ export function repoBrowseUrl(
   return branch ? `${base}/tree/${branch}` : base;
 }
 
+/**
+ * Whether two clone URLs name one repository: the same host and path, however
+ * each is spelled (https or ssh, a trailing ".git", letter case, which the
+ * forges ignore). An unrecognizable URL is the same as nothing.
+ */
+export function sameRepo(a: string, b: string): boolean {
+  const key = repoKey(a);
+  return key !== null && key === repoKey(b);
+}
+
+function repoKey(repo: string): string | null {
+  const host = repoHost(repo);
+  const path = repoPath(repo);
+  return host && path ? `${host}/${path}`.toLowerCase() : null;
+}
+
 /** Host of a clone URL — "github.com" for both https:// and git@ spellings. */
 function repoHost(repo: string): string | null {
   const http = httpRepo(repo);

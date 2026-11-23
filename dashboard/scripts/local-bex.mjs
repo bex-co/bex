@@ -345,6 +345,9 @@ const SERVICE = {
   maxShutdownDelaySeconds: 30,
   repo: "https://github.com/acme-corp/eden-cms-v2",
   branch: "main",
+  // The connected installation grants this repository (REPOS below), so
+  // Update Source opens on the GitHub tab with it selected.
+  pushDeliveryMethod: "github_app",
   rootDir: "",
   runtime: "docker",
   region: "fsn1",
@@ -1653,16 +1656,57 @@ const REPOS = [
     htmlUrl: "https://github.com/acme-corp/internal-tools",
     cloneUrl: "https://github.com/acme-corp/internal-tools.git",
   },
+  {
+    // The sample web service's own repository.
+    __typename: "Repo",
+    id: 1006,
+    fullName: "acme-corp/eden-cms-v2",
+    private: true,
+    defaultBranch: "main",
+    htmlUrl: "https://github.com/acme-corp/eden-cms-v2",
+    cloneUrl: "https://github.com/acme-corp/eden-cms-v2.git",
+  },
 ].map((repo) => ({
   ...repo,
   accountLogin: GIT_CONNECTION.accountLogin,
   installationId: GIT_CONNECTION.installationId,
 }));
 
+// The viewerCapabilities fields and the relation each one answers for.
+const VIEWER_CAPABILITIES = [
+  ["canView", "can_view"],
+  ["canViewLogs", "can_view_logs"],
+  ["canOperate", "can_operate"],
+  ["canCreate", "can_create"],
+  ["canViewSensitive", "can_view_sensitive"],
+  ["canManageKeys", "can_manage_keys"],
+  ["canManage", "can_manage"],
+  ["canManageBilling", "can_manage_billing"],
+];
+
 // Resolve one GraphQL operation to canned data. Only the reads the dashboard
 // actually fires need real shapes; everything else returns a safe empty.
 function resolveGraphQL({ operationName, variables = {} }) {
   switch (operationName) {
+    case "ViewerCapabilities":
+      // The stub's one user is an admin. Without an answer the dashboard fails
+      // closed and every role-gated control stays disabled.
+      return {
+        viewerCapabilities: {
+          __typename: "ViewerCapabilities",
+          role: "ADMIN",
+          ...Object.fromEntries(
+            VIEWER_CAPABILITIES.map(([field]) => [field, true]),
+          ),
+          fresh: true,
+          grants: VIEWER_CAPABILITIES.map(([, action]) => ({
+            __typename: "CapabilityGrant",
+            action,
+            outcome: "allowed",
+            reason: null,
+          })),
+        },
+      };
     case "Services":
       return { services: byOwner(SERVICES, variables.ownerId) };
     case "GitConnection":

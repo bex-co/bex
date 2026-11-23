@@ -255,6 +255,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             builder={service.builder ?? null}
             buildCommand={service.buildCommand ?? null}
             repoAccessLost={service.repoAccessLost ?? false}
+            pushDeliveryMethod={service.pushDeliveryMethod ?? null}
           />
         );
       case "runtime":

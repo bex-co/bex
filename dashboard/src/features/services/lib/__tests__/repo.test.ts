@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatRepoLabel, repoBrowseUrl, repoCommitUrl } from "../repo";
+import {
+  formatRepoLabel,
+  repoBrowseUrl,
+  repoCommitUrl,
+  sameRepo,
+} from "../repo";
 
 describe("repository display helpers", () => {
   it("keeps an arbitrary self-hosted forge visible in linked text", () => {
@@ -57,5 +62,38 @@ describe("repoCommitUrl", () => {
   it("yields no link for a repo that can't be browsed", () => {
     expect(repoCommitUrl("acme/web", sha)).toBeNull();
     expect(repoCommitUrl("", sha)).toBeNull();
+  });
+});
+
+describe("sameRepo", () => {
+  it("matches one repository across its spellings", () => {
+    const page = "https://github.com/acme/api";
+    for (const other of [
+      "https://github.com/acme/api.git",
+      "https://github.com/acme/api/",
+      "https://github.com/Acme/API",
+      "git@github.com:acme/api.git",
+      "ssh://git@github.com/acme/api.git",
+    ]) {
+      expect(sameRepo(page, other), other).toBe(true);
+    }
+  });
+
+  it("tells apart another repository, owner or host", () => {
+    const page = "https://github.com/acme/api";
+    for (const other of [
+      "https://github.com/acme/api-v2",
+      "https://github.com/other/api",
+      "https://gitlab.com/acme/api",
+      // The trusted-looking host is userinfo; the real one is elsewhere.
+      "https://github.com@evil.example/acme/api",
+    ]) {
+      expect(sameRepo(page, other), other).toBe(false);
+    }
+  });
+
+  it("never matches a URL it cannot read, not even itself", () => {
+    expect(sameRepo("", "")).toBe(false);
+    expect(sameRepo("not a url", "not a url")).toBe(false);
   });
 });

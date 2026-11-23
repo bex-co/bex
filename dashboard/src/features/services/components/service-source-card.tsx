@@ -53,7 +53,7 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useSetImage } from "@/features/services/hooks/use-set-image";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { commandText } from "@/features/services/lib/command-text";
-import { formatRepoLabel } from "@/features/services/lib/repo";
+import { formatRepoLabel, sameRepo } from "@/features/services/lib/repo";
 
 export interface ServiceSourceCardProps {
   serviceId: string;
@@ -77,6 +77,13 @@ export interface ServiceSourceCardProps {
    * no push reaches bex (w10/m490): the card says so and what to do.
    */
   repoAccessLost?: boolean;
+  /**
+   * How a push to the repository reaches bex. `github_app` means the
+   * workspace's GitHub connection grants the repository, so Update Source
+   * opens on the GitHub tab with it selected; any other repository is a URL,
+   * on the Public Git URL tab.
+   */
+  pushDeliveryMethod?: string | null;
 }
 
 /**
@@ -191,6 +198,7 @@ function SourceEditDialog({
   startCommand: currentStartCommand,
   builder,
   buildCommand: currentBuildCommand,
+  pushDeliveryMethod,
   disabled,
 }: ServiceSourceCardProps & { disabled: boolean }) {
   const { t } = useTranslations();
@@ -201,11 +209,21 @@ function SourceEditDialog({
   // under-field message (w4/406).
   const [refusedImage, setRefusedImage] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  // The service's repository when the workspace's GitHub connection grants it:
+  // a repository to pick on the GitHub tab, not a URL to paste, a private one
+  // least of all.
+  const connectedRepo =
+    !buildSourceId && repo && pushDeliveryMethod === "github_app" ? repo : null;
+  const isOwnRepo = (picked: RepoView) =>
+    Boolean(repo && sameRepo(picked.htmlUrl, repo));
   const initialTab: SourceTab = buildSourceId
     ? "build-source"
-    : repo
-      ? "git"
-      : "image";
+    : connectedRepo
+      ? "github"
+      : repo
+        ? "git"
+        : "image";
+  const initialGitUrl = connectedRepo ? "" : (repo ?? "");
   const [tab, setTab] = useState<SourceTab>(initialTab);
   const [sourceId, setSourceId] = useState(buildSourceId ?? "");
   const [startCommand, setStartCommand] = useState(currentStartCommand ?? "");
@@ -218,12 +236,20 @@ function SourceEditDialog({
   const selectedSource = sources.find((source) => source.id === sourceId);
   const needsStart = selectedSource?.nativeRuntime != null;
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
-  const [gitUrl, setGitUrl] = useState(repo ?? "");
+  const [gitUrl, setGitUrl] = useState(initialGitUrl);
   const [branch, setBranch] = useState(currentBranch ?? "main");
   const [image, setImageValue] = useState(imagePath ?? "");
   const [credentialId, setCredentialId] = useState(registryCredentialId ?? "");
 
-  const sourceRepo = tab === "github" ? (selectedRepo?.htmlUrl ?? "") : gitUrl;
+  // The GitHub tab's repository: the one picked, else the service's own. The
+  // service's own keeps the URL it already stores, which may end in ".git"
+  // where GitHub's page URL does not, so picking it again changes nothing.
+  const githubRepo = selectedRepo
+    ? isOwnRepo(selectedRepo)
+      ? (repo ?? "")
+      : selectedRepo.htmlUrl
+    : (connectedRepo ?? "");
+  const sourceRepo = tab === "github" ? githubRepo : gitUrl;
   const gitTab = tab === "github" || tab === "git";
   // A switch from an image back to Git builds natively again, which bex-api
   // refuses without both commands, as create does (w32/052).
@@ -240,7 +266,7 @@ function SourceEditDialog({
   );
   const repoValid =
     tab === "github"
-      ? selectedRepo !== null
+      ? githubRepo !== ""
       : isValidGitUrl(gitUrl) && !parseGitHubPage(gitUrl)?.file;
   const valid =
     tab === "build-source"
@@ -273,7 +299,7 @@ function SourceEditDialog({
     setStartCommand(currentStartCommand ?? "");
     setBuildCommand(currentBuildCommand ?? "");
     setSelectedRepo(null);
-    setGitUrl(repo ?? "");
+    setGitUrl(initialGitUrl);
     setBranch(currentBranch || "main");
     setImageValue(imagePath ?? "");
     setCredentialId(registryCredentialId ?? "");
@@ -286,7 +312,9 @@ function SourceEditDialog({
 
   function selectRepo(next: RepoView) {
     setSelectedRepo(next);
-    setBranch(next.defaultBranch || "main");
+    // Another repository starts on its default branch; the service's own
+    // keeps the branch the service deploys.
+    setBranch((isOwnRepo(next) ? currentBranch : next.defaultBranch) || "main");
   }
 
   function selectSource(id: string) {
@@ -352,6 +380,7 @@ function SourceEditDialog({
             onTabChange={changeTab}
             selectedRepo={selectedRepo}
             onSelectRepo={selectRepo}
+            currentRepo={connectedRepo}
             gitUrl={gitUrl}
             onGitUrlChange={setGitUrl}
             // The page names its branch; a branch the user changed is kept.

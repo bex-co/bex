@@ -1,5 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { GitBranch, Box, Layers } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { GitBranch, Box, Check, Layers } from "lucide-react";
 import { GithubIcon } from "@/common/components/github-icon";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Badge } from "@/common/components/ui/badge";
@@ -27,6 +33,7 @@ import { useOnGitConnectionsChange } from "@/features/git/hooks/use-on-git-conne
 import { useConnectGitAccount } from "@/features/git/hooks/use-connect-git";
 import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
+import { sameRepo } from "@/features/services/lib/repo";
 
 /** Where a service's code comes from. */
 export type SourceTab = "github" | "git" | "image" | "build-source";
@@ -84,6 +91,7 @@ export function ServiceSourcePicker({
   onTabChange,
   selectedRepo,
   onSelectRepo,
+  currentRepo = null,
   gitUrl,
   onGitUrlChange,
   onGitHubPage,
@@ -96,6 +104,11 @@ export function ServiceSourcePicker({
   onTabChange: (tab: SourceTab) => void;
   selectedRepo: RepoView | null;
   onSelectRepo: (repo: RepoView) => void;
+  /**
+   * The clone URL of the repository in use (Update Source). Until the user
+   * picks one, its row in the list is the selected one.
+   */
+  currentRepo?: string | null;
   gitUrl: string;
   onGitUrlChange: (url: string) => void;
   /**
@@ -179,6 +192,19 @@ export function ServiceSourcePicker({
   }, [filteredRepos]);
   // Only label groups when there is more than one account to distinguish.
   const showAccountHeadings = repoGroups.length > 1;
+  const currentRepoId = useMemo(
+    () =>
+      currentRepo === null
+        ? null
+        : (repos.find((r) => sameRepo(r.htmlUrl, currentRepo))?.id ?? null),
+    [repos, currentRepo],
+  );
+  const selectedRepoId = selectedRepo ? selectedRepo.id : currentRepoId;
+  // The selected row may sit below the list's fold (the repository in use,
+  // among a hundred): bring it into view when it mounts.
+  const revealSelected = useCallback((row: HTMLButtonElement | null) => {
+    row?.scrollIntoView?.({ block: "nearest" });
+  }, []);
 
   return (
     <div className="space-y-3">
@@ -285,36 +311,46 @@ export function ServiceSourcePicker({
                           {group.account}
                         </div>
                       )}
-                      {group.repos.map((r) => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => onSelectRepo(r)}
-                          className={cn(
-                            "flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted",
-                            selectedRepo?.id === r.id &&
-                              "bg-primary/5 hover:bg-primary/10",
-                          )}
-                        >
-                          <div className="flex min-w-0 items-center gap-2">
-                            <GithubIcon className="size-4 shrink-0 text-muted-foreground" />
-                            <span className="truncate text-sm font-medium">
-                              {r.fullName}
-                            </span>
-                            {r.private && (
-                              <Badge
-                                variant="secondary"
-                                className="shrink-0 text-xs"
-                              >
-                                {t("services.createRepoPrivateBadge")}
-                              </Badge>
+                      {group.repos.map((r) => {
+                        const selected = r.id === selectedRepoId;
+                        return (
+                          <button
+                            key={r.id}
+                            ref={selected ? revealSelected : undefined}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => onSelectRepo(r)}
+                            className={cn(
+                              "flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted",
+                              selected && "bg-primary/5 hover:bg-primary/10",
                             )}
-                          </div>
-                          <span className="ml-3 shrink-0 text-xs text-muted-foreground">
-                            {r.defaultBranch}
-                          </span>
-                        </button>
-                      ))}
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <GithubIcon className="size-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate text-sm font-medium">
+                                {r.fullName}
+                              </span>
+                              {r.private && (
+                                <Badge
+                                  variant="secondary"
+                                  className="shrink-0 text-xs"
+                                >
+                                  {t("services.createRepoPrivateBadge")}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="ml-3 flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                              {r.defaultBranch}
+                              {selected && (
+                                <Check
+                                  className="size-4 text-primary"
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   ))
                 )}

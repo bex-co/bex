@@ -242,6 +242,149 @@ describe("ServiceSourceCard", () => {
     );
   });
 
+  // A service on a repository the workspace's GitHub connection grants used
+  // to open Update Source on the Public Git URL tab with its private URL in
+  // the field, as if it had been pasted there, and nothing on the GitHub tab.
+  describe("a repository the workspace's GitHub connection grants", () => {
+    const connected = (overrides: { repo?: string; branch?: string } = {}) => (
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo={overrides.repo ?? "https://github.com/acme/api"}
+        branch={overrides.branch ?? "main"}
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="github_app"
+      />
+    );
+
+    it("opens on the GitHub tab with the repository selected and nothing to save", async () => {
+      const user = userEvent.setup();
+      render(connected());
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+
+      expect(screen.getByRole("tab", { name: "GitHub" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: /acme\/api/i })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(
+        screen.getByRole("button", { name: /puncsky\/site/i }),
+      ).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
+        "main",
+      );
+      expect(
+        screen.getByRole("button", { name: "Update source" }),
+      ).toBeDisabled();
+
+      // Its URL is not offered as a public one.
+      await user.click(screen.getByRole("tab", { name: /Public Git/ }));
+      expect(
+        screen.getByRole("textbox", {
+          name: /Git repository URL|Repository URL/,
+        }),
+      ).toHaveValue("");
+      expect(
+        screen.getByRole("button", { name: "Update source" }),
+      ).toBeDisabled();
+    });
+
+    it("changes the branch alone, keeping the URL the service stores", async () => {
+      const user = userEvent.setup();
+      render(connected({ repo: "https://github.com/acme/api.git" }));
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+
+      // The stored clone URL ends in .git; GitHub's page URL does not.
+      expect(screen.getByRole("button", { name: /acme\/api/i })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      const branch = screen.getByRole("combobox", { name: "Branch" });
+      await user.clear(branch);
+      await user.type(branch, "release");
+      await user.click(screen.getByRole("button", { name: "Update source" }));
+
+      await waitFor(() =>
+        expect(setRepo).toHaveBeenCalledWith("srv-1", {
+          repo: "https://github.com/acme/api.git",
+          branch: "release",
+        }),
+      );
+    });
+
+    it("picking the same repository again changes nothing, and another one is a change", async () => {
+      const user = userEvent.setup();
+      render(
+        connected({
+          repo: "https://github.com/acme/api.git",
+          branch: "release",
+        }),
+      );
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      const save = screen.getByRole("button", { name: "Update source" });
+
+      // Its own repository keeps the branch it deploys, not the default one.
+      await user.click(screen.getByRole("button", { name: /acme\/api/i }));
+      expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
+        "release",
+      );
+      expect(save).toBeDisabled();
+
+      await user.click(screen.getByRole("button", { name: /puncsky\/site/i }));
+      expect(screen.getByRole("button", { name: /acme\/api/i })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
+        "trunk",
+      );
+      await user.click(save);
+      await waitFor(() =>
+        expect(setRepo).toHaveBeenCalledWith("srv-1", {
+          repo: "https://github.com/puncsky/site",
+          branch: "trunk",
+        }),
+      );
+    });
+  });
+
+  it("opens a repository the GitHub connection does not grant as its URL", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-1"
+        repo="https://github.com/elsewhere/public"
+        branch="main"
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+        pushDeliveryMethod="manual_webhook"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByRole("tab", { name: /Public Git/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByDisplayValue("https://github.com/elsewhere/public"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    for (const row of [/acme\/api/i, /puncsky\/site/i]) {
+      expect(screen.getByRole("button", { name: row })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    }
+  });
+
   it("repoints an image and forwards its registry credential", async () => {
     const user = userEvent.setup();
     render(
