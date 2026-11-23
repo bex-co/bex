@@ -55,6 +55,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/bex-co/bex/lego/types/renderlog"
@@ -66,17 +67,24 @@ var forwarded = []os.Signal{
 	syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGWINCH,
 }
 
-// quietEnv is build.NativeInitQuietEnv: set on a launch whose command the
-// platform names itself, a pre-deploy step, whose `==> Running '<command>'`
-// the deploy log narrates (w32/m572, w32/m575). native-init then writes no
-// line, and removes the variable from the command's environment either way.
-const quietEnv = "BEX_NATIVE_INIT_QUIET"
+const (
+	// quietEnv is build.NativeInitQuietEnv: set on a launch whose command the
+	// platform names itself, a pre-deploy step, whose `==> Running '<command>'`
+	// the deploy log narrates (w32/m572, w32/m575). native-init then writes no
+	// line, and removes the variable from the command's environment either way.
+	quietEnv = "BEX_NATIVE_INIT_QUIET"
+	// startLinesFile is build.nativeInitStartLinesPath: lines the native build
+	// writes into the image for native-init to print before `==> Running
+	// '<command>'` at each announced start (a Node service's Bun version pair,
+	// w32/093). Absent when the image has none.
+	startLinesFile = "/opt/bex/native-init-lines"
+)
 
 func main() {
-	os.Exit(run(os.Args[1:], secretFilesDir, os.Stdout, os.Stderr))
+	os.Exit(run(os.Args[1:], secretFilesDir, startLinesFile, os.Stdout, os.Stderr))
 }
 
-func run(argv []string, secrets string, stdout, stderr io.Writer) int {
+func run(argv []string, secrets, startLines string, stdout, stderr io.Writer) int {
 	if len(argv) == 0 {
 		_, _ = fmt.Fprintln(stderr, "native-init: no command to run")
 		return 2
@@ -95,7 +103,7 @@ func run(argv []string, secrets string, stdout, stderr io.Writer) int {
 	child := 0
 	if err == nil {
 		if !quiet {
-			announce(argv, stdout)
+			announce(argv, startLines, stdout)
 		}
 		child, err = start(path, argv, asInit)
 	}
@@ -109,24 +117,35 @@ func run(argv []string, secrets string, stdout, stderr io.Writer) int {
 	return supervise(child, asInit, signals)
 }
 
-// announce writes Render's `==> Running '<command>'` for a command run as
-// `<shell> -c <command>`, as a native image runs a service's start command, a
-// cron run, a pre-deploy step and the initial deploy hook. Render's native
-// instance writes it each time it starts the command, at a deploy, after a
-// crash and at a free instance's spin-up (ivanseibel/tretta's log capture,
-// DerekSopok/EMS-Kahoot#3), in green as that capture of Render's log API has
-// it (renderlog.Instance, w32/m576). The command is quoted as configured,
-// $PORT unexpanded, and the line is one write before the command starts, so
-// its own output never splits it. Any other argument shape names nothing, and
-// a shell that cannot be found starts nothing to name.
-func announce(argv []string, stdout io.Writer) {
+// announce writes any build-recorded start lines (a Node service's Bun version
+// pair, w32/093) followed by Render's `==> Running '<command>'` for a command
+// run as `<shell> -c <command>`, as a native image runs a service's start
+// command, a cron run, a pre-deploy step and the initial deploy hook. Render's
+// native instance writes them each time it starts the command, at a deploy,
+// after a crash and at a free instance's spin-up (ivanseibel/tretta's log
+// capture, DerekSopok/EMS-Kahoot#3, Pranav7758/AniCircle, harshagavadi/akshay),
+// with `Running` in green as that capture of Render's log API has it
+// (renderlog.Instance, w32/m576). The command is quoted as configured, $PORT
+// unexpanded, and the lines are one write before the command starts, so its own
+// output never splits them. Any other argument shape names nothing, and a shell
+// that cannot be found starts nothing to name.
+func announce(argv []string, startLines string, stdout io.Writer) {
 	if len(argv) < 3 || argv[1] != "-c" {
 		return
 	}
 	if shell := filepath.Base(argv[0]); shell != "bash" && shell != "sh" {
 		return
 	}
-	_, _ = io.WriteString(stdout, renderlog.Instance.Line("Running '"+argv[2]+"'")+"\n")
+	var prefix string
+	if startLines != "" {
+		if raw, err := os.ReadFile(startLines); err == nil && len(raw) > 0 {
+			prefix = string(raw)
+			if !strings.HasSuffix(prefix, "\n") {
+				prefix += "\n"
+			}
+		}
+	}
+	_, _ = io.WriteString(stdout, prefix+renderlog.Instance.Line("Running '"+argv[2]+"'")+"\n")
 }
 
 // start launches the command, found at path, with the inherited stdio,

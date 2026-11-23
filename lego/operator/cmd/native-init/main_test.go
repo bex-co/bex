@@ -35,17 +35,20 @@ import (
 // The test binary doubles as native-init, so every case runs real processes.
 func TestMain(m *testing.M) {
 	if os.Getenv("BEX_NATIVE_INIT_UNDER_TEST") == "1" {
-		os.Exit(run(os.Args[1:], os.Getenv("BEX_NATIVE_INIT_TEST_SECRETS"), os.Stdout, os.Stderr))
+		os.Exit(run(os.Args[1:], os.Getenv("BEX_NATIVE_INIT_TEST_SECRETS"),
+			os.Getenv("BEX_NATIVE_INIT_TEST_START_LINES"), os.Stdout, os.Stderr))
 	}
 	os.Exit(m.Run())
 }
 
-// nativeInit runs native-init with no secret files mounted, unless the caller
-// names a directory in BEX_NATIVE_INIT_TEST_SECRETS after it.
+// nativeInit runs native-init with no secret files mounted and no start-lines
+// file, unless the caller overrides them with BEX_NATIVE_INIT_TEST_SECRETS or
+// BEX_NATIVE_INIT_TEST_START_LINES after it.
 func nativeInit(args ...string) *exec.Cmd {
 	cmd := exec.Command(os.Args[0], args...)
 	cmd.Env = append(os.Environ(), "BEX_NATIVE_INIT_UNDER_TEST=1", "QA_MARKER=kept as is",
-		"BEX_NATIVE_INIT_TEST_SECRETS=/nonexistent/bex-native-init/secrets")
+		"BEX_NATIVE_INIT_TEST_SECRETS=/nonexistent/bex-native-init/secrets",
+		"BEX_NATIVE_INIT_TEST_START_LINES=/nonexistent/bex-native-init/start-lines")
 	return cmd
 }
 
@@ -353,6 +356,109 @@ func TestNativeInitQuietLaunchNamesNothingAndHidesTheSignal(t *testing.T) {
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			if status := exitStatus(t, cmd.Run()); status != 0 || stdout.String() != tc.stdout {
 				t.Fatalf("status %d stdout %q stderr %q, want %q", status, stdout.String(), stderr.String(), tc.stdout)
+			}
+		})
+	}
+}
+
+// w32/093: a native Node service with Bun carries its resolved Bun version pair
+// in the image's start-lines file. native-init writes those lines before
+// `==> Running '<command>'` at every announced start (restarts and spin-ups
+// included), writes nothing extra when the file is absent or empty, and stays
+// silent on quiet or non-shell launches.
+func TestNativeInitWritesStartLinesBeforeRunning(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	const bunDocs = "==> Docs on specifying a Bun version: https://render.com/docs/bun-version"
+	bunDefault := "==> Using Bun version 1.3.4 (default)\n" + bunDocs + "\n"
+	bunEnvNoNL := "==> Using Bun 1.3.14 (from BUN_VERSION=1.3)\n" + bunDocs
+	defaultFile := filepath.Join(dir, "bun-default")
+	envFile := filepath.Join(dir, "bun-env")
+	emptyFile := filepath.Join(dir, "empty")
+	script := filepath.Join(dir, "script.sh")
+	for name, content := range map[string]string{
+		defaultFile: bunDefault,
+		envFile:     bunEnvNoNL,
+		emptyFile:   "",
+		script:      "echo from-script\n",
+	} {
+		mode := os.FileMode(0o644)
+		if name == script {
+			mode = 0o755
+		}
+		if err := os.WriteFile(name, []byte(content), mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	const command = `echo "started"`
+	for _, tc := range []struct {
+		name      string
+		args      []string
+		startFile string
+		extraEnv  []string
+		want      string
+	}{
+		{
+			name:      "bun lockfile default pair before Running",
+			args:      []string{"/bin/sh", "-c", command},
+			startFile: defaultFile,
+			want:      bunDefault + running(command) + "\nstarted\n",
+		},
+		{
+			name:      "bun env pair without trailing newline",
+			args:      []string{"/bin/sh", "-c", command},
+			startFile: envFile,
+			want:      bunEnvNoNL + "\n" + running(command) + "\nstarted\n",
+		},
+		{
+			name:      "absent file writes only Running",
+			args:      []string{"/bin/sh", "-c", command},
+			startFile: filepath.Join(dir, "missing"),
+			want:      running(command) + "\nstarted\n",
+		},
+		{
+			name:      "empty file writes only Running",
+			args:      []string{"/bin/sh", "-c", command},
+			startFile: emptyFile,
+			want:      running(command) + "\nstarted\n",
+		},
+		{
+			name:      "quiet launch writes neither start lines nor Running",
+			args:      []string{"/bin/sh", "-c", command},
+			startFile: defaultFile,
+			extraEnv:  []string{"BEX_NATIVE_INIT_QUIET=1"},
+			want:      "started\n",
+		},
+		{
+			name:      "direct program writes neither start lines nor Running",
+			args:      []string{"/bin/echo", "-c", "direct"},
+			startFile: defaultFile,
+			want:      "-c direct\n",
+		},
+		{
+			name:      "shell script writes neither start lines nor Running",
+			args:      []string{"/bin/sh", script},
+			startFile: defaultFile,
+			want:      "from-script\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			// Run twice for the announced Bun cases to pin per-start repetition.
+			runs := 1
+			if tc.startFile == defaultFile && len(tc.extraEnv) == 0 && len(tc.args) >= 3 && tc.args[1] == "-c" {
+				runs = 2
+			}
+			for i := range runs {
+				cmd := nativeInit(tc.args...)
+				cmd.Env = append(cmd.Env, "BEX_NATIVE_INIT_TEST_START_LINES="+tc.startFile)
+				cmd.Env = append(cmd.Env, tc.extraEnv...)
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				if status := exitStatus(t, cmd.Run()); status != 0 || stdout.String() != tc.want {
+					t.Fatalf("run %d: status %d stdout %q stderr %q, want %q", i+1, status, stdout.String(), stderr.String(), tc.want)
+				}
 			}
 		})
 	}

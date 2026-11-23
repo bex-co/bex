@@ -162,7 +162,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		}
 	}
 	if withBun {
-		if rewritten, err = addNativeBun(rewritten, choice.Image, bun.Image); err != nil {
+		if rewritten, err = addNativeBun(rewritten, runtime, choice.Image, bun); err != nil {
 			return nil, err
 		}
 		choices = append(choices, bun)
@@ -217,10 +217,16 @@ func rewriteNativeLineBase(dockerfile, runtime string, choice NativeChoice) (str
 // addNativeBun copies the chosen Bun binary into the toolchain image right
 // after its FROM, before the source and the authored build, so the build, the
 // pre-deploy step and the started service all find bun and bunx on the image
-// PATH. --link keeps the Bun layer cached when the primary line changes.
-func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
-	return afterNativeBase(dockerfile, baseImage, "COPY --link --from="+bunImage+" /usr/local/bin/bun /usr/local/bin/bun\n"+
-		"RUN ln -sf bun /usr/local/bin/bunx\n")
+// PATH. --link keeps the Bun layer cached when the primary line changes. For a
+// native Node service starting under native-init, it also writes the resolved
+// Bun version pair so native-init logs it at every start (w32/093).
+func addNativeBun(dockerfile, runtime, baseImage string, bun NativeChoice) (string, error) {
+	var startLines []string
+	if runtime == nativeNodeRuntime && hasNativeInit(dockerfile) {
+		startLines = bun.StartLines()
+	}
+	return afterNativeBase(dockerfile, baseImage, "COPY --link --from="+bun.Image+" /usr/local/bin/bun /usr/local/bin/bun\n"+
+		"RUN ln -sf bun /usr/local/bin/bunx\n"+nativeInitStartLinesStep(startLines))
 }
 
 // nativeJSCompanionRuntimes are the primary runtimes whose native builds also

@@ -111,6 +111,29 @@ func (c NativeChoice) NarrationIn(dir string) string {
 	if c.declined != "" {
 		return fmt.Sprintf("==> Not adding %s: %s", c.Label, c.declined)
 	}
+	var lines []string
+	if c.requested != "" {
+		lines = append(lines, "==> Requesting Node.js version "+c.requested)
+	}
+	lines = append(lines, c.versionLines(dir)...)
+	if c.note != "" {
+		lines = append(lines, c.note)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// StartLines is the version line and its docs line, without any Node request
+// prefix or build-time resolution note: what a native Node service's Bun
+// companion writes at each instance start, before `==> Running '<command>'`
+// (w32/093).
+func (c NativeChoice) StartLines() []string {
+	if c.declined != "" {
+		return nil
+	}
+	return c.versionLines(NativeWorkdir)
+}
+
+func (c NativeChoice) versionLines(dir string) []string {
 	version := c.Line
 	if c.narratedVersion != "" {
 		version = c.narratedVersion
@@ -123,18 +146,11 @@ func (c NativeChoice) NarrationIn(dir string) string {
 	if !ok {
 		line = c.bexNarration(version)
 	}
-	var lines []string
-	if c.requested != "" {
-		lines = append(lines, "==> Requesting Node.js version "+c.requested)
-	}
-	lines = append(lines, line)
+	lines := []string{line}
 	if docs := renderDocs[c.Label]; docs != "" {
 		lines = append(lines, renderFormOf(c.Label).Line("Docs on specifying "+docs))
 	}
-	if c.note != "" {
-		lines = append(lines, c.note)
-	}
-	return strings.Join(lines, "\n")
+	return lines
 }
 
 // renderDocs is the page Render's build log points to after each runtime's

@@ -363,3 +363,169 @@ func TestNativeInitLayerIsReproducible(t *testing.T) {
 		t.Fatalf("native-init layers %q, want one identical layer", digests)
 	}
 }
+
+// w32/093: a native Node service built with a Bun lockfile, .bun-version or
+// BUN_VERSION writes the resolved Bun version pair into the image for
+// native-init to print before `==> Running '<command>'` at every start (without
+// any build-time lookup note). A Node service with no Bun choice, a static
+// site, and every other native runtime write no start-lines file.
+func TestNativeNodeBunWritesStartLinesForNativeInit(t *testing.T) {
+	const bunDocs = "==> Docs on specifying a Bun version: https://render.com/docs/bun-version"
+	at := func(s string) time.Time {
+		tm, err := time.Parse(time.RFC3339, s)
+		must(t, err)
+		return tm
+	}
+	wantStep := func(lines ...string) string {
+		return "COPY --chmod=0644 <<'" + nativeInitStartLinesEOF + "' " + nativeInitStartLinesPath + "\n" +
+			strings.Join(lines, "\n") + "\n" + nativeInitStartLinesEOF + "\n"
+	}
+
+	// Pin constant agreement with cmd/native-init/main.go, which cannot import
+	// internal/build without bloating the static binary.
+	initSrc, err := os.ReadFile("../../cmd/native-init/main.go")
+	must(t, err)
+	if !strings.Contains(string(initSrc), fmt.Sprintf("startLinesFile = %q", nativeInitStartLinesPath)) {
+		t.Fatalf("cmd/native-init/main.go startLinesFile drifted from %q", nativeInitStartLinesPath)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		created   time.Time
+		env       map[string]string
+		files     map[string]string
+		digests   map[string]string
+		exactErr  error
+		buildOnly bool
+		wantLines []string
+	}{
+		{
+			name:      "bun.lock dated default resolved",
+			created:   at("2026-04-19T00:00:00Z"),
+			files:     map[string]string{"bun.lock": "{}"},
+			digests:   map[string]string{bunRepo + ":1.3.4": exactDigest},
+			wantLines: []string{"==> Using Bun version 1.3.4 (default)", bunDocs},
+		},
+		{
+			name:      "bun.lock dated default fallback omits build note",
+			created:   at("2026-11-21T00:00:00Z"),
+			files:     map[string]string{"bun.lock": "{}"},
+			wantLines: []string{"==> Using Bun version 1.4.4 (default)", bunDocs},
+		},
+		{
+			name:      "bun.lockb dated default resolved",
+			created:   at("2026-11-21T00:00:00Z"),
+			files:     map[string]string{"bun.lockb": "\x00"},
+			digests:   map[string]string{bunRepo + ":1.4.5": exactDigest},
+			wantLines: []string{"==> Using Bun version 1.4.5 (default)", bunDocs},
+		},
+		{
+			name:      ".bun-version reviewed line",
+			files:     map[string]string{".bun-version": "1.3\n"},
+			wantLines: []string{"==> Using Bun 1.3.14 (from .bun-version)", bunDocs},
+		},
+		{
+			name:      ".bun-version unreviewed exact release",
+			files:     map[string]string{".bun-version": "1.1.38\n"},
+			digests:   map[string]string{bunRepo + ":1.1.38": exactDigest},
+			wantLines: []string{"==> Using Bun 1.1.38 (from .bun-version)", bunDocs},
+		},
+		{
+			name:      "BUN_VERSION exact release",
+			env:       map[string]string{"BUN_VERSION": "1.3.0"},
+			digests:   map[string]string{bunRepo + ":1.3.0": exactDigest},
+			wantLines: []string{"==> Using Bun 1.3.0 (from BUN_VERSION=1.3.0)", bunDocs},
+		},
+		{
+			name:      "BUN_VERSION canary omits digest note",
+			env:       map[string]string{"BUN_VERSION": "canary"},
+			digests:   map[string]string{bunRepo + ":canary": exactDigest},
+			wantLines: []string{"==> Using Bun canary (from BUN_VERSION=canary)", bunDocs},
+		},
+		{
+			name:      "BUN_VERSION multiline range collapses safely inside heredoc",
+			env:       map[string]string{"BUN_VERSION": ">=1.2.0\n<=1.3.14"},
+			wantLines: []string{"==> Using Bun 1.3.14 (from BUN_VERSION=>=1.2.0 <=1.3.14)", bunDocs},
+		},
+		{
+			name:      "build source Node image carries start lines for linked services",
+			created:   at("2026-04-19T00:00:00Z"),
+			files:     map[string]string{"bun.lock": "{}"},
+			digests:   map[string]string{bunRepo + ":1.3.4": exactDigest},
+			buildOnly: true,
+			wantLines: []string{"==> Using Bun version 1.3.4 (default)", bunDocs},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeInitOptions()
+			o.Runtime = nativeNodeRuntime
+			o.BuildOnly = tc.buildOnly
+			if tc.buildOnly {
+				o.StartCommand = ""
+			}
+			bundle, dockerfile, src := writeResolveFixture(t, o, tc.env, tc.files)
+			fake := &fakeExact{digests: tc.digests, err: tc.exactErr}
+			choices, err := ResolveNativeBuildExact(t.Context(), fake, tc.created, o.Runtime, bundle, dockerfile, src)
+			must(t, err)
+			if len(choices) != 2 || choices[1].Label != "Bun" {
+				t.Fatalf("choices = %+v, want Node + Bun", choices)
+			}
+			raw, err := os.ReadFile(dockerfile)
+			must(t, err)
+			df := string(raw)
+			want := wantStep(tc.wantLines...)
+			if !strings.Contains(df, want) {
+				t.Fatalf("Dockerfile missing start lines step:\nwant:\n%s\ngot:\n%s", want, df)
+			}
+			// Must sit after Bun binary copy and before COPY . . so source edits keep it cached.
+			bunAt := strings.Index(df, "/usr/local/bin/bunx\n")
+			stepAt := strings.Index(df, want)
+			copyAt := strings.Index(df, "\nCOPY . .\n")
+			if bunAt < 0 || stepAt < bunAt || copyAt < stepAt {
+				t.Fatalf("start lines step out of order (bun=%d step=%d copy=%d):\n%s", bunAt, stepAt, copyAt, df)
+			}
+		})
+	}
+
+	// Node without Bun writes no start-lines file.
+	t.Run("node without bun", func(t *testing.T) {
+		o := nativeInitOptions()
+		o.Runtime = nativeNodeRuntime
+		df, choices := resolveFixture(t, o, nil, nil)
+		if len(choices) != 1 || strings.Contains(df, nativeInitStartLinesPath) {
+			t.Fatalf("node without bun wrote start lines (choices=%d):\n%s", len(choices), df)
+		}
+	})
+
+	// Static site with bun.lock never runs native-init, so writes no start-lines file.
+	t.Run("static site with bun.lock", func(t *testing.T) {
+		o := nativeInitOptions()
+		o.StaticSite, o.Runtime, o.StartCommand = true, "", ""
+		bundle, dockerfile, src := writeResolveFixture(t, o, nil, map[string]string{"bun.lock": "{}"})
+		_, err := ResolveNativeBuildExact(t.Context(), &fakeExact{}, time.Time{}, nativeRuntime(o), bundle, dockerfile, src)
+		must(t, err)
+		raw, err := os.ReadFile(dockerfile)
+		must(t, err)
+		if strings.Contains(string(raw), nativeInitStartLinesPath) {
+			t.Fatalf("static site wrote native-init start lines:\n%s", raw)
+		}
+	})
+
+	// Every non-Node native runtime with Bun still installs Bun, but writes no start-lines file.
+	for runtime := range nativeToolchains {
+		if runtime == nativeNodeRuntime {
+			continue
+		}
+		t.Run(runtime+" with bun", func(t *testing.T) {
+			o := nativeInitOptions()
+			o.Runtime = runtime
+			df, _ := resolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3"}, map[string]string{"bun.lock": "{}"})
+			if !strings.Contains(df, "/usr/local/bin/bun\n") {
+				t.Fatalf("%s lost Bun binary:\n%s", runtime, df)
+			}
+			if strings.Contains(df, nativeInitStartLinesPath) {
+				t.Fatalf("%s wrote native-init start lines:\n%s", runtime, df)
+			}
+		})
+	}
+}

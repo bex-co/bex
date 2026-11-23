@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // A native service image starts its command under bex's native-init. Linux
@@ -57,6 +58,12 @@ const (
 	// COPY --link that creates a parent directory is not byte-reproducible
 	// (nativeMediaTools).
 	nativeInitPath = "/" + nativeInitFile
+	// nativeInitStartLinesPath is the file a native build writes when
+	// native-init should print lines before `==> Running '<command>'` at each
+	// announced start (a Node service's Bun version pair, w32/093). Mirrored
+	// by startLinesFile in cmd/native-init.
+	nativeInitStartLinesPath = "/opt/bex/native-init-lines"
+	nativeInitStartLinesEOF  = "BEX_NATIVE_INIT_LINES"
 )
 
 // nativeServingInit reports whether o's image starts under native-init: a
@@ -64,6 +71,34 @@ const (
 // it. The binary is static, so it runs on every toolchain base.
 func nativeServingInit(o Options) bool {
 	return !o.StaticSite && o.NativeResolverImage != ""
+}
+
+// hasNativeInit reports whether dockerfile starts its command under native-init.
+func hasNativeInit(dockerfile string) bool {
+	return strings.Contains(dockerfile, fmt.Sprintf("\nENTRYPOINT [%q]\n", nativeInitPath))
+}
+
+// nativeInitStartLinesStep writes lines to nativeInitStartLinesPath in the
+// image so native-init prints them before `==> Running '<command>'` at each
+// announced start (w32/093). Every line is collapsed to one line so tenant
+// input (such as a multi-line BUN_VERSION range) cannot break the heredoc.
+func nativeInitStartLinesStep(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	flat := strings.NewReplacer("\r", " ", "\n", " ")
+	var b strings.Builder
+	fmt.Fprintf(&b, "COPY --chmod=0644 <<'%s' %s\n", nativeInitStartLinesEOF, nativeInitStartLinesPath)
+	for _, line := range lines {
+		line = flat.Replace(line)
+		if line == nativeInitStartLinesEOF {
+			continue
+		}
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteString(nativeInitStartLinesEOF + "\n")
+	return b.String()
 }
 
 // nativeEntrypoint replaces the toolchain image's ENTRYPOINT, whose relative
