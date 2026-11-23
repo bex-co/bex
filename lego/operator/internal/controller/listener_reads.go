@@ -186,6 +186,12 @@ type NodeListenerReader struct {
 // PodListeners reads pod's listeners from its node's reader. A node with no
 // reader pod is errNoListenerReader; one whose reader pods are none Ready is
 // errListenerReaderNotReady.
+//
+// Of a node's Ready readers, it asks one the DaemonSet is not deleting. A
+// roll surges the new reader Ready before it deletes the old one, which stays
+// Running and Ready in the cache for a moment after its port closes, so asking
+// it failed one read at each roll (w6/166). A terminating reader is asked only
+// when it is the node's only Ready one.
 func (n *NodeListenerReader) PodListeners(ctx context.Context, pod *corev1.Pod) (listeners.Answer, error) {
 	node := pod.Spec.NodeName
 	if node == "" || pod.Status.PodIP == "" {
@@ -196,25 +202,34 @@ func (n *NodeListenerReader) PodListeners(ctx context.Context, pod *corev1.Pod) 
 		client.MatchingLabels{appv1alpha1.LabelComponent: listenerReaderComponent}); err != nil {
 		return listeners.Answer{}, fmt.Errorf("listing listener readers: %w", err)
 	}
-	present := false
+	var (
+		present bool
+		reader  *corev1.Pod
+		addr    netip.Addr
+	)
 	for i := range readers.Items {
-		reader := &readers.Items[i]
-		if reader.Spec.NodeName != node {
+		candidate := &readers.Items[i]
+		if candidate.Spec.NodeName != node {
 			continue
 		}
 		present = true
-		addr, err := netip.ParseAddr(reader.Status.PodIP)
-		if err != nil || reader.Status.Phase != corev1.PodRunning || !podReady(reader) {
+		ip, err := netip.ParseAddr(candidate.Status.PodIP)
+		if err != nil || candidate.Status.Phase != corev1.PodRunning || !podReady(candidate) {
 			continue
 		}
-		port := n.Port
-		if port == 0 {
-			port = listeners.Port
+		if reader == nil || reader.DeletionTimestamp != nil {
+			reader, addr = candidate, ip
 		}
-		return n.HTTP.Read(ctx, netip.AddrPortFrom(addr, port), string(pod.UID), pod.Status.PodIP)
 	}
-	if !present {
-		return listeners.Answer{}, errNoListenerReader
+	if reader == nil {
+		if !present {
+			return listeners.Answer{}, errNoListenerReader
+		}
+		return listeners.Answer{}, errListenerReaderNotReady
 	}
-	return listeners.Answer{}, errListenerReaderNotReady
+	port := n.Port
+	if port == 0 {
+		port = listeners.Port
+	}
+	return n.HTTP.Read(ctx, netip.AddrPortFrom(addr, port), string(pod.UID), pod.Status.PodIP)
 }

@@ -309,3 +309,62 @@ func TestNodeListenerReaderAsksThePodsNode(t *testing.T) {
 		t.Fatalf("a node mid-roll = %v, %v; want the Ready reader's answer", got, err)
 	}
 }
+
+// w6/166: a reader roll surges the new reader Ready before the DaemonSet
+// deletes the old one, which stays Running and Ready in the cache after its
+// port closed. The read goes to the node's reader that is not being deleted,
+// whatever their order, and to a terminating one only when it is the node's
+// only Ready reader; a read failing there is never errNoListenerReader, the
+// one answer that sweeps.
+func TestNodeListenerReaderSkipsAReaderBeingDeleted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"ports":[5432]}`))
+	}))
+	defer server.Close()
+	const oldIP, newIP = "10.0.0.9", "10.0.0.10"
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "db-1", Namespace: "tea-a", UID: "3f6c1d2e-8a4b-4c5d-9e0f-1a2b3c4d5e6f"},
+		Spec: corev1.PodSpec{NodeName: "tenant-a"}, Status: corev1.PodStatus{PodIP: "10.244.1.5"}}
+	terminating := func(p *corev1.Pod) *corev1.Pod {
+		p.DeletionTimestamp, p.Finalizers = &metav1.Time{Time: time.Now()}, []string{"test"}
+		return p
+	}
+	// read asks the readers in objs, as the fake client lists them (by name),
+	// and reports the reader it dialed; the old reader's port is closed.
+	read := func(objs ...*corev1.Pod) (listeners.Answer, string, error) {
+		var dialed atomic.Value
+		dialed.Store("")
+		transport := &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, _, _ := net.SplitHostPort(addr)
+			dialed.Store(host)
+			if host == oldIP {
+				return nil, fmt.Errorf("dial tcp %s: connect: connection refused", addr)
+			}
+			return (&net.Dialer{}).DialContext(ctx, network, server.Listener.Addr().String())
+		}}
+		defer transport.CloseIdleConnections()
+		b := fake.NewClientBuilder()
+		for _, o := range objs {
+			b = b.WithObjects(o)
+		}
+		n := &NodeListenerReader{Pods: b.Build(), Namespace: "bex-system", HTTP: listeners.Client{HTTP: &http.Client{Transport: transport}}}
+		got, err := n.PodListeners(t.Context(), pod)
+		return got, dialed.Load().(string), err
+	}
+
+	for name, objs := range map[string][]*corev1.Pod{
+		"the terminating reader listed first":  {terminating(readerPod("bex-listener-reader-a", "tenant-a", oldIP, true)), readerPod("bex-listener-reader-b", "tenant-a", newIP, true)},
+		"the terminating reader listed second": {readerPod("bex-listener-reader-a", "tenant-a", newIP, true), terminating(readerPod("bex-listener-reader-b", "tenant-a", oldIP, true))},
+	} {
+		got, dialed, err := read(objs...)
+		if err != nil || !slices.Equal(got.Ports, []int{5432}) || dialed != newIP {
+			t.Fatalf("%s: PodListeners = %+v, %v through %q; want [5432] through the new reader %s", name, got, err, dialed, newIP)
+		}
+	}
+
+	// The node's only Ready reader is terminating: it is still asked, and its
+	// closed port fails the read without a sweep.
+	_, dialed, err := read(terminating(readerPod("bex-listener-reader-a", "tenant-a", oldIP, true)), readerPod("bex-listener-reader-b", "tenant-a", newIP, false))
+	if err == nil || errors.Is(err, errNoListenerReader) || dialed != oldIP {
+		t.Fatalf("a node whose only Ready reader is terminating = %v through %q; want a failed read through %s, not errNoListenerReader", err, dialed, oldIP)
+	}
+}
