@@ -98,6 +98,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **050** — [A workspace admin cannot change an agent session's `gh` binding after it starts, while Devin's profile is "changed later from the session's settings"](050.md) ← w10/044 (Devin check), 2026-11-23
 - [ ] **051** — **BLOCKED (the user's decision: whether a workspace may let members turn `gh` off for their own sessions and automations again, a divergence from Devin that needs sign-off in ADR018; use `/unblock w10`)** — [Decide whether a workspace may let members turn `gh` off for their own agent sessions and automations](blocked/051.md) ← w10/044 (the looser variant), 2026-11-23
 - [ ] **052** — [After a session's pull request is merged or closed, the next turn's overlay still says "there is never a second one", though `open_or_update_draft_pr` opens a new pull request](052.md) ← w10/m577 t005 (live check), 2026-11-23
+- [ ] **053** — [Merging a stacked pull request now goes to GitHub's synchronous merge, which does not support stacks, where Devin's merge lands the pull request and every open one below it](053.md) ← w10/048, 2026-11-23
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 
