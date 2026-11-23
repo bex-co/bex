@@ -1,6 +1,6 @@
 # w6 · m564 — Opening a closed agent session in Zed starts its sandbox again
 
-**Worker:** worker6 **Goal:** a session whose sandbox closed after its idle timeout can still be opened in Zed: the open starts a fresh sandbox with the session's work, as a Devin session wakes when you come back to it, instead of the dashboard hiding the button. **Status:** todo (t001–t003, t005–t007 done; t004 waits for production)
+**Worker:** worker6 **Goal:** a session whose sandbox closed after its idle timeout can still be opened in Zed: the open starts a fresh sandbox with the session's work, as a Devin session wakes when you come back to it, instead of the dashboard hiding the button. **Status:** blocked (t001–t003, t005–t007 done; t004 waits for production)
 
 ## Tasks (in order)
 
@@ -32,3 +32,7 @@
 - **Expected outcome:** the short idle timeout costs a person a sandbox start (seconds) instead of the editor.
 - **Why now:** m563 shortens the close from 2 hours to 5 minutes in the same queue.
 - **Render parity:** included, against Devin: `resume` on REST, GraphQL, MCP and the dashboard.
+
+## Parked (2026-11-23)
+
+`e0754f8c23` ships t001–t003 and t005–t007: `resume` (REST `resumeSessionId`, GraphQL `resumeAgentSession`, MCP `resume_agent_session`) starts a closed session's sandbox from its kept disk, else its branch, with no agent turn; the session reads `resuming` until the driver reports its checkout `ready`, then its finished phase with the sandbox and `sshAddress`; the sandbox closes on a person's idle timeout; the dashboard's Connect menu on a closed session offers Start the sandbox ([ADR054 D8](../../../../docs/ADR054-open-in-zed.md#d8--a-closed-session-wakes-for-an-editor-w6m564-2026-11-22)). t004 needs that deploy: the gate is the pin carrying `e0754f8c23`. When it clears, sign in as the QA user (`bash scripts/qa-login.sh`; its account needs an SSH public key whose private half this machine holds, else that is the gate), let a session in the `bex` workspace close at its 5-minute idle timeout, start it from Open in Zed, connect with `ssh ags-…@ssh.bex.co`, check `/workspace` holds the branch checkout (or the kept disk), disconnect and see it close 5 minutes later; record the close, start, connect and second close times here, then close with t008.
