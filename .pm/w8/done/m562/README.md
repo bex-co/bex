@@ -1,6 +1,6 @@
 # w8 · m562 — A Key Value client outside the IP allow list reads Render's "AUTH failed: Client IP address is not in the allowlist.", not a bare TLS EOF
 
-**Worker:** worker8 **Goal:** a client whose source the store's allow list refuses completes a TLS handshake under the store's own certificate and reads `-Client IP address is not in the allowlist.` for every command it sends, so `valkey-cli` and `bex kv-cli` print Render's documented `AUTH failed: Client IP address is not in the allowlist.` No byte from a refused source reaches Valkey, and an unknown hostname is still dropped before TLS. **Status:** blocked (t001–t004, t007 and t008 done; t005 waits for production's pin, then t006 step 1 and t009) (t001–t003 done) (t001–t002 done) (t001 done)
+**Worker:** worker8 **Goal:** a client whose source the store's allow list refuses completes a TLS handshake under the store's own certificate and reads `-Client IP address is not in the allowlist.` for every command it sends, so `valkey-cli` and `bex kv-cli` print Render's documented `AUTH failed: Client IP address is not in the allowlist.` No byte from a refused source reaches Valkey, and an unknown hostname is still dropped before TLS. **Status:** done (2026-11-23; t005's live check passed on production pin `1a5a8e872398`)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Operator: the proxy and the stable Service carry the refusal port; the held-template roll decision — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | `kv-sni-proxy`: a refused source on a known store's name goes to the refusal port, inside the handshake caps and counted as a rejection — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | Docs: ADR021 and the operator guide describe the refusal path — **DONE** | 20m | t003 |
-| [t005](t005.md) | Live check on production in `bex-canary` | 30m | t004 |
-| [t006](t006.md) | Render parity | 15m | t005 |
+| [t005](done/t005.md) | Live check on production in `bex-canary` — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 4h15m**.
 
@@ -76,3 +76,22 @@ Total: **9 tasks, about 4h15m**.
   - Run t005 as written: a free store in `bex-canary` with `cidr=10.0.0.0/8`, the `bex kv-cli` and `valkey-cli` checks, the controls, and a delete by ID with its 404s. Check DoD 3's last control in its w9/134 form (above).
   - Then finish t006 step 1 and close out with t009.
   - `kv-sni-proxy`'s own pin moves only when its binary changes. `0eb545da0a` changes it, so check that the `kv-sni-proxy=` digest in `deploy/gitops/base/bex.yaml` moved with the operator's.
+
+## Unblocked and closed (2026-11-23)
+
+- **The gate cleared.** The newest pin on `origin/main`, `e6c65f5c62` (04:25 UTC), pins `1a5a8e872398`. `git merge-base --is-ancestor` holds for `0eb545da0a` and for t001 `3de6522126` and t002 `07a8c672c2`. The same pin moved the `kv-sni-proxy=` digest in `deploy/gitops/base/bex.yaml` with the controller's (both `sha256:65ef4f0d…`), so the front door runs t003's binary. The roll was live by behavior: only the new binaries answer the refusal below.
+- **t005, live on that pin.** Run 2026-11-23 05:27–05:36 UTC from this host, which is outside `10.0.0.0/8`, with `bex` v0.9.0, `valkey-cli` 8.1.12 (`valkey/valkey:8-alpine`) and OpenSSL.
+  - **Fixture:** free Key Value `qa-20261123-m562-kv` (`red-dc1std8oodks73aud77g`, disposable) in `bex-canary`, created with `--ip-allow-list "cidr=10.0.0.0/8,description=private"`. It was available in 22 s, and its connection info read `externalCertificate: publiclyTrusted`.
+  - **DoD 1 holds.**
+    - `bex kv-cli <id> -- PING` in a PTY, with and without `--confirm`, ran the connection info's `cliCommand` and printed `AUTH failed: Client IP address is not in the allowlist.`, then `(error) Client IP address is not in the allowlist.`.
+    - `valkey-cli --tls --sni <id>.kv.bex.co -h <id>.kv.bex.co -p 6379 PING`, with no password, printed `(error) Client IP address is not in the allowlist.` in a PTY, and `Client IP address is not in the allowlist.` without one.
+    - On the wire, `openssl s_client -verify_return_error` verified the store's own certificate (`CN` and SAN `<id>.kv.bex.co`, issuer Let's Encrypt `YR2`). An inline `PING` and then a RESP `GET k` each read `-Client IP address is not in the allowlist.\r\n` (two replies, 90 bytes).
+  - **DoD 3 holds.**
+    - With `--sni nope.kv.bex.co` on the store's address, `valkey-cli` printed `SSL_connect failed: unexpected eof while reading`. `s_client` wrote its 323-byte ClientHello and read 0 bytes, with no peer certificate.
+    - The admitted control (`NOAUTH`, then `PONG`) rests on `TestARefusedSourceReadsRendersRefusalUnderTheStoresCertificate`, as t005 step 4 says. The production list was never widened.
+    - The cleared control, in its w9/134 form: `bex kv update <id> --clear-ip-allow-list` answered `ipAllowList: []`. Connection info then had no `externalCertificate`, and its `externalConnectionString` and `cliCommand` named the reserved host `<id>.kv.bex.co:6379` (`rediss://`, `--tls`). A client of that host read `unexpected eof`, with 0 bytes read, because the edge routes no private store ([w8/409](../../done/409.md) closed that as no divergence).
+  - **DoD 4, bounded.** This ran on a second fixture, `qa-20261123-m562-kv2` (`red-dc1t0qfqbg1c739j1e80`, disposable), with the same list. The server closed an idle refused connection 6.0 s after connect. A connection that sent `PING` once a second read 6 refusals before the same close. Both fit inside the edge's 10 s deadline: the refusal listener's own handshake timeout defaults to 5 s (`internal/kvinternalauth/proxy.go:195`).
+  - **Cleanup.** Both stores were deleted by ID. Afterwards `bex kv get` exits 1 by ID and by name (`No Key Value with ID …`), and `kv list` omits both. REST `GET /v1/key-value/<id>` and `…/connection-info` answer 404 `{"error":"not found","id":"not_found","message":"not found"}`, and GraphQL `keyValue(id)` answers `null` with `NOT_FOUND`. The isolated CLI was logged out, and each Kratos jar was logged out before it was deleted. No connection string or password was printed; each stayed in a 0600 scratch file, since deleted.
+  - **Not checked live:** DoD 2 (nothing reaches Valkey) and the `reason="allowlist"` counter need cluster access, so they rest on t001's and t003's tests.
+- **t006 is done.** Step 1: render.com/docs/key-value.md (read 2026-11-23, lines 340–344) says "If you attempt to connect from a disallowed IP address, your client will display an error like the following: `AUTH failed: Client IP address is not in the allowlist.`", the line `bex kv-cli` printed. Step 4: ioredis 5.4.1 (Node 22, dummy password) emitted `ReplyError: Client IP address is not in the allowlist.`. That is the same server text; the `AUTH failed: ` prefix is `valkey-cli`'s own. No drift to file.
+- **t009:** every task is done and the Definition of done holds, so the milestone moves to `done/`.
