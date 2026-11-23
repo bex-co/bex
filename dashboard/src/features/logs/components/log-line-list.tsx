@@ -33,6 +33,7 @@ import {
   type LogPanelFill,
 } from "@/features/logs/hooks/use-log-panel-height";
 import { type AnsiSpan } from "../lib/ansi";
+import { linkifySpans, linkifyText } from "../lib/linkify";
 import { collapsesLine, type LogDisplay } from "../lib/log-display";
 import { lineLevel, lineLevelText, type LineLevel } from "../lib/log-levels";
 import {
@@ -754,6 +755,9 @@ export function LogLineList({
             setCursor(row.key);
             virtualizer.scrollToIndex(next, { align: "auto" });
           } else if (event.key === "Enter" && cursor !== null) {
+            if (event.target instanceof Element && event.target.closest("a")) {
+              return;
+            }
             const row = rows.find((candidate) => candidate.key === cursor);
             const instance = row?.kind === "line" ? row.line.instance : "";
             if (instance && onInstanceFilter) {
@@ -1270,10 +1274,28 @@ function ResourceTag({
   );
 }
 
+const LOG_LINK_CLASS =
+  "rounded-xs underline decoration-current/60 underline-offset-2 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+function renderAnsiSpans(spans: readonly AnsiSpan[], keyPrefix: string) {
+  return spans.map((span, i) => (
+    <span
+      key={`${keyPrefix}-${i}`}
+      className={span.className || undefined}
+      style={span.style}
+    >
+      {span.text}
+    </span>
+  ));
+}
+
 // The message cell. `spans` is null for a line with nothing to interpret, which
-// renders the bare string — byte-identical to the pre-ANSI DOM for the common
-// app-log line. Text always goes through React's escaping; the only inline
-// styles are colors this module builds from parsed integers.
+// renders the bare string when it has no URL — byte-identical to the pre-ANSI
+// DOM for the common app-log line. Safe `http://` and `https://` URLs are
+// linkified viewer-side (matching Render's dashboard log viewer, w32/095) while
+// keeping ANSI styling, copy text, and raw API messages untouched. Text always
+// goes through React's escaping; the only inline styles are colors `ansi.ts`
+// builds from parsed integers.
 function LogMessage({
   spans,
   text,
@@ -1281,10 +1303,59 @@ function LogMessage({
   spans: AnsiSpan[] | null;
   text: string;
 }) {
-  if (!spans) return text;
-  return spans.map((span, i) => (
-    <span key={i} className={span.className || undefined} style={span.style}>
-      {span.text}
-    </span>
-  ));
+  if (!spans) {
+    const segments = linkifyText(text);
+    if (!segments) return text;
+    return segments.map((segment, i) =>
+      segment.kind === "link" ? (
+        <a
+          key={i}
+          href={segment.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-touch-exempt=""
+          className={LOG_LINK_CLASS}
+        >
+          {segment.text}
+        </a>
+      ) : (
+        segment.text
+      ),
+    );
+  }
+  const segments = linkifySpans(spans);
+  if (!segments) return renderAnsiSpans(spans, "s");
+  return segments.map((segment, i) => {
+    if (segment.kind === "text") {
+      return renderAnsiSpans(segment.spans, `t${i}`);
+    }
+    if (segment.spans.length === 1) {
+      const [only] = segment.spans;
+      return (
+        <a
+          key={`l${i}`}
+          href={segment.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-touch-exempt=""
+          className={cn(only.className, LOG_LINK_CLASS)}
+          style={only.style}
+        >
+          {only.text}
+        </a>
+      );
+    }
+    return (
+      <a
+        key={`l${i}`}
+        href={segment.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-touch-exempt=""
+        className={LOG_LINK_CLASS}
+      >
+        {renderAnsiSpans(segment.spans, `l${i}`)}
+      </a>
+    );
+  });
 }

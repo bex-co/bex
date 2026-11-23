@@ -1,6 +1,7 @@
+import { createRef } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { LogLineList } from "../log-line-list";
+import { LogLineList, type LogLineListHandle } from "../log-line-list";
 import { needsAnsiParse, parseAnsi } from "../../lib/ansi";
 import type { LogLine } from "../../types";
 import {
@@ -438,5 +439,152 @@ describe("LogLineList keyboard row cursor", () => {
 
     fireEvent.keyDown(viewport, { key: "Escape" });
     expect(rows[1]).not.toHaveClass("outline-ring");
+  });
+});
+
+describe("LogLineList URL linkification (w32/095)", () => {
+  setupVirtualGeometry();
+
+  it("turns http:// and https:// URLs in plain lines into safe external links without adding a trailing slash", () => {
+    const handle = createRef<LogLineListHandle>();
+    render(
+      <LogLineList
+        handleRef={handle}
+        lines={[
+          line({
+            key: "u1",
+            message:
+              "Listening at http://0.0.0.0:10000 and https://hello-go.onbex.co.",
+          }),
+        ]}
+      />,
+    );
+
+    const httpLink = screen.getByRole("link", {
+      name: "http://0.0.0.0:10000",
+    });
+    expect(httpLink).toHaveAttribute("href", "http://0.0.0.0:10000");
+    expect(httpLink).toHaveAttribute("target", "_blank");
+    expect(httpLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    const httpsLink = screen.getByRole("link", {
+      name: "https://hello-go.onbex.co",
+    });
+    expect(httpsLink).toHaveAttribute("href", "https://hello-go.onbex.co");
+    expect(httpsLink).toHaveAttribute("target", "_blank");
+    expect(httpsLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    expect(handle.current?.text()).toBe(
+      "2026-07-05T10:36:01.709Z Listening at http://0.0.0.0:10000 and https://hello-go.onbex.co.",
+    );
+  });
+
+  it("linkifies URLs inside Render's ANSI-styled primary URL line while preserving spans and copy-log text", () => {
+    const esc = "\u001b";
+    const handle = createRef<LogLineListHandle>();
+    const rawMessage = `${esc}[0;32m${esc}[1m==> ${esc}[0m${esc}[1mAvailable at your primary URL https://hello-go.onbex.co${esc}[0m`;
+    const { container } = render(
+      <LogLineList
+        handleRef={handle}
+        lines={[line({ key: "u2", type: "build", message: rawMessage })]}
+      />,
+    );
+
+    const link = screen.getByRole("link", {
+      name: "https://hello-go.onbex.co",
+    });
+    expect(link).toHaveAttribute("href", "https://hello-go.onbex.co");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link.className).toContain("font-semibold");
+    expect(screen.getByText("==>").className).toContain("text-green-700");
+    expect(container.textContent).toContain(
+      "==> Available at your primary URL https://hello-go.onbex.co",
+    );
+    expect(container.textContent).not.toContain("https://hello-go.onbex.co/");
+    expect(handle.current?.text()).toBe(
+      "2026-07-05T10:36:01.709Z ==> Available at your primary URL https://hello-go.onbex.co",
+    );
+  });
+
+  it("linkifies a URL split across multiple ANSI spans as a single anchor", () => {
+    const esc = "\u001b";
+    render(
+      <LogLineList
+        lines={[
+          line({
+            key: "u3",
+            message: `Local: ${esc}[36mhttp://localhost:${esc}[1m5173${esc}[22m/${esc}[39m`,
+          }),
+        ]}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "http://localhost:5173/" });
+    expect(link).toHaveAttribute("href", "http://localhost:5173/");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(within(link).getByText("5173").className).toContain("font-semibold");
+  });
+
+  it("keeps non-http(s) schemes as plain text", () => {
+    const esc = "\u001b";
+    render(
+      <LogLineList
+        lines={[
+          line({
+            key: "s1",
+            message:
+              "javascript:alert(1) data:text/html,<script>alert(1)</script> file:///etc/passwd //evil.example/x",
+          }),
+          line({
+            key: "s2",
+            message: `${esc}[31mjavascript:alert(2) data:text/plain;base64,SGVsbG8=${esc}[0m`,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(
+      screen.getByText(
+        "javascript:alert(1) data:text/html,<script>alert(1)</script> file:///etc/passwd //evil.example/x",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("preserves keyboard row navigation and lets Enter activate a focused link without triggering instance filtering", () => {
+    const onInstanceFilter = vi.fn();
+    const { container } = render(
+      <LogLineList
+        lines={[
+          line({
+            key: "k1",
+            instance: "web-1",
+            message: "Open https://hello-go.onbex.co now",
+          }),
+          line({
+            key: "k2",
+            instance: "web-2",
+            message: "second line",
+          }),
+        ]}
+        onInstanceFilter={onInstanceFilter}
+      />,
+    );
+    const viewport = viewportOf(container);
+
+    act(() => viewport.focus());
+    fireEvent.keyDown(viewport, { key: "ArrowDown" });
+    fireEvent.keyDown(viewport, { key: "ArrowDown" });
+    const rows = container.querySelectorAll("[data-index]");
+    expect(rows[1]).toHaveClass("outline-ring");
+
+    const link = screen.getByRole("link", {
+      name: "https://hello-go.onbex.co",
+    });
+    act(() => link.focus());
+    fireEvent.keyDown(link, { key: "Enter" });
+    expect(onInstanceFilter).not.toHaveBeenCalled();
   });
 });
