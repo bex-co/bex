@@ -75,8 +75,7 @@ func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (a
 		return apps.SSHInstanceTarget{}, mapStoreError(id, err)
 	}
 	if !openableSandbox(record) {
-		return apps.SSHInstanceTarget{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
-			"agent session has no live sandbox to open; resume it to start one", map[string]any{"phase": record.Phase})
+		return apps.SSHInstanceTarget{}, errNoSandboxToOpen(record)
 	}
 	return apps.SSHInstanceTarget{
 		ID:        record.ID,
@@ -87,6 +86,33 @@ func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (a
 		Container: sandboxexec.SandboxContainer,
 		Sandbox:   true,
 	}, nil
+}
+
+// errNoSandboxToOpen is the refusal of a session that openableSandbox turns
+// down. The gateway prints its message in the SSH auth banner (w10/043), so it
+// says what is wrong and what brings the sandbox back, as Devin answered SSH
+// into a sleeping session with "not running" before that started waking it
+// (docs.devin.ai/release-notes/2026, 2026-09-25). It is reached only after
+// can_view_sensitive passed, so it says no more than the caller's own read of
+// the session would.
+func errNoSandboxToOpen(record store.AgentSession) error {
+	session := "agent session " + record.ID
+	var msg string
+	switch {
+	case record.Phase == PhaseCanceling || record.Phase == PhaseCanceled:
+		msg = session + " was canceled, so it has no sandbox to open and takes no more messages"
+	case record.ArchivedAt != nil:
+		msg = session + " is archived, and its sandbox has closed. Unarchive it on its page in the dashboard, " +
+			"start it again (send it a message, or choose Connect > Start the sandbox), then connect again"
+	case steerable(record.Phase, record.ArchivedAt != nil):
+		msg = session + " is not running, and its sandbox has closed. To start it again, send the session a message, " +
+			"or choose Connect > Start the sandbox on its page in the dashboard. Then connect again"
+	case liveSandboxPhase(record.Phase):
+		msg = session + " is still starting its sandbox. Connect again in a moment"
+	default:
+		msg = session + " has no sandbox to open now"
+	}
+	return core.NewConflictError(core.CodeAgentSessionNotAttachable, msg, map[string]any{"phase": record.Phase})
 }
 
 // openableSandbox reports whether an editor may open the session's sandbox now

@@ -2343,7 +2343,7 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 		if action == agentsessionticket.ActionRead && finishedPhase(record.Phase) {
 			return s.withTicket(ctx, record, action)
 		}
-		return View{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
+		return View{}, core.NewConflictError(core.CodeAgentSessionNotAttachable,
 			"agent session has not started a sandbox yet", map[string]any{"phase": record.Phase})
 	}
 	// round-5 finding 13: a live-turn ticket must be gated on the same lifecycle

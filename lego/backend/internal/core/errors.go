@@ -570,6 +570,12 @@ const (
 	AgentSessionDependencyUnavailableCode = "AGENT_SESSION_DEPENDENCY_UNAVAILABLE"
 )
 
+// CodeAgentSessionNotAttachable is the 409 for an attach or an SSH login into
+// an agent session that has no sandbox to reach now. The SSH resolver returns
+// it only after the caller passed can_view_sensitive on the session, so the
+// gateway may tell its message to the SSH client (w10/043).
+const CodeAgentSessionNotAttachable = "AGENT_SESSION_NOT_ATTACHABLE"
+
 // NewAgentSessionDependencyUnavailableError returns the sanitized retryable
 // refusal for a configured agent-session dependency. Callers must log the
 // underlying cause before returning this error; wrapping it would expose the

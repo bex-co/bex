@@ -201,6 +201,56 @@ func TestSSHResolverMissingSessionNotFound(t *testing.T) {
 	}
 }
 
+// The refusal of a session with no sandbox to open is the banner an SSH client
+// prints (w10/043), so each phase says what is wrong and what, if anything,
+// brings the sandbox back.
+func TestSSHRefusalSaysWhatBringsTheSandboxBack(t *testing.T) {
+	archived := new(time.Now())
+	for _, tc := range []struct {
+		name      string
+		row       store.AgentSession
+		want      []string
+		forbidden []string
+	}{
+		{"completed, sandbox closed", store.AgentSession{Phase: PhaseCompleted},
+			[]string{"is not running", "sandbox has closed", "send the session a message", "Start the sandbox", "connect again"}, nil},
+		{"failed, sandbox closed", store.AgentSession{Phase: PhaseFailed},
+			[]string{"is not running", "send the session a message", "connect again"}, nil},
+		{"starting for an editor", store.AgentSession{Phase: PhaseResuming, SandboxID: "os-starting"},
+			[]string{"still starting", "Connect again in a moment"}, []string{"message"}},
+		{"first turn before its sandbox", store.AgentSession{Phase: PhaseCreating},
+			[]string{"still starting"}, []string{"message"}},
+		{"canceled", store.AgentSession{Phase: PhaseCanceled, SandboxID: "os-dead"},
+			[]string{"was canceled", "takes no more messages"}, []string{"connect again", "Start the sandbox"}},
+		{"canceling", store.AgentSession{Phase: PhaseCanceling, SandboxID: "os-dying"},
+			[]string{"was canceled"}, []string{"connect again"}},
+		{"archived", store.AgentSession{Phase: PhaseCompleted, SandboxID: "os-idle", ArchivedAt: archived},
+			[]string{"is archived", "Unarchive it", "send it a message", "Start the sandbox", "connect again"}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			id := liveSession(st, "tea-a", tc.row.SandboxID, tc.row.Phase)
+			row := st.rows[id]
+			row.ArchivedAt = tc.row.ArchivedAt
+			st.rows[id] = row
+			_, err := sshResolver(map[string]bool{"alice": true}, st).ResolveSSHSession(caller("alice"), id)
+			if !isCode(err, core.CodeAgentSessionNotAttachable) {
+				t.Fatalf("err = %v, want %s", err, core.CodeAgentSessionNotAttachable)
+			}
+			for _, want := range append([]string{"agent session " + id}, tc.want...) {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("message %q lacks %q", err, want)
+				}
+			}
+			for _, unwanted := range tc.forbidden {
+				if strings.Contains(err.Error(), unwanted) {
+					t.Errorf("message %q says %q, which does not apply", err, unwanted)
+				}
+			}
+		})
+	}
+}
+
 // --- sshAddress presenter (ADR054 D5) ---------------------------------------
 
 func viewFor(t *testing.T, host string, record store.AgentSession) View {

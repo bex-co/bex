@@ -160,8 +160,8 @@ type Server struct {
 
 var errUnverifiedOwner = errors.New("public key rejected: verify your bex account email first")
 
-// The two-factor refusal (w22/m402, docs/ADR012-auth.md §9a) is the one cause
-// the gateway does tell the client, because it only arises after the member was
+// The two-factor refusal (w22/m402, docs/ADR012-auth.md §9a) is a cause the
+// gateway does tell the client, because it only arises after the member was
 // authorized: the funnel asks the 2FA gate once OpenFGA has said yes, so the
 // message reveals nothing to a key that is not a member with access. The SSH
 // client prints the banner while authenticating; a channel refused later
@@ -174,6 +174,9 @@ var errUnverifiedOwner = errors.New("public key rejected: verify your bex accoun
 // When the workspace's org's own setting decided the refusal (§9c), both name
 // the org, as its refusal does on every other surface (w7/090), so the member
 // looks for the setting on the org's page, not the workspace's.
+//
+// An agent session with no sandbox to open is told at login too (w10/043,
+// sessionRefusal); a channel refused later keeps the generic reason.
 const reauthorizeFailed = "authorization no longer valid"
 
 // loginRefusal is how the client is told about a workspace login-requirement
@@ -195,10 +198,24 @@ func loginRefusal(err error) (r refusal, ok bool) {
 	return refusal{banner: "bex: " + reason + ". " + fix + "\n", reason: reason, metric: metric}, true
 }
 
-// refusal is one login-requirement refusal as the SSH client sees it: the
+// refusal is one refusal the SSH client is told about, as it sees it: the
 // banner while authenticating, the reason a refused channel carries, and the
 // authentications_total result it is counted under.
 type refusal struct{ banner, reason, metric string }
+
+// sessionRefusal is how the client is told that an agent session it may open
+// has no sandbox now (w10/043): its turn ended and the sandbox closed, it is
+// still starting, or it was canceled or archived. The agent-session resolver
+// refuses so only after can_view_sensitive passed, and its message says what
+// brings the sandbox back. Every other target refusal stays a bare rejection
+// (ADR035 § Fail-closed behavior). ok is false for every other error.
+func sessionRefusal(err error) (r refusal, ok bool) {
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != core.CodeAgentSessionNotAttachable {
+		return refusal{}, false
+	}
+	return refusal{banner: "bex: " + coded.Error() + ".\n", reason: coded.Error(), metric: "rejected_no_sandbox"}, true
+}
 
 // channelRefusal is the description a refused channel open carries.
 func channelRefusal(err error) string {
@@ -303,7 +320,7 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		defer cancel()
 		target, err := s.Apps.ResolveSSHSession(authCtx, conn.User())
 		if err != nil {
-			if r, ok := loginRefusal(err); ok {
+			if r, ok := s.toldRefusal(authCtx, subject, conn.User(), err); ok {
 				s.Metrics.Authentication(r.metric)
 				if pre, ok := conn.(ssh.ServerPreAuthConn); ok {
 					_ = pre.SendAuthBanner(r.banner)
@@ -872,6 +889,24 @@ func (s *Server) keyOwnerAction(ctx context.Context, subject, connUser string) (
 		return "", err
 	}
 	return action, nil
+}
+
+// toldRefusal is the refusal of resolving connUser that the client is told
+// about, if any: a login requirement, or an agent session with no sandbox to
+// open. The second is told to a key owner only when its grant covers the
+// target, the check an admitted connection passes next (keyOwnerAction).
+func (s *Server) toldRefusal(ctx context.Context, subject, connUser string, err error) (refusal, bool) {
+	if r, ok := loginRefusal(err); ok {
+		return r, true
+	}
+	r, ok := sessionRefusal(err)
+	if !ok || !sshgateway.AgentSessionUsername(connUser) {
+		return refusal{}, false
+	}
+	if _, err := s.keyOwnerAction(ctx, subject, connUser); err != nil {
+		return refusal{}, false
+	}
+	return r, true
 }
 
 // resolveFailure classifies a ResolveSSHSession error the way the web shell's
