@@ -1,6 +1,6 @@
 # w21 · m586 — `CREATE EXTENSION vector;` works as Render documents it: a new database gets pgvector on demand, not preinstalled
 
-**Worker:** worker21 **Goal:** on a new database the default user runs Render's literal `CREATE EXTENSION vector;` and it succeeds, and can `DROP EXTENSION vector`; existing databases keep the vector they have. **Status:** todo (t001, t003, t006, t007 done; t002 waits for its amd64 gate run)
+**Worker:** worker21 **Goal:** on a new database the default user runs Render's literal `CREATE EXTENSION vector;` and it succeeds, and can `DROP EXTENSION vector`; existing databases keep the vector they have. **Status:** blocked — `pin must carry` `bf4250fe60` (t001, t003, t006, t007 done; t002 waits for its amd64 gate run)
 
 ## Tasks (in order)
 
@@ -25,10 +25,20 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity for w21` verification (2026-11-23). Render's extension table says "Enable this extension with `CREATE EXTENSION vector;`" ([postgresql-extensions](https://render.com/docs/postgresql-extensions)). bex installs `vector` in every application database through a CloudNativePG Database child (`lego/operator/internal/controller/database_extensions.go:85`, ADR009 § pgvector, w8/m84). PostgreSQL's `CREATE EXTENSION` without `IF NOT EXISTS` errors when the extension exists, so Render's documented command fails on bex with `extension "vector" already exists`, and a migration run with `ON_ERROR_STOP` stops there. The extension belongs to the superuser that installed it, so the owner's `DROP EXTENSION vector` is refused ("must be owner"). ADR018's Postgres CRUD row records "pre-installed rather than on-demand" without a sign-off. No board item names either failure.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first); [ADR092](../../../docs/ADR092-postgres-extension-supply.md) D2; [ADR009 § pgvector](../../../docs/ADR009-postgresql-management.md#pgvector-created-on-demand-as-render-documents-it-w8m84-w21m586).
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first); [ADR092](../../../../docs/ADR092-postgres-extension-supply.md) D2; [ADR009 § pgvector](../../../../docs/ADR009-postgresql-management.md#pgvector-created-on-demand-as-render-documents-it-w8m84-w21m586).
 - **Expected outcome:** a Render user's pgvector setup runs unchanged on bex, and new databases become available sooner (no extension wait, w4/m223).
 - **Why now:** preinstalling was the only way to give a non-superuser `vector` before the allowlist; w21/m584 makes the allowlist live, so the reason for the divergence ends there.
 - **Decision state.** **Recommendation of the plan, not a user decision:** amend ADR092 D2's "`vector` keeps its existing preinstall" so new databases follow Render. It rests on AGENTS.md ("When an ADR … conflicts with parity, amend that ADR"). The user accepted ADR092 on 2026-10-29 with that line, so the amendment is named here for the user to see; it needs no ADR018 sign-off because it removes a divergence.
 - **Residual, recorded rather than fixed:** an existing database keeps a superuser-owned `vector` (PostgreSQL has no way to hand an extension to another owner), so Render's plain `CREATE EXTENSION vector;` still errors there. t001 records it in ADR018.
 - **Risk:** a bex user whose flow relied on `vector` being present in a new database without running `CREATE EXTENSION` sees `type "vector" does not exist`. That is Render's behavior.
 - **Render parity:** included. The first-`available` timing of a new database changes on REST, GraphQL, MCP and the dashboard.
+
+## Parked 2026-11-23 (`/loopx w21`)
+
+- **Shipped:** `bf4250fe60` admits `vector` on every major (`admittedExtensions()`, `matrix.json`), and on a cluster whose allowlist admits it the operator applies no `<db>-app` CNPG Database child: a new database gets no `vector` and no `InitializingExtensions` wait, and an existing database's child is deleted under `retain`, which drops nothing in CloudNativePG 1.30.1 (t003). `check.sh` runs Render's command as written, an HNSW query, the owner's drop, the superuser-installed case and `owner_restore_vector`; the local gate passed on the six pinned arm64 digests. ADR092 D1/D2, ADR009 § pgvector and ADR018's Postgres row describe on-demand `vector` and the residual (t001).
+- **Decision (the plan's recommendation, not a user decision):** ADR092 D2's 2026-10-29 "`vector` keeps its existing preinstall" is amended under ADR008 so new databases follow Render; existing databases keep the `vector` CloudNativePG installed, and the owner can drop it through the allowlist.
+- **Gate:** production's pin must carry `bf4250fe60` (which also carries w21/m584's `b8c7ac47b2` and w21/m585's `979d68fdc1`). On 2026-11-23 at 22:40Z the pin was `9fdf7e0a1171`.
+- **Next:**
+  1. t002: read the `pg-operand-image.yml` run on `bf4250fe60` (or the first later run); with both architectures green on every major, close t002.
+  2. t004: the after-reading on `qa-m586-existing-pg16` (its before-state and steps are in t004), then two new databases per t004 step 2, then delete every m586 database. The fixture is on a paid plan until then.
+  3. t005: one new database's `creating` → `available` on REST, GraphQL, MCP `get_postgres` and the dashboard, with no extension-wait state; then t008.
