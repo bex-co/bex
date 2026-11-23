@@ -32,7 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// fakeResumer is Service.ResumePhase: it records who asked and answers as
+// fakeResumer is Service.Resume: it records who asked and answers as
 // configured.
 type fakeResumer struct {
 	mu     sync.Mutex
@@ -42,7 +42,7 @@ type fakeResumer struct {
 	origin []string
 }
 
-func (f *fakeResumer) ResumePhase(ctx context.Context, _ string) (string, error) {
+func (f *fakeResumer) resume(ctx context.Context, _ string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id, _ := core.IdentityFrom(ctx)
@@ -79,7 +79,7 @@ func newWakeVerb(t *testing.T) *wakeVerb {
 	t.Helper()
 	v := &wakeVerb{resumer: &fakeResumer{phase: "resuming"}, grants: &fakeKeyGrants{grants: map[string]core.KeyGrant{}}}
 	v.handler = &SessionWakeHandler{
-		Secret: []byte("exec-secret"), Sessions: v.resumer, Grants: v.grants, Nonce: &fakeNonceClaimer{},
+		Secret: []byte("exec-secret"), Resume: v.resumer.resume, Grants: v.grants, Nonce: &fakeNonceClaimer{},
 		Keys: fakeSSHKeys{
 			"SHA256:person": {Subject: "user-1", Fingerprint: "SHA256:person", CreatedSignIn: core.SignInGoogle},
 			"SHA256:key":    {Subject: "key-1", Fingerprint: "SHA256:key"},
@@ -176,7 +176,7 @@ func TestSessionWakeWithoutAnAnswerIsAnError(t *testing.T) {
 		"authz unavailable":     func(v *wakeVerb) { v.resumer.err = core.ErrAuthzUnavailable },
 		"store error":           func(v *wakeVerb) { v.resumer.err = errors.New("postgres down") },
 		"grant store down":      func(v *wakeVerb) { v.grants.err = errors.New("postgres down") },
-		"no resumer wired":      func(v *wakeVerb) { v.handler.Sessions = nil },
+		"no resume wired":       func(v *wakeVerb) { v.handler.Resume = nil },
 		"no nonce store":        func(v *wakeVerb) { v.handler.Nonce = nil },
 		"another gateway's key": func(v *wakeVerb) { v.client.Secret = []byte("not-the-secret") },
 	} {

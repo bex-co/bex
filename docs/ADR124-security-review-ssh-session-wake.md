@@ -6,7 +6,7 @@
 
 ## Scope
 
-`lego/backend/internal/agentsession/session_wake.go` (the verb's handler and client, `InternalSessionWakePath`, the `wake-session` MAC domain); `agentsessions.Service.ResumePhase` over `Service.Resume` (`editor.go`); the resolver's wake params (`agentsessions/ssh.go` `errNoSandboxToOpen`, `sshReachable`); the gateway's held login (`sshgateway/nativessh/wake.go`, `server.go` `VerifiedPublicKeyCallback`, `serveMultiChannel`, `revalidator`, `session.go` `serveSession`); the wiring in `cmd/api/main.go` and `cmd/ssh-gateway/main.go`.
+`lego/backend/internal/agentsession/session_wake.go` (the verb's handler and client, `InternalSessionWakePath`, the `wake-session` MAC domain); `agentsessions.Service.Resume` (`editor.go`), which the verb calls through a function bex-api wires; the resolver's wake params (`agentsessions/ssh.go` `errNoSandboxToOpen`, `sshReachable`); the gateway's held login (`sshgateway/nativessh/wake.go`, `server.go` `VerifiedPublicKeyCallback`, `serveMultiChannel`, `revalidator`, `session.go` `serveSession`); the wiring in `cmd/api/main.go` and `cmd/ssh-gateway/main.go`.
 
 ## What changed in the trust model
 

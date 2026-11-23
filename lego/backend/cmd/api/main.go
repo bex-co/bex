@@ -533,7 +533,12 @@ func main() {
 		shareFiles.set(&agentsession.ShareFileHandler{Secret: []byte(cfg.SandboxExecSecret), Files: srv.AgentSessions, Nonce: st})
 		agentResults.set(&agentsession.ResultHandler{Secret: []byte(cfg.SandboxExecSecret), Results: srv.AgentSessions, Nonce: st})
 		agentSpawns.set(&agentsession.SpawnHandler{Secret: []byte(cfg.SandboxExecSecret), Spawns: srv.AgentSessions, Nonce: st})
-		sessionWakes.set(&agentsession.SessionWakeHandler{Secret: []byte(cfg.SandboxExecSecret), Sessions: srv.AgentSessions, Keys: st, Grants: st, Nonce: st})
+		agents := srv.AgentSessions
+		sessionWakes.set(&agentsession.SessionWakeHandler{Secret: []byte(cfg.SandboxExecSecret), Keys: st, Grants: st, Nonce: st,
+			Resume: func(ctx context.Context, sessionID string) (string, error) {
+				view, err := agents.Resume(ctx, sessionID)
+				return view.Phase, err
+			}})
 	}
 	if st != nil && cfg.SandboxExecSecret != "" {
 		sandboxBroker.set(&sandbox.BrokerLookupHandler{

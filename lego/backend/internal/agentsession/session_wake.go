@@ -87,28 +87,24 @@ type SessionWakeResponse struct {
 	Message   string `json:"message,omitempty"`
 }
 
-// SessionResumer starts a session's sandbox as the caller in ctx and
-// returns its phase: agentsessions.Service.ResumePhase.
-type SessionResumer interface {
-	ResumePhase(ctx context.Context, sessionID string) (string, error)
-}
-
 // SSHKeyReader reads a registered SSH key by its fingerprint.
 // *store.PGStore satisfies it.
 type SSHKeyReader interface {
 	SSHKeyByFingerprint(ctx context.Context, fingerprint string) (store.SSHKey, error)
 }
 
-// SessionWakeHandler serves InternalSessionWakePath. A missing secret,
-// resumer, key reader, grant reader or nonce store answers 503, so the
-// gateway falls back to the banner.
+// SessionWakeHandler serves InternalSessionWakePath. Resume starts a
+// session's sandbox as the caller in ctx and returns the phase it left the
+// session in: agentsessions.Service.Resume's. A missing secret, Resume, key
+// reader, grant reader or nonce store answers 503, so the gateway falls back
+// to the banner.
 type SessionWakeHandler struct {
-	Secret   []byte
-	Sessions SessionResumer
-	Keys     SSHKeyReader
-	Grants   KeyGrantReader
-	Nonce    NonceClaimer
-	Now      func() time.Time
+	Secret []byte
+	Resume func(ctx context.Context, sessionID string) (phase string, err error)
+	Keys   SSHKeyReader
+	Grants KeyGrantReader
+	Nonce  NonceClaimer
+	Now    func() time.Time
 }
 
 func (r SessionWakeRequest) verbKind() string  { return r.Kind }
@@ -119,7 +115,7 @@ func (h *SessionWakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if len(h.Secret) == 0 || h.Sessions == nil || h.Keys == nil || h.Grants == nil || h.Nonce == nil {
+	if len(h.Secret) == 0 || h.Resume == nil || h.Keys == nil || h.Grants == nil || h.Nonce == nil {
 		http.Error(w, "session wake unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -178,7 +174,7 @@ func (h *SessionWakeHandler) answer(ctx context.Context, req SessionWakeRequest)
 		return out, nil
 	}
 	ctx = core.WithIdentity(core.WithRequestOrigin(ctx, origin), core.Identity{Subject: key.Subject, Method: core.MethodSSH, SignIn: key.CreatedSignIn})
-	phase, err := h.Sessions.ResumePhase(ctx, req.SessionID)
+	phase, err := h.Resume(ctx, req.SessionID)
 	var coded *core.CodedError
 	switch {
 	case err == nil:

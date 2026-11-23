@@ -112,14 +112,6 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	return s.toView(started)
 }
 
-// ResumePhase is Resume for the SSH gateway's wake verb (w10/m597,
-// agentsession.SessionWakeHandler): the caller in ctx is the owner of the SSH
-// key that logged in, and the verb needs only the session's phase after it.
-func (s *Service) ResumePhase(ctx context.Context, sessionID string) (string, error) {
-	view, err := s.Resume(ctx, sessionID)
-	return view.Phase, err
-}
-
 // runEditorStart starts the editor's sandbox in the background. A start that
 // fails returns the session to its finished phase with no sandbox.
 func (s *Service) runEditorStart(ctx context.Context, record store.AgentSession) {

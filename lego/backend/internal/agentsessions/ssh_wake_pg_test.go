@@ -42,7 +42,11 @@ func (e *retainEnv) wakeVerb(t *testing.T, subjects ...string) (*agentsession.Se
 		}
 		fingerprints[subject] = "SHA256:" + id
 	}
-	srv := httptest.NewServer(&agentsession.SessionWakeHandler{Secret: []byte("exec-secret"), Sessions: e.svc, Keys: e.pg, Grants: e.pg, Nonce: e.pg})
+	resume := func(ctx context.Context, id string) (string, error) {
+		view, err := e.svc.Resume(ctx, id)
+		return view.Phase, err
+	}
+	srv := httptest.NewServer(&agentsession.SessionWakeHandler{Secret: []byte("exec-secret"), Resume: resume, Keys: e.pg, Grants: e.pg, Nonce: e.pg})
 	t.Cleanup(srv.Close)
 	return &agentsession.SessionWakeClient{URL: srv.URL, Secret: []byte("exec-secret")}, fingerprints
 }
