@@ -1,6 +1,6 @@
 # w10 · m577 — A session told to merge once CI is green arms GitHub auto-merge or the merge queue and ends its turn, as Devin can
 
-**Worker:** worker10 **Goal:** "merge once CI is green" no longer keeps a session in its turn watching the checks, and a repository whose base branch requires a merge queue no longer refuses the session's merge outright. `merge_pull_request` takes one option (t001 names it, for example `auto: true`, after `gh pr merge --auto`). With it, bex enables GitHub auto-merge on the session's own recorded pull request, pinned to the head bex recorded, and on a merge-queue branch the pull request goes into the queue. GitHub then lands it when its checks pass, and the session's `prState` reads `merged` once the PR-state poller or a `pull_request` delivery sees it. **Status:** todo (t001–t004 and t006–t008 done; t005, the live check, waits for a deploy that carries the milestone)
+**Worker:** worker10 **Goal:** "merge once CI is green" no longer keeps a session in its turn watching the checks, and a repository whose base branch requires a merge queue no longer refuses the session's merge outright. `merge_pull_request` takes one option (t001 names it, for example `auto: true`, after `gh pr merge --auto`). With it, bex enables GitHub auto-merge on the session's own recorded pull request, pinned to the head bex recorded, and on a merge-queue branch the pull request goes into the queue. GitHub then lands it when its checks pass, and the session's `prState` reads `merged` once the PR-state poller or a `pull_request` delivery sees it. **Status:** blocked (pin must carry `98092bb49e`; t001–t004 and t006–t008 done 2026-11-22; t005's live check on production and t009 follow the deploy)
 
 ## Tasks (in order)
 
@@ -36,7 +36,7 @@ Total: **9 tasks, about 7h**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/039](../done/039.md), filed by w10/m538's Devin comparison (t006) on 2026-11-20 and promoted by `/loopx w10` on 2026-11-22.
+- **Source:** inbox note [w10/039](../../done/039.md), filed by w10/m538's Devin comparison (t006) on 2026-11-20 and promoted by `/loopx w10` on 2026-11-22.
 - **Triage evidence (`7a2b45e6a8`):**
   - **No auto-merge.** `PullRequestMergeContent` takes only `method`, `commitTitle` and `commitMessage` (`lego/backend/internal/agentsession/pullrequest_merge.go:139`), and so does the driver's `validateMergeInput` (`lego/agent-image/driver/src/merge-pr.ts:141`).
   - **The merge is synchronous.** `github.MergePullRequest` sends only `PUT …/pulls/{n}/merge` (`lego/backend/internal/github/merge.go:210`). GitHub says that endpoint "does not support stacked pull requests or merging with a merge queue" ([Pulls](https://docs.github.com/en/rest/pulls/pulls), read 2026-11-22), so a queue branch answers `merge_blocked`.
@@ -53,7 +53,7 @@ Total: **9 tasks, about 7h**.
   - `EnqueuePullRequestInput` takes `pullRequestId`, `expectedHeadOid` and `jump`. `DisablePullRequestAutoMergeInput` takes `pullRequestId`. The PullRequest object has `autoMergeRequest`, `isInMergeQueue`, `mergeStateStatus` and `viewerCanEnableAutoMerge` ([GraphQL pulls](https://docs.github.com/en/graphql/reference/pulls)).
   - `PUT …/pulls/{n}/merge-async` takes `merge_action` `default`, `direct_merge` or `merge_queue`, plus `sha`. It answers 202 with a UUID, or 200 when the pull request is already merged or queued, and "An enqueued result is final for the merge queue requests" ([Pulls](https://docs.github.com/en/rest/pulls/pulls)).
   - The recorded `gh pr merge 15108 --squash --auto` (gh 2.105.0, `lego/backend/internal/sshgateway/agentcred/testdata/gh-2.105.0-requests.json`) reads `mergeStateStatus`, `isInMergeQueue` and `isMergeQueueEnabled`, then sends `enablePullRequestAutoMerge`.
-- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../docs/ADR090-agent-owned-delivery.md) D3). It continues [w10/m538](../done/m538/README.md), which shipped the synchronous merge and filed this variant.
+- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../../docs/ADR090-agent-owned-delivery.md) D3). It continues [w10/m538](../../done/m538/README.md), which shipped the synchronous merge and filed this variant.
 - **Expected outcome:**
   - An automation such as `beancount-rt-flaky-test-fixer`, told to merge once green, ends its turn as soon as its pull request is open. It no longer spends sandbox minutes watching CI, and GitHub merges the pull request when the checks pass.
   - A repository that requires a merge queue gets its pull request queued instead of refused.
@@ -64,7 +64,7 @@ Total: **9 tasks, about 7h**.
 
 ## Design record (t001, 2026-11-22)
 
-Settled on `79633aaba2` and implemented in the same change; [ADR090 D3](../../../docs/ADR090-agent-owned-delivery.md#d3--the-pull-request-verb) (the w10/m577 amendment) is the contract. gh's behavior is read from `pkg/cmd/pr/merge/merge.go` and `http.go` at `cli/cli` tag `v2.105.0` (the pinned gh).
+Settled on `79633aaba2` and implemented in the same change; [ADR090 D3](../../../../docs/ADR090-agent-owned-delivery.md#d3--the-pull-request-verb) (the w10/m577 amendment) is the contract. gh's behavior is read from `pkg/cmd/pr/merge/merge.go` and `http.go` at `cli/cli` tag `v2.105.0` (the pinned gh).
 
 - **The option** is `auto: true`, after `gh pr merge --auto`; the undo is `disableAuto: true`, after `--disable-auto`, and takes no other field (`invalid_request` otherwise, as is `auto` with `disableAuto`). Without a merge queue, `method`, `commitTitle` and `commitMessage` keep today's meaning and go to `enablePullRequestAutoMerge`'s `mergeMethod`, `commitHeadline` and `commitBody` under today's method rule. On a merge-queue branch GitHub ignores all three ("when merging with a merge queue any input value for merge method is ignored", the same for the headline and body, [GraphQL pulls](https://docs.github.com/en/graphql/reference/pulls), read 2026-11-22), so bex sends none, skips the method pre-check and answers no `method`. They are ignored rather than refused, as gh only warns ("The merge strategy for main is set by the merge queue") and proceeds.
 - **The state read** is GraphQL `node(id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus autoMergeRequest { mergeMethod } } }`, the fields gh's `NewMergeContext` reads, with a Pull requests read token. `isMergeQueueEnabled` covers rulesets and classic protection, so the `merge_queue` branch rule is not read.
@@ -114,10 +114,10 @@ Walked against [Devin Review](https://docs.devin.ai/work-with-devin/devin-review
 | `gh pr merge --auto` / `--disable-auto` in the sandbox | refused in the `github-api` route, the refusal naming `merge_pull_request` with `auto` / `disableAuto` | Devin's `gh` token runs them | same outcome through the tool; the refusal names it (ADR090 D4, w10/m538) |
 | The overlay and the tool description | asked to merge once the checks pass: mark ready, call with `auto: true`, report it, end the turn; `disableAuto` when a person says not to merge | Devin arms auto-merge and does not hold a session on CI | match |
 | `prState` after GitHub's later merge | the PR-state poller (5 minutes, first week) or a `pull_request` delivery records `merged` on REST, GraphQL, MCP and the dashboard; an armed answer records nothing | the session's PR shows merged | match (live: t005) |
-| Auto-merge status and who enabled it | not shown: `prState` stays `open` while armed | "The merge bar shows the current auto-merge status, including who enabled it" | **drift**, filed as [w10/047](../047.md) |
-| Stacked pull requests | a taken-over stacked pull request is armed alone (no `includeStack`) | "You can enable GitHub auto-merge on a stacked PR … GitHub lands the PR and every unmerged PR below it" | **drift** (takeover only), filed as [w10/048](../048.md) |
+| Auto-merge status and who enabled it | not shown: `prState` stays `open` while armed | "The merge bar shows the current auto-merge status, including who enabled it" | **drift**, filed as [w10/047](../../047.md) |
+| Stacked pull requests | a taken-over stacked pull request is armed alone (no `includeStack`) | "You can enable GitHub auto-merge on a stacked PR … GitHub lands the PR and every unmerged PR below it" | **drift** (takeover only), filed as [w10/048](../../048.md) |
 
-The overlay's merge step and the tool's description no longer name `gh pr checks --watch`, because `auto` replaces the wait. The `merge_blocked` hint still names it as the alternative, so [w10/042](../042.md) keeps that part.
+The overlay's merge step and the tool's description no longer name `gh pr checks --watch`, because `auto` replaces the wait. The `merge_blocked` hint still names it as the alternative, so [w10/042](../../042.md) keeps that part.
 
 ## Simplify record (t007, 2026-11-22)
 
