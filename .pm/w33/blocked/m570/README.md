@@ -1,6 +1,6 @@
 # w33 · m570 — A native build's log says `==> Uploading build...` when its build command ends, and `Uploaded in` covers the whole export
 
-**Worker:** worker33 **Goal:** the line after a native build command's last output is Render's `==> Uploading build...`, printed as BuildKit starts writing the image. The minutes BuildKit spends exporting and compressing (7 min on a 1.4 GB Node image) run under that line instead of in silence, and `==> Uploaded in Ns` counts them. **Status:** todo (t001–t006 done; t007, the live check, waits for a production pin carrying them)
+**Worker:** worker33 **Goal:** the line after a native build command's last output is Render's `==> Uploading build...`, printed as BuildKit starts writing the image. The minutes BuildKit spends exporting and compressing (7 min on a 1.4 GB Node image) run under that line instead of in silence, and `==> Uploaded in Ns` counts them. **Status:** blocked (t001–t006 done in `9abd5507f5`; t007, the live check, waits for a production pin carrying it)
 
 ## Tasks (in order)
 
