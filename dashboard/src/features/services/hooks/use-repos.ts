@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ReposDocument } from "@/graphql/definitions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface RepoView {
@@ -31,9 +32,17 @@ export function useRepos(): UseReposResult {
   // ADR075 §6: the repo list is the SELECTED workspace's connection set, never
   // the caller's default one; defer while the workspace id resolves.
   const { currentWorkspaceId } = useWorkspace();
+  // bex-api lists repositories for the roles that can use one (developer and
+  // up). Another role's request is refused and recorded as a denial, so it is
+  // never sent: a viewer's picker is an empty list behind a disabled form.
+  const {
+    canCreate,
+    loading: capabilitiesLoading,
+    loaded: capabilitiesLoaded,
+  } = useCapabilities();
   const { data, loading, error, refetch } = useQuery(ReposDocument, {
     variables: { ownerId: currentWorkspaceId },
-    skip: currentWorkspaceId == null,
+    skip: currentWorkspaceId == null || !canCreate,
   });
 
   const repos = useMemo<RepoView[]>(
@@ -52,5 +61,7 @@ export function useRepos(): UseReposResult {
     [data],
   );
 
-  return { repos, loading, error, refetch };
+  // The role is still being read: the list is pending, not empty.
+  const awaitingRole = !canCreate && capabilitiesLoading && !capabilitiesLoaded;
+  return { repos, loading: loading || awaitingRole, error, refetch };
 }

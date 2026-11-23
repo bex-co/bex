@@ -608,29 +608,62 @@ func TestListBranches(t *testing.T) {
 	}
 }
 
-func TestAuthzGatesWritesButAllowsMemberReads(t *testing.T) {
-	// A viewer may read the connection/repos but not connect/disconnect.
-	viewer := allowChecker{core.RelCanView: true, core.RelCanManage: false}
-	st := newFakeStore()
-	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
-	svc := &Service{
-		Base:   &core.Base{Namespace: "default", Authz: viewer},
-		GitHub: &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app"}}},
-		Store:  st,
+// The three roles the GitHub verbs tell apart. A viewer reads which accounts
+// are connected and nothing about their repositories: the repository list, a
+// repository's branches, its tree and the runtime read from it reach private
+// repositories no service here deploys, so they need the role that can use
+// the answer (repoReadRelation). Only an admin connects or disconnects.
+func TestAuthzGatesRepoReadsAtDeveloperAndWritesAtAdmin(t *testing.T) {
+	const repo = "https://github.com/octo/app"
+	newService := func(authz allowChecker) *Service {
+		st := newFakeStore()
+		st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
+		return &Service{
+			Base:   &core.Base{Namespace: "default", Authz: authz},
+			GitHub: &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app"}}},
+			Store:  st,
+		}
 	}
 	ctx := withIdentity(context.Background())
+	repoReads := map[string]func(*Service) error{
+		"ListRepos":         func(s *Service) error { _, err := s.ListRepos(ctx, ""); return err },
+		"ListBranches":      func(s *Service) error { _, err := s.ListBranches(ctx, "", repo); return err },
+		"ProbeRepoTree":     func(s *Service) error { _, err := s.ProbeRepoTree(ctx, "", repo, "main", ""); return err },
+		"DetectRepoRuntime": func(s *Service) error { _, err := s.DetectRepoRuntime(ctx, "", repo, "main", ""); return err },
+	}
 
-	if _, err := svc.GetConnection(ctx, ""); err != nil {
+	viewer := newService(allowChecker{core.RelCanView: true})
+	if _, err := viewer.GetConnection(ctx, ""); err != nil {
 		t.Errorf("viewer GetConnection = %v, want ok", err)
 	}
-	if _, err := svc.ListRepos(ctx, ""); err != nil {
-		t.Errorf("viewer ListRepos = %v, want ok", err)
+	if _, err := viewer.ListConnections(ctx, ""); err != nil {
+		t.Errorf("viewer ListConnections = %v, want ok", err)
 	}
-	if _, err := svc.StartConnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("viewer StartConnect = %v, want Forbidden", err)
+	for name, read := range repoReads {
+		if err := read(viewer); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("viewer %s = %v, want Forbidden", name, err)
+		}
 	}
-	if err := svc.Disconnect(ctx, "", 0); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("viewer Disconnect = %v, want Forbidden", err)
+	if fc := viewer.GitHub.(*fakeClient); fc.gotBranchRepo != nil {
+		t.Error("a refused read must not reach GitHub")
+	}
+
+	developer := newService(allowChecker{core.RelCanView: true, core.RelCanCreate: true})
+	for name, read := range repoReads {
+		if err := read(developer); errors.Is(err, core.ErrForbidden) {
+			t.Errorf("developer %s = %v, want it authorized", name, err)
+		}
+	}
+	if got, err := developer.ListRepos(ctx, ""); err != nil || len(got) != 1 {
+		t.Errorf("developer ListRepos = %v err=%v, want the one granted repo", got, err)
+	}
+	for _, s := range []*Service{viewer, developer} {
+		if _, err := s.StartConnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("StartConnect without can_manage = %v, want Forbidden", err)
+		}
+		if err := s.Disconnect(ctx, "", 0); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("Disconnect without can_manage = %v, want Forbidden", err)
+		}
 	}
 }
 

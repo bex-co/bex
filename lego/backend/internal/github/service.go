@@ -848,16 +848,31 @@ func (s *Service) scopeInstallation(ctx context.Context, ownerID string, install
 	return s.ScopeByVisibleID(ctx, ownerID, owner)
 }
 
+// repoReadRelation gates every read of GitHub data through the workspace's
+// installations for a repository the caller names or lists: the repository
+// list, a repository's branches, its tree and the runtime read from it. Those
+// reach private repositories no service here deploys, so they need the role
+// that can use the answer, the one that creates or repoints a service or
+// starts an agent session (developer and up), not the viewer who may only
+// look at what the workspace already runs. Until 2026-11-22 they were member
+// reads, and a viewer could list every private repository of every connected
+// account. Connection status (GetConnection, ListConnections) stays a member
+// read: it names accounts, not repositories.
+const repoReadRelation = core.RelCanCreate
+
 // ListRepos returns the repositories across ALL of ownerID's connected
 // installations ("" => the caller's default workspace, w6/m18; private included),
 // each annotated with the GitHub account it came from so the picker can group by
 // account (ADR078 §4). With no connection the list is empty (not an error). One
 // GitHub round trip per connection, run through a fixed worker pool; a single
 // connection's failure degrades that account's slice (logged) rather than
-// failing the whole list. Member read.
+// failing the whole list.
+//
+// Developer and up (repoReadRelation): the list names every private repository
+// the workspace's installations grant, deployed here or not.
 func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	if err := s.Authorize(ctx, repoReadRelation); err != nil {
 		return nil, err
 	}
 	if !s.configured() {
@@ -935,10 +950,10 @@ func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error)
 // installation ("" => the caller's default workspace). It degrades to an empty
 // list — never an error — for a non-github.com repo, no connection, or a repo
 // the installation can't see, so the dashboard falls back to free-text branch
-// entry (w5/m54). Member read.
+// entry (w5/m54). Developer and up, like ListRepos.
 func (s *Service) ListBranches(ctx context.Context, ownerID, repoURL string) ([]string, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	if err := s.Authorize(ctx, repoReadRelation); err != nil {
 		return nil, err
 	}
 	if !s.configured() {
@@ -1009,12 +1024,12 @@ func (s *Service) repoTreeTarget(ctx context.Context, repoURL, branch, rootDir s
 }
 
 // ProbeRepoTree returns the immediate files at rootDir on branch for a repo in
-// ownerID's connected GitHub installation. It is member-readable like ListRepos
+// ownerID's connected GitHub installation. Developer and up, like ListRepos
 // and ListBranches. Expected probe failures collapse to Unknown so transport
 // adapters never need to understand GitHub's rate-limit or contents dialect.
 func (s *Service) ProbeRepoTree(ctx context.Context, ownerID, repoURL, branch, rootDir string) (RepoTreeProbe, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	if err := s.Authorize(ctx, repoReadRelation); err != nil {
 		return RepoTreeProbe{}, err
 	}
 	target, ok, err := s.repoTreeTarget(ctx, repoURL, branch, rootDir)

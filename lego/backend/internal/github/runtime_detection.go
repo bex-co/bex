@@ -93,7 +93,7 @@ func (s *Service) runtimeDetectionMemo() *core.TTLCache[RuntimeDetection] {
 // empty verdict without a transport error so the wizard remains manual.
 func (s *Service) DetectRepoRuntime(ctx context.Context, ownerID, repoURL, branch, rootDir string) (RuntimeDetection, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	if err := s.Authorize(ctx, repoReadRelation); err != nil {
 		return RuntimeDetection{}, err
 	}
 	target, ok, err := s.repoTreeTarget(ctx, repoURL, branch, rootDir)
