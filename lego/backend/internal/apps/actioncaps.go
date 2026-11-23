@@ -32,15 +32,19 @@ import (
 // (appProtected, RequireBillingMutation, pendingCronRun). Suspend and resume
 // are restricted verbs, so on a protected member they read as
 // requireUnprotected's own fresh workspace-manage check (core.RestrictedDecision,
-// w4/m578). Read-only and non-auditing: can_view gates the projection itself;
-// a snapshot is never a bearer grant — the verb still runs its own guards at
-// dispatch.
+// w4/m578). So does shell, the permission CreateShellSession and native SSH
+// open with (can_view_sensitive), so a client can say only an Admin may before
+// it mints a ticket (w4/726); whether the service can host a shell at all is
+// its sshAddress, not a precondition here. Read-only and non-auditing:
+// can_view gates the projection itself; a snapshot is never a bearer grant —
+// the verb still runs its own guards at dispatch.
 //
 // The target binds to the ACTING workspace (RequireResourceInActingWorkspace):
 // a service owned elsewhere reads as absent here even when the caller could
 // reach it there, so a client cannot render workspace A's screen from
-// workspace B's resource. Cron actions appear only on a cron_job — an absent
-// action means "does not exist for this type", never "forbidden".
+// workspace B's resource. Cron actions appear only on a cron_job, and shell
+// only on a type that runs instances — an absent action means "does not exist
+// for this type", never "forbidden".
 func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.ActionDecision, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
@@ -57,7 +61,8 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	// state — for buttons it will never enable), and the billing gate, the
 	// protection read and the admin check each run at most once per request
 	// however many actions consult them.
-	operate := s.CanDecisionOn(ctx, core.RelCanOperate, core.WorkspaceObject(s.WorkspaceOrDefault(ctx)))
+	workspace := core.WorkspaceObject(s.WorkspaceOrDefault(ctx))
+	operate := s.CanDecisionOn(ctx, core.RelCanOperate, workspace)
 	billing := sync.OnceValue(func() string { return s.BillingPreconditionFor(ctx, a.Labels[core.LabelTenant]) })
 	protected := sync.OnceValues(func() (bool, error) { return s.appProtected(ctx, a) })
 	admin := sync.OnceValue(func() error { return s.AuthorizeAppFresh(ctx, core.RelCanManage, a) })
@@ -74,6 +79,10 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		core.DecideAction(core.ActionRestart, operate, ""),
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
+	}
+	if sshTypeHasInstances(effectiveType(a.Spec.Type)) {
+		shell, _ := core.RestrictedDecision("shell", s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
+		out = append(out, core.DecideAction(core.ActionShell, shell, ""))
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob {
 		out = append(out,

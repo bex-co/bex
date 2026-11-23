@@ -9,6 +9,7 @@ import {
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 import type { ServiceView } from "@/features/services/types";
 import { ServiceShellPage } from "@/features/services/components/service-shell-page";
+import { useShellGate } from "@/features/services/hooks/use-shell-gate";
 
 const serverState: UseServerResult = {
   service: null,
@@ -25,8 +26,16 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 // those paths have their own tests. Here we only assert the page composes the
 // Web Shell alongside the SSH command.
 vi.mock("@/features/services/components/web-shell-panel", () => ({
-  WebShellPanel: ({ serviceId }: { serviceId: string }) => (
-    <div data-testid="web-shell-terminal">{serviceId}</div>
+  WebShellPanel: ({
+    serviceId,
+    shell,
+  }: {
+    serviceId: string;
+    shell: { gate: { kind: string } };
+  }) => (
+    <div data-testid="web-shell-terminal" data-shell={shell.gate.kind}>
+      {serviceId}
+    </div>
   ),
 }));
 
@@ -50,6 +59,10 @@ beforeEach(() => {
     sshAddress: "srv-example@ssh.bex.co",
   } as ServiceView;
   serverState.loading = false;
+  vi.mocked(useShellGate).mockReturnValue({
+    gate: { kind: "ready" },
+    reason: undefined,
+  });
 });
 
 describe("service Shell page", () => {
@@ -116,5 +129,42 @@ describe("service Shell page remedies (w4/143)", () => {
     expect(
       screen.queryByRole("link", { name: "Manage SSH public keys" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w4/726: Render keeps a protected environment's shell to Admins, in the
+// browser and over SSH, so a Developer there reads why in place of both.
+describe("service Shell page in a protected environment", () => {
+  it("hands the shell decision to the terminal and swaps the SSH command for the reason", async () => {
+    vi.mocked(useShellGate).mockReturnValue({
+      gate: { kind: "denied", reasonKey: "capabilities.actionAdminOnly" },
+      reason: "This action is limited to admins.",
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText("This action is limited to admins."),
+    ).toBeInTheDocument();
+    expect(vi.mocked(useShellGate)).toHaveBeenCalledWith("srv-example");
+    expect(screen.getByTestId("web-shell-terminal")).toHaveAttribute(
+      "data-shell",
+      "denied",
+    );
+    expect(screen.queryByText(/^ssh /)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Prefer your own terminal? Use the SSH command below.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("asks nothing for a service with no shell", async () => {
+    serverState.service = { ...serverState.service!, sshAddress: null };
+    renderPage();
+
+    expect(
+      await screen.findByText("Shell access isn't available"),
+    ).toBeInTheDocument();
+    expect(vi.mocked(useShellGate)).toHaveBeenLastCalledWith(null);
   });
 });

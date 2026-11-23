@@ -75,6 +75,15 @@ vi.mock("@/features/capabilities/hooks/use-admin-only-actions", () => ({
   useAdminOnlyActions: vi.fn(() => () => undefined),
 }));
 
+// Whether the caller may open a service's shell (w4/726) is read from the
+// service's action projection through Apollo too, so default to "may": the
+// Shell tab and the Connect menu render as before. Gating tests override per
+// file with vi.mocked(useShellGate).mockReturnValue; the hook's own test
+// unmocks it.
+vi.mock("@/features/services/hooks/use-shell-gate", () => ({
+  useShellGate: vi.fn(() => ({ gate: { kind: "ready" }, reason: undefined })),
+}));
+
 // Whether the workspace is offered Router (w21/042) is the router flag AND the
 // companion service's answer, read through Apollo's useQuery — so every test
 // that renders the sidebar or the ⌘K palette would otherwise need an

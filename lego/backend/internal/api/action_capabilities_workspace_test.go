@@ -146,6 +146,8 @@ func (p protectedLifecycleStore) GetEnvironmentProtectedStatus(context.Context, 
 // member of a protected environment, the reason the dashboard shows as
 // Render's "This action is limited to admins.", and allowed for an Admin and
 // on an unprotected member. Restart, which Render leaves open, stays allowed.
+// serverActions' shell row reads the same way (w4/726), so the Shell tab says
+// so before it mints a ticket.
 func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
 	web := ownedApp("web", "tea-a")
 	web.Labels[core.LabelAppID] = ids.New(ids.Service)
@@ -184,7 +186,7 @@ func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
 				seen := 0
 				for _, row := range result.Data[field] {
 					switch row.Action {
-					case core.ActionSuspend, core.ActionResume:
+					case core.ActionSuspend, core.ActionResume, core.ActionShell:
 						seen++
 						if tc.wantReason == "" {
 							if row.Outcome != core.DecisionAllowed {
@@ -199,8 +201,12 @@ func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
 						}
 					}
 				}
-				if seen != 2 {
-					t.Errorf("%s: saw %d of suspend and resume in %+v", field, seen, result.Data[field])
+				want := 2
+				if field == "serverActions" {
+					want = 3 // and shell
+				}
+				if seen != want {
+					t.Errorf("%s: saw %d of its %d restricted rows in %+v", field, seen, want, result.Data[field])
 				}
 			}
 		})

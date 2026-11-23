@@ -133,6 +133,9 @@ const (
 	ActionViewEnvVars        = "view_env_vars"
 	ActionUpdateEnvVars      = "update_env_vars"
 	ActionDelete             = "delete"
+	// Opening a service's shell, in the browser or over SSH (serverActions,
+	// w4/726): Admin-only in a protected environment, as on Render.
+	ActionShell = "shell"
 )
 
 // The bounded precondition vocabulary: why a PERMITTED action cannot execute

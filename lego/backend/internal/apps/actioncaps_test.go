@@ -120,10 +120,84 @@ func TestActionCapabilities_SuspendResumeAgreeWithTheVerb(t *testing.T) {
 	}
 }
 
+// TestActionCapabilities_ShellAgreesWithTheVerb (w4/726): for an Admin and a
+// Developer, on a member of a protected and of an unprotected environment, the
+// projection's shell decision is CreateShellSession's own answer, so the
+// dashboard can show a Developer on a protected member Render's "This action
+// is limited to admins." instead of minting a ticket the verb refuses. Before
+// w4/726 serverActions had no shell row, and the Shell tab connected first.
+func TestActionCapabilities_ShellAgreesWithTheVerb(t *testing.T) {
+	roles := []struct {
+		name  string
+		as    func(*Service)
+		admin bool
+	}{{"admin", asAdmin, true}, {"developer", asNonAdmin, false}}
+	for _, role := range roles {
+		for _, protected := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/protected=%t", role.name, protected), func(t *testing.T) {
+				status := core.ProtectedStatusUnprotected
+				if protected {
+					status = core.ProtectedStatusProtected
+				}
+				rec := &recordingStore{protectedStatus: map[string]string{"srv-1": status}}
+				svc, _ := newService(rec, inProtectedEnvironment(managedApp("web", "srv-1")))
+				role.as(svc)
+				ctx := ctxAs("user-a")
+
+				acts, err := svc.ActionCapabilities(ctx, "web")
+				if err != nil {
+					t.Fatalf("ActionCapabilities: %v", err)
+				}
+				if rec.protectedCalls != 1 {
+					t.Errorf("projection read protection %d times, want once for every restricted row", rec.protectedCalls)
+				}
+				got := actionByID(t, acts, core.ActionShell)
+				// The mint stops at the protection guard or, past it, at the
+				// gateway this test service does not configure.
+				_, verbErr := svc.CreateShellSession(ctx, "web", "")
+
+				want := role.admin || !protected
+				if allowed := got.Outcome == core.DecisionAllowed; allowed != want || errors.Is(verbErr, core.ErrForbidden) == want {
+					t.Fatalf("projection %+v and verb error %v disagree, want allowed=%t for both", got, verbErr, want)
+				}
+				if !want && (got.Reason != core.ReasonProtectedEnvironmentAdmin || !adminOnlyRefusal(verbErr)) {
+					t.Errorf("refused shell = %+v (verb %v), want denied/%s and PROTECTED_ENVIRONMENT_ADMIN_REQUIRED",
+						got, verbErr, core.ReasonProtectedEnvironmentAdmin)
+				}
+				if got.Precondition != "" {
+					t.Errorf("shell = %+v, want no precondition: eligibility is the service's sshAddress", got)
+				}
+			})
+		}
+	}
+}
+
+// TestActionCapabilities_ShellOnlyForTypesWithInstances: a shell row exists
+// exactly for the types CreateShellSession serves (web, private, worker, and
+// an untyped service, which is a web service); a cron job or a static site
+// has none, which reads as "not offered here".
+func TestActionCapabilities_ShellOnlyForTypesWithInstances(t *testing.T) {
+	for _, typ := range []string{
+		"", appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite,
+	} {
+		a := managedApp("svc", "srv-1")
+		a.Spec.Type = typ
+		svc, _ := newService(&recordingStore{}, a)
+		acts, err := svc.ActionCapabilities(context.Background(), "svc")
+		if err != nil {
+			t.Fatalf("ActionCapabilities(%s): %v", typ, err)
+		}
+		if got, want := hasAction(acts, core.ActionShell), typ != appv1alpha1.TypeCronJob && typ != appv1alpha1.TypeStaticSite; got != want {
+			t.Errorf("%s projects shell = %t, want %t", typ, got, want)
+		}
+	}
+}
+
 // TestActionCapabilities_ProtectionReadFailureIsUnavailable: when the
-// protection lookup fails, suspend and resume read as unavailable, never as a
-// role refusal and never as allowed, as the verb fails closed on the same
-// read. Restart does not consult it.
+// protection lookup fails, suspend, resume and shell read as unavailable,
+// never as a role refusal and never as allowed, as the verbs fail closed on
+// the same read. Restart does not consult it.
 func TestActionCapabilities_ProtectionReadFailureIsUnavailable(t *testing.T) {
 	rec := &recordingStore{protectedErr: errors.New("db down")}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
@@ -133,7 +207,7 @@ func TestActionCapabilities_ProtectionReadFailureIsUnavailable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
-	for _, id := range []string{core.ActionSuspend, core.ActionResume} {
+	for _, id := range []string{core.ActionSuspend, core.ActionResume, core.ActionShell} {
 		if a := actionByID(t, acts, id); a.Outcome != core.DecisionUnavailable || a.Reason != core.ReasonAuthzUnavailable {
 			t.Errorf("%s with a failed protection read = %+v, want unavailable/authz_unavailable", id, a)
 		}
@@ -204,7 +278,8 @@ func TestActionCapabilities_ViewerDeniedWithoutPreconditionLeak(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
-	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume} {
+	// Shell opens with can_view_sensitive, which a Viewer lacks too.
+	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume, core.ActionShell} {
 		a := actionByID(t, acts, id)
 		if a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission {
 			t.Errorf("viewer %s = %+v, want denied/insufficient_permission", id, a)

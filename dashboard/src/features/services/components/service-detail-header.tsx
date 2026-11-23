@@ -81,6 +81,7 @@ import {
 } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
+import { useShellGate } from "@/features/services/hooks/use-shell-gate";
 import {
   deployStatusKey,
   deployStatusVariant,
@@ -694,47 +695,62 @@ function ServiceConnectButton({
           {t("services.connectSSH")}
         </div>
         {command ? (
-          // Gate the doomed `ssh …` command behind key registration (w2/m66).
-          // With no key it fails off-surface; swap it for an add-key CTA — and,
-          // since a paid running service has the in-browser Web Shell, offer that
-          // as a second, zero-setup door (session-auth, needs no SSH key).
-          <RequiresSshKey
-            surface="service-ssh"
-            fallback={
-              <AddSshKeyCta
-                surface="service-ssh"
-                returnTo={`/services/${service.id}`}
-                secondaryAction={
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    <Link
-                      to="/services/$serviceId/shell"
-                      params={{ serviceId: service.id }}
-                    >
-                      <SquareTerminal className="size-4" />
-                      {t("services.openBrowserTerminal")}
-                    </Link>
-                  </Button>
-                }
-              />
-            }
-          >
-            <ConnectCodeRow
-              value={command}
-              copyLabel={t("services.sshCopy")}
-              copiedText={t("services.sshCopied")}
-              errorText={t("services.sshCopyError")}
-            />
-          </RequiresSshKey>
+          <ConnectSshCommand serviceId={service.id} command={command} />
         ) : (
           <SshUnavailable service={service} />
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * The Connect menu's SSH command. Mounted only while the menu is open, it
+ * asks the service's shell decision then (w4/726): a caller it refuses, such
+ * as a Developer in a protected environment, reads why instead of a command
+ * and a browser terminal the gateway would refuse.
+ */
+function ConnectSshCommand({
+  serviceId,
+  command,
+}: {
+  serviceId: string;
+  command: string;
+}) {
+  const { t } = useTranslations();
+  const shell = useShellGate(serviceId);
+  if (shell.gate.kind === "denied") {
+    return <p className="text-muted-foreground text-xs">{shell.reason}</p>;
+  }
+  return (
+    // Gate the doomed `ssh …` command behind key registration (w2/m66).
+    // With no key it fails off-surface; swap it for an add-key CTA — and,
+    // since a paid running service has the in-browser Web Shell, offer that
+    // as a second, zero-setup door (session-auth, needs no SSH key).
+    <RequiresSshKey
+      surface="service-ssh"
+      fallback={
+        <AddSshKeyCta
+          surface="service-ssh"
+          returnTo={`/services/${serviceId}`}
+          secondaryAction={
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link to="/services/$serviceId/shell" params={{ serviceId }}>
+                <SquareTerminal className="size-4" />
+                {t("services.openBrowserTerminal")}
+              </Link>
+            </Button>
+          }
+        />
+      }
+    >
+      <ConnectCodeRow
+        value={command}
+        copyLabel={t("services.sshCopy")}
+        copiedText={t("services.sshCopied")}
+        errorText={t("services.sshCopyError")}
+      />
+    </RequiresSshKey>
   );
 }
 

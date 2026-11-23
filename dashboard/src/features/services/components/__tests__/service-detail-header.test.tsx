@@ -18,6 +18,7 @@ import type { ServiceView } from "@/features/services/types";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
 import { mockAllowedResourceActions } from "@/test/mocks/resource-actions";
+import { useShellGate } from "@/features/services/hooks/use-shell-gate";
 
 // The instance-type chip and the Manual Deploy button both go through Apollo;
 // stub them at the hook boundary (the pattern every other panel's test uses) so
@@ -89,6 +90,10 @@ vi.mock("@apollo/client/react", async (importOriginal) => ({
 
 beforeEach(() => {
   resourceActions = mockAllowedResourceActions("app");
+  vi.mocked(useShellGate).mockReturnValue({
+    gate: { kind: "ready" },
+    reason: undefined,
+  });
   permissionQuery.mockReset().mockResolvedValue({
     data: {
       deployActions: [
@@ -293,6 +298,28 @@ describe("ServiceDetailHeader", () => {
     expect(
       screen.getByRole("button", { name: "Copy SSH command" }),
     ).toBeInTheDocument();
+  });
+
+  // w4/726: native SSH and the browser terminal refuse a Developer in a
+  // protected environment, so Connect says why instead of offering either.
+  it("shows a refused caller the reason instead of the SSH command", async () => {
+    vi.mocked(useShellGate).mockReturnValue({
+      gate: { kind: "denied", reasonKey: "capabilities.actionAdminOnly" },
+      reason: "This action is limited to admins.",
+    });
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: "srv-example@ssh.bex.co" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(
+      screen.getByText("This action is limited to admins."),
+    ).toBeInTheDocument();
+    expect(vi.mocked(useShellGate)).toHaveBeenCalledWith("app");
+    expect(screen.queryByText("ssh srv-example@ssh.bex.co")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Copy SSH command" }),
+    ).toBeNull();
   });
 
   it("shows the internal address in the Connect menu's Internal section (ADR041 D4)", async () => {

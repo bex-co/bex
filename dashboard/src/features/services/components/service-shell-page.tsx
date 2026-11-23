@@ -17,6 +17,7 @@ import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key"
 import { useServer } from "@/features/services/hooks/use-server";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
 import { WebShellPanel } from "@/features/services/components/web-shell-panel";
+import { useShellGate } from "@/features/services/hooks/use-shell-gate";
 
 /**
  * Render's Shell page hosts an in-browser terminal alongside the copy-ready SSH
@@ -26,6 +27,9 @@ import { WebShellPanel } from "@/features/services/components/web-shell-panel";
  * or Kubernetes exec credential ever reaches the browser, and bex-api never
  * gains pods/exec. `sshAddress` presence is the eligibility signal both paths
  * share (paid, non-suspended web/private/worker with the gateway configured).
+ * Who may use them is the service's shell decision (w4/726): a caller it
+ * refuses, such as a Developer in a protected environment, reads why in the
+ * terminal's place and in place of the SSH command, before any connection.
  */
 export function ServiceShellPage({
   serviceId,
@@ -43,6 +47,10 @@ export function ServiceShellPage({
   // A suspended or Free service says exactly why, and links to that remedy.
   const remedyFor = unavailable && service ? sshRemedy(service) : null;
   const remedy = remedyFor?.action ? remedyFor : null;
+  const shell = useShellGate(eligible ? serviceId : null);
+  // Native SSH is refused by the same rule, so its command gives way to the
+  // reason; a check still running or unavailable keeps it, as it is only text.
+  const sshRefused = eligible && shell.gate.kind === "denied";
 
   return (
     <div className="space-y-6">
@@ -64,10 +72,17 @@ export function ServiceShellPage({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <WebShellPanel serviceId={serviceId} initialInstance={instance} />
-            <p className="text-muted-foreground text-sm">
-              {t("services.shellSshFallback")}
-            </p>
+            <WebShellPanel
+              serviceId={serviceId}
+              initialInstance={instance}
+              shell={shell}
+            />
+            {sshRefused ? null : (
+              // The SSH command it points to is refused by the same rule.
+              <p className="text-muted-foreground text-sm">
+                {t("services.shellSshFallback")}
+              </p>
+            )}
           </CardContent>
         </Card>
       ) : null}
@@ -88,11 +103,13 @@ export function ServiceShellPage({
                 ? t(remedy.reason)
                 : unavailable
                   ? t("services.shellUnavailableBody")
-                  : t("services.shellConnectionDescription")}
+                  : sshRefused
+                    ? shell.reason
+                    : t("services.shellConnectionDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {command ? (
+            {command && !sshRefused ? (
               // Gate the copy-ready `ssh` command behind key registration
               // (w2/m66): with no key it fails, so show the add-key CTA instead.
               // The in-browser Web Shell card above is the zero-setup second door
