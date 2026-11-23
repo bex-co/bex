@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Self-test for scripts/lib/sandbox-measure.sh's pod CPU read (w22/024).
+# sandbox-measure run 45146685744 (leg `usage`) stopped before its first check:
+# it read the busy pod's counter from the node's cAdvisor half a second after
+# the sandbox reported `running`, the node had no row for the pod yet, and the
+# empty pipeline ended the leg. A stub kubectl stands in for the node and
+# serves the pod's row only from a chosen read on.
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+fails=0
+
+mkdir -p "$tmp/bin"
+cat >"$tmp/bin/kubectl" <<'STUB'
+#!/usr/bin/env bash
+# Stub kubectl: `get --raw …/metrics/cadvisor` answers another pod's rows, and
+# this pod's from read number $ROW_FROM on. Reads are counted in $STATE/reads.
+case " $* " in
+  *"/proxy/metrics/cadvisor "*)
+    n=$(($(cat "$STATE/reads" 2>/dev/null || echo 0) + 1))
+    echo "$n" >"$STATE/reads"
+    echo 'container_cpu_usage_seconds_total{container="",id="/kubepods.slice/other",name="",namespace="ws-sandbox",pod="other-0"} 7.5 1'
+    echo 'container_spec_cpu_quota{container="",id="/kubepods.slice/new",name="",namespace="ws-sandbox",pod="new-0"} 100000 1'
+    if [ "$n" -ge "$ROW_FROM" ]; then
+      echo 'container_cpu_usage_seconds_total{container="",id="/kubepods.slice/new/pause",name="k8s_POD_new-0",namespace="ws-sandbox",pod="new-0"} 0.01 1'
+      echo 'container_cpu_usage_seconds_total{container="",id="/kubepods.slice/new",name="",namespace="ws-sandbox",pod="new-0"} 0.947664 1'
+    fi
+    ;;
+  *) echo "stub kubectl: unexpected call: $*" >&2; exit 1 ;;
+esac
+STUB
+chmod +x "$tmp/bin/kubectl"
+
+# run <row from> <snippet>: the snippet's output and exit status, with the
+# library sourced as a leg sources it.
+run() {
+  local state="$tmp/state-$1-$RANDOM"
+  mkdir -p "$state"
+  STATE="$state" ROW_FROM="$1" PATH="$tmp/bin:$PATH" KUBECONFIG=/dev/null \
+    BEX_API_URL=http://127.0.0.1:9 BEX_WORKSPACE_A=ws BEX_WS_A_OWNER_TOKEN=t BEX_MEASURE_CADVISOR_PAUSE=0 \
+    bash -c ". '$here/lib/sandbox-measure.sh'; $2" 2>"$state/stderr"
+  echo "status=$? reads=$(cat "$state/reads" 2>/dev/null || echo 0)"
+}
+expect() {
+  if [ "$2" = "$3" ]; then echo "ok: $1"; else
+    echo "FAIL: $1"
+    echo "  want: $3"
+    echo "  got:  $2"
+    fails=$((fails + 1))
+  fi
+}
+
+expect "a pod whose row is there is read once" \
+  "$(run 1 'echo "c0=$(pod_cpu_new new-0 node-a)"' | tr '\n' ' ')" "c0=0.947664 status=0 reads=1 "
+expect "a new pod's row that appears on the third read is waited for (run 45146685744 stopped on the first)" \
+  "$(run 3 'echo "c0=$(pod_cpu_new new-0 node-a)"' | tr '\n' ' ')" "c0=0.947664 status=0 reads=3 "
+expect "a row that never appears reads empty after twelve tries, and the leg goes on to fail by name" \
+  "$(run 99 'c0="$(pod_cpu_new new-0 node-a)"; [ -n "$c0" ] || fail "no pod-level CPU row"' 2>&1 | tr '\n' ' ')" "status=1 reads=12 "
+expect "pod_cpu reads the pod cgroup's row, not the pause container's or another pod's" \
+  "$(run 1 'echo "c=$(pod_cpu new-0 node-a) other=$(pod_cpu other-0 node-a)"' | tr '\n' ' ')" "c=0.947664 other=7.5 status=0 reads=2 "
+
+[ "$fails" = 0 ] || { echo "$fails case(s) failed"; exit 1; }
+echo "all cases passed"

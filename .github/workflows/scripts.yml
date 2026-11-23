@@ -158,6 +158,10 @@ jobs:
       # earlier run's m35 fixtures and nothing else.
       - name: Sandbox isolation fixture cleanup self-test
         run: bash scripts/verify-sandbox-isolation-live.test.sh
+      # w22/024: a measurement leg waits for a new pod's row on the node's
+      # cAdvisor instead of stopping when its first read finds none.
+      - name: Sandbox measurement pod CPU read self-test
+        run: bash scripts/sandbox-measure.test.sh
       # The static-site PSL release gate passes a suffix listed early in the
       # PRIVATE section, with far more than a pipe buffer of list after it;
       # file:// list, stubbed node/go/kubectl.
@@ -376,6 +380,7 @@ jobs:
           scripts/secret-argv-validate.sh scripts/secret-argv-validate.test.sh
           scripts/wait-capi-rollout.sh scripts/wait-capi-rollout.test.sh
           scripts/verify-sandbox-isolation-live.sh scripts/verify-sandbox-isolation-live.test.sh
+          scripts/sandbox-measure.test.sh
           scripts/verify-static-site-security.sh scripts/verify-static-site-security.test.sh
           scripts/stale-key-name-validate.sh scripts/stale-key-name-validate.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh

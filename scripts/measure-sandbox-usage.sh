@@ -42,14 +42,8 @@ idle_seconds="${BEX_MEASURE_USAGE_IDLE_SECONDS:-3600}"
 ws="$BEX_WORKSPACE_A"
 [[ "$bursts" =~ ^[0-9]{1,2}$ ]] && [[ "$idle_seconds" =~ ^[0-9]{1,5}$ ]] || fail "BEX_MEASURE_BURSTS and BEX_MEASURE_USAGE_IDLE_SECONDS must be whole numbers"
 
-# pod_cpu <pod> <node>: the pod-level cgroup's cumulative CPU seconds, from the
-# node's cAdvisor (the row Prometheus keeps as sandbox_pod_cpu_usage_seconds_total).
-pod_cpu() {
-  node_cadvisor "$2" "$fixture_dir/cadvisor.txt"
-  grep -F "pod=\"$1\"" "$fixture_dir/cadvisor.txt" | grep '^container_cpu_usage_seconds_total' | grep 'name=""' | awk '{print $2}' | head -1
-}
 # pod_quota_cores <pod>: the pod cgroup's CPU quota in cores, from the cAdvisor
-# file pod_cpu last fetched ("" when the pod has none). It caps what the pod
+# file pod_cpu (scripts/lib/sandbox-measure.sh) last fetched ("" when the pod has none). It caps what the pod
 # can use, and so what the used-CPU meter can bill: under gVisor the sentry and
 # the workload share this cgroup.
 pod_quota_cores() {
@@ -115,7 +109,8 @@ measure sandboxes "$(jq -cn --arg b "$busy" --arg bp "$busy_pod" --arg bc "$busy
 [[ "${memory_mib:-}" =~ ^[0-9]+$ ]] || fail "the sandbox pod carries no bex.co/memory-mib label"
 
 echo "==> busy: $bursts bursts of one busy core for 60 s each"
-c0="$(pod_cpu "$busy_pod" "$busy_node")"
+c0="$(pod_cpu_new "$busy_pod" "$busy_node")"
+[ -n "$c0" ] || fail "the node's cAdvisor has no pod-level CPU row for $busy_pod two minutes after it started"
 busy_quota="$(pod_quota_cores "$busy_pod" || true)"
 busy_limit="$(pod_limit_cores "$busy_pod")"
 measure pod-cpu-quota "$(jq -cn --arg q "$busy_quota" --arg l "$busy_limit" --argjson s "$(pod_start "$busy_pod")" '{podQuotaCores: $q, planCpuCores: $l, start: $s}')"
@@ -174,12 +169,7 @@ wait_status "$small" running 300
 small_running=$((SECONDS - small_from))
 read -r small_pod small_node _ < <(find_pod "$small")
 small_limit="$(pod_limit_cores "$small_pod")"
-s0=""
-for _ in $(seq 1 12); do # a new pod's cAdvisor row appears within a refresh or two
-  s0="$(pod_cpu "$small_pod" "$small_node" || true)"
-  [ -n "$s0" ] && break
-  sleep 10
-done
+s0="$(pod_cpu_new "$small_pod" "$small_node")"
 small_quota="$(pod_quota_cores "$small_pod" || true)"
 # Each loop forks a process per turn: nearly all of its CPU is gVisor's, which
 # is the load that read 2.00 cores on a 1-CPU plan before the cap (m314 t001).

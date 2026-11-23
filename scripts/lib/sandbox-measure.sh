@@ -191,6 +191,29 @@ node_summary() { kubectl get --raw "/api/v1/nodes/$1/proxy/stats/summary" >"$2";
 # node_cadvisor <node> <output>: the node's raw cAdvisor exposition.
 node_cadvisor() { kubectl get --raw "/api/v1/nodes/$1/proxy/metrics/cadvisor" >"$2"; }
 
+# pod_cpu <pod> <node>: the pod-level cgroup's cumulative CPU seconds, from the
+# node's cAdvisor (the row Prometheus keeps as sandbox_pod_cpu_usage_seconds_total).
+# It fails when the node has no such row, which is the case for the first
+# seconds of a pod's life: read a pod that has just started with pod_cpu_new.
+pod_cpu() {
+  node_cadvisor "$2" "$fixture_dir/cadvisor.txt"
+  grep -F "pod=\"$1\"" "$fixture_dir/cadvisor.txt" | grep '^container_cpu_usage_seconds_total' | grep 'name=""' | awk '{print $2}' | head -1
+}
+# pod_cpu_new <pod> <node>: pod_cpu for a pod that has just started. The node's
+# cAdvisor lists a new pod's row a refresh or two (about 15 s each) after its
+# container starts, so a read straight after `running` can find none (run
+# 45146685744 read 0.5 s after it and stopped there). Tries for two minutes and
+# prints "" when the row never appears; the caller fails on that by name.
+pod_cpu_new() {
+  local value="" _
+  for _ in $(seq 1 12); do
+    value="$(pod_cpu "$1" "$2" 2>/dev/null || true)" # a poll: a missing row is tried again
+    [ -n "$value" ] && break
+    sleep "${BEX_MEASURE_CADVISOR_PAUSE:-10}"
+  done
+  echo "$value"
+}
+
 # prom_forward: start a port-forward to Prometheus and set $prom_url ("" when
 # it did not start). The apiserver service proxy times out for the monitoring
 # namespace (Cilium remote-node denial; scripts/alerting-heartbeat.sh), so use
