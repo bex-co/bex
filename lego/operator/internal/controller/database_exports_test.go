@@ -74,6 +74,9 @@ func exportTestDatabase(now time.Time) *appv1alpha1.Database {
 }
 
 func TestLogicalExportJobShape(t *testing.T) {
+	// The upstream image's own pg_dump command; an adopted bex operand runs
+	// bex-postgres-export instead (TestExportJobsUseTheServingOperand).
+	withBexOperands(t, map[string]string{})
 	now := time.Date(2026, 7, 14, 12, 34, 0, 0, time.UTC)
 	db := exportTestDatabase(now)
 	job := exportJob(db, db.Spec.Exports[0], testStore)

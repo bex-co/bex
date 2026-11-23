@@ -48,7 +48,11 @@ func permittedPostgresVersions(t *testing.T) []string {
 	return out
 }
 
+// The upstream pins serve a major no bex operand is adopted for, and are the
+// rollback for one that is (ADR092 D4); the adopted path is
+// TestExportJobsUseTheServingOperand.
 func TestCNPGExportImagesArePinnedForEveryPermittedVersion(t *testing.T) {
+	withBexOperands(t, map[string]string{})
 	versions := permittedPostgresVersions(t)
 	if len(versions) == 0 {
 		t.Fatal("parsed an empty permitted-version set — the guard would be vacuous")
@@ -72,6 +76,7 @@ func TestCNPGExportImagesArePinnedForEveryPermittedVersion(t *testing.T) {
 }
 
 func TestCNPGExportImageNeverComposesAMutableTag(t *testing.T) {
+	withBexOperands(t, map[string]string{})
 	for _, v := range []string{"", "16", "18", "19", "unknown", "latest"} {
 		got := cnpgExportImage(v)
 		if !strings.Contains(got, "@sha256:") {

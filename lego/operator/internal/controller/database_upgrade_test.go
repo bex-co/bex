@@ -136,8 +136,8 @@ func TestReconcileMajorVersionUpgradeLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	image, _, _ := unstructured.NestedString(cluster.Object, "spec", "imageName")
-	if image != cnpgExportImages["17"] {
-		t.Errorf("cluster image = %q, want pinned PostgreSQL 17", image)
+	if want, _ := cnpgOperandImage("17"); image != want || want == "" {
+		t.Errorf("cluster image = %q, want PostgreSQL 17's pinned serving image %q", image, want)
 	}
 	plugins, _, _ := unstructured.NestedSlice(cluster.Object, "spec", "plugins")
 	if len(plugins) != 1 {

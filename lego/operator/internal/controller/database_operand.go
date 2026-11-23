@@ -33,7 +33,19 @@ import (
 // one, and its clusters get the extension allowlist (pgExtensionParameters).
 // Adopting a digest restarts every managed cluster of that major once, which
 // runs off-peak with health checks and a recorded rollback (ADR092 D4).
-var bexOperandImages = map[string]string{}
+//
+// Adopted 2026-11-23 (w21/m584): pg-operand-image.yml run 45254127793 gated
+// each digest on arm64 and natively on amd64, with TimescaleDB held out of
+// the allowlist. The rollback is this map emptied, which returns every major
+// to cnpgExportImages and its upstream projection (one more restart).
+var bexOperandImages = map[string]string{
+	"13": "ghcr.io/bex-co/bex-operator:13.22-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:95f569d5374831da375b3238a36399b9724dbe8a084b694c1ef15bb679a04e1f",
+	"14": "ghcr.io/bex-co/bex-operator:14.25-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:da5906d9eae2658f5505bbf9bf18cf0dd953d8d677395d674176259b13a433d5",
+	"15": "ghcr.io/bex-co/bex-operator:15.20-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:4f6dc525a354a0eb3d1164bc294915505649bf70abe94abf4be69b5de4f7d9a3",
+	"16": "ghcr.io/bex-co/bex-operator:16.16-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:ee398edf10728f3fb0df46025a9fdf22361b41247aa3cd70541be61c00ffd1f0",
+	"17": "ghcr.io/bex-co/bex-operator:17.12-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:8a68db3ece72a3a34d5f79c7fe7a98c96c423f83f731d5dd0c9924a5418ceefa",
+	"18": "ghcr.io/bex-co/bex-operator:18.7-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:be9029d668214614cbec665c3c5f9de9d526295cdb4b4201a3890787490fd8fc",
+}
 
 const postgresDisabled = "false"
 

@@ -207,7 +207,7 @@ func TestUnobservedExportWaitsButExistingCompletionIsNotStranded(t *testing.T) {
 	if err := r.List(context.Background(), &jobs); err != nil {
 		t.Fatal(err)
 	}
-	if len(jobs.Items) != 1 || jobs.Items[0].Spec.Template.Spec.InitContainers[0].Image != cnpgExportImages["14"] {
+	if len(jobs.Items) != 1 || jobs.Items[0].Spec.Template.Spec.InitContainers[0].Image != cnpgExportImage("14") {
 		t.Fatal("observed14 did not unblock its own export")
 	}
 	job := jobs.Items[0]

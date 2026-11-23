@@ -229,9 +229,10 @@ func TestCnpgClusterSpec(t *testing.T) {
 		t.Errorf("no version => no imageName override, got %v", spec["imageName"])
 	}
 
-	// version pins the image
+	// version pins the image: the major's serving image, the bex operand
+	// once adopted (ADR092 D1), else the upstream pin.
 	withVer := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, version: "16", dbname: "d", owner: "d_user"})
-	if withVer["imageName"] != cnpgExportImages["16"] {
+	if want, _ := cnpgOperandImage("16"); withVer["imageName"] != want || want == "" {
 		t.Errorf("version image = %v", withVer["imageName"])
 	}
 }

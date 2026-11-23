@@ -196,6 +196,7 @@ func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 		"timescaledb.license":     "timescale",
 	}
 
+	withBexOperands(t, map[string]string{})
 	image, preload, _ := clusterPostgresql(t, "16", tenant)
 	if image != cnpgExportImages["16"] || !slices.Equal(preload, []any{"pg_stat_statements"}) {
 		t.Errorf("upstream operand: image %q preload %v, want %q [pg_stat_statements]", image, preload, cnpgExportImages["16"])
@@ -410,6 +411,7 @@ func TestUnversionedDatabasesMoveOnlyOntoTheirOwnMajorsOperand(t *testing.T) {
 		image, _ := spec["imageName"].(string)
 		return image, spec["postgresql"].(map[string]any)["parameters"].(map[string]any)
 	}
+	withBexOperands(t, map[string]string{})
 	if image, params := project("18"); image != "" || params["local_preload_libraries"] != nil {
 		t.Errorf("before adoption: imageName %q, local_preload %v, want CNPG's default left alone", image, params["local_preload_libraries"])
 	}
