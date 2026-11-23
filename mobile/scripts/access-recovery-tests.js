@@ -1247,3 +1247,141 @@ test("a removed tap listener cannot replace the new workspace's pending valid ta
     await f.close();
   }
 });
+
+test("LogViewer renders ANSI display vectors cleanly, colours Render forms, and searches with textMode=display (w32/094)", async () => {
+  const vectorsPath = path.resolve(
+    __dirname,
+    "../../lego/backend/internal/logs/testdata/display-text-vectors.json",
+  );
+  const vectors = JSON.parse(fs.readFileSync(vectorsPath, "utf8"));
+  const historyCalls = [];
+  const subscribeCalls = [];
+  const logLines = vectors.map((v, index) => ({
+    id: `vec-${index}`,
+    message: v.in,
+    timestamp: `2026-11-23T12:00:${String(index % 60).padStart(2, "0")}.000Z`,
+    labels: [],
+  }));
+  const session = new LogSession({
+    history: async (filters) => {
+      historyCalls.push(filters);
+      return {
+        logs: [...logLines].reverse(),
+        hasMore: false,
+      };
+    },
+    subscribe: async (filters) => {
+      subscribeCalls.push(filters);
+      return { close: () => undefined };
+    },
+  });
+  const exactText = (node) =>
+    typeof node === "string"
+      ? node
+      : (node.children ?? []).map(exactText).join("");
+
+  const f = await fixture(() =>
+    React.createElement(LogViewer, { resource: "srv-a", session }),
+  );
+  try {
+    await f.reply("MobileWorkspaces", workspaceData());
+    await f.reply("MobileViewerCapabilities", capabilityData());
+
+    const messageNodes = f.root.container.queryAll(
+      (node) => node.type === "Text" && node.props.selectable === true,
+    );
+    assert.equal(messageNodes.length, vectors.length);
+    for (let i = 0; i < vectors.length; i++) {
+      const rendered = exactText(messageNodes[i]);
+      assert.equal(rendered, vectors[i].want, vectors[i].name);
+      assert.equal(rendered.includes("\u001b"), false, vectors[i].name);
+      assert.equal(/\[[0-9;]*m/.test(rendered), false, vectors[i].name);
+      assert.equal(rendered.includes("(B"), false, vectors[i].name);
+    }
+
+    const renderForms = [
+      {
+        name: "Render platform step (w32/m576)",
+        color: "#1d4ed8",
+        words: "Deploying...",
+        wordsColored: false,
+      },
+      {
+        name: "Render platform success (w32/m576)",
+        color: "#15803d",
+        words: "Your service is live",
+        wordsColored: false,
+      },
+      {
+        name: "Render platform failure (w32/m576)",
+        color: "#b91c1c",
+        words: "Exited with status 1",
+        wordsColored: true,
+      },
+      {
+        name: "Render build shell (w32/m576)",
+        color: "#1d4ed8",
+        words: "Downloading cache...",
+        wordsColored: false,
+      },
+      {
+        name: "Render build runtime (w32/m576)",
+        color: "#1d4ed8",
+        words: "Uploading build...",
+        wordsColored: false,
+      },
+      {
+        name: "Render build runtime success (w32/m576)",
+        color: "#15803d",
+        words: "Build successful",
+        wordsColored: false,
+      },
+      {
+        name: "Render instance (w32/m576)",
+        color: "#15803d",
+        words: "Running 'node main.js'",
+        wordsColored: false,
+      },
+    ];
+    for (const form of renderForms) {
+      const idx = vectors.findIndex((v) => v.name === form.name);
+      assert.ok(idx >= 0, form.name);
+      const spans = messageNodes[idx].queryAll(
+        (node) => node.type === "Text" && node !== messageNodes[idx],
+      );
+      const markerSpan = spans.find((n) => exactText(n).includes("==>"));
+      const wordsSpan = spans.find((n) => exactText(n).includes(form.words));
+      assert.equal(markerSpan.props.style.color, form.color, form.name);
+      assert.equal(markerSpan.props.style.fontWeight, "600", form.name);
+      assert.equal(wordsSpan.props.style.fontWeight, "600", form.name);
+      assert.equal(
+        wordsSpan.props.style.color,
+        form.wordsColored ? form.color : undefined,
+        form.name,
+      );
+    }
+
+    assert.equal(historyCalls[0].text, undefined);
+    assert.equal(historyCalls[0].textMode, undefined);
+    assert.equal(subscribeCalls[0].textMode, undefined);
+
+    const searchInput = f.root.container.queryAll(
+      (node) => node.type === "TextInput",
+    )[0];
+    await React.act(async () => {
+      searchInput.props.onChangeText("==> Deploying...");
+    });
+    assert.equal(historyCalls.at(-1).text, "==> Deploying...");
+    assert.equal(historyCalls.at(-1).textMode, "display");
+    assert.equal(subscribeCalls.at(-1).text, "==> Deploying...");
+    assert.equal(subscribeCalls.at(-1).textMode, "display");
+
+    await React.act(async () => {
+      searchInput.props.onChangeText("   ");
+    });
+    assert.equal(historyCalls.at(-1).text, undefined);
+    assert.equal(historyCalls.at(-1).textMode, undefined);
+  } finally {
+    await f.close();
+  }
+});

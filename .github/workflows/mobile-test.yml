@@ -7,12 +7,14 @@ on:
       - "mobile/**"
       - "lego/backend/internal/**/graphql.go"
       - "lego/backend/internal/api/schema_dump_test.go"
+      - "lego/backend/internal/logs/testdata/display-text-vectors.json"
       - ".github/workflows/mobile-test.yml"
   pull_request:
     paths:
       - "mobile/**"
       - "lego/backend/internal/**/graphql.go"
       - "lego/backend/internal/api/schema_dump_test.go"
+      - "lego/backend/internal/logs/testdata/display-text-vectors.json"
       - ".github/workflows/mobile-test.yml"
 
 permissions:

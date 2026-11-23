@@ -30,6 +30,28 @@ describe("log query", () => {
     ).toBe(null);
   });
 
+  it("sends textMode only when text is present and opted in", () => {
+    const withDisplay = new URLSearchParams(
+      buildLogQuery({
+        resource: "srv-1",
+        text: "==> Deploying...",
+        textMode: "display",
+      }),
+    );
+    expect(withDisplay.get("text")).toBe("==> Deploying...");
+    expect(withDisplay.get("textMode")).toBe("display");
+
+    const withoutText = new URLSearchParams(
+      buildLogQuery({ resource: "srv-1", textMode: "display" }),
+    );
+    expect(withoutText.get("textMode")).toBe(null);
+
+    const withoutMode = new URLSearchParams(
+      buildLogQuery({ resource: "srv-1", text: "==> Deploying..." }),
+    );
+    expect(withoutMode.get("textMode")).toBe(null);
+  });
+
   it("distinguishes pod-tail filters from store-only filters", () => {
     expect(
       hasStoreOnlyTailFilters({
@@ -37,6 +59,7 @@ describe("log query", () => {
         types: ["app"],
         instance: ["web-abc"],
         text: "ready",
+        textMode: "display",
       }),
     ).toBe(false);
     expect(

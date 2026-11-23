@@ -1,5 +1,7 @@
 export type LogType = "app" | "request" | "build" | "predeploy";
 
+export type LogTextMode = "raw" | "display";
+
 export type LogLabel = {
   name: string;
   value: string;
@@ -16,6 +18,7 @@ export type LogFilters = {
   resource: string;
   types?: LogType[];
   text?: string;
+  textMode?: LogTextMode;
   startTime?: string;
   endTime?: string;
   limit?: number;

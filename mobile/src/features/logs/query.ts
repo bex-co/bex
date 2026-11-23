@@ -13,7 +13,10 @@ const repeatedKeys = [
 export function buildLogQuery(filters: LogFilters): string {
   const params = new URLSearchParams();
   params.append("resource", filters.resource);
-  if (filters.text) params.append("text", filters.text);
+  if (filters.text) {
+    params.append("text", filters.text);
+    if (filters.textMode) params.append("textMode", filters.textMode);
+  }
   if (filters.startTime) params.append("startTime", filters.startTime);
   if (filters.endTime) params.append("endTime", filters.endTime);
   // The REST schema caps each page at 100, independently of the live buffer.

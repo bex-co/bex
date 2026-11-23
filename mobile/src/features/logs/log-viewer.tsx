@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -17,6 +17,7 @@ import {
   space,
   useTheme,
 } from "@/common/theme";
+import { ansiSpanStyle, needsAnsiParse, parseAnsi } from "./ansi";
 import { LogSession } from "./log-session";
 import { requestLead } from "./request-line";
 import type { LogFilters, LogLine, LogType } from "./types";
@@ -46,15 +47,17 @@ export function LogViewer({
     initialType,
   );
   const [text, setText] = useState("");
+  const trimmedText = text.trim();
   const filters = useMemo<LogFilters>(
     () => ({
       resource,
       types: selectedType === "all" ? undefined : [selectedType],
-      text: text.trim() || undefined,
+      text: trimmedText || undefined,
+      textMode: trimmedText ? "display" : undefined,
       direction: "backward",
       limit: 100,
     }),
-    [resource, selectedType, text],
+    [resource, selectedType, trimmedText],
   );
   const state = useLogSession(session, filters);
 
@@ -65,7 +68,7 @@ export function LogViewer({
       </Text>
       <Text selectable style={[styles.message, { color: theme.foreground }]}>
         {requestLead(item)}
-        {item.message}
+        <LogMessage message={item.message} isDark={theme.isDark} />
       </Text>
     </View>
   );
@@ -178,6 +181,24 @@ export function LogViewer({
         }
       />
     </View>
+  );
+}
+
+function LogMessage({ message, isDark }: { message: string; isDark: boolean }) {
+  if (!needsAnsiParse(message)) return <>{message}</>;
+  return (
+    <>
+      {parseAnsi(message).map((span, index) => {
+        const style = ansiSpanStyle(span, isDark);
+        return style ? (
+          <Text key={index} style={style}>
+            {span.text}
+          </Text>
+        ) : (
+          <Fragment key={index}>{span.text}</Fragment>
+        );
+      })}
+    </>
   );
 }
 

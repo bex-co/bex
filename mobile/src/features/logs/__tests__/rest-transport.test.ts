@@ -12,10 +12,13 @@ afterEach(() => removeAccessCheck());
 // under test only needs open/setRequestHeader/send/onprogress/abort.
 class FakeXHR {
   static last: FakeXHR | undefined;
+  url: string | undefined;
   onprogress: (() => void) | undefined;
   responseText = "";
   private aborted = false;
-  open() {}
+  open(_method: string, url: string) {
+    this.url = url;
+  }
   setRequestHeader() {}
   send() {
     FakeXHR.last = this;
@@ -114,6 +117,45 @@ describe("RestLogTransport history", () => {
     expect(requests[0].url).toBe(
       "https://api.bex.co/v1/logs?resource=srv-1&type=app",
     );
+  });
+
+  it("forwards textMode=display on history and live subscribe when searching", async () => {
+    const urls: string[] = [];
+    const transport = new RestLogTransport(
+      "https://api.bex.co",
+      {
+        getAccessToken: async () => "token",
+        forceRefresh: async () => undefined,
+      },
+      (async (input) => {
+        urls.push(String(input));
+        return new Response(JSON.stringify(emptyPage), { status: 200 });
+      }) as typeof fetch,
+    );
+    await transport.history(
+      { resource: "srv-1", text: "==> Deploying...", textMode: "display" },
+      new AbortController().signal,
+    );
+    expect(new URL(urls[0]).searchParams.get("text")).toBe("==> Deploying...");
+    expect(new URL(urls[0]).searchParams.get("textMode")).toBe("display");
+
+    FakeXHR.last = undefined;
+    (globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest =
+      FakeXHR as unknown;
+    const connection = await transport.subscribe(
+      { resource: "srv-1", text: "==> Deploying...", textMode: "display" },
+      {
+        onLine: () => undefined,
+        onError: () => undefined,
+        onClose: () => undefined,
+      },
+      new AbortController().signal,
+    );
+    const subUrl = new URL(FakeXHR.last!.url!);
+    expect(subUrl.pathname).toBe("/v1/logs/subscribe");
+    expect(subUrl.searchParams.get("text")).toBe("==> Deploying...");
+    expect(subUrl.searchParams.get("textMode")).toBe("display");
+    connection.close();
   });
 
   it("does not collapse a store-only 503 into a generic network error", async () => {
