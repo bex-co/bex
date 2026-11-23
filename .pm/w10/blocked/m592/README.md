@@ -1,6 +1,6 @@
 # w10 · m592 — A workspace admin chooses "Allow all models" or an allowlist, so an allowlist listing every current catalog model still leaves the next one off, as Devin's modes do
 
-**Worker:** worker10 **Goal:** the workspace model list gets Devin's two modes as an explicit setting, not one that follows the list. An admin who turns "Allow all models" off keeps an allowlist even while it lists every current catalog model, so a model added to the catalog later is off there and reads as new. With it on, the workspace offers the whole catalog, a later model included. REST, GraphQL, MCP, `bex agent env set --models all|ID,…` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** todo (t001, t002, t003, t004, t006, t007, t008 done; t005's `dev-10` half done, its production read waits for the pin)
+**Worker:** worker10 **Goal:** the workspace model list gets Devin's two modes as an explicit setting, not one that follows the list. An admin who turns "Allow all models" off keeps an allowlist even while it lists every current catalog model, so a model added to the catalog later is off there and reads as new. With it on, the workspace offers the whole catalog, a later model included. REST, GraphQL, MCP, `bex agent env set --models all|ID,…` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** blocked (pin must carry `be26a7c6b2`; t001–t004 and t006–t008 done 2026-11-23, and t005's `dev-10` half held; t005 step 4 reads production once the pin carries the milestone, then t009)
 
 ## Tasks (in order)
 
@@ -55,7 +55,7 @@ Total: **9 tasks, about 6h45m**.
 
 ## Design record (t001, 2026-11-23)
 
-Against [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-settings) (two modes: "Allowlist specific models", "Restrict users to a curated list of approved models", and "Allow all models", "Give users access to all available models") and [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) (`allowed_model_uids` "as stored", "A model is allowed when its UID is listed or it carries a listed tag", and no allow-all field in the API), both re-read 2026-11-23. The m568 and m573 design records ([m568](../done/m568/README.md#design-record-t001-2026-11-22), [m573](../done/m573/README.md#design-record-t001-2026-11-22)) are the base.
+Against [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-settings) (two modes: "Allowlist specific models", "Restrict users to a curated list of approved models", and "Allow all models", "Give users access to all available models") and [List Models](https://docs.devin.ai/desktop/accounts/api-reference/list-models) (`allowed_model_uids` "as stored", "A model is allowed when its UID is listed or it carries a listed tag", and no allow-all field in the API), both re-read 2026-11-23. The m568 and m573 design records ([m568](../../done/m568/README.md#design-record-t001-2026-11-22), [m573](../../done/m573/README.md#design-record-t001-2026-11-22)) are the base.
 
 - **The field.** `allowAllModels`: `Boolean!` on the read (REST `GET /v1/agent-environment`, GraphQL `AgentEnvironment.allowAllModels`, MCP `get_agent_environment`) and `Boolean` on the write (REST `PATCH`, GraphQL `AgentEnvironmentInput.allowAllModels`, MCP `update_agent_environment`). Devin's API has no mode flag, so the name is bex's wire name for the settings page's mode.
   - On the platform route it is `true` while the workspace offers the whole catalog, a model added later included, and `false` under an allowlist or a filter by provider.
@@ -117,7 +117,7 @@ Against [Devin CLI Team Settings](https://docs.devin.ai/cli/enterprise/team-sett
    - With the environment query held (Playwright route), the skeleton's heading, option frame, each of the three options, help line and first four rows had the ready state's boxes exactly at both widths. At 1280 px these were 84, 30, 24/24/24, 32 and 38/20/20/20 px tall, and at 390 px 124, 30, 24/24/24, 48 and 74/20/20/20 px. The ready list's fifth row is the grown catalog's fifth model, and production's catalog has four.
 4. **Torn down** on 2026-11-23: the dashboard and bex-api were stopped, `bash scripts/dev-env.sh 10 down` was run, and the OpenFGA container was removed.
 
-**Production after the deploy:** pending until production's pin carries this milestone's code commit (t005 step 4).
+**Production after the deploy:** pending until production's pin carries `be26a7c6b2` (t005 step 4).
 
 ## Render parity (t006, Devin, 2026-11-23)
 
@@ -174,7 +174,7 @@ No drift was found, so no follow-up note is filed. Devin's enterprise-level and 
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/046](../done/046.md), filed by w10/m568 t001 (design) on 2026-11-22 and promoted by `/loopx w10` on 2026-11-23.
+- **Source:** inbox note [w10/046](../../done/046.md), filed by w10/m568 t001 (design) on 2026-11-22 and promoted by `/loopx w10` on 2026-11-23.
 - **Triage evidence (2026-11-23, `23b3c97413`):**
   - **The premise holds.**
     - `modelOfferPatch` (`lego/backend/internal/agentsessions/environment.go:636`) stores `known_models` NULL whenever an `enabledModels` write leaves no catalog model off (`:679-682`).
@@ -187,7 +187,7 @@ No drift was found, so no follow-up note is filed. Devin's enterprise-level and 
   - **The note's "ship only if admins would miss it".**
     - Production's catalog has not grown since `1988962c01` (2026-11-19): `deepseek/deepseek-v4.1-flash-1017` then three `anthropic/claude-*-5.5` models, read from the live `bex-api` Deployment on pin `ac882b5f557f`.
     - Its `agent_environments` has 3 rows, all bex's own fixtures. None is narrowed, has `known_models` set or filters by provider, and none is on its own key (read-only on both `bex-db` Pods, 2026-11-23). So no admin misses the mode today.
-    - It ships anyway. ADR018's agent-model row records it only as "Divergence filed", without the user's sign-off, and a Devin divergence stands only with that sign-off ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first); `/loopx` worker rules).
+    - It ships anyway. ADR018's agent-model row records it only as "Divergence filed", without the user's sign-off, and a Devin divergence stands only with that sign-off ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first); `/loopx` worker rules).
     - The catalog grows with every model release worth offering. An admin who approved today's models to control spend or data handling would otherwise find the next model on for every member.
   - **Storage may need no migration.** t001 decides.
     - The row `known_models` = catalog with `disabled_models` `{}` can carry "an allowlist that lists every model" once `leftOn`'s pre-m568 clause (`len(env.DisabledModels) == 0`, `:973`) is retired.
@@ -198,6 +198,6 @@ No drift was found, so no follow-up note is filed. Devin's enterprise-level and 
     - CLI: `lego/cli/internal/agent/config.go:384-393` (the read) and `:464-477`, `:549-563` (`env set --models`/`--providers`: their help and handling). The REST PATCH decodes strictly (`rest.go:113`), so a CLI sending the new field to an older bex-api is refused.
     - Dashboard: `enabled-models-section.tsx`, `MODEL_FILTERS` in `lib/environment.ts:42`, `agent-environment-card-skeleton.tsx:377-430`, `api/agent-environment.graphql`, the eight locales and `test/mocks/agent-environment.ts`. The mobile app reads no agent environment, but its generated types are regenerated all the same.
   - **It is more than one sitting.** It touches three API surfaces, the CLI, Settings → Agents and its skeleton, three ADRs and two live checks.
-- **Goal linkage:** cloud coding-agent sessions ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md), ADR008 pillar 5), where Devin is the reference product. It completes the m568 ([design record](../done/m568/README.md#design-record-t001-2026-11-22)) and m573 model lists.
+- **Goal linkage:** cloud coding-agent sessions ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), ADR008 pillar 5), where Devin is the reference product. It completes the m568 ([design record](../../done/m568/README.md#design-record-t001-2026-11-22)) and m573 model lists.
 - **Expected outcome:** an admin who keeps an allowlist keeps exactly the models it lists when the catalog grows, even when it lists all of today's. An admin who wants every model, the next ones included, says so with "Allow all models".
 - **Why now:** w10's model-list line is otherwise complete (m516, m527, m568, m573), and this is its last recorded Devin divergence. It must land before the catalog's next model: every model added before then is on in a workspace whose admins listed every model to keep the list closed. The milestone includes the Render parity task because it changes the REST, GraphQL, MCP, CLI and dashboard reads and writes of the agent environment.
