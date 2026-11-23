@@ -575,8 +575,12 @@ printf 'fake-cnpg-bytes' >"$cn_tmp/fake.tgz"
 helm_pin() { echo "0.29.1 https://cloudnative-pg.github.io/charts $(sha256_of "$cn_tmp/fake.tgz")"; }
 rc=0; (install_pinned_cnpg) >/dev/null 2>&1 || rc=$?
 assert "a verified archive installs" "[ '$rc' = 0 ]"
-assert "it installs as release cnpg in cnpg-system, from the verified archive" \
-  "grep -qE '^helm upgrade --install cnpg .*/cloudnative-pg-0\.29\.1\.tgz -n cnpg-system --create-namespace\$' '$cn_tmp/calls'"
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+read -r cn_repository cn_tag <<<"$(cnpg_operator_image)"
+assert "it installs as release cnpg in cnpg-system, from the verified archive, with production's operator image" \
+  "grep -qF -- \" -n cnpg-system --create-namespace --set image.repository=\$cn_repository --set image.tag=\$cn_tag\" '$cn_tmp/calls' && grep -qE '^helm upgrade --install cnpg .*/cloudnative-pg-0\.29\.1\.tgz -n cnpg-system ' '$cn_tmp/calls'"
+assert "production's operator image is bex's CloudNativePG build (w21/m606)" \
+  "[[ \"\$cn_repository:\$cn_tag\" == ghcr.io/bex-co/bex-operator:cnpg-*@sha256:* ]]"
 assert "the release name matches mock-cluster.sh's" "grep -q 'helm upgrade --install cnpg \"\$chart\" -n cnpg-system' scripts/mock-cluster.sh"
 unset -f helm helm_pin install_pinned_cnpg
 rm -rf "$cn_tmp"

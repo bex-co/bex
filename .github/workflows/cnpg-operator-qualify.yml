@@ -1,0 +1,133 @@
+name: CloudNativePG operator qualification (kind)
+
+# TestApplicationDatabaseExtensionsOnCNPG/PG18 on a real CloudNativePG
+# (scripts/cnpg-operator-qualify.sh): a kind cluster running the operator
+# deploy/gitops/base/cnpg-operator.yaml pins, from production's chart archive,
+# and bexOperandImages' PG18 operand. bex's Cluster projection, the owner's
+# extensions, and the owner's pgaudit across an instance pod restart, which
+# CloudNativePG 1.30.1 itself drops (w21/m606). A CloudNativePG bump that loses
+# bex's patch fails here before it reaches production. Both architectures:
+# production's nodes are amd64, local clusters arm64.
+#
+# workflow_dispatch with operator=upstream runs the same test against the
+# release the bex build patches, where it is expected to fail at the restart.
+
+on:
+  pull_request:
+    paths:
+      - "deploy/gitops/base/cnpg-operator.yaml"
+      - "deploy/cnpg-operator/**"
+      - "deploy/helm-artifacts.lock"
+      - "deploy/pg-operand/matrix.json"
+      - "lego/operator/internal/controller/database_operand.go"
+      - "lego/operator/internal/controller/database_operand_test.go"
+      - "lego/operator/internal/controller/database_operand_cnpg_test.go"
+      - "lego/operator/internal/controller/database_extensions_cnpg_test.go"
+      - "lego/operator/internal/controller/testdata/postgis-migration.sql"
+      - "scripts/cnpg-operator-qualify.sh"
+      - "scripts/lib/helm-pinned.sh"
+      - ".github/workflows/cnpg-operator-qualify.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/gitops/base/cnpg-operator.yaml"
+      - "deploy/cnpg-operator/**"
+      - "deploy/helm-artifacts.lock"
+      - "deploy/pg-operand/matrix.json"
+      - "lego/operator/internal/controller/database_operand.go"
+      - "lego/operator/internal/controller/database_operand_test.go"
+      - "lego/operator/internal/controller/database_operand_cnpg_test.go"
+      - "lego/operator/internal/controller/database_extensions_cnpg_test.go"
+      - "lego/operator/internal/controller/testdata/postgis-migration.sql"
+      - "scripts/cnpg-operator-qualify.sh"
+      - "scripts/lib/helm-pinned.sh"
+      - ".github/workflows/cnpg-operator-qualify.yml"
+  workflow_dispatch:
+    inputs:
+      operator:
+        description: "pinned (production's operator) or upstream (the release it patches; expected to fail at the restart)"
+        type: choice
+        options: [pinned, upstream]
+        default: pinned
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cnpg-operator-qualify-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  arm64:
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04-arm
+    # kind, the chart, the operand pull and one major's test; new job, budget unmeasured.
+    timeout-minutes: 60
+    env:
+      # The operator module on its own go.mod, as operator-test.yml runs it.
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.19.0
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+        with:
+          version: v1.36.1
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+      - name: qualify the operator on kind
+        env:
+          OPERATOR: ${{ inputs.operator || 'pinned' }}
+        run: bash scripts/cnpg-operator-qualify.sh "$OPERATOR"
+
+  amd64:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # linux/amd64 image work: production's nodes run the amd64 operator and operand.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.19.0
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+        with:
+          version: v1.36.1
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+      - name: qualify the operator on kind
+        env:
+          OPERATOR: ${{ inputs.operator || 'pinned' }}
+        run: bash scripts/cnpg-operator-qualify.sh "$OPERATOR"

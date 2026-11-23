@@ -490,6 +490,8 @@ install_traefik() {
 # dev-N `up` happened to install CNPG. The shared cluster now carries it
 # from the start, from production's lock pin, under the release name
 # dev-env.sh's ensure_cnpg looks for (`cnpg`), which then only pins and waits.
+# The operator image is production's too: bex's build of CloudNativePG
+# (cnpg_operator_image, w21/m606), not the chart's default release.
 cnpg_installed() {
   wl_kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 &&
     [ -n "$(wl_kubectl -n cnpg-system get deploy -l app.kubernetes.io/name=cloudnative-pg -o name 2>/dev/null)" ]
@@ -499,14 +501,16 @@ install_cnpg() {
   if argo_manages cnpg-operator || cnpg_installed; then
     return 0
   fi
-  local dir chart
+  local dir chart image repository tag
+  image=$(cnpg_operator_image) || return 1
+  read -r repository tag <<<"$image"
   dir=$(mktemp -d "${TMPDIR:-/tmp}/bex-cnpg-chart.XXXXXX")
   if ! chart=$(fetch_pinned_chart cloudnative-pg "$dir"); then
     rm -rf "$dir"
     return 1
   fi
   if ! KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install cnpg "$chart" -n cnpg-system --create-namespace \
-    --wait --timeout 5m >/dev/null; then
+    --wait --timeout 5m --set image.repository="$repository" --set image.tag="$tag" >/dev/null; then
     rm -rf "$dir"
     echo "error: installing the CNPG operator (release cnpg, namespace cnpg-system) failed" >&2
     return 1

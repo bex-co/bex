@@ -32,9 +32,19 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
-const qualificationCNPGImage = "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07"
+// qualificationCNPGImage is the CloudNativePG operator production runs: bex's
+// build of 1.30.1, whose instance manager keeps an extension whose library the
+// cluster preloads (deploy/cnpg-operator, w21/m606). It must equal
+// deploy/gitops/base/cnpg-operator.yaml's pin.
+const qualificationCNPGImage = "ghcr.io/bex-co/bex-operator:cnpg-1.30.1-bex.1-07557237b85d3984fdf38665f8310288fb166596@sha256:5f8658442ad6979fb2c9060e3889dd5e54b13f4107d65243c67c79d9f88daa85"
+
+// upstreamCNPGImage is the release that build patches, its runtime base. The
+// matrix accepts it only to show what the patch changes: on it, the owner's
+// pgaudit is gone after the restart.
+const upstreamCNPGImage = "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07"
 
 func operandServerVersionNumber(t *testing.T, major string) string {
 	t.Helper()
@@ -100,10 +110,53 @@ func verifyCNPGOperandController(t *testing.T, cl client.Client, server string) 
 	for _, container := range deployment.Spec.Template.Spec.Containers {
 		images = append(images, container.Image)
 	}
-	if !slices.Contains(images, qualificationCNPGImage) || !cnpgQualificationRolledOut(deployment) {
+	image := qualificationCNPGImage
+	if !slices.Contains(images, image) {
+		image = upstreamCNPGImage
+	}
+	if !slices.Contains(images, image) || !cnpgQualificationRolledOut(deployment) {
 		t.Fatalf("CNPG1.30.1 must actually be Ready before matrix: images=%v ready=%d", images, deployment.Status.AvailableReplicas)
 	}
-	t.Logf("actual CNPG controller UID=%s image=%s available=%d", deployment.UID, qualificationCNPGImage, deployment.Status.AvailableReplicas)
+	t.Logf("actual CNPG controller UID=%s image=%s available=%d", deployment.UID, image, deployment.Status.AvailableReplicas)
+}
+
+// TestQualificationCNPGImageIsProductionsPin: the matrix qualifies the
+// operator production runs, which is the bex build and not the release it
+// patches, and that release is the build's own base.
+func TestQualificationCNPGImageIsProductionsPin(t *testing.T) {
+	raw, err := os.ReadFile("../../../../deploy/gitops/base/cnpg-operator.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var application struct {
+		Spec struct {
+			Source struct {
+				Helm struct{ Values string } `json:"helm"`
+			} `json:"source"`
+		} `json:"spec"`
+	}
+	if err := yaml.Unmarshal(raw, &application); err != nil {
+		t.Fatal(err)
+	}
+	var values struct {
+		Image struct{ Repository, Tag string } `json:"image"`
+	}
+	if err := yaml.Unmarshal([]byte(application.Spec.Source.Helm.Values), &values); err != nil {
+		t.Fatal(err)
+	}
+	if pinned := values.Image.Repository + ":" + values.Image.Tag; pinned != qualificationCNPGImage {
+		t.Errorf("production pins %q, the matrix qualifies %q", pinned, qualificationCNPGImage)
+	}
+	if strings.HasPrefix(qualificationCNPGImage, "ghcr.io/cloudnative-pg/") {
+		t.Errorf("the matrix qualifies the upstream release %q, whose instance manager drops an owner's pgaudit (w21/m606)", qualificationCNPGImage)
+	}
+	dockerfile, err := os.ReadFile("../../../../deploy/cnpg-operator/Dockerfile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(strings.Split(string(dockerfile), "\n"), "FROM "+upstreamCNPGImage) {
+		t.Errorf("deploy/cnpg-operator/Dockerfile is not built on %s", upstreamCNPGImage)
+	}
 }
 
 func cnpgQualificationRolledOut(deployment appsv1.Deployment) bool {

@@ -1,16 +1,16 @@
 # w21 · m606 — An owner's `pgaudit` survives a restart: CloudNativePG leaves an extension whose library the cluster preloads, from a bex build until upstream releases it
 
-**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** in progress (t001 done)
+**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** in progress (t001, t002 and t005 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Patch CloudNativePG's instance manager: an unused managed extension whose library the cluster's own `shared_preload_libraries` lists is not dropped, and a change to that list runs the check again — **DONE** | 1h | — |
-| [t002](t002.md) | Build and publish the patched operator image from the pinned upstream tag plus `deploy/cnpg-operator/patches/`, for arm64 and amd64, by digest | 1h30m | t001 |
+| [t002](done/t002.md) | Build and publish the patched operator image from the pinned upstream tag plus `deploy/cnpg-operator/patches/`, for arm64 and amd64, by digest — **DONE** | 1h30m | t001 |
 | [t003](t003.md) | `TestApplicationDatabaseExtensionsOnCNPG` covers the restart, CI runs it on kind against the patched image, and it fails on stock 1.30.1 | 1h15m | t002 |
 | [t004](t004.md) | Adopt the patched image: `cnpg-operator.yaml`, `gitops-validate.sh`, the qualification pin, mock-cluster and dev-env, ADR092 and ADR018 | 45m | t003 |
-| [t005](t005.md) | Ready the patch for upstream: an issue text and a PR branch on a `bex-co` fork of `cloudnative-pg`, and an inbox note for the user's DCO sign-off | 30m | t001 |
+| [t005](done/t005.md) | Ready the patch for upstream: an issue text and a PR branch on a `bex-co` fork of `cloudnative-pg`, and an inbox note for the user's DCO sign-off — **DONE** | 30m | t001 |
 | [t006](t006.md) | Production: an owner's `pgaudit` survives a primary restart on a new Free database (disposable), and another new database still creates it | 45m | t004 |
 | [t007](t007.md) | Simplify | 20m | t006 |
 | [t008](t008.md) | Test coverage | 40m | t006 |
@@ -42,3 +42,9 @@
   - Running a patched upstream build until upstream ships the fix follows the sandbox pool's gVisor `release-20260622.0-bex.<n>` ([ADR042](../../../docs/ADR042-sandbox-cluster-substrate.md), w4/m545). CloudNativePG requires a real-name DCO sign-off, so only the user can open the upstream PR. Opening it is a separate inbox note (t005), so parity does not wait on it.
 - **Render parity task omitted:** no REST, GraphQL, MCP or dashboard surface changes. Render's extension surface is SQL only, and ADR018's row is `—` for all four surfaces. The SQL behaviour against Render's documentation is the definition of done.
 - **Sequence:** adopting the image is an in-place instance-manager update with no PostgreSQL restart. The new manager is already patched, so the adoption itself drops nothing. It can reach production before or after w21/m584–m586. Until it does, a restart after m585's pin drops an owner's `pgaudit`, as w21/122 recorded.
+
+## Progress
+
+- **The patch (t001, `cce1b285dd`):** `deploy/cnpg-operator/patches/0001-instance-keep-extensions-the-cluster-preloads.patch` on `v1.30.1` (`2a35abb46`, `deploy/cnpg-operator/UPSTREAM`).
+- **The image (t002):** `ghcr.io/bex-co/bex-operator:cnpg-1.30.1-bex.1-07557237b85d3984fdf38665f8310288fb166596@sha256:5f8658442ad6979fb2c9060e3889dd5e54b13f4107d65243c67c79d9f88daa85`, published, signed and verified by `cnpg-operator-image.yml` run 45288684433.
+- **Upstream (t005):** branch `bex-co/cloudnative-pg@bex/keep-preloaded-extensions` (`d7310e91b7`, on upstream `main` `f076d5ba99`); the user's steps are inbox note [w21/123](../123.md).

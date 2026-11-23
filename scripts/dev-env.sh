@@ -406,7 +406,8 @@ require_shared_platform() {
 # ensure_cnpg — install the CNPG operator when the CRD is absent rather than
 # assuming the shared cluster has it, then wait for it to be READY. Installs
 # production's archive — the cloudnative-pg line of deploy/helm-artifacts.lock,
-# sha-checked, which deploy/gitops/base/cnpg-operator.yaml mirrors — under the
+# sha-checked, which deploy/gitops/base/cnpg-operator.yaml mirrors — with
+# production's operator image (bex's build, cnpg_operator_image) under the
 # release name mock-cluster.sh uses (`cnpg`), minus the platform nodeSelector
 # a disposable kind node does not carry. The old fallback pulled 0.26.0 by
 # version label while production ran 0.29.1 (w2/m289, w2/m295 t003).
@@ -439,11 +440,14 @@ apply_retrying_webhook() {
 }
 
 install_pinned_cnpg() {
-  local dir chart rc=0
+  local dir chart image repository tag rc=0
   echo "    CNPG operator absent — installing cloudnative-pg $(helm_pin cloudnative-pg | awk '{print $1}') from deploy/helm-artifacts.lock"
+  image=$(cnpg_operator_image) || exit 1
+  read -r repository tag <<<"$image"
   dir=$(mktemp -d "${TMPDIR:-/tmp}/bex-cnpg-chart.XXXXXX")
   if chart=$(fetch_pinned_chart cloudnative-pg "$dir"); then
-    helm upgrade --install cnpg "$chart" -n cnpg-system --create-namespace >/dev/null || rc=$?
+    helm upgrade --install cnpg "$chart" -n cnpg-system --create-namespace \
+      --set image.repository="$repository" --set image.tag="$tag" >/dev/null || rc=$?
   else
     rc=1
   fi

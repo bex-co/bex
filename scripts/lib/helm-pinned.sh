@@ -41,3 +41,24 @@ fetch_pinned_chart() {
   fi
   printf '%s\n' "$dir/$chart-$version.tgz"
 }
+
+# cnpg_operator_image prints "REPOSITORY TAG" for the CloudNativePG operator
+# production runs, read from deploy/gitops/base/cnpg-operator.yaml's Helm
+# values: bex's build, whose instance manager keeps an owner's pgaudit across a
+# restart (deploy/cnpg-operator, w21/m606). The chart's default is the release
+# it patches, so a local install passes both as --set values.
+cnpg_operator_image() {
+  awk '
+    /^        image:[[:space:]]*$/ { in_image = 1; next }
+    in_image && /^          repository:/ { repository = $2; next }
+    in_image && /^          tag:/ { tag = $2; next }
+    { in_image = 0 }
+    END {
+      if (repository == "" || tag == "") {
+        print "error: deploy/gitops/base/cnpg-operator.yaml pins no image.repository and image.tag" > "/dev/stderr"
+        exit 1
+      }
+      print repository, tag
+    }
+  ' deploy/gitops/base/cnpg-operator.yaml
+}

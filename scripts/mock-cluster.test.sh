@@ -314,6 +314,18 @@ kubectl() { echo "kubectl $*" >>"$ccalls"; case "$*" in *"wait --for=condition=e
 install_cnpg
 check "a missing CNPG operator is installed as release cnpg in cnpg-system" \
   "$(grep -c "^helm upgrade --install cnpg $tmp/cloudnative-pg-0.29.1.tgz -n cnpg-system --create-namespace --wait" "$ccalls")" "1"
+read -r cnpg_repository cnpg_tag <<<"$(cnpg_operator_image)"
+check "it runs production's operator image, not the chart's default" \
+  "$(grep -c -- "--set image.repository=$cnpg_repository --set image.tag=$cnpg_tag\$" "$ccalls")" "1"
+check "production's operator image is bex's CloudNativePG build (w21/m606)" \
+  "$(case "$cnpg_repository:$cnpg_tag" in ghcr.io/bex-co/bex-operator:cnpg-*@sha256:*) echo bex ;; *) echo "$cnpg_repository:$cnpg_tag" ;; esac)" "bex"
+# An Application without an image pin is refused, never installed with the
+# chart's default release.
+(cd "$tmp" && mkdir -p deploy/gitops/base && printf '        image:\n          tag: 1.30.1\n' >deploy/gitops/base/cnpg-operator.yaml)
+check "a pin without an image repository is refused" "$(cd "$tmp" && cnpg_operator_image >/dev/null 2>&1 && echo accepted || echo refused)" "refused"
+: >"$ccalls"
+(cd "$tmp" && install_cnpg) >/dev/null 2>&1 || true
+check "and installs nothing" "$(grep -c '^helm' "$ccalls" || true)" "0"
 unset -f helm kubectl fetch_pinned_chart
 # shellcheck source=lib/helm-pinned.sh
 . scripts/lib/helm-pinned.sh

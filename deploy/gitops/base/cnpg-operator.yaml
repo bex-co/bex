@@ -17,8 +17,15 @@ spec:
     targetRevision: "sha256:4ab30b6a4d8aa029ff551102ec2fd9835c9f16c91f73963618a970b0b10f5a67"
     helm:
       values: |
+        # bex's build of CloudNativePG 1.30.1 (deploy/cnpg-operator, w21/m606):
+        # the release plus a patch whose instance manager keeps an extension
+        # the cluster preloads, so an owner's pgaudit survives a restart.
+        # Published by cnpg-operator-image.yml, qualified by
+        # cnpg-operator-qualify.yml; it comes out once an upstream release
+        # carries the fix (docs/ADR092 § The CloudNativePG build).
         image:
-          tag: 1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07
+          repository: ghcr.io/bex-co/bex-operator
+          tag: cnpg-1.30.1-bex.1-07557237b85d3984fdf38665f8310288fb166596@sha256:5f8658442ad6979fb2c9060e3889dd5e54b13f4107d65243c67c79d9f88daa85
         # Operator upgrades must preserve running single-instance tenant databases.
         config:
           data:

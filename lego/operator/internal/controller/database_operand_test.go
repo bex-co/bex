@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"maps"
 	"os"
@@ -25,7 +26,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -421,7 +424,75 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 					t.Errorf("%s = %v %q, want permission denied", refused, err, out)
 				}
 			}
+			ownerPgauditAcrossRestartOnCNPG(t, cl, kubeconfig, namespace, "geo_prod", asOwner)
 		})
+	}
+}
+
+// ownerPgauditAcrossRestartOnCNPG: the pgaudit the owner created (in
+// ownerContribOnCNPG) is still there after the instance pod restarts, as on
+// Render, and the owner can drop it. bex preloads pgaudit and sets no pgaudit.*
+// parameter, so CloudNativePG 1.30.1's instance manager drops it on its first
+// pass after the start; bex's build keeps it (w21/m606). No other database
+// gains it either way.
+func ownerPgauditAcrossRestartOnCNPG(t *testing.T, cl client.Client, kubeconfig, namespace, dbname string, asOwner func(string) (string, error)) {
+	t.Helper()
+	ctx := context.Background()
+	superuser := func(database, sql string) (string, error) {
+		cmd := exec.Command("kubectl", "--kubeconfig", kubeconfig, "-n", namespace, "exec", "-i", "pg-1", "-c", "postgres", "--",
+			"psql", "-X", "-v", "ON_ERROR_STOP=1", "-At", "-d", database)
+		cmd.Stdin = strings.NewReader(sql)
+		out, err := cmd.CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	}
+	// The pass that would drop pgaudit creates pg_stat_statements (bex sets
+	// pg_stat_statements.track) in the same transaction, so its return marks
+	// that pass as committed.
+	if out, err := superuser(dbname, "DROP EXTENSION pg_stat_statements"); err != nil {
+		t.Fatalf("drop pg_stat_statements before the restart: %v %s", err, out)
+	}
+	var pod corev1.Pod
+	key := client.ObjectKey{Namespace: namespace, Name: "pg-1"}
+	if err := cl.Get(ctx, key, &pod); err != nil {
+		t.Fatal(err)
+	}
+	before := pod.UID
+	if err := cl.Delete(ctx, &pod); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 5*time.Minute, "a new pg-1 to be ready", func() bool {
+		var current corev1.Pod
+		if err := cl.Get(ctx, key, &current); err != nil || current.UID == before {
+			return false
+		}
+		for _, condition := range current.Status.Conditions {
+			if condition.Type == corev1.PodReady {
+				return condition.Status == corev1.ConditionTrue
+			}
+		}
+		return false
+	})
+	waitFor(t, 3*time.Minute, "the instance manager's extension pass after the restart", func() bool {
+		out, err := superuser(dbname, "SELECT count(*) FROM pg_extension WHERE extname = 'pg_stat_statements'")
+		return err == nil && out == "1"
+	})
+	if out, err := asOwner("SELECT count(*) FROM pg_extension WHERE extname = 'pgaudit'"); err != nil || out != "1" {
+		t.Fatalf("after the restart the owner's pgaudit = %v %q, want it still installed", err, out)
+	}
+	databases, err := superuser("postgres", "SELECT datname FROM pg_database WHERE datallowconn ORDER BY 1")
+	if err != nil {
+		t.Fatalf("list databases: %v %s", err, databases)
+	}
+	for database := range strings.FieldsSeq(databases) {
+		if database == dbname {
+			continue
+		}
+		if out, err := superuser(database, "SELECT count(*) FROM pg_extension WHERE extname = 'pgaudit'"); err != nil || out != "0" {
+			t.Errorf("after the restart %s has pgaudit = %v %q, want none: its owner never created it", database, err, out)
+		}
+	}
+	if out, err := asOwner("DROP EXTENSION pgaudit; SELECT count(*) FROM pg_extension WHERE extname = 'pgaudit'"); err != nil || !strings.HasSuffix(out, "0") {
+		t.Fatalf("the owner's DROP EXTENSION pgaudit after the restart = %v %q", err, out)
 	}
 }
 
