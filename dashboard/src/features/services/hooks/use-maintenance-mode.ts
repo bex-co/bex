@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetMaintenanceModeDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
 import {
   ProtectedConfirmationDismissed,
@@ -59,7 +59,7 @@ export function useMaintenanceMode(): UseMaintenanceModeResult {
       } catch (err) {
         if (err instanceof ProtectedConfirmationDismissed) return false;
         toast.error(
-          mutationErrorMessage(err, t("services.maintenanceModeError")),
+          adminOnlyErrorMessage(err, t("services.maintenanceModeError"), t),
         );
         return false;
       } finally {

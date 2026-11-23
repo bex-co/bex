@@ -7,7 +7,7 @@ import {
   RestartServerDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import { sleep } from "@/common/lib/utils/time";
 import { deriveStatus } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
@@ -129,9 +129,10 @@ export function useServiceLifecycle(
           } as const;
         }
         toast.error(
-          mutationErrorMessage(
+          adminOnlyErrorMessage(
             err,
             t("services.toastError", { name: service.name }),
+            t,
           ),
         );
         return { status: "error" } as const;

@@ -56,13 +56,29 @@ func (allowAllRelations) Check(context.Context, string, string, string) (bool, e
 func asNonAdmin(svc *Service) { svc.Authz = denyWorkspaceManage{} }
 func asAdmin(svc *Service)    { svc.Authz = allowAllRelations{} }
 
+// inProtectedEnvironment labels a a member of env-production, the environment
+// whose id a refusal names; the recording store answers its protection.
+func inProtectedEnvironment(a *appv1alpha1.App) *appv1alpha1.App {
+	a.Labels[core.LabelEnvironment] = "env-production"
+	return a
+}
+
+// adminOnlyRefusal reports err as the coded refusal a protected environment
+// gives a non-Admin, as a datastore's is (w4/728): 403,
+// PROTECTED_ENVIRONMENT_ADMIN_REQUIRED, and the environment's id in params.
+func adminOnlyRefusal(err error) bool {
+	var coded *core.CodedError
+	return errors.As(err, &coded) && coded.Code == core.ProtectedPlacementCode &&
+		errors.Is(err, core.ErrForbidden) && coded.Params["environmentId"] == "env-production"
+}
+
 func TestDelete_NonAdminBlockedWhenProtected(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	svc, cl := newService(rec, inProtectedEnvironment(managedApp("web", "srv-1")))
 	asNonAdmin(svc)
 
-	if err := svc.Delete(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Delete on a protected member by a non-admin: got %v, want ErrForbidden", err)
+	if err := svc.Delete(ctxAs("user-a"), "web"); !adminOnlyRefusal(err) {
+		t.Fatalf("Delete on a protected member by a non-admin: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
 	// The App must survive a blocked delete.
 	getApp(t, cl, "web")
@@ -88,12 +104,12 @@ func TestDelete_AdminSucceedsWithNoPhrase(t *testing.T) {
 // A typed phrase no longer clears anything for a non-admin.
 func TestDelete_ConfirmPhraseDoesNotSubstituteForTheAdminRole(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	svc, _ := newService(rec, inProtectedEnvironment(managedApp("web", "srv-1")))
 	asNonAdmin(svc)
 
 	ctx := core.WithConfirm(ctxAs("user-a"), "sudo delete service web")
-	if err := svc.Delete(ctx, "web"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Delete with the old phrase by a non-admin: got %v, want ErrForbidden", err)
+	if err := svc.Delete(ctx, "web"); !adminOnlyRefusal(err) {
+		t.Fatalf("Delete with the old phrase by a non-admin: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
 }
 
@@ -119,20 +135,20 @@ func TestDelete_RetryRemovesCRAfterSourceRowIsGone(t *testing.T) {
 
 func TestSuspendAndResume_NonAdminBlockedWhenProtected(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	running := managedApp("web", "srv-1")
-	stopped := managedApp("idle", "srv-1")
+	running := inProtectedEnvironment(managedApp("web", "srv-1"))
+	stopped := inProtectedEnvironment(managedApp("idle", "srv-1"))
 	stopped.Spec.Suspended = true
 	svc, cl := newService(rec, running, stopped)
 	asNonAdmin(svc)
 
-	if _, err := svc.Suspend(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Suspend on a protected member by a non-admin: got %v, want ErrForbidden", err)
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); !adminOnlyRefusal(err) {
+		t.Fatalf("Suspend on a protected member by a non-admin: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
 	if getApp(t, cl, "web").Spec.Suspended {
 		t.Fatal("a blocked suspend must not patch the CR")
 	}
-	if _, err := svc.Resume(ctxAs("user-a"), "idle"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Resume on a protected member by a non-admin: got %v, want ErrForbidden", err)
+	if _, err := svc.Resume(ctxAs("user-a"), "idle"); !adminOnlyRefusal(err) {
+		t.Fatalf("Resume on a protected member by a non-admin: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
 	if !getApp(t, cl, "idle").Spec.Suspended {
 		t.Fatal("a blocked resume must not patch the CR")
@@ -321,11 +337,11 @@ func TestProtectedMemberSettingsNeedNeitherPhraseNorAdmin(t *testing.T) {
 
 func TestProtectedMemberMaintenanceModeNeedsAdmin(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-	svc, cl := newService(rec, maintenanceApp())
+	svc, cl := newService(rec, inProtectedEnvironment(maintenanceApp()))
 	asNonAdmin(svc)
 
-	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("maintenance on by a non-admin: got %v, want ErrForbidden", err)
+	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); !adminOnlyRefusal(err) {
+		t.Fatalf("maintenance on by a non-admin: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
 	if m := getApp(t, cl, "web").Spec.MaintenanceMode; m != nil && m.Enabled {
 		t.Fatal("a refused verb must not have changed the spec")
@@ -403,14 +419,14 @@ func TestGuardedMutationsKeepTheirConfirmArgument(t *testing.T) {
 // both transports: the browser terminal ticket and native SSH.
 func TestProtectedMemberShellNeedsAdmin(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	svc, _ := newService(rec, inProtectedEnvironment(managedApp("web", "srv-1")))
 	asNonAdmin(svc)
 
-	if _, err := svc.CreateShellSession(ctxAs("user-a"), "web", ""); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("CreateShellSession by a non-admin = %v, want ErrForbidden", err)
+	if _, err := svc.CreateShellSession(ctxAs("user-a"), "web", ""); !adminOnlyRefusal(err) {
+		t.Fatalf("CreateShellSession by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
-	if _, err := svc.ResolveSSHSession(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("ResolveSSHSession by a non-admin = %v, want ErrForbidden", err)
+	if _, err := svc.ResolveSSHSession(ctxAs("user-a"), "web"); !adminOnlyRefusal(err) {
+		t.Fatalf("ResolveSSHSession by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 	}
 
 	asAdmin(svc)

@@ -35,7 +35,7 @@ import (
 // Render lets anyone who publishes the render.yaml change what it manages
 // (ApplyEnvGroup, LinkEnvGroup).
 func (s *Service) requireEnvironmentAdmin(ctx context.Context, workspace, environmentID, verb string) error {
-	return core.RequireEnvironmentAdminCoded(ctx, s.Protection, environmentID, verb, func() error {
+	return core.RequireEnvironmentAdmin(ctx, s.Protection, environmentID, verb, func() error {
 		return s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspace))
 	})
 }

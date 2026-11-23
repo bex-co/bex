@@ -4,7 +4,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -50,7 +50,7 @@ export function useDeleteKeyValue(): UseDeleteKeyValueResult {
           } as const;
         }
         toast.error(
-          mutationErrorMessage(err, t("keyvalue.deleteError", { name })),
+          adminOnlyErrorMessage(err, t("keyvalue.deleteError", { name }), t),
         );
         return { status: "error" } as const;
       } finally {

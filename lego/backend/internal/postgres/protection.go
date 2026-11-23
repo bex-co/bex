@@ -24,18 +24,11 @@ import (
 )
 
 // requireUnprotected restricts the verbs Render reserves to Admins on a member
-// of a protected environment (core.ProtectedVerbRestricted; w8/187).
+// of a protected environment (core.ProtectedVerbRestricted; w8/187, w4/m594). A
+// non-Admin's refusal is coded PROTECTED_ENVIRONMENT_ADMIN_REQUIRED
+// (core.RequireEnvironmentAdmin; w4/728).
 func (s *Service) requireUnprotected(ctx context.Context, database *appv1alpha1.Database, verb string) error {
 	return core.RequireEnvironmentAdmin(ctx, s.Protection, database.Labels[core.LabelEnvironment], verb, func() error {
-		return s.AuthorizeDatabaseFresh(ctx, core.RelCanManage, database)
-	})
-}
-
-// requireProtectedAdmin is requireUnprotected for the verbs w4/m594 restricts
-// (viewing the credentials, changing the IP rules), with a non-Admin's refusal
-// coded PROTECTED_ENVIRONMENT_ADMIN_REQUIRED (core.RequireEnvironmentAdminCoded).
-func (s *Service) requireProtectedAdmin(ctx context.Context, database *appv1alpha1.Database, verb string) error {
-	return core.RequireEnvironmentAdminCoded(ctx, s.Protection, database.Labels[core.LabelEnvironment], verb, func() error {
 		return s.AuthorizeDatabaseFresh(ctx, core.RelCanManage, database)
 	})
 }

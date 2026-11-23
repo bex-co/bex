@@ -125,8 +125,10 @@ func (g protectionGuard) AppProtected(ctx context.Context, a *appv1alpha1.App) (
 
 // requireUnprotected restricts the verbs Render reserves to Admins on a App
 // belonging to a protectedStatus=protected Environment (core.ProtectedVerbRestricted;
-// w8/187): the caller must pass a fresh workspace-manage check. Every other
-// verb passes, and none asks for a typed phrase.
+// w8/187): the caller must pass a fresh workspace-manage check, and a
+// non-Admin's refusal is coded PROTECTED_ENVIRONMENT_ADMIN_REQUIRED as a
+// datastore's is (core.ProtectedAdminError; w4/728). Every other verb passes,
+// and none asks for a typed phrase.
 func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error {
 	if !core.ProtectedVerbRestricted(verb) {
 		return nil
@@ -138,5 +140,5 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 	if !protected {
 		return nil
 	}
-	return s.AuthorizeAppFresh(ctx, core.RelCanManage, a)
+	return core.ProtectedAdminError(a.Labels[core.LabelEnvironment], verb, s.AuthorizeAppFresh(ctx, core.RelCanManage, a))
 }

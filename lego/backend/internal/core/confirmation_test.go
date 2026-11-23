@@ -92,9 +92,12 @@ func TestRestrictedDecision(t *testing.T) {
 // TestRestrictedDecisionAgreesWithRequireEnvironmentAdmin: for every verb and
 // every protection and admin answer, the projection is allowed exactly when
 // the guard passes, so a client gating on it never offers a verb the guard
-// refuses or hides one it admits.
+// refuses or hides one it admits; and the projection reads admin-only exactly
+// when the guard answers the coded refusal (w4/728), so a raced click names
+// the reason the disabled control showed.
 func TestRestrictedDecisionAgreesWithRequireEnvironmentAdmin(t *testing.T) {
-	verbs := []string{"create", "move", "delete", "suspend", "resume", "take offline", "shell", "restart", "deploy"}
+	verbs := []string{"create", "move", "delete", "suspend", "resume", "take offline", "shell",
+		VerbViewCredentials, VerbChangeAccessControl, VerbEnvironmentVariables, "restart", "deploy"}
 	for _, verb := range verbs {
 		for _, protected := range []bool{true, false} {
 			for _, adminErr := range []error{nil, ErrForbidden} {
@@ -106,7 +109,50 @@ func TestRestrictedDecisionAgreesWithRequireEnvironmentAdmin(t *testing.T) {
 				if d.Allowed() != (guard == nil) {
 					t.Errorf("%s protected=%t admin=%v: projection %+v, guard %v", verb, protected, adminErr, d, guard)
 				}
+				var coded *CodedError
+				if adminOnly := d.Reason == ReasonProtectedEnvironmentAdmin; adminOnly != (errors.As(guard, &coded) && coded.Code == ProtectedPlacementCode) {
+					t.Errorf("%s protected=%t admin=%v: projection %+v, guard %v", verb, protected, adminErr, d, guard)
+				}
 			}
+		}
+	}
+}
+
+// TestRequireEnvironmentAdminCodesTheRoleRefusal (w4/728): on a protected
+// member every restricted verb answers a non-Admin with the coded 403 naming
+// the environment by its public id and, in words, the action; a refusal coded
+// with its own cause and an outage keep their own answer, so neither reads as
+// a role refusal.
+func TestRequireEnvironmentAdminCodesTheRoleRefusal(t *testing.T) {
+	store := fakeProtection{protected: true}
+	for verb, action := range map[string]string{
+		"delete":                 "delete resources",
+		"suspend":                "suspend resources",
+		"resume":                 "resume resources",
+		"take offline":           "turn on maintenance mode",
+		"shell":                  "open a shell",
+		VerbViewCredentials:      VerbViewCredentials,
+		VerbChangeAccessControl:  VerbChangeAccessControl,
+		VerbEnvironmentVariables: VerbEnvironmentVariables,
+	} {
+		err := RequireEnvironmentAdmin(t.Context(), store, "env-d00000000000000000a0", verb, func() error { return fmt.Errorf("check: %w", ErrForbidden) })
+		var coded *CodedError
+		if !errors.As(err, &coded) || coded.Code != ProtectedPlacementCode || !errors.Is(err, ErrForbidden) ||
+			coded.Params["environmentId"] != "evm-d00000000000000000a0" {
+			t.Errorf("%s: %#v, want the coded refusal naming evm-d00000000000000000a0", verb, err)
+			continue
+		}
+		if want := "only workspace Admins can " + action + " in a protected environment"; coded.Error() != want {
+			t.Errorf("%s: message %q, want %q", verb, coded.Error(), want)
+		}
+	}
+	for _, own := range []error{
+		NewForbiddenError("TWO_FACTOR_REQUIRED", "enable two-factor authentication", nil),
+		NewInsufficientScopeError(ScopeWrite),
+		fmt.Errorf("%w: down", ErrAuthzUnavailable),
+	} {
+		if err := RequireEnvironmentAdmin(t.Context(), store, "env-1", "suspend", func() error { return own }); err != own {
+			t.Errorf("RequireEnvironmentAdmin with admin %v = %v, want it unchanged", own, err)
 		}
 	}
 }

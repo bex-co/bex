@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import { useMarkServiceDeleting } from "@/features/services/lib/service-deleting";
 import {
   protectedConfirmationFromError,
@@ -60,7 +60,7 @@ export function useDeleteService(): UseDeleteServiceResult {
           } as const;
         }
         toast.error(
-          mutationErrorMessage(err, t("services.deleteError", { name })),
+          adminOnlyErrorMessage(err, t("services.deleteError", { name }), t),
         );
         return { status: "error" } as const;
       } finally {

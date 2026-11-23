@@ -19,6 +19,7 @@ import type { DatabaseView } from "@/features/databases/types";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { Capabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -401,6 +402,36 @@ describe("BulkResourceToolbar Suspend and Resume (w4/m550)", () => {
     );
     expect(client.mutate).toHaveBeenCalledTimes(2);
     expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
+  });
+
+  // w4/728: a row the server refuses because the caller is no longer an Admin
+  // of the protected environment reads Render's reason, not the server's.
+  it("reads a row's raced admin-only refusal as Render's reason", async () => {
+    client.mutate.mockImplementation(
+      async ({ variables }: { variables: { id: string } }) => {
+        if (variables.id === "site")
+          throw codedGraphQLError(
+            "PROTECTED_ENVIRONMENT_ADMIN_REQUIRED",
+            { environmentId: "evm-1" },
+            "only workspace Admins can suspend resources in a protected environment",
+          );
+        return { data: {} };
+      },
+    );
+    const user = await selectAll([web, site], true);
+    await user.click(screen.getByRole("button", { name: "Suspend" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.type(
+      within(dialog).getByRole("textbox"),
+      "sudo suspend 2 services",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Suspend services" }),
+    );
+    expect(
+      await within(dialog).findByText("This action is limited to admins."),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/only workspace Admins/)).toBeNull();
   });
 
   it("sends nothing when the role changed between selection and confirmation", async () => {

@@ -104,11 +104,11 @@ const (
 	VerbEnvironmentVariables = "view or change environment variables"
 )
 
-// ProtectedPlacementCode is the 403 a non-Admin receives for creating a
-// resource in, or moving one into or out of, a protected environment (w3/m281).
-// A coded refusal, unlike the bare FORBIDDEN the other restricted verbs
-// return, so every surface — and the dashboard's raced-403 path — can name the
-// reason without parsing the message.
+// ProtectedPlacementCode is the 403 a non-Admin receives for every restricted
+// verb on a member of a protected environment: creating a resource in it or
+// moving one into or out of it (w3/m281), and every verb RequireEnvironmentAdmin
+// guards (w4/m594, w4/728). A coded refusal, so every surface — and the
+// dashboard's raced-403 path — can name the reason without parsing the message.
 const ProtectedPlacementCode = "PROTECTED_ENVIRONMENT_ADMIN_REQUIRED"
 
 // ProtectedPlacementRefusal is the ProtectedPlacementCode refusal for
@@ -132,7 +132,10 @@ func PlacementRefusal(environmentID string, err error) error {
 }
 
 // RequireEnvironmentAdmin refuses a restricted verb on a member of a protected
-// environment unless admin (a fresh workspace-manage check) passes. Empty
+// environment unless admin (a fresh workspace-manage check) passes, answering
+// admin's plain role refusal as ProtectedAdminRefusal (w4/m594, w4/728). A
+// refusal coded with its own cause (a token missing the scope, a two-factor
+// requirement) and an outage pass through, as in protectedAdminDecision. Empty
 // environment/store are no-ops so DB-less and environment-less resources keep
 // their original behavior, as do verbs Render leaves open.
 func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionStore, environmentID, verb string, admin func() error) error {
@@ -146,7 +149,7 @@ func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionSto
 	if !protected {
 		return nil
 	}
-	return admin()
+	return ProtectedAdminError(environmentID, verb, admin())
 }
 
 // ProtectedAdminRefusal is the ProtectedPlacementCode refusal of verb, a
@@ -156,18 +159,24 @@ func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionSto
 // parsing the message.
 func ProtectedAdminRefusal(environmentID, verb string) *CodedError {
 	return NewForbiddenError(ProtectedPlacementCode,
-		"only workspace Admins can "+verb+" in a protected environment",
+		"only workspace Admins can "+protectedVerbAction(verb)+" in a protected environment",
 		map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID)})
 }
 
-// RequireEnvironmentAdminCoded is RequireEnvironmentAdmin with admin's plain
-// role refusal answered as ProtectedAdminRefusal (w4/m594). A refusal coded
-// with its own cause (a token missing the scope, a two-factor requirement) and
-// an outage pass through, as in protectedAdminDecision.
-func RequireEnvironmentAdminCoded(ctx context.Context, store EnvironmentProtectionStore, environmentID, verb string, admin func() error) error {
-	return RequireEnvironmentAdmin(ctx, store, environmentID, verb, func() error {
-		return ProtectedAdminError(environmentID, verb, admin())
-	})
+// protectedVerbAction words verb as the action a refusal names, so Render's
+// operations, whose 403 carries no bex code (w8/411), still say what was
+// refused: the guard's own names for maintenance mode and shell access are
+// not what a caller did.
+func protectedVerbAction(verb string) string {
+	switch verb {
+	case "delete", "suspend", "resume":
+		return verb + " resources"
+	case "take offline":
+		return "turn on maintenance mode"
+	case "shell":
+		return "open a shell"
+	}
+	return verb
 }
 
 // ProtectedAdminError is err, a fresh workspace-manage check's answer for verb

@@ -178,7 +178,7 @@ func (s *Service) createUser(ctx context.Context, name, field, role string, asDe
 	// echoes nothing: its password is read back through the gated connection
 	// info.
 	if !asDefault {
-		if err := s.requireProtectedAdmin(ctx, d, core.VerbViewCredentials); err != nil {
+		if err := s.requireUnprotected(ctx, d, core.VerbViewCredentials); err != nil {
 			return CreateUserResult{}, nil, err
 		}
 	}

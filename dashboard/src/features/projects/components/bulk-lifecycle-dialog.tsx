@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import {
   ResumeDatabaseDocument,
   ResumeKeyValueDocument,
@@ -170,7 +170,7 @@ export function BulkLifecycleDialog({
     } catch (err) {
       setRow(target.key, {
         status: "error",
-        message: mutationErrorMessage(err, t("projects.bulkRowError")),
+        message: adminOnlyErrorMessage(err, t("projects.bulkRowError"), t),
       });
     }
   }

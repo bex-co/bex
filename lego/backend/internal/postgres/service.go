@@ -1155,7 +1155,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	}
 	// In a protected environment only an Admin views the password and the
 	// connection URLs (render.com/docs/projects; w4/m594).
-	if err := s.requireProtectedAdmin(ctx, d, core.VerbViewCredentials); err != nil {
+	if err := s.requireUnprotected(ctx, d, core.VerbViewCredentials); err != nil {
 		return PostgresConnectionInfo{}, err
 	}
 	if d.Spec.Public && d.Status.ExternalHost == "" {
@@ -1913,7 +1913,7 @@ func (s *Service) checkUpdateFields(ctx context.Context, d *appv1alpha1.Database
 	// And the inbound IP rules, asked on their own so a patch that also
 	// upgrades or renames cannot carry them past it (w4/m594).
 	if core.AllowListPatchChanges(d.Spec.Public, d.Spec.IPAllowList, patch.IPAllowList, patch.Public) {
-		if err := s.requireProtectedAdmin(ctx, d, core.VerbChangeAccessControl); err != nil {
+		if err := s.requireUnprotected(ctx, d, core.VerbChangeAccessControl); err != nil {
 			return err
 		}
 	}

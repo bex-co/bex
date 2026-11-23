@@ -101,17 +101,18 @@ func ctxAsCaller() context.Context {
 
 // The rule is Render's (w8/187): in a protected environment only a workspace
 // Admin may delete, suspend or resume a database, with no typed phrase;
-// everything else is open to anyone who may do it elsewhere.
+// everything else is open to anyone who may do it elsewhere. A non-Admin's
+// refusal is coded PROTECTED_ENVIRONMENT_ADMIN_REQUIRED (w4/728).
 func TestProtectedDatabaseDeleteSuspendResumeNeedAdmin(t *testing.T) {
 	t.Run("a non-admin is refused and nothing moves", func(t *testing.T) {
 		db := databaseForProtection("dpg-orders", "orders", true)
 		svc, cl, _ := protectedPostgresService(db)
 		svc.Authz = denyWorkspaceManage{}
-		if err := svc.DeletePostgres(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("DeletePostgres by a non-admin = %v, want ErrForbidden", err)
+		if err := svc.DeletePostgres(ctxAsCaller(), db.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("DeletePostgres by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
-		if _, err := svc.Suspend(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("Suspend by a non-admin = %v, want ErrForbidden", err)
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("Suspend by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
 		var got appv1alpha1.Database
 		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil || got.Spec.Suspended {
@@ -119,8 +120,8 @@ func TestProtectedDatabaseDeleteSuspendResumeNeedAdmin(t *testing.T) {
 		}
 		// The old phrase substitutes for nothing.
 		ctx := core.WithConfirm(ctxAsCaller(), "sudo delete database orders")
-		if err := svc.DeletePostgres(ctx, db.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("DeletePostgres with the old phrase = %v, want ErrForbidden", err)
+		if err := svc.DeletePostgres(ctx, db.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("DeletePostgres with the old phrase = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
 	})
 
@@ -148,8 +149,8 @@ func TestProtectedDatabaseDeleteSuspendResumeNeedAdmin(t *testing.T) {
 		db.Spec.Suspended = true
 		svc, _, _ := protectedPostgresService(db)
 		svc.Authz = denyWorkspaceManage{}
-		if _, err := svc.Resume(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("Resume by a non-admin = %v, want ErrForbidden", err)
+		if _, err := svc.Resume(ctxAsCaller(), db.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("Resume by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
 	})
 

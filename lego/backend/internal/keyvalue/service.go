@@ -1378,7 +1378,7 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 	// And the inbound IP rules, asked on their own so a patch that also
 	// renames cannot carry them past it (w4/m594).
 	if core.AllowListPatchChanges(kv.Spec.Public, kv.Spec.IPAllowList, patch.IPAllowList, patch.Public) {
-		if err := s.requireProtectedAdmin(ctx, kv, core.VerbChangeAccessControl); err != nil {
+		if err := s.requireUnprotected(ctx, kv, core.VerbChangeAccessControl); err != nil {
 			return KeyValueView{}, err
 		}
 	}
@@ -1500,7 +1500,7 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	}
 	// In a protected environment only an Admin views the password and the
 	// connection URLs (render.com/docs/projects; w4/m594).
-	if err := s.requireProtectedAdmin(ctx, kv, core.VerbViewCredentials); err != nil {
+	if err := s.requireUnprotected(ctx, kv, core.VerbViewCredentials); err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
 	if kv.Spec.Public && kv.Status.ExternalHost == "" {

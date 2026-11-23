@@ -28,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -159,4 +160,79 @@ func TestProtectedAdminRowsGraphQL(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestProtectedLifecycleVerbsRefuseADeveloperWithTheCode (w4/728): suspend,
+// resume, delete, turning maintenance mode on and opening a Shell on a member
+// of a protected environment answer a Developer the coded refusal naming that
+// environment over GraphQL and MCP, as credentials and IP rules do, so every
+// client tells "only an Admin may do this here" from any other refusal by one
+// code.
+func TestProtectedLifecycleVerbsRefuseADeveloperWithTheCode(t *testing.T) {
+	serve := func() (http.Handler, *Server, string, string, string) {
+		web := ownedApp("web", "tea-a")
+		web.Labels[core.LabelAppID] = ids.New(ids.Service)
+		web.Labels[store.LabelManagedBy] = store.ManagedByValue
+		web.Spec.Type, web.Spec.Tier = appv1alpha1.TypeWebService, "standard"
+		db, kv := ownedDB(ids.New(ids.Postgres), "tea-a"), ownedKV(ids.New(ids.KeyValue), "tea-a")
+		for _, labels := range []map[string]string{web.Labels, db.Labels, kv.Labels} {
+			labels[core.LabelEnvironment] = "env-1"
+		}
+		base := &core.Base{Client: fakeClient(web, db, kv), Namespace: "default", Workspace: twoWorkspaceResolver{}, Authz: developerChecker{}}
+		handler, srv := serverWith(t, base, Deps{DeployStore: &conformDeployStore{}, Store: protectedLifecycleStore{status: core.ProtectedStatusProtected}})
+		return handler, srv, web.Labels[core.LabelAppID], db.Name, kv.Name
+	}
+	mutations := func(service, db, kv string) []string {
+		return []string{
+			fmt.Sprintf(`mutation{suspendService(id:%q){id}}`, service),
+			fmt.Sprintf(`mutation{resumeService(id:%q){id}}`, service),
+			fmt.Sprintf(`mutation{deleteService(id:%q)}`, service),
+			fmt.Sprintf(`mutation{setMaintenanceMode(id:%q,maintenanceMode:{enabled:true}){id}}`, service),
+			fmt.Sprintf(`mutation{createShellSession(id:%q){ticket}}`, service),
+			fmt.Sprintf(`mutation{suspendDatabase(id:%q){id}}`, db),
+			fmt.Sprintf(`mutation{resumeDatabase(id:%q){id}}`, db),
+			fmt.Sprintf(`mutation{deleteDatabase(id:%q)}`, db),
+			fmt.Sprintf(`mutation{suspendKeyValue(id:%q){id}}`, kv),
+			fmt.Sprintf(`mutation{resumeKeyValue(id:%q){id}}`, kv),
+			fmt.Sprintf(`mutation{deleteKeyValue(id:%q)}`, kv),
+		}
+	}
+
+	t.Run("GraphQL", func(t *testing.T) {
+		handler, _, service, db, kv := serve()
+		for _, query := range mutations(service, db, kv) {
+			out := graphQL(t, handler, query)
+			errs, _ := out["errors"].([]any)
+			var ext map[string]any
+			if len(errs) > 0 {
+				ext, _ = errs[0].(map[string]any)["extensions"].(map[string]any)
+			}
+			if code := graphqlCode(out); code != core.ProtectedPlacementCode || ext["environmentId"] != "env-1" {
+				t.Errorf("%s answered %v, want %s naming env-1", query, out, core.ProtectedPlacementCode)
+			}
+		}
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		_, srv, service, db, kv := serve()
+		id := core.Identity{Subject: "dana", Method: "session"}
+		for _, call := range []struct {
+			tool string
+			args map[string]any
+		}{
+			{"suspend_service", map[string]any{"serviceId": service}},
+			{"resume_service", map[string]any{"serviceId": service}},
+			{"delete_service", map[string]any{"serviceId": service}},
+			{"update_service", map[string]any{"serviceId": service, "maintenanceMode": map[string]any{"enabled": true}}},
+			{"suspend_postgres", map[string]any{"postgresId": db}},
+			{"resume_postgres", map[string]any{"postgresId": db}},
+			{"suspend_keyvalue", map[string]any{"keyValueId": kv}},
+			{"resume_keyvalue", map[string]any{"keyValueId": kv}},
+		} {
+			res := mcpCall(t, srv, id, call.tool, call.args)
+			if text := mcpText(res); !res.IsError || !strings.HasPrefix(text, core.ProtectedPlacementCode+":") {
+				t.Errorf("%s = %q (error %t), want the %s refusal", call.tool, text, res.IsError, core.ProtectedPlacementCode)
+			}
+		}
+	})
 }

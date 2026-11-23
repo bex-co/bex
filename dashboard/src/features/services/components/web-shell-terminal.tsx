@@ -7,7 +7,7 @@ import {
   type Translate,
   useTranslations,
 } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import {
   ShellUnavailableError,
   useShellSession,
@@ -115,11 +115,13 @@ export function WebShellTerminal({
         finalized = true;
         setStatus("error");
         // A refusal names its own blocker (suspended, Free, a first deploy not
-        // yet live; w4/506): show that sentence, not generic copy (w4/m352).
+        // yet live; w4/506): show that sentence, not generic copy (w4/m352). A
+        // protected environment's refusal of a non-Admin reads as Render's
+        // admin-only reason (w4/728).
         setDetail(
           err instanceof ShellUnavailableError
             ? t("services.shellErrorUnavailable")
-            : mutationErrorMessage(err, t("services.shellErrorGeneric")),
+            : adminOnlyErrorMessage(err, t("services.shellErrorGeneric"), t),
         );
         return;
       }

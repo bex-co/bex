@@ -83,17 +83,18 @@ func ctxAsCaller() context.Context {
 
 // The rule is Render's (w8/187): in a protected environment only a workspace
 // Admin may delete, suspend or resume a Key Value, with no typed phrase;
-// everything else is open to anyone who may do it elsewhere.
+// everything else is open to anyone who may do it elsewhere. A non-Admin's
+// refusal is coded PROTECTED_ENVIRONMENT_ADMIN_REQUIRED (w4/728).
 func TestProtectedKeyValueDeleteSuspendResumeNeedAdmin(t *testing.T) {
 	t.Run("a non-admin is refused and nothing moves", func(t *testing.T) {
 		kv := keyValueForProtection("red-sessions", "sessions", true)
 		svc, cl, _ := protectedKeyValueService(kv)
 		svc.Authz = denyWorkspaceManage{}
-		if err := svc.DeleteKeyValue(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("DeleteKeyValue by a non-admin = %v, want ErrForbidden", err)
+		if err := svc.DeleteKeyValue(ctxAsCaller(), kv.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("DeleteKeyValue by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
-		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("Suspend by a non-admin = %v, want ErrForbidden", err)
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("Suspend by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
 		var got appv1alpha1.KeyValue
 		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &got); err != nil || got.Spec.Suspended {
@@ -101,8 +102,8 @@ func TestProtectedKeyValueDeleteSuspendResumeNeedAdmin(t *testing.T) {
 		}
 		// The old phrase substitutes for nothing.
 		ctx := core.WithConfirm(ctxAsCaller(), "sudo delete key value sessions")
-		if err := svc.DeleteKeyValue(ctx, kv.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("DeleteKeyValue with the old phrase = %v, want ErrForbidden", err)
+		if err := svc.DeleteKeyValue(ctx, kv.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("DeleteKeyValue with the old phrase = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
 	})
 
@@ -130,8 +131,8 @@ func TestProtectedKeyValueDeleteSuspendResumeNeedAdmin(t *testing.T) {
 		kv.Spec.Suspended = true
 		svc, _, _ := protectedKeyValueService(kv)
 		svc.Authz = denyWorkspaceManage{}
-		if _, err := svc.Resume(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
-			t.Fatalf("Resume by a non-admin = %v, want ErrForbidden", err)
+		if _, err := svc.Resume(ctxAsCaller(), kv.Name); !adminOnlyRefusal(err) {
+			t.Fatalf("Resume by a non-admin = %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
 		}
 	})
 

@@ -216,6 +216,24 @@ describe("WebShellTerminal", () => {
     expect(FakeWebSocket.instances).toHaveLength(0);
   });
 
+  // w4/728: a protected environment's coded refusal of a non-Admin reads as
+  // Render's admin-only reason, not the server's words.
+  it("reads a protected environment's mint refusal as admin-only", async () => {
+    createShellSession.mockRejectedValueOnce(
+      codedGraphQLError(
+        "PROTECTED_ENVIRONMENT_ADMIN_REQUIRED",
+        { environmentId: "evm-1" },
+        "only workspace Admins can open a shell in a protected environment",
+      ),
+    );
+    render(<WebShellTerminal serviceId="srv-x" />);
+    expect(
+      await screen.findByText("This action is limited to admins."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/only workspace Admins/)).toBeNull();
+    expect(FakeWebSocket.instances).toHaveLength(0);
+  });
+
   it("keeps the generic copy for a mint failure with no reason", async () => {
     createShellSession.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     render(<WebShellTerminal serviceId="srv-x" />);
