@@ -28,6 +28,7 @@
 
 ## Inbox
 
+- [ ] [094](094.md) — The mobile app's log viewer shows a coloured line's escape bytes (`[0;34m[1m==> …`), where the dashboard draws the line coloured (~1h) ← follow-up from w32/m576, 2026-11-22 (`mobile/src/features/logs/log-viewer.tsx` prints the message as it comes); parity, minor
 - [ ] [093](093.md) — A Node service with a Bun lockfile writes Render's `==> Using Bun version …` pair at each instance start, before `==> Running '<command>'` (~1h) ← follow-up from w32/m575 t001's public-log search, 2026-11-22 (Pranav7758/AniCircle, harshagavadi/akshay); parity, minor
 - [ ] [092](092.md) — The CLI's live build tail carries a pre-deploy step's own output, as Render's deploy log does (likely >1h, promote if so) ← follow-up from w32/m572 t006, 2026-11-22 (`followBuilds` streams only build pods); parity, minor
 - [ ] [091](091.md) — A pre-deploy step stopped at its 30-minute limit, or whose program cannot be launched, closes as Render's log does: `==> Pre-deploy timed out`, or `==> Exited with status 128` (~1h) ← follow-up from w32/m572's public-log search, 2026-11-22 (MalaysiaKaki/astrail-webmcp#10, briankeane/alloy-client-portal#8); parity, minor
