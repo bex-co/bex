@@ -331,6 +331,16 @@ func TestEnablePullRequestAutoMergePinsTheHeadWithTheMethodRule(t *testing.T) {
 	if _, input := api.mutationInput(t, 0); len(input) != 3 || input["mergeMethod"] != "REBASE" || input["expectedHeadOid"] != pullsTestHead {
 		t.Fatalf("named input = %v", input)
 	}
+	// w10/048: a stacked pull request arms its stack (includeStack), under
+	// the method rule of Base, the stack's base; without IncludeStack (above)
+	// the input has no such field.
+	api = &fakeMergeAPI{settings: allMethods, rules: `[{"type":"required_linear_history"}]`, answers: map[string]string{"enablePullRequestAutoMerge": armed}}
+	if method, err := pullsClient(t, api).EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, Base: "main", IncludeStack: true}); err != nil || method != MergeMethodSquash {
+		t.Fatalf("stack arm = %q err=%v, want squash: main's linear history refuses a merge commit", method, err)
+	}
+	if _, input := api.mutationInput(t, 0); len(input) != 4 || input["includeStack"] != true || input["expectedHeadOid"] != pullsTestHead || input["mergeMethod"] != "SQUASH" {
+		t.Fatalf("stack input = %v", input)
+	}
 	// The method rule refuses before any mutation, as for a merge.
 	api = &fakeMergeAPI{settings: `{"allow_merge_commit":true,"allow_squash_merge":false,"allow_rebase_merge":false}`}
 	_, err = pullsClient(t, api).EnablePullRequestAutoMerge(context.Background(), 42, "octo", "repo", "PR_kwDOnode7", MergeOptions{SHA: pullsTestHead, Method: MergeMethodSquash, Base: "main"})
@@ -420,30 +430,42 @@ func TestEnqueuePullRequestPinsTheHeadAndLeavesTheMethodToTheQueue(t *testing.T)
 
 // w10/m577: the undo disables auto-merge, or takes a queued pull request out
 // of the queue, with the mark-ready token.
+//
+// w10/048: the stack's auto-merge request covering a stacked pull request is
+// disarmed with includeStack, for every pull request it covers; a pull
+// request's own auto-merge, stacked or not, is disarmed as before.
 func TestDisablePullRequestAutoMergeOrLeaveTheQueue(t *testing.T) {
+	armedAlone := &store.PRAutoMerge{Method: MergeMethodSquash}
 	for _, tc := range []struct {
-		queued   bool
+		name     string
+		state    MergeState
 		mutation string
 		answer   string
 	}{
-		{false, "disablePullRequestAutoMerge(input: {pullRequestId: $id})", `{"data":{"disablePullRequestAutoMerge":{"clientMutationId":null}}}`},
-		{true, "dequeuePullRequest(input: {id: $id})", `{"data":{"dequeuePullRequest":{"clientMutationId":null}}}`},
+		{"armed", MergeState{AutoMerge: armedAlone}, "disablePullRequestAutoMerge(input: {pullRequestId: $id})", `{"data":{"disablePullRequestAutoMerge":{"clientMutationId":null}}}`},
+		{"armed alone in a stack", MergeState{AutoMerge: armedAlone, Stacked: true, StackBase: "main"}, "disablePullRequestAutoMerge(input: {pullRequestId: $id})", `{"data":{"disablePullRequestAutoMerge":{"clientMutationId":null}}}`},
+		{"the stack armed", MergeState{AutoMerge: armedAlone, Stacked: true, StackBase: "main", StackAutoMerge: true}, "disablePullRequestAutoMerge(input: {pullRequestId: $id, includeStack: true})", `{"data":{"disablePullRequestAutoMerge":{"clientMutationId":null}}}`},
+		{"queued", MergeState{MergeQueueEnabled: true, InMergeQueue: true}, "dequeuePullRequest(input: {id: $id})", `{"data":{"dequeuePullRequest":{"clientMutationId":null}}}`},
+		{"a queued stack", MergeState{InMergeQueue: true, AutoMerge: armedAlone, Stacked: true, StackAutoMerge: true}, "dequeuePullRequest(input: {id: $id})", `{"data":{"dequeuePullRequest":{"clientMutationId":null}}}`},
 	} {
 		api := &fakeMergeAPI{graphql: tc.answer}
-		if err := pullsClient(t, api).DisablePullRequestAutoMerge(context.Background(), 42, "repo", "PR_kwDOnode7", tc.queued); err != nil {
+		if err := pullsClient(t, api).DisablePullRequestAutoMerge(context.Background(), 42, "repo", "PR_kwDOnode7", tc.state); err != nil {
 			t.Fatal(err)
 		}
 		query, _ := api.mutations[0]["query"].(string)
 		variables, _ := api.mutations[0]["variables"].(map[string]any)
 		if len(api.mutations) != 1 || !strings.Contains(query, tc.mutation) || variables["id"] != "PR_kwDOnode7" {
-			t.Fatalf("queued=%v documents = %+v", tc.queued, api.mutations)
+			t.Fatalf("%s: documents = %+v", tc.name, api.mutations)
+		}
+		if strings.Contains(query, "includeStack") != (tc.name == "the stack armed") {
+			t.Fatalf("%s: query %q", tc.name, query)
 		}
 		if perms := api.lastPermissions(); perms["contents"] != "write" || perms["pull_requests"] != "write" || len(perms) != 3 {
 			t.Fatalf("token scope = %+v", api.scopes)
 		}
 	}
 	api := &fakeMergeAPI{graphql: graphQLRefusal("disablePullRequestAutoMerge", "FORBIDDEN", "Resource not accessible by integration")}
-	err := pullsClient(t, api).DisablePullRequestAutoMerge(context.Background(), 42, "repo", "PR_kwDOnode7", false)
+	err := pullsClient(t, api).DisablePullRequestAutoMerge(context.Background(), 42, "repo", "PR_kwDOnode7", MergeState{AutoMerge: armedAlone})
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden {
 		t.Fatalf("forbidden err = %v", err)
@@ -468,7 +490,8 @@ func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
 	}
 	query, _ := api.mutations[0]["query"].(string)
 	variables, _ := api.mutations[0]["variables"].(map[string]any)
-	for _, field := range []string{"isMergeQueueEnabled", "isInMergeQueue", "mergeStateStatus", "autoMergeRequest { mergeMethod enabledAt enabledBy { login } }"} {
+	for _, field := range []string{"isMergeQueueEnabled", "isInMergeQueue", "mergeStateStatus", "autoMergeRequest { mergeMethod enabledAt enabledBy { login } }",
+		"stack { baseRefName }", "stackAutoMergeRequest: autoMergeRequest(includeStack: true) { mergeMethod enabledAt enabledBy { login } }"} {
 		if !strings.Contains(query, field) {
 			t.Fatalf("query %q does not read %s", query, field)
 		}
@@ -494,6 +517,31 @@ func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
 		state, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7")
 		if err != nil || !state.InMergeQueue || (want == nil) != (state.AutoMerge == nil) || (want != nil && *state.AutoMerge != *want) {
 			t.Fatalf("%s = %+v %+v / %v", answer, state, state.AutoMerge, err)
+		}
+	}
+	// w10/048: a stacked pull request names its stack's base, and the stack's
+	// auto-merge request covering it, armed on it or on one above it, is its
+	// auto-merge; a request GitHub reports for a pull request in no stack is
+	// left to its own.
+	for _, tc := range []struct {
+		name, answer string
+		want         MergeState
+	}{
+		{"stacked, nothing armed", `{"data":{"node":{"mergeStateStatus":"CLEAN","autoMergeRequest":null,"stack":{"baseRefName":"main"},"stackAutoMergeRequest":null}}}`,
+			MergeState{Status: "CLEAN", Stacked: true, StackBase: "main"}},
+		{"stacked, the stack armed above it", `{"data":{"node":{"mergeStateStatus":"BLOCKED","autoMergeRequest":null,"stack":{"baseRefName":"main"},"stackAutoMergeRequest":{"mergeMethod":"REBASE","enabledBy":{"login":"octocat"}}}}}`,
+			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main", StackAutoMerge: true, AutoMerge: &store.PRAutoMerge{Method: MergeMethodRebase, EnabledBy: "octocat"}}},
+		{"stacked, armed alone", `{"data":{"node":{"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"},"stack":{"baseRefName":"main"},"stackAutoMergeRequest":null}}}`,
+			MergeState{Status: "BLOCKED", Stacked: true, StackBase: "main", AutoMerge: &store.PRAutoMerge{Method: MergeMethodSquash}}},
+		{"in no stack", `{"data":{"node":{"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"},"stack":null,"stackAutoMergeRequest":{"mergeMethod":"MERGE"}}}}`,
+			MergeState{Status: "BLOCKED", AutoMerge: &store.PRAutoMerge{Method: MergeMethodSquash}}},
+	} {
+		api := &fakeMergeAPI{answers: map[string]string{"node(id": tc.answer}}
+		state, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7")
+		got, want := state, tc.want
+		got.AutoMerge, want.AutoMerge = nil, nil
+		if err != nil || got != want || (tc.want.AutoMerge == nil) != (state.AutoMerge == nil) || (state.AutoMerge != nil && *state.AutoMerge != *tc.want.AutoMerge) {
+			t.Fatalf("%s: state = %+v %+v / %v, want %+v %+v", tc.name, state, state.AutoMerge, err, tc.want, tc.want.AutoMerge)
 		}
 	}
 	for _, answer := range []string{`{"data":{"node":null}}`, graphQLRefusal("node", "NOT_FOUND", "Could not resolve to a node")} {

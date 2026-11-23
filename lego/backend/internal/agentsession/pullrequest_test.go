@@ -76,8 +76,8 @@ type fakeForge struct {
 	mergeCalls int
 	// state is the pull request's merge state and stateErr fails its read;
 	// armed records each auto-merge armed (armErr fails it), enqueued each
-	// head queued (enqueueErr fails it), and disabled each disarm, true for
-	// a dequeue (disableErr fails it).
+	// head queued (enqueueErr fails it), and disabled each disarm by the
+	// state it was given: queued, stack or armed (disableErr fails it).
 	state      github.MergeState
 	stateErr   error
 	stateReads int
@@ -88,7 +88,7 @@ type fakeForge struct {
 	armErr     error
 	enqueued   []string
 	enqueueErr error
-	disabled   []bool
+	disabled   []string
 	disableErr error
 	// other is a second pull request of the repository, a person's or
 	// another session's, which a named number reaches (w10/041).
@@ -139,6 +139,7 @@ func (f *fakeForge) EnablePullRequestAutoMerge(_ context.Context, installation i
 	method := cmp.Or(opts.Method, github.MergeMethodSquash)
 	armedAt := time.Date(2026, 11, 22, 9, 30, 0, 0, time.UTC)
 	f.state.AutoMerge = &store.PRAutoMerge{Method: method, EnabledBy: forgeAppLogin, EnabledAt: &armedAt}
+	f.state.StackAutoMerge = opts.IncludeStack
 	return method, nil
 }
 
@@ -156,7 +157,7 @@ func (f *fakeForge) EnqueuePullRequest(_ context.Context, _ int64, _, nodeID, he
 	return nil
 }
 
-func (f *fakeForge) DisablePullRequestAutoMerge(_ context.Context, _ int64, _, nodeID string, queued bool) error {
+func (f *fakeForge) DisablePullRequestAutoMerge(_ context.Context, _ int64, _, nodeID string, state github.MergeState) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.disableErr != nil {
@@ -165,8 +166,15 @@ func (f *fakeForge) DisablePullRequestAutoMerge(_ context.Context, _ int64, _, n
 	if f.byNode(nodeID) == nil {
 		return &github.APIError{Status: http.StatusNotFound}
 	}
-	f.disabled = append(f.disabled, queued)
-	f.state.AutoMerge, f.state.InMergeQueue = nil, false
+	disarm := "armed"
+	switch {
+	case state.InMergeQueue:
+		disarm = "queued"
+	case state.StackAutoMerge:
+		disarm = "stack"
+	}
+	f.disabled = append(f.disabled, disarm)
+	f.state.AutoMerge, f.state.InMergeQueue, f.state.StackAutoMerge = nil, false, false
 	return nil
 }
 

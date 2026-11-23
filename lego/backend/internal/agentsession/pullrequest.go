@@ -232,7 +232,7 @@ type PullRequestGitHub interface {
 	PullRequestMergeState(ctx context.Context, installationID int64, repo, nodeID string) (github.MergeState, error)
 	EnablePullRequestAutoMerge(ctx context.Context, installationID int64, owner, repo, nodeID string, opts github.MergeOptions) (string, error)
 	EnqueuePullRequest(ctx context.Context, installationID int64, repo, nodeID, headSHA string) error
-	DisablePullRequestAutoMerge(ctx context.Context, installationID int64, repo, nodeID string, queued bool) error
+	DisablePullRequestAutoMerge(ctx context.Context, installationID int64, repo, nodeID string, state github.MergeState) error
 }
 
 // PullRequestSessionStore reads the durable session and records the PR on it

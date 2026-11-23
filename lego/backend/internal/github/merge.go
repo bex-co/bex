@@ -99,6 +99,11 @@ type MergeOptions struct {
 	CommitTitle   string
 	CommitMessage string
 	Base          string
+	// IncludeStack arms auto-merge on the pull request's GitHub stack
+	// (includeStack, w10/048): GitHub lands it with every unmerged pull
+	// request below it once they are all ready, on the stack's base, which
+	// Base then names.
+	IncludeStack bool
 }
 
 // MergeResult is a merged pull request: the commit its merge created on the
@@ -340,8 +345,18 @@ type MergeState struct {
 	// BLOCKED, BEHIND, DIRTY, DRAFT or UNKNOWN.
 	Status string
 	// AutoMerge is the auto-merge armed on the pull request, nil when none
-	// is: its method in lower case, and who armed it when (w10/047).
+	// is: its method in lower case, and who armed it when (w10/047). On a
+	// stacked pull request it is the stack's auto-merge request covering it
+	// when there is one (StackAutoMerge), armed on it or on one above it.
 	AutoMerge *store.PRAutoMerge
+	// Stacked is set when the pull request is in a GitHub stack, where each
+	// pull request targets the branch of the one below it and StackBase is
+	// the branch the stack lands on (w10/048).
+	Stacked   bool
+	StackBase string
+	// StackAutoMerge is set when AutoMerge is the stack's auto-merge request,
+	// which GitHub disarms for every pull request it covers at once.
+	StackAutoMerge bool
 }
 
 // MergeableNow is gh's isImmediatelyMergeable: GitHub would merge the pull
@@ -354,6 +369,27 @@ func (s MergeState) MergeableNow() bool {
 	return false
 }
 
+// autoMergeRequest is GitHub's AutoMergeRequest as the merge state reads it.
+type autoMergeRequest struct {
+	MergeMethod string     `json:"mergeMethod"`
+	EnabledAt   *time.Time `json:"enabledAt"`
+	EnabledBy   *struct {
+		Login string `json:"login"`
+	} `json:"enabledBy"`
+}
+
+// record is the request as bex records it, nil for none.
+func (r *autoMergeRequest) record() *store.PRAutoMerge {
+	if r == nil {
+		return nil
+	}
+	armed := &store.PRAutoMerge{Method: strings.ToLower(r.MergeMethod), EnabledAt: r.EnabledAt}
+	if r.EnabledBy != nil {
+		armed.EnabledBy = r.EnabledBy.Login
+	}
+	return armed
+}
+
 // PullRequestMergeState reads the merge state of the pull request whose
 // GraphQL node id is nodeID, in repository repo of the installation, with a
 // Pull requests read token, as the PR read is.
@@ -364,30 +400,31 @@ func (c *Client) PullRequestMergeState(ctx context.Context, installationID int64
 	}
 	var out struct {
 		Node *struct {
-			IsMergeQueueEnabled bool   `json:"isMergeQueueEnabled"`
-			IsInMergeQueue      bool   `json:"isInMergeQueue"`
-			MergeStateStatus    string `json:"mergeStateStatus"`
-			AutoMergeRequest    *struct {
-				MergeMethod string     `json:"mergeMethod"`
-				EnabledAt   *time.Time `json:"enabledAt"`
-				EnabledBy   *struct {
-					Login string `json:"login"`
-				} `json:"enabledBy"`
-			} `json:"autoMergeRequest"`
+			IsMergeQueueEnabled   bool              `json:"isMergeQueueEnabled"`
+			IsInMergeQueue        bool              `json:"isInMergeQueue"`
+			MergeStateStatus      string            `json:"mergeStateStatus"`
+			AutoMergeRequest      *autoMergeRequest `json:"autoMergeRequest"`
+			StackAutoMergeRequest *autoMergeRequest `json:"stackAutoMergeRequest"`
+			Stack                 *struct {
+				BaseRefName string `json:"baseRefName"`
+			} `json:"stack"`
 		} `json:"node"`
 	}
-	if err := c.gitHubGraphQL(ctx, token, `query($id: ID!) { node(id: $id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus autoMergeRequest { mergeMethod enabledAt enabledBy { login } } } } }`,
+	if err := c.gitHubGraphQL(ctx, token, `query($id: ID!) { node(id: $id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus `+
+		`autoMergeRequest { mergeMethod enabledAt enabledBy { login } } stack { baseRefName } `+
+		`stackAutoMergeRequest: autoMergeRequest(includeStack: true) { mergeMethod enabledAt enabledBy { login } } } } }`,
 		map[string]any{"id": nodeID}, &out); err != nil {
 		return MergeState{}, err
 	}
-	if out.Node == nil {
+	node := out.Node
+	if node == nil {
 		return MergeState{}, errors.New("github: the merge state read found no pull request")
 	}
-	state := MergeState{MergeQueueEnabled: out.Node.IsMergeQueueEnabled, InMergeQueue: out.Node.IsInMergeQueue, Status: out.Node.MergeStateStatus}
-	if request := out.Node.AutoMergeRequest; request != nil {
-		state.AutoMerge = &store.PRAutoMerge{Method: strings.ToLower(request.MergeMethod), EnabledAt: request.EnabledAt}
-		if request.EnabledBy != nil {
-			state.AutoMerge.EnabledBy = request.EnabledBy.Login
+	state := MergeState{MergeQueueEnabled: node.IsMergeQueueEnabled, InMergeQueue: node.IsInMergeQueue, Status: node.MergeStateStatus, AutoMerge: node.AutoMergeRequest.record()}
+	if node.Stack != nil {
+		state.Stacked, state.StackBase = true, node.Stack.BaseRefName
+		if stackArmed := node.StackAutoMergeRequest.record(); stackArmed != nil {
+			state.AutoMerge, state.StackAutoMerge = stackArmed, true
 		}
 	}
 	return state, nil
@@ -428,8 +465,9 @@ const enableAutoMergeMutation = `mutation($input: EnablePullRequestAutoMergeInpu
 
 // EnablePullRequestAutoMerge arms GitHub auto-merge on the pull request
 // whose node id is nodeID, in owner/repo, on a base branch without a merge
-// queue: GitHub merges it once its required reviews and checks pass. It is
-// pinned to opts.SHA (expectedHeadOid) and uses the method rule of
+// queue: GitHub merges it once its required reviews and checks pass, and with
+// opts.IncludeStack every unmerged pull request below it in its stack too. It
+// is pinned to opts.SHA (expectedHeadOid) and uses the method rule of
 // MergePullRequest, with the commit text when given. A repository whose
 // allow_auto_merge is false is ErrAutoMergeNotAllowed before any mutation;
 // GitHub's own refusals are ErrAutoMergeNotAllowed, ErrMergeableNow or an
@@ -456,6 +494,9 @@ func (c *Client) EnablePullRequestAutoMerge(ctx context.Context, installationID 
 	}
 	if opts.CommitMessage != "" {
 		input["commitBody"] = opts.CommitMessage
+	}
+	if opts.IncludeStack {
+		input["includeStack"] = true
 	}
 	var out json.RawMessage
 	if err := c.gitHubGraphQL(ctx, token, enableAutoMergeMutation, map[string]any{"input": input}, &out); err != nil {
@@ -488,21 +529,26 @@ func (c *Client) EnqueuePullRequest(ctx context.Context, installationID int64, r
 }
 
 // DisablePullRequestAutoMerge stops GitHub merging the pull request whose
-// node id is nodeID later: it takes it out of the merge queue when queued
-// (dequeuePullRequest), and otherwise disables its auto-merge
-// (disablePullRequestAutoMerge), as Devin Review's merge button and
+// node id is nodeID later, as state (its merge state) has it: it takes it out
+// of the merge queue when queued (dequeuePullRequest), disarms the stack's
+// auto-merge request covering it, for every pull request that request covers
+// (disablePullRequestAutoMerge with includeStack, w10/048), and otherwise
+// disables its own auto-merge, as Devin Review's merge button and
 // gh pr merge --disable-auto do. A refusal is an *APIError.
-func (c *Client) DisablePullRequestAutoMerge(ctx context.Context, installationID int64, repo, nodeID string, queued bool) error {
+func (c *Client) DisablePullRequestAutoMerge(ctx context.Context, installationID int64, repo, nodeID string, state MergeState) error {
 	token, err := c.repoToken(ctx, installationID, repo, statePermissions())
 	if err != nil {
 		return notGranted(err)
 	}
-	mutation, variables := `mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`, map[string]any{"id": nodeID}
-	if queued {
+	mutation := `mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`
+	switch {
+	case state.InMergeQueue:
 		mutation = `mutation($id: ID!) { dequeuePullRequest(input: {id: $id}) { clientMutationId } }`
+	case state.StackAutoMerge:
+		mutation = `mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id, includeStack: true}) { clientMutationId } }`
 	}
 	var out json.RawMessage
-	return c.gitHubGraphQL(ctx, token, mutation, variables, &out)
+	return c.gitHubGraphQL(ctx, token, mutation, map[string]any{"id": nodeID}, &out)
 }
 
 // maxAPIErrorMessageRunes bounds the GitHub message APIErrorMessage returns.

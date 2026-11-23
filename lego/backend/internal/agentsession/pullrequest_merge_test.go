@@ -495,6 +495,59 @@ func TestPullRequestMergeAutoArmsAutoMergeAtTheRecordedHead(t *testing.T) {
 	}
 }
 
+// w10/048: a taken-over pull request in a GitHub stack targets the branch of
+// the one below it, so auto arms the stack, as Devin Review's auto-merge on a
+// stacked pull request does: GitHub lands it with every unmerged pull request
+// below it, on the stack's base, under that branch's method rule. Its own
+// merge state (clean against the branch below) does not merge it alone, a
+// stack already armed above it is left as it is, and disableAuto disarms the
+// stack's request.
+func TestPullRequestMergeAutoArmsTheStackOfAStackedPullRequest(t *testing.T) {
+	stacked := func() (*fakeForge, *prSessions) {
+		session := takeoverSession()
+		session.HeadSHA = sessionHead
+		pr := takenOverPR()
+		pr.NodeID, pr.HeadSHA, pr.BaseRef = "PR_kwDOnode7", sessionHead, "alice/part-1"
+		return &fakeForge{existing: pr, state: github.MergeState{Status: "CLEAN", Stacked: true, StackBase: "main"}}, &prSessions{session: session}
+	}
+	forge, sessions := stacked()
+	got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true, Method: github.MergeMethodRebase}))
+	want := PullRequestMergeResponse{URL: "https://github.com/octo/repo/pull/7", Number: 7, AutoMerge: true, Method: github.MergeMethodRebase, Stack: true, HeadSHA: sessionHead}
+	if err != nil || got != want {
+		t.Fatalf("stacked auto = %+v err=%v, want %+v", got, err, want)
+	}
+	if len(forge.armed) != 1 || forge.armed[0].opts != (github.MergeOptions{SHA: sessionHead, Method: github.MergeMethodRebase, Base: "main", IncludeStack: true}) {
+		t.Fatalf("armed = %+v, want the stack armed at the recorded head on the stack's base", forge.armed)
+	}
+	if forge.mergeCalls != 0 || len(sessions.states) != 0 {
+		t.Fatalf("a stacked pull request clean against the branch below was merged alone (%d) or recorded %v", forge.mergeCalls, sessions.states)
+	}
+
+	// The stack armed already, on it or above it: the same answer, no call.
+	forge, sessions = stacked()
+	forge.state.AutoMerge, forge.state.StackAutoMerge = &store.PRAutoMerge{Method: github.MergeMethodSquash, EnabledBy: "octocat"}, true
+	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
+	if err != nil || !got.AutoMerge || !got.Stack || got.Method != github.MergeMethodSquash || len(forge.armed) != 0 || forge.mergeCalls != 0 {
+		t.Fatalf("stack armed already = %+v err=%v (armed %d, merges %d)", got, err, len(forge.armed), forge.mergeCalls)
+	}
+
+	// disableAuto disarms the stack's request, for every pull request it covers.
+	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{DisableAuto: true}))
+	if err != nil || !got.AutoMergeDisabled || !got.Stack || fmt.Sprint(forge.disabled) != "[stack]" {
+		t.Fatalf("stack disarm = %+v err=%v (disabled %v)", got, err, forge.disabled)
+	}
+
+	// GitHub says the whole stack would merge now: the arm's rule for that
+	// stands, the synchronous merge at the pull request's own base, whose
+	// answer GitHub gives.
+	forge, sessions = stacked()
+	forge.armErr = fmt.Errorf("%w: %w", github.ErrMergeableNow, errors.New("clean status"))
+	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
+	if err != nil || !got.Merged || got.Stack || len(forge.merges) != 1 || forge.merges[0].opts.Base != "alice/part-1" || forge.merges[0].opts.IncludeStack {
+		t.Fatalf("stack ready now = %+v err=%v merges=%+v", got, err, forge.merges)
+	}
+}
+
 // w10/m577 DoD 3: a pull request GitHub would merge now is merged now, as
 // gh pr merge --auto does (its isImmediatelyMergeable), whether the state
 // read says so or GitHub's refusal to arm it does.
@@ -637,8 +690,8 @@ func TestPullRequestMergeDisableAutoUndoesTheArm(t *testing.T) {
 		moveHead  bool
 		makeDraft bool
 	}{
-		{name: "armed", state: github.MergeState{AutoMerge: &store.PRAutoMerge{Method: github.MergeMethodSquash, EnabledBy: "octocat"}}, disabled: "[false]", moveHead: true},
-		{name: "queued", state: github.MergeState{MergeQueueEnabled: true, InMergeQueue: true}, disabled: "[true]"},
+		{name: "armed", state: github.MergeState{AutoMerge: &store.PRAutoMerge{Method: github.MergeMethodSquash, EnabledBy: "octocat"}}, disabled: "[armed]", moveHead: true},
+		{name: "queued", state: github.MergeState{MergeQueueEnabled: true, InMergeQueue: true}, disabled: "[queued]"},
 		{name: "neither", state: github.MergeState{}, disabled: "[]", makeDraft: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

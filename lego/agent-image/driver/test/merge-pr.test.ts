@@ -339,6 +339,64 @@ test("merge_pull_request with auto arms auto-merge, returns the armed answer and
   }
 });
 
+// w10/048: auto on a pull request in a GitHub stack arms the stack, and the
+// answer says so, with a next step naming the pull requests below it; an
+// undo of the stack's request says so too, and a stack mark on any other
+// outcome is not relayed.
+test("merge_pull_request relays a stack's auto-merge and its undo", async (t) => {
+  const stackArmed = {
+    url: merged.url,
+    number: 12,
+    merged: false,
+    method: "rebase",
+    headSha: merged.headSha,
+    autoMerge: true,
+    stack: true,
+  };
+  const disarmed = {
+    url: merged.url,
+    number: 12,
+    merged: false,
+    headSha: merged.headSha,
+    autoMergeDisabled: true,
+    stack: true,
+  };
+  const queued = {
+    url: merged.url,
+    number: 12,
+    merged: false,
+    headSha: merged.headSha,
+    mergeQueue: true,
+  };
+  for (const [body, want] of [
+    [
+      stackArmed,
+      {
+        ...stackArmed,
+        next: "Auto-merge is armed for this pull request's stack: GitHub merges it together with every unmerged pull request below it once all their required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed for the stack, not that the pull requests merged.",
+      },
+    ],
+    [disarmed, disarmed],
+    [
+      { ...queued, stack: true },
+      {
+        ...queued,
+        next: "The pull request joined the merge queue: GitHub merges it once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says it is in the merge queue, not that it merged.",
+      },
+    ],
+  ] as const) {
+    const gateway = await stubGateway({
+      [`${base}/merge`]: { status: 200, body },
+    });
+    t.after(gateway.close);
+    const outcome = await mergePullRequest(
+      "autoMergeDisabled" in body ? { disableAuto: true } : { auto: true },
+      gateway.env,
+    );
+    assert.deepEqual(outcome, { ok: true, result: want });
+  }
+});
+
 test("an answer with no outcome, two outcomes or a merge without its commit is refused", async (t) => {
   for (const body of [
     { url: merged.url, number: 12, merged: false, headSha: merged.headSha },
@@ -523,6 +581,11 @@ test("only repo sessions list the ready and merge tools, saying to use them only
   );
   // The armed answer's next step is named, so the agent looks for it.
   assert.match(merge.description, /next says what to tell the user/);
+  // w10/048: a stacked pull request's auto arms its stack.
+  assert.match(
+    merge.description,
+    /On a pull request in a GitHub stack, auto arms the stack: GitHub merges it together with every unmerged pull request below it \(the answer has stack: true\)/,
+  );
   assert.match(merge.description, /merge queue/);
   assert.match(merge.description, /only disableAuto: true/);
   const init = await handleMessage(

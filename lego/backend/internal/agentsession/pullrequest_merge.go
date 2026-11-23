@@ -258,6 +258,11 @@ func (r PullRequestMergeRequest) verbKind() string { return r.Kind }
 //     its required checks pass, and the queue merges it with its own method;
 //   - AutoMergeDisabled: GitHub no longer merges it later (disableAuto).
 //
+// Stack marks an auto-merge armed, found or disabled that is its GitHub
+// stack's (w10/048): it lands, or no longer lands, every unmerged pull
+// request below it too, and a disarm also stops those above it that the
+// request covered.
+//
 // An armed or queued pull request is not merged: the PR-state poller or a
 // pull_request delivery records prState merged once GitHub merges it.
 type PullRequestMergeResponse struct {
@@ -270,6 +275,7 @@ type PullRequestMergeResponse struct {
 	AutoMerge         bool   `json:"autoMerge,omitempty"`
 	MergeQueue        bool   `json:"mergeQueue,omitempty"`
 	AutoMergeDisabled bool   `json:"autoMergeDisabled,omitempty"`
+	Stack             bool   `json:"stack,omitempty"`
 	OtherPullRequest  bool   `json:"otherPullRequest,omitempty"`
 }
 
@@ -324,7 +330,9 @@ func (p *PullRequester) MarkReady(ctx context.Context, req PullRequestReadyReque
 //     queued is left as it is;
 //   - auto arms GitHub auto-merge so GitHub merges it once its required
 //     checks pass, unless it is mergeable now (gh's rule), which merges it;
-//     one already armed is left as it is;
+//     one already armed is left as it is; a pull request in a GitHub stack
+//     arms the stack, so GitHub lands it with every unmerged pull request
+//     below it, as Devin Review does (w10/048);
 //   - disableAuto takes it out of the queue or disables its auto-merge.
 //
 // A merge records prState merged at once on every session of the workspace
@@ -391,15 +399,23 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 		return response, nil
 	case req.Auto && state.AutoMerge != nil:
 		p.recordMergeMarks(ctx, target, state)
-		response.AutoMerge, response.Method = true, state.AutoMerge.Method
+		response.AutoMerge, response.Method, response.Stack = true, state.AutoMerge.Method, state.StackAutoMerge
 		return response, nil
-	case req.Auto && !state.MergeableNow():
-		method, err := p.GitHub.EnablePullRequestAutoMerge(ctx, target.installationID, target.owner, target.name, pr.NodeID, opts)
+	case req.Auto && (state.Stacked || !state.MergeableNow()):
+		// A stacked pull request targets the branch of the one below it, so
+		// its own merge state says nothing of the stack: the stack is armed,
+		// GitHub judges its readiness, and it lands on the stack's base under
+		// that branch's rules.
+		arm := opts
+		if state.Stacked {
+			arm.IncludeStack, arm.Base = true, cmp.Or(state.StackBase, arm.Base)
+		}
+		method, err := p.GitHub.EnablePullRequestAutoMerge(ctx, target.installationID, target.owner, target.name, pr.NodeID, arm)
 		switch {
 		case err == nil:
 			now := p.now().UTC()
 			p.rereadMergeMarks(ctx, target, pr, github.MergeState{AutoMerge: &store.PRAutoMerge{Method: method, EnabledAt: &now}})
-			response.AutoMerge, response.Method = true, method
+			response.AutoMerge, response.Method, response.Stack = true, method, arm.IncludeStack
 			return response, nil
 		case !errors.Is(err, github.ErrMergeableNow):
 			return PullRequestMergeResponse{}, mergeRefusal(err)
@@ -428,17 +444,19 @@ func (p *PullRequester) mergeState(ctx context.Context, target pullRequestTarget
 }
 
 // disableAutoMerge carries out disableAuto: the pull request leaves the merge
-// queue or its auto-merge is disabled; one with neither answers the same.
+// queue, or its auto-merge is disabled, the stack's for the whole stack it
+// covers (w10/048); one with neither answers the same.
 func (p *PullRequester) disableAutoMerge(ctx context.Context, target stateTarget, pr github.PullRequestDetail, response PullRequestMergeResponse) (PullRequestMergeResponse, error) {
 	state, refusal := p.mergeState(ctx, target.pullRequestTarget, pr)
 	if refusal != nil {
 		return PullRequestMergeResponse{}, refusal
 	}
 	if state.InMergeQueue || state.AutoMerge != nil {
-		if err := p.GitHub.DisablePullRequestAutoMerge(ctx, target.installationID, target.name, pr.NodeID, state.InMergeQueue); err != nil {
+		if err := p.GitHub.DisablePullRequestAutoMerge(ctx, target.installationID, target.name, pr.NodeID, state); err != nil {
 			return PullRequestMergeResponse{}, gitHubStateRefusal(err, PullRequestUpstreamError, "GitHub refused or failed to disable auto-merge")
 		}
 		p.rereadMergeMarks(ctx, target, pr, github.MergeState{})
+		response.Stack = !state.InMergeQueue && state.StackAutoMerge
 	} else {
 		p.recordMergeMarks(ctx, target, state)
 	}

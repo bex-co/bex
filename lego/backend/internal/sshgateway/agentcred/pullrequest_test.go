@@ -73,7 +73,7 @@ func (f *prForge) EnqueuePullRequest(context.Context, int64, string, string, str
 	return errors.New("no merge queue in the gateway tests")
 }
 
-func (f *prForge) DisablePullRequestAutoMerge(context.Context, int64, string, string, bool) error {
+func (f *prForge) DisablePullRequestAutoMerge(context.Context, int64, string, string, github.MergeState) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++

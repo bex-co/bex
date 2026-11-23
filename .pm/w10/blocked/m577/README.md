@@ -116,7 +116,7 @@ Walked against [Devin Review](https://docs.devin.ai/work-with-devin/devin-review
 | The overlay and the tool description | asked to merge once the checks pass: mark ready, call with `auto: true`, report it, end the turn; `disableAuto` when a person says not to merge | Devin arms auto-merge and does not hold a session on CI | match |
 | `prState` after GitHub's later merge | the PR-state poller (5 minutes, first week) or a `pull_request` delivery records `merged` on REST, GraphQL, MCP and the dashboard; an armed answer records nothing | the session's PR shows merged | match (live: t005) |
 | Auto-merge status and who enabled it | not shown: `prState` stays `open` while armed | "The merge bar shows the current auto-merge status, including who enabled it" | **drift**, filed as [w10/047](../../done/047.md) |
-| Stacked pull requests | a taken-over stacked pull request is armed alone (no `includeStack`) | "You can enable GitHub auto-merge on a stacked PR … GitHub lands the PR and every unmerged PR below it" | **drift** (takeover only), filed as [w10/048](../../048.md) |
+| Stacked pull requests | a taken-over stacked pull request is armed alone (no `includeStack`) | "You can enable GitHub auto-merge on a stacked PR … GitHub lands the PR and every unmerged PR below it" | **drift** (takeover only), filed as [w10/048](../../done/048.md) |
 
 The overlay's merge step and the tool's description no longer name `gh pr checks --watch`, because `auto` replaces the wait. The `merge_blocked` hint still names it as the alternative, so [w10/042](../../done/042.md) keeps that part.
 

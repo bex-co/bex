@@ -75,6 +75,7 @@ export const mergePullRequestToolDefinition = {
     onlyWhenAsked +
     " Mark a draft ready first. When asked to merge once the checks pass or CI is green, call it with auto: true as soon as the pull request is ready and end your turn, without waiting for or watching the checks: GitHub auto-merge merges it when they pass (the answer has autoMerge: true, and next says what to tell the user), " +
     "and a base branch that requires a merge queue takes it into the queue, with or without auto (mergeQueue: true). Without auto it merges now; a pull request GitHub would merge now is merged even with auto. " +
+    "On a pull request in a GitHub stack, auto arms the stack: GitHub merges it together with every unmerged pull request below it (the answer has stack: true). " +
     "If a person asks not to merge after all, call it with only disableAuto: true. " +
     "The merge of this session's own pull request is pinned to the head bex recorded when you last called open_or_update_draft_pr, so push and call that tool first; another pull request merges at the head GitHub reports for it when you call (the answer has otherPullRequest: true). " +
     "The repository's branch protection decides: if GitHub refuses (checks pending or failing, a required review, a conflict), the error gives GitHub's reason and what to do; " +
@@ -137,6 +138,9 @@ export interface MergeAnswer {
   autoMerge?: true;
   mergeQueue?: true;
   autoMergeDisabled?: true;
+  // The auto-merge armed, found or disabled is its GitHub stack's (w10/048):
+  // it lands, or no longer lands, every unmerged pull request below it too.
+  stack?: true;
   // A pull request of the repository other than the session's own (w10/041),
   // which the session's pull request record never takes.
   otherPullRequest?: true;
@@ -152,6 +156,8 @@ export interface MergeAnswer {
 const endTurnAfter = {
   autoMerge:
     "Auto-merge is armed: GitHub merges this pull request once its required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed, not that the pull request merged.",
+  stackAutoMerge:
+    "Auto-merge is armed for this pull request's stack: GitHub merges it together with every unmerged pull request below it once all their required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed for the stack, not that the pull requests merged.",
   mergeQueue:
     "The pull request joined the merge queue: GitHub merges it once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says it is in the merge queue, not that it merged.",
 } as const;
@@ -401,6 +407,9 @@ function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
     return null;
   }
   const later = laterOutcomes.filter((outcome) => payload[outcome] === true);
+  const stack =
+    payload.stack === true &&
+    (later[0] === "autoMerge" || later[0] === "autoMergeDisabled");
   if (merged === true) {
     if (
       later.length > 0 ||
@@ -421,11 +430,16 @@ function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
     ...(typeof method === "string" && method ? { method } : {}),
     headSha: typeof headSha === "string" ? headSha : "",
     ...Object.fromEntries(later.map((outcome) => [outcome, true as const])),
+    ...(stack ? { stack: true as const } : {}),
     ...(payload.otherPullRequest === true
       ? { otherPullRequest: true as const }
       : {}),
     ...(later[0] === "autoMerge" || later[0] === "mergeQueue"
-      ? { next: endTurnAfter[later[0]] }
+      ? {
+          next: endTurnAfter[
+            later[0] === "autoMerge" && stack ? "stackAutoMerge" : later[0]
+          ],
+        }
       : {}),
   };
 }
