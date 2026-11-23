@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -45,49 +46,103 @@ func hasAction(acts []core.ActionDecision, id string) bool {
 	return false
 }
 
-// TestActionCapabilities_SuspendPreconditionMatchesGuard (ADR087, w6/m136):
-// the projection reports protected_confirmation_required for suspend exactly
-// for the members of a protected environment, the same appProtected predicate
-// the execute path consults. Since w8/187 the server enforces Render's rule
-// (only an Admin may suspend there, no phrase), and the precondition is the
-// hint a client uses to confirm with its user before sending the request.
-func TestActionCapabilities_SuspendPreconditionMatchesGuard(t *testing.T) {
-	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, _ := newService(rec, managedApp("web", "srv-1"))
+// TestActionCapabilities_SuspendResumeAgreeWithTheVerb (w4/m578): for an Admin
+// and a Developer, on a member of a protected and of an unprotected
+// environment, the projection's suspend and resume decisions are the verbs'
+// own answers. Before w4/m578 the projection decided both on can_operate alone,
+// so a Developer on a protected member was offered a Suspend and a Resume the
+// verb then refused with 403 (requireUnprotected asks for the Admin role
+// there). An Admin keeps the confirmation hint on suspend, and the Developer's
+// refusal is named so a client can say only an Admin may.
+func TestActionCapabilities_SuspendResumeAgreeWithTheVerb(t *testing.T) {
+	roles := []struct {
+		name  string
+		as    func(*Service)
+		admin bool
+	}{{"admin", asAdmin, true}, {"developer", asNonAdmin, false}}
+	for _, role := range roles {
+		for _, protected := range []bool{true, false} {
+			for _, action := range []string{core.ActionSuspend, core.ActionResume} {
+				t.Run(fmt.Sprintf("%s/%s/protected=%t", role.name, action, protected), func(t *testing.T) {
+					status := core.ProtectedStatusUnprotected
+					if protected {
+						status = core.ProtectedStatusProtected
+					}
+					rec := &recordingStore{protectedStatus: map[string]string{"srv-1": status}}
+					a := managedApp("web", "srv-1")
+					a.Spec.Suspended = action == core.ActionResume // the state the verb acts on
+					svc, cl := newService(rec, a)
+					role.as(svc)
+					ctx := ctxAs("user-a")
 
-	acts, err := svc.ActionCapabilities(context.Background(), "web")
+					acts, err := svc.ActionCapabilities(ctx, "web")
+					if err != nil {
+						t.Fatalf("ActionCapabilities: %v", err)
+					}
+					if rec.protectedCalls != 1 {
+						t.Errorf("projection read protection %d times, want once for both verbs", rec.protectedCalls)
+					}
+					got := actionByID(t, acts, action)
+					if restart := actionByID(t, acts, core.ActionRestart); restart.Outcome != core.DecisionAllowed {
+						t.Errorf("restart is not a restricted verb, got %+v", restart)
+					}
+					verb := svc.Suspend
+					if action == core.ActionResume {
+						verb = svc.Resume
+					}
+					_, verbErr := verb(ctx, "web")
+
+					allowed := got.Outcome == core.DecisionAllowed
+					if want := role.admin || !protected; allowed != want || (verbErr == nil) != want {
+						t.Fatalf("projection %+v and verb error %v disagree, want allowed=%t for both", got, verbErr, want)
+					}
+					switch {
+					case !allowed:
+						if got.Reason != core.ReasonProtectedEnvironmentAdmin || got.Precondition != "" || !errors.Is(verbErr, core.ErrForbidden) {
+							t.Errorf("refused %s = %+v (verb %v), want denied/%s with no precondition and ErrForbidden",
+								action, got, verbErr, core.ReasonProtectedEnvironmentAdmin)
+						}
+						if getApp(t, cl, "web").Spec.Suspended != a.Spec.Suspended {
+							t.Error("a refused verb must not change the service")
+						}
+					case action == core.ActionSuspend && protected:
+						if got.Precondition != core.PrecondProtectedConfirmation {
+							t.Errorf("an Admin's protected suspend = %+v, want the confirmation hint", got)
+						}
+					default:
+						if got.Precondition != "" {
+							t.Errorf("%s = %+v, want ready", action, got)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestActionCapabilities_ProtectionReadFailureIsUnavailable: when the
+// protection lookup fails, suspend and resume read as unavailable, never as a
+// role refusal and never as allowed, as the verb fails closed on the same
+// read. Restart does not consult it.
+func TestActionCapabilities_ProtectionReadFailureIsUnavailable(t *testing.T) {
+	rec := &recordingStore{protectedErr: errors.New("db down")}
+	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	asNonAdmin(svc)
+
+	acts, err := svc.ActionCapabilities(ctxAs("user-a"), "web")
 	if err != nil {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
-	suspend := actionByID(t, acts, core.ActionSuspend)
-	if suspend.Outcome != core.DecisionAllowed || suspend.Precondition != core.PrecondProtectedConfirmation {
-		t.Fatalf("protected suspend = %+v, want allowed + protected_confirmation_required", suspend)
+	for _, id := range []string{core.ActionSuspend, core.ActionResume} {
+		if a := actionByID(t, acts, id); a.Outcome != core.DecisionUnavailable || a.Reason != core.ReasonAuthzUnavailable {
+			t.Errorf("%s with a failed protection read = %+v, want unavailable/authz_unavailable", id, a)
+		}
 	}
-	if restart := actionByID(t, acts, core.ActionRestart); restart.Precondition != "" {
-		t.Fatalf("restart is not protection-guarded, got precondition %q", restart.Precondition)
+	if restart := actionByID(t, acts, core.ActionRestart); restart.Outcome != core.DecisionAllowed {
+		t.Errorf("restart = %+v, want allowed", restart)
 	}
-	// The execute path asks for the Admin role, not a phrase.
-	asNonAdmin(svc)
-	if _, err := svc.Suspend(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Suspend on a protected member by a non-admin = %v, want ErrForbidden", err)
-	}
-	asAdmin(svc)
-	if _, err := svc.Suspend(ctxAs("user-a"), "web"); err != nil {
-		t.Fatalf("Suspend on a protected member by an admin: %v", err)
-	}
-
-	// Unprotected: the precondition clears and the same verb passes.
-	rec2 := &recordingStore{protectedStatus: map[string]string{"srv-1": "unprotected"}}
-	svc2, _ := newService(rec2, managedApp("web", "srv-1"))
-	acts2, err := svc2.ActionCapabilities(context.Background(), "web")
-	if err != nil {
-		t.Fatalf("ActionCapabilities (unprotected): %v", err)
-	}
-	if s2 := actionByID(t, acts2, core.ActionSuspend); s2.Precondition != "" {
-		t.Fatalf("unprotected suspend precondition = %q, want none", s2.Precondition)
-	}
-	if _, err := svc2.Suspend(context.Background(), "web"); err != nil {
-		t.Fatalf("Suspend on an unprotected member: %v", err)
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); err == nil {
+		t.Error("Suspend with a failed protection read succeeded; the verb must fail closed")
 	}
 }
 
@@ -141,7 +196,8 @@ func TestActionCapabilities_CronRowsOnlyForCronJobs(t *testing.T) {
 func TestActionCapabilities_ViewerDeniedWithoutPreconditionLeak(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
-	svc.Base.Authz = &relationChecker{allow: map[string]bool{core.RelCanView: true}}
+	checker := &relationChecker{allow: map[string]bool{core.RelCanView: true}}
+	svc.Base.Authz = checker
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "viewer-1", Method: "session"})
 
 	acts, err := svc.ActionCapabilities(ctx, "web")
@@ -155,6 +211,16 @@ func TestActionCapabilities_ViewerDeniedWithoutPreconditionLeak(t *testing.T) {
 		}
 		if a.Precondition != "" {
 			t.Errorf("denied %s leaked precondition %q", id, a.Precondition)
+		}
+	}
+	// Nor does it read protection or ask the admin check: a viewer pays no
+	// guard read for buttons it will never enable (w4/m578).
+	if rec.protectedCalls != 0 {
+		t.Errorf("viewer projection read protection %d times, want none", rec.protectedCalls)
+	}
+	for _, relation := range checker.asked {
+		if relation == core.RelCanManage {
+			t.Errorf("viewer projection asked can_manage: %v", checker.asked)
 		}
 	}
 }

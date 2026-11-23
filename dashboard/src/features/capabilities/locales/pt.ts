@@ -37,6 +37,11 @@ const ptCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a service/deploy action refused by the server action decision",
   },
+  "capabilities.actionAdminOnly": {
+    message: "Esta ação é restrita a administradores.",
+    description:
+      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+  },
   "capabilities.actionUnavailable": {
     message:
       "O servidor não conseguiu confirmar esta ação no momento. Tente novamente.",

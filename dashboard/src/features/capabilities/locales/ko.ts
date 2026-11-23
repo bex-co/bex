@@ -37,6 +37,11 @@ const koCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a service/deploy action refused by the server action decision",
   },
+  "capabilities.actionAdminOnly": {
+    message: "이 작업은 관리자만 할 수 있습니다.",
+    description:
+      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+  },
   "capabilities.actionUnavailable": {
     message: "서버가 지금 이 작업을 확인하지 못했습니다. 다시 시도하세요.",
     description:

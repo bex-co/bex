@@ -218,11 +218,6 @@ const zhProjects: Record<string, TranslationEntry> = {
     description:
       "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
   },
-  "projects.bulkAdminOnly": {
-    message: "此操作仅限管理员执行。",
-    description:
-      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
-  },
   "projects.bulkSuspendTitle": {
     message: "暂停服务",
     description: "Title of the bulk Suspend dialog",

@@ -1,14 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import type { DatabaseView } from "@/features/databases/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 
 const remove = vi.fn();
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
   useDeleteDatabase: () => ({ remove, deleting: null }),
+}));
+
+// Suspend and Resume read the database's own projection, and a fresh read of
+// it right before dispatch (w4/m578). `asked` records which id it was asked
+// for: the list's rows offer no lifecycle and must ask for nothing.
+const projection = vi.hoisted(() => ({
+  state: null as unknown,
+  asked: [] as (string | null)[],
+}));
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useDatastoreActions: (_kind: string, id: string | null) => {
+    projection.asked.push(id);
+    return projection.state;
+  },
+}));
+const apolloQuery = vi.hoisted(() => vi.fn());
+vi.mock("@apollo/client/react", () => ({
+  useApolloClient: () => ({ query: apolloQuery }),
+}));
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
 }));
 
 // DatabaseRowActions renders a "Move to project" submenu via useMoveToProject,
@@ -41,6 +63,12 @@ beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
+  projection.state = lifecycleState(DB.id, "allowed");
+  projection.asked = [];
+  apolloQuery.mockReset();
+  apolloQuery.mockResolvedValue({
+    data: { databaseActions: lifecycleRows("allowed") },
+  });
 });
 
 describe("DatabaseRowActions", () => {
@@ -69,7 +97,13 @@ describe("DatabaseRowActions", () => {
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it("uses can_operate for lifecycle menu items and suppresses viewer selection", async () => {
+  it("asks for no decisions on a list row, which offers no lifecycle", () => {
+    render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
+    expect(projection.asked.length).toBeGreaterThan(0);
+    expect(projection.asked.every((id) => id === null)).toBe(true);
+  });
+
+  it("gates lifecycle menu items on their decisions and suppresses viewer selection", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({
         role: "VIEWER",
@@ -77,6 +111,7 @@ describe("DatabaseRowActions", () => {
         canOperate: false,
       }),
     );
+    projection.state = lifecycleState(DB.id, "viewer");
     const run = vi.fn().mockResolvedValue({ status: "success" });
     const user = userEvent.setup();
     render(
@@ -96,6 +131,63 @@ describe("DatabaseRowActions", () => {
     await user.click(suspend);
     expect(run).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // w4/m578: a Developer in a protected environment reads Render's reason on
+  // Suspend and Resume and sends nothing; Restart stays theirs.
+  it.each([
+    ["Suspend", DB],
+    ["Resume", { ...DB, suspended: "suspended" }],
+  ])(
+    "disables %s with Render's admin-only reason in a protected environment",
+    async (name, database) => {
+      projection.state = lifecycleState(DB.id, "adminOnly");
+      const run = vi.fn().mockResolvedValue({ status: "success" });
+      const user = userEvent.setup();
+      render(
+        <DatabaseRowActions
+          database={database}
+          onDeleted={vi.fn()}
+          lifecycle={{ pending: null, run }}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /^Actions for / }));
+      const item = await screen.findByRole("menuitem", { name });
+      expect(item).toHaveAttribute("aria-disabled", "true");
+      await user.hover(item);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "This action is limited to admins.",
+      );
+      if (database === DB) {
+        expect(
+          screen.getByRole("menuitem", { name: "Restart" }),
+        ).not.toHaveAttribute("aria-disabled");
+      }
+      await user.click(item);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(run).not.toHaveBeenCalled();
+      expect(apolloQuery).not.toHaveBeenCalled();
+    },
+  );
+
+  it("suspends after the confirm once a fresh check still allows it", async () => {
+    const run = vi.fn().mockResolvedValue({ status: "success" });
+    const user = userEvent.setup();
+    render(
+      <DatabaseRowActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={{ pending: null, run }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
+    await user.click(await screen.findByRole("menuitem", { name: "Suspend" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suspend" }));
+    await waitFor(() => expect(run).toHaveBeenCalledWith("suspend", DB));
+    expect(apolloQuery).toHaveBeenCalledTimes(1);
   });
 
   it("gates delete behind the sudo type-to-confirm phrase", async () => {

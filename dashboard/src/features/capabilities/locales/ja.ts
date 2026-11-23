@@ -37,6 +37,11 @@ const jaCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a service/deploy action refused by the server action decision",
   },
+  "capabilities.actionAdminOnly": {
+    message: "この操作は管理者のみ実行できます。",
+    description:
+      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+  },
   "capabilities.actionUnavailable": {
     message:
       "サーバーが現在、この操作を確認できませんでした。もう一度お試しください。",

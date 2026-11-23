@@ -21,6 +21,7 @@ import { Observable } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apolloCacheConfig } from "@/common/apollo/cache";
 import {
+  useDatastoreActions,
   useServerActions,
   useDeployActions,
 } from "@/features/capabilities/hooks/use-resource-actions";
@@ -59,7 +60,12 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 type Pending = {
   answer: (response: ApolloLink.Result) => void;
   fail: (error: Error) => void;
-  field: "serverActions" | "deployActions" | "viewerCapabilities";
+  field:
+    | "serverActions"
+    | "deployActions"
+    | "databaseActions"
+    | "keyValueActions"
+    | "viewerCapabilities";
 };
 
 let client: ApolloClient;
@@ -94,9 +100,9 @@ function response(field: Pending["field"]): ApolloLink.Result {
     };
   return {
     data: {
-      [field]: (field === "serverActions"
-        ? ["suspend", "resume", "restart"]
-        : ["deploy", "cancel_deploy", "rollback"]
+      [field]: (field === "deployActions"
+        ? ["deploy", "cancel_deploy", "rollback"]
+        : ["suspend", "resume", "restart"]
       ).map((action) => ({
         __typename: "ActionDecision",
         action,
@@ -137,11 +143,14 @@ beforeEach(() => {
             variables: operation.variables,
           });
           const field =
-            operation.operationName === "ServerActions"
-              ? "serverActions"
-              : operation.operationName === "ViewerCapabilities"
-                ? "viewerCapabilities"
-                : "deployActions";
+            (
+              {
+                ServerActions: "serverActions",
+                DatabaseActions: "databaseActions",
+                KeyValueActions: "keyValueActions",
+                ViewerCapabilities: "viewerCapabilities",
+              } as const
+            )[operation.operationName ?? ""] ?? "deployActions";
           const request: Pending = {
             field,
             answer: (result) => {
@@ -297,6 +306,53 @@ describe("resource action projection freshness", () => {
       expect(result.current.status).toBe("unavailable");
     },
   );
+
+  // w4/m578: a decision's precondition reads the resource's state (Resume is
+  // not_suspended on a running one), so a state change must withdraw the old
+  // answer and ask again rather than explain the new state's action with the
+  // old state's reason until the next poll.
+  it("asks again when the resource's lifecycle state changes", async () => {
+    const { result, rerender } = renderHook(
+      ({ suspended }) => useServerActions("srv-first", suspended),
+      { wrapper: Wrapper, initialProps: { suspended: false } },
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    mode = "hold";
+    await act(async () => rerender({ suspended: true }));
+    expect(result.current.status).toBe("checking");
+    expect(pending).toHaveLength(1);
+    await act(async () => pending[0].answer(response("serverActions")));
+    expect(result.current.status).toBe("ready");
+    rerender({ suspended: true });
+    expect(requests).toHaveLength(2);
+  });
+
+  it.each([
+    ["database", "DatabaseActions", "dpg-first"],
+    ["keyValue", "KeyValueActions", "red-first"],
+  ] as const)(
+    "reads a %s's own projection in the selected workspace",
+    async (kind, name, id) => {
+      const { result } = renderHook(
+        () => useDatastoreActions(kind, id, false),
+        { wrapper: Wrapper },
+      );
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(requests).toEqual([
+        { name, variables: { id, ownerId: "tea-first" } },
+      ]);
+    },
+  );
+
+  it("asks nothing for a datastore surface that offers no lifecycle", async () => {
+    const { result } = renderHook(
+      () => useDatastoreActions("database", null, false),
+      { wrapper: Wrapper },
+    );
+    await act(async () => undefined);
+    expect(result.current.status).toBe("checking");
+    expect(requests).toEqual([]);
+  });
 
   it("withdraws a ready answer while a manual refresh of the same lease is pending", async () => {
     const { result } = renderHook(() => useServerActions("srv-first"), {
@@ -646,4 +702,29 @@ describe("confirmation recheck leases", () => {
       },
     });
   });
+
+  it.each([
+    ["database", "DatabaseActions", "dpg-first"],
+    ["keyValue", "KeyValueActions", "red-first"],
+  ] as const)(
+    "rechecks a %s's Suspend against its own projection",
+    async (kind, name, id) => {
+      const { result } = renderHook(
+        () => useBoundActionConfirm({ resourceId: id, kind }),
+        { wrapper: Wrapper },
+      );
+      let checked:
+        | Awaited<ReturnType<typeof result.current.recheckBeforeDispatch>>
+        | undefined;
+      await act(async () => {
+        checked = await result.current.recheckBeforeDispatch(
+          result.current.openConfirm("suspend"),
+        );
+      });
+      expect(checked).toMatchObject({ ok: true });
+      expect(requests).toEqual([
+        { name, variables: { id, ownerId: "tea-first" } },
+      ]);
+    },
+  );
 });

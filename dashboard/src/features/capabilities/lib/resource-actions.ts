@@ -1,7 +1,8 @@
 // Fail-closed normalizer for per-resource action projections (serverActions /
-// deployActions). Unknown action ids, outcomes, or blocking codes can never
-// enable an operation, and a decision fetched for one resource (or workspace)
-// answers nothing about another (ADR087 / w6/m143).
+// deployActions / databaseActions / keyValueActions). Unknown action ids,
+// outcomes, or blocking codes can never enable an operation, and a decision
+// fetched for one resource (or workspace) answers nothing about another
+// (ADR087 / w6/m143).
 
 import { snapshotIsFresh } from "./capability-policy";
 
@@ -66,6 +67,10 @@ const KNOWN_REASONS = new Set([
   "missing_oauth_scope",
   "insufficient_permission",
   "authz_unavailable",
+  // A restricted verb (suspend, resume) on a member of a protected
+  // environment, refused because the caller is not a workspace Admin
+  // (w4/m578): Render's "This action is limited to admins."
+  "protected_environment_admin_required",
 ]);
 
 /** Normalize one projection response. Unknown ids drop; unknown outcomes /
@@ -151,7 +156,10 @@ export type ActionGate =
     };
 
 export function gateAction(
-  decision: Pick<ResourceActionDecision, "outcome" | "precondition"> | null,
+  decision: Pick<
+    ResourceActionDecision,
+    "outcome" | "reason" | "precondition"
+  > | null,
   status: "checking" | "unavailable" | "ready",
 ): ActionGate {
   if (status === "checking") return { kind: "checking" };
@@ -164,7 +172,10 @@ export function gateAction(
   if (decision.outcome === "denied") {
     return {
       kind: "denied",
-      reasonKey: "capabilities.actionDenied",
+      reasonKey:
+        decision.reason === "protected_environment_admin_required"
+          ? "capabilities.actionAdminOnly"
+          : "capabilities.actionDenied",
     };
   }
   if (decision.outcome !== "allowed") {

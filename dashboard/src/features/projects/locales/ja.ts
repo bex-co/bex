@@ -219,11 +219,6 @@ const jaProjects: Record<string, TranslationEntry> = {
     description:
       "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
   },
-  "projects.bulkAdminOnly": {
-    message: "この操作は管理者のみ実行できます。",
-    description:
-      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
-  },
   "projects.bulkSuspendTitle": {
     message: "サービスを一時停止",
     description: "Title of the bulk Suspend dialog",

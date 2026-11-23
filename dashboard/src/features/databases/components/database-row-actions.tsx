@@ -26,6 +26,7 @@ import {
   useCapabilities,
   type Capabilities,
 } from "@/features/capabilities/hooks/use-capabilities";
+import { useLifecycleGate } from "@/features/capabilities/hooks/use-lifecycle-gate";
 
 export interface DatabaseRowActionsProps {
   database: DatabaseView;
@@ -40,6 +41,9 @@ export interface DatabaseRowActionsProps {
  * the CNPG cluster + PVC) is present for every database; when `lifecycle` is wired (the
  * detail page) the menu also offers suspend/resume/restart — resume runs
  * immediately, the disruptive verbs (suspend/restart) go through a confirm.
+ * Suspend and Resume gate on the database's `databaseActions` decision, which
+ * in a protected environment admits only an Admin (w4/m578); Restart, which
+ * Render leaves open there, on the workspace's can_operate.
  */
 export function DatabaseRowActions(props: DatabaseRowActionsProps) {
   const capabilities = useCapabilities();
@@ -68,6 +72,14 @@ export function DatabaseRowActionsWithCapabilities({
   const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
   const { remove, deleting } = useDeleteDatabase();
+  const suspended = isSuspended(database);
+  // The list's rows carry no lifecycle items, so they ask for no decisions.
+  const gate = useLifecycleGate(
+    "database",
+    database.id,
+    suspended,
+    lifecycle !== undefined,
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The disruptive lifecycle verb awaiting confirmation (suspend | restart).
   const [confirmVerb, setConfirmVerb] = useState<Extract<
@@ -79,9 +91,14 @@ export function DatabaseRowActionsWithCapabilities({
     confirmation: string;
   } | null>(null);
 
-  const lifecycleBusy = lifecycle?.pending?.id === database.id;
+  const lifecycleBusy = lifecycle?.pending?.id === database.id || gate.checking;
   const busy = deleting === database.id || lifecycleBusy;
-  const suspended = isSuspended(database);
+  // Why a lifecycle verb cannot run: Suspend and Resume per the database's own
+  // decision, Restart per the workspace role.
+  const lifecycleReason = (action: DatabaseLifecycleAction) =>
+    action === "restart" ? operateReason : gate.reason(action);
+  const lifecycleDenied = (action: DatabaseLifecycleAction) =>
+    action === "restart" ? operateDenied : !!gate.reason(action);
 
   async function handleDelete(confirmation?: string) {
     if (createDenied) return;
@@ -105,10 +122,13 @@ export function DatabaseRowActionsWithCapabilities({
     action: DatabaseLifecycleAction,
     confirmation?: string,
   ) {
-    if (operateDenied) return;
-    const result = confirmation
-      ? await lifecycle?.run(action, database, confirmation)
-      : await lifecycle?.run(action, database);
+    if (!lifecycle || (action === "restart" && operateDenied)) return;
+    const run = () =>
+      confirmation
+        ? lifecycle.run(action, database, confirmation)
+        : lifecycle.run(action, database);
+    const result =
+      action === "restart" ? await run() : await gate.dispatch(action, run);
     if (result?.status === "confirmation_required") {
       setProtectedConfirm({ action, confirmation: result.confirmation });
     } else if (result?.status === "success") {
@@ -134,17 +154,19 @@ export function DatabaseRowActionsWithCapabilities({
             <>
               {suspended ? (
                 <PermissionMenuItem
-                  permissionReason={operateReason}
-                  onSelect={() => void runLifecycle("resume")}
+                  permissionReason={lifecycleReason("resume")}
+                  onSelect={() => {
+                    if (!lifecycleDenied("resume")) void runLifecycle("resume");
+                  }}
                 >
                   <Play />
                   {t("databases.actionResume")}
                 </PermissionMenuItem>
               ) : (
                 <PermissionMenuItem
-                  permissionReason={operateReason}
+                  permissionReason={lifecycleReason("suspend")}
                   onSelect={() => {
-                    if (!operateDenied) setConfirmVerb("suspend");
+                    if (!lifecycleDenied("suspend")) setConfirmVerb("suspend");
                   }}
                 >
                   <Pause />
@@ -194,7 +216,7 @@ export function DatabaseRowActionsWithCapabilities({
 
       <DatabaseLifecycleConfirmDialog
         database={database}
-        verb={operateDenied ? null : confirmVerb}
+        verb={confirmVerb}
         busy={lifecycleBusy}
         onClose={() => setConfirmVerb(null)}
         onConfirm={(verb) => void runLifecycle(verb)}

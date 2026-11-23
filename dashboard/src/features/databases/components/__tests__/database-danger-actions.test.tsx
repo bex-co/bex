@@ -1,15 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 import type { UseDatabaseLifecycleResult } from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 
 const remove = vi.fn();
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
   useDeleteDatabase: () => ({ remove, deleting: null }),
+}));
+
+// Suspend and Resume read the database's own projection, and a fresh read of
+// it right before dispatch (w4/m578).
+const projection = vi.hoisted(() => ({ state: null as unknown }));
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useDatastoreActions: () => projection.state,
+}));
+const apolloQuery = vi.hoisted(() => vi.fn());
+vi.mock("@apollo/client/react", () => ({
+  useApolloClient: () => ({ query: apolloQuery }),
+}));
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
 }));
 
 const DB: DatabaseView = {
@@ -34,6 +49,11 @@ beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
+  projection.state = lifecycleState(DB.id, "allowed");
+  apolloQuery.mockReset();
+  apolloQuery.mockResolvedValue({
+    data: { databaseActions: lifecycleRows("allowed") },
+  });
 });
 
 describe("DatabaseDangerActions — detail-page bottom action row", () => {
@@ -71,7 +91,7 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it("disables lifecycle actions with the operate reason for a viewer", async () => {
+  it("disables lifecycle actions with the role's reason for a viewer", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({
         role: "VIEWER",
@@ -79,6 +99,7 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
         canOperate: false,
       }),
     );
+    projection.state = lifecycleState(DB.id, "viewer");
     const lifecycle = lifecycleStub();
     const user = userEvent.setup();
     render(
@@ -93,9 +114,94 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     expect(suspend).toBeDisabled();
     await user.hover(suspend.parentElement!);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Your role can only view this service.",
+      "Your role can’t perform this action.",
     );
     await user.click(suspend);
+    expect(
+      screen.getByRole("button", { name: "Restart Database" }),
+    ).toBeDisabled();
+    expect(lifecycle.run).not.toHaveBeenCalled();
+  });
+
+  // w4/m578: in a protected environment only an Admin may suspend or resume,
+  // so a Developer reads Render's reason before the click and sends nothing.
+  // Restart, which Render leaves open there, stays on can_operate.
+  it.each([
+    ["Suspend Database", DB],
+    ["Resume Database", { ...DB, suspended: "suspended" }],
+  ])(
+    "disables %s with Render's admin-only reason in a protected environment",
+    async (name, database) => {
+      projection.state = lifecycleState(DB.id, "adminOnly");
+      const lifecycle = lifecycleStub();
+      const user = userEvent.setup();
+      render(
+        <DatabaseDangerActions
+          database={database}
+          onDeleted={vi.fn()}
+          lifecycle={lifecycle}
+        />,
+      );
+
+      const control = screen.getByRole("button", { name });
+      expect(control).toBeDisabled();
+      await user.hover(control.parentElement!);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "This action is limited to admins.",
+      );
+      await user.click(control);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(lifecycle.run).not.toHaveBeenCalled();
+      expect(apolloQuery).not.toHaveBeenCalled();
+      if (database === DB) {
+        expect(
+          screen.getByRole("button", { name: "Restart Database" }),
+        ).toBeEnabled();
+      }
+    },
+  );
+
+  it("disables Suspend while its decision is still being checked", async () => {
+    projection.state = { status: "checking", refresh: async () => undefined };
+    const user = userEvent.setup();
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycleStub()}
+      />,
+    );
+
+    const suspend = screen.getByRole("button", { name: "Suspend Database" });
+    expect(suspend).toBeDisabled();
+    await user.hover(suspend.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Checking whether you can perform this action…",
+    );
+  });
+
+  it("sends nothing when the fresh check before dispatch refuses", async () => {
+    apolloQuery.mockResolvedValue({
+      data: { databaseActions: lifecycleRows("adminOnly") },
+    });
+    const lifecycle = lifecycleStub();
+    const user = userEvent.setup();
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycle}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Suspend Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suspend" }));
+    await waitFor(() => expect(apolloQuery).toHaveBeenCalledTimes(1));
+    expect(apolloQuery.mock.calls[0][0]).toMatchObject({
+      variables: { id: DB.id, ownerId: "tea-test" },
+      fetchPolicy: "no-cache",
+    });
     expect(lifecycle.run).not.toHaveBeenCalled();
   });
 
@@ -166,7 +272,9 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     await user.click(screen.getByRole("button", { name: "Suspend Database" }));
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Suspend" }));
-    expect(lifecycle.run).toHaveBeenCalledWith("suspend", DB);
+    await waitFor(() =>
+      expect(lifecycle.run).toHaveBeenCalledWith("suspend", DB),
+    );
 
     await user.click(screen.getByRole("button", { name: "Restart Database" }));
     const restartDialog = await screen.findByRole("dialog");
@@ -196,7 +304,9 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     ).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Resume Database" }));
-    expect(lifecycle.run).toHaveBeenCalledWith("resume", suspended);
+    await waitFor(() =>
+      expect(lifecycle.run).toHaveBeenCalledWith("resume", suspended),
+    );
   });
 
   it("prompts with the server-issued phrase when a protected suspend is blocked", async () => {
@@ -233,10 +343,12 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     await user.click(
       within(protectedDialog).getByRole("button", { name: "Suspend" }),
     );
-    expect(run).toHaveBeenLastCalledWith(
-      "suspend",
-      DB,
-      "sudo suspend database shop-db",
+    await waitFor(() =>
+      expect(run).toHaveBeenLastCalledWith(
+        "suspend",
+        DB,
+        "sudo suspend database shop-db",
+      ),
     );
   });
 

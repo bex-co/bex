@@ -19,9 +19,13 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func actionByID(t *testing.T, acts []core.ActionDecision, id string) core.ActionDecision {
@@ -42,62 +46,111 @@ func (operateOnlyDenier) Check(_ context.Context, _, relation, _ string) (bool, 
 	return relation == core.RelCanView, nil
 }
 
-// TestActionCapabilities_SuspendPreconditionMatchesGuard (ADR087, w6/m136):
-// the projection reports protected_confirmation_required exactly when the
-// execute path blocks an unconfirmed Suspend — both read the same
-// EnvironmentProtected predicate — and a viewer's denied actions carry no
-// precondition (no protection read, no leak).
-func TestActionCapabilities_SuspendPreconditionMatchesGuard(t *testing.T) {
-	db := databaseForProtection("dpg-orders", "orders", true)
-	svc, _, prot := protectedPostgresService(db)
+// TestActionCapabilities_SuspendResumeAgreeWithTheVerb (w4/m578): for an Admin
+// and a Developer, on a member of a protected and of an unprotected
+// environment, the projection's suspend and resume decisions are the verbs'
+// own answers. Before w4/m578 the projection decided both on can_operate alone,
+// so a Developer on a protected database was offered a Suspend and a Resume the
+// verb then refused with 403 (requireUnprotected asks for the Admin role
+// there). An Admin keeps the confirmation hint on suspend, and the Developer's
+// refusal is named so a client can say only an Admin may.
+func TestActionCapabilities_SuspendResumeAgreeWithTheVerb(t *testing.T) {
+	roles := []struct {
+		name  string
+		authz core.Checker
+		admin bool
+	}{{"admin", allowAllRelations{}, true}, {"developer", denyWorkspaceManage{}, false}}
+	for _, role := range roles {
+		for _, protected := range []bool{true, false} {
+			for _, action := range []string{core.ActionSuspend, core.ActionResume} {
+				t.Run(fmt.Sprintf("%s/%s/protected=%t", role.name, action, protected), func(t *testing.T) {
+					obj := databaseForProtection("dpg-orders", "orders", true)
+					if !protected {
+						obj.Labels[core.LabelEnvironment] = "env-staging" // a member, of an unprotected environment
+					}
+					obj.Spec.Suspended = action == core.ActionResume // the state the verb acts on
+					svc, cl, prot := protectedPostgresService(obj)
+					svc.Authz = role.authz
+					ctx := ctxAsCaller()
 
-	acts, err := svc.ActionCapabilities(context.Background(), db.Name)
-	if err != nil {
-		t.Fatalf("ActionCapabilities: %v", err)
-	}
-	if s := actionByID(t, acts, core.ActionSuspend); s.Outcome != core.DecisionAllowed || s.Precondition != core.PrecondProtectedConfirmation {
-		t.Fatalf("protected suspend = %+v, want allowed + protected_confirmation_required", s)
-	}
-	if r := actionByID(t, acts, core.ActionRestart); r.Precondition != "" {
-		t.Fatalf("restart is not protection-guarded, got %q", r.Precondition)
-	}
-	// The execute path asks for the Admin role, not a phrase (w8/187); the
-	// precondition is the hint to confirm with the user first.
-	svc.Authz = denyWorkspaceManage{}
-	if _, err := svc.Suspend(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Suspend on a protected database by a non-admin = %v, want ErrForbidden", err)
-	}
+					acts, err := svc.ActionCapabilities(ctx, obj.Name)
+					if err != nil {
+						t.Fatalf("ActionCapabilities: %v", err)
+					}
+					if prot.calls != 1 {
+						t.Errorf("projection read protection %d times, want once for both verbs", prot.calls)
+					}
+					got := actionByID(t, acts, action)
+					verb := svc.Suspend
+					if action == core.ActionResume {
+						verb = svc.Resume
+					}
+					_, verbErr := verb(ctx, obj.Name)
 
-	// Unprotected database: the precondition clears.
-	plain := databaseForProtection("dpg-scratch", "scratch", false)
-	svc2, _, _ := protectedPostgresService(plain)
-	acts2, err := svc2.ActionCapabilities(context.Background(), plain.Name)
-	if err != nil {
-		t.Fatalf("ActionCapabilities (unprotected): %v", err)
+					allowed := got.Outcome == core.DecisionAllowed
+					if want := role.admin || !protected; allowed != want || (verbErr == nil) != want {
+						t.Fatalf("projection %+v and verb error %v disagree, want allowed=%t for both", got, verbErr, want)
+					}
+					switch {
+					case !allowed:
+						if got.Reason != core.ReasonProtectedEnvironmentAdmin || got.Precondition != "" || !errors.Is(verbErr, core.ErrForbidden) {
+							t.Errorf("refused %s = %+v (verb %v), want denied/%s with no precondition and ErrForbidden",
+								action, got, verbErr, core.ReasonProtectedEnvironmentAdmin)
+						}
+						var after appv1alpha1.Database
+						if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), &after); err != nil {
+							t.Fatalf("get: %v", err)
+						}
+						if after.Spec.Suspended != obj.Spec.Suspended {
+							t.Error("a refused verb must not change the database")
+						}
+					case action == core.ActionSuspend && protected:
+						if got.Precondition != core.PrecondProtectedConfirmation {
+							t.Errorf("an Admin's protected suspend = %+v, want the confirmation hint", got)
+						}
+					default:
+						if got.Precondition != "" {
+							t.Errorf("%s = %+v, want ready", action, got)
+						}
+					}
+				})
+			}
+		}
 	}
-	if s := actionByID(t, acts2, core.ActionSuspend); s.Precondition != "" {
-		t.Fatalf("unprotected suspend precondition = %q, want none", s.Precondition)
-	}
+}
 
-	// A viewer is denied without preconditions — and without even reading the
-	// protection store (readiness detail on a forbidden action would leak).
-	svc3, _, prot3 := protectedPostgresService(databaseForProtection("dpg-locked", "locked", true))
-	svc3.Base.Authz = operateOnlyDenier{}
+// TestActionCapabilities_ViewerDeniedWithoutGuardReads: a viewer is denied
+// every action without preconditions, and without the projection reading the
+// protection store or asking the admin check (readiness detail on a forbidden
+// action would leak). Restart is not a restricted verb, so a Developer keeps
+// it on a protected database.
+func TestActionCapabilities_ViewerDeniedWithoutGuardReads(t *testing.T) {
+	svc, _, prot := protectedPostgresService(databaseForProtection("dpg-locked", "locked", true))
+	svc.Base.Authz = operateOnlyDenier{}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "viewer-1", Method: "session"})
-	acts3, err := svc3.ActionCapabilities(ctx, "dpg-locked")
+	acts, err := svc.ActionCapabilities(ctx, "dpg-locked")
 	if err != nil {
 		t.Fatalf("viewer ActionCapabilities: %v", err)
 	}
 	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume} {
-		a := actionByID(t, acts3, id)
+		a := actionByID(t, acts, id)
 		if a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission || a.Precondition != "" {
 			t.Errorf("viewer %s = %+v, want denied/insufficient_permission with no precondition", id, a)
 		}
 	}
-	if prot3.calls != 0 {
-		t.Errorf("viewer projection read the protection store %d times — a denied caller must not pay or observe guard reads", prot3.calls)
+	if prot.calls != 0 {
+		t.Errorf("viewer projection read the protection store %d times — a denied caller must not pay or observe guard reads", prot.calls)
 	}
-	_ = prot
+
+	svc2, _, _ := protectedPostgresService(databaseForProtection("dpg-orders", "orders", true))
+	svc2.Authz = denyWorkspaceManage{}
+	acts2, err := svc2.ActionCapabilities(ctxAsCaller(), "dpg-orders")
+	if err != nil {
+		t.Fatalf("developer ActionCapabilities: %v", err)
+	}
+	if r := actionByID(t, acts2, core.ActionRestart); r.Outcome != core.DecisionAllowed || r.Precondition != "" {
+		t.Errorf("a Developer's restart on a protected database = %+v, want allowed and ready", r)
+	}
 }
 
 // TestActionCapabilities_SuspendResumeReadTheResourceState is w4/132, the

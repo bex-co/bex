@@ -37,6 +37,11 @@ const deCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a service/deploy action refused by the server action decision",
   },
+  "capabilities.actionAdminOnly": {
+    message: "Diese Aktion ist Admins vorbehalten.",
+    description:
+      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+  },
   "capabilities.actionUnavailable": {
     message:
       "Der Server konnte diese Aktion gerade nicht bestätigen. Versuche es erneut.",

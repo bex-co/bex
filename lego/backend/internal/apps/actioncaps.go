@@ -29,9 +29,12 @@ import (
 // tri-state permission (core.CanDecision — the exact relation the verb gates
 // on, pinned by api/roleladder_test.go) plus the bounded precondition its
 // execute path would enforce, computed by the same predicate the verb calls
-// (appProtected, RequireBillingMutation, pendingCronRun). Read-only and
-// non-auditing: can_view gates the projection itself; a snapshot is never a
-// bearer grant — the verb still runs its own guards at dispatch.
+// (appProtected, RequireBillingMutation, pendingCronRun). Suspend and resume
+// are restricted verbs, so on a protected member they read as
+// requireUnprotected's own fresh workspace-manage check (core.RestrictedDecision,
+// w4/m578). Read-only and non-auditing: can_view gates the projection itself;
+// a snapshot is never a bearer grant — the verb still runs its own guards at
+// dispatch.
 //
 // The target binds to the ACTING workspace (RequireResourceInActingWorkspace):
 // a service owned elsewhere reads as absent here even when the caller could
@@ -51,25 +54,26 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	// than re-resolving per relation. Preconditions are computed only for an
 	// allowed decision (DecideAction drops them otherwise, and a denied
 	// caller's projection must not pay store reads — or leak protection
-	// state — for buttons it will never enable), and the billing gate runs at
-	// most once per request however many actions consult it.
+	// state — for buttons it will never enable), and the billing gate, the
+	// protection read and the admin check each run at most once per request
+	// however many actions consult them.
 	operate := s.CanDecisionOn(ctx, core.RelCanOperate, core.WorkspaceObject(s.WorkspaceOrDefault(ctx)))
 	billing := sync.OnceValue(func() string { return s.BillingPreconditionFor(ctx, a.Labels[core.LabelTenant]) })
+	protected := sync.OnceValues(func() (bool, error) { return s.appProtected(ctx, a) })
+	admin := sync.OnceValue(func() error { return s.AuthorizeAppFresh(ctx, core.RelCanManage, a) })
+	suspend, isProtected := core.RestrictedDecision("suspend", operate, protected, admin)
+	resume, _ := core.RestrictedDecision("resume", operate, protected, admin)
 	precond := func(compute func() string) string {
 		if !operate.Allowed() {
 			return ""
 		}
 		return compute()
 	}
+	suspendPre, resumePre := core.LifecyclePreconditions(a.Spec.Suspended, isProtected, resume, billing)
 	out := []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),
-		core.DecideAction(core.ActionSuspend, operate, precond(func() string { return s.suspendPrecondition(ctx, a) })),
-		core.DecideAction(core.ActionResume, operate, precond(func() string {
-			if !a.Spec.Suspended { // state, then billing — TriggerCronRun's documented order
-				return core.PrecondNotSuspended
-			}
-			return billing()
-		})),
+		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
+		core.DecideAction(core.ActionResume, resume, resumePre),
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob {
 		out = append(out,
@@ -88,20 +92,4 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		)
 	}
 	return out, nil
-}
-
-// suspendPrecondition mirrors setSuspended(true)'s guard: the resource's own
-// state first, then the protected-environment confirmation, by the same
-// appProtected predicate requireUnprotected consults and the same
-// classification the datastore projections use.
-//
-// State first for the same reason the cron branch takes that order: a suspended
-// resource cannot be suspended again whatever the protection answer is, and
-// asking protection first would report a confirmation phrase for a verb that
-// would no-op even after the user typed it (w4/132).
-func (s *Service) suspendPrecondition(ctx context.Context, a *appv1alpha1.App) string {
-	if a.Spec.Suspended {
-		return core.PrecondSuspended
-	}
-	return core.ProtectionPrecondition(s.appProtected(ctx, a))
 }

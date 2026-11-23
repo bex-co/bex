@@ -16,6 +16,7 @@ import type { DatabaseView } from "@/features/databases/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useLifecycleGate } from "@/features/capabilities/hooks/use-lifecycle-gate";
 
 export interface DatabaseDangerActionsProps {
   database: DatabaseView;
@@ -29,6 +30,7 @@ export interface DatabaseDangerActionsProps {
  * ends with "Delete Database" / "Restart Database" / "Suspend Database"
  * (resume replaces suspend while hibernated). Same verbs and confirm gates as
  * the header dropdown (DatabaseRowActions); this is the discoverable placement.
+ * Suspend and Resume gate on `databaseActions`, Restart on can_operate (w4/m578).
  */
 export function DatabaseDangerActions({
   database,
@@ -45,6 +47,8 @@ export function DatabaseDangerActions({
   const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
   const { remove, deleting } = useDeleteDatabase();
+  const suspended = isSuspended(database);
+  const gate = useLifecycleGate("database", database.id, suspended);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmVerb, setConfirmVerb] = useState<Extract<
     DatabaseLifecycleAction,
@@ -55,9 +59,10 @@ export function DatabaseDangerActions({
     confirmation: string;
   } | null>(null);
 
-  const lifecycleBusy = lifecycle.pending?.id === database.id;
+  const lifecycleBusy = lifecycle.pending?.id === database.id || gate.checking;
   const busy = deleting === database.id || lifecycleBusy;
-  const suspended = isSuspended(database);
+  const lifecycleDenied = (action: DatabaseLifecycleAction) =>
+    action === "restart" ? operateDenied : !!gate.reason(action);
 
   async function handleDelete(confirmation?: string) {
     if (createDenied) return;
@@ -81,13 +86,16 @@ export function DatabaseDangerActions({
     action: DatabaseLifecycleAction,
     confirmation?: string,
   ) {
-    if (operateDenied) return;
-    const result = confirmation
-      ? await lifecycle.run(action, database, confirmation)
-      : await lifecycle.run(action, database);
-    if (result.status === "confirmation_required") {
+    if (action === "restart" && operateDenied) return;
+    const run = () =>
+      confirmation
+        ? lifecycle.run(action, database, confirmation)
+        : lifecycle.run(action, database);
+    const result =
+      action === "restart" ? await run() : await gate.dispatch(action, run);
+    if (result?.status === "confirmation_required") {
       setProtectedConfirm({ action, confirmation: result.confirmation });
-    } else if (result.status === "success") {
+    } else if (result?.status === "success") {
       setProtectedConfirm(null);
     }
   }
@@ -124,24 +132,26 @@ export function DatabaseDangerActions({
         </Button>
       </PermissionTooltip>
       {suspended ? (
-        <PermissionTooltip reason={operateReason}>
+        <PermissionTooltip reason={gate.reason("resume")}>
           <Button
             variant="ghost"
-            disabled={busy || operateDenied}
-            onClick={() => void runLifecycle("resume")}
+            disabled={busy || lifecycleDenied("resume")}
+            onClick={() => {
+              if (!lifecycleDenied("resume")) void runLifecycle("resume");
+            }}
           >
             {lifecycleBusy ? <Loader2 className="animate-spin" /> : <Play />}
             {t("databases.dangerResume")}
           </Button>
         </PermissionTooltip>
       ) : (
-        <PermissionTooltip reason={operateReason}>
+        <PermissionTooltip reason={gate.reason("suspend")}>
           <Button
             variant="ghost"
             className="text-destructive hover:text-destructive"
-            disabled={busy || operateDenied}
+            disabled={busy || lifecycleDenied("suspend")}
             onClick={() => {
-              if (!operateDenied) setConfirmVerb("suspend");
+              if (!lifecycleDenied("suspend")) setConfirmVerb("suspend");
             }}
           >
             <Pause />
@@ -162,7 +172,7 @@ export function DatabaseDangerActions({
 
       <DatabaseLifecycleConfirmDialog
         database={database}
-        verb={operateDenied ? null : confirmVerb}
+        verb={confirmVerb}
         busy={lifecycleBusy}
         onClose={() => setConfirmVerb(null)}
         onConfirm={(verb) => void runLifecycle(verb)}

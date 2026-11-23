@@ -47,10 +47,11 @@ type EnvironmentProtectionStore interface {
 	GetEnvironmentProtectedStatus(ctx context.Context, environmentID string) (string, error)
 }
 
-// EnvironmentProtected is the predicate half of RequireEnvironmentConfirmation
-// — shared with the capability projections (ADR087, w6/m136) so what a
-// projection reports and what the guard enforces are structurally the same
-// answer. Empty environment/store are unprotected, exactly like the guard.
+// EnvironmentProtected is the predicate half of RequireEnvironmentAdmin —
+// shared with the capability projections (ADR087, w6/m136; RestrictedDecision)
+// so what a projection reports and what the guard enforces are structurally
+// the same answer. Empty environment/store are unprotected, exactly like the
+// guard.
 func EnvironmentProtected(ctx context.Context, store EnvironmentProtectionStore, environmentID string) (bool, error) {
 	if store == nil || environmentID == "" {
 		return false, nil
@@ -60,26 +61,6 @@ func EnvironmentProtected(ctx context.Context, store EnvironmentProtectionStore,
 		return false, err
 	}
 	return protectedStatus == ProtectedStatusProtected, nil
-}
-
-// ProtectionPrecondition classifies a protection predicate's answer for a
-// capability projection — the ONE mapping the App-row and Environment-label
-// protection paths share: protected → the confirmation requirement; an
-// unanswerable read → unavailable (blocked, never silently unguarded).
-func ProtectionPrecondition(protected bool, err error) string {
-	if err != nil {
-		return PrecondUnavailable
-	}
-	if protected {
-		return PrecondProtectedConfirmation
-	}
-	return ""
-}
-
-// EnvironmentProtectionPrecondition projects the protected-environment guard
-// as a bounded precondition, by the same predicate the guard enforces.
-func EnvironmentProtectionPrecondition(ctx context.Context, store EnvironmentProtectionStore, environmentID string) string {
-	return ProtectionPrecondition(EnvironmentProtected(ctx, store, environmentID))
 }
 
 // ProtectedVerbRestricted reports whether verb is one of the actions Render
@@ -144,6 +125,45 @@ func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionSto
 		return nil
 	}
 	return admin()
+}
+
+// RestrictedDecision projects RequireEnvironmentAdmin onto a capability
+// decision (ADR087, w4/m578): what a projection reports for verb, given
+// operate (the permission the verb itself opens with), protected (the guard's
+// own predicate) and admin (the guard's own fresh workspace-manage check). A
+// verb Render leaves open, and any verb on an unprotected member, reads as
+// operate. On a protected member a restricted verb reads as admin's answer,
+// with a role refusal reported as ReasonProtectedEnvironmentAdmin so a client
+// can say only an Admin may. Neither read runs unless operate is allowed: a
+// Viewer pays no protection or admin read and learns nothing from them. A
+// failed protection read is unavailable, never a role refusal. isProtected
+// reports the predicate's answer, so a projection can keep its confirmation
+// hint for the Admin who may proceed.
+func RestrictedDecision(verb string, operate Decision, protected func() (bool, error), admin func() error) (d Decision, isProtected bool) {
+	if !operate.Allowed() || !ProtectedVerbRestricted(verb) {
+		return operate, false
+	}
+	isProtected, err := protected()
+	switch {
+	case err != nil:
+		return Decision{Outcome: DecisionUnavailable, Reason: ReasonAuthzUnavailable}, false
+	case !isProtected:
+		return operate, false
+	}
+	return protectedAdminDecision(admin()), true
+}
+
+// protectedAdminDecision classifies a protected member's fresh admin check. A
+// plain role refusal (the bare ErrForbidden, however wrapped) is
+// ReasonProtectedEnvironmentAdmin; a refusal coded with its own cause (a token
+// missing the scope, a two-factor requirement) and an outage keep the reason
+// ClassifyDecision gives them.
+func protectedAdminDecision(err error) Decision {
+	var coded *CodedError
+	if errors.As(err, &coded) && error(coded) == ErrForbidden {
+		return Decision{Outcome: DecisionDenied, Reason: ReasonProtectedEnvironmentAdmin}
+	}
+	return ClassifyDecision(err)
 }
 
 // RequireConfirmation passes when the caller sent confirm, and otherwise refuses

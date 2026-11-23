@@ -105,7 +105,7 @@ export function bulkLifecycleReason(
   if (operateKey) return t(operateKey);
   if (!capabilities.canOperate) return t("capabilities.actionChecking");
   if (!protectedEnvironment) return undefined;
-  if (capabilities.denied("can_manage")) return t("projects.bulkAdminOnly");
+  if (capabilities.denied("can_manage")) return t("capabilities.actionAdminOnly");
   const manageKey = capabilities.reasonKey("can_manage");
   if (manageKey) return t(manageKey);
   return capabilities.canManage ? undefined : t("capabilities.actionChecking");

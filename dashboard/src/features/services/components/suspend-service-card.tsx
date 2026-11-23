@@ -21,9 +21,7 @@ import {
 } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
-  gateAction,
-  gateReason,
-  resourceDecision,
+  projectionReason,
   type ResourceActionId,
 } from "@/features/capabilities/lib/resource-actions";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
@@ -58,7 +56,7 @@ export function SuspendServiceCard({
 }: SuspendServiceCardProps) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const serverActions = useServerActions(service.id);
+  const serverActions = useServerActions(service.id, service.suspended);
   const {
     pending: confirmBinding,
     blockedReason,
@@ -82,23 +80,18 @@ export function SuspendServiceCard({
   const hasUrl = publiclyRoutable(service.type);
   const actionId: ResourceActionId = isSuspended ? "resume" : "suspend";
 
-  const decision =
-    serverActions.status === "ready"
-      ? resourceDecision(
-          serverActions.snapshot,
-          currentWorkspaceId,
-          service.id,
-          actionId,
-        )
-      : null;
-  const gate = gateAction(
-    decision,
-    serverActions.status === "ready" ? "ready" : serverActions.status,
+  const permissionReason = projectionReason(
+    serverActions,
+    currentWorkspaceId,
+    service.id,
+    actionId,
+    t,
   );
-  const permissionReason = gateReason(gate, t);
   // An open confirmation survives a routine permission refresh but cannot
-  // dispatch until access is fresh again (w4/m159).
-  const confirmBlocked = blockedReason ?? permissionReason;
+  // dispatch until access is fresh again (w4/m159). Once dispatched, the
+  // action's own success re-asks the projection (the state changed), so its
+  // new answer says nothing about the call in flight (w4/m578).
+  const confirmBlocked = blockedReason ?? (busy ? undefined : permissionReason);
   const confirmOpen = confirmBinding?.action === "suspend" && !protectedConfirm;
 
   function closeConfirm() {

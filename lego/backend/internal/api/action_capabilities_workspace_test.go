@@ -23,8 +23,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // The same caller can operate in their personal workspace but is only a viewer
@@ -116,6 +118,90 @@ func TestActionCapabilitiesGraphQLWorkspaceSelection(t *testing.T) {
 					}
 					t.Fatalf("missing action %q in %+v", projection.action, rows)
 				})
+			}
+		})
+	}
+}
+
+// protectedLifecycleStore answers the two protection lookups the lifecycle
+// projections make, a service's and a datastore's environment, with one
+// status. Every other IntentStore method is the nil interface's: a projection
+// must never reach one.
+type protectedLifecycleStore struct {
+	apps.IntentStore
+	status string
+}
+
+func (p protectedLifecycleStore) GetAppProtectedStatus(context.Context, string) (string, error) {
+	return p.status, nil
+}
+
+func (p protectedLifecycleStore) GetEnvironmentProtectedStatus(context.Context, string) (string, error) {
+	return p.status, nil
+}
+
+// TestLifecycleProjectionsGraphQLProtectedAdminRule (w4/m578): over GraphQL,
+// serverActions, databaseActions and keyValueActions report suspend and resume
+// as denied with protected_environment_admin_required for a Developer on a
+// member of a protected environment, the reason the dashboard shows as
+// Render's "This action is limited to admins.", and allowed for an Admin and
+// on an unprotected member. Restart, which Render leaves open, stays allowed.
+func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
+	web := ownedApp("web", "tea-a")
+	web.Labels[core.LabelAppID] = ids.New(ids.Service)
+	web.Labels[store.LabelManagedBy] = store.ManagedByValue
+	db, kv := ownedDB(ids.New(ids.Postgres), "tea-a"), ownedKV(ids.New(ids.KeyValue), "tea-a")
+	db.Labels[core.LabelEnvironment], kv.Labels[core.LabelEnvironment] = "env-1", "env-1"
+	for _, tc := range []struct {
+		name       string
+		authz      core.Checker
+		status     string
+		wantReason string // "" when suspend and resume are allowed
+	}{
+		{"developer, protected", developerChecker{}, core.ProtectedStatusProtected, core.ReasonProtectedEnvironmentAdmin},
+		{"admin, protected", allowOwnChecker{}, core.ProtectedStatusProtected, ""},
+		{"developer, unprotected", developerChecker{}, core.ProtectedStatusUnprotected, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := &core.Base{
+				Client: fakeClient(web, db, kv), Namespace: "default",
+				Workspace: twoWorkspaceResolver{}, Authz: tc.authz,
+			}
+			handler, _ := serverWith(t, base, Deps{DeployStore: &conformDeployStore{}, Store: protectedLifecycleStore{status: tc.status}})
+			for field, target := range map[string]string{
+				"serverActions": web.Labels[core.LabelAppID], "databaseActions": db.Name, "keyValueActions": kv.Name,
+			} {
+				query := fmt.Sprintf(`{%s(id:%q,ownerId:"tea-a"){action outcome reason precondition}}`, field, target)
+				body, _ := json.Marshal(map[string]string{"query": query})
+				response := do(t, handler, http.MethodPost, "/graphql", testToken, string(body))
+				var result struct {
+					Data   map[string][]core.ActionDecision `json:"data"`
+					Errors []struct{ Message string }       `json:"errors"`
+				}
+				if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil || len(result.Errors) != 0 {
+					t.Fatalf("%s: %v %s", field, err, response.Body.String())
+				}
+				seen := 0
+				for _, row := range result.Data[field] {
+					switch row.Action {
+					case core.ActionSuspend, core.ActionResume:
+						seen++
+						if tc.wantReason == "" {
+							if row.Outcome != core.DecisionAllowed {
+								t.Errorf("%s %s = %+v, want allowed", field, row.Action, row)
+							}
+						} else if row.Outcome != core.DecisionDenied || row.Reason != tc.wantReason || row.Precondition != "" {
+							t.Errorf("%s %s = %+v, want denied/%s without a precondition", field, row.Action, row, tc.wantReason)
+						}
+					case core.ActionRestart:
+						if row.Outcome != core.DecisionAllowed {
+							t.Errorf("%s restart = %+v, want allowed", field, row)
+						}
+					}
+				}
+				if seen != 2 {
+					t.Errorf("%s: saw %d of suspend and resume in %+v", field, seen, result.Data[field])
+				}
 			}
 		})
 	}

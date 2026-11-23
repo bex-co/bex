@@ -120,7 +120,7 @@ describe("bulkLifecycleReason", () => {
 
   it("limits a protected environment to Admins with Render's copy", () => {
     expect(bulkLifecycleReason(developer, true, t)).toBe(
-      "projects.bulkAdminOnly",
+      "capabilities.actionAdminOnly",
     );
   });
 
@@ -163,7 +163,7 @@ describe("bulkLifecycleReason", () => {
     const demoted = answer({ can_operate: "allowed", can_manage: "denied" });
     expect(bulkLifecycleReason(demoted, false, t)).toBeUndefined();
     expect(bulkLifecycleReason(demoted, true, t)).toBe(
-      "projects.bulkAdminOnly",
+      "capabilities.actionAdminOnly",
     );
     expect(
       bulkLifecycleReason(answer({ can_operate: "denied" }), false, t),

@@ -33,9 +33,7 @@ import {
   type StrandedGroupPromptItem,
 } from "@/features/environments/components/stranded-groups-confirm-dialog";
 import {
-  gateAction,
-  gateReason,
-  resourceDecision,
+  projectionReason,
   type ResourceActionId,
 } from "@/features/capabilities/lib/resource-actions";
 
@@ -126,7 +124,7 @@ export function ServiceRowActions({
 }: ServiceRowActionsProps) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const serverActions = useServerActions(service.id);
+  const serverActions = useServerActions(service.id, service.suspended);
   const deployActions = useDeployActions(service.id);
   const {
     pending: confirmBinding,
@@ -193,28 +191,22 @@ export function ServiceRowActions({
       : null;
 
   function reasonFor(action: LifecycleAction): string | undefined {
-    const decisionId = decisionActionFor(action);
-    const state = action === "restart" ? deployActions : serverActions;
-    const decision =
-      state.status === "ready"
-        ? resourceDecision(
-            state.snapshot,
-            currentWorkspaceId,
-            service.id,
-            decisionId,
-          )
-        : null;
-    const gate = gateAction(
-      decision,
-      state.status === "ready" ? "ready" : state.status,
+    return projectionReason(
+      action === "restart" ? deployActions : serverActions,
+      currentWorkspaceId,
+      service.id,
+      decisionActionFor(action),
+      t,
     );
-    return gateReason(gate, t);
   }
 
   // An open confirmation survives a routine permission refresh but cannot
-  // dispatch until access is fresh again (w4/m159).
+  // dispatch until access is fresh again (w4/m159). Once dispatched, the
+  // action's own success re-asks the projection (the state changed), so its
+  // new answer ("suspended") says nothing about the call in flight (w4/m578).
   const confirmBlocked =
-    blockedReason ?? (confirmAction ? reasonFor(confirmAction) : undefined);
+    blockedReason ??
+    (confirmAction && !busy ? reasonFor(confirmAction) : undefined);
 
   function handleSelect(action: LifecycleAction) {
     if (busy || reasonFor(action)) return;

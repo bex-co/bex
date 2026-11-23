@@ -13,11 +13,7 @@ import {
   type ActionConfirmBinding,
 } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import {
-  gateAction,
-  gateReason,
-  resourceDecision,
-} from "@/features/capabilities/lib/resource-actions";
+import { projectionReason } from "@/features/capabilities/lib/resource-actions";
 
 export interface ResumeServiceButtonProps {
   service: ServiceView;
@@ -54,7 +50,7 @@ export function ResumeServiceButton({
 }: ResumeServiceButtonProps) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const serverActions = useServerActions(service.id);
+  const serverActions = useServerActions(service.id, service.suspended);
   const {
     pending: confirmBinding,
     blockedReason,
@@ -74,20 +70,11 @@ export function ResumeServiceButton({
   const [checking, setChecking] = useState(false);
   const busy = pending !== null || checking;
 
-  const decision =
-    serverActions.status === "ready"
-      ? resourceDecision(
-          serverActions.snapshot,
-          currentWorkspaceId,
-          service.id,
-          "resume",
-        )
-      : null;
-  const permissionReason = gateReason(
-    gateAction(
-      decision,
-      serverActions.status === "ready" ? "ready" : serverActions.status,
-    ),
+  const permissionReason = projectionReason(
+    serverActions,
+    currentWorkspaceId,
+    service.id,
+    "resume",
     t,
   );
 

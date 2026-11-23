@@ -219,11 +219,6 @@ const koProjects: Record<string, TranslationEntry> = {
     description:
       "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
   },
-  "projects.bulkAdminOnly": {
-    message: "이 작업은 관리자만 할 수 있습니다.",
-    description:
-      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
-  },
   "projects.bulkSuspendTitle": {
     message: "서비스 일시 중지",
     description: "Title of the bulk Suspend dialog",

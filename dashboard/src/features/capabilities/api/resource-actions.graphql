@@ -1,4 +1,4 @@
-# Per-resource action projections (ADR087 / w6/m143). Minimum fields for
+# Per-resource action projections (ADR087 / w6/m143; datastores w4/m578). Minimum fields for
 # target/action permission, blocking precondition, and confirmation — no
 # configuration, secrets, or scopes. The selected workspace travels with each
 # query so a shared workspace never falls back to the caller's personal one.
@@ -13,6 +13,24 @@ query ServerActions($id: String!, $ownerId: String!) {
 
 query DeployActions($serviceId: String!, $ownerId: String!) {
   deployActions(serviceId: $serviceId, ownerId: $ownerId) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+query DatabaseActions($id: String!, $ownerId: String!) {
+  databaseActions(id: $id, ownerId: $ownerId) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+query KeyValueActions($id: String!, $ownerId: String!) {
+  keyValueActions(id: $id, ownerId: $ownerId) {
     action
     outcome
     reason

@@ -40,6 +40,10 @@ const (
 	ReasonMissingOAuthScope      = "missing_oauth_scope"     // the token's granted scopes lack the relation's capability
 	ReasonInsufficientPermission = "insufficient_permission" // an affirmative refusal: membership/role/grant is insufficient
 	ReasonAuthzUnavailable       = "authz_unavailable"       // the question could not be answered; not a permission verdict
+	// A restricted verb on a member of a protected environment, refused
+	// because the caller is not a workspace Admin (RestrictedDecision,
+	// w4/m578). Render's dashboard says "This action is limited to admins."
+	ReasonProtectedEnvironmentAdmin = "protected_environment_admin_required"
 )
 
 // Decision is one capability probe's tri-state result.
@@ -127,8 +131,10 @@ const (
 // manufacture authorization, and an unknown one reads as blocked on every
 // client (fail closed).
 const (
-	// The target belongs to a protected Environment; the verb requires the
-	// exact server-issued confirmation phrase through the safe-action flow.
+	// The target belongs to a protected Environment. Since w8/187 no verb asks
+	// for a phrase: for the Admin who may run a restricted verb there, this is
+	// the hint to confirm with the user first (a non-Admin reads the verb as
+	// denied, RestrictedDecision).
 	PrecondProtectedConfirmation = "protected_confirmation_required"
 	// The resource's current state does not admit the verb (e.g. suspended).
 	PrecondSuspended = "suspended"
@@ -182,6 +188,24 @@ func BillingPrecondition(err error) string {
 	default:
 		return PrecondUnavailable
 	}
+}
+
+// LifecyclePreconditions is what still blocks an allowed Suspend and Resume,
+// in the order the verbs check: the resource's own state first (a suspended
+// resource has nothing to suspend and a running one nothing to resume,
+// w4/132), then for suspend on a protected member the confirmation hint, and
+// for resume the dunning gate, read only when resume is allowed.
+func LifecyclePreconditions(suspended, protected bool, resume Decision, billing func() string) (suspendPre, resumePre string) {
+	if !suspended {
+		if protected {
+			suspendPre = PrecondProtectedConfirmation
+		}
+		return suspendPre, PrecondNotSuspended
+	}
+	if resume.Allowed() {
+		resumePre = billing()
+	}
+	return PrecondSuspended, resumePre
 }
 
 // BillingPreconditionFor is the composed form every projection uses: the

@@ -163,3 +163,36 @@ func TestRequireResourceInActingWorkspace(t *testing.T) {
 		}
 	})
 }
+
+// TestLifecyclePreconditions pins the order the suspend and resume verbs check
+// (w4/132, w4/m578): state first, then the protection hint for suspend and the
+// dunning gate for resume, which a caller refused resume never pays for.
+func TestLifecyclePreconditions(t *testing.T) {
+	allowed := Decision{Outcome: DecisionAllowed}
+	denied := Decision{Outcome: DecisionDenied, Reason: ReasonProtectedEnvironmentAdmin}
+	cases := []struct {
+		name                    string
+		suspended, protected    bool
+		resume                  Decision
+		wantSuspend, wantResume string
+		wantBilling             bool
+	}{
+		{"running", false, false, allowed, "", PrecondNotSuspended, false},
+		{"running, protected", false, true, allowed, PrecondProtectedConfirmation, PrecondNotSuspended, false},
+		{"suspended: state wins over the protection hint", true, true, allowed, PrecondSuspended, PrecondBillingBlocked, true},
+		{"suspended, resume refused: no billing read", true, true, denied, PrecondSuspended, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			billed := false
+			suspendPre, resumePre := LifecyclePreconditions(tc.suspended, tc.protected, tc.resume, func() string {
+				billed = true
+				return PrecondBillingBlocked
+			})
+			if suspendPre != tc.wantSuspend || resumePre != tc.wantResume || billed != tc.wantBilling {
+				t.Fatalf("got (%q, %q) billed=%t, want (%q, %q) billed=%t",
+					suspendPre, resumePre, billed, tc.wantSuspend, tc.wantResume, tc.wantBilling)
+			}
+		})
+	}
+}

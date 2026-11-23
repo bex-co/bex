@@ -364,6 +364,158 @@ describe("ServiceRowActions", () => {
     expect(onRun).not.toHaveBeenCalled();
   });
 
+  // w4/m578: in a protected environment only an Admin may suspend or resume.
+  // A Developer reads Render's reason before the click, never a 403 after it,
+  // while Restart (a deploy, which Render leaves open there) stays enabled.
+  it("shows Render's admin-only reason on Suspend in a protected environment and sends nothing", async () => {
+    serverState = {
+      status: "ready",
+      snapshot: toResourceSnapshot("tea-test", "app", [
+        {
+          action: "suspend",
+          outcome: "denied",
+          reason: "protected_environment_admin_required",
+          precondition: null,
+        },
+      ]),
+      refresh: vi.fn().mockResolvedValue(undefined),
+    };
+    const onRun = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ServiceRowActions service={service} pending={null} onRun={onRun} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
+    const suspend = screen.getByRole("menuitem", { name: "Suspend" });
+    expect(suspend).toHaveAttribute("aria-disabled", "true");
+    await user.hover(suspend);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "This action is limited to admins.",
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Restart" }),
+    ).not.toHaveAttribute("aria-disabled");
+    await user.click(suspend);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(onRun).not.toHaveBeenCalled();
+    expect(apolloQuery).not.toHaveBeenCalled();
+  });
+
+  // The live replay of w4/m578: a successful Suspend flips the row's state,
+  // which re-asks the projection while the lifecycle hook still waits for the
+  // service to converge. The open dialog must not then read the new answer
+  // ("suspended") as a reason the call in flight cannot run.
+  it.each([
+    ["resource list", ServiceRowActions],
+    ["settings", SuspendServiceCard],
+  ] as const)(
+    "%s: a dispatched Suspend's dialog reads no reason from the state it caused",
+    async (surface, Component) => {
+      const onRun = vi.fn(() => new Promise<ProtectedActionResult>(() => {}));
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <Component service={service} pending={null} onRun={onRun} />,
+      );
+      if (surface === "resource list") {
+        await user.click(screen.getByRole("button", { name: /^Actions for / }));
+        await user.click(screen.getByRole("menuitem", { name: "Suspend" }));
+      } else {
+        await user.click(screen.getByRole("button", { name: "Suspend" }));
+      }
+      const dialog = await screen.findByRole("alertdialog");
+      await user.click(within(dialog).getByRole("button", { name: "Suspend" }));
+      await waitFor(() => expect(onRun).toHaveBeenCalledTimes(1));
+
+      // First the re-ask is in flight, then it answers for the new state.
+      serverState = {
+        status: "checking",
+        refresh: vi.fn().mockResolvedValue(undefined),
+      } as never;
+      rerender(
+        <Component
+          service={{ ...service, suspended: true }}
+          pending="suspend"
+          onRun={onRun}
+        />,
+      );
+      expect(
+        screen.queryByText("Checking whether you can perform this action…"),
+      ).not.toBeInTheDocument();
+      serverState = {
+        status: "ready",
+        snapshot: toResourceSnapshot("tea-test", "app", [
+          {
+            action: "suspend",
+            outcome: "allowed",
+            reason: null,
+            precondition: "suspended",
+          },
+          {
+            action: "resume",
+            outcome: "allowed",
+            reason: null,
+            precondition: null,
+          },
+        ]),
+        refresh: vi.fn().mockResolvedValue(undefined),
+      };
+      rerender(
+        <Component
+          service={{ ...service, suspended: true }}
+          pending="suspend"
+          onRun={onRun}
+        />,
+      );
+      expect(
+        screen.queryByText(
+          "Unavailable while the service is suspended. Resume it first.",
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    ["Suspend", false],
+    ["Resume", true],
+  ])(
+    "shows Render's admin-only reason on the Settings card's %s in a protected environment",
+    async (name, suspended) => {
+      serverState = {
+        status: "ready",
+        snapshot: toResourceSnapshot(
+          "tea-test",
+          "app",
+          ["suspend", "resume"].map((action) => ({
+            action,
+            outcome: "denied",
+            reason: "protected_environment_admin_required",
+            precondition: null,
+          })),
+        ),
+        refresh: vi.fn().mockResolvedValue(undefined),
+      };
+      const onRun = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <SuspendServiceCard
+          service={{ ...service, suspended }}
+          pending={null}
+          onRun={onRun}
+        />,
+      );
+
+      const control = screen.getByRole("button", { name });
+      expect(control).toBeDisabled();
+      await user.hover(control.parentElement!);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "This action is limited to admins.",
+      );
+      await user.click(control);
+      expect(onRun).not.toHaveBeenCalled();
+    },
+  );
+
   it("gates restart on the deploy verb, not server restart", async () => {
     serverState = {
       status: "ready",

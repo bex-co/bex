@@ -17,11 +17,11 @@ import {
 import { useApolloClient } from "@apollo/client/react";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ViewerCapabilitiesDocument } from "@/graphql/definitions";
 import {
-  DeployActionsDocument,
-  ServerActionsDocument,
-  ViewerCapabilitiesDocument,
-} from "@/graphql/definitions";
+  queryProjection,
+  type ProjectionField,
+} from "@/features/capabilities/api/query-projection";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
@@ -56,6 +56,18 @@ const SERVER_ACTIONS = new Set<ResourceActionId>([
   "cron_cancel_run",
 ]);
 
+/** Which resource family's projection a recheck reads (w4/m578). */
+export type ActionResourceKind = "service" | "database" | "keyValue";
+
+function projectionFor(
+  kind: ActionResourceKind,
+  action: ResourceActionId,
+): ProjectionField {
+  if (kind === "database") return "databaseActions";
+  if (kind === "keyValue") return "keyValueActions";
+  return SERVER_ACTIONS.has(action) ? "serverActions" : "deployActions";
+}
+
 type IntentContext = {
   workspaceId: string | null;
   resourceId: string;
@@ -76,6 +88,8 @@ function sameIntent(binding: ActionConfirmBinding, context: IntentContext) {
 
 export function useBoundActionConfirm(opts: {
   resourceId: string;
+  /** The resource's family; a service's by default. */
+  kind?: ActionResourceKind;
   deployId?: string;
   /** Additional fresh workspace grant needed by a more privileged variant. */
   requiredCapability?: CapabilityAction;
@@ -258,31 +272,13 @@ export function useBoundActionConfirm(opts: {
         queryDeduplication: false,
       };
       try {
-        const rows = SERVER_ACTIONS.has(target.action)
-          ? (
-              await client.query({
-                query: ServerActionsDocument,
-                variables: {
-                  id: target.resourceId,
-                  ownerId: target.workspaceId,
-                },
-                fetchPolicy: "no-cache",
-                errorPolicy: "none",
-                context,
-              })
-            ).data?.serverActions
-          : (
-              await client.query({
-                query: DeployActionsDocument,
-                variables: {
-                  serviceId: target.resourceId,
-                  ownerId: target.workspaceId,
-                },
-                fetchPolicy: "no-cache",
-                errorPolicy: "none",
-                context,
-              })
-            ).data?.deployActions;
+        const rows = await queryProjection(
+          client,
+          projectionFor(latest.current.kind ?? "service", target.action),
+          target.resourceId,
+          target.workspaceId,
+          ac.signal,
+        );
         if (!current()) return rejected;
         if (!rows) return refuse(null);
         if (target.requiredCapability) {

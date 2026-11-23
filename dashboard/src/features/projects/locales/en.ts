@@ -227,11 +227,6 @@ const enProjects: Record<string, TranslationEntry> = {
     description:
       "Selection toolbar action that suspends every selected running resource (Render's bulk Suspend, w4/m550)",
   },
-  "projects.bulkAdminOnly": {
-    message: "This action is limited to admins.",
-    description:
-      "Tooltip on a disabled bulk Suspend/Resume for a non-admin in a protected environment (Render's copy)",
-  },
   "projects.bulkSuspendTitle": {
     message: "Suspend services",
     description: "Title of the bulk Suspend dialog",

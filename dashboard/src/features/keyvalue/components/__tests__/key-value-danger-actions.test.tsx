@@ -1,10 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 import type { KeyValueView } from "@/features/keyvalue/types";
+
+// Suspend and Resume read the store's own projection, and a fresh read of it
+// right before dispatch (w4/m578).
+const projection = vi.hoisted(() => ({ state: null as unknown }));
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useDatastoreActions: () => projection.state,
+}));
+const apolloQuery = vi.hoisted(() => vi.fn());
+vi.mock("@apollo/client/react", () => ({
+  useApolloClient: () => ({ query: apolloQuery }),
+}));
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
+}));
 
 const remove = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
@@ -34,6 +49,11 @@ beforeEach(() => {
   remove.mockResolvedValue({ status: "success" });
   run.mockReset();
   run.mockResolvedValue({ status: "success" });
+  projection.state = lifecycleState(KEY_VALUE.id, "allowed");
+  apolloQuery.mockReset();
+  apolloQuery.mockResolvedValue({
+    data: { keyValueActions: lifecycleRows("allowed") },
+  });
 });
 
 describe("KeyValueDangerActions — Render-parity bottom action row", () => {
@@ -66,7 +86,7 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it("disables lifecycle actions with the operate reason for a viewer", async () => {
+  it("disables lifecycle actions with the role's reason for a viewer", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({
         role: "VIEWER",
@@ -74,6 +94,7 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
         canOperate: false,
       }),
     );
+    projection.state = lifecycleState(KEY_VALUE.id, "viewer");
     const user = userEvent.setup();
     render(
       <KeyValueDangerActions
@@ -89,10 +110,87 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     expect(suspend).toBeDisabled();
     await user.hover(suspend.parentElement!);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Your role can only view this service.",
+      "Your role can’t perform this action.",
     );
     await user.click(suspend);
     expect(run).not.toHaveBeenCalled();
+  });
+
+  // w4/m578: in a protected environment only an Admin may suspend or resume,
+  // so a Developer reads Render's reason before the click and sends nothing.
+  it.each([
+    ["Suspend Key Value Instance", KEY_VALUE],
+    ["Resume Key Value Instance", { ...KEY_VALUE, suspended: true }],
+  ])(
+    "disables %s with Render's admin-only reason in a protected environment",
+    async (name, keyValue) => {
+      projection.state = lifecycleState(KEY_VALUE.id, "adminOnly");
+      const user = userEvent.setup();
+      render(
+        <KeyValueDangerActions
+          keyValue={keyValue}
+          onDeleted={vi.fn()}
+          onChanged={vi.fn()}
+        />,
+      );
+
+      const control = screen.getByRole("button", { name });
+      expect(control).toBeDisabled();
+      await user.hover(control.parentElement!);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "This action is limited to admins.",
+      );
+      await user.click(control);
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(run).not.toHaveBeenCalled();
+      expect(apolloQuery).not.toHaveBeenCalled();
+    },
+  );
+
+  it("disables Suspend while its decision is still being checked", async () => {
+    projection.state = { status: "checking", refresh: async () => undefined };
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    const suspend = screen.getByRole("button", {
+      name: "Suspend Key Value Instance",
+    });
+    expect(suspend).toBeDisabled();
+    await user.hover(suspend.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Checking whether you can perform this action…",
+    );
+  });
+
+  it("sends no resume when the fresh check before dispatch refuses", async () => {
+    apolloQuery.mockResolvedValue({
+      data: { keyValueActions: lifecycleRows("adminOnly") },
+    });
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={{ ...KEY_VALUE, suspended: true }}
+        onDeleted={vi.fn()}
+        onChanged={onChanged}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Resume Key Value Instance" }),
+    );
+    await waitFor(() => expect(apolloQuery).toHaveBeenCalledTimes(1));
+    expect(apolloQuery.mock.calls[0][0]).toMatchObject({
+      variables: { id: KEY_VALUE.id, ownerId: "tea-test" },
+    });
+    expect(run).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
   });
 
   it("renders the discoverable Delete and Suspend Key Value Instance actions", () => {
@@ -193,13 +291,13 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     expect(confirm).toBeEnabled();
 
     await user.click(confirm);
+    await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     expect(run).toHaveBeenCalledOnce();
     expect(run).toHaveBeenCalledWith(
       "suspend",
       "red-sessions",
       "sessions-cache",
     );
-    expect(onChanged).toHaveBeenCalledOnce();
   });
 
   it("Cancel on the suspend warning runs no lifecycle mutation (w4/247)", async () => {
@@ -237,12 +335,12 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
       screen.getByRole("button", { name: "Resume Key Value Instance" }),
     );
 
+    await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     expect(run).toHaveBeenCalledWith(
       "resume",
       "red-sessions",
       "sessions-cache",
     );
-    expect(onChanged).toHaveBeenCalledOnce();
   });
 
   it("prompts with the server-issued phrase when a protected suspend is blocked", async () => {
@@ -291,13 +389,13 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
         name: "Suspend Key Value Instance",
       }),
     );
+    await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     expect(run).toHaveBeenLastCalledWith(
       "suspend",
       "red-sessions",
       "sessions-cache",
       "sudo suspend key value sessions-cache",
     );
-    expect(onChanged).toHaveBeenCalledOnce();
   });
 
   it("disables Delete for a contributor without can_create", () => {

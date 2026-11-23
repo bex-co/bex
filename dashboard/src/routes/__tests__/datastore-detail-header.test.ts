@@ -6,6 +6,13 @@ import { render, screen } from "@testing-library/react";
 import { DatabaseRowActionsWithCapabilities } from "@/features/databases/components/database-row-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 
+// The datastore lifecycle gate reads its projection through Apollo (w4/m578).
+vi.mock("@/features/capabilities/hooks/use-lifecycle-gate", async () => {
+  const { mockAllowedLifecycleGate } =
+    await import("@/test/mocks/lifecycle-gate");
+  return mockAllowedLifecycleGate();
+});
+
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
   useDeleteDatabase: () => ({ remove: vi.fn(), deleting: null }),
 }));

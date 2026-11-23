@@ -109,7 +109,14 @@ describe("resource-action policy (w6/m143/t001)", () => {
 
   it("presents denied and unavailable distinctly for disable-with-reason", () => {
     expect(
-      gateAction({ outcome: "denied", precondition: "" }, "ready"),
+      gateAction(
+        {
+          outcome: "denied",
+          reason: "insufficient_permission",
+          precondition: "",
+        },
+        "ready",
+      ),
     ).toEqual({
       kind: "denied",
       reasonKey: "capabilities.actionDenied",
@@ -120,13 +127,17 @@ describe("resource-action policy (w6/m143/t001)", () => {
     });
     expect(
       gateAction(
-        { outcome: "allowed", precondition: "billing_blocked" },
+        { outcome: "allowed", reason: "", precondition: "billing_blocked" },
         "ready",
       ),
     ).toMatchObject({ kind: "blocked", precondition: "billing_blocked" });
     expect(
       gateAction(
-        { outcome: "allowed", precondition: "protected_confirmation_required" },
+        {
+          outcome: "allowed",
+          reason: "",
+          precondition: "protected_confirmation_required",
+        },
         "ready",
       ),
     ).toEqual({ kind: "ready" });
@@ -176,7 +187,7 @@ describe("not_suspended (w4/132)", () => {
 
   it("blocks the control with its own reason, never the suspended one", () => {
     const gate = gateAction(
-      { outcome: "allowed", precondition: "not_suspended" },
+      { outcome: "allowed", reason: "", precondition: "not_suspended" },
       "ready",
     );
     expect(gate.kind).toBe("blocked");
@@ -220,5 +231,44 @@ describe("projectionReason", () => {
     expect(reason(ready(null), "srv-other")).toBe(
       "capabilities.actionUnavailable",
     );
+  });
+});
+
+describe("protected_environment_admin_required (w4/m578)", () => {
+  it("is a known reason, kept rather than read as generic", () => {
+    const state = snapshot([
+      {
+        action: "suspend",
+        outcome: "denied",
+        reason: "protected_environment_admin_required",
+      },
+      { action: "resume", outcome: "denied", reason: "mystery" },
+    ]);
+    expect(decide(state, "suspend")?.reason).toBe(
+      "protected_environment_admin_required",
+    );
+    expect(decide(state, "resume")?.reason).toBe("authz_unavailable");
+  });
+
+  it("reads as Render's admin-only copy, and a role denial as the role copy", () => {
+    expect(
+      gateAction(
+        {
+          outcome: "denied",
+          reason: "protected_environment_admin_required",
+          precondition: "",
+        },
+        "ready",
+      ),
+    ).toEqual({ kind: "denied", reasonKey: "capabilities.actionAdminOnly" });
+    for (const reason of [
+      "insufficient_permission",
+      "missing_oauth_scope",
+      "authz_unavailable",
+    ]) {
+      expect(
+        gateAction({ outcome: "denied", reason, precondition: "" }, "ready"),
+      ).toEqual({ kind: "denied", reasonKey: "capabilities.actionDenied" });
+    }
   });
 });

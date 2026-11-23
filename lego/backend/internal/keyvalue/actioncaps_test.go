@@ -19,9 +19,13 @@ package keyvalue
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func actionByID(t *testing.T, acts []core.ActionDecision, id string) core.ActionDecision {
@@ -36,8 +40,7 @@ func actionByID(t *testing.T, acts []core.ActionDecision, id string) core.Action
 }
 
 // TestActionCapabilities_SuspendResumeOnly (ADR087, w6/m136): the Key Value
-// projection offers exactly suspend/resume — no invented restart — with the
-// protection precondition matching the execute path's guard.
+// projection offers exactly suspend/resume — no invented restart.
 func TestActionCapabilities_SuspendResumeOnly(t *testing.T) {
 	kv := keyValueForProtection("red-cache", "cache", true)
 	svc, _, _ := protectedKeyValueService(kv)
@@ -46,33 +49,110 @@ func TestActionCapabilities_SuspendResumeOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
-	if len(acts) != 2 {
+	if len(acts) != 2 || acts[0].Action != core.ActionSuspend || acts[1].Action != core.ActionResume {
 		t.Fatalf("want exactly suspend+resume, got %+v", acts)
 	}
-	for _, a := range acts {
-		if a.Action == core.ActionRestart {
-			t.Fatal("Key Value has no restart verb; the projection must not invent one")
+}
+
+// TestActionCapabilities_SuspendResumeAgreeWithTheVerb (w4/m578): for an Admin
+// and a Developer, on a member of a protected and of an unprotected
+// environment, the projection's suspend and resume decisions are the verbs'
+// own answers. Before w4/m578 the projection decided both on can_operate alone,
+// so a Developer on a protected store was offered a Suspend and a Resume the
+// verb then refused with 403 (requireUnprotected asks for the Admin role
+// there). An Admin keeps the confirmation hint on suspend, and the Developer's
+// refusal is named so a client can say only an Admin may.
+func TestActionCapabilities_SuspendResumeAgreeWithTheVerb(t *testing.T) {
+	roles := []struct {
+		name  string
+		authz core.Checker
+		admin bool
+	}{{"admin", allowAllRelations{}, true}, {"developer", denyWorkspaceManage{}, false}}
+	for _, role := range roles {
+		for _, protected := range []bool{true, false} {
+			for _, action := range []string{core.ActionSuspend, core.ActionResume} {
+				t.Run(fmt.Sprintf("%s/%s/protected=%t", role.name, action, protected), func(t *testing.T) {
+					obj := keyValueForProtection("red-cache", "cache", true)
+					if !protected {
+						obj.Labels[core.LabelEnvironment] = "env-staging" // a member, of an unprotected environment
+					}
+					obj.Spec.Suspended = action == core.ActionResume // the state the verb acts on
+					svc, cl, prot := protectedKeyValueService(obj)
+					svc.Authz = role.authz
+					ctx := ctxAsCaller()
+
+					acts, err := svc.ActionCapabilities(ctx, obj.Name)
+					if err != nil {
+						t.Fatalf("ActionCapabilities: %v", err)
+					}
+					if prot.calls != 1 {
+						t.Errorf("projection read protection %d times, want once for both verbs", prot.calls)
+					}
+					got := actionByID(t, acts, action)
+					verb := svc.Suspend
+					if action == core.ActionResume {
+						verb = svc.Resume
+					}
+					_, verbErr := verb(ctx, obj.Name)
+
+					allowed := got.Outcome == core.DecisionAllowed
+					if want := role.admin || !protected; allowed != want || (verbErr == nil) != want {
+						t.Fatalf("projection %+v and verb error %v disagree, want allowed=%t for both", got, verbErr, want)
+					}
+					switch {
+					case !allowed:
+						if got.Reason != core.ReasonProtectedEnvironmentAdmin || got.Precondition != "" || !errors.Is(verbErr, core.ErrForbidden) {
+							t.Errorf("refused %s = %+v (verb %v), want denied/%s with no precondition and ErrForbidden",
+								action, got, verbErr, core.ReasonProtectedEnvironmentAdmin)
+						}
+						var after appv1alpha1.KeyValue
+						if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), &after); err != nil {
+							t.Fatalf("get: %v", err)
+						}
+						if after.Spec.Suspended != obj.Spec.Suspended {
+							t.Error("a refused verb must not change the store")
+						}
+					case action == core.ActionSuspend && protected:
+						if got.Precondition != core.PrecondProtectedConfirmation {
+							t.Errorf("an Admin's protected suspend = %+v, want the confirmation hint", got)
+						}
+					default:
+						if got.Precondition != "" {
+							t.Errorf("%s = %+v, want ready", action, got)
+						}
+					}
+				})
+			}
 		}
 	}
-	if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != core.PrecondProtectedConfirmation {
-		t.Fatalf("protected suspend = %+v, want protected_confirmation_required", s)
-	}
-	// The execute path asks for the Admin role, not a phrase (w8/187); the
-	// precondition is the hint to confirm with the user first.
-	svc.Authz = denyWorkspaceManage{}
-	if _, err := svc.Suspend(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("Suspend on a protected store by a non-admin = %v, want ErrForbidden", err)
-	}
+}
 
-	plain := keyValueForProtection("red-scratch", "scratch", false)
-	svc2, _, _ := protectedKeyValueService(plain)
-	acts2, err := svc2.ActionCapabilities(context.Background(), plain.Name)
+// TestActionCapabilities_ViewerDeniedWithoutGuardReads: a viewer is denied
+// both actions without preconditions, and without the projection reading the
+// protection store or asking the admin check.
+func TestActionCapabilities_ViewerDeniedWithoutGuardReads(t *testing.T) {
+	svc, _, prot := protectedKeyValueService(keyValueForProtection("red-locked", "locked", true))
+	svc.Base.Authz = viewOnly{}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "viewer-1", Method: "session"})
+	acts, err := svc.ActionCapabilities(ctx, "red-locked")
 	if err != nil {
-		t.Fatalf("ActionCapabilities (unprotected): %v", err)
+		t.Fatalf("viewer ActionCapabilities: %v", err)
 	}
-	if s := actionByID(t, acts2, core.ActionSuspend); s.Precondition != "" {
-		t.Fatalf("unprotected suspend precondition = %q, want none", s.Precondition)
+	for _, a := range acts {
+		if a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission || a.Precondition != "" {
+			t.Errorf("viewer %s = %+v, want denied/insufficient_permission with no precondition", a.Action, a)
+		}
 	}
+	if prot.calls != 0 {
+		t.Errorf("viewer projection read the protection store %d times, want none", prot.calls)
+	}
+}
+
+// viewOnly grants exactly can_view — the viewer shape.
+type viewOnly struct{}
+
+func (viewOnly) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	return relation == core.RelCanView, nil
 }
 
 // TestActionCapabilities_SuspendResumeReadTheResourceState is w4/132, the Key

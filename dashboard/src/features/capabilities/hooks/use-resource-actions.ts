@@ -10,11 +10,10 @@ import {
   useState,
 } from "react";
 import { useApolloClient } from "@apollo/client/react";
-import type { DocumentNode } from "graphql";
 import {
-  DeployActionsDocument,
-  ServerActionsDocument,
-} from "@/graphql/definitions";
+  queryProjection,
+  type ProjectionField,
+} from "@/features/capabilities/api/query-projection";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
@@ -22,7 +21,6 @@ import { snapshotIsFresh } from "@/features/capabilities/lib/capability-policy";
 import {
   toResourceSnapshot,
   type ResourceActionSnapshot,
-  type ResourceActionInput,
 } from "@/features/capabilities/lib/resource-actions";
 
 export type ResourceActionsState =
@@ -38,10 +36,17 @@ type ProjectionResult =
   | { status: "checking" | "unavailable" }
   | { status: "ready"; snapshot: ResourceActionSnapshot };
 
+/**
+ * `suspended` is the resource's lifecycle state as the caller renders it. A
+ * decision's precondition reads that state (w4/132: Resume is `not_suspended`
+ * on a running resource), so when it changes the old answer is withdrawn and
+ * the projection asked again, rather than offering the new state's action
+ * with the old state's reason until the next poll (w4/m578).
+ */
 function useProjection(
-  document: DocumentNode,
-  field: "serverActions" | "deployActions",
+  field: ProjectionField,
   resourceId: string | null,
+  suspended?: boolean,
 ): ResourceActionsState {
   const { currentWorkspaceId: workspaceId } = useWorkspace();
   const capabilities = useCapabilities();
@@ -50,8 +55,15 @@ function useProjection(
   const eligible =
     capabilities.loaded && !capabilities.stale && !capabilities.unavailable;
   const lease = useMemo(
-    () => ({ workspaceId, resourceId, generation, checkedAt, eligible }),
-    [workspaceId, resourceId, generation, checkedAt, eligible],
+    () => ({
+      workspaceId,
+      resourceId,
+      suspended,
+      generation,
+      checkedAt,
+      eligible,
+    }),
+    [workspaceId, resourceId, suspended, generation, checkedAt, eligible],
   );
   // A layout effect, so the request effect below already sees this lease.
   const currentLease = useRef(lease);
@@ -93,24 +105,15 @@ function useProjection(
         getAccessGeneration() === accessGeneration;
       if (announce) onAnswer({ status: "checking" });
       try {
-        const response = await client.query({
-          query: document,
-          variables:
-            field === "serverActions"
-              ? { id: resourceId, ownerId: workspaceId }
-              : { serviceId: resourceId, ownerId: workspaceId },
-          fetchPolicy: "no-cache",
-          errorPolicy: "none",
-          context: {
-            fetchOptions: { signal: ac.signal },
-            queryDeduplication: false,
-          },
-        });
+        const rows = await queryProjection(
+          client,
+          field,
+          resourceId,
+          workspaceId,
+          ac.signal,
+        );
         if (!current()) return;
-        const rows = (
-          response.data as Record<string, ResourceActionInput[]> | undefined
-        )?.[field];
-        if (!Array.isArray(rows)) throw new Error("action check unavailable");
+        if (!rows) throw new Error("action check unavailable");
         onAnswer({
           status: "ready",
           snapshot: toResourceSnapshot(workspaceId, resourceId, rows),
@@ -121,7 +124,7 @@ function useProjection(
         if (inFlight.current === ac) inFlight.current = null;
       }
     },
-    [client, document, field, workspaceId, resourceId, eligible, lease],
+    [client, field, workspaceId, resourceId, eligible, lease],
   );
   const refresh = useCallback(
     () => evaluate(settle, { announce: true }),
@@ -147,14 +150,32 @@ function useProjection(
   return { ...result.value, refresh };
 }
 
+/** `suspended` re-asks on a lifecycle change (see useProjection). */
 export function useServerActions(
   serviceId: string | null,
+  suspended?: boolean,
 ): ResourceActionsState {
-  return useProjection(ServerActionsDocument, "serverActions", serviceId);
+  return useProjection("serverActions", serviceId, suspended);
 }
 
 export function useDeployActions(
   serviceId: string | null,
 ): ResourceActionsState {
-  return useProjection(DeployActionsDocument, "deployActions", serviceId);
+  return useProjection("deployActions", serviceId);
+}
+
+/**
+ * A datastore's lifecycle decisions, `databaseActions` or `keyValueActions`
+ * (w4/m578); a null id asks nothing.
+ */
+export function useDatastoreActions(
+  kind: "database" | "keyValue",
+  id: string | null,
+  suspended: boolean,
+): ResourceActionsState {
+  return useProjection(
+    kind === "database" ? "databaseActions" : "keyValueActions",
+    id,
+    suspended,
+  );
 }

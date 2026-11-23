@@ -32,6 +32,14 @@ function publishKeyValue() {
   kvStore.version += 1;
   kvStore.listeners.forEach((listener) => listener());
 }
+
+// The datastore lifecycle gate reads its projection through Apollo (w4/m578).
+vi.mock("@/features/capabilities/hooks/use-lifecycle-gate", async () => {
+  const { mockAllowedLifecycleGate } =
+    await import("@/test/mocks/lifecycle-gate");
+  return mockAllowedLifecycleGate();
+});
+
 vi.mock("@/features/keyvalue/hooks/use-key-value", async () => {
   const { useSyncExternalStore } = await import("react");
   return {
