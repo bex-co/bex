@@ -222,11 +222,14 @@ func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, na
 	if out, err := run("psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres", "-c", "CREATE DATABASE owner_restored OWNER geo_app"); err != nil {
 		t.Fatalf("prepare own restore database: %v %s", err, out)
 	}
-	if out, err := run(append(slices.Clone(ownerEnv), "PGDATABASE=geo_prod", "BEX_POSTGRES_EXPORT_ROOT=/tmp/bex-operand-owned-export", "EXPORT_DIRECTORY=fixture", "EXPORT_FILENAME=fixture.dir.tar.gz", "bex-postgres-export")...); err != nil {
+	// CloudNativePG's instance container has a read-only root filesystem;
+	// /run is its writable scratch volume.
+	const exportRoot = "/run/bex-operand-owned-export"
+	if out, err := run(append(slices.Clone(ownerEnv), "PGDATABASE=geo_prod", "BEX_POSTGRES_EXPORT_ROOT="+exportRoot, "EXPORT_DIRECTORY=fixture", "EXPORT_FILENAME=fixture.dir.tar.gz", "bex-postgres-export")...); err != nil {
 		t.Fatalf("ordinary owner coherent export: %v %s", err, out)
 	}
-	restore := []string{"pg_restore", "--no-owner", "--no-privileges", "--exit-on-error", "--dbname=owner_restored", "/tmp/bex-operand-owned-export/fixture/geo_prod"}
-	const sidecarFile = "/tmp/bex-operand-owned-export/fixture/pg_ivm_restore.sql"
+	restore := []string{"pg_restore", "--no-owner", "--no-privileges", "--exit-on-error", "--dbname=owner_restored", exportRoot + "/fixture/geo_prod"}
+	const sidecarFile = exportRoot + "/fixture/pg_ivm_restore.sql"
 	sidecar := []string{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-f", sidecarFile}
 	check := "INSERT INTO ivm_base VALUES(4,40); SELECT (SELECT s FROM ivm_sum)=100 AND NOT rolsuper FROM pg_roles WHERE rolname=current_user"
 	commands := make([][]string, 0, 4)
