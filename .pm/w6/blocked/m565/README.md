@@ -1,6 +1,6 @@
 # w6 · m565 — Each agent sandbox's billing line names its real size and its session
 
-**Worker:** worker6 **Goal:** a person reading the billing page can tell what each agent sandbox charge was: its real CPU and memory, and the session (repository and branch) it ran for. Today they read `starter · ghcr.io/bex-co/bex-agent-sandbox · <uuid>`. **Status:** todo (t001, t002, t004–t006 done; t003 code shipped, its production check waits for the deploy)
+**Worker:** worker6 **Goal:** a person reading the billing page can tell what each agent sandbox charge was: its real CPU and memory, and the session (repository and branch) it ran for. Today they read `starter · ghcr.io/bex-co/bex-agent-sandbox · <uuid>`. **Status:** blocked (t001, t002, t004–t006 done in `a8d6ea3b12`; t003's production check and t007 wait for production to carry it)
 
 ## Tasks (in order)
 
