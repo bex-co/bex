@@ -1553,7 +1553,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	}
 	// A static site's tail without type=build stays open on keepalives, as a
 	// cron job's does between runs: nothing arrives, as on Render.
-	dropStaticSiteRequests(app, &q)
+	staticSite := dropStaticSiteRequests(app, &q)
 	if err := q.compileLevelFilter(); err != nil {
 		return err
 	}
@@ -1561,8 +1561,9 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	// pod stdout, request lines poll the log store. A request-only stream on
 	// a store-less deployment fails closed here, before any streaming header;
 	// a mixed or all-types stream without a store still serves its pod lines
-	// (the pre-poll behavior), just with no request producer.
-	if q.onlyRequest() && s.History == nil {
+	// (the pre-poll behavior), just with no request producer. A static site
+	// drops request polling (q.noRequest), so it never reads the store.
+	if q.onlyRequest() && !q.noRequest && s.History == nil {
 		return core.ErrLogStoreUnavailable
 	}
 	if (q.wants(LogTypeApp) || q.wants(LogTypeBuild)) && s.PodLogsFollow == nil {
@@ -1605,13 +1606,16 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if q.mixesBuild() || (q.renderStream && len(q.Types) == 0) {
 		return s.followPodsAndBuilds(ctx, q, selectors, target, podsLive, resource, newProgressContext(app), emit, heartbeat)
 	}
-	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) {
+	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) && !(staticSite && q.onlyRequest()) {
 		// SECURITY (codex #3): a query wanting no produced type (e.g.
 		// type=predeploy) has nothing to stream; it must NOT park on
 		// ctx.Done() holding one of the process-global SSE slots until the
 		// client disconnects. Refuse immediately so the slot is released.
 		// (liveSubscribable refuses it above and pre-slot in logsSubscribe;
 		// this is the backstop beside the producers.)
+		// A static site whose request-only tail was dropped by
+		// dropStaticSiteRequests is the deliberate exception: it stays open
+		// quietly on keepalives in followPods (w4/585, w32/102).
 		return fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 

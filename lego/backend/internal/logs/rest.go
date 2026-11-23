@@ -269,6 +269,10 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resolved.Scoped {
+		if err := s.checkRequestLogsPlan(ctx, resolved.WorkspaceID, q); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 		release, err := s.acquireSlot(r.Context(), func() (string, error) { return resolved.WorkspaceID, nil })
 		if err != nil {
 			writeSubscriptionRefusal(w, err)
@@ -293,14 +297,20 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Admission retains a final process ceiling and adds caller/workspace shares
 	// after resource authorization, leaving capacity for unrelated tenants —
 	// one slot per followed resource, so a multi-resource tail costs what that
-	// many single tails would.
+	// many single tails would. Check the workspace plan's request-log gate right
+	// after resource authorization so a Hobby refusal answers HTTP 400 before
+	// any streaming header or WebSocket 101 (w32/102).
 	for i := range queries {
-		release, err := s.acquireSubscription(r.Context(), queries[i])
+		workspace, release, err := s.acquireSubscriptionWorkspace(r.Context(), queries[i])
 		if err != nil {
 			writeSubscriptionRefusal(w, err)
 			return
 		}
 		defer release()
+		if err := s.checkRequestLogsPlan(ctx, workspace, queries[i]); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 	}
 
 	follow := func(ctx context.Context, emit func(LogEntry) error, heartbeat func() error) error {
@@ -552,9 +562,28 @@ func writeSubscriptionRefusal(w http.ResponseWriter, err error) {
 	core.WriteErr(w, err)
 }
 
+func (s *Service) checkRequestLogsPlan(ctx context.Context, workspaceID string, q LogQuery) error {
+	if !slices.Contains(q.Types, LogTypeRequest) && len(q.requestFilters()) == 0 {
+		return nil
+	}
+	wp, err := s.workspacePlanOf(ctx, workspaceID)
+	if err != nil || !wp.ok {
+		return err
+	}
+	if !core.PlanAllows(wp.plan, core.FeatureRequestLogs) {
+		return core.NewPlanFeatureError("type", wp.plan, core.FeatureRequestLogs)
+	}
+	return nil
+}
+
 func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), error) {
+	_, release, err := s.acquireSubscriptionWorkspace(ctx, q)
+	return release, err
+}
+
+func (s *Service) acquireSubscriptionWorkspace(ctx context.Context, q LogQuery) (string, func(), error) {
 	ctx = core.WithAuditVerb(ctx, AuditVerbFollowLogs)
-	return s.acquireSlot(ctx, func() (string, error) { return s.subscriptionWorkspace(ctx, q.App) })
+	return s.acquireSlotWithWorkspace(ctx, func() (string, error) { return s.subscriptionWorkspace(ctx, q.App) })
 }
 
 // acquireSlot takes one subscription slot for the caller in the workspace
@@ -564,11 +593,16 @@ func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), 
 // across replicas via Postgres TTL leases with heartbeat renewal, falling back
 // fail-open to local counters on store outage.
 func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, error)) (func(), error) {
+	_, release, err := s.acquireSlotWithWorkspace(ctx, workspaceOf)
+	return release, err
+}
+
+func (s *Service) acquireSlotWithWorkspace(ctx context.Context, workspaceOf func() (string, error)) (string, func(), error) {
 	global := false
 	if s.MaxSSEConns > 0 {
 		if s.sseConns.Add(1) > s.MaxSSEConns {
 			s.sseConns.Add(-1)
-			return nil, errSubscriptionLimit
+			return "", nil, errSubscriptionLimit
 		}
 		global = true
 	}
@@ -580,7 +614,7 @@ func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, e
 	workspace, err := workspaceOf()
 	if err != nil {
 		releaseGlobal()
-		return nil, err
+		return "", nil, err
 	}
 	identity, _ := core.IdentityFrom(ctx)
 	subject := identity.Subject
@@ -618,7 +652,7 @@ func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, e
 				}
 			}()
 			var once sync.Once
-			return func() {
+			return workspace, func() {
 				once.Do(func() {
 					cancelRenew()
 					<-doneCh
@@ -632,7 +666,7 @@ func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, e
 			}, nil
 		case errors.Is(acqErr, core.ErrLogSubscriptionLimit):
 			releaseGlobal()
-			return nil, errSubscriptionLimit
+			return "", nil, errSubscriptionLimit
 		default:
 			warnSubscriptionStoreFallback("acquire", acqErr)
 			// Fall through fail-open to local per-subject/per-workspace counters.
@@ -647,12 +681,12 @@ func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, e
 	if s.MaxSSEConnsPerSubject > 0 && subject != "" && s.sseBySubject[subject] >= s.MaxSSEConnsPerSubject {
 		s.sseMu.Unlock()
 		releaseGlobal()
-		return nil, errSubscriptionLimit
+		return "", nil, errSubscriptionLimit
 	}
 	if s.MaxSSEConnsPerWorkspace > 0 && s.sseByWorkspace[workspace] >= s.MaxSSEConnsPerWorkspace {
 		s.sseMu.Unlock()
 		releaseGlobal()
-		return nil, errSubscriptionLimit
+		return "", nil, errSubscriptionLimit
 	}
 	if s.MaxSSEConnsPerSubject > 0 && subject != "" {
 		s.sseBySubject[subject]++
@@ -663,7 +697,7 @@ func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, e
 	s.sseMu.Unlock()
 
 	var once sync.Once
-	return func() {
+	return workspace, func() {
 		once.Do(func() {
 			s.sseMu.Lock()
 			if s.MaxSSEConnsPerSubject > 0 && subject != "" {
@@ -700,6 +734,25 @@ func decrementSubscriptionKey(counts map[string]int, key string) {
 	counts[key]--
 }
 
+// errWSWrite marks a write failure on the WebSocket connection itself (peer
+// disconnected or broken pipe), so subscribeWebSocket does not try to send a
+// refusal frame back onto a dead socket.
+var (
+	errWSWrite      = errors.New("websocket write failed")
+	errTailInternal = errors.New("internal error")
+)
+
+// tailRefusalError returns err when its text is safe to expose to a client, or
+// logs the raw failure server-side and returns a generic error matching
+// core.WriteErr's redaction boundary.
+func tailRefusalError(err error) error {
+	if errors.Is(err, ErrBuildNotRunning) || core.IsPublicError(err) {
+		return err
+	}
+	log.Printf("bex-api: log tail error: %v", err)
+	return errTailInternal
+}
+
 // subscribeWebSocket streams the follow as WS text frames, one per log line.
 func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, follow tailFollow) {
 	conn, wsErr := wsUpgrader.Upgrade(w, r, nil)
@@ -707,44 +760,60 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, fol
 		return // upgrader already wrote the error response
 	}
 	defer conn.Close()
+	wsCtx, cancelWS := context.WithCancel(r.Context())
+	defer cancelWS()
+	var peerClosed atomic.Bool
 	// Read pump: keep-alive + detect client disconnect.
 	go func() {
 		for {
 			if _, _, err := conn.NextReader(); err != nil {
+				peerClosed.Store(true)
+				cancelWS()
 				conn.Close()
 				return
 			}
 		}
 	}()
-	followErr := follow(r.Context(), func(e LogEntry) error {
+	followErr := follow(wsCtx, func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
 		}
-		return conn.WriteMessage(websocket.TextMessage, payload)
+		if err := conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+			return fmt.Errorf("%w: %w", errWSWrite, err)
+		}
+		return nil
 	}, func() error {
 		// A ping keeps an idle tail open through the proxies in front of
 		// bex-api; the client's library answers it without any frame reaching
 		// the caller (w1/m146).
-		return conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second))
+		if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+			return fmt.Errorf("%w: %w", errWSWrite, err)
+		}
+		return nil
 	})
-	// A named refusal goes out as one final Log-shaped line. The pinned Render
-	// CLI decodes every frame as a Log and ignores close reasons, so an
-	// {"error"} object read as a blank line and a bare close as a finished
-	// stream (w8/020). The text matches the SSE `event: error`.
-	if errors.Is(followErr, ErrBuildNotRunning) || errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
-		if payload, err := json.Marshal(toRenderLog(refusalLogEntry(followErr))); err == nil {
+	// Every post-upgrade server refusal goes out as one final Log-shaped line
+	// followed by CloseTailRefused (4000). The pinned Render CLI v2.29+ retries
+	// forever on 1000/1006 EOF, whereas 4000 is terminal (w8/m67, w32/102); the
+	// `==>` line carries the reason for clients that decode every frame as a
+	// Log (w8/020) and matches the SSE `event: error`. Normal client
+	// disconnects (context cancellation, peer close, or a write to a dead
+	// socket) end silently.
+	if followErr != nil && !errors.Is(followErr, context.Canceled) && !errors.Is(followErr, errWSWrite) && !peerClosed.Load() && wsCtx.Err() == nil {
+		publicErr := tailRefusalError(followErr)
+		if payload, err := json.Marshal(toRenderLog(refusalLogEntry(publicErr))); err == nil {
 			_ = conn.WriteMessage(websocket.TextMessage, payload)
 		}
-		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(CloseTailRefused, closeReason(followErr)), time.Now().Add(time.Second))
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(CloseTailRefused, closeReason(publicErr)), time.Now().Add(time.Second))
 	}
 }
 
 // CloseTailRefused ends a tail the server will not continue (no running build,
-// logs unavailable). Render CLI v2.29+ reconnects after a 1000/1001/1006/
-// 1011/1012/1013 close, so a normal close would make a finished build tail
-// retry forever; an application code is terminal, and the CLI exits non-zero
-// with the reason. Older clients end on any close (w8/m67, user decision D2).
+// logs unavailable, bad request, plan gate, access loss). Render CLI v2.29+
+// reconnects after a 1000/1001/1006/1011/1012/1013 close, so a normal or bare
+// close would make a refused tail retry forever; an application code is
+// terminal, and the CLI exits non-zero with the reason. Older clients end on
+// any close (w8/m67, user decision D2, w32/102).
 const CloseTailRefused = 4000
 
 // closeReason fits err's text in a close frame's 123-byte reason.
@@ -843,8 +912,8 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, follow
 	// a best-effort final line (the client should treat a non-JSON tail as EOF).
 	// Cancellation/disconnect is normal and silent; named refusals such as
 	// ErrBuildNotRunning must reach the client instead of leaving an empty stream.
-	if err != nil && !errors.Is(err, context.Canceled) {
-		_, _ = fmt.Fprintf(w, errorFormat, err.Error())
+	if err != nil && !errors.Is(err, context.Canceled) && r.Context().Err() == nil {
+		_, _ = fmt.Fprintf(w, errorFormat, tailRefusalError(err).Error())
 		flusher.Flush()
 	}
 }

@@ -17,8 +17,12 @@ limitations under the License.
 package logs
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -30,6 +34,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -404,15 +409,468 @@ func TestAStaticSiteHasNoRuntimeLogs(t *testing.T) {
 			t.Fatalf("static site %s values = %v, %v; want none", label, values, err)
 		}
 	}
-	// A tail stays open and streams nothing, as a cron job's does between runs.
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	var tailed []LogEntry
-	err := svc.FollowLogs(ctx, LogQuery{App: "site"}, func(e LogEntry) error {
-		tailed = append(tailed, e)
-		return nil
+	// A tail stays open and streams nothing, as a cron job's does between runs,
+	// including with explicit type=request or request filters (w32/102) and
+	// even when no durable log store is configured.
+	for _, tc := range []struct {
+		name  string
+		store bool
+		q     LogQuery
+	}{
+		{"unfiltered", true, LogQuery{App: "site"}},
+		{"type=request", true, LogQuery{App: "site", Types: []string{LogTypeRequest}}},
+		{"type=request without store", false, LogQuery{App: "site", Types: []string{LogTypeRequest}}},
+		{"statusCode filter", true, LogQuery{App: "site", StatusCode: []string{"404"}}},
+		{"method filter", true, LogQuery{App: "site", Method: []string{"GET"}}},
+		{"path filter", true, LogQuery{App: "site", Path: []string{"/missing"}}},
+		{"host filter", true, LogQuery{App: "site", Host: []string{"site.onbex.co"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := newService(liveFilterLines, site)
+			if tc.store {
+				s.History = newRequestStore().history
+				s.RequestPollInterval = 5 * time.Millisecond
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			var tailed []LogEntry
+			err := s.FollowLogs(ctx, tc.q, func(e LogEntry) error {
+				tailed = append(tailed, e)
+				return nil
+			})
+			if !errors.Is(err, context.DeadlineExceeded) || len(tailed) != 0 {
+				t.Fatalf("static site tail %s = %d lines, %v; want none until the client leaves", tc.name, len(tailed), err)
+			}
+		})
+	}
+}
+
+// w32/102: a static site tail with type=request or request filters stays open
+// quietly on keepalives over both WebSocket and SSE (never tripping the
+// post-upgrade bad-request backstop and entering a CLI reconnect loop), and
+// mixed [web, static] and project-scoped tails keep streaming the web
+// service's request lines without failing on the static site.
+func TestStaticSiteRequestTailStaysOpenOverWebSocketAndSSE(t *testing.T) {
+	site := sampleApp("site")
+	site.Spec.Type = appv1alpha1.TypeStaticSite
+	web := sampleApp("web")
+
+	newSvc := func() (*Service, *requestStore) {
+		store := newRequestStore()
+		svc := tailService(newScriptedStream(nil).follow, web, site, podFor("web", webInst))
+		svc.History = store.history
+		svc.RequestPollInterval = 5 * time.Millisecond
+		return svc, store
+	}
+
+	// Single static site: WebSocket receives keepalive pings with zero frames
+	// and never closes; SSE receives keepalive comments with zero event: error.
+	for _, query := range []string{
+		"resource=site&type=request",
+		"resource=site&statusCode=404",
+		"resource=site&method=GET&path=/mk-1",
+	} {
+		t.Run("WS "+query, func(t *testing.T) {
+			svc, store := newSvc()
+			srv := revalidationTestServer(svc)
+			defer srv.Close()
+
+			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?" + query
+			conn, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			if err != nil {
+				t.Fatalf("WS dial %s: %v (resp=%v)", query, err, resp)
+			}
+			defer conn.Close()
+
+			pinged := make(chan struct{}, 1)
+			conn.SetPingHandler(func(string) error {
+				select {
+				case pinged <- struct{}{}:
+				default:
+				}
+				return nil
+			})
+			readDone := make(chan error, 1)
+			go func() {
+				_, payload, err := conn.ReadMessage()
+				if err == nil {
+					readDone <- fmt.Errorf("unexpected log frame: %s", payload)
+					return
+				}
+				readDone <- err
+			}()
+			select {
+			case <-pinged:
+			case err := <-readDone:
+				t.Fatalf("WS %s ended instead of staying open on keepalives: %v", query, err)
+			case <-time.After(5 * time.Second):
+				t.Fatalf("WS %s sent no keepalive ping", query)
+			}
+			if got := store.recorded(); len(got) != 0 {
+				t.Errorf("WS %s polled the request store %d times for a static site", query, len(got))
+			}
+		})
+
+		t.Run("SSE "+query, func(t *testing.T) {
+			svc, store := newSvc()
+			srv := revalidationTestServer(svc)
+			defer srv.Close()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/v1/logs/subscribe?"+query, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Accept", "text/event-stream")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("SSE %s: %v", query, err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("SSE %s status = %d, want 200", query, resp.StatusCode)
+			}
+			lineCh := make(chan string, 4)
+			go func() {
+				sc := bufio.NewScanner(resp.Body)
+				for sc.Scan() {
+					lineCh <- sc.Text()
+				}
+				close(lineCh)
+			}()
+			select {
+			case line, ok := <-lineCh:
+				if !ok {
+					t.Fatalf("SSE %s closed instead of keeping alive", query)
+				}
+				if line != ": keepalive" {
+					t.Fatalf("SSE %s first line = %q, want keepalive", query, line)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatalf("SSE %s sent no keepalive", query)
+			}
+			if got := store.recorded(); len(got) != 0 {
+				t.Errorf("SSE %s polled the request store %d times for a static site", query, len(got))
+			}
+		})
+	}
+
+	// Mixed [web, site] with type=request and statusCode=404: delivers web's
+	// request line without failing on the static site.
+	for _, query := range []string{
+		"resource=web&resource=site&type=request",
+		"resource=web&resource=site&statusCode=404",
+	} {
+		t.Run("mixed WS "+query, func(t *testing.T) {
+			svc, _ := newSvc()
+			srv := revalidationTestServer(svc)
+			defer srv.Close()
+
+			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?" + query
+			conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			if err != nil {
+				t.Fatalf("WS dial %s: %v", query, err)
+			}
+			defer conn.Close()
+			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			_, frame, err := conn.ReadMessage()
+			if err != nil {
+				t.Fatalf("WS %s read: %v", query, err)
+			}
+			if !strings.Contains(string(frame), "GET /mk-1 404") || strings.Contains(string(frame), `"value":"site"`) {
+				t.Fatalf("WS %s frame = %s, want web's 404 request line and nothing from site", query, frame)
+			}
+		})
+	}
+
+	// Project-scoped tail with statusCode=404 over [web, site]: site stays open
+	// quietly and does not kill the project stream.
+	t.Run("project scope statusCode=404 with static site", func(t *testing.T) {
+		svc, _ := newSvc()
+		svc.Projects = &fakeProject{
+			workspace: "tea-a",
+			resources: []savedsearch.Resource{
+				{ID: "web", Type: appv1alpha1.TypeWebService},
+				{ID: "site", Type: appv1alpha1.TypeStaticSite},
+			},
+		}
+		srv := revalidationTestServer(svc)
+		defer srv.Close()
+
+		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?project=prj-observed&statusCode=404"
+		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		if err != nil {
+			t.Fatalf("WS dial project scope: %v", err)
+		}
+		defer conn.Close()
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, frame, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("WS project scope read: %v", err)
+		}
+		if !strings.Contains(string(frame), "GET /mk-1 404") {
+			t.Fatalf("WS project scope frame = %s, want web's 404 line", frame)
+		}
 	})
-	if !errors.Is(err, context.DeadlineExceeded) || len(tailed) != 0 {
-		t.Fatalf("static site tail = %d lines, %v; want none until the client leaves", len(tailed), err)
+
+	// Mixed type=build + type=request on a static site: request side stays idle
+	// while build logs still stream cleanly.
+	t.Run("static site type=build&type=request streams builds", func(t *testing.T) {
+		buildPod := buildPodFor("site", "bld-site-gen-1-run", "builds", "buildkit", time.Now())
+		lines := map[string][]string{
+			buildPod.Name: {time.Now().Add(time.Hour).UTC().Format(time.RFC3339Nano) + " static build ok"},
+		}
+		svc := newService(lines, site, buildPod)
+		svc.BuildNamespace = "builds"
+		svc.BuildPodWaitInterval = 10 * time.Millisecond
+		svc.History = newRequestStore().history
+		srv := revalidationTestServer(svc)
+		defer srv.Close()
+
+		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?resource=site&type=build&type=request"
+		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		if err != nil {
+			t.Fatalf("WS dial: %v", err)
+		}
+		defer conn.Close()
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, frame, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("WS read: %v", err)
+		}
+		if !strings.Contains(string(frame), "static build ok") {
+			t.Fatalf("frame = %s, want the static site's build line", frame)
+		}
+	})
+}
+
+// w32/102: subscribeWebSocket emits the `==>` refusal Log frame and closes with
+// CloseTailRefused (4000) for every post-upgrade server error (not just the
+// original three sentinels), redacts unclassified internal errors, and stays
+// silent on normal client disconnects.
+func TestSubscribeWebSocketTerminatesEveryPostUpgradeRefusalWith4000(t *testing.T) {
+	planErr := core.NewPlanFeatureError("type", "hobby", core.FeatureRequestLogs)
+	for _, tc := range []struct {
+		name     string
+		err      error
+		wantMsg  string
+		forbidIn string
+	}{
+		{
+			name:    "bad request",
+			err:     fmt.Errorf("%w: invalid filter syntax", core.ErrBadRequest),
+			wantMsg: "bad request: invalid filter syntax",
+		},
+		{
+			name:    "plan feature required",
+			err:     planErr,
+			wantMsg: planErr.Error(),
+		},
+		{
+			name:    "forbidden",
+			err:     fmt.Errorf("%w: access revoked", core.ErrForbidden),
+			wantMsg: "forbidden: access revoked",
+		},
+		{
+			name:    "not found",
+			err:     fmt.Errorf("%w: project deleted", core.ErrNotFound),
+			wantMsg: "not found: project deleted",
+		},
+		{
+			name:     "internal error redacted",
+			err:      errors.New("pgx: failed connecting to postgres://secret:pass@db.internal:5432/bex"),
+			wantMsg:  "internal error",
+			forbidIn: "secret",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &Service{}
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				svc.subscribeWebSocket(w, r, func(context.Context, func(LogEntry) error, func() error) error {
+					return tc.err
+				})
+			}))
+			defer srv.Close()
+
+			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe"
+			conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			if err != nil {
+				t.Fatalf("WS dial: %v", err)
+			}
+			defer conn.Close()
+			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			_, payload, err := conn.ReadMessage()
+			if err != nil {
+				t.Fatalf("read refusal frame: %v", err)
+			}
+			var line renderLog
+			if err := json.Unmarshal(payload, &line); err != nil {
+				t.Fatalf("frame %s is not a Log: %v", payload, err)
+			}
+			if line.Message != "==> "+tc.wantMsg {
+				t.Errorf("message = %q, want %q", line.Message, "==> "+tc.wantMsg)
+			}
+			if tc.forbidIn != "" && strings.Contains(string(payload), tc.forbidIn) {
+				t.Errorf("frame leaked internal error: %s", payload)
+			}
+			_, _, err = conn.ReadMessage()
+			var closeErr *websocket.CloseError
+			if !errors.As(err, &closeErr) || closeErr.Code != CloseTailRefused {
+				t.Fatalf("after refusal frame: err = %v, want close %d", err, CloseTailRefused)
+			}
+			if closeErr.Text != closeReason(errors.New(tc.wantMsg)) {
+				t.Errorf("close reason = %q, want %q", closeErr.Text, closeReason(errors.New(tc.wantMsg)))
+			}
+			if tc.forbidIn != "" && strings.Contains(closeErr.Text, tc.forbidIn) {
+				t.Errorf("close reason leaked internal error: %q", closeErr.Text)
+			}
+		})
+	}
+
+	// Real handler path: a project-scoped WebSocket tail whose project disappears
+	// on rescope receives the `==>` refusal frame + CloseTailRefused (4000).
+	t.Run("project scope rescope not found sends 4000", func(t *testing.T) {
+		proj := &fakeProject{
+			workspace: "tea-a",
+			resources: []savedsearch.Resource{{ID: "web", Type: appv1alpha1.TypeWebService}},
+		}
+		svc := tailService(newScriptedStream(nil).follow, sampleApp("web"))
+		svc.Projects = proj
+		svc.ProjectRescopeInterval = 20 * time.Millisecond
+		srv := revalidationTestServer(svc)
+		defer srv.Close()
+
+		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?project=prj-observed"
+		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		if err != nil {
+			t.Fatalf("WS dial: %v", err)
+		}
+		defer conn.Close()
+
+		proj.mu.Lock()
+		proj.err = core.NotFound("project")
+		proj.mu.Unlock()
+
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, payload, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("read refusal frame after rescope failure: %v", err)
+		}
+		var line renderLog
+		if err := json.Unmarshal(payload, &line); err != nil {
+			t.Fatalf("frame %s is not a Log: %v", payload, err)
+		}
+		if !strings.Contains(line.Message, "==> ") || !strings.Contains(line.Message, "project") {
+			t.Errorf("message = %q, want ==> refusal naming project", line.Message)
+		}
+		_, _, err = conn.ReadMessage()
+		var closeErr *websocket.CloseError
+		if !errors.As(err, &closeErr) || closeErr.Code != CloseTailRefused {
+			t.Fatalf("after rescope refusal: err = %v, want close %d", err, CloseTailRefused)
+		}
+	})
+
+	// Control: normal peer disconnect ends silently without attempting a refusal
+	// frame, and a write failure after peer disconnect does not crash or emit one.
+	t.Run("peer disconnect stays silent", func(t *testing.T) {
+		svc := &Service{}
+		followDone := make(chan struct{})
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			svc.subscribeWebSocket(w, r, func(ctx context.Context, emit func(LogEntry) error, _ func() error) error {
+				defer close(followDone)
+				<-ctx.Done()
+				// Even if a follower tries to emit onto the closed socket
+				// during shutdown, the write error is treated as a quiet disconnect.
+				return emit(LogEntry{Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Message: "late"})
+			})
+		}))
+		defer srv.Close()
+
+		conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http")+"/v1/logs/subscribe", nil)
+		if err != nil {
+			t.Fatalf("WS dial: %v", err)
+		}
+		_ = conn.Close()
+		select {
+		case <-followDone:
+		case <-time.After(5 * time.Second):
+			t.Fatal("follow did not stop after peer closed WebSocket")
+		}
+	})
+}
+
+// w32/102: on a Hobby workspace, request-log tails (explicit type=request or
+// request filters) are refused before WebSocket upgrade / SSE 200 with HTTP 400
+// PLAN_FEATURE_REQUIRED (matching GET /v1/logs) and release their slot.
+// type=predeploy remains refused with HTTP 400 pre-upgrade for both web and
+// static sites.
+func TestSubscribeRefusesHobbyRequestLogsAndPredeployBeforeUpgrade(t *testing.T) {
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	site := sampleApp("site")
+	site.Spec.Type = appv1alpha1.TypeStaticSite
+	site.Labels = map[string]string{core.LabelTenant: "tea-a"}
+
+	newHobbySvc := func() *Service {
+		svc := newService(recentLines(liveFilterLines), web, site, podFor("web", webInst))
+		svc.History = newRequestStore().history
+		svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return "hobby", nil })
+		svc.MaxSSEConns = 1
+		svc.Projects = &fakeProject{
+			workspace: "tea-a",
+			resources: []savedsearch.Resource{{ID: "web", Type: appv1alpha1.TypeWebService}},
+		}
+		return svc
+	}
+
+	for _, tc := range []struct {
+		query    string
+		wantCode string
+		wantText string
+	}{
+		{"resource=web&type=request", core.PlanFeatureRequiredCode, "HTTP request logs require the Pro plan"},
+		{"resource=web&statusCode=404", core.PlanFeatureRequiredCode, "HTTP request logs require the Pro plan"},
+		{"resource=site&type=request", core.PlanFeatureRequiredCode, "HTTP request logs require the Pro plan"},
+		{"project=prj-observed&statusCode=404", core.PlanFeatureRequiredCode, "HTTP request logs require the Pro plan"},
+		{"resource=web&type=predeploy", "", "has no live producer"},
+		{"resource=site&type=predeploy", "", "has no live producer"},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			svc := newHobbySvc()
+			srv := revalidationTestServer(svc)
+			defer srv.Close()
+
+			// WebSocket upgrade must be refused with HTTP 400 before 101.
+			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?" + tc.query
+			conn, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			if conn != nil {
+				_ = conn.Close()
+			}
+			if err == nil || resp == nil || resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("WS %s: err=%v resp=%v, want HTTP 400 before upgrade", tc.query, err, resp)
+			}
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			body := string(bodyBytes)
+			if !strings.Contains(body, tc.wantText) || (tc.wantCode != "" && !strings.Contains(body, tc.wantCode)) {
+				t.Errorf("WS %s body = %s, want %q and code %q", tc.query, body, tc.wantText, tc.wantCode)
+			}
+			waitForSlotRelease(t, svc)
+
+			// SSE must also answer HTTP 400 before streaming headers.
+			req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/logs/subscribe?"+tc.query, nil)
+			req.Header.Set("Accept", "text/event-stream")
+			sseResp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("SSE %s: %v", tc.query, err)
+			}
+			sseBody, _ := io.ReadAll(sseResp.Body)
+			_ = sseResp.Body.Close()
+			if sseResp.StatusCode != http.StatusBadRequest || !strings.Contains(string(sseBody), tc.wantText) {
+				t.Errorf("SSE %s = %d %s, want 400 with %q", tc.query, sseResp.StatusCode, sseBody, tc.wantText)
+			}
+			waitForSlotRelease(t, svc)
+		})
 	}
 }
