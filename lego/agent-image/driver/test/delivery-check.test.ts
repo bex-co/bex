@@ -252,6 +252,46 @@ test("a steering turn's pushed commits count as delivered when an earlier turn o
   assert.equal(result.git?.prNumber, 7);
 });
 
+// w10/052: once the pull request an earlier turn opened is merged or closed,
+// the PR tool opens a new one for new pushes, so it no longer stands in for
+// them; a turn that pushed nothing still counts it.
+test("an earlier turn's merged or closed pull request does not cover this turn's pushes", async () => {
+  for (const state of ["merged", "closed"] as const) {
+    const { config } = await repoSession("none");
+    await writeFile(path.join(config.cwd, "earlier.txt"), "earlier\n");
+    git(config.cwd, ["add", "earlier.txt"]);
+    git(config.cwd, ["commit", "-m", "an earlier turn's change"]);
+    git(config.cwd, ["push", "origin", `HEAD:${branch}`]);
+    // This turn's setup finds the branch the earlier turn left on GitHub.
+    await ensureRepo(config);
+    config.existingPrUrl = "https://github.com/acme/widgets/pull/7";
+    config.existingPrNumber = 7;
+    config.existingPrState = state;
+    let facts = await readGitFacts(config);
+    assert.equal(facts.prRecorded, true, state);
+    assert.equal(facts.prNumber, 7, state);
+    assert.deepEqual(undeliveredFacts(facts, config), [], state);
+
+    await writeFile(path.join(config.cwd, "later.txt"), "later\n");
+    git(config.cwd, ["add", "later.txt"]);
+    git(config.cwd, ["commit", "-m", "this turn's change"]);
+    git(config.cwd, ["push", "origin", `HEAD:${branch}`]);
+    facts = await readGitFacts(config);
+    assert.equal(facts.prRecorded, false, state);
+    assert.equal(facts.prNumber, null, state);
+    assert.deepEqual(
+      undeliveredFacts(facts, config),
+      [
+        "origin/bex-agent/ags-test has pushed commits but no pull request was recorded",
+      ],
+      state,
+    );
+    // An open one takes them.
+    config.existingPrState = "open";
+    assert.equal((await readGitFacts(config)).prRecorded, true, state);
+  }
+});
+
 test("a takeover that pushed but did not bring its pull request up to date is nudged", async () => {
   // The session branch started from the pull request's branch (here main);
   // pushing it alone leaves the pull request without the commits.

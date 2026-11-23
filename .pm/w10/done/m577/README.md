@@ -177,7 +177,7 @@ Workspace `tian-personal`, 11:45–12:01Z, on pin `ac882b5f557f`, which carries 
 
   Each is on both hops.
 - **The queue leg (step 3) rests on t002's and t003's tests.** No QA-owned organization exists: the QA account's organizations are `bex-co` and organizations of real projects. `tian-personal`'s GitHub connection is the `puncsky` user installation, and GitHub offers merge queues only on organization-owned repositories, so no queue repository was created. `TestEnqueuePullRequestPinsTheHeadAndLeavesTheMethodToTheQueue` and `TestPullRequestMergeJoinsTheMergeQueue` cover the queue call, the pin and the `enqueuePullRequest` fallback.
-- **Found, outside this milestone.** In turn 2 the overlay still said "Earlier turns of this session already opened pull request #1 … there is never a second one", though #1 was merged and `open_or_update_draft_pr` opened #2. The agent hesitated over it before calling the tool. Filed as [w10/052](../../052.md).
+- **Found, outside this milestone.** In turn 2 the overlay still said "Earlier turns of this session already opened pull request #1 … there is never a second one", though #1 was merged and `open_or_update_draft_pr` opened #2. The agent hesitated over it before calling the tool. Filed as [w10/052](../../done/052.md).
 - **Cleanup.** #3 closed, the session deleted (`404 AGENT_SESSION_NOT_FOUND`), the repository deleted (`404`), the QA key revoked and the QA sign-in logged out.
 
 **Verdict.** DoD 1–3 and 6 hold live, and the queue leg rests on tests. DoD 9 does not: the session armed auto-merge and then waited for the checks anyway. t010 makes the armed answer, the merge step, the `gh` line and the tool description say to end the turn. t005 re-runs step 1 once a pin carries t010.

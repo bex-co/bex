@@ -30,6 +30,7 @@ Agent choice is configuration, not image logic:
 | `BEX_AGENT_REPOSITORY` | `owner/name` of the bound repository (named in the overlay) |
 | `BEX_AGENT_GITHUB_CLI` | `0` when the session's `gh` binding chain turned `gh` off (w10/m524, w10/m561): the driver configures no `gh` and the overlay says so; absent means on |
 | `BEX_AGENT_GITHUB_CLI_LEVEL` | beside `BEX_AGENT_GITHUB_CLI=0`, the binding that turned `gh` off: `workspace`, `automations-default`, `automation` or `session` (w10/m561); the overlay names it, and an absent or unknown value reads as `workspace` |
+| `BEX_AGENT_PR_URL` / `BEX_AGENT_PR_NUMBER` / `BEX_AGENT_PR_STATE` | a steering turn's pull request that earlier turns opened (ADR090 D5), and its state as bex last read it: `open`, `merged` or `closed` (w10/052); absent or unknown reads as open. The overlay names it, says the PR tool opens a new one once it is merged or closed, and the delivery check counts it only while it is open or the turn pushed nothing |
 | `BEX_AGENT_GIT_NAME` / `BEX_AGENT_GIT_EMAIL` | repo-local author identity for the agent's commits (defaults `bex agent` / `agent@bex.co`) |
 | `BEX_AGENT_EXISTING_SESSION_ID` | resume candidate, gated by an ACP `loadSession` probe |
 | `BEX_AGENT_ENV_JSON` | non-secret string-to-string child environment |

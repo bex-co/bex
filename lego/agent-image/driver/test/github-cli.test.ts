@@ -341,6 +341,18 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
   );
   assert.match(recorded, /`gh pr review 7 --comment`/);
   assert.doesNotMatch(recorded, /<number>/);
+  // w10/052: a merged one is not where new pushes go.
+  const merged = platformOverlay({
+    ...context,
+    existingPrUrl: "https://github.com/acme/widgets/pull/7",
+    existingPrNumber: 7,
+    existingPrState: "merged",
+  });
+  assert.match(
+    merged,
+    /Pass the pull request's number to every `gh pr` command \(`open_or_update_draft_pr` returns your new one as `number`\)/,
+  );
+  assert.doesNotMatch(merged, /gh pr checks 7|yours is 7/);
   assert.match(
     text,
     /opens, edits and closes issues, re-runs or cancels CI \(`gh run rerun --failed`, `gh run cancel`\), and runs a workflow on your branch \(`gh workflow run <workflow> --ref bex-agent\/ags-abc`\), never on another ref\./,

@@ -1803,10 +1803,15 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, works
 	withCreatedAt(env, record.CreatedAt)
 	// A steering turn re-dispatches a fresh sandbox: name the PR earlier turns
 	// opened so the agent updates it for the whole branch and the driver's
-	// delivery check does not mistake it for missing (ADR090 D5).
+	// delivery check does not mistake it for missing (ADR090 D5). Its state
+	// too, since the verb opens a new one once it is merged or closed
+	// (w10/052); an unread state is left out, which the driver reads as open.
 	if deliver == "1" && record.PRURL != "" {
 		env["BEX_AGENT_PR_URL"] = record.PRURL
 		env["BEX_AGENT_PR_NUMBER"] = fmt.Sprintf("%d", record.PRNumber)
+		if record.PRState != "" {
+			env["BEX_AGENT_PR_STATE"] = record.PRState
+		}
 	}
 	// A takeover's branch starts from the head of the pull request it took
 	// over, and its overlay explains that the PR verb, not the push, brings

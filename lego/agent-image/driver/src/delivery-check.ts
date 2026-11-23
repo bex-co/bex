@@ -21,6 +21,7 @@
 // `git` for the Completer, with `undelivered` naming what is still missing. Nothing here commits, pushes or rewrites refs.
 
 import { readFile } from "node:fs/promises";
+import type { PullRequestState } from "./config.js";
 import { describeError } from "./errors.js";
 import {
   git,
@@ -62,6 +63,7 @@ export interface DeliveryCheckConfig {
   prRecordPath: string;
   existingPrUrl?: string;
   existingPrNumber?: number | null;
+  existingPrState?: PullRequestState;
   // The session took over the pull request whose branch is baseBranch.
   prTakeover?: boolean;
   deliveryBaseline?: DeliveryBaseline;
@@ -200,12 +202,17 @@ export async function readGitFacts(
       ...[exclude, ...onBase].map((oid) => `^${oid}`),
     ]);
   }
-  // This turn's tool result wins; otherwise the PR an earlier turn opened.
+  // This turn's tool result wins; otherwise the PR an earlier turn opened,
+  // unless it is merged or closed and the branch moved since this turn
+  // started: those pushes need a new pull request (w10/052).
+  const earlierCounts =
+    (config.existingPrState ?? "open") === "open" ||
+    remoteHead === (baseline?.remoteBranchOid ?? "");
   const record = recorded.url
     ? recorded
     : {
-        url: config.existingPrUrl ?? "",
-        number: config.existingPrNumber ?? null,
+        url: (earlierCounts && config.existingPrUrl) || "",
+        number: (earlierCounts && config.existingPrNumber) || null,
       };
   return {
     dirty,

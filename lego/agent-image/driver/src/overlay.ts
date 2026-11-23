@@ -39,7 +39,7 @@ import {
 } from "./spawn-session.js";
 import { submitResultToolName } from "./submit-result.js";
 import type { PythonOutcome } from "./python-select.js";
-import type { GitHubCliLevel } from "./config.js";
+import type { GitHubCliLevel, PullRequestState } from "./config.js";
 
 export const overlayVersion = 1;
 
@@ -56,6 +56,8 @@ export interface OverlayContext {
   githubCliLevel?: GitHubCliLevel;
   existingPrUrl?: string;
   existingPrNumber?: number | null;
+  // Its state as bex-api last read it; absent is open.
+  existingPrState?: PullRequestState;
   // The session took over existingPrUrl from the person who opened it; its
   // branch started from that pull request's branch (baseBranch), which the
   // PR tool fast-forwards instead of opening a pull request.
@@ -124,9 +126,26 @@ function prReference(context: OverlayContext, noun: string): string {
   return `${noun}${number} (${context.existingPrUrl})`;
 }
 
+// endedPr is "merged" or "closed" once the recorded pull request is, and ""
+// while it is open (w10/052): the PR tool updates only an open one.
+function endedPr(context: OverlayContext): "merged" | "closed" | "" {
+  const state = context.existingPrState;
+  return context.existingPrUrl && (state === "merged" || state === "closed")
+    ? state
+    : "";
+}
+
+// existingPrLine names the pull request earlier turns opened. Once it is
+// merged or closed, the PR tool opens a new one for new pushes (w10/052), as
+// a Devin session opens more than one pull request.
 function existingPrLine(context: OverlayContext): string {
   if (!context.existingPrUrl) return "";
-  return `- Earlier turns of this session already opened ${prReference(context, "pull request")}. Calling \`${toolName}\` updates it; there is never a second one.
+  const pr = prReference(context, "pull request");
+  const ended = endedPr(context);
+  if (ended)
+    return `- Earlier turns of this session opened ${pr}, which is ${ended}. Calling \`${toolName}\` after you push new commits opens a new pull request for them.
+`;
+  return `- Earlier turns of this session already opened ${pr}. Calling \`${toolName}\` updates it; there is never a second one.
 `;
 }
 
@@ -141,9 +160,14 @@ const commitStep =
 function takeoverSections(context: OverlayContext, prBranch: string): string {
   const branch = context.branch;
   const pr = prReference(context, "pull request");
+  // The verb refuses a pull request that is no longer open (w10/052).
+  const ended = endedPr(context);
+  const endedNote = ended
+    ? ` It is ${ended} now, so \`${toolName}\` answers \`pull_request_closed\` and leaves \`${prBranch}\` as it is: commits you push stay on \`${branch}\`, and your final reply says so.`
+    : "";
   return `## Delivering your work
 
-You took over ${pr}, which a person opened. Your branch \`${branch}\` started from its branch \`${prBranch}\`. Pushing \`${branch}\` does not change the pull request: \`${toolName}\` brings it up to date by fast-forwarding \`${prBranch}\` to what you pushed.
+You took over ${pr}, which a person opened. Your branch \`${branch}\` started from its branch \`${prBranch}\`. Pushing \`${branch}\` does not change the pull request: \`${toolName}\` brings it up to date by fast-forwarding \`${prBranch}\` to what you pushed.${endedNote}
 
 1. ${commitStep}
 2. Push with \`git push origin HEAD:${branch}\`. Do not force-push, and do not rebase or amend pushed commits: the pull request can only move forward, so rewritten history cannot reach it. If a push is rejected because the remote branch moved, run \`git pull --rebase origin ${branch}\` and push again.
@@ -205,10 +229,12 @@ function githubCliLine(context: OverlayContext): string {
   if (context.githubCli === false)
     return `- There is no GitHub token in the sandbox, and ${githubCliOffBy[context.githubCliLevel ?? "workspace"]}, so \`gh\` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
-  const number = context.existingPrNumber || "<number>";
-  const yours = context.existingPrNumber
-    ? `yours is ${context.existingPrNumber}`
-    : `\`${toolName}\` returns yours as \`number\``;
+  // A merged or closed pull request is not the one new pushes go to.
+  const current = endedPr(context) ? null : context.existingPrNumber;
+  const number = current || "<number>";
+  const yours = current
+    ? `yours is ${current}`
+    : `\`${toolName}\` returns ${context.existingPrNumber ? "your new one" : "yours"} as \`number\``;
   return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks ${number} --watch\` waits for them, which merging once they pass does not need: \`${mergePullRequestToolName}\` with \`auto: true\` does), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. Pass the pull request's number to every \`gh pr\` command (${yours}): \`origin\` is the bex Git proxy, so \`gh\` cannot find the current branch's pull request by itself. It also comments, replies in review threads, reviews without approving (\`gh pr review ${number} --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit ${number} --add-label\`), opens, edits and closes issues, re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`), and runs a workflow on your branch (\`gh workflow run <workflow> --ref ${context.branch}\`), never on another ref. It cannot open, edit, approve, mark ready, merge or close a pull request, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
 }
@@ -262,7 +288,7 @@ The person who started this session chose a bex entry point whose output is a pu
 
 ## Follow-up turns
 
-Later messages in this session continue on the same branch and the same pull request. Push new commits to \`${branch}\` and call \`${toolName}\` again; it updates the existing pull request. Revise the title and body when the scope of the change shifts.`;
+Later messages in this session continue on the same branch. Push new commits to \`${branch}\` and call \`${toolName}\` again; it updates the pull request while it is open, and opens a new one once it is merged or closed. Revise the title and body when the scope of the change shifts.`;
 }
 
 function scratchOverlay(context: OverlayContext): string {

@@ -89,7 +89,10 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
     /Committing, pushing `bex-agent\/ags-abc` and opening or updating its pull request are therefore their explicit request/,
   );
   assert.match(text, /only commit or open pull requests when asked/);
-  assert.match(text, /same branch and the same pull request/);
+  assert.match(
+    text,
+    /Later messages in this session continue on the same branch\. Push new commits to `bex-agent\/ags-abc` and call `open_or_update_draft_pr` again; it updates the pull request while it is open, and opens a new one once it is merged or closed\./,
+  );
   // w10/m538: marking ready and merging happen only when asked, as Devin
   // does, after the checks pass, and a refusal is reported, not retried.
   assert.match(
@@ -147,8 +150,47 @@ test("a steering turn's overlay names the existing PR and asks for a whole-branc
   });
   assert.match(
     later,
-    /already opened pull request #7 \(https:\/\/github\.com\/acme\/widgets\/pull\/7\)/,
+    /already opened pull request #7 \(https:\/\/github\.com\/acme\/widgets\/pull\/7\)\. Calling `open_or_update_draft_pr` updates it; there is never a second one\./,
   );
+  // An open state reads as an unread one.
+  assert.equal(
+    platformOverlay({
+      ...repoContext,
+      existingPrUrl: "https://github.com/acme/widgets/pull/7",
+      existingPrNumber: 7,
+      existingPrState: "open",
+    }),
+    later,
+  );
+});
+
+// w10/052: once the pull request is merged or closed, the PR tool opens a new
+// one, so the overlay no longer says there is never a second one.
+test("a steering turn's overlay says a merged or closed PR gets a new one after new pushes", () => {
+  for (const state of ["merged", "closed"] as const) {
+    const text = platformOverlay({
+      ...repoContext,
+      existingPrUrl: "https://github.com/acme/widgets/pull/7",
+      existingPrNumber: 7,
+      existingPrState: state,
+    });
+    assert.match(
+      text,
+      new RegExp(
+        `- Earlier turns of this session opened pull request #7 \\(https://github\\.com/acme/widgets/pull/7\\), which is ${state}\\. Calling \`open_or_update_draft_pr\` after you push new commits opens a new pull request for them\\.\n`,
+      ),
+      state,
+    );
+    assert.doesNotMatch(text, /never a second one|already opened/, state);
+    // gh commands wait for the new pull request's number.
+    assert.match(
+      text,
+      /Pass the pull request's number to every `gh pr` command \(`open_or_update_draft_pr` returns your new one as `number`\)/,
+      state,
+    );
+    assert.match(text, /`gh pr checks <number> --watch`/, state);
+    assert.doesNotMatch(text, /yours is 7|gh pr checks 7/, state);
+  }
 });
 
 test("a takeover pushes its own branch and fast-forwards the person's PR with the tool", () => {
@@ -203,6 +245,18 @@ test("a takeover pushes its own branch and fast-forwards the person's PR with th
     existingPrNumber: null,
   });
   assert.match(unrecorded, /The deliverable is a pull request/);
+  assert.doesNotMatch(text, /pull_request_closed/);
+  // w10/052: a taken-over pull request that merged or closed is no longer
+  // brought up to date; the verb refuses it.
+  for (const state of ["merged", "closed"] as const) {
+    assert.match(
+      platformOverlay({ ...takeover, existingPrState: state }),
+      new RegExp(
+        `fast-forwarding \`feature/fix-login\` to what you pushed\\. It is ${state} now, so \`open_or_update_draft_pr\` answers \`pull_request_closed\` and leaves \`feature/fix-login\` as it is: commits you push stay on \`bex-agent/ags-abc\`, and your final reply says so\\.`,
+      ),
+      state,
+    );
+  }
 });
 
 test("a repo-less session gets the scratch overlay without Git delivery", () => {

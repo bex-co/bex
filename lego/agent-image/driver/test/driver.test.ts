@@ -81,6 +81,20 @@ test("configuration accepts only operator-owned adapter paths", () => {
     loadConfig(hosted({ BEX_AGENT_PR_TAKEOVER: "1" })).prTakeover,
     false,
   );
+  // w10/052: the recorded pull request's state; absent or unknown is open.
+  assert.equal(config.existingPrState, "open");
+  for (const state of ["open", "merged", "closed"] as const) {
+    assert.equal(
+      loadConfig(hosted({ BEX_AGENT_PR_URL: pr, BEX_AGENT_PR_STATE: state }))
+        .existingPrState,
+      state,
+    );
+  }
+  assert.equal(
+    loadConfig(hosted({ BEX_AGENT_PR_URL: pr, BEX_AGENT_PR_STATE: "draft" }))
+      .existingPrState,
+    "open",
+  );
   assert.throws(
     () => loadConfig(hosted({ BEX_AGENT_ARGS: "--flag" })),
     /JSON array/,

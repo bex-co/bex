@@ -137,6 +137,10 @@ export interface AgentDriverConfig {
   // re-dispatched sandbox updates it rather than describing only its own turn.
   existingPrUrl: string;
   existingPrNumber: number | null;
+  // Its state as bex-api last read it from GitHub (BEX_AGENT_PR_STATE,
+  // w10/052): once it is merged or closed, the PR tool opens a new pull
+  // request for new pushes instead of updating it.
+  existingPrState: PullRequestState;
   // The session took over that pull request from the person who opened it:
   // its branch started from the pull request's branch (BEX_AGENT_BASE_BRANCH),
   // which the PR tool fast-forwards to the pushed session branch.
@@ -352,6 +356,17 @@ export function githubCliLevel(value: string | undefined): GitHubCliLevel {
   return githubCliLevels.find((level) => level === value) ?? "workspace";
 }
 
+// PullRequestState is a recorded pull request's state, Devin's pr_state
+// (w10/052).
+const pullRequestStates = ["open", "merged", "closed"] as const;
+export type PullRequestState = (typeof pullRequestStates)[number];
+
+// pullRequestState reads BEX_AGENT_PR_STATE: an absent, unread or unknown
+// state is open, which an older bex-api's recorded pull request always meant.
+export function pullRequestState(value: string | undefined): PullRequestState {
+  return pullRequestStates.find((state) => state === value) ?? "open";
+}
+
 function networkTier(value: string | undefined): string {
   return value && networkTiers.has(value) ? value : "";
 }
@@ -528,6 +543,7 @@ export function loadConfig(
     existingPrNumber:
       optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||
       null,
+    existingPrState: pullRequestState(env.BEX_AGENT_PR_STATE),
     prTakeover:
       env.BEX_AGENT_PR_TAKEOVER === "1" && Boolean(env.BEX_AGENT_PR_URL),
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",

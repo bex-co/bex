@@ -91,9 +91,34 @@ func TestDriverEnvNamesTheExistingPullRequest(t *testing.T) {
 	if steer["BEX_AGENT_PR_URL"] != "https://github.com/acme/widgets/pull/7" || steer["BEX_AGENT_PR_NUMBER"] != "7" {
 		t.Fatalf("steering env = %q #%q, want the recorded PR", steer["BEX_AGENT_PR_URL"], steer["BEX_AGENT_PR_NUMBER"])
 	}
-	chat := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7}, store.AgentEnvironment{}, "")
+	chat := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7, PRState: store.PRStateMerged}, store.AgentEnvironment{}, "")
 	if _, ok := chat["BEX_AGENT_PR_URL"]; ok {
 		t.Fatal("a repo-less session must not name a pull request")
+	}
+	if _, ok := chat["BEX_AGENT_PR_STATE"]; ok {
+		t.Fatal("a repo-less session must not name a pull request state")
+	}
+}
+
+// w10/052: the steering env carries the recorded pull request's state, so the
+// overlay can say the PR verb opens a new one once it is merged or closed. A
+// state bex has not read yet is left out (the driver reads it as open).
+func TestDriverEnvNamesThePullRequestState(t *testing.T) {
+	svc := &Service{}
+	for _, state := range []string{"", store.PRStateOpen, store.PRStateMerged, store.PRStateClosed} {
+		env := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7, PRState: state}, store.AgentEnvironment{}, "")
+		got, ok := env["BEX_AGENT_PR_STATE"]
+		if ok != (state != "") || got != state {
+			t.Errorf("state %q: BEX_AGENT_PR_STATE = %q (set %t)", state, got, ok)
+		}
+		if env["BEX_AGENT_PR_NUMBER"] != "7" {
+			t.Errorf("state %q: BEX_AGENT_PR_NUMBER = %q, want 7", state, env["BEX_AGENT_PR_NUMBER"])
+		}
+	}
+	// No recorded pull request, no state.
+	fresh := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 1, PRState: store.PRStateMerged}, store.AgentEnvironment{}, "")
+	if _, ok := fresh["BEX_AGENT_PR_STATE"]; ok {
+		t.Fatal("a session with no recorded pull request must not name a state")
 	}
 }
 
