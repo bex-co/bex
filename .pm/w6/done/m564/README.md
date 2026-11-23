@@ -1,6 +1,6 @@
 # w6 · m564 — Opening a closed agent session in Zed starts its sandbox again
 
-**Worker:** worker6 **Goal:** a session whose sandbox closed after its idle timeout can still be opened in Zed: the open starts a fresh sandbox with the session's work, as a Devin session wakes when you come back to it, instead of the dashboard hiding the button. **Status:** blocked (t001–t003, t005–t007 and t009 done; t004's last check waits for production)
+**Worker:** worker6 **Goal:** a session whose sandbox closed after its idle timeout can still be opened in Zed: the open starts a fresh sandbox with the session's work, as a Devin session wakes when you come back to it, instead of the dashboard hiding the button. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,12 +9,12 @@
 | t001 | [Decide how a closed session wakes for an editor, and record it in ADR054](done/t001.md) — **DONE** | 45m | — |
 | t002 | [`resume` on a closed session boots a sandbox for editing, from its kept disk or its branch](done/t002.md) — **DONE** | 2h30m | t001 |
 | t003 | [The dashboard offers Open in Zed on a closed session and shows it starting](done/t003.md) — **DONE** | 1h30m | t002 |
-| t004 | [Production check: a session closed at its idle timeout opens in Zed with its work](t004.md) | 45m | t003, t009 |
+| t004 | [Production check: a session closed at its idle timeout opens in Zed with its work](done/t004.md) — **DONE** | 45m | t003, t009 |
 | t009 | [The session page's conversation stream does not hold a started sandbox open](done/t009.md) — **DONE** | 1h | t003 |
 | t005 | [Render parity (Devin for agent sessions)](done/t005.md) — **DONE** | 30m | t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 45m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007, t009 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007, t009 |
 
 ## Definition of done
 
@@ -56,3 +56,19 @@ Pin `ac882b5f557f`: every `bex-system` Deployment ran `bex-operator@sha256:f5d75
 ## Parked again (2026-11-23)
 
 `2d68de52fc` ships t009: the idle close reads only SSH logins (`ssh_sessions.transport`, migration `0339`), so the session page's conversation stream neither holds a started sandbox nor moves its idle clock. t004's run above passed with the page closed; its last check needs that deploy: the gate is the pin carrying `2d68de52fc`. When it clears, sign in as the QA user, let a session in the `bex` workspace close at its idle timeout, start it from Connect, leave the session page open, connect and disconnect over SSH, and see the sandbox close 5 minutes after the disconnect (both `bex-api` pods log no `deferring teardown, editor SSH open` after it). Record the times here, then close with t008. The page still leaves the stream itself open (w6/171), which no longer keeps the sandbox.
+
+## Unblocked again (2026-11-23)
+
+The gate cleared by itself (verified evidence, no user decision): the newest pin on `origin/main`, `cded300699` (`chore(deploy): pin platform images to 9fdf7e0a1171`, 2026-11-23 17:33Z), carries `2d68de52fc` (`git merge-base --is-ancestor 2d68de52fc 9fdf7e0a1171`), so production's idle close reads SSH logins only. Next: t004's last check as the QA user, as § Parked again says, then t008.
+
+## Production check with the page open (2026-11-23, t004's last check)
+
+Pin `9fdf7e0a1171`: `bex-api` and `bex-ssh-gateway` ran `bex-operator@sha256:df6e69bd31bf…`, the digest that pin writes. As the QA user (`bash scripts/qa-login.sh`, logged out afterwards) in workspace `bex`: session `ags-dc27prmurl5c7380qoo0` (disposable, deleted afterwards) on the private fixture `bex-co/bex-hello-go-live`, `claude` on `anthropic/claude-haiku-5.5`, whose one turn left `w6-m564-probe.txt` untracked on purpose; SSH with a temporary key on the QA user (`ssk-dc27pmedfl0s73a7e8og`, deleted afterwards).
+
+- **Close: 17:57:35Z.** The turn ended at 17:52:25Z (`dirty=true`). Nobody opened the page, and the idle close began the save at 17:57:35Z, 5 minutes later (t009: no page view moved the clock), kept the disk (2.38 GB, until the next day) at 17:58:35Z and ended the sandbox; `sshAddress` was gone at 17:58:37Z.
+- **Start: 17:59:00Z.** On the session page, Connect said "The sandbox closed after the session sat idle…" and offered Start the sandbox. Pressed, the session read `resuming` at 17:59:02Z and settled at 17:59:09Z (`the editor's start settled, the sandbox is up`) to `completed` with `sshAddress`; the menu offered Open in Zed and `ssh ags-dc27prmurl5c7380qoo0@ssh.bex.co`. `turns` stayed 1. The page stayed open from here until 18:07:50Z.
+- **Connect: 17:59:21Z.** `ssh` found `/workspace` on `bex-agent/ags-dc27prmurl5c7380qoo0` from the kept disk, `w6-m564-probe.txt` untracked and reading "w6-m564 probe kept across the idle close (second run)". The Completer logged `deferring teardown, editor SSH open` while it was connected. Disconnect: 18:00:51Z.
+- **Second close: 18:05:55Z, with the page open.** The save began 5 minutes after the disconnect, kept the disk again and ended the sandbox at 18:07:00Z; `sshAddress` was gone at 18:07:03Z. The page's conversation stream (`ssh_sessions` row `ssn-dc27tq1ku8ps73ct6c9g`, `transport = agent_attach`, open from 17:59:04Z) was still open through the save and ended at 18:07:21Z when the sandbox went, before the tab left. Neither `bex-api` pod logged `deferring teardown, editor SSH open` for the session after 18:00:51Z.
+- **Reproduce.** As in § Production check above; the gateway rows read-only on the `bex-db` replica with `SELECT id, transport, started_at, ended_at, result FROM ssh_sessions WHERE service_id = '<id>'`.
+
+The definition of done holds on production. The stream the page leaves open stays w6/171's.
