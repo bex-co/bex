@@ -2077,7 +2077,7 @@ type Mutation {
   planBlueprintSync(id: String!, ownerId: String): BlueprintPlanResult
   prepareWorkspaceCreation(attemptId: String, billingEmail: String!, collectPaymentMethod: Boolean, name: String!, plan: String!): WorkspaceCreationAttempt
   purgeServiceCache(confirm: String, id: String!): Service
-  recoverDatabase(id: String!, name: String!, plan: String, targetTime: String, version: String): Database
+  recoverDatabase(environmentId: String, id: String!, name: String!, plan: String, targetTime: String, version: String): Database
   regenerateDeployHook(serviceId: String!): DeployHook
   registerNotificationDeviceSubscription(deviceId: String!, ownerId: String, platform: String!, provider: String!, sessionId: String!, token: String!): NotificationDeviceSubscription
   registerNotificationWebPushSubscription(auth: String!, browserId: String!, endpoint: String!, p256dh: String!): NotificationWebPushSubscription

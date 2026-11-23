@@ -23,63 +23,160 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Every Render-gated body operation bex serves accepts bex's own dialect
 // through the composed stack: the pinned Render request validator, then the
-// real handler's strict decoder (w8/136). w8/135 found create/update
-// registry-credential unreachable because the two demanded contradictory
-// bodies, and only production composed them. The handler may still answer
-// 404 or 503 for its own reasons here; what must never come back is the
-// validator's schema refusal, or the strict decoder refusing a bex field.
+// real handler's strict decoder (w8/136, expanded across every served JSON-body
+// operation in w5/m582). w8/135 found create/update registry-credential
+// unreachable because the two demanded contradictory bodies, and only
+// production composed them. The handler may still answer 404 or 503 for its
+// own reasons here; what must never come back is the validator's schema
+// refusal, or the strict decoder refusing a bex field.
 //
-// The table is every Render operation with a JSON request body that bex serves
-// (28 after w8/137). A body operation bex starts serving belongs here too.
+// The inventory guard derives the served JSON-body set from the runtime
+// contract so a newly mounted body operation cannot be omitted.
 func TestRenderGatedBexBodiesReachTheirHandlers(t *testing.T) {
 	const (
 		srv = "srv-00000000000000000000"
+		dpg = "dpg-00000000000000000000"
+		red = "red-00000000000000000000"
 		dsk = "dsk-00000000000000000000"
 		whk = "whk-00000000000000000000"
 		blp = "blp-00000000000000000000"
+		prj = "prj-00000000000000000000"
+		evm = "evm-00000000000000000000"
+		evg = "evg-00000000000000000000"
+		rte = "rte-00000000000000000000"
+		bsr = "bsr-00000000000000000000"
+		sbg = "sbg-00000000000000000000"
+		sbx = "sbx-00000000000000000000"
+		usr = "usr-00000000000000000000"
+		own = "tea-00000000000000000000"
 	)
-	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"},
-		Deps{RegistryCredsStore: newFakeRCStore(), Secrets: newFakeRCSecretKV()})
-	for _, tc := range []struct{ op, method, path, body string }{
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ op, method, path, body string }{
+		// Blueprints
 		{"update-blueprint", http.MethodPatch, "/v1/blueprints/" + blp, `{"name":"stack"}`},
+		{"validate-blueprint", http.MethodPost, "/v1/blueprints/validate", `{"bexYaml":"services: []","ownerId":"` + own + `"}`},
+
+		// Disks + snapshots
 		{"add-disk", http.MethodPost, "/v1/disks", `{"name":"data","sizeGB":10,"mountPath":"/data","serviceId":"` + srv + `"}`},
 		{"update-disk", http.MethodPatch, "/v1/disks/" + dsk, `{"sizeGB":20}`},
 		{"restore-snapshot", http.MethodPost, "/v1/disks/" + dsk + "/snapshots/restore", `{"snapshotKey":"snap-1"}`},
+
+		// Notifications + members
+		{"patch-owner-notification-settings", http.MethodPatch, "/v1/notification-settings/owners/" + own, `{"emailEnabled":true,"notificationsToSend":"failure"}`},
 		{"patch-service-notification-overrides", http.MethodPatch, "/v1/notification-settings/overrides/services/" + srv, `{"notificationsToSend":"default"}`},
-		{"create-registry-credential", http.MethodPost, "/v1/registrycredentials", `{"name":"ghcr","ownerId":"tea-a","host":"ghcr.io","username":"alice","authToken":"hunter2"}`},
+		{"update-workspace-member", http.MethodPatch, "/v1/owners/" + own + "/members/" + usr, `{"role":"ADMIN"}`},
+
+		// Registry credentials
+		{"create-registry-credential", http.MethodPost, "/v1/registrycredentials", `{"name":"ghcr","ownerId":"` + own + `","host":"ghcr.io","username":"alice","authToken":"hunter2"}`},
 		{"update-registry-credential", http.MethodPatch, "/v1/registrycredentials/rgc-ghcr.io", `{"name":"renamed"}`},
+
+		// Services, deploys, scaling, domains, jobs, routes, headers, env vars, secret files
 		// image.ownerId is Render-required; the official CLI always sends it, empty.
-		{"create-service", http.MethodPost, "/v1/services", `{"type":"web_service","name":"web2","ownerId":"tea-a","image":{"imagePath":"docker.io/library/nginx:alpine","ownerId":""}}`},
+		{"create-service", http.MethodPost, "/v1/services", `{"type":"web_service","name":"web2","ownerId":"` + own + `","image":{"imagePath":"docker.io/library/nginx:alpine","ownerId":""}}`},
 		{"update-service", http.MethodPatch, "/v1/services/" + srv, `{"name":"web3"}`},
+		{"scale-service", http.MethodPost, "/v1/services/" + srv + "/scale", `{"numInstances":2}`},
+		{"autoscale-service", http.MethodPut, "/v1/services/" + srv + "/autoscaling", `{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":75},"memory":{"enabled":false,"percentage":80}}}`},
 		{"create-deploy", http.MethodPost, "/v1/services/" + srv + "/deploys", `{}`},
 		{"rollback-deploy", http.MethodPost, "/v1/services/" + srv + "/rollback", `{"deployId":"dep-1"}`},
-		{"create-key-value", http.MethodPost, "/v1/key-value", `{"name":"kv","ownerId":"tea-a","plan":"free"}`},
-		{"update-key-value", http.MethodPatch, "/v1/key-value/red-00000000000000000000", `{"name":"kv2"}`},
-		{"create-postgres", http.MethodPost, "/v1/postgres", `{"name":"pg","ownerId":"tea-a","plan":"free","version":"16"}`},
-		{"update-postgres", http.MethodPatch, "/v1/postgres/dpg-00000000000000000000", `{"name":"pg2"}`},
-		{"create-project", http.MethodPost, "/v1/projects", `{"name":"proj","ownerId":"tea-a"}`},
-		{"update-project", http.MethodPatch, "/v1/projects/prj-00000000000000000000", `{"name":"proj2"}`},
-		{"create-environment", http.MethodPost, "/v1/environments", `{"name":"staging","projectId":"prj-00000000000000000000"}`},
-		{"update-environment", http.MethodPatch, "/v1/environments/evm-00000000000000000000", `{"name":"prod"}`},
-		{"create-env-group", http.MethodPost, "/v1/env-groups", `{"name":"shared","ownerId":"tea-a"}`},
-		{"update-env-group", http.MethodPatch, "/v1/env-groups/evg-00000000000000000000", `{"name":"shared2"}`},
-		{"update-env-group-env-var", http.MethodPut, "/v1/env-groups/evg-00000000000000000000/env-vars/KEY", `{"value":"v"}`},
-		{"update-env-group-secret-file", http.MethodPut, "/v1/env-groups/evg-00000000000000000000/secret-files/ca.pem", `{"content":"c"}`},
+		{"create-custom-domain", http.MethodPost, "/v1/services/" + srv + "/custom-domains", `{"name":"app.example.com"}`},
+		{"post-job", http.MethodPost, "/v1/services/" + srv + "/jobs", `{"startCommand":"echo hi"}`},
 		{"add-route", http.MethodPost, "/v1/services/" + srv + "/routes", `{"type":"redirect","source":"/a","destination":"/b"}`},
-		{"patch-route", http.MethodPatch, "/v1/services/" + srv + "/routes/rte-00000000000000000000", `{"priority":0}`},
+		{"patch-route", http.MethodPatch, "/v1/services/" + srv + "/routes/" + rte, `{"priority":0}`},
+		{"put-routes", http.MethodPut, "/v1/services/" + srv + "/routes", `[{"type":"redirect","source":"/a","destination":"/b"}]`},
 		{"add-headers", http.MethodPost, "/v1/services/" + srv + "/headers", `{"path":"/*","name":"X-Test","value":"1"}`},
+		{"update-headers", http.MethodPut, "/v1/services/" + srv + "/headers", `[{"path":"/*","name":"X-Test","value":"1"}]`},
+		{"update-env-var", http.MethodPut, "/v1/services/" + srv + "/env-vars/FOO", `{"value":"bar"}`},
+		{"update-env-vars-for-service", http.MethodPut, "/v1/services/" + srv + "/env-vars", `[{"key":"FOO","value":"bar"}]`},
+		{"add-or-update-secret-file", http.MethodPut, "/v1/services/" + srv + "/secret-files/ca.pem", `{"content":"pem"}`},
+		{"update-secret-files-for-service", http.MethodPut, "/v1/services/" + srv + "/secret-files", `[{"name":"ca.pem","content":"pem"}]`},
+
+		// Build sources
+		{"create-build-source", http.MethodPost, "/v1/build-sources", `{"ownerId":"` + own + `","name":"src","git":{"runtime":"docker","repoUrl":"https://github.com/render-examples/express-hello-world"}}`},
+		{"update-build-source", http.MethodPatch, "/v1/build-sources/" + bsr, `{"name":"src2"}`},
+		{"trigger-build-source-build", http.MethodPost, "/v1/build-sources/" + bsr + "/builds", `{"clearCache":"do_not_clear"}`},
+		{"update-build-source-env-var", http.MethodPut, "/v1/build-sources/" + bsr + "/env-vars/FOO", `{"value":"bar"}`},
+		{"update-env-vars-for-build-source", http.MethodPut, "/v1/build-sources/" + bsr + "/env-vars", `[{"key":"FOO","value":"bar"}]`},
+		{"add-or-update-build-source-secret-file", http.MethodPut, "/v1/build-sources/" + bsr + "/secret-files/ca.pem", `{"content":"pem"}`},
+		{"update-secret-files-for-build-source", http.MethodPut, "/v1/build-sources/" + bsr + "/secret-files", `[{"name":"ca.pem","content":"pem"}]`},
+
+		// Key Value + legacy Redis aliases
+		{"create-key-value", http.MethodPost, "/v1/key-value", `{"name":"kv","ownerId":"` + own + `","plan":"free","public":true}`},
+		{"update-key-value", http.MethodPatch, "/v1/key-value/" + red, `{"name":"kv2"}`},
+		{"create-redis", http.MethodPost, "/v1/redis", `{"name":"kvr","ownerId":"` + own + `","plan":"free","public":true}`},
+		{"update-redis", http.MethodPatch, "/v1/redis/" + red, `{"name":"kvr2"}`},
+
+		// Postgres
+		{"create-postgres", http.MethodPost, "/v1/postgres", `{"name":"pg","ownerId":"` + own + `","plan":"free","version":"16","public":true}`},
+		{"update-postgres", http.MethodPatch, "/v1/postgres/" + dpg, `{"name":"pg2"}`},
+		{"recover-postgres", http.MethodPost, "/v1/postgres/" + dpg + "/recovery", `{"restoreName":"pg-restored","environmentId":"` + evm + `"}`},
+		{"create-postgres-user", http.MethodPost, "/v1/postgres/" + dpg + "/credentials", `{"username":"appuser"}`},
+
+		// Projects + environments + env groups
+		{"create-project", http.MethodPost, "/v1/projects", `{"name":"proj","ownerId":"` + own + `"}`},
+		{"update-project", http.MethodPatch, "/v1/projects/" + prj, `{"name":"proj2"}`},
+		{"create-environment", http.MethodPost, "/v1/environments", `{"name":"staging","projectId":"` + prj + `"}`},
+		{"update-environment", http.MethodPatch, "/v1/environments/" + evm, `{"name":"prod"}`},
+		{"add-resources-to-environment", http.MethodPost, "/v1/environments/" + evm + "/resources", `{"resourceIds":["` + srv + `"]}`},
+		{"create-env-group", http.MethodPost, "/v1/env-groups", `{"name":"shared","ownerId":"` + own + `"}`},
+		{"update-env-group", http.MethodPatch, "/v1/env-groups/" + evg, `{"name":"shared2"}`},
+		{"update-env-group-env-var", http.MethodPut, "/v1/env-groups/" + evg + "/env-vars/KEY", `{"value":"v"}`},
+		{"update-env-group-secret-file", http.MethodPut, "/v1/env-groups/" + evg + "/secret-files/ca.pem", `{"content":"c"}`},
+
+		// Webhooks
 		{"create-webhook", http.MethodPost, "/v1/webhooks", `{"name":"hook","url":"https://example.com/hook"}`},
 		{"update-webhook", http.MethodPatch, "/v1/webhooks/" + whk, `{"name":"hook2"}`},
-	} {
+
+		// Sandboxes, sandbox groups, builds, snapshots, credentials, connect-run
+		{"create-sandbox", http.MethodPost, "/v1/sandboxes", `{"ownerId":"` + own + `","plan":"1c-2g"}`},
+		{"connect-sandbox-run", http.MethodPost, "/v1/sandboxes/" + sbx + "/runs/exec/token", `{"command":"echo hi","ownerId":"` + own + `"}`},
+		{"create-sandbox-group", http.MethodPost, "/v1/sandbox-groups", `{"ownerId":"` + own + `","name":"grp","environmentId":"` + evm + `"}`},
+		{"update-sandbox-group", http.MethodPatch, "/v1/sandbox-groups/" + sbg, `{"concurrencyLimit":10}`},
+		{"create-sandbox-build", http.MethodPost, "/v1/sandbox-groups/" + sbg + "/builds", `{"name":"img","sourceImage":"alpine:3.20"}`},
+		{"create-sandbox-snapshot", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots", `{"kind":"filesystem","name":"snap-1"}`},
+		{"create-sandbox-group-credential", http.MethodPost, "/v1/sandbox-groups/" + sbg + "/credentials", `{"id":"cred-1","domain":"api.example.com","value":"secret","injection":{"type":"header","name":"Authorization"}}`},
+		{"update-sandbox-group-credential", http.MethodPatch, "/v1/sandbox-groups/" + sbg + "/credentials/cred-1", `{"enabled":false}`},
+		{"restore-sandbox-group-credential", http.MethodPost, "/v1/sandbox-groups/" + sbg + "/credentials/cred-1/restore", `{"versionId":1}`},
+	}
+
+	// Inventory guard: every served Render JSON-body operation in the runtime
+	// contract (including body extensions like validate-blueprint JSON and
+	// connect-sandbox-run) must appear in the table.
+	servedOps := servedJSONBodyOperations(contract.document)
+	covered := map[string]bool{}
+	for _, tc := range cases {
+		covered[tc.op] = true
+	}
+	checkBodyInventory(t, "TestRenderGatedBexBodiesReachTheirHandlers", servedOps, covered)
+
+	h := renderBodyGateServer(t, own, bsr)
+	for _, tc := range cases {
 		t.Run(tc.op, func(t *testing.T) {
 			w := do(t, h, tc.method, tc.path, testToken, tc.body)
 			body := w.Body.String()
-			for _, refusal := range []string{"invalid request body at", "does not match the Render API schema", "request body is not allowed", "unknown field", "OWNER_REQUIRED"} {
+			for _, refusal := range []string{
+				"invalid request body at",
+				"does not match the Render API schema",
+				"request body is not allowed",
+				"invalid path parameter",
+				"invalid query parameter",
+				"unknown field",
+				"OWNER_REQUIRED",
+			} {
 				if strings.Contains(body, refusal) {
 					t.Fatalf("%s %s with a bex body = %d %s: the composed stack refused it (%q)", tc.method, tc.path, w.Code, body, refusal)
 				}
@@ -170,5 +267,107 @@ func TestPostgresReadReplicasPatchThroughComposedStack(t *testing.T) {
 	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `read replica name \"Reader_2\" must be`) ||
 		strings.Contains(w.Body.String(), `"code"`) {
 		t.Fatalf("invalid replica name = %d %s, want a named 400 without a code", w.Code, w.Body.String())
+	}
+}
+
+// TestRecoverPostgresEnvironmentIDThroughComposedStack exercises Render's
+// POST /v1/postgres/{id}/recovery with environmentId through the full OpenAPI
+// request gate, strict JSON decoder, and response conformance wrapper (w5/m582).
+func TestRecoverPostgresEnvironmentIDThroughComposedStack(t *testing.T) {
+	const (
+		ws = "tea-recover000000000000"
+		db = "dpg-recover000000000000"
+	)
+	peStore := newConformProjectEnvStore()
+	src := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        db,
+			Namespace:   "default",
+			Labels:      core.TenantLabels(ws),
+			Annotations: map[string]string{resourcemeta.AnnotRegion: "frankfurt"},
+		},
+		Spec: appv1alpha1.DatabaseSpec{
+			Name:    "orders",
+			Plan:    "basic-256mb",
+			Version: "16",
+		},
+		Status: appv1alpha1.DatabaseStatus{
+			Phase:          appv1alpha1.DBPhaseReady,
+			BackupsEnabled: true,
+		},
+	}
+	objStore := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "barmancloud.cnpg.io/v1",
+			"kind":       "ObjectStore",
+			"metadata": map[string]any{
+				"name":      "bex-tenant-postgres",
+				"namespace": "default",
+			},
+			"status": map[string]any{
+				"serverRecoveryWindow": map[string]any{
+					db: map[string]any{
+						"firstRecoverabilityPoint": "2026-08-01T00:00:00Z",
+						"lastSuccessfulBackupTime": "2026-08-02T00:00:00Z",
+					},
+				},
+			},
+		},
+	}
+	objStore.SetGroupVersionKind(schema.GroupVersionKind{Group: "barmancloud.cnpg.io", Version: "v1", Kind: "ObjectStore"})
+
+	wsStore := newFakeWSStore()
+	wsStore.tenants = []store.Tenant{{ID: ws, Name: "Acme", Plan: store.PlanPro}}
+	wsStore.members[ws] = []store.TenantMember{{TenantID: ws, Subject: "client-1", Role: "admin"}}
+
+	h, _ := serverWith(t,
+		&core.Base{
+			Client:    fakeClient(src, objStore),
+			Namespace: "default",
+			Workspace: fakeWorkspace{"client-1": ws},
+			Plans:     proPlan(),
+		},
+		Deps{
+			ProjectsStore:     peStore,
+			EnvironmentsStore: peStore,
+			WorkspaceStore:    wsStore,
+			Identities:        metadataIdentities{},
+			Region:            "fsn1",
+		},
+	)
+
+	// Create a project and target environment through the composed server.
+	w := do(t, h, http.MethodPost, "/v1/projects", testToken, `{"name":"proj","ownerId":"`+ws+`"}`)
+	var proj struct{ ID string }
+	if err := json.Unmarshal(w.Body.Bytes(), &proj); w.Code != http.StatusCreated || err != nil || proj.ID == "" {
+		t.Fatalf("create project = %d %s", w.Code, w.Body.String())
+	}
+	w = do(t, h, http.MethodPost, "/v1/environments", testToken, `{"name":"staging","projectId":"`+proj.ID+`"}`)
+	var env struct{ ID string }
+	if err := json.Unmarshal(w.Body.Bytes(), &env); w.Code != http.StatusCreated || err != nil || env.ID == "" {
+		t.Fatalf("create environment = %d %s", w.Code, w.Body.String())
+	}
+
+	// Recover into that environment through Render's POST /v1/postgres/{id}/recovery.
+	w = do(t, h, http.MethodPost, "/v1/postgres/"+db+"/recovery", testToken,
+		`{"restoreName":"orders-restored","environmentId":"`+env.ID+`"}`)
+	var recovered struct {
+		ID            string `json:"id"`
+		Name          string `json:"name"`
+		Region        string `json:"region"`
+		EnvironmentID string `json:"environmentId"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &recovered); w.Code != http.StatusOK || err != nil {
+		t.Fatalf("POST /recovery = %d %s", w.Code, w.Body.String())
+	}
+	if recovered.Name != "orders-restored" || recovered.EnvironmentID != env.ID || recovered.Region != "frankfurt" {
+		t.Fatalf("recovered = %+v, want name=orders-restored environmentId=%q region=frankfurt", recovered, env.ID)
+	}
+
+	// Datadog fields remain refused by name through the composed stack.
+	w = do(t, h, http.MethodPost, "/v1/postgres/"+db+"/recovery", testToken,
+		`{"restoreName":"orders-dd","datadogApiKey":"k"}`)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "recovery field datadogApiKey is unsupported") {
+		t.Fatalf("datadogApiKey = %d %s, want named 400", w.Code, w.Body.String())
 	}
 }

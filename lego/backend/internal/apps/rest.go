@@ -1962,12 +1962,12 @@ func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 		return toNotificationOverride(app), nil
 	}))
 	mux.HandleFunc("PATCH /v1/notification-settings/overrides/services/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		var body struct {
+		body, err := core.DecodeBody[struct {
 			NotificationsToSend         *string `json:"notificationsToSend"`
 			PreviewNotificationsEnabled *string `json:"previewNotificationsEnabled"`
-		}
-		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, fmt.Errorf("%w: invalid notification override body", core.ErrBadRequest)
+		}](r)
+		if err != nil {
+			return nil, err
 		}
 		// The service patch's own rows: both fields are checked before either
 		// is written, and a body naming neither reads the override back.

@@ -133,10 +133,11 @@ type ExportURLSigner interface {
 // RecoverRequest is the recover body: the new instance's name (required) and the
 // point in time to restore to (empty => the latest available point).
 type RecoverRequest struct {
-	Name       string `json:"name"`
-	TargetTime string `json:"targetTime,omitempty"`
-	Plan       string `json:"plan,omitempty"`
-	Version    string `json:"version,omitempty"`
+	Name          string `json:"name"`
+	TargetTime    string `json:"targetTime,omitempty"`
+	Plan          string `json:"plan,omitempty"`
+	Version       string `json:"version,omitempty"`
+	EnvironmentID string `json:"environmentId,omitempty"`
 }
 
 type recoveryWindowBounds struct {
@@ -435,7 +436,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		return PostgresView{}, err
 	}
 	// Resolved before the billing gates, as a create resolves its environment.
-	environment, err := s.sourceEnvironment(ctx, src, tenantID)
+	environment, err := s.recoveryEnvironment(ctx, src, req.EnvironmentID, tenantID)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -601,7 +602,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	}); err != nil {
 		return PostgresView{}, err
 	}
-	return pgView(newDB), nil
+	return s.view(newDB), nil
 }
 
 // recoveredRetirements are the logins a recovered copy retires. A login
@@ -643,17 +644,23 @@ func tenantParameters(params map[string]string) map[string]string {
 	return out
 }
 
-// sourceEnvironment resolves the environment a recovery joins: the source's,
-// through the same resolver a create uses, so a recovery into a protected
-// environment needs an Admin, as any create there does (w3/m281). A source in
-// no environment yields none; one that cannot be resolved refuses the recovery
-// (w4/356).
-func (s *Service) sourceEnvironment(ctx context.Context, src *appv1alpha1.Database, tenantID string) (core.EnvironmentAssignment, error) {
-	environmentID := src.Labels[core.LabelEnvironment]
+// recoveryEnvironment resolves the environment a recovery joins: the caller's
+// explicit environmentId when supplied, or the source's environment when
+// omitted — through the same resolver a create uses, so workspace ownership
+// and the protected-environment Admin gate apply identically to CreatePostgres
+// (w3/m281, w5/m582). An unassigned source with no requested environment yields
+// none; an unresolvable environment refuses the recovery (w4/356).
+func (s *Service) recoveryEnvironment(ctx context.Context, src *appv1alpha1.Database, requestedID, tenantID string) (core.EnvironmentAssignment, error) {
+	environmentID := requestedID
+	if environmentID == "" {
+		if srcEnv := src.Labels[core.LabelEnvironment]; srcEnv != "" {
+			environmentID = id.EnvironmentPublicID(srcEnv)
+		}
+	}
 	if environmentID == "" {
 		return core.EnvironmentAssignment{}, nil
 	}
-	return core.ResolveEnvironmentForCreate(ctx, s.Environments, id.EnvironmentPublicID(environmentID), tenantID)
+	return core.ResolveEnvironmentForCreate(ctx, s.Environments, environmentID, tenantID)
 }
 
 // inheritBoundary keeps a recovery inside its source's boundary: it is the

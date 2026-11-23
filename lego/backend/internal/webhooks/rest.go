@@ -179,9 +179,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toWirePage(views))
 	}
 	createHandler := func(w http.ResponseWriter, r *http.Request) {
-		var req createEndpointRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+		req, err := core.DecodeBody[createEndpointRequest](r)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		if req.Enabled == nil {
@@ -262,9 +262,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/webhooks", createHandler)
 	mux.HandleFunc("GET /v1/webhooks/{id}", getHandler)
 	mux.HandleFunc("PATCH /v1/webhooks/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var req updateEndpointRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+		req, err := core.DecodeBody[updateEndpointRequest](r)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		eventTypes, err := decodeEventFilter(req.EventFilter)

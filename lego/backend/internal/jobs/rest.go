@@ -117,12 +117,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("POST "+base+"/{id}/jobs", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
+		body, err := core.DecodeBody[struct {
 			StartCommand string `json:"startCommand"`
 			PlanID       string `json:"planId"`
-		}
-		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+		}](r)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		if body.StartCommand == "" {

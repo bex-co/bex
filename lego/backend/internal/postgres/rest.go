@@ -304,20 +304,25 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			RestoreName   string  `json:"restoreName"`
 			RestoreTime   string  `json:"restoreTime"`
 			Plan          string  `json:"plan"`
-			EnvironmentID *string `json:"environmentId"`
+			EnvironmentID string  `json:"environmentId"`
 			DatadogAPIKey *string `json:"datadogApiKey"`
 			DatadogSite   *string `json:"datadogSite"`
 		}
 		if !decodeOr400(w, r, &req) {
 			return
 		}
-		for field, present := range map[string]bool{"environmentId": req.EnvironmentID != nil, "datadogApiKey": req.DatadogAPIKey != nil, "datadogSite": req.DatadogSite != nil} {
+		for field, present := range map[string]bool{"datadogApiKey": req.DatadogAPIKey != nil, "datadogSite": req.DatadogSite != nil} {
 			if present {
 				core.WriteErr(w, fmt.Errorf("%w: recovery field %s is unsupported", core.ErrBadRequest, field))
 				return
 			}
 		}
-		pg, err := s.Recover(r.Context(), r.PathValue("id"), RecoverRequest{Name: req.RestoreName, TargetTime: req.RestoreTime, Plan: req.Plan})
+		pg, err := s.Recover(r.Context(), r.PathValue("id"), RecoverRequest{
+			Name:          req.RestoreName,
+			TargetTime:    req.RestoreTime,
+			Plan:          req.Plan,
+			EnvironmentID: req.EnvironmentID,
+		})
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 	})
 	// Native aliases keep their existing request/response contracts.

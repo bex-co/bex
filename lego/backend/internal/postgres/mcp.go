@@ -274,11 +274,12 @@ func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
 // recoverPostgresArgs is recover_postgres' input: the source id, the new
 // instance name, and an optional PITR target time.
 type recoverPostgresArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the immutable source postgres id (dpg-...) to recover from"`
-	Name       string `json:"name" jsonschema:"the name of the NEW database to restore into (must differ from the source)"`
-	TargetTime string `json:"targetTime,omitempty" jsonschema:"an RFC3339 point in time to recover to; omit to restore the latest available point"`
-	Plan       string `json:"plan,omitempty" jsonschema:"the new instance's plan (omit to match the source)"`
-	Version    string `json:"version,omitempty" jsonschema:"the new instance's PostgreSQL version (omit to match the source)"`
+	PostgresID    string `json:"postgresId" jsonschema:"the immutable source postgres id (dpg-...) to recover from"`
+	Name          string `json:"name" jsonschema:"the name of the NEW database to restore into (must differ from the source)"`
+	TargetTime    string `json:"targetTime,omitempty" jsonschema:"an RFC3339 point in time to recover to; omit to restore the latest available point"`
+	Plan          string `json:"plan,omitempty" jsonschema:"the new instance's plan (omit to match the source)"`
+	Version       string `json:"version,omitempty" jsonschema:"the new instance's PostgreSQL version (omit to match the source)"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...; legacy env-... accepted) in the target workspace; omit to default to the source database's environment"`
 }
 
 // exportsResult wraps the export list in an object, bex's choice for this
@@ -300,7 +301,13 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 		Name:        "recover_postgres",
 		Description: "Recover a managed Postgres database to a NEW instance restored to a point in time (the source is never modified).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in recoverPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.Recover(ctx, in.PostgresID, RecoverRequest{Name: in.Name, TargetTime: in.TargetTime, Plan: in.Plan, Version: in.Version})
+		v, err := s.Recover(ctx, in.PostgresID, RecoverRequest{
+			Name:          in.Name,
+			TargetTime:    in.TargetTime,
+			Plan:          in.Plan,
+			Version:       in.Version,
+			EnvironmentID: in.EnvironmentID,
+		})
 		return nil, v, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{

@@ -74,11 +74,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderTeamMembers(members)) // bare array, no cursor
 	})
 	mux.HandleFunc("PATCH /v1/owners/{ownerId}/members/{userId}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+		req, err := core.DecodeBody[struct {
 			Role string `json:"role"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+		}](r)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		m, err := s.UpdateMember(r.Context(), r.PathValue("ownerId"), r.PathValue("userId"), req.Role)

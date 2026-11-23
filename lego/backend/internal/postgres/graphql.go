@@ -764,18 +764,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"recoverDatabase": &graphql.Field{ // restore to a NEW instance (PITR)
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":         gqlutil.ReqArg(graphql.String), // source
-				"name":       gqlutil.ReqArg(graphql.String), // new instance
-				"targetTime": gqlutil.Arg(graphql.String),
-				"plan":       gqlutil.Arg(graphql.String),
-				"version":    gqlutil.Arg(graphql.String),
+				"id":            gqlutil.ReqArg(graphql.String), // source
+				"name":          gqlutil.ReqArg(graphql.String), // new instance
+				"targetTime":    gqlutil.Arg(graphql.String),
+				"plan":          gqlutil.Arg(graphql.String),
+				"version":       gqlutil.Arg(graphql.String),
+				"environmentId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Recover(p.Context, p.Args["id"].(string), RecoverRequest{
-					Name:       p.Args["name"].(string),
-					TargetTime: gqlutil.Str(p.Args, "targetTime"),
-					Plan:       gqlutil.Str(p.Args, "plan"),
-					Version:    gqlutil.Str(p.Args, "version"),
+					Name:          p.Args["name"].(string),
+					TargetTime:    gqlutil.Str(p.Args, "targetTime"),
+					Plan:          gqlutil.Str(p.Args, "plan"),
+					Version:       gqlutil.Str(p.Args, "version"),
+					EnvironmentID: gqlutil.Str(p.Args, "environmentId"),
 				})
 			},
 		},

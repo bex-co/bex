@@ -89,12 +89,23 @@ Render leaves its object schemas open, so the existing Go request structs remain
 | service update | `displayName`, top-level notification/subdomain/cron/health/pre-deploy conveniences, body `dryRun`, `serviceDetails.idleTTLSeconds` |
 | Postgres create | `public`, `pooler`, body `dryRun`; bex hyphenated plan IDs |
 | Postgres update | `version`, body `dryRun`; bex hyphenated plan IDs |
+| Postgres recovery | `environmentId` honored identically to `create-postgres` (w5/m582); `datadogApiKey`/`datadogSite` refused by name |
 | Key Value create | `version`, `storageGB`, `public`, body `dryRun` |
 | Key Value update | body `dryRun` |
+| Sandbox group create | `environmentId` (nullable, w22/m412) |
+| Sandbox run connect | optional JSON body `{command, ownerId}` (`renderRequestBodyExtensions`, w3/065) |
+| Blueprint validate | JSON adapter `{bexYaml, ownerId, blueprintId}` alongside Render's multipart upload |
 | service, Postgres, Key Value create/update query | `dryRun` |
 | protected service/Postgres/Key Value update, delete, lifecycle and failover query | `confirm` on the operation IDs listed in `renderQueryExtensions`, including `update-key-value`, `update-postgres` and `failover-postgres` (w4/362). `TestRenderValidatorAdmitsProtectedConfirm` routes every handler that reads `confirm` through the validator and cross-checks the allowlist; `TestEveryConfirmReaderIsListed` counts the call sites that read it, so a new one must join that table |
 
 Declared Render fields that bex cannot honor are rejected by the existing Go/domain layer rather than silently accepted. Adding an extension requires all three: an accepting Go request field, this table, and a positive boundary test. Adding a query extension additionally requires an operation-ID entry in `renderQueryExtensions`.
+
+### Exhaustive body-gate and declared-field guards (w5/m582)
+
+Two OpenAPI-inventory-guarded tests prevent schema-vs-struct drift and validator/decoder deadlocks across every served JSON-body operation:
+
+- **`TestRenderDeclaredRequestFieldsAreHandledOrRefusedByName`** (`lego/backend/internal/api/render_declared_fields_test.go`): derives the served pinned JSON-body operation set (`renderOpenAPISource` minus `renderOperationOmissions`, currently 60 operations), probes every declared property plus all five `serviceDetailsPOST` and all five `serviceDetailsPATCH` variants and key nested objects, runs a strict-decoder unknown-field canary on every probe to guarantee each handler decodes strictly, and enforces `unprobed == 0` with an empty `declaredFieldAllowlist`.
+- **`TestRenderGatedBexBodiesReachTheirHandlers`** (`lego/backend/internal/api/render_gated_bodies_test.go`): derives the served runtime JSON-body operation set (`contract.document` minus `renderOperationOmissions`, currently 62 operations including `validate-blueprint` JSON and `connect-sandbox-run`), and proves bex-shaped bodies clear both the OpenAPI validator and each handler's strict decoder without schema or unknown-field refusals.
 
 ## Rejection and secrecy rules
 

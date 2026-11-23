@@ -159,7 +159,7 @@ func TestRenderPostgresRecoveryAndCredentials(t *testing.T) {
 	if persisted.Spec.Recovery == nil || persisted.Spec.Recovery.SourceDatabase != db.Name || persisted.Spec.Recovery.TargetTime != "2026-09-10T00:00:00Z" {
 		t.Fatalf("wrong recovery intent: %+v", persisted.Spec.Recovery)
 	}
-	for _, field := range []string{"environmentId", "datadogApiKey", "datadogSite"} {
+	for _, field := range []string{"datadogApiKey", "datadogSite"} {
 		body := `{"restoreName":"unsupported","` + field + `":"value"}`
 		res = do(t, h, "POST", path+"/recovery", testToken, body)
 		if res.Code != 400 || !strings.Contains(res.Body.String(), field) {
