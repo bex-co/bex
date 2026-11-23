@@ -1,6 +1,6 @@
 # w10 · m561 — An automation or a session can turn `gh` off for itself, and an admin can make the workspace's `gh` off mandatory, as Devin's security profiles bind per automation and per session
 
-**Worker:** worker10 **Goal:** `gh` access resolves through Devin's binding chain instead of one workspace switch. A session create and an automation template carry `agentConfig.githubCli`. The agent environment gains an automations default and a mandatory flag. The mints, the dispatch and the overlay use the most specific binding, unless the workspace's `gh` off is mandatory. A refusal names the level that turned `gh` off. REST, GraphQL, MCP, the CLI and the dashboard read and write each level. **Status:** blocked (t001–t007 and t009–t011 done, shipped in `ba013e3a75`; t008's live check runs once production's pin carries it, then t012 closes)
+**Worker:** worker10 **Goal:** `gh` access resolves through Devin's binding chain instead of one workspace switch. A session create and an automation template carry `agentConfig.githubCli`. The agent environment gains an automations default and a mandatory flag. The mints, the dispatch and the overlay use the most specific binding, unless the workspace's `gh` off is mandatory. A refusal names the level that turned `gh` off. REST, GraphQL, MCP, the CLI and the dashboard read and write each level. **Status:** done (t001–t012 done; t008's live check held on production pin `1a5a8e872398` on 2026-11-23)
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | [t005](done/t005.md) | Driver: the overlay says which level turned `gh` off — **DONE** | 30m | t004 |
 | [t006](done/t006.md) | CLI: `--github-cli` on `bex agent run`/`chat`/`handoff` and `bex agent automations`, and the two new `bex agent env set` flags — **DONE** | 1h | t002, t003 |
 | [t007](done/t007.md) | Dashboard: the session composer, the automation form and Settings → Agents set each level, with matching skeletons — **DONE** | 2h | t002, t003 |
-| [t008](t008.md) | Live check on production: a session's and an automation's own `gh` off, and a mandatory workspace off that no create can loosen | 45m | t004, t005, t006, t007 |
+| [t008](done/t008.md) | Live check on production: a session's and an automation's own `gh` off, and a mandatory workspace off that no create can loosen — **DONE** | 45m | t004, t005, t006, t007 |
 | [t009](done/t009.md) | Render parity (Devin) — **DONE** | 30m | t008 |
 | [t010](done/t010.md) | Simplify — **DONE** | 20m | t009 |
 | [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009, t010 |
-| [t012](t012.md) | Closeout | 10m | t011 |
+| [t012](done/t012.md) | Closeout — **DONE** | 10m | t011 |
 
 Total: **12 tasks, about 11h15m**.
 
@@ -96,6 +96,28 @@ Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-gu
   - **Where it is chosen:** the session start box's options menu, and the automation's editor or `security_profile`. **Match**: the composer's options, the automation form and the template field.
   - **When a change applies:** "new sessions immediately, and for existing sessions the next time they resume". **Match for an on, and sooner for an off**: a running session's next `gh` call is refused, as w10/m524 already decided for the workspace switch.
 - **Filed:** [w10/044](../../044.md). No other gap users would miss: Devin's other profile controls (network policy, MCP allowlist, Git access level) and its enterprise level are out of scope.
+
+## Live check (t008, production, 2026-11-23)
+
+Workspace `tian-personal` (`tea-da2isimlm39c739m4ofg`, the QA account's, whose GitHub connection is the `puncsky` installation), 04:56–05:08Z, pin `1a5a8e872398`: both `bex-api` Pods and both `bex-ssh-gateway` Pods ran `bex-operator@sha256:65ef4f0d…`, sessions the sandbox `bex-agent-sandbox@sha256:e374484c…` and the dashboard `bex-dashboard@sha256:5829a2c3…`, the digests that pin set (read-only `kubectl`). The CLI was built from `main` (`ba7e6c069e`), because the released v0.2.1 has no `--github-cli`; REST, GraphQL and MCP were called with the same account's OAuth token, and the dashboard was signed in through `scripts/qa-login.sh`. Before the check the workspace had `gh` on, not mandatory, and the automations default inheriting. Two sessions on `claude` with `deepseek/deepseek-v4.1-flash-1017`, $0.027 in all.
+
+- **Fixture.** A new private repository, `puncsky/qa-20261122-m561-gh-off`, with a workflow `qa-pass` on pushes to `main`. Its run 45114753216 ended `success`.
+- **Session level (DoD 6, step 2).** `bex agent run --github-cli off --repo puncsky/qa-20261122-m561-gh-off --max-spend 1` started `ags-dc1sf2vqbg1c739j177g` with the workspace's `gh` on. `env | grep '^GH_'` printed nothing (exit 1), `gh auth status` said "You are not logged into any GitHub hosts" (exit 1), and `gh run list --limit 1` asked for `gh auth login` (exit 4). The agent quoted its overlay: "There is no GitHub token in the sandbox, and `gh` is turned off for this session, which was started with it off, so `gh` and direct GitHub API calls do not work here; do not try to authenticate it." REST `GET /v1/agent-sessions/<id>`, GraphQL `agentSession` and MCP `get_agent_session` read `agentConfig.githubCli: false`, and `bex agent get` printed `GitHub CLI off`.
+- **Automation level (step 3).** `bex agent automations create --github-cli off` (a one-off fire on 2030-01-01) made `aut-dc1sgggoodks73aud17g`, whose `template.agentConfig.githubCli` read `false` on REST, GraphQL and MCP. `bex agent automations run --wait` started `ags-dc1sgmnqbg1c739j17dg`, whose own `agentConfig` has no `githubCli` (the automation level is read live, not copied). Its turn had no `GH_*`, `gh auth status` exit 1 and `gh run list` exit 4, and the overlay said "the automation that started this session turned `gh` off for its sessions".
+- **An automation edited mid-turn (step 5).** `bex agent automations update --github-cli inherit`, then a follow-up turn in the same session: its first `gh run list --limit 1` answered the fixture's run (exit 0). At 05:02:15Z, while the turn slept, `--github-cli off` saved, and the turn's next `gh run list` exited 1 with "HTTP 403: bex: gh is turned off for the sessions of the automation that started this session (its template's agentConfig.githubCli). Its creator turns it back on by setting it to inherit in the automation's settings or with `bex agent automations update <automation> --github-cli inherit`; turning it on outright needs a workspace admin. Pushes to your session branch and the bex MCP tools … still work." The gateway logged `agent github api: refused (… status=403 result=github_cli_off)` and bex-api `credential mint denied … gh is turned off for this agent session (the automation binding)` at 05:03:20Z.
+- **Mandatory floor (step 4).** From 05:06:12Z to 05:07:03Z the workspace had `gh` off and mandatory (`bex agent env set --github-cli off --github-cli-mandatory on`).
+  - REST `POST /v1/agent-sessions` with `agentConfig.githubCli: true` answered `403` `AGENT_SESSION_GITHUB_CLI_LOCKED`, `params` `{"field": "agentConfig.githubCli", "reason": "mandatory"}`, message "this workspace's admins made its gh off mandatory, so nothing turns gh on for an automation or a session; set it to false or leave it out to inherit". GraphQL `createAgentSession` (`extensions.code`), MCP `create_agent_session` and `bex agent run --github-cli on` were refused with the same code and text.
+  - The composer, opened before the save with **On** chosen, was refused on **Start session**: GraphQL answered `AGENT_SESSION_GITHUB_CLI_LOCKED` (`mandatory`) and the composer showed "Couldn't start the session. This workspace's GitHub CLI off is mandatory, so a session can't turn gh on. Choose Off or Inherit." Reloaded, the control read "Inherit (off)" and its **On** was disabled with "Unavailable while this workspace's GitHub CLI off is mandatory."
+  - Under the floor, `bex agent automations update --github-cli on` was refused `AGENT_AUTOMATION_GITHUB_CLI_LOCKED` and `bex agent env set --automations-github-cli on` `AGENT_ENVIRONMENT_GITHUB_CLI_LOCKED`.
+- **Cleanup.** `bex agent env set --github-cli on --github-cli-mandatory off` restored the workspace at 05:07:03Z: REST and GraphQL read `githubCliEnabled: true`, `automationsGithubCliEnabled: null`, `githubCliMandatory: false`, and `bex agent env` prints `GitHub CLI on` and `Automations GitHub CLI inherit`. The automation and both sessions are deleted (`404 AGENT_AUTOMATION_NOT_FOUND`, `404 AGENT_SESSION_NOT_FOUND`; no sandbox Pod is left); neither session pushed a branch or opened a pull request. The repository is deleted (`Could not resolve to a Repository`). The dashboard's workspace selection is back on `bex`, and the QA browser session is logged out.
+
+The Definition of done holds. Items 1–5 hold in t002–t007 and t011's tests, t009's surface check and the ADR047 and ADR090 amendments, and item 1's reads, item 3's refusals, item 4's resolver, refusal text and overlay, and item 6 as written held live above. t012 closed the milestone on 2026-11-23.
+
+## Unblock record (2026-11-23)
+
+- **Affected:** w10/m561 t008 and t012.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `e6c65f5c62` (pin `1a5a8e872398`, 04:25Z on 2026-11-23), and `git merge-base --is-ancestor ba013e3a75 1a5a8e872398` holds. Both `bex-api` Pods and both `bex-ssh-gateway` Pods run `bex-operator@sha256:65ef4f0d…`, bex-api's `BEX_AGENT_SESSION_IMAGE` is `bex-agent-sandbox@sha256:e374484c…` and the dashboard runs `bex-dashboard@sha256:5829a2c3…`, the digests that pin set (read-only `kubectl`). The pin gate was the only one.
+- **Next:** t008's live check as written, in the QA account's `tian-personal` (`bex-canary` has no GitHub connection), on a fixture repository it deletes, with at most three short sessions on the cheapest model. The workspace is left with `gh` on, not mandatory, and the automations default inheriting. Then t012 closes the milestone if DoD 6 holds.
 
 ## Source + Goal linkage
 
