@@ -73,7 +73,7 @@ export const mergePullRequestToolDefinition = {
   description:
     "Merge this session's own pull request into its base branch, now or once its required checks pass, or another pull request of this repository when you pass its number. " +
     onlyWhenAsked +
-    " Mark a draft ready first. When asked to merge once the checks pass, call it with auto: true and end your turn: GitHub auto-merge merges it when they pass (the answer has autoMerge: true), " +
+    " Mark a draft ready first. When asked to merge once the checks pass or CI is green, call it with auto: true as soon as the pull request is ready and end your turn, without waiting for or watching the checks: GitHub auto-merge merges it when they pass (the answer has autoMerge: true, and next says what to tell the user), " +
     "and a base branch that requires a merge queue takes it into the queue, with or without auto (mergeQueue: true). Without auto it merges now; a pull request GitHub would merge now is merged even with auto. " +
     "If a person asks not to merge after all, call it with only disableAuto: true. " +
     "The merge of this session's own pull request is pinned to the head bex recorded when you last called open_or_update_draft_pr, so push and call that tool first; another pull request merges at the head GitHub reports for it when you call (the answer has otherPullRequest: true). " +
@@ -140,7 +140,21 @@ export interface MergeAnswer {
   // A pull request of the repository other than the session's own (w10/041),
   // which the session's pull request record never takes.
   otherPullRequest?: true;
+  // What to do now that GitHub merges it later: end the turn (w10/m577 t010).
+  next?: string;
 }
+
+// endTurnAfter is an armed or queued answer's next step. The overlay and the
+// tool description already say to end the turn, yet on production the default
+// model armed auto-merge and then watched the checks anyway, "to report
+// accurately" (w10/m577 t005, 2026-11-23). The answer is read at that very
+// decision, so it says what the final reply reports in place of a merge.
+const endTurnAfter = {
+  autoMerge:
+    "Auto-merge is armed: GitHub merges this pull request once its required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed, not that the pull request merged.",
+  mergeQueue:
+    "The pull request joined the merge queue: GitHub merges it once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says it is in the merge queue, not that it merged.",
+} as const;
 
 // The outcomes an answer may carry besides a merge.
 const laterOutcomes = ["autoMerge", "mergeQueue", "autoMergeDisabled"] as const;
@@ -409,6 +423,9 @@ function mergeAnswer(payload: Record<string, unknown>): MergeAnswer | null {
     ...Object.fromEntries(later.map((outcome) => [outcome, true as const])),
     ...(payload.otherPullRequest === true
       ? { otherPullRequest: true as const }
+      : {}),
+    ...(later[0] === "autoMerge" || later[0] === "mergeQueue"
+      ? { next: endTurnAfter[later[0]] }
       : {}),
   };
 }

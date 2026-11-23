@@ -101,10 +101,13 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
     /To merge, mark a draft ready first, then call `merge_pull_request`; it acts on the head you last pushed and recorded with `open_or_update_draft_pr`/,
   );
   // w10/m577: asked to merge once the checks pass, it arms auto-merge or the
-  // merge queue and ends its turn instead of watching them.
+  // merge queue and ends its turn instead of watching them. On production the
+  // default model watched them before or after arming (t005, 2026-11-23), so
+  // the step names "CI is green", "as soon as it is ready" and "before or
+  // after the call", and says what the final reply reports.
   assert.match(
     text,
-    /When asked to merge once the checks pass, call it with `auto: true` and end your turn instead of waiting for the checks: GitHub merges the pull request when its required checks pass/,
+    /When asked to merge once the checks pass or CI is green, call it with `auto: true` as soon as the pull request is ready and end your turn: do not wait for or watch the checks, before or after the call\. GitHub merges the pull request when its required checks pass \(the tool answers that auto-merge is armed, or that the pull request joined the merge queue\), and your final reply says so, not that it merged\./,
   );
   assert.match(
     text,

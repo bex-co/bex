@@ -276,7 +276,16 @@ test("merge_pull_request with auto arms auto-merge, returns the armed answer and
   );
   const result = (reply as { result: any }).result;
   assert.equal(result.isError, false);
-  assert.deepEqual(result.structuredContent, armed);
+  // w10/m577 t005: on production the default model armed it and then watched
+  // the checks anyway, so the armed answer itself says to end the turn now and
+  // what the final reply reports instead of a merge.
+  const { next, ...answer } = result.structuredContent;
+  assert.deepEqual(answer, armed);
+  assert.equal(
+    next,
+    "Auto-merge is armed: GitHub merges this pull request once its required checks pass. End your turn now, without waiting for or watching the checks. Your final reply says auto-merge is armed, not that the pull request merged.",
+  );
+  assert.equal(JSON.parse(result.content[0].text).next, next);
   assert.equal(
     gateway.requests[0].body,
     JSON.stringify({ method: "squash", auto: true }),
@@ -284,35 +293,47 @@ test("merge_pull_request with auto arms auto-merge, returns the armed answer and
   // The delivery check reads no merged head for an armed pull request.
   assert.equal(await readFile(record, "utf8"), opened);
 
-  // A queued answer and an undo come back as they are, and record nothing.
-  for (const answer of [
-    {
-      url: merged.url,
-      number: 12,
-      merged: false,
-      headSha: merged.headSha,
-      mergeQueue: true,
-    },
-    {
-      url: merged.url,
-      number: 12,
-      merged: false,
-      headSha: merged.headSha,
-      autoMergeDisabled: true,
-    },
-  ]) {
+  // A queued answer says to end the turn too; an undo has nothing to wait
+  // for. Both come back as they are otherwise, and record nothing.
+  for (const [answer, next] of [
+    [
+      {
+        url: merged.url,
+        number: 12,
+        merged: false,
+        headSha: merged.headSha,
+        mergeQueue: true,
+      },
+      "The pull request joined the merge queue: GitHub merges it once the queue's checks pass. End your turn now, without waiting for or watching the checks. Your final reply says it is in the merge queue, not that it merged.",
+    ],
+    [
+      {
+        url: merged.url,
+        number: 12,
+        merged: false,
+        headSha: merged.headSha,
+        autoMergeDisabled: true,
+      },
+      undefined,
+    ],
+  ] as const) {
     const later = await stubGateway({
       [`${base}/merge`]: { status: 200, body: answer },
     });
     t.after(later.close);
     const outcome = await mergePullRequest(
-      answer.autoMergeDisabled ? { disableAuto: true } : {},
+      "autoMergeDisabled" in answer ? { disableAuto: true } : {},
       { ...later.env, BEX_PR_RECORD_PATH: record },
     );
-    assert.deepEqual(outcome, { ok: true, result: answer });
+    assert.deepEqual(outcome, {
+      ok: true,
+      result: next ? { ...answer, next } : answer,
+    });
     assert.equal(
       later.requests[0].body,
-      answer.autoMergeDisabled ? JSON.stringify({ disableAuto: true }) : "{}",
+      "autoMergeDisabled" in answer
+        ? JSON.stringify({ disableAuto: true })
+        : "{}",
     );
     assert.equal(await readFile(record, "utf8"), opened);
   }
@@ -498,8 +519,10 @@ test("only repo sessions list the ready and merge tools, saying to use them only
   assert.equal(merge.inputSchema.properties.disableAuto.type, "boolean");
   assert.match(
     merge.description,
-    /When asked to merge once the checks pass, call it with auto: true and end your turn/,
+    /When asked to merge once the checks pass or CI is green, call it with auto: true as soon as the pull request is ready and end your turn, without waiting for or watching the checks/,
   );
+  // The armed answer's next step is named, so the agent looks for it.
+  assert.match(merge.description, /next says what to tell the user/);
   assert.match(merge.description, /merge queue/);
   assert.match(merge.description, /only disableAuto: true/);
   const init = await handleMessage(
@@ -509,6 +532,10 @@ test("only repo sessions list the ready and merge tools, saying to use them only
   assert.match(
     (init as { result: { instructions: string } }).result.instructions,
     /mark_pull_request_ready and merge_pull_request to mark the session's pull request ready and merge it, only when the task or a person's message asks, and pass number for another pull request of the repository a person names/,
+  );
+  assert.match(
+    (init as { result: { instructions: string } }).result.instructions,
+    /asked to merge once they pass or CI is green, arm it and end the turn without watching the checks\./,
   );
 
   // A repo-less session has no pull request to merge.

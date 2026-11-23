@@ -314,7 +314,7 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
   // which the PR tool returns.
   assert.match(
     text,
-    /checks \(`gh pr checks <number> --watch` waits for them\)/,
+    /checks \(`gh pr checks <number> --watch` waits for them, which merging once they pass does not need: `merge_pull_request` with `auto: true` does\)/,
   );
   assert.match(
     text,
@@ -331,7 +331,10 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
     existingPrUrl: "https://github.com/acme/widgets/pull/7",
     existingPrNumber: 7,
   });
-  assert.match(recorded, /`gh pr checks 7 --watch` waits for them/);
+  assert.match(
+    recorded,
+    /`gh pr checks 7 --watch` waits for them, which merging once they pass does not need/,
+  );
   assert.match(
     recorded,
     /Pass the pull request's number to every `gh pr` command \(yours is 7\)/,
@@ -420,7 +423,7 @@ test("the overlay of a repo session with gh off says gh is turned off and pull r
   // auto-merge or the merge queue and ends the turn (w10/m577).
   assert.match(
     text,
-    /When asked to merge once the checks pass, call it with `auto: true` and end your turn instead of waiting for the checks/,
+    /When asked to merge once the checks pass or CI is green, call it with `auto: true` as soon as the pull request is ready and end your turn: do not wait for or watch the checks, before or after the call/,
   );
   assert.doesNotMatch(text, /`gh pr checks/);
 });
