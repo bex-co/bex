@@ -63,9 +63,10 @@ type getMetricsArgs struct {
 	// request host (the host breakdown reads the request-log store). Like the
 	// cpu aggregation, it reaches that one read only (mcpReadScope).
 	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"Field to aggregate http_requests by: host (one series per request host) or statusCode. When not specified, returns total request counts. Only applies to the http_requests metric type; other types in the same call are read unaggregated."`
-	// Instance is a bex extension (w5/m89): public instance ids from m87. Omit
-	// for all instances; unresolved ids yield an empty series, never a broaden.
-	Instance []string `json:"instance,omitempty" jsonschema:"public service instance ids to keep (canonical srv-…-… ids from metricsFilters INSTANCE / serviceInstances); omit for all"`
+	// Instance is a bex extension (w5/m89, w34/m589): public instance ids from
+	// m87 (or raw pod names) for services and datastores. Omit for all
+	// instances; unresolved ids yield an empty series, never a broaden.
+	Instance []string `json:"instance,omitempty" jsonschema:"public service or datastore instance ids to keep (canonical ids from metricsFilters INSTANCE / serviceInstances, or raw pod names); omit for all"`
 	// AggregateAllMethod is a bex extension mirroring Render GraphQL
 	// aggregateAllMethod: MIN|MAX|AVG across selected replicas at each timestamp.
 	AggregateAllMethod string `json:"aggregateAllMethod,omitempty" jsonschema:"MIN|MAX|AVG across selected replicas at each timestamp (distinct from cpuUsageAggregationMethod interval aggregation)"`

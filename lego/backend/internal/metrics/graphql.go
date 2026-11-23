@@ -396,6 +396,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				}
 				var out []QuantileSeries
 				for _, res := range resources {
+					if core.IsDatastoreResource(res) {
+						series, err := s.datastoreAppMetric(p.Context, q, res)
+						if err != nil {
+							return nil, err
+						}
+						for _, ser := range series {
+							out = append(out, QuantileSeries{MetricSeries: ser})
+						}
+						continue
+					}
 					q.App = res
 					// MetricsWithQuantiles echoes the (single or per-quantile)
 					// percentile per series, driving the "parameters" field for

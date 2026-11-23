@@ -147,22 +147,16 @@ func (s *Service) activeConnections(ctx context.Context, resource string, start,
 }
 
 // datastoreAppMetric answers one of Render's App-metric paths (cpu, memory,
-
-// *-limit, instance-count, http-*, bandwidth) for a datastore id (w8/061).
-// Render scopes them to Postgres and Key Value too. DatastoreMetrics serves cpu,
-// memory and their limits (w1/m180; Key Value memory is its kv_memory series)
+// *-limit, instance-count, http-*, bandwidth) for a datastore id (w8/061,
+// w34/m589). Render scopes them to Postgres and Key Value too. DatastoreMetrics
+// serves cpu, memory and their limits (w1/m180; Key Value memory is its
+// kv_memory series), normalizes percentage requests against each instance's
+// limit history from DatastoreResource before public instance-id projection,
 // and refuses every other pair by name after authorizing the resource, so it
-// is never mistaken for a missing id. Replica aggregation applies to its
-// per-instance series as to a service's; percentage and instance filters are
-// refused rather than silently ignored, since an answer in cores to a
-// percentage request, or every instance to an instance filter, would be the
-// wrong shape.
+// is never mistaken for a missing id. Instance filtering and replica
+// aggregation apply to its per-instance series identically to a service's.
 func (s *Service) datastoreAppMetric(ctx context.Context, q MetricQuery, resource string) ([]MetricSeries, error) {
 	kind := datastoreKindFor(resource)
-	if q.Percentage || len(q.Instances) > 0 {
-		return nil, fmt.Errorf("%w: percentage and instance filters apply to services, not %s %s",
-			core.ErrBadRequest, datastoreNoun(kind), resource)
-	}
 	if err := checkCPUAggregation(q.Metric, q.CPUAggregation); err != nil {
 		return nil, err
 	}
@@ -170,25 +164,23 @@ func (s *Service) datastoreAppMetric(ctx context.Context, q MetricQuery, resourc
 		Kind: kind, Resource: resource, Metric: q.Metric,
 		Start: q.Start, End: q.End, Resolution: q.Resolution,
 		CPUAggregation: q.CPUAggregation,
+		Percentage:     q.Percentage,
 	})
 	if err != nil {
 		return nil, err
+	}
+	if len(q.Hosts) > 0 || len(q.Paths) > 0 {
+		return nil, fmt.Errorf("%w: host/path filters apply only to http_requests and http_latency", core.ErrBadRequest)
+	}
+	if q.GroupBy == groupByHost && q.Metric != MetricHTTPRequests {
+		return nil, fmt.Errorf("%w: aggregateBy=host applies only to http_requests", core.ErrBadRequest)
 	}
 	q.App = resource
 	return applyInstanceSelection(q, series, nil)
 }
 
 func (s *Service) activeConnectionsQuery(w http.ResponseWriter, r *http.Request) {
-	q, err := parseDatastoreMetricParams(r)
-	if err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if q.Metric, err = activeConnectionsMetric(q.Kind, q.Resource); err != nil {
-		core.WriteErr(w, err)
-		return
-	}
-	s.serveDatastoreMetric(w, r, q)
+	s.serveDatastoreResources(w, r, activeConnectionsMetric)
 }
 
 // renderFilterValues is one entry of Render's filters/application and
@@ -322,27 +314,43 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 	core.WriteJSON(w, http.StatusOK, toRenderMetrics(all))
 }
 
-// datastoreMetricQuery serves one datastore-metric endpoint (disk/
-// db-connections/replication-lag): a single Database/KeyValue resource per
-// request (unlike Render's app metrics, a datastore metric names exactly one
-// instance, mirroring /v1/postgres/{id} and /v1/key-value/{id}).
+// datastoreMetricQuery serves one datastore-metric endpoint (disk-usage/
+// disk-capacity/replication-lag/db-connections/...), honoring repeatable
+// `resource` (and `service`) query parameters per Render's pinned OpenAPI
+// contract (w34/m589).
 func (s *Service) datastoreMetricQuery(w http.ResponseWriter, r *http.Request, metric string) {
-	q, err := parseDatastoreMetricParams(r)
+	s.serveDatastoreResources(w, r, func(_, _ string) (string, error) { return metric, nil })
+}
+
+func (s *Service) serveDatastoreResources(w http.ResponseWriter, r *http.Request, metricFor func(kind, resource string) (string, error)) {
+	resources, base, err := parseDatastoreMetricParams(r)
 	if err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	q.Metric = metric
-	s.serveDatastoreMetric(w, r, q)
-}
-
-func (s *Service) serveDatastoreMetric(w http.ResponseWriter, r *http.Request, q DatastoreMetricQuery) {
-	series, err := s.DatastoreMetrics(r.Context(), q)
-	if err != nil {
+	if err := checkFanOut(len(resources), 1, 1); err != nil {
 		core.WriteErr(w, err)
 		return
 	}
-	core.WriteJSON(w, http.StatusOK, toRenderMetrics(series))
+	var all []MetricSeries
+	for _, res := range resources {
+		q := base
+		q.Resource = res
+		if q.Kind == "" {
+			q.Kind = datastoreKindFor(res)
+		}
+		if q.Metric, err = metricFor(q.Kind, res); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		series, err := s.DatastoreMetrics(r.Context(), q)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		all = append(all, series...)
+	}
+	core.WriteJSON(w, http.StatusOK, toRenderMetrics(all))
 }
 
 // parseTimeWindow parses the startTime/endTime/resolutionSeconds query params
@@ -379,28 +387,24 @@ const (
 )
 
 // parseDatastoreMetricParams maps a datastore-metric query string onto a
-// DatastoreMetricQuery. `kind` is a bex extension; without it the resource id's
-// prefix decides (datastoreKindFor), which is what Render's own datastore
-// paths need, since their query has no `kind`.
-func parseDatastoreMetricParams(r *http.Request) (DatastoreMetricQuery, error) {
+// resource list plus a base DatastoreMetricQuery. `kind` is a bex extension;
+// when empty, each resource's id prefix decides (datastoreKindFor) so mixed
+// resource lists work on Render's disk-usage, disk-capacity, and
+// active-connections endpoints (w34/m589).
+func parseDatastoreMetricParams(r *http.Request) ([]string, DatastoreMetricQuery, error) {
 	v := r.URL.Query()
 
 	resources := requestedResources(v)
-	if len(resources) != 1 {
-		return DatastoreMetricQuery{}, fmt.Errorf("exactly one resource is required")
-	}
-	resource := resources[0]
-	kind := v.Get("kind")
-	if kind == "" {
-		kind = datastoreKindFor(resource)
+	if len(resources) == 0 {
+		return nil, DatastoreMetricQuery{}, fmt.Errorf("resource is required")
 	}
 
 	start, end, resolution, err := parseTimeWindow(v)
 	if err != nil {
-		return DatastoreMetricQuery{}, err
+		return nil, DatastoreMetricQuery{}, err
 	}
-	return DatastoreMetricQuery{
-		Kind: kind, Resource: resource,
+	return resources, DatastoreMetricQuery{
+		Kind:  v.Get("kind"),
 		Start: start, End: end, Resolution: resolution,
 	}, nil
 }

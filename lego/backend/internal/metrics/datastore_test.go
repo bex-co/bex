@@ -338,6 +338,175 @@ func TestRESTDatastoreMetrics(t *testing.T) {
 	}
 }
 
+// w34/m589: repeatable resource arrays on Render's datastore REST endpoints
+// (/disk-usage, /disk-capacity, /active-connections, /replication-lag),
+// supporting mixed resource kinds, canonical resource labels, checkFanOut 400,
+// and fail-closed per-resource authorization.
+func TestRESTMultiResourceDatastoreMetrics(t *testing.T) {
+	const (
+		pgA = "dpg-aaaaaaaaaaaaaaaaaaaa"
+		pgB = "dpg-bbbbbbbbbbbbbbbbbbbb"
+		kvC = "red-cccccccccccccccccccc"
+		srv = "srv-dddddddddddddddddddd"
+	)
+	dbA := pgWithStorage(pgA, "basic-1gb", 0, 0)
+	dbA.Status.HighAvailabilityEnabled = true
+	dbB := pgWithStorage(pgB, "basic-256mb", 0, 0)
+	dbB.Status.HighAvailabilityEnabled = true
+	kv := sampleKeyValue(kvC)
+	kv.Spec.Plan = "free"
+	kv.Spec.StorageGB = 2
+	app := sampleAppWithDisk(srv, &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 7})
+	app.Labels = map[string]string{core.LabelAppID: srv}
+
+	// Foreign database owned by another workspace — must fail closed (403).
+	foreignDB := sampleDatabase("dpg-ffffffffffffffffffff", true)
+	foreignDB.Labels = map[string]string{core.LabelTenant: "tea-other"}
+
+	svc := newService(nil, nil, dbA, dbB, kv, app, foreignDB)
+	svc.DiskUsage = func(_ context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
+		val := float64(100)
+		switch req.Resource {
+		case pgA:
+			val = 100
+		case srv:
+			val = 200
+		case kvC:
+			val = 300
+		}
+		// Intentionally omit "resource" label here to prove DatastoreMetrics
+		// stamps the canonical resource label on every returned series.
+		return []MetricSeries{{Labels: map[string]string{"instance": req.Resource + "-1"}, Unit: unitBytes, Points: []MetricPoint{{Value: val}}}}, nil
+	}
+	svc.DBConnections = func(_ context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Labels: map[string]string{"instance": req.Cluster + "-1"}, Unit: unitCount, Points: []MetricPoint{{Value: 11}}}}, nil
+	}
+	svc.KeyValueStats = func(_ context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Labels: map[string]string{"instance": req.Resource + "-0"}, Unit: unitCount, Points: []MetricPoint{{Value: 22}}}}, nil
+	}
+	svc.ReplicationLag = func(_ context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
+		val := 0.25
+		if req.Cluster == pgB {
+			val = 0.75
+		}
+		return []MetricSeries{{Labels: map[string]string{"instance": req.Cluster + "-2"}, Unit: unitSeconds, Points: []MetricPoint{{Value: val}}}}, nil
+	}
+
+	byResource := func(t *testing.T, body []byte) map[string]float64 {
+		t.Helper()
+		series := seriesFrom(t, body)
+		out := make(map[string]float64, len(series))
+		for _, s := range series {
+			res := labelValue(s.Labels, LabelResource)
+			if res == "" {
+				t.Fatalf("series missing resource label: %+v", s)
+			}
+			out[res] = s.Values[0].Value
+		}
+		return out
+	}
+
+	// Mixed dpg- + srv- + red- on disk-usage (using deprecated service= alias too).
+	rec := serveREST(svc, "/v1/metrics/disk-usage?resource="+pgA+"&resource="+kvC+"&service="+srv)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("multi disk-usage => %d %s", rec.Code, rec.Body)
+	}
+	gotDisk := byResource(t, rec.Body.Bytes())
+	if gotDisk[pgA] != 100 || gotDisk[srv] != 200 || gotDisk[kvC] != 300 || len(gotDisk) != 3 {
+		t.Errorf("multi disk-usage = %v, want {pgA:100, srv:200, kvC:300}", gotDisk)
+	}
+
+	// Mixed dpg- + srv- + red- on disk-capacity.
+	rec = serveREST(svc, "/v1/metrics/disk-capacity?resource="+pgA+"&resource="+srv+"&resource="+kvC)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("multi disk-capacity => %d %s", rec.Code, rec.Body)
+	}
+	const gib = float64(bytesPerGiB)
+	gotCap := byResource(t, rec.Body.Bytes())
+	if gotCap[pgA] != 5*gib || gotCap[srv] != 7*gib || gotCap[kvC] != 2*gib || len(gotCap) != 3 {
+		t.Errorf("multi disk-capacity = %v, want {pgA:5GiB, srv:7GiB, kvC:2GiB}", gotCap)
+	}
+
+	// Mixed dpg- + red- on active-connections.
+	rec = serveREST(svc, "/v1/metrics/active-connections?resource="+pgA+"&resource="+kvC)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("multi active-connections => %d %s", rec.Code, rec.Body)
+	}
+	gotConn := byResource(t, rec.Body.Bytes())
+	if gotConn[pgA] != 11 || gotConn[kvC] != 22 || len(gotConn) != 2 {
+		t.Errorf("multi active-connections = %v, want {pgA:11, kvC:22}", gotConn)
+	}
+	// Invalid kind in active-connections fails closed with 400.
+	if rec := serveREST(svc, "/v1/metrics/active-connections?resource="+pgA+"&resource="+srv); rec.Code != http.StatusBadRequest {
+		t.Errorf("active-connections with service = %d %s, want 400", rec.Code, rec.Body)
+	}
+
+	// Multi-resource replication-lag.
+	rec = serveREST(svc, "/v1/metrics/replication-lag?resource="+pgA+"&resource="+pgB)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("multi replication-lag => %d %s", rec.Code, rec.Body)
+	}
+	gotLag := byResource(t, rec.Body.Bytes())
+	if gotLag[pgA] != 0.25 || gotLag[pgB] != 0.75 || len(gotLag) != 2 {
+		t.Errorf("multi replication-lag = %v, want {pgA:0.25, pgB:0.75}", gotLag)
+	}
+	// Key Value in replication-lag fails closed with 400.
+	if rec := serveREST(svc, "/v1/metrics/replication-lag?resource="+pgA+"&resource="+kvC); rec.Code != http.StatusBadRequest {
+		t.Errorf("replication-lag with kv = %d %s, want 400", rec.Code, rec.Body)
+	}
+
+	// Empty multi-resource response serializes as [] (never null).
+	noHA := sampleDatabase("dpg-11111111111111111111", false)
+	noHASvc := newService(nil, nil, noHA)
+	rec = serveREST(noHASvc, "/v1/metrics/replication-lag?resource=dpg-11111111111111111111")
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
+		t.Errorf("empty replication-lag = %d %q, want 200 []", rec.Code, rec.Body.String())
+	}
+
+	// Over-budget resource array fails with 400 (checkFanOut).
+	var over strings.Builder
+	for i := 0; i <= maxMetricsFanOut; i++ {
+		if i > 0 {
+			over.WriteByte('&')
+		}
+		over.WriteString("resource=" + pgA)
+	}
+	for _, path := range []string{"disk-usage", "disk-capacity", "active-connections", "replication-lag"} {
+		if rec := serveREST(svc, "/v1/metrics/"+path+"?"+over.String()); rec.Code != http.StatusBadRequest {
+			t.Errorf("over-budget %s = %d %s, want 400", path, rec.Code, rec.Body)
+		}
+	}
+
+	// Fail-closed authorization: unknown second resource -> 404; forbidden second resource -> 403/404.
+	if rec := serveREST(svc, "/v1/metrics/disk-usage?resource="+pgA+"&resource=dpg-zzzzzzzzzzzzzzzzzzzz"); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown second resource = %d %s, want 404", rec.Code, rec.Body)
+	}
+	serveWithUser := func(path string) *httptest.ResponseRecorder {
+		mux := http.NewServeMux()
+		svc.RegisterREST(mux)
+		rec := httptest.NewRecorder()
+		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u", Method: core.MethodSession})
+		req := httptest.NewRequest(http.MethodGet, path, nil).WithContext(ctx)
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+	// All-denied checker -> 403/404.
+	svc.Authz = ownWorkspaceOnly("workspace:tea-nobody")
+	if rec := serveWithUser("/v1/metrics/disk-usage?resource=" + pgA + "&resource=" + pgB); rec.Code != http.StatusForbidden && rec.Code != http.StatusNotFound {
+		t.Errorf("forbidden resource list = %d %s, want 403 or 404", rec.Code, rec.Body)
+	}
+	// Selective denial: first resource (tea-mine) allowed, second (tea-other) forbidden -> 403 (never partial 200).
+	dbA.Labels = map[string]string{core.LabelTenant: "tea-mine"}
+	if err := svc.Client.Update(context.Background(), dbA); err != nil {
+		t.Fatal(err)
+	}
+	svc.Workspace = multiWorkspaceResolver{defaultTenant: "tea-mine", members: map[string]bool{"tea-mine": true}}
+	svc.Authz = denyResourceChecker{denyTenant: "tea-other"}
+	if rec := serveWithUser("/v1/metrics/disk-usage?resource=" + pgA + "&resource=dpg-ffffffffffffffffffff"); rec.Code != http.StatusForbidden {
+		t.Errorf("mixed authorized + forbidden resource list = %d %s, want 403", rec.Code, rec.Body)
+	}
+}
+
 // --- GraphQL fragment ---
 
 func TestGraphQLDatastoreMetrics(t *testing.T) {

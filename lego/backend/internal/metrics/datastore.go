@@ -203,6 +203,36 @@ type DatastoreMetricQuery struct {
 	// CPUAggregation is Render's cpu interval aggregation (MetricQuery.
 	// CPUAggregation) on Render's own App-metric paths for a datastore id.
 	CPUAggregation string
+	// Percentage reports cpu/memory (including Key Value's kv_memory) as 0..100
+	// of each instance's own trustworthy limit from DatastoreResource over the
+	// same window (w34/m589).
+	Percentage bool
+}
+
+// datastoreLimitMetric returns the DatastoreResource limit metric paired with a
+// percentage-eligible datastore usage metric.
+func datastoreLimitMetric(metric string) (string, bool) {
+	switch metric {
+	case MetricCPU:
+		return MetricCPULimit, true
+	case MetricMemory, MetricKVMemory:
+		return MetricMemoryLimit, true
+	default:
+		return "", false
+	}
+}
+
+func isDatastoreMetric(metric string) bool {
+	switch metric {
+	case MetricDiskCapacity, MetricDisk, MetricDBConnections, MetricReplicationLag,
+		MetricKVMemory, MetricKVConnections,
+		MetricNetworkActivity, MetricTransactionVolume, MetricDiskActivity, MetricDiskOperations,
+		MetricLockDelayedQueries,
+		MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
+		return true
+	default:
+		return false
+	}
 }
 
 func (q DatastoreMetricQuery) normalized(now time.Time) DatastoreMetricQuery {
@@ -304,6 +334,10 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	// query authorizes is the identity it measures. `var` (not := q.Resource)
 	// keeps that structural: a branch that forgets the assignment measures "".
 	var resource string
+	// resourceID is the canonical public identifier stamped onto every returned
+	// series' `resource` label and used to derive public `instance` IDs
+	// (db.Name / kv.Name for datastores, appResourceID for a service's disk).
+	var resourceID string
 	// logicalDiskGB is the datastore's billed/provisioned disk size (GB), resolved
 	// from the CR the same way Details "Storage" is, so disk_capacity matches it
 	// instead of the physical PVC floor. Set per kind alongside namespace/resource.
@@ -327,6 +361,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = db.Namespace
 		resource = db.Name
+		resourceID = db.Name
 		workspaceID = db.Labels[core.LabelTenant]
 		container = postgresContainer
 		isHA = db.Status.HighAvailabilityEnabled
@@ -344,6 +379,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = kv.Namespace
 		resource = kv.Name
+		resourceID = kv.Name
 		workspaceID = kv.Labels[core.LabelTenant]
 		container = keyValueContainer
 		logicalDiskGB = tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB)
@@ -371,6 +407,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = app.Namespace
 		resource = app.Name
+		resourceID = appResourceID(app, q.Resource)
 		workspaceID = app.Labels[core.LabelTenant]
 		notBefore = core.AppNotBefore(app)
 		// Every other datastore metric describes a datastore process. A
@@ -418,6 +455,15 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		return nil, err
 	}
 	q.Start = start
+
+	if !isDatastoreMetric(q.Metric) {
+		return nil, fmt.Errorf("%w: metric %q is not served for %s %s", core.ErrBadRequest, q.Metric, datastoreNoun(q.Kind), q.Resource)
+	}
+	limitMetric, canPercentage := datastoreLimitMetric(q.Metric)
+	if q.Percentage && !canPercentage {
+		return nil, fmt.Errorf("%w: percentage applies only to cpu and memory metrics", core.ErrBadRequest)
+	}
+	var series []MetricSeries
 	switch q.Metric {
 	case MetricDiskCapacity:
 		// Logical/billed capacity — the size the plan provisions and the user is
@@ -425,14 +471,14 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		// a fixed Hetzner floor that made an 81%-full 1 GB database read 8% full).
 		// Config-shaped, so it needs no Prometheus source; the ops-side
 		// PersistentVolumeFillingUp alert keeps evaluating the physical series.
-		return logicalDiskCapacitySeries(resource, logicalDiskGB, s.Now()), nil
+		return logicalDiskCapacitySeries(resourceID, logicalDiskGB, s.Now()), nil
 	case MetricDisk:
 		// Disk USED stays kubelet-backed — it was always accurate; only the
 		// capacity denominator was wrong.
 		if s.DiskUsage == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		series, err := s.DiskUsage(ctx, DiskUsageRequest{
+		series, err = s.DiskUsage(ctx, DiskUsageRequest{
 			Namespace:  namespace,
 			Resource:   resource,
 			PVCPattern: pvcPattern(q.Kind, resource),
@@ -440,17 +486,13 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			End:        q.End,
 			Resolution: q.Resolution,
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
 	case MetricDBConnections:
 		if s.DBConnections == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		series, err := s.DBConnections(ctx, DBConnectionsRequest{
+		series, err = s.DBConnections(ctx, DBConnectionsRequest{
 			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
 	case MetricReplicationLag:
 		// Gated on HighAvailabilityEnabled: a non-HA instance has no standby, and
 		// CNPG's own lag query reports 0 (not absence) from a lone primary —
@@ -462,60 +504,69 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if s.ReplicationLag == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		series, err := s.ReplicationLag(ctx, ReplicationLagRequest{
+		series, err = s.ReplicationLag(ctx, ReplicationLagRequest{
 			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
 	case MetricKVMemory, MetricKVConnections:
 		if s.KeyValueStats == nil {
+			return nil, core.ErrMetricsUnavailable
+		}
+		if q.Percentage && s.DatastoreResource == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
 		dimension := "memory"
 		if q.Metric == MetricKVConnections {
 			dimension = "connections"
 		}
-		series, err := s.KeyValueStats(ctx, KeyValueStatsRequest{
+		series, err = s.KeyValueStats(ctx, KeyValueStatsRequest{
 			Namespace: namespace, Resource: resource, Dimension: dimension,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
 	case MetricNetworkActivity, MetricTransactionVolume, MetricDiskActivity, MetricDiskOperations:
 		if s.DatastoreActivity == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		series, err := s.DatastoreActivity(ctx, DatastoreActivityRequest{
+		series, err = s.DatastoreActivity(ctx, DatastoreActivityRequest{
 			Kind: q.Kind, Namespace: namespace, Resource: resource, NotBefore: notBefore, Metric: q.Metric,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
 	case MetricLockDelayedQueries:
 		// Counted from log lines, so it needs the log store as a host or path
 		// filter does (w5/m58), and says so rather than reading as zero.
 		if s.LockWaits == nil {
 			return nil, core.ErrLogStoreUnavailable
 		}
-		series, err := s.LockWaits(ctx, LockWaitsRequest{
+		series, err = s.LockWaits(ctx, LockWaitsRequest{
 			Namespace: namespace, Database: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
 	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
 		if s.DatastoreResource == nil {
 			return nil, core.ErrMetricsUnavailable
 		}
-		series, err := s.DatastoreResource(ctx, DatastoreResourceRequest{
+		series, err = s.DatastoreResource(ctx, DatastoreResourceRequest{
 			Kind: q.Kind, Namespace: namespace, Resource: resource, Container: container, Metric: q.Metric,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 			CPUAggregation: cpuAggregationFor(q.Metric, q.CPUAggregation),
 		})
-		projectInstanceLabels(q.Resource, series)
-		return series, err
-	default:
-		return nil, fmt.Errorf("%w: metric %q is not served for %s %s", core.ErrBadRequest, q.Metric, datastoreNoun(q.Kind), q.Resource)
 	}
+	if err != nil {
+		return nil, err
+	}
+	if q.Percentage && len(series) > 0 {
+		limits, limitErr := s.DatastoreResource(ctx, DatastoreResourceRequest{
+			Kind: q.Kind, Namespace: namespace, Resource: resource, Container: container, Metric: limitMetric,
+			Start: q.Start, End: q.End, Resolution: q.Resolution,
+		})
+		if limitErr != nil {
+			return nil, limitErr
+		}
+		// Normalize while labels still carry the raw pod name (the limit
+		// timelines' key); projection to public instance ids happens after.
+		series = normalizeUsageToPercentage(series, steppedLimitLookup(limits))
+	}
+	setLabelOnEach(series, LabelResource, resourceID)
+	projectInstanceLabels(resourceID, series)
+	return series, nil
 }
 
 func datastoreNoun(kind string) string {

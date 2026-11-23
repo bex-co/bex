@@ -17,13 +17,19 @@ limitations under the License.
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w1/m155: every path under Render's /metrics, with each of its documented
@@ -246,5 +252,122 @@ func TestRenderMetricsResolutionSecondsIsANumber(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Fatal("no Render /metrics path declares resolutionSeconds")
+	}
+}
+
+// TestRenderMetricsDatastoreMultiResourceAndInstanceConformance is w34/m589:
+// drives all four multi-resource datastore routes and datastore cpu/memory/
+// cpu-limit/memory-limit instance/percentage queries through the composed
+// server (with strict OpenAPI request validation AND rendertest response
+// validation, zero new Allowlist entries).
+func TestRenderMetricsDatastoreMultiResourceAndInstanceConformance(t *testing.T) {
+	const (
+		pgA  = "dpg-c185th5c2rvvnhbfiltg"
+		pgB  = "dpg-c185th5c2rvvnhbfilth"
+		kvC  = "red-c185th5c2rvvnhbfilti"
+		srvD = "srv-c185th5c2rvvnhbfiltj"
+		ts   = "2026-11-23T12:00:00Z"
+	)
+	dbA := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: pgA, Namespace: "tea-cli", Labels: map[string]string{core.LabelTenant: "tea-cli"}},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
+		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady, HighAvailabilityEnabled: true},
+	}
+	dbB := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: pgB, Namespace: "tea-cli", Labels: map[string]string{core.LabelTenant: "tea-cli"}},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-256mb"},
+		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady, HighAvailabilityEnabled: true},
+	}
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: kvC, Namespace: "tea-cli", Labels: map[string]string{core.LabelTenant: "tea-cli"}},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", StorageGB: 2},
+	}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: srvD, Namespace: "tea-cli", Labels: map[string]string{core.LabelTenant: "tea-cli", core.LabelAppID: srvD}},
+		Spec:       appv1alpha1.AppSpec{Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 5}},
+	}
+
+	h, _ := serverWith(t, &core.Base{
+		Client:    fakeClient(dbA, dbB, kv, app),
+		Namespace: "default",
+		Workspace: fakeWorkspace{"client-1": "tea-cli"},
+	}, Deps{
+		APIKeys: newFakeKeyStore(),
+		DiskUsage: func(_ context.Context, req metrics.DiskUsageRequest) ([]metrics.MetricSeries, error) {
+			return []metrics.MetricSeries{{Labels: map[string]string{"instance": req.Resource + "-1"}, Unit: "bytes", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 1024}}}}, nil
+		},
+		DBConnections: func(_ context.Context, req metrics.DBConnectionsRequest) ([]metrics.MetricSeries, error) {
+			return []metrics.MetricSeries{{Labels: map[string]string{"instance": req.Cluster + "-1"}, Unit: "count", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 7}}}}, nil
+		},
+		KeyValueStats: func(_ context.Context, req metrics.KeyValueStatsRequest) ([]metrics.MetricSeries, error) {
+			unit, val := "bytes", float64(256<<20)
+			if req.Dimension == "connections" {
+				unit, val = "count", 9
+			}
+			return []metrics.MetricSeries{{Labels: map[string]string{"instance": req.Resource + "-0"}, Unit: unit, Points: []metrics.MetricPoint{{Timestamp: ts, Value: val}}}}, nil
+		},
+		ReplicationLag: func(_ context.Context, req metrics.ReplicationLagRequest) ([]metrics.MetricSeries, error) {
+			return []metrics.MetricSeries{{Labels: map[string]string{"instance": req.Cluster + "-2"}, Unit: "seconds", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 0.3}}}}, nil
+		},
+		DatastoreResource: func(_ context.Context, req metrics.DatastoreResourceRequest) ([]metrics.MetricSeries, error) {
+			switch req.Metric {
+			case metrics.MetricCPU:
+				return []metrics.MetricSeries{
+					{Labels: map[string]string{"instance": req.Resource + "-1"}, Unit: "cpu", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 0.25}}},
+					{Labels: map[string]string{"instance": req.Resource + "-2"}, Unit: "cpu", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 0.5}}},
+				}, nil
+			case metrics.MetricCPULimit:
+				return []metrics.MetricSeries{
+					{Labels: map[string]string{"instance": req.Resource + "-1"}, Unit: "cpu", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 0.5}}},
+					{Labels: map[string]string{"instance": req.Resource + "-2"}, Unit: "cpu", Points: []metrics.MetricPoint{{Timestamp: ts, Value: 1.0}}},
+				}, nil
+			case metrics.MetricMemory:
+				return []metrics.MetricSeries{
+					{Labels: map[string]string{"instance": req.Resource + "-2"}, Unit: "bytes", Points: []metrics.MetricPoint{{Timestamp: ts, Value: float64(256 << 20)}}},
+				}, nil
+			case metrics.MetricMemoryLimit:
+				inst := req.Resource + "-2"
+				if req.Kind == metrics.DatastoreKeyValue {
+					inst = req.Resource + "-0"
+				}
+				return []metrics.MetricSeries{
+					{Labels: map[string]string{"instance": inst}, Unit: "bytes", Points: []metrics.MetricPoint{{Timestamp: ts, Value: float64(512 << 20)}}},
+				}, nil
+			default:
+				return nil, nil
+			}
+		},
+	})
+
+	for _, tc := range []struct {
+		name      string
+		target    string
+		wantCount int
+	}{
+		{"multi disk-usage mixed kinds", "/v1/metrics/disk-usage?resource=" + pgA + "&resource=" + srvD + "&resource=" + kvC, 3},
+		{"multi disk-capacity mixed kinds", "/v1/metrics/disk-capacity?resource=" + pgA + "&resource=" + srvD + "&resource=" + kvC, 3},
+		{"multi active-connections mixed kinds", "/v1/metrics/active-connections?resource=" + pgA + "&resource=" + kvC, 2},
+		{"multi replication-lag", "/v1/metrics/replication-lag?resource=" + pgA + "&resource=" + pgB, 2},
+		{"pg cpu instance filter", "/v1/metrics/cpu?resource=" + pgA + "&instance=" + pgA + "-2", 1},
+		{"pg cpu percentage + instance", "/v1/metrics/cpu?resource=" + pgA + "&instance=" + pgA + "-2&percentage=true", 1},
+		{"pg memory percentage + instance", "/v1/metrics/memory?resource=" + pgA + "&instance=" + pgA + "-2&percentage=true", 1},
+		{"kv memory percentage + instance", "/v1/metrics/memory?resource=" + kvC + "&instance=" + kvC + "-0&percentage=true", 1},
+		{"pg cpu-limit instance filter", "/v1/metrics/cpu-limit?resource=" + pgA + "&instance=" + pgA + "-2", 1},
+		{"pg memory-limit instance filter", "/v1/metrics/memory-limit?resource=" + pgA + "&instance=" + pgA + "-2", 1},
+		{"pg cpu unknown instance empty", "/v1/metrics/cpu?resource=" + pgA + "&instance=" + pgA + "-99", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, h, http.MethodGet, tc.target, testToken, "")
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET %s = %d %s", tc.target, rec.Code, rec.Body)
+			}
+			var series []json.RawMessage
+			if err := json.Unmarshal(rec.Body.Bytes(), &series); err != nil {
+				t.Fatalf("decode %s: %v", rec.Body, err)
+			}
+			if len(series) != tc.wantCount {
+				t.Errorf("GET %s returned %d series, want %d (%s)", tc.target, len(series), tc.wantCount, rec.Body)
+			}
+		})
 	}
 }

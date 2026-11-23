@@ -656,6 +656,181 @@ func TestMCPGetMetricsAcceptsRenderMetricTypes(t *testing.T) {
 	}
 }
 
+// TestDatastoreInstanceAndPercentageCrossSurfaceParity is w34/m589: REST,
+// GraphQL metrics, and MCP get_metrics agree on datastore cpu/memory/limit
+// instance filtering, percentage normalization, and replica aggregation for
+// both Postgres and Key Value, and refuse unsupported combinations alike.
+func TestDatastoreInstanceAndPercentageCrossSurfaceParity(t *testing.T) {
+	const (
+		pgID = "dpg-c185th5c2rvvnhbfiltg"
+		kvID = "red-c185th5c2rvvnhbfiltg"
+		ts   = "2026-11-23T12:00:00Z"
+	)
+	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
+		webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},
+	}), nil, sampleApp("web"), podWithLimits(webInst), sampleDatabase(pgID, true), sampleKeyValue(kvID))
+	svc.DatastoreResource = func(_ context.Context, req DatastoreResourceRequest) ([]MetricSeries, error) {
+		switch req.Metric {
+		case MetricCPU:
+			return []MetricSeries{
+				{Labels: map[string]string{"instance": req.Resource + "-1"}, Unit: unitCores, Points: []MetricPoint{{Timestamp: ts, Value: 0.2}}},
+				{Labels: map[string]string{"instance": req.Resource + "-2"}, Unit: unitCores, Points: []MetricPoint{{Timestamp: ts, Value: 0.6}}},
+			}, nil
+		case MetricCPULimit:
+			return []MetricSeries{
+				{Labels: map[string]string{"instance": req.Resource + "-1"}, Unit: unitCores, Points: []MetricPoint{{Timestamp: ts, Value: 0.5}}},
+				{Labels: map[string]string{"instance": req.Resource + "-2"}, Unit: unitCores, Points: []MetricPoint{{Timestamp: ts, Value: 1.0}}},
+			}, nil
+		case MetricMemoryLimit:
+			return []MetricSeries{
+				{Labels: map[string]string{"instance": req.Resource + "-0"}, Unit: unitBytes, Points: []MetricPoint{{Timestamp: ts, Value: float64(512 << 20)}}},
+			}, nil
+		default:
+			return nil, nil
+		}
+	}
+	svc.KeyValueStats = func(_ context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{
+			{Labels: map[string]string{"instance": req.Resource + "-0"}, Unit: unitBytes, Points: []MetricPoint{{Timestamp: ts, Value: float64(256 << 20)}}},
+		}, nil
+	}
+
+	cs := mcpSession(t, svc)
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Postgres CPU filtered to replica 2 with percentage=true => 60% on REST, GraphQL, MCP.
+	restRec := serveREST(svc, "/v1/metrics/cpu?resource="+pgID+"&instance="+pgID+"-2&percentage=true")
+	if restRec.Code != http.StatusOK {
+		t.Fatalf("REST pg cpu pct+instance = %d %s", restRec.Code, restRec.Body)
+	}
+	restSeries := seriesFrom(t, restRec.Body.Bytes())
+	if len(restSeries) != 1 || restSeries[0].Unit != unitPercentage || !closeTo(restSeries[0].Values[0].Value, 60) {
+		t.Fatalf("REST pg cpu pct+instance = %+v, want 1 series at 60%%", restSeries)
+	}
+
+	var gqlSeries []struct {
+		Unit   string
+		Labels []renderMetricLabel
+		Values []struct{ Value float64 }
+	}
+	decodeGraphQLSeries(t, svc,
+		`metrics(query: {filters: [{field: "RESOURCE", values: ["`+pgID+`"]}, {field: "INSTANCE", values: ["`+pgID+`-2"]}], name: "CPU", percentage: true})`,
+		"unit labels { field value } values { value }", &gqlSeries)
+	if len(gqlSeries) != 1 || gqlSeries[0].Unit != unitPercentage || !closeTo(gqlSeries[0].Values[0].Value, 60) ||
+		labelValue(gqlSeries[0].Labels, "RESOURCE") != pgID || labelValue(gqlSeries[0].Labels, "INSTANCE") == "" {
+		t.Fatalf("GraphQL pg cpu pct+instance = %+v, want 1 series at 60%% with RESOURCE & INSTANCE labels", gqlSeries)
+	}
+
+	mcpRes, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"cpu_usage"}, "instance": []string{pgID + "-2"}, "percentage": true,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcpGot := decodeGetMetrics(t, mcpRes)
+	if len(mcpGot.Metrics) != 1 || len(mcpGot.Metrics[0].Data) != 1 ||
+		mcpGot.Metrics[0].Data[0].Unit != unitPercentage || !closeTo(mcpGot.Metrics[0].Data[0].Values[0].Value, 60) {
+		t.Fatalf("MCP pg cpu pct+instance = %+v, want 1 series at 60%%", mcpGot)
+	}
+
+	// 2. Postgres CPU percentage + AVG across both replicas: avg(40%, 60%) = 50% on REST, GraphQL, MCP.
+	restAvg := seriesFrom(t, serveREST(svc, "/v1/metrics/cpu?resource="+pgID+"&percentage=true&aggregateAllMethod=AVG").Body.Bytes())
+	var gqlAvg []struct {
+		Unit   string
+		Values []struct{ Value float64 }
+	}
+	decodeGraphQLSeries(t, svc,
+		`metrics(query: {filters: [{field: "RESOURCE", values: ["`+pgID+`"]}], name: "CPU", percentage: true, aggregateAllMethod: "AVG"})`,
+		"unit values { value }", &gqlAvg)
+	mcpAvgRes, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"cpu_usage"}, "percentage": true, "aggregateAllMethod": "AVG",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcpAvg := decodeGetMetrics(t, mcpAvgRes).series()
+	if len(restAvg) != 1 || !closeTo(restAvg[0].Values[0].Value, 50) ||
+		len(gqlAvg) != 1 || !closeTo(gqlAvg[0].Values[0].Value, 50) ||
+		len(mcpAvg) != 1 || !closeTo(mcpAvg[0].Values[0].Value, 50) {
+		t.Fatalf("AVG percentage mismatch: REST=%+v GraphQL=%+v MCP=%+v, want 50%%", restAvg, gqlAvg, mcpAvg)
+	}
+
+	// 3. Key Value memory with percentage=true => 50% (256Mi/512Mi) on REST, GraphQL, MCP.
+	restKV := seriesFrom(t, serveREST(svc, "/v1/metrics/memory?resource="+kvID+"&percentage=true").Body.Bytes())
+	var gqlKV []struct {
+		Unit   string
+		Values []struct{ Value float64 }
+	}
+	decodeGraphQLSeries(t, svc,
+		`metrics(query: {filters: [{field: "RESOURCE", values: ["`+kvID+`"]}], name: "MEMORY", percentage: true})`,
+		"unit values { value }", &gqlKV)
+	mcpKVRes, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resourceId": kvID, "metricTypes": []string{"memory_usage"}, "percentage": true,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcpKV := decodeGetMetrics(t, mcpKVRes).series()
+	if len(restKV) != 1 || restKV[0].Unit != unitPercentage || !closeTo(restKV[0].Values[0].Value, 50) ||
+		len(gqlKV) != 1 || gqlKV[0].Unit != unitPercentage || !closeTo(gqlKV[0].Values[0].Value, 50) ||
+		len(mcpKV) != 1 || mcpKV[0].Unit != unitPercentage || !closeTo(mcpKV[0].Values[0].Value, 50) {
+		t.Fatalf("KV memory pct mismatch: REST=%+v GraphQL=%+v MCP=%+v, want 50%%", restKV, gqlKV, mcpKV)
+	}
+
+	// 4. Unknown instance returns empty [] on all three surfaces (never broadening).
+	if rec := serveREST(svc, "/v1/metrics/cpu-limit?resource="+pgID+"&instance=nope"); rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
+		t.Errorf("REST unknown instance on cpu-limit = %d %s, want 200 []", rec.Code, rec.Body)
+	}
+	var gqlEmpty []struct{ Unit string }
+	decodeGraphQLSeries(t, svc,
+		`metrics(query: {filters: [{field: "RESOURCE", values: ["`+pgID+`"]}, {field: "INSTANCE", values: ["nope"]}], name: "CPU_LIMIT"})`,
+		"unit", &gqlEmpty)
+	if len(gqlEmpty) != 0 {
+		t.Errorf("GraphQL unknown instance on CPU_LIMIT = %+v, want []", gqlEmpty)
+	}
+	mcpEmptyRes, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"cpu_limit"}, "instance": []string{"nope"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeGetMetrics(t, mcpEmptyRes).series(); len(got) != 0 {
+		t.Errorf("MCP unknown instance on cpu_limit = %+v, want []", got)
+	}
+
+	// 5. Mixed service + datastore RESOURCE array on GraphQL metrics works alongside REST.
+	var gqlMixed []struct {
+		Labels []renderMetricLabel
+	}
+	decodeGraphQLSeries(t, svc,
+		`metrics(query: {filters: [{field: "RESOURCE", values: ["web", "`+pgID+`"]}], name: "CPU"})`,
+		"labels { field value }", &gqlMixed)
+	if len(gqlMixed) != 3 {
+		t.Errorf("GraphQL mixed web + pg CPU series = %d, want 3 (1 web + 2 pg)", len(gqlMixed))
+	}
+
+	// 6. Unsupported metric / percentage on limit rejected across all three surfaces.
+	if rec := serveREST(svc, "/v1/metrics/cpu-limit?resource="+pgID+"&percentage=true"); rec.Code != http.StatusBadRequest {
+		t.Errorf("REST cpu-limit percentage=true on pg = %d, want 400", rec.Code)
+	}
+	gqlErr := graphql.Do(graphql.Params{
+		Schema: schema, Context: context.Background(),
+		RequestString: `{ metrics(query: {filters: [{field: "RESOURCE", values: ["` + pgID + `"]}], name: "CPU_LIMIT", percentage: true}) { unit } }`,
+	})
+	if len(gqlErr.Errors) == 0 {
+		t.Error("GraphQL CPU_LIMIT percentage:true on pg: want error, got none")
+	}
+	mcpErrRes, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resourceId": pgID, "metricTypes": []string{"cpu_limit"}, "percentage": true,
+	}})
+	if err != nil || !mcpErrRes.IsError {
+		t.Errorf("MCP cpu_limit percentage:true on pg = err:%v isError:%v, want tool error", err, mcpErrRes != nil && mcpErrRes.IsError)
+	}
+}
+
 // TestMultiValueStatusCodeFilteringAcrossSurfaces is w34/010: GraphQL
 // STATUS_CODE and REST repeated statusCode pass every value through and return
 // the ORed union across both Loki and Prometheus paths, reject any invalid

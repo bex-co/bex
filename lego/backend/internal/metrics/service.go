@@ -1126,6 +1126,13 @@ func (s *Service) percentageDenominators(ctx context.Context, q MetricQuery, app
 	if err != nil {
 		return nil, err
 	}
+	return steppedLimitLookup(limits), nil
+}
+
+// steppedLimitLookup adapts stepped limit series (raw pod names in the instance
+// label) into the per-sample denominator callback normalizeUsageToPercentage
+// takes, shared by service and datastore percentage normalization.
+func steppedLimitLookup(limits []MetricSeries) func(pod, ts string) (float64, bool) {
 	timelines := buildLimitTimelines(limits)
 	return func(pod, ts string) (float64, bool) {
 		t, err := time.Parse(time.RFC3339, ts)
@@ -1133,7 +1140,7 @@ func (s *Service) percentageDenominators(ctx context.Context, q MetricQuery, app
 			return 0, false
 		}
 		return steppedLimitAt(timelines, pod, t)
-	}, nil
+	}
 }
 
 // resourceLimitMetric returns one current series per replica of the pod's
