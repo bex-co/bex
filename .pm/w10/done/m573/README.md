@@ -1,6 +1,6 @@
 # w10 · m573 — A workspace admin allows the platform catalog's models by provider, as Devin's allowlist filters by provider
 
-**Worker:** worker10 **Goal:** the workspace model list gains Devin's second filter type. An admin allows whole providers (`enabledProviders: ["anthropic"]`, the provider being a model id's prefix before `/`) instead of naming models one by one, as the one filter type in force. Every model of an allowed provider is offered, one added to the catalog later included, and the catalog default still always is. REST, GraphQL, MCP, `bex agent env set` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** blocked (pin must carry `022753057f`; t001–t005 and t007–t009 done 2026-11-22, the `dev-10` half of t006 too; t006's production read and t010 follow the deploy)
+**Worker:** worker10 **Goal:** the workspace model list gains Devin's second filter type. An admin allows whole providers (`enabledProviders: ["anthropic"]`, the provider being a model id's prefix before `/`) instead of naming models one by one, as the one filter type in force. Every model of an allowed provider is offered, one added to the catalog later included, and the catalog default still always is. REST, GraphQL, MCP, `bex agent env set` and Settings → Agents read and write it, and no workspace's offer changes when this ships. **Status:** done (2026-11-23: t001–t010 done; production pin `1a5a8e872398` carries `022753057f`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Backend: the offered set and the write honor the provider filter on REST, GraphQL and MCP — **DONE** | 1h30m | t002 |
 | [t004](done/t004.md) | CLI: `bex agent env set --providers` and `bex agent env` show the filter by provider — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Dashboard: Settings → Agents chooses models by model or by provider — **DONE** | 1h15m | t003 |
-| [t006](t006.md) | Live check: a catalog gaining a model of an allowed provider on `dev-10`, then production's offers unchanged by the deploy | 45m | t003, t004, t005 |
+| [t006](done/t006.md) | Live check: a catalog gaining a model of an allowed provider on `dev-10`, then production's offers unchanged by the deploy — **DONE** | 45m | t003, t004, t005 |
 | [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 7h30m**.
 
@@ -129,11 +129,16 @@ Against [Devin Desktop admin controls](https://docs.devin.ai/desktop/controls) (
 - `agent_environments` has 3 rows. None turns a model off and none is on its own key, so every workspace offers the whole catalog of four.
 - Reproduce with `kubectl --context hetzner-prod -n bex-system exec bex-db-2 -c postgres -- psql -U postgres -d bex -At -c "SET default_transaction_read_only = on; SELECT count(*), count(*) FILTER (WHERE cardinality(disabled_models) > 0), count(*) FILTER (WHERE model_key_set_at IS NOT NULL) FROM agent_environments"`, which answered `3|0|0`. Use the primary: `bex-db-2` was the primary that day, so check `pg_is_in_recovery()` first.
 
-**Production after the deploy:** pending.
+**Production after the deploy, 2026-11-23 (read-only, `hetzner-prod`, pin `1a5a8e872398`, DoD 7 second half — holds).**
 
-- Once the pin carries the milestone, run the same read plus `count(*) FILTER (WHERE enabled_providers IS NOT NULL)`.
-- Every row must offer what it did, and the filter count is 0 unless an admin set one since.
-- `tian-personal`'s `GET /v1/agent-environment` must read the four catalog models as `enabledModels`, `providers: ["deepseek","anthropic"]` and `enabledProviders: null`.
+- **The image.** Both `bex-api` Pods (started 04:30Z, ready, no restarts) run `bex-operator@sha256:65ef4f0d…`, the digest pin commit `e6c65f5c62` set, and that pin is still the newest on `origin/main`. Its `BEX_AGENT_PLATFORM_MODELS` is unchanged (`anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5` after the default `deepseek/deepseek-v4.1-flash-1017`, route `openrouter`). The schema is at migration 0334, so 0333's `enabled_providers` exists.
+- **Every row offers what it did.** `bex-db-2` was the primary (`pg_is_in_recovery()` false). `agent_environments` still has 3 rows. Narrowed: 0. On their own key: 0. `enabled_providers` set: 0. `known_models` set: 0. Read per row with the ids hashed by `scripts/lib/public_log.py`, each of `ws#33990f`, `ws#de645e` and `ws#5856c3` has `disabled_models` `{}`, `known_models` and `enabled_providers` NULL and no own key. Each therefore allows all and offers the whole catalog of four, as before the deploy (`3|0|0`).
+- **`tian-personal`.** Signed in with `bash scripts/qa-login.sh` and logged out afterwards. `GET https://api.bex.co/v1/agent-environment?ownerId=tea-da2isimlm39c739m4ofg` answered `200` with:
+  - `models` and `enabledModels` both the four catalog models in catalog order;
+  - `providers: ["deepseek","anthropic"]` and `enabledProviders: null`;
+  - `newModels: []`.
+  `GET /v1/agent-sessions/capabilities` gave claude the same four `models`.
+- **Reproduce.** Run the read above as `SELECT count(*), count(*) FILTER (WHERE cardinality(disabled_models) > 0), count(*) FILTER (WHERE model_key_set_at IS NOT NULL), count(*) FILTER (WHERE enabled_providers IS NOT NULL), count(*) FILTER (WHERE known_models IS NOT NULL) FROM agent_environments`, which answered `3|0|0|0|0`. Pipe any per-row read through `python3 scripts/lib/public_log.py`. Make the REST read with the cookie jar `qa-login.sh` prints on its `logout` line, then run `--logout` on it.
 
 ## Render parity (t007, Devin, 2026-11-22)
 
@@ -188,6 +193,15 @@ No drift beyond w10/046 (an explicit allowlist that lists every current model), 
 - **Proved real by reverting:**
   - With `leftOn` ignoring the filter (`byProvider = false`), `TestAProviderFilterOffersEveryModelOfAListedProvider`, `TestSwitchingBetweenTheFilterTypes` and `TestTheProviderFilterRolloutReadRule` fail.
   - With `providerFilter` skipping the turned-off-list check (the rollout guard), `TestTheProviderFilterRolloutReadRule` fails on the three previous-release writes that change the list.
+
+## Unblock record (2026-11-23)
+
+- **Affected:** w10/m573 t006 (step 3) and t010.
+- **Source:** verified evidence.
+  - The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `e6c65f5c62` (pin `1a5a8e872398`, 04:25Z on 2026-11-23), and `git merge-base --is-ancestor 022753057f 1a5a8e872398` holds.
+  - Both `bex-api` Pods run `bex-operator@sha256:65ef4f0d…`, the digest that pin set (read-only `kubectl`).
+  - The pin gate was the only one.
+- **Next:** t006 step 3's read-only production read and `tian-personal`'s `GET /v1/agent-environment`, then t010 closes the milestone if DoD 7 holds. Done the same day: see Live check (t006), "Production after the deploy".
 
 ## Source + Goal linkage
 
