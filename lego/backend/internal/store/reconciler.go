@@ -1282,14 +1282,24 @@ func releaseRolloutFor(app *appv1alpha1.App, generation int64) (DeployRollout, b
 	for _, t := range rec.AppStarts {
 		out.AppStarts = append(out.AppStarts, t.Time)
 	}
+	if rec.FirstExit != nil && !rec.FirstExit.FinishedAt.IsZero() {
+		finished := rec.FirstExit.FinishedAt.Time
+		code := rec.FirstExit.ExitCode
+		out.FirstExitAt, out.FirstExitCode = &finished, &code
+	}
 	return out, true
 }
 
 // holds reports that a row's rollout already carries everything rec would
-// add (SetDeployRollout): its start, and each of rec's app starts unless the
-// row's are at their bound.
+// add (SetDeployRollout): its start, its first non-OOM exit (unless rec
+// carries an even earlier one), and each of rec's app starts unless the row's
+// are at their bound.
 func (r DeployRollout) holds(rec DeployRollout) bool {
 	if r.StartedAt == nil {
+		return false
+	}
+	if rec.FirstExitAt != nil && rec.FirstExitCode != nil &&
+		(r.FirstExitAt == nil || rec.FirstExitAt.Before(*r.FirstExitAt)) {
 		return false
 	}
 	if len(r.AppStarts) >= appv1alpha1.MaxReleaseRolloutAppStarts {

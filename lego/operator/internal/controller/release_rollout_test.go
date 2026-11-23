@@ -137,8 +137,12 @@ func runningSince(t time.Time) corev1.ContainerState {
 }
 
 func exitedRun(started, finished time.Time) corev1.ContainerState {
+	return exitedRunWith(1, "", started, finished)
+}
+
+func exitedRunWith(code int32, reason string, started, finished time.Time) corev1.ContainerState {
 	return corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
-		ExitCode: 1, StartedAt: metav1.NewTime(started), FinishedAt: metav1.NewTime(finished),
+		ExitCode: code, Reason: reason, StartedAt: metav1.NewTime(started), FinishedAt: metav1.NewTime(finished),
 	}}
 }
 
@@ -189,6 +193,65 @@ func TestWithAppStartsReadsEachRunOfTheReleasesAppContainerOnce(t *testing.T) {
 	}
 	if again := withAppStarts(got, []corev1.Pod{appPod("web-a", "rev-4", runningSince(at(900)), none)}, "rev-4"); len(again) != len(got) {
 		t.Fatalf("a full record must not grow: %v", startTimes(again))
+	}
+}
+
+// w32/m591: the earliest non-OOM termination of the release's app container is
+// recorded from either LastTerminationState.Terminated or State.Terminated.
+// Later restarts do not overwrite it, an earlier termination seen out of order
+// across pods wins, OOMKilled is ignored, other revisions / deleting pods /
+// sidecars are ignored, and exit code 0 is preserved.
+func TestWithFirstAppExitRecordsEarliestNonOOMExit(t *testing.T) {
+	t0 := time.Date(2026, 11, 22, 22, 14, 58, 0, time.UTC)
+	at := func(s int) time.Time { return t0.Add(time.Duration(s) * time.Second) }
+	none := corev1.ContainerState{}
+
+	deleting := appPod("web-gone", "rev-4", exitedRunWith(9, "Error", at(0), at(1)), none)
+	deleting.DeletionTimestamp = &metav1.Time{Time: at(30)}
+	sidecar := appPod("web-side", "rev-4", none, none)
+	sidecar.Status.ContainerStatuses = []corev1.ContainerStatus{{Name: "health", State: exitedRunWith(7, "Error", at(0), at(1))}}
+	zeroFinish := appPod("web-zero-time", "rev-4", corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 4}}, none)
+	ignored := []corev1.Pod{
+		appPod("web-old", "rev-3", exitedRunWith(2, "Error", at(-10), at(-5)), none),
+		deleting,
+		sidecar,
+		zeroFinish,
+		appPod("web-oom", "rev-4", runningSince(at(10)), exitedRunWith(137, containerReasonOOMKilled, at(0), at(2))),
+	}
+	if got := withFirstAppExit(nil, ignored, "rev-4"); got != nil {
+		t.Fatalf("ignored pods recorded %+v, want nil", got)
+	}
+
+	// First exit read from LastTerminationState.Terminated.
+	first := withFirstAppExit(nil, []corev1.Pod{
+		appPod("web-a", "rev-4", runningSince(at(10)), exitedRunWith(1, "Error", at(0), at(5))),
+	}, "rev-4")
+	if first == nil || !first.FinishedAt.Time.Equal(at(5)) || first.ExitCode != 1 {
+		t.Fatalf("first exit = %+v, want at %v code 1", first, at(5))
+	}
+
+	// A later restart or equal timestamp returns the recorded pointer unchanged.
+	later := []corev1.Pod{
+		appPod("web-a", "rev-4", exitedRunWith(2, "Error", at(10), at(20)), exitedRunWith(3, "Error", at(0), at(5))),
+	}
+	if again := withFirstAppExit(first, later, "rev-4"); again != first || again.ExitCode != 1 {
+		t.Fatalf("later/equal exit overwrote record: got %+v (same ptr %v), want %+v", again, again == first, first)
+	}
+
+	// An earlier termination seen out of order on another pod (via State.Terminated) wins,
+	// and exit code 0 is preserved as 0.
+	earlier := withFirstAppExit(first, []corev1.Pod{
+		appPod("web-b", "rev-4", exitedRunWith(0, "Completed", at(0), at(3)), none),
+	}, "rev-4")
+	if earlier == nil || !earlier.FinishedAt.Time.Equal(at(3)) || earlier.ExitCode != 0 {
+		t.Fatalf("earlier exit = %+v, want at %v code 0", earlier, at(3))
+	}
+
+	// An even earlier OOMKilled termination is ignored.
+	if afterOOM := withFirstAppExit(earlier, []corev1.Pod{
+		appPod("web-c", "rev-4", exitedRunWith(137, containerReasonOOMKilled, at(0), at(1)), none),
+	}, "rev-4"); afterOOM != earlier {
+		t.Fatalf("OOMKilled overwrote record: %+v", afterOOM)
 	}
 }
 
@@ -411,5 +474,57 @@ var _ = Describe("The operator records each release's rollout (w32/m560)", func(
 		cj := &batchv1.CronJob{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: appv1alpha1.CronJobName(nn.Name), Namespace: nn.Namespace}, cj)).To(Succeed())
 		Expect(rollout(nn)).To(BeNil())
+	})
+
+	It("records the first non-OOM app exit on a crashing rollout, stops updating once settled, and clears it on a newer release (w32/m591)", func() {
+		nn, run := create("rollout-crash", appv1alpha1.AppSpec{Image: "traefik/whoami", Port: 3000, Tier: "starter"})
+		Expect(rollout(nn)).NotTo(BeNil())
+		Expect(rollout(nn).FirstExit).To(BeNil())
+
+		t0 := time.Now().Add(-2 * time.Minute).Truncate(time.Second)
+		firstEnd := t0.Add(4 * time.Second)
+		secondEnd := t0.Add(24 * time.Second)
+		thirdEnd := t0.Add(54 * time.Second)
+
+		By("run 1 exits with status 1 while rolling out")
+		appPodOf(nn, "rollout-crash-a", false, 1, runningSince(t0.Add(14*time.Second)), exitedRunWith(1, "Error", t0, firstEnd))
+		reconcileToFixedPoint(run)
+		Expect(rollout(nn).FirstExit).NotTo(BeNil())
+		Expect(rollout(nn).FirstExit.FinishedAt.Unix()).To(Equal(firstEnd.Unix()))
+		Expect(rollout(nn).FirstExit.ExitCode).To(Equal(int32(1)))
+
+		By("the rollout crashes again and settles failed; FirstExit keeps run 1's exit")
+		appPodOf(nn, "rollout-crash-a", false, crashSettleRestarts,
+			corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: crashLoopBackOff}},
+			exitedRunWith(2, "Error", t0.Add(14*time.Second), secondEnd))
+		reconcileToFixedPoint(run)
+		app := envtestApp(nn)
+		Expect(app.Status.RolloutFailure).NotTo(BeNil())
+		Expect(app.Status.RolloutFailure.ExitCode).NotTo(BeNil())
+		Expect(*app.Status.RolloutFailure.ExitCode).To(Equal(int32(2)), "RolloutFailure records the last exit")
+		Expect(app.Status.ReleaseRollout.FirstExit).NotTo(BeNil())
+		Expect(app.Status.ReleaseRollout.FirstExit.FinishedAt.Unix()).To(Equal(firstEnd.Unix()), "FirstExit stays at run 1")
+		Expect(app.Status.ReleaseRollout.FirstExit.ExitCode).To(Equal(int32(1)))
+
+		By("once settled, even an earlier pod exit is ignored")
+		appPodOf(nn, "rollout-crash-a", false, crashSettleRestarts+1,
+			corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: crashLoopBackOff}},
+			exitedRunWith(9, "Error", t0.Add(-10*time.Second), t0.Add(-5*time.Second)))
+		reconcileToFixedPoint(run)
+		Expect(rollout(nn).FirstExit.FinishedAt.Unix()).To(Equal(firstEnd.Unix()))
+		Expect(rollout(nn).FirstExit.ExitCode).To(Equal(int32(1)))
+
+		By("a newer release clears FirstExit and records its own")
+		app = envtestApp(nn)
+		app.Spec.Tier = "pro"
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(app.Generation+1, 10))
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		reconcileToFixedPoint(run)
+		Expect(rollout(nn).FirstExit).To(BeNil())
+		appPodOf(nn, "rollout-crash-b", false, 1, runningSince(thirdEnd.Add(5*time.Second)), exitedRunWith(0, "Completed", thirdEnd.Add(-2*time.Second), thirdEnd))
+		reconcileToFixedPoint(run)
+		Expect(rollout(nn).FirstExit).NotTo(BeNil())
+		Expect(rollout(nn).FirstExit.FinishedAt.Unix()).To(Equal(thirdEnd.Unix()))
+		Expect(rollout(nn).FirstExit.ExitCode).To(Equal(int32(0)))
 	})
 })

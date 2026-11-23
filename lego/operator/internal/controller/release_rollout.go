@@ -58,7 +58,9 @@ func (r *AppReconciler) recordReleaseRollout(ctx context.Context, app *appv1alph
 		return
 	}
 	rec := app.Status.ReleaseRollout
-	rec.AppStarts = withAppStarts(rec.AppStarts, pods.Items, releaseRevision(app))
+	rev := releaseRevision(app)
+	rec.AppStarts = withAppStarts(rec.AppStarts, pods.Items, rev)
+	rec.FirstExit = withFirstAppExit(rec.FirstExit, pods.Items, rev)
 }
 
 // stampReleaseRollout starts the record of the release in flight once tmpl is
@@ -156,4 +158,35 @@ func withAppStarts(recorded []metav1.Time, pods []corev1.Pod, revision string) [
 	all := append(slices.Clone(recorded), found...)
 	slices.SortFunc(all, func(a, b metav1.Time) int { return a.Compare(b.Time) })
 	return all[:min(len(all), appv1alpha1.MaxReleaseRolloutAppStarts)]
+}
+
+// withFirstAppExit records the earliest non-OOM termination of revision's app
+// container across its non-deleting pods (w32/m591). Out-of-memory kills are
+// skipped because Render's `==> Exited with status N` verdict does not cover
+// OOM kills. It returns recorded itself when the pods show no earlier
+// termination, so an unchanged status is not rewritten needlessly.
+func withFirstAppExit(recorded *appv1alpha1.ReleaseRolloutExitStatus, pods []corev1.Pod, revision string) *appv1alpha1.ReleaseRolloutExitStatus {
+	best := recorded
+	consider := func(t *corev1.ContainerStateTerminated) {
+		if t == nil || t.FinishedAt.IsZero() || t.Reason == containerReasonOOMKilled {
+			return
+		}
+		if best == nil || t.FinishedAt.Time.Before(best.FinishedAt.Time) {
+			best = &appv1alpha1.ReleaseRolloutExitStatus{FinishedAt: t.FinishedAt, ExitCode: t.ExitCode}
+		}
+	}
+	for i := range pods {
+		pod := &pods[i]
+		if pod.Labels[labelRevision] != revision || !pod.DeletionTimestamp.IsZero() {
+			continue
+		}
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.Name != appContainerName {
+				continue
+			}
+			consider(cs.LastTerminationState.Terminated)
+			consider(cs.State.Terminated)
+		}
+	}
+	return best
 }

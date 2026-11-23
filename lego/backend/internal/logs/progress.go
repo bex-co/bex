@@ -107,6 +107,14 @@ type DeployProgress struct {
 	StartCommand          string
 	InstanceAnnounces     bool
 	WebConcurrencyDefault int32
+	// FirstExitAt and FirstExitCode record the earliest non-OOM exit of the
+	// release's app container while the rollout ran (status.releaseRollout,
+	// w32/m591). When the deploy settles update_failed without a timeout or
+	// OOM kill, `==> Exited with status N` and the troubleshooting line are
+	// placed right after that first exit instead of at FinishedAt. Zero/nil
+	// keeps the closing verdict at FinishedAt.
+	FirstExitAt   time.Time
+	FirstExitCode *int32
 	// LiveURLs are the URLs the deploy went live at, primary first, as its
 	// row recorded them when it closed live (w32/m567); nil is no record.
 	// They write Render's primary URL block after the live line.
@@ -406,6 +414,10 @@ func styled(f renderlog.Form, line string) string {
 // CHANGED reason is a new id — which is what makes the tail's dedupe "re-emit
 // on change, never per tick" for free.
 func progressLines(d DeployProgress, pc progressContext) []LogEntry {
+	return buildProgressLines(d, pc, true)
+}
+
+func buildProgressLines(d DeployProgress, pc progressContext, includeClosing bool) []LogEntry {
 	repo := pc.repo
 	// A build story is owed only by a deploy that actually built (w4/m110
 	// t004). Every repo-backed deploy used to get one, so a rollback and a
@@ -473,9 +485,9 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		}
 	}
 	out = append(out, preDeployLines(d)...)
-	out = append(out, rolloutLines(d, repo != "" && d.Built)...)
+	out = append(out, rolloutLinesWith(d, repo != "" && d.Built, includeClosing)...)
 	out = append(out, portScanLines(d)...)
-	if !d.FinishedAt.IsZero() {
+	if includeClosing && !d.FinishedAt.IsZero() {
 		if (d.Status == "live" || d.Status == "deactivated") && d.DetectedHTTPPort > 0 && d.DetectedHTTPPort <= 65535 {
 			add(d.FinishedAt, "==> "+appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected,
 				appv1alpha1.DeployReasonParam{Name: "port", Value: fmt.Sprint(d.DetectedHTTPPort)}))
@@ -584,23 +596,41 @@ const (
 	rolloutLineStep = time.Millisecond
 )
 
+// hasFirstExitVerdict reports that d settled update_failed with a recorded
+// first non-OOM app-container exit before close, so its single
+// `==> Exited with status N` and troubleshooting pair belong right after run
+// 1's exit rather than at d.FinishedAt (w32/m591). Never true while the deploy
+// is still open, for eventually-live deploys, or for timeouts / OOM kills.
+func hasFirstExitVerdict(d DeployProgress) bool {
+	return d.Status == "update_failed" && !d.FinishedAt.IsZero() && !d.TimedOut && !d.OOMKilled &&
+		!d.FirstExitAt.IsZero() && d.FirstExitCode != nil && !d.FirstExitAt.After(d.FinishedAt)
+}
+
 // rolloutLines are the lines d earned from the operator's record of its
 // rollout: `==> Deploying...` at the rollout's start when d built (a deploy
 // that ran no build keeps bex's own rollout line at its start), the
-// WEB_CONCURRENCY line when the release's instance got that default, and one
+// WEB_CONCURRENCY line when the release's instance got that default, one
 // `==> Running '<command>'` at each recorded start of a native start command
-// whose instance does not write that line itself. An image built since
-// w32/m575 does, from native-init, in the instance's own stream with its
-// labels, where Render's line is (ivanseibel/tretta's log capture), so the
-// deploy views that interleave the app's lines show it once; an older image's
-// release keeps the narrated copy. A record stamped after d closed, and a
-// start after it, are not d's. Each line is held just after the one before it
-// when its moment does not order it: the row's start is the dispatch, in
-// whole seconds for a deploy that ran no build, and the kubelet stamps a
-// container's start in whole seconds too, so a start in the rollout's first
-// second would read before it.
+// whose instance does not write that line itself, and — for a failed rollout
+// with a recorded first non-OOM exit (w32/m591) — its single `==> Exited with
+// status N` and troubleshooting pair right after run 1's exit. An image built
+// since w32/m575 writes `==> Running` itself from native-init, in the
+// instance's own stream with its labels, where Render's line is
+// (ivanseibel/tretta's log capture), so the deploy views that interleave the
+// app's lines show it once; an older image's release keeps the narrated copy.
+// A record stamped after d closed, and a start after it, are not d's. Each
+// line is held just after the one before it when its moment does not order it:
+// the row's start is the dispatch, in whole seconds for a deploy that ran no
+// build, and the kubelet stamps a container's start in whole seconds too, so a
+// start in the rollout's first second would read before it.
 func rolloutLines(d DeployProgress, built bool) []LogEntry {
-	if d.RolloutStartedAt.IsZero() || (!d.FinishedAt.IsZero() && d.RolloutStartedAt.After(d.FinishedAt)) {
+	return rolloutLinesWith(d, built, true)
+}
+
+func rolloutLinesWith(d DeployProgress, built, includeClosing bool) []LogEntry {
+	verdict := includeClosing && hasFirstExitVerdict(d)
+	hasRollout := !d.RolloutStartedAt.IsZero() && (d.FinishedAt.IsZero() || !d.RolloutStartedAt.After(d.FinishedAt))
+	if !hasRollout && !verdict {
 		return nil
 	}
 	var out []LogEntry
@@ -609,23 +639,60 @@ func rolloutLines(d DeployProgress, built bool) []LogEntry {
 		if !last.IsZero() && !t.After(last) {
 			t = last.Add(rolloutLineStep)
 		}
+		if !d.FinishedAt.IsZero() && t.After(d.FinishedAt) {
+			t = d.FinishedAt
+		}
 		last = t
 		out = append(out, progressEntry(d.ID, t, msg))
 	}
-	if built {
-		add(d.RolloutStartedAt, styled(renderlog.PlatformStep, deployingLine))
+	emitVerdict := func() {
+		at := d.FirstExitAt
+		// Kubelet stamps Terminated.FinishedAt in whole seconds; hold it at
+		// the close of that second (as hookMoments does) so nanosecond app
+		// output from run 1 in the same second sorts before the verdict and
+		// run 2 in a later second sorts after it.
+		if at.Nanosecond() == 0 {
+			at = at.Add(time.Second - time.Nanosecond)
+		}
+		if !last.IsZero() && !at.After(last) {
+			at = last.Add(rolloutLineStep)
+		}
+		if at.After(d.FinishedAt) {
+			at = d.FinishedAt
+		}
+		last = at
+		out = append(out,
+			progressEntry(d.ID, at, styled(renderlog.PlatformFailure, fmt.Sprintf(exitedLineFormat, *d.FirstExitCode))),
+			progressEntry(d.ID, at, styled(renderlog.PlatformStep, troubleshootLine)),
+		)
 	}
-	if d.WebConcurrencyDefault > 0 {
-		add(d.RolloutStartedAt, styled(renderlog.PlatformStep, fmt.Sprintf(webConcurrencyLineFormat, d.WebConcurrencyDefault)))
+	if hasRollout {
+		if built {
+			add(d.RolloutStartedAt, styled(renderlog.PlatformStep, deployingLine))
+		}
+		if d.WebConcurrencyDefault > 0 {
+			add(d.RolloutStartedAt, styled(renderlog.PlatformStep, fmt.Sprintf(webConcurrencyLineFormat, d.WebConcurrencyDefault)))
+		}
 	}
-	if d.StartCommand == "" || d.InstanceAnnounces {
+	if !hasRollout || d.StartCommand == "" || d.InstanceAnnounces {
+		if verdict {
+			emitVerdict()
+		}
 		return out
 	}
-	for _, start := range d.AppStartedAt {
+	emittedVerdict := false
+	for i, start := range d.AppStartedAt {
 		if !d.FinishedAt.IsZero() && start.After(d.FinishedAt) {
 			break
 		}
+		if verdict && !emittedVerdict && (i > 0 || start.After(d.FirstExitAt)) {
+			emitVerdict()
+			emittedVerdict = true
+		}
 		add(start, runningLine(d.StartCommand))
+	}
+	if verdict && !emittedVerdict {
+		emitVerdict()
 	}
 	return out
 }
@@ -900,6 +967,9 @@ func primaryURLLines(d DeployProgress) []string {
 // directory <dir> does not exist!` before its verdict (EthanM32122/cloaket#1;
 // w8/395). A build's own output is in the log already.
 func closingLines(d DeployProgress, serviceType string) []string {
+	if hasFirstExitVerdict(d) {
+		return nil
+	}
 	verdict, form := rendersVerdict(d)
 	if verdict == "" {
 		return terminalLines(d.Status, serviceType, d.FailureReason)
@@ -1236,11 +1306,11 @@ func (f *progressFollower) readFollowed(ctx context.Context) bool {
 }
 
 // emitRow sends the lines d has earned that this tail has not sent yet. With
-// holdClosing it keeps back the lines d earned by closing: the verdict at its
-// close and the primary URL block after it.
+// holdClosing it keeps back the lines d earned by closing: a first-exit
+// verdict, the verdict at its close and the primary URL block after it.
 func (f *progressFollower) emitRow(d DeployProgress, holdClosing bool, emit func(LogEntry) error) error {
 	hold := holdClosing && !d.FinishedAt.IsZero()
-	for _, e := range progressLines(d, f.pc) {
+	for _, e := range buildProgressLines(d, f.pc, !holdClosing) {
 		if hold {
 			if at, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil && !at.Before(d.FinishedAt) {
 				continue

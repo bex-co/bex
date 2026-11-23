@@ -3526,26 +3526,36 @@ func (s *PGStore) SetDeployStallReason(ctx context.Context, id, reason string) e
 // release's serving template, the starts of its app container while the
 // rollout ran (oldest first), the start command it launched on a native
 // image, whether that image's instance names the command itself (w32/m575),
-// and its WEB_CONCURRENCY default. The zero value is none.
+// its WEB_CONCURRENCY default, and the earliest non-OOM exit of its app
+// container while the rollout ran (w32/m591). The zero value is none.
 type DeployRollout struct {
 	StartedAt         *time.Time
 	AppStarts         []time.Time
 	Command           string
 	InstanceAnnounces bool
 	WebConcurrency    int32
+	FirstExitAt       *time.Time
+	FirstExitCode     *int32
 }
 
 // SetDeployRollout stamps an open row with its release's rollout record. The
 // start, command, whether the instance names it and the default are written
 // once, by the first write; the app starts are merged with the row's own,
 // distinct, oldest first and bounded, so a record read again or out of order
-// only ever adds starts. A write that changes nothing is skipped, and like
-// SetDeployStallReason it leaves updated_at alone: it is an observation of
-// the row, not a transition. A terminal row keeps what it had: a start
-// recorded after the close is not this deploy's.
+// only ever adds starts; the first non-OOM exit is written when none is stored
+// yet or replaced only by a strictly earlier exit while the row is open. A
+// write that changes nothing is skipped, and like SetDeployStallReason it
+// leaves updated_at alone: it is an observation of the row, not a transition.
+// A terminal row keeps what it had: a start or exit recorded after the close
+// is not this deploy's.
 func (s *PGStore) SetDeployRollout(ctx context.Context, id string, rollout DeployRollout) error {
 	if rollout.StartedAt == nil {
 		return nil
+	}
+	var firstExitAt *time.Time
+	var firstExitCode *int32
+	if rollout.FirstExitAt != nil && rollout.FirstExitCode != nil {
+		firstExitAt, firstExitCode = rollout.FirstExitAt, rollout.FirstExitCode
 	}
 	_, err := s.Pool.Exec(ctx,
 		`WITH merged AS (
@@ -3559,11 +3569,15 @@ func (s *PGStore) SetDeployRollout(ctx context.Context, id string, rollout Deplo
 		     rollout_command = CASE WHEN deploys.rollout_started_at IS NULL THEN NULLIF($3, '') ELSE deploys.rollout_command END,
 		     rollout_web_concurrency = CASE WHEN deploys.rollout_started_at IS NULL THEN NULLIF($4, 0) ELSE deploys.rollout_web_concurrency END,
 		     rollout_instance_announces = CASE WHEN deploys.rollout_started_at IS NULL THEN $7 ELSE deploys.rollout_instance_announces END,
-		     app_started_at = merged.starts
+		     app_started_at = merged.starts,
+		     rollout_first_exit_at = CASE WHEN $8::timestamptz IS NOT NULL AND (deploys.rollout_first_exit_at IS NULL OR $8::timestamptz < deploys.rollout_first_exit_at) THEN $8::timestamptz ELSE deploys.rollout_first_exit_at END,
+		     rollout_first_exit_code = CASE WHEN $8::timestamptz IS NOT NULL AND (deploys.rollout_first_exit_at IS NULL OR $8::timestamptz < deploys.rollout_first_exit_at) THEN $9::integer ELSE deploys.rollout_first_exit_code END
 		 FROM merged
 		 WHERE deploys.id = merged.id
-		   AND (deploys.rollout_started_at IS NULL OR deploys.app_started_at IS DISTINCT FROM merged.starts)`,
-		id, *rollout.StartedAt, rollout.Command, rollout.WebConcurrency, rollout.AppStarts, appv1alpha1.MaxReleaseRolloutAppStarts, rollout.InstanceAnnounces)
+		   AND (deploys.rollout_started_at IS NULL
+		     OR deploys.app_started_at IS DISTINCT FROM merged.starts
+		     OR ($8::timestamptz IS NOT NULL AND (deploys.rollout_first_exit_at IS NULL OR $8::timestamptz < deploys.rollout_first_exit_at)))`,
+		id, *rollout.StartedAt, rollout.Command, rollout.WebConcurrency, rollout.AppStarts, appv1alpha1.MaxReleaseRolloutAppStarts, rollout.InstanceAnnounces, firstExitAt, firstExitCode)
 	return classify("deploy rollout", err)
 }
 
@@ -3636,13 +3650,13 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), COALESCE(rollout_instance_announces, false), live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false)`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), COALESCE(rollout_instance_announces, false), rollout_first_exit_at, rollout_first_exit_code, live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false)`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
 	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
-		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.Rollout.InstanceAnnounces, &d.LiveURLs,
+		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.Rollout.InstanceAnnounces, &d.Rollout.FirstExitAt, &d.Rollout.FirstExitCode, &d.LiveURLs,
 		&d.PreDeployRun.StartedAt, &d.PreDeployRun.ContainerStartedAt, &d.PreDeployRun.FinishedAt, &d.PreDeployRun.Command, &d.PreDeployRun.Native,
 		&d.PreDeployRun.ExitCode, &d.PreDeployRun.OOMKilled}, extra...)...)
 	return d, err

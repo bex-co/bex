@@ -2080,6 +2080,31 @@ spec:
                       image, or the image's own command).
                     maxLength: 4096
                     type: string
+                  firstExit:
+                    description: |-
+                      FirstExit is the earliest non-OOM exit of the release's app container
+                      while the rollout ran (w32/m591). Whole seconds, as the kubelet reports
+                      them. Once recorded, a later restart's exit never overwrites it; only a
+                      strictly earlier termination seen out of order across pods replaces it,
+                      and a newer release's rollout replaces the whole ReleaseRolloutStatus.
+                    properties:
+                      exitCode:
+                        description: |-
+                          ExitCode is the exit status of that first non-OOM termination. Zero is a
+                          clean exit during startup, which a service must not make (w8/383), and
+                          is preserved as 0.
+                        format: int32
+                        type: integer
+                      finishedAt:
+                        description: |-
+                          FinishedAt is when that first non-OOM termination ended, in whole
+                          seconds as the kubelet reports it.
+                        format: date-time
+                        type: string
+                    required:
+                    - exitCode
+                    - finishedAt
+                    type: object
                   generation:
                     description: |-
                       Generation is the release generation whose rollout this is. A newer

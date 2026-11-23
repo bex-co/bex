@@ -227,3 +227,103 @@ func TestPGDeployRolloutKeepsWhetherTheInstanceNamesItsCommand(t *testing.T) {
 		t.Fatalf("a row an older control plane wrote reads %+v", r)
 	}
 }
+
+// w32/m591: SetDeployRollout persists rollout_first_exit_at and
+// rollout_first_exit_code (including exit code 0) on an open row, ignores a
+// later exit once recorded, accepts a strictly earlier exit while open, leaves
+// updated_at untouched, and ignores writes after finished_at is set.
+func TestPGDeployRolloutPersistsFirstNonOOMExit(t *testing.T) {
+	ctx := context.Background()
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	ten, err := st.CreateWorkspace(ctx, fmt.Sprintf("first-exit-%d", time.Now().UnixNano()), PlanHobby, "test-first-exit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.DeleteTenant(ctx, ten.ID) }()
+	app, err := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Image: "busybox:1.36", Type: "web_service",
+		Branch: "main", Port: 10000, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := st.TransitionDeploy(ctx, app.FirstDeployID, DeployUpdateInProgress, RanImage{}, "", "", "", nil); err != nil || !ok {
+		t.Fatalf("start rollout = (%v, %v)", ok, err)
+	}
+	read := func() Deploy {
+		t.Helper()
+		d, err := st.GetDeploy(ctx, app.ID, app.FirstDeployID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	var nulls bool
+	if err := pool.QueryRow(ctx, `SELECT rollout_first_exit_at IS NULL AND rollout_first_exit_code IS NULL FROM deploys WHERE id = $1`, app.FirstDeployID).Scan(&nulls); err != nil || !nulls {
+		t.Fatalf("new row: first exit NULL = %v (%v)", nulls, err)
+	}
+	updated := read().UpdatedAt
+
+	started := time.Date(2026, 11, 22, 22, 14, 46, 270123000, time.UTC)
+	t1 := time.Date(2026, 11, 22, 22, 15, 2, 0, time.UTC)
+	t2 := t1.Add(10 * time.Second)
+	t0 := t1.Add(-2 * time.Second)
+	code0, code1, code2 := int32(0), int32(1), int32(2)
+
+	// Record initial rollout without a first exit, then record exit code 0.
+	if err := st.SetDeployRollout(ctx, app.FirstDeployID, DeployRollout{StartedAt: &started, Command: "node main.js"}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read().Rollout; r.FirstExitAt != nil || r.FirstExitCode != nil {
+		t.Fatalf("before exit: %+v", r)
+	}
+	if err := st.SetDeployRollout(ctx, app.FirstDeployID, DeployRollout{StartedAt: &started, FirstExitAt: &t1, FirstExitCode: &code0}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read().Rollout; r.FirstExitAt == nil || !r.FirstExitAt.Equal(t1) || r.FirstExitCode == nil || *r.FirstExitCode != 0 {
+		t.Fatalf("exit 0: got (%v, %v), want (%v, 0)", r.FirstExitAt, r.FirstExitCode, t1)
+	}
+
+	// A later exit does not overwrite it.
+	if err := st.SetDeployRollout(ctx, app.FirstDeployID, DeployRollout{StartedAt: &started, FirstExitAt: &t2, FirstExitCode: &code2}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read().Rollout; !r.FirstExitAt.Equal(t1) || *r.FirstExitCode != 0 {
+		t.Fatalf("later exit overwrote: (%v, %v)", r.FirstExitAt, r.FirstExitCode)
+	}
+
+	// A strictly earlier exit while open replaces both timestamp and exit code.
+	if err := st.SetDeployRollout(ctx, app.FirstDeployID, DeployRollout{StartedAt: &started, FirstExitAt: &t0, FirstExitCode: &code1}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read().Rollout; !r.FirstExitAt.Equal(t0) || *r.FirstExitCode != 1 {
+		t.Fatalf("earlier exit did not win: (%v, %v), want (%v, 1)", r.FirstExitAt, r.FirstExitCode, t0)
+	}
+	if d := read(); !d.UpdatedAt.Equal(updated) {
+		t.Fatalf("updated_at moved from %v to %v", updated, d.UpdatedAt)
+	}
+
+	// Once finished_at is set, even an earlier exit is ignored.
+	if ok, err := st.TransitionDeploy(ctx, app.FirstDeployID, DeployUpdateFailed, RanImage{}, "crashed", "", "", nil, DeployEnd{ExitCode: &code2}); err != nil || !ok {
+		t.Fatalf("close = (%v, %v)", ok, err)
+	}
+	earlier := t0.Add(-5 * time.Second)
+	if err := st.SetDeployRollout(ctx, app.FirstDeployID, DeployRollout{StartedAt: &started, FirstExitAt: &earlier, FirstExitCode: &code0}); err != nil {
+		t.Fatal(err)
+	}
+	if r := read().Rollout; !r.FirstExitAt.Equal(t0) || *r.FirstExitCode != 1 {
+		t.Fatalf("closed row changed first exit: (%v, %v)", r.FirstExitAt, r.FirstExitCode)
+	}
+}

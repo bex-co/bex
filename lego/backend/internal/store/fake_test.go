@@ -1020,6 +1020,12 @@ func (m *memStore) SetDeployRollout(_ context.Context, id string, rollout Deploy
 	slices.SortFunc(starts, time.Time.Compare)
 	starts = slices.CompactFunc(starts, time.Time.Equal)
 	d.Rollout.AppStarts = starts[:min(len(starts), appv1alpha1.MaxReleaseRolloutAppStarts)]
+	if rollout.FirstExitAt != nil && rollout.FirstExitCode != nil &&
+		(d.Rollout.FirstExitAt == nil || rollout.FirstExitAt.Before(*d.Rollout.FirstExitAt)) {
+		finished := *rollout.FirstExitAt
+		code := *rollout.FirstExitCode
+		d.Rollout.FirstExitAt, d.Rollout.FirstExitCode = &finished, &code
+	}
 	m.deploys[id] = d
 	return nil
 }

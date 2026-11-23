@@ -1,19 +1,19 @@
 # w32 · m591 — A failed deploy's one `==> Exited with status N` comes after the start command's first exit, as Render's does
 
-**Worker:** worker32 **Goal:** when a deploy fails because its start command exited, its deploy log (`bex logs --type build`, the interleaved `bex logs`, the live tail, the deploy page, GraphQL and MCP) places its one `==> Exited with status N` and troubleshooting line right after the start command's first exit, with that run's exit status, rather than at the deploy's close after the third run. Later restarts follow it, and the close adds no second verdict. **Status:** todo
+**Worker:** worker32 **Goal:** when a deploy fails because its start command exited, its deploy log (`bex logs --type build`, the interleaved `bex logs`, the live tail, the deploy page, GraphQL and MCP) places its one `==> Exited with status N` and troubleshooting line right after the start command's first exit, with that run's exit status, rather than at the deploy's close after the third run. Later restarts follow it, and the close adds no second verdict. **Status:** todo (t001–t004, t007 and t008 done; t005 walks production once the pin carries them; t006 and t009 follow)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The operator records the first non-OOM exit of the release's app container in `status.releaseRollout`](t001.md) | 1h15m | — |
-| t002 | [The control plane projects the first exit onto the deploy row and into `DeployProgress`](t002.md) | 1h | t001 |
-| t003 | [Narrate `==> Exited with status N` and the troubleshooting line at the first exit, and verify the live tail](t003.md) | 1h15m | t002 |
-| t004 | [Record the first-exit timing in the progress-line contract and ADR018](t004.md) | 20m | t003 |
+| t001 | [The operator records the first non-OOM exit of the release's app container in `status.releaseRollout`](done/t001.md) — **DONE** | 1h15m | — |
+| t002 | [The control plane projects the first exit onto the deploy row and into `DeployProgress`](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [Narrate `==> Exited with status N` and the troubleshooting line at the first exit, and verify the live tail](done/t003.md) — **DONE** | 1h15m | t002 |
+| t004 | [Record the first-exit timing in the progress-line contract and ADR018](done/t004.md) — **DONE** | 20m | t003 |
 | t005 | [Ship and verify on production](t005.md) | 45m | t003, t004 |
 | t006 | [Render parity](t006.md) | 30m | t005 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
 
 ## Definition of done

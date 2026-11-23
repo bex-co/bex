@@ -1928,6 +1928,30 @@ type ReleaseRolloutStatus struct {
 	// moved.
 	// +optional
 	InstanceAnnounces bool `json:"instanceAnnounces,omitempty"`
+
+	// FirstExit is the earliest non-OOM exit of the release's app container
+	// while the rollout ran (w32/m591). Whole seconds, as the kubelet reports
+	// them. Once recorded, a later restart's exit never overwrites it; only a
+	// strictly earlier termination seen out of order across pods replaces it,
+	// and a newer release's rollout replaces the whole ReleaseRolloutStatus.
+	// +optional
+	FirstExit *ReleaseRolloutExitStatus `json:"firstExit,omitempty"`
+}
+
+// ReleaseRolloutExitStatus is the first non-OOM exit of a release's app
+// container while its rollout ran (w32/m591). Render's deploy log places a
+// failed deploy's single `==> Exited with status N` and troubleshooting line
+// right after the start command's first exit rather than at the deploy's close
+// after later restarts.
+type ReleaseRolloutExitStatus struct {
+	// FinishedAt is when that first non-OOM termination ended, in whole
+	// seconds as the kubelet reports it.
+	FinishedAt metav1.Time `json:"finishedAt"`
+
+	// ExitCode is the exit status of that first non-OOM termination. Zero is a
+	// clean exit during startup, which a service must not make (w8/383), and
+	// is preserved as 0.
+	ExitCode int32 `json:"exitCode"`
 }
 
 // RolloutFailureStatus is the structured cause of a failed rollout (w8/m146),

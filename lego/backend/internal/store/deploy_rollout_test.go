@@ -113,4 +113,65 @@ func TestDeployRolloutHoldsWhatTheRecordWouldAdd(t *testing.T) {
 	if !full.holds(DeployRollout{StartedAt: &started, AppStarts: []time.Time{started.Add(time.Hour)}}) {
 		t.Error("a row at its bound takes no more starts")
 	}
+	exit1, exit2 := started.Add(10*time.Second), started.Add(20*time.Second)
+	code1, code2 := int32(1), int32(2)
+	if full.holds(DeployRollout{StartedAt: &started, FirstExitAt: &exit2, FirstExitCode: &code2}) {
+		t.Error("even with full starts, a row without a first exit must accept one")
+	}
+	withExit := DeployRollout{StartedAt: &started, AppStarts: []time.Time{a}, FirstExitAt: &exit2, FirstExitCode: &code2}
+	if !withExit.holds(DeployRollout{StartedAt: &started, AppStarts: []time.Time{a}, FirstExitAt: &exit2, FirstExitCode: &code2}) {
+		t.Error("the same first exit must not be written again")
+	}
+	laterExit := exit2.Add(5 * time.Second)
+	if !withExit.holds(DeployRollout{StartedAt: &started, AppStarts: []time.Time{a}, FirstExitAt: &laterExit, FirstExitCode: &code1}) {
+		t.Error("a later first exit must not be written")
+	}
+	if withExit.holds(DeployRollout{StartedAt: &started, AppStarts: []time.Time{a}, FirstExitAt: &exit1, FirstExitCode: &code1}) {
+		t.Error("a strictly earlier first exit must be written")
+	}
+}
+
+// w32/m591: the reconciler copies status.releaseRollout.firstExit onto the
+// deploy row while open and on the closing pass that settles update_failed,
+// preserving exit code 0 and keeping the earliest exit.
+func TestReconcilerCopiesFirstExitBeforeClosingUpdateFailed(t *testing.T) {
+	ctx := context.Background()
+	m := newMemStore()
+	m.deploys["dep-2"] = Deploy{ID: "dep-2", Generation: 2, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	r := &Reconciler{Store: m, DeployGateTimeout: deploybudgets.DeployGateTimeout}
+	started := time.Date(2026, 11, 22, 22, 14, 46, 270000000, time.UTC)
+	firstEnd := metav1.NewTime(started.Add(16 * time.Second).Truncate(time.Second))
+	lastCode := int32(2)
+	app := &appv1alpha1.App{}
+	app.Generation = 2
+	app.Status.ReleaseGeneration = 2
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	app.Status.ReleaseRollout = &appv1alpha1.ReleaseRolloutStatus{
+		Generation: 2, StartedAt: metav1.NewMicroTime(started), Command: "npm start",
+		FirstExit: &appv1alpha1.ReleaseRolloutExitStatus{FinishedAt: firstEnd, ExitCode: 0},
+	}
+	app.Status.RolloutFailure = &appv1alpha1.RolloutFailureStatus{Generation: 2, ExitCode: &lastCode}
+	app.Status.Conditions = []metav1.Condition{
+		{Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: "CrashLoopBackOff", Message: "start command exited", ObservedGeneration: 2},
+		{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "CrashLoopBackOff", Message: "start command exited", ObservedGeneration: 2},
+	}
+
+	r.recordDeploy(ctx, DesiredApp{}, m.deploys["dep-2"], app)
+	d := m.deploys["dep-2"]
+	if d.Status != DeployUpdateFailed {
+		t.Fatalf("status = %q, want %q", d.Status, DeployUpdateFailed)
+	}
+	if d.Rollout.FirstExitAt == nil || !d.Rollout.FirstExitAt.Equal(firstEnd.Time) || d.Rollout.FirstExitCode == nil || *d.Rollout.FirstExitCode != 0 {
+		t.Fatalf("closing pass: first exit = (%v, %v), want (%v, 0)", d.Rollout.FirstExitAt, d.Rollout.FirstExitCode, firstEnd.Time)
+	}
+
+	// Once closed, an even earlier first exit is ignored.
+	earlier := firstEnd.Time.Add(-2 * time.Second)
+	code := int32(9)
+	if err := m.SetDeployRollout(ctx, "dep-2", DeployRollout{StartedAt: &started, FirstExitAt: &earlier, FirstExitCode: &code}); err != nil {
+		t.Fatal(err)
+	}
+	if d := m.deploys["dep-2"]; !d.Rollout.FirstExitAt.Equal(firstEnd.Time) || *d.Rollout.FirstExitCode != 0 {
+		t.Fatalf("closed row changed first exit: (%v, %v)", d.Rollout.FirstExitAt, d.Rollout.FirstExitCode)
+	}
 }
