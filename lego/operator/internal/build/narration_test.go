@@ -58,6 +58,16 @@ bex_bytes=160000000
 	if want := rendersShellLine("Downloaded 160MB in 7s. Extraction took 0s.") + "\n"; string(out) != want {
 		t.Fatalf("printed %q, want %q", out, want)
 	}
+
+	uploadScript := `bex_summary="Uploaded in 9.9s. Compression took 2.4s"
+` + shellLine(renderlog.BuildRuntime, "$bex_summary")
+	uploadOut, err := exec.Command("sh", "-c", uploadScript).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := rendersRuntimeLine("Uploaded in 9.9s. Compression took 2.4s") + "\n"; string(uploadOut) != want {
+		t.Fatalf("printed %q, want %q", uploadOut, want)
+	}
 }
 
 // Every awk the build pod may run reads awkString's spelling as Render's

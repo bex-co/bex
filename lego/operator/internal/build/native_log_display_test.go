@@ -240,8 +240,22 @@ func nativeThroughCommand(t *testing.T, command string) string {
 	return head
 }
 
+// monotonicNow reads the same monotonic clock monotonicNowCommand uses:
+// /proc/uptime seconds on Linux, falling back to Unix epoch seconds.
+func monotonicNow(t *testing.T) float64 {
+	t.Helper()
+	if raw, err := os.ReadFile("/proc/uptime"); err == nil {
+		if fields := strings.Fields(string(raw)); len(fields) > 0 {
+			if secs, err := strconv.ParseFloat(fields[0], 64); err == nil {
+				return secs
+			}
+		}
+	}
+	return float64(time.Now().Unix())
+}
+
 // uploadStamp reads the moment a buildkit phase left in its output volume.
-func uploadStamp(t *testing.T, output string) (int64, bool) {
+func uploadStamp(t *testing.T, output string) (float64, bool) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(output, filepath.Base(uploadStartedFile)))
 	if os.IsNotExist(err) {
@@ -250,31 +264,49 @@ func uploadStamp(t *testing.T, output string) (int64, bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	at, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+	at, err := strconv.ParseFloat(strings.TrimSpace(string(raw)), 64)
 	if err != nil {
 		t.Fatalf("upload stamp %q: %v", raw, err)
 	}
 	return at, true
 }
 
-// w33/m570: once the command's step is done, the log says the build is
-// uploading, once, right after the command's last line; the image's export
-// and the cache's run under it, as Render's upload does. The phase leaves
-// that moment for the push phase. A build with no command says it too.
+// uploadCompression reads the layer compression seconds a buildkit phase left
+// in its output volume.
+func uploadCompression(t *testing.T, output string) (string, bool) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(output, filepath.Base(uploadCompressionFile)))
+	if os.IsNotExist(err) {
+		return "", false
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(raw)), true
+}
+
+// w33/m570, w32/097: once the command's step is done, the log says the build
+// is uploading, once, right after the command's last line; the image's export
+// and the cache's run under it, as Render's upload does. The phase leaves that
+// moment and its layer compression seconds for the push phase. A build with no
+// command says it too.
 func TestNativeBuildLogSaysUploadingOnceTheCommandsStepEnds(t *testing.T) {
 	for name, tc := range map[string]struct{ command, want string }{
 		"command":    {"npm install", rendersShellLine("Running build command 'npm install'...") + "\n" + nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n"},
 		"no command": {"", nativeCommandOutput + rendersRuntimeLine("Uploading build...") + "\n"},
 	} {
 		volume := t.TempDir()
-		before := time.Now().Unix()
+		before := monotonicNow(t)
 		log, _, exit := runBuildkitWithOutput(t, nativeLogOptions(tc.command), nativeThroughCommand(t, tc.command)+nativeAfterCommand, 0, volume)
-		after := time.Now().Unix()
+		after := monotonicNow(t)
 		if exit != 0 || log != tc.want {
 			t.Fatalf("%s: exit %d, log:\n%q\nwant:\n%q", name, exit, log, tc.want)
 		}
-		if at, ok := uploadStamp(t, volume); !ok || at < before || at > after {
-			t.Errorf("%s: upload stamp %d (present %v), want a moment within [%d, %d]", name, at, ok, before, after)
+		if at, ok := uploadStamp(t, volume); !ok || at < before-0.02 || at > after+0.02 {
+			t.Errorf("%s: upload stamp %.2f (present %v), want a moment within [%.2f, %.2f]", name, at, ok, before, after)
+		}
+		if comp, ok := uploadCompression(t, volume); !ok || comp != "412.6" {
+			t.Errorf("%s: upload compression %q (present %v), want 412.6", name, comp, ok)
 		}
 	}
 }
@@ -381,52 +413,130 @@ func TestNativeBuildLogLeavesTheUploadLineToThePushWithoutItsMoment(t *testing.T
 	}
 }
 
-// w33/m570: with the buildkit phase's moment, the push says no second
-// `Uploading build...`, and `Uploaded in` counts from that moment: the
-// export and the push together. A moment that is not a number is ignored.
-func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
-	uploaded := regexp.MustCompile("^" + strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s")), "\x00", "([0-9]+)", 1) +
-		"\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
-	withStamp := func(content string) string {
-		output := t.TempDir()
-		if err := os.WriteFile(filepath.Join(output, filepath.Base(uploadStartedFile)), []byte(content), 0o600); err != nil {
+func writeUploadFiles(t *testing.T, stamp string, comp *string) string {
+	t.Helper()
+	output := t.TempDir()
+	if err := os.WriteFile(filepath.Join(output, filepath.Base(uploadStartedFile)), []byte(stamp), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if comp != nil {
+		if err := os.WriteFile(filepath.Join(output, filepath.Base(uploadCompressionFile)), []byte(*comp), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		return output
 	}
-	fourHundredAgo := strconv.FormatInt(time.Now().Unix()-400, 10) + "\n"
-	log, err := runNativePush(t, withStamp(fourHundredAgo), 0)
-	m := uploaded.FindStringSubmatch(log)
-	if err != nil || m == nil {
-		t.Fatalf("err %v, log %q; want `Uploaded in` and the verdict alone", err, log)
-	}
-	if n, _ := strconv.Atoi(m[1]); n < 400 || n > 405 {
-		t.Errorf("Uploaded in %ds, want the 400 s since the buildkit phase's moment", n)
-	}
-	for _, stamp := range []string{"", "\n", "soon\n", "12a\n", "$(echo 1)\n"} {
-		log, err := runNativePush(t, withStamp(stamp), 0)
-		rest, ok := strings.CutPrefix(log, rendersRuntimeLine("Uploading build...")+"\n")
-		if m := uploaded.FindStringSubmatch(rest); err != nil || !ok || m == nil || m[1] != "0" && m[1] != "1" {
-			t.Errorf("stamp %q: err %v, log %q; want the push's own line and its own count", stamp, err, log)
-		}
-	}
-	log, err = runNativePush(t, withStamp(fourHundredAgo), 1)
-	if err == nil || strings.Contains(log, "Uploading build...") || !strings.HasSuffix(log, "==> Uploading build failed\n") {
-		t.Errorf("refused: err %v, log %q; want the failure alone", err, log)
-	}
+	return output
 }
 
-// w33/m570: across its phases, a native build's log says it is uploading
-// once, after the command's output, then the push's count and verdict.
+// w33/m570, w32/097: with the buildkit phase's moment and layer compression,
+// the push says no second `Uploading build...` and emits Render's tenths-of-a-
+// second `Uploaded in U.Us. Compression took C.Cs` where U + C matches the
+// wall-clock stretch from `Uploading build...`.
+func TestNativeBuildPushCountsTheUploadFromTheBuildkitPhase(t *testing.T) {
+	uploadedWithComp := regexp.MustCompile("^" + strings.Replace(
+		strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s. Compression took \x01s")), "\x00", "([0-9]+\\.[0-9])", 1),
+		"\x01", "([0-9]+\\.[0-9])", 1) +
+		"\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
+
+	withEachAwk(t, func(t *testing.T) {
+		cases := []struct {
+			name             string
+			ago              float64
+			comp             string
+			minUpload, maxUp float64
+			wantComp         string
+		}{
+			// Render's tretta shape: 12.3s total with 2.4s compression -> Uploaded in ~9.9s. Compression took 2.4s.
+			{name: "measured", ago: 12.3, comp: "2.4\n", minUpload: 9.5, maxUp: 13.0, wantComp: "2.4"},
+			// Zero compression (all layers cached: `#24 exporting layers done`) still reports 0.0s.
+			{name: "zero_compression", ago: 400.2, comp: "0\n", minUpload: 399.5, maxUp: 405.0, wantComp: "0.0"},
+			// Compression exceeding elapsed total clamps upload to 0.0s (never negative or -0.0s).
+			{name: "clamped", ago: 12.3, comp: "50.0\n", minUpload: 0.0, maxUp: 0.0, wantComp: "50.0"},
+		}
+		for _, tc := range cases {
+			stamp := fmt.Sprintf("%.2f\n", monotonicNow(t)-tc.ago)
+			log, err := runNativePush(t, writeUploadFiles(t, stamp, &tc.comp), 0)
+			m := uploadedWithComp.FindStringSubmatch(log)
+			if err != nil || m == nil {
+				t.Fatalf("%s: err %v, log %q; want Render's Uploaded + Compression line and the verdict", tc.name, err, log)
+			}
+			u, _ := strconv.ParseFloat(m[1], 64)
+			if u < tc.minUpload || u > tc.maxUp || m[2] != tc.wantComp {
+				t.Errorf("%s: Uploaded in %ss. Compression took %ss, want [%.1f, %.1f]s and %ss", tc.name, m[1], m[2], tc.minUpload, tc.maxUp, tc.wantComp)
+			}
+		}
+
+		// Refused push prints no Uploading build..., no Uploaded in, and ends with Uploading build failed.
+		fourHundredAgo := fmt.Sprintf("%.2f\n", monotonicNow(t)-400.2)
+		comp := "2.4\n"
+		log, err := runNativePush(t, writeUploadFiles(t, fourHundredAgo, &comp), 1)
+		if err == nil || strings.Contains(log, "Uploading build...") || strings.Contains(log, "Uploaded in") || !strings.HasSuffix(log, "==> Uploading build failed\n") {
+			t.Errorf("refused: err %v, log %q; want the failure alone", err, log)
+		}
+	})
+}
+
+// w33/m570, w32/097: without measured compression (or with an invalid
+// compression file), the push falls back honestly to `Uploaded in T.Ts`. A
+// start moment that is not a number is ignored, even if a stale compression
+// file exists beside it.
+func TestNativeBuildPushFallbackWithoutCompressionOrMoment(t *testing.T) {
+	uploadedOnly := regexp.MustCompile("^" + strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s")), "\x00", "([0-9]+\\.[0-9])", 1) +
+		"\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
+
+	withEachAwk(t, func(t *testing.T) {
+		fourHundredAgo := fmt.Sprintf("%.2f\n", monotonicNow(t)-400.2)
+		for _, badComp := range []*string{nil, new(""), new("\n"), new("soon\n"), new("12a\n"), new("$(echo 1)\n")} {
+			log, err := runNativePush(t, writeUploadFiles(t, fourHundredAgo, badComp), 0)
+			m := uploadedOnly.FindStringSubmatch(log)
+			if err != nil || m == nil {
+				t.Fatalf("badComp %v: err %v, log %q; want fallback Uploaded in N.Ns without Compression took", badComp, err, log)
+			}
+			if u, _ := strconv.ParseFloat(m[1], 64); u < 399.5 || u > 405.0 {
+				t.Errorf("badComp %v: Uploaded in %ss, want ~400.2s", badComp, m[1])
+			}
+		}
+
+		comp := "2.4\n"
+		for _, stamp := range []string{"", "\n", "soon\n", "12a\n", "$(echo 1)\n"} {
+			log, err := runNativePush(t, writeUploadFiles(t, stamp, &comp), 0)
+			rest, ok := strings.CutPrefix(log, rendersRuntimeLine("Uploading build...")+"\n")
+			m := uploadedOnly.FindStringSubmatch(rest)
+			if err != nil || !ok || m == nil {
+				t.Errorf("stamp %q: err %v, log %q; want the push's own Uploading build... and fallback Uploaded in", stamp, err, log)
+				continue
+			}
+			if u, _ := strconv.ParseFloat(m[1], 64); u < 0 || u > 5.0 {
+				t.Errorf("stamp %q: Uploaded in %ss, want the push's own short count", stamp, m[1])
+			}
+		}
+	})
+}
+
+// w33/m570, w32/097: across its phases, a native build's log says it is
+// uploading once, after the command's output, then the push's tenths-of-a-
+// second upload + compression summary and verdict (or honest fallback when
+// BuildKit reported no layer compression).
 func TestANativeBuildSaysUploadingOnce(t *testing.T) {
 	volume := t.TempDir()
 	build, _, exit := runBuildkitWithOutput(t, nativeLogOptions("npm install"), nativeTranscript("npm install", ""), 0, volume)
 	push, err := runNativePush(t, volume, 0)
 	log := build + push
 	whole := regexp.MustCompile(regexp.QuoteMeta("run `npm fund` for details\n"+rendersRuntimeLine("Uploading build...")+"\n") +
-		strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s")), "\x00", "[0-9]+", 1) + "\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
+		strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s. Compression took 1.2s")), "\x00", "[0-9]+\\.[0-9]", 1) + "\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
 	if exit != 0 || err != nil || strings.Count(log, "Uploading build") != 1 || !whole.MatchString(log) {
-		t.Fatalf("exit %d, push err %v, log:\n%s", exit, err, log)
+		t.Fatalf("with compression: exit %d, push err %v, log:\n%s", exit, err, log)
+	}
+
+	// Honest fallback when BuildKit's transcript reports no layer compression.
+	noLayers := strings.ReplaceAll(nativeTranscript("npm install", ""), "#24 exporting layers 1.2s done\n", "")
+	fallbackVol := t.TempDir()
+	build, _, exit = runBuildkitWithOutput(t, nativeLogOptions("npm install"), noLayers, 0, fallbackVol)
+	push, err = runNativePush(t, fallbackVol, 0)
+	log = build + push
+	fallback := regexp.MustCompile(regexp.QuoteMeta("run `npm fund` for details\n"+rendersRuntimeLine("Uploading build...")+"\n") +
+		strings.Replace(regexp.QuoteMeta(rendersRuntimeLine("Uploaded in \x00s")), "\x00", "[0-9]+\\.[0-9]", 1) + "\n" + regexp.QuoteMeta(rendersBuildSuccessful) + "\n$")
+	if exit != 0 || err != nil || strings.Count(log, "Uploading build") != 1 || !fallback.MatchString(log) {
+		t.Fatalf("without compression: exit %d, push err %v, log:\n%s", exit, err, log)
 	}
 }
 
@@ -537,9 +647,12 @@ func TestNativeBuildLogNamesAFailedCommand(t *testing.T) {
 	if !strings.HasSuffix(log, "QA84 failing on purpose\nerror: build command '"+command+"' exited with code 3\n") {
 		t.Errorf("log does not end with the command's output and exit code:\n%s", log)
 	}
-	// Nothing is uploaded after a command that failed (w33/m570).
+	// Nothing is uploaded after a command that failed (w33/m570, w32/097).
 	if _, err := os.Stat(filepath.Join(output, filepath.Base(uploadStartedFile))); !os.IsNotExist(err) {
 		t.Errorf("a failed command left the upload's moment (stat: %v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(output, filepath.Base(uploadCompressionFile))); !os.IsNotExist(err) {
+		t.Errorf("a failed command left upload compression (stat: %v)", err)
 	}
 	for _, internal := range []string{"#", "sha256:", "static-ffmpeg", "bex-init", "/opt/bex/load-env", "--mount=type=secret", "Build successful", "Uploading"} {
 		if strings.Contains(log, internal) {

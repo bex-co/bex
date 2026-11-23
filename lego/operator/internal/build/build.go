@@ -209,6 +209,12 @@ var nativeStepLogEnv = []corev1.EnvVar{
 	{Name: "BUILDKIT_STEP_LOG_MAX_SPEED", Value: "-1"},
 }
 
+// monotonicNowCommand prints monotonic seconds from /proc/uptime (centisecond
+// precision on Linux, shared across every container in the pod), falling back
+// to whole epoch seconds when /proc/uptime is absent. Uses no single quotes so
+// it embeds directly in both sh scripts and single-quoted awk system() calls.
+const monotonicNowCommand = `if [ -r /proc/uptime ] && read -r bex_up _ < /proc/uptime; then echo "$bex_up"; else date +%s; fi`
+
 // nativeLogDisplay is what a native build's tenant log shows of BuildKit's
 // plain transcript (w4/m324): Render's narration and the build command's own
 // output, as the command printed it. BuildKit's bookkeeping for the Dockerfile
@@ -281,7 +287,7 @@ bex_display() {
         if ($2 == "CACHED" && ENVIRON["BEX_BUILD_COMMAND"] != "") {
           print "==> Reusing the cached result: nothing the build command reads has changed since an earlier build"
         }
-        if (!uploading && system("{ date +%s > " stamp "; } 2>/dev/null") == 0) {
+        if (!uploading && system("{ { ` + strings.ReplaceAll(monotonicNowCommand, `"`, `\"`) + `; } > " stamp "; } 2>/dev/null") == 0) {
           uploading = 1
           print "` + awkString(renderlog.BuildRuntime, "Uploading build...") + `"
         }
@@ -355,15 +361,27 @@ bex_display() {
 // nativeExportReport leaves a native build's export seconds as the
 // termination message of its buildkit phase once the phase has succeeded
 // (signals.go exportSignals reads it): each part nativeLogDisplay kept, then
-// the whole time from `==> Uploading build...` to the phase's end. A failed
-// phase never reaches it, and its message stays the transcript's tail. It
-// never fails the build.
+// the whole time from `==> Uploading build...` to the phase's end. When the
+// phase stamped uploadStartedFile, it also leaves the image's layer
+// compression seconds in uploadCompressionFile for nativePushNarration's
+// `Compression took` clause (w32/097). A failed phase never reaches it, and
+// its message stays the transcript's tail. It never fails the build.
 const nativeExportReport = `
 bex_at=$(cat ` + uploadStartedFile + ` 2>/dev/null) || bex_at=
+bex_now=$(` + monotonicNowCommand + `)
 {
   cat ` + exportSecondsFile + ` 2>/dev/null || :
-  case $bex_at in ''|*[!0-9]*) ;; *) echo "export ` + ExportTotal + ` $(( $(date +%s) - bex_at ))" ;; esac
+  LC_ALL=C awk -v at="$bex_at" -v now="$bex_now" 'BEGIN {
+    if (at ~ /^[0-9]+(\.[0-9]+)?$/ && now ~ /^[0-9]+(\.[0-9]+)?$/) {
+      d = now - at; if (d < 0) d = 0
+      printf "export ` + ExportTotal + ` %d\n", int(d)
+    }
+  }'
 } > "$bex_message" 2>/dev/null || :
+if LC_ALL=C awk -v at="$bex_at" 'BEGIN { exit !(at ~ /^[0-9]+(\.[0-9]+)?$/) }'; then
+  bex_comp=$(LC_ALL=C awk '$1 == "export" && $2 == "` + ExportLayers + `" && $3 ~ /^[0-9]+(\.[0-9]+)?$/ { print $3; exit }' ` + exportSecondsFile + ` 2>/dev/null) || bex_comp=
+  [ -z "$bex_comp" ] || printf '%s\n' "$bex_comp" > ` + uploadCompressionFile + ` 2>/dev/null || :
+fi
 `
 
 // BuildKit's names for a build's two exports, as its plain progress heads
@@ -409,16 +427,36 @@ const skopeoQuiet = `bex_skopeo() {
 // a failed upload says so in product words (bex_skopeo). With image signing
 // on, cosign runs after it (it has no shell to print from), so a signing
 // failure follows the verdict. The buildkit phase has already said
-// `==> Uploading build...` when it left its moment in uploadStartedFile, and
-// `Uploaded in` then counts the export before the push as well (w33/m570).
-// Render's upload lines and verdict are in its runtime forms (w32/m576);
-// bex's own failure line is plain.
-var nativePushNarration = skopeoQuiet + `bex_started=$(cat ` + uploadStartedFile + ` 2>/dev/null)
-case $bex_started in
-''|*[!0-9]*) ` + shellLine(renderlog.BuildRuntime, "Uploading build...") + `; bex_started=$(date +%s) ;;
-esac
+// `==> Uploading build...` when it left its moment in uploadStartedFile and
+// its layer compression seconds in uploadCompressionFile; `Uploaded in` then
+// reports the non-compression stretch and `Compression took` the layer
+// compression in tenths of a second, as Render's captures show (w33/m570,
+// w32/097), falling back to `Uploaded in N.Ns` alone when compression was not
+// measured. Render's upload lines and verdict are in its runtime forms
+// (w32/m576); bex's own failure line is plain.
+var nativePushNarration = skopeoQuiet + `bex_now() { ` + monotonicNowCommand + `; }
+bex_started=$(cat ` + uploadStartedFile + ` 2>/dev/null)
+bex_comp=
+if LC_ALL=C awk -v s="$bex_started" 'BEGIN { exit !(s ~ /^[0-9]+(\.[0-9]+)?$/) }'; then
+  bex_comp=$(cat ` + uploadCompressionFile + ` 2>/dev/null)
+else
+  ` + shellLine(renderlog.BuildRuntime, "Uploading build...") + `
+  bex_started=$(bex_now)
+fi
 bex_skopeo "$@" >/dev/null || { bex_failed=$?; echo '==> Uploading build failed'; exit $bex_failed; }
-` + shellLine(renderlog.BuildRuntime, "Uploaded in $(( $(date +%s) - bex_started ))s") + `
+bex_summary=$(LC_ALL=C awk -v start="$bex_started" -v end="$(bex_now)" -v comp="$bex_comp" 'BEGIN {
+  total = end - start
+  if (total < 0) total = 0
+  if (comp ~ /^[0-9]+(\.[0-9]+)?$/) {
+    c = comp + 0
+    u = total - c
+    if (u < 0) u = 0
+    printf "Uploaded in %.1fs. Compression took %.1fs\n", u, c
+  } else {
+    printf "Uploaded in %.1fs\n", total
+  }
+}')
+` + shellLine(renderlog.BuildRuntime, "$bex_summary") + `
 ` + shellLine(renderlog.BuildRuntimeSuccess, "Build successful \U0001F389")
 
 // dockerfilePush is a Dockerfile build's push phase: skopeo's transcript as
@@ -514,9 +552,14 @@ const (
 	// revisionFile is where the clone step leaves the fetched commit.
 	revisionFile = outputMount + "/commit"
 	// uploadStartedFile is when a native build's buildkit phase printed
-	// `==> Uploading build...`, in epoch seconds, for the push phase that
-	// counts `Uploaded in` from it (w33/m570).
+	// `==> Uploading build...`, in monotonic seconds from /proc/uptime (or
+	// epoch seconds when /proc/uptime is absent), for the push phase that
+	// counts `Uploaded in` from it (w33/m570, w32/097).
 	uploadStartedFile = outputMount + "/bex-upload-started"
+	// uploadCompressionFile is the image's layer compression seconds from
+	// BuildKit's `exporting layers` step, left alongside uploadStartedFile for
+	// the push phase's `Compression took` clause (w32/097).
+	uploadCompressionFile = outputMount + "/bex-upload-compression"
 	// revisionLabel mirrors registry.RevisionLabel; build does not import
 	// registry.
 	revisionLabel = "org.opencontainers.image.revision"
