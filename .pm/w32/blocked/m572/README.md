@@ -1,6 +1,6 @@
 # w32 · m572 — A deploy with a pre-deploy command narrates the step as Render's log does: `==> Starting pre-deploy: <command>`, then `==> Pre-deploy complete!` or `==> Pre-deploy has failed` and the exit status
 
-**Worker:** worker32 **Goal:** a deploy's log (`bex logs --type build`, the deploy page, the live tail) narrates its pre-deploy step in Render's words, each line at a moment the operator recorded. `==> Starting pre-deploy: <command>` comes when the step starts. On a native runtime, `==> Running '<command>'` comes when the step's container starts. The command's own output follows. The step then closes with `==> Pre-deploy complete!`, or with `==> Pre-deploy has failed`, `==> Exited with status N` and the troubleshooting line. **Status:** in progress (t001–t007, t010 and t011 done; t008 parked on the production pin and the cost of one starter service)
+**Worker:** worker32 **Goal:** a deploy's log (`bex logs --type build`, the deploy page, the live tail) narrates its pre-deploy step in Render's words, each line at a moment the operator recorded. `==> Starting pre-deploy: <command>` comes when the step starts. On a native runtime, `==> Running '<command>'` comes when the step's container starts. The command's own output follows. The step then closes with `==> Pre-deploy complete!`, or with `==> Pre-deploy has failed`, `==> Exited with status N` and the troubleshooting line. **Status:** blocked (t001–t007, t010 and t011 done and shipped as `b91b05c35a`; t008 waits for the production pin to carry it and for the user to agree to the cost of one `starter` service; t009 and t012 follow)
 
 ## Tasks (in order)
 
@@ -33,8 +33,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w32/087](../done/087.md), filed 2026-11-22 from w32/085's search of public Render logs, and promoted the same day by `/loopx w32`.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log, at the step that most often fails a paid deploy (a migration). Render's log names the command it starts, shows the output, and closes the step with its own verdict and the command's exit status. bex's log shows the output with no opening line, and closes a failure with `==> Pre-deploy failed: <reason>`.
+- **Source:** inbox note [w32/087](../../done/087.md), filed 2026-11-22 from w32/085's search of public Render logs, and promoted the same day by `/loopx w32`.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log, at the step that most often fails a paid deploy (a migration). Render's log names the command it starts, shows the output, and closes the step with its own verdict and the command's exit status. bex's log shows the output with no opening line, and closes a failure with `==> Pre-deploy failed: <reason>`.
 - **Expected outcome:** a bex deploy log with a pre-deploy step reads like Render's from the build's end to the verdict. A user whose migration fails sees which command ran, its output and its exit status, without opening the pre-deploy filter.
 - **Why now:** w32/m560 gave the rollout Render's lines, and w32/085's search settled the pre-deploy lines it had left open. The note's own scope check needed the step's command and exit status on the deploy row, and moments precise enough to order the lines around the command's output. That means an operator record, a migration and the narration: about 8h over twelve tasks, so it is a milestone.
 - **Render parity task included:** the lines are a tenant-facing surface (REST, SSE, GraphQL and MCP log reads, the CLI and the dashboard's deploy page).
