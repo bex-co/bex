@@ -29,7 +29,11 @@ import (
 // Render's environment-membership API (w8/188): POST and DELETE
 // /environments/{id}/resources add or remove resources by id — a service
 // (srv-), Postgres (dpg-), Key Value (red-) or environment group (evg-) — where
-// bex's own PUT …-links routes replace one kind's whole list.
+// bex's own PUT …-links routes replace one kind's whole list. A removed
+// resource leaves the environment's project too and is ungrouped, as on
+// Render, where a resource belongs to a project only through one of its
+// environments (w4/714); the …-links routes keep a dropped member in the
+// project.
 
 // codeEnvironmentNotEmpty names Render's 409 for deleting an environment (or a
 // project) that still holds resources.

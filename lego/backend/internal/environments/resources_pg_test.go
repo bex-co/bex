@@ -345,3 +345,75 @@ func TestChangeResourcesFailureReturnsAServicePlacedFromNoEnvironmentToItsProjec
 		t.Fatalf("staging = %v, %v; want %s", got, err, loose.ID)
 	}
 }
+
+// w4/714: Render's remove-from-environment ungroups a service against the real
+// store. The row leaves the environment's project with the environment, so
+// every read of it (REST, GraphQL, MCP and the dashboard's project lists, all
+// from apps.project_id) finds it in no project; a service the request does not
+// name keeps both. The removal used to keep the project, and the dashboard
+// listed the service neither under Ungrouped Resources nor in any environment.
+// A removal that fails partway puts the service back in the environment and
+// its project.
+func TestChangeResourcesRemovalUngroupsAServicePG(t *testing.T) {
+	pg, workspaceID, stamp := resourcesWorkspace(t)
+	ctx := context.Background()
+	project, err := pg.CreateProject(ctx, workspaceID, "stack-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staging, err := pg.CreateEnvironment(ctx, project.ID, workspaceID, "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newApp := func(name string) store.App {
+		app, err := pg.CreateApp(ctx, store.App{TenantID: workspaceID, Name: name + "-" + stamp, Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return app
+	}
+	web, worker := newApp("web"), newApp("worker")
+	group := ids.New(ids.EnvGroup)
+	groups := &failingEnvGroupIndex{refuse: group}
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: workspaceID, EnvironmentID: staging.ID}}
+	svc, cl := newServiceWithClient(pg, sampleApp(web.ID), sampleApp(worker.ID))
+	svc.EnvGroups = groups
+	stagingID := ids.EnvironmentPublicID(staging.ID)
+	if _, err := svc.ChangeResources(ctxAs("user-a"), stagingID, []string{web.ID, worker.ID}, true); err != nil {
+		t.Fatal(err)
+	}
+	placement := func(serviceID string) (string, string) {
+		t.Helper()
+		row, err := pg.GetApp(ctx, serviceID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return row.EnvironmentID, row.ProjectID
+	}
+
+	if _, err := svc.ChangeResources(ctxAs("user-a"), stagingID, []string{web.ID}, false); err != nil {
+		t.Fatal(err)
+	}
+	if env, prj := placement(web.ID); env != "" || prj != "" {
+		t.Errorf("removed %s: environment %q, project %q; want ungrouped", web.ID, env, prj)
+	}
+	if cr := getApp(t, cl, web.ID); cr.Labels[core.LabelEnvironment] != "" {
+		t.Errorf("removed %s kept the environment label %v", web.ID, cr.Labels)
+	}
+	if env, prj := placement(worker.ID); env != staging.ID || prj != project.ID {
+		t.Errorf("unnamed %s: environment %q, project %q; want %s in %s", worker.ID, env, prj, staging.ID, project.ID)
+	}
+
+	// The worker is ungrouped, then the group's removal fails: it goes back.
+	_, err = svc.ChangeResources(ctxAs("user-a"), stagingID, []string{worker.ID, group}, false)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed removal = %v, want the group's own failure", err)
+	}
+	if env, prj := placement(worker.ID); env != staging.ID || prj != project.ID {
+		t.Errorf("%s after the reversal: environment %q, project %q; want %s in %s", worker.ID, env, prj, staging.ID, project.ID)
+	}
+	if cr := getApp(t, cl, worker.ID); cr.Labels[core.LabelEnvironment] != staging.ID {
+		t.Errorf("%s after the reversal carries the environment label %q, want %q", worker.ID, cr.Labels[core.LabelEnvironment], staging.ID)
+	}
+}

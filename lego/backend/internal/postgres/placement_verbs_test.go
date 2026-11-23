@@ -42,6 +42,7 @@ func TestPlacementClearsRecordTheirOwnAuditVerb(t *testing.T) {
 	}{
 		{"project", func(s *Service) func(context.Context, string, string) error { return s.ClearProjectID }, "prj-a", AuditVerbClearProjectID},
 		{"environment", func(s *Service) func(context.Context, string, string) error { return s.ClearEnvironmentID }, "env-a", AuditVerbClearEnvironmentID},
+		{"ungroup", func(s *Service) func(context.Context, string, string) error { return s.Ungroup }, "env-a", AuditVerbUngroup},
 	} {
 		for _, allow := range []bool{true, false} {
 			t.Run(fmt.Sprintf("%s/allowed=%v", tc.name, allow), func(t *testing.T) {

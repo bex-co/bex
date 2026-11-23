@@ -124,6 +124,8 @@ func TestPlacementAssignmentAuthorizesBeforeNoOp(t *testing.T) {
 		{"stale project clear", func(s *Service) error { return s.ClearProjectID(ctxAs("user-a"), "placement", "prj-old") }},
 		{"clear environment", func(s *Service) error { return s.ClearEnvironmentID(ctxAs("user-a"), "placement", "env-a") }},
 		{"stale environment clear", func(s *Service) error { return s.ClearEnvironmentID(ctxAs("user-a"), "placement", "env-old") }},
+		{"ungroup", func(s *Service) error { return s.Ungroup(ctxAs("user-a"), "placement", "env-a") }},
+		{"stale ungroup", func(s *Service) error { return s.Ungroup(ctxAs("user-a"), "placement", "env-old") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, cl := newService(placementResource())
@@ -163,8 +165,10 @@ func (c *placementPatchClient) Patch(ctx context.Context, obj client.Object, pat
 	return c.Client.Patch(ctx, obj, patch, opts...)
 }
 
+// Ungroup (w4/714) is the environment clear that also clears the project: the
+// resource Render's remove-from-environment takes out is ungrouped.
 func TestPlacementConditionalClear(t *testing.T) {
-	for _, kind := range []string{"project", "environment"} {
+	for _, kind := range []string{"project", "environment", "ungroup"} {
 		for _, stale := range []bool{false, true} {
 			name := kind
 			if stale {
@@ -177,9 +181,11 @@ func TestPlacementConditionalClear(t *testing.T) {
 				before := readPlacement(t, cl)
 				expected := "prj-a"
 				clear := svc.ClearProjectID
-				if kind == "environment" {
-					expected = "env-a"
-					clear = svc.ClearEnvironmentID
+				switch kind {
+				case "environment":
+					expected, clear = "env-a", svc.ClearEnvironmentID
+				case "ungroup":
+					expected, clear = "env-a", svc.Ungroup
 				}
 				if stale {
 					expected = "former-membership"
@@ -197,9 +203,9 @@ func TestPlacementConditionalClear(t *testing.T) {
 				if tracking.patches != 1 {
 					t.Fatalf("cleanup used %d patches, want one atomic write", tracking.patches)
 				}
-				wantProject := "prj-a"
-				if kind == "project" {
-					wantProject = ""
+				wantProject := ""
+				if kind == "environment" {
+					wantProject = "prj-a"
 				}
 				if got.Labels[core.LabelProject] != wantProject || got.Labels[core.LabelEnvironment] != "" || len(got.Spec.EnvironmentIPAllowList) != 0 {
 					t.Fatalf("cleanup left labels=%v inherited=%v", got.Labels, got.Spec.EnvironmentIPAllowList)
@@ -249,7 +255,7 @@ func TestPlacementConditionalClearRetriesAfterWriteFailure(t *testing.T) {
 }
 
 func TestPlacementConcurrentReassignmentWinsOverStalePatch(t *testing.T) {
-	for _, kind := range []string{"project", "environment"} {
+	for _, kind := range []string{"project", "environment", "ungroup"} {
 		t.Run(kind, func(t *testing.T) {
 			svc, cl := newService(placementResource())
 			tracking := &placementPatchClient{Client: cl}
@@ -264,8 +270,11 @@ func TestPlacementConcurrentReassignmentWinsOverStalePatch(t *testing.T) {
 			}
 			svc.Client = tracking
 			clear, expected := svc.ClearProjectID, "prj-a"
-			if kind == "environment" {
+			switch kind {
+			case "environment":
 				clear, expected = svc.ClearEnvironmentID, "env-a"
+			case "ungroup":
+				clear, expected = svc.Ungroup, "env-a"
 			}
 			// The lost patch re-reads, sees the reassignment and leaves it alone
 			// (w4/m214): a stale clear is a no-op, not an error.

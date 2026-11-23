@@ -110,8 +110,13 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 		for _, operation := range []string{
 			"delete-environment", "delete-project", "delete-project-without-environment",
 			"move-project", "same-project", "move-environment", "move-environment-other-project",
-			"unassign-environment", "unassign-project",
+			"unassign-environment", "unassign-project", "remove-resources",
 		} {
+			if operation == "remove-resources" && surface != "REST" {
+				// Render's remove-from-environment is a REST route; its result
+				// is read back over all three surfaces.
+				continue
+			}
 			t.Run(surface+"/"+operation, func(t *testing.T) {
 				ws := newFakeWSStore()
 				owner := mustCreate(t, ws, "placement", store.PlanHobby, "client-1")
@@ -280,6 +285,13 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 					empty = true
 				case "unassign-project":
 					kind, target, wantProject, empty = "project", projectA, "", true
+				case "remove-resources":
+					// Render's removal ungroups (w4/714): a Render resource belongs
+					// to a project only through one of its environments, so both
+					// datastores leave envA's project with it.
+					request(http.MethodDelete, "/v1/environments/"+envA+"/resources?resourceIds="+db.Name+"&resourceIds="+kv.Name, "", http.StatusNoContent)
+					assertPlacement("", "")
+					return
 				}
 				if remove {
 					switch surface {

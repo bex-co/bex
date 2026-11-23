@@ -104,6 +104,23 @@ func (f *fakeDatabaseIndex) ClearEnvironmentID(_ context.Context, name, expected
 	return nil
 }
 
+// Ungroup is ClearEnvironmentID that clears the project too, as the real
+// one does in the same write (w4/714).
+func (f *fakeDatabaseIndex) Ungroup(_ context.Context, name, expectedEnvironmentID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d := f.dbs[name]
+	if d.EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
+	f.setEnvCalls++
+	d.EnvironmentID, d.ProjectID = "", ""
+	f.dbs[name] = d
+	delete(f.envLayers, name)
+	delete(f.isolation, name)
+	return nil
+}
+
 func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, expectedEnvironmentID, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -211,6 +228,23 @@ func (f *fakeKeyValueIndex) ClearEnvironmentID(_ context.Context, name, expected
 	}
 	f.setEnvCalls++
 	kv.EnvironmentID = ""
+	f.kvs[name] = kv
+	delete(f.envLayers, name)
+	delete(f.isolation, name)
+	return nil
+}
+
+// Ungroup is ClearEnvironmentID that clears the project too, as the real
+// one does in the same write (w4/714).
+func (f *fakeKeyValueIndex) Ungroup(_ context.Context, name, expectedEnvironmentID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	kv := f.kvs[name]
+	if kv.EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
+	f.setEnvCalls++
+	kv.EnvironmentID, kv.ProjectID = "", ""
 	f.kvs[name] = kv
 	delete(f.envLayers, name)
 	delete(f.isolation, name)

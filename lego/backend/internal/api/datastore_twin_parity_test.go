@@ -90,6 +90,11 @@ func TestDatastoreTwinsShareWriteMechanics(t *testing.T) {
 			kv:   func(s *keyvalue.Service) error { return s.SetEnvironmentID(t.Context(), name, "evm-existing", "evm-1") },
 		},
 		{
+			verb: "Ungroup",
+			pg:   func(s *postgres.Service) error { return s.Ungroup(t.Context(), name, "evm-existing") },
+			kv:   func(s *keyvalue.Service) error { return s.Ungroup(t.Context(), name, "evm-existing") },
+		},
+		{
 			verb: "SetEnvironmentIPAllowList",
 			pg: func(s *postgres.Service) error {
 				return s.SetEnvironmentIPAllowList(t.Context(), name, "evm-existing", []string{"10.0.0.0/8"})

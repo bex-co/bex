@@ -219,9 +219,11 @@ func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, pro
 // from an environment within tenantID, and writes no other row: a member the
 // call does not name keeps its placement, including one a concurrent writer
 // placed after the caller last read the membership. An added service joins
-// projectID too, as SetEnvironmentServices stamps it; a removed one keeps its
-// project. Ids naming no service in tenantID, and removals of services outside
-// the environment, change nothing. Returns the per-service placement diff, which
+// projectID too, as SetEnvironmentServices stamps it; a removed one leaves its
+// project with the environment and is ungrouped, as on Render, where a
+// resource belongs to a project only through one of its environments (w4/714).
+// Ids naming no service in tenantID, and removals of services outside the
+// environment, change nothing. Returns the per-service placement diff, which
 // exit vets before commit as SetEnvironmentServices' does.
 func (s *PGStore) ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	if len(serviceIDs) == 0 {
@@ -239,7 +241,7 @@ func (s *PGStore) ChangeEnvironmentServices(ctx context.Context, environmentID, 
 				return err
 			}
 			_, err := tx.Exec(ctx,
-				`UPDATE apps SET environment_id = NULL, updated_at = now()
+				`UPDATE apps SET environment_id = NULL, project_id = NULL, updated_at = now()
 				 WHERE environment_id = $1 AND (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3 AND id = ANY($4)`,
 				environmentID, serviceIDs, tenantID, locked)
 			return err

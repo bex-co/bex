@@ -63,6 +63,100 @@ func TestChangeResourcesAddsAndRemovesByID(t *testing.T) {
 	}
 }
 
+// w4/714: Render's remove-from-environment ungroups what it removes. A Render
+// resource belongs to a project only through one of its environments, so a
+// removed Postgres, Key Value or env group leaves the environment's project
+// with it, and with the environment's rules; a member the request does not
+// name keeps both. The removal used to keep the project, so the dashboard
+// listed the resource neither under Ungrouped Resources nor in any
+// environment.
+func TestChangeResourcesRemovalUngroupsEveryKind(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})
+	db, kv, kept, group := ids.New(ids.Postgres), ids.New(ids.KeyValue), ids.New(ids.KeyValue), ids.New(ids.EnvGroup)
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: db, OwnerID: "tea-a"})
+	kvs := newKeyValueIndex()
+	kvs.add(keyvalue.KeyValueView{ID: kv, OwnerID: "tea-a"})
+	kvs.add(keyvalue.KeyValueView{ID: kept, OwnerID: "tea-a"})
+	groups := &fakeEnvGroupIndex{groups: []envgroups.EnvGroupView{{ID: group, OwnerID: "tea-a"}}}
+	svc := newService(st)
+	svc.Databases, svc.KeyValues, svc.EnvGroups = dbs, kvs, groups
+	staging, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	stagingID := ids.EnvironmentStorageID(staging.ID)
+	office := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}
+	if err := st.SetEnvironmentACL(context.Background(), stagingID, ProtectedStatusUnprotected, true, office); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), staging.ID, []string{db, kv, kept, group}, true); err != nil {
+		t.Fatal(err)
+	}
+	if dbs.dbs[db].ProjectID != "prj-1" || kvs.kvs[kv].ProjectID != "prj-1" {
+		t.Fatalf("the add left %s in %q and %s in %q, want both in prj-1", db, dbs.dbs[db].ProjectID, kv, kvs.kvs[kv].ProjectID)
+	}
+
+	got, err := svc.ChangeResources(ctxAs("user-a"), staging.ID, []string{db, kv, group}, false)
+	if err != nil || len(got.DatabaseIDs)+len(got.EnvGroupIDs) != 0 || !slices.Equal(got.KeyValueIDs, []string{kept}) {
+		t.Fatalf("removal = %+v, %v; want only %s left", got, err, kept)
+	}
+	if d := dbs.dbs[db]; d.EnvironmentID != "" || d.ProjectID != "" || len(dbs.envLayers[db]) != 0 || dbs.isolation[db] {
+		t.Errorf("removed %s: environment %q, project %q, IP layer %v, isolated %v; want ungrouped with no rules",
+			db, d.EnvironmentID, d.ProjectID, dbs.envLayers[db], dbs.isolation[db])
+	}
+	if v := kvs.kvs[kv]; v.EnvironmentID != "" || v.ProjectID != "" || len(kvs.envLayers[kv]) != 0 || kvs.isolation[kv] {
+		t.Errorf("removed %s: environment %q, project %q, IP layer %v, isolated %v; want ungrouped with no rules",
+			kv, v.EnvironmentID, v.ProjectID, kvs.envLayers[kv], kvs.isolation[kv])
+	}
+	if g := groups.groups[0]; g.EnvironmentID != "" {
+		t.Errorf("removed %s is still in %q", group, g.EnvironmentID)
+	}
+	if v := kvs.kvs[kept]; v.EnvironmentID != stagingID || v.ProjectID != "prj-1" || !kvs.isolation[kept] {
+		t.Errorf("unnamed %s: environment %q, project %q, isolated %v; want it left in staging and prj-1",
+			kept, v.EnvironmentID, v.ProjectID, kvs.isolation[kept])
+	}
+}
+
+// A removal that fails partway puts what it ungrouped back in the environment
+// and its project, with the environment's rules (w4/714).
+func TestChangeResourcesFailedRemovalReturnsMembersToTheirProject(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})
+	db, kv, group := ids.New(ids.Postgres), ids.New(ids.KeyValue), ids.New(ids.EnvGroup)
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: db, OwnerID: "tea-a"})
+	kvs := newKeyValueIndex()
+	kvs.add(keyvalue.KeyValueView{ID: kv, OwnerID: "tea-a"})
+	groups := &failingEnvGroupIndex{refuse: group}
+	svc := newService(st)
+	svc.Databases, svc.KeyValues, svc.EnvGroups = dbs, kvs, groups
+	staging, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	stagingID := ids.EnvironmentStorageID(staging.ID)
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: "tea-a", EnvironmentID: stagingID}}
+	office := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}
+	if err := st.SetEnvironmentACL(context.Background(), stagingID, ProtectedStatusUnprotected, true, office); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), staging.ID, []string{db, kv}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// Both datastores are ungrouped, then the group's removal fails.
+	_, err := svc.ChangeResources(ctxAs("user-a"), staging.ID, []string{db, kv, group}, false)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed removal = %v, want the group's own failure", err)
+	}
+	cidrs := core.EnvironmentLayerCIDRs(office)
+	if d := dbs.dbs[db]; d.EnvironmentID != stagingID || d.ProjectID != "prj-1" || !slices.Equal(dbs.envLayers[db], cidrs) || !dbs.isolation[db] {
+		t.Errorf("%s after the reversal: environment %q, project %q, IP layer %v, isolated %v; want staging, prj-1 and its rules",
+			db, d.EnvironmentID, d.ProjectID, dbs.envLayers[db], dbs.isolation[db])
+	}
+	if v := kvs.kvs[kv]; v.EnvironmentID != stagingID || v.ProjectID != "prj-1" || !slices.Equal(kvs.envLayers[kv], cidrs) || !kvs.isolation[kv] {
+		t.Errorf("%s after the reversal: environment %q, project %q, IP layer %v, isolated %v; want staging, prj-1 and its rules",
+			kv, v.EnvironmentID, v.ProjectID, kvs.envLayers[kv], kvs.isolation[kv])
+	}
+}
+
 func TestChangeResourcesRefusalsChangeNothing(t *testing.T) {
 	st := newFakeStore()
 	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})

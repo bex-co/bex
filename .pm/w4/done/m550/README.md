@@ -77,4 +77,4 @@ On dev-4, then on production once the pin carries the change:
 
 **dev-4 cleanup:** the fixtures, project and three identities were deleted, the OpenFGA container removed, and bex-api restarted with its default settings.
 
-**Filed:** [w4/714](../../714.md): `DELETE /v1/environments/{id}/resources` leaves a service in its project with no environment, so no dashboard list shows it. [w4/715](../../715.md): at 390 the environment card's header crushes the name, and its skeleton's header and filters do not match, a pre-m550 offset of 16px at 1440 and 64px at 390.
+**Filed:** [w4/714](../../done/714.md): `DELETE /v1/environments/{id}/resources` leaves a service in its project with no environment, so no dashboard list shows it. [w4/715](../../715.md): at 390 the environment card's header crushes the name, and its skeleton's header and filters do not match, a pre-m550 offset of 16px at 1440 and 64px at 390.

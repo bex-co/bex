@@ -704,7 +704,7 @@ func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*ap
 	return s.AuthorizeDatabase(ctx, relation, name)
 }
 
-// The audit verbs of the two conditional placement clears, named rather than
+// The audit verbs of the conditional placement clears, named rather than
 // derived: core.RetryPlacementClear runs the authorizing fetch from a closure,
 // whose name ("postgres.ClearProjectID.func1") a derived verb would record.
 // They are spelled as the methods' own, which core.callerVerb derives for every
@@ -712,6 +712,7 @@ func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*ap
 const (
 	AuditVerbClearProjectID     = "postgres.ClearProjectID"
 	AuditVerbClearEnvironmentID = "postgres.ClearEnvironmentID"
+	AuditVerbUngroup            = "postgres.Ungroup"
 )
 
 // fetchDatabaseAs is fetchDatabase with the audit verb named by the caller, for
@@ -2336,6 +2337,25 @@ func (s *Service) ClearEnvironmentID(ctx context.Context, name, expectedEnvironm
 				return nil
 			}
 			return s.setEnvironmentID(ctx, d, "")
+		})
+}
+
+// Ungroup takes the resource out of the environment the caller observed and
+// out of that environment's project, with the environment's inherited rules,
+// in one write: Render's remove-from-environment, after which the resource is
+// ungrouped, since a Render resource belongs to a project only through one of
+// its environments (w4/714). A resource that has moved since is left where it
+// is.
+func (s *Service) Ungroup(ctx context.Context, name, expectedEnvironmentID string) error {
+	return core.RetryPlacementClear(ctx,
+		func() (*appv1alpha1.Database, error) {
+			return s.fetchDatabaseAs(ctx, AuditVerbUngroup, core.RelCanCreate, name)
+		},
+		func(d *appv1alpha1.Database) error {
+			if d.Labels[core.LabelEnvironment] != expectedEnvironmentID {
+				return nil
+			}
+			return s.setProjectID(ctx, d, "")
 		})
 }
 

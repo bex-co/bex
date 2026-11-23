@@ -61,7 +61,8 @@ type EnvironmentStore interface {
 	DeleteEnvironment(ctx context.Context, id string) error
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	// ChangeEnvironmentServices adds or removes only the named services; every
-	// other member keeps its placement.
+	// other member keeps its placement. A removed service leaves the project
+	// too (w4/714).
 	ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	// ReturnEnvironmentServices moves the named services still in
 	// fromEnvironmentID to toEnvironmentID and toProjectID ("" for none on
@@ -86,6 +87,9 @@ type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
 	SetEnvironmentID(ctx context.Context, name, expectedEnvironmentID, environmentID string) error
 	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
+	// Ungroup clears the environment and its project together: Render's
+	// remove-from-environment (w4/714).
+	Ungroup(ctx context.Context, name, expectedEnvironmentID string) error
 	// SetProjectID joins a newly-assigned Database to the environment's
 	// project (mirroring SetEnvironmentServices' apps.project_id stamp — see
 	// SetDatabases).
@@ -101,6 +105,7 @@ type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
 	SetEnvironmentID(ctx context.Context, name, expectedEnvironmentID, environmentID string) error
 	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
+	Ungroup(ctx context.Context, name, expectedEnvironmentID string) error
 	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
 	// SetEnvironmentIsolation stamps or clears core.LabelNetworkIsolation (w8/m136).
@@ -335,6 +340,9 @@ type resourceIndex interface {
 	// leave removes membership; datastores compare the observed environment
 	// before clearing its inherited rules.
 	leave(ctx context.Context, id, expectedEnvironmentID string) error
+	// ungroup is leave that also leaves the environment's project: Render's
+	// remove-from-environment, after which the resource is ungrouped (w4/714).
+	ungroup(ctx context.Context, id, expectedEnvironmentID string) error
 	// release takes id out of e, where the caller placed it, into no
 	// environment and project projectID ("" for none) with none of e's rules:
 	// the placement it had before. One moved on since stays where it is.
@@ -392,6 +400,10 @@ func (d databaseResources) leave(ctx context.Context, id, expectedEnvironmentID 
 	return d.ClearEnvironmentID(ctx, id, expectedEnvironmentID)
 }
 
+func (d databaseResources) ungroup(ctx context.Context, id, expectedEnvironmentID string) error {
+	return d.Ungroup(ctx, id, expectedEnvironmentID)
+}
+
 // release leaves e, and when the Database came from another project goes
 // back to it in the same write, which drops e's label and rules.
 func (d databaseResources) release(ctx context.Context, e store.Environment, id, projectID string) error {
@@ -441,6 +453,10 @@ func (k keyValueResources) leave(ctx context.Context, id, expectedEnvironmentID 
 	return k.ClearEnvironmentID(ctx, id, expectedEnvironmentID)
 }
 
+func (k keyValueResources) ungroup(ctx context.Context, id, expectedEnvironmentID string) error {
+	return k.Ungroup(ctx, id, expectedEnvironmentID)
+}
+
 func (k keyValueResources) release(ctx context.Context, e store.Environment, id, projectID string) error {
 	if projectID == e.ProjectID {
 		return k.ClearEnvironmentID(ctx, id, e.ID)
@@ -482,6 +498,11 @@ func (g envGroupResources) join(ctx context.Context, e store.Environment, id, ob
 
 func (g envGroupResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
 	return g.SetEnvironmentID(ctx, id, expectedEnvironmentID, "")
+}
+
+// ungroup is leave: a group joins no project.
+func (g envGroupResources) ungroup(ctx context.Context, id, expectedEnvironmentID string) error {
+	return g.leave(ctx, id, expectedEnvironmentID)
 }
 
 // release is leave: a group joins no project.
@@ -1463,8 +1484,9 @@ const (
 	replaceMembers membershipMode = iota
 	// addMembers places the named ids in the environment and touches no other.
 	addMembers
-	// removeMembers takes the named ids out and touches no other; a named id
-	// that is not a member is no change.
+	// removeMembers takes the named ids out of the environment and its
+	// project and touches no other; a named id that is not a member is no
+	// change.
 	removeMembers
 )
 
@@ -1551,6 +1573,10 @@ func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id strin
 	for _, r := range existing {
 		var err error
 		switch {
+		case leaves(r) && mode == removeMembers:
+			// Render's removal ungroups (w4/714); a full replacement keeps
+			// bex's project-only placement for what it drops.
+			err = idx.ungroup(ctx, r.id, e.ID)
 		case leaves(r):
 			err = idx.leave(ctx, r.id, e.ID)
 		case joins(r):
