@@ -191,6 +191,10 @@ func TestModelMinterRefusesTerminalOrForeignSession(t *testing.T) {
 		"stale generation":  base(func(s *store.AgentSession) { s.SandboxID = "sbx-2" }),
 		"foreign workspace": base(func(s *store.AgentSession) { s.WorkspaceID = "tea-b" }),
 		"absent session":    {err: store.ErrNotFound},
+		// w6/168: the Git mint admits a finished session's editor sandbox,
+		// where no agent runs; the model mint does not.
+		"completed, an editor's sandbox": base(func(s *store.AgentSession) { s.Phase, s.EditorSandboxID = "completed", s.SandboxID }),
+		"failed, an editor's sandbox":    base(func(s *store.AgentSession) { s.Phase, s.EditorSandboxID = "failed", s.SandboxID }),
 	}
 	for name, sessions := range cases {
 		t.Run(name, func(t *testing.T) {

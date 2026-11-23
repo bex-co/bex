@@ -379,6 +379,74 @@ func TestMinterRefusesTerminalOrForeignSession(t *testing.T) {
 	}
 }
 
+// editorSession is a finished session whose sandbox resume started for a
+// person's editor (ADR054 D8): the sandbox validMintRequest's Pod names.
+func editorSession(phase string) store.AgentSession {
+	return store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", EditorSandboxID: "sbx-1", Phase: phase}
+}
+
+// w6/168: once an editor's start settles the session is finished again, and
+// its sandbox still pushes the session branch through the Git mint. Nothing
+// else widens: the gh route's verbs, a finished turn's own sandbox, a
+// superseded editor sandbox, an archived or canceled session, another Pod or
+// another branch are refused as before.
+func TestMinterAdmitsGitOnlyToAFinishedSessionsEditorSandbox(t *testing.T) {
+	minter := func(session store.AgentSession) (*Minter, *fakeSessionGitHub, *auditRecorder) {
+		gh, audit := &fakeSessionGitHub{}, &auditRecorder{}
+		return &Minter{
+			GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}},
+			Sessions: fakeSessions{session: session}, Environments: noEnvironment, Audit: audit,
+		}, gh, audit
+	}
+	for _, phase := range []string{"completed", "failed"} {
+		m, gh, audit := minter(editorSession(phase))
+		got, err := m.Mint(context.Background(), validMintRequest())
+		if err != nil || got.Token != "ghs_scoped" || gh.calls != 1 || gh.repository != "repo" {
+			t.Fatalf("%s editor sandbox: response=%+v err=%v fake=%+v", phase, got, err, gh)
+		}
+		if len(audit.events) != 1 || audit.events[0].Outcome != core.AuditAllowed || audit.events[0].Verb != AuditVerbMintCredential {
+			t.Fatalf("%s editor sandbox audit = %+v", phase, audit.events)
+		}
+		for _, kind := range githubAPIMints {
+			m, gh, _ := minter(editorSession(phase))
+			if _, err := kind.mint(m, context.Background(), validMintRequest()); !errors.Is(err, ErrForbidden) || gh.apiCalls+gh.apiWriteCalls != 0 {
+				t.Fatalf("%s editor sandbox, gh %s: err=%v fake=%+v", phase, kind.name, err, gh)
+			}
+		}
+	}
+
+	archived := editorSession("completed")
+	archived.ArchivedAt = new(time.Now())
+	for name, c := range map[string]struct {
+		session store.AgentSession
+		req     func(*MintRequest)
+	}{
+		"a finished turn's own sandbox": {store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed"}, nil},
+		"a superseded editor sandbox":   {store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", EditorSandboxID: "sbx-0", Phase: "completed"}, nil},
+		"the editor's sandbox ended":    {store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", EditorSandboxID: "sbx-1", Phase: "completed"}, nil},
+		"archived":                      {archived, nil},
+		"canceling":                     {editorSession("canceling"), nil},
+		"canceled":                      {editorSession("canceled"), nil},
+		"unknown phase":                 {editorSession("future-phase"), nil},
+		"foreign workspace":             {func() store.AgentSession { s := editorSession("completed"); s.WorkspaceID = "tea-b"; return s }(), nil},
+		"another Pod":                   {editorSession("completed"), func(r *MintRequest) { r.PodName = "sbx-9-0" }},
+		"no Pod UID":                    {editorSession("completed"), func(r *MintRequest) { r.PodUID = "" }},
+		"another branch":                {editorSession("completed"), func(r *MintRequest) { r.Branch = "main" }},
+	} {
+		m, gh, audit := minter(c.session)
+		req := validMintRequest()
+		if c.req != nil {
+			c.req(&req)
+		}
+		if _, err := m.Mint(context.Background(), req); err == nil || gh.calls != 0 {
+			t.Fatalf("%s: err=%v fake=%+v", name, err, gh)
+		}
+		if len(audit.events) != 1 || audit.events[0].Outcome != core.AuditDenied {
+			t.Fatalf("%s audit = %+v", name, audit.events)
+		}
+	}
+}
+
 func TestMinterAuditsMalformedRepositoryWithoutRawInput(t *testing.T) {
 	gh := &fakeSessionGitHub{}
 	audit := &auditRecorder{}

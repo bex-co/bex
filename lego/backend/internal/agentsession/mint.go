@@ -87,7 +87,7 @@ type SessionStore interface {
 // credentialMintPhases is deliberately a fail-closed allowlist shared by the
 // Git and model minters. A terminal row's old pod can still exist (idle grace,
 // failed teardown); a denylist would make every future phase
-// credential-eligible by default.
+// credential-eligible by default. The one exception is editorGitCaller's.
 var credentialMintPhases = map[string]bool{
 	"creating": true, "running": true, "resuming": true, "redispatching": true,
 }
@@ -103,6 +103,16 @@ var credentialMintPhases = map[string]bool{
 // same rule as every other gateway verb.
 func CurrentSandboxCaller(session store.AgentSession, workspace, podName, podUID string) bool {
 	return credentialMintPhases[session.Phase] && boundPod(session.WorkspaceID, session.SandboxID, workspace, podName, podUID)
+}
+
+// editorGitCaller admits the Git mint, and only it, to the sandbox resume
+// started or kept for a person's editor once the session is finished again
+// (w6/168, ADR054 D8): no agent runs there, and a person with a shell in it
+// pushes as from a Devin machine's terminal. A finished turn's own sandbox,
+// an archived session and every other verb stay on the live-phase allowlist.
+func editorGitCaller(session store.AgentSession, workspace, podName, podUID string) bool {
+	return (session.Phase == "completed" || session.Phase == "failed") && session.ArchivedAt == nil &&
+		session.EditorSandbox() && boundPod(session.WorkspaceID, session.SandboxID, workspace, podName, podUID)
 }
 
 // boundPod reports whether the gateway-resolved Pod is the sandbox a durable
@@ -231,7 +241,8 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (resp
 	// pod through the ADR054 grace window, so pod-identity checks alone would let
 	// a retained or compromised pod mint a fresh one-hour contents:write token
 	// after the task was completed, failed, or canceled. Fail closed unless the
-	// durable record is still active, in this workspace, and holds a live sandbox.
+	// durable record is still active, in this workspace, and holds a live sandbox,
+	// or the Git mint's caller is a finished session's editor sandbox.
 	if m.Sessions == nil {
 		return MintResponse{}, fmt.Errorf("agent credentials unavailable")
 	}
@@ -242,7 +253,9 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (resp
 		}
 		return MintResponse{}, sessErr
 	}
-	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+	admitted := CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) ||
+		(kind == mintGit && editorGitCaller(session, req.Workspace, req.PodName, req.PodUID))
+	if !admitted {
 		return MintResponse{}, ErrForbidden
 	}
 	if err := ValidateBranch(req.Branch); err != nil {
