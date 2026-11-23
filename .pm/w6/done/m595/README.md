@@ -1,6 +1,6 @@
 # w6 · m595 — A disk service's new image is on its node before Recreate stops the old instance
 
-**Worker:** worker6 **Goal:** a code deploy of a disk-bearing service (`Recreate`) pulls its new image onto the volume's node while the old instance still serves, so the downtime stays at m547's same-node bound of about 4 s however large the new layers are, instead of adding a pull of 8–24 s for a typical built image. **Status:** blocked (t001–t003, t006 and t007 done, t004 step 1 done; t005 waits for production to run `a61572221d`)
+**Worker:** worker6 **Goal:** a code deploy of a disk-bearing service (`Recreate`) pulls its new image onto the volume's node while the old instance still serves, so the downtime stays at m547's same-node bound of about 4 s however large the new layers are, instead of adding a pull of 8–24 s for a typical built image. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,25 +9,25 @@
 | t001 | [The pre-pull Job](done/t001.md) — **DONE** | 1h | — |
 | t002 | [A disk service's code deploy writes its template once the new image is on the node](done/t002.md) — **DONE** | 2h | t001 |
 | t003 | [The pre-pull pod is never an instance, and admission treats it like one](done/t003.md) — **DONE** | 45m | t001 |
-| t004 | [Record the pre-pull in ADR082, ADR004 and ADR018](t004.md) | 30m | t002 |
-| t005 | [Ship and measure on production](t005.md) | 1h30m | t002, t003, t004 |
+| t004 | [Record the pre-pull in ADR082, ADR004 and ADR018](done/t004.md) — **DONE** | 30m | t002 |
+| t005 | [Ship and measure on production](done/t005.md) — **DONE** | 1h30m | t002, t003, t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
-- On production, a disk-bearing Starter fixture in `bex-canary` takes at least two code deploys of an image with at least 100 MB of layers new to the volume's node, measured as in [m547 t011](../../done/m547/done/t011.md). In each, containerd fetches no layer of the new digest between the old instance's `SIGTERM` and the new instance's start: its `PullImage` there is the `imagePullPolicy: Always` re-check alone (under 1 s). Each window is within 1 s of the same fixture's restarts.
+- On production, a disk-bearing Starter fixture in `bex-canary` takes at least two code deploys of an image with at least 100 MB of layers new to the volume's node, measured as in [m547 t011](../m547/done/t011.md). In each, containerd fetches no layer of the new digest between the old instance's `SIGTERM` and the new instance's start: its `PullImage` there is the `imagePullPolicy: Always` re-check alone (under 1 s). Each window is within 1 s of the same fixture's restarts.
 - A restart and a plan change start no pre-pull, and a cordoned-node run starts none.
 - No pre-pull Job or pod is left once a rollout ends, and no customer surface shows one: the service's instances (`GET /v1/services/{id}/instances`), SSH targets, metrics, logs and events.
 - ADR082 § D3 describes the pre-pull and its measured window. ADR004 and ADR018 no longer list the pull as an open excess term.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w6/160](../../done/160.md), filed by [w6/m547](../../done/m547/README.md) t001 on 2026-11-21 as the large-image variant of its t004, and promoted by `/loopx w6` on 2026-11-23. m547 t011 measured a code deploy of a tag new to the node at 6.0 s, against 3.99–4.26 s for a cached image, on a 5 MB image.
+- **Source:** inbox note [w6/160](../160.md), filed by [w6/m547](../m547/README.md) t001 on 2026-11-21 as the large-image variant of its t004, and promoted by `/loopx w6` on 2026-11-23. m547 t011 measured a code deploy of a tag new to the node at 6.0 s, against 3.99–4.26 s for a cached image, on a 5 MB image.
 - **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). [Render's persistent disks](https://render.com/docs/disks): "Render stops the old instance before starting the new one, which makes the service unavailable for a few seconds." Under `Recreate`, bex is down for the whole pull.
 - **Expected outcome:** a disk service's code deploy is down about 4 s plus its own stop and start, whatever its image size, as its restarts are today.
-- **Why now:** the measurement below shows the pull is the largest term left in a disk service's code deploy. m547 and [m559](../../done/m559/README.md) brought the rest of the same-node window to about 4 s, and the holder they shipped already runs on the volume's node before the template changes, so the rollout hook exists.
+- **Why now:** the measurement below shows the pull is the largest term left in a disk service's code deploy. m547 and [m559](../m559/README.md) brought the rest of the same-node window to about 4 s, and the holder they shipped already runs on the volume's node before the template changes, so the rollout hook exists.
 - **Render parity task omitted:** operator mechanism only. No REST, GraphQL, MCP or dashboard field changes. t003 checks that the pre-pull pod appears on none of them.
 
 ## Measured at promotion (2026-11-23)
@@ -54,3 +54,18 @@ The note's own gate: "If they are tenths of a second, close this note as not nee
 - **When it runs.** Only on a pass whose projected template names an image the stored template does not, and only on the node the hold uses (the hold's `diskHoldNode`). A restart or plan change keeps the image, and a cordoned or other-pool node moves the volume, so neither pre-pulls.
 - **The bound.** The old instance serves while the operator waits, and the pull would otherwise run after `SIGTERM`. So the bound costs deploy latency, not downtime, and it can exceed the largest pull measured (48.9 s). Once it passes, the template is written, and an unfinished pull goes on in the kubelet's queue. The new instance's pull waits for it rather than starting over.
 - **Rejected: an image volume.** An `image` volume source pulls without running anything, but `ImageVolume` is off on production's v1.34.9 (`kubernetes_feature_enabled{name="ImageVolume",stage="BETA"} 0`).
+
+## Unblocked (2026-11-23)
+
+The gate cleared by itself (verified evidence, no user decision): the newest pin on `origin/main`, `cded300699` (`chore(deploy): pin platform images to 9fdf7e0a1171`, 2026-11-23 17:33Z), carries `a61572221d` (`git merge-base --is-ancestor a61572221d 9fdf7e0a1171`), and every `bex-system` Deployment ran its digest `sha256:df6e69bd31bf` (`bex-controller-manager` from 17:37:19Z). Next: t005's production measure, then t004 step 2 and t008, as the workstream line said.
+
+## Closed (2026-11-23)
+
+The definition of done holds on production pin `9fdf7e0a1171` ([t005](done/t005.md)):
+
+- **Code deploys.** On a Starter fixture in `bex-canary` (disposable) on `bex-tenant-0-zdp6v-85xrs`, three code deploys brought 223.5, 238.8 and 305.1 MB of layers new to the node. In each, the pre-pull's pull took 11.5–14.1 s and ended 0.9–1.7 s before the old instance's `SIGTERM`, and the new instance's `PullImage` of the same digest read 0 bytes in 0.6 s. The two whose server exits on `SIGTERM` were down 4.0 and 4.25 s, against 4.0–4.26 s for three restarts of the same fixture. The other replaced an instance whose start command ignored `SIGTERM`, so its window was the kubelet's 30 s grace, as was a same-tag control deploy's. `bex_disk_prepulls_total{result="pulled"}` read 4.
+- **No pre-pull where none belongs.** Three restarts, a same-tag deploy and a Starter → Standard plan change started none. The cordoned run counted `skipped_unschedulable` and made neither a holder nor a pre-pull.
+- **Nothing left, nothing shown.** No `dskpul-` Job or pod outlived its rollout. The instances list never showed more than one instance, and no event or log line named a pre-pull.
+- **The ADRs.** ADR082 § D3 records the measured window, and ADR004 and ADR018 no longer list the pull as an excess term (t004).
+
+t005 changed no code, so t006 and t007 stand. Filed on the way: [w6/173](../../173.md) (a move pulls a large image only after the volume reaches the new node: 47.76–48.0 s).
