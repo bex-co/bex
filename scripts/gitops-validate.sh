@@ -3008,7 +3008,7 @@ for required_probe in \
   'sandbox Pod admission allowed omission of the sandbox regime identity' \
   'sandbox baseline Pod Security allowed a hostPath mount' \
   'admission boundary allowed relabeling kube-system' \
-  'SANDBOX_NETWORK_POLICY_INVALID' \
+  'needs at least one rule' \
   'preflight_cluster' \
   'BEX_PREFLIGHT_ONLY' \
   'pods --subresource=exec' \
