@@ -152,9 +152,9 @@ type MetricQuery struct {
 	// read (the dashboard's percentile "All" overlay, w5/m56) — the multi-quantile
 	// sibling of Quantile. Only MetricsWithQuantiles consults it; the single-quantile
 	// Metrics verb ignores it, so every existing caller is byte-identical.
-	Quantiles  []float64
-	Percentage bool   // cpu/memory as a fraction of the pod limit instead of absolute
-	StatusCode string // request filter: "2xx" | "5xx" | "500" | ""
+	Quantiles   []float64
+	Percentage  bool     // cpu/memory as a fraction of the pod limit instead of absolute
+	StatusCodes []string // request filter: e.g. ["2xx"] | ["4xx", "500", "502"] | nil
 	// Host/Path carry Render's host/path request filters. Traefik's Prometheus
 	// counters (service- and router-level) carry no host or path axis — even with
 	// addRoutersLabels the router label is the router NAME, not the matched
@@ -273,7 +273,7 @@ type RequestMetricsRequest struct {
 	Start, End      time.Time
 	Resolution      time.Duration
 	Quantile        float64
-	StatusCode      string
+	StatusCodes     []string
 	GroupBy         string
 	// Host/Path are the per-request filters served by the request-log backend
 	// (NewLokiRequestMetricsSource, w5/m58). The Prometheus source ignores them
@@ -513,11 +513,11 @@ func (s *Service) metricsInWindow(ctx context.Context, q MetricQuery) ([]MetricS
 			return nil, err
 		}
 	}
-	statusCode, ok := normalizeStatusCodeFilter(q.StatusCode)
-	if !ok {
-		return nil, fmt.Errorf("%w: statusCode must be a three-digit HTTP status or a class such as 5xx", core.ErrBadRequest)
+	statusCodes, err := normalizeStatusCodeFilters(q.StatusCodes)
+	if err != nil {
+		return nil, err
 	}
-	q.StatusCode = statusCode
+	q.StatusCodes = statusCodes
 	if len(q.Hosts) > 0 || len(q.Paths) > 0 {
 		// host/path narrow request traffic only — they have no meaning for a
 		// resource metric, and bandwidth (egress L3/L7) carries no per-request
@@ -1216,7 +1216,7 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 		End:             q.End,
 		Resolution:      q.Resolution,
 		Quantile:        q.Quantile,
-		StatusCode:      q.StatusCode,
+		StatusCodes:     q.StatusCodes,
 		GroupBy:         q.GroupBy,
 		Hosts:           q.Hosts,
 		Paths:           q.Paths,

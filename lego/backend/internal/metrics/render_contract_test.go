@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -448,6 +450,9 @@ func TestRESTFilterPathsUseRenderShapes(t *testing.T) {
 	if rec := serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=404"); rec.Code != http.StatusBadRequest {
 		t.Errorf("narrowed filters/http = %d, want a coded 400 rather than an ignored narrowing", rec.Code)
 	}
+	if rec := serveREST(svc, "/v1/metrics/filters/http?resource=web&statusCode=&statusCode=404"); rec.Code != http.StatusBadRequest {
+		t.Errorf("narrowed filters/http with leading empty statusCode = %d, want 400", rec.Code)
+	}
 
 	rec = serveREST(svc, "/v1/metrics/filters/path?resource=web")
 	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
@@ -611,6 +616,120 @@ func TestMCPGetMetricsAcceptsRenderMetricTypes(t *testing.T) {
 	}
 	if result := call("not_a_metric"); !result.IsError {
 		t.Error("an unknown metric type must still error")
+	}
+}
+
+// TestMultiValueStatusCodeFilteringAcrossSurfaces is w34/010: GraphQL
+// STATUS_CODE and REST repeated statusCode pass every value through and return
+// the ORed union across both Loki and Prometheus paths, reject any invalid
+// member with 400 before touching a backend, and leave single-value queries
+// unchanged.
+func TestMultiValueStatusCodeFilteringAcrossSurfaces(t *testing.T) {
+	samples := map[string]float64{"200": 10, "404": 3, "500": 2, "502": 4, "503": 1}
+	pointTS := fixedClock().Format(time.RFC3339)
+
+	// evalSource mirrors how PromQL `code=~` and LogQL `status=~` evaluate
+	// codesMatcher(req.StatusCodes) as a full-string regex over observed codes.
+	evalSource := func(recorded *[]RequestMetricsRequest) RequestMetricsSource {
+		return func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+			*recorded = append(*recorded, req)
+			var re *regexp.Regexp
+			if pat := codesMatcher(req.StatusCodes); pat != "" {
+				re = regexp.MustCompile("^(?:" + pat + ")$")
+			}
+			var sum float64
+			for code, count := range samples {
+				if re == nil || re.MatchString(code) {
+					sum += count
+				}
+			}
+			return []MetricSeries{{Labels: map[string]string{}, Unit: unitCount, Points: []MetricPoint{{Timestamp: pointTS, Value: sum}}}}, nil
+		}
+	}
+
+	for _, backend := range []struct {
+		name     string
+		withLoki bool
+	}{
+		{"loki", true},
+		{"prometheus", false},
+	} {
+		t.Run(backend.name, func(t *testing.T) {
+			var promCalls, lokiCalls []RequestMetricsRequest
+			svc := newService(nil, evalSource(&promCalls), sampleApp("web"))
+			if backend.withLoki {
+				svc.RequestLogMetrics = evalSource(&lokiCalls)
+			}
+			schema, err := gqlSchema(svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lastCalls := func() *[]RequestMetricsRequest {
+				if backend.withLoki {
+					return &lokiCalls
+				}
+				return &promCalls
+			}
+
+			for _, tc := range []struct {
+				name      string
+				restQuery string
+				gqlValues string
+				wantCodes []string
+				wantSum   float64
+			}{
+				{"single class unchanged", "statusCode=5xx", `["5xx"]`, []string{"5xx"}, 7},
+				{"single exact unchanged", "statusCode=500", `["500"]`, []string{"500"}, 2},
+				{"multi class OR", "statusCode=4xx&statusCode=5xx", `["4xx", "5xx"]`, []string{"4xx", "5xx"}, 10},
+				{"multi exact OR", "statusCode=500&statusCode=502", `["500", "502"]`, []string{"500", "502"}, 6},
+				{"mixed class and exact OR", "statusCode=4xx&statusCode=500&statusCode=502", `["4xx", "500", "502"]`, []string{"4xx", "500", "502"}, 9},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					rec := serveREST(svc, "/v1/metrics/http-requests?resource=web&"+tc.restQuery)
+					if rec.Code != http.StatusOK {
+						t.Fatalf("REST %s = %d %s", tc.restQuery, rec.Code, rec.Body)
+					}
+					restSeries := seriesFrom(t, rec.Body.Bytes())
+					if len(restSeries) != 1 || len(restSeries[0].Values) != 1 || restSeries[0].Values[0].Value != tc.wantSum {
+						t.Fatalf("REST %s = %+v, want sum %v", tc.restQuery, restSeries, tc.wantSum)
+					}
+					calls := *lastCalls()
+					if got := calls[len(calls)-1].StatusCodes; !slices.Equal(got, tc.wantCodes) {
+						t.Errorf("REST passed StatusCodes=%v, want %v", got, tc.wantCodes)
+					}
+
+					var gqlSeries []struct {
+						Values []struct{ Value float64 }
+					}
+					decodeGraphQLSeries(t, svc,
+						`metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}, {field: "STATUS_CODE", values: `+tc.gqlValues+`}], name: "HTTP_REQUESTS"})`,
+						"values { value }", &gqlSeries)
+					if len(gqlSeries) != 1 || len(gqlSeries[0].Values) != 1 || gqlSeries[0].Values[0].Value != tc.wantSum {
+						t.Fatalf("GraphQL %s = %+v, want sum %v", tc.gqlValues, gqlSeries, tc.wantSum)
+					}
+					calls = *lastCalls()
+					if got := calls[len(calls)-1].StatusCodes; !slices.Equal(got, tc.wantCodes) {
+						t.Errorf("GraphQL passed StatusCodes=%v, want %v", got, tc.wantCodes)
+					}
+				})
+			}
+
+			// Invalid member in a multi-value list must 400 without touching any backend.
+			beforeProm, beforeLoki := len(promCalls), len(lokiCalls)
+			if rec := serveREST(svc, "/v1/metrics/http-requests?resource=web&statusCode=200&statusCode=bogus"); rec.Code != http.StatusBadRequest {
+				t.Errorf("REST invalid second statusCode = %d %s, want 400", rec.Code, rec.Body)
+			}
+			res := graphql.Do(graphql.Params{
+				Schema: schema, Context: context.Background(),
+				RequestString: `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}, {field: "STATUS_CODE", values: ["200", "bogus"]}], name: "HTTP_REQUESTS"}) { unit } }`,
+			})
+			if len(res.Errors) == 0 {
+				t.Error("GraphQL invalid second STATUS_CODE: want error, got none")
+			}
+			if len(promCalls) != beforeProm || len(lokiCalls) != beforeLoki {
+				t.Errorf("invalid statusCode reached a backend: prom +%d loki +%d", len(promCalls)-beforeProm, len(lokiCalls)-beforeLoki)
+			}
+		})
 	}
 }
 

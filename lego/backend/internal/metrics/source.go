@@ -503,7 +503,7 @@ func promQueryFor(req RequestMetricsRequest) string {
 	}
 	counters := requestCounters
 	sel := []string{selector}
-	if c := codeMatcher(req.StatusCode); c != "" {
+	if c := codesMatcher(req.StatusCodes); c != "" {
 		sel = append(sel, fmt.Sprintf(`code=~%q`, c))
 	}
 	matchers := strings.Join(sel, ",")
@@ -574,16 +574,67 @@ func sumRate(metric, matchers, window, by string) string {
 	return fmt.Sprintf(`sum(rate(%s{%s}[%s]))`, metric, matchers, window)
 }
 
-// codeMatcher turns a Render statusCode filter into a Prometheus `code` regex.
-func codeMatcher(statusCode string) string {
-	s, ok := normalizeStatusCodeFilter(statusCode)
-	if !ok || s == "" {
+// maxStatusCodeFilters bounds STATUS_CODE / statusCode filter cardinality so a
+// caller cannot hand Prometheus or Loki an unbounded alternation regex.
+const maxStatusCodeFilters = 64
+
+// codesMatcher turns Render statusCode filters into a Prometheus `code` or Loki
+// `status` regex. A single value stays bare (`5..` or `500`) so single-value
+// queries remain byte-identical; multiple values compile into an anchored OR
+// regex such as `^(4..|500|502)$`. Any invalid input yields "".
+func codesMatcher(statusCodes []string) string {
+	normalized, err := normalizeStatusCodeFilters(statusCodes)
+	if err != nil || len(normalized) == 0 {
 		return ""
 	}
-	if s[1] == 'x' {
-		return string(s[0]) + ".."
+	if len(normalized) == 1 {
+		return statusCodePattern(normalized[0])
 	}
-	return s
+	parts := make([]string, len(normalized))
+	for i, s := range normalized {
+		parts[i] = statusCodePattern(s)
+	}
+	return "^(" + strings.Join(parts, "|") + ")$"
+}
+
+func statusCodePattern(normalized string) string {
+	if normalized[1] == 'x' {
+		return string(normalized[0]) + ".."
+	}
+	return normalized
+}
+
+// normalizeStatusCodeFilters validates, normalizes (lowercase/trim), and
+// deduplicates a statusCode filter list while preserving order. Any invalid
+// member or list past maxStatusCodeFilters fails the whole request before
+// reaching a metrics backend.
+func normalizeStatusCodeFilters(values []string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	if len(values) > maxStatusCodeFilters {
+		return nil, fmt.Errorf("%w: at most %d statusCode values per request", core.ErrBadRequest, maxStatusCodeFilters)
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, raw := range values {
+		s, ok := normalizeStatusCodeFilter(raw)
+		if !ok {
+			return nil, fmt.Errorf("%w: statusCode must be a three-digit HTTP status or a class such as 5xx", core.ErrBadRequest)
+		}
+		if s == "" {
+			continue
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out, nil
 }
 
 // normalizeStatusCodeFilter accepts only the closed Render status-filter

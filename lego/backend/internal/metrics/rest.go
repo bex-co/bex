@@ -245,7 +245,7 @@ func (s *Service) applicationFilters(w http.ResponseWriter, r *http.Request) {
 // read (the App's URLs), not here, exactly as in GraphQL metricsFilters.
 func (s *Service) httpFilters(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
-	if v.Get("statusCode") != "" || v.Get("host") != "" {
+	if len(nonEmptyValues(v["statusCode"])) > 0 || len(nonEmptyValues(v["host"])) > 0 {
 		core.WriteErrStatus(w, http.StatusBadRequest,
 			"narrowing filter values by statusCode or host is unsupported: omit them to list every queryable value")
 		return
@@ -425,7 +425,7 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 
 	q := MetricQuery{
 		CPUAggregation: cpuAgg,
-		StatusCode:     v.Get("statusCode"),
+		StatusCodes:    nonEmptyValues(v["statusCode"]),
 		// host/path are parsed only so Metrics can refuse them (see MetricQuery.Hosts).
 		Hosts:      nonEmptyValues(v["host"]),
 		Paths:      nonEmptyValues(v["path"]),

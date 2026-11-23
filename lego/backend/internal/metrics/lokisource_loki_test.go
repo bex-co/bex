@@ -230,6 +230,27 @@ func TestLokiRequestMetricsClipToWindowOnLoki(t *testing.T) {
 		}
 	})
 
+	t.Run("multi-value statusCode filters OR across classes and exact codes", func(t *testing.T) {
+		for _, tc := range []struct {
+			codes []string
+			want  float64
+		}{
+			{[]string{"200"}, 4},
+			{[]string{"404"}, 1},
+			{[]string{"200", "404"}, 5},
+			{[]string{"4xx", "200"}, 5},
+			{[]string{"5xx", "404"}, 1},
+			{[]string{"5xx", "502"}, 0},
+		} {
+			got := total(read(t, RequestMetricsRequest{
+				Metric: MetricHTTPRequests, StatusCodes: tc.codes, Start: start, End: end,
+			}))
+			if got != tc.want {
+				t.Errorf("StatusCodes=%v: count = %v, want %v", tc.codes, got, tc.want)
+			}
+		}
+	})
+
 	t.Run("latency quantile ignores out-of-window outliers", func(t *testing.T) {
 		series := read(t, RequestMetricsRequest{Metric: MetricHTTPLatency, Quantile: 0.9, Hosts: []string{"web.example.com"}, Start: start, End: end})
 		if len(series) == 0 {

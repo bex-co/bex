@@ -130,9 +130,10 @@ func lokiRequestQueryFor(req RequestMetricsRequest) string {
 		fmt.Sprintf("app=%q", req.App),
 		fmt.Sprintf("type=%q", "request"),
 	}
-	// StatusCode is a stream label on the request streams; codeMatcher expands a
-	// class shorthand (2xx -> 2..) — a bare 3-digit code matches itself as a regex.
-	if c := codeMatcher(req.StatusCode); c != "" {
+	// StatusCodes filters the `status` stream label on request streams;
+	// codesMatcher expands class shorthands (`2xx` -> `2..`) and ORs multiple
+	// values (`^(4..|500|502)$`).
+	if c := codesMatcher(req.StatusCodes); c != "" {
 		matchers = append(matchers, fmt.Sprintf("status=~%q", c))
 	}
 	selector := "{" + strings.Join(matchers, ", ") + "}"

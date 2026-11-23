@@ -374,20 +374,23 @@ func TestLokiHostBreakdownOnLoki(t *testing.T) {
 // pinned OpenAPI declares on /metrics/cpu and /metrics/http-requests, must
 // either change the parsed query or be refused. A new argument without a probe
 // fails here until someone decides what it does.
-// TestRepeatedHostPathValuesAreKept is w4/401: Render ORs repeated host/path
-// values; both adapters must keep every value, in either order, and GraphQL
-// must refuse several STATUS_CODE values instead of silently using the first.
+// TestRepeatedHostPathValuesAreKept is w4/401 + w34/010: Render ORs repeated
+// host, path, and statusCode values; both REST and GraphQL adapters must keep
+// every value in order rather than silently dropping past the first.
 func TestRepeatedHostPathValuesAreKept(t *testing.T) {
-	for _, url := range []string{
-		"/v1/metrics/http-requests?resource=web&path=/nf&path=/err&host=a.example.com",
-		"/v1/metrics/http-requests?resource=web&path=/err&path=/nf&host=a.example.com",
+	for _, tc := range []struct {
+		url       string
+		wantCodes []string
+	}{
+		{"/v1/metrics/http-requests?resource=web&path=/nf&path=/err&host=a.example.com&statusCode=4xx&statusCode=5xx", []string{"4xx", "5xx"}},
+		{"/v1/metrics/http-requests?resource=web&path=/err&path=/nf&host=a.example.com&statusCode=500&statusCode=502", []string{"500", "502"}},
 	} {
-		_, q, err := parseMetricParams(httptest.NewRequest(http.MethodGet, url, nil))
+		_, q, err := parseMetricParams(httptest.NewRequest(http.MethodGet, tc.url, nil))
 		if err != nil {
-			t.Fatalf("%s: %v", url, err)
+			t.Fatalf("%s: %v", tc.url, err)
 		}
-		if len(q.Paths) != 2 || len(q.Hosts) != 1 {
-			t.Errorf("%s: paths=%v hosts=%v, want both paths and the host", url, q.Paths, q.Hosts)
+		if len(q.Paths) != 2 || len(q.Hosts) != 1 || !reflect.DeepEqual(q.StatusCodes, tc.wantCodes) {
+			t.Errorf("%s: paths=%v hosts=%v statusCodes=%v, want both paths, the host, and %v", tc.url, q.Paths, q.Hosts, q.StatusCodes, tc.wantCodes)
 		}
 	}
 	gql := func(filters ...any) map[string]any {
@@ -397,18 +400,13 @@ func TestRepeatedHostPathValuesAreKept(t *testing.T) {
 		map[string]any{"field": "RESOURCE", "values": []any{"web"}},
 		map[string]any{"field": "PATH", "values": []any{"/nf", "/err"}},
 		map[string]any{"field": "HOST", "values": []any{"a.example.com", "b.example.com"}},
+		map[string]any{"field": "STATUS_CODE", "values": []any{"4xx", "500", "502"}},
 	))
 	if err != nil {
-		t.Fatalf("GraphQL multi host/path: %v", err)
+		t.Fatalf("GraphQL multi host/path/statusCode: %v", err)
 	}
-	if len(q.Paths) != 2 || len(q.Hosts) != 2 {
-		t.Errorf("GraphQL paths=%v hosts=%v, want both of each", q.Paths, q.Hosts)
-	}
-	if _, _, err := metricsQueryInputFromArgs(gql(
-		map[string]any{"field": "RESOURCE", "values": []any{"web"}},
-		map[string]any{"field": "STATUS_CODE", "values": []any{"200", "500"}},
-	)); err == nil {
-		t.Error("GraphQL STATUS_CODE with two values: want a refusal, got none")
+	if len(q.Paths) != 2 || len(q.Hosts) != 2 || !reflect.DeepEqual(q.StatusCodes, []string{"4xx", "500", "502"}) {
+		t.Errorf("GraphQL paths=%v hosts=%v statusCodes=%v, want all values kept", q.Paths, q.Hosts, q.StatusCodes)
 	}
 }
 

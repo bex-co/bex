@@ -46,6 +46,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/types/podmetrics"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -311,12 +312,12 @@ func TestRequestMetricResolvesQueryAndUnits(t *testing.T) {
 	}
 	svc := newService(nil, req, sampleApp("web"))
 	series, err := svc.Metrics(context.Background(), MetricQuery{
-		App: "web", Metric: MetricHTTPRequests, StatusCode: "2xx", GroupBy: "status", Resolution: 30 * time.Second,
+		App: "web", Metric: MetricHTTPRequests, StatusCodes: []string{"2xx"}, GroupBy: "status", Resolution: 30 * time.Second,
 	})
 	if err != nil || series[0].Unit != unitCount || series[0].Points[0].Value != 42 {
 		t.Fatalf("request metric: %v %+v", err, series)
 	}
-	if got.StatusCode != "2xx" || got.GroupBy != "status" || got.Resolution != 30*time.Second {
+	if !slices.Equal(got.StatusCodes, []string{"2xx"}) || got.GroupBy != "status" || got.Resolution != 30*time.Second {
 		t.Errorf("source got wrong request: %+v", got)
 	}
 	// latency defaults the quantile to p95.
@@ -613,7 +614,7 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 
 	// The same queries without host/path still answer, both from the access
 	// log (w4/m119, w4/605).
-	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "5xx"}); err != nil {
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCodes: []string{"5xx"}}); err != nil {
 		t.Errorf("unfiltered http_requests should succeed, got %v", err)
 	}
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPLatency}); err != nil {
@@ -624,13 +625,35 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 		called = true
 		return nil, nil
 	}
+	svc.RequestLogMetrics = func(context.Context, RequestMetricsRequest) ([]MetricSeries, error) {
+		called = true
+		return nil, nil
+	}
+	for _, bad := range [][]string{
+		{`5xx"} or vector(1) #`},
+		{"200", "bogus"},
+		{"4xx", "600"},
+	} {
+		if _, err := svc.Metrics(context.Background(), MetricQuery{
+			App: "web", Metric: MetricHTTPRequests, StatusCodes: bad,
+		}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("invalid statusCodes %v: want ErrBadRequest, got %v", bad, err)
+		}
+		if called {
+			t.Fatalf("invalid statusCodes %v must be rejected before reaching a metrics backend", bad)
+		}
+	}
+	tooMany := make([]string, maxStatusCodeFilters+1)
+	for i := range tooMany {
+		tooMany[i] = "200"
+	}
 	if _, err := svc.Metrics(context.Background(), MetricQuery{
-		App: "web", Metric: MetricHTTPRequests, StatusCode: `5xx"} or vector(1) #`,
+		App: "web", Metric: MetricHTTPRequests, StatusCodes: tooMany,
 	}); !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("injected statusCode: want ErrBadRequest, got %v", err)
+		t.Errorf("oversized statusCodes (%d): want ErrBadRequest, got %v", len(tooMany), err)
 	}
 	if called {
-		t.Error("invalid statusCode must be rejected before reaching a metrics backend")
+		t.Error("oversized statusCodes must be rejected before reaching a metrics backend")
 	}
 }
 
@@ -978,7 +1001,7 @@ func TestGraphQLAggregateByMapsToGroupBy(t *testing.T) {
 	}
 
 	ask(`"STATUS_CODE"`)
-	if got.GroupBy != "status" || got.StatusCode != "5xx" {
+	if got.GroupBy != "status" || !slices.Equal(got.StatusCodes, []string{"5xx"}) {
 		t.Errorf(`aggregateBy STATUS_CODE => groupBy "status" (+ filter passthrough), got %+v`, got)
 	}
 	ask(`"METHOD"`)
@@ -1028,9 +1051,17 @@ func TestParsePodMetrics(t *testing.T) {
 }
 
 func TestPromQueryFor(t *testing.T) {
-	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCode: "5xx", GroupBy: "status"})
+	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCodes: []string{"5xx"}, GroupBy: "status"})
 	if want := `sum(increase(traefik_router_requests_total{router=~"^(default-web-web-onbex-co@kubernetes)$",code=~"5.."}[60s])) by (code)`; q != want {
 		t.Errorf("http_requests:\n got %q\nwant %q", q, want)
+	}
+	multiClass := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCodes: []string{"4xx", "5xx"}})
+	if want := `sum(increase(traefik_router_requests_total{router=~"^(default-web-web-onbex-co@kubernetes)$",code=~"^(4..|5..)$"}[60s]))`; multiClass != want {
+		t.Errorf("http_requests multi-class:\n got %q\nwant %q", multiClass, want)
+	}
+	mixed := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9, StatusCodes: []string{"4xx", "500", "502", "4XX"}})
+	if want := `histogram_quantile(0.9, sum(rate(traefik_router_request_duration_seconds_bucket{router=~"^(default-web-web-onbex-co@kubernetes)$",code=~"^(4..|500|502)$"}[60s])) by (le))`; mixed != want {
+		t.Errorf("http_latency mixed statusCodes:\n got %q\nwant %q", mixed, want)
 	}
 	// Ungrouped http_requests: increase over the step (same step as query_range).
 	ungrouped := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 45 * time.Second})
@@ -1041,11 +1072,16 @@ func TestPromQueryFor(t *testing.T) {
 	if want := `histogram_quantile(0.9, sum(rate(traefik_router_request_duration_seconds_bucket{router=~"^(default-web-web-onbex-co@kubernetes)$"}[60s])) by (le))`; lat != want {
 		t.Errorf("latency:\n got %q\nwant %q", lat, want)
 	}
-	injected := promQueryFor(RequestMetricsRequest{
-		App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: time.Minute, StatusCode: `5xx"} or vector(1) #`,
-	})
-	if strings.Contains(injected, "vector") || strings.Contains(injected, `code=~`) {
-		t.Errorf("defensive builder accepted invalid statusCode: %q", injected)
+	for _, bad := range [][]string{
+		{`5xx"} or vector(1) #`},
+		{"200", `5xx"} or vector(1) #`},
+	} {
+		injected := promQueryFor(RequestMetricsRequest{
+			App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: time.Minute, StatusCodes: bad,
+		})
+		if strings.Contains(injected, "vector") || strings.Contains(injected, `code=~`) {
+			t.Errorf("defensive builder accepted invalid statusCodes %v: %q", bad, injected)
+		}
 	}
 	bandwidth := promQueryFor(RequestMetricsRequest{
 		Metric: MetricBandwidth, Resolution: 60 * time.Second, AppID: "srv-web", Direct: true,
@@ -1059,6 +1095,93 @@ func TestPromQueryFor(t *testing.T) {
 			t.Errorf("bandwidth query should contain increase(%s) exactly once: %q", metric, bandwidth)
 		}
 	}
+}
+
+func TestCodesMatcherAndNormalization(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		in       []string
+		wantNorm []string
+		wantRe   string
+		wantErr  bool
+	}{
+		{"empty", nil, nil, "", false},
+		{"blank only", []string{"", "  "}, nil, "", false},
+		{"single exact", []string{"500"}, []string{"500"}, "500", false},
+		{"single class", []string{"5XX"}, []string{"5xx"}, "5..", false},
+		{"dedup to single", []string{"4xx", " 4XX "}, []string{"4xx"}, "4..", false},
+		{"two classes", []string{"4xx", "5xx"}, []string{"4xx", "5xx"}, "^(4..|5..)$", false},
+		{"two exact codes", []string{"500", "502"}, []string{"500", "502"}, "^(500|502)$", false},
+		{"mixed class and exact", []string{"4xx", "500", "502"}, []string{"4xx", "500", "502"}, "^(4..|500|502)$", false},
+		{"invalid single", []string{"600"}, nil, "", true},
+		{"invalid second", []string{"200", "5x"}, nil, "", true},
+		{"injection member", []string{"200", `5xx"} or vector(1)`}, nil, "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := normalizeStatusCodeFilters(tc.in)
+			if tc.wantErr {
+				if !errors.Is(err, core.ErrBadRequest) {
+					t.Errorf("normalizeStatusCodeFilters(%v) err = %v, want ErrBadRequest", tc.in, err)
+				}
+			} else if err != nil || !slices.Equal(got, tc.wantNorm) {
+				t.Errorf("normalizeStatusCodeFilters(%v) = (%v, %v), want (%v, nil)", tc.in, got, err, tc.wantNorm)
+			}
+			if re := codesMatcher(tc.in); re != tc.wantRe {
+				t.Errorf("codesMatcher(%v) = %q, want %q", tc.in, re, tc.wantRe)
+			}
+		})
+	}
+	over := make([]string, maxStatusCodeFilters+1)
+	for i := range over {
+		over[i] = "200"
+	}
+	if _, err := normalizeStatusCodeFilters(over); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("normalizeStatusCodeFilters(len=%d) = %v, want ErrBadRequest", len(over), err)
+	}
+	if re := codesMatcher(over); re != "" {
+		t.Errorf("codesMatcher(len=%d) = %q, want empty", len(over), re)
+	}
+}
+
+func TestMultiValueStatusCodeOnPrometheus(t *testing.T) {
+	promtool, err := exec.LookPath("promtool")
+	if err != nil {
+		testenv.Skip(t, "promtool not on PATH")
+	}
+	const router = "default-web-web-onbex-co@kubernetes"
+	query := func(codes ...string) string {
+		return promQueryFor(RequestMetricsRequest{
+			Namespace: "default", App: "web", Routers: []string{router},
+			Metric: MetricHTTPRequests, Resolution: time.Minute, StatusCodes: codes,
+		})
+	}
+	var b strings.Builder
+	b.WriteString("rule_files: []\nevaluation_interval: 15s\ntests:\n  - interval: 15s\n    input_series:\n")
+	for _, s := range []struct {
+		code   string
+		values string
+	}{
+		{"200", "0+10x4"}, // increase over 60s = 40
+		{"404", "0+2x4"},  // increase over 60s = 8
+		{"500", "0+1x4"},  // increase over 60s = 4
+		{"502", "0+3x4"},  // increase over 60s = 12
+		{"503", "0+5x4"},  // increase over 60s = 20
+	} {
+		fmt.Fprintf(&b, "      - series: 'traefik_router_requests_total{router=%q,code=%q}'\n        values: '%s'\n", router, s.code, s.values)
+	}
+	b.WriteString("    promql_expr_test:\n")
+	for _, tc := range []struct {
+		codes []string
+		want  float64
+	}{
+		{[]string{"5xx"}, 36},
+		{[]string{"4xx", "5xx"}, 44},
+		{[]string{"500", "502"}, 16},
+		{[]string{"4xx", "500", "502"}, 24},
+	} {
+		fmt.Fprintf(&b, "      - expr: 'round(%s)'\n        eval_time: 1m\n        exp_samples:\n          - labels: '{}'\n            value: %g\n", query(tc.codes...), tc.want)
+	}
+	runPromtoolTests(t, promtool, b.String())
 }
 
 // TestPromQueryBuildersEscapeQuoteInValue guards the PromQL string-literal
@@ -1337,10 +1460,26 @@ func TestLokiRequestQueryFor(t *testing.T) {
 		{
 			name: "requests path filter, group by status, 5xx",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.GroupBy, r.StatusCode = MetricHTTPRequests, "status", "5xx"
+				r.Metric, r.GroupBy, r.StatusCodes = MetricHTTPRequests, "status", []string{"5xx"}
 				r.Paths = []string{"/api"}
 			}),
 			want: `sum by (status) (count_over_time({namespace="default", app="web", type="request", status=~"5.."} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" [60s]))`,
+		},
+		{
+			name: "requests multi-value status codes ORed (classes and exact)",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric = MetricHTTPRequests
+				r.StatusCodes = []string{"4xx", "500", "502"}
+			}),
+			want: `sum(count_over_time({namespace="default", app="web", type="request", status=~"^(4..|500|502)$"} | json request_host="RequestHost", request_path="RequestPath" [60s]))`,
+		},
+		{
+			name: "latency multi-value status classes ORed",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Quantile = MetricHTTPLatency, 0.9
+				r.StatusCodes = []string{"4xx", "5xx"}
+			}),
+			want: `quantile_over_time(0.9, {namespace="default", app="web", type="request", status=~"^(4..|5..)$"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | unwrap latency_ns [60s]) by () / 1000000000`,
 		},
 		{
 			name: "latency host+path, p90",
@@ -1782,7 +1921,7 @@ func TestUnfilteredRequestCountsComeFromTheAccessLog(t *testing.T) {
 		// A status breakdown is the shape the 6.67 capture used; both sources
 		// speak the same group-by vocabulary, so routing must not depend on it.
 		{"http_requests grouped by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, GroupBy: "status"}, true},
-		{"http_requests filtered by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "2xx"}, true},
+		{"http_requests filtered by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCodes: []string{"2xx"}}, true},
 		// Percentiles come from the access log too (w4/605): Traefik's
 		// histogram never counts a router series' first request, which a Free
 		// service's wake always is.
