@@ -1,6 +1,6 @@
 # w32 · m560 — A deploy log narrates its rollout as Render's does: `==> Deploying...`, the `WEB_CONCURRENCY` default and `==> Running '<start command>'`
 
-**Worker:** worker32 **Goal:** between a build's end and its verdict, a deploy's log (`bex logs --type build`, the deploy page, the live tail) shows the lines Render writes there, each at a moment the operator recorded. `==> Deploying...` comes when the release's rollout starts. `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` follows when its instance gets that default. On a native runtime, `==> Running '<start command>'` comes each time its app container starts. **Status:** blocked (t001–t007, t010, t011 done; t008's production walk, t009's surface walk and t012 wait for the pin)
+**Worker:** worker32 **Goal:** between a build's end and its verdict, a deploy's log (`bex logs --type build`, the deploy page, the live tail) shows the lines Render writes there, each at a moment the operator recorded. `==> Deploying...` comes when the release's rollout starts. `==> Setting WEB_CONCURRENCY=N by default, based on available CPUs in the instance` follows when its instance gets that default. On a native runtime, `==> Running '<start command>'` comes each time its app container starts. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | t005 | [`==> Running '<start command>'` at each recorded start of a native runtime's app container](done/t005.md) — **DONE** | 45m | t003 |
 | t006 | [The live build tail carries the rollout lines as they are recorded](done/t006.md) — **DONE** | 45m | t003, t004, t005 |
 | t007 | [Record the lines in the progress-line contract and ADR018](done/t007.md) — **DONE** | 20m | t003, t004, t005 |
-| t008 | [Ship and verify on production](t008.md) | 45m | t006, t007 |
-| t009 | [Render parity](t009.md) | 30m | t008 |
+| t008 | [Ship and verify on production](done/t008.md) — **DONE** | 45m | t006, t007 |
+| t009 | [Render parity](done/t009.md) — **DONE** | 30m | t008 |
 | t010 | [Simplify](done/t010.md) — **DONE** | 15m | t009 |
 | t011 | [Test coverage](done/t011.md) — **DONE** | 30m | t009 |
-| t012 | [Closeout](t012.md) | 10m | t010, t011 |
+| t012 | [Closeout](done/t012.md) — **DONE** | 10m | t010, t011 |
 
 ## Definition of done
 
@@ -32,7 +32,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w32/082](../../done/082.md), filed 2026-11-22 from routine `cli-qa`'s follow-up (production pin `89642635b9ce`, released `bex` v0.9.0) and promoted the same day by `/loopx w32`.
+- **Source:** inbox note [w32/082](../082.md), filed 2026-11-22 from routine `cli-qa`'s follow-up (production pin `89642635b9ce`, released `bex` v0.9.0) and promoted the same day by `/loopx w32`.
 - **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) in the deploy log, the surface a user reads first when a deploy fails. Render's log names the deploy step and the start command it runs. bex's stays silent for up to a minute.
 - **Expected outcome:** a bex deploy log reads like Render's from the build's end to the verdict. The user sees which command ran and when the instance started, before a `==> Exited with status N`.
 - **Why now:** w8/393 gave bex Render's `==> Exited with status N` verdict, and w32/081 gave it Render's static-site verdict. The start command those verdicts refer to is still not in the log. The routine's own journey hit the gap on its first native service.
@@ -76,3 +76,22 @@ The triage read 30 public GitHub issues from 2025-12 to 2026-11 that quote Rende
   No recorded moment marks the rollout's start or an app container's start. `status.buildRun.finishedAt` is the build Job's end in whole seconds, which can sort before the pod's nanosecond-stamped `Build successful` line. `status.releaseStart` is the dispatch.
 
 - On production (routine `cli-qa`, 2026-11-22, pin `89642635b9ce`), a free native Node service whose start command is `true` logged `==> Build successful 🎉` at 09:11:43. Nothing followed for 55 s, then `==> Exited with status 0`.
+
+## Unblocked (2026-11-23)
+
+**Source:** verified evidence (`/pm unblock w32/m560`, run by the `/loopx w32` worker for this milestone). **Affected:** t008, t009, t012. **Finding:** the gate ``pin must carry `f9aeac875a` `` holds. The newest pin commit on `origin/main` is `e6c65f5c62` (`chore(deploy): pin platform images to 1a5a8e872398`, 04:25 UTC), and `git merge-base --is-ancestor f9aeac875a 1a5a8e872398` succeeds. At 05:50 UTC, `kubectl` on the control plane showed `bex-controller-manager` and both `bex-api` pods running `ghcr.io/bex-co/bex-operator@sha256:65ef4f0d90b1…`, the digest that pin writes into `deploy/gitops/base/bex.yaml`. The same pin carries w32/m567 (`51581a27ab`, the primary URL block), w32/m572 (`b91b05c35a`, the pre-deploy lines) and w32/m575 (`164e09bdb6`, native-init's own `==> Running` line). It does not carry w32/m576 (`059fe69101`, Render's ANSI colours), so the lines read plain.
+
+**Remaining gates:** none. **Next:** t008 walks the definition of done in `bex-canary` with the released `bex` v0.9.0 and a human device login, on free fixtures only. Per w32/m575's note in t008, the Node service built after this pin shows `==> Running 'node main.js'` with `type=app` in `bex logs -r <srv> -o text` and on the deploy page, and its `--type build` read shows no `Running` line. That is the designed hand-off, not a regression. t009 then reads the same lines on REST, the subscribe stream, GraphQL, MCP and the dashboard's deploy log query, and t012 closes the milestone.
+
+## Closed (2026-11-23)
+
+The definition of done holds:
+
+- **Production walk.** On pin `1a5a8e872398`, the released `bex` v0.9.0 read the lines in `bex-canary` ([t008 § Walk](done/t008.md)).
+  - The free native Node service logged `==> Build successful 🎉`, `==> Deploying...`, the `WEB_CONCURRENCY=1` line, `==> Running 'node main.js'` and `==> Your service is live 🎉`, in that order, on a type-less live `--tail`.
+  - Per w32/m575, the `Running` line reads with `type=app` and the pod as `instance` (`bex logs -r <srv> -o text`). The `--type build` history and tail carry the other lines and no `Running` line.
+  - The free Dockerfile service showed `Deploying...` and the `WEB_CONCURRENCY` line with no `Running` line, and the free static site showed none of the three.
+  - The three fixtures were deleted by ID, and each answered `404`.
+- **Stamps.** `Deploying...` came 6.2 s after the Node build's `Build successful` and 3 s after the Dockerfile build's last line. It matched neither the deploy row's creation nor its finish, and `Running` sat at the app container's start.
+- **Surfaces.** REST, the subscribe stream, GraphQL and MCP returned the same lines with the same ids. The deploy page's GraphQL legs merge into the same order. Its pane was checked through its document and merge, not rendered: this host has no Playwright ([t009 § Production walk](done/t009.md)).
+- **Tests and docs.** [t011](done/t011.md) covers the unit, envtest and store tests. On `main`, `docs/render-artifacts/live-deploy-following.md` § Platform progress-line contract and ADR018 § Logs, Build logs still list the three lines ([t007](done/t007.md)).
