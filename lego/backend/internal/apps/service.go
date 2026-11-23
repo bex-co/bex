@@ -2107,7 +2107,7 @@ type CreateRequest struct {
 	// Region is the caller's Render region (REST serviceDetails.region, the
 	// GraphQL/MCP region argument, a Blueprint's region). bex runs one region,
 	// so Create checks it against the shared policy
-	// (resourcemeta.CheckRequestedRegion: a Render region or BEX_REGION) and
+	// (resourcemeta.CheckRequestedRegion: Render's region enum only) and
 	// places the service in BEX_REGION. A Render region is recorded on the App
 	// (resourcemeta.StampRegion) and read back, as on Render; an omitted one
 	// reads back the platform's public alias (ADR049 D7, w8/218, w9/105).
@@ -2298,7 +2298,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return AppView{}, err
 	}
-	if err := s.Metadata.CheckRequestedRegion(req.Region); err != nil {
+	if err := resourcemeta.CheckRequestedRegion(req.Region); err != nil {
 		return AppView{}, err
 	}
 	if len(req.SecretFiles) > 0 {

@@ -18,11 +18,14 @@ package resourcemeta
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 type recordingResolver struct {
@@ -186,18 +189,31 @@ func TestRenderRegionPreservesPlacementAndProvidesCLICompatibleReadback(t *testi
 	if configured.PlatformRegion() != "fsn1" {
 		t.Fatal("public alias changed internal placement")
 	}
-	if err := configured.CheckRequestedRegion("frankfurt"); err != nil {
-		t.Fatalf("clone readback region cannot be submitted: %v", err)
+}
+
+// TestCheckRequestedRegionSpeaksOnlyRendersVocabulary pins w8/415: a create
+// accepts an omitted region and Render's five, and refuses everything else,
+// BEX_REGION's own spelling included, with the pinned Render CLI's message,
+// which names no bex placement.
+func TestCheckRequestedRegionSpeaksOnlyRendersVocabulary(t *testing.T) {
+	for _, region := range append([]string{""}, RenderRegions...) {
+		if err := CheckRequestedRegion(region); err != nil {
+			t.Errorf("region %q refused: %v", region, err)
+		}
 	}
-	if err := configured.CheckRequestedRegion("Vietnam"); err == nil {
-		t.Fatal("invalid region accepted")
+	const want = "bad request: region must be one of: frankfurt, ohio, oregon, singapore, virginia"
+	for _, region := range []string{"fsn1", " fsn1 ", "mars", "Vietnam", "Oregon", " oregon", "us-west-2", "local-capd"} {
+		err := CheckRequestedRegion(region)
+		if !errors.Is(err, core.ErrBadRequest) || err.Error() != want {
+			t.Errorf("region %q: err = %v, want %q", region, err, want)
+		}
 	}
 }
 
 // TestResourceRegionReadsBackTheCreatedRegion pins w9/105: a resource reads
 // back the Render region it was created with, as on Render, while one created
-// without a region (or with BEX_REGION itself) reads back the platform's
-// public alias (D7, w8/218).
+// without a region reads back the platform's public alias (D7, w8/218). A
+// value outside Render's enum is never stamped.
 func TestResourceRegionReadsBackTheCreatedRegion(t *testing.T) {
 	for _, tc := range []struct {
 		platform, requested, want string

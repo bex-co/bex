@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -550,7 +551,7 @@ func (s *Service) validateBlueprintBuildSources(ctx context.Context, st parsedSt
 	for _, b := range st.buildSources {
 		_, err := blueprintReadSpec(ctx, b.svc.req)
 		if err == nil && b.region != "" {
-			err = s.Metadata.CheckRequestedRegion(b.region)
+			err = resourcemeta.CheckRequestedRegion(b.region)
 		}
 		if err != nil {
 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceBuildSource, name: b.name, err: fmt.Errorf("build source %q: %w", b.name, err)})

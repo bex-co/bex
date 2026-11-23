@@ -107,6 +107,7 @@ func TestBlueprintRenderRegionNormalizesToBexRegion(t *testing.T) {
 	// including BEX_REGION's own spelling, which Render's schema does not know.
 	for _, tc := range []struct{ manifest, path string }{
 		{regionBlueprint("Vietnam"), "#/services/0/region"},
+		{regionBlueprint("fsn1"), "#/services/0/region"},
 		{"databases:\n  - name: data\n    region: mars\n", "#/databases/0/region"},
 		{"projects:\n  - name: p\n    environments:\n      - name: e\n        databases:\n          - name: data\n            region: fsn1\n", "#/projects/0/environments/0/databases/0/region"},
 	} {
@@ -288,11 +289,12 @@ func TestBlueprintApplyReadsBackTheDeclaredRegion(t *testing.T) {
 	}
 }
 
-// One policy on every create surface: a Render region (or BEX_REGION itself)
-// is accepted and placed in BEX_REGION, an absent one is fine, anything else
-// is a 400. The create's answer and every later read report the Render region
-// the service was created with, as Render's do, and the public alias for an
-// omitted region or BEX_REGION (w9/105).
+// One policy on every create surface: a Render region is accepted and placed
+// in BEX_REGION, an absent one is fine, and anything else, BEX_REGION's own
+// spelling included, is a 400 listing Render's regions and nothing of bex's
+// placement (w8/415). The create's answer and every later read report the
+// Render region the service was created with, as Render's do, and the public
+// alias for an omitted region (w9/105).
 func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 	type outcome struct {
 		ok     bool
@@ -370,7 +372,7 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 				{"frankfurt", true, "frankfurt"},
 				{"virginia", true, "virginia"},
 				{"", true, "frankfurt"},
-				{"fsn1", true, "frankfurt"},
+				{"fsn1", false, ""},
 				{"Vietnam", false, ""},
 				{"us-east-1", false, ""},
 			} {
@@ -390,8 +392,8 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 						t.Errorf("region %q: readback region = %q (err %v), want %q", tc.region, v.Region, err, tc.want)
 					}
 				}
-				if !tc.ok && !strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") {
-					t.Errorf("region %q: error = %q, want the shared region message", tc.region, got.err)
+				if !tc.ok && (!strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") || strings.Contains(got.err, "fsn1")) {
+					t.Errorf("region %q: error = %q, want the shared region message and no placement", tc.region, got.err)
 				}
 			}
 		})

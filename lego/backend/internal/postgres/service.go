@@ -316,9 +316,9 @@ type CreatePostgresRequest struct {
 	Version      string `json:"version,omitempty"`
 	// Region is accepted from Render clients. bex runs one configured region
 	// per control plane, so the database is placed in BEX_REGION; a Render region
-	// is recorded (resourcemeta.StampRegion) and read back, as on Render, and a
-	// value that is neither a Render region nor BEX_REGION is refused
-	// (resourcemeta.CheckRequestedRegion, w8/152, w9/105).
+	// is recorded (resourcemeta.StampRegion) and read back, as on Render, and
+	// any other value is refused (resourcemeta.CheckRequestedRegion, w8/152,
+	// w9/105, w8/415).
 	Region     string `json:"region,omitempty"`
 	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
 	// Datadog fields are decoded so the Render CLI receives an explicit
@@ -930,7 +930,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := core.CheckDatastoreName(req.Name); err != nil {
 		return PostgresView{}, err
 	}
-	if err := s.Metadata.CheckRequestedRegion(req.Region); err != nil {
+	if err := resourcemeta.CheckRequestedRegion(req.Region); err != nil {
 		return PostgresView{}, err
 	}
 	req.Plan = tiers.Postgres.CanonicalID(req.Plan)

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -29,8 +30,9 @@ import (
 // policy through the composed server, pinned Render OpenAPI validator
 // included: on services, Postgres and Key Value a Render region creates the
 // resource in BEX_REGION and the read back reports the region it was created
-// with, as Render's does (w9/105), while a value outside Render's enum is a
-// 400 before any write.
+// with, as Render's does (w9/105), while a value outside Render's enum, the
+// placement's own fsn1 included, is a 400 before any write that lists Render's
+// regions and names no bex placement (w8/415).
 func TestCreateRegionPolicyThroughComposedServer(t *testing.T) {
 	routes := []struct {
 		name, path, body, idPath string
@@ -49,6 +51,8 @@ func TestCreateRegionPolicyThroughComposedServer(t *testing.T) {
 				{"virginia", http.StatusCreated},
 				{"frankfurt", http.StatusCreated},
 				{"Vietnam", http.StatusBadRequest},
+				{"mars", http.StatusBadRequest},
+				{"fsn1", http.StatusBadRequest},
 			} {
 				// A fresh workspace per case: one free datastore each.
 				base := &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"client-1": "tea-cli"}}
@@ -59,6 +63,12 @@ func TestCreateRegionPolicyThroughComposedServer(t *testing.T) {
 					continue
 				}
 				if tc.want != http.StatusCreated {
+					var refused struct{ ID, Message string }
+					if err := json.Unmarshal(w.Body.Bytes(), &refused); err != nil || refused.ID != "bad_request" ||
+						refused.Message != "bad request: region must be one of: frankfurt, ohio, oregon, singapore, virginia" ||
+						strings.Contains(w.Body.String(), "fsn1") {
+						t.Errorf("region %q: POST %s body = %s, want the pinned Render CLI's region message", tc.region, route.path, w.Body.String())
+					}
 					continue
 				}
 				var created map[string]json.RawMessage

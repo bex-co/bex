@@ -32,6 +32,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -375,7 +376,7 @@ func (s *Service) createBuildSourceCarrier(ctx context.Context, create CreateReq
 	id := ids.New(ids.BuildSource)
 	create.Name = id
 	create.buildSource = &buildSourceCreate{id: id, name: name, scopeProjectID: projectID}
-	if err := s.Metadata.CheckRequestedRegion(create.Region); err != nil {
+	if err := resourcemeta.CheckRequestedRegion(create.Region); err != nil {
 		return "", err
 	}
 	if err := s.checkBuildSourceProject(ctx, projectID); err != nil {
@@ -605,7 +606,7 @@ func (s *Service) UpdateBuildSource(ctx context.Context, id string, req UpdateBu
 		return BuildSourceView{}, err
 	}
 	if req.Git != nil && req.Git.Region != "" {
-		if err := s.Metadata.CheckRequestedRegion(req.Git.Region); err != nil {
+		if err := resourcemeta.CheckRequestedRegion(req.Git.Region); err != nil {
 			return BuildSourceView{}, err
 		}
 	}

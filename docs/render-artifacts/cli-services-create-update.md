@@ -51,7 +51,7 @@ The first post-rollout image delete found a second finalizer cycle: the App-owne
 | `--branch` | top-level `branch` | Exact. |
 | `--image` | `image.imagePath` plus generated `image.ownerId:""` | Exact in deterministic full-server regression and the final production v2.21.0 run. |
 | `--plan` | `serviceDetails.plan` | Exact. |
-| `--region` | `serviceDetails.region` | **Limited:** Render OpenAPI and the strict REST decoder accept the declared input, then core placement normalizes readback to the installation's truthful `BEX_REGION` (`fsn1` in production). bex does not pretend the submitted Render region controls placement. |
+| `--region` | `serviceDetails.region` | **Limited:** any Render region is accepted and read back (w9/105), and the service runs in the installation's one placement, `BEX_REGION`. An omitted region reads back `BEX_REGION`'s Render name (`frankfurt` in production, w8/218). Any other value, `fsn1` included, is a 400 with the pinned CLI's own `region must be one of: frankfurt, ohio, oregon, singapore, virginia` (w8/415). |
 | `--num-instances` | `serviceDetails.numInstances` | Exact; service readback reports the requested replica count. |
 | `--build-command` | native `serviceDetails.envSpecificDetails.buildCommand`, static `serviceDetails.buildCommand` | Exact for web, cron, and static. |
 | `--start-command` | `serviceDetails.envSpecificDetails.startCommand` | Exact for native web. |

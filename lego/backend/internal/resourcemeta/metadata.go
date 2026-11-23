@@ -148,9 +148,9 @@ var RenderRegions = []string{"frankfurt", "ohio", "oregon", "singapore", "virgin
 const AnnotRegion = "app.bex.co/region"
 
 // StampRegion records requested on a new resource when it is a Render region.
-// An omitted region, or BEX_REGION itself, records nothing, so the resource
-// reads back the platform's public alias. Render's region is fixed at
-// creation (render.com/docs/blueprint-spec: "You can't modify this value after
+// An omitted region records nothing, so the resource reads back the platform's
+// public alias. Render's region is fixed at creation
+// (render.com/docs/blueprint-spec: "You can't modify this value after
 // creation"), so only creates call this.
 func StampRegion(obj metav1.Object, requested string) {
 	if !slices.Contains(RenderRegions, requested) {
@@ -178,20 +178,23 @@ func (c Config) ResourceRegion(obj metav1.Object) string {
 // CheckRequestedRegion is bex's one region policy for every create surface
 // (REST, GraphQL, MCP; Blueprints apply the same rule through the schema enum
 // and the capability registry). bex runs one region per control plane, so any
-// Render region, or BEX_REGION itself, is accepted and the resource is placed
-// in BEX_REGION; a Render region is recorded only so the resource reads it
-// back (StampRegion). Anything else is a 400, worded like the pinned Render
-// CLI's own check (ADR049 D7, user decision D1 2026-10-29, w8/152; w9/105).
-func (c Config) CheckRequestedRegion(region string) error {
-	platform := c.PlatformRegion()
-	if region == "" || slices.Contains(RenderRegions, region) || (platform != "" && region == platform) {
+// Render region is accepted and the resource is placed in BEX_REGION; the
+// region is recorded only so the resource reads it back (StampRegion; ADR049
+// D7, user decision D1 2026-10-29, w8/152; w9/105). BEX_REGION's own spelling
+// is not one of Render's regions and no surface reads it back (D7, w8/218),
+// so it is refused like any other value outside Render's enum (w8/415).
+func CheckRequestedRegion(region string) error {
+	if region == "" || slices.Contains(RenderRegions, region) {
 		return nil
 	}
-	placement := ""
-	if platform != "" {
-		placement = fmt.Sprintf("; bex runs every resource in %s", platform)
-	}
-	return fmt.Errorf("%w: region must be one of: %s%s", core.ErrBadRequest, strings.Join(RenderRegions, ", "), placement)
+	return UnknownRegionError()
+}
+
+// UnknownRegionError is the 400 for a region outside Render's enum, worded
+// like the pinned Render CLI's own check (`ParseRegion`, pkg/types/region.go):
+// it lists Render's regions and nothing of bex's placement (w8/415).
+func UnknownRegionError() error {
+	return fmt.Errorf("%w: region must be one of: %s", core.ErrBadRequest, strings.Join(RenderRegions, ", "))
 }
 
 // Render dashboard path segments (docs/render-artifacts/dashboard-routes.md).

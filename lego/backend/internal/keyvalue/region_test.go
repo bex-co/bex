@@ -31,13 +31,13 @@ import (
 )
 
 // TestCreateKeyValueRegionPolicyAcrossSurfaces pins w8/152's one region
-// policy on Key Value create: a Render region (or BEX_REGION itself) is
-// accepted and the store is placed in BEX_REGION; anything else is a 400
-// with the shared message, on REST, GraphQL and MCP alike. The create's answer
-// and every later read report the Render region it was created with, as
-// Render's do, and the platform's public alias when it named none or
-// BEX_REGION itself (w9/105: Render's Terraform provider aborts an apply that
-// reads back another region).
+// policy on Key Value create: a Render region is accepted and the store is
+// placed in BEX_REGION; anything else, BEX_REGION's own spelling included, is
+// a 400 with the shared message, which names no bex placement, on REST,
+// GraphQL and MCP alike (w8/415). The create's answer and every later read
+// report the Render region it was created with, as Render's do, and the
+// platform's public alias when it named none (w9/105: Render's Terraform
+// provider aborts an apply that reads back another region).
 func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 	type outcome struct{ id, region, err string }
 	surfaces := map[string]func(t *testing.T, svc *Service, name, region string) outcome{
@@ -113,7 +113,7 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 				{"frankfurt", true, "frankfurt"},
 				{"singapore", true, "singapore"},
 				{"", true, "frankfurt"},
-				{"fsn1", true, "frankfurt"},
+				{"fsn1", false, ""},
 				{"Vietnam", false, ""},
 			} {
 				svc, _ := newService()
@@ -124,8 +124,8 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 					continue
 				}
 				if !tc.ok {
-					if !strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") {
-						t.Errorf("region %q: error = %q, want the shared region message", tc.region, got.err)
+					if !strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") || strings.Contains(got.err, "fsn1") {
+						t.Errorf("region %q: error = %q, want the shared region message and no placement", tc.region, got.err)
 					}
 					continue
 				}

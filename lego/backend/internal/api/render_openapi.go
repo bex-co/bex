@@ -36,6 +36,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/api/openapi"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -927,6 +928,13 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		field, constraint, value := renderValidationField(err)
 		if override, ok := renderOperationRefusals[operationID][field]; ok && (override.constraint == "" || override.constraint == constraint) {
 			core.WriteErr(w, override.refuse(message, value))
+			return
+		}
+		if field == "region" && constraint == "enum" {
+			// A Postgres or Key Value create's region outside Render's enum:
+			// the refusal a service create, GraphQL and MCP give, which lists
+			// Render's regions where the gate names only the field (w8/415).
+			core.WriteErr(w, resourcemeta.UnknownRegionError())
 			return
 		}
 		if field == "ownerId" && (constraint == "required" || constraint == "minLength") {
