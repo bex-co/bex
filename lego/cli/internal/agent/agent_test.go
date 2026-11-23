@@ -18,6 +18,7 @@ package agent
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -31,6 +32,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -53,6 +55,7 @@ type fakeAPI struct {
 	ssh        map[string]string
 	failGets   map[string]int // transient 503s before the next GET succeeds
 	createErrs []int          // statuses the next creates answer before succeeding
+	createCode string         // the code of a createErrs answer (default AGENT_SESSION_INPUT_INVALID)
 	retryAfter string         // Retry-After sent with a createErrs or failTail answer
 	transcript map[string][]string
 	files      map[string][]attachmentFixture
@@ -217,7 +220,7 @@ func (f *fakeAPI) create(w http.ResponseWriter, r *http.Request) {
 		status, f.createErrs = f.createErrs[0], f.createErrs[1:]
 	}
 	f.mu.Unlock()
-	if f.refuse(w, status, "AGENT_SESSION_INPUT_INVALID", "refused") {
+	if f.refuse(w, status, cmp.Or(f.createCode, "AGENT_SESSION_INPUT_INVALID"), "refused") {
 		return
 	}
 	writeJSON(w, http.StatusCreated, f.view("ags-new1", stateWorking))
@@ -569,6 +572,24 @@ func TestRunGitHubCLIFlag(t *testing.T) {
 		_, stderr, code := run(t, f.deps(t).deps, "run", "--github-cli", bad, "t")
 		if code != exitUsage || !strings.Contains(stderr, "--github-cli takes on, off or inherit") || len(f.creates)+len(f.uploads) != 0 {
 			t.Errorf("--github-cli %q: exit %d, %d creates, stderr %q; want a usage error and nothing sent", bad, code, len(f.creates), stderr)
+		}
+	}
+}
+
+// Only a workspace admin names a session's gh binding (w10/044), which
+// bex-api decides: a member's --github-cli on or off is sent as given, and
+// its AGENT_SESSION_GITHUB_CLI_LOCKED refusal is printed and not retried.
+func TestRunPrintsTheGitHubCLIRefusal(t *testing.T) {
+	for _, value := range []string{"off", "on"} {
+		f := newFakeAPI(t)
+		f.createErrs = []int{http.StatusForbidden}
+		f.createCode = "AGENT_SESSION_GITHUB_CLI_LOCKED"
+		_, stderr, code := run(t, f.deps(t).deps, "run", "--github-cli", value, "t")
+		if code != 1 || len(f.creates) != 1 || !strings.Contains(stderr, "403 AGENT_SESSION_GITHUB_CLI_LOCKED: refused") {
+			t.Fatalf("--github-cli %s refused: exit %d, %d creates, stderr %q", value, code, len(f.creates), stderr)
+		}
+		if !strings.Contains(string(f.creates[0].body), `"githubCli":`+strconv.FormatBool(value == "on")) {
+			t.Fatalf("--github-cli %s sent %s", value, f.creates[0].body)
 		}
 	}
 }

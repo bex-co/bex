@@ -117,7 +117,7 @@ export type AgentAutomationAgentConfig = {
 
 export type AgentAutomationAgentConfigInput = {
   agent: Scalars['String']['input'];
-  /** Omit (or null) to inherit the workspace's automations default. false turns gh off for the automation's sessions. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An unchanged value is never re-checked. */
+  /** Omit (or null) to inherit the workspace's automations default. Only a workspace admin may set or change a binding (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required); an unchanged value is never re-checked. false turns gh off for the automation's sessions. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). */
   githubCli?: InputMaybe<Scalars['Boolean']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;
   template?: InputMaybe<Scalars['String']['input']>;
@@ -618,7 +618,7 @@ export type AgentSessionConfig = {
 
 export type AgentSessionConfigInput = {
   agent: Scalars['String']['input'];
-  /** Omit (or null) to inherit the workspace's GitHub CLI setting. false turns gh off for this session; anyone who can start it may. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off. */
+  /** Omit (or null) to inherit the workspace's GitHub CLI setting. Only a workspace admin may name a binding (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required). false turns gh off for this session. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off. */
   githubCli?: InputMaybe<Scalars['Boolean']['input']>;
   model?: InputMaybe<Scalars['String']['input']>;
   modelEndpoint?: InputMaybe<Scalars['String']['input']>;

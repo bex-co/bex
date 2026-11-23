@@ -154,7 +154,11 @@ export function GithubCliSection({
             value={automationsChoice}
             onChange={pickAutomations}
             inherited={saved.githubCliEnabled}
-            onLock={githubCliMandatoryOff(saved) ? "mandatory" : null}
+            lockOf={(choice) =>
+              choice === "on" && githubCliMandatoryOff(saved)
+                ? "mandatory"
+                : null
+            }
             disabled={!canManage || automations.pending !== null}
             invalid={automations.errorKey != null}
             describedBy={describedBy(automationsId, {

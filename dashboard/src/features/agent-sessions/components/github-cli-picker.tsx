@@ -11,9 +11,9 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import {
   GITHUB_CLI_CHOICES,
   githubCliChoiceLabel,
-  githubCliOnLockKey,
+  githubCliLockKey,
   type GithubCliChoice,
-  type GithubCliOnLock,
+  type GithubCliLock,
 } from "@/features/agent-sessions/lib/github-cli";
 
 export interface GithubCliPickerProps {
@@ -21,8 +21,8 @@ export interface GithubCliPickerProps {
   onChange: (choice: GithubCliChoice) => void;
   /** What inherit resolves to, shown beside it; null while unknown. */
   inherited: boolean | null;
-  /** Why "on" cannot be chosen, shown under it; null when it can. */
-  onLock: GithubCliOnLock | null;
+  /** Why a choice cannot be made, shown under it; null when it can. */
+  lockOf: (choice: GithubCliChoice) => GithubCliLock | null;
   disabled?: boolean;
   /** A compact control in a composer toolbar, or a full-width form field. */
   variant?: "toolbar" | "field";
@@ -36,15 +36,17 @@ export interface GithubCliPickerProps {
 /**
  * The `gh` binding control (w10/m561, Devin's security profile chosen in the
  * session start box's options or an automation's editor): inherit, on or off.
- * Inherit names what it resolves to, and "on" is disabled with the reason
- * where bex-api would refuse it: under the workspace's mandatory off, and for
- * a member who is not a workspace admin.
+ * Inherit names what it resolves to, and a choice bex-api would refuse is
+ * disabled with the reason: "on" under the workspace's mandatory off, and
+ * every change for a member who is not a workspace admin (w10/044). The
+ * control stays open to a member, so the reason is reachable by pointer and
+ * keyboard alike.
  */
 export function GithubCliPicker({
   value,
   onChange,
   inherited,
-  onLock,
+  lockOf,
   disabled,
   variant = "toolbar",
   id,
@@ -94,14 +96,14 @@ export function GithubCliPicker({
       </SelectTrigger>
       <SelectContent>
         {GITHUB_CLI_CHOICES.map((choice) => {
-          const lock = choice === "on" ? onLock : null;
+          const lock = lockOf(choice);
           return (
             <SelectItem key={choice} value={choice} disabled={lock != null}>
               {lock ? (
                 <span className="flex flex-col items-start">
                   {label(choice)}
                   <span className="text-muted-foreground text-xs">
-                    {t(githubCliOnLockKey(lock))}
+                    {t(githubCliLockKey(lock))}
                   </span>
                 </span>
               ) : (

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { agentEnvironment } from "@/test/mocks/agent-environment";
 import {
+  GITHUB_CLI_CHOICES,
   githubCliBinding,
   githubCliChoice,
+  githubCliLock,
   githubCliMandatoryOff,
-  githubCliOnLock,
   inheritedGithubCli,
+  type GithubCliChoice,
 } from "@/features/agent-sessions/lib/github-cli";
 
 // w10/m561: the gh binding chain as the dashboard mirrors it, so a choice
@@ -76,20 +78,31 @@ describe("the gh binding", () => {
     expect(inheritedGithubCli(null, "automation")).toBeNull();
   });
 
-  it("locks on under the floor for everyone and for a member always, unless kept", () => {
+  it("locks every change for a member and on under the floor, never the stored choice (w10/044)", () => {
     const floor = agentEnvironment({
       githubCliEnabled: false,
       githubCliMandatory: true,
     });
     const open = agentEnvironment();
-    expect(githubCliOnLock({ env: open, canManage: true })).toBeNull();
-    expect(githubCliOnLock({ env: open, canManage: false })).toBe("admin");
-    expect(githubCliOnLock({ env: floor, canManage: true })).toBe("mandatory");
-    expect(githubCliOnLock({ env: floor, canManage: false })).toBe("mandatory");
-    expect(githubCliOnLock({ env: null, canManage: true })).toBeNull();
-    // An automation that already stores on keeps it, as the server does.
-    expect(
-      githubCliOnLock({ env: floor, canManage: false, kept: true }),
-    ).toBeNull();
+    const locks = (
+      env: typeof open | null,
+      canManage: boolean,
+      stored?: GithubCliChoice,
+    ) =>
+      GITHUB_CLI_CHOICES.map((choice) =>
+        githubCliLock({ choice, stored, env, canManage }),
+      );
+    // An admin chooses anything, except on under the floor.
+    expect(locks(open, true)).toEqual([null, null, null]);
+    expect(locks(null, true)).toEqual([null, null, null]);
+    expect(locks(floor, true)).toEqual([null, "mandatory", null]);
+    // A member keeps inherit on a create, whatever the environment says.
+    expect(locks(open, false)).toEqual([null, "admin", "admin"]);
+    expect(locks(floor, false)).toEqual([null, "admin", "admin"]);
+    // An edit keeps its stored binding, on under the floor included, as the
+    // server keeps an unchanged one; a member changes nothing.
+    expect(locks(floor, true, "on")).toEqual([null, null, null]);
+    expect(locks(floor, false, "on")).toEqual(["admin", null, "admin"]);
+    expect(locks(open, false, "off")).toEqual(["admin", "admin", null]);
   });
 });

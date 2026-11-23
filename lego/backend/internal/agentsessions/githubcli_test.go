@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -222,10 +223,26 @@ func githubCliOf(t *testing.T, config json.RawMessage) *bool {
 	return binding
 }
 
-// A session create carries agentConfig.githubCli on REST, GraphQL and MCP:
-// a member's false is stored and read back on all three, a member's true is
-// refused admin_required on all three, and under a mandatory off an admin's
-// true is refused mandatory on all three.
+// refusalReason is the reason a GITHUB_CLI_LOCKED refusal's MCP text names,
+// which carries the message but not params: "" when it names neither.
+func refusalReason(text string) string {
+	switch {
+	case strings.Contains(text, "only a workspace admin"):
+		return "admin_required"
+	case strings.Contains(text, "made its gh off mandatory"):
+		return "mandatory"
+	}
+	return ""
+}
+
+// A session create carries agentConfig.githubCli on REST, GraphQL and MCP.
+// Only a workspace admin names a binding, as Devin's "Members without the
+// permission can't enumerate, select, or change profiles" (w10/044): a
+// member's false and true are refused admin_required on all three, an
+// admin's either is stored and read back on all three, and a member's create
+// naming none inherits. Under a mandatory off an admin's true is refused
+// mandatory on all three, an admin's false is kept, and a member's false is
+// still refused admin_required.
 func TestSessionGitHubCLIBindingOnEverySurface(t *testing.T) {
 	svc, st, _ := adminAndMembers(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries})
 	schema := environmentSchema(t, svc)
@@ -236,23 +253,29 @@ func TestSessionGitHubCLIBindingOnEverySurface(t *testing.T) {
 			"agentConfig": map[string]any{"agent": "codex", "task": "t", "githubCli": binding}}
 	}
 	type created struct {
-		id   string
-		code string
+		id     string
+		code   string
+		reason string
 	}
 	creates := map[string]func(binding bool, who string) created{
 		"REST": func(binding bool, who string) created {
 			raw, _ := json.Marshal(body(binding))
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/agent-sessions", strings.NewReader(string(raw))).WithContext(caller(who)))
-			var out map[string]any
+			var out struct {
+				ID     string         `json:"id"`
+				Code   string         `json:"code"`
+				Params map[string]any `json:"params"`
+			}
 			_ = json.Unmarshal(rec.Body.Bytes(), &out)
 			if rec.Code == http.StatusCreated {
-				return created{id: out["id"].(string)}
+				return created{id: out.ID}
 			}
 			if rec.Code != http.StatusForbidden {
 				t.Fatalf("REST create = %d %s", rec.Code, rec.Body.String())
 			}
-			return created{code: rec.Body.String()}
+			reason, _ := out.Params["reason"].(string)
+			return created{code: out.Code, reason: reason}
 		},
 		"GraphQL": func(binding bool, who string) created {
 			result := graphql.Do(graphql.Params{Schema: schema, Context: caller(who),
@@ -260,7 +283,8 @@ func TestSessionGitHubCLIBindingOnEverySurface(t *testing.T) {
 				VariableValues: map[string]any{"b": binding}})
 			if len(result.Errors) != 0 {
 				code, _ := result.Errors[0].Extensions["code"].(string)
-				return created{code: code}
+				reason, _ := result.Errors[0].Extensions["reason"].(string)
+				return created{code: code, reason: reason}
 			}
 			view := result.Data.(map[string]any)["createAgentSession"].(map[string]any)
 			if got := view["agentConfig"].(map[string]any)["githubCli"]; got != binding {
@@ -274,10 +298,18 @@ func TestSessionGitHubCLIBindingOnEverySurface(t *testing.T) {
 				t.Fatal(err)
 			}
 			if res.IsError {
-				return created{code: res.Content[0].(*mcp.TextContent).Text}
+				text := res.Content[0].(*mcp.TextContent).Text
+				code, _, _ := strings.Cut(text, ":")
+				return created{code: code, reason: refusalReason(text)}
 			}
 			return created{id: res.StructuredContent.(map[string]any)["id"].(string)}
 		},
+	}
+	refused := func(t *testing.T, surface, what string, got created, reason string) {
+		t.Helper()
+		if got.id != "" || got.code != CodeSessionGitHubCLILocked || got.reason != reason {
+			t.Fatalf("%s: %s = %+v, want %s (%s)", surface, what, got, CodeSessionGitHubCLILocked, reason)
+		}
 	}
 	readBack := func(id string) (rest, gql, mcpRead any) {
 		t.Helper()
@@ -301,47 +333,48 @@ func TestSessionGitHubCLIBindingOnEverySurface(t *testing.T) {
 		return rest, gql, mcpRead
 	}
 	for surface, create := range creates {
-		got := create(false, "alice")
-		if got.id == "" {
-			t.Fatalf("%s: a member's githubCli false was refused: %s", surface, got.code)
-		}
-		if binding := githubCliOf(t, st.rows[got.id].AgentConfig); binding == nil || *binding {
-			t.Fatalf("%s: stored githubCli = %v, want false", surface, binding)
-		}
-		if rest, gql, mcpRead := readBack(got.id); rest != false || gql != false || mcpRead != false {
-			t.Fatalf("%s: read back REST %v GraphQL %v MCP %v, want false", surface, rest, gql, mcpRead)
-		}
 		rows := len(st.rows)
-		if got := create(true, "alice"); got.id != "" || !strings.Contains(got.code, CodeSessionGitHubCLILocked) {
-			t.Fatalf("%s: a member's githubCli true = %+v, want %s", surface, got, CodeSessionGitHubCLILocked)
+		refused(t, surface, "a member's githubCli false", create(false, "alice"), "admin_required")
+		refused(t, surface, "a member's githubCli true", create(true, "alice"), "admin_required")
+		if len(st.rows) != rows {
+			t.Fatalf("%s: a member's refused create stored a session", surface)
 		}
-		if got := create(true, "admin"); got.id == "" {
-			t.Fatalf("%s: an admin's githubCli true was refused: %s", surface, got.code)
-		}
-		if len(st.rows) != rows+1 {
-			t.Fatalf("%s: rows = %d, want only the admin's create added", surface, len(st.rows))
+		for _, binding := range []bool{false, true} {
+			got := create(binding, "admin")
+			if got.id == "" {
+				t.Fatalf("%s: an admin's githubCli %v was refused: %+v", surface, binding, got)
+			}
+			if stored := githubCliOf(t, st.rows[got.id].AgentConfig); stored == nil || *stored != binding {
+				t.Fatalf("%s: stored githubCli = %v, want %v", surface, stored, binding)
+			}
+			if rest, gql, mcpRead := readBack(got.id); rest != binding || gql != binding || mcpRead != binding {
+				t.Fatalf("%s: read back REST %v GraphQL %v MCP %v, want %v", surface, rest, gql, mcpRead, binding)
+			}
 		}
 	}
-	if _, err := svc.Create(caller("alice"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: ptr(true)}}); lockedReason(err, CodeSessionGitHubCLILocked) != "admin_required" {
-		t.Fatalf("service: a member's true = %v, want admin_required", err)
+	for _, binding := range []bool{false, true} {
+		if _, err := svc.Create(caller("alice"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: ptr(binding)}}); lockedReason(err, CodeSessionGitHubCLILocked) != "admin_required" {
+			t.Fatalf("service: a member's %v = %v, want admin_required", binding, err)
+		}
 	}
 	omitted, err := svc.Create(caller("alice"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t"}})
 	if err != nil || omitted.AgentConfig.GitHubCLI != nil || githubCliOf(t, st.rows[omitted.ID].AgentConfig) != nil {
-		t.Fatalf("a create naming no binding = %+v err=%v, want it absent", omitted.AgentConfig, err)
+		t.Fatalf("a member's create naming no binding = %+v err=%v, want it absent", omitted.AgentConfig, err)
 	}
 	if rest, gql, mcpRead := readBack(omitted.ID); rest != nil || gql != nil || mcpRead != nil {
 		t.Fatalf("an unbound session reads REST %v GraphQL %v MCP %v, want null on each", rest, gql, mcpRead)
 	}
 
-	// Under the workspace's mandatory off nobody turns gh on, on any surface.
+	// Under the workspace's mandatory off nobody turns gh on, on any surface;
+	// an admin may still turn it off, and a member still names nothing.
 	envs := svc.Environments.(*fakeEnvironments)
 	envs.rows["tea-a"] = store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: NetworkTierRegistries, GitHubCLIDisabled: true, GitHubCLIMandatory: true}
 	for surface, create := range creates {
-		if got := create(true, "admin"); got.id != "" || !strings.Contains(got.code, CodeSessionGitHubCLILocked) {
-			t.Fatalf("%s: an admin's true under a mandatory off = %+v, want %s", surface, got, CodeSessionGitHubCLILocked)
-		}
-		if got := create(false, "alice"); got.id == "" {
-			t.Fatalf("%s: a member's false under a mandatory off was refused: %s", surface, got.code)
+		refused(t, surface, "an admin's true under a mandatory off", create(true, "admin"), "mandatory")
+		refused(t, surface, "a member's true under a mandatory off", create(true, "alice"), "mandatory")
+		refused(t, surface, "a member's false under a mandatory off", create(false, "alice"), "admin_required")
+		if got := create(false, "admin"); got.id == "" {
+			t.Fatalf("%s: an admin's false under a mandatory off was refused: %+v", surface, got)
 		}
 	}
 	if _, err := svc.Create(caller("admin"), CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: ptr(true)}}); lockedReason(err, CodeSessionGitHubCLILocked) != "mandatory" {
@@ -350,15 +383,22 @@ func TestSessionGitHubCLIBindingOnEverySurface(t *testing.T) {
 }
 
 // An automation template carries agentConfig.githubCli on REST, GraphQL and
-// MCP; a member's true is refused, an admin's is kept, a creator's save that
-// leaves a stored true alone keeps it, and under a mandatory off nobody turns
-// it on.
+// MCP. Only a workspace admin sets or changes it (w10/044): a member's create
+// naming false or true is refused admin_required on all three, an admin's is
+// stored and read back on all three, a member creator's update that changes
+// the stored binding in any direction (inherit included) is refused, and one
+// that keeps it, or names no template, keeps it. Under a mandatory off
+// nobody turns it on, an admin may turn it off, and a stored on is kept by a
+// save that leaves it alone.
 func TestAutomationGitHubCLIBindingOnEverySurface(t *testing.T) {
 	a := newAutomationAdapters(t)
 	withBinding := func(name string, binding any) map[string]any {
 		body := automationBody(name)
 		body["template"].(map[string]any)["agentConfig"].(map[string]any)["githubCli"] = binding
 		return body
+	}
+	gqlCreate := func(name, binding string) string {
+		return `mutation { createAgentAutomation(ownerId: "tea-a", input: {name: "` + name + `", triggers: [{type: "schedule", schedule: {frequency: "day", at: "09:00", timezone: "Europe/Berlin"}}], template: {task: "t", repo: "bex-co/example", agentConfig: {agent: "codex", model: "gpt-5", githubCli: ` + binding + `}}}) { id template { agentConfig { githubCli } } } }`
 	}
 	bindingOf := func(id string) any {
 		t.Helper()
@@ -375,34 +415,46 @@ func TestAutomationGitHubCLIBindingOnEverySurface(t *testing.T) {
 		}
 		return *binding
 	}
+	template := func(task string, binding *bool) *AutomationTemplate {
+		return &AutomationTemplate{Task: task, Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5", GitHubCLI: binding}}
+	}
 
-	// REST
-	status, created := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-off", false), "dev")
+	// A member names no binding on any surface, in either direction.
+	for _, binding := range []bool{false, true} {
+		name := fmt.Sprintf("member-%v", binding)
+		if status, out := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-"+name, binding), "dev"); status != http.StatusForbidden || out["code"] != CodeAutomationGitHubCLILocked || out["params"].(map[string]any)["reason"] != "admin_required" {
+			t.Fatalf("REST member create %v = %d %v", binding, status, out)
+		}
+		if _, code := a.gql(gqlCreate("gql-"+name, fmt.Sprint(binding)), "dev"); code != CodeAutomationGitHubCLILocked {
+			t.Fatalf("GraphQL member create %v = %s", binding, code)
+		}
+		if _, errText := a.mcp("create_agent_automation", withOwner(withBinding("mcp-"+name, binding)), "dev"); !strings.HasPrefix(errText, CodeAutomationGitHubCLILocked) || refusalReason(errText) != "admin_required" {
+			t.Fatalf("MCP member create %v = %s", binding, errText)
+		}
+		if _, err := a.svc.CreateAgentAutomation(caller("dev"), "tea-a", AgentAutomationInput{Name: str("svc-" + name), Triggers: dailyTrigger("09:00"), Template: template("t", ptr(binding))}); lockedReason(err, CodeAutomationGitHubCLILocked) != "admin_required" {
+			t.Fatalf("service: a member's create %v = %v, want admin_required", binding, err)
+		}
+	}
+	if len(a.fake.rows) != 0 {
+		t.Fatalf("a member's refused create stored %d automations", len(a.fake.rows))
+	}
+
+	// An admin's off is stored and reads back on every surface.
+	status, created := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-off", false), "admin")
 	if status != http.StatusCreated || created["template"].(map[string]any)["agentConfig"].(map[string]any)["githubCli"] != false {
-		t.Fatalf("REST create off = %d %v", status, created)
+		t.Fatalf("REST admin create off = %d %v", status, created)
 	}
 	restID := created["id"].(string)
-	if status, out := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-on", true), "dev"); status != http.StatusForbidden || !strings.Contains(out["error"].(string)+out["code"].(string), CodeAutomationGitHubCLILocked) {
-		t.Fatalf("REST member create on = %d %v", status, out)
-	}
-	// GraphQL
-	data, code := a.gql(`mutation { createAgentAutomation(ownerId: "tea-a", input: {name: "gql-off", triggers: [{type: "schedule", schedule: {frequency: "day", at: "09:00", timezone: "Europe/Berlin"}}], template: {task: "t", repo: "bex-co/example", agentConfig: {agent: "codex", model: "gpt-5", githubCli: false}}}) { id template { agentConfig { githubCli } } } }`, "dev")
+	data, code := a.gql(gqlCreate("gql-off", "false"), "admin")
 	if code != "" || data["createAgentAutomation"].(map[string]any)["template"].(map[string]any)["agentConfig"].(map[string]any)["githubCli"] != false {
-		t.Fatalf("GraphQL create off = %v %s", data, code)
+		t.Fatalf("GraphQL admin create off = %v %s", data, code)
 	}
 	gqlID := data["createAgentAutomation"].(map[string]any)["id"].(string)
-	if _, code := a.gql(`mutation { createAgentAutomation(ownerId: "tea-a", input: {name: "gql-on", triggers: [{type: "schedule", schedule: {frequency: "day", at: "09:00", timezone: "Europe/Berlin"}}], template: {task: "t", repo: "bex-co/example", agentConfig: {agent: "codex", model: "gpt-5", githubCli: true}}}) { id } }`, "dev"); code != CodeAutomationGitHubCLILocked {
-		t.Fatalf("GraphQL member create on = %s", code)
-	}
-	// MCP
-	out, errText := a.mcp("create_agent_automation", withOwner(withBinding("mcp-off", false)), "dev")
+	out, errText := a.mcp("create_agent_automation", withOwner(withBinding("mcp-off", false)), "admin")
 	if errText != "" {
-		t.Fatalf("MCP create off = %s", errText)
+		t.Fatalf("MCP admin create off = %s", errText)
 	}
 	mcpID := out["id"].(string)
-	if _, errText := a.mcp("create_agent_automation", withOwner(withBinding("mcp-on", true)), "dev"); !strings.Contains(errText, CodeAutomationGitHubCLILocked) {
-		t.Fatalf("MCP member create on = %s", errText)
-	}
 	for _, id := range []string{restID, gqlID, mcpID} {
 		if bindingOf(id) != false {
 			t.Fatalf("%s stored githubCli %v, want false", id, bindingOf(id))
@@ -419,47 +471,82 @@ func TestAutomationGitHubCLIBindingOnEverySurface(t *testing.T) {
 	if read, _ := a.mcp("get_agent_automation", map[string]any{"ownerId": "tea-a", "automation": restID}, "dev"); read["template"].(map[string]any)["agentConfig"].(map[string]any)["githubCli"] != false {
 		t.Fatalf("MCP read = %v", read)
 	}
-
-	// A member's change to on is refused; an admin may create one.
-	ctx := caller("dev")
-	if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", restID, AgentAutomationInput{Template: &AutomationTemplate{Task: "t", Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5", GitHubCLI: ptr(true)}}}); lockedReason(err, CodeAutomationGitHubCLILocked) != "admin_required" {
-		t.Fatalf("a member's change to on = %v", err)
-	}
-	if bindingOf(restID) != false {
-		t.Fatal("a refused update changed the binding")
-	}
-	adminOn, err := a.svc.CreateAgentAutomation(caller("admin"), "tea-a", AgentAutomationInput{Name: str("admin-on"), Triggers: dailyTrigger("09:00"),
-		Template: &AutomationTemplate{Task: "t", Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5", GitHubCLI: ptr(true)}}})
+	adminOn, err := a.svc.CreateAgentAutomation(caller("admin"), "tea-a", AgentAutomationInput{Name: str("admin-on"), Triggers: dailyTrigger("09:00"), Template: template("t", ptr(true))})
 	if err != nil || bindingOf(adminOn.ID) != true {
 		t.Fatalf("an admin's on = %+v err=%v", adminOn, err)
 	}
-	// A creator whose automation already carries on keeps it when a save
-	// leaves it alone, and may turn it off or back to inherit.
-	row, _ := a.fake.GetAgentAutomation(context.Background(), restID)
-	row.Template, _ = json.Marshal(AutomationTemplate{Task: "t", Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5", GitHubCLI: ptr(true)}})
-	a.fake.rows[restID] = row
-	if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", restID, AgentAutomationInput{Template: &AutomationTemplate{Task: "a new task", Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5", GitHubCLI: ptr(true)}}}); err != nil || bindingOf(restID) != true {
-		t.Fatalf("a creator's save keeping an admin's on = %v (binding %v)", err, bindingOf(restID))
-	}
-	if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", restID, AgentAutomationInput{Name: str("renamed")}); err != nil || bindingOf(restID) != true {
-		t.Fatalf("a rename = %v (binding %v), want the binding kept", err, bindingOf(restID))
-	}
-	if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", restID, AgentAutomationInput{Template: &AutomationTemplate{Task: "t", Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5"}}}); err != nil || bindingOf(restID) != nil {
-		t.Fatalf("back to inherit = %v (binding %v)", err, bindingOf(restID))
+	// The admin who created it changes it in any direction.
+	for _, binding := range []*bool{nil, ptr(false), ptr(true)} {
+		if _, err := a.svc.UpdateAgentAutomation(caller("admin"), "tea-a", adminOn.ID, AgentAutomationInput{Template: template("t", binding)}); err != nil {
+			t.Fatalf("an admin's change to %v = %v", binding, err)
+		}
 	}
 
-	// Under a mandatory off nobody turns it on, and off stays allowed.
+	// A member's own automation: one they saved with no binding cannot gain
+	// one, and one that carries a binding (an admin's, or one saved before
+	// w10/044) is kept by a save that leaves it alone and cannot be changed,
+	// not even back to inherit.
+	ctx := caller("dev")
+	status, created = a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", automationBody("member-inherit"), "dev")
+	if status != http.StatusCreated {
+		t.Fatalf("a member's create naming no binding = %d %v", status, created)
+	}
+	memberID := created["id"].(string)
+	for _, binding := range []*bool{ptr(false), ptr(true)} {
+		if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", memberID, AgentAutomationInput{Template: template("t", binding)}); lockedReason(err, CodeAutomationGitHubCLILocked) != "admin_required" {
+			t.Fatalf("a member's change from inherit to %v = %v", *binding, err)
+		}
+	}
+	if status, out := a.rest(http.MethodPatch, "/v1/agent-automations/"+memberID+"?ownerId=tea-a", map[string]any{"template": withBinding("x", false)["template"]}, "dev"); status != http.StatusForbidden || out["code"] != CodeAutomationGitHubCLILocked {
+		t.Fatalf("REST member update to off = %d %v", status, out)
+	}
+	if _, code := a.gql(`mutation { updateAgentAutomation(ownerId: "tea-a", id: "`+memberID+`", input: {template: {task: "t", repo: "bex-co/example", agentConfig: {agent: "codex", model: "gpt-5", githubCli: false}}}) { id } }`, "dev"); code != CodeAutomationGitHubCLILocked {
+		t.Fatalf("GraphQL member update to off = %s", code)
+	}
+	if _, errText := a.mcp("update_agent_automation", map[string]any{"ownerId": "tea-a", "automation": memberID, "template": withBinding("x", false)["template"]}, "dev"); !strings.HasPrefix(errText, CodeAutomationGitHubCLILocked) {
+		t.Fatalf("MCP member update to off = %s", errText)
+	}
+	if bindingOf(memberID) != nil {
+		t.Fatalf("a refused update changed the binding to %v", bindingOf(memberID))
+	}
+	for _, stored := range []bool{false, true} {
+		row, _ := a.fake.GetAgentAutomation(context.Background(), memberID)
+		row.Template, _ = json.Marshal(template("t", ptr(stored)))
+		a.fake.rows[memberID] = row
+		if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", memberID, AgentAutomationInput{Template: template("a new task", ptr(stored))}); err != nil || bindingOf(memberID) != stored {
+			t.Fatalf("a member's save keeping a stored %v = %v (binding %v)", stored, err, bindingOf(memberID))
+		}
+		if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", memberID, AgentAutomationInput{Name: str(fmt.Sprintf("renamed-%v", stored))}); err != nil || bindingOf(memberID) != stored {
+			t.Fatalf("a rename = %v (binding %v), want the stored %v kept", err, bindingOf(memberID), stored)
+		}
+		for _, binding := range []*bool{nil, ptr(!stored)} {
+			if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", memberID, AgentAutomationInput{Template: template("t", binding)}); lockedReason(err, CodeAutomationGitHubCLILocked) != "admin_required" {
+				t.Fatalf("a member's change from %v to %v = %v, want admin_required", stored, binding, err)
+			}
+			if bindingOf(memberID) != stored {
+				t.Fatalf("a refused update changed the stored %v to %v", stored, bindingOf(memberID))
+			}
+		}
+	}
+
+	// Under a mandatory off nobody turns it on, an admin may turn it off, a
+	// member still names nothing, and a save that keeps a stored on keeps it.
 	envs := a.svc.Environments.(*fakeEnvironments)
 	envs.rows["tea-a"] = store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: NetworkTierRegistries, GitHubCLIDisabled: true, GitHubCLIMandatory: true}
-	if _, err := a.svc.CreateAgentAutomation(caller("admin"), "tea-a", AgentAutomationInput{Name: str("admin-on-locked"), Triggers: dailyTrigger("09:00"),
-		Template: &AutomationTemplate{Task: "t", Repo: "bex-co/example", AgentConfig: AutomationAgentConfig{Agent: "codex", Model: "gpt-5", GitHubCLI: ptr(true)}}}); lockedReason(err, CodeAutomationGitHubCLILocked) != "mandatory" {
+	if _, err := a.svc.CreateAgentAutomation(caller("admin"), "tea-a", AgentAutomationInput{Name: str("admin-on-locked"), Triggers: dailyTrigger("09:00"), Template: template("t", ptr(true))}); lockedReason(err, CodeAutomationGitHubCLILocked) != "mandatory" {
 		t.Fatalf("an admin's on under a mandatory off = %v", err)
 	}
-	if status, out := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-on-locked", true), "admin"); status != http.StatusForbidden {
+	if status, out := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-on-locked", true), "admin"); status != http.StatusForbidden || out["params"].(map[string]any)["reason"] != "mandatory" {
 		t.Fatalf("REST admin create on under a mandatory off = %d %v", status, out)
 	}
-	if status, _ := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-off-locked", false), "dev"); status != http.StatusCreated {
-		t.Fatalf("REST member create off under a mandatory off = %d", status)
+	if status, _ := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-off-locked", false), "admin"); status != http.StatusCreated {
+		t.Fatalf("REST admin create off under a mandatory off = %d", status)
+	}
+	if status, out := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", withBinding("rest-member-off-locked", false), "dev"); status != http.StatusForbidden || out["params"].(map[string]any)["reason"] != "admin_required" {
+		t.Fatalf("REST member create off under a mandatory off = %d %v", status, out)
+	}
+	if _, err := a.svc.UpdateAgentAutomation(ctx, "tea-a", memberID, AgentAutomationInput{Template: template("another task", ptr(true))}); err != nil || bindingOf(memberID) != true {
+		t.Fatalf("a save keeping a stored on under a mandatory off = %v (binding %v)", err, bindingOf(memberID))
 	}
 }
 
@@ -505,8 +592,8 @@ func TestDispatchResolvesTheGitHubCLIBindingChain(t *testing.T) {
 		return CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: binding}}
 	}
 
-	// The session's own off under a workspace on.
-	own, err := svc.Create(caller("alice"), input(ptr(false)))
+	// The session's own off under a workspace on, which only an admin names.
+	own, err := svc.Create(caller("admin"), input(ptr(false)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +610,7 @@ func TestDispatchResolvesTheGitHubCLIBindingChain(t *testing.T) {
 	steer(t, "admin", pinned.ID)
 	expect("an admin's on once the off is mandatory", "workspace")
 	setEnv(store.AgentEnvironment{})
-	steer(t, "alice", own.ID)
+	steer(t, "admin", own.ID)
 	expect("a session's own off with everything above on", "session")
 
 	// An automation's session: the automation's off, then (inherit) the
@@ -547,7 +634,7 @@ func TestDispatchResolvesTheGitHubCLIBindingChain(t *testing.T) {
 	steer(t, "alice", automated.ID)
 	expect("the automations default's on under a workspace off", "")
 	// The same automations default never binds a session a person started.
-	steer(t, "alice", own.ID)
+	steer(t, "admin", own.ID)
 	expect("a person's session under the automations default's on", "session")
 	delete(automations.rows, "aut-nightly")
 	setEnv(store.AgentEnvironment{AutomationsGitHubCLI: ptr(false)})
@@ -557,7 +644,7 @@ func TestDispatchResolvesTheGitHubCLIBindingChain(t *testing.T) {
 	// A child: its parent's off governs it, even when an admin's create names
 	// on, and a spawn (which names nothing) inherits it.
 	setEnv(store.AgentEnvironment{})
-	parent, err := svc.Create(caller("alice"), input(ptr(false)))
+	parent, err := svc.Create(caller("admin"), input(ptr(false)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -593,7 +680,7 @@ func TestDispatchResolvesTheGitHubCLIBindingChain(t *testing.T) {
 	expect("a child of an automation's session", "automation")
 
 	// A repo-less session never gets the variables: it has no gh at all.
-	if _, err := svc.Create(caller("alice"), CreateRequest{OwnerID: "tea-a", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: ptr(false)}}); err != nil {
+	if _, err := svc.Create(caller("admin"), CreateRequest{OwnerID: "tea-a", AgentConfig: AgentConfig{Agent: "codex", Task: "t", GitHubCLI: ptr(false)}}); err != nil {
 		t.Fatal(err)
 	}
 	expect("a repo-less session", "")

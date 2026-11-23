@@ -46,6 +46,10 @@ type fakeAutomations struct {
 	runOutcome string // what POST …/run answers
 	conflict   bool   // the next PATCH answers 409 AGENT_AUTOMATION_CONFLICT
 	notCreator bool   // PATCH answers 403 AGENT_AUTOMATION_NOT_CREATOR
+	// member is a caller who is not a workspace admin: a create naming
+	// template.agentConfig.githubCli, or a PATCH changing it, answers 403
+	// AGENT_AUTOMATION_GITHUB_CLI_LOCKED, as bex-api does (w10/044).
+	member bool
 
 	requests []capturedCall
 }
@@ -143,6 +147,10 @@ func (f *fakeAutomations) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ownerId": "tea-ws", "automations": list})
 	case len(parts) == 1 && r.Method == http.MethodPost:
+		if f.member && templateGitHubCLI(body["template"]) != nil {
+			writeAPIError(w, http.StatusForbidden, "AGENT_AUTOMATION_GITHUB_CLI_LOCKED", "only a workspace admin chooses or changes gh")
+			return
+		}
 		f.next++
 		id := fmt.Sprintf("aut-%020d", f.next)
 		a := map[string]any{"id": id, "ownerId": "tea-ws", "enabled": true, "createdBy": "usr-me", "version": float64(1),
@@ -182,6 +190,10 @@ func (f *fakeAutomations) serve(w http.ResponseWriter, r *http.Request) {
 					writeAPIError(w, http.StatusBadRequest, "AGENT_SESSION_INPUT_INVALID", "template.task and template.agentConfig.agent are required")
 					return
 				}
+			}
+			if tpl, ok := body["template"]; ok && f.member && templateGitHubCLI(tpl) != templateGitHubCLI(a["template"]) {
+				writeAPIError(w, http.StatusForbidden, "AGENT_AUTOMATION_GITHUB_CLI_LOCKED", "only a workspace admin chooses or changes gh")
+				return
 			}
 			for k, v := range body {
 				if k != "ifVersion" {
@@ -468,6 +480,46 @@ func TestAutomationGitHubCLIFlag(t *testing.T) {
 	}
 	if writes := len(f.calls(http.MethodPost)) + len(f.calls(http.MethodPatch)); writes != 3+4 {
 		t.Fatalf("a refused --github-cli wrote (%d writes; %d requests before)", writes, before)
+	}
+}
+
+// templateGitHubCLI is a template's agentConfig.githubCli as sent or
+// stored, nil when absent.
+func templateGitHubCLI(template any) any {
+	tpl, _ := template.(map[string]any)
+	agent, _ := tpl["agentConfig"].(map[string]any)
+	return agent["githubCli"]
+}
+
+// Only a workspace admin sets or changes an automation's gh binding
+// (w10/044), which bex-api decides: a member's create and update send
+// --github-cli as given and print the AGENT_AUTOMATION_GITHUB_CLI_LOCKED
+// refusal, while an update without the flag resends the stored binding, so
+// a member's other edits still save.
+func TestAutomationGitHubCLIRefusalForAMember(t *testing.T) {
+	f := newFakeAutomations(t)
+	create := []string{"automations", "create", "--every", "day", "--at", "09:00", "--max-spend", "1"}
+	if _, stderr, code := run(t, f.deps(), append(create, "--name", "gh-off", "--github-cli", "off", "task")...); code != 0 {
+		t.Fatalf("an admin's create: exit %d: %s", code, stderr)
+	}
+	f.member = true
+	for _, value := range []string{"off", "on"} {
+		_, stderr, code := run(t, f.deps(), append(create, "--name", "member-"+value, "--github-cli", value, "task")...)
+		if code != 1 || !strings.Contains(stderr, "AGENT_AUTOMATION_GITHUB_CLI_LOCKED") || !strings.Contains(stderr, "only a workspace admin") {
+			t.Fatalf("a member's --github-cli %s create: exit %d, stderr %q", value, code, stderr)
+		}
+	}
+	if _, stderr, code := run(t, f.deps(), "automations", "update", "gh-off", "--max-spend", "5"); code != 0 {
+		t.Fatalf("a member's update keeping the binding: exit %d: %s", code, stderr)
+	}
+	for _, value := range []string{"inherit", "on"} {
+		_, stderr, code := run(t, f.deps(), "automations", "update", "gh-off", "--github-cli", value)
+		if code != 1 || !strings.Contains(stderr, "AGENT_AUTOMATION_GITHUB_CLI_LOCKED") {
+			t.Fatalf("a member's update to --github-cli %s: exit %d, stderr %q", value, code, stderr)
+		}
+	}
+	if got := templateGitHubCLI(f.find("gh-off")["template"]); got != false {
+		t.Fatalf("stored githubCli %v, want the admin's false kept", got)
 	}
 }
 

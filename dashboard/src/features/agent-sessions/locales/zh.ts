@@ -296,10 +296,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
   },
-  "agentSessions.githubCliOnAdminOnly": {
-    message: "只有工作区管理员可以开启 gh。",
+  "agentSessions.githubCliAdminOnly": {
+    message: "只有工作区管理员可以更改此项。",
     description:
-      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+      "Why a GitHub CLI choice is disabled: only a workspace admin chooses or changes a session's or an automation's gh (w10/044)",
   },
   "agentSessions.githubCliTitle": {
     message: "此会话的 GitHub CLI：{choice}",
@@ -313,9 +313,9 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
   },
   "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
-    message: "只有工作区管理员可以为会话开启 gh。请选择“关闭”或“继承”。",
+    message: "只有工作区管理员可以为会话选择 GitHub CLI。请选择“继承”。",
     description:
-      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin names a session's gh binding (w10/044)",
   },
   "agentSessions.agent.claude": {
     message: "Claude",

@@ -712,9 +712,9 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
   },
   "agentAutomations.problem.githubCliAdminRequired": {
     message:
-      "オートメーションで gh をオンにできるのはワークスペースの管理者のみです。「オフ」または「継承」を選んでください。",
+      "オートメーションの GitHub CLI を選択・変更できるのはワークスペースの管理者のみです。元の選択のままにしてください。",
     description:
-      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin sets or changes an automation's gh binding (w10/044)",
   },
   "agentAutomations.problem.timezone": {
     message: "有効なタイムゾーンを選択してください。",

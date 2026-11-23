@@ -30,7 +30,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -650,7 +650,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -1393,7 +1393,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -2050,7 +2050,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -2302,7 +2302,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -2522,7 +2522,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -2688,7 +2688,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -3969,7 +3969,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -4661,7 +4661,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -5849,7 +5849,7 @@
                     "type": "string"
                   },
                   "githubCli": {
-                    "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+                    "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
                     "type": [
                       "null",
                       "boolean"
@@ -6642,7 +6642,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -7455,7 +7455,7 @@
                         "type": "string"
                       },
                       "githubCli": {
-                        "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                        "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                         "type": [
                           "null",
                           "boolean"
@@ -8448,7 +8448,7 @@
                     "type": "string"
                   },
                   "githubCli": {
-                    "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+                    "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
                     "type": [
                       "null",
                       "boolean"
@@ -9497,7 +9497,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -9793,7 +9793,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -10026,7 +10026,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -10840,7 +10840,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -11783,7 +11783,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -12387,7 +12387,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -12553,7 +12553,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -13271,7 +13271,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -13951,7 +13951,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -14184,7 +14184,7 @@
               "type": "string"
             },
             "githubCli": {
-              "description": "this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off",
+              "description": "this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off",
               "type": [
                 "null",
                 "boolean"
@@ -14777,7 +14777,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it. Changing template.agentConfig.githubCli to true needs a workspace admin and is refused under a mandatory gh off (AGENT_AUTOMATION_GITHUB_CLI_LOCKED); an unchanged value is kept.",
+    "description": "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it. Changing template.agentConfig.githubCli needs a workspace admin, and a change to true is refused under a mandatory gh off (AGENT_AUTOMATION_GITHUB_CLI_LOCKED); an unchanged value is kept.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -14845,7 +14845,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"
@@ -15100,7 +15100,7 @@
                   "type": "string"
                 },
                 "githubCli": {
-                  "description": "this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call",
+                  "description": "this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call",
                   "type": [
                     "null",
                     "boolean"

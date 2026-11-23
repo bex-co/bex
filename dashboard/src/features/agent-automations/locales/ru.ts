@@ -713,9 +713,9 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
   },
   "agentAutomations.problem.githubCliAdminRequired": {
     message:
-      "Включить gh для автоматизации может только администратор рабочего пространства. Выберите «Выкл.» или «Наследовать».",
+      "Выбрать или изменить GitHub CLI для автоматизации может только администратор рабочего пространства. Оставьте прежний выбор.",
     description:
-      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin sets or changes an automation's gh binding (w10/044)",
   },
   "agentAutomations.problem.timezone": {
     message: "Выберите допустимый часовой пояс.",

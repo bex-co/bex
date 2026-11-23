@@ -294,10 +294,10 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
   },
-  "agentSessions.githubCliOnAdminOnly": {
-    message: "Nur Workspace-Admins können gh einschalten.",
+  "agentSessions.githubCliAdminOnly": {
+    message: "Nur Workspace-Admins können das ändern.",
     description:
-      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+      "Why a GitHub CLI choice is disabled: only a workspace admin chooses or changes a session's or an automation's gh (w10/044)",
   },
   "agentSessions.githubCliTitle": {
     message: "GitHub CLI für diese Sitzung: {choice}",
@@ -312,9 +312,9 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
     message:
-      "Nur Workspace-Admins können gh für eine Sitzung einschalten. Wähle „Aus“ oder „Übernehmen“.",
+      "Nur Workspace-Admins können GitHub CLI für eine Sitzung festlegen. Wähle „Übernehmen“.",
     description:
-      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin names a session's gh binding (w10/044)",
   },
   "agentSessions.agent.claude": {
     message: "Claude",

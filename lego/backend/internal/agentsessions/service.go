@@ -696,7 +696,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	if err := s.refuseGitHubCLIOn(ctx, workspaceID, req.AgentConfig.GitHubCLI, CodeSessionGitHubCLILocked, sessionGitHubCLIField); err != nil {
+	if err := s.refuseGitHubCLIBinding(ctx, workspaceID, nil, req.AgentConfig.GitHubCLI, CodeSessionGitHubCLILocked, sessionGitHubCLIField); err != nil {
 		return View{}, err
 	}
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {

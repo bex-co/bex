@@ -45,12 +45,12 @@ const runStarted = "started"
 
 // automationGitHubCLIHelp is what create and update say of --github-cli,
 // template.agentConfig.githubCli (w10/m561).
-const automationGitHubCLIHelp = "--github-cli off turns gh off for the sessions the automation starts (its\n" +
-	"creator may). --github-cli on turns gh on for them against an off\n" +
-	"automations default: only a workspace admin may, and nobody may while the\n" +
-	"workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason\n" +
-	"admin_required or mandatory). inherit, or no binding, follows the\n" +
-	"workspace's automations default (`bex agent env`)."
+const automationGitHubCLIHelp = "Only a workspace admin may set or change --github-cli\n" +
+	"(AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required). --github-cli off\n" +
+	"turns gh off for the sessions the automation starts. --github-cli on turns\n" +
+	"gh on for them against an off automations default, which nobody may while\n" +
+	"the workspace's gh off is mandatory (reason mandatory). inherit, or no\n" +
+	"binding, follows the workspace's automations default (`bex agent env`)."
 
 // The automation error codes the CLI adds a hint to (ADR101 D8).
 const (

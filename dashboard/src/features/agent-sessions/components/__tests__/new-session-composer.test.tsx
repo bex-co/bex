@@ -1791,8 +1791,8 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
 
   // w10/m561: a session binds its own gh in the start box's options, as
   // Devin's security profile is chosen there. Inherit names the workspace's
-  // switch and sends nothing, off sends false, and on is refused under a
-  // mandatory off and for a member who is not an admin.
+  // switch and sends nothing, off sends false, on is refused under a
+  // mandatory off, and only an admin chooses at all (w10/044).
   describe("GitHub CLI", () => {
     const picker = () =>
       screen.getByRole("combobox", { name: "GitHub CLI (gh)" });
@@ -1877,22 +1877,30 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
       expect(option(/^Off$/)).not.toHaveAttribute("aria-disabled");
     });
 
-    it("lets a member turn gh off for a session but not on", async () => {
+    // Devin: "Members without the permission can't enumerate, select, or
+    // change profiles — their sessions simply follow the resolved default".
+    it("lets a member read what the session inherits but choose neither on nor off", async () => {
       vi.mocked(useCapabilities).mockReturnValue(
         mockCapabilities({ role: "DEVELOPER", canManage: false }),
       );
       spend.environment = agentEnvironment({ githubCliEnabled: false });
       const user = userEvent.setup();
       render(<NewSessionComposer />);
+      expect(picker()).toHaveTextContent("Inherit (off)");
+      // The control stays open, so the reason is reachable.
       expect(picker()).toBeEnabled();
       await user.click(picker());
-      const on = option(/^On/);
-      expect(on).toHaveAttribute("aria-disabled", "true");
-      expect(on).toHaveTextContent("Only a workspace admin can turn gh on.");
-      await user.click(option(/^Off$/));
+      expect(option(/^Inherit \(off\)$/)).not.toHaveAttribute("aria-disabled");
+      for (const choice of [/^On/, /^Off/]) {
+        expect(option(choice)).toHaveAttribute("aria-disabled", "true");
+        expect(option(choice)).toHaveTextContent(
+          "Only a workspace admin can change this.",
+        );
+      }
+      await user.keyboard("{Escape}");
       await start(user);
       await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-      expect(create.mock.calls[0][0]).toMatchObject({ githubCli: false });
+      expect(create.mock.calls[0][0]).not.toHaveProperty("githubCli");
     });
 
     it.each([
@@ -1902,7 +1910,7 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
       ],
       [
         "admin_required",
-        "Only a workspace admin can turn gh on for a session. Choose Off or Inherit.",
+        "Only a workspace admin can choose GitHub CLI for a session. Choose Inherit.",
       ],
     ])(
       "shows a %s refusal on the control until the choice changes",

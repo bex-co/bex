@@ -707,9 +707,9 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
   },
   "agentAutomations.problem.githubCliAdminRequired": {
     message:
-      "워크스페이스 관리자만 자동화에서 gh를 켤 수 있습니다. 꺼짐 또는 상속을 선택하세요.",
+      "워크스페이스 관리자만 자동화의 GitHub CLI를 선택하거나 변경할 수 있습니다. 원래 선택을 유지하세요.",
     description:
-      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin sets or changes an automation's gh binding (w10/044)",
   },
   "agentAutomations.problem.timezone": {
     message: "올바른 시간대를 선택하세요.",

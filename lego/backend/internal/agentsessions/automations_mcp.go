@@ -77,7 +77,7 @@ func (s *Service) registerAutomationMCP(server *mcp.Server) {
 			out, err := s.CreateAgentAutomation(ctx, in.OwnerID, in.AgentAutomationInput)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_automation", Description: "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it. Changing template.agentConfig.githubCli to true needs a workspace admin and is refused under a mandatory gh off (AGENT_AUTOMATION_GITHUB_CLI_LOCKED); an unchanged value is kept."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_automation", Description: "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it. Changing template.agentConfig.githubCli needs a workspace admin, and a change to true is refused under a mandatory gh off (AGENT_AUTOMATION_GITHUB_CLI_LOCKED); an unchanged value is kept."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateAutomationArgs) (*mcp.CallToolResult, AgentAutomation, error) {
 			out, err := s.UpdateAgentAutomation(ctx, in.OwnerID, in.Automation, in.AgentAutomationInput)
 			return nil, out, err

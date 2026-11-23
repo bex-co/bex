@@ -234,7 +234,7 @@ var automationAgentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectCo
 		"agent":     &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"model":     &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"template":  &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"githubCli": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Omit (or null) to inherit the workspace's automations default. false turns gh off for the automation's sessions. true turns it on against an inherited off: only a workspace admin may, and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An unchanged value is never re-checked."},
+		"githubCli": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Omit (or null) to inherit the workspace's automations default. Only a workspace admin may set or change a binding (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required); an unchanged value is never re-checked. false turns gh off for the automation's sessions. true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory)."},
 	},
 })
 

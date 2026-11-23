@@ -110,16 +110,17 @@ const (
 // installed ACP adapter, Model is passed to that driver, Task is the initial
 // fire-and-forget prompt, and Template selects a platform-registered agent
 // sandbox image (never an arbitrary image supplied by a tenant). GitHubCLI
-// is the session's own `gh` binding (w10/m561): nil inherits the
-// workspace's, false turns `gh` off for the session, and true (a workspace
-// admin's, never under a mandatory off) turns it on. Set at create only.
+// is the session's own `gh` binding (w10/m561), which only a workspace admin
+// names (w10/044): nil inherits the workspace's, false turns `gh` off for the
+// session, and true (never under a mandatory off) turns it on. Set at create
+// only.
 type AgentConfig struct {
 	Agent         string `json:"agent"`
 	Model         string `json:"model,omitempty"`
 	ModelEndpoint string `json:"modelEndpoint,omitempty"`
 	Task          string `json:"task"`
 	Template      string `json:"template,omitempty"`
-	GitHubCLI     *bool  `json:"githubCli,omitempty" jsonschema:"this session's gh binding: omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session (anyone who can start it may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_SESSION_GITHUB_CLI_LOCKED). A child session can only turn gh off"`
+	GitHubCLI     *bool  `json:"githubCli,omitempty" jsonschema:"this session's gh binding, which only a workspace admin may name (AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required): omit to inherit the workspace's GitHub CLI setting; false turns gh off for this session; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). A child session can only turn gh off"`
 }
 
 // AgentProfile is a selectable, secret-free agent option for the phone composer

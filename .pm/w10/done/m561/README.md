@@ -69,7 +69,7 @@ Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-gu
   - `true` needs an admin even when the inherited value is on. A pinned on outlives a later workspace off that is not mandatory, and that is a selection Devin reserves for the permission.
   - An automation update is checked only when the value changes to `true`, so its creator's save keeps an admin's on.
   - The environment's two fields are admin-only, like every environment field.
-  - **Divergence:** Devin gates every selection, an opt-out included. bex lets members turn `gh` off, which only removes access. The stricter variant is filed as [w10/044](../../044.md).
+  - **Divergence:** Devin gates every selection, an opt-out included. bex lets members turn `gh` off, which only removes access. The stricter variant is filed as [w10/044](../044.md).
 - **Where it resolves, and when a change applies.** One resolver serves both `gh` mints and every dispatch: `agentsession.LoadGitHubCLIChain` and `GitHubCLIChain.Resolve` in `lego/backend/internal/agentsession/githubcli.go`. It reads the environment row, the session's tree (at most three ancestors) and the root's automation's current template, live. So an automation or environment edit refuses a running session's next `gh` call and reaches the driver at its next turn.
   - An automation's session does not copy the template's value at fire time. The automation level therefore stays nameable, and an edit applies to its running sessions.
   - A deleted automation reads as inherit, and its sessions still take the automations default.
@@ -92,10 +92,10 @@ Each choice matches Devin's [Security profiles](https://docs.devin.ai/product-gu
   - **Precedence:** "the most specific binding wins". **Match**: `TestGitHubCLIChainResolve` pins each pair in both directions.
   - **Mandatory floor:** "a floor that lower levels cannot escape", where they "can only tighten". **Match**: no lower level turns `gh` on, any lower level may turn it off, and a save that would loosen is refused.
   - **Child sessions:** "governed by the same chain as their parent". **Match**: a child resolves its tree's chain and can only turn `gh` off.
-  - **Who may select:** "Manage security profiles", and members "can't … select". **Partial**: `true` needs `can_manage`, as Devin's selection does, but a member may set `false`. That only removes access. The stricter variant is filed as [w10/044](../../044.md).
+  - **Who may select:** "Manage security profiles", and members "can't … select". **Partial**: `true` needs `can_manage`, as Devin's selection does, but a member may set `false`. That only removes access. The stricter variant is filed as [w10/044](../044.md).
   - **Where it is chosen:** the session start box's options menu, and the automation's editor or `security_profile`. **Match**: the composer's options, the automation form and the template field.
   - **When a change applies:** "new sessions immediately, and for existing sessions the next time they resume". **Match for an on, and sooner for an off**: a running session's next `gh` call is refused, as w10/m524 already decided for the workspace switch.
-- **Filed:** [w10/044](../../044.md). No other gap users would miss: Devin's other profile controls (network policy, MCP allowlist, Git access level) and its enterprise level are out of scope.
+- **Filed:** [w10/044](../044.md). No other gap users would miss: Devin's other profile controls (network policy, MCP allowlist, Git access level) and its enterprise level are out of scope.
 
 ## Live check (t008, production, 2026-11-23)
 

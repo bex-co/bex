@@ -77,7 +77,7 @@ import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-pick
 import { GithubCliPicker } from "@/features/agent-sessions/components/github-cli-picker";
 import {
   githubCliBinding,
-  githubCliOnLock,
+  githubCliLock,
   inheritedGithubCli,
   type GithubCliChoice,
 } from "@/features/agent-sessions/lib/github-cli";
@@ -181,13 +181,15 @@ export function NewSessionComposer() {
   const [model, setModel] = useState("");
   // The sandbox template it runs on (w10/m519); "" runs the workspace default.
   const [template, setTemplate] = useState("");
-  // The session's own gh binding (w10/m561); inherit sends none. "On" is
-  // locked under the workspace's mandatory off and for a member who is not
-  // an admin, as bex-api refuses it there (AGENT_SESSION_GITHUB_CLI_LOCKED).
+  // The session's own gh binding (w10/m561); inherit sends none. Only a
+  // workspace admin chooses one (w10/044), and nobody chooses "on" under the
+  // workspace's mandatory off, as bex-api refuses them
+  // (AGENT_SESSION_GITHUB_CLI_LOCKED).
   const [githubCli, setGithubCli] = useState<GithubCliChoice>("inherit");
   const { environment } = useAgentEnvironment(currentWorkspaceId ?? null);
   const { canManage } = useCapabilities();
-  const githubCliLock = githubCliOnLock({ env: environment, canManage });
+  const githubCliLockOf = (choice: GithubCliChoice) =>
+    githubCliLock({ choice, env: environment, canManage });
   // A create refused for the gh binding: the alert below names why and is
   // the control's description until the choice changes.
   const [githubCliRefused, setGithubCliRefused] = useState(false);
@@ -498,7 +500,7 @@ export function NewSessionComposer() {
                   }
                 }}
                 inherited={inheritedGithubCli(environment, "session")}
-                onLock={githubCliLock}
+                lockOf={githubCliLockOf}
                 disabled={isSubmitting}
                 invalid={githubCliRefused}
                 describedBy={githubCliRefused ? submitErrorId : undefined}

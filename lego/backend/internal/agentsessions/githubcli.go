@@ -33,9 +33,9 @@ import (
 // over its githubCliEnabled. agentsession.GitHubCLIChain resolves them; this
 // file holds who may set what.
 
-// The refusals of a binding that would turn `gh` on where it may not. Each
-// carries params.reason: "mandatory" when the workspace's gh off is
-// mandatory, "admin_required" when the caller is not a workspace admin.
+// The refusals of a `gh` binding the caller may not choose. Each carries
+// params.reason: "mandatory" when it turns `gh` on under the workspace's
+// mandatory off, "admin_required" when the caller is not a workspace admin.
 const (
 	CodeSessionGitHubCLILocked     = "AGENT_SESSION_GITHUB_CLI_LOCKED"
 	CodeAutomationGitHubCLILocked  = "AGENT_AUTOMATION_GITHUB_CLI_LOCKED"
@@ -53,35 +53,46 @@ const (
 
 func isTrue(b *bool) bool { return b != nil && *b }
 
+// sameBinding reports whether two `gh` bindings are equal, nil (inherit)
+// included.
+func sameBinding(a, b *bool) bool {
+	return (a == nil) == (b == nil) && (a == nil || *a == *b)
+}
+
 // githubCLILocked is the refusal of binding `gh` on under the workspace's
 // mandatory off.
 func githubCLILocked(code, field string) error {
 	return core.NewForbiddenError(code,
-		"this workspace's admins made its gh off mandatory, so nothing turns gh on for an automation or a session; set it to false or leave it out to inherit",
+		"this workspace's admins made its gh off mandatory, so nothing turns gh on for an automation or a session; leave it out to inherit the off",
 		map[string]any{"field": field, "reason": "mandatory"})
 }
 
-// refuseGitHubCLIOn refuses binding, a session's or an automation's `gh`,
-// when it turns `gh` on and the caller may not: nobody may under the
-// workspace's mandatory off, and only a workspace admin (can_manage, bex's
-// "Manage security profiles") may otherwise, because an on outlives a later
-// off that is not mandatory. false and an inherit are never refused. The
-// verb's own Authorize already admitted the caller to workspaceID and
-// recorded it, so the admin probe records nothing.
-func (s *Service) refuseGitHubCLIOn(ctx context.Context, workspaceID string, binding *bool, code, field string) error {
-	if !isTrue(binding) {
+// refuseGitHubCLIBinding refuses changing a session's or an automation's
+// `gh` binding from stored (nil on a create) to binding when the caller may
+// not: only a workspace admin (can_manage, bex's "Manage security profiles")
+// chooses or changes one, in either direction, as Devin's "Members without
+// the permission can't enumerate, select, or change profiles" (w10/044), and
+// nobody turns `gh` on under the workspace's mandatory off. Leaving it
+// unchanged is never refused, so a create naming none inherits and a save
+// that keeps the stored binding keeps it. The verb's own Authorize already
+// admitted the caller to workspaceID and recorded it, so the admin probe
+// records nothing.
+func (s *Service) refuseGitHubCLIBinding(ctx context.Context, workspaceID string, stored, binding *bool, code, field string) error {
+	if sameBinding(stored, binding) {
 		return nil
 	}
-	env, err := s.workspaceEnvironment(ctx, workspaceID)
-	if err != nil {
-		return err
-	}
-	if env.GitHubCLIDisabled && env.GitHubCLIMandatory {
-		return githubCLILocked(code, field)
+	if isTrue(binding) {
+		env, err := s.workspaceEnvironment(ctx, workspaceID)
+		if err != nil {
+			return err
+		}
+		if env.GitHubCLIDisabled && env.GitHubCLIMandatory {
+			return githubCLILocked(code, field)
+		}
 	}
 	if !s.CanDecisionOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)).Allowed() {
 		return core.NewForbiddenError(code,
-			"only a workspace admin can turn gh on for an automation or a session; set it to false or leave it out to inherit the workspace's GitHub CLI setting",
+			"only a workspace admin chooses or changes gh for an automation or a session; leave it out to inherit, or unchanged on an update",
 			map[string]any{"field": field, "reason": "admin_required"})
 	}
 	return nil

@@ -713,9 +713,9 @@ const ptAgentAutomations: Record<string, TranslationEntry> = {
   },
   "agentAutomations.problem.githubCliAdminRequired": {
     message:
-      "Somente um administrador do workspace pode ativar o gh para uma automação. Escolha “Desativado” ou “Herdar”.",
+      "Somente um administrador do workspace pode escolher ou alterar o GitHub CLI de uma automação. Deixe como estava.",
     description:
-      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin sets or changes an automation's gh binding (w10/044)",
   },
   "agentAutomations.problem.timezone": {
     message: "Escolha um fuso horário válido.",

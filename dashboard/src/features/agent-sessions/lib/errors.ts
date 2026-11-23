@@ -24,9 +24,9 @@ export interface AgentSessionErrorParams {
  * Codes whose copy depends on a param: each names the message variant
  * (`agentSessions.errors.<CODE>_<variant>`) its params select, or null for the
  * plain message. The trust-tier session limit (ADR091 D10.1) names its cause:
- * a new workspace, or one held back by a failed or disputed payment. A gh
- * binding refused as on (w10/m561) names why: the workspace's mandatory off,
- * or a caller who is not a workspace admin.
+ * a new workspace, or one held back by a failed or disputed payment. A
+ * refused gh binding (w10/m561) names why: an on under the workspace's
+ * mandatory off, or a caller who is not a workspace admin (w10/044).
  */
 const MESSAGE_VARIANTS: Record<
   string,

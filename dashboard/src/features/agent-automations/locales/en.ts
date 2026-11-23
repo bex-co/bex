@@ -710,9 +710,9 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
   },
   "agentAutomations.problem.githubCliAdminRequired": {
     message:
-      "Only a workspace admin can turn gh on for an automation. Choose Off or Inherit.",
+      "Only a workspace admin can choose or change GitHub CLI for an automation. Leave it as it was.",
     description:
-      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin sets or changes an automation's gh binding (w10/044)",
   },
   "agentAutomations.problem.timezone": {
     message: "Choose a valid time zone.",

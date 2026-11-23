@@ -300,8 +300,8 @@ func (t *templateFlags) bind(c *cobra.Command) {
 	f.Lookup("secret").Usage = "workspace agent secret each run gets as an env var; repeatable"
 	f.Lookup("output-schema").Usage = "JSON Schema file each run's result must satisfy"
 	f.Lookup(githubCLIFlag).Usage = "on, off or inherit: each run's gh, template.agentConfig.githubCli (inherit follows the workspace's automations default; " +
-		"on create it is the default, on update no flag keeps the stored one); on needs a workspace admin and is refused with " +
-		"AGENT_AUTOMATION_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory"
+		"on create it is the default, on update no flag keeps the stored one); on and off, and changing a stored one, need a workspace admin, " +
+		"and on is refused with AGENT_AUTOMATION_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory"
 	for _, flag := range sessionOnly {
 		if f.Lookup(flag.name) == nil {
 			f.StringArray(flag.name, nil, "")

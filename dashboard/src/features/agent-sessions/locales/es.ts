@@ -292,10 +292,10 @@ const esAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Why the GitHub CLI On choice is disabled: the workspace's off is mandatory (w10/m561)",
   },
-  "agentSessions.githubCliOnAdminOnly": {
-    message: "Solo un administrador del espacio de trabajo puede activar gh.",
+  "agentSessions.githubCliAdminOnly": {
+    message: "Solo un administrador del espacio de trabajo puede cambiar esto.",
     description:
-      "Why the GitHub CLI On choice is disabled: the member is not a workspace admin (w10/m561)",
+      "Why a GitHub CLI choice is disabled: only a workspace admin chooses or changes a session's or an automation's gh (w10/044)",
   },
   "agentSessions.githubCliTitle": {
     message: "GitHub CLI para esta sesión: {choice}",
@@ -310,9 +310,9 @@ const esAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.errors.AGENT_SESSION_GITHUB_CLI_LOCKED_adminRequired": {
     message:
-      "Solo un administrador del espacio de trabajo puede activar gh para una sesión. Elige “Desactivado” o “Heredar”.",
+      "Solo un administrador del espacio de trabajo puede elegir GitHub CLI para una sesión. Elige “Heredar”.",
     description:
-      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Mapped message for AGENT_SESSION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin names a session's gh binding (w10/044)",
   },
   "agentSessions.agent.claude": {
     message: "Claude",

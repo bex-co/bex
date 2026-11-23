@@ -57,35 +57,40 @@ export function inheritedGithubCli(
   return env.automationsGithubCliEnabled ?? env.githubCliEnabled;
 }
 
-/** Why "on" cannot be chosen: a mandatory off, or a caller who is no admin. */
-export type GithubCliOnLock = "mandatory" | "admin";
+/** Why a choice cannot be made: a mandatory off, or a caller who is no admin. */
+export type GithubCliLock = "mandatory" | "admin";
 
 /**
- * Why a session or an automation may not choose "on", or null when it may:
- * nobody may under a mandatory off, and only a workspace admin (can_manage)
- * may otherwise, since an on outlives a later off. `kept` is an automation
- * that already stores on: the server keeps an unchanged on, so it stays
- * choosable.
+ * Why a session or an automation may not choose `choice`, or null when it
+ * may. `stored` is what the server keeps unchanged: inherit on a create, the
+ * saved binding on an edit, and keeping it is never refused. Only a workspace
+ * admin (can_manage) chooses or changes the binding (w10/044), as Devin's
+ * "Members without the permission can't enumerate, select, or change
+ * profiles": a member's sessions and automations follow the resolved
+ * default, which the control still shows. Nobody chooses "on" under a
+ * mandatory off.
  */
-export function githubCliOnLock({
+export function githubCliLock({
+  choice,
+  stored = "inherit",
   env,
   canManage,
-  kept = false,
 }: {
+  choice: GithubCliChoice;
+  stored?: GithubCliChoice;
   env: GithubCliEnvironment | null;
   canManage: boolean;
-  kept?: boolean;
-}): GithubCliOnLock | null {
-  if (kept) return null;
-  if (githubCliMandatoryOff(env)) return "mandatory";
-  return canManage ? null : "admin";
+}): GithubCliLock | null {
+  if (choice === stored) return null;
+  if (!canManage) return "admin";
+  return choice === "on" && githubCliMandatoryOff(env) ? "mandatory" : null;
 }
 
 /** The locale key of a lock's reason. */
-export function githubCliOnLockKey(lock: GithubCliOnLock): string {
+export function githubCliLockKey(lock: GithubCliLock): string {
   return lock === "mandatory"
     ? "agentSessions.githubCliOnMandatory"
-    : "agentSessions.githubCliOnAdminOnly";
+    : "agentSessions.githubCliAdminOnly";
 }
 
 /** A choice's label; inherit names what it resolves to when that is known. */

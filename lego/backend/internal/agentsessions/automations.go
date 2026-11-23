@@ -72,13 +72,14 @@ type AutomationTrigger struct {
 
 // AutomationAgentConfig is the agent part of a template. GitHubCLI is the
 // automation's `gh` binding (w10/m561), read live by its sessions' mints and
-// dispatches rather than copied into them: nil inherits the automations
-// default, false turns `gh` off and true (a workspace admin's) turns it on.
+// dispatches rather than copied into them, and set or changed only by a
+// workspace admin (w10/044): nil inherits the automations default, false
+// turns `gh` off and true turns it on.
 type AutomationAgentConfig struct {
 	Agent     string `json:"agent" jsonschema:"a supported agent profile, as on a session create"`
 	Model     string `json:"model,omitempty"`
 	Template  string `json:"template,omitempty"`
-	GitHubCLI *bool  `json:"githubCli,omitempty" jsonschema:"this automation's gh binding: omit to inherit the workspace's automations default; false turns gh off for its sessions (the creator may); true turns it on against an inherited off, which only a workspace admin may and nobody may while the workspace's gh off is mandatory (AGENT_AUTOMATION_GITHUB_CLI_LOCKED). An edit applies to its running sessions from their next gh call"`
+	GitHubCLI *bool  `json:"githubCli,omitempty" jsonschema:"this automation's gh binding, which only a workspace admin may set or change (AGENT_AUTOMATION_GITHUB_CLI_LOCKED, reason admin_required; an unchanged one is kept): omit to inherit the workspace's automations default; false turns gh off for its sessions; true turns it on against an inherited off, which nobody may while the workspace's gh off is mandatory (reason mandatory). An edit applies to its running sessions from their next gh call"`
 }
 
 // AutomationTemplate is the session an automation starts (ADR101 D5): the
@@ -350,7 +351,7 @@ func (s *Service) CreateAgentAutomation(ctx context.Context, ownerID string, in 
 	if err := s.applyAutomationDefinition(ctx, workspaceID, &row, in.Triggers, in.Template); err != nil {
 		return AgentAutomation{}, err
 	}
-	if err := s.refuseGitHubCLIOn(ctx, workspaceID, in.Template.AgentConfig.GitHubCLI, CodeAutomationGitHubCLILocked, templateGitHubCLIField); err != nil {
+	if err := s.refuseGitHubCLIBinding(ctx, workspaceID, nil, in.Template.AgentConfig.GitHubCLI, CodeAutomationGitHubCLILocked, templateGitHubCLIField); err != nil {
 		return AgentAutomation{}, err
 	}
 	if row.NextFireAt, err = s.nextFireFor(row); err != nil {
@@ -424,12 +425,10 @@ func (s *Service) UpdateAgentAutomation(ctx context.Context, ownerID, ref string
 		if err := s.applyAutomationDefinition(ctx, workspaceID, &row, triggers, template); err != nil {
 			return AgentAutomation{}, err
 		}
-		// Only a change to on is checked, so the creator's save of an
-		// automation an admin turned gh on for keeps it (w10/m561).
-		if !isTrue(cur.Template.AgentConfig.GitHubCLI) {
-			if err := s.refuseGitHubCLIOn(ctx, workspaceID, template.AgentConfig.GitHubCLI, CodeAutomationGitHubCLILocked, templateGitHubCLIField); err != nil {
-				return AgentAutomation{}, err
-			}
+		// Only a change of the binding is checked, so a creator's save that
+		// keeps the stored one keeps it (w10/m561, w10/044).
+		if err := s.refuseGitHubCLIBinding(ctx, workspaceID, cur.Template.AgentConfig.GitHubCLI, template.AgentConfig.GitHubCLI, CodeAutomationGitHubCLILocked, templateGitHubCLIField); err != nil {
+			return AgentAutomation{}, err
 		}
 	}
 	switch {

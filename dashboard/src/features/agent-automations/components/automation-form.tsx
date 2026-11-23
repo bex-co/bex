@@ -40,8 +40,9 @@ import {
 import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-picker";
 import { GithubCliPicker } from "@/features/agent-sessions/components/github-cli-picker";
 import {
-  githubCliOnLock,
+  githubCliLock,
   inheritedGithubCli,
+  type GithubCliChoice,
 } from "@/features/agent-sessions/lib/github-cli";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
@@ -113,15 +114,18 @@ export function AutomationForm({
   const { currentWorkspaceId } = useWorkspace();
   const { capabilities } = useAgentSessionCapabilities();
   // The workspace's gh chain (w10/m561): what inherit resolves to, and
-  // whether "on" is locked by a mandatory off or the creator's role. An
-  // automation that already stores on keeps it, as the server does.
+  // which choices are locked: every change for a creator who is not an admin
+  // (w10/044), and "on" under a mandatory off. The stored binding stays
+  // choosable, as the server keeps an unchanged one.
   const { environment } = useAgentEnvironment(currentWorkspaceId ?? null);
   const { canManage } = useCapabilities();
-  const githubCliLock = githubCliOnLock({
-    env: environment,
-    canManage,
-    kept: initial.githubCli === "on",
-  });
+  const githubCliLockOf = (choice: GithubCliChoice) =>
+    githubCliLock({
+      choice,
+      stored: initial.githubCli,
+      env: environment,
+      canManage,
+    });
   const { repos } = useRepos();
   const [chosen, setValues] = useState<AutomationFormValues>(initial);
   // A create form leaves the zone "" until the person picks one; until then it
@@ -453,7 +457,7 @@ export function AutomationForm({
             value={values.githubCli}
             onChange={(githubCli) => change({ githubCli })}
             inherited={inheritedGithubCli(environment, "automation")}
-            onLock={githubCliLock}
+            lockOf={githubCliLockOf}
             disabled={saving}
             invalid={githubCliError != null}
             describedBy={describedBy(id("github-cli"), {

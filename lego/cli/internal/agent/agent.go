@@ -553,7 +553,7 @@ func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.StringArrayVar(&s.tags, "tag", nil, "label for filtering and cost attribution; repeatable")
 	f.Float64Var(&s.spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
 	f.StringVar(&s.githubCLI, githubCLIFlag, "", "on, off or inherit (the default, the workspace's setting): this session's gh, agentConfig.githubCli; "+
-		"on needs a workspace admin and is refused with AGENT_SESSION_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory")
+		"on and off need a workspace admin, and on is refused with AGENT_SESSION_GITHUB_CLI_LOCKED while the workspace's gh off is mandatory")
 }
 
 // gitHubCLI is --github-cli when it was given (fs holds the bound flags):
@@ -686,14 +686,14 @@ func runCommand(d deps) *cobra.Command {
 			"/attachments; --output-schema asks for a result matching a JSON Schema\n" +
 			"(read it from outcome.result). The create is idempotent: a retry after a\n" +
 			"network error returns the same session, never a second one.\n\n" +
-			"--github-cli off turns gh off for this session alone (anyone who can start\n" +
-			"it may); Git pushes to its branch and the bex MCP tools keep working.\n" +
-			"--github-cli on turns gh on against a workspace whose gh is off: only a\n" +
-			"workspace admin may, and nobody may while that off is mandatory\n" +
-			"(AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required or mandatory). A\n" +
-			"child session (--parent) can only turn gh off. Without the flag (or with\n" +
-			"inherit) the session follows its parent's, else the workspace's setting\n" +
-			"(`bex agent env`).",
+			"Only a workspace admin may pass --github-cli on or off\n" +
+			"(AGENT_SESSION_GITHUB_CLI_LOCKED, reason admin_required). --github-cli off\n" +
+			"turns gh off for this session alone; Git pushes to its branch and the bex\n" +
+			"MCP tools keep working. --github-cli on turns gh on against a workspace\n" +
+			"whose gh is off, which nobody may while that off is mandatory (reason\n" +
+			"mandatory). A child session (--parent) can only turn gh off. Without the\n" +
+			"flag (or with inherit) the session follows its parent's, else the\n" +
+			"workspace's setting (`bex agent env`).",
 		Example: "  bex agent run --repo acme/api \"Upgrade the Go toolchain to 1.26\"\n" +
 			"  bex agent run --attach screenshot.png --wait -o json \"Fix the layout bug in the screenshot\"\n" +
 			"  bex agent run --output-schema schema.json --max-spend 2 --follow -f task.md",

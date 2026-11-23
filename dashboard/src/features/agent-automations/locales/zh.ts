@@ -694,9 +694,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
       "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason mandatory (w10/m561)",
   },
   "agentAutomations.problem.githubCliAdminRequired": {
-    message: "只有工作区管理员可以为自动化开启 gh。请选择“关闭”或“继承”。",
+    message:
+      "只有工作区管理员可以为自动化选择或更改 GitHub CLI。请保留原来的选择。",
     description:
-      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required (w10/m561)",
+      "Automation form — AGENT_AUTOMATION_GITHUB_CLI_LOCKED with reason admin_required: only a workspace admin sets or changes an automation's gh binding (w10/044)",
   },
   "agentAutomations.problem.timezone": {
     message: "请选择有效的时区。",

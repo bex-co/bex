@@ -651,8 +651,8 @@ describe("AutomationForm sandbox", () => {
 // w10/m561: an automation binds its sessions' gh in its editor, as Devin pins
 // a security profile on an automation. Inherit follows the workspace's
 // automations default, else its GitHub CLI switch; "on" is refused under the
-// workspace's mandatory off and for a creator who is not an admin, unless the
-// automation already stores it.
+// workspace's mandatory off, and a creator who is not an admin changes
+// nothing (w10/044), unless the automation already stores the choice.
 describe("AutomationForm GitHub CLI", () => {
   const picker = () =>
     screen.getByRole("combobox", { name: "GitHub CLI (gh)" });
@@ -780,17 +780,38 @@ describe("AutomationForm GitHub CLI", () => {
     expect(option(/^Off$/)).not.toHaveAttribute("aria-disabled");
   });
 
-  it("lets a member who is not an admin turn gh off but not on", async () => {
+  // Devin: "Members without the permission can't enumerate, select, or
+  // change profiles".
+  it("lets a member who is not an admin create one that inherits, choosing neither on nor off", async () => {
     asMember();
     const { user, onSave } = setup();
     await fillValid(user);
     expect(picker()).toBeEnabled();
     await user.click(picker());
-    const on = option(/^On/);
-    expect(on).toHaveAttribute("aria-disabled", "true");
-    expect(on).toHaveTextContent("Only a workspace admin can turn gh on.");
-    await user.click(option(/^Off$/));
+    expect(option(/^Inherit/)).not.toHaveAttribute("aria-disabled");
+    for (const choice of [/^On/, /^Off/]) {
+      expect(option(choice)).toHaveAttribute("aria-disabled", "true");
+      expect(option(choice)).toHaveTextContent(
+        "Only a workspace admin can change this.",
+      );
+    }
+    await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({ agent: "claude" });
+  });
+
+  it("keeps a member's stored off and lets them change nothing else", async () => {
+    asMember();
+    const { user, onSave } = renderEdit(false);
+    expect(picker()).toHaveTextContent("Off");
+    await user.click(picker());
+    expect(option(/^Off/)).not.toHaveAttribute("aria-disabled");
+    for (const choice of [/^Inherit/, /^On/]) {
+      expect(option(choice)).toHaveAttribute("aria-disabled", "true");
+    }
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(savedAgentConfig(onSave)).toEqual({
       agent: "claude",
@@ -808,6 +829,7 @@ describe("AutomationForm GitHub CLI", () => {
     expect(picker()).toHaveTextContent("On");
     await user.click(picker());
     expect(option(/^On/)).not.toHaveAttribute("aria-disabled");
+    expect(option(/^Off/)).toHaveAttribute("aria-disabled", "true");
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -820,7 +842,7 @@ describe("AutomationForm GitHub CLI", () => {
   it.each([
     [
       "admin_required",
-      "Only a workspace admin can turn gh on for an automation. Choose Off or Inherit.",
+      "Only a workspace admin can choose or change GitHub CLI for an automation. Leave it as it was.",
     ],
     [
       "mandatory",
