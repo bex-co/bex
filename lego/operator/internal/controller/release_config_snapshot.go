@@ -804,6 +804,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 	if hold.held {
 		diskHoldsTotal.WithLabelValues(diskHoldHeld).Inc()
 	}
+	if hold.prePull != "" {
+		diskPrePullsTotal.WithLabelValues(hold.prePull).Inc()
+	}
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
 	if restore == nil {

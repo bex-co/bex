@@ -1,18 +1,18 @@
 # w6 · m595 — A disk service's new image is on its node before Recreate stops the old instance
 
-**Worker:** worker6 **Goal:** a code deploy of a disk-bearing service (`Recreate`) pulls its new image onto the volume's node while the old instance still serves, so the downtime stays at m547's same-node bound of about 4 s however large the new layers are, instead of adding a pull of 8–24 s for a typical built image. **Status:** todo
+**Worker:** worker6 **Goal:** a code deploy of a disk-bearing service (`Recreate`) pulls its new image onto the volume's node while the old instance still serves, so the downtime stays at m547's same-node bound of about 4 s however large the new layers are, instead of adding a pull of 8–24 s for a typical built image. **Status:** todo (t001, t002, t003, t006, t007 done; t004 step 1 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The pre-pull Job](t001.md) | 1h | — |
-| t002 | [A disk service's code deploy writes its template once the new image is on the node](t002.md) | 2h | t001 |
-| t003 | [The pre-pull pod is never an instance, and admission treats it like one](t003.md) | 45m | t001 |
+| t001 | [The pre-pull Job](done/t001.md) — **DONE** | 1h | — |
+| t002 | [A disk service's code deploy writes its template once the new image is on the node](done/t002.md) — **DONE** | 2h | t001 |
+| t003 | [The pre-pull pod is never an instance, and admission treats it like one](done/t003.md) — **DONE** | 45m | t001 |
 | t004 | [Record the pre-pull in ADR082, ADR004 and ADR018](t004.md) | 30m | t002 |
 | t005 | [Ship and measure on production](t005.md) | 1h30m | t002, t003, t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done

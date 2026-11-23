@@ -860,7 +860,15 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 	r, app = newApp("holder", appv1alpha1.TypeWebService)
 	holder, err := diskHolderJob(app, tier, "node-a", r.Scheme)
 	Expect(err).NotTo(HaveOccurred())
-	return append(workloads, hook, holder)
+	// The disk pre-pull (w6/m595): an App-owned Job beside the holder whose
+	// containers pull a code deploy's new images and run none of them, with
+	// the rolled template's pull credentials and verify-image label.
+	rolled := live.Spec.Template.DeepCopy()
+	rolled.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: "reg-pull-" + app.Name}}
+	rolled.Labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
+	prePull, err := diskPrePullJob(app, tier, "node-a", []string{"busybox:latest", "busybox:stable"}, rolled, r.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	return append(workloads, hook, holder, prePull)
 }
 
 // admissionEdgeCacheWorkloads is the real Deployment of a paid image-port web

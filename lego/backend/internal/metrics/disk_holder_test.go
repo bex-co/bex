@@ -26,15 +26,19 @@ import (
 )
 
 // A disk service's Recreate deploy runs a disk holder's pod beside its
-// instance (w6/m559). The pod carries the App's label, so the metrics API's
-// snapshot reports its usage too; it is no instance, and no series.
+// instance (w6/m559), and a code deploy a pre-pull's pod too (w6/m595). Each
+// carries the App's label, so the metrics API's snapshot reports its usage
+// too; neither is an instance, and neither is a series.
 func TestMetricsServerSnapshotShowsOnlyTheInstances(t *testing.T) {
 	holder := podFor("web", "dskhld-web-x2k9p")
 	holder.Labels[core.PodLabelComponent] = appv1alpha1.ComponentDiskHolder
+	prePull := podFor("web", "dskpul-web-7fq2m")
+	prePull.Labels[core.PodLabelComponent] = appv1alpha1.ComponentDiskPrePull
 	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
-		webInst:     {CPUCores: 0.5, MemoryBytes: 512 << 20},
-		holder.Name: {CPUCores: 0.0001, MemoryBytes: 300 << 10},
-	}), nil, sampleApp("web"), podWithLimits(webInst), holder)
+		webInst:      {CPUCores: 0.5, MemoryBytes: 512 << 20},
+		holder.Name:  {CPUCores: 0.0001, MemoryBytes: 300 << 10},
+		prePull.Name: {CPUCores: 0.0001, MemoryBytes: 200 << 10},
+	}), nil, sampleApp("web"), podWithLimits(webInst), holder, prePull)
 
 	for _, metric := range []string{MetricCPU, MetricMemory} {
 		series, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: metric})

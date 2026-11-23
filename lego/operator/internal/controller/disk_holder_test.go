@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -99,7 +100,7 @@ func TestDiskHolderPodHoldsTheClaimOnTheVolumesNode(t *testing.T) {
 	if pod.NodeName != "" {
 		t.Errorf("nodeName = %q: bex-operator-workloads refuses a pinned node", pod.NodeName)
 	}
-	if got := diskHolderNode(job); got != "node-a" {
+	if got := diskJobNode(job); got != "node-a" {
 		t.Errorf("required node = %q, want node-a", got)
 	}
 	if nodes, required := preferredNodes(pod); len(nodes) != 0 || !required {
@@ -198,13 +199,13 @@ func TestDiskHoldWritesTheTemplateOnlyOnceTheHolderHasTheVolume(t *testing.T) {
 		t.Fatalf("wait = %v, want the rollout held for its holder", wait)
 	}
 	holder := f.holder()
-	if holder == nil || diskHolderNode(holder) != "node-a" {
+	if holder == nil || diskJobNode(holder) != "node-a" {
 		t.Fatalf("holder = %v, want one on node-a, the volume's node", holder)
 	}
 	f.expectUnrolled("with the holder just created")
 
 	// The holder's pod is bound but its volume not mounted yet.
-	pod := f.holderPod(holder, "node-a", false)
+	pod := f.holderPod(holder, false)
 	if wait := f.apply(); wait <= 0 {
 		t.Fatalf("wait = %v with the holder unmounted, want the rollout still held", wait)
 	}
@@ -314,7 +315,7 @@ func TestDiskHoldFallsBackWithoutBlockingTheRollout(t *testing.T) {
 		name:   "the holder's pod failed",
 		result: diskHoldFallbackFailed,
 		during: func(f *diskHoldFixture, holder *batchv1.Job) {
-			pod := f.holderPod(holder, "node-a", false)
+			pod := f.holderPod(holder, false)
 			pod.Status.Phase = corev1.PodFailed
 			f.updateStatus(pod)
 		},
@@ -322,13 +323,13 @@ func TestDiskHoldFallsBackWithoutBlockingTheRollout(t *testing.T) {
 		name:   "the node is cordoned before the rollout",
 		result: diskHoldSkippedUnschedulable,
 		setup: func(f *diskHoldFixture) {
-			f.cordon("node-a")
+			f.cordon()
 		},
 	}, {
 		name:   "the node is cordoned while the rollout waits",
 		result: diskHoldSkippedUnschedulable,
 		during: func(f *diskHoldFixture, _ *batchv1.Job) {
-			f.cordon("node-a")
+			f.cordon()
 		},
 	}, {
 		name:   "the node is being removed by the autoscaler",
@@ -484,22 +485,25 @@ func TestDiskHoldIsNeverStartedWithoutASameNodeSwapToCover(t *testing.T) {
 // client that counts writes. envtest runs no kubelet or scheduler, so pod
 // placement and status are set by hand either way.
 type diskHoldFixture struct {
-	t          *testing.T
-	c          client.Client
-	r          *AppReconciler
-	app        *appv1alpha1.App
-	instance   *corev1.Pod
-	replicas   int32
-	refuseJobs bool
-	writes     atomic.Int32
-	rsCount    int
+	t        *testing.T
+	c        client.Client
+	r        *AppReconciler
+	app      *appv1alpha1.App
+	instance *corev1.Pod
+	replicas int32
+	// image is the image the pass deploys: a code deploy changes it.
+	image         string
+	refuseJobs    bool
+	refusePrePull bool
+	writes        atomic.Int32
+	rsCount       int
 }
 
 func withoutDeployment(a *appv1alpha1.App) { a.Annotations["test/no-deployment"] = "true" }
 
 func newDiskHoldFixture(t *testing.T, mutate ...func(*appv1alpha1.App)) *diskHoldFixture {
 	t.Helper()
-	f := &diskHoldFixture{t: t, app: diskHoldApp(mutate...), replicas: 1}
+	f := &diskHoldFixture{t: t, app: diskHoldApp(mutate...), replicas: 1, image: "nginx:1"}
 	scheme := diskHoldScheme(t)
 	write := func() { f.writes.Add(1) }
 	f.c = fake.NewClientBuilder().WithScheme(scheme).WithObjects(f.app,
@@ -508,8 +512,14 @@ func newDiskHoldFixture(t *testing.T, mutate ...func(*appv1alpha1.App)) *diskHol
 		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}, &corev1.Pod{}).
 		WithInterceptorFuncs(interceptor.Funcs{
 			Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-				if _, job := obj.(*batchv1.Job); job && f.refuseJobs {
+				if _, job := obj.(*batchv1.Job); job && (f.refuseJobs || f.refusePrePull && obj.GetName() == diskPrePullName(f.app.Name)) {
 					return apierrors.NewForbidden(schema.GroupResource{Group: "batch", Resource: "jobs"}, obj.GetName(), nil)
+				}
+				// The API server's uid, which controller references match on:
+				// the fake client leaves it empty, and every Job would then
+				// control every Job's pod.
+				if obj.GetUID() == "" {
+					obj.SetUID(types.UID(fmt.Sprintf("%s-uid-%d", obj.GetName(), f.writes.Load())))
 				}
 				write()
 				return c.Create(ctx, obj, opts...)
@@ -568,7 +578,7 @@ func (f *diskHoldFixture) apply() time.Duration {
 	f.t.Helper()
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: f.app.Name, Namespace: f.app.Namespace}}
 	wait, err := f.r.applyServingDeployment(context.Background(), f.app, dep,
-		deploymentParams{image: "nginx:1", port: 8080, replicas: f.replicas}, nil)
+		deploymentParams{image: f.image, port: 8080, replicas: f.replicas}, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -635,16 +645,16 @@ func (f *diskHoldFixture) runInstance(name, node string, phase corev1.PodPhase) 
 	return pod
 }
 
-// holderPod is the Job controller's pod for holder, bound to node, mounted
-// or not.
-func (f *diskHoldFixture) holderPod(holder *batchv1.Job, node string, mounted bool) *corev1.Pod {
+// holderPod is the Job controller's pod for holder, bound to node-a, the
+// volume's node, mounted or not.
+func (f *diskHoldFixture) holderPod(holder *batchv1.Job, mounted bool) *corev1.Pod {
 	f.t.Helper()
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: holder.Name + "-x", Namespace: holder.Namespace, Labels: holder.Spec.Template.Labels,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(holder, batchv1.SchemeGroupVersion.WithKind("Job"))}},
 		Spec: *holder.Spec.Template.Spec.DeepCopy(),
 	}
-	pod.Spec.NodeName = node
+	pod.Spec.NodeName = "node-a"
 	if err := f.c.Create(context.Background(), pod); err != nil {
 		f.t.Fatal(err)
 	}
@@ -671,7 +681,7 @@ func (f *diskHoldFixture) holdThroughRestart() {
 	if wait := f.apply(); wait <= 0 {
 		f.t.Fatalf("wait = %v, want the restart held", wait)
 	}
-	f.holderPod(f.holder(), "node-a", true)
+	f.holderPod(f.holder(), true)
 	if wait := f.apply(); wait != 0 {
 		f.t.Fatalf("wait = %v, want the restart written over the mounted holder", wait)
 	}
@@ -691,15 +701,16 @@ func (f *diskHoldFixture) updateStatus(obj client.Object) {
 	}
 }
 
-// age moves holder's creation into the past.
-func (f *diskHoldFixture) age(holder *batchv1.Job, by time.Duration) {
+// age moves job's creation into the past.
+func (f *diskHoldFixture) age(job *batchv1.Job, by time.Duration) {
 	f.t.Helper()
-	holder.CreationTimestamp = metav1.NewTime(time.Now().Add(-by))
-	if err := f.c.Update(context.Background(), holder); err != nil {
+	job.CreationTimestamp = metav1.NewTime(time.Now().Add(-by))
+	if err := f.c.Update(context.Background(), job); err != nil {
 		f.t.Fatal(err)
 	}
-	if got := f.holder(); got == nil || time.Since(got.CreationTimestamp.Time) < by-time.Second {
-		f.t.Fatalf("the fake client kept the holder's creation at %v", got.CreationTimestamp)
+	got := &batchv1.Job{}
+	if err := f.c.Get(context.Background(), client.ObjectKeyFromObject(job), got); err != nil || time.Since(got.CreationTimestamp.Time) < by-time.Second {
+		f.t.Fatalf("the fake client kept %s's creation at %v (%v)", job.Name, got.CreationTimestamp, err)
 	}
 }
 
@@ -712,9 +723,10 @@ func (f *diskHoldFixture) node(name string) *corev1.Node {
 	return node
 }
 
-func (f *diskHoldFixture) cordon(name string) {
+// cordon cordons node-a, the volume's node.
+func (f *diskHoldFixture) cordon() {
 	f.t.Helper()
-	node := f.node(name)
+	node := f.node("node-a")
 	node.Spec.Unschedulable = true
 	if err := f.c.Update(context.Background(), node); err != nil {
 		f.t.Fatal(err)

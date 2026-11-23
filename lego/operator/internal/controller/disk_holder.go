@@ -158,10 +158,6 @@ func diskHolderName(appName string) string {
 // carries app.bex.co/app-id, which the Services select on.
 func diskHolderJob(app *appv1alpha1.App, tier, node string, scheme *runtime.Scheme) (*batchv1.Job, error) {
 	labels := execution.PodLabels(app.Name, string(app.UID), diskHolderComponent, "", "", false)
-	security := execution.RestrictedContainerSecurityContext()
-	security.RunAsNonRoot = new(true)
-	security.RunAsUser, security.RunAsGroup = new(diskHolderUser), new(diskHolderUser)
-	security.ReadOnlyRootFilesystem = new(true)
 	spec := corev1.PodSpec{
 		RestartPolicy:                corev1.RestartPolicyNever,
 		AutomountServiceAccountToken: new(false),
@@ -169,11 +165,7 @@ func diskHolderJob(app *appv1alpha1.App, tier, node string, scheme *runtime.Sche
 		// /pause exits on SIGTERM. The bound matters when the volume must move:
 		// it cannot detach until the holder is gone.
 		TerminationGracePeriodSeconds: new(int64(1)),
-		Affinity: &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{NodeSelectorTerms: []corev1.NodeSelectorTerm{{
-				MatchFields: []corev1.NodeSelectorRequirement{{Key: diskNodeField, Operator: corev1.NodeSelectorOpIn, Values: []string{node}}},
-			}}},
-		}},
+		Affinity:                      diskNodeAffinity(node),
 		Containers: []corev1.Container{{
 			Name:            diskHolderContainer,
 			Image:           diskHolderImage,
@@ -181,7 +173,7 @@ func diskHolderJob(app *appv1alpha1.App, tier, node string, scheme *runtime.Sche
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			VolumeMounts:    []corev1.VolumeMount{{Name: diskVolumeName, MountPath: diskHolderMountPath, ReadOnly: true}},
 			Resources:       diskHolderResources(),
-			SecurityContext: security,
+			SecurityContext: diskHolderSecurityContext(),
 		}},
 		Volumes: []corev1.Volume{{
 			Name: diskVolumeName,
@@ -208,6 +200,27 @@ func diskHolderJob(app *appv1alpha1.App, tier, node string, scheme *runtime.Sche
 		},
 	}
 	return job, controllerutil.SetControllerReference(app, job, scheme)
+}
+
+// diskNodeAffinity places a pod on node by a required node-affinity term on
+// its name: bex-operator-workloads refuses nodeName.
+func diskNodeAffinity(node string) *corev1.Affinity {
+	return &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+			MatchFields: []corev1.NodeSelectorRequirement{{Key: diskNodeField, Operator: corev1.NodeSelectorOpIn, Values: []string{node}}},
+		}}},
+	}}
+}
+
+// diskHolderSecurityContext is the holder's and the pre-pull's container
+// hardening: restricted, as the pause image's non-root user, with a read-only
+// root filesystem.
+func diskHolderSecurityContext() *corev1.SecurityContext {
+	security := execution.RestrictedContainerSecurityContext()
+	security.RunAsNonRoot = new(true)
+	security.RunAsUser, security.RunAsGroup = new(diskHolderUser), new(diskHolderUser)
+	security.ReadOnlyRootFilesystem = new(true)
+	return security
 }
 
 // diskHolderResources requests nothing, so the holder fits beside the
@@ -239,8 +252,8 @@ func diskHolderResources() corev1.ResourceRequirements {
 	}
 }
 
-// diskHolderNode is the node a holder Job holds the volume on.
-func diskHolderNode(job *batchv1.Job) string {
+// diskJobNode is the node a holder or pre-pull Job's pod is placed on.
+func diskJobNode(job *batchv1.Job) string {
 	affinity := job.Spec.Template.Spec.Affinity
 	if affinity == nil || affinity.NodeAffinity == nil || affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 		return ""
@@ -257,11 +270,14 @@ func diskHolderNode(job *batchv1.Job) string {
 
 // diskHoldStep is what a pass does about the hold before it writes the
 // Deployment: wait > 0 halts the pass with the template unwritten, because a
-// holder does not have the volume mounted yet; otherwise the template is
-// written, and held says a mounted holder covers that write.
+// holder does not have the volume mounted yet or the new image may still be
+// pulling onto its node; otherwise the template is written, held says a
+// mounted holder covers that write, and prePull what the write waited for
+// when the new template runs a new image (diskPrePullsTotal).
 type diskHoldStep struct {
-	wait time.Duration
-	held bool
+	wait    time.Duration
+	held    bool
+	prePull string
 }
 
 // holdDiskThroughRollout decides, before a pass writes a disk-bearing App's
@@ -274,9 +290,14 @@ func (r *AppReconciler) holdDiskThroughRollout(ctx context.Context, app *appv1al
 		return diskHoldStep{} // never had a disk: every stateless App, no API call
 	}
 	log := logf.FromContext(ctx).WithValues("app", app.Name)
-	holder, err := r.diskHolder(ctx, app)
+	holder, err := r.diskJob(ctx, app, diskHolderName(app.Name))
 	if err != nil {
 		log.Error(err, "reading the disk holder failed; rolling without it")
+		return diskHoldStep{}
+	}
+	prePull, err := r.diskJob(ctx, app, diskPrePullName(app.Name))
+	if err != nil {
+		log.Error(err, "reading the disk pre-pull failed; rolling without it")
 		return diskHoldStep{}
 	}
 	stored := &appsv1.Deployment{}
@@ -287,9 +308,11 @@ func (r *AppReconciler) holdDiskThroughRollout(ctx context.Context, app *appv1al
 		}
 		// A first deploy: no instance has the volume yet.
 		r.endOwnedDiskHold(ctx, app, holder, diskHoldEndStopped)
+		r.endOwnedDiskPrePull(ctx, app, prePull, diskHoldEndStopped)
 		return diskHoldStep{}
 	}
-	if holder == nil && (stored.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType || !mountsDiskClaim(stored.Spec.Template.Spec, app.Name)) {
+	if holder == nil && prePull == nil &&
+		(stored.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType || !mountsDiskClaim(stored.Spec.Template.Spec, app.Name)) {
 		return diskHoldStep{} // the running template shares no volume to hold
 	}
 	projected := stored.DeepCopy()
@@ -300,20 +323,22 @@ func (r *AppReconciler) holdDiskThroughRollout(ctx context.Context, app *appv1al
 				r.endDiskHold(ctx, holder, reason)
 			}
 		}
+		r.settleDiskPrePull(ctx, app, prePull, stored, replicas)
 		return diskHoldStep{}
 	}
-	return r.startDiskHold(ctx, app, tier, holder, stored, projected, replicas)
+	return r.startDiskHold(ctx, app, tier, holder, prePull, stored, projected, replicas)
 }
 
 // startDiskHold is holdDiskThroughRollout for a pass whose write would roll
 // the template.
-func (r *AppReconciler) startDiskHold(ctx context.Context, app *appv1alpha1.App, tier string, holder *batchv1.Job, stored, projected *appsv1.Deployment, replicas int32) diskHoldStep {
+func (r *AppReconciler) startDiskHold(ctx context.Context, app *appv1alpha1.App, tier string, holder, prePull *batchv1.Job, stored, projected *appsv1.Deployment, replicas int32) diskHoldStep {
 	log := logf.FromContext(ctx).WithValues("app", app.Name)
 	// Nothing starts on the volume's node (a suspend), or one of the two
 	// templates does not mount the disk (it is being attached or detached).
 	if replicas == 0 || stored.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType ||
 		!mountsDiskClaim(stored.Spec.Template.Spec, app.Name) || !mountsDiskClaim(projected.Spec.Template.Spec, app.Name) {
 		r.endOwnedDiskHold(ctx, app, holder, diskHoldEndStopped)
+		r.endOwnedDiskPrePull(ctx, app, prePull, diskHoldEndStopped)
 		return diskHoldStep{}
 	}
 	if holder != nil && !metav1.IsControlledBy(holder, app) {
@@ -328,12 +353,31 @@ func (r *AppReconciler) startDiskHold(ctx context.Context, app *appv1alpha1.App,
 	}
 	node, holder, skipped := r.diskHoldNode(ctx, tier, holder, pods.Items, projected)
 	if skipped != "" {
+		// The volume must move, so the new instance may start anywhere.
+		r.endOwnedDiskPrePull(ctx, app, prePull, diskHoldEndStopped)
 		return skipDiskHold(skipped)
 	}
+	var step diskHoldStep
 	if holder == nil {
-		return r.createDiskHolder(ctx, app, tier, node)
+		step = r.createDiskHolder(ctx, app, tier, node)
+	} else {
+		step = r.awaitDiskHolder(ctx, holder, pods.Items, node)
 	}
-	return r.awaitDiskHolder(ctx, holder, pods.Items, node)
+	if step.wait == 0 && !step.held {
+		// The rollout goes on without a hold, at once. A pull already
+		// started goes on, and settleDiskPrePull ends it once it has.
+		return step
+	}
+	pull := r.prePullThroughHold(ctx, app, tier, node, prePull, pods.Items,
+		newTemplateImages(&stored.Spec.Template.Spec, &projected.Spec.Template.Spec), &projected.Spec.Template)
+	switch {
+	case step.wait > 0 && pull.wait > 0:
+		return diskHoldStep{wait: min(step.wait, pull.wait)}
+	case step.wait > 0 || pull.wait > 0:
+		return diskHoldStep{wait: max(step.wait, pull.wait)}
+	}
+	step.prePull = pull.prePull
+	return step
 }
 
 // skipDiskHold counts a rollout that goes on without a hold.
@@ -353,7 +397,7 @@ func (r *AppReconciler) diskHoldNode(ctx context.Context, tier string, holder *b
 		node = instance.Spec.NodeName
 	}
 	if holder != nil {
-		if held := diskHolderNode(holder); node == "" {
+		if held := diskJobNode(holder); node == "" {
 			node = held
 		} else if held != node {
 			r.endDiskHold(ctx, holder, diskHoldEndMoved)
@@ -412,7 +456,7 @@ func (r *AppReconciler) awaitDiskHolder(ctx context.Context, holder *batchv1.Job
 		r.endDiskHold(ctx, holder, diskHoldEndFallback)
 		return skipDiskHold(diskHoldFallbackFailed)
 	}
-	pod := holderPod(pods, holder)
+	pod := jobPod(pods, holder)
 	if pod != nil && pod.Spec.NodeName == node && volumesMounted(pod) {
 		return diskHoldStep{held: true}
 	}
@@ -421,7 +465,7 @@ func (r *AppReconciler) awaitDiskHolder(ctx context.Context, holder *batchv1.Job
 		r.endDiskHold(ctx, holder, diskHoldEndFallback)
 		return skipDiskHold(diskHoldFallbackFailed)
 	}
-	age := diskHolderAge(holder)
+	age := jobAge(holder)
 	if age >= diskHoldMountBound {
 		log.Info("the disk holder did not mount the volume in time; rolling without it", "bound", diskHoldMountBound)
 		r.endDiskHold(ctx, holder, diskHoldEndFallback)
@@ -440,7 +484,7 @@ func (r *AppReconciler) diskHoldEnd(ctx context.Context, app *appv1alpha1.App, h
 		return diskHoldEndFinished
 	case replicas == 0 || !mountsDiskClaim(stored.Spec.Template.Spec, app.Name):
 		return diskHoldEndStopped
-	case diskHolderAge(holder) >= diskHoldMaxAge:
+	case jobAge(holder) >= diskHoldMaxAge:
 		return diskHoldEndExpired
 	}
 	instances, err := r.currentInstances(ctx, stored)
@@ -448,7 +492,7 @@ func (r *AppReconciler) diskHoldEnd(ctx context.Context, app *appv1alpha1.App, h
 		logf.FromContext(ctx).Error(err, "reading the new instance for the disk hold failed", "app", app.Name)
 		return ""
 	}
-	node := diskHolderNode(holder)
+	node := diskJobNode(holder)
 	mounted := false
 	for _, pod := range instances {
 		if pod.Spec.NodeName != node {
@@ -518,52 +562,66 @@ func (r *AppReconciler) endOwnedDiskHold(ctx context.Context, app *appv1alpha1.A
 	}
 }
 
-// releaseDiskHold ends app's holder, if it has one: its disk is detached, or a
-// restore is about to take the volume.
+// releaseDiskHold ends app's holder and pre-pull, if it has them: its disk is
+// detached, or a restore is about to take the volume.
 func (r *AppReconciler) releaseDiskHold(ctx context.Context, app *appv1alpha1.App, reason string) {
-	holder, err := r.diskHolder(ctx, app)
+	holder, err := r.diskJob(ctx, app, diskHolderName(app.Name))
 	if err != nil {
 		logf.FromContext(ctx).Error(err, "reading the disk holder failed", "app", app.Name)
+	} else {
+		r.endOwnedDiskHold(ctx, app, holder, reason)
+	}
+	prePull, err := r.diskJob(ctx, app, diskPrePullName(app.Name))
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "reading the disk pre-pull failed", "app", app.Name)
 		return
 	}
-	r.endOwnedDiskHold(ctx, app, holder, reason)
+	r.endOwnedDiskPrePull(ctx, app, prePull, reason)
 }
 
-// diskHolder is the Job by app's holder name, nil when there is none. It may
-// belong to another lifetime of the App; callers check.
-func (r *AppReconciler) diskHolder(ctx context.Context, app *appv1alpha1.App) (*batchv1.Job, error) {
-	holder := &batchv1.Job{}
-	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskHolderName(app.Name)}, holder); err != nil {
+// diskJob is app's Job named name (its holder or pre-pull), nil when there is
+// none. It may belong to another lifetime of the App; callers check.
+func (r *AppReconciler) diskJob(ctx context.Context, app *appv1alpha1.App, name string) (*batchv1.Job, error) {
+	job := &batchv1.Job{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, job); err != nil {
 		return nil, client.IgnoreNotFound(err)
 	}
-	return holder, nil
+	return job, nil
 }
 
-// endDiskHold deletes holder, whose pod the garbage collector then deletes.
-// A failure is only logged: the next pass tries again, and the Job's own
-// deadline is the last backstop.
+// endDiskHold ends holder, counting why.
 func (r *AppReconciler) endDiskHold(ctx context.Context, holder *batchv1.Job, reason string) {
-	if holder == nil || !holder.DeletionTimestamp.IsZero() {
-		return
+	if r.endDiskJob(ctx, holder, reason) {
+		diskHoldEndsTotal.WithLabelValues(reason).Inc()
 	}
-	uid := holder.UID
-	if err := r.Delete(ctx, holder, client.Preconditions{UID: &uid}, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil {
-		if !apierrors.IsNotFound(err) {
-			logf.FromContext(ctx).Error(err, "ending the disk hold failed", "holder", holder.Name, "reason", reason)
-		}
-		return
-	}
-	diskHoldEndsTotal.WithLabelValues(reason).Inc()
-	logf.FromContext(ctx).Info("ended the disk hold", "holder", holder.Name, "node", diskHolderNode(holder), "reason", reason)
 }
 
-// diskHolderAge is how long ago holder was created. A Job the API server
-// has not stamped yet is new.
-func diskHolderAge(holder *batchv1.Job) time.Duration {
-	if holder.CreationTimestamp.IsZero() {
+// endDiskJob deletes a holder or pre-pull Job, whose pod the garbage
+// collector then deletes, and reports whether it did. A failure is only
+// logged: the next pass tries again, and the Job's own deadline is the last
+// backstop.
+func (r *AppReconciler) endDiskJob(ctx context.Context, job *batchv1.Job, reason string) bool {
+	if job == nil || !job.DeletionTimestamp.IsZero() {
+		return false
+	}
+	uid := job.UID
+	if err := r.Delete(ctx, job, client.Preconditions{UID: &uid}, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil {
+		if !apierrors.IsNotFound(err) {
+			logf.FromContext(ctx).Error(err, "ending the disk rollout Job failed", "job", job.Name, "reason", reason)
+		}
+		return false
+	}
+	logf.FromContext(ctx).Info("ended the disk rollout Job", "job", job.Name, "node", diskJobNode(job), "reason", reason)
+	return true
+}
+
+// jobAge is how long ago job was created. A Job the API server has not
+// stamped yet is new.
+func jobAge(job *batchv1.Job) time.Duration {
+	if job.CreationTimestamp.IsZero() {
 		return 0
 	}
-	return time.Since(holder.CreationTimestamp.Time)
+	return time.Since(job.CreationTimestamp.Time)
 }
 
 // servingInstance is the App's running instance, the one a rollout replaces
@@ -580,11 +638,11 @@ func servingInstance(pods []corev1.Pod) *corev1.Pod {
 	return nil
 }
 
-// holderPod is the pod of holder among pods, nil before the Job controller
-// has made it.
-func holderPod(pods []corev1.Pod, holder *batchv1.Job) *corev1.Pod {
+// jobPod is the pod of job among pods, nil before the Job controller has
+// made it.
+func jobPod(pods []corev1.Pod, job *batchv1.Job) *corev1.Pod {
 	for i := range pods {
-		if metav1.IsControlledBy(&pods[i], holder) {
+		if metav1.IsControlledBy(&pods[i], job) {
 			return &pods[i]
 		}
 	}

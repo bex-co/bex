@@ -40,6 +40,11 @@ const (
 	// its node through a Recreate deploy. It runs no app container, so
 	// bex-api's reads of the app container leave it out.
 	ComponentDiskHolder = "disk-holder"
+	// ComponentDiskPrePull is LabelComponent's value on a disk pre-pull's
+	// pod (w6/m595): a Job's pod that pulls a code deploy's new image onto
+	// the volume's node while the old instance still serves. Its containers
+	// never start, and none is the app container.
+	ComponentDiskPrePull = "disk-prepull"
 	// LabelPreDeploy carries the service name on a pre-deploy Job and its
 	// pod (like build's "app.bex.co/build"), so the backend can find the
 	// step's pod for its logs.

@@ -28,35 +28,43 @@ import (
 )
 
 // A disk service's Recreate deploy runs a disk holder's pod beside its
-// instance (w6/m559). It carries the App's label and runs no app container,
-// so the kubelet refuses a read of that container on it, and the store-less
-// read failed whole while the holder ran.
+// instance (w6/m559), and a code deploy a pre-pull's pod too (w6/m595). Each
+// carries the App's label and runs no app container, so the kubelet refuses
+// a read of that container on it, and the store-less read failed whole while
+// the holder ran.
 func TestStoreLessLogReadsLeaveTheDiskHolderOut(t *testing.T) {
-	holder := podFor("web", "dskhld-web-x2k9p")
-	holder.Labels[core.PodLabelComponent] = appv1alpha1.ComponentDiskHolder
-	svc := newService(map[string][]string{
-		"web-1": {"2026-11-21T12:00:00Z serving"},
-	}, sampleApp("web"), podFor("web", "web-1"), holder)
-	source := svc.PodLogs
-	svc.PodLogs = func(ctx context.Context, ns, pod, container string, tail int64) (io.ReadCloser, error) {
-		if pod == holder.Name {
-			return nil, fmt.Errorf("container %s is not valid for pod %s", container, pod)
-		}
-		return source(ctx, ns, pod, container, tail)
-	}
+	for component, name := range map[string]string{
+		appv1alpha1.ComponentDiskHolder:  "dskhld-web-x2k9p",
+		appv1alpha1.ComponentDiskPrePull: "dskpul-web-7fq2m",
+	} {
+		t.Run(component, func(t *testing.T) {
+			helper := podFor("web", name)
+			helper.Labels[core.PodLabelComponent] = component
+			svc := newService(map[string][]string{
+				"web-1": {"2026-11-21T12:00:00Z serving"},
+			}, sampleApp("web"), podFor("web", "web-1"), helper)
+			source := svc.PodLogs
+			svc.PodLogs = func(ctx context.Context, ns, pod, container string, tail int64) (io.ReadCloser, error) {
+				if pod == helper.Name {
+					return nil, fmt.Errorf("container %s is not valid for pod %s", container, pod)
+				}
+				return source(ctx, ns, pod, container, tail)
+			}
 
-	got, err := svc.QueryLogs(context.Background(), LogQuery{App: "web"})
-	if err != nil {
-		t.Fatalf("QueryLogs with a disk holder running: %v", err)
-	}
-	if len(got) != 1 || got[0].Message != "serving" {
-		t.Errorf("entries = %+v, want the instance's one line", got)
-	}
-	names, err := svc.appPodNames(context.Background(), "default", LogQuery{App: "web"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.Equal(names, []string{"web-1"}) {
-		t.Errorf("pods the tail and history read = %v, want the instance alone", names)
+			got, err := svc.QueryLogs(context.Background(), LogQuery{App: "web"})
+			if err != nil {
+				t.Fatalf("QueryLogs with a %s pod running: %v", component, err)
+			}
+			if len(got) != 1 || got[0].Message != "serving" {
+				t.Errorf("entries = %+v, want the instance's one line", got)
+			}
+			names, err := svc.appPodNames(context.Background(), "default", LogQuery{App: "web"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(names, []string{"web-1"}) {
+				t.Errorf("pods the tail and history read = %v, want the instance alone", names)
+			}
+		})
 	}
 }
