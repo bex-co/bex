@@ -772,6 +772,258 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		})
 	})
 
+	// w32/101: a save-only update arriving while a static site's Restart or
+	// Rollback copy Job is in flight (PhaseDeploying) used to wedge the site
+	// in PhaseDeploying forever with zero requeue — blocking every subsequent
+	// deploy in queued — for both no-build and built static sites and under
+	// both Wait and Override overlap policies.
+	Context("a save-only update during an in-flight static Restart or Rollback (w32/101)", func() {
+		direct := func(s *appv1alpha1.AppSpec) { s.BuildCommand = ""; s.PublishPath = "." }
+		startRestore := func(nn types.NamespacedName, targetPrefix, image, at string) int64 {
+			GinkgoHelper()
+			var gen int64
+			update(nn, func(app *appv1alpha1.App) {
+				gen = app.Generation + 1
+				app.Spec.RestartedAt = at
+				app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{
+					Generation: gen, Image: image, StaticPrefix: targetPrefix,
+				}
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(gen, 10))
+			})
+			res := passes(nn, 2)
+			Expect(res.RequeueAfter).To(Equal(publish.ObserveInterval), "the restore copy Job is in flight and requeues")
+			app := envtestApp(nn)
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+			Expect(app.Status.ReleaseGeneration).To(Equal(gen))
+			Expect(app.Status.SelectedReleaseGeneration).To(Equal(gen))
+			Expect(app.Status.ArtifactFingerprint).To(Equal(app.Status.ReleaseArtifactFingerprint),
+				"staticRestoreSelection must stamp ArtifactFingerprint on adoption")
+			Expect(app.Status.ArtifactImage).To(Equal(image))
+			return gen
+		}
+
+		for _, policy := range []string{"", appv1alpha1.OverlappingDeployPolicyOverride} {
+			policyName := "wait"
+			if policy != "" {
+				policyName = policy
+			}
+
+			It("finishes a no-build static Restart across a mid-copy save under "+policyName+" policy", func() {
+				nn := create("w32-101-direct-"+policyName, direct)
+				if policy != "" {
+					update(nn, func(app *appv1alpha1.App) {
+						if app.Labels == nil {
+							app.Labels = map[string]string{}
+						}
+						app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] = policy
+					})
+				}
+				passes(nn, 3)
+				completeEnvtestJob(publishJob(nn.Name, "rev-1"), metav1.Now())
+				passes(nn, 4)
+				expectLive(nn)
+				prefix := envtestApp(nn).Status.StaticPrefix
+				Expect(prefix).NotTo(BeEmpty())
+
+				By("starting a static Restart copy Job over rev-1")
+				restartGen := startRestore(nn, prefix, "", "2026-11-23T19:46:35Z")
+				restartRev := "rev-" + strconv.FormatInt(restartGen, 10)
+
+				By("landing a save-only update mid-copy (changed publish directory)")
+				saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "public" })
+				res := pass(nn)
+				Expect(res.RequeueAfter).To(Equal(publish.ObserveInterval),
+					"a mid-copy save must not strand the in-flight copy with zero requeue")
+				Expect(envtestApp(nn).Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+
+				By("completing the copy Job: the restart settles Running on rev-2 and leaves the save waiting")
+				completeEnvtestJob(publishJob(nn.Name, restartRev), metav1.Now())
+				passes(nn, 3)
+				app := envtestApp(nn)
+				Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning), "status: %+v", app.Status)
+				Expect(app.Status.ActiveRevision).To(Equal(restartRev))
+				Expect(app.Status.PendingReleaseGeneration).To(BeZero())
+				different, reason := undeployed(nn)
+				Expect(different).To(BeTrue(), "the saved publish directory was not published by the restart")
+				Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
+
+				By("a follow-up deploy publishes the saved directory normally")
+				var nextGen int64
+				update(nn, func(app *appv1alpha1.App) {
+					nextGen = app.Generation + 1
+					app.Spec.ReleaseConfig = nil
+					app.Spec.RestartedAt = "2026-11-23T19:50:00Z"
+					metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(nextGen, 10))
+				})
+				passes(nn, 2)
+				nextRev := "rev-" + strconv.FormatInt(nextGen, 10)
+				completeEnvtestJob(publishJob(nn.Name, nextRev), metav1.Now())
+				passes(nn, 3)
+				app = envtestApp(nn)
+				Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+				Expect(app.Status.ActiveRevision).To(Equal(nextRev))
+				different, _ = undeployed(nn)
+				Expect(different).To(BeFalse())
+			})
+
+			It("finishes a built static Rollback/Restart across a mid-copy save under "+policyName+" policy", func() {
+				nn := create("w32-101-built-" + policyName)
+				if policy != "" {
+					update(nn, func(app *appv1alpha1.App) {
+						if app.Labels == nil {
+							app.Labels = map[string]string{}
+						}
+						app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] = policy
+					})
+				}
+				build1(nn)
+				finishFirst(nn)
+				passes(nn, 3)
+				expectLive(nn)
+				first := envtestApp(nn)
+				prefix, image := first.Status.StaticPrefix, first.Status.Image
+				Expect(image).NotTo(BeEmpty())
+
+				By("starting a static restore copy Job over rev-1")
+				restoreGen := startRestore(nn, prefix, image, "2026-11-23T19:46:35Z")
+				restoreRev := "rev-" + strconv.FormatInt(restoreGen, 10)
+
+				By("landing a save-only update mid-copy")
+				saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out2" })
+				res := pass(nn)
+				Expect(res.RequeueAfter).To(Equal(publish.ObserveInterval),
+					"a built static restore must keep observing its copy Job across a mid-copy save")
+
+				By("completing the copy Job: the restore settles Running with its image and leaves out2 waiting")
+				completeEnvtestJob(publishJob(nn.Name, restoreRev), metav1.Now())
+				passes(nn, 3)
+				app := envtestApp(nn)
+				Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning), "status: %+v", app.Status)
+				Expect(app.Status.ActiveRevision).To(Equal(restoreRev))
+				Expect(app.Status.Image).To(Equal(image))
+				different, reason := undeployed(nn)
+				Expect(different).To(BeTrue())
+				Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
+			})
+		}
+
+		It("holds a newer deploy behind an in-flight static restore under Wait, then deploys it", func() {
+			nn := create("w32-101-overlap-wait", direct)
+			passes(nn, 3)
+			completeEnvtestJob(publishJob(nn.Name, "rev-1"), metav1.Now())
+			passes(nn, 4)
+			expectLive(nn)
+			prefix := envtestApp(nn).Status.StaticPrefix
+
+			restartGen := startRestore(nn, prefix, "", "2026-11-23T19:46:35Z")
+			restartRev := "rev-" + strconv.FormatInt(restartGen, 10)
+
+			By("triggering a newer deploy while the restore copy is in flight")
+			var deployGen int64
+			update(nn, func(app *appv1alpha1.App) {
+				deployGen = app.Generation + 1
+				app.Spec.ReleaseConfig = nil
+				app.Spec.RestartedAt = "2026-11-23T19:46:38Z"
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(deployGen, 10))
+			})
+			res := pass(nn)
+			Expect(res.RequeueAfter).To(Equal(publish.ObserveInterval))
+			app := envtestApp(nn)
+			Expect(app.Status.ReleaseGeneration).To(Equal(restartGen), "Wait must pin the in-flight restore")
+			Expect(app.Status.PendingReleaseGeneration).To(Equal(deployGen))
+			deployRev := "rev-" + strconv.FormatInt(deployGen, 10)
+			Expect(apierrors.IsNotFound(k8sClient.Get(ctx, types.NamespacedName{Name: publish.JobName(nn.Name, deployRev), Namespace: ns}, &batchv1.Job{}))).
+				To(BeTrue(), "the newer deploy waits until the restore finishes")
+
+			By("completing the restore copy: it goes live and immediately queues the waiting deploy")
+			completeEnvtestJob(publishJob(nn.Name, restartRev), metav1.Now())
+			res = pass(nn)
+			Expect(res.RequeueAfter).To(Equal(pendingReleaseRequeue))
+			Expect(envtestApp(nn).Status.ActiveRevision).To(Equal(restartRev))
+
+			passes(nn, 2)
+			completeEnvtestJob(publishJob(nn.Name, deployRev), metav1.Now())
+			passes(nn, 3)
+			app = envtestApp(nn)
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+			Expect(app.Status.ActiveRevision).To(Equal(deployRev))
+		})
+
+		It("lets a newer deploy supersede an in-flight static restore under Override", func() {
+			nn := create("w32-101-overlap-override", direct)
+			update(nn, func(app *appv1alpha1.App) {
+				app.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+			})
+			passes(nn, 3)
+			completeEnvtestJob(publishJob(nn.Name, "rev-1"), metav1.Now())
+			passes(nn, 4)
+			expectLive(nn)
+			prefix := envtestApp(nn).Status.StaticPrefix
+
+			_ = startRestore(nn, prefix, "", "2026-11-23T19:46:35Z")
+
+			var deployGen int64
+			update(nn, func(app *appv1alpha1.App) {
+				deployGen = app.Generation + 1
+				app.Spec.ReleaseConfig = nil
+				app.Spec.RestartedAt = "2026-11-23T19:46:38Z"
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(deployGen, 10))
+			})
+			passes(nn, 2)
+			deployRev := "rev-" + strconv.FormatInt(deployGen, 10)
+			Expect(envtestApp(nn).Status.ReleaseGeneration).To(Equal(deployGen), "Override adopts the newer deploy immediately")
+			completeEnvtestJob(publishJob(nn.Name, deployRev), metav1.Now())
+			passes(nn, 3)
+			app := envtestApp(nn)
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+			Expect(app.Status.ActiveRevision).To(Equal(deployRev))
+		})
+
+		It("settles back to the served revision when an in-flight static restore is canceled", func() {
+			nn := create("w32-101-cancel", direct)
+			passes(nn, 3)
+			completeEnvtestJob(publishJob(nn.Name, "rev-1"), metav1.Now())
+			passes(nn, 4)
+			expectLive(nn)
+			prefix := envtestApp(nn).Status.StaticPrefix
+
+			restartGen := startRestore(nn, prefix, "", "2026-11-23T19:46:35Z")
+			update(nn, func(app *appv1alpha1.App) {
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(restartGen, 10))
+			})
+			passes(nn, 3)
+			app := envtestApp(nn)
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+			Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
+			Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)))
+		})
+
+		It("control: still holds a built static site whose build has no image yet on a mid-build save under Override", func() {
+			nn := create("w32-101-building-control")
+			update(nn, func(app *appv1alpha1.App) {
+				app.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+			})
+			build1(nn)
+			finishFirst(nn)
+			passes(nn, 3)
+			expectLive(nn)
+
+			gen := deploy(nn, "2026-11-23T19:48:00Z")
+			passes(nn, 3)
+			_, err := buildJobFor(nn.Name, "gen-"+strconv.FormatInt(gen, 10))
+			Expect(err).NotTo(HaveOccurred(), "precondition: build is in flight with no image yet")
+			Expect(envtestApp(nn).Status.Phase).To(Equal(appv1alpha1.PhaseBuilding))
+
+			saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out2" })
+			res := pass(nn)
+			Expect(res.RequeueAfter).To(BeZero(), "unpinned building static site holds rather than publishing the prior image")
+			Expect(envtestApp(nn).Status.ActiveRevision).To(Equal("rev-1"))
+			rev := "rev-" + strconv.FormatInt(gen, 10)
+			Expect(apierrors.IsNotFound(k8sClient.Get(ctx, types.NamespacedName{Name: publish.JobName(nn.Name, rev), Namespace: ns}, &batchv1.Job{}))).
+				To(BeTrue(), "must not dispatch a publish Job before the build produces its image")
+		})
+	})
+
 	It("still goes live with an IP rule or a rename alone saved during the build", func() {
 		nn := create("m460-operational")
 		build1(nn)

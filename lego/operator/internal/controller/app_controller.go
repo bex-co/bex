@@ -1087,40 +1087,35 @@ func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1
 // prior release held while the new one has no image), so the caller must return
 // (res, err) instead of dispatching.
 func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1.App, decision appReleaseDecision, port int) (image string, res ctrl.Result, halted bool, err error) {
+	// A static site's release has its own publish lifecycle: a direct publish,
+	// a retained-publication restore (Restart or Rollback, w32/101), or a built
+	// site's publish Job and first-deploy host handover (w8/m460). When a saved
+	// change waits for a deploy (decision.sourcePending — including under
+	// Override overlap policy), a finishing static release continues into
+	// reconcileKubernetes on its own artifact so its publish Job or handover
+	// completes; an unbuilt, failed, or never-dispatched static release holds
+	// the served revision's routing instead (w32/003).
+	if decision.sourcePending && app.Spec.Type == appv1alpha1.TypeStaticSite {
+		res, err := r.resolvePendingStaticRelease(ctx, app, port)
+		return "", res, true, err
+	}
 	// A never-deployed service has no active artifact yet, so Update Source must
 	// simply wait; the next deploy annotation re-enters with sourcePending=false.
-	// A static site has no served image to reuse when its release is a direct
-	// publish, or is its first, which records status.image only once its host
-	// is handed over. Halting it here stranded that deploy in Deploying, its
-	// host on the activator with no IP allow-list (w8/m460), so its release
-	// finishes on its own publication, and a served one's routing keeps
-	// following the App.
 	if decision.sourcePending && app.Status.Image == "" {
-		if app.Spec.Type == appv1alpha1.TypeStaticSite && r.Mode == ModeKubernetes {
-			if staticReleaseFinishing(app) {
-				res, err := r.reconcileKubernetes(ctx, app, app.Status.ArtifactImage, port)
-				return "", res, true, err
-			}
-			if held, res, err := r.holdPendingStaticArtifact(ctx, app, ctrl.Result{}); held {
-				return "", res, true, err
-			}
-		}
 		return "", ctrl.Result{}, true, nil
 	}
 	// A save after a failed build leaves the release generation on the failed
 	// one. Dispatching the serving image under it would roll a new pod template
-	// with no deploy (w8/289), or republish a static site as Deploying, which
-	// pins the release so the next deploy never builds (w32/003). Hold the
-	// active release instead; a static site also holds while its build is
-	// pending.
-	if decision.sourcePending && releaseRevision(app) != app.Status.ActiveRevision &&
-		(app.Spec.Type == appv1alpha1.TypeStaticSite || terminalBuildFailureRecorded(app)) {
+	// with no deploy (w8/289). Hold the active release instead.
+	if decision.sourcePending && releaseRevision(app) != app.Status.ActiveRevision && terminalBuildFailureRecorded(app) {
 		if held, res, err := r.holdPendingArtifact(ctx, app, ctrl.Result{}); held {
 			return "", res, true, err
 		}
 	}
-	// A static rollback restores the target's retained publication (w4/m197):
-	// nothing to build, and no image to extract through today's settings. The
+	// A static rollback or restart restores the target's retained publication
+	// (w4/m197, w32/049): nothing to build, and no image to extract through
+	// today's settings. Stamp the resolved artifact identity so an in-flight
+	// copy is recognized as finishing if a save arrives mid-copy (w32/101). The
 	// selection is static-only; any other type refuses it rather than running
 	// it as a runtime selection.
 	if ref := staticRestoreSelection(app); ref != nil {
@@ -1128,6 +1123,8 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 			res, err := r.fail(ctx, app, "BadSpec", fmt.Errorf("a retained static publication can only be restored by a static_site on the kubernetes runtime"))
 			return "", res, true, err
 		}
+		app.Status.ArtifactFingerprint = decision.desired.artifact
+		app.Status.ArtifactImage = ref.Image
 		res, err := r.reconcileKubernetes(ctx, app, ref.Image, port)
 		return "", res, true, err
 	}
@@ -1186,6 +1183,28 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 		app.Status.ArtifactImage = image
 	}
 	return image, ctrl.Result{}, false, nil
+}
+
+// resolvePendingStaticRelease finishes an in-flight static publish, restore
+// copy, or first-deploy handover when a save-only update is pending, and
+// otherwise holds the served revision's routing without republishing.
+func (r *AppReconciler) resolvePendingStaticRelease(ctx context.Context, app *appv1alpha1.App, port int) (ctrl.Result, error) {
+	if r.Mode != ModeKubernetes {
+		return ctrl.Result{}, nil
+	}
+	if staticReleaseFinishing(app) {
+		image := app.Status.ArtifactImage
+		if ref := staticRestoreSelection(app); ref != nil {
+			image = ref.Image
+		} else if releaseRevision(app) == app.Status.ActiveRevision && app.Status.Image != "" {
+			image = app.Status.Image
+		}
+		return r.reconcileKubernetes(ctx, app, image, port)
+	}
+	if held, res, err := r.holdPendingStaticArtifact(ctx, app, ctrl.Result{}); held {
+		return res, err
+	}
+	return ctrl.Result{}, nil
 }
 
 // dispatchRuntime hands the resolved image to the configured runtime.
@@ -8235,9 +8254,10 @@ func (r *AppReconciler) holdPendingStaticArtifact(ctx context.Context, app *appv
 }
 
 // staticReleaseFinishing reports a static site's current release that serves,
-// or whose publish (a direct publish's clone or upload) is still in flight with
-// its artifact resolved: a saved change waiting for a deploy lets it finish on
-// what it started with (w8/m460). A failed release, one never dispatched, and
+// or whose publish (a direct publish's clone or upload, a retained-publication
+// restore copy, or a built site's upload) is still in flight with its artifact
+// resolved: a saved change waiting for a deploy lets it finish on what it
+// started with (w8/m460, w32/101). A failed release, one never dispatched, and
 // one whose build has not produced its image are not finishing: publishing
 // that with no image would upload the raw repository.
 func staticReleaseFinishing(app *appv1alpha1.App) bool {
@@ -8247,7 +8267,8 @@ func staticReleaseFinishing(app *appv1alpha1.App) bool {
 	phase := app.Status.Phase
 	return (phase == appv1alpha1.PhaseBuilding || phase == appv1alpha1.PhaseDeploying) &&
 		app.Status.ReleaseGeneration > successfulReleaseGeneration(app) &&
-		app.Status.ArtifactFingerprint == app.Status.ReleaseArtifactFingerprint
+		app.Status.ArtifactFingerprint == app.Status.ReleaseArtifactFingerprint &&
+		!terminalBuildFailureRecorded(app)
 }
 
 // holdPendingCronArtifact keeps operational controls and run history converging

@@ -87,9 +87,39 @@ func TestStaticReleaseFinishing(t *testing.T) {
 			a.Status.ActiveRevision, a.Status.Phase = "", appv1alpha1.PhaseBuilding
 		}, true},
 		{"newer direct release publishing over a served one", func(a *appv1alpha1.App) { a.Status.ReleaseGeneration = 2 }, true},
+		{"in-flight static restore copy over a served release", func(a *appv1alpha1.App) {
+			a.Status.ReleaseGeneration = 2
+			a.Status.Phase = appv1alpha1.PhaseDeploying
+			a.Status.ArtifactFingerprint = "artifact-v1:restore"
+			a.Status.ReleaseArtifactFingerprint = "artifact-v1:restore"
+			a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 2, StaticPrefix: "site/rev-1/"}
+		}, true},
+		{"built release uploading over a served release", func(a *appv1alpha1.App) {
+			a.Status.ReleaseGeneration = 2
+			a.Status.Phase = appv1alpha1.PhaseDeploying
+			a.Status.Image = "zot/site:gen-1@sha256:aa"
+			a.Status.ArtifactImage = "zot/site:gen-2@sha256:bb"
+			a.Status.ArtifactFingerprint = "artifact-v1:gen2"
+			a.Status.ReleaseArtifactFingerprint = "artifact-v1:gen2"
+		}, true},
+		{"built release still building over a served release", func(a *appv1alpha1.App) {
+			a.Status.ReleaseGeneration = 2
+			a.Status.Phase = appv1alpha1.PhaseBuilding
+			a.Status.Image = "zot/site:gen-1@sha256:aa"
+			a.Status.ArtifactFingerprint = "artifact-v1:gen1"
+			a.Status.ReleaseArtifactFingerprint = "artifact-v1:gen2"
+		}, false},
 		{"built release whose image is not built yet", func(a *appv1alpha1.App) {
 			a.Status.ActiveRevision, a.Status.Phase = "", appv1alpha1.PhaseBuilding
 			a.Status.ReleaseArtifactFingerprint = "artifact-v1:building"
+		}, false},
+		{"terminal build failure recorded", func(a *appv1alpha1.App) {
+			a.Status.ReleaseGeneration = 2
+			a.Status.Phase = appv1alpha1.PhaseBuilding
+			meta.SetStatusCondition(&a.Status.Conditions, metav1.Condition{
+				Type: appv1alpha1.ConditionBuild, Status: metav1.ConditionFalse,
+				Reason: appv1alpha1.ReasonBuildFailedUserError, ObservedGeneration: 2,
+			})
 		}, false},
 		{"failed first release", func(a *appv1alpha1.App) {
 			a.Status.ActiveRevision, a.Status.Phase = "", appv1alpha1.PhaseFailed

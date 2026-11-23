@@ -555,14 +555,15 @@ func pinnableRelease(app *appv1alpha1.App) bool {
 }
 
 // selectedRelease reports that the App's adopted release is the one its
-// spec.releaseConfig selects (a Rollback, a Restart, an image override, or an
-// environment save reusing the served build): its image and settings come from
+// spec.releaseConfig selects (a Rollback, a Restart, an image override, an
+// environment save reusing the served build, or a static site's retained
+// publication restore): its image, publication prefix and settings come from
 // that selection, which the adopted view keeps once a newer deploy clears it
-// from the saved spec (w4/661). A static site's restored publication is a copy
-// with no rollout to hold, and a suspended release none at all.
+// from the saved spec (w4/661, w32/101). A suspended release has no rollout
+// to hold.
 func selectedRelease(app *appv1alpha1.App) bool {
 	ref := app.ActiveReleaseConfig()
-	return ref != nil && ref.Generation == app.Status.ReleaseGeneration && ref.StaticPrefix == "" && !app.Spec.Suspended
+	return ref != nil && ref.Generation == app.Status.ReleaseGeneration && !app.Spec.Suspended
 }
 
 // pinnableSourceRelease reports whether the App's release is a source build a

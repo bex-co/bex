@@ -492,3 +492,172 @@ func TestSourceUpdateDuringAReleaseInFlightKeepsItsOwnArtifact(t *testing.T) {
 		t.Fatalf("rolling out: decision = %+v image %q, want release 2's own image", decision, image)
 	}
 }
+
+// staticRestoreOverlapApp is a static site (no-build when image is empty, built
+// otherwise) whose generation-2 Restart or Rollback copy Job is in flight
+// (PhaseDeploying) over served rev-1, with its adopted view.
+func staticRestoreOverlapApp(image string, phase appv1alpha1.AppPhase) (app *appv1alpha1.App, view appv1alpha1.AppSpec) {
+	executing := appv1alpha1.AppSpec{
+		Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/bex", Branch: "main",
+		RootDir: "examples/static-site", PublishPath: ".", RestartedAt: "2026-11-23T19:46:35Z",
+		ReleaseConfig: &appv1alpha1.ReleaseConfigReference{
+			Generation: 2, Image: image, StaticPrefix: "site/rev-1/",
+		},
+	}
+	if image != "" {
+		executing.BuildCommand = "mkdir -p dist && echo v1 > dist/index.html"
+		executing.PublishPath = "dist"
+	}
+	pinned := desiredAppReleaseIdentity(executing)
+	saved := executing
+	saved.PublishPath = "public"
+	saved.RestartedAt = "2026-11-23T19:46:37Z"
+	app = &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 3,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:       "2",
+				appv1alpha1.AnnotationPendingSourceGeneration: "3",
+			},
+		},
+		Spec: saved,
+		Status: appv1alpha1.AppStatus{
+			Phase:                      phase,
+			ArtifactFingerprint:        pinned.artifact,
+			ReleaseArtifactFingerprint: pinned.artifact,
+			ReleaseFingerprint:         pinned.release,
+			ReleaseGeneration:          2,
+			SelectedReleaseGeneration:  2,
+			ActiveRevision:             "rev-1",
+			StaticPrefix:               "site/rev-1/",
+			ArtifactImage:              image,
+			Image:                      image,
+		},
+	}
+	return app, releaseView(saved, executing)
+}
+
+// w32/101: a static site's retained-publication Restart or Rollback runs an
+// asynchronous copy Job in PhaseDeploying. selectedRelease and releaseInFlight
+// must hold it on its adopted view across concurrent settings saves and newer
+// deploys under Wait, for both no-build and built static sites, and release it
+// once active, canceled, suspended, or under Override.
+func TestStaticRestoreInFlightHeldAcrossSavesAndDeploys(t *testing.T) {
+	for _, variant := range []struct {
+		name  string
+		image string
+	}{
+		{"no-build", ""},
+		{"built", "zot/site:gen-1@sha256:aa"},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name              string
+				mutate            func(*appv1alpha1.App, *appv1alpha1.AppSpec)
+				withView          bool
+				wantSelected      bool
+				wantInFlight      bool
+				wantPinned        bool
+				wantSourcePending bool
+			}{
+				{
+					name:         "copying with concurrent save-only update (Wait)",
+					withView:     true,
+					wantSelected: true,
+					wantInFlight: true,
+					wantPinned:   true,
+				},
+				{
+					name: "copying with concurrent save-only update (no view, PhaseDeploying)",
+					// Even before an adopted view exists, PhaseDeploying fixes the release
+					// and a save-only PATCH leaves Spec.ReleaseConfig intact.
+					withView:     false,
+					wantSelected: true,
+					wantInFlight: true,
+					wantPinned:   true,
+				},
+				{
+					name: "copying with newer deploy queued (Wait)",
+					mutate: func(a *appv1alpha1.App, _ *appv1alpha1.AppSpec) {
+						delete(a.Annotations, appv1alpha1.AnnotationPendingSourceGeneration)
+						a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "3"
+						a.Spec.ReleaseConfig = nil
+					},
+					withView:     true,
+					wantSelected: true,
+					wantInFlight: true,
+					wantPinned:   true,
+				},
+				{
+					name: "served (ActiveRevision == rev-2)",
+					mutate: func(a *appv1alpha1.App, _ *appv1alpha1.AppSpec) {
+						a.Status.ActiveRevision = "rev-2"
+						a.Status.Phase = appv1alpha1.PhaseRunning
+					},
+					withView:          true,
+					wantSelected:      true,
+					wantInFlight:      false,
+					wantSourcePending: true,
+				},
+				{
+					name: "copying under Override policy with concurrent save",
+					mutate: func(a *appv1alpha1.App, _ *appv1alpha1.AppSpec) {
+						a.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+					},
+					withView:          true,
+					wantSelected:      true,
+					wantInFlight:      false,
+					wantSourcePending: true,
+				},
+				{
+					name: "copying under Override policy with newer deploy",
+					mutate: func(a *appv1alpha1.App, _ *appv1alpha1.AppSpec) {
+						delete(a.Annotations, appv1alpha1.AnnotationPendingSourceGeneration)
+						a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "3"
+						a.Spec.ReleaseConfig = nil
+						a.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+					},
+					withView:     true,
+					wantSelected: true,
+					wantInFlight: false,
+				},
+				{
+					name: "suspended while copying",
+					mutate: func(a *appv1alpha1.App, v *appv1alpha1.AppSpec) {
+						a.Spec.Suspended = true
+						v.Suspended = true
+					},
+					withView:          true,
+					wantSelected:      false,
+					wantInFlight:      false,
+					wantSourcePending: true,
+				},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					app, view := staticRestoreOverlapApp(variant.image, appv1alpha1.PhaseDeploying)
+					if tc.mutate != nil {
+						tc.mutate(app, &view)
+					}
+					held := app
+					var passedView *appv1alpha1.AppSpec
+					if tc.withView {
+						viewed := *app
+						viewed.Spec = view
+						held = &viewed
+						passedView = &view
+					}
+					if got := selectedRelease(held); got != tc.wantSelected {
+						t.Fatalf("selectedRelease = %v, want %v", got, tc.wantSelected)
+					}
+					if got := releaseInFlight(held); got != tc.wantInFlight {
+						t.Fatalf("releaseInFlight = %v, want %v", got, tc.wantInFlight)
+					}
+					decision := prepareAppReleaseDecision(app, passedView)
+					if decision.pinned != tc.wantPinned || decision.sourcePending != tc.wantSourcePending {
+						t.Fatalf("decision = %+v, want pinned=%v sourcePending=%v", decision, tc.wantPinned, tc.wantSourcePending)
+					}
+				})
+			}
+		})
+	}
+}
