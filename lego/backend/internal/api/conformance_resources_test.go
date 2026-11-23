@@ -1074,7 +1074,7 @@ func TestRenderConformanceEnvGroupsProjectsEnvironments(t *testing.T) {
 	conformDo(t, h, http.MethodGet, "/v1/environments?projectId="+prj.ID, "", http.StatusOK)
 	conformDo(t, h, http.MethodGet, "/v1/environments/"+env.ID, "", http.StatusOK)
 	conformDo(t, h, http.MethodPatch, "/v1/environments/"+env.ID, `{"name":"production"}`, http.StatusOK)
-	conformDo(t, h, http.MethodPost, "/v1/environments/"+env.ID+"/resources", `{"resourceIds":["`+svcID+`"]}`, http.StatusOK)
+	conformDo(t, h, http.MethodPost, "/v1/environments/"+env.ID+"/resources", `{"resourceIds":["`+svcID+`"]}`, http.StatusCreated)
 	conformDo(t, h, http.MethodDelete, "/v1/environments/"+env.ID+"/resources?resourceIds="+svcID, "", http.StatusNoContent)
 	conformDo(t, h, http.MethodDelete, "/v1/environments/"+env.ID, "", http.StatusNoContent)
 	conformDo(t, h, http.MethodDelete, "/v1/projects/"+prj.ID, "", http.StatusNoContent)

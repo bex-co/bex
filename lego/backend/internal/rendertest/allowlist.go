@@ -81,14 +81,11 @@ var Allowlist = map[string][]Divergence{
 	"update-service": details(SuiteAPI, "url"),
 
 	// Postgres: version is an open question recorded in the RowMetadata row.
-	// project is required by the pinned postgresDetail, which defines no such
-	// property, and Render's own responses omit it too: none of the Postgres
-	// objects in Render's Terraform provider recordings carries it (w9/m473).
+	// Render's 2026-11-23 OpenAPI dropped the nonexistent required "project"
+	// field from postgresDetail (w4/m596), retiring those four entries.
 	"list-postgres":     missing(RowMetadata, SuiteAPI, "version"),
-	"retrieve-postgres": missing(RowMetadata, SuiteAPI, "version", "project"),
-	"create-postgres":   missing(RowMetadata, SuiteAPI, "project"),
-	"update-postgres":   missing(RowMetadata, SuiteAPI, "project"),
-	"recover-postgres":  missing(RowMetadata, SuiteAPI, "version", "project"),
+	"retrieve-postgres": missing(RowMetadata, SuiteAPI, "version"),
+	"recover-postgres":  missing(RowMetadata, SuiteAPI, "version"),
 	"create-key-value":  dryRun(),
 	// Render's deprecated /redis spelling of the same Key Value (w3/m274).
 	"create-redis": dryRun(),

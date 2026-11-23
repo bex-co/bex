@@ -221,13 +221,14 @@ type BuildFanout interface {
 
 // BuiltSource is the carrier build BuildFanout deploys.
 type BuiltSource struct {
-	TenantID  string
-	CarrierID string // the carrier's apps row (its bds- id)
-	DeployID  string // the carrier deploy row that went live: the build
-	Namespace string
-	Carrier   string // the carrier's CR name
-	Image     string // the build that went live
-	Commit    CommitInfo
+	TenantID         string
+	CarrierID        string // the carrier's apps row (its bds- id)
+	DeployID         string // the carrier deploy row that went live: the build
+	BuildDeployScope string // "" for legacy builds, else autodeploy_only | none | custom
+	Namespace        string
+	Carrier          string // the carrier's CR name
+	Image            string // the build that went live
+	Commit           CommitInfo
 }
 
 // Reconciler projects the source of truth into the cluster: each apps row
@@ -806,12 +807,20 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	}
 	openByApp := make(map[string][]Deploy, len(openDeploys))
 	for _, d := range openDeploys {
-		// A deferred deploy has no release to observe until it runs; its own
-		// worker promotes or cancels it (w5/m284).
-		if d.Deferred {
+		// A deferred deploy or build-pending deploy has no release to observe
+		// until it runs; its own worker or build fan-out promotes or cancels it.
+		if d.Deferred || d.AwaitingBuild {
 			continue
 		}
 		openByApp[d.AppID] = append(openByApp[d.AppID], d)
+	}
+
+	if reaper, ok := r.Store.(interface {
+		ReapTerminalBuildAwaitingDeploys(context.Context) (int64, error)
+	}); ok {
+		if _, err := reaper.ReapTerminalBuildAwaitingDeploys(ctx); err != nil {
+			log.Printf("controlplane: reap terminal build awaiting deploys: %v", err)
+		}
 	}
 
 	r.resyncBuildFanouts(ctx, desired, byID)
@@ -1187,7 +1196,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// does API and store I/O per service.
 	if ok && status == DeployLive && d.Type == TypeBuildSource && r.BuildFanout != nil {
 		r.startFanout(ctx, BuiltSource{
-			TenantID: d.TenantID, CarrierID: d.ID, DeployID: open.ID, Commit: open.CommitInfo(), Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
+			TenantID: d.TenantID, CarrierID: d.ID, DeployID: open.ID, BuildDeployScope: open.BuildDeployScope, Commit: open.CommitInfo(), Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
 		})
 	}
 	// Notify only the pass that actually closed the row (ok) — a race with a

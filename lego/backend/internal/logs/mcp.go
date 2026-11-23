@@ -18,6 +18,7 @@ package logs
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // mcp.go is the MCP fragment for logs. Both tools mirror Render's official MCP
@@ -43,20 +45,23 @@ import (
 // logFilters is the filter set both tools share, in Render's shape (repeatable
 // filters are arrays). Embedded so the two tools can never drift apart.
 type logFilters struct {
-	Resource   []string `json:"resource" jsonschema:"service, managed Postgres (dpg-), or Key Value (red-) ids to read logs for; all must belong to the same owner"`
-	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|notice|warning|error|critical|alert|emergency, or unknown for a line with no structured severity); * wildcards and /regex/ supported"`
-	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
-	Instance   []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
-	Host       []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards and /regex/ supported"`
-	StatusCode []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards and /regex/ supported"`
-	Method     []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards and /regex/ supported"`
-	Path       []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards and /regex/ supported"`
-	Build      []string `json:"build,omitempty" jsonschema:"bex extension, Render's REST build filter — filter build logs by build ID (a service build's ID is its deploy's dep- id)"`
-	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings, * wildcards or /regex/ (RE2); match any nonempty value"`
-	TextMode   string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
-	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive); defaults to 1 hour ago (one hour before endTime when endTime is earlier)"`
-	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive); defaults to the current time"`
-	Direction  string   `json:"direction,omitempty" jsonschema:"which end of the time range to take lines from: backward (default, most recent) | forward (oldest)"`
+	Resource    []string `json:"resource,omitempty" jsonschema:"service, managed Postgres (dpg-), or Key Value (red-) ids to read logs for; required unless project is provided, or narrows project when both are set"`
+	Project     string   `json:"project,omitempty" jsonschema:"bex extension (Render REST parity) — project id (prj-...) whose services, cron jobs, Postgres and Key Value instances to read logs for"`
+	Environment string   `json:"environment,omitempty" jsonschema:"bex extension (Render REST parity) — environment id (evm-...) in the project; requires project"`
+	Region      string   `json:"region,omitempty" jsonschema:"bex extension (Render REST parity) — Render region filter (frankfurt|ohio|oregon|singapore|virginia); requires project"`
+	Level       []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|notice|warning|error|critical|alert|emergency, or unknown for a line with no structured severity); * wildcards and /regex/ supported"`
+	Type        []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
+	Instance    []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
+	Host        []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards and /regex/ supported"`
+	StatusCode  []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards and /regex/ supported"`
+	Method      []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards and /regex/ supported"`
+	Path        []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards and /regex/ supported"`
+	Build       []string `json:"build,omitempty" jsonschema:"bex extension, Render's REST build filter — filter build logs by build ID (a service build's ID is its deploy's dep- id)"`
+	Text        []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings, * wildcards or /regex/ (RE2); match any nonempty value"`
+	TextMode    string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
+	StartTime   string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive); defaults to 1 hour ago (one hour before endTime when endTime is earlier)"`
+	EndTime     string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive); defaults to the current time"`
+	Direction   string   `json:"direction,omitempty" jsonschema:"which end of the time range to take lines from: backward (default, most recent) | forward (oldest)"`
 }
 
 // listLogsArgs mirrors Render's list_logs: the shared filters plus a line cap.
@@ -130,10 +135,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"Without startTime the last hour is read, as on Render. Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
 			"Use list_log_label_values to discover which filter values exist for a resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, renderLogList, error) {
-		resources, err := boundedResources(in.Resource)
-		if err != nil {
-			return nil, renderLogList{}, err
-		}
 		q, err := in.query()
 		if err != nil {
 			return nil, renderLogList{}, err
@@ -146,8 +147,27 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, renderLogList{}, err
 		}
 		q.Limit = in.Limit
+		ctx = core.WithRequestMemo(core.WithAuditVerb(ctx, AuditVerbQueryLogs))
+		resolved, err := s.resolveLogScope(ctx, savedsearch.ScopeRequest{
+			Project:     in.Project,
+			Environment: in.Environment,
+			Region:      in.Region,
+			Resources:   in.Resource,
+		}, &q, nil)
+		if err != nil {
+			return nil, renderLogList{}, err
+		}
+		if len(resolved.IDs) == 0 {
+			if err := q.validate(); err != nil {
+				return nil, renderLogList{}, err
+			}
+			n := q.normalized()
+			page := logPage{Entries: []LogEntry{}}
+			page.NextStartTime, page.NextEndTime = pageCursors(nil, n.Since, n.End, n.Direction)
+			return nil, toRenderLogList(page), nil
+		}
 
-		page, err := s.queryLogPage(ctx, resources, q)
+		page, err := s.queryLogPage(ctx, resolved.IDs, q)
 		if err != nil {
 			return nil, renderLogList{}, err
 		}
@@ -163,10 +183,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"Use it to discover what values are available for filtering with list_logs, instead of guessing. " +
 			"The label filters (type/level/instance/statusCode/method) and the time range narrow the search; the line filters (text/path/host) do not affect which values are returned.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogLabelValuesArgs) (*mcp.CallToolResult, any, error) {
-		resources, err := boundedResources(in.Resource)
-		if err != nil {
-			return nil, nil, err
-		}
 		q, err := in.query()
 		if err != nil {
 			return nil, nil, err
@@ -174,12 +190,34 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err := s.renderWindow(&q); err != nil {
 			return nil, nil, err
 		}
+		ctx = core.WithRequestMemo(core.WithAuditVerb(ctx, AuditVerbLogLabelValues))
+		resolved, err := s.resolveLogScope(ctx, savedsearch.ScopeRequest{
+			Project:     in.Project,
+			Environment: in.Environment,
+			Region:      in.Region,
+			Resources:   in.Resource,
+		}, &q, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		if resolved.Scoped {
+			if err := checkLabel(in.Label, DiscoverableLabels); err != nil {
+				return nil, nil, err
+			}
+			if err := q.validate(); err != nil {
+				return nil, nil, err
+			}
+		}
 		all := []string{}
-		ctx = core.WithRequestMemo(ctx)
-		for _, id := range resources {
-			q.App = id
-			values, err := s.LogLabelValues(ctx, in.Label, q)
+		for _, id := range resolved.IDs {
+			if resolved.Scoped && core.IsDatastoreResource(id) && !slices.Contains(datastoreLogLabels, in.Label) {
+				continue
+			}
+			values, err := s.LogLabelValues(ctx, in.Label, q.forResource(id))
 			if err != nil {
+				if resolved.Scoped && (errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrNotFound)) {
+					continue
+				}
 				return nil, nil, err
 			}
 			all = append(all, values...)

@@ -258,7 +258,7 @@ func TestPauseRouteAnswers429AtTheStorageCap(t *testing.T) {
 	mux := http.NewServeMux()
 	f.svc.RegisterREST(mux)
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes/os-1/pause", nil).WithContext(callerCtx())
+	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes/os-1/suspend", nil).WithContext(callerCtx())
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusTooManyRequests {

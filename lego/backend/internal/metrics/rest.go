@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // rest.go is the REST metrics adapter — Render metrics-API compatible. It maps
@@ -101,6 +103,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // and surface as a 500 (w4/370).
 func requestedResources(v url.Values) []string {
 	return nonBlankStrings(append(append([]string{}, v["resource"]...), v["service"]...))
+}
+
+func metricScopeFromQuery(v url.Values) savedsearch.ScopeRequest {
+	return savedsearch.ScopeRequest{
+		Project:     v.Get("project"),
+		Environment: v.Get("environment"),
+		Region:      v.Get("region"),
+		Resources:   requestedResources(v),
+	}
 }
 
 // datastoreKindFor infers a datastore metric's kind from the resource id's
@@ -192,7 +203,7 @@ func (s *Service) datastoreAppMetric(ctx context.Context, q MetricQuery, resourc
 }
 
 func (s *Service) activeConnectionsQuery(w http.ResponseWriter, r *http.Request) {
-	s.serveDatastoreResources(w, r, activeConnectionsMetric)
+	s.serveDatastoreResources(w, r, keepActiveConnectionsResource, activeConnectionsMetric)
 }
 
 // renderFilterValues is one entry of Render's filters/application and
@@ -204,17 +215,36 @@ type renderFilterValues struct {
 
 // filterValues reads the requested filter fields through the same verb GraphQL
 // metricsFilters uses, so the surfaces cannot disagree about what is queryable.
-func (s *Service) filterValues(w http.ResponseWriter, r *http.Request, hosts, statusCodes []string, fields ...string) ([]MetricsFilterValues, bool) {
+func (s *Service) filterValues(w http.ResponseWriter, r *http.Request, httpOnly bool, hosts, statusCodes []string, fields ...string) ([]MetricsFilterValues, bool) {
 	v := r.URL.Query()
-	resources := requestedResources(v)
-	if len(resources) == 0 {
-		core.WriteErrStatus(w, http.StatusBadRequest, "resource is required")
-		return nil, false
-	}
 	start, end, _, err := parseTimeWindow(v)
 	if err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return nil, false
+	}
+	scopeReq := metricScopeFromQuery(v)
+	resolved, err := s.resolveMetricScope(r.Context(), scopeReq, maxMetricResources, keepFilterResource(httpOnly))
+	if err != nil {
+		core.WriteErr(w, err)
+		return nil, false
+	}
+	resources := resolved.IDs
+	if resolved.Scoped && len(scopeReq.Resources) == 0 {
+		if resources, err = s.readableMetricResourceIDs(r.Context(), resolved.Resources); err != nil {
+			core.WriteErr(w, err)
+			return nil, false
+		}
+	}
+	if len(resources) == 0 {
+		if err := s.checkWindow(start, end); err != nil {
+			core.WriteErr(w, err)
+			return nil, false
+		}
+		empty := make([]MetricsFilterValues, len(fields))
+		for i, f := range fields {
+			empty[i] = MetricsFilterValues{Field: f, Values: []string{}}
+		}
+		return empty, true
 	}
 	values, err := s.MetricsFilters(r.Context(), MetricsFiltersQuery{
 		Resources:     resources,
@@ -233,7 +263,7 @@ func (s *Service) filterValues(w http.ResponseWriter, r *http.Request, hosts, st
 
 // applicationFilters is Render's "List queryable instance values".
 func (s *Service) applicationFilters(w http.ResponseWriter, r *http.Request) {
-	values, ok := s.filterValues(w, r, nil, nil, filterFieldInstance)
+	values, ok := s.filterValues(w, r, false, nil, nil, filterFieldInstance)
 	if !ok {
 		return
 	}
@@ -241,11 +271,11 @@ func (s *Service) applicationFilters(w http.ResponseWriter, r *http.Request) {
 }
 
 // httpFilters is Render's "List queryable status codes and host values",
-// honoring repeatable resource/service, startTime/endTime, and host/statusCode
-// cross-filtering (w34/m588).
+// honoring repeatable resource/service, project/environment/region,
+// startTime/endTime, and host/statusCode cross-filtering (w34/m588, w4/m596).
 func (s *Service) httpFilters(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
-	values, ok := s.filterValues(w, r, nonEmptyValues(v["host"]), nonEmptyValues(v["statusCode"]), filterFieldStatusCode, filterFieldHost)
+	values, ok := s.filterValues(w, r, true, nonEmptyValues(v["host"]), nonEmptyValues(v["statusCode"]), filterFieldStatusCode, filterFieldHost)
 	if !ok {
 		return
 	}
@@ -258,17 +288,34 @@ func (s *Service) httpFilters(w http.ResponseWriter, r *http.Request) {
 // pathFilters is Render's "List queryable paths" (GET /v1/metrics/filters/path):
 // returns deduplicated, bounded path suggestions derived from the most recent
 // 5,000 matching Traefik access-log lines in Loki across one or more
-// authorized resources (w34/m587). Empty results always serialize as [].
+// authorized resources or a project/environment scope (w34/m587, w4/m596).
+// Empty results always serialize as [].
 func (s *Service) pathFilters(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
-	resources := requestedResources(v)
-	if len(resources) == 0 {
-		core.WriteErrStatus(w, http.StatusBadRequest, "resource is required")
-		return
-	}
 	start, end, _, err := parseTimeWindow(v)
 	if err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	scopeReq := metricScopeFromQuery(v)
+	resolved, err := s.resolveMetricScope(r.Context(), scopeReq, maxMetricResources, keepFilterResource(true))
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	resources := resolved.IDs
+	if resolved.Scoped && len(scopeReq.Resources) == 0 {
+		if resources, err = s.readableMetricResourceIDs(r.Context(), resolved.Resources); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+	}
+	if len(resources) == 0 {
+		if err := s.checkWindow(start, end); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, []string{})
 		return
 	}
 	paths, err := s.PathFilterSuggestions(r.Context(), PathFilterSuggestionsQuery{
@@ -286,27 +333,51 @@ func (s *Service) pathFilters(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusOK, paths)
 }
 
-// metricQuery serves one Render metrics endpoint. Render's `resource` is an array
-// of service ids; bex merges each App's series into one response.
+// metricQuery serves one Render metrics endpoint. Render's `resource` (or
+// `project`/`environment`/`region`) resolves to a bounded set of resources;
+// bex merges each resource's series into one response.
 func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric string) {
-	resources, q, err := parseMetricParams(r)
+	scopeReq, q, err := parseMetricParams(r)
 	if err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+		core.WriteErr(w, err)
+		return
+	}
+	resolved, err := s.resolveMetricScope(r.Context(), scopeReq, maxMetricResources, keepMetricResource(metric))
+	if err != nil {
+		core.WriteErr(w, err)
 		return
 	}
 	// The window cap lives in the shared service (Metrics.checkWindow); only
 	// the resource-array fan-out is adapter-shaped, so it is checked here.
-	if err := checkFanOut(len(resources), 1, latencyFan(metric, q.Quantiles)); err != nil {
+	if err := checkFanOut(max(len(scopeReq.Resources), len(resolved.IDs)), 1, latencyFan(metric, q.Quantiles)); err != nil {
 		core.WriteErr(w, err)
 		return
 	}
 	q.Metric = metric
+	if len(resolved.IDs) == 0 {
+		if err := s.checkWindow(q.Start, q.End); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		if metric == MetricHTTPLatency && resolved.WorkspaceID != "" {
+			if err := s.RequirePlanFeature(r.Context(), resolved.WorkspaceID, core.FeatureLatencyMetrics); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderMetrics(nil))
+		return
+	}
 
+	skipUnreadable := resolved.Scoped && len(scopeReq.Resources) == 0
 	var all []MetricSeries
-	for _, res := range resources {
+	for _, res := range resolved.IDs {
 		if core.IsDatastoreResource(res) {
 			series, err := s.datastoreAppMetric(r.Context(), q, res)
 			if err != nil {
+				if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+					continue
+				}
 				core.WriteErr(w, err)
 				return
 			}
@@ -316,6 +387,9 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 		q.App = res
 		series, err := s.MetricsWithQuantiles(r.Context(), q)
 		if err != nil {
+			if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+				continue
+			}
 			core.WriteErr(w, err)
 			return
 		}
@@ -328,24 +402,38 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 
 // datastoreMetricQuery serves one datastore-metric endpoint (disk-usage/
 // disk-capacity/replication-lag/db-connections/...), honoring repeatable
-// `resource` (and `service`) query parameters per Render's pinned OpenAPI
-// contract (w34/m589).
+// `resource` (and `service`) and Render's `project`/`environment`/`region`
+// query parameters (w34/m589, w4/m596).
 func (s *Service) datastoreMetricQuery(w http.ResponseWriter, r *http.Request, metric string) {
-	s.serveDatastoreResources(w, r, func(_, _ string) (string, error) { return metric, nil })
+	s.serveDatastoreResources(w, r, keepMetricResource(metric), func(_, _ string) (string, error) { return metric, nil })
 }
 
-func (s *Service) serveDatastoreResources(w http.ResponseWriter, r *http.Request, metricFor func(kind, resource string) (string, error)) {
-	resources, base, err := parseDatastoreMetricParams(r)
+func (s *Service) serveDatastoreResources(w http.ResponseWriter, r *http.Request, keep func(savedsearch.Resource) bool, metricFor func(kind, resource string) (string, error)) {
+	scopeReq, base, err := parseDatastoreMetricParams(r)
 	if err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := checkFanOut(len(resources), 1, 1); err != nil {
 		core.WriteErr(w, err)
 		return
 	}
+	resolved, err := s.resolveMetricScope(r.Context(), scopeReq, maxMetricResources, keep)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if err := checkFanOut(len(resolved.IDs), 1, 1); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if len(resolved.IDs) == 0 {
+		if err := s.checkWindow(base.Start, base.End); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderMetrics(nil))
+		return
+	}
+	skipUnreadable := resolved.Scoped && len(scopeReq.Resources) == 0
 	var all []MetricSeries
-	for _, res := range resources {
+	for _, res := range resolved.IDs {
 		q := base
 		q.Resource = res
 		if q.Kind == "" {
@@ -357,6 +445,9 @@ func (s *Service) serveDatastoreResources(w http.ResponseWriter, r *http.Request
 		}
 		series, err := s.DatastoreMetrics(r.Context(), q)
 		if err != nil {
+			if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+				continue
+			}
 			core.WriteErr(w, err)
 			return
 		}
@@ -399,23 +490,17 @@ const (
 )
 
 // parseDatastoreMetricParams maps a datastore-metric query string onto a
-// resource list plus a base DatastoreMetricQuery. `kind` is a bex extension;
+// ScopeRequest plus a base DatastoreMetricQuery. `kind` is a bex extension;
 // when empty, each resource's id prefix decides (datastoreKindFor) so mixed
 // resource lists work on Render's disk-usage, disk-capacity, and
-// active-connections endpoints (w34/m589).
-func parseDatastoreMetricParams(r *http.Request) ([]string, DatastoreMetricQuery, error) {
+// active-connections endpoints (w34/m589, w4/m596).
+func parseDatastoreMetricParams(r *http.Request) (savedsearch.ScopeRequest, DatastoreMetricQuery, error) {
 	v := r.URL.Query()
-
-	resources := requestedResources(v)
-	if len(resources) == 0 {
-		return nil, DatastoreMetricQuery{}, fmt.Errorf("resource is required")
-	}
-
 	start, end, resolution, err := parseTimeWindow(v)
 	if err != nil {
-		return nil, DatastoreMetricQuery{}, err
+		return savedsearch.ScopeRequest{}, DatastoreMetricQuery{}, err
 	}
-	return resources, DatastoreMetricQuery{
+	return metricScopeFromQuery(v), DatastoreMetricQuery{
 		Kind:  v.Get("kind"),
 		Start: start, End: end, Resolution: resolution,
 	}, nil
@@ -432,22 +517,17 @@ func nonEmptyValues(values []string) []string {
 	return out
 }
 
-// parseMetricParams maps Render's metrics query string onto resources + a
+// parseMetricParams maps Render's metrics query string onto a ScopeRequest + a
 // MetricQuery.
-func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
+func parseMetricParams(r *http.Request) (savedsearch.ScopeRequest, MetricQuery, error) {
 	v := r.URL.Query()
-
-	resources := requestedResources(v)
-	if len(resources) == 0 {
-		return nil, MetricQuery{}, fmt.Errorf("resource is required")
-	}
 	groupBy, err := requestGroupBy("aggregateBy", v.Get("aggregateBy"))
 	if err != nil {
-		return nil, MetricQuery{}, err
+		return savedsearch.ScopeRequest{}, MetricQuery{}, err
 	}
 	cpuAgg, err := parseCPUAggregation("aggregationMethod", v.Get("aggregationMethod"))
 	if err != nil {
-		return nil, MetricQuery{}, err
+		return savedsearch.ScopeRequest{}, MetricQuery{}, err
 	}
 
 	q := MetricQuery{
@@ -463,7 +543,7 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 
 	start, end, resolution, err := parseTimeWindow(v)
 	if err != nil {
-		return nil, MetricQuery{}, err
+		return savedsearch.ScopeRequest{}, MetricQuery{}, err
 	}
 	q.Start, q.End, q.Resolution = start, end, resolution
 
@@ -478,7 +558,7 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 		f, err := strconv.ParseFloat(ql, 64)
 		// The negated range also refuses NaN.
 		if err != nil || !(f >= 0 && f <= 1) {
-			return nil, MetricQuery{}, fmt.Errorf("%w: quantile must be a number between 0 and 1", core.ErrBadRequest)
+			return savedsearch.ScopeRequest{}, MetricQuery{}, fmt.Errorf("%w: quantile must be a number between 0 and 1", core.ErrBadRequest)
 		}
 		q.Quantiles = append(q.Quantiles, f)
 	}
@@ -489,10 +569,10 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 	if method := v.Get("aggregateAllMethod"); method != "" {
 		replica, aggMax, parseErr := parseReplicaAggregate(method)
 		if parseErr != nil {
-			return nil, MetricQuery{}, parseErr
+			return savedsearch.ScopeRequest{}, MetricQuery{}, parseErr
 		}
 		q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 	}
 
-	return resources, q, nil
+	return metricScopeFromQuery(v), q, nil
 }

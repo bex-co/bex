@@ -406,17 +406,26 @@ func decodeLogList(t *testing.T, rec *httptest.ResponseRecorder) renderLogList {
 }
 
 func TestLogResourceFanoutIsBoundedAndDeduplicated(t *testing.T) {
+	svc := newService(nil)
 	request := httptest.NewRequest(http.MethodGet, "/v1/logs?resource=web&resource=web&resource=worker", nil)
-	resources, _, err := parseLogParams(request)
+	scopeReq, q, err := parseLogParams(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(resources, []string{"web", "worker"}) {
-		t.Fatalf("resources = %v, want first-seen unique values", resources)
+	resolved, err := svc.resolveLogScope(context.Background(), scopeReq, &q, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(resolved.IDs, []string{"web", "worker"}) {
+		t.Fatalf("resources = %v, want first-seen unique values", resolved.IDs)
 	}
 
 	request = httptest.NewRequest(http.MethodGet, "/v1/logs?"+strings.Repeat("resource=web&", maxLogResources+1), nil)
-	if _, _, err := parseLogParams(request); !errors.Is(err, core.ErrBadRequest) {
+	scopeReq, q, err = parseLogParams(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.resolveLogScope(context.Background(), scopeReq, &q, nil); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("oversized resource array error = %v, want bad request", err)
 	}
 }

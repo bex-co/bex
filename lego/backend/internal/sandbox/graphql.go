@@ -290,6 +290,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				})
 			},
 		},
+		"suspendSandbox": &graphql.Field{
+			Type: graphql.NewNonNull(graphql.Boolean),
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.Suspend(gqlutil.OwnerScoped(p), p.Args["id"].(string)); err != nil {
+					return false, err
+				}
+				return true, nil
+			},
+		},
 		"terminateSandbox": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.Boolean),
 			Args: graphql.FieldConfigArgument{

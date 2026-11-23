@@ -222,8 +222,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.DeleteIfEmpty(r.Context(), r.PathValue("id"))
 	}))
 
-	// Render's membership routes: add resources by id, remove them by id.
-	mux.HandleFunc("POST /v1/environments/{id}/resources", core.HandleMapped(http.StatusOK, func(r *http.Request) (EnvironmentView, error) {
+	// Render's membership routes: add resources by id (201 Created, round 9), remove them by id.
+	mux.HandleFunc("POST /v1/environments/{id}/resources", core.HandleMapped(http.StatusCreated, func(r *http.Request) (EnvironmentView, error) {
 		req, err := core.DecodeBody[struct {
 			ResourceIDs []string `json:"resourceIds"`
 		}](r)

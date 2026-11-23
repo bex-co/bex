@@ -17,6 +17,7 @@ limitations under the License.
 package metrics
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // graphql.go is the metrics GraphQL fragment. This shape is Render's *dashboard*
@@ -387,18 +389,37 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"query": gqlutil.ReqArg(metricsQueryInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				resources, q, err := metricsQueryInputFromArgs(p.Args["query"])
+				scopeReq, q, err := metricsQueryInputFromArgs(p.Args["query"])
 				if err != nil {
 					return nil, err
 				}
-				if err := checkFanOut(len(resources), 1, latencyFan(q.Metric, q.Quantiles)); err != nil {
+				resolved, err := s.resolveMetricScope(p.Context, scopeReq, maxMetricResources, keepMetricResource(q.Metric))
+				if err != nil {
 					return nil, err
 				}
+				if err := checkFanOut(max(len(scopeReq.Resources), len(resolved.IDs)), 1, latencyFan(q.Metric, q.Quantiles)); err != nil {
+					return nil, err
+				}
+				if len(resolved.IDs) == 0 {
+					if err := s.checkWindow(q.Start, q.End); err != nil {
+						return nil, err
+					}
+					if q.Metric == MetricHTTPLatency && resolved.WorkspaceID != "" {
+						if err := s.RequirePlanFeature(p.Context, resolved.WorkspaceID, core.FeatureLatencyMetrics); err != nil {
+							return nil, err
+						}
+					}
+					return []QuantileSeries{}, nil
+				}
+				skipUnreadable := resolved.Scoped && len(scopeReq.Resources) == 0
 				var out []QuantileSeries
-				for _, res := range resources {
+				for _, res := range resolved.IDs {
 					if core.IsDatastoreResource(res) {
 						series, err := s.datastoreAppMetric(p.Context, q, res)
 						if err != nil {
+							if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+								continue
+							}
 							return nil, err
 						}
 						for _, ser := range series {
@@ -412,6 +433,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					// HTTP_LATENCY's percentile "All" overlay (w5/m56).
 					qs, err := s.MetricsWithQuantiles(p.Context, q)
 					if err != nil {
+						if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+							continue
+						}
 						return nil, err
 					}
 					out = append(out, qs...)
@@ -472,9 +496,29 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"query": gqlutil.ReqArg(metricsFiltersQueryInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				q, err := metricsFiltersQueryFromArgs(p.Args["query"])
+				scopeReq, q, httpOnly, err := metricsFiltersQueryFromArgs(p.Args["query"])
 				if err != nil {
 					return nil, err
+				}
+				resolved, err := s.resolveMetricScope(p.Context, scopeReq, maxMetricResources, keepFilterResource(httpOnly))
+				if err != nil {
+					return nil, err
+				}
+				q.Resources = resolved.IDs
+				if resolved.Scoped && len(scopeReq.Resources) == 0 {
+					if q.Resources, err = s.readableMetricResourceIDs(p.Context, resolved.Resources); err != nil {
+						return nil, err
+					}
+				}
+				if len(q.Resources) == 0 {
+					if err := s.checkWindow(q.Start, q.End); err != nil {
+						return nil, err
+					}
+					empty := make([]MetricsFilterValues, len(q.OutputFilters))
+					for i, f := range q.OutputFilters {
+						empty[i] = MetricsFilterValues{Field: f, Values: []string{}}
+					}
+					return metricsFiltersResult{Values: empty}, nil
 				}
 				values, err := s.MetricsFilters(p.Context, q)
 				if err != nil {
@@ -503,18 +547,55 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 }
 
+// scopeFromGQLFilters extracts RESOURCE, PROJECT, ENVIRONMENT and REGION
+// entries from a GraphQL MetricsFilterInput list.
+func scopeFromGQLFilters(filters map[string][]string) (savedsearch.ScopeRequest, error) {
+	single := func(field string) (string, error) {
+		vals := nonBlankStrings(filters[field])
+		if len(vals) > 1 {
+			return "", fmt.Errorf("%w: filters.%s accepts at most one value", core.ErrBadRequest, field)
+		}
+		if len(vals) == 1 {
+			return vals[0], nil
+		}
+		return "", nil
+	}
+	project, err := single(filterFieldProject)
+	if err != nil {
+		return savedsearch.ScopeRequest{}, err
+	}
+	env, err := single(filterFieldEnvironment)
+	if err != nil {
+		return savedsearch.ScopeRequest{}, err
+	}
+	region, err := single(filterFieldRegion)
+	if err != nil {
+		return savedsearch.ScopeRequest{}, err
+	}
+	resources := nonBlankStrings(filters[filterFieldResource])
+	if len(resources) == 0 && project == "" && env == "" {
+		return savedsearch.ScopeRequest{}, fmt.Errorf("%w: filters must include a RESOURCE, PROJECT, or ENVIRONMENT entry", core.ErrBadRequest)
+	}
+	return savedsearch.ScopeRequest{
+		Project:     project,
+		Environment: env,
+		Region:      region,
+		Resources:   resources,
+	}, nil
+}
+
 // metricsQueryInputFromArgs maps Render's dashboard `metrics(query:
-// MetricsQueryInput!)` shape onto resources + a MetricQuery.
-func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
+// MetricsQueryInput!)` shape onto a ScopeRequest + MetricQuery.
+func metricsQueryInputFromArgs(raw any) (savedsearch.ScopeRequest, MetricQuery, error) {
 	input, ok := raw.(map[string]any)
 	if !ok {
-		return nil, MetricQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
+		return savedsearch.ScopeRequest{}, MetricQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
 	}
 
 	name, _ := input["name"].(string)
 	metric, ok := renderMetricNames[name]
 	if !ok {
-		return nil, MetricQuery{}, fmt.Errorf("%w: unknown metrics name %q", core.ErrBadRequest, name)
+		return savedsearch.ScopeRequest{}, MetricQuery{}, fmt.Errorf("%w: unknown metrics name %q", core.ErrBadRequest, name)
 	}
 	q := MetricQuery{Metric: metric}
 	if pct, ok := input["percentage"].(bool); ok {
@@ -528,37 +609,26 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	q.Paths = nonEmptyValues(filters[filterFieldPath])
 	q.Instances = filters[filterFieldInstance]
 
-	resources := filters[filterFieldResource]
-	if len(resources) == 0 {
-		return nil, MetricQuery{}, fmt.Errorf("%w: filters must include a RESOURCE entry", core.ErrBadRequest)
+	scopeReq, err := scopeFromGQLFilters(filters)
+	if err != nil {
+		return savedsearch.ScopeRequest{}, MetricQuery{}, err
 	}
 
-	var err error
 	if q.Start, q.End, q.Resolution, err = windowFromInput(input); err != nil {
-		return nil, MetricQuery{}, err
+		return savedsearch.ScopeRequest{}, MetricQuery{}, err
 	}
 	q.Quantiles = parameterQuantiles(input)
 	if method, _ := input["aggregateAllMethod"].(string); method != "" {
 		replica, aggMax, parseErr := parseReplicaAggregate(method)
 		if parseErr != nil {
-			return nil, MetricQuery{}, parseErr
+			return savedsearch.ScopeRequest{}, MetricQuery{}, parseErr
 		}
 		q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 	}
 	method, _ := input["aggregationMethod"].(string)
 	if q.CPUAggregation, err = parseCPUAggregation("aggregationMethod", method); err != nil {
-		return nil, MetricQuery{}, err
+		return savedsearch.ScopeRequest{}, MetricQuery{}, err
 	}
-	// aggregateBy carries Render's per-chart "Group by" breakdown: an entry
-	// naming the label to break the series out by (STATUS_CODE / METHOD, the
-	// captured filter-field vocabulary), mapped onto Core's GroupBy — the same
-	// status breakdown REST aggregateBy and MCP aggregateHttpRequestCountsBy
-	// reach through requestGroupBy.
-	// Instance-flavored values (Render also sends SERVICE_INSTANCE_ID) are
-	// silently ignored: bex's request PromQL already sums across instances at
-	// the Traefik service level, and per-instance request breakdowns would
-	// require per-pod Traefik metrics that aren't scraped. Recorded decision:
-	// instance aggregateBy is a no-op (w3/m18).
 	for _, v := range gqlutil.StringList(input["aggregateBy"]) {
 		switch strings.ToUpper(v) {
 		case filterFieldStatusCode:
@@ -570,7 +640,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 		}
 	}
 
-	return resources, q, nil
+	return scopeReq, q, nil
 }
 
 // projectMetricsQueryFromArgs maps projectMetrics' input onto a
@@ -682,28 +752,30 @@ func windowFromInput(input map[string]any) (start, end time.Time, resolution tim
 	return start, end, resolution, nil
 }
 
-func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
+func metricsFiltersQueryFromArgs(raw any) (savedsearch.ScopeRequest, MetricsFiltersQuery, bool, error) {
 	input, ok := raw.(map[string]any)
 	if !ok {
-		return MetricsFiltersQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
+		return savedsearch.ScopeRequest{}, MetricsFiltersQuery{}, false, fmt.Errorf("%w: query is required", core.ErrBadRequest)
 	}
 	filters := metricsFilterValues(input)
-	resources := nonBlankStrings(filters[filterFieldResource])
-	if len(resources) == 0 {
-		return MetricsFiltersQuery{}, fmt.Errorf("%w: filters must include a RESOURCE entry", core.ErrBadRequest)
+	scopeReq, err := scopeFromGQLFilters(filters)
+	if err != nil {
+		return savedsearch.ScopeRequest{}, MetricsFiltersQuery{}, false, err
 	}
 	start, end, _, err := windowFromInput(input)
 	if err != nil {
-		return MetricsFiltersQuery{}, err
+		return savedsearch.ScopeRequest{}, MetricsFiltersQuery{}, false, err
 	}
-	return MetricsFiltersQuery{
-		Resources:     resources,
+	outFilters := gqlutil.StringList(input["outputFilters"])
+	httpOnly := strings.EqualFold(gqlutil.Str(input, "type"), "HTTP")
+	return scopeReq, MetricsFiltersQuery{
+		Resources:     scopeReq.Resources,
 		Start:         start,
 		End:           end,
 		Hosts:         nonEmptyValues(filters[filterFieldHost]),
 		StatusCodes:   nonEmptyValues(filters[filterFieldStatusCode]),
-		OutputFilters: gqlutil.StringList(input["outputFilters"]),
-	}, nil
+		OutputFilters: outFilters,
+	}, httpOnly, nil
 }
 
 func metricsPathFilterSuggestionsQueryFromArgs(raw any) (PathFilterSuggestionsQuery, error) {

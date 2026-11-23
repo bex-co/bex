@@ -111,3 +111,74 @@ func TestPGBuildFanoutLedger(t *testing.T) {
 		t.Fatal("a completed build was claimed")
 	}
 }
+
+// w4/m596 t002: awaiting-build deploy rows pre-created at trigger time,
+// promoted in place on build success, or closed terminally when the carrier
+// build fails/cancels.
+func TestPGBuildSourceDeployScopeAwaitingDeploys(t *testing.T) {
+	s, _, tenant := agentSessionPGStore(t, "build-scope")
+	ctx := context.Background()
+	carrierID := ids.New(ids.BuildSource)
+	carrier, err := s.CreateApp(ctx, App{ID: carrierID, TenantID: tenant.ID, Name: carrierID, DisplayName: "scope", Type: TypeBuildSource, Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	web, err := s.CreateApp(ctx, App{TenantID: tenant.ID, Name: "web-scope", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Build 1: scope=custom, pre-create awaiting-build deploy, promote in place.
+	b1, err := s.CreateDeploy(WithBuildDeployScope(ctx, BuildDeployScopeCustom), carrier.ID, TriggerAPI, "img:1", 2, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b1.BuildDeployScope != BuildDeployScopeCustom {
+		t.Fatalf("carrier deploy scope = %q, want %q", b1.BuildDeployScope, BuildDeployScopeCustom)
+	}
+	buildID1 := "bld-" + b1.ID[len("dep-"):]
+	planned1, err := s.CreateAwaitingBuildDeploy(ctx, web.ID, TriggerAPI, buildID1, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !planned1.AwaitingBuild || planned1.BuildID != buildID1 {
+		t.Fatalf("planned1 = %+v, want awaiting_build=true build_id=%s", planned1, buildID1)
+	}
+	// Awaiting-build row does NOT block another active deploy on the same app.
+	active, err := s.CreateDeploy(ctx, web.ID, TriggerAPI, "img:1", 2, CommitInfo{}, "")
+	if err != nil {
+		t.Fatalf("active deploy beside awaiting-build row: %v", err)
+	}
+	if _, err := s.TransitionDeploy(ctx, active.ID, DeployLive, RanImage{Ref: "img:1"}, "", "", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	// Promote planned1 in place using WithAwaitingBuildDeploy.
+	promoted, err := s.CreateDeploy(WithAwaitingBuildDeploy(ctx, planned1.ID), web.ID, TriggerAPI, "img:2", 3, CommitInfo{BuildID: buildID1}, "")
+	if err != nil {
+		t.Fatalf("promote awaiting deploy: %v", err)
+	}
+	if promoted.ID != planned1.ID || promoted.AwaitingBuild || promoted.BuildID != buildID1 {
+		t.Fatalf("promoted = %+v, want same id %s and awaiting_build=false", promoted, planned1.ID)
+	}
+
+	// Build 2: carrier build fails -> awaiting-build deploy closes terminally in the same transaction.
+	b2, err := s.CreateDeploy(WithBuildDeployScope(ctx, BuildDeployScopeAutoDeployOnly), carrier.ID, TriggerAPI, "img:1", 3, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	buildID2 := "bld-" + b2.ID[len("dep-"):]
+	planned2, err := s.CreateAwaitingBuildDeploy(ctx, web.ID, TriggerAPI, buildID2, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := s.TransitionDeploy(ctx, b2.ID, DeployBuildFailed, RanImage{}, "", "build failed", "", nil); err != nil || !ok {
+		t.Fatalf("transition b2 build_failed: ok=%v err=%v", ok, err)
+	}
+	got2, err := s.GetDeploy(ctx, web.ID, planned2.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got2.Status != DeployBuildFailed || got2.AwaitingBuild {
+		t.Fatalf("after failed build, planned2 = %+v, want build_failed and awaiting_build=false", got2)
+	}
+}

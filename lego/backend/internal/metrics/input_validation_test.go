@@ -36,12 +36,12 @@ func TestMalformedMetricsQueryInputsArePublicErrors(t *testing.T) {
 		if !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("datastore(%#v) = %v", input, err)
 		}
-		_, err = metricsFiltersQueryFromArgs(input)
+		_, _, _, err = metricsFiltersQueryFromArgs(input)
 		if !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("filters(%#v) = %v", input, err)
 		}
 	}
-	_, err := metricsFiltersQueryFromArgs(map[string]any{"filters": []any{}})
+	_, _, _, err := metricsFiltersQueryFromArgs(map[string]any{"filters": []any{}})
 	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "RESOURCE") {
 		t.Errorf("empty resource filters = %v", err)
 	}

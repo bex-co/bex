@@ -19,12 +19,282 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/jackc/pgx/v5"
 )
+
+// Render's trigger-build-source-build deploy.serviceScope values (w4/m596 t002).
+const (
+	BuildDeployScopeAutoDeployOnly = "autodeploy_only"
+	BuildDeployScopeNone           = "none"
+	BuildDeployScopeCustom         = "custom"
+)
+
+// ErrAwaitingBuildDeployGone is a build-pending service deploy that was already
+// promoted or canceled before this fan-out run reached it.
+var ErrAwaitingBuildDeployGone = fmt.Errorf("%w: the build-pending deploy was already promoted or canceled", ErrConflict)
+
+type buildDeployScopeKey struct{}
+
+// WithBuildDeployScope stamps build_deploy_scope on the carrier deploy row
+// created under ctx.
+func WithBuildDeployScope(ctx context.Context, scope string) context.Context {
+	return context.WithValue(ctx, buildDeployScopeKey{}, scope)
+}
+
+// BuildDeployScopeFrom returns the scope set by WithBuildDeployScope, or "".
+func BuildDeployScopeFrom(ctx context.Context) string {
+	s, _ := ctx.Value(buildDeployScopeKey{}).(string)
+	return s
+}
+
+type awaitingBuildDeployKey struct{}
+
+// WithAwaitingBuildDeploy makes the deploy opened under ctx promote the
+// pre-created awaiting-build row id in place rather than inserting a new row.
+func WithAwaitingBuildDeploy(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, awaitingBuildDeployKey{}, id)
+}
+
+// AwaitingBuildDeployID returns the awaiting-build row id set on ctx, or "".
+func AwaitingBuildDeployID(ctx context.Context) string {
+	id, _ := ctx.Value(awaitingBuildDeployKey{}).(string)
+	return id
+}
+
+// CreateAwaitingBuildDeploy opens a linked service's deploy row at build
+// trigger time while its build_id is still building. The row is immediately
+// readable via GetDeploy/ListDeploys and stays awaiting_build until the build
+// succeeds (promoted in place) or fails/cancels (closed terminal).
+func (s *PGStore) CreateAwaitingBuildDeploy(ctx context.Context, appID, trigger, buildID string, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	d := Deploy{
+		ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger,
+		Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt,
+		BuildID: buildID, TriggeredBy: triggeredBy, Status: DeployCreated, AwaitingBuild: true,
+	}
+	err := s.Pool.QueryRow(ctx,
+		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, restart_deferred, awaiting_build, build_id)
+		 VALUES ($1, $2, $3, '', 0, $4, $5, $6, $7, $8, false, false, true, $9)
+		 RETURNING created_at, updated_at`,
+		d.ID, d.AppID, d.Trigger, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.BuildID,
+	).Scan(&d.CreatedAt, &d.UpdatedAt)
+	if err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
+	return d, nil
+}
+
+// ListBuildAwaitingDeploys lists every service deploy still waiting on buildID.
+func (s *PGStore) ListBuildAwaitingDeploys(ctx context.Context, buildID string) ([]Deploy, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+deployColumns+` FROM deploys
+		 WHERE build_id = $1 AND awaiting_build AND status = $2
+		 ORDER BY created_at, id`, buildID, DeployCreated)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Deploy
+	for rows.Next() {
+		d, err := scanDeploy(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// CancelAwaitingBuildDeploy closes a single awaiting-build deploy row as
+// canceled. Returns false if it was already promoted or closed.
+func (s *PGStore) CancelAwaitingBuildDeploy(ctx context.Context, id, reason string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE deploys
+		 SET status = $2, awaiting_build = false, cancel_reason = $3,
+		     finished_at = clock_timestamp(),
+		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+		 WHERE id = $1 AND awaiting_build AND status = $4`,
+		id, DeployCanceled, reason, DeployCreated)
+	if err != nil {
+		return false, classify("deploy", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// CheckAwaitingBuildDeploy checks that id is still an awaiting-build row for
+// appID before openRelease mutates the App CR.
+func (s *PGStore) CheckAwaitingBuildDeploy(ctx context.Context, id, appID string) error {
+	var waiting bool
+	err := s.Pool.QueryRow(ctx, `SELECT awaiting_build AND status = $3 FROM deploys WHERE id = $1 AND app_id = $2`, id, appID, DeployCreated).Scan(&waiting)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !waiting) {
+		return ErrAwaitingBuildDeployGone
+	}
+	return err
+}
+
+// CloseBuildAwaitingDeploys closes every service deploy still waiting on
+// buildID when the carrier build ends without succeeding.
+func (s *PGStore) CloseBuildAwaitingDeploys(ctx context.Context, buildID, status, failureReason, cancelReason string) (int64, error) {
+	var n int64
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var err error
+		n, err = closeBuildAwaitingDeploysCountTx(ctx, tx, buildID, status, failureReason, cancelReason)
+		return err
+	})
+	return n, err
+}
+
+func closeBuildAwaitingDeploysTx(ctx context.Context, tx pgx.Tx, buildID, carrierStatus, failureReason, cancelReason string) error {
+	_, err := closeBuildAwaitingDeploysCountTx(ctx, tx, buildID, carrierStatus, failureReason, cancelReason)
+	return err
+}
+
+func closeBuildAwaitingDeploysCountTx(ctx context.Context, tx pgx.Tx, buildID, carrierStatus, failureReason, cancelReason string) (int64, error) {
+	targetStatus := DeployBuildFailed
+	targetFailure, targetCancel := failureReason, ""
+	if carrierStatus == DeployCanceled {
+		targetStatus = DeployCanceled
+		targetFailure = ""
+		targetCancel = cancelReason
+		if targetCancel == "" {
+			targetCancel = fmt.Sprintf("build %s was canceled", buildID)
+		}
+	} else if targetFailure == "" {
+		targetFailure = fmt.Sprintf("build %s failed", buildID)
+	}
+	tag, err := tx.Exec(ctx,
+		`UPDATE deploys
+		 SET status = $2, awaiting_build = false, failure_reason = $3, cancel_reason = $4,
+		     finished_at = clock_timestamp(),
+		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+		 WHERE build_id = $1 AND awaiting_build AND status = $5`,
+		buildID, targetStatus, targetFailure, targetCancel, DeployCreated)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+// DeferAwaitingBuildDeploy transitions an awaiting-build row in place into a
+// restart_deferred queued row when its service has an unadopted deploy in
+// flight, keeping its deploy id. Returns deferred=false when nothing is in
+// flight or the workspace policy is Override.
+func (s *PGStore) DeferAwaitingBuildDeploy(ctx context.Context, id, appID string, req DeferredRequest) (_ Deploy, deferred bool, err error) {
+	if err := s.awaitDeployAheadRecorded(ctx, appID); err != nil {
+		return Deploy{}, false, classify("deploy", err)
+	}
+	var out Deploy
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockApp(ctx, tx, appID); err != nil {
+			return err
+		}
+		var waiting bool
+		if err := tx.QueryRow(ctx, `SELECT awaiting_build AND status = $3 FROM deploys WHERE id = $1 AND app_id = $2 FOR UPDATE`, id, appID, DeployCreated).Scan(&waiting); errors.Is(err, pgx.ErrNoRows) || (err == nil && !waiting) {
+			return ErrAwaitingBuildDeployGone
+		} else if err != nil {
+			return err
+		}
+		if err := proceedToWaitingDeploy(ctx, tx, appID); err != nil {
+			return err
+		}
+		if deferred, err = appWaitsForActiveDeploy(ctx, tx, appID); err != nil || !deferred {
+			return err
+		}
+		if err := cancelPendingDeploys(ctx, tx, appID, supersededByReason(id)); err != nil {
+			return err
+		}
+		out, err = scanDeploy(tx.QueryRow(ctx,
+			`UPDATE deploys
+			 SET status = $2, overlap_pending = true, restart_deferred = true, awaiting_build = false,
+			     deferred_request = $3,
+			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+			 WHERE id = $1
+			 RETURNING `+deployColumns,
+			id, DeployQueued, req))
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, ErrAwaitingBuildDeployGone) {
+			return Deploy{}, false, err
+		}
+		return Deploy{}, false, classify("deploy", err)
+	}
+	if !deferred {
+		return Deploy{}, false, nil
+	}
+	return out, true, nil
+}
+
+// promoteAwaitingBuildDeploy promotes an awaiting-build deploy row in place
+// into the release just opened for its service, preserving its deploy id.
+func (s *PGStore) promoteAwaitingBuildDeploy(ctx context.Context, id, appID, image string, generation int64, commit CommitInfo, replaced func(string) string) (Deploy, error) {
+	if err := s.awaitDeployAheadRecorded(ctx, appID); err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
+	var d Deploy
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockApp(ctx, tx, appID); err != nil {
+			return err
+		}
+		var waiting bool
+		if err := tx.QueryRow(ctx, `SELECT awaiting_build AND status = $3 FROM deploys WHERE id = $1 AND app_id = $2 FOR UPDATE`, id, appID, DeployCreated).Scan(&waiting); errors.Is(err, pgx.ErrNoRows) || (err == nil && !waiting) {
+			return ErrAwaitingBuildDeployGone
+		} else if err != nil {
+			return err
+		}
+		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, replaced(id))
+		if err != nil {
+			return err
+		}
+		overlapPending := status == DeployQueued
+		d, err = scanDeploy(tx.QueryRow(ctx,
+			`UPDATE deploys
+			 SET image = $2, generation = $3, commit = $4, commit_message = $5, commit_author_at = $6,
+			     build_id = NULLIF($7, ''), status = $8, overlap_pending = $9, awaiting_build = false,
+			     cancel_reason = $10,
+			     finished_at = CASE WHEN $8 = $11 THEN clock_timestamp() END,
+			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+			 WHERE id = $1
+			 RETURNING `+deployColumns,
+			id, image, generation, commit.Hash, commit.Message, commit.AuthorAt, commit.BuildID, status, overlapPending, cancelReason, DeployCanceled))
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, ErrAwaitingBuildDeployGone) {
+			return Deploy{}, err
+		}
+		return Deploy{}, classify("deploy", err)
+	}
+	return d, nil
+}
+
+// ReapTerminalBuildAwaitingDeploys closes any awaiting-build deploy whose
+// carrier build already reached a terminal non-live status.
+func (s *PGStore) ReapTerminalBuildAwaitingDeploys(ctx context.Context) (int64, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE deploys AS d
+		 SET status = CASE WHEN c.status = $1 THEN $1 ELSE $2 END,
+		     awaiting_build = false,
+		     failure_reason = CASE WHEN c.status = $1 THEN '' ELSE COALESCE(NULLIF(c.failure_reason, ''), 'build ' || d.build_id || ' failed') END,
+		     cancel_reason = CASE WHEN c.status = $1 THEN COALESCE(NULLIF(c.cancel_reason, ''), 'build ' || d.build_id || ' was canceled') ELSE '' END,
+		     finished_at = clock_timestamp(),
+		     updated_at = GREATEST(d.updated_at + interval '1 microsecond', clock_timestamp())
+		 FROM deploys AS c
+		 WHERE d.awaiting_build AND d.status = $3
+		   AND c.id = 'dep-' || substr(d.build_id, 5)
+		   AND c.status = ANY($4)`,
+		DeployCanceled, DeployBuildFailed, DeployCreated,
+		[]string{DeployBuildFailed, DeployUpdateFailed, DeployPreDeployFailed, DeployCanceled})
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
 
 // BuildFanoutLedger makes a build source's fan-out durable (ADR097 §5,
 // w9/m180 t002). A carrier deploy that went live is fanned out to its linked
@@ -167,7 +437,7 @@ func (r *Reconciler) resyncBuildFanouts(ctx context.Context, desired []DesiredAp
 			image = cur.Status.Image
 		}
 		r.startFanout(ctx, BuiltSource{
-			TenantID: tenant, CarrierID: dep.AppID, DeployID: dep.ID, Commit: dep.CommitInfo(),
+			TenantID: tenant, CarrierID: dep.AppID, DeployID: dep.ID, BuildDeployScope: dep.BuildDeployScope, Commit: dep.CommitInfo(),
 			Namespace: cur.Namespace, Carrier: cur.Name, Image: image,
 		})
 	}

@@ -1,19 +1,19 @@
 # w4 · m596 — Render's OpenAPI of 2026-11-23: sandbox suspend, a build's deploy scope, and logs and metrics by project
 
-**Worker:** worker4 **Goal:** bex answers Render's live public API of 2026-11-23 on every operation it serves. `POST /v1/sandboxes/{id}/suspend` suspends a sandbox. A build-source build takes Render's `deploy.serviceScope` and answers the deploys it started. The three logs reads and the 18 metrics reads take Render's `project`, `environment` and `region`. The pin and ADR018 record the round, so the weekly `render-schema` drift job is green again. **Status:** todo
+**Worker:** worker4 **Goal:** bex answers Render's live public API of 2026-11-23 on every operation it serves. `POST /v1/sandboxes/{id}/suspend` suspends a sandbox. A build-source build takes Render's `deploy.serviceScope` and answers the deploys it started. The three logs reads and the 18 metrics reads take Render's `project`, `environment` and `region`. The pin and ADR018 record the round, so the weekly `render-schema` drift job is green again. **Status:** in-progress
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Re-pin Render's 2026-11-23 OpenAPI and land the dispositions that need no new behavior | 1h | — |
-| [t002](t002.md) | A build-source build takes Render's `deploy.serviceScope` and `serviceIds`, and answers the deploys it started and the services it skipped | 1h45m | t001 |
-| [t003](t003.md) | `POST /v1/sandboxes/{id}/suspend` suspends a sandbox with Render's 202 and `sandbox_not_running` | 50m | t001 |
-| [t004](t004.md) | The three logs reads take Render's `project`, `environment` and `region` | 1h30m | t001 |
-| [t005](t005.md) | The 18 metrics reads take Render's `project`, `environment` and `region` | 2h | t001 |
+| [t001](done/t001.md) | Re-pin Render's 2026-11-23 OpenAPI and land the dispositions that need no new behavior | 1h | — |
+| [t002](done/t002.md) | A build-source build takes Render's `deploy.serviceScope` and `serviceIds`, and answers the deploys it started and the services it skipped | 1h45m | t001 |
+| [t003](done/t003.md) | `POST /v1/sandboxes/{id}/suspend` suspends a sandbox with Render's 202 and `sandbox_not_running` | 50m | t001 |
+| [t004](done/t004.md) | The three logs reads take Render's `project`, `environment` and `region` | 1h30m | t001 |
+| [t005](done/t005.md) | The 18 metrics reads take Render's `project`, `environment` and `region` | 2h | t001 |
 | [t006](t006.md) | Render parity, the round 9 record in ADR018, and a green drift dispatch | 45m | t002, t003, t004, t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t007](done/t007.md) | Simplify | 15m | t006 |
+| [t008](done/t008.md) | Test coverage | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 9h**.

@@ -45,8 +45,10 @@ import (
 // linked to a build source reads the source's runtime, w3/070), then to 23 (an
 // image service reads Render's docker-shaped envSpecificDetails, so only a
 // runtime-less buildpack build lacks the block, w9/m473), then to 22
-// (build_ended carries Render's required buildId, w4/710).
-const allowlistSize = 22
+// (build_ended carries Render's required buildId, w4/710), then to 18
+// (Render's 2026-11-23 OpenAPI dropped postgresDetail's phantom required
+// project field, w4/m596).
+const allowlistSize = 18
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0
@@ -343,14 +345,13 @@ func TestWrap(t *testing.T) {
 	})
 }
 
-func TestValidateDropsUndefinedMetricValueUnit(t *testing.T) {
+func TestValidateMetricDatapoint(t *testing.T) {
 	route := Load(t).Operation("get-disk-capacity")
 	if route == nil {
 		t.Fatal("pinned spec lost get-disk-capacity")
 	}
-	// Render's pinned spec lists `unit` in values.items.required without
-	// defining a `unit` property on values.items (`unit` lives on the parent
-	// series). A datapoint carrying {timestamp, value} conforms.
+	// Render's pinned spec (round 9, w4/m596) requires only {timestamp, value}
+	// on values.items (`unit` lives on the parent series).
 	valid := []byte(`[{"unit":"bytes","labels":[{"field":"resource","value":"dpg-1"}],"values":[{"timestamp":"2026-06-01T12:00:00Z","value":1024}]}]`)
 	if got := Validate(route, http.StatusOK, jsonHeader, valid); len(got) != 0 {
 		t.Fatalf("conforming metric datapoint reported %q, want none", got)

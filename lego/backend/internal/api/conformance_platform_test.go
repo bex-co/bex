@@ -526,10 +526,24 @@ func (s *conformSandboxStore) RecordSandbox(_ context.Context, r store.SandboxRe
 	s.records[r.SandboxID] = r
 	return nil
 }
+func (s *conformSandboxStore) SetSandboxExpiry(_ context.Context, _, sandboxID string, expiresAt *time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if r, ok := s.records[sandboxID]; ok {
+		r.ExpiresAt = expiresAt
+		s.records[sandboxID] = r
+	}
+	return nil
+}
 func (s *conformSandboxStore) EndAbsentSandboxes(context.Context, string, []string, time.Time) error {
 	return nil
 }
-func (s *conformSandboxStore) EndedSandbox(_ context.Context, _, _ string) (store.SandboxRecord, error) {
+func (s *conformSandboxStore) EndedSandbox(_ context.Context, ws, sandboxID string) (store.SandboxRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if r, ok := s.records[sandboxID]; ok && r.WorkspaceID == ws && r.TerminatedAt != nil {
+		return r, nil
+	}
 	return store.SandboxRecord{}, store.ErrNotFound
 }
 func (s *conformSandboxStore) EndedSandboxes(context.Context, string) ([]store.SandboxRecord, error) {
@@ -604,6 +618,26 @@ func fakeOpenSandboxServer(t *testing.T) *httptest.Server {
 			if len(parts) == 2 && parts[1] == "snapshots" && r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusAccepted)
 				_ = json.NewEncoder(w).Encode(map[string]any{"id": "cap-1", "status": map[string]any{"state": "Creating"}})
+				return
+			}
+			if len(parts) == 2 && parts[1] == "pause" && r.Method == http.MethodPost {
+				b.Status.State = "Paused"
+				w.WriteHeader(http.StatusAccepted)
+				return
+			}
+			if len(parts) == 2 && parts[1] == "metadata" && r.Method == http.MethodPatch {
+				var patch map[string]string
+				_ = json.NewDecoder(r.Body).Decode(&patch)
+				if b.Metadata == nil {
+					b.Metadata = map[string]string{}
+				}
+				maps.Copy(b.Metadata, patch)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			if len(parts) == 2 && parts[1] == "renew-expiration" && r.Method == http.MethodPost {
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(b)
 				return
 			}
 			http.NotFound(w, r)
@@ -979,6 +1013,10 @@ func TestRenderConformanceSandboxes(t *testing.T) {
 	conformDo(t, h, http.MethodGet, "/v1/sandbox-groups/"+grp.ID+"/snapshots?ownerId="+ws, "", http.StatusOK)
 	conformDo(t, h, http.MethodGet, "/v1/sandbox-groups/"+grp.ID+"/snapshots/"+snap.ID+"?ownerId="+ws, "", http.StatusOK)
 	conformDo(t, h, http.MethodDelete, "/v1/sandbox-groups/"+grp.ID+"/snapshots/"+snap.ID+"?ownerId="+ws, "", http.StatusNoContent)
+
+	// Suspend sandbox (202 no body), idempotent when already suspended.
+	conformDo(t, h, http.MethodPost, "/v1/sandboxes/"+sbx.ID+"/suspend?ownerId="+ws, "", http.StatusAccepted)
+	conformDo(t, h, http.MethodPost, "/v1/sandboxes/"+sbx.ID+"/suspend?ownerId="+ws, "", http.StatusAccepted)
 
 	// Terminate sandbox (204).
 	conformDo(t, h, http.MethodPost, "/v1/sandboxes/"+sbx.ID+"/terminate?ownerId="+ws, "", http.StatusNoContent)

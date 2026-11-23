@@ -1976,6 +1976,19 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		}
 	}
 	if phase == StatusSuspended {
+		switch status := mapOpenSandboxStatus(raw.Status.State); status {
+		case StatusSuspending, StatusSuspended:
+			// Render: suspend-sandbox answers 202 when the sandbox is already
+			// suspending or suspended (round 9, w4/m596 t003).
+			return nil
+		case StatusRunning:
+		default:
+			if raw.Status.State != "" {
+				return core.NewConflictError(CodeSandboxNotRunning,
+					fmt.Sprintf("sandbox %s is %s, not running", canonicalID(raw), status),
+					map[string]any{"id": canonicalID(raw), "status": string(status)})
+			}
+		}
 		if err := s.beforeSuspend(ctx, key, raw); err != nil {
 			return err
 		}
@@ -1986,6 +1999,11 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		case errors.Is(err, errOpenSandboxNotFound):
 			return sandboxNotFound(id)
 		case errors.Is(err, errOpenSandboxConflict):
+			if phase == StatusSuspended {
+				return core.NewConflictError(CodeSandboxNotRunning,
+					fmt.Sprintf("sandbox %s is %s, not running", canonicalID(raw), mapOpenSandboxStatus(raw.Status.State)),
+					map[string]any{"id": canonicalID(raw), "status": string(mapOpenSandboxStatus(raw.Status.State))})
+			}
 			return core.NewConflictError("SANDBOX_LIFECYCLE_CONFLICT",
 				fmt.Sprintf("sandbox %s is %s; wait for it to settle and retry", id, mapOpenSandboxStatus(raw.Status.State)),
 				map[string]any{"id": id, "status": string(mapOpenSandboxStatus(raw.Status.State))})

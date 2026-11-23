@@ -36,6 +36,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // wsUpgrader upgrades the subscribe connection to WebSocket when the Render
@@ -104,7 +105,7 @@ func (s *Service) renderWindow(q *LogQuery) error {
 // values one label takes among the logs the same filter set selects. Render
 // returns a bare JSON string array, and so does bex.
 func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
-	resources, q, err := parseLogParams(r)
+	scopeReq, q, err := parseLogParams(r)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -120,12 +121,32 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := core.WithRequestMemo(core.WithWorkspace(core.WithAuditVerb(r.Context(), AuditVerbLogLabelValues), v.Get("ownerId")))
+	resolved, err := s.resolveLogScope(ctx, scopeReq, &q, nil)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if resolved.Scoped {
+		if err := checkLabel(label, DiscoverableLabels); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		if err := q.validate(); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+	}
 	all := []string{}
-	ctx := core.WithRequestMemo(core.WithWorkspace(r.Context(), v.Get("ownerId")))
-	for _, res := range resources {
-		q.App = res
-		values, err := s.LogLabelValues(ctx, label, q)
+	for _, res := range resolved.IDs {
+		if resolved.Scoped && core.IsDatastoreResource(res) && !slices.Contains(datastoreLogLabels, label) {
+			continue
+		}
+		values, err := s.LogLabelValues(ctx, label, q.forResource(res))
 		if err != nil {
+			if resolved.Scoped && (errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrNotFound)) {
+				continue
+			}
 			core.WriteErr(w, err)
 			return
 		}
@@ -143,10 +164,11 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusOK, all)
 }
 
-// logsQuery serves GET /v1/logs — a historical query across App or managed
-// Postgres instances, matching Render's generic resource-array contract.
+// logsQuery serves GET /v1/logs — a historical query across App, managed
+// Postgres, Key Value, or a whole project/environment, matching Render's
+// resource/project/environment/region contract.
 func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
-	resources, q, err := parseLogParams(r)
+	scopeReq, q, err := parseLogParams(r)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -156,12 +178,28 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Render's `resource` is an array; queryLogPage merges each resource's lines,
-	// then sorts and caps. QueryLogs gets the query as parsed: normalizing here
-	// first would coerce an invalid `direction` to the default before the verb
-	// could refuse it.
-	ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
-	page, err := s.queryLogPage(ctx, resources, q)
+	// Render's `resource` / `project` resolve to a bounded set of resource ids;
+	// queryLogPage merges each resource's lines, then sorts and caps. QueryLogs
+	// gets the query as parsed: normalizing here first would coerce an invalid
+	// `direction` to the default before the verb could refuse it.
+	ctx := core.WithRequestMemo(core.WithWorkspace(core.WithAuditVerb(r.Context(), AuditVerbQueryLogs), r.URL.Query().Get("ownerId")))
+	resolved, err := s.resolveLogScope(ctx, scopeReq, &q, nil)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if len(resolved.IDs) == 0 {
+		if err := q.validate(); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		n := q.normalized()
+		page := logPage{Entries: []LogEntry{}}
+		page.NextStartTime, page.NextEndTime = pageCursors(nil, n.Since, n.End, n.Direction)
+		core.WriteJSON(w, http.StatusOK, toRenderLogList(page))
+		return
+	}
+	page, err := s.queryLogPage(ctx, resolved.IDs, q)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -170,11 +208,8 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 // logsSubscribe serves GET /v1/logs/subscribe — a live tail of every
-// requested resource, merged onto one stream in arrival order (w8/024; it
-// used to follow resources[0] and silently drop the rest). Each resource is
-// authorized and holds its own subscription slot before the stream opens, so
-// an unreadable resource refuses the whole request rather than being merged
-// or skipped. Three wire formats are supported:
+// requested resource (or a project/environment scope), merged onto one stream
+// in arrival order (w8/024, w4/m596). Three wire formats are supported:
 //
 //   - WebSocket upgrade → WS text frames, one per log line; the Render CLI
 //     v2+ sends Upgrade: websocket and expects this protocol.
@@ -184,18 +219,18 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Mounted as a method value, this has no verb method beneath it: the tail's
 	// authorizations name FollowLogs, as the other surfaces' tail does (w21/093).
-	ctx := core.WithWorkspace(core.WithAuditVerb(r.Context(), AuditVerbFollowLogs), r.URL.Query().Get("ownerId"))
+	ctx := core.WithRequestMemo(core.WithWorkspace(core.WithAuditVerb(r.Context(), AuditVerbFollowLogs), r.URL.Query().Get("ownerId")))
 	r = r.WithContext(ctx)
-	if r.URL.Query().Has("project") {
+	v := r.URL.Query()
+	if v.Has("project") && v.Has("filterDocument") {
 		s.projectSubscribe(w, r)
 		return
 	}
-	resources, q, err := parseLogParams(r)
+	scopeReq, q, err := parseLogParams(r)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
 	}
-	q.App = resources[0] // validated once below; followed per resource after admission
 
 	// Resume where this client's previous connection stopped. A browser
 	// EventSource reconnects on its own — invisibly to the page — and replays
@@ -218,13 +253,40 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queries := make([]LogQuery, len(resources))
-	for i, resource := range resources {
-		queries[i] = q
-		queries[i].App = resource
+	resolved, err := s.resolveLogScope(ctx, scopeReq, &q, nil)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+
+	queries := make([]LogQuery, len(resolved.IDs))
+	for i, resource := range resolved.IDs {
+		queries[i] = q.forResource(resource)
 	}
 	if err := s.checkLiveSubscribable(queries); err != nil {
 		core.WriteErr(w, err)
+		return
+	}
+
+	if resolved.Scoped {
+		release, err := s.acquireSlot(r.Context(), func() (string, error) { return resolved.WorkspaceID, nil })
+		if err != nil {
+			writeSubscriptionRefusal(w, err)
+			return
+		}
+		defer release()
+		isWS := websocket.IsWebSocketUpgrade(r)
+		if isWS {
+			q.renderStream = true
+		}
+		follow := func(ctx context.Context, emit func(LogEntry) error, heartbeat func() error) error {
+			return s.followProjectScope(ctx, scopeReq, q, resolved.Resources, emit, heartbeat)
+		}
+		if isWS {
+			s.subscribeWebSocket(w, r, follow)
+			return
+		}
+		s.subscribeStream(w, r, follow)
 		return
 	}
 
@@ -800,30 +862,30 @@ var unsupportedLogFilters = []struct{ name, reason string }{
 	{"sandbox", "sandbox output is not served by the logs API; read it from the sandbox's run stream (/v1/sandboxes/{id}/runs/{executionId}/stream)"},
 }
 
-// parseLogParams maps Render's logs query string onto resources + a LogQuery.
+// parseLogParams maps Render's logs query string onto a ScopeRequest + a LogQuery.
 // Every filter Render documents (level/instance/host/statusCode/method/path/
-// build, repeatable) is parsed into the query and honored downstream; a value the
-// vocabulary doesn't contain — an unknown `type` or `direction` — is a 400 naming
-// it, and so is a filter bex has no streams for (unsupportedLogFilters), never a
-// silently widened query. Shared by /v1/logs, /v1/logs/values and
-// /v1/logs/subscribe so the three agree on what a filter means.
-func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
+// build, repeatable; project/environment/region/resource) is parsed into the
+// query and honored downstream; a value the vocabulary doesn't contain — an
+// unknown `type` or `direction` — is a 400 naming it, and so is a filter bex
+// has no streams for (unsupportedLogFilters), never a silently widened query.
+// Shared by /v1/logs, /v1/logs/values and /v1/logs/subscribe so the three agree
+// on what a filter means.
+func parseLogParams(r *http.Request) (savedsearch.ScopeRequest, LogQuery, error) {
 	v := r.URL.Query()
-	if v.Has("project") {
-		return nil, LogQuery{}, fmt.Errorf("%w: project is taken only by /v1/logs/subscribe", core.ErrBadRequest)
-	}
 	if err := refuseUnsupportedLogFilters(v); err != nil {
-		return nil, LogQuery{}, err
+		return savedsearch.ScopeRequest{}, LogQuery{}, err
 	}
-	resources, err := boundedResources(v["resource"])
-	if err != nil {
-		return nil, LogQuery{}, err
+	scopeReq := savedsearch.ScopeRequest{
+		Project:     v.Get("project"),
+		Environment: v.Get("environment"),
+		Region:      v.Get("region"),
+		Resources:   v["resource"],
 	}
 	q, err := parseLogQuery(v)
 	if err != nil {
-		return nil, LogQuery{}, err
+		return savedsearch.ScopeRequest{}, LogQuery{}, err
 	}
-	return resources, q, nil
+	return scopeReq, q, nil
 }
 
 func refuseUnsupportedLogFilters(v url.Values) error {
@@ -872,29 +934,5 @@ func parseLogQuery(v url.Values) (LogQuery, error) {
 }
 
 // maxLogResources bounds the per-request authorization + Loki/Kubernetes fan-out
-// of Render's repeatable resource filter. Twenty is deliberately generous for a
-// human dashboard/CLI query while keeping one request's upstream work finite.
+// of Render's repeatable resource filter and project-scoped log reads.
 const maxLogResources = 20
-
-// boundedResources rejects oversized raw arrays before doing any upstream work,
-// then de-duplicates in first-seen order. Checking the raw length first matters:
-// repeating one valid resource thousands of times must be refused, not accepted
-// as a cheap-looking one-element set after compaction.
-func boundedResources(resources []string) ([]string, error) {
-	if len(resources) == 0 {
-		return nil, fmt.Errorf("%w: resource is required", core.ErrBadRequest)
-	}
-	if len(resources) > maxLogResources {
-		return nil, fmt.Errorf("%w: resource accepts at most %d entries", core.ErrBadRequest, maxLogResources)
-	}
-	seen := make(map[string]struct{}, len(resources))
-	out := make([]string, 0, len(resources))
-	for _, resource := range resources {
-		if _, ok := seen[resource]; ok {
-			continue
-		}
-		seen[resource] = struct{}{}
-		out = append(out, resource)
-	}
-	return out, nil
-}

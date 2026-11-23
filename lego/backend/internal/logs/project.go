@@ -27,6 +27,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // project.go reads a project's log view (w3/m505, docs/ADR010-observability.md
@@ -34,11 +35,13 @@ import (
 // project's resources, resolved on the server on every read and every tail
 // re-resolution, and read like a multi-resource `resource` query.
 
-// ProjectResources lists a project's resources for its log views, to a
-// caller who may view the project; projects.Service satisfies it. The
-// workspace it answers is the project's.
+// ProjectResources lists a project's resources for its log views and Render's
+// project-scoped log queries (w3/m505, w4/m596), to a caller who may view the
+// project; projects.Service satisfies it. The workspace it answers is the
+// project's.
 type ProjectResources interface {
 	ProjectLogResources(ctx context.Context, projectID string) (workspaceID string, resources []savedsearch.Resource, err error)
+	ProjectScopeResources(ctx context.Context, projectID, environmentID string) (workspaceID string, resources []savedsearch.Resource, err error)
 }
 
 // AuditVerbQueryLogs is the verb a project view's reads record: each is a
@@ -155,10 +158,24 @@ func (s *Service) resolveProjectView(ctx context.Context, v projectView, followe
 	}
 	scoped := v.doc.Scope(v.viewType, all)
 	if len(scoped) > maxProjectLogResources {
-		return "", nil, fmt.Errorf("%w: this view reads %d resources, and one project log query reads at most %d; narrow it with an Environment, Resource or Resource Type filter", core.ErrBadRequest, len(scoped), maxProjectLogResources)
+		return "", nil, core.NewBadRequestError(
+			savedsearch.TooManyResourcesCode,
+			fmt.Sprintf("this view reads %d resources, and one project log query reads at most %d; provide resource or narrow it with an Environment, Resource or Resource Type filter", len(scoped), maxProjectLogResources),
+			map[string]any{"resources": len(scoped), "maxResources": maxProjectLogResources},
+		)
 	}
+	readable, err := s.filterReadableLogResources(ctx, workspace, scoped, followed)
+	if err != nil {
+		return "", nil, err
+	}
+	return workspace, readable, nil
+}
+
+// filterReadableLogResources keeps only the resources in scoped whose logs the
+// caller may read (dropping forbidden or vanished ones without naming them).
+func (s *Service) filterReadableLogResources(ctx context.Context, workspace string, scoped []savedsearch.Resource, followed map[string]bool) ([]savedsearch.Resource, error) {
 	if !s.CanDecisionOn(ctx, core.RelCanViewLogs, core.WorkspaceObject(workspace)).Allowed() {
-		return workspace, []savedsearch.Resource{}, nil
+		return []savedsearch.Resource{}, nil
 	}
 	// The resources authorize at once, as a page reads them (readEach), each
 	// under the verb of the read that asked.
@@ -183,10 +200,64 @@ func (s *Service) resolveProjectView(ctx context.Context, v projectView, followe
 			readable = append(readable, r)
 		case errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrNotFound):
 		default:
-			return "", nil, err
+			return nil, err
 		}
 	}
-	return workspace, readable, nil
+	return readable, nil
+}
+
+// keepLogResourceForTypes filters a project's resources to the kinds that emit
+// the requested log types when no explicit `resource` list is given.
+func keepLogResourceForTypes(types []string) func(savedsearch.Resource) bool {
+	if slices.Equal(types, []string{LogTypeRequest}) {
+		return func(r savedsearch.Resource) bool {
+			return r.Type == "" || r.Type == appv1alpha1.TypeWebService
+		}
+	}
+	if slices.Equal(types, []string{LogTypeBuild}) {
+		return func(r savedsearch.Resource) bool {
+			return r.Type != savedsearch.KindPostgres && r.Type != savedsearch.KindKeyValue
+		}
+	}
+	return func(r savedsearch.Resource) bool {
+		return r.ResourceType() != ""
+	}
+}
+
+// resolveLogScope resolves Render's resource/project/environment/region target
+// for GET /v1/logs, GET /v1/logs/values, GET /v1/logs/subscribe, GraphQL, and
+// MCP (w4/m596). When project-scoped, it checks the request-log plan gate and
+// drops resources the caller cannot read logs for.
+func (s *Service) resolveLogScope(ctx context.Context, req savedsearch.ScopeRequest, q *LogQuery, followed map[string]bool) (savedsearch.ResolvedScope, error) {
+	resolved, err := savedsearch.ResolveScope(ctx, s.Projects, req, savedsearch.ScopePolicy{
+		RequireProjectForEnvironment: true,
+		MaxResources:                 maxLogResources,
+		Keep:                         keepLogResourceForTypes(q.Types),
+		Unavailable:                  ErrProjectLogsUnavailable,
+	})
+	if err != nil {
+		return savedsearch.ResolvedScope{}, err
+	}
+	if !resolved.Scoped {
+		return resolved, nil
+	}
+	q.projectScope = true
+	if slices.Equal(q.Types, []string{LogTypeRequest}) {
+		wp, err := s.workspacePlanOf(ctx, resolved.WorkspaceID)
+		if err != nil {
+			return savedsearch.ResolvedScope{}, err
+		}
+		if wp.ok && !core.PlanAllows(wp.plan, core.FeatureRequestLogs) {
+			return savedsearch.ResolvedScope{}, core.NewPlanFeatureError("type", wp.plan, core.FeatureRequestLogs)
+		}
+	}
+	readable, err := s.filterReadableLogResources(ctx, resolved.WorkspaceID, resolved.Resources, followed)
+	if err != nil {
+		return savedsearch.ResolvedScope{}, err
+	}
+	resolved.Resources = readable
+	resolved.IDs = resourceIDs(readable)
+	return resolved, nil
 }
 
 // forResource is q pointed at one resource. A project view's Application Logs
@@ -323,6 +394,21 @@ type projectFollowEnd struct {
 // follower error, and a resolution that fails (the project gone, access
 // revoked, the scope past the cap), ends the whole tail with that error.
 func (s *Service) followProject(ctx context.Context, v projectView, q LogQuery, initial []savedsearch.Resource, emit func(LogEntry) error, heartbeat func() error) error {
+	return s.followDynamicScope(ctx, q, initial, func(ctx context.Context, followed map[string]bool) ([]savedsearch.Resource, error) {
+		_, next, err := s.resolveProjectView(ctx, v, followed)
+		return next, err
+	}, emit, heartbeat)
+}
+
+func (s *Service) followProjectScope(ctx context.Context, req savedsearch.ScopeRequest, q LogQuery, initial []savedsearch.Resource, emit func(LogEntry) error, heartbeat func() error) error {
+	return s.followDynamicScope(ctx, q, initial, func(ctx context.Context, followed map[string]bool) ([]savedsearch.Resource, error) {
+		qCopy := q
+		resolved, err := s.resolveLogScope(ctx, req, &qCopy, followed)
+		return resolved.Resources, err
+	}, emit, heartbeat)
+}
+
+func (s *Service) followDynamicScope(ctx context.Context, q LogQuery, initial []savedsearch.Resource, rescopeFn func(context.Context, map[string]bool) ([]savedsearch.Resource, error), emit func(LogEntry) error, heartbeat func() error) error {
 	ctx = core.WithAuditVerb(ctx, AuditVerbFollowLogs)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -377,7 +463,7 @@ func (s *Service) followProject(ctx context.Context, v projectView, q LogQuery, 
 			for id := range active {
 				followed[id] = true
 			}
-			_, next, err := s.resolveProjectView(ctx, v, followed)
+			next, err := rescopeFn(ctx, followed)
 			if err != nil {
 				return err
 			}

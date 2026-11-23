@@ -137,7 +137,7 @@ func TestProtectedEnvironmentPlacementNeedsAnAdminOnEverySurfacePG(t *testing.T)
 	if got := admin["service"].(map[string]any)["environmentId"]; got != prod {
 		t.Fatalf("admin create landed in %v, want %s", got, prod)
 	}
-	request(http.MethodPost, "/v1/environments/"+prod+"/resources", fmt.Sprintf(`{"resourceIds":[%q]}`, stagedID), http.StatusOK)
+	request(http.MethodPost, "/v1/environments/"+prod+"/resources", fmt.Sprintf(`{"resourceIds":[%q]}`, stagedID), http.StatusCreated)
 	gql(t, handler, fmt.Sprintf(`mutation { moveEnvGroup(id: %q, environmentId: %q) { id } }`, groupID, prod))
 
 	// A Developer cannot move them out again: to another environment or to

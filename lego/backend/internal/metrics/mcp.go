@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // mcp.go is the metrics MCP fragment. get_metrics mirrors Render's tool: a
@@ -38,6 +40,9 @@ type getMetricsArgs struct {
 	// multi-id array; when ResourceID is set it wins as a one-element list.
 	ResourceID  string   `json:"resourceId,omitempty" jsonschema:"service id (srv-...) to read metrics for — Render's MCP spelling"`
 	Resource    []string `json:"resource,omitempty" jsonschema:"legacy bex alias of resourceId as a list of service ids/names; ignored when resourceId is also set"`
+	Project     string   `json:"project,omitempty" jsonschema:"bex extension (Render REST parity) — project id (prj-...) whose readable resources to read metrics for"`
+	Environment string   `json:"environment,omitempty" jsonschema:"bex extension (Render REST parity) — environment id (evm-...) whose readable resources to read metrics for"`
+	Region      string   `json:"region,omitempty" jsonschema:"bex extension (Render REST parity) — Render region filter (frankfurt|ohio|oregon|singapore|virginia); requires project or environment"`
 	MetricTypes []string `json:"metricTypes" jsonschema:"Render's metric types: cpu_usage|memory_usage|http_request_count|http_latency|instance_count|bandwidth_usage|cpu_limit|memory_limit|cpu_target|memory_target, plus active_connections for a Postgres (dpg-) or Key Value (red-) resource. bex's own ids cpu|memory|http_requests|bandwidth keep working. cpu_target/memory_target report the App's configured autoscale-target utilization and are omitted when autoscaling is disabled"`
 	StartTime   string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
 	EndTime     string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
@@ -216,9 +221,40 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_metrics",
 		Description: "Get resource (cpu/memory/instance_count) and request (http_requests/http_latency/bandwidth) metrics for a service, Postgres or Key Value resource. Returns Render's answer: {resourceId, timeRange, metrics: [{type, data}]}, one metrics entry per requested type, each data being the REST time-series array (labels [{field, value}], unit, values). With the legacy multi-id resource array, a JSON array of those objects, one per resource. Prefer Render's resourceId/resolution/httpLatencyQuantile/httpHost/httpPath; legacy resource/resolutionSeconds/quantile/host/path aliases still work (Render spelling wins when both are set).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, any, error) {
-		resources, err := in.resources()
-		if err != nil {
-			return nil, nil, err
+		var explicit []string
+		if in.ResourceID != "" {
+			explicit = []string{in.ResourceID}
+		} else {
+			explicit = nonBlankStrings(in.Resource)
+		}
+		var resources []string
+		var scoped bool
+		if in.Project != "" || in.Environment != "" || in.Region != "" {
+			var keep func(savedsearch.Resource) bool
+			if len(in.MetricTypes) == 1 {
+				if in.MetricTypes[0] == renderActiveConnections {
+					keep = keepActiveConnectionsResource
+				} else {
+					keep = keepMetricResource(metricIDFor(in.MetricTypes[0]))
+				}
+			}
+			resolved, err := s.resolveMetricScope(ctx, savedsearch.ScopeRequest{
+				Project:     in.Project,
+				Environment: in.Environment,
+				Region:      in.Region,
+				Resources:   explicit,
+			}, maxMetricResources, keep)
+			if err != nil {
+				return nil, nil, err
+			}
+			resources = resolved.IDs
+			scoped = resolved.Scoped
+		} else {
+			var err error
+			resources, err = in.resources()
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		cpuAgg, err := parseCPUAggregation("cpuUsageAggregationMethod", in.CPUUsageAggregationMethod)
 		if err != nil {
@@ -266,6 +302,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err := checkFanOut(len(resources), len(in.MetricTypes), quantileFan); err != nil {
 			return nil, nil, err
 		}
+		skipUnreadable := scoped && len(explicit) == 0
 		responses := make([]renderMetricsResponse, 0, len(resources))
 		for _, id := range resources {
 			resp := renderMetricsResponse{
@@ -273,6 +310,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				TimeRange:  renderTimeRange{Start: renderTimeBound(q.Start), End: renderTimeBound(q.End)},
 				Metrics:    make([]renderMetricData, 0, len(in.MetricTypes)),
 			}
+			skipped := false
 			for _, metricType := range in.MetricTypes {
 				var series []MetricSeries
 				read := scope.forMetric(q, metricIDFor(metricType))
@@ -291,16 +329,22 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 					}
 				}
 				if err != nil {
+					if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+						skipped = true
+						break
+					}
 					return nil, nil, err
 				}
 				// The entry's type is the caller's own spelling, as Render echoes it.
 				resp.Metrics = append(resp.Metrics, renderMetricData{Type: metricType, Data: toRenderMetrics(series)})
 			}
-			responses = append(responses, resp)
+			if !skipped {
+				responses = append(responses, resp)
+			}
 		}
 		// Render's call names one resourceId and gets one object back; only
-		// bex's legacy resource array asks for several.
-		if len(responses) == 1 {
+		// bex's legacy resource array (or project/environment scope) returns a list.
+		if !scoped && len(responses) == 1 {
 			return mcputil.RenderText(responses[0])
 		}
 		return mcputil.RenderText(responses)

@@ -56,7 +56,7 @@ func TestMetricsValidationMessagesSurviveGraphQLSanitization(t *testing.T) {
 	h, _ := serverWith(t, &core.Base{Client: fakeClient(sampleApp("web"), ownedDB("pg", ""), ownedKV("kv", "")), Namespace: "default"}, Deps{})
 	for _, tc := range []struct{ input, message string }{
 		{`metrics(query: {name: "FOO_METRIC", filters: [{field: "RESOURCE", values: ["web"]}]})`, `unknown metrics name "FOO_METRIC"`},
-		{`metrics(query: {name: "MEMORY", filters: []})`, "filters must include a RESOURCE entry"},
+		{`metrics(query: {name: "MEMORY", filters: []})`, "filters must include a RESOURCE, PROJECT, or ENVIRONMENT entry"},
 		{`datastoreMetrics(query: {resource: "pg", name: "FOO_METRIC"})`, `unknown datastore metrics name "FOO_METRIC"`},
 		{`datastoreMetrics(query: {resource: "", name: "DISK"})`, "resource is required"},
 		{`datastoreMetrics(query: {resource: "pg", name: "DISK", kind: "bogus"})`, `unknown datastore kind "bogus"`},

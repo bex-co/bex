@@ -84,12 +84,15 @@ const (
 // recognize (and Metrics can then refuse) them; INSTANCE is offered by
 // MetricsFilters only.
 const (
-	filterFieldResource   = "RESOURCE"
-	filterFieldStatusCode = "STATUS_CODE"
-	filterFieldMethod     = "METHOD"
-	filterFieldHost       = "HOST"
-	filterFieldPath       = "PATH"
-	filterFieldInstance   = "INSTANCE"
+	filterFieldResource    = "RESOURCE"
+	filterFieldProject     = "PROJECT"
+	filterFieldEnvironment = "ENVIRONMENT"
+	filterFieldRegion      = "REGION"
+	filterFieldStatusCode  = "STATUS_CODE"
+	filterFieldMethod      = "METHOD"
+	filterFieldHost        = "HOST"
+	filterFieldPath        = "PATH"
+	filterFieldInstance    = "INSTANCE"
 )
 
 // MetricPoint is one (timestamp, value) sample of a series.

@@ -475,7 +475,7 @@ type emittedErrorCodeRef struct {
 var emittedRenderErrorCodes = map[string]emittedErrorCodeRef{
 	"insufficient_token_scope":            {file: "core/errors.go", symbol: "core.InsufficientScopeCode"},
 	"duplicate_saved_search_name":         {file: "projects/savedsearches.go", symbol: "projects.DuplicateSavedSearchNameCode"},
-	"too_many_resources":                  {file: "metrics/bandwidth_sources.go", symbol: "metrics.TooManyResourcesCode"},
+	"too_many_resources":                  {file: "savedsearch/scope.go", symbol: "savedsearch.TooManyResourcesCode"},
 	"sandbox_not_running":                 {file: "sandbox/records.go", symbol: "sandbox.CodeSandboxNotRunning"},
 	"snapshot_creating":                   {file: "sandbox/snapshots.go", symbol: "sandbox.CodeSnapshotCreating"},
 	"snapshot_not_available":              {file: "sandbox/snapshots.go", symbol: "sandbox.CodeSnapshotNotAvailable"},
@@ -501,7 +501,7 @@ var emittedRenderErrorCodes = map[string]emittedErrorCodeRef{
 // notApplicableRenderErrorCodes accounts for pinned Render errorCode values
 // that have no enforced bex counterpart today, with the exact rationale.
 var notApplicableRenderErrorCodes = map[string]string{
-	"multiple_regions":              "single-region Prometheus installation (BEX_REGION); multi-resource metrics queries succeed directly without cross-region fan-out restrictions, and no pinned OpenAPI path documents this code",
+	"multiple_regions":              "single-region installation (BEX_REGION); a project or environment never spans multiple regions on bex, so multi-resource logs and metrics queries succeed without cross-region fan-out restrictions (w4/m596)",
 	"snapshot_plan_mismatch":        "applies only to runtime (memory+CPU) sandbox snapshots; bex currently serves filesystem snapshots only (runtime snapshots tracked in w2/m322)",
 	"sandbox_group_suspended":       "bex has no suspended sandbox-group state (ADR104 D7, docs/render-artifacts/sandbox-groups.md)",
 	"preauth_consent_required":      "Render card spend-preauthorization billing flow; bex uses Stripe SetupIntent + metered billing (ADR040)",

@@ -68,7 +68,12 @@ type listSandboxesArgs struct {
 }
 
 type sandboxIDArgs struct {
-	ID string `json:"id"`
+	ID      string `json:"id"`
+	OwnerID string `json:"ownerId,omitempty"`
+}
+
+type suspendSandboxResult struct {
+	Suspended bool `json:"suspended"`
 }
 
 // listExecutionsArgs is the MCP input for list_sandbox_executions: Render's
@@ -135,8 +140,13 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		})
 	addTool(s, server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
-			err := s.Terminate(ctx, in.ID)
+			err := s.Terminate(core.WithWorkspace(ctx, in.OwnerID), in.ID)
 			return nil, stopSandboxResult{Stopped: err == nil}, err
+		})
+	addTool(s, server, &mcp.Tool{Name: "suspend_sandbox", Description: "Suspend a running sandbox by id (idempotent when already suspending or suspended). Open commands and connections end; the next connection resumes it."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, suspendSandboxResult, error) {
+			err := s.Suspend(core.WithWorkspace(ctx, in.OwnerID), in.ID)
+			return nil, suspendSandboxResult{Suspended: err == nil}, err
 		})
 	addTool(s, server, &mcp.Tool{Name: "list_sandbox_executions", Description: "List a sandbox's recorded command runs and file transfers, newest first, with each one's command or path, caller, start and stop time, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listExecutionsArgs) (*mcp.CallToolResult, listExecutionsResult, error) {

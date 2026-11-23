@@ -17,7 +17,7 @@ limitations under the License.
 package metrics
 
 import (
-	"fmt"
+	"errors"
 	"maps"
 	"net/http"
 	"slices"
@@ -25,6 +25,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // Render's GET /metrics/bandwidth-sources (w8/190): hourly bandwidth broken down
@@ -46,9 +47,9 @@ var bandwidthSourcesSince = time.Date(2025, time.March, 9, 0, 0, 0, 0, time.UTC)
 // maxBandwidthSourceResources is Render's cap (error code too_many_resources).
 const maxBandwidthSourceResources = 30
 
-// TooManyResourcesCode is Render's errorCode when GET /v1/metrics/bandwidth-sources
-// requests more than maxBandwidthSourceResources resources.
-const TooManyResourcesCode = "too_many_resources"
+// TooManyResourcesCode is Render's errorCode when a metrics read exceeds its
+// resource cap (30 on bandwidth-sources, 50 on other /metrics/* endpoints).
+const TooManyResourcesCode = savedsearch.TooManyResourcesCode
 
 // bandwidthTrafficSources maps Render's trafficSource values onto the metric
 // source each is read from; "" is the all-sources total.
@@ -93,15 +94,14 @@ type bandwidthSourcePoint struct {
 
 // bandwidthSources answers GET /v1/metrics/bandwidth-sources.
 func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
-	resources, q, err := parseMetricParams(r)
+	scopeReq, q, err := parseMetricParams(r)
 	if err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+		core.WriteErr(w, err)
 		return
 	}
-	if len(resources) > maxBandwidthSourceResources {
-		core.WriteErr(w, core.NewBadRequestError(TooManyResourcesCode,
-			fmt.Sprintf("the breakdown supports at most %d resources", maxBandwidthSourceResources),
-			map[string]any{"maxResources": maxBandwidthSourceResources}))
+	resolved, err := s.resolveMetricScope(r.Context(), scopeReq, maxBandwidthSourceResources, keepMetricResource(MetricBandwidth))
+	if err != nil {
+		core.WriteErr(w, err)
 		return
 	}
 	if !q.Start.IsZero() && q.Start.Before(bandwidthSourcesSince) {
@@ -126,10 +126,14 @@ func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
 	// The widened reads skip Metrics' cap, so they name its verb themselves.
 	ctx := core.WithAuditVerb(r.Context(), AuditVerbMetrics)
 	out := []bandwidthSourceSeries{}
-	for _, res := range resources {
+	skipUnreadable := resolved.Scoped && len(scopeReq.Resources) == 0
+	for _, res := range resolved.IDs {
 		if core.IsDatastoreResource(res) {
 			// The same named refusal /v1/metrics/bandwidth gives a datastore.
 			if _, err := s.datastoreAppMetric(r.Context(), q, res); err != nil {
+				if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+					continue
+				}
 				core.WriteErr(w, err)
 				return
 			}
@@ -140,6 +144,9 @@ func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
 			read.BandwidthSource = source.metric
 			series, err := s.metricsInWindow(ctx, read)
 			if err != nil {
+				if skipUnreadable && (errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden)) {
+					break
+				}
 				core.WriteErr(w, err)
 				return
 			}

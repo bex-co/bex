@@ -89,9 +89,37 @@ var (
 // a deferred one already running (the worker's own call), and the caller
 // deploys now.
 func (s *Service) deferDeploy(ctx context.Context, a *appv1alpha1.App, d store.Deploy, req store.DeferredRequest, waits func(*appv1alpha1.App) (bool, error)) (DeployView, bool, error) {
-	deferrer, ok := s.Store.(DeployDeferrer)
 	d.AppID = appStoreID(a)
-	if !ok || d.AppID == "" || store.DeferredDeployID(ctx) != "" {
+	if d.AppID == "" || store.DeferredDeployID(ctx) != "" {
+		return DeployView{}, false, nil
+	}
+	if awaitingID := store.AwaitingBuildDeployID(ctx); awaitingID != "" {
+		aw, ok := s.Store.(buildAwaitingDeployStore)
+		if !ok {
+			return DeployView{}, false, nil
+		}
+		var deferred bool
+		err := s.withTriggerLock(ctx, d.AppID, func() error {
+			if err := core.RereadApp(ctx, s.Client, a); err != nil {
+				return err
+			}
+			if err := core.NotFoundIfDeleting(a); err != nil {
+				return err
+			}
+			if wait, err := waits(a); err != nil || !wait {
+				return err
+			}
+			var err error
+			d, deferred, err = aw.DeferAwaitingBuildDeploy(store.WithAdoptedRelease(ctx, a), awaitingID, d.AppID, req)
+			return err
+		})
+		if err != nil || !deferred {
+			return DeployView{}, false, err
+		}
+		return view(a, d), true, nil
+	}
+	deferrer, ok := s.Store.(DeployDeferrer)
+	if !ok {
 		return DeployView{}, false, nil
 	}
 	var deferred bool

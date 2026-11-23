@@ -45,6 +45,31 @@ func (f fakeProjects) ProjectLogResources(context.Context, string) (string, []sa
 	return f.workspace, f.resources, f.err
 }
 
+func (f fakeProjects) ProjectScopeResources(_ context.Context, projectID, environmentID string) (string, []savedsearch.Resource, error) {
+	if f.err != nil {
+		return "", nil, f.err
+	}
+	if projectID == "prj-missing" {
+		return "", nil, core.NotFound("project")
+	}
+	if environmentID == "evm-missing" {
+		return "", nil, core.NotFound("environment")
+	}
+	if environmentID == "evm-other-project" && projectID != "" {
+		return "", nil, fmt.Errorf("%w: environment %q does not belong to project %q", core.ErrBadRequest, environmentID, projectID)
+	}
+	if environmentID == "" {
+		return f.workspace, f.resources, nil
+	}
+	var out []savedsearch.Resource
+	for _, r := range f.resources {
+		if r.EnvironmentID == environmentID {
+			out = append(out, r)
+		}
+	}
+	return f.workspace, out, nil
+}
+
 const projectEnv = "evm-c185th5c2rvvnhbfilu0"
 
 // The fixture's services' ids, by App name.

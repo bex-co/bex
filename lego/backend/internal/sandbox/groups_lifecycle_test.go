@@ -210,7 +210,7 @@ func TestLegacySandboxesCountInTheDefaultGroupAndResumeBindsThem(t *testing.T) {
 	}
 	f.mustCreate(t, other.ID) // another group is not affected
 
-	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/os-legacy/pause?ownerId="+f.ws, ""); code != http.StatusNoContent {
+	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/os-legacy/suspend?ownerId="+f.ws, ""); code != http.StatusAccepted {
 		t.Fatalf("suspend = %d %s", code, body)
 	}
 	f.os.set("os-legacy", func(b *fakeBox) { b.state = "Paused" })

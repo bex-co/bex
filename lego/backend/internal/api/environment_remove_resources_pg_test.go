@@ -110,7 +110,7 @@ func TestRemoveResourcesUngroupsServicesPG(t *testing.T) {
 	}
 
 	request(http.MethodPost, "/v1/environments/"+environmentID+"/resources",
-		fmt.Sprintf(`{"resourceIds":[%q,%q]}`, services[0], services[1]), http.StatusOK)
+		fmt.Sprintf(`{"resourceIds":[%q,%q]}`, services[0], services[1]), http.StatusCreated)
 	assertPlacement(project.ID, environmentID)
 
 	request(http.MethodDelete, "/v1/environments/"+environmentID+"/resources?resourceIds="+services[0]+"&resourceIds="+services[1], "", http.StatusNoContent)

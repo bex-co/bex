@@ -46,6 +46,99 @@ import (
 // does for the log views.
 type ProjectResources interface {
 	ProjectLogResources(ctx context.Context, projectID string) (workspaceID string, resources []savedsearch.Resource, err error)
+	ProjectScopeResources(ctx context.Context, projectID, environmentID string) (workspaceID string, resources []savedsearch.Resource, err error)
+}
+
+// maxMetricResources is Render's per-request resource cap on every /metrics/*
+// endpoint except bandwidth-sources (which caps at 30), enforced with 400
+// `too_many_resources` whether named via `resource` or expanded from
+// `project`/`environment` (w4/m596).
+const maxMetricResources = 50
+
+// keepMetricResource reports whether a resource of r's kind applies to metric
+// when a metrics query is scoped by project or environment without an explicit
+// `resource` filter.
+func keepMetricResource(metric string) func(savedsearch.Resource) bool {
+	return func(r savedsearch.Resource) bool {
+		switch metric {
+		case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
+			return r.Type != appv1alpha1.TypeStaticSite
+		case MetricCPUTarget, MetricMemoryTarget, MetricInstanceCount:
+			return r.Type != appv1alpha1.TypeStaticSite && r.Type != savedsearch.KindPostgres && r.Type != savedsearch.KindKeyValue
+		case MetricHTTPRequests, MetricHTTPLatency:
+			return r.Type == "" || r.Type == appv1alpha1.TypeWebService || r.Type == appv1alpha1.TypeStaticSite
+		case MetricBandwidth:
+			return r.Type != savedsearch.KindPostgres && r.Type != savedsearch.KindKeyValue
+		case MetricDisk, MetricDiskCapacity:
+			return r.Type != appv1alpha1.TypeStaticSite
+		case MetricDBConnections, MetricNetworkActivity, MetricTransactionVolume, MetricLockDelayedQueries, MetricReplicationLag:
+			return r.Type == savedsearch.KindPostgres
+		case MetricKVMemory, MetricKVConnections:
+			return r.Type == savedsearch.KindKeyValue
+		case MetricDiskActivity:
+			return r.Type != appv1alpha1.TypeStaticSite
+		case MetricDiskOperations:
+			return r.Type != appv1alpha1.TypeStaticSite && r.Type != savedsearch.KindKeyValue
+		default:
+			return true
+		}
+	}
+}
+
+func keepActiveConnectionsResource(r savedsearch.Resource) bool {
+	return r.Type == savedsearch.KindPostgres || r.Type == savedsearch.KindKeyValue
+}
+
+func keepFilterResource(httpOnly bool) func(savedsearch.Resource) bool {
+	if httpOnly {
+		return func(r savedsearch.Resource) bool {
+			return r.Type == "" || r.Type == appv1alpha1.TypeWebService || r.Type == appv1alpha1.TypeStaticSite
+		}
+	}
+	return func(r savedsearch.Resource) bool {
+		return r.Type != appv1alpha1.TypeStaticSite
+	}
+}
+
+// resolveMetricScope resolves Render's resource/project/environment/region
+// scope for metrics endpoints (w4/m596).
+func (s *Service) resolveMetricScope(ctx context.Context, req savedsearch.ScopeRequest, maxResources int, keep func(savedsearch.Resource) bool) (savedsearch.ResolvedScope, error) {
+	return savedsearch.ResolveScope(ctx, s.Projects, req, savedsearch.ScopePolicy{
+		RequireProjectForEnvironment: false,
+		MaxResources:                 maxResources,
+		Keep:                         keep,
+		Unavailable:                  ErrProjectMetricsUnavailable,
+	})
+}
+
+// readableMetricResourceIDs drops resources in a project/environment scope that
+// are unreadable or deleted so filter endpoints never fail or leak them.
+func (s *Service) readableMetricResourceIDs(ctx context.Context, resources []savedsearch.Resource) ([]string, error) {
+	if len(resources) == 0 {
+		return nil, nil
+	}
+	ctx = core.WithAuditVerb(ctx, AuditVerbMetrics)
+	verdicts := make([]error, len(resources))
+	var g errgroup.Group
+	g.SetLimit(maxConcurrentProjectReads)
+	for i, r := range resources {
+		g.Go(func() error {
+			verdicts[i] = s.authorizeProjectResource(ctx, r)
+			return nil
+		})
+	}
+	_ = g.Wait()
+	out := make([]string, 0, len(resources))
+	for i, err := range verdicts {
+		switch {
+		case err == nil:
+			out = append(out, resources[i].ID)
+		case errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden):
+		default:
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // ErrProjectMetricsUnavailable answers a project read when no project listing

@@ -219,16 +219,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, out)
 	})
-	// Render CLI `stop` → terminate.
+	// Render CLI `stop` → terminate (204).
 	s.handle(mux, "POST /v1/sandboxes/{id}/terminate", func(w http.ResponseWriter, r *http.Request) {
-		s.lifecycleREST(w, r, s.Terminate)
+		s.lifecycleREST(w, r, http.StatusNoContent, s.Terminate)
 	})
-	// bex lifecycle extensions (Render's suspended/resuming statuses).
-	s.handle(mux, "POST /v1/sandboxes/{id}/pause", func(w http.ResponseWriter, r *http.Request) {
-		s.lifecycleREST(w, r, s.Suspend)
+	// Render `suspend-sandbox` (round 9, w4/m596 t003): 202 with no body once
+	// the sandbox starts suspending or when it is already suspending/suspended.
+	// Replaces the earlier bex-only /pause (204) extension (ADR104).
+	s.handle(mux, "POST /v1/sandboxes/{id}/suspend", func(w http.ResponseWriter, r *http.Request) {
+		s.lifecycleREST(w, r, http.StatusAccepted, s.Suspend)
 	})
+	// bex lifecycle extension (Render's resuming status).
 	s.handle(mux, "POST /v1/sandboxes/{id}/resume", func(w http.ResponseWriter, r *http.Request) {
-		s.lifecycleREST(w, r, s.Resume)
+		s.lifecycleREST(w, r, http.StatusNoContent, s.Resume)
 	})
 	s.registerGroupREST(mux)
 	s.registerImageREST(mux)
@@ -236,11 +239,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	s.registerCredentialREST(mux)
 }
 
-func (s *Service) lifecycleREST(w http.ResponseWriter, r *http.Request, op func(ctx context.Context, id string) error) {
+func (s *Service) lifecycleREST(w http.ResponseWriter, r *http.Request, status int, op func(ctx context.Context, id string) error) {
 	ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
 	if err := op(ctx, r.PathValue("id")); err != nil {
 		core.WriteErr(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(status)
 }

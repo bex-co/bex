@@ -223,7 +223,7 @@ func TestRequestBucketsClassifiesOnlySandboxRoutes(t *testing.T) {
 		{http.MethodPost, "/v1/sandboxes", RateClassCreate},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/resume", RateClassCreate},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/terminate", RateClassTerminate},
-		{http.MethodPost, "/v1/sandboxes/sbx-1/pause", RateClassTerminate},
+		{http.MethodPost, "/v1/sandboxes/sbx-1/suspend", RateClassTerminate},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/exec", RateClassExec},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/runs/exec/token", RateClassExec},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/files/upload/token", RateClassFiles},

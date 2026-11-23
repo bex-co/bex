@@ -493,6 +493,9 @@ func TestNoMetricsArgumentIsAcceptedWithoutEffect(t *testing.T) {
 			"resolutionSeconds": "300",
 			"resource":          "other",
 			"service":           "other",
+			"project":           "prj-other",
+			"environment":       "evm-other",
+			"region":            "oregon",
 			"instance":          "web-abc-1",
 			"aggregationMethod": "MAX",
 			"aggregateBy":       "host",
@@ -510,7 +513,7 @@ func TestNoMetricsArgumentIsAcceptedWithoutEffect(t *testing.T) {
 					t.Errorf("%s ?%s has no probe: decide what it does and add one", path, name)
 					continue
 				}
-				parse := func(query string) ([]string, MetricQuery, error) {
+				parse := func(query string) (any, MetricQuery, error) {
 					return parseMetricParams(httptest.NewRequest(http.MethodGet, "/v1"+path+"?"+query, nil))
 				}
 				baseRes, baseQ, err := parse("resource=web")

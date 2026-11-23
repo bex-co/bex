@@ -17,7 +17,9 @@ limitations under the License.
 package logs
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/graphql-go/graphql"
 
@@ -154,11 +156,13 @@ func logFilterArgs() graphql.FieldConfigArgument {
 func (s *Service) GraphQLQuery() graphql.Fields {
 	logsArgs := logFilterArgs()
 	logsArgs["limit"] = gqlutil.Arg(graphql.Int)
-	// project + filterDocument (w3/m505): read a project's view instead of one
-	// resource, as Render's logs(query: {project, filterDocument}) does. The
-	// server resolves the resources; `type` picks the view (app or request).
+	// project + environment + region + filterDocument (w3/m505, w4/m596): read
+	// a project's view or Render's project/environment/region scope; resource
+	// narrows a project when filterDocument is absent.
 	logsArgs["resource"] = gqlutil.Arg(graphql.String)
 	logsArgs["project"] = gqlutil.Arg(graphql.String)
+	logsArgs["environment"] = gqlutil.Arg(graphql.String)
+	logsArgs["region"] = gqlutil.Arg(graphql.String)
 	logsArgs["filterDocument"] = gqlutil.Arg(gqlutil.JSONObject)
 	// deployId (w21/m324, a Bex extension): scope a build or predeploy read to
 	// one deploy. The time window alone cannot: two deploys that overlap in time
@@ -167,11 +171,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 	valuesArgs := logFilterArgs()
 	valuesArgs["label"] = gqlutil.ReqArg(graphql.String)
-	// project + filterDocument (w3/079): the values a label takes across a
-	// project's view, as Render's logValues(input: {label, logQuery:
-	// {project, …}}) reads them for its Edit view's value pickers.
+	// project + environment + region + filterDocument (w3/079, w4/m596): the
+	// values a label takes across a project's view or Render's project scope.
 	valuesArgs["resource"] = gqlutil.Arg(graphql.String)
 	valuesArgs["project"] = gqlutil.Arg(graphql.String)
+	valuesArgs["environment"] = gqlutil.Arg(graphql.String)
+	valuesArgs["region"] = gqlutil.Arg(graphql.String)
 	valuesArgs["filterDocument"] = gqlutil.Arg(gqlutil.JSONObject)
 
 	return graphql.Fields{
@@ -187,20 +192,47 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if n, ok := p.Args["limit"].(int); ok {
 					q.Limit = int64(n)
 				}
-				project, err := projectArg(p, q.App)
+				scopeReq, useView, err := logScopeFromGQL(p, q.App)
 				if err != nil {
 					return nil, err
 				}
 				if err := s.renderWindow(&q); err != nil {
 					return nil, err
 				}
-				if project != "" {
-					page, resources, err := s.queryProjectLogPage(p.Context, project, p.Args["filterDocument"], q)
+				if useView {
+					page, resources, err := s.queryProjectLogPage(p.Context, scopeReq.Project, p.Args["filterDocument"], q)
 					if err != nil {
 						return nil, err
 					}
 					out := logListResult(page)
 					out["resources"] = resources
+					return out, nil
+				}
+				if scopeReq.Project != "" {
+					ctx := core.WithRequestMemo(core.WithAuditVerb(p.Context, AuditVerbQueryLogs))
+					resolved, err := s.resolveLogScope(ctx, scopeReq, &q, nil)
+					if err != nil {
+						return nil, err
+					}
+					if q.Limit == 0 {
+						q.Limit = projectLogPageSize
+					}
+					if err := q.validate(); err != nil {
+						return nil, err
+					}
+					var page logPage
+					if len(resolved.IDs) == 0 {
+						n := q.normalized()
+						page = logPage{Entries: []LogEntry{}}
+						page.NextStartTime, page.NextEndTime = pageCursors(nil, n.Since, n.End, n.Direction)
+					} else {
+						page, err = s.queryLogPage(ctx, resolved.IDs, q)
+						if err != nil {
+							return nil, err
+						}
+					}
+					out := logListResult(page)
+					out["resources"] = resolved.Resources
 					return out, nil
 				}
 				page, err := s.queryLogPage(p.Context, []string{q.App}, q)
@@ -223,7 +255,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				project, err := projectArg(p, q.App)
+				scopeReq, useView, err := logScopeFromGQL(p, q.App)
 				if err != nil {
 					return nil, err
 				}
@@ -231,8 +263,36 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					return nil, err
 				}
 				label := gqlutil.Str(p.Args, "label")
-				if project != "" {
-					return s.queryProjectLabelValues(p.Context, project, p.Args["filterDocument"], label, q)
+				if useView {
+					return s.queryProjectLabelValues(p.Context, scopeReq.Project, p.Args["filterDocument"], label, q)
+				}
+				if scopeReq.Project != "" {
+					ctx := core.WithRequestMemo(core.WithAuditVerb(p.Context, AuditVerbLogLabelValues))
+					if err := checkLabel(label, projectDiscoverableLabels); err != nil {
+						return nil, err
+					}
+					resolved, err := s.resolveLogScope(ctx, scopeReq, &q, nil)
+					if err != nil {
+						return nil, err
+					}
+					if err := q.validate(); err != nil {
+						return nil, err
+					}
+					values := []string{}
+					for _, r := range resolved.Resources {
+						if core.IsDatastoreResource(r.ID) && !slices.Contains(datastoreLogLabels, label) {
+							continue
+						}
+						got, err := s.labelValues(ctx, label, q.forResource(r.ID), projectDiscoverableLabels)
+						if err != nil {
+							if errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrNotFound) {
+								continue
+							}
+							return nil, err
+						}
+						values = append(values, got...)
+					}
+					return slices.Compact(slices.Sorted(slices.Values(values))), nil
 				}
 				return s.LogLabelValues(p.Context, label, q)
 			},
@@ -240,17 +300,41 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 }
 
-// projectArg is a read's `project`: it reads exactly one of a resource and a
-// project, and a filterDocument only with a project.
-func projectArg(p graphql.ResolveParams, resource string) (string, error) {
+// logScopeFromGQL parses resource/project/environment/region/filterDocument on
+// GraphQL logs() and logLabelValues(). A w3/m505 saved-view read (project with
+// filterDocument, or bare project with no environment/region/resource) keeps
+// the view path; adding environment, region or resource alongside project uses
+// Render's scope rules (w4/m596).
+func logScopeFromGQL(p graphql.ResolveParams, resource string) (savedsearch.ScopeRequest, bool, error) {
 	project, _ := p.Args["project"].(string)
-	if (project == "") == (resource == "") {
-		return "", fmt.Errorf("%w: %s takes exactly one of resource and project", core.ErrBadRequest, p.Info.FieldName)
+	env, _ := p.Args["environment"].(string)
+	region, _ := p.Args["region"].(string)
+	hasDoc := p.Args["filterDocument"] != nil
+	if hasDoc && project == "" {
+		return savedsearch.ScopeRequest{}, false, fmt.Errorf("%w: filterDocument applies to a project read", core.ErrBadRequest)
 	}
-	if p.Args["filterDocument"] != nil && project == "" {
-		return "", fmt.Errorf("%w: filterDocument applies to a project read", core.ErrBadRequest)
+	if hasDoc && (resource != "" || env != "" || region != "") {
+		return savedsearch.ScopeRequest{}, false, fmt.Errorf("%w: filterDocument cannot be combined with resource, environment, or region", core.ErrBadRequest)
 	}
-	return project, nil
+	if project == "" && (env != "" || region != "") {
+		if env != "" {
+			return savedsearch.ScopeRequest{}, false, fmt.Errorf("%w: environment requires project", core.ErrBadRequest)
+		}
+		return savedsearch.ScopeRequest{}, false, fmt.Errorf("%w: region requires project", core.ErrBadRequest)
+	}
+	if project == "" && resource == "" {
+		return savedsearch.ScopeRequest{}, false, fmt.Errorf("%w: %s requires resource or project", core.ErrBadRequest, p.Info.FieldName)
+	}
+	req := savedsearch.ScopeRequest{
+		Project:     project,
+		Environment: env,
+		Region:      region,
+	}
+	if resource != "" {
+		req.Resources = []string{resource}
+	}
+	useView := project != "" && (hasDoc || (resource == "" && env == "" && region == ""))
+	return req, useView, nil
 }
 
 // logListResult is a page as the LogList fields.

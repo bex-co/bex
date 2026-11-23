@@ -915,11 +915,31 @@ func TestSuspendLifecycleStatusesMatchRender(t *testing.T) {
 
 func TestExplicitLifecycleConflictIsNamed(t *testing.T) {
 	f := newIdleFixture(t)
-	f.os.add("os-1", "Paused", f.now.Add(-time.Hour), "900", nil)
-	err := f.svc.Suspend(callerCtx(), "os-1")
+	// Suspending an already suspending or suspended sandbox is idempotent
+	// (Render suspend-sandbox, round 9, w4/m596 t003).
+	f.os.add("os-paused", "Paused", f.now.Add(-time.Hour), "900", nil)
+	if err := f.svc.Suspend(callerCtx(), "os-paused"); err != nil {
+		t.Fatalf("suspending a paused sandbox = %v, want idempotent nil", err)
+	}
+	f.os.add("os-pausing", "Pausing", f.now.Add(-time.Hour), "900", nil)
+	if err := f.svc.Suspend(callerCtx(), "os-pausing"); err != nil {
+		t.Fatalf("suspending a pausing sandbox = %v, want idempotent nil", err)
+	}
+	// Suspending a non-running sandbox (creating/errored) answers 409 sandbox_not_running.
+	for id, state := range map[string]string{"os-creating": "Allocated", "os-failed": "Failed"} {
+		f.os.add(id, state, f.now.Add(-time.Minute), "900", nil)
+		err := f.svc.Suspend(callerCtx(), id)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != CodeSandboxNotRunning {
+			t.Fatalf("suspending %s (%s) = %v, want %s", id, state, err, CodeSandboxNotRunning)
+		}
+	}
+	// Resuming a running sandbox keeps SANDBOX_LIFECYCLE_CONFLICT.
+	f.os.add("os-running", "Running", f.now.Add(-time.Hour), "900", nil)
+	err := f.svc.Resume(callerCtx(), "os-running")
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "SANDBOX_LIFECYCLE_CONFLICT" {
-		t.Fatalf("pausing a paused sandbox = %v, want SANDBOX_LIFECYCLE_CONFLICT", err)
+		t.Fatalf("resuming a running sandbox = %v, want SANDBOX_LIFECYCLE_CONFLICT", err)
 	}
 }
 
@@ -1013,19 +1033,19 @@ func TestSuspendedSandboxIsReapedAfterThirtyDays(t *testing.T) {
 }
 
 // TestExplicitResumeRestartsTimeout: the resume verb stamps and renews like
-// wake-on-exec, and a suspend refused for a settled phase does not restart
-// the suspended window.
+// wake-on-exec, and an idempotent suspend on an already-suspended sandbox
+// succeeds without restarting the suspended window (w4/m596, Render 202).
 func TestExplicitResumeRestartsTimeout(t *testing.T) {
 	f := newIdleFixture(t)
 	suspendedAt := f.now.Add(-10 * 24 * time.Hour)
 	f.os.add("os-1", "Paused", f.now.Add(-11*24*time.Hour), "900", map[string]string{
 		metadataTimeout: "86400", metadataSuspendedAt: stampMetadataTime(suspendedAt),
 	})
-	if err := f.svc.Suspend(callerCtx(), "os-1"); err == nil {
-		t.Fatal("suspending a suspended sandbox succeeded")
+	if err := f.svc.Suspend(callerCtx(), "os-1"); err != nil {
+		t.Fatalf("idempotent suspend of a suspended sandbox failed: %v", err)
 	}
 	if got := f.os.box("os-1").metadata[metadataSuspendedAt]; got != stampMetadataTime(suspendedAt) {
-		t.Fatalf("a refused suspend restamped the suspension: %q", got)
+		t.Fatalf("an idempotent suspend restamped the suspension: %q", got)
 	}
 	if err := f.svc.Resume(callerCtx(), "os-1"); err != nil {
 		t.Fatalf("resume: %v", err)

@@ -264,8 +264,8 @@ func TestProjectValuesRefusals(t *testing.T) {
 		{`project:"prj-observed", label:"pod"`, `unknown log label "pod"`},
 		// One resource's read keeps Render's six labels, as REST and MCP do.
 		{`resource:"web", label:"path"`, `unknown log label "path"`},
-		{`project:"prj-observed", resource:"web", label:"instance"`, "logLabelValues takes exactly one of resource and project"},
-		{`label:"instance"`, "logLabelValues takes exactly one of resource and project"},
+		{`project:"prj-observed", resource:"elsewhere", label:"instance"`, "does not belong to the requested scope"},
+		{`label:"instance"`, "logLabelValues requires resource or project"},
 		{`resource:"web", label:"instance", filterDocument:{filters: [], version: 1}`, "filterDocument applies to a project read"},
 		{`project:"prj-observed", label:"instance", filterDocument:{filters: [], version: 2}`, "version 2 is not supported"},
 		{`project:"prj-observed", label:"instance", type:"build"`, "a project log view reads type=app or type=request"},

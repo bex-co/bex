@@ -23,7 +23,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -103,7 +102,7 @@ func TestEveryDeclaredLogFilterIsParsedOrRefused(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodGet, "/v1/logs?resource=web&"+name+"=bex-guard-value", nil)
 			resources, query, err := parseLogParams(req)
-			if err == nil && slices.Equal(resources, baseResources) && reflect.DeepEqual(query, baseQuery) {
+			if err == nil && reflect.DeepEqual(resources, baseResources) && reflect.DeepEqual(query, baseQuery) {
 				t.Errorf("%s declares %q, but the parser neither reads nor refuses it", path, name)
 			}
 		}

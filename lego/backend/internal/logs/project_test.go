@@ -59,6 +59,26 @@ func (f *fakeProject) ProjectLogResources(_ context.Context, projectID string) (
 	return f.workspace, append([]savedsearch.Resource(nil), f.resources...), nil
 }
 
+func (f *fakeProject) ProjectScopeResources(ctx context.Context, projectID, environmentID string) (string, []savedsearch.Resource, error) {
+	ws, all, err := f.ProjectLogResources(ctx, projectID)
+	if err != nil {
+		return "", nil, err
+	}
+	if environmentID == "" {
+		return ws, all, nil
+	}
+	var out []savedsearch.Resource
+	for _, r := range all {
+		if r.EnvironmentID == environmentID {
+			out = append(out, r)
+		}
+	}
+	if len(out) == 0 && environmentID == "evm-other-project" {
+		return "", nil, fmt.Errorf("%w: environment %q does not belong to project %q", core.ErrBadRequest, environmentID, projectID)
+	}
+	return ws, out, nil
+}
+
 func (f *fakeProject) set(resources ...savedsearch.Resource) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -254,7 +274,8 @@ func TestProjectReadRefusals(t *testing.T) {
 		args string
 		want string
 	}{
-		{`project:"prj-observed", resource:"web"`, "exactly one of resource and project"},
+		{`project:"prj-observed", resource:"elsewhere"`, "does not belong to the requested scope"},
+		{`project:"prj-observed", resource:"web", filterDocument:{filters: [], version: 1}`, "filterDocument cannot be combined"},
 		{`resource:"web", filterDocument:{filters: [], version: 1}`, "filterDocument applies to a project read"},
 		{`project:"prj-observed", type:"build"`, "a project log view reads type=app or type=request"},
 		{`project:"prj-observed", filterDocument:{filters: [], version: 2}`, "version 2 is not supported"},
@@ -382,24 +403,28 @@ func TestProjectTailRefusesBeforeStreaming(t *testing.T) {
 	}
 	project.set(many...)
 	rec := subscribeProject(t, svc, url.Values{"project": {"prj-observed"}}, time.Second)
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "one project log query reads at most 20") {
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"code":"too_many_resources"`) || !strings.Contains(rec.Body.String(), "at most 20 resources") {
 		t.Fatalf("over the cap => %d %s", rec.Code, rec.Body.String())
 	}
 	rec = subscribeProject(t, svc, url.Values{"project": {"prj-observed"}, "filterDocument": {`{"filters":[],"version":3}`}}, time.Second)
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "version 3") {
 		t.Fatalf("bad document => %d %s", rec.Code, rec.Body.String())
 	}
-	rec = subscribeProject(t, svc, url.Values{"project": {"prj-observed"}, "resource": {"web"}}, time.Second)
+	rec = subscribeProject(t, svc, url.Values{"project": {"prj-observed"}, "filterDocument": {`{"filters":[],"version":1}`}, "resource": {"web"}}, time.Second)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("resource and project => %d %s", rec.Code, rec.Body.String())
+		t.Fatalf("resource and project with filterDocument => %d %s", rec.Code, rec.Body.String())
+	}
+	rec = subscribeProject(t, svc, url.Values{"project": {"prj-observed"}, "resource": {"elsewhere"}}, time.Second)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("resource outside project => %d %s", rec.Code, rec.Body.String())
 	}
 	project.err = core.ErrForbidden
 	rec = subscribeProject(t, svc, url.Values{"project": {"prj-observed"}}, time.Second)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("a project the caller may not view => %d %s", rec.Code, rec.Body.String())
 	}
-	if rec := serveREST(svc, http.MethodGet, "/v1/logs?project=prj-observed"); rec.Code != http.StatusBadRequest {
-		t.Fatalf("REST /v1/logs?project => %d; the history read takes resources", rec.Code)
+	if rec := serveREST(svc, http.MethodGet, "/v1/logs?environment=evm-c185th5c2rvvnhbfiltg"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("REST /v1/logs?environment without project => %d; environment requires project", rec.Code)
 	}
 }
 

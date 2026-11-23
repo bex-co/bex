@@ -147,20 +147,75 @@ func (f *fakeStore) ListBuildSourceLinks(_ context.Context, carrierID string) ([
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
 
-func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
+func (f *fakeStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	now := time.Now()
+	if awaitingID := store.AwaitingBuildDeployID(ctx); awaitingID != "" {
+		idx := -1
+		for i, existing := range f.byApp[appID] {
+			if existing.ID == awaitingID {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 || !f.byApp[appID][idx].AwaitingBuild || f.byApp[appID][idx].Status != store.DeployCreated {
+			return store.Deploy{}, store.ErrAwaitingBuildDeployGone
+		}
+		status := store.DeployCreated
+		for _, existing := range f.byApp[appID] {
+			if !existing.AwaitingBuild && store.IsOpenDeployStatus(existing.Status) && existing.Generation >= generation {
+				status = store.DeployCanceled
+				break
+			}
+		}
+		if status == store.DeployCreated {
+			for i, existing := range f.byApp[appID] {
+				if existing.AwaitingBuild || existing.Status != store.DeployQueued || !existing.OverlapPending {
+					continue
+				}
+				existing.Status = store.DeployCanceled
+				existing.OverlapPending = false
+				existing.UpdatedAt = now
+				existing.FinishedAt = &now
+				f.byApp[appID][i] = existing
+			}
+			for _, existing := range f.byApp[appID] {
+				if !existing.AwaitingBuild && store.IsOpenDeployStatus(existing.Status) && !existing.OverlapPending {
+					status = store.DeployQueued
+					break
+				}
+			}
+		}
+		d := f.byApp[appID][idx]
+		d.Image = image
+		d.Generation = generation
+		d.Commit = commit.Hash
+		d.CommitMessage = commit.Message
+		d.CommitAuthorAt = commit.AuthorAt
+		if commit.BuildID != "" {
+			d.BuildID = commit.BuildID
+		}
+		d.Status = status
+		d.OverlapPending = status == store.DeployQueued
+		d.AwaitingBuild = false
+		d.UpdatedAt = now
+		if status == store.DeployCanceled {
+			d.FinishedAt = &now
+		}
+		f.byApp[appID][idx] = d
+		return d, nil
+	}
 	status := store.DeployCreated
 	for _, existing := range f.byApp[appID] {
-		if store.IsOpenDeployStatus(existing.Status) && existing.Generation >= generation {
+		if !existing.AwaitingBuild && store.IsOpenDeployStatus(existing.Status) && existing.Generation >= generation {
 			status = store.DeployCanceled
 			break
 		}
 	}
 	if status == store.DeployCreated {
 		for i, existing := range f.byApp[appID] {
-			if existing.Status != store.DeployQueued || !existing.OverlapPending {
+			if existing.AwaitingBuild || existing.Status != store.DeployQueued || !existing.OverlapPending {
 				continue
 			}
 			existing.Status = store.DeployCanceled
@@ -170,7 +225,7 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 			f.byApp[appID][i] = existing
 		}
 		for _, existing := range f.byApp[appID] {
-			if store.IsOpenDeployStatus(existing.Status) && !existing.OverlapPending {
+			if !existing.AwaitingBuild && store.IsOpenDeployStatus(existing.Status) && !existing.OverlapPending {
 				status = store.DeployQueued
 				break
 			}
@@ -181,12 +236,79 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 	if f.mintIDs {
 		id = ids.New(ids.Deploy)
 	}
-	d := store.Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, BuildID: commit.BuildID, TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
+	d := store.Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, BuildID: commit.BuildID, BuildDeployScope: store.BuildDeployScopeFrom(ctx), TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
 	}
 	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
 	return d, nil
+}
+
+func (f *fakeStore) CreateAwaitingBuildDeploy(_ context.Context, appID, trigger, buildID string, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	now := time.Now()
+	f.nextID++
+	id := fmt.Sprintf("dep-%d", f.nextID)
+	if f.mintIDs {
+		id = ids.New(ids.Deploy)
+	}
+	d := store.Deploy{
+		ID: id, AppID: appID, Trigger: trigger, Commit: commit.Hash, CommitMessage: commit.Message,
+		CommitAuthorAt: commit.AuthorAt, BuildID: buildID, TriggeredBy: triggeredBy,
+		Status: store.DeployCreated, AwaitingBuild: true, CreatedAt: now, UpdatedAt: now,
+	}
+	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
+	return d, nil
+}
+
+func (f *fakeStore) ListBuildAwaitingDeploys(_ context.Context, buildID string) ([]store.Deploy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.Deploy
+	for _, list := range f.byApp {
+		for _, d := range list {
+			if d.BuildID == buildID && d.AwaitingBuild && d.Status == store.DeployCreated {
+				out = append(out, d)
+			}
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) CancelAwaitingBuildDeploy(_ context.Context, id, reason string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	now := time.Now()
+	for appID, list := range f.byApp {
+		for i, d := range list {
+			if d.ID == id && d.AwaitingBuild && d.Status == store.DeployCreated {
+				d.Status = store.DeployCanceled
+				d.AwaitingBuild = false
+				d.CancelReason = reason
+				d.FinishedAt = &now
+				d.UpdatedAt = now
+				f.byApp[appID][i] = d
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeStore) CheckAwaitingBuildDeploy(_ context.Context, id, appID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, d := range f.byApp[appID] {
+		if d.ID == id && d.AwaitingBuild && d.Status == store.DeployCreated {
+			return nil
+		}
+	}
+	return store.ErrAwaitingBuildDeployGone
+}
+
+func (f *fakeStore) DeferAwaitingBuildDeploy(_ context.Context, _, _ string, _ store.DeferredRequest) (store.Deploy, bool, error) {
+	return store.Deploy{}, false, nil
 }
 
 func (f *fakeStore) LatestDeployCommit(_ context.Context, appID string) (store.CommitInfo, error) {
@@ -349,6 +471,22 @@ func (f *fakeStore) CloseDeploy(_ context.Context, id, status, resolvedImage str
 						other.Status = store.DeployDeactivated
 						other.UpdatedAt = now
 						f.byApp[appID][j] = other
+					}
+				}
+			} else if buildID, ok := ids.Rekind(ids.Build, id); ok {
+				targetStatus := store.DeployBuildFailed
+				if status == store.DeployCanceled {
+					targetStatus = store.DeployCanceled
+				}
+				for aID, list := range f.byApp {
+					for j, wd := range list {
+						if wd.BuildID == buildID && wd.AwaitingBuild && wd.Status == store.DeployCreated {
+							wd.Status = targetStatus
+							wd.AwaitingBuild = false
+							wd.FinishedAt = &now
+							wd.UpdatedAt = now
+							f.byApp[aID][j] = wd
+						}
 					}
 				}
 			}

@@ -355,6 +355,15 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 				}
 			}
 		}
+		// An awaiting-build deploy is likewise checked before mutating the App
+		// CR so a concurrent cancel or fan-out retry never double-releases it.
+		if id := store.AwaitingBuildDeployID(ctx); id != "" {
+			if checker, ok := s.Store.(buildAwaitingDeployStore); ok {
+				if err := checker.CheckAwaitingBuildDeploy(ctx, id, appID); err != nil {
+					return err
+				}
+			}
+		}
 		if rowWrite != nil {
 			if err := rowWrite(); err != nil {
 				return err
@@ -1015,7 +1024,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			}
 		}
 		if build != nil {
-			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), build.link.Image, build.fanout)
+			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), build.link.Image, build.fanout && store.AwaitingBuildDeployID(ctx) == "")
 		}
 		return nil
 	}
@@ -1222,7 +1231,27 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 			return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 		}
 	}
-	if !d.Deferred {
+	// A deploy waiting on its build source build also has no release yet
+	// (w4/m596 t002): closing its row cancels it before fan-out promotes it.
+	if q, ok := s.Store.(buildAwaitingDeployStore); ok && d.AwaitingBuild {
+		won, err := q.CancelAwaitingBuildDeploy(ctx, deployID, "")
+		if err != nil {
+			return DeployView{}, err
+		}
+		if won {
+			if d, err = s.Store.GetDeploy(ctx, appID, deployID); err != nil {
+				return DeployView{}, err
+			}
+			return view(a, d), nil
+		}
+		if d, err = s.Store.GetDeploy(ctx, appID, deployID); err != nil {
+			return DeployView{}, err
+		}
+		if d.FinishedAt != nil {
+			return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
+		}
+	}
+	if !d.Deferred && !d.AwaitingBuild {
 		survivor, err := s.cancelSurvivor(ctx, a, appID, d)
 		if err != nil {
 			return DeployView{}, err

@@ -43,12 +43,16 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "77508de048718a1e5c4d09ebd0da6f43aa693b3241fae2b94949d8d0912115cf"
+	renderOpenAPISHA256 = "d075b0cbc6fece3751223af91a497bd6a689ec95385e9117996bbda6928072ce"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
-// fetched on 2026-11-16 (round-8 drift, w8/m442: 263 -> 264 operations,
+// fetched on 2026-11-23 (round-9 drift, w4/m596: 264 -> 265 operations,
+// suspend-sandbox, trigger-build-source-build deploy scope and deploys/
+// skippedServices response, logs and metrics project/environment/region
+// filters, add-resources-to-environment 201, and create-sandbox-group
+// environmentId; round 8 on 2026-11-16, w8/m442: 263 -> 264 operations,
 // the Workflows step-attempt read, the logs build filter, an envGroup read's
 // optional values and the reserved sbb- build name; round 7 on 2026-11-13,
 // w3/m367: 255 -> 263, the sandbox build delete and sandbox-group
@@ -123,9 +127,7 @@ var renderOptionalParameterCompatibility = map[string][]string{
 	// or default workspace on all three log reads.
 	"list-logs":        {"ownerId"},
 	"list-logs-values": {"ownerId"},
-	// A project view's tail names its project instead of resources (w3/m505);
-	// the handler still refuses a subscription that names neither.
-	"subscribe-logs": {"ownerId", "resource"},
+	"subscribe-logs":   {"ownerId"},
 	// The sandbox list resolves an omitted ownerId from the caller's selected
 	// or default workspace, as it did before the operation entered the pin.
 	"list-sandboxes": {"ownerId"},
@@ -165,6 +167,7 @@ var renderPathParameterPatternCompatibility = map[string]map[string]string{
 	// these operations entering the pin (round-5 drift, w2/m251), so without
 	// the widening every existing sandbox call would 400 on its own id.
 	"retrieve-sandbox":      {"sandboxId": renderSandboxIDPattern},
+	"suspend-sandbox":       {"sandboxId": renderSandboxIDPattern},
 	"terminate-sandbox":     {"sandboxId": renderSandboxIDPattern},
 	"connect-sandbox-run":   {"sandboxId": renderSandboxIDPattern},
 	"connect-sandbox-files": {"sandboxId": renderSandboxIDPattern},
@@ -279,10 +282,10 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// dashboard's service Logs tab sends it on history and its live tail.
 	"list-logs":        {"textMode": {}},
 	"list-logs-values": {"textMode": {}},
-	// project + filterDocument tail a project's log view (w3/m505): Render's
-	// public API has no project tail, its dashboard's view reads the project
-	// through private GraphQL.
-	"subscribe-logs": {"textMode": {}, "project": {}, "filterDocument": {}},
+	// filterDocument tails a project's saved log view (w3/m505): Render's
+	// public API pins project/environment/region (round 9, w4/m596) while its
+	// dashboard's saved-search filter document stays private GraphQL.
+	"subscribe-logs": {"textMode": {}, "filterDocument": {}},
 
 	// Render's disk-capacity series covers only its own service disks, so its
 	// schema has no `kind`. Bex reads capacity for three resource kinds through
@@ -324,11 +327,6 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 		"expiresAt": {Value: openapi3.NewStringSchema()},
 	},
 	"update-registry-credential": {"expiresAt": {Value: openapi3.NewStringSchema()}},
-	// A sandbox group can be placed in a project environment, as Render's
-	// dashboard does (render.com/docs/sandboxes-creating, read 2026-11-14); the
-	// pinned create takes none while its response carries a nullable one, so null
-	// is accepted as a group read back reads (w22/m412).
-	"create-sandbox-group": {"environmentId": {Value: openapi3.NewStringSchema().WithNullable()}},
 }
 
 // renderNullableBodyOperations take a JSON null body as the empty list. Render's
@@ -688,6 +686,12 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 		// "readReplicas": null on both writes, and Render accepts it as
 		// omitted (w9/m472 t004).
 		nullableProperties(schema, "readReplicas")
+	}
+	if operationID == "create-sandbox-group" {
+		// Render pinned environmentId as a non-null string in round 9 (w4/m596),
+		// while w22/m412 accepted explicit null to match the response's nullable
+		// environmentId; keep accepting null as omitted.
+		nullableProperties(schema, "environmentId")
 	}
 	if operationID != "create-service" && operationID != "update-service" {
 		return

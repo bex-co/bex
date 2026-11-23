@@ -53,61 +53,71 @@ const (
 // documented query parameter does: served (it changes the read), refused (a
 // coded 400/501), or ignored with the reason.
 var renderMetricsParamVerdicts = map[string]map[string]string{
-	"/metrics/active-connections": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed},
-	"/metrics/bandwidth":          {"startTime": metricsParamServed, "endTime": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
+	"/metrics/active-connections": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed},
+	"/metrics/bandwidth":          {"startTime": metricsParamServed, "endTime": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed},
 	"/metrics/bandwidth-sources": {
 		"startTime": "served: hourly points; an earlier start than 2025-03-09 is a 400", "endTime": metricsParamServed,
 		"resource": metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 	},
 	"/metrics/cpu": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"instance": metricsParamServed, "aggregationMethod": "served: AVG; MAX/MIN refused with a 400 (metrics-server snapshots)",
 	},
-	"/metrics/cpu-limit": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "instance": metricsParamServed},
+	"/metrics/cpu-limit": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed, "instance": metricsParamServed},
 	"/metrics/cpu-target": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"instance": "refused: a target is App configuration with no instance axis",
 	},
-	"/metrics/disk-capacity": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
-	"/metrics/disk-usage":    {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
+	"/metrics/disk-capacity": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed},
+	"/metrics/disk-usage":    {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed},
 	"/metrics/filters/application": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed,
 		"resolutionSeconds": "ignored: instance filter discovery reads pod label values over the window rather than stepped buckets",
 		"resource":          metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 	},
 	"/metrics/filters/http": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed,
 		"resolutionSeconds": "ignored: HTTP filter discovery reads label values and access-log streams over the window rather than stepped buckets",
 		"resource":          metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"host": metricsParamServed, "statusCode": metricsParamServed,
 	},
 	"/metrics/filters/path": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed,
 		"resolutionSeconds": "ignored: path suggestions scan raw access-log lines rather than stepped buckets",
 		"resource":          metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"host": metricsParamServed, "statusCode": metricsParamServed, "path": metricsParamServed,
 	},
 	"/metrics/http-latency": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"host": metricsParamServed, "path": metricsParamServed, "quantile": metricsParamServed,
 	},
 	"/metrics/http-requests": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"host": metricsParamServed, "path": metricsParamServed, "aggregateBy": "served: statusCode; host refused with a 400 (no host axis)",
 	},
-	"/metrics/instance-count": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
-	"/metrics/memory":         {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "instance": metricsParamServed},
-	"/metrics/memory-limit":   {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "instance": metricsParamServed},
+	"/metrics/instance-count": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed},
+	"/metrics/memory":         {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed, "instance": metricsParamServed},
+	"/metrics/memory-limit":   {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed, "instance": metricsParamServed},
 	"/metrics/memory-target": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,
+		"project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed,
 		"instance": "refused: a target is App configuration with no instance axis",
 	},
-	"/metrics/replication-lag": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed},
+	"/metrics/replication-lag": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "project": metricsParamServed, "environment": metricsParamServed, "region": metricsParamServed},
 }
 
 var renderMetricsParamSamples = map[string]string{
 	"startTime": "2026-09-14T19:00:00Z", "endTime": "2026-09-14T20:00:00Z", "resolutionSeconds": "60",
 	"resource": "srv-c185th5c2rvvnhbfiltg", "service": "srv-c185th5c2rvvnhbfiltg",
+	"project": "prj-c185th5c2rvvnhbfiltg", "environment": "evm-c185th5c2rvvnhbfiltg", "region": "oregon",
 	"instance": "srv-c185th5c2rvvnhbfiltg-abc12", "host": "web.onbex.co", "path": "/qa", "quantile": "0.95",
 	"aggregateBy": "statusCode", "aggregationMethod": "AVG", "statusCode": "200",
 }
@@ -182,6 +192,12 @@ func TestEveryRenderMetricsPathAndParameterHasAVerdict(t *testing.T) {
 			case "resource":
 			case "service":
 				q = url.Values{"service": {resource}}
+			case "project":
+				q = url.Values{"project": {renderMetricsParamSamples["project"]}}
+			case "environment":
+				q = url.Values{"environment": {renderMetricsParamSamples["environment"]}}
+			case "region":
+				q = url.Values{"project": {renderMetricsParamSamples["project"]}, "region": {renderMetricsParamSamples["region"]}}
 			default:
 				q.Set(name, renderMetricsParamSamples[name])
 			}

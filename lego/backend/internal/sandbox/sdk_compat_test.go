@@ -41,9 +41,29 @@ func renderSandboxSchemas(t *testing.T) (sandbox, listItem *openapi3.Schema) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	idSchema := openapi3.NewStringSchema().WithPattern(`^sbx-[0-9a-v]{20}(?:[0-9a-v]{5})?$`).NewRef()
+	widenID := func(sc *openapi3.Schema) {
+		if sc == nil {
+			return
+		}
+		if _, ok := sc.Properties["id"]; ok {
+			sc.Properties["id"] = idSchema
+		}
+		for _, sub := range sc.AllOf {
+			if sub != nil && sub.Value != nil {
+				if _, ok := sub.Value.Properties["id"]; ok {
+					sub.Value.Properties["id"] = idSchema
+				}
+			}
+		}
+	}
 	sandbox = spec.Paths.Find("/sandboxes").Post.Responses.Status(http.StatusCreated).Value.Content.Get("application/json").Schema.Value
-	sandbox.Properties["id"] = openapi3.NewStringSchema().WithPattern(`^sbx-[0-9a-v]{20}(?:[0-9a-v]{5})?$`).NewRef()
-	return sandbox, spec.Components.Schemas["sandboxWithCursor"].Value
+	widenID(sandbox)
+	item := spec.Components.Schemas["sandboxWithCursor"].Value
+	if s := item.Properties["sandbox"]; s != nil {
+		widenID(s.Value)
+	}
+	return sandbox, item
 }
 
 // The Render SDK v1.8 Python client validates every sandbox it reads against

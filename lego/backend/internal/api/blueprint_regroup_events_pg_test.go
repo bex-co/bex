@@ -252,7 +252,7 @@ func TestBlueprintRegroupListsServiceMovedInTheFeedPG(t *testing.T) {
 	}
 	// The REST move back lists the same shape.
 	rec := do(t, f.handler, http.MethodPost, "/v1/environments/"+staging[1]+"/resources", testToken, fmt.Sprintf(`{"resourceIds":[%q]}`, serviceID))
-	if rec.Code != http.StatusOK {
+	if rec.Code != http.StatusCreated {
 		t.Fatalf("REST move = %d %s", rec.Code, rec.Body.String())
 	}
 	want = append(want, regroupMove(blog, staging))

@@ -1033,8 +1033,10 @@ type Build {
   buildSourceId: String
   createdAt: String
   cursor: String
+  deploys: [BuildDeployRef]
   id: String
   image: BuildImage
+  skippedServices: [SkippedBuildService]
   updatedAt: String
 }
 
@@ -1047,6 +1049,16 @@ type BuildDeployEndReason {
 
 type BuildDeployEndReasonId {
   id: String
+}
+
+type BuildDeployRef {
+  deployId: String
+  serviceId: String
+}
+
+input BuildDeployScopeInput {
+  serviceIds: [String!]
+  serviceScope: String!
 }
 
 type BuildFilter {
@@ -2189,11 +2201,12 @@ type Mutation {
   steerAgentSession(attachmentIds: [String!], egressAllowlist: [String!], id: String!, idempotencyKey: String, model: String, outputRequired: Boolean, outputSchema: String, prompt: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!]): AgentSession
   suspendDatabase(confirm: String, id: String!): Database
   suspendKeyValue(confirm: String, id: String!): KeyValue
+  suspendSandbox(id: String!, ownerId: String): Boolean!
   suspendService(confirm: String, id: String!): Service
   syncBlueprint(bexYaml: String, commitId: String, confirm: String, id: String!, ownerId: String, path: String, repo: String): SyncBlueprintResult
   takeOverAgentAutomation(id: String!, ownerId: String): AgentAutomation!
   terminateSandbox(id: String!, ownerId: String): Boolean!
-  triggerBuild(buildSourceId: String!, clearCache: String): Build
+  triggerBuild(buildSourceId: String!, clearCache: String, deploy: BuildDeployScopeInput): Build
   triggerDeploy(buildId: String, clearCache: String, commitId: String, confirm: String, deployMode: String, disableAutoDeploy: Boolean = false, imageUrl: String, serviceId: String!): Deploy
   unarchiveAgentSession(id: String!): AgentSession
   unlinkEnvGroup(id: String!, serviceId: String!): Boolean
@@ -2625,9 +2638,9 @@ type Query {
   keyValueIpAllowList(id: String!): [String]
   keyValueLogs(cursor: String, direction: String, endTime: String, id: String!, instance: [String], limit: Int, startTime: String, text: String): [KeyValueLogEntry]
   keyValues(cursor: String, limit: Int, ownerId: String): [KeyValue]
-  logLabelValues(build: [String!], direction: String, endTime: String, filterDocument: JSONObject, host: [String!], instance: [String!], label: String!, level: [String!], method: [String!], path: [String!], project: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): [String!]
+  logLabelValues(build: [String!], direction: String, endTime: String, environment: String, filterDocument: JSONObject, host: [String!], instance: [String!], label: String!, level: [String!], method: [String!], path: [String!], project: String, region: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): [String!]
   logRetention(resource: String!): LogRetention
-  logs(build: [String!], deployId: String, direction: String, endTime: String, filterDocument: JSONObject, host: [String!], instance: [String!], level: [String!], limit: Int, method: [String!], path: [String!], project: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): LogList
+  logs(build: [String!], deployId: String, direction: String, endTime: String, environment: String, filterDocument: JSONObject, host: [String!], instance: [String!], level: [String!], limit: Int, method: [String!], path: [String!], project: String, region: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): LogList
   metrics(query: MetricsQueryInput!): [MetricSeries]
   metricsFilters(query: MetricsFiltersQueryInput!): MetricsFiltersResult
   metricsPathFilterSuggestions(query: MetricsPathFilterSuggestionsInput!): MetricsPathFilterSuggestions
@@ -3194,6 +3207,11 @@ type ShellSession {
   expiresAt: String
   ticket: String
   url: String
+}
+
+type SkippedBuildService {
+  reason: String
+  serviceId: String
 }
 
 type StaticHeader {

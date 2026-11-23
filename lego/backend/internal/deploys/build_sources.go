@@ -74,14 +74,105 @@ func imageRef(image string) string {
 
 // BuildView is Render's build object.
 type BuildView struct {
-	ID            string          `json:"id"`
-	BuildSourceID string          `json:"buildSourceId"`
-	BuildRun      *BuildRunView   `json:"buildRun,omitempty"`
-	Image         *BuildImageView `json:"image,omitempty"`
-	CreatedAt     string          `json:"createdAt"`
-	UpdatedAt     string          `json:"updatedAt"`
+	ID              string                `json:"id"`
+	BuildSourceID   string                `json:"buildSourceId"`
+	BuildRun        *BuildRunView         `json:"buildRun,omitempty"`
+	Image           *BuildImageView       `json:"image,omitempty"`
+	CreatedAt       string                `json:"createdAt"`
+	UpdatedAt       string                `json:"updatedAt"`
+	Deploys         []BuildDeployRef      `json:"-"`
+	SkippedServices []SkippedBuildService `json:"-"`
 
 	deployID string
+}
+
+// Render's trigger-build-source-build deploy.serviceScope values (round 9,
+// w4/m596 t002).
+const (
+	BuildDeployScopeAutoDeployOnly = store.BuildDeployScopeAutoDeployOnly
+	BuildDeployScopeNone           = store.BuildDeployScopeNone
+	BuildDeployScopeCustom         = store.BuildDeployScopeCustom
+)
+
+// Render's trigger-build-source-build skippedServices[].reason values.
+// bex never emits deploys_shut_off because it has no per-plan-tier deploy
+// shut-off; a billing-enforced workspace refuses the build trigger itself.
+const (
+	SkipReasonSuspended      = "suspended"
+	SkipReasonDeploysShutOff = "deploys_shut_off"
+)
+
+// BuildDeployScope is Render's trigger-build-source-build deploy body object.
+type BuildDeployScope struct {
+	ServiceScope string    `json:"serviceScope"`
+	ServiceIDs   *[]string `json:"serviceIds,omitempty"`
+}
+
+// BuildDeployRef is one entry of Render's trigger-build-source-build 201
+// deploys array.
+type BuildDeployRef struct {
+	ServiceID string `json:"serviceId"`
+	DeployID  string `json:"deployId"`
+}
+
+// SkippedBuildService is one entry of Render's trigger-build-source-build 201
+// skippedServices array.
+type SkippedBuildService struct {
+	ServiceID string `json:"serviceId"`
+	Reason    string `json:"reason"`
+}
+
+// TriggerBuildResult is Render's 201 for trigger-build-source-build: the build
+// plus the deploys it started and the services in scope it skipped.
+type TriggerBuildResult struct {
+	BuildView
+	Deploys         []BuildDeployRef      `json:"deploys"`
+	SkippedServices []SkippedBuildService `json:"skippedServices"`
+}
+
+// buildAwaitingDeployStore is the store surface for pre-created service deploy
+// rows waiting on a build source build (w4/m596 t002). *store.PGStore satisfies
+// it.
+type buildAwaitingDeployStore interface {
+	CreateAwaitingBuildDeploy(ctx context.Context, appID, trigger, buildID string, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
+	ListBuildAwaitingDeploys(ctx context.Context, buildID string) ([]store.Deploy, error)
+	CancelAwaitingBuildDeploy(ctx context.Context, id, reason string) (bool, error)
+	CheckAwaitingBuildDeploy(ctx context.Context, id, appID string) error
+	DeferAwaitingBuildDeploy(ctx context.Context, id, appID string, req store.DeferredRequest) (store.Deploy, bool, error)
+}
+
+var _ buildAwaitingDeployStore = (*store.PGStore)(nil)
+
+func parseBuildDeployScope(d *BuildDeployScope) (scope string, serviceIDs []string, err error) {
+	if d == nil {
+		return BuildDeployScopeAutoDeployOnly, nil, nil
+	}
+	switch d.ServiceScope {
+	case BuildDeployScopeAutoDeployOnly, BuildDeployScopeNone:
+		if d.ServiceIDs != nil {
+			return "", nil, fmt.Errorf("%w: deploy.serviceIds is only allowed when deploy.serviceScope is %q", core.ErrBadRequest, BuildDeployScopeCustom)
+		}
+		return d.ServiceScope, nil, nil
+	case BuildDeployScopeCustom:
+		if d.ServiceIDs == nil || len(*d.ServiceIDs) == 0 {
+			return "", nil, fmt.Errorf("%w: deploy.serviceIds is required when deploy.serviceScope is %q", core.ErrBadRequest, BuildDeployScopeCustom)
+		}
+		seen := make(map[string]bool, len(*d.ServiceIDs))
+		out := make([]string, 0, len(*d.ServiceIDs))
+		for _, sid := range *d.ServiceIDs {
+			sid = strings.TrimSpace(sid)
+			if sid == "" {
+				return "", nil, fmt.Errorf("%w: deploy.serviceIds must not contain an empty service id", core.ErrBadRequest)
+			}
+			if !seen[sid] {
+				seen[sid] = true
+				out = append(out, sid)
+			}
+		}
+		return BuildDeployScopeCustom, out, nil
+	default:
+		return "", nil, fmt.Errorf("%w: deploy.serviceScope must be one of %s, %s, %s", core.ErrBadRequest, BuildDeployScopeAutoDeployOnly, BuildDeployScopeNone, BuildDeployScopeCustom)
+	}
 }
 
 // BuildID is the public id of the build a carrier deploy row is.
@@ -113,22 +204,138 @@ func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (cont
 // source's branch head even when an up-to-date build exists. Only a git
 // source builds. clearCache is Render's optional "clear" | "do_not_clear"
 // (round 7, w3/m367), honored as a service deploy's is; "" is do_not_clear.
-func (s *Service) TriggerBuild(ctx context.Context, id, clearCache string) (BuildView, error) {
+// deploy is Render's optional deploy scope (round 9, w4/m596 t002): omitted
+// defaults to autodeploy_only. Each targeted linked service gets a readable
+// deploy row immediately (awaiting_build), promoted in place when the build
+// succeeds or closed terminal if the build fails or is canceled.
+func (s *Service) TriggerBuild(ctx context.Context, id, clearCache string, deploy ...*BuildDeployScope) (TriggerBuildResult, error) {
+	origCtx := ctx
 	ctx, carrier, err := s.buildSourceApp(ctx, core.LifecycleOrCreate(false), id)
 	if err != nil {
-		return BuildView{}, err
+		return TriggerBuildResult{}, err
 	}
 	if carrier.Spec.Repo == "" {
-		return BuildView{}, fmt.Errorf("%w: only a git build source can be built; build source %s is image-backed", core.ErrBadRequest, id)
+		return TriggerBuildResult{}, fmt.Errorf("%w: only a git build source can be built; build source %s is image-backed", core.ErrBadRequest, id)
+	}
+	var deployOpt *BuildDeployScope
+	if len(deploy) > 0 {
+		deployOpt = deploy[0]
+	}
+	scope, serviceIDs, err := parseBuildDeployScope(deployOpt)
+	if err != nil {
+		return TriggerBuildResult{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, carrier.Labels[core.LabelTenant]); err != nil {
-		return BuildView{}, err
+		return TriggerBuildResult{}, err
 	}
-	d, err := s.triggerFetched(ctx, id, carrier, TriggerParams{ClearCache: clearCache}, store.TriggerAPI)
+
+	targets, skipped, err := s.resolveBuildDeployTargets(origCtx, carrier, scope, serviceIDs)
 	if err != nil {
-		return BuildView{}, err
+		return TriggerBuildResult{}, err
 	}
-	return buildView(carrier, core.AppPublicID(carrier), d), nil
+
+	d, err := s.triggerFetched(store.WithBuildDeployScope(ctx, scope), id, carrier, TriggerParams{ClearCache: clearCache}, store.TriggerAPI)
+	if err != nil {
+		return TriggerBuildResult{}, err
+	}
+
+	buildID := BuildID(d.ID)
+	refs := make([]BuildDeployRef, 0, len(targets))
+	if len(targets) > 0 {
+		aw, ok := s.Store.(buildAwaitingDeployStore)
+		if !ok {
+			return TriggerBuildResult{}, fmt.Errorf("%w: build deploy scope requires the control plane", core.ErrUnavailable)
+		}
+		commit := store.CommitInfo{Hash: d.CommitID, Message: d.CommitMessage, AuthorAt: d.CommitAuthorAt}
+		triggeredBy := core.SubjectFrom(ctx)
+		for _, target := range targets {
+			planned, err := aw.CreateAwaitingBuildDeploy(ctx, appStoreID(target), store.TriggerAPI, buildID, commit, triggeredBy)
+			if err != nil {
+				return TriggerBuildResult{}, err
+			}
+			refs = append(refs, BuildDeployRef{
+				ServiceID: core.AppPublicID(target),
+				DeployID:  planned.ID,
+			})
+		}
+	}
+	if skipped == nil {
+		skipped = []SkippedBuildService{}
+	}
+	bv := buildView(carrier, core.AppPublicID(carrier), d)
+	bv.Deploys = refs
+	bv.SkippedServices = skipped
+	return TriggerBuildResult{
+		BuildView:       bv,
+		Deploys:         refs,
+		SkippedServices: skipped,
+	}, nil
+}
+
+// resolveBuildDeployTargets selects the linked services to deploy and the
+// services in scope to skip, verifying per-service deploy authorization for
+// custom serviceIds before the carrier build is opened.
+func (s *Service) resolveBuildDeployTargets(origCtx context.Context, carrier *appv1alpha1.App, scope string, serviceIDs []string) ([]*appv1alpha1.App, []SkippedBuildService, error) {
+	switch scope {
+	case BuildDeployScopeNone:
+		return nil, []SkippedBuildService{}, nil
+	case BuildDeployScopeCustom:
+		var targets []*appv1alpha1.App
+		skipped := []SkippedBuildService{}
+		for _, sid := range serviceIDs {
+			a, err := s.AuthorizeApp(origCtx, core.LifecycleOrCreate(false), sid)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := core.NotFoundIfDeleting(a); err != nil {
+				return nil, nil, err
+			}
+			if a.Spec.BuildSource == nil || a.Spec.BuildSource.Name != carrier.Name {
+				return nil, nil, fmt.Errorf("%w: deploy.serviceIds: service %s is not linked to build source %s", core.ErrBadRequest, sid, core.AppPublicID(carrier))
+			}
+			if a.Spec.Suspended {
+				skipped = append(skipped, SkippedBuildService{
+					ServiceID: core.AppPublicID(a),
+					Reason:    SkipReasonSuspended,
+				})
+				continue
+			}
+			targets = append(targets, a)
+		}
+		return targets, skipped, nil
+	case BuildDeployScopeAutoDeployOnly:
+		st, ok := s.Store.(buildSourceStore)
+		if !ok {
+			return nil, []SkippedBuildService{}, nil
+		}
+		links, err := st.ListBuildSourceLinks(origCtx, appStoreID(carrier))
+		if err != nil {
+			return nil, nil, err
+		}
+		var targets []*appv1alpha1.App
+		for _, row := range links {
+			// For autodeploy_only, Render does not list suspended services in
+			// skippedServices.
+			if row.Suspended {
+				continue
+			}
+			var a appv1alpha1.App
+			if err := s.Client.Get(origCtx, client.ObjectKey{Namespace: carrier.Namespace, Name: row.AppObjectName()}, &a); err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
+				return nil, nil, err
+			}
+			if !a.Spec.AutoDeploy || a.Spec.Suspended || a.DeletionTimestamp != nil {
+				continue
+			}
+			cp := a
+			targets = append(targets, &cp)
+		}
+		return targets, []SkippedBuildService{}, nil
+	default:
+		return nil, nil, fmt.Errorf("%w: unknown deploy.serviceScope %q", core.ErrBadRequest, scope)
+	}
 }
 
 // ListBuilds lists a page of a build source's builds, newest first. cursor
@@ -324,9 +531,15 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) error
 	if b.Image == "" {
 		return nil
 	}
+	if b.BuildDeployScope == BuildDeployScopeNone {
+		return nil
+	}
 	wrap := func(target string, err error) error {
 		log.Printf("deploys: fan out build of %s to %s: %v", b.Carrier, target, err)
 		return fmt.Errorf("fan out build of %s to %s: %w", b.Carrier, target, err)
+	}
+	if b.BuildDeployScope == BuildDeployScopeCustom || b.BuildDeployScope == BuildDeployScopeAutoDeployOnly {
+		return s.fanoutPlannedBuildDeploys(ctx, b, wrap)
 	}
 	st, err := s.buildSourceStore()
 	if err != nil {
@@ -369,6 +582,81 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) error
 	return errors.Join(errs...)
 }
 
+// fanoutPlannedBuildDeploys promotes each pre-created awaiting-build service
+// deploy for a trigger-build-source-build run (autodeploy_only or custom).
+// Retries from BuildFanoutLedger only see rows still awaiting_build, so the
+// scope chosen at trigger time is preserved across restarts and partial runs.
+func (s *Service) fanoutPlannedBuildDeploys(ctx context.Context, b store.BuiltSource, wrap func(string, error) error) error {
+	aw, ok := s.Store.(buildAwaitingDeployStore)
+	if !ok {
+		return nil
+	}
+	planned, err := aw.ListBuildAwaitingDeploys(ctx, BuildID(b.DeployID))
+	if err != nil {
+		return wrap("its planned deploys", err)
+	}
+	if len(planned) == 0 {
+		return nil
+	}
+	cancelPlanned := func(id, reason string) {
+		if _, err := aw.CancelAwaitingBuildDeploy(ctx, id, reason); err != nil {
+			log.Printf("deploys: cancel planned build deploy %s: %v", id, err)
+		}
+	}
+	if err := s.RequireBillingMutation(ctx, b.TenantID); err != nil {
+		if permanentFanoutError(err) {
+			log.Printf("deploys: fan out build of %s skipped: %v", b.Carrier, err)
+			for _, wd := range planned {
+				cancelPlanned(wd.ID, err.Error())
+			}
+			return nil
+		}
+		return wrap("its planned deploys", err)
+	}
+	build := &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}, id: BuildID(b.DeployID), commit: b.Commit, fanout: true}
+	var errs []error
+	for _, wd := range planned {
+		var list appv1alpha1.AppList
+		opts := []client.ListOption{client.MatchingLabels{core.LabelAppID: wd.AppID}}
+		if b.Namespace != "" {
+			opts = append(opts, client.InNamespace(b.Namespace))
+		}
+		if err := s.Client.List(ctx, &list, opts...); err != nil {
+			errs = append(errs, fanoutFailure(wrap(wd.AppID, err)))
+			continue
+		}
+		items := core.ServiceApps(list.Items)
+		if len(items) != 1 || items[0].DeletionTimestamp != nil {
+			cancelPlanned(wd.ID, "the service was deleted")
+			continue
+		}
+		a := &items[0]
+		if a.Spec.Suspended {
+			cancelPlanned(wd.ID, "the service is suspended")
+			continue
+		}
+		if a.Spec.BuildSource == nil || a.Spec.BuildSource.Name != b.Carrier {
+			cancelPlanned(wd.ID, "the service was unlinked from the build source")
+			continue
+		}
+		trigger := wd.Trigger
+		if trigger == "" {
+			trigger = store.TriggerAPI
+		}
+		_, err := s.triggerFetched(store.WithAwaitingBuildDeploy(ctx, wd.ID), core.AppPublicName(a), a, TriggerParams{build: build}, trigger)
+		if err == nil || errors.Is(err, store.ErrAwaitingBuildDeployGone) || errors.Is(err, errAlreadyOnBuild) {
+			continue
+		}
+		if permanentFanoutError(err) {
+			log.Printf("deploys: cancel planned build deploy %s for %s: %v", wd.ID, wd.AppID, err)
+			cancelPlanned(wd.ID, err.Error())
+			continue
+		}
+		errs = append(errs, wrap(wd.AppID, err))
+	}
+	return errors.Join(errs...)
+}
+
 // fanoutFailure is err when a retry could succeed, nil when it would meet the
 // same refusal: the fan-out then completes without that service (logged by
 // wrap), instead of re-running every lease period until a newer build lands.
@@ -405,12 +693,13 @@ func toBuildList(builds []BuildView) []buildWithCursor {
 func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/build-sources/{buildSourceId}/builds", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		var body struct {
-			ClearCache string `json:"clearCache"`
+			ClearCache string            `json:"clearCache"`
+			Deploy     *BuildDeployScope `json:"deploy"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
-		return s.TriggerBuild(r.Context(), r.PathValue("buildSourceId"), body.ClearCache)
+		return s.TriggerBuild(r.Context(), r.PathValue("buildSourceId"), body.ClearCache, body.Deploy)
 	}))
 	mux.HandleFunc("GET /v1/build-sources/{buildSourceId}/builds", core.HandleMapped(http.StatusOK, func(r *http.Request) ([]BuildView, error) {
 		cursor, limit := core.PageParams(r.URL.Query())
@@ -444,16 +733,42 @@ var buildImageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var buildDeployRefGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BuildDeployRef",
+	Fields: graphql.Fields{
+		"serviceId": gqlutil.StrField(func(r BuildDeployRef) any { return r.ServiceID }),
+		"deployId":  gqlutil.StrField(func(r BuildDeployRef) any { return r.DeployID }),
+	},
+})
+
+var skippedBuildServiceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SkippedBuildService",
+	Fields: graphql.Fields{
+		"serviceId": gqlutil.StrField(func(s SkippedBuildService) any { return s.ServiceID }),
+		"reason":    gqlutil.StrField(func(s SkippedBuildService) any { return s.Reason }),
+	},
+})
+
+var buildDeployScopeInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "BuildDeployScopeInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"serviceScope": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"serviceIds":   &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
+	},
+})
+
 var buildGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Build",
 	Fields: graphql.Fields{
-		"id":            gqlutil.StrField(func(b BuildView) any { return b.ID }),
-		"buildSourceId": gqlutil.StrField(func(b BuildView) any { return b.BuildSourceID }),
-		"buildRun":      gqlutil.Typed(buildRunGQLType, func(b BuildView) any { return b.BuildRun }),
-		"image":         gqlutil.Typed(buildImageGQLType, func(b BuildView) any { return b.Image }),
-		"cursor":        gqlutil.StrField(func(b BuildView) any { return b.deployID }),
-		"createdAt":     gqlutil.StrField(func(b BuildView) any { return b.CreatedAt }),
-		"updatedAt":     gqlutil.StrField(func(b BuildView) any { return b.UpdatedAt }),
+		"id":              gqlutil.StrField(func(b BuildView) any { return b.ID }),
+		"buildSourceId":   gqlutil.StrField(func(b BuildView) any { return b.BuildSourceID }),
+		"buildRun":        gqlutil.Typed(buildRunGQLType, func(b BuildView) any { return b.BuildRun }),
+		"image":           gqlutil.Typed(buildImageGQLType, func(b BuildView) any { return b.Image }),
+		"deploys":         gqlutil.Typed(graphql.NewList(buildDeployRefGQLType), func(b BuildView) any { return b.Deploys }),
+		"skippedServices": gqlutil.Typed(graphql.NewList(skippedBuildServiceGQLType), func(b BuildView) any { return b.SkippedServices }),
+		"cursor":          gqlutil.StrField(func(b BuildView) any { return b.deployID }),
+		"createdAt":       gqlutil.StrField(func(b BuildView) any { return b.CreatedAt }),
+		"updatedAt":       gqlutil.StrField(func(b BuildView) any { return b.UpdatedAt }),
 	},
 })
 
@@ -486,9 +801,30 @@ func (s *Service) buildGQLMutationFields() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"buildSourceId": gqlutil.ReqArg(graphql.String),
 				"clearCache":    gqlutil.Arg(graphql.String),
+				"deploy":        gqlutil.Arg(buildDeployScopeInputGQLType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.TriggerBuild(p.Context, p.Args["buildSourceId"].(string), gqlutil.Str(p.Args, "clearCache"))
+				var deployOpt *BuildDeployScope
+				if raw, ok := p.Args["deploy"].(map[string]any); ok && raw != nil {
+					scope, _ := raw["serviceScope"].(string)
+					deployOpt = &BuildDeployScope{ServiceScope: scope}
+					if idsRaw, present := raw["serviceIds"]; present && idsRaw != nil {
+						if list, ok := idsRaw.([]any); ok {
+							sids := make([]string, 0, len(list))
+							for _, item := range list {
+								if s, ok := item.(string); ok {
+									sids = append(sids, s)
+								}
+							}
+							deployOpt.ServiceIDs = &sids
+						}
+					}
+				}
+				res, err := s.TriggerBuild(p.Context, p.Args["buildSourceId"].(string), gqlutil.Str(p.Args, "clearCache"), deployOpt)
+				if err != nil {
+					return nil, err
+				}
+				return res.BuildView, nil
 			},
 		},
 	}
@@ -503,6 +839,9 @@ type triggerBuildArgs struct {
 	// ClearCache is a boolean, as on trigger_deploy (Render's MCP shape), or
 	// Render's REST strings clear and do_not_clear.
 	ClearCache any `json:"clearCache,omitempty" jsonschema:"true (or the REST string clear) builds without importing prior cached layers, as trigger_deploy's clearCache does"`
+	// Deploy selects which linked services the build deploys to (Render's
+	// deploy.serviceScope: autodeploy_only, none, or custom with serviceIds).
+	Deploy *BuildDeployScope `json:"deploy,omitempty" jsonschema:"optional deploy scope: {serviceScope: autodeploy_only|none|custom, serviceIds?: [...]}; omitted defaults to autodeploy_only"`
 }
 
 type listBuildsArgs struct {
@@ -523,13 +862,13 @@ type getBuildArgs struct {
 func (s *Service) registerBuildTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_build_source_build",
-		Description: "Build a git build source's branch head, even when an up-to-date build exists. clearCache: true (or the REST string clear) builds without prior cached layers, as Render's trigger-build-source-build. When it succeeds, services linked to the source with auto-deploy on deploy the result. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerBuildArgs) (*mcp.CallToolResult, BuildView, error) {
+		Description: "Build a git build source's branch head, even when an up-to-date build exists. clearCache: true (or the REST string clear) builds without prior cached layers, as Render's trigger-build-source-build. Optional deploy.serviceScope (autodeploy_only, none, or custom with serviceIds) chooses which linked services deploy; returns deploys and skippedServices. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerBuildArgs) (*mcp.CallToolResult, TriggerBuildResult, error) {
 		clearCache, err := mcputil.BoolOrEnum("clearCache", in.ClearCache, "clear", "do_not_clear")
 		if err != nil {
-			return nil, BuildView{}, err
+			return nil, TriggerBuildResult{}, err
 		}
-		b, err := s.TriggerBuild(ctx, in.BuildSourceID, clearCache)
+		b, err := s.TriggerBuild(ctx, in.BuildSourceID, clearCache, in.Deploy)
 		return nil, b, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{

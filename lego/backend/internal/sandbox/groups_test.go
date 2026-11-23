@@ -190,7 +190,7 @@ func (f *groupFixture) mustCreate(t *testing.T, groupID string) Sandbox {
 // production, and lets the fake OpenSandbox settle it as Paused.
 func (f *groupFixture) suspend(t *testing.T, sb Sandbox) {
 	t.Helper()
-	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/"+sb.ID+"/pause?ownerId="+f.ws, ""); code != http.StatusNoContent {
+	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/"+sb.ID+"/suspend?ownerId="+f.ws, ""); code != http.StatusAccepted {
 		t.Fatalf("suspend %s = %d %s", sb.ID, code, body)
 	}
 	f.os.set(f.os.idOf(sb.ID), func(b *fakeBox) { b.state = "Paused" })
@@ -717,7 +717,7 @@ func TestWorkspaceCapSpansGroups(t *testing.T) {
 		}
 	}
 	// Suspending one frees a workspace slot for either group.
-	if code, _ := f.do(t, http.MethodPost, "/v1/sandboxes/"+first.ID+"/pause?ownerId="+f.ws, ""); code != http.StatusNoContent {
+	if code, _ := f.do(t, http.MethodPost, "/v1/sandboxes/"+first.ID+"/suspend?ownerId="+f.ws, ""); code != http.StatusAccepted {
 		t.Fatal("suspend failed")
 	}
 	f.os.set(f.os.idOf(first.ID), func(b *fakeBox) { b.state = "Paused" })

@@ -110,7 +110,7 @@ var rateClasses = map[string]RateClass{
 	"REST POST /v1/sandboxes":                              RateClassCreate,
 	"REST POST /v1/sandboxes/{id}/resume":                  RateClassCreate,
 	"REST POST /v1/sandboxes/{id}/terminate":               RateClassTerminate,
-	"REST POST /v1/sandboxes/{id}/pause":                   RateClassTerminate,
+	"REST POST /v1/sandboxes/{id}/suspend":                 RateClassTerminate,
 	"REST POST /v1/sandboxes/{id}/exec":                    RateClassExec,
 	"REST POST /v1/sandboxes/{id}/runs/{operation}/token":  RateClassExec,
 	"REST POST /v1/sandboxes/{id}/files/{operation}/token": RateClassFiles,
@@ -143,6 +143,7 @@ var rateClasses = map[string]RateClass{
 	"REST POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore": RateClassGroupWrite,
 
 	"GQL Mutation.createSandbox":                 RateClassCreate,
+	"GQL Mutation.suspendSandbox":                RateClassTerminate,
 	"GQL Mutation.terminateSandbox":              RateClassTerminate,
 	"GQL Mutation.createSandboxSnapshot":         RateClassCapture,
 	"GQL Query.sandboxes":                        RateClassRead,
@@ -172,6 +173,7 @@ var rateClasses = map[string]RateClass{
 
 	"MCP spawn_sandbox":                          RateClassCreate,
 	"MCP stop_sandbox":                           RateClassTerminate,
+	"MCP suspend_sandbox":                        RateClassTerminate,
 	"MCP sandbox_exec":                           RateClassExec,
 	"MCP create_sandbox_snapshot":                RateClassCapture,
 	"MCP list_sandboxes":                         RateClassRead,

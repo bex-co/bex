@@ -210,52 +210,11 @@ func Validate(route *routers.Route, status int, header http.Header, body []byte)
 		// bex sends beyond it is an extension, not a service to check.
 		return found
 	}
-	found = dropUndefinedMetricValueUnit(route, status, found)
 	var root any
 	if json.Unmarshal(body, &root) != nil {
 		return found
 	}
 	return checkEventDetails(route.Spec, root, checkServiceDetails(route.Spec, root, found))
-}
-
-// dropUndefinedMetricValueUnit removes the false-positive violation caused by
-// a typo in Render's pinned /metrics/cpu time-series schema (shared by all 14
-// /metrics/* time-series endpoints): values.items.required lists "unit" even
-// though values.items.properties defines only "timestamp" and "value" ("unit"
-// belongs on the parent series object, as confirmed by Render's own
-// TimeSeriesValue struct in render-mcp-results.json). It only fires while the
-// schema itself still lacks a "unit" property on values.items.
-func dropUndefinedMetricValueUnit(route *routers.Route, status int, found []string) []string {
-	if len(found) == 0 || status != http.StatusOK || !hasUndefinedMetricValueUnit(route) {
-		return found
-	}
-	return slices.DeleteFunc(found, func(v string) bool {
-		return strings.HasSuffix(v, `/unit: property "unit" is missing`) && strings.Contains(v, "/values/")
-	})
-}
-
-func hasUndefinedMetricValueUnit(route *routers.Route) bool {
-	if route == nil || route.Operation == nil || route.Operation.Responses == nil {
-		return false
-	}
-	ref := route.Operation.Responses.Status(http.StatusOK)
-	if ref == nil || ref.Value == nil {
-		return false
-	}
-	media := ref.Value.Content.Get("application/json")
-	if media == nil || media.Schema == nil || media.Schema.Value == nil {
-		return false
-	}
-	items := media.Schema.Value.Items
-	if items == nil || items.Value == nil {
-		return false
-	}
-	vals := items.Value.Properties["values"]
-	if vals == nil || vals.Value == nil || vals.Value.Items == nil || vals.Value.Items.Value == nil {
-		return false
-	}
-	pt := vals.Value.Items.Value
-	return pt.Properties["unit"] == nil && slices.Contains(pt.Required, "unit")
 }
 
 // documentsBody reports whether status's documented response has a schema.

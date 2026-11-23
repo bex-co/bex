@@ -332,6 +332,13 @@ func savedSearchWriteError(err error, name string) error {
 	return store.MapError(err)
 }
 
+// projectEnvironmentGetter is the optional store capability for resolving a
+// standalone environment ID for project/environment observability reads
+// (w4/m596); *store.PGStore satisfies it.
+type projectEnvironmentGetter interface {
+	GetEnvironment(ctx context.Context, id string) (store.Environment, error)
+}
+
 // ProjectLogResources is what a project log view can read (w3/m505, ADR010 §
 // Project views): the project's workspace and every service, cron job,
 // Postgres and Key Value in it, with names, types and environments, to a
@@ -342,39 +349,133 @@ func (s *Service) ProjectLogResources(ctx context.Context, projectID string) (st
 	if err != nil {
 		return "", nil, err
 	}
-	st, err := s.savedSearches()
+	out, err := s.projectResources(ctx, p.TenantID, p.ID)
 	if err != nil {
 		return "", nil, err
 	}
-	services, err := st.ListProjectServices(ctx, p.ID)
+	return p.TenantID, out, nil
+}
+
+// ProjectScopeResources resolves the resources of a project, an environment,
+// or an environment within a project for Render's project-scoped logs and
+// metrics reads (w4/m596). An unknown or cross-workspace project or
+// environment returns 404; an environment that exists and is viewable but
+// belongs to a different project returns 400.
+func (s *Service) ProjectScopeResources(ctx context.Context, projectID, environmentID string) (string, []savedsearch.Resource, error) {
+	if projectID == "" && environmentID == "" {
+		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+			return "", nil, err
+		}
+		return "", nil, fmt.Errorf("%w: project or environment is required", core.ErrBadRequest)
+	}
+	if projectID == "" {
+		getter, ok := s.Store.(projectEnvironmentGetter)
+		if !ok {
+			return "", nil, ErrProjectsUnavailable
+		}
+		env, err := getter.GetEnvironment(ctx, environmentID)
+		if err != nil {
+			return "", nil, store.MapError(err)
+		}
+		if err := s.AuthorizeOnOwner(ctx, core.RelCanView, env.TenantID, "environment"); err != nil {
+			return "", nil, err
+		}
+		all, err := s.projectResources(ctx, env.TenantID, env.ProjectID)
+		if err != nil {
+			return "", nil, err
+		}
+		return env.TenantID, filterResourcesByEnvironment(all, ids.EnvironmentPublicID(env.ID)), nil
+	}
+
+	p, err := s.authorizedProject(ctx, core.RelCanView, projectID)
 	if err != nil {
-		return "", nil, store.MapError(err)
+		return "", nil, err
+	}
+	pubEnv := ""
+	if environmentID != "" {
+		pubEnv = ids.EnvironmentPublicID(environmentID)
+		if getter, ok := s.Store.(projectEnvironmentGetter); ok {
+			env, err := getter.GetEnvironment(ctx, environmentID)
+			if err != nil {
+				return "", nil, store.MapError(err)
+			}
+			if err := s.AuthorizeOnOwner(ctx, core.RelCanView, env.TenantID, "environment"); err != nil {
+				return "", nil, err
+			}
+			if env.ProjectID != p.ID {
+				return "", nil, fmt.Errorf("%w: environment %q does not belong to project %q", core.ErrBadRequest, pubEnv, p.ID)
+			}
+		} else if lister, ok := s.Store.(projectEnvironmentLister); ok {
+			envs, err := lister.ListEnvironmentsForProjects(ctx, []string{p.ID})
+			if err != nil {
+				return "", nil, store.MapError(err)
+			}
+			found := false
+			for _, e := range envs {
+				if ids.EnvironmentPublicID(e.ID) == pubEnv {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return "", nil, fmt.Errorf("%w: environment %q does not belong to project %q", core.ErrBadRequest, pubEnv, p.ID)
+			}
+		}
+	}
+	all, err := s.projectResources(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return "", nil, err
+	}
+	if pubEnv != "" {
+		all = filterResourcesByEnvironment(all, pubEnv)
+	}
+	return p.TenantID, all, nil
+}
+
+func filterResourcesByEnvironment(resources []savedsearch.Resource, envID string) []savedsearch.Resource {
+	out := make([]savedsearch.Resource, 0, len(resources))
+	for _, r := range resources {
+		if r.EnvironmentID == envID {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (s *Service) projectResources(ctx context.Context, tenantID, projectID string) ([]savedsearch.Resource, error) {
+	st, err := s.savedSearches()
+	if err != nil {
+		return nil, err
+	}
+	services, err := st.ListProjectServices(ctx, projectID)
+	if err != nil {
+		return nil, store.MapError(err)
 	}
 	out := make([]savedsearch.Resource, 0, len(services))
 	for _, svc := range services {
 		out = append(out, savedsearch.Resource{ID: svc.ID, Name: svc.Name, Type: svc.Type, EnvironmentID: svc.EnvironmentID})
 	}
 	if s.Databases != nil {
-		dbs, err := s.Databases.ListPostgres(ctx, p.TenantID)
+		dbs, err := s.Databases.ListPostgres(ctx, tenantID)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		for _, db := range dbs {
-			if db.ProjectID == p.ID {
+			if db.ProjectID == projectID {
 				out = append(out, savedsearch.Resource{ID: db.ID, Name: db.Name, Type: savedsearch.KindPostgres, EnvironmentID: ids.EnvironmentPublicID(db.EnvironmentID)})
 			}
 		}
 	}
 	if s.KeyValues != nil {
-		kvs, err := s.KeyValues.ListKeyValues(ctx, p.TenantID)
+		kvs, err := s.KeyValues.ListKeyValues(ctx, tenantID)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		for _, kv := range kvs {
-			if kv.ProjectID == p.ID {
+			if kv.ProjectID == projectID {
 				out = append(out, savedsearch.Resource{ID: kv.ID, Name: kv.Name, Type: savedsearch.KindKeyValue, EnvironmentID: ids.EnvironmentPublicID(kv.EnvironmentID)})
 			}
 		}
 	}
-	return p.TenantID, out, nil
+	return out, nil
 }
