@@ -634,19 +634,25 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// rejects outright.
 	// log_lock_waits logs a wait that outlasts deadlock_timeout (1s) and, once
 	// the lock is granted, a second "acquired … after N ms" line: the event
-	// the Lock-Delayed Queries graph counts from the log store (w7/m430). It
-	// is reloadable, so an existing database adopts it without a restart, and
-	// it sits under the tenant's parameters so a legacy declared value wins.
-	pgParams := map[string]any{
-		"pg_stat_statements.track": "all",
-		"log_lock_waits":           "on",
+	// the Lock-Delayed Queries graph counts from the log store (w7/m430).
+	// log_min_duration_statement=2000 logs each statement that runs 2 s or
+	// longer as "duration: N ms  statement: …", Render's slow-query line
+	// (w4/721). Both are reloadable, so an existing database adopts them
+	// without a restart, and both sit under the tenant's parameters so a
+	// legacy declared value of any spelling wins.
+	logDefaults := map[string]any{
+		"log_lock_waits":             "on",
+		"log_min_duration_statement": "2000",
 	}
+	pgParams := map[string]any{"pg_stat_statements.track": "all"}
 	for k, v := range p.parameters {
 		name := strings.ToLower(strings.TrimSpace(k))
 		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) && !logicalReplicationParameter(p, name) {
 			pgParams[k] = v
+			delete(logDefaults, name)
 		}
 	}
+	maps.Copy(pgParams, logDefaults)
 	// max_connections is the plan's connection limit, Render's figure for the
 	// plan (tiers maxConnections, w6/134). It is the platform's: a legacy
 	// declared value of any spelling is dropped above, because PgBouncer's

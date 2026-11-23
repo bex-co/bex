@@ -60,6 +60,12 @@
       "level": "info"
     },
     {
+      "name": "slow statement, its text kept in the message (w4/721)",
+      "line": "{\"level\":\"info\",\"ts\":\"2026-11-23T15:46:49.467579636Z\",\"logger\":\"postgres\",\"msg\":\"record\",\"logging_pod\":\"dpg-w4721slow-1\",\"record\":{\"log_time\":\"2026-11-23 15:46:49.467 UTC\",\"user_name\":\"app\",\"database_name\":\"app\",\"process_id\":\"185\",\"connection_from\":\"192.168.88.192:38332\",\"session_id\":\"6b045fe7.b9\",\"session_line_num\":\"1\",\"command_tag\":\"SELECT\",\"session_start_time\":\"2026-11-23 15:46:47 UTC\",\"virtual_transaction_id\":\"3/0\",\"transaction_id\":\"0\",\"error_severity\":\"LOG\",\"sql_state_code\":\"00000\",\"message\":\"duration: 2204.260 ms  statement: select 'w4-721 new slow', pg_sleep(2.2)\",\"application_name\":\"psql\",\"backend_type\":\"client backend\",\"query_id\":\"-2887515752610899524\"}}",
+      "message": "2026-11-23 15:46:49.467 UTC [185] LOG:  duration: 2204.260 ms  statement: select 'w4-721 new slow', pg_sleep(2.2)",
+      "level": "info"
+    },
+    {
       "name": "fatal with detail",
       "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":77,\"error_severity\":\"FATAL\",\"message\":\"password authentication failed for user \\\"app\\\"\",\"detail\":\"Connection matched pg_hba.conf line 5\"}}",
       "message": "t [77] FATAL:  password authentication failed for user \"app\" DETAIL:  Connection matched pg_hba.conf line 5",
