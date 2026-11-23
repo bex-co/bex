@@ -15,6 +15,7 @@ import type {
 import type { DatabaseView } from "@/features/databases/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useLifecycleGate } from "@/features/capabilities/hooks/use-lifecycle-gate";
 
@@ -30,7 +31,9 @@ export interface DatabaseDangerActionsProps {
  * ends with "Delete Database" / "Restart Database" / "Suspend Database"
  * (resume replaces suspend while hibernated). Same verbs and confirm gates as
  * the header dropdown (DatabaseRowActions); this is the discoverable placement.
- * Suspend and Resume gate on `databaseActions`, Restart on can_operate (w4/m578).
+ * Suspend and Resume gate on `databaseActions`, Restart on can_operate
+ * (w4/m578), and Delete on `databaseActions` too, which in a protected
+ * environment admits only an Admin (w4/724).
  */
 export function DatabaseDangerActions({
   database,
@@ -42,11 +45,10 @@ export function DatabaseDangerActions({
   const { canCreate, canOperate } = capabilities;
   const createDenied = !canCreate;
   const operateDenied = !canOperate;
-  const createReasonKey = capabilities.reasonKey("can_create");
   const operateReasonKey = capabilities.reasonKey("can_operate");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
   const { remove, deleting } = useDeleteDatabase();
+  const deleteReason = useAdminOnlyActions("database", database.id)("delete");
   const suspended = isSuspended(database);
   const gate = useLifecycleGate("database", database.id, suspended);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -102,12 +104,12 @@ export function DatabaseDangerActions({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <PermissionTooltip reason={createReason}>
+      <PermissionTooltip reason={deleteReason}>
         <Button
           variant="destructive"
-          disabled={busy || createDenied}
+          disabled={busy || !!deleteReason}
           onClick={() => {
-            if (!createDenied) setConfirmOpen(true);
+            if (!deleteReason) setConfirmOpen(true);
           }}
         >
           {busy && deleting === database.id ? (

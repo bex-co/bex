@@ -146,9 +146,9 @@ func (p protectedLifecycleStore) GetEnvironmentProtectedStatus(context.Context, 
 // member of a protected environment, the reason the dashboard shows as
 // Render's "This action is limited to admins.", and allowed for an Admin and
 // on an unprotected member. Restart, which Render leaves open, stays allowed.
-// serverActions' shell row (w4/726) and maintenance toggle row (w4/725) read
-// the same way, so the Shell tab and the Settings switch say so before the
-// click.
+// serverActions' shell row (w4/726) and maintenance toggle row (w4/725), and
+// every projection's delete row (w4/724), read the same way, so the Shell tab,
+// the Settings switch and every Delete say so before the click.
 func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
 	web := ownedApp("web", "tea-a")
 	web.Labels[core.LabelAppID] = ids.New(ids.Service)
@@ -187,7 +187,7 @@ func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
 				seen := 0
 				for _, row := range result.Data[field] {
 					switch row.Action {
-					case core.ActionSuspend, core.ActionResume, core.ActionShell, core.ActionToggleMaintenanceMode:
+					case core.ActionSuspend, core.ActionResume, core.ActionShell, core.ActionToggleMaintenanceMode, core.ActionDelete:
 						seen++
 						if tc.wantReason == "" {
 							if row.Outcome != core.DecisionAllowed {
@@ -202,9 +202,9 @@ func TestLifecycleProjectionsGraphQLProtectedAdminRule(t *testing.T) {
 						}
 					}
 				}
-				want := 2
+				want := 3 // suspend, resume and delete
 				if field == "serverActions" {
-					want = 4 // and shell and the maintenance toggle
+					want = 5 // and shell and the maintenance toggle
 				}
 				if seen != want {
 					t.Errorf("%s: saw %d of its %d restricted rows in %+v", field, seen, want, result.Data[field])

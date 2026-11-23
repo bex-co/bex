@@ -41,7 +41,7 @@ func actionByID(t *testing.T, acts []core.ActionDecision, id string) core.Action
 }
 
 // TestActionCapabilities_NoRestart (ADR087, w6/m136): the Key Value projection
-// offers suspend/resume and the w4/m594 rows — no invented restart.
+// offers suspend/resume, the w4/m594 rows and delete — no invented restart.
 func TestActionCapabilities_NoRestart(t *testing.T) {
 	kv := keyValueForProtection("red-cache", "cache", true)
 	svc, _, _ := protectedKeyValueService(kv)
@@ -54,7 +54,7 @@ func TestActionCapabilities_NoRestart(t *testing.T) {
 	for _, a := range acts {
 		ids = append(ids, a.Action)
 	}
-	want := []string{core.ActionSuspend, core.ActionResume, core.ActionViewConnectionInfo, core.ActionUpdateIPAllowList}
+	want := []string{core.ActionSuspend, core.ActionResume, core.ActionViewConnectionInfo, core.ActionUpdateIPAllowList, core.ActionDelete}
 	if !slices.Equal(ids, want) {
 		t.Fatalf("actions = %v, want exactly %v", ids, want)
 	}

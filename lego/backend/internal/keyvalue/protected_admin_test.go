@@ -204,9 +204,11 @@ func TestProtectedKeyValueRefusalOverREST(t *testing.T) {
 }
 
 // The projection says what the verbs do (w4/m594): for an Admin, a Developer
-// and a Viewer, on a protected and an unprotected member, view_connection_info
-// and update_ip_allow_list read allowed exactly when the verb succeeds, a
-// protected Developer's refusal is named, and a Viewer reads the role reason.
+// and a Viewer, on a protected and an unprotected member, view_connection_info,
+// update_ip_allow_list and delete (w4/724) read allowed exactly when the verb
+// succeeds, a protected Developer's refusal is named, and a Viewer reads the
+// role reason. Before w4/724 there was no delete row, and the dashboard gated
+// Delete on can_create, which a Developer holds.
 func TestActionCapabilities_CredentialsAndIPRulesAgreeWithTheVerbs(t *testing.T) {
 	roles := []struct {
 		name   string
@@ -225,6 +227,9 @@ func TestActionCapabilities_CredentialsAndIPRulesAgreeWithTheVerbs(t *testing.T)
 		core.ActionUpdateIPAllowList: func(s *Service, ctx context.Context) error {
 			_, err := s.SetIPAllowList(ctx, "red-cache", slices.Clone(newRules))
 			return err
+		},
+		core.ActionDelete: func(s *Service, ctx context.Context) error {
+			return s.DeleteKeyValue(ctx, "red-cache")
 		},
 	}
 	for _, role := range roles {

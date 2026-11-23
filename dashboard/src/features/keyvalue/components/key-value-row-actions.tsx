@@ -13,6 +13,7 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import {
   useCapabilities,
   type Capabilities,
@@ -30,7 +31,9 @@ export interface KeyValueRowActionsProps {
  * Render's KV detail capture, docs/render-artifacts/key-value.md), not this
  * compact row menu. Destructive and irreversible (cascades the Valkey
  * StatefulSet + PVC), so it uses the same exact typed sudo confirmation as
- * Render's Key Value detail page.
+ * Render's Key Value detail page. It follows the store's delete decision, so
+ * a Developer in a protected environment reads Render's "This action is
+ * limited to admins." before typing the phrase (w4/724).
  */
 export function KeyValueRowActions(props: KeyValueRowActionsProps) {
   const capabilities = useCapabilities();
@@ -47,14 +50,12 @@ export function KeyValueRowActionsWithCapabilities({
   onDeleted,
   capabilities,
 }: KeyValueRowActionsProps & {
-  capabilities: Pick<Capabilities, "canCreate" | "reasonKey">;
+  capabilities: Pick<Capabilities, "canCreate">;
 }) {
   const { t } = useTranslations();
-  const { canCreate } = capabilities;
-  const createDenied = !canCreate;
-  const createReasonKey = capabilities.reasonKey("can_create");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  const createDenied = !capabilities.canCreate;
   const { remove, deleting } = useDeleteKeyValue();
+  const deleteReason = useAdminOnlyActions("keyValue", keyValue.id)("delete");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
@@ -92,10 +93,10 @@ export function KeyValueRowActionsWithCapabilities({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <PermissionMenuItem
-            permissionReason={createReason}
+            permissionReason={deleteReason}
             variant="destructive"
             onSelect={() => {
-              if (!createDenied) setConfirmOpen(true);
+              if (!deleteReason) setConfirmOpen(true);
             }}
           >
             {t("keyvalue.actionDelete")}

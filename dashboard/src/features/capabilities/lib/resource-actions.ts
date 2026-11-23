@@ -17,7 +17,8 @@ export const RESOURCE_ACTION_IDS = [
   "cron_cancel_run",
   // The verbs a protected environment keeps to Admins (w4/m594): a
   // datastore's connection-info reveal and IP rules, an environment group's
-  // values, their changes and its delete.
+  // values, their changes and its delete. A service, a Postgres and a Key
+  // Value report delete too (w4/724).
   "view_connection_info",
   "update_ip_allow_list",
   "view_env_vars",
@@ -80,8 +81,8 @@ const KNOWN_REASONS = new Set([
   "missing_oauth_scope",
   "insufficient_permission",
   "authz_unavailable",
-  // A restricted verb (suspend, resume, shell, the maintenance toggle;
-  // w4/m594's rows) on a member of a protected environment, refused because
+  // A restricted verb (suspend, resume, shell, the maintenance toggle,
+  // delete; w4/m594's rows) on a member of a protected environment, refused because
   // the caller is not a workspace Admin (w4/m578): Render's "This action is
   // limited to admins."
   "protected_environment_admin_required",

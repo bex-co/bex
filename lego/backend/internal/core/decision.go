@@ -127,7 +127,8 @@ const (
 	// The verbs a protected environment keeps to Admins (w4/m594), projected
 	// so a client can say so before the click: a datastore's connection-info
 	// reveal and its inbound IP rules, and an environment group's values
-	// (envGroupActions), their changes and its delete.
+	// (envGroupActions), their changes and its delete. Delete is also a
+	// service's, a Postgres's and a Key Value's row (w4/724).
 	ActionViewConnectionInfo = "view_connection_info"
 	ActionUpdateIPAllowList  = "update_ip_allow_list"
 	ActionViewEnvVars        = "view_env_vars"

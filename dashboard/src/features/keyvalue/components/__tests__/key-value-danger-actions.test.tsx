@@ -3,7 +3,13 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
 import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -45,6 +51,7 @@ const KEY_VALUE: KeyValueView = {
 
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  adminOnlyAs("admin");
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
   run.mockReset();
@@ -61,6 +68,8 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
+    // Delete opens with can_create, so its decision is the role's refusal.
+    adminOnlyAs("viewer");
     const user = userEvent.setup();
     render(
       <KeyValueDangerActions
@@ -78,10 +87,37 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
       screen.getByRole("button", { name: "Suspend Key Value Instance" }),
     ).toBeEnabled();
     await user.hover(removeButton.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(ROLE_REASON);
+    await user.click(removeButton);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  // w4/724: Render lets only an Admin delete a protected environment's Key
+  // Value. A Developer used to type the phrase and read "Forbidden"; now the
+  // button says why before the dialog opens.
+  it("disables Delete for a Developer in a protected environment with Render's reason", async () => {
+    adminOnlyAs("developer");
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(useAdminOnlyActions).toHaveBeenCalledWith("keyValue", KEY_VALUE.id);
+
+    const removeButton = screen.getByRole("button", {
+      name: "Delete Key Value Instance",
+    });
+    expect(removeButton).toBeDisabled();
+    await user.hover(removeButton.parentElement!);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Your role can’t make this change.",
+      ADMIN_ONLY_REASON,
     );
     await user.click(removeButton);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(remove).not.toHaveBeenCalled();
   });
@@ -402,6 +438,7 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
+    adminOnlyAs("viewer");
     render(
       <KeyValueDangerActions
         keyValue={KEY_VALUE}

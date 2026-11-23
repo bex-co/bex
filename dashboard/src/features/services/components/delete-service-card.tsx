@@ -13,6 +13,8 @@ import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteService } from "@/features/services/hooks/use-delete-service";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import {
   publiclyRoutable,
   serviceSudoPhrase,
@@ -31,12 +33,16 @@ export interface DeleteServiceCardProps {
  * (live capture: docs/render-artifacts/protected-environments.md) — a typo is
  * a no-op, not a destroyed service. On success the deleted App is evicted
  * from the cache (see useDeleteService) and the user lands back on the
- * services list, where the deleted row is already gone.
+ * services list, where the deleted row is already gone. The button follows the
+ * service's delete decision, so in a protected environment a Developer reads
+ * Render's "This action is limited to admins." before typing the phrase, never
+ * a 403 after it (w4/724).
  */
 export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { remove, deleting } = useDeleteService();
+  const deleteReason = useAdminOnlyActions("service", service.id)("delete");
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [requiredConfirmation, setRequiredConfirmation] = useState<
@@ -89,9 +95,17 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Button variant="destructive" onClick={() => setOpen(true)}>
-          {t("services.deleteButton")}
-        </Button>
+        <PermissionTooltip reason={deleteReason}>
+          <Button
+            variant="destructive"
+            disabled={!!deleteReason}
+            onClick={() => {
+              if (!deleteReason) setOpen(true);
+            }}
+          >
+            {t("services.deleteButton")}
+          </Button>
+        </PermissionTooltip>
       </CardContent>
 
       {/* AlertDialog via ConfirmDialog (w7/053). Deleting a service destroys

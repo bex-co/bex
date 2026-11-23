@@ -22,6 +22,7 @@ import type {
 import type { DatabaseView } from "@/features/databases/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import {
   useCapabilities,
   type Capabilities,
@@ -43,7 +44,10 @@ export interface DatabaseRowActionsProps {
  * immediately, the disruptive verbs (suspend/restart) go through a confirm.
  * Suspend and Resume gate on the database's `databaseActions` decision, which
  * in a protected environment admits only an Admin (w4/m578); Restart, which
- * Render leaves open there, on the workspace's can_operate.
+ * Render leaves open there, on the workspace's can_operate. Delete follows the
+ * database's delete decision on every row, so a Developer in a protected
+ * environment reads Render's "This action is limited to admins." before
+ * typing the phrase (w4/724).
  */
 export function DatabaseRowActions(props: DatabaseRowActionsProps) {
   const capabilities = useCapabilities();
@@ -67,13 +71,13 @@ export function DatabaseRowActionsWithCapabilities({
   const { canCreate, canOperate } = capabilities;
   const createDenied = !canCreate;
   const operateDenied = !canOperate;
-  const createReasonKey = capabilities.reasonKey("can_create");
   const operateReasonKey = capabilities.reasonKey("can_operate");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
   const { remove, deleting } = useDeleteDatabase();
+  const deleteReason = useAdminOnlyActions("database", database.id)("delete");
   const suspended = isSuspended(database);
-  // The list's rows carry no lifecycle items, so they ask for no decisions.
+  // The list's rows carry no lifecycle items, so they ask for no lifecycle
+  // decisions.
   const gate = useLifecycleGate(
     "database",
     database.id,
@@ -187,10 +191,10 @@ export function DatabaseRowActionsWithCapabilities({
             </>
           ) : null}
           <PermissionMenuItem
-            permissionReason={createReason}
+            permissionReason={deleteReason}
             variant="destructive"
             onSelect={() => {
-              if (!createDenied) setConfirmOpen(true);
+              if (!deleteReason) setConfirmOpen(true);
             }}
           >
             {t("databases.actionDelete")}

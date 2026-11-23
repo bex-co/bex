@@ -32,10 +32,13 @@ import (
 // the same core predicates setSuspended enforces. view_connection_info
 // (can_view_sensitive) and update_ip_allow_list (can_operate, the PATCH's own
 // permission) read the same way as the verbs a protected environment keeps to
-// Admins (w4/m594), so a client can say so before the click.
-// Read-only; the verbs re-run their own guards at dispatch. Failover and
-// delete are deliberately absent: neither is a mobile-scope action (ADR087),
-// and an absent action reads as "not offered here", never as permitted.
+// Admins (w4/m594), so a client can say so before the click. Delete reads the
+// same way with DeletePostgres's own permission (can_create), so a Developer
+// on a protected database sees Delete disabled before typing its phrase
+// (w4/724).
+// Read-only; the verbs re-run their own guards at dispatch. Failover is
+// deliberately absent: it is not a mobile-scope action (ADR087), and an absent
+// action reads as "not offered here", never as permitted.
 func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.ActionDecision, error) {
 	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
@@ -63,11 +66,13 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	})
 	credentials, _ := core.RestrictedDecision(core.VerbViewCredentials, s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
 	accessControl, _ := core.RestrictedDecision(core.VerbChangeAccessControl, operate, protected, admin)
+	remove, _ := core.RestrictedDecision("delete", s.CanDecisionOn(ctx, core.RelCanCreate, workspace), protected, admin)
 	return []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
 		core.DecideAction(core.ActionViewConnectionInfo, credentials, ""),
 		core.DecideAction(core.ActionUpdateIPAllowList, accessControl, ""),
+		core.DecideAction(core.ActionDelete, remove, ""),
 	}, nil
 }

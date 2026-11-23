@@ -43,7 +43,7 @@ On dev-4 with OpenFGA enforced (w4/m550 t005's recipe), then on production once 
 ## Progress (2026-11-22)
 
 - **Shipped (t001–t003, t005–t007):** the three projections decide suspend and resume by the verbs' rule (`core.RestrictedDecision`), with the reason `protected_environment_admin_required`. The dashboard shows it as Render's _This action is limited to admins._ on the service row menu, the service header's Resume and Settings card, a database's header menu and Info actions, and a Key Value's Info actions. The datastore controls read `databaseActions` and `keyValueActions` and re-read them before dispatch. ADR018 and ADR032 describe it.
-- **Follow-ups filed (t005):** [w4/724](../../724.md) Delete, [w4/725](../725.md) maintenance mode on, [w4/726](../726.md) Shell: each reads as allowed to a Developer in a protected environment and the server refuses it.
+- **Follow-ups filed (t005):** [w4/724](../724.md) Delete, [w4/725](../725.md) maintenance mode on, [w4/726](../726.md) Shell: each reads as allowed to a Developer in a protected environment and the server refuses it.
 
 ## Live check (2026-11-22)
 

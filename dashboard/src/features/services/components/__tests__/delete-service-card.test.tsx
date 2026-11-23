@@ -3,6 +3,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
 import type { ServiceView } from "@/features/services/types";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -72,6 +78,40 @@ beforeEach(() => {
   mockNavigate.mockReset();
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
+  adminOnlyAs("admin");
+});
+
+// w4/724: Render lets only an Admin delete a protected environment's service.
+// The card had no gate at all, so a Developer there typed the phrase, read
+// "Forbidden" and was left in the dialog; now the button says why first.
+describe("DeleteServiceCard — the service's delete decision (w4/724)", () => {
+  it.each([
+    ["a Developer in a protected environment", "developer", ADMIN_ONLY_REASON],
+    ["a Viewer", "viewer", ROLE_REASON],
+  ] as const)(
+    "disables Delete for %s with the reason, and opens nothing",
+    async (_who, caller, reason) => {
+      adminOnlyAs(caller);
+      const user = userEvent.setup();
+      render(<DeleteServiceCard service={svc()} />);
+      expect(useAdminOnlyActions).toHaveBeenCalledWith("service", "web");
+
+      const button = screen.getByRole("button", { name: "Delete Service" });
+      expect(button).toBeDisabled();
+      await user.hover(button.parentElement!);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(reason);
+      await user.click(button);
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps Delete for an Admin, and for anyone outside a protected environment", () => {
+    render(<DeleteServiceCard service={svc()} />);
+    expect(
+      screen.getByRole("button", { name: "Delete Service" }),
+    ).toBeEnabled();
+  });
 });
 
 describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () => {

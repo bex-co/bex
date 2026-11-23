@@ -11,6 +11,7 @@ import { useKeyValueLifecycle } from "@/features/keyvalue/hooks/use-key-value-li
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useLifecycleGate } from "@/features/capabilities/hooks/use-lifecycle-gate";
 
@@ -27,7 +28,7 @@ export interface KeyValueDangerActionsProps {
  * Key Value Instance plus Suspend (or Resume while hibernated). Delete and
  * suspend use typed confirmation dialogs; resume is immediate. Suspend and
  * Resume gate on the store's `keyValueActions` decision, which in a protected
- * environment admits only an Admin (w4/m578).
+ * environment admits only an Admin (w4/m578), and so does Delete (w4/724).
  */
 export function KeyValueDangerActions({
   keyValue,
@@ -38,9 +39,8 @@ export function KeyValueDangerActions({
   const capabilities = useCapabilities();
   const createDenied = !capabilities.canCreate;
   const operateDenied = !capabilities.canOperate;
-  const createReasonKey = capabilities.reasonKey("can_create");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const { remove, deleting } = useDeleteKeyValue();
+  const deleteReason = useAdminOnlyActions("keyValue", keyValue.id)("delete");
   const { pending, run } = useKeyValueLifecycle();
   const gate = useLifecycleGate("keyValue", keyValue.id, keyValue.suspended);
   const suspendReason = gate.reason("suspend");
@@ -100,12 +100,12 @@ export function KeyValueDangerActions({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <PermissionTooltip reason={createReason}>
+      <PermissionTooltip reason={deleteReason}>
         <Button
           variant="destructive"
-          disabled={busy || createDenied}
+          disabled={busy || !!deleteReason}
           onClick={() => {
-            if (!createDenied) setDeleteOpen(true);
+            if (!deleteReason) setDeleteOpen(true);
           }}
         >
           {deleteBusy ? <Loader2 className="animate-spin" /> : <Trash2 />}

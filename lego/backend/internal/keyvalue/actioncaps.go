@@ -31,9 +31,11 @@ import (
 // dunning gate — the same core predicates setSuspended enforces.
 // view_connection_info (can_view_sensitive) and update_ip_allow_list
 // (can_operate, the PATCH's own permission) read the same way as the verbs a
-// protected environment keeps to Admins (w4/m594). There is deliberately NO restart row: the
-// verb does not exist for Key Value, and the projection must not invent one
-// (an absent action means "does not exist for this type").
+// protected environment keeps to Admins (w4/m594), and so does delete
+// (can_create, DeleteKeyValue's own permission, w4/724). There is
+// deliberately NO restart row: the verb does not exist for Key Value, and the
+// projection must not invent one (an absent action means "does not exist for
+// this type").
 func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.ActionDecision, error) {
 	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
@@ -61,10 +63,12 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	})
 	credentials, _ := core.RestrictedDecision(core.VerbViewCredentials, s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
 	accessControl, _ := core.RestrictedDecision(core.VerbChangeAccessControl, operate, protected, admin)
+	remove, _ := core.RestrictedDecision("delete", s.CanDecisionOn(ctx, core.RelCanCreate, workspace), protected, admin)
 	return []core.ActionDecision{
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
 		core.DecideAction(core.ActionViewConnectionInfo, credentials, ""),
 		core.DecideAction(core.ActionUpdateIPAllowList, accessControl, ""),
+		core.DecideAction(core.ActionDelete, remove, ""),
 	}, nil
 }

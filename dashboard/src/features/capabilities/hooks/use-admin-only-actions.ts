@@ -1,7 +1,8 @@
-// The verbs a protected environment keeps to Admins on a datastore or an
-// environment group (w4/m594, render.com/docs/projects): revealing a Postgres's
+// The verbs a protected environment keeps to Admins on a service, a datastore
+// or an environment group (render.com/docs/projects): revealing a Postgres's
 // or Key Value's connection info, changing its inbound IP rules, and viewing,
-// changing or deleting an environment group's variables and secret files. A
+// changing or deleting an environment group's variables and secret files
+// (w4/m594), and deleting a service, a Postgres or a Key Value (w4/724). A
 // Developer reads Render's "This action is limited to admins." on each control
 // before the click, decided by bex-api's own rule (core.RestrictedDecision)
 // through the resource's action projection.
@@ -15,7 +16,8 @@ import {
   type ResourceActionId,
 } from "@/features/capabilities/lib/resource-actions";
 
-export type AdminOnlyResource = "database" | "keyValue" | "envGroup";
+export type AdminOnlyResource =
+  "service" | "database" | "keyValue" | "envGroup";
 
 /**
  * Why `action` on resource `id` cannot run now (still checking, refused with

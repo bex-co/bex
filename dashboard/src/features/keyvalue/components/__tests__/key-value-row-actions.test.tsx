@@ -4,7 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row-actions";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
 
 const remove = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
@@ -39,6 +45,7 @@ const KV: KeyValueView = {
 
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  adminOnlyAs("admin");
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
 });
@@ -48,6 +55,8 @@ describe("KeyValueRowActions", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
+    // Delete opens with can_create, so its decision is the role's refusal.
+    adminOnlyAs("viewer");
     const user = userEvent.setup();
     render(<KeyValueRowActions keyValue={KV} onDeleted={vi.fn()} />);
 
@@ -60,12 +69,31 @@ describe("KeyValueRowActions", () => {
     const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
     expect(removeItem).toHaveAttribute("aria-disabled", "true");
     expect(removeItem).toHaveFocus();
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Your role can’t make this change.",
-    );
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(ROLE_REASON);
 
     await user.keyboard("{Enter}");
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  // w4/724: Render lets only an Admin delete a protected environment's Key
+  // Value, from the list's row menu too. A Developer used to type the phrase
+  // and read "Forbidden".
+  it("disables Delete for a Developer in a protected environment with Render's reason", async () => {
+    adminOnlyAs("developer");
+    const user = userEvent.setup();
+    render(<KeyValueRowActions keyValue={KV} onDeleted={vi.fn()} />);
+    expect(useAdminOnlyActions).toHaveBeenCalledWith("keyValue", KV.id);
+
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
+    const item = await screen.findByRole("menuitem", { name: "Delete" });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await user.hover(item);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      ADMIN_ONLY_REASON,
+    );
+    await user.click(item);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(remove).not.toHaveBeenCalled();
   });
 

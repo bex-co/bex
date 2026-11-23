@@ -39,9 +39,12 @@ import (
 // same way on a web service, with SetMaintenanceMode's permission (can_operate),
 // so a Developer on a protected member sees the switch disabled for the reason
 // the verb would refuse it (w4/725); its plan eligibility is the service's
-// plan, which the client already reads. Read-only and non-auditing:
-// can_view gates the projection itself; a snapshot is never a bearer grant —
-// the verb still runs its own guards at dispatch.
+// plan, which the client already reads. Delete reads the same way, with
+// Delete's own permission (can_create), on every type, so a Developer on a
+// protected member sees Delete disabled before typing its phrase (w4/724).
+// Read-only and non-auditing: can_view gates the projection itself; a
+// snapshot is never a bearer grant — the verb still runs its own guards at
+// dispatch.
 //
 // The target binds to the ACTING workspace (RequireResourceInActingWorkspace):
 // a service owned elsewhere reads as absent here even when the caller could
@@ -80,10 +83,12 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		return compute()
 	}
 	suspendPre, resumePre := core.LifecyclePreconditions(a.Spec.Suspended, isProtected, resume, billing)
+	remove, _ := core.RestrictedDecision("delete", s.CanDecisionOn(ctx, core.RelCanCreate, workspace), protected, admin)
 	out := []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
+		core.DecideAction(core.ActionDelete, remove, ""),
 	}
 	typ := effectiveType(a.Spec.Type)
 	if sshTypeHasInstances(typ) {

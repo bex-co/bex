@@ -21,6 +21,7 @@ import { Observable } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apolloCacheConfig } from "@/common/apollo/cache";
 import {
+  useAdminOnlyProjection,
   useDatastoreActions,
   useServerActions,
   useDeployActions,
@@ -337,6 +338,25 @@ describe("resource action projection freshness", () => {
         () => useDatastoreActions(kind, id, false),
         { wrapper: Wrapper },
       );
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(requests).toEqual([
+        { name, variables: { id, ownerId: "tea-first" } },
+      ]);
+    },
+  );
+
+  // w4/724: a Delete control reads its resource's own projection, a
+  // service's serverActions included.
+  it.each([
+    ["service", "ServerActions", "srv-first"],
+    ["database", "DatabaseActions", "dpg-first"],
+    ["keyValue", "KeyValueActions", "red-first"],
+  ] as const)(
+    "reads a %s's admin-only decisions from its own projection",
+    async (kind, name, id) => {
+      const { result } = renderHook(() => useAdminOnlyProjection(kind, id), {
+        wrapper: Wrapper,
+      });
       await waitFor(() => expect(result.current.status).toBe("ready"));
       expect(requests).toEqual([
         { name, variables: { id, ownerId: "tea-first" } },

@@ -4,7 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import type { DatabaseView } from "@/features/databases/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
 import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 
 const remove = vi.fn();
@@ -61,6 +67,7 @@ const DB: DatabaseView = {
 
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  adminOnlyAs("admin");
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
   projection.state = lifecycleState(DB.id, "allowed");
@@ -76,6 +83,8 @@ describe("DatabaseRowActions", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
+    // Delete opens with can_create, so its decision is the role's refusal.
+    adminOnlyAs("viewer");
     const user = userEvent.setup();
     render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
 
@@ -88,16 +97,47 @@ describe("DatabaseRowActions", () => {
     const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
     expect(removeItem).toHaveAttribute("aria-disabled", "true");
     expect(removeItem).toHaveFocus();
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Your role can’t make this change.",
-    );
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(ROLE_REASON);
 
     await user.keyboard("{Enter}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it("asks for no decisions on a list row, which offers no lifecycle", () => {
+  // w4/724: Render lets only an Admin delete a protected environment's
+  // database, from the list's row menu as from the detail page's. A Developer
+  // used to type the phrase and read "Forbidden".
+  it.each([
+    ["a list row", undefined],
+    ["the detail header", { pending: null, run: vi.fn() }],
+  ])(
+    "disables Delete on %s for a Developer in a protected environment with Render's reason",
+    async (_where, lifecycle) => {
+      adminOnlyAs("developer");
+      const user = userEvent.setup();
+      render(
+        <DatabaseRowActions
+          database={DB}
+          onDeleted={vi.fn()}
+          lifecycle={lifecycle}
+        />,
+      );
+      expect(useAdminOnlyActions).toHaveBeenCalledWith("database", DB.id);
+
+      await user.click(screen.getByRole("button", { name: /^Actions for / }));
+      const item = await screen.findByRole("menuitem", { name: "Delete" });
+      expect(item).toHaveAttribute("aria-disabled", "true");
+      await user.hover(item);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        ADMIN_ONLY_REASON,
+      );
+      await user.click(item);
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it("asks for no lifecycle decisions on a list row, which offers no lifecycle", () => {
     render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
     expect(projection.asked.length).toBeGreaterThan(0);
     expect(projection.asked.every((id) => id === null)).toBe(true);

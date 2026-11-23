@@ -164,23 +164,24 @@ export function useDeployActions(
   return useProjection("deployActions", serviceId);
 }
 
+const ADMIN_ONLY_PROJECTION = {
+  service: "serverActions",
+  database: "databaseActions",
+  keyValue: "keyValueActions",
+  envGroup: "envGroupActions",
+} as const satisfies Record<string, ProjectionField>;
+
 /**
  * The decisions of the verbs a protected environment keeps to Admins on a
- * datastore or an environment group (w4/m594): `databaseActions`,
+ * datastore or an environment group (w4/m594), and a service's or a
+ * datastore's delete (w4/724): `serverActions`, `databaseActions`,
  * `keyValueActions` or `envGroupActions`. A null id asks nothing.
  */
 export function useAdminOnlyProjection(
-  kind: "database" | "keyValue" | "envGroup",
+  kind: keyof typeof ADMIN_ONLY_PROJECTION,
   id: string | null,
 ): ResourceActionsState {
-  return useProjection(
-    kind === "database"
-      ? "databaseActions"
-      : kind === "keyValue"
-        ? "keyValueActions"
-        : "envGroupActions",
-    id,
-  );
+  return useProjection(ADMIN_ONLY_PROJECTION[kind], id);
 }
 
 /**

@@ -3,7 +3,13 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
 import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 import type { UseDatabaseLifecycleResult } from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
@@ -47,6 +53,7 @@ function lifecycleStub(
 
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  adminOnlyAs("admin");
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
   projection.state = lifecycleState(DB.id, "allowed");
@@ -61,6 +68,8 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
+    // Delete opens with can_create, so its decision is the role's refusal.
+    adminOnlyAs("viewer");
     const lifecycle = lifecycleStub();
     const user = userEvent.setup();
     render(
@@ -83,12 +92,43 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     ).toBeEnabled();
 
     await user.hover(removeButton.parentElement!);
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Your role can’t make this change.",
-    );
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(ROLE_REASON);
     await user.click(removeButton);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(remove).not.toHaveBeenCalled();
+  });
+
+  // w4/724: Render lets only an Admin delete a protected environment's
+  // database. A Developer used to be offered Delete, type the phrase and read
+  // "Forbidden"; now the button says why before the dialog opens.
+  it("disables Delete for a Developer in a protected environment with Render's reason", async () => {
+    adminOnlyAs("developer");
+    const user = userEvent.setup();
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycleStub()}
+      />,
+    );
+    expect(useAdminOnlyActions).toHaveBeenCalledWith("database", DB.id);
+
+    const removeButton = screen.getByRole("button", {
+      name: "Delete Database",
+    });
+    expect(removeButton).toBeDisabled();
+    await user.hover(removeButton.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      ADMIN_ONLY_REASON,
+    );
+    await user.click(removeButton);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+    // Restart stays theirs: Render leaves it open in a protected environment.
+    expect(
+      screen.getByRole("button", { name: "Restart Database" }),
+    ).toBeEnabled();
   });
 
   it("disables lifecycle actions with the role's reason for a viewer", async () => {
@@ -356,6 +396,7 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
+    adminOnlyAs("viewer");
     render(
       <DatabaseDangerActions
         database={DB}

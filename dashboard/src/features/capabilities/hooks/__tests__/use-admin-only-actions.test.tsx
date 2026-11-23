@@ -93,6 +93,22 @@ describe("useAdminOnlyActions", () => {
     expect(other.result.current("update_ip_allow_list")).toBeDefined();
   });
 
+  // w4/724: a service's delete reads its own serverActions row.
+  it("reads a service's delete decision", () => {
+    projection.state = ready("srv-1", [
+      {
+        action: "delete",
+        outcome: "denied",
+        reason: "protected_environment_admin_required",
+      },
+    ]);
+    const { result } = renderHook(() =>
+      useAdminOnlyActions("service", "srv-1"),
+    );
+    expect(projection.asked).toContainEqual(["service", "srv-1"]);
+    expect(result.current("delete")).toBe("This action is limited to admins.");
+  });
+
   it("refuses nothing without a resource", () => {
     projection.state = { status: "checking", refresh: async () => undefined };
     const { result } = renderHook(() => useAdminOnlyActions("envGroup", null));
