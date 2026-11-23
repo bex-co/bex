@@ -95,7 +95,6 @@ var _ = Describe("Database read replica clusters", func() {
 			Expect(unstructured.SetNestedField(cluster.Object, base, "status", "readyInstances")).To(Succeed())
 			Expect(unstructured.SetNestedField(cluster.Object, int64(18), "status", "pgDataImageInfo", "majorVersion")).To(Succeed())
 			Expect(k8sClient.Status().Update(ctx, cluster)).To(Succeed())
-			Expect(markApplicationDatabaseApplied(ctx, k8sClient, db)).To(Succeed())
 			primarySpec, _, _ := unstructured.NestedMap(cluster.Object, "spec")
 			run()
 			for _, r := range []string{"a", "b"} {

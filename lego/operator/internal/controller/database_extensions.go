@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -44,7 +46,8 @@ const (
 var cnpgDatabaseGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", Kind: "Database"}
 
 // conditionExtensionsReady reports whether the application database's managed
-// extensions are installed.
+// extensions are installed. Only a database the operator still preinstalls
+// vector into carries it (reconcileApplicationDatabase).
 const conditionExtensionsReady = "ExtensionsReady"
 
 const (
@@ -67,8 +70,9 @@ const (
 func applicationDatabaseName(db *appv1alpha1.Database) string { return db.Name + "-app" }
 
 // applicationDatabaseSpec declares the application database with pgvector
-// installed (w8/m84). The CNPG images package vector, but CREATE EXTENSION
-// needs a superuser, which the application owner is not; installed by CNPG, a
+// installed (w8/m84), for a cluster whose image has no allowlist that admits
+// vector. The CNPG images package vector, but CREATE EXTENSION needs a
+// superuser, which the application owner is not; installed by CNPG, a
 // migration's `CREATE EXTENSION IF NOT EXISTS vector` is a no-op and the type,
 // operators and indexes work for the owner. dbname and owner must be the
 // database's own (create and restore record them on the spec), since CNPG
@@ -86,13 +90,30 @@ func applicationDatabaseSpec(clusterName, dbname, owner string) map[string]any {
 	}
 }
 
-// reconcileApplicationDatabase applies db's CNPG Database child and projects
-// CNPG's verdict onto the ExtensionsReady condition. Once a database has
-// served, the child is optional to serving and a problem with it degrades only
-// that condition; before that it gates the first Ready (w4/m223). A suspended
-// database keeps its last verdict: its cluster is hibernated, so CNPG cannot
-// reach it.
-func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, db *appv1alpha1.Database, dbname, owner string) {
+// reconcileApplicationDatabase preinstalls vector only where the owner cannot
+// create it. On a cluster whose allowlist admits vector, the owner runs
+// Render's `CREATE EXTENSION vector;` on demand (w21/m586), so the operator
+// installs nothing and releases an existing database's child. CloudNativePG
+// 1.30.1 drops neither the database (retain) nor an extension when a child is
+// deleted, so a vector it installed stays, with its rows and indexes, for the
+// owner to keep or drop through the same allowlist.
+//
+// Anywhere else (an upstream image: the adoption's rollback, or an
+// unversioned cluster whose major is not yet observed) it applies db's CNPG
+// Database child and projects CNPG's verdict onto the ExtensionsReady
+// condition. Once a database has served, the child is optional to serving and
+// a problem with it degrades only that condition; before that it gates the
+// first Ready (w4/m223). A suspended database keeps its last verdict: its
+// cluster is hibernated, so CNPG cannot reach it.
+func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, dbname, owner string) {
+	if allowlistAdmits(cluster, "vector") {
+		name := applicationDatabaseName(db)
+		if err := deleteOwned(ctx, r.Client, db, cnpgDatabaseGVK, name); err != nil {
+			logf.FromContext(ctx).Error(err, "release the application database", "database", name)
+		}
+		meta.RemoveStatusCondition(&db.Status.Conditions, conditionExtensionsReady)
+		return
+	}
 	if appv1alpha1.ReservedPostgresDatabaseName(dbname) {
 		// CNPG refuses to manage a PostgreSQL-owned database, and a refused
 		// child would fail every reconcile (as a reserved role did, w4/m170).
@@ -116,6 +137,13 @@ func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, d
 		return
 	}
 	meta.SetStatusCondition(&db.Status.Conditions, extensionsVerdict.condition(child, db.Generation, err))
+}
+
+// allowlistAdmits reports whether the extension allowlist projected onto
+// cluster (pgExtensionParameters) lets the database owner create extension.
+func allowlistAdmits(cluster *unstructured.Unstructured, extension string) bool {
+	list, _, _ := unstructured.NestedString(cluster.Object, "spec", "postgresql", "parameters", "extwlist.extensions")
+	return slices.Contains(strings.Split(list, ","), extension)
 }
 
 // cnpgChildVerdict is how a condition reads CloudNativePG's verdict on one of

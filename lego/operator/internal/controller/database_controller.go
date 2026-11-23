@@ -1067,7 +1067,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	r.reconcileApplicationDatabase(ctx, &db, dbname, owner)
+	r.reconcileApplicationDatabase(ctx, &db, cluster, dbname, owner)
 	r.reconcileLogicalReplication(ctx, &db, dbname)
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelNetworkIsolation], "-environment-ingress", map[string]string{cnpgClusterLabel: db.Name}, &metav1.LabelSelector{MatchLabels: map[string]string{logicalExportDBLabel: db.Name}}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)
@@ -2461,17 +2461,15 @@ done`,
 // as a failure too, so a persistent refusal is named rather than an endless
 // "creating". Once a database has served, the child is optional again, so a
 // later extension or backfill problem never takes it out of service; the
-// PostgreSQL-owned database CNPG cannot manage is exempt. The condition is
-// restamped earlier in every non-suspended reconcile, so it is current.
+// PostgreSQL-owned database CNPG cannot manage is exempt, and so is a database
+// whose owner creates vector on demand, which has no condition (w21/m586).
+// The condition is restamped or removed earlier in every non-suspended
+// reconcile, so it is current.
 func firstReadyHeldForExtensions(db *appv1alpha1.Database) (held bool, failure string) {
-	if db.Status.Provisioned {
-		return false, ""
-	}
 	extensions := meta.FindStatusCondition(db.Status.Conditions, conditionExtensionsReady)
 	switch {
-	case extensions == nil:
-		return true, ""
-	case extensions.Reason == reasonReservedDatabaseName, extensions.Status == metav1.ConditionTrue:
+	case db.Status.Provisioned, extensions == nil, extensions.Reason == reasonReservedDatabaseName,
+		extensions.Status == metav1.ConditionTrue:
 		return false, ""
 	case extensions.Status == metav1.ConditionFalse:
 		return true, extensions.Message

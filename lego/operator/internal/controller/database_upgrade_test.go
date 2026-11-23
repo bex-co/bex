@@ -391,6 +391,8 @@ func TestPendingMajorUpgradeLeavesOtherReadinessAlone(t *testing.T) {
 		}
 	})
 	t.Run("nothing observed yet", func(t *testing.T) {
+		// On an image with no allowlist, so CNPG preinstalls vector.
+		withBexOperands(t, map[string]string{})
 		r, cl, req := newMajorUpgradeReconciler(t, "Cluster in healthy state")
 		var db appv1alpha1.Database
 		if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {
@@ -447,7 +449,9 @@ func TestMajorUpgradePending(t *testing.T) {
 // A never-served database that reaches its upgraded major while its managed
 // extensions are still installing records the new version on that held pass,
 // so the post-upgrade base backup must start then, not wait for Ready (w4/m223).
+// Only an image with no allowlist still preinstalls them (w21/m586).
 func TestPostUpgradeBackupStartsWhileFirstReadyIsHeld(t *testing.T) {
+	withBexOperands(t, map[string]string{})
 	r, cl, req := newMajorUpgradeReconciler(t, "Upgrading Postgres major version")
 	var db appv1alpha1.Database
 	if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {

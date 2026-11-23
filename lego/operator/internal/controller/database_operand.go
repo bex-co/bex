@@ -68,7 +68,10 @@ var pgExtensionAllowlist = map[string][]string{
 // timescaledb_pre_restore() ("permission denied to set parameter
 // timescaledb.restoring"), so property 5 fails on every major. Admitting an
 // extension later is a reload of extwlist.extensions, never a restart
-// (ADR092 D3, D4).
+// (ADR092 D3, D4). pgvector comes with CNPG's base image and is not trusted,
+// so the owner creates and drops it through this list, as Render documents
+// (`CREATE EXTENSION vector;`), and a new database gets none preinstalled
+// (reconcileApplicationDatabase, w21/m586).
 func admittedExtensions(major int) []string {
 	list := []string{"postgis", "postgis_raster", "postgis_topology", "postgis_tiger_geocoder"}
 	if major >= 14 {
@@ -80,6 +83,7 @@ func admittedExtensions(major int) []string {
 	} else {
 		list = append(list, "pg_duckdb", "pg_repack")
 	}
+	list = append(list, "vector")
 	return append(list, untrustedContribExtensions(major)...)
 }
 

@@ -1,18 +1,18 @@
 # w21 · m586 — `CREATE EXTENSION vector;` works as Render documents it: a new database gets pgvector on demand, not preinstalled
 
-**Worker:** worker21 **Goal:** on a new database the default user runs Render's literal `CREATE EXTENSION vector;` and it succeeds, and can `DROP EXTENSION vector`; existing databases keep the vector they have. **Status:** todo
+**Worker:** worker21 **Goal:** on a new database the default user runs Render's literal `CREATE EXTENSION vector;` and it succeeds, and can `DROP EXTENSION vector`; existing databases keep the vector they have. **Status:** todo (t001, t003, t006, t007 done; t002 waits for its amd64 gate run)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Amend ADR092 D2 and ADR009 § pgvector: a new database gets `vector` on demand; an existing database keeps its installed extension | 30m | w21/m584/t001 |
+| [t001](done/t001.md) | Amend ADR092 D2 and ADR009 § pgvector: a new database gets `vector` on demand; an existing database keeps its installed extension — **DONE** | 30m | w21/m584/t001 |
 | [t002](t002.md) | Admit `vector` on every major; the gate runs Render's literal `CREATE EXTENSION vector;` and the owner's `DROP EXTENSION vector` | 45m | t001 |
-| [t003](t003.md) | Operator: a new database gets no vector Database child and no `InitializingExtensions` wait; an existing database's child is released without dropping `vector` | 1h | t002 |
+| [t003](done/t003.md) | Operator: a new database gets no vector Database child and no `InitializingExtensions` wait; an existing database's child is released without dropping `vector` — **DONE** | 1h | t002 |
 | [t004](t004.md) | Production: Render's command on a new database exits 0, and an existing database's vectors and HNSW index are unchanged | 30m | t003, w21/m584/t005 |
 | [t005](t005.md) | Render parity | 30m | t004 |
-| [t006](t006.md) | Simplify | 20m | t005 |
-| [t007](t007.md) | Test coverage | 40m | t005 |
+| [t006](done/t006.md) | Simplify — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
 | [t008](t008.md) | Closeout | 10m | t006, t007 |
 
 ## Definition of done
@@ -25,7 +25,7 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity for w21` verification (2026-11-23). Render's extension table says "Enable this extension with `CREATE EXTENSION vector;`" ([postgresql-extensions](https://render.com/docs/postgresql-extensions)). bex installs `vector` in every application database through a CloudNativePG Database child (`lego/operator/internal/controller/database_extensions.go:85`, ADR009 § pgvector, w8/m84). PostgreSQL's `CREATE EXTENSION` without `IF NOT EXISTS` errors when the extension exists, so Render's documented command fails on bex with `extension "vector" already exists`, and a migration run with `ON_ERROR_STOP` stops there. The extension belongs to the superuser that installed it, so the owner's `DROP EXTENSION vector` is refused ("must be owner"). ADR018's Postgres CRUD row records "pre-installed rather than on-demand" without a sign-off. No board item names either failure.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first); [ADR092](../../../docs/ADR092-postgres-extension-supply.md) D2; [ADR009 § pgvector](../../../docs/ADR009-postgresql-management.md#pgvector-in-every-application-database-w8m84).
+- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first); [ADR092](../../../docs/ADR092-postgres-extension-supply.md) D2; [ADR009 § pgvector](../../../docs/ADR009-postgresql-management.md#pgvector-created-on-demand-as-render-documents-it-w8m84-w21m586).
 - **Expected outcome:** a Render user's pgvector setup runs unchanged on bex, and new databases become available sooner (no extension wait, w4/m223).
 - **Why now:** preinstalling was the only way to give a non-superuser `vector` before the allowlist; w21/m584 makes the allowlist live, so the reason for the divergence ends there.
 - **Decision state.** **Recommendation of the plan, not a user decision:** amend ADR092 D2's "`vector` keeps its existing preinstall" so new databases follow Render. It rests on AGENTS.md ("When an ADR … conflicts with parity, amend that ADR"). The user accepted ADR092 on 2026-10-29 with that line, so the amendment is named here for the user to see; it needs no ADR018 sign-off because it removes a divergence.

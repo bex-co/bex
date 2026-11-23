@@ -81,7 +81,9 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 // the untrusted extensions Render lists, on exactly the majors it lists them
 // for (render.com/docs/postgresql-extensions, read 2026-11-23; PostgreSQL 17
 // removed adminpack and old_snapshot), less TimescaleDB, whose own gate fails
-// (ADR092 D1, D3 property 1). Nothing else gets the allowlist path.
+// (ADR092 D1, D3 property 1). pgvector (`vector`, PostgreSQL 13+) is among
+// them since a new database no longer gets it preinstalled (w21/m586).
+// Nothing else gets the allowlist path.
 func TestAllowlistIsRendersUntrustedListPerMajor(t *testing.T) {
 	all := [2]int{13, 18}
 	render := map[string][2]int{
@@ -91,7 +93,7 @@ func TestAllowlistIsRendersUntrustedListPerMajor(t *testing.T) {
 		"file_fdw": all, "insert_username": all, "intagg": all, "moddatetime": all, "pageinspect": all,
 		"pg_buffercache": all, "pg_freespacemap": all, "pg_prewarm": all, "pg_surgery": {14, 18}, "pg_visibility": all,
 		"pgaudit": all, "pgrowlocks": all, "pgstattuple": all, "refint": all, "sslinfo": all, "xml2": all,
-		"adminpack": {13, 16}, "old_snapshot": {14, 16}, "timescaledb": all,
+		"adminpack": {13, 16}, "old_snapshot": {14, 16}, "timescaledb": all, "vector": all,
 	}
 	for _, version := range permittedPostgresVersions(t) {
 		major, _ := strconv.Atoi(version)
@@ -247,7 +249,7 @@ func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 	}
 	want := map[string]any{
 		"local_preload_libraries": "pgextwlist",
-		"extwlist.extensions": "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,pg_repack," +
+		"extwlist.extensions": "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,pg_repack,vector," +
 			"amcheck,autoinc,bloom,dblink,dict_xsyn,earthdistance,file_fdw,insert_username,intagg,moddatetime,pageinspect," +
 			"pg_buffercache,pg_freespacemap,pg_prewarm,pg_surgery,pg_visibility,pgaudit,pgrowlocks,pgstattuple,refint,sslinfo,xml2," +
 			"adminpack,old_snapshot",
@@ -386,6 +388,13 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 					" CREATE INDEX ON places USING gist (geom);" +
 					" SELECT count(*) FROM places WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(10, 10), 4326), 1.5)", "3"},
 				{"CREATE EXTENSION hstore; SELECT 'a=>1'::hstore -> 'a'", "1"},
+				// Render's pgvector command as written: nothing preinstalled it,
+				// and the owner drops it again (w21/m586).
+				{"CREATE EXTENSION vector; CREATE TABLE items (id int PRIMARY KEY, embedding vector(3));" +
+					" INSERT INTO items VALUES (1, '[1,2,3]'), (2, '[4,5,6]'), (3, '[1,1,1]');" +
+					" CREATE INDEX ON items USING hnsw (embedding vector_l2_ops);" +
+					" SET enable_seqscan = off; SELECT id FROM items ORDER BY embedding <-> '[1,1,2]' LIMIT 1", "3"},
+				{"DROP TABLE items; DROP EXTENSION vector; SELECT count(*) FROM pg_extension WHERE extname = 'vector'", "0"},
 				{"SELECT rolsuper FROM pg_roles WHERE rolname = current_user", "f"},
 			}
 			timescale := ownerTimescaleOnCNPG(t, major, asOwner)

@@ -37,16 +37,19 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// TestApplicationDatabaseVectorOnCNPG is w8/m84's actual-CNPG gate: on a real
-// CloudNativePG (BEX_CNPG_KUBECONFIG names a cluster running it, e.g. kind
-// plus the cnpg chart the platform pins) and each of bex's pinned major images
-// (BEX_CNPG_MAJORS narrows them, e.g. "18"), the application owner's
-// `CREATE EXTENSION IF NOT EXISTS vector` is refused until the operator's CNPG
-// Database child is applied, then succeeds as a no-op and real vector values,
-// distance, an HNSW index and the hstore and pg_stat_statements neighbors all
-// work for that owner. Deleting the child keeps the database and its rows
-// (retain), and reapplying it changes nothing. Opt-in: needs the cluster and
-// kubectl.
+// TestApplicationDatabaseVectorOnCNPG is w8/m84's actual-CNPG gate, on the
+// upstream images a cluster runs when no bex operand is adopted (the
+// adoption's rollback): on a real CloudNativePG (BEX_CNPG_KUBECONFIG names a
+// cluster running it, e.g. kind plus the cnpg chart the platform pins) and
+// each of bex's pinned upstream major images (BEX_CNPG_MAJORS narrows them,
+// e.g. "18"), the application owner's `CREATE EXTENSION IF NOT EXISTS vector`
+// is refused until the operator's CNPG Database child is applied, then
+// succeeds as a no-op and real vector values, distance, an HNSW index and the
+// hstore and pg_stat_statements neighbors all work for that owner. Deleting
+// the child, as the operator does once the cluster's allowlist admits vector
+// (w21/m586), keeps the database, the extension, its rows and the HNSW
+// answer (retain), and reapplying it changes nothing. Opt-in: needs the
+// cluster and kubectl.
 func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 	kubeconfig := os.Getenv("BEX_CNPG_KUBECONFIG")
 	if kubeconfig == "" {
@@ -64,6 +67,7 @@ func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 	if only := os.Getenv("BEX_CNPG_MAJORS"); only != "" {
 		majors = strings.Split(only, ",")
 	}
+	withBexOperands(t, map[string]string{})
 	for _, major := range majors {
 		t.Run("PG"+major, func(t *testing.T) {
 			t.Parallel()
@@ -126,8 +130,11 @@ func TestApplicationDatabaseVectorOnCNPG(t *testing.T) {
 			waitFor(t, time.Minute, "the child to be deleted", func() bool {
 				return apierrors.IsNotFound(cl.Get(ctx, client.ObjectKeyFromObject(child), child.DeepCopy()))
 			})
-			if out, err := asOwner("SELECT count(*) FROM items"); err != nil || out != "3" {
-				t.Fatalf("after deleting the child: %v %q, want the database and its 3 rows kept", err, out)
+			if out, err := asOwner("SELECT count(*), (SELECT count(*) FROM pg_extension WHERE extname = 'vector') FROM items"); err != nil || out != "3|1" {
+				t.Fatalf("after deleting the child: %v %q, want the database, vector and its 3 rows kept", err, out)
+			}
+			if out, err := asOwner("SET enable_seqscan = off; SELECT id FROM items ORDER BY embedding <-> '[1,1,2]' LIMIT 1"); err != nil || !strings.HasSuffix(out, "3") {
+				t.Fatalf("after deleting the child: %v %q, want the HNSW nearest neighbour still item 3", err, out)
 			}
 			// CNPG's refusal reaches the condition: a child naming an owner
 			// role that does not exist fails, with CNPG's message.

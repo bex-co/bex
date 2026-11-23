@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,11 +38,13 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Every managed Postgres gets a CNPG Database child adopting its application
-// database — the default or custom name and owner a create or restore wrote —
-// with vector ensured present and the database retained if the child goes
-// (w8/m84). Its CNPG verdict becomes the ExtensionsReady condition.
+// On an image with no allowlist, a managed Postgres gets a CNPG Database child
+// adopting its application database — the default or custom name and owner a
+// create or restore wrote — with vector ensured present and the database
+// retained if the child goes (w8/m84). Its CNPG verdict becomes the
+// ExtensionsReady condition.
 func TestDatabaseApplicationDatabaseChild(t *testing.T) {
+	withBexOperands(t, map[string]string{})
 	for _, tc := range []struct {
 		name   string
 		spec   appv1alpha1.DatabaseSpec
@@ -130,6 +133,7 @@ func TestExtensionsCondition(t *testing.T) {
 // cannot be written degrades only ExtensionsReady: the database still
 // reconciles.
 func TestApplicationDatabaseChildNeverWedgesTheDatabase(t *testing.T) {
+	withBexOperands(t, map[string]string{})
 	for _, tc := range []struct {
 		name, reason string
 		spec         appv1alpha1.DatabaseSpec
@@ -210,28 +214,18 @@ func markApplicationDatabaseApplied(ctx context.Context, cl client.Client, db *a
 }
 
 // healthyNewDatabase is a database that has never served, reconciled once,
-// whose CNPG cluster now reports a healthy instance. A new database's first
-// Ready waits for its managed extensions (w4/m223, a868: it used to arrive
-// 8-18s before vector, failing a migration run at the first Available).
+// whose CNPG cluster now reports a healthy instance. On an image with no
+// allowlist (none adopted here), a new database's first Ready waits for the
+// vector CNPG preinstalls (w4/m223, a868: it used to arrive 8-18s before
+// vector, failing a migration run at the first Available).
 func healthyNewDatabase(t *testing.T, spec appv1alpha1.DatabaseSpec, funcs ...interceptor.Funcs) (*DatabaseReconciler, client.Client, reconcile.Request, *appv1alpha1.Database) {
 	t.Helper()
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = appv1alpha1.AddToScheme(scheme)
-	for _, gvk := range []schema.GroupVersionKind{cnpgClusterGVK, cnpgDatabaseGVK, cnpgBackupGVK, cnpgScheduledBackupGVK, cnpgPoolerGVK} {
-		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
-	}
+	withBexOperands(t, map[string]string{})
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-first", Namespace: "default", UID: "uid-dpg-first", Finalizers: []string{dbFinalizer}},
 		Spec:       spec,
 	}
-	builder := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).WithStatusSubresource(&appv1alpha1.Database{})
-	for _, f := range funcs {
-		builder = builder.WithInterceptorFuncs(f)
-	}
-	cl := builder.Build()
-	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
-	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}
+	r, cl, req := newDatabaseReconciler(t, db, funcs...)
 	reconcileDB(t, r, cl, req)
 	setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 0)
 	return r, cl, req, db
@@ -390,6 +384,173 @@ func TestRefusedChildWriteOnAHealthyNewDatabase(t *testing.T) {
 			got := reconcileDB(t, r, cl, req)
 			if got.Status.Phase != tc.wantPhase || readyReason(got) != tc.wantReady || got.Status.Provisioned {
 				t.Fatalf("phase %q Ready %s provisioned %v, want %q %s", got.Status.Phase, readyReason(got), got.Status.Provisioned, tc.wantPhase, tc.wantReady)
+			}
+		})
+	}
+}
+
+// newDatabaseReconciler is a reconciler over a fake API holding db, with the
+// kinds a Database reconcile writes.
+func newDatabaseReconciler(t *testing.T, db *appv1alpha1.Database, funcs ...interceptor.Funcs) (*DatabaseReconciler, client.Client, reconcile.Request) {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	for _, gvk := range []schema.GroupVersionKind{cnpgClusterGVK, cnpgDatabaseGVK, cnpgBackupGVK, cnpgScheduledBackupGVK, cnpgPoolerGVK} {
+		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+	}
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).WithStatusSubresource(&appv1alpha1.Database{})
+	for _, f := range funcs {
+		builder = builder.WithInterceptorFuncs(f)
+	}
+	cl := builder.Build()
+	return &DatabaseReconciler{Client: cl, Scheme: scheme}, cl, reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}
+}
+
+func applicationChildExists(t *testing.T, cl client.Client, db *appv1alpha1.Database) bool {
+	t.Helper()
+	child := &unstructured.Unstructured{}
+	child.SetGroupVersionKind(cnpgDatabaseGVK)
+	err := cl.Get(context.Background(), client.ObjectKey{Namespace: db.Namespace, Name: applicationDatabaseName(db)}, child)
+	if err != nil && !apierrors.IsNotFound(err) {
+		t.Fatal(err)
+	}
+	return err == nil
+}
+
+// On a bex operand the owner creates vector on demand with Render's
+// `CREATE EXTENSION vector;` (w21/m586): a new database gets no CNPG Database
+// child, so nothing preinstalls vector, and its first Ready waits for no
+// extension, with no ExtensionsReady condition left to read.
+func TestNewDatabaseOnABexOperandGetsVectorOnDemand(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		spec appv1alpha1.DatabaseSpec
+	}{
+		{"default major", appv1alpha1.DatabaseSpec{Name: "orders"}},
+		{"PG15, custom identity", appv1alpha1.DatabaseSpec{Name: "orders", Version: "15", DatabaseName: "orders_prod", DatabaseUser: "orders_app"}},
+		{"reserved database name", appv1alpha1.DatabaseSpec{Name: "legacy", DatabaseName: "template1"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := &appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: "dpg-new", Namespace: "default", UID: "uid-dpg-new", Finalizers: []string{dbFinalizer}},
+				Spec:       tc.spec,
+			}
+			r, cl, req := newDatabaseReconciler(t, db)
+			reconcileDB(t, r, cl, req)
+			setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 0)
+			got := reconcileDB(t, r, cl, req)
+			if applicationChildExists(t, cl, db) {
+				t.Error("a new database on a bex operand got a CNPG Database child preinstalling vector")
+			}
+			if c := meta.FindStatusCondition(got.Status.Conditions, conditionExtensionsReady); c != nil {
+				t.Errorf("ExtensionsReady = %+v, want none: the operator installs no extension", c)
+			}
+			if got.Status.Phase != appv1alpha1.DBPhaseReady || !got.Status.Provisioned || readyReason(got) != "True/"+appv1alpha1.ReasonProvisioned {
+				t.Errorf("first healthy reconcile: phase %q provisioned %v Ready %s, want the first Ready with no extension wait",
+					got.Status.Phase, got.Status.Provisioned, readyReason(got))
+			}
+		})
+	}
+}
+
+// An existing database whose vector CNPG installed keeps it when its cluster
+// moves to a bex operand: the operator deletes the child, which CNPG answers
+// under `databaseReclaimPolicy: retain` by dropping neither the database nor
+// the extension, and never writes `ensure: absent`, the one spelling that
+// would drop vector. Later reconciles leave it released, and the database
+// keeps serving throughout (w21/m586).
+func TestExistingDatabaseReleasesItsVectorChildWithoutDroppingIt(t *testing.T) {
+	ctx := context.Background()
+	var absent []string
+	record := func(obj client.Object) {
+		u, ok := obj.(*unstructured.Unstructured)
+		if !ok || u.GroupVersionKind() != cnpgDatabaseGVK {
+			return
+		}
+		if ensure, _, _ := unstructured.NestedString(u.Object, "spec", "ensure"); ensure == "absent" {
+			absent = append(absent, "database")
+		}
+		extensions, _, _ := unstructured.NestedSlice(u.Object, "spec", "extensions")
+		for _, e := range extensions {
+			if e.(map[string]any)["ensure"] == "absent" {
+				absent = append(absent, e.(map[string]any)["name"].(string))
+			}
+		}
+	}
+	watch := interceptor.Funcs{
+		Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			record(obj)
+			return c.Update(ctx, obj, opts...)
+		},
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			record(obj)
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-old", Namespace: "default", UID: "uid-dpg-old", Finalizers: []string{dbFinalizer}},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Version: "16"},
+	}
+	r, cl, req := newDatabaseReconciler(t, db, watch)
+
+	// Before the adoption: an upstream image, CNPG preinstalls vector, and the
+	// database serves.
+	withBexOperands(t, map[string]string{})
+	reconcileDB(t, r, cl, req)
+	setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 16)
+	if err := markApplicationDatabaseApplied(ctx, cl, db); err != nil {
+		t.Fatal(err)
+	}
+	if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady || !got.Status.Provisioned {
+		t.Fatalf("before the adoption: phase %q provisioned %v, want a served database", got.Status.Phase, got.Status.Provisioned)
+	}
+
+	withBexOperands(t, map[string]string{"16": "ghcr.io/bex-co/bex-operator:16.16-postgres-abc@sha256:0123"})
+	for pass := range 2 {
+		got := reconcileDB(t, r, cl, req)
+		if applicationChildExists(t, cl, db) {
+			t.Fatalf("pass %d: the CNPG Database child is still applied on a bex operand", pass)
+		}
+		if c := meta.FindStatusCondition(got.Status.Conditions, conditionExtensionsReady); c != nil {
+			t.Errorf("pass %d: ExtensionsReady = %+v, want it removed with the child", pass, c)
+		}
+		if got.Status.Phase == appv1alpha1.DBPhaseFailed || !got.Status.Provisioned {
+			t.Errorf("pass %d: phase %q provisioned %v; releasing the child must not take the database out of service", pass, got.Status.Phase, got.Status.Provisioned)
+		}
+	}
+	if len(absent) > 0 {
+		t.Errorf("the operator wrote ensure: absent for %v, which makes CNPG drop it", absent)
+	}
+}
+
+// The preinstall follows the cluster's own projected allowlist, not the
+// operator's current map: a cluster whose allowlist does not list vector
+// (an upstream image, or an older bex operand kept until its major is
+// observed) still needs it, and only an exact entry counts.
+func TestAllowlistAdmits(t *testing.T) {
+	cluster := func(parameters map[string]any) *unstructured.Unstructured {
+		o := &unstructured.Unstructured{Object: map[string]any{}}
+		if parameters != nil {
+			_ = unstructured.SetNestedMap(o.Object, parameters, "spec", "postgresql", "parameters")
+		}
+		return o
+	}
+	for _, tc := range []struct {
+		name       string
+		parameters map[string]any
+		want       bool
+	}{
+		{"projected allowlist", map[string]any{"extwlist.extensions": strings.Join(pgExtensionAllowlist["18"], ",")}, true},
+		{"last entry", map[string]any{"extwlist.extensions": "postgis,vector"}, true},
+		{"older allowlist", map[string]any{"extwlist.extensions": "postgis,pg_ivm"}, false},
+		{"a longer name", map[string]any{"extwlist.extensions": "postgis,vectorscale"}, false},
+		{"upstream image", map[string]any{"pg_stat_statements.track": "all"}, false},
+		{"no spec", nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := allowlistAdmits(cluster(tc.parameters), "vector"); got != tc.want {
+				t.Errorf("allowlistAdmits = %t, want %t", got, tc.want)
 			}
 		})
 	}

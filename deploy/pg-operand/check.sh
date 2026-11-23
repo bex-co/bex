@@ -281,6 +281,37 @@ has pg_freespacemap && expect t "SELECT count(*) > 0 FROM pg_freespace('contrib_
 has pg_visibility && expect t "SELECT count(*) > 0 FROM pg_visibility('contrib_rows')"
 has pgstattuple && expect 11 "SELECT tuple_count FROM pgstattuple('contrib_rows')"
 has pgrowlocks && expect 0 "SELECT count(*) FROM pgrowlocks('contrib_rows')"
+# pgvector's fixture: three vectors with an HNSW index, whose nearest
+# neighbour of [1,1,2] is item 3 (here and in property 5 below).
+vector_items="CREATE TABLE items (id int PRIMARY KEY, embedding vector(3));
+  INSERT INTO items VALUES (1, '[1,2,3]'), (2, '[4,5,6]'), (3, '[1,1,1]');
+  CREATE INDEX items_embedding ON items USING hnsw (embedding vector_l2_ops)"
+nearest_query="SELECT id FROM items ORDER BY embedding <-> '[1,1,2]' LIMIT 1"
+nearest="SET enable_seqscan = off; $nearest_query"
+if has vector; then
+  # Render's documented command, as written (render.com/docs/postgresql-extensions):
+  # no IF NOT EXISTS, so it fails wherever vector is already there, and a
+  # migration run with ON_ERROR_STOP stops at that error. A new database has
+  # none preinstalled, and the owner creates, uses and drops it (w21/m586).
+  super "CREATE DATABASE vectors OWNER app"
+  as app vectors "CREATE EXTENSION vector;" >/dev/null
+  as app vectors "$vector_items" >/dev/null
+  out="$(as app vectors "SET enable_seqscan = off; EXPLAIN (COSTS OFF) $nearest_query")"
+  grep -q 'Index Scan using items_embedding' <<<"$out" || fail "the nearest-neighbour query does not use the HNSW index: $out"
+  [ "$(as app vectors "$nearest")" = 3 ] || fail "the HNSW nearest neighbour of [1,1,2] is not item 3"
+  as app vectors "DROP TABLE items; DROP EXTENSION vector" >/dev/null
+  [ "$(as app vectors "SELECT count(*) FROM pg_extension WHERE extname = 'vector'")" = 0 ] || fail "the owner's DROP EXTENSION vector left it installed"
+  # A database from before w21/m586 holds the vector CloudNativePG installed
+  # as the superuser. Render's command meets it as PostgreSQL meets any
+  # installed extension, IF NOT EXISTS is a no-op, its data keeps working, and
+  # the owner can drop it through the allowlist and create its own.
+  super "CREATE DATABASE vectors_preinstalled OWNER app"
+  super "CREATE EXTENSION vector" vectors_preinstalled
+  as app vectors_preinstalled "CREATE EXTENSION IF NOT EXISTS vector; $vector_items" >/dev/null
+  refused app vectors_preinstalled "CREATE EXTENSION vector;" 'extension "vector" already exists'
+  [ "$(as app vectors_preinstalled "$nearest")" = 3 ] || fail "the preinstalled vector's HNSW nearest neighbour is not item 3"
+  as app vectors_preinstalled "DROP TABLE items; DROP EXTENSION vector; CREATE EXTENSION vector;" >/dev/null
+fi
 if has timescaledb; then
   as app appdb "CREATE TABLE metrics (at timestamptz NOT NULL, v float8);
     SELECT create_hypertable('metrics', 'at'); INSERT INTO metrics VALUES (now(), 1), (now() - interval '9 days', 2)" >/dev/null
@@ -339,6 +370,7 @@ seed() { # ext db: what a database using only this extension holds
       CREATE TRIGGER notes_modified BEFORE UPDATE ON notes FOR EACH ROW EXECUTE PROCEDURE moddatetime(modified); INSERT INTO notes VALUES (1)" ;;
     bloom) as app "$2" "CREATE EXTENSION bloom; CREATE TABLE bloomed (a int, b int);
       INSERT INTO bloomed SELECT g, g % 7 FROM generate_series(1, 1000) g; CREATE INDEX bloomed_ab ON bloomed USING bloom (a, b)" ;;
+    vector) as app "$2" "CREATE EXTENSION vector; $vector_items" ;;
     adminpack | amcheck | autoinc | dblink | dict_xsyn | file_fdw | insert_username | intagg | old_snapshot | pageinspect | \
       pg_buffercache | pg_freespacemap | pg_prewarm | pg_surgery | pg_visibility | pgaudit | pgrowlocks | pgstattuple | refint | sslinfo | xml2)
       as app "$2" "CREATE EXTENSION $1" ;;
@@ -367,6 +399,8 @@ restored() { # ext db: the restore gave the data back, and it still works
     moddatetime) as app "$2" "UPDATE notes SET id = id" && [ "$(as app "$2" "SELECT modified > 'epoch' FROM notes")" = t ] ;;
     bloom) [ "$(as app "$2" "SELECT amname FROM pg_class JOIN pg_am ON pg_am.oid = relam WHERE relname = 'bloomed_ab'")" = bloom ] &&
       [ "$(as app "$2" "SET enable_seqscan = off; SELECT count(*) FROM bloomed WHERE a = 7 AND b = 0")" = 1 ] ;;
+    vector) [ "$(as app "$2" "SELECT amname FROM pg_class JOIN pg_am ON pg_am.oid = relam WHERE relname = 'items_embedding'")" = hnsw ] &&
+      [ "$(as app "$2" "$nearest")" = 3 ] ;;
   esac
 }
 owner_restore() { # ext

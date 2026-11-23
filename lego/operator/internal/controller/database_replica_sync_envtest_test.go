@@ -106,7 +106,6 @@ var _ = Describe("Database read replica stale status", func() {
 		Expect(unstructured.SetNestedField(primary.Object, int64(17), "status", "pgDataImageInfo", "majorVersion")).To(Succeed())
 		Expect(unstructured.SetNestedField(primary.Object, name+"-1", "status", "currentPrimary")).To(Succeed())
 		Expect(k8sClient.Status().Update(ctx, primary)).To(Succeed())
-		Expect(markApplicationDatabaseApplied(ctx, k8sClient, db)).To(Succeed())
 		samples["a"] = ReadReplicaSyncSample{IsWalReceiverActive: false} // even if not streaming during initial sync
 		run()
 		Expect(statusOf("a").Syncing).To(BeNil(), "initial sync must never mark a replica stale")
