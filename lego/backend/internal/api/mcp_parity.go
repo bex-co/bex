@@ -148,15 +148,26 @@ const mcpWorkflowsNonGoal = "Render Workflows are a recorded non-goal (.pm/DO_NO
 // mismatch not listed here fails TestMCPArgumentTypesMatchUpstream.
 var mcpAcceptedTypeDivergences = map[string]string{}
 
+// mcpAcceptedEnumDivergences records each "tool.arg" whose bex JSON Schema enum
+// deliberately omits a pinned upstream value or omits "enum" altogether, with
+// the reason (w5/m600). An enum mismatch not listed here fails
+// TestMCPArgumentEnumsMatchUpstream.
+var mcpAcceptedEnumDivergences = map[string]string{}
+
 // mcpArgTypeMismatches lists the upstream arguments bex accepts in a JSON type
-// upstream does not send. An integer satisfies a number; an argument upstream
-// leaves untyped, or bex does not accept at all (classifyMCPTool's concern),
-// is skipped.
+// upstream does not send, including arguments where bex emits an untyped {}
+// schema while upstream declares a type (w5/m600). An integer satisfies a
+// number; an argument upstream leaves untyped, or bex does not accept at all
+// (classifyMCPTool's concern), is skipped.
 func mcpArgTypeMismatches(bexTypes map[string][]string, up renderMCPTool) []string {
 	var out []string
 	for arg, want := range up.ArgTypes {
 		have, ok := bexTypes[arg]
-		if !ok || want.Type == "" || len(have) == 0 {
+		if !ok || want.Type == "" {
+			continue
+		}
+		if len(have) == 0 {
+			out = append(out, arg)
 			continue
 		}
 		compatible := slices.Contains(have, want.Type) ||
@@ -164,6 +175,35 @@ func mcpArgTypeMismatches(bexTypes map[string][]string, up renderMCPTool) []stri
 			(want.Type == "integer" && slices.Contains(have, "number"))
 		if !compatible {
 			out = append(out, arg)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// mcpArgEnumMismatches lists every upstream enum-constrained argument where bex
+// either emits no JSON Schema "enum" or omits at least one pinned upstream
+// value (bexEnum ⊇ upstreamEnum is required). Arguments upstream does not
+// constrain with an enum, or that bex does not accept at all, are skipped.
+func mcpArgEnumMismatches(bexEnums map[string][]string, up renderMCPTool) []string {
+	var out []string
+	for arg, want := range up.ArgTypes {
+		if len(want.Enum) == 0 {
+			continue
+		}
+		have, ok := bexEnums[arg]
+		if !ok {
+			continue
+		}
+		if len(have) == 0 {
+			out = append(out, arg)
+			continue
+		}
+		for _, val := range want.Enum {
+			if !slices.Contains(have, val) {
+				out = append(out, arg)
+				break
+			}
 		}
 	}
 	slices.Sort(out)

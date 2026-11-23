@@ -125,6 +125,13 @@ func TestCreatePostgresRegionPolicyAcrossSurfaces(t *testing.T) {
 					continue
 				}
 				if !tc.ok {
+					if surface == "MCP" {
+						// MCP enforces Render's region enum at the JSON Schema boundary (w5/m600).
+						if !strings.Contains(got.err, "[frankfurt ohio oregon singapore virginia]") || (tc.region != "fsn1" && strings.Contains(got.err, "fsn1")) {
+							t.Errorf("region %q: error = %q, want MCP schema enum refusal listing Render's regions and no placement", tc.region, got.err)
+						}
+						continue
+					}
 					if !strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") || strings.Contains(got.err, "fsn1") {
 						t.Errorf("region %q: error = %q, want the shared region message and no placement", tc.region, got.err)
 					}

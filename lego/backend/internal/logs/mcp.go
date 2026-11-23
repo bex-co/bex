@@ -125,6 +125,8 @@ func (f logFilters) query() (LogQuery, error) {
 	return q, nil
 }
 
+var mcpLogDirections = []string{DirectionBackward, DirectionForward}
+
 // RegisterMCP adds the list_logs + list_log_label_values tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -134,6 +136,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
 			"Without startTime the last hour is read, as on Render. Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
 			"Use list_log_label_values to discover which filter values exist for a resource.",
+		InputSchema: mcputil.InputSchema[listLogsArgs](
+			mcputil.PropEnum("direction", mcpLogDirections...),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, renderLogList, error) {
 		q, err := in.query()
 		if err != nil {
@@ -182,6 +187,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List all values a given log label (host | instance | level | method | statusCode | type) takes in the logs matching the provided filters. " +
 			"Use it to discover what values are available for filtering with list_logs, instead of guessing. " +
 			"The label filters (type/level/instance/statusCode/method) and the time range narrow the search; the line filters (text/path/host) do not affect which values are returned.",
+		InputSchema: mcputil.InputSchema[listLogLabelValuesArgs](
+			mcputil.PropEnum("direction", mcpLogDirections...),
+			mcputil.PropEnum("label", DiscoverableLabels...),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogLabelValuesArgs) (*mcp.CallToolResult, any, error) {
 		q, err := in.query()
 		if err != nil {

@@ -564,22 +564,7 @@ func changedFields[T any](a, b T) []string {
 // restCreateTransport drives POST /v1/services' body through
 // decodeCreateService, strict decoding included.
 func restCreateTransport(svc *Service, shapes []createShape) createTransport {
-	leaves := jsonWireLeaves(reflect.TypeFor[createServiceRequest](), "", false)
-	// envVars entries are a oneOf (w4/m242): a key cannot be sent without its
-	// value sibling, so the guard fills key+value when probing any envVars
-	// leaf (generateValue itself is probed paired with a value, which the
-	// oneOf refuses — see restCreateRules).
-	var envPair []wireLeaf
-	for _, l := range leaves {
-		if l.path == "envVars[].key" || l.path == "envVars[].value" {
-			envPair = append(envPair, l)
-		}
-	}
-	for i := range leaves {
-		if strings.HasPrefix(leaves[i].path, "envVars[].") {
-			leaves[i].required = envPair
-		}
-	}
+	leaves := withEnvVarPair(jsonWireLeaves(reflect.TypeFor[createServiceRequest](), "", false))
 	return createTransport{
 		name:   "REST POST /v1/services",
 		table:  "restCreateRules",
@@ -651,7 +636,7 @@ func mcpCreateTransport[A interface {
 	if err != nil {
 		t.Fatal(err)
 	}
-	leaves := jsonWireLeaves(reflect.TypeFor[A](), "", true)
+	leaves := withEnvVarPair(jsonWireLeaves(reflect.TypeFor[A](), "", true))
 	var mine []createShape
 	for _, shape := range shapes {
 		if takes(shape) {
@@ -830,6 +815,27 @@ func jsonWireLeaves(typ reflect.Type, prefix string, schema bool) []wireLeaf {
 		out[i].required = required
 	}
 	return out
+}
+
+// withEnvVarPair marks key+value as required siblings on every envVars[] leaf:
+// envVarInput is a oneOf (w4/m242) whose Value carries omitempty so MCP schema
+// validation allows {key, generateValue: true} (w5/m600). Filling key+value
+// lets the guard probe key/value mutations and verify the generateValue oneOf
+// refusal (while generateValue acceptance is covered by
+// TestEnvVarInputGenerateValue and TestMCPComposedInputSchemaValidation).
+func withEnvVarPair(leaves []wireLeaf) []wireLeaf {
+	var envPair []wireLeaf
+	for _, l := range leaves {
+		if l.path == "envVars[].key" || l.path == "envVars[].value" {
+			envPair = append(envPair, l)
+		}
+	}
+	for i := range leaves {
+		if strings.HasPrefix(leaves[i].path, "envVars[].") {
+			leaves[i].required = envPair
+		}
+	}
+	return leaves
 }
 
 // gqlWireLeaves enumerates the arguments a GraphQL field accepts.

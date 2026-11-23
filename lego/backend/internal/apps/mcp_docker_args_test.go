@@ -143,11 +143,11 @@ func TestMCPCreateImageServiceKeepsDockerCommand(t *testing.T) {
 }
 
 // An image cron's command is its run command in either spelling, as REST's
-// cron bridge has it; the runtime matches case-insensitively, as the core's.
+// cron bridge has it; the core still normalizes mixed-case runtime spellings,
+// while MCP's JSON Schema enforces Render's lowercase runtime enum (w5/m600).
 func TestMCPCreateImageCronJobCommandIsTheRunCommand(t *testing.T) {
 	for _, args := range []map[string]any{
 		{"runtime": "image", "dockerCommand": "echo tick"},
-		{"runtime": "Image", "dockerCommand": "echo tick"},
 		{"runtime": "image", "startCommand": "echo tick"},
 	} {
 		svc, cl := newService(nil)
@@ -159,6 +159,12 @@ func TestMCPCreateImageCronJobCommandIsTheRunCommand(t *testing.T) {
 		if got := getApp(t, cl, "tick").Spec.Command; got != "echo tick" {
 			t.Fatalf("image cron %v command = %q, want echo tick", args, got)
 		}
+	}
+	req := createCronJobArgs{
+		Name: "tick", Schedule: "0 * * * *", Runtime: "Image", Image: "busybox:1.36", DockerCommand: "echo tick",
+	}.toCreateRequest()
+	if req.Command != "echo tick" {
+		t.Fatalf("mixed-case runtime Image command = %q, want echo tick", req.Command)
 	}
 }
 

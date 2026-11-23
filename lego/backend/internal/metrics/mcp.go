@@ -220,6 +220,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_metrics",
 		Description: "Get resource (cpu/memory/instance_count) and request (http_requests/http_latency/bandwidth) metrics for a service, Postgres or Key Value resource. Returns Render's answer: {resourceId, timeRange, metrics: [{type, data}]}, one metrics entry per requested type, each data being the REST time-series array (labels [{field, value}], unit, values). With the legacy multi-id resource array, a JSON array of those objects, one per resource. Prefer Render's resourceId/resolution/httpLatencyQuantile/httpHost/httpPath; legacy resource/resolutionSeconds/quantile/host/path aliases still work (Render spelling wins when both are set).",
+		InputSchema: mcputil.InputSchema[getMetricsArgs](
+			mcputil.PropEnum("aggregateHttpRequestCountsBy", "host", "statusCode"),
+			mcputil.PropEnum("cpuUsageAggregationMethod", "AVG", cpuAggregationMax, cpuAggregationMin),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, any, error) {
 		var explicit []string
 		if in.ResourceID != "" {

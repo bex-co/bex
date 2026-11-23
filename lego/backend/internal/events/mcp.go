@@ -91,7 +91,7 @@ type listServiceEventsResult struct {
 }
 
 type getServiceEventArgs struct {
-	ID string `json:"id" jsonschema:"required,the evt-… id from a webhook data.id or a service event list item"`
+	ID string `json:"id" jsonschema:"the evt-… id from a webhook data.id or a service event list item"`
 }
 
 type getServiceEventResult struct {

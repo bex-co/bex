@@ -33,7 +33,7 @@ import (
 
 type envVarInput struct {
 	Key   string `json:"key" jsonschema:"the environment variable name"`
-	Value string `json:"value" jsonschema:"the literal value"`
+	Value string `json:"value,omitempty" jsonschema:"the literal value; omit when generateValue is true"`
 	// GenerateValue asks for a freshly generated value instead of a literal
 	// one (w4/m242), as on Render's create inputs and bex's own PATCH verbs.
 	GenerateValue bool `json:"generateValue,omitempty" jsonschema:"generate a fresh value instead of providing one"`

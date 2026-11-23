@@ -24,8 +24,33 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+// Shared MCP input-schema enum vocabularies for service create tools. Each is
+// a superset of Render's pinned render-mcp-server enum that preserves
+// documented bex extensions (runtime "image", hyphenated tier IDs).
+var (
+	mcpAutoDeployValues = []string{"no", "yes"}
+	mcpCreateRuntimes   = mcputil.MergeEnums([]string{"docker", "image"}, nativeRuntimes)
+	mcpComputePlans     = mcputil.MergeEnums(
+		tiers.Compute.RenderPlans(),
+		tiers.Compute.IDs(),
+		[]string{
+			"0.5c-512mb", "1c-2g", "2c-4g", "2c-8g", "2c-16g",
+			"4c-8g", "4c-16g", "4c-32g", "8c-16g", "8c-32g", "8c-64g",
+			"12c-24g", "12c-48g", "12c-96g",
+		},
+	)
+	mcpComputeCreateSchemaOpts = []mcputil.SchemaOption{
+		mcputil.PropEnum("autoDeploy", mcpAutoDeployValues...),
+		mcputil.PropEnum("plan", mcpComputePlans...),
+		mcputil.PropEnum("region", resourcemeta.RenderRegions...),
+		mcputil.PropEnum("runtime", mcpCreateRuntimes...),
+	}
 )
 
 // cronMCPError keeps Core's stable action code visible when the MCP SDK turns
@@ -743,6 +768,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_web_service",
 		Description: "Create a web service from a repo or a prebuilt image and get back Render's {service, deployId}: poll the service until its url is live, or get_deploy the deploy. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
+		InputSchema: mcputil.InputSchema[createWebServiceArgs](mcpComputeCreateSchemaOpts...),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, serviceAndDeploy, error) {
 		req, err := in.createRequest(ctx)
 		if err != nil {
@@ -754,6 +780,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_cron_job",
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back Render's {service, deployId}. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
+		InputSchema: mcputil.InputSchema[createCronJobArgs](mcpComputeCreateSchemaOpts...),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, serviceAndDeploy, error) {
 		req, err := in.createRequest(ctx)
 		if err != nil {
@@ -765,6 +792,9 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_static_site",
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
+		InputSchema: mcputil.InputSchema[createStaticSiteArgs](
+			mcputil.PropEnum("autoDeploy", mcpAutoDeployValues...),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, serviceAndDeploy, error) {
 		req, err := in.createRequest(ctx)
 		if err != nil {

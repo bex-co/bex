@@ -191,6 +191,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_deploy",
 		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys another tag or digest of the configured image (host, repository and image name must match). For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache: true (Render's MCP boolean, or the REST string clear) rebuilds without importing prior layers when registry build caching is enabled (and still exports a fresh cache); with caching off it is a no-op. Returns the new deploy; poll with get_deploy until status is live. A deploy that waits behind the one in progress answers a sentence instead; find it with list_deploys (status queued).",
+		InputSchema: mcputil.InputSchema[triggerDeployArgs](
+			mcputil.PropTypes("clearCache", "boolean", "string"),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
 		clearCache, err := mcputil.BoolOrEnum("clearCache", in.ClearCache, "clear", "do_not_clear")
 		if err != nil {

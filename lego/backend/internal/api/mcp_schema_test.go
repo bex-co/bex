@@ -18,6 +18,8 @@ package api
 
 import (
 	"encoding/json"
+	"regexp"
+	"slices"
 	"testing"
 )
 
@@ -29,7 +31,8 @@ import (
 // a value there: get_agent_session_transcript refused any transcript with a
 // part on production. mcputil.AddTool maps json.RawMessage to any JSON value;
 // this fails a tool that reaches the byte-array shape some other way.
-func TestMCPSchemasHaveNoByteArrays(t *testing.T) {
+func walkBexToolSchemas(t *testing.T, check func(tool, side string, tree any)) {
+	t.Helper()
 	for _, tool := range listBexTools(t, fullyWiredServer()).Tools {
 		for side, schema := range map[string]any{"input": tool.InputSchema, "output": tool.OutputSchema} {
 			if schema == nil {
@@ -43,11 +46,17 @@ func TestMCPSchemasHaveNoByteArrays(t *testing.T) {
 			if err := json.Unmarshal(raw, &tree); err != nil {
 				t.Fatalf("parse %s schema of %s: %v", side, tool.Name, err)
 			}
-			for _, path := range byteArrays(tree, "") {
-				t.Errorf("%s: %s schema at %s is a byte array; a []byte or json.RawMessage never encodes as one", tool.Name, side, path)
-			}
+			check(tool.Name, side, tree)
 		}
 	}
+}
+
+func TestMCPSchemasHaveNoByteArrays(t *testing.T) {
+	walkBexToolSchemas(t, func(tool, side string, tree any) {
+		for _, path := range byteArrays(tree, "") {
+			t.Errorf("%s: %s schema at %s is a byte array; a []byte or json.RawMessage never encodes as one", tool, side, path)
+		}
+	})
 }
 
 // byteArrays returns the path of every node in a schema tree whose items are
@@ -68,4 +77,62 @@ func byteArrays(node any, path string) []string {
 		}
 	}
 	return found
+}
+
+// leakedTagDirectiveRe matches struct-tag directive syntax that callers wrote
+// assuming a tag-parsing library (such as invopop/jsonschema) when
+// google/jsonschema-go v0.4.3 treats the whole `jsonschema:"..."` tag as a
+// literal description string (w5/m600).
+var leakedTagDirectiveRe = regexp.MustCompile(`(?:^|,)\s*(?:required|omitempty)\s*(?:,|$)|(?:^|,)enum=|(?:^|,)(?:minimum|maximum|minLength|maxLength|default|pattern|format)=`)
+
+// TestMCPSchemasHaveNoLeakedTagDirectives guards w5/m600: every MCP tool's
+// advertised input and output schema descriptions must be plain human text,
+// never leaked `required,` / `,enum=...` / `omitempty,` tag directives.
+func TestMCPSchemasHaveNoLeakedTagDirectives(t *testing.T) {
+	walkBexToolSchemas(t, func(tool, side string, tree any) {
+		for _, hit := range leakedTagDirectives(tree, "") {
+			t.Errorf("%s: %s schema leaks jsonschema tag directive at %s", tool, side, hit)
+		}
+	})
+}
+
+func leakedTagDirectives(node any, path string) []string {
+	var found []string
+	switch n := node.(type) {
+	case map[string]any:
+		if desc, ok := n["description"].(string); ok && leakedTagDirectiveRe.MatchString(desc) {
+			found = append(found, path+"/description="+desc)
+		}
+		for key, child := range n {
+			found = append(found, leakedTagDirectives(child, path+"/"+key)...)
+		}
+	case []any:
+		for _, child := range n {
+			found = append(found, leakedTagDirectives(child, path)...)
+		}
+	}
+	return found
+}
+
+func TestLeakedTagDirectivesDetection(t *testing.T) {
+	tree := map[string]any{
+		"properties": map[string]any{
+			"badRequired":  map[string]any{"description": "required,the evt- id"},
+			"badEnum":      map[string]any{"description": "mode description.,enum=adopt,enum=create_new"},
+			"badOmit":      map[string]any{"description": "omitempty,optional field"},
+			"badMin":       map[string]any{"description": "count,minimum=1"},
+			"cleanEnglish": map[string]any{"description": "required for a native runtime; default 10, format RFC3339"},
+		},
+	}
+	got := leakedTagDirectives(tree, "")
+	slices.Sort(got)
+	want := []string{
+		"/properties/badEnum/description=mode description.,enum=adopt,enum=create_new",
+		"/properties/badMin/description=count,minimum=1",
+		"/properties/badOmit/description=omitempty,optional field",
+		"/properties/badRequired/description=required,the evt- id",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("leakedTagDirectives = %v, want %v", got, want)
+	}
 }

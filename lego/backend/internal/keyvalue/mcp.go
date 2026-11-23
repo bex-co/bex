@@ -23,6 +23,15 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/types/tiers"
+)
+
+// mcpKeyValuePlans is create_key_value's advertised plan enum: every catalog
+// Valkey tier plus Render's size-named plan aliases.
+var mcpKeyValuePlans = mcputil.MergeEnums(
+	tiers.Valkey.IDs(),
+	[]string{"256mb", "1g", "5g", "10g", "20g", "40g"},
 )
 
 // mcp.go is the MCP fragment for managed key-value. Tool names track Render's
@@ -131,6 +140,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
 		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, region, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		InputSchema: mcputil.InputSchema[createKeyValueArgs](
+			mcputil.PropEnum("maxmemoryPolicy", validMaxmemoryPolicies...),
+			mcputil.PropEnum("persistenceMode", validPersistenceModes...),
+			mcputil.PropEnum("plan", mcpKeyValuePlans...),
+			mcputil.PropEnum("region", resourcemeta.RenderRegions...),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, renderKeyValue, error) {
 		allowList := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{

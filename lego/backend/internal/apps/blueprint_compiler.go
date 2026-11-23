@@ -24,6 +24,7 @@ import (
 	"io"
 	"math/big"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -410,13 +411,11 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 	return problems
 }
 
+// nativeRuntimes is the closed set of Render native source-build runtimes.
+var nativeRuntimes = []string{"elixir", "go", "node", "python", "ruby", "rust"}
+
 func blueprintNativeRuntime(runtime string) bool {
-	switch runtime {
-	case "elixir", "go", "node", "python", "ruby", "rust":
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(nativeRuntimes, runtime)
 }
 
 type prebuiltImageSourceField struct {

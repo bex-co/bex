@@ -60,9 +60,9 @@ type listDeliveriesResult struct {
 }
 
 type resendDeliveryArgs struct {
-	EndpointID     string `json:"endpointId" jsonschema:"required,the webhook endpoint id (whk-…)"`
-	AttemptID      string `json:"attemptId" jsonschema:"required,the failed or delivered attempt id (whd-…) to resend"`
-	IdempotencyKey string `json:"idempotencyKey" jsonschema:"required,8 to 128 safe characters; retry the same request with the same key"`
+	EndpointID     string `json:"endpointId" jsonschema:"the webhook endpoint id (whk-…)"`
+	AttemptID      string `json:"attemptId" jsonschema:"the failed or delivered attempt id (whd-…) to resend"`
+	IdempotencyKey string `json:"idempotencyKey" jsonschema:"8 to 128 safe characters; retry the same request with the same key"`
 }
 
 type updateEndpointArgs struct {

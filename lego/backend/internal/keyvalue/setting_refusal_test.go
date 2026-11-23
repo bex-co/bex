@@ -109,7 +109,21 @@ func TestUnknownKeyValueSettingsListRenderSpellings(t *testing.T) {
 		for _, setting := range settings {
 			t.Run(surface+"/"+setting.field, func(t *testing.T) {
 				got := refuse(t, setting.field, setting.value)
-				if !strings.Contains(got, setting.want) {
+				if surface == "MCP create_key_value" {
+					// create_key_value enforces Render's enum at the MCP JSON Schema boundary (w5/m600).
+					expected := validPersistenceModes
+					if setting.field == "maxmemoryPolicy" {
+						expected = validMaxmemoryPolicies
+					}
+					if !strings.Contains(got, "/properties/"+setting.field) {
+						t.Errorf("refusal = %q, want schema property path for %s", got, setting.field)
+					}
+					for _, v := range expected {
+						if !strings.Contains(got, v) {
+							t.Errorf("refusal = %q, missing Render spelling %q", got, v)
+						}
+					}
+				} else if !strings.Contains(got, setting.want) {
 					t.Errorf("refusal = %q, want it to contain %q", got, setting.want)
 				}
 				if strings.Contains(got, "journal-snapshot") || strings.Contains(got, "allkeys-lru") {

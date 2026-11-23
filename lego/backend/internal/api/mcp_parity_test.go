@@ -38,6 +38,9 @@ type bexTool struct {
 	// Types is each argument's JSON type set (a Go pointer field is
 	// ["null","integer"], say), for the w5/m145 type check.
 	Types map[string][]string
+	// Enums is each argument's JSON Schema "enum" string values, for the
+	// w5/m600 enum parity check.
+	Enums map[string][]string
 }
 
 // enumerateBexTools asks the fully-wired MCP server for its own tools/list —
@@ -65,9 +68,11 @@ func enumerateBexTools(t *testing.T) []bexTool {
 				t.Fatalf("parse input schema for %s: %v", x.Name, err)
 			}
 			bt.Types = make(map[string][]string, len(sch.Properties))
+			bt.Enums = make(map[string][]string, len(sch.Properties))
 			for k, prop := range sch.Properties {
 				bt.Args = append(bt.Args, k)
 				bt.Types[k] = jsonSchemaTypes(prop)
+				bt.Enums[k] = jsonSchemaEnum(prop)
 			}
 			bt.Required = append(bt.Required, sch.Required...)
 		}
@@ -379,22 +384,54 @@ func fullyWiredServer() *Server {
 	return srv
 }
 
-// jsonSchemaTypes reads a property's "type", which JSON Schema allows as a
-// string or an array of strings.
+// jsonSchemaTypes reads a property's JSON types from "type" (string or array
+// of strings) as well as any "anyOf" / "oneOf" union branches.
 func jsonSchemaTypes(prop json.RawMessage) []string {
 	var p struct {
-		Type json.RawMessage `json:"type"`
+		Type  json.RawMessage   `json:"type"`
+		AnyOf []json.RawMessage `json:"anyOf"`
+		OneOf []json.RawMessage `json:"oneOf"`
 	}
-	if json.Unmarshal(prop, &p) != nil || len(p.Type) == 0 {
+	if json.Unmarshal(prop, &p) != nil {
 		return nil
 	}
-	var one string
-	if json.Unmarshal(p.Type, &one) == nil {
-		return []string{one}
+	var out []string
+	if len(p.Type) > 0 {
+		var one string
+		if json.Unmarshal(p.Type, &one) == nil && one != "" {
+			out = append(out, one)
+		} else {
+			var many []string
+			if json.Unmarshal(p.Type, &many) == nil {
+				out = append(out, many...)
+			}
+		}
 	}
-	var many []string
-	_ = json.Unmarshal(p.Type, &many)
-	return many
+	for _, branch := range append(p.AnyOf, p.OneOf...) {
+		out = append(out, jsonSchemaTypes(branch)...)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+// jsonSchemaEnum reads a property's string values from JSON Schema "enum".
+func jsonSchemaEnum(prop json.RawMessage) []string {
+	var p struct {
+		Enum []any `json:"enum"`
+	}
+	if json.Unmarshal(prop, &p) != nil || len(p.Enum) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(p.Enum))
+	for _, v := range p.Enum {
+		if s, ok := v.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // TestMCPArgumentTypesMatchUpstream is w5/m145's type half of the parity
@@ -438,13 +475,97 @@ func TestMCPArgumentTypesMatchUpstream(t *testing.T) {
 
 func TestMCPArgTypeCompatibility(t *testing.T) {
 	up := renderMCPTool{ArgTypes: map[string]renderMCPArgType{
-		"flag": {Type: "boolean"}, "n": {Type: "number"}, "s": {Type: "string"}, "untyped": {},
+		"flag": {Type: "boolean"}, "n": {Type: "number"}, "s": {Type: "string"}, "untyped": {}, "empty": {Type: "number"},
 	}}
 	got := mcpArgTypeMismatches(map[string][]string{
-		"flag": {"string"}, "n": {"null", "integer"}, "s": {"string"}, "untyped": {"object"},
+		"flag": {"string"}, "n": {"null", "integer"}, "s": {"string"}, "untyped": {"object"}, "empty": nil,
 	}, up)
-	if !slices.Equal(got, []string{"flag"}) {
-		t.Errorf("mismatches = %v, want [flag] (an integer is a number; an untyped upstream arg is unconstrained)", got)
+	if !slices.Equal(got, []string{"empty", "flag"}) {
+		t.Errorf("mismatches = %v, want [empty flag] (an integer is a number; an untyped upstream arg is unconstrained; an empty bex type mismatches a typed upstream arg)", got)
+	}
+	// Union schemas using type array, anyOf, or oneOf all extract their member types.
+	if types := jsonSchemaTypes(json.RawMessage(`{"type":["boolean","string"]}`)); !slices.Equal(types, []string{"boolean", "string"}) {
+		t.Errorf("jsonSchemaTypes(array) = %v, want [boolean string]", types)
+	}
+	if types := jsonSchemaTypes(json.RawMessage(`{"anyOf":[{"type":"number"},{"type":"string"}]}`)); !slices.Equal(types, []string{"number", "string"}) {
+		t.Errorf("jsonSchemaTypes(anyOf) = %v, want [number string]", types)
+	}
+	if types := jsonSchemaTypes(json.RawMessage(`{"oneOf":[{"type":"boolean"},{"type":"string"}]}`)); !slices.Equal(types, []string{"boolean", "string"}) {
+		t.Errorf("jsonSchemaTypes(oneOf) = %v, want [boolean string]", types)
+	}
+	if types := jsonSchemaTypes(json.RawMessage(`{}`)); len(types) != 0 {
+		t.Errorf("jsonSchemaTypes({}) = %v, want nil", types)
+	}
+}
+
+// TestMCPArgumentEnumsMatchUpstream is w5/m600's enum parity guard: every
+// shared Render tool argument whose upstream pin declares a JSON Schema "enum"
+// must advertise a JSON Schema "enum" containing every pinned upstream value
+// (bexEnum ⊇ upstreamEnum), or record why in mcpAcceptedEnumDivergences.
+func TestMCPArgumentEnumsMatchUpstream(t *testing.T) {
+	pin, err := loadRenderMCPContract()
+	if err != nil {
+		t.Fatalf("load pin: %v", err)
+	}
+	tools := enumerateBexTools(t)
+	checked := 0
+	for _, bt := range tools {
+		up, ok := pin.Tool(bt.Name)
+		if !ok {
+			continue
+		}
+		for arg, want := range up.ArgTypes {
+			if len(want.Enum) > 0 {
+				if _, exists := bt.Enums[arg]; exists {
+					checked++
+				}
+			}
+		}
+		for _, arg := range mcpArgEnumMismatches(bt.Enums, up) {
+			if _, accepted := mcpAcceptedEnumDivergences[bt.Name+"."+arg]; accepted {
+				continue
+			}
+			t.Errorf("%s.%s: bex enum %v does not cover upstream enum %v — emit a superset enum or record the reason in mcpAcceptedEnumDivergences",
+				bt.Name, arg, bt.Enums[arg], up.ArgTypes[arg].Enum)
+		}
+	}
+	if checked != 21 {
+		t.Fatalf("checked %d shared enum-constrained arguments, want 21 (check the upstream pin)", checked)
+	}
+	// Every accepted enum divergence must still be one, so the list cannot rot.
+	for key := range mcpAcceptedEnumDivergences {
+		name, arg, _ := strings.Cut(key, ".")
+		up, _ := pin.Tool(name)
+		var still bool
+		for _, bt := range tools {
+			if bt.Name == name && slices.Contains(mcpArgEnumMismatches(bt.Enums, up), arg) {
+				still = true
+			}
+		}
+		if !still {
+			t.Errorf("mcpAcceptedEnumDivergences[%q] no longer diverges; remove it", key)
+		}
+	}
+}
+
+func TestMCPArgEnumCompatibility(t *testing.T) {
+	up := renderMCPTool{ArgTypes: map[string]renderMCPArgType{
+		"exact":    {Type: "string", Enum: []string{"a", "b"}},
+		"superset": {Type: "string", Enum: []string{"a", "b"}},
+		"missing":  {Type: "string", Enum: []string{"a", "b"}},
+		"narrow":   {Type: "string", Enum: []string{"a", "b"}},
+		"absent":   {Type: "string", Enum: []string{"a", "b"}},
+		"plain":    {Type: "string"},
+	}}
+	got := mcpArgEnumMismatches(map[string][]string{
+		"exact":    {"a", "b"},
+		"superset": {"a", "b", "c"},
+		"missing":  nil,
+		"narrow":   {"a"},
+		"plain":    nil,
+	}, up)
+	if !slices.Equal(got, []string{"missing", "narrow"}) {
+		t.Errorf("enum mismatches = %v, want [missing narrow]", got)
 	}
 }
 

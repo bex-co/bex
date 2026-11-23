@@ -859,7 +859,7 @@ type createBlueprintArgs struct {
 	Path              *string `json:"path,omitempty" jsonschema:"Blueprint file path relative to the repository root (default render.yaml)."`
 	Name              *string `json:"name,omitempty" jsonschema:"Blueprint name (default: the repository name without the .git suffix)."`
 	AutoSync          *bool   `json:"autoSync,omitempty" jsonschema:"Automatically apply later pushes to the branch after the first sync is approved (default true)."`
-	ExistingResources *string `json:"existingResources,omitempty" jsonschema:"create_new (default) creates a separate set of resources whose names carry a Blueprint-specific suffix, leaving existing resources unchanged; adopt brings matching existing resources under this Blueprint and updates them to match the file.,enum=adopt,enum=create_new"`
+	ExistingResources *string `json:"existingResources,omitempty" jsonschema:"create_new (default) creates a separate set of resources whose names carry a Blueprint-specific suffix, leaving existing resources unchanged; adopt brings matching existing resources under this Blueprint and updates them to match the file."`
 }
 
 type blueprintIDArgs struct {
@@ -1033,6 +1033,9 @@ func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_blueprint",
 		Description: "Create a Blueprint from a Blueprint YAML file in a public repository or one reachable through the workspace's GitHub connection, and plan its first sync. Resource changes are applied only after approval with approve_blueprint; after the first approval, later pushes deploy automatically when autoSync is enabled. All Blueprint changes are read from the remote repository: push local changes first. Returns {blueprint, planningOutcome, sync, notices}. " + planningGuidance,
+		InputSchema: mcputil.InputSchema[createBlueprintArgs](
+			mcputil.PropEnum("existingResources", store.BlueprintExistingAdopt, store.BlueprintExistingCreateNew),
+		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
 		res, err := s.createBlueprintTool(ctx, in)
 		return nil, res, err
