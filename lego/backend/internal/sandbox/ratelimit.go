@@ -27,7 +27,6 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"golang.org/x/time/rate"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
@@ -227,11 +226,10 @@ var restRateClasses = func() *http.ServeMux {
 }()
 
 // RateLimits holds Render's per-user sandbox buckets, one per class, and the
-// workspace bound over all of them. Each is a core.KeyedRateLimiter, the
-// token bucket behind every bex-api limiter, so the same caveat holds: the
-// buckets live in one process, and a class admits its rate as a burst and
-// then refills continuously. A nil *RateLimits limits nothing, which is what
-// BEX_RATE_LIMIT=0 leaves.
+// workspace bound over all of them. Each is a core.KeyedRateLimiter: a class
+// admits its rate as a burst and then refills continuously, and when
+// SetSharedStore is wired (w8/m579) every replica shares one Postgres store.
+// A nil *RateLimits limits nothing, which is what BEX_RATE_LIMIT=0 leaves.
 type RateLimits struct {
 	// Keys resolves an API key to its creator, so a user's keys share that
 	// user's buckets: the cached lookup that caps a key at its creator's role
@@ -259,6 +257,18 @@ func NewRateLimits(keys core.KeyCreatorResolver) *RateLimits {
 	}
 }
 
+// SetSharedStore backs every sandbox rate class and the sandbox workspace bound
+// with a cross-replica RateLimitStore.
+func (l *RateLimits) SetSharedStore(store core.RateLimitStore) {
+	if l == nil {
+		return
+	}
+	for class, limiter := range l.classes {
+		limiter.SetSharedStore(store, "sandbox:"+string(class), nil)
+	}
+	l.workspace.SetSharedStore(store, "sandbox:workspace", nil)
+}
+
 func (l *RateLimits) now() time.Time {
 	if l.Now != nil {
 		return l.Now()
@@ -268,10 +278,10 @@ func (l *RateLimits) now() time.Time {
 
 // buckets are what one operation of class spends: the caller's class bucket
 // and, when the caller has a workspace bucket key, the workspace bound.
-func (l *RateLimits) buckets(ctx context.Context, class RateClass, workspace string) []*rate.Limiter {
-	out := []*rate.Limiter{l.classes[class].Bucket(core.RateLimitUser(ctx, l.Keys))}
+func (l *RateLimits) buckets(ctx context.Context, class RateClass, workspace string) []core.RateLimitBucket {
+	out := []core.RateLimitBucket{l.classes[class].Handle(core.RateLimitUser(ctx, l.Keys))}
 	if workspace != "" {
-		out = append(out, l.workspace.Bucket(workspace))
+		out = append(out, l.workspace.Handle(workspace))
 	}
 	return out
 }
@@ -281,7 +291,7 @@ func (l *RateLimits) buckets(ctx context.Context, class RateClass, workspace str
 // the limiter answers its own 429 when one is empty. nil for any other
 // request, GraphQL and MCP included: their operations are charged where they
 // are known (charge).
-func (l *RateLimits) RequestBuckets(r *http.Request, workspace string) []*rate.Limiter {
+func (l *RateLimits) RequestBuckets(r *http.Request, workspace string) []core.RateLimitBucket {
 	if l == nil {
 		return nil
 	}
@@ -305,9 +315,10 @@ func (l *RateLimits) charge(ctx context.Context, class RateClass, code string, r
 	scope := core.RateLimitScopeFrom(ctx)
 	now := l.now()
 	if refund {
-		scope.Refund(now)
+		scope.Refund(ctx, now)
 	}
-	return core.ChargeRateLimit(scope.Header(), now, code, l.buckets(ctx, class, scope.Workspace())...)
+	_, err := core.ChargeRateLimit(ctx, scope.Header(), now, code, l.buckets(ctx, class, scope.Workspace())...)
+	return err
 }
 
 // handle mounts a REST sandbox route. The general limiter charges the route's

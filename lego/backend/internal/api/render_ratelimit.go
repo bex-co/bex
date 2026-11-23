@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"golang.org/x/time/rate"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -139,8 +138,8 @@ const renderWorkspaceRatePerMinute = 10000
 
 // RenderRateLimits holds Render's public API buckets: one keyed limiter per
 // row, and the workspace bound over all of them. They are core's token
-// buckets, so the caveats of every bex-api limiter hold: a row admits its
-// figure as a burst and refills continuously, and each replica counts alone.
+// buckets: each row admits its figure as a burst and refills continuously, and
+// when SetSharedStore is wired (w8/m579) every replica shares one Postgres store.
 type RenderRateLimits struct {
 	// Keys resolves an API key to its creator, so a user's keys share that
 	// user's rows (core.RateLimitUser).
@@ -166,6 +165,18 @@ func NewRenderRateLimits(keys core.KeyCreatorResolver) *RenderRateLimits {
 	}
 }
 
+// SetSharedStore backs every Render row and the Render workspace bound with a
+// cross-replica RateLimitStore.
+func (l *RenderRateLimits) SetSharedStore(store core.RateLimitStore) {
+	if l == nil {
+		return
+	}
+	for row, limiter := range l.rows {
+		limiter.SetSharedStore(store, "render:"+string(row), nil)
+	}
+	l.workspace.SetSharedStore(store, "render:workspace", nil)
+}
+
 // ServiceDeploys is the deploy row's limiter, keyed by service id. A deploy
 // hook spends it too: Render counts hooks in the same ten a minute.
 func (l *RenderRateLimits) ServiceDeploys() *core.KeyedRateLimiter[string] {
@@ -182,7 +193,7 @@ func renderLimited(ctx context.Context) bool {
 // buckets are what one request of row spends. The deploy row is keyed by
 // service, every other row by the caller's user; an operation of the deploy
 // row with no service id falls back to the write row.
-func (l *RenderRateLimits) buckets(ctx context.Context, row renderRateRow, serviceID, workspace string) []*rate.Limiter {
+func (l *RenderRateLimits) buckets(ctx context.Context, row renderRateRow, serviceID, workspace string) []core.RateLimitBucket {
 	key := serviceID
 	if row != renderRowDeploy || serviceID == "" {
 		if row == renderRowDeploy {
@@ -190,9 +201,9 @@ func (l *RenderRateLimits) buckets(ctx context.Context, row renderRateRow, servi
 		}
 		key = core.RateLimitUser(ctx, l.Keys)
 	}
-	out := []*rate.Limiter{l.rows[row].Bucket(key)}
+	out := []core.RateLimitBucket{l.rows[row].Handle(key)}
 	if workspace != "" {
-		out = append(out, l.workspace.Bucket(workspace))
+		out = append(out, l.workspace.Handle(workspace))
 	}
 	return out
 }
@@ -207,7 +218,7 @@ type renderRESTOperations struct {
 	contract *renderOpenAPIContract
 }
 
-func (o renderRESTOperations) RequestBuckets(r *http.Request, workspace string) []*rate.Limiter {
+func (o renderRESTOperations) RequestBuckets(r *http.Request, workspace string) []core.RateLimitBucket {
 	if !renderLimited(r.Context()) {
 		return nil
 	}
@@ -254,6 +265,9 @@ func (s *Server) LimitRenderOperations() {
 		keys = s.Apps.KeyCreators
 	}
 	s.RenderRateLimits = NewRenderRateLimits(keys)
+	if s.RateLimitStore != nil {
+		s.RenderRateLimits.SetSharedStore(s.RateLimitStore)
+	}
 	if s.Deploys != nil {
 		s.Deploys.ServiceDeployRate = s.RenderRateLimits.ServiceDeploys()
 	}
@@ -281,13 +295,14 @@ func (s *Server) mcpRenderRateLimits(next mcp.MethodHandler) mcp.MethodHandler {
 			_ = json.Unmarshal(call.Params.Arguments, &args)
 		}
 		now := s.RateLimiter.clock()
-		scope.Refund(now)
+		scope.Refund(ctx, now)
 		buckets := s.RenderRateLimits.buckets(ctx, row, args.ServiceID, scope.Workspace())
-		if err := core.ChargeRateLimit(scope.Header(), now, "rate_limited", buckets...); err != nil {
+		states, err := core.ChargeRateLimit(ctx, scope.Header(), now, "rate_limited", buckets...)
+		if err != nil {
 			return mcpCallError(ctx, core.MCPError(err)), nil
 		}
 		if h := scope.Header(); h != nil {
-			core.SetRateLimitHeaders(h, now, false, buckets...)
+			core.SetRateLimitHeaders(h, false, states...)
 		}
 		return next(ctx, method, req)
 	}

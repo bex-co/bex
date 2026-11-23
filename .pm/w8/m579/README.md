@@ -1,18 +1,18 @@
 # w8 · m579 — Share bex-api rate-limit buckets and log-subscription caps across replicas
 
-**Worker:** worker8 **Goal:** every Render-compatible REST operation, Render MCP tool, deploy hook, general/sandbox API bucket, and log-subscription cap (`BEX_MAX_SSE_CONNS`, per-subject, per-workspace) is enforced across all `bex-api` replicas through one shared control-plane Postgres store, so a caller's effective budget matches Render's documented numbers and `RateLimit-Remaining` decreases consistently whichever replica answers. **Status:** todo
+**Worker:** worker8 **Goal:** every Render-compatible REST operation, Render MCP tool, deploy hook, general/sandbox API bucket, and log-subscription cap (`BEX_MAX_SSE_CONNS`, per-subject, per-workspace) is enforced across all `bex-api` replicas through one shared control-plane Postgres store, so a caller's effective budget matches Render's documented numbers and `RateLimit-Remaining` decreases consistently whichever replica answers. **Status:** todo (t001–t007 done; t008 waiting on production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Control-plane Postgres schema and atomic store operations for shared token buckets and log-subscription leases | 45m | — |
-| [t002](t002.md) | Shared rate-limit backend in `core`, `api`, `sandbox`, `deploys` and `cmd/api` with fail-open fallback | 50m | t001 |
-| [t003](t003.md) | Shared log-subscription caps across replicas with lease heartbeats in `internal/logs` | 40m | t001 |
-| [t004](t004.md) | Docs: update ADR006, ADR018, ADR104 and rate-limit references | 25m | t002, t003 |
-| [t005](t005.md) | Render parity | 25m | t004 |
-| [t006](t006.md) | Simplify | 20m | t005 |
-| [t007](t007.md) | Test coverage | 40m | t005, t006 |
+| [t001](done/t001.md) | Control-plane Postgres schema and atomic store operations for shared token buckets and log-subscription leases — **DONE** | 45m | — |
+| [t002](done/t002.md) | Shared rate-limit backend in `core`, `api`, `sandbox`, `deploys` and `cmd/api` with fail-open fallback — **DONE** | 50m | t001 |
+| [t003](done/t003.md) | Shared log-subscription caps across replicas with lease heartbeats in `internal/logs` — **DONE** | 40m | t001 |
+| [t004](done/t004.md) | Docs: update ADR006, ADR018, ADR104 and rate-limit references — **DONE** | 25m | t002, t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 25m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005, t006 |
 | [t008](t008.md) | Live check on production in `bex-canary` | 20m | t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
@@ -40,3 +40,25 @@ Total: **9 tasks, about 4h35m**.
 - **Expected outcome:** a script or client pacing itself from `RateLimit-Remaining` sees consistent counts across consecutive requests, and a caller's effective rate budget and concurrent log-tail caps match the documented limits regardless of replica count.
 - **Why now:** w8/410 (`696783e94e`) just adopted Render's per-endpoint REST/MCP rate limits on production, and its live read showed consecutive GETs reading 399 twice across the two replicas; ADR018 records no user sign-off for a per-replica divergence, so under AGENTS.md it is open parity work.
 - **Render parity included:** yes (`t005`) — the rate-limit headers, refusal bodies, and log-subscription caps are tenant-facing across REST, GraphQL, MCP, deploy hooks, and SSE/WS log tails.
+
+## Render parity check (t005, 2026-11-23)
+
+- **REST (Render contract):** GET/HEAD (400/m), writes (30/m), log reads (30/m), service create (20/h), custom domain (50/h), jobs (100/m), and per-service deploy (10/m) all share Postgres buckets under `render:<row>:*` + `render:workspace:*` and emit `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, and 429 + `Retry-After` + `RateLimit-Remaining: 0` (`{"id":"rate_limited","message":"…"}`).
+- **MCP:** Render MCP tools (`mcpRenderRateLimits`) refund their general token in Postgres and spend their mapped REST row (`rate_limited` tool error on refusal); sandbox MCP tools (`sandbox.addTool`) refund their general token and spend their sandbox class in Postgres.
+- **GraphQL:** queries/mutations keep `BEX_RATE_LIMIT` in Postgres (`general:caller:*` + `general:workspace:*`), batch admission charges `len(bodies)-1` extra tokens atomically across replicas, and sandbox-only GraphQL documents refund their general token in Postgres.
+- **Deploy hooks & dashboard sessions:** deploy hooks share `deployhook:token:<sha256>` and `render:deploy:<srv-id>` with REST/MCP deploys across replicas; dashboard Kratos sessions (`MethodSession`) on REST keep `BEX_RATE_LIMIT`.
+- **Log subscriptions:** SSE, WebSocket, NDJSON, and project tails all enter `logs.Service.acquireSlot`, sharing global/subject/workspace TTL leases in `log_subscription_slots` (60 s TTL, 20 s heartbeat) and answering `429 too many active log subscriptions` past any cap.
+- **Internal callers & off switch:** `:8091`, `/healthz`, `/readyz`, and in-process reconcilers stay unthrottled; `BEX_RATE_LIMIT=0` disables general, Render, and sandbox limiters. No silent Render drift uncovered.
+
+## DoD → test map (t007, 2026-11-23)
+
+| DoD | Tests |
+| --- | --- |
+| 1. Shared token buckets across replicas | `store.TestPGRateLimitBucketsTakeRefillRefundAndPrune`, `api.TestSharedRenderGetBudgetAcrossTwoReplicasPG`, `api.TestSharedDeployRowAndServiceCreateAcrossTwoReplicasPG`, `api.TestSharedSandboxRateClassesAcrossTwoReplicasPG` |
+| 2. All-or-nothing multi-bucket charges and clean refunds | `store.TestPGRateLimitMultiBucketAllOrNothingAndConcurrentNoDeadlock`, `api.TestSharedMultiBucketRefusalMCPAndGraphQLBatchPG`, `core.TestReserveEachTakesFromAllOrNone`, `core.TestRateLimitScopeRefundsOnceAndNeverPastTheBurst` |
+| 3. Shared log-subscription caps with lease heartbeats and expiry | `store.TestPGLogSubscriptionSlotsCapsRenewalReleaseAndExpiry`, `logs.TestSharedLogSubscriptionCapsAcrossTwoReplicasPG`, `logs.TestSharedLogSubscriptionLeaseRenewalAndExpiryPG` |
+| 4. Fail-open fallback and internal exemptions | `core.TestTakeRateLimitBucketsFallsBackToLocalOnStoreError`, `api.TestRateLimiterFailsOpenToLocalOnStoreError`, `logs.TestSharedLogSubscriptionFailsOpenToLocalOnStoreError`, `api.TestRenderRateLimitsAreOffWithTheGeneralLimiter` |
+| 5. Docs and parity | `docs/ADR006-bex-api.md`, `docs/ADR018-render-parity.md`, `docs/ADR104-sandbox-render-parity.md`, `docs/render-artifacts/rate-limit-headers.md` (`docs-links-validate.sh` + Prettier green) |
+| 6. Live check on production (`bex-canary`) | Pending `t008` once production's pin carries the implementation commit |
+
+Mutation spot-check verified: disconnecting `KeyedRateLimiter.SetSharedStore` failed `api.TestSharedRenderGetBudgetAcrossTwoReplicasPG` at request 2 (`Remaining="399", want 398`), and disabling `logs.Service.SubscriptionStore` failed `logs.TestSharedLogSubscriptionCapsAcrossTwoReplicasPG` on the 3rd cross-replica subscription (`<nil>, want errSubscriptionLimit`). Migration `0336_shared_rate_limits.{down,up}.sql` applied, rolled back, and re-applied cleanly against real Postgres.

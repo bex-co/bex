@@ -315,7 +315,7 @@ The table is `rateClasses` in `lego/backend/internal/sandbox/ratelimit.go`, name
 
 **Known differences from Render's table:**
 
-- **Each bex-api replica keeps its own buckets** (ADR006 § rate limits: the limiters are in-process). Production runs two replicas, so a user can be admitted up to twice a class's rate, depending on how the load balancer spreads their requests. It is never stricter than Render. One shared bucket per user and class is w22/021.
+- **Shared across replicas (w8/m579, 2026-11-23):** sandbox rate classes share the control-plane Postgres token-bucket store (`rate_limit_buckets`, [ADR006 § Rate limits](ADR006-bex-api.md#rate-limits)) across `bex-api` replicas, falling back fail-open to local in-process buckets on a Postgres outage or DB-free run.
 - **A class is a token bucket**, as the general limiter is: it admits its rate as a burst and refills continuously, so a caller who was idle can send up to twice the rate in their first minute. Render does not document its window.
 
 **Production check:** leg `rate` of `sandbox-measure.yml` (`scripts/measure-sandbox-rate.sh`): 600 execs inside a minute with none rate limited, and a burst of creates across two API keys of one user in which the first 100 are admitted and creates past the buckets are refused with `rate_limited` on both keys. Pending the deploy that carries w22/m443.

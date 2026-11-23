@@ -743,7 +743,7 @@ func main() {
 	// unreachable would be a far worse trade. It retries on the next start.
 	backfillMachineMemberships(ctx, st, deps.APIKeys)
 
-	configureRateLimiters(srv, cfg)
+	configureRateLimiters(ctx, srv, cfg, st)
 
 	srv.MaxBodyBytes = cfg.MaxBodyBytes
 
@@ -752,6 +752,9 @@ func main() {
 	srv.Logs.MaxSSEConns = cfg.MaxSSEConns
 	srv.Logs.MaxSSEConnsPerSubject = cfg.MaxSSEConnsPerSubject
 	srv.Logs.MaxSSEConnsPerWorkspace = cfg.MaxSSEConnsPerWorkspace
+	if st != nil {
+		srv.Logs.SubscriptionStore = st
+	}
 	// w4/034: the live log tail's authorization watchdog cadence — every
 	// established SSE/WebSocket/NDJSON subscription re-runs a FRESH
 	// can_view_logs check on this interval so a revocation ends the stream
@@ -2115,8 +2118,10 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 }
 
 // configureRateLimiters wires the trusted-proxy-aware rate limiters and the
-// pre-auth admission budget onto the server.
-func configureRateLimiters(srv *api.Server, cfg *Config) {
+// pre-auth admission budget onto the server. When control-plane Postgres (st)
+// is available (w8/m579), it backs the rate limiters with the shared store and
+// starts the periodic bucket pruner tied to ctx.
+func configureRateLimiters(ctx context.Context, srv *api.Server, cfg *Config, st *store.PGStore) {
 	// Trusted-proxy CIDRs for rate-limit identity (w4/m33 P2 register,
 	// .pm/w4/029.md report #10). In production every public request's TCP peer
 	// is a Traefik pod, so without this every IP-keyed limiter below keys all
@@ -2127,11 +2132,21 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// headers ignored (byte-identical to before). Malformed ⇒ fail closed.
 	trustedProxies := cfg.TrustedProxies
 
+	if st != nil {
+		srv.RateLimitStore = st
+		go pruneRateLimitBucketsLoop(ctx, st)
+	}
+
 	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
 	rpm, burst := cfg.RateLimitRPM, cfg.RateLimitBurst
 	srv.RateLimiter = api.NewRateLimiter(rpm, burst) // nil when rpm=0 (disabled)
-	if srv.RateLimiter != nil && srv.APIKeys != nil && srv.APIKeys.Base != nil {
-		srv.RateLimiter.Workspace = srv.APIKeys.Base.Workspace
+	if srv.RateLimiter != nil {
+		if srv.APIKeys != nil && srv.APIKeys.Base != nil {
+			srv.RateLimiter.Workspace = srv.APIKeys.Base.Workspace
+		}
+		if st != nil {
+			srv.RateLimiter.SetSharedStore(st, "general")
+		}
 	}
 	// Sandbox operations are counted against Render's per-operation table
 	// instead (w22/m443); BEX_RATE_LIMIT=0 turns that off with the limiter.
@@ -2140,6 +2155,9 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// Render's per-endpoint rows (w8/410), and deploy hooks against the deploy
 	// row's per-service bucket.
 	srv.LimitRenderOperations()
+	if st != nil && srv.Deploys != nil && srv.Deploys.DeployHookLimiter != nil {
+		srv.Deploys.DeployHookLimiter.SetSharedStore(st)
+	}
 
 	// Device-flow rate limiting (w4/m31/t002). BEX_DEVICE_RATE_LIMIT=0
 	// disables it. Set here, before Handler(), like every other cap: Handler()
@@ -2164,7 +2182,7 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	srv.WebhookRateLimiter = api.NewRateLimiter(webhookRPM, webhookBurst) // nil when rpm=0
 
 	// Deploy-hook lookup limiting is a distinct IP budget outside the auth gate.
-	// The hook's inner 6/min token bucket handles a leaked valid credential; this
+	// The hook's inner 10/min token bucket handles a leaked valid credential; this
 	// outer cap sheds random-token enumeration before any Kubernetes API lookup.
 	deployHookLookupRPM, deployHookLookupBurst := cfg.DeployHookLookupRPM, cfg.DeployHookLookupBurst
 	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
@@ -2173,6 +2191,12 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// redeemed token was minted under Render's per-user exec or file-transfer
 	// rate (w22/m443), and counting redeems held a caller to 60 execs a minute.
 	srv.SandboxConnectRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
+
+	if st != nil {
+		srv.WebhookRateLimiter.SetSharedStore(st, "webhook")
+		srv.DeployHookLookupRateLimiter.SetSharedStore(st, "deployhook-lookup")
+		srv.SandboxConnectRateLimiter.SetSharedStore(st, "sandbox-connect")
+	}
 
 	// Pre-auth admission (w1/m67 F1). The per-caller limiter above runs INSIDE
 	// the auth gate, keyed on the resolved identity, so it cannot bound the work
@@ -2205,6 +2229,23 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	}
 	if srv.DeviceRateLimiter != nil {
 		srv.DeviceRateLimiter.TrustedProxies = trustedProxies
+	}
+}
+
+func pruneRateLimitBucketsLoop(ctx context.Context, st *store.PGStore) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			pCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			if _, err := st.PruneRateLimitBuckets(pCtx, time.Now()); err != nil && !errors.Is(err, context.Canceled) {
+				log.Printf("bex-api: prune rate-limit buckets: %v", err)
+			}
+			cancel()
+		}
 	}
 }
 

@@ -27,7 +27,6 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"golang.org/x/time/rate"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -183,7 +182,7 @@ func TestTheWorkspaceBoundSitsAboveOneUsersWholeTable(t *testing.T) {
 	}
 	limits, _ := frozenLimits(nil)
 	scoped := func(subject string) context.Context {
-		return core.WithRateLimitScope(asUser(subject), core.NewRateLimitScope("workspace:tea-a", http.Header{}, nil))
+		return core.WithRateLimitScope(asUser(subject), core.NewRateLimitScope("workspace:tea-a", http.Header{}, nil, false))
 	}
 	// One user spends every class in full and the workspace bound never
 	// answers first.
@@ -375,7 +374,7 @@ func TestGraphQLRefundsTheGeneralBudgetOnlyForSandboxOnlyDocuments(t *testing.T)
 		if _, wait := core.ReserveEach(*now, 1, general); wait > 0 {
 			t.Fatal("the general bucket is empty")
 		}
-		ctx := core.WithRateLimitScope(asUser("identity-1"), core.NewRateLimitScope("", http.Header{}, []*rate.Limiter{general}))
+		ctx := core.WithRateLimitScope(asUser("identity-1"), core.NewRateLimitScope("", http.Header{}, []core.RateLimitBucket{core.LocalRateLimitBucket(general)}, false))
 		return graphql.Do(graphql.Params{Schema: schema, RequestString: query, Context: ctx})
 	}
 	tokens := func() int { return int(general.TokensAt(*now)) }
@@ -431,7 +430,7 @@ func TestMCPToolSpendsItsClassAndRefusesByName(t *testing.T) {
 	general := core.NewKeyedRateLimiter[string](60, 5, time.Minute, time.Minute).Bucket("id:identity-1")
 	core.ReserveEach(*now, 1, general)
 	header := http.Header{}
-	ctx := core.WithRateLimitScope(asUser("identity-1"), core.NewRateLimitScope("", header, []*rate.Limiter{general}))
+	ctx := core.WithRateLimitScope(asUser("identity-1"), core.NewRateLimitScope("", header, []core.RateLimitBucket{core.LocalRateLimitBucket(general)}, false))
 	serverT, clientT := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, serverT, nil); err != nil {
 		t.Fatal(err)

@@ -18,14 +18,18 @@ package logs
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -427,7 +431,52 @@ func resumeFrom(lastEventID string) (time.Time, bool) {
 	return t, true
 }
 
-var errSubscriptionLimit = errors.New("log subscription capacity reached")
+var errSubscriptionLimit = core.ErrLogSubscriptionLimit
+
+const (
+	subscriptionStoreTimeout = 2 * time.Second
+	subscriptionWarnInterval = 30 * time.Second
+)
+
+var lastSubscriptionStoreWarn atomic.Int64
+
+func warnSubscriptionStoreFallback(op string, err error) {
+	now := time.Now().UnixNano()
+	prev := lastSubscriptionStoreWarn.Load()
+	if now-prev >= int64(subscriptionWarnInterval) && lastSubscriptionStoreWarn.CompareAndSwap(prev, now) {
+		log.Printf("bex-api: shared log-subscription store %s failed (falling back to local caps): %v", op, err)
+	}
+}
+
+func newSubscriptionSlotID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return fmt.Sprintf("slot-%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b[:])
+}
+
+func (s *Service) subscriptionNow() time.Time {
+	if s.SubscriptionNow != nil {
+		return s.SubscriptionNow()
+	}
+	return time.Now()
+}
+
+func (s *Service) subscriptionLeaseTimings() (ttl, renew time.Duration) {
+	ttl = s.SubscriptionLeaseTTL
+	if ttl <= 0 {
+		ttl = DefaultSubscriptionLeaseTTL
+	}
+	renew = s.SubscriptionRenewInterval
+	if renew <= 0 {
+		renew = DefaultSubscriptionRenewInterval
+	}
+	if renew >= ttl {
+		renew = max(time.Millisecond, ttl/3)
+	}
+	return ttl, renew
+}
 
 // writeSubscriptionRefusal answers a subscription admission refused: 429 at
 // capacity, the error's own status otherwise.
@@ -447,9 +496,11 @@ func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), 
 }
 
 // acquireSlot takes one subscription slot for the caller in the workspace
-// workspaceOf answers: one of the process-global, per-caller and
-// per-workspace shares. The global share is taken first, so a full process
-// refuses before any authorization runs.
+// workspaceOf answers: global, per-caller, and per-workspace caps. The local
+// global cap is checked first so a full process refuses before authorization
+// runs; when SubscriptionStore is wired (w8/m579), all three caps are enforced
+// across replicas via Postgres TTL leases with heartbeat renewal, falling back
+// fail-open to local counters on store outage.
 func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, error)) (func(), error) {
 	global := false
 	if s.MaxSSEConns > 0 {
@@ -471,6 +522,60 @@ func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, e
 	}
 	identity, _ := core.IdentityFrom(ctx)
 	subject := identity.Subject
+
+	if s.SubscriptionStore != nil && (s.MaxSSEConns > 0 || s.MaxSSEConnsPerSubject > 0 || s.MaxSSEConnsPerWorkspace > 0) {
+		ttl, renewInterval := s.subscriptionLeaseTimings()
+		slotID := newSubscriptionSlotID()
+		storeCtx, cancel := context.WithTimeout(ctx, subscriptionStoreTimeout)
+		acqErr := s.SubscriptionStore.AcquireLogSubscriptionSlot(
+			storeCtx, s.subscriptionNow(), slotID, subject, workspace,
+			ttl, s.MaxSSEConns, s.MaxSSEConnsPerSubject, s.MaxSSEConnsPerWorkspace,
+		)
+		cancel()
+		switch {
+		case acqErr == nil:
+			renewCtx, cancelRenew := context.WithCancel(context.Background())
+			doneCh := make(chan struct{})
+			go func() {
+				defer close(doneCh)
+				ticker := time.NewTicker(renewInterval)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-renewCtx.Done():
+						return
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						tCtx, tCancel := context.WithTimeout(renewCtx, subscriptionStoreTimeout)
+						if rErr := s.SubscriptionStore.RenewLogSubscriptionSlot(tCtx, slotID, s.subscriptionNow().Add(ttl)); rErr != nil && !errors.Is(rErr, context.Canceled) {
+							warnSubscriptionStoreFallback("renew", rErr)
+						}
+						tCancel()
+					}
+				}
+			}()
+			var once sync.Once
+			return func() {
+				once.Do(func() {
+					cancelRenew()
+					<-doneCh
+					relCtx, relCancel := context.WithTimeout(context.Background(), subscriptionStoreTimeout)
+					if rErr := s.SubscriptionStore.ReleaseLogSubscriptionSlot(relCtx, slotID); rErr != nil {
+						warnSubscriptionStoreFallback("release", rErr)
+					}
+					relCancel()
+					releaseGlobal()
+				})
+			}, nil
+		case errors.Is(acqErr, core.ErrLogSubscriptionLimit):
+			releaseGlobal()
+			return nil, errSubscriptionLimit
+		default:
+			warnSubscriptionStoreFallback("acquire", acqErr)
+			// Fall through fail-open to local per-subject/per-workspace counters.
+		}
+	}
 
 	s.sseMu.Lock()
 	if s.sseBySubject == nil {

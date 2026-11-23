@@ -98,6 +98,23 @@ const DefaultRequestPollInterval = 2 * time.Second
 // a proxied response that sends nothing for 100 seconds.
 const DefaultTailHeartbeatInterval = 25 * time.Second
 
+// DefaultSubscriptionLeaseTTL and DefaultSubscriptionRenewInterval govern
+// cross-replica log-subscription slot leases (w8/m579): active streams renew
+// every 20s while a crashed replica's leases expire automatically after 60s.
+const (
+	DefaultSubscriptionLeaseTTL      = 60 * time.Second
+	DefaultSubscriptionRenewInterval = 20 * time.Second
+)
+
+// SubscriptionSlotStore shares active log-subscription slot leases across
+// bex-api replicas through control-plane Postgres (w8/m579). Implemented by
+// *store.PGStore.
+type SubscriptionSlotStore interface {
+	AcquireLogSubscriptionSlot(ctx context.Context, now time.Time, slotID, subject, workspace string, ttl time.Duration, maxGlobal int64, maxSubject, maxWorkspace int) error
+	RenewLogSubscriptionSlot(ctx context.Context, slotID string, expiresAt time.Time) error
+	ReleaseLogSubscriptionSlot(ctx context.Context, slotID string) error
+}
+
 // The log labels Render's clients filter and discover by (`list_log_label_values`'s
 // enum). Each maps onto a stream label the shipper attaches — except LabelHost,
 // which is deliberately NOT a label (unbounded per request; it lives in the access
@@ -224,6 +241,17 @@ type Service struct {
 	// the corresponding dimension.
 	MaxSSEConnsPerSubject   int
 	MaxSSEConnsPerWorkspace int
+	// SubscriptionStore, when wired (control-plane Postgres, w8/m579), enforces
+	// MaxSSEConns, MaxSSEConnsPerSubject, and MaxSSEConnsPerWorkspace across all
+	// bex-api replicas via TTL leases with heartbeat renewal. On store errors it
+	// falls back fail-open to the in-process counters below.
+	SubscriptionStore SubscriptionSlotStore
+	// SubscriptionLeaseTTL and SubscriptionRenewInterval tune the shared lease
+	// lifetime and heartbeat cadence (0 => defaults 60s / 20s; tests shrink).
+	SubscriptionLeaseTTL      time.Duration
+	SubscriptionRenewInterval time.Duration
+	// SubscriptionNow supplies the current time for lease operations; nil => time.Now.
+	SubscriptionNow func() time.Time
 	// RevalidateInterval is the live tail's authorization watchdog cadence
 	// (w4/034): an established FollowLogs stream re-runs a FRESH
 	// AuthorizeApp(can_view_logs) — bypassing the checker's positive cache — on

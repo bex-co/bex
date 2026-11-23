@@ -747,21 +747,20 @@ Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Ret
 | --- | --- | --- |
 | Non-GET body size | 2 MiB (2097152 bytes) → 413; at least 4 MiB (`secrets.MaxEnvironmentBodyBytes`) on `/graphql`, `/mcp` and the REST routes that write secret files, so a full 1 MiB set fits even when JSON escaping doubles it (w4/m363) | `BEX_MAX_BODY_BYTES` |
 | Log / metrics query window (`startTime`..`endTime`) | 720 h (30 days): a log read's start past it is clamped to it, as Render documents no range limit (w8/374); a wider metrics window → 400 | `BEX_MAX_QUERY_HOURS` |
-| Concurrent `GET /v1/logs/subscribe` SSE streams | 100 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS` |
-| … per subject (one user or API key) | 5 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS_PER_SUBJECT` |
-| … per workspace | 20 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS_PER_WORKSPACE` |
+| Concurrent `GET /v1/logs/subscribe` SSE/WS/NDJSON streams | 100 → 429, across all replicas | `BEX_MAX_SSE_CONNS` |
+| … per subject (one user or API key) | 5 → 429, across all replicas | `BEX_MAX_SSE_CONNS_PER_SUBJECT` |
+| … per workspace | 20 → 429, across all replicas | `BEX_MAX_SSE_CONNS_PER_WORKSPACE` |
 
 **An idle tail holds its slot (w1/m146).** A live tail now stays open for as long as it is authorized and its service exists, including a cron job between runs or a hibernated service. Every open Logs tab therefore holds one subscription slot for as long as it is open, idle or not. That was already true of a running service's tab. Before w1/m146 an idle service's tab only looked cheaper, because it was reconnecting every ~3 s.
 
 - **Idle tails count like busy ones.** A tail over a subject's share is refused with `429 too many active log subscriptions`, whether the other tails are busy or idle. Counting idle tails separately would hand a reconnect loop's apparent cost back to exactly the streams that cost nothing while idle (one keepalive every 25 s).
-- **The caps are counted in memory by each bex-api process.** Production runs two replicas (`lego/operator/config/prod/kustomization.yaml`, `/spec/replicas: 2`), so one subject's ceiling is up to twice the configured share, depending on how the load balancer spreads its connections.
-- **Measured 2026-09-15 on production** as the QA user, with twelve concurrent tails of one idle cron job: tails 1–10 were accepted and held open, and tails 11 and 12 got the 429.
+- **The caps are shared across all `bex-api` replicas (w8/m579).** Active streams hold a TTL lease row in control-plane Postgres (`log_subscription_slots`, 60 s TTL renewed every 20 s while open and deleted immediately on close), enforced atomically across global, per-subject, and per-workspace dimensions. A crashed replica's leases expire automatically after the TTL. On a transient Postgres outage or in DB-free local mode, admission fails open to the replica's in-process counters rather than returning 500s.
 
 All limits but Render's rows and the sandbox table are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely, those rows included (per-plan differentiated budgets are a follow-up once real traffic data exists).
 
 **Sandbox operations have their own budgets (w22/m443).** A `/v1/sandboxes` or `/v1/sandbox-groups` call, and the same operation as a GraphQL field or an MCP tool, spends one of Render's seven per-user, per-operation classes instead of the general budget above ([ADR104 D7 § API rate limits](ADR104-sandbox-render-parity.md#api-rate-limits-w22m443)). The rates are Render's and have no environment variable; `BEX_RATE_LIMIT=0` turns them off too. The public sandbox connect redeem routes take `BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT`'s figure per address, but only a token that does not redeem spends it.
 
-**Note:** production runs bex-api with two replicas (`lego/operator/config/prod/kustomization.yaml`), and the per-caller token bucket and the log-subscription caps are in-process. Each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas`, and a subscription share is likewise per replica. A distributed counter (for example a Redis token bucket) is the follow-up.
+**Shared across replicas via control-plane Postgres (w8/m579).** Production runs `bex-api` with two replicas (`lego/operator/config/prod/kustomization.yaml`). Every token bucket (Render REST/MCP rows, general `BEX_RATE_LIMIT`, deploy hooks, sandbox rate classes, webhook intake, deploy-hook lookup, and sandbox-connect refusal budgets) is stored in control-plane Postgres (`rate_limit_buckets`, pruned periodically once idle past its refill window), so effective budgets and `RateLimit-Remaining` stay consistent whichever replica serves each request. Multi-bucket takes (`caller` + `workspace`) run in one transaction locking keys in sorted order (all-or-nothing, deadlock-free), and classified GraphQL/MCP refunds return the general token in the same store. Engineering default (not a user decision): when control-plane Postgres is unavailable or unconfigured (unit tests, DB-free local dev, or a transient DB outage), both rate-limit buckets and log-subscription caps fail open to their replica-local in-process implementations with bounded store timeouts so a Postgres blip never turns API traffic into 500s.
 
 ## Per-workspace resource caps (w7/m9, retired to ResourceQuota in w3/m34)
 

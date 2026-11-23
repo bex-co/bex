@@ -18,15 +18,109 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
 )
+
+// ErrLogSubscriptionLimit is returned when acquiring a log subscription slot
+// would exceed the global, per-subject, or per-workspace cap.
+var ErrLogSubscriptionLimit = errors.New("log subscription capacity reached")
+
+const (
+	// rateLimitStoreTimeout bounds every shared-store round trip so a stalled
+	// control-plane Postgres cannot hang HTTP requests past edge deadlines.
+	rateLimitStoreTimeout = 2 * time.Second
+	// rateLimitWarnInterval rate-limits fallback warnings during a DB outage.
+	rateLimitWarnInterval = 30 * time.Second
+	// rateLimitFloatEpsilon absorbs IEEE-754 rounding noise (e.g. 6 * (10/60)
+	// producing 0.9999999999999999 instead of 1.0) without relaxing any real
+	// rate limit (1e-9 tokens is sub-microsecond at every configured rate).
+	rateLimitFloatEpsilon = 1e-9
+)
+
+var lastRateLimitWarn atomic.Int64
+
+func warnRateLimitStoreFallback(op string, err error) {
+	now := time.Now().UnixNano()
+	prev := lastRateLimitWarn.Load()
+	if now-prev >= int64(rateLimitWarnInterval) && lastRateLimitWarn.CompareAndSwap(prev, now) {
+		log.Printf("bex-api: shared rate-limit store %s failed (falling back to local buckets): %v", op, err)
+	}
+}
+
+// RateLimitBucketSpec describes one token bucket in a shared RateLimitStore.
+type RateLimitBucketSpec struct {
+	Key   string
+	RPS   float64
+	Burst int
+	Idle  time.Duration
+}
+
+// RateLimitBucketState is a bucket's snapshot for header rendering
+// (RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset).
+type RateLimitBucketState struct {
+	Tokens float64
+	RPS    float64
+	Burst  int
+}
+
+// RateLimitStore backs KeyedRateLimiter across bex-api replicas through
+// control-plane Postgres (w8/m579). Implemented by *store.PGStore.
+type RateLimitStore interface {
+	TakeRateLimitBuckets(ctx context.Context, now time.Time, n int, specs []RateLimitBucketSpec) (states []RateLimitBucketState, wait time.Duration, err error)
+	RefundRateLimitBuckets(ctx context.Context, now time.Time, n int, specs []RateLimitBucketSpec) error
+	PeekRateLimitBucket(ctx context.Context, now time.Time, spec RateLimitBucketSpec) (RateLimitBucketState, error)
+}
+
+// RateLimitBucket identifies one token bucket: an in-process *rate.Limiter
+// (resolved lazily when a shared store is attached, so the shared happy path
+// takes no local map lock) and, when backed by a shared store, the store and
+// globally namespaced bucket spec.
+type RateLimitBucket struct {
+	local func() *rate.Limiter
+	Store RateLimitStore
+	Spec  RateLimitBucketSpec
+}
+
+// LocalRateLimitBucket wraps an in-process *rate.Limiter as a RateLimitBucket.
+func LocalRateLimitBucket(lim *rate.Limiter) RateLimitBucket {
+	if lim == nil {
+		return RateLimitBucket{}
+	}
+	return RateLimitBucket{
+		local: func() *rate.Limiter { return lim },
+		Spec: RateLimitBucketSpec{
+			RPS:   float64(lim.Limit()),
+			Burst: lim.Burst(),
+		},
+	}
+}
+
+// IsZero reports whether the bucket handle refers to no limiter.
+func (b RateLimitBucket) IsZero() bool {
+	return b.local == nil && b.Store == nil
+}
+
+// Burst reports the bucket's maximum burst depth.
+func (b RateLimitBucket) Burst() int {
+	return b.Spec.Burst
+}
+
+func (b RateLimitBucket) localLimiter() *rate.Limiter {
+	if b.local == nil {
+		return nil
+	}
+	return b.local()
+}
 
 // KeyedRateLimiter is a generic per-key token-bucket rate limiter. It is the
 // shared implementation behind internal/api.RateLimiter,
@@ -49,10 +143,9 @@ import (
 // wholesale. An attacker who drives the limiter to the cap trades their
 // budgets for a fresh burst, never for unbounded heap.
 //
-// NOTE: This is a single-replica implementation. In a multi-replica deployment
-// each replica maintains its own per-key map, so the effective per-key budget
-// is rpm×replicas. Acceptable today; a distributed counter (Redis token bucket)
-// is the follow-up when bex-api scales out.
+// When SetSharedStore is configured (w8/m579), Handle returns buckets backed
+// by the shared control-plane Postgres store across replicas, falling back
+// fail-open to the local in-process bucket on any store error.
 type KeyedRateLimiter[K comparable] struct {
 	mu         sync.Mutex
 	entries    map[K]*keyedRateLimitEntry
@@ -61,6 +154,10 @@ type KeyedRateLimiter[K comparable] struct {
 	idle       time.Duration
 	sweepEvery time.Duration
 	lastSweep  time.Time
+
+	store     RateLimitStore
+	namespace string
+	keyFormat func(K) string
 }
 
 type keyedRateLimitEntry struct {
@@ -91,6 +188,57 @@ func NewKeyedRateLimiter[K comparable](rpm float64, burst int, idle, sweepEvery 
 		burst:      burst,
 		idle:       idle,
 		sweepEvery: sweepEvery,
+	}
+}
+
+// SetSharedStore attaches a cross-replica RateLimitStore under a unique
+// namespace prefix (e.g. "general:caller", "render:read"). keyFormat converts
+// non-string keys to a canonical string; nil formats via fmt.Sprint.
+func (rl *KeyedRateLimiter[K]) SetSharedStore(store RateLimitStore, namespace string, keyFormat func(K) string) {
+	if rl == nil {
+		return
+	}
+	rl.mu.Lock()
+	rl.store = store
+	rl.namespace = namespace
+	rl.keyFormat = keyFormat
+	rl.mu.Unlock()
+}
+
+// Handle returns a RateLimitBucket for key, backed by the shared store when
+// configured and always able to fall back to the local in-process bucket.
+func (rl *KeyedRateLimiter[K]) Handle(key K) RateLimitBucket {
+	if rl == nil {
+		return RateLimitBucket{}
+	}
+	rl.mu.Lock()
+	st := rl.store
+	ns := rl.namespace
+	format := rl.keyFormat
+	rl.mu.Unlock()
+
+	spec := RateLimitBucketSpec{
+		RPS:   float64(rl.rps),
+		Burst: rl.burst,
+		Idle:  rl.idle,
+	}
+	if st != nil {
+		var raw string
+		if format != nil {
+			raw = format(key)
+		} else {
+			raw = fmt.Sprint(key)
+		}
+		if ns != "" {
+			spec.Key = ns + ":" + raw
+		} else {
+			spec.Key = raw
+		}
+	}
+	return RateLimitBucket{
+		local: func() *rate.Limiter { return rl.Bucket(key) },
+		Store: st,
+		Spec:  spec,
 	}
 }
 
@@ -169,30 +317,125 @@ func RateLimitUser(ctx context.Context, keys KeyCreatorResolver) string {
 	return "key:" + clientID
 }
 
+// sharedRateLimitStore returns the single non-nil RateLimitStore shared by
+// every bucket in buckets, or nil if any bucket is local-only or stores differ.
+func sharedRateLimitStore(buckets []RateLimitBucket) RateLimitStore {
+	if len(buckets) == 0 {
+		return nil
+	}
+	st := buckets[0].Store
+	if st == nil {
+		return nil
+	}
+	for _, b := range buckets[1:] {
+		if b.Store != st {
+			return nil
+		}
+	}
+	return st
+}
+
+// TakeRateLimitBuckets atomically takes n tokens from every bucket at now, or
+// none at all, returning each bucket's post-operation state, the wait duration
+// on refusal (0 when admitted), and whether the shared store handled the call.
+// If the shared store fails, it logs a rate-limited warning and falls back
+// fail-open to the local in-process buckets.
+func TakeRateLimitBuckets(ctx context.Context, now time.Time, n int, buckets ...RateLimitBucket) (states []RateLimitBucketState, wait time.Duration, usedStore bool) {
+	if len(buckets) == 0 {
+		return nil, 0, false
+	}
+	if st := sharedRateLimitStore(buckets); st != nil {
+		specs := make([]RateLimitBucketSpec, len(buckets))
+		for i, b := range buckets {
+			specs[i] = b.Spec
+		}
+		storeCtx, cancel := context.WithTimeout(ctx, rateLimitStoreTimeout)
+		stStates, stWait, err := st.TakeRateLimitBuckets(storeCtx, now, n, specs)
+		cancel()
+		if err == nil {
+			return stStates, stWait, true
+		}
+		warnRateLimitStoreFallback("take", err)
+	}
+
+	lims := make([]*rate.Limiter, 0, len(buckets))
+	for _, b := range buckets {
+		if lim := b.localLimiter(); lim != nil {
+			lims = append(lims, lim)
+		}
+	}
+	if len(lims) == 0 {
+		return nil, 0, false
+	}
+	taken, localWait := ReserveEach(now, n, lims...)
+	report := lims
+	if localWait > 0 {
+		report = lims[:len(taken)]
+	}
+	return localBucketStates(now, report), localWait, false
+}
+
+// PeekRateLimitBucket returns the bucket's current refilled state without
+// deducting tokens, falling back fail-open to the local bucket on store error.
+func PeekRateLimitBucket(ctx context.Context, now time.Time, bucket RateLimitBucket) RateLimitBucketState {
+	if bucket.Store != nil {
+		storeCtx, cancel := context.WithTimeout(ctx, rateLimitStoreTimeout)
+		st, err := bucket.Store.PeekRateLimitBucket(storeCtx, now, bucket.Spec)
+		cancel()
+		if err == nil {
+			return st
+		}
+		warnRateLimitStoreFallback("peek", err)
+	}
+	lim := bucket.localLimiter()
+	if lim == nil {
+		return RateLimitBucketState{}
+	}
+	return RateLimitBucketState{
+		Tokens: lim.TokensAt(now),
+		RPS:    float64(lim.Limit()),
+		Burst:  lim.Burst(),
+	}
+}
+
+func localBucketStates(now time.Time, buckets []*rate.Limiter) []RateLimitBucketState {
+	states := make([]RateLimitBucketState, len(buckets))
+	for i, b := range buckets {
+		states[i] = RateLimitBucketState{
+			Tokens: b.TokensAt(now),
+			RPS:    float64(b.Limit()),
+			Burst:  b.Burst(),
+		}
+	}
+	return states
+}
+
 // SetRateLimitHeaders writes Render's RateLimit-Limit, RateLimit-Remaining and
-// RateLimit-Reset for the tightest of buckets, after this request's token is
+// RateLimit-Reset for the tightest of states, after this request's token is
 // taken (w8/147). On a token bucket the limit is its burst, remaining is the
 // whole tokens left, and reset is the seconds until it is full again. A
 // refused request reports remaining 0, as Render's 429 does.
-func SetRateLimitHeaders(h http.Header, now time.Time, refused bool, buckets ...*rate.Limiter) {
-	var tight *rate.Limiter
-	var tokens float64
-	for _, b := range buckets {
-		if t := b.TokensAt(now); tight == nil || t < tokens {
-			tight, tokens = b, t
-		}
-	}
-	if tight == nil {
+func SetRateLimitHeaders(h http.Header, refused bool, states ...RateLimitBucketState) {
+	if h == nil || len(states) == 0 {
 		return
 	}
-	limit := tight.Burst()
-	remaining := max(0, int(math.Floor(tokens)))
+	tight := states[0]
+	for _, s := range states[1:] {
+		if s.Tokens < tight.Tokens {
+			tight = s
+		}
+	}
+	if tight.Burst <= 0 {
+		return
+	}
+	limit := tight.Burst
+	remaining := max(0, int(math.Floor(tight.Tokens+rateLimitFloatEpsilon)))
 	if refused {
 		remaining = 0
 	}
 	reset := 0
-	if perSecond := float64(tight.Limit()); perSecond > 0 && tokens < float64(limit) {
-		reset = int(math.Ceil((float64(limit) - max(tokens, 0)) / perSecond))
+	if tight.RPS > 0 && tight.Tokens+rateLimitFloatEpsilon < float64(limit) {
+		reset = max(0, int(math.Ceil((float64(limit)-max(tight.Tokens, 0))/tight.RPS-rateLimitFloatEpsilon)))
 	}
 	h.Set("RateLimit-Limit", strconv.Itoa(limit))
 	h.Set("RateLimit-Remaining", strconv.Itoa(remaining))
@@ -225,25 +468,26 @@ func ReserveEach(now time.Time, n int, buckets ...*rate.Limiter) (taken []*rate.
 // ChargeRateLimit takes one token from every bucket at now, or none. On a
 // refusal it writes the refusal's Retry-After and RateLimit headers to h (nil
 // writes nothing) and returns the surface's 429 coded code: what a GraphQL
-// field or an MCP tool with a budget of its own answers.
-func ChargeRateLimit(h http.Header, now time.Time, code string, buckets ...*rate.Limiter) error {
-	taken, wait := ReserveEach(now, 1, buckets...)
+// field or an MCP tool with a budget of its own answers. On admission it
+// returns the post-take bucket states so callers can refresh response headers.
+func ChargeRateLimit(ctx context.Context, h http.Header, now time.Time, code string, buckets ...RateLimitBucket) ([]RateLimitBucketState, error) {
+	states, wait, _ := TakeRateLimitBuckets(ctx, now, 1, buckets...)
 	if wait == 0 {
-		return nil
+		return states, nil
 	}
-	seconds := SetRateLimitRefusal(h, now, wait, buckets[:len(taken)]...)
-	return NewTooManyRequestsError(code, fmt.Sprintf("rate limit exceeded; retry in %d seconds", seconds),
+	seconds := SetRateLimitRefusal(h, wait, states...)
+	return nil, NewTooManyRequestsError(code, fmt.Sprintf("rate limit exceeded; retry in %d seconds", seconds),
 		map[string]any{"retryAfterSeconds": seconds})
 }
 
 // SetRateLimitRefusal writes a refused request's Retry-After (whole seconds,
 // at least 1) and Render's RateLimit headers for the buckets it reached, and
 // returns the seconds. A nil header writes nothing.
-func SetRateLimitRefusal(h http.Header, now time.Time, wait time.Duration, buckets ...*rate.Limiter) int {
-	seconds := max(1, int(math.Ceil(wait.Seconds())))
+func SetRateLimitRefusal(h http.Header, wait time.Duration, states ...RateLimitBucketState) int {
+	seconds := max(1, int(math.Ceil(wait.Seconds()-rateLimitFloatEpsilon)))
 	if h != nil {
 		h.Set("Retry-After", strconv.Itoa(seconds))
-		SetRateLimitHeaders(h, now, true, buckets...)
+		SetRateLimitHeaders(h, true, states...)
 	}
 	return seconds
 }
@@ -258,16 +502,17 @@ func SetRateLimitRefusal(h http.Header, now time.Time, wait time.Duration, bucke
 type RateLimitScope struct {
 	workspace string
 	header    http.Header
-	general   []*rate.Limiter
+	general   []RateLimitBucket
+	usedStore bool
 	mu        sync.Mutex
 	refunded  bool
 }
 
 // NewRateLimitScope records the caller's workspace bucket key ("" for none),
-// the response header a refusal may still write to, and the general buckets
-// the request took one token from.
-func NewRateLimitScope(workspace string, header http.Header, general []*rate.Limiter) *RateLimitScope {
-	return &RateLimitScope{workspace: workspace, header: header, general: general}
+// the response header a refusal may still write to, the general buckets the
+// request took one token from, and whether the shared store handled the take.
+func NewRateLimitScope(workspace string, header http.Header, general []RateLimitBucket, usedStore bool) *RateLimitScope {
+	return &RateLimitScope{workspace: workspace, header: header, general: general, usedStore: usedStore}
 }
 
 type rateLimitScopeKey struct{}
@@ -302,29 +547,49 @@ func (s *RateLimitScope) Header() http.Header {
 // Another is a scope for one more unit the same request paid the same
 // general buckets for: each further member of a GraphQL batch costs a token
 // of its own, and gives its own back when it is a sandbox operation.
-func (s *RateLimitScope) Another() *RateLimitScope {
+func (s *RateLimitScope) Another(usedStore bool) *RateLimitScope {
 	if s == nil {
 		return nil
 	}
-	return NewRateLimitScope(s.workspace, s.header, s.general)
+	return NewRateLimitScope(s.workspace, s.header, s.general, usedStore)
 }
 
-// Refund gives the scope's general tokens back at now, once. A reservation
-// cannot do it: Reservation.Cancel restores nothing once the reservation's
-// time to act has passed, which for an admitted request is the instant it was
-// taken. Reserving minus one token is the limiter's own arithmetic run
-// backwards, and a bucket never holds more than its burst.
-func (s *RateLimitScope) Refund(now time.Time) {
+// Refund gives the scope's general tokens back at now, once, in the same store
+// (shared Postgres or local in-process) that originally charged them.
+func (s *RateLimitScope) Refund(ctx context.Context, now time.Time) {
 	if s == nil {
 		return
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.refunded {
+		s.mu.Unlock()
 		return
 	}
 	s.refunded = true
+	s.mu.Unlock()
+
+	if s.usedStore {
+		if st := sharedRateLimitStore(s.general); st != nil {
+			specs := make([]RateLimitBucketSpec, len(s.general))
+			for i, b := range s.general {
+				specs[i] = b.Spec
+			}
+			base := ctx
+			if base == nil {
+				base = context.Background()
+			}
+			storeCtx, cancel := context.WithTimeout(context.WithoutCancel(base), rateLimitStoreTimeout)
+			err := st.RefundRateLimitBuckets(storeCtx, now, 1, specs)
+			cancel()
+			if err != nil {
+				warnRateLimitStoreFallback("refund", err)
+			}
+			return
+		}
+	}
 	for _, bucket := range s.general {
-		bucket.ReserveN(now, -1)
+		if lim := bucket.localLimiter(); lim != nil {
+			lim.ReserveN(now, -1)
+		}
 	}
 }

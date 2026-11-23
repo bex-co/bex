@@ -299,6 +299,10 @@ type Server struct {
 	// and applies pull_request deliveries (w9/m386); nil leaves states unread.
 	PRStates *agentsessions.PRStates
 
+	// RateLimitStore, when set (control-plane Postgres, w8/m579), backs
+	// RateLimiter, RenderRateLimits, Sandbox.RateLimits, and deploy-hook
+	// buckets across replicas with fail-open fallback to local buckets.
+	RateLimitStore core.RateLimitStore
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
 	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
 	// healthz endpoint is intentionally exempt; the webhook intakes get their own
@@ -1841,6 +1845,9 @@ func (s *Server) LimitSandboxOperations() {
 		keys = s.Sandbox.KeyCreators
 	}
 	limits := sandbox.NewRateLimits(keys)
+	if s.RateLimitStore != nil {
+		limits.SetSharedStore(s.RateLimitStore)
+	}
 	s.Sandbox.RateLimits = limits
 	s.RateLimiter.Operations = limits
 }
@@ -2061,8 +2068,13 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 		}
 		// The limiter charged the request one token; each further member
 		// costs one more, before any of them runs.
-		if len(bodies) > 1 && s.RateLimiter != nil && !s.RateLimiter.admit(w, r, len(bodies)-1) {
-			return operation, opType, gqlOutcomeRejected
+		batchUsedStore := false
+		if len(bodies) > 1 && s.RateLimiter != nil {
+			var ok bool
+			ok, batchUsedStore = s.RateLimiter.admit(w, r, len(bodies)-1)
+			if !ok {
+				return operation, opType, gqlOutcomeRejected
+			}
 		}
 		// One execution deadline for the whole array: the HTTP write deadline
 		// covers the response, not each member, so per-member budgets could sum
@@ -2077,7 +2089,7 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 			if i > 0 {
 				// Each further member paid a general token of its own, and a
 				// sandbox-only member gives its own back (w22/m443).
-				memberCtx = core.WithRateLimitScope(ctx, core.RateLimitScopeFrom(ctx).Another())
+				memberCtx = core.WithRateLimitScope(ctx, core.RateLimitScopeFrom(ctx).Another(batchUsedStore))
 			}
 			op, typ, out, result := s.executeGraphQL(memberCtx, bodies[i], budget)
 			results[i] = result

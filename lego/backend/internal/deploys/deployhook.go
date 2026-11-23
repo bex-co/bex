@@ -23,6 +23,7 @@ import (
 	"crypto/subtle"
 	"encoding/base32"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -32,7 +33,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/time/rate"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -285,20 +285,14 @@ func (s *Service) appForDeployHookToken(ctx context.Context, token string) (*app
 	return nil, core.ErrNotFound
 }
 
-// DeployHookRateLimiter is a token-keyed in-memory bucket. Like the main API
-// limiter (BEX_RATE_LIMIT) and the device-flow limiter, it is REPLICA-LOCAL by
-// design: with bex-api's two replicas (w1/m52) the effective per-token ceiling
-// is up to 2× DefaultDeployHookRPM. That is an accepted, bounded over-provision
-// (w1/m58 audit): the endpoint is credential-gated (a leaked dhk- token, never
-// an anonymous flood) and its action is latest-pending idempotent — extra triggers
-// are superseded, not multiplied into extra builds — so a coarse per-replica
-// ceiling is an abuse damper, not a security boundary. A shared control-plane
-// counter was considered and rejected as disproportionate (a DB round trip per
-// hook request to tighten a non-threat, and inconsistent with the other two
-// replica-local limiters). Keys are SHA-256 digests so the raw credential is not
-// retained in the limiter map.
+// DeployHookRateLimiter is a token-keyed bucket. Keys are SHA-256 digests so
+// the raw credential is not retained in the limiter map or shared store. When
+// SetSharedStore is wired (w8/m579), all bex-api replicas share one budget in
+// control-plane Postgres and fall back fail-open to local buckets on outage.
 type DeployHookRateLimiter struct {
 	*core.KeyedRateLimiter[[sha256.Size]byte]
+	// Now supplies the current time; nil => time.Now.
+	Now func() time.Time
 }
 
 // NewDeployHookRateLimiter constructs a per-token limiter. Non-positive rpm
@@ -311,29 +305,41 @@ func NewDeployHookRateLimiter(rpm float64, burst int) *DeployHookRateLimiter {
 	return &DeployHookRateLimiter{KeyedRateLimiter: inner}
 }
 
-// reserve returns whether a request may proceed and, when denied, the delay
-// until the next token is available.
-func (rl *DeployHookRateLimiter) reserve(h http.Header, token string) (bool, time.Duration) {
+// SetSharedStore backs the deploy-hook per-token buckets with a cross-replica
+// RateLimitStore under namespace "deployhook:token".
+func (rl *DeployHookRateLimiter) SetSharedStore(store core.RateLimitStore) {
 	if rl == nil {
-		return true, 0
+		return
 	}
-	lim := rl.bucket(token)
-	res := lim.Reserve()
-	if delay := res.Delay(); delay > 0 {
-		res.Cancel()
-		core.SetRateLimitHeaders(h, time.Now(), true, lim)
-		return false, delay
-	}
-	core.SetRateLimitHeaders(h, time.Now(), false, lim)
-	return true, 0
+	rl.KeyedRateLimiter.SetSharedStore(store, "deployhook:token", func(digest [sha256.Size]byte) string {
+		return hex.EncodeToString(digest[:])
+	})
 }
 
-// bucket is the token's bucket, keyed by its digest; nil for a nil limiter.
-func (rl *DeployHookRateLimiter) bucket(token string) *rate.Limiter {
-	if rl == nil {
-		return nil
+func (rl *DeployHookRateLimiter) clock() time.Time {
+	if rl != nil && rl.Now != nil {
+		return rl.Now()
 	}
-	return rl.Bucket(sha256.Sum256([]byte(token)))
+	return time.Now()
+}
+
+// reserve returns the post-take token bucket state, whether a request may
+// proceed, and when denied the delay until the next token is available.
+func (rl *DeployHookRateLimiter) reserve(ctx context.Context, h http.Header, token string) (core.RateLimitBucketState, bool, time.Duration) {
+	if rl == nil {
+		return core.RateLimitBucketState{}, true, 0
+	}
+	states, wait, _ := core.TakeRateLimitBuckets(ctx, rl.clock(), 1, rl.Handle(sha256.Sum256([]byte(token))))
+	var state core.RateLimitBucketState
+	if len(states) > 0 {
+		state = states[0]
+	}
+	if wait > 0 {
+		core.SetRateLimitHeaders(h, true, states...)
+		return state, false, wait
+	}
+	core.SetRateLimitHeaders(h, false, states...)
+	return state, true, 0
 }
 
 // DeployHookHandler serves the open credential-gated endpoint. It accepts GET
@@ -372,7 +378,8 @@ func (s *Service) DeployHookHandler() http.Handler {
 			core.WriteErrStatus(w, http.StatusUnauthorized, "deploy hook key is required")
 			return
 		}
-		if ok, retry := limiter.reserve(w.Header(), token); !ok {
+		tokenState, ok, retry := limiter.reserve(r.Context(), w.Header(), token)
+		if !ok {
 			writeDeployHookRateLimited(w, retry)
 			return
 		}
@@ -381,7 +388,7 @@ func (s *Service) DeployHookHandler() http.Handler {
 			core.WriteErr(w, err)
 			return
 		}
-		if !s.reserveServiceDeploy(w, a, limiter.bucket(token)) {
+		if !s.reserveServiceDeploy(r.Context(), w, a, tokenState) {
 			return
 		}
 		// codex #6: enforce the same billing lifecycle gate as the authenticated
@@ -422,22 +429,25 @@ func (s *Service) DeployHookHandler() http.Handler {
 // deploy row, the bucket its REST deploys spend too, and answers the hook's
 // 429 when it is empty. The headers then report the tighter of that bucket and
 // the token's own, which reserve already spent.
-func (s *Service) reserveServiceDeploy(w http.ResponseWriter, a *appv1alpha1.App, token *rate.Limiter) bool {
-	bucket := s.ServiceDeployRate.Bucket(core.AppPublicID(a))
-	if bucket == nil {
+func (s *Service) reserveServiceDeploy(ctx context.Context, w http.ResponseWriter, a *appv1alpha1.App, tokenState core.RateLimitBucketState) bool {
+	bucket := s.ServiceDeployRate.Handle(core.AppPublicID(a))
+	if bucket.IsZero() {
 		return true
 	}
 	now := time.Now()
-	if _, wait := core.ReserveEach(now, 1, bucket); wait > 0 {
-		core.SetRateLimitHeaders(w.Header(), now, true, bucket)
+	if s.RateLimitNow != nil {
+		now = s.RateLimitNow()
+	}
+	states, wait, _ := core.TakeRateLimitBuckets(ctx, now, 1, bucket)
+	if wait > 0 {
+		core.SetRateLimitHeaders(w.Header(), true, states...)
 		writeDeployHookRateLimited(w, wait)
 		return false
 	}
-	buckets := []*rate.Limiter{bucket}
-	if token != nil {
-		buckets = append(buckets, token)
+	if tokenState.Burst > 0 {
+		states = append(states, tokenState)
 	}
-	core.SetRateLimitHeaders(w.Header(), now, false, buckets...)
+	core.SetRateLimitHeaders(w.Header(), false, states...)
 	return true
 }
 

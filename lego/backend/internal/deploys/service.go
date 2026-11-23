@@ -278,6 +278,8 @@ type Service struct {
 	// REST update, deploy, resume and suspend routes spend. Nil when the API
 	// limiter is off (BEX_RATE_LIMIT=0); the per-token bucket still applies.
 	ServiceDeployRate *core.KeyedRateLimiter[string]
+	// RateLimitNow supplies the current time for ServiceDeployRate; nil => time.Now.
+	RateLimitNow func() time.Time
 	// BuildNamespace is BEX_BUILD_NAMESPACE — the namespace Cancel looks for a
 	// repo-backed App's in-flight build Job in (lego/operator's own build
 	// namespace, must match so the Job identity resolves); empty falls back to

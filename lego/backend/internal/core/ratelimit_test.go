@@ -17,6 +17,8 @@ limitations under the License.
 package core
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -76,6 +78,9 @@ func TestKeyedRateLimiterNilSafe(t *testing.T) {
 	var rl *KeyedRateLimiter[string]
 	if lim := rl.Bucket("any"); lim != nil {
 		t.Fatalf("nil limiter Bucket should return nil, got %v", lim)
+	}
+	if h := rl.Handle("any"); !h.IsZero() {
+		t.Fatalf("nil limiter Handle should be zero, got %+v", h)
 	}
 }
 
@@ -152,22 +157,20 @@ func TestKeyedRateLimiterCapsEntries(t *testing.T) {
 }
 
 func TestSetRateLimitHeadersReportsTheTightestBucket(t *testing.T) {
-	now := time.Now()
-	roomy := rate.NewLimiter(rate.Limit(1), 10) // full: 10 tokens
-	tight := rate.NewLimiter(rate.Limit(0.5), 4)
-	tight.AllowN(now, 3) // 1 token left, 3 to refill at 0.5/s
+	roomy := RateLimitBucketState{Tokens: 10, RPS: 1, Burst: 10}
+	tight := RateLimitBucketState{Tokens: 1, RPS: 0.5, Burst: 4} // 1 token left, 3 to refill at 0.5/s
 	h := http.Header{}
-	SetRateLimitHeaders(h, now, false, roomy, tight)
+	SetRateLimitHeaders(h, false, roomy, tight)
 	if h.Get("RateLimit-Limit") != "4" || h.Get("RateLimit-Remaining") != "1" || h.Get("RateLimit-Reset") != "6" {
 		t.Errorf("headers = %v, want the tight bucket's 4/1/6", h)
 	}
 	full := http.Header{}
-	SetRateLimitHeaders(full, now, false, roomy)
+	SetRateLimitHeaders(full, false, roomy)
 	if full.Get("RateLimit-Remaining") != "10" || full.Get("RateLimit-Reset") != "0" {
 		t.Errorf("full bucket = %v, want remaining 10 and reset 0", full)
 	}
 	refused := http.Header{}
-	SetRateLimitHeaders(refused, now, true, roomy)
+	SetRateLimitHeaders(refused, true, roomy)
 	if refused.Get("RateLimit-Remaining") != "0" {
 		t.Errorf("refused remaining = %q, want 0", refused.Get("RateLimit-Remaining"))
 	}
@@ -201,16 +204,15 @@ func TestReserveEachTakesFromAllOrNone(t *testing.T) {
 }
 
 func TestSetRateLimitRefusalWritesRetryAfterAndRemainingZero(t *testing.T) {
-	now := time.Date(2026, 11, 17, 12, 0, 0, 0, time.UTC)
-	bucket := rate.NewLimiter(rate.Limit(10.0/60), 10)
+	bucket := RateLimitBucketState{Tokens: 0, RPS: 10.0 / 60, Burst: 10}
 	h := http.Header{}
-	if got := SetRateLimitRefusal(h, now, 5500*time.Millisecond, bucket); got != 6 {
+	if got := SetRateLimitRefusal(h, 5500*time.Millisecond, bucket); got != 6 {
 		t.Fatalf("seconds = %d, want 5.5 s rounded up", got)
 	}
 	if h.Get("Retry-After") != "6" || h.Get("RateLimit-Limit") != "10" || h.Get("RateLimit-Remaining") != "0" {
 		t.Fatalf("headers = %v", h)
 	}
-	if got := SetRateLimitRefusal(nil, now, time.Millisecond, bucket); got != 1 {
+	if got := SetRateLimitRefusal(nil, time.Millisecond, bucket); got != 1 {
 		t.Fatalf("seconds without a header = %d, want the 1 s floor", got)
 	}
 }
@@ -231,13 +233,13 @@ func TestRateLimitScopeRefundsOnceAndNeverPastTheBurst(t *testing.T) {
 		t.Fatalf("Reservation.CancelAt restored a spent token (%v): Refund no longer needs its own arithmetic", got)
 	}
 	h := http.Header{}
-	scope := NewRateLimitScope("workspace:tea-a", h, []*rate.Limiter{subject, workspace})
+	scope := NewRateLimitScope("workspace:tea-a", h, []RateLimitBucket{LocalRateLimitBucket(subject), LocalRateLimitBucket(workspace)}, false)
 	ctx := WithRateLimitScope(t.Context(), scope)
 	if got := RateLimitScopeFrom(ctx); got != scope || got.Workspace() != "workspace:tea-a" || got.Header() == nil {
 		t.Fatalf("scope from context = %+v", got)
 	}
-	scope.Refund(later)
-	scope.Refund(later)
+	scope.Refund(ctx, later)
+	scope.Refund(ctx, later)
 	for name, bucket := range map[string]*rate.Limiter{"subject": subject, "workspace": workspace} {
 		if n := drain(bucket, later); n != 2 {
 			t.Errorf("%s bucket admitted %d after two refunds of one request, want 2: its own token back, once", name, n)
@@ -245,15 +247,53 @@ func TestRateLimitScopeRefundsOnceAndNeverPastTheBurst(t *testing.T) {
 	}
 	// A full bucket refunded stays at its burst.
 	full := rate.NewLimiter(rate.Limit(1.0/60), 3)
-	NewRateLimitScope("", nil, []*rate.Limiter{full}).Refund(now)
+	NewRateLimitScope("", nil, []RateLimitBucket{LocalRateLimitBucket(full)}, false).Refund(t.Context(), now)
 	if n := drain(full, now); n != 3 {
 		t.Fatalf("a refund filled a full bucket to %d, want its burst of 3", n)
 	}
 	// No scope: every method is a no-op.
 	var none *RateLimitScope
-	none.Refund(now)
+	none.Refund(t.Context(), now)
 	if RateLimitScopeFrom(t.Context()) != nil || none.Workspace() != "" || none.Header() != nil {
 		t.Fatal("a missing scope is not empty")
+	}
+}
+
+type failingRateLimitStore struct {
+	err error
+}
+
+func (f failingRateLimitStore) TakeRateLimitBuckets(context.Context, time.Time, int, []RateLimitBucketSpec) ([]RateLimitBucketState, time.Duration, error) {
+	return nil, 0, f.err
+}
+
+func (f failingRateLimitStore) RefundRateLimitBuckets(context.Context, time.Time, int, []RateLimitBucketSpec) error {
+	return f.err
+}
+
+func (f failingRateLimitStore) PeekRateLimitBucket(context.Context, time.Time, RateLimitBucketSpec) (RateLimitBucketState, error) {
+	return RateLimitBucketState{}, f.err
+}
+
+// When the shared store returns an error, TakeRateLimitBuckets and
+// PeekRateLimitBucket fall back fail-open to the local in-process bucket and
+// continue enforcing the local bound.
+func TestTakeRateLimitBucketsFallsBackToLocalOnStoreError(t *testing.T) {
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	rl := NewKeyedRateLimiter[string](60, 1, time.Minute, time.Minute)
+	rl.SetSharedStore(failingRateLimitStore{err: errors.New("postgres down")}, "general:caller", nil)
+
+	bucket := rl.Handle("id:u1")
+	if st := PeekRateLimitBucket(t.Context(), now, bucket); st.Tokens < 1 {
+		t.Fatalf("peek fallback tokens = %v, want 1", st.Tokens)
+	}
+	states, wait, usedStore := TakeRateLimitBuckets(t.Context(), now, 1, bucket)
+	if usedStore || wait != 0 || len(states) != 1 {
+		t.Fatalf("first fallback take: usedStore=%v wait=%v states=%+v", usedStore, wait, states)
+	}
+	_, wait, usedStore = TakeRateLimitBuckets(t.Context(), now, 1, bucket)
+	if usedStore || wait == 0 {
+		t.Fatalf("second fallback take should be locally rate-limited: usedStore=%v wait=%v", usedStore, wait)
 	}
 }
 

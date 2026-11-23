@@ -18,6 +18,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +26,6 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"golang.org/x/time/rate"
 )
 
 // RateLimiter is a per-caller token-bucket limiter shared across all three API
@@ -36,10 +36,9 @@ import (
 // auth middleware), falling back to remote IP for unauthenticated paths (webhooks
 // run outside the auth gate and are exempt by design).
 //
-// NOTE: This is a single-replica implementation. In a multi-replica deployment
-// each replica maintains its own per-caller map, so the effective per-caller
-// budget is rpm×replicas. Acceptable today; a distributed counter (Redis token
-// bucket) is the follow-up when bex-api scales out.
+// When SetSharedStore is wired (w8/m579), all replicas share one control-plane
+// Postgres token-bucket table and fall back fail-open to the local buckets on
+// store outage.
 type RateLimiter struct {
 	*core.KeyedRateLimiter[string]
 	// Workspace resolves authenticated callers to a shared aggregate bucket.
@@ -80,12 +79,25 @@ func NewRateLimiter(rpm float64, burst int) *RateLimiter {
 	}
 }
 
+// SetSharedStore backs both the per-caller and per-workspace buckets with a
+// cross-replica store under namespace (default "general").
+func (rl *RateLimiter) SetSharedStore(store core.RateLimitStore, namespace string) {
+	if rl == nil {
+		return
+	}
+	if namespace == "" {
+		namespace = "general"
+	}
+	rl.KeyedRateLimiter.SetSharedStore(store, namespace+":caller", nil)
+	rl.workspace.SetSharedStore(store, namespace+":workspace", nil)
+}
+
 // OperationLimits gives some requests buckets of their own. RequestBuckets
 // returns the buckets a request spends in place of the general per-subject and
 // workspace ones, or nil for a request it does not classify; workspace is the
 // caller's workspace bucket key, "" when there is none.
 type OperationLimits interface {
-	RequestBuckets(r *http.Request, workspace string) []*rate.Limiter
+	RequestBuckets(r *http.Request, workspace string) []core.RateLimitBucket
 }
 
 // Middleware returns an http.Handler wrapper that enforces the rate limit.
@@ -99,7 +111,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 func (rl *RateLimiter) middlewareWith(ops OperationLimits, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		workspace := rl.workspaceKey(r)
-		var buckets []*rate.Limiter
+		var buckets []core.RateLimitBucket
 		if ops != nil {
 			buckets = ops.RequestBuckets(r, workspace)
 		}
@@ -107,14 +119,15 @@ func (rl *RateLimiter) middlewareWith(ops OperationLimits, next http.Handler) ht
 		if !classified {
 			buckets = rl.generalBuckets(r, workspace)
 		}
-		if !rl.reserve(w, r, 1, buckets) {
+		admitted, usedStore := rl.reserve(w, r, 1, buckets)
+		if !admitted {
 			return
 		}
 		if !classified {
 			// A GraphQL field or an MCP tool with a budget of its own is only
 			// known once the body is read: it charges that budget and gives
 			// this token back.
-			r = r.WithContext(core.WithRateLimitScope(r.Context(), core.NewRateLimitScope(workspace, w.Header(), buckets)))
+			r = r.WithContext(core.WithRateLimitScope(r.Context(), core.NewRateLimitScope(workspace, w.Header(), buckets, usedStore)))
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -124,7 +137,7 @@ func (rl *RateLimiter) middlewareWith(ops OperationLimits, next http.Handler) ht
 // a request decides which buckets it spends.
 type operationChain []OperationLimits
 
-func (c operationChain) RequestBuckets(r *http.Request, workspace string) []*rate.Limiter {
+func (c operationChain) RequestBuckets(r *http.Request, workspace string) []core.RateLimitBucket {
 	for _, ops := range c {
 		if ops == nil {
 			continue
@@ -141,32 +154,32 @@ func (c operationChain) RequestBuckets(r *http.Request, workspace string) []*rat
 // past the first, which Middleware charged. When either cannot give them now
 // it takes none, answers 429 with Retry-After, and returns false. n is capped
 // at the burst, the most a full bucket holds.
-func (rl *RateLimiter) admit(w http.ResponseWriter, r *http.Request, n int) bool {
+func (rl *RateLimiter) admit(w http.ResponseWriter, r *http.Request, n int) (admitted bool, usedStore bool) {
 	return rl.reserve(w, r, n, rl.generalBuckets(r, rl.workspaceKey(r)))
 }
 
 // generalBuckets are the caller's bucket and, when workspace names one, the
 // caller's workspace bucket.
-func (rl *RateLimiter) generalBuckets(r *http.Request, workspace string) []*rate.Limiter {
-	buckets := []*rate.Limiter{rl.Bucket(rl.callerKey(r))}
+func (rl *RateLimiter) generalBuckets(r *http.Request, workspace string) []core.RateLimitBucket {
+	buckets := []core.RateLimitBucket{rl.Handle(rl.callerKey(r))}
 	if workspace != "" {
-		buckets = append(buckets, rl.workspace.Bucket(workspace))
+		buckets = append(buckets, rl.workspace.Handle(workspace))
 	}
 	return buckets
 }
 
 // reserve takes n tokens from every bucket or from none, writes the
 // RateLimit headers, and on a refusal answers the surface's 429.
-func (rl *RateLimiter) reserve(w http.ResponseWriter, r *http.Request, n int, buckets []*rate.Limiter) bool {
+func (rl *RateLimiter) reserve(w http.ResponseWriter, r *http.Request, n int, buckets []core.RateLimitBucket) (admitted bool, usedStore bool) {
 	now := rl.clock()
-	taken, wait := core.ReserveEach(now, n, buckets...)
+	states, wait, usedStore := core.TakeRateLimitBuckets(r.Context(), now, n, buckets...)
 	if wait > 0 {
-		core.SetRateLimitRefusal(w.Header(), now, wait, buckets[:len(taken)]...)
+		core.SetRateLimitRefusal(w.Header(), wait, states...)
 		writeTooManyRequests(w, r)
-		return false
+		return false, usedStore
 	}
-	core.SetRateLimitHeaders(w.Header(), now, false, buckets...)
-	return true
+	core.SetRateLimitHeaders(w.Header(), false, states...)
+	return true, usedStore
 }
 
 func (rl *RateLimiter) clock() time.Time {
@@ -188,10 +201,14 @@ func (rl *RateLimiter) clock() time.Time {
 func (rl *RateLimiter) RefusedCredentialMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		now := rl.clock()
-		bucket := rl.Bucket(rl.callerKey(r))
-		if tokens := bucket.TokensAt(now); tokens < 1 {
-			wait := time.Duration((1 - tokens) / float64(bucket.Limit()) * float64(time.Second))
-			core.SetRateLimitRefusal(w.Header(), now, wait, bucket)
+		bucket := rl.Handle(rl.callerKey(r))
+		state := core.PeekRateLimitBucket(r.Context(), now, bucket)
+		if state.Tokens+1e-9 < 1 {
+			var wait time.Duration
+			if state.RPS > 0 {
+				wait = time.Duration((1 - state.Tokens) / state.RPS * float64(time.Second))
+			}
+			core.SetRateLimitRefusal(w.Header(), wait, state)
 			writeTooManyRequests(w, r)
 			return
 		}
@@ -199,7 +216,7 @@ func (rl *RateLimiter) RefusedCredentialMiddleware(next http.Handler) http.Handl
 		next.ServeHTTP(sw, r)
 		switch sw.statusCode() {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusConflict, http.StatusGone:
-			bucket.ReserveN(rl.clock(), 1)
+			core.TakeRateLimitBuckets(context.WithoutCancel(r.Context()), rl.clock(), 1, bucket)
 		}
 	})
 }
