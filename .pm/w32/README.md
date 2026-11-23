@@ -25,6 +25,7 @@
 
 ## Inbox
 
+- [ ] [090](090.md) — A failed deploy's one `==> Exited with status N` comes after the start command's first exit on Render, and at the close after its third run on bex, behind three `==> Running '<command>'` lines (likely >1h, promote if so) ← follow-up from w32/086's triage, 2026-11-22 (DerekSopok/EMS-Kahoot#3, darthjee/ward#109, rkendel1/freq#191); parity, minor
 - [ ] [089](089.md) — Render's log API returns its `==>` lines with ANSI colour codes (blue marker for a step, green for a success); bex's carry none (~1h) ← follow-up from w32/085's public-log search, 2026-11-22 (ivanseibel/tretta's Render log API capture, kush252/Sentry-AI); parity, minor
 - [ ] [088](088.md) — A native service's own log writes `==> Running '<start command>'` each time its instance starts, free spin-ups included, as Render's does, not only inside a deploy's rollout (~1h) ← follow-up from w32/085's public-log search, 2026-11-22 (ivanseibel/tretta's Render log API capture); parity, minor
 - [ ] [087](087.md) — A deploy with a pre-deploy command narrates the step as Render's log does: `==> Starting pre-deploy: <command>`, then `==> Pre-deploy complete!` or `==> Pre-deploy has failed` and `==> Exited with status N` (likely >1h, promote if so) ← follow-up from w32/085's public-log search, 2026-11-22 (Unwrenchable/ATOMIC-FIZZ-CAPS-VAULT-77-WASTELAND-GPS#82, dukens11-create/Flupflap#206, BerriAI/litellm#9549); parity, minor
