@@ -19,6 +19,7 @@ package agentsession
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -42,10 +43,15 @@ type fakeForge struct {
 	notAhead  bool
 	err       error
 	calls     int
-	last      struct{ owner, repo, head, title, body string }
-	prs       map[string]*github.PullRequest
-	bodies    map[int]string
-	comments  []forgeComment
+	last      struct {
+		owner, repo, head, title, body string
+		draft                          bool
+	}
+	// noDrafts refuses a draft as a repository whose plan has none.
+	noDrafts bool
+	prs      map[string]*github.PullRequest
+	bodies   map[int]string
+	comments []forgeComment
 	// existing is a person's pull request a takeover session works on;
 	// sessionHead is its session branch's head on GitHub ("" when not
 	// pushed), diverged makes the fast-forward refuse, and moved records the
@@ -214,18 +220,18 @@ func (f *fakeForge) CreateIssueComment(_ context.Context, installation int64, ow
 	return "https://github.com/" + owner + "/" + repo + "/pull/" + strconv.Itoa(number) + "#issuecomment-" + strconv.Itoa(900+len(f.comments)), nil
 }
 
-func (f *fakeForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error) {
+func (f *fakeForge) SyncPullRequest(_ context.Context, _ int64, owner, repo, head, title, body string, draft bool) (github.PullRequestSyncResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
-	f.last.owner, f.last.repo, f.last.head, f.last.title, f.last.body = owner, repo, head, title, body
+	f.last.owner, f.last.repo, f.last.head, f.last.title, f.last.body, f.last.draft = owner, repo, head, title, body, draft
 	switch {
 	case f.err != nil:
-		return github.DraftPullRequestResult{}, f.err
+		return github.PullRequestSyncResult{}, f.err
 	case f.notPushed:
-		return github.DraftPullRequestResult{}, github.ErrHeadBranchNotFound
+		return github.PullRequestSyncResult{}, github.ErrHeadBranchNotFound
 	case f.notAhead:
-		return github.DraftPullRequestResult{}, github.ErrHeadNotAhead
+		return github.PullRequestSyncResult{}, github.ErrHeadNotAhead
 	}
 	if f.prs == nil {
 		f.prs, f.bodies = map[string]*github.PullRequest{}, map[int]string{}
@@ -233,13 +239,16 @@ func (f *fakeForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo
 	created := false
 	pr, ok := f.prs[head]
 	if !ok {
-		pr = &github.PullRequest{Number: 40 + len(f.prs) + 1, State: "open", Draft: true}
+		if draft && f.noDrafts {
+			return github.PullRequestSyncResult{}, github.ErrDraftNotSupported
+		}
+		pr = &github.PullRequest{Number: 40 + len(f.prs) + 1, State: "open", Draft: draft}
 		pr.HTMLURL = "https://github.com/" + owner + "/" + repo + "/pull/" + strconv.Itoa(pr.Number)
 		f.prs[head] = pr
 		created = true
 	}
 	f.bodies[pr.Number] = body
-	return github.DraftPullRequestResult{PullRequest: *pr, Created: created, HeadSHA: "0123456789abcdef0123456789abcdef01234567"}, nil
+	return github.PullRequestSyncResult{PullRequest: *pr, Created: created, HeadSHA: "0123456789abcdef0123456789abcdef01234567"}, nil
 }
 
 type prSessions struct {
@@ -316,7 +325,7 @@ func wantPRCode(t *testing.T, err error, code string, status int) {
 	}
 }
 
-func TestPullRequesterCreatesThenUpdatesTheSameDraftWithOneFooter(t *testing.T) {
+func TestPullRequesterCreatesThenUpdatesTheSamePullRequestWithOneFooter(t *testing.T) {
 	forge, sessions, audit := &fakeForge{}, &prSessions{session: prSession()}, &auditRecorder{}
 	p := newPullRequester(forge, sessions, audit)
 
@@ -324,11 +333,12 @@ func TestPullRequesterCreatesThenUpdatesTheSameDraftWithOneFooter(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !first.Created || first.Number == 0 || first.URL == "" || first.HeadSHA == "" {
+	// Devin's default: a pull request ready for review, not a draft (w10/040).
+	if !first.Created || first.Number == 0 || first.URL == "" || first.HeadSHA == "" || first.Draft {
 		t.Fatalf("create = %+v", first)
 	}
-	if forge.last.owner != "octo" || forge.last.repo != "repo" || forge.last.head != "bex-agent/task-1" {
-		t.Fatalf("GitHub target = %+v, want the session's own repo + bound branch", forge.last)
+	if forge.last.owner != "octo" || forge.last.repo != "repo" || forge.last.head != "bex-agent/task-1" || forge.last.draft {
+		t.Fatalf("GitHub target = %+v, want the session's own repo + bound branch, not a draft", forge.last)
 	}
 	// The agent copies the PR's current body (footer included) and edits it,
 	// twice: the footer must still appear exactly once.
@@ -362,6 +372,47 @@ func TestPullRequesterCreatesThenUpdatesTheSameDraftWithOneFooter(t *testing.T) 
 	}
 	if len(audit.events) != 3 || audit.events[0].Verb != AuditVerbPullRequest || audit.events[0].Outcome != core.AuditAllowed || audit.events[0].TargetName != "octo/repo" {
 		t.Fatalf("audit = %+v", audit.events)
+	}
+}
+
+// A request that asks for a draft opens one and answers draft: true; a
+// repository whose plan has no drafts refuses it with its own code, and the
+// same call without draft then opens the pull request (w10/040).
+func TestPullRequesterOpensADraftOnlyWhenAsked(t *testing.T) {
+	forge, sessions := &fakeForge{}, &prSessions{session: prSession()}
+	p := newPullRequester(forge, sessions, &auditRecorder{})
+	req := prRequest("WIP: retries", "body")
+	req.Draft = true
+	got, err := p.Sync(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Created || !got.Draft || !forge.last.draft {
+		t.Fatalf("draft request = %+v, GitHub saw draft=%v", got, forge.last.draft)
+	}
+
+	forge, sessions = &fakeForge{noDrafts: true}, &prSessions{session: prSession()}
+	p = newPullRequester(forge, sessions, &auditRecorder{})
+	_, err = p.Sync(context.Background(), req)
+	wantPRCode(t, err, PullRequestDraftNotSupported, http.StatusUnprocessableEntity)
+	if sessions.recorded != 0 {
+		t.Fatal("a refused draft was recorded on the session")
+	}
+	if got, err := p.Sync(context.Background(), prRequest("Retries", "body")); err != nil || !got.Created || got.Draft {
+		t.Fatalf("the same call without draft = %+v, %v", got, err)
+	}
+}
+
+// The signed hop carries draft only when it is set, so a request that does
+// not ask for one is the same bytes it was before the option.
+func TestPullRequestContentOmitsAnUnsetDraft(t *testing.T) {
+	plain, _ := json.Marshal(PullRequestContent{Title: "t", Body: "b"})
+	if string(plain) != `{"title":"t","body":"b"}` {
+		t.Fatalf("content without a draft = %s", plain)
+	}
+	draft, _ := json.Marshal(PullRequestContent{Title: "t", Body: "b", Draft: true})
+	if string(draft) != `{"title":"t","body":"b","draft":true}` {
+		t.Fatalf("content with a draft = %s", draft)
 	}
 }
 

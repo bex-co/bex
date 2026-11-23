@@ -65,7 +65,17 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
   assert.match(text, /git pull --rebase origin bex-agent\/ags-abc/);
   assert.match(text, /open_or_update_draft_pr/);
   assert.match(text, /Do not force-push/);
-  assert.match(text, /Leave the pull request as a draft/);
+  // w10/040: Devin's default, a pull request ready for review; a draft only
+  // when someone asks for one.
+  assert.match(
+    text,
+    /The deliverable is a pull request from `bex-agent\/ags-abc` into `main`\./,
+  );
+  assert.match(
+    text,
+    /The pull request opens ready for review; pass `draft: true` only when the task, a person's message or the repository's instructions ask for a draft pull request\./,
+  );
+  assert.doesNotMatch(text, /draft pull request from/);
   assert.match(
     text,
     /started by pull request feedback, reply on the pull request with `reply_on_pull_request`/,
@@ -76,7 +86,7 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
   assert.match(text, /`authUrl`/);
   assert.match(
     text,
-    /Committing, pushing `bex-agent\/ags-abc` and opening or updating its draft pull request are therefore their explicit request/,
+    /Committing, pushing `bex-agent\/ags-abc` and opening or updating its pull request are therefore their explicit request/,
   );
   assert.match(text, /only commit or open pull requests when asked/);
   assert.match(text, /same branch and the same pull request/);
@@ -84,11 +94,11 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
   // does, after the checks pass, and a refusal is reported, not retried.
   assert.match(
     text,
-    /Leave the pull request as a draft for the requester to review, unless the task or a person's message asks you to mark it ready or merge it\. When asked, call `mark_pull_request_ready`/,
+    /Leave the merge to the requester, and a draft as a draft, unless the task or a person's message asks you to merge it or mark it ready\. When asked, call `mark_pull_request_ready` to mark a draft ready for review/,
   );
   assert.match(
     text,
-    /To merge, mark it ready, then call `merge_pull_request`; it acts on the head you last pushed and recorded with `open_or_update_draft_pr`/,
+    /To merge, mark a draft ready first, then call `merge_pull_request`; it acts on the head you last pushed and recorded with `open_or_update_draft_pr`/,
   );
   // w10/m577: asked to merge once the checks pass, it arms auto-merge or the
   // merge queue and ends its turn instead of watching them.
@@ -117,7 +127,7 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
 
 test("a steering turn's overlay names the existing PR and asks for a whole-branch body", () => {
   const first = platformOverlay(repoContext);
-  assert.doesNotMatch(first, /already opened draft pull request/);
+  assert.doesNotMatch(first, /already opened pull request/);
   assert.match(first, /describe every commit since `main`/);
   const later = platformOverlay({
     ...repoContext,
@@ -126,7 +136,7 @@ test("a steering turn's overlay names the existing PR and asks for a whole-branc
   });
   assert.match(
     later,
-    /already opened draft pull request #7 \(https:\/\/github\.com\/acme\/widgets\/pull\/7\)/,
+    /already opened pull request #7 \(https:\/\/github\.com\/acme\/widgets\/pull\/7\)/,
   );
 });
 
@@ -171,17 +181,17 @@ test("a takeover pushes its own branch and fast-forwards the person's PR with th
     text,
     /Marking the pull request ready or merging it is not part of that request unless the comment or a later message asks for it/,
   );
-  assert.doesNotMatch(text, /The deliverable is a draft pull request/);
-  assert.doesNotMatch(text, /Leave the pull request as a draft/);
-  assert.doesNotMatch(text, /already opened draft pull request/);
+  assert.doesNotMatch(text, /The deliverable is a pull request/);
+  assert.doesNotMatch(text, /pass `draft: true`/);
+  assert.doesNotMatch(text, /already opened pull request/);
   assert.doesNotMatch(text, /\b(MUST|NEVER|ALWAYS|IMPORTANT|CRITICAL)\b/);
-  // Without a recorded PR the flag changes nothing: the draft-PR overlay stays.
+  // Without a recorded PR the flag changes nothing: the PR overlay stays.
   const unrecorded = platformOverlay({
     ...takeover,
     existingPrUrl: "",
     existingPrNumber: null,
   });
-  assert.match(unrecorded, /The deliverable is a draft pull request/);
+  assert.match(unrecorded, /The deliverable is a pull request/);
 });
 
 test("a repo-less session gets the scratch overlay without Git delivery", () => {

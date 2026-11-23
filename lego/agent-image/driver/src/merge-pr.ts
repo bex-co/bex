@@ -40,13 +40,13 @@ export const mergeMethods = ["merge", "squash", "rebase"] as const;
 const requestTimeoutMs = 60_000;
 
 const onlyWhenAsked =
-  "Use it only when the task or a person's message asks for it; otherwise leave the pull request as a draft for the requester to review.";
+  "Use it only when the task or a person's message asks for it.";
 
 export const markPullRequestReadyToolDefinition = {
   name: markPullRequestReadyToolName,
   title: "Mark the pull request ready for review",
   description:
-    "Mark this session's own pull request ready for review (undraft it). " +
+    "Mark this session's own draft pull request ready for review (undraft it); one already ready answers alreadyReady: true. " +
     onlyWhenAsked +
     " The pull request is fixed by the platform. If it returns an error, report it to the user; do not use `gh pr ready` or another route.",
   inputSchema: {
@@ -63,7 +63,7 @@ export const mergePullRequestToolDefinition = {
   description:
     "Merge this session's own pull request into its base branch, now or once its required checks pass. " +
     onlyWhenAsked +
-    " Mark it ready first. When asked to merge once the checks pass, call it with auto: true and end your turn: GitHub auto-merge merges it when they pass (the answer has autoMerge: true), " +
+    " Mark a draft ready first. When asked to merge once the checks pass, call it with auto: true and end your turn: GitHub auto-merge merges it when they pass (the answer has autoMerge: true), " +
     "and a base branch that requires a merge queue takes it into the queue, with or without auto (mergeQueue: true). Without auto it merges now; a pull request GitHub would merge now is merged even with auto. " +
     "If a person asks not to merge after all, call it with only disableAuto: true. " +
     "The merge is pinned to the head bex recorded when you last called open_or_update_draft_pr, so push and call that tool first. " +

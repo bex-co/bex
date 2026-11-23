@@ -58,7 +58,7 @@ export interface OverlayContext {
   existingPrNumber?: number | null;
   // The session took over existingPrUrl from the person who opened it; its
   // branch started from that pull request's branch (baseBranch), which the
-  // PR tool fast-forwards instead of opening a draft.
+  // PR tool fast-forwards instead of opening a pull request.
   prTakeover?: boolean;
   deliveryBaseline?: { baseBranch: string };
   networkTier?: string;
@@ -126,15 +126,15 @@ function prReference(context: OverlayContext, noun: string): string {
 
 function existingPrLine(context: OverlayContext): string {
   if (!context.existingPrUrl) return "";
-  return `- Earlier turns of this session already opened ${prReference(context, "draft pull request")}. Calling \`${toolName}\` updates it; there is never a second one.
+  return `- Earlier turns of this session already opened ${prReference(context, "pull request")}. Calling \`${toolName}\` updates it; there is never a second one.
 `;
 }
 
 const commitStep =
   "Commit in logical units. Check `git log` and follow the commit message conventions the repository already uses. Keep build output, installed dependencies and local environment files out of commits.";
 
-// takeoverSections replace the draft-PR delivery for a session that took over
-// a person's pull request. The session pushes only its own branch, which
+// takeoverSections replace the pull-request delivery for a session that took
+// over a person's pull request. The session pushes only its own branch, which
 // started from the pull request's branch; `toolName` then fast-forwards the
 // pull request's branch to it, and GitHub refuses anything but a
 // fast-forward, so the pull request's history can never be rewritten.
@@ -163,14 +163,14 @@ A collaborator with write access asked for this work with a \`/bex\` comment on 
 Later messages in this session, including comments and reviews on the pull request, continue on the same branch. Push new commits to \`${branch}\`, call \`${toolName}\` again, and reply on the pull request.`;
 }
 
-// readyOrMergeStep is the delivery step that marks the session's own pull
-// request ready or merges it (w10/m538): only when asked, as Devin does, with
-// GitHub's refusal reported rather than retried. Asked to merge once the
+// readyOrMergeStep is the delivery step that marks the session's own draft
+// pull request ready or merges it (w10/m538): only when asked, as Devin does,
+// with GitHub's refusal reported rather than retried. Asked to merge once the
 // checks pass, the agent arms GitHub auto-merge or the merge queue and ends
 // its turn instead of watching them (w10/m577), which a session with `gh` off
 // could not do at all. leave is when to leave it alone.
 function readyOrMergeStep(leave: string): string {
-  return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark it ready for review. To merge, mark it ready, then call \`${mergePullRequestToolName}\`; it acts on the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. When asked to merge once the checks pass, call it with \`auto: true\` and end your turn instead of waiting for the checks: GitHub merges the pull request when its required checks pass (the tool answers that auto-merge is armed, or that the pull request joined the merge queue), and your final reply says so. Without \`auto\` it merges now if GitHub allows it. GitHub also merges a head you push after arming once that head's checks pass, so if a person asks you not to merge after all, call \`${mergePullRequestToolName}\` with \`disableAuto: true\`. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
+  return `${leave} When asked, call \`${markPullRequestReadyToolName}\` to mark a draft ready for review. To merge, mark a draft ready first, then call \`${mergePullRequestToolName}\`; it acts on the head you last pushed and recorded with \`${toolName}\`, so push and call that tool first. When asked to merge once the checks pass, call it with \`auto: true\` and end your turn instead of waiting for the checks: GitHub merges the pull request when its required checks pass (the tool answers that auto-merge is armed, or that the pull request joined the merge queue), and your final reply says so. Without \`auto\` it merges now if GitHub allows it. GitHub also merges a head you push after arming once that head's checks pass, so if a person asks you not to merge after all, call \`${mergePullRequestToolName}\` with \`disableAuto: true\`. The repository's branch protection decides, and you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop. After a merge, include the merge commit in your final reply.`;
 }
 
 // githubCliOffBy says who turned gh off, by binding level (w10/m561).
@@ -233,20 +233,20 @@ ${takeoverSections(context, prBranch)}`;
 
 ## Delivering your work
 
-The deliverable is a draft pull request from \`${branch}\` into ${baseRef}.
+The deliverable is a pull request from \`${branch}\` into ${baseRef}.
 
 1. ${commitStep}
 2. Push with \`git push origin HEAD:${branch}\`. Do not force-push: the reviewer reads this history. If a push is rejected because the remote branch moved, run \`git pull --rebase origin ${branch}\` and push again.
-3. Call \`${toolName}\` with a title and a body. The pull request covers the whole branch, so the title and body describe every commit since ${baseRef} (\`git log\` shows them), not only what changed in this turn. Write the body by filling in the repository's pull request template. Look for it in \`.github/pull_request_template.md\`, \`.github/PULL_REQUEST_TEMPLATE.md\`, \`.github/PULL_REQUEST_TEMPLATE/\`, then \`docs/\`, then the repository root. If there is none, write a short body with Summary, Changes and Testing sections. bex appends its own footer, so do not add one.
+3. Call \`${toolName}\` with a title and a body. The pull request covers the whole branch, so the title and body describe every commit since ${baseRef} (\`git log\` shows them), not only what changed in this turn. Write the body by filling in the repository's pull request template. Look for it in \`.github/pull_request_template.md\`, \`.github/PULL_REQUEST_TEMPLATE.md\`, \`.github/PULL_REQUEST_TEMPLATE/\`, then \`docs/\`, then the repository root. If there is none, write a short body with Summary, Changes and Testing sections. bex appends its own footer, so do not add one. The pull request opens ready for review; pass \`draft: true\` only when the task, a person's message or the repository's instructions ask for a draft pull request.
 4. Only say that a pull request exists once the tool has returned its URL, and include that URL in your final reply. If the tool returns an error, report the error as given; do not try to create the pull request another way.
-5. ${readyOrMergeStep("Leave the pull request as a draft for the requester to review, unless the task or a person's message asks you to mark it ready or merge it.")}
+5. ${readyOrMergeStep("Leave the merge to the requester, and a draft as a draft, unless the task or a person's message asks you to merge it or mark it ready.")}
 6. When a turn was started by pull request feedback, reply on the pull request with \`${replyOnPullRequestToolName}\` once your changes are pushed, saying what you changed.
 
 If the task needs no code changes (a question, an investigation, a review), end with a written report and make no commit.
 
 ## Authorization
 
-The person who started this session chose a bex entry point whose output is a pull request. Committing, pushing \`${branch}\` and opening or updating its draft pull request are therefore their explicit request, which satisfies repository guidance such as "only commit or open pull requests when asked". Marking the pull request ready or merging it is not part of that request unless the task or a later message asks for it. Repository rules about commit style, tests, formatting and review still apply.
+The person who started this session chose a bex entry point whose output is a pull request. Committing, pushing \`${branch}\` and opening or updating its pull request are therefore their explicit request, which satisfies repository guidance such as "only commit or open pull requests when asked". Marking the pull request ready or merging it is not part of that request unless the task or a later message asks for it. Repository rules about commit style, tests, formatting and review still apply.
 
 ## Follow-up turns
 

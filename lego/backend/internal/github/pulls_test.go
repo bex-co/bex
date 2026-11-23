@@ -32,10 +32,12 @@ import (
 const pullsTestHead = "0123456789abcdef0123456789abcdef01234567"
 
 // fakePullsAPI is GitHub's REST surface for one repository (octo/repo, default
-// branch main) as SyncDraftPullRequest uses it.
+// branch main) as SyncPullRequest uses it. noDrafts answers a draft create
+// as GitHub does on a plan without drafts.
 type fakePullsAPI struct {
 	mu        sync.Mutex
 	notPushed bool
+	noDrafts  bool
 	aheadBy   int
 	open      []map[string]any
 	created   []map[string]any
@@ -79,13 +81,18 @@ func (f *fakePullsAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost && r.URL.Path == "/repos/octo/repo/pulls":
 		body := decode()
 		f.created = append(f.created, body)
+		if f.noDrafts && body["draft"] == true {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			fmt.Fprint(w, `{"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"Draft pull requests are not supported in this repository."}],"status":"422"}`)
+			return
+		}
 		pr := map[string]any{"number": 7, "html_url": "https://github.com/octo/repo/pull/7", "state": "open", "draft": body["draft"]}
 		f.open = append(f.open, pr)
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(pr)
 	case r.Method == http.MethodPatch && r.URL.Path == "/repos/octo/repo/pulls/7":
 		f.patched = append(f.patched, decode())
-		fmt.Fprint(w, `{"number":7,"html_url":"https://github.com/octo/repo/pull/7","state":"open","draft":true}`)
+		_ = json.NewEncoder(w).Encode(f.open[0])
 	default:
 		http.Error(w, "unexpected "+r.Method+" "+r.URL.String(), http.StatusTeapot)
 	}
@@ -104,19 +111,21 @@ func pullsClient(t *testing.T, api http.Handler) *Client {
 	return c
 }
 
-func TestSyncDraftPullRequestCreatesThenUpdatesWithoutUndrafting(t *testing.T) {
+// The default is Devin's: a pull request ready for review (w10/040). A later
+// call updates only its title and body, whatever draft it names.
+func TestSyncPullRequestOpensReadyForReviewThenUpdatesWithoutChangingDraftState(t *testing.T) {
 	api := &fakePullsAPI{aheadBy: 2}
 	c := pullsClient(t, api)
 	ctx := context.Background()
 
-	first, err := c.SyncDraftPullRequest(ctx, 42, "octo", "repo", "bex-agent/task-1", "Add retries", "body one")
+	first, err := c.SyncPullRequest(ctx, 42, "octo", "repo", "bex-agent/task-1", "Add retries", "body one", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !first.Created || first.Number != 7 || first.HeadSHA != pullsTestHead || !first.Draft {
+	if !first.Created || first.Number != 7 || first.HeadSHA != pullsTestHead || first.Draft {
 		t.Fatalf("create = %+v", first)
 	}
-	if len(api.created) != 1 || api.created[0]["draft"] != true || api.created[0]["head"] != "bex-agent/task-1" || api.created[0]["base"] != "main" {
+	if len(api.created) != 1 || api.created[0]["draft"] != false || api.created[0]["head"] != "bex-agent/task-1" || api.created[0]["base"] != "main" {
 		t.Fatalf("create payload = %+v", api.created)
 	}
 	perms, _ := api.scope["permissions"].(map[string]any)
@@ -125,11 +134,11 @@ func TestSyncDraftPullRequestCreatesThenUpdatesWithoutUndrafting(t *testing.T) {
 		t.Fatalf("token scope = %+v", api.scope)
 	}
 
-	second, err := c.SyncDraftPullRequest(ctx, 42, "octo", "repo", "bex-agent/task-1", "Add retries v2", "body two")
+	second, err := c.SyncPullRequest(ctx, 42, "octo", "repo", "bex-agent/task-1", "Add retries v2", "body two", true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.Created || second.Number != 7 || len(api.created) != 1 {
+	if second.Created || second.Number != 7 || second.Draft || len(api.created) != 1 {
 		t.Fatalf("update = %+v (creates %d)", second, len(api.created))
 	}
 	if len(api.patched) != 1 {
@@ -141,14 +150,49 @@ func TestSyncDraftPullRequestCreatesThenUpdatesWithoutUndrafting(t *testing.T) {
 	}
 }
 
-func TestSyncDraftPullRequestTypedRefusals(t *testing.T) {
+// Asked for a draft, it opens one, and a later update leaves it a draft.
+func TestSyncPullRequestOpensADraftWhenAsked(t *testing.T) {
+	api := &fakePullsAPI{aheadBy: 1}
+	c := pullsClient(t, api)
+	ctx := context.Background()
+	first, err := c.SyncPullRequest(ctx, 42, "octo", "repo", "bex-agent/task-1", "WIP: retries", "body", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Created || !first.Draft || len(api.created) != 1 || api.created[0]["draft"] != true {
+		t.Fatalf("create = %+v, payload = %+v", first, api.created)
+	}
+	second, err := c.SyncPullRequest(ctx, 42, "octo", "repo", "bex-agent/task-1", "Retries", "body", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Created || !second.Draft || len(api.patched) != 1 || len(api.patched[0]) != 2 {
+		t.Fatalf("update = %+v, patches = %+v", second, api.patched)
+	}
+}
+
+// A repository whose plan has no drafts refuses the draft with 422, which is
+// its own refusal, not the concurrent-create fallback.
+func TestSyncPullRequestRefusesADraftTheRepositoryCannotHave(t *testing.T) {
+	api := &fakePullsAPI{aheadBy: 1, noDrafts: true}
+	c := pullsClient(t, api)
+	if _, err := c.SyncPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b", true); !errors.Is(err, ErrDraftNotSupported) {
+		t.Fatalf("draft on a plan without drafts err = %v, want ErrDraftNotSupported", err)
+	}
+	result, err := c.SyncPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b", false)
+	if err != nil || !result.Created || result.Draft {
+		t.Fatalf("regular pull request on the same repository = %+v, %v", result, err)
+	}
+}
+
+func TestSyncPullRequestTypedRefusals(t *testing.T) {
 	c := pullsClient(t, &fakePullsAPI{notPushed: true})
-	if _, err := c.SyncDraftPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b"); !errors.Is(err, ErrHeadBranchNotFound) {
+	if _, err := c.SyncPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b", false); !errors.Is(err, ErrHeadBranchNotFound) {
 		t.Fatalf("unpushed head err = %v, want ErrHeadBranchNotFound", err)
 	}
 	api := &fakePullsAPI{aheadBy: 0}
 	c = pullsClient(t, api)
-	if _, err := c.SyncDraftPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b"); !errors.Is(err, ErrHeadNotAhead) {
+	if _, err := c.SyncPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b", false); !errors.Is(err, ErrHeadNotAhead) {
 		t.Fatalf("level head err = %v, want ErrHeadNotAhead", err)
 	}
 	if len(api.created) != 0 {
@@ -157,12 +201,12 @@ func TestSyncDraftPullRequestTypedRefusals(t *testing.T) {
 }
 
 // Upstream error text never reaches Error() (w6/005).
-func TestSyncDraftPullRequestHidesUpstreamText(t *testing.T) {
+func TestSyncPullRequestHidesUpstreamText(t *testing.T) {
 	c := pullsClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
 		http.Error(w, "internal secret detail", http.StatusInternalServerError)
 	}))
-	_, err := c.SyncDraftPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b")
+	_, err := c.SyncPullRequest(context.Background(), 42, "octo", "repo", "bex-agent/task-1", "t", "b", false)
 	if err == nil || strings.Contains(err.Error(), "secret detail") {
 		t.Fatalf("err = %v", err)
 	}

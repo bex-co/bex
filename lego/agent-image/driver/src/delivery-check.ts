@@ -235,7 +235,7 @@ export function undeliveredFacts(
   const baseOid = config.deliveryBaseline?.baseOid ?? "";
   if (facts.remoteHead && facts.remoteHead !== baseOid && !facts.prRecorded) {
     reasons.push(
-      `origin/${config.branch} has pushed commits but no draft pull request was recorded`,
+      `origin/${config.branch} has pushed commits but no pull request was recorded`,
     );
   }
   if (facts.prBehind) {
@@ -254,7 +254,7 @@ export function deliveryNudge(
 ): string {
   const deliver = takeover
     ? `bring the pull request up to date with \`${toolName}\``
-    : `open or update the draft pull request with \`${toolName}\``;
+    : `open or update the pull request with \`${toolName}\``;
   return (
     `Your changes are not fully delivered: ${reasons.join("; ")}. ` +
     `Commit, push with \`git push origin HEAD:${branch}\` and ${deliver}, or explain why not.`

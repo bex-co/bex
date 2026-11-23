@@ -20,7 +20,10 @@
 //   - open_or_update_draft_pr (repo sessions) forwards to the gateway's
 //     pull-request verb on the session's Pod-bound Git proxy path. Owner,
 //     repository, head and base are fixed server-side by that path, so the
-//     agent supplies only a title and a body.
+//     agent supplies only a title, a body and, when asked for one, draft:
+//     true. The pull request opens ready for review otherwise, as Devin's
+//     does (w10/040); the name predates that and stays, since tasks and
+//     repository instructions name the tool.
 //   - reply_on_pull_request (repo sessions, ADR047 D11) forwards to the
 //     gateway's pull-request/comment verb on the same path: one comment on the
 //     session's own pull request, whose number is fixed server-side.
@@ -98,9 +101,10 @@ const requestTimeoutMs = 60_000;
 const supportedProtocolVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const toolDescription =
-  "Open the draft pull request for this session's branch, or update it if it already exists. " +
+  "Open the pull request for this session's branch, or update it if it already exists. " +
   "Use it after you have committed and pushed your work to the session branch. " +
-  "It is idempotent: calling it again updates the same pull request's title and body. " +
+  "It opens the pull request ready for review. Pass draft: true only when the task, a person's message or the repository's instructions ask for a draft pull request; draft is read only when the pull request is opened. " +
+  "It is idempotent: calling it again updates the same pull request's title and body, and never its draft or ready state. " +
   "The title and body you send replace the existing ones, so they must describe every commit on the branch since the base " +
   "(run `git log <base>..HEAD`), including work from earlier turns, not only this turn's change. " +
   "The head and base branches are fixed by the platform, and the bex footer is appended automatically. " +
@@ -109,7 +113,7 @@ const toolDescription =
 
 const toolDefinition = {
   name: toolName,
-  title: "Open or update the draft pull request",
+  title: "Open or update the pull request",
   description: toolDescription,
   inputSchema: {
     type: "object",
@@ -123,6 +127,11 @@ const toolDefinition = {
         description:
           "Pull request description in Markdown for the whole branch, filled in from the repository's pull request template when it has one.",
       },
+      draft: {
+        type: "boolean",
+        description:
+          "Open the pull request as a draft. Omit it unless the task, a person's message or the repository's instructions ask for a draft.",
+      },
     },
     required: ["title", "body"],
     additionalProperties: false,
@@ -134,6 +143,8 @@ interface PullRequestResult {
   url: string;
   number: number;
   created: boolean;
+  // Whether the pull request is a draft, as GitHub answered.
+  draft?: boolean;
   headSha: string;
   // Set when the session took this pull request over: the verb fast-forwarded
   // its branch to headSha and changed nothing else on it.
@@ -158,9 +169,12 @@ export function validateInput(args: unknown): ToolOutcome | undefined {
   if (!args || typeof args !== "object" || Array.isArray(args)) {
     return invalid("arguments must be an object with title and body");
   }
-  const { title: rawTitle, body } = args as Record<string, unknown>;
+  const { title: rawTitle, body, draft } = args as Record<string, unknown>;
   if (typeof rawTitle !== "string" || typeof body !== "string") {
     return invalid("title and body must be strings");
+  }
+  if (draft !== undefined && typeof draft !== "boolean") {
+    return invalid("draft must be true or false");
   }
   // A lone surrogate cannot be encoded as UTF-8; NUL is rejected by GitHub.
   if (/\p{Cs}/u.test(rawTitle) || /[\p{Cs}\0]/u.test(body)) {
@@ -198,7 +212,7 @@ function upstreamError(message: string): ToolOutcome {
 
 function asResult(value: unknown): PullRequestResult | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const { url, number, created, headSha, takenOver } = value as Record<
+  const { url, number, created, draft, headSha, takenOver } = value as Record<
     string,
     unknown
   >;
@@ -209,6 +223,7 @@ function asResult(value: unknown): PullRequestResult | undefined {
     url,
     number,
     created: created === true,
+    ...(typeof draft === "boolean" ? { draft } : {}),
     headSha: typeof headSha === "string" ? headSha : "",
     ...(takenOver === true ? { takenOver: true as const } : {}),
   };
@@ -237,12 +252,22 @@ export async function openOrUpdateDraftPr(
       "this session has no pull-request endpoint configured",
     );
   }
-  const { title, body } = args as { title: string; body: string };
+  const { title, body, draft } = args as {
+    title: string;
+    body: string;
+    draft?: boolean;
+  };
+  // draft is sent only when set, so a request for a regular pull request is
+  // the {title, body} every gateway accepts.
   const reply = await postToGateway(
     endpoint,
     {
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), body }),
+      body: JSON.stringify({
+        title: title.trim(),
+        body,
+        ...(draft ? { draft: true } : {}),
+      }),
     },
     {
       label: "pull-request endpoint",
@@ -301,7 +326,7 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   const lines: string[] = [];
   if (env.BEX_PR_ENDPOINT) {
     lines.push(
-      `Use ${toolName} after pushing the session branch to open or update its draft pull request.`,
+      `Use ${toolName} after pushing the session branch to open or update its pull request; it opens ready for review unless you pass draft: true because a draft was asked for.`,
     );
   }
   if (env.BEX_PR_COMMENT_ENDPOINT) {

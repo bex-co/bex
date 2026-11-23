@@ -518,7 +518,7 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "Isso interrompe o agente. Os commits já enviados à branch e o PR de rascunho são preservados.",
+      "Isso interrompe o agente. Os commits já enviados à branch e o PR são preservados.",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

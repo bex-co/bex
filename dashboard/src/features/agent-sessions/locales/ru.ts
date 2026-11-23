@@ -522,7 +522,7 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "Агент будет остановлен. Коммиты, уже отправленные в ветку, и черновой PR сохранятся.",
+      "Агент будет остановлен. Коммиты, уже отправленные в ветку, и PR сохранятся.",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

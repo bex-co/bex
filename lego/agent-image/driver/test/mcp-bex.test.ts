@@ -98,13 +98,14 @@ function mcpClient(env: Record<string, string>) {
   };
 }
 
-test("bex MCP server lists one tool and opens the draft PR through the gateway", async (t) => {
+test("bex MCP server lists one tool and opens the PR through the gateway", async (t) => {
   const gateway = await stubGateway(() => ({
     status: 200,
     body: {
       url: "https://github.com/acme/widgets/pull/12",
       number: 12,
       created: true,
+      draft: false,
       headSha: "a".repeat(40),
     },
   }));
@@ -133,7 +134,14 @@ test("bex MCP server lists one tool and opens the draft PR through the gateway",
   const [tool] = listed.result.tools;
   assert.equal(tool.name, "open_or_update_draft_pr");
   assert.deepEqual(tool.inputSchema.required, ["title", "body"]);
+  assert.equal(tool.inputSchema.properties.draft.type, "boolean");
   assert.match(tool.description, /after you have committed and pushed/);
+  // w10/040: ready for review unless a draft is asked for, as Devin does.
+  assert.match(
+    tool.description,
+    /It opens the pull request ready for review\. Pass draft: true only when the task, a person's message or the repository's instructions ask for a draft pull request/,
+  );
+  assert.match(tool.description, /never its draft or ready state/);
   assert.match(tool.description, /idempotent/);
   assert.match(tool.description, /footer is appended automatically/);
   assert.match(
@@ -150,6 +158,7 @@ test("bex MCP server lists one tool and opens the draft PR through the gateway",
     url: "https://github.com/acme/widgets/pull/12",
     number: 12,
     created: true,
+    draft: false,
     headSha: "a".repeat(40),
   });
   assert.deepEqual(
@@ -173,6 +182,40 @@ test("bex MCP server lists one tool and opens the draft PR through the gateway",
   const unknown = await client.request("tools/call", { name: "gh_pr_create" });
   assert.equal(unknown.error.code, -32602);
   assert.equal((await client.request("resources/list")).error.code, -32601);
+});
+
+test("draft: true reaches the gateway and false is not sent at all", async (t) => {
+  const gateway = await stubGateway((body) => ({
+    status: 200,
+    body: {
+      url: "https://github.com/acme/widgets/pull/12",
+      number: 12,
+      created: true,
+      draft: body.draft === true,
+      headSha: "a".repeat(40),
+    },
+  }));
+  t.after(gateway.close);
+  const client = mcpClient({ BEX_PR_ENDPOINT: gateway.endpoint });
+  t.after(() => client.close());
+  const asked = await client.request("tools/call", {
+    name: "open_or_update_draft_pr",
+    arguments: { title: "WIP: retries", body: "b", draft: true },
+  });
+  assert.equal(asked.result.isError, false);
+  assert.equal(asked.result.structuredContent.draft, true);
+  const unasked = await client.request("tools/call", {
+    name: "open_or_update_draft_pr",
+    arguments: { title: "Retries", body: "b", draft: false },
+  });
+  assert.equal(unasked.result.structuredContent.draft, false);
+  assert.deepEqual(
+    gateway.requests.map((request) => request.body),
+    [
+      { title: "WIP: retries", body: "b", draft: true },
+      { title: "Retries", body: "b" },
+    ],
+  );
 });
 
 test("gateway errors pass through verbatim and record nothing", async (t) => {
@@ -216,6 +259,7 @@ test("oversize and malformed input is rejected before any request", async (t) =>
     [{ title: "lone\ud800", body: "" }, "invalid_request"],
     [{ title: "ok", body: "lone\udc00" }, "invalid_request"],
     [{ title: "ok" }, "invalid_request"],
+    [{ title: "ok", body: "", draft: "yes" }, "invalid_request"],
   ];
   for (const [args, code] of cases) {
     const called = await client.request("tools/call", {

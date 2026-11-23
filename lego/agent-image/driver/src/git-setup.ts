@@ -19,7 +19,7 @@
 // when the workspace is empty,
 // checks out the bound bex-agent/* branch and writes repo-local identity and
 // push defaults. After that the agent owns Git: it commits, pushes and opens
-// its draft PR itself. The driver only reads Git state afterwards
+// its PR itself. The driver only reads Git state afterwards
 // (delivery-check.ts); it never commits or pushes.
 
 import { execFile } from "node:child_process";

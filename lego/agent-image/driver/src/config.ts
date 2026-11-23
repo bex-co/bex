@@ -133,7 +133,7 @@ export interface AgentDriverConfig {
   // Driver-owned file where the bex MCP server records whether a final result
   // was accepted, which drives the one reminder.
   resultRecordPath: string;
-  // The draft PR earlier turns of this session opened (empty on turn 1), so a
+  // The PR earlier turns of this session opened (empty on turn 1), so a
   // re-dispatched sandbox updates it rather than describing only its own turn.
   existingPrUrl: string;
   existingPrNumber: number | null;

@@ -90,7 +90,7 @@ Walked against Devin's docs ([GitHub integration](https://docs.devin.ai/integrat
 | Merge method | the repository's settings | named, or the first the settings and the base branch's rules allow | match |
 | Merged state on the session | `pr_state` | `prState: merged` at once on REST, GraphQL, MCP, dashboard | match |
 | GitHub auto-merge, merge queue | Devin Review toggles auto-merge and the queue; `gh pr merge --auto` | refused naming the tool; sync merge only | gap → [w10/039](../039.md) |
-| Draft by default | 6 of 200 recent Devin pull requests were drafts | always a draft (ADR090 D3) | gap → [w10/040](../../040.md) |
+| Draft by default | 6 of 200 recent Devin pull requests were drafts | always a draft (ADR090 D3) | gap → [w10/040](../040.md) |
 | Act on another pull request of the repository | its App credentials can | the session's recorded pull request only | divergence without sign-off → [w10/041](../../041.md) |
 | A switch that stops agents merging | none documented; branch protection is the control | none (the `gh` switch does not reach these tools) | not filed: no Devin counterpart, and branch protection already gates every merge |
 

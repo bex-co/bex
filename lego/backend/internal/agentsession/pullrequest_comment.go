@@ -70,7 +70,7 @@ func NewPullRequestCommentError(code, message string) *PullRequestError {
 	status, hint := http.StatusBadGateway, "Retry once later; if it keeps failing, say in your final reply what you changed instead."
 	switch code {
 	case PullRequestNoPullRequest:
-		status, hint = http.StatusConflict, "This session has no pull request yet. Push your work and open the draft pull request first, then call this tool again."
+		status, hint = http.StatusConflict, "This session has no pull request yet. Push your work and open the pull request first, then call this tool again."
 	case PullRequestInvalidRequest:
 		status, hint = http.StatusUnprocessableEntity, "Send only a JSON object with a non-empty \"body\"; the repository and the pull request are fixed by the platform."
 	case PullRequestTooLarge:

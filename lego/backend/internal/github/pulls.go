@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	neturl "net/url"
+	"strings"
 	"sync"
 )
 
@@ -50,33 +51,40 @@ func (p ghPull) export() PullRequest {
 	return PullRequest{Number: p.Number, HTMLURL: p.HTMLURL, State: p.State, Draft: p.Draft}
 }
 
-// Typed refusals of SyncDraftPullRequest: the agent's PR request is refused,
-// not failed, when there is nothing reviewable on its branch yet (ADR090).
+// Typed refusals of SyncPullRequest: the agent's PR request is refused, not
+// failed, when there is nothing reviewable on its branch yet (ADR090), or when
+// it asked for a draft the repository cannot have.
 var (
 	// ErrHeadBranchNotFound means the head branch does not exist on GitHub —
 	// the agent has not pushed it.
 	ErrHeadBranchNotFound = errors.New("github: head branch does not exist")
 	// ErrHeadNotAhead means the head branch has no commits that base lacks.
 	ErrHeadNotAhead = errors.New("github: head branch is not ahead of base")
+	// ErrDraftNotSupported means GitHub refused to open a draft because the
+	// repository's plan has none (a private repository on GitHub Free or Pro).
+	ErrDraftNotSupported = errors.New("github: draft pull requests are not supported in this repository")
 )
 
-// DraftPullRequestResult is the outcome of SyncDraftPullRequest. HeadSHA is
-// the remote head the PR now points at.
-type DraftPullRequestResult struct {
+// PullRequestSyncResult is the outcome of SyncPullRequest. HeadSHA is the
+// remote head the PR now points at.
+type PullRequestSyncResult struct {
 	PullRequest
 	Created bool
 	HeadSHA string
 }
 
-// SyncDraftPullRequest opens a draft PR from head into the repository's default
-// branch, or — when an open PR for head already exists — updates that PR's
-// title and body (ADR090: one branch, one PR per session, so a steering turn
-// updates the same PR). It never changes draft state, base, or head of an
+// SyncPullRequest opens a PR from head into the repository's default branch,
+// ready for review unless draft asks for a draft (ADR090 D3, w10/040: Devin
+// opens a regular pull request by default), or — when an open PR for head
+// already exists — updates that PR's title and body (ADR090: one branch, one
+// PR per session, so a steering turn updates the same PR). draft is read only
+// when the PR is opened: it never changes draft state, base, or head of an
 // existing PR. It refuses with ErrHeadBranchNotFound when head is not on
-// GitHub and ErrHeadNotAhead when head has no commits base lacks. The
-// installation token is minted per call, narrowed to the one repository with
-// pull_requests:write + contents:read, and never returned to the caller.
-func (c *Client) SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (DraftPullRequestResult, error) {
+// GitHub, ErrHeadNotAhead when head has no commits base lacks, and
+// ErrDraftNotSupported when GitHub refuses the draft. The installation token
+// is minted per call, narrowed to the one repository with pull_requests:write
+// + contents:read, and never returned to the caller.
+func (c *Client) SyncPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string, draft bool) (PullRequestSyncResult, error) {
 	tok, err := c.mintInstallationToken(ctx, installationID, struct {
 		Repositories []string          `json:"repositories"`
 		Permissions  map[string]string `json:"permissions"`
@@ -85,7 +93,7 @@ func (c *Client) SyncDraftPullRequest(ctx context.Context, installationID int64,
 		Permissions:  map[string]string{"pull_requests": "write", "contents": "read", "metadata": "read"},
 	})
 	if err != nil {
-		return DraftPullRequestResult{}, err
+		return PullRequestSyncResult{}, err
 	}
 	// The repository, the head commit, and any open PR for head are independent
 	// reads; fetch them together, then judge their errors in a fixed order.
@@ -102,66 +110,69 @@ func (c *Client) SyncDraftPullRequest(ctx context.Context, installationID int64,
 	wg.Go(func() { existing, existErr = c.findOpenPull(ctx, tok.Token, owner, repo, head) })
 	wg.Wait()
 	if repoErr != nil {
-		return DraftPullRequestResult{}, repoErr
+		return PullRequestSyncResult{}, repoErr
 	}
 	if !found || info.DefaultBranch == "" {
-		return DraftPullRequestResult{}, &APIError{Status: http.StatusNotFound}
+		return PullRequestSyncResult{}, &APIError{Status: http.StatusNotFound}
 	}
 	base := info.DefaultBranch
 	if headErr != nil {
 		var apiErr *APIError
 		if errors.As(headErr, &apiErr) && apiErr.Status == http.StatusNotFound {
-			return DraftPullRequestResult{}, ErrHeadBranchNotFound
+			return PullRequestSyncResult{}, ErrHeadBranchNotFound
 		}
-		return DraftPullRequestResult{}, headErr
+		return PullRequestSyncResult{}, headErr
 	}
 	comparison, err := c.compare(ctx, tok.Token, owner, repo, base, headSHA)
 	if err != nil {
-		return DraftPullRequestResult{}, err
+		return PullRequestSyncResult{}, err
 	}
 	if comparison.AheadBy <= 0 {
-		return DraftPullRequestResult{}, ErrHeadNotAhead
+		return PullRequestSyncResult{}, ErrHeadNotAhead
 	}
 	if existErr != nil {
-		return DraftPullRequestResult{}, existErr
+		return PullRequestSyncResult{}, existErr
 	}
-	result := DraftPullRequestResult{HeadSHA: headSHA}
+	result := PullRequestSyncResult{HeadSHA: headSHA}
 	if existing.Number == 0 {
-		created, createErr := c.createPull(ctx, tok.Token, owner, repo, head, base, title, body)
+		created, createErr := c.createPull(ctx, tok.Token, owner, repo, head, base, title, body, draft)
 		if createErr == nil {
 			result.PullRequest, result.Created = created, true
 			return result, nil
 		}
-		// A concurrent request for the same head won the create (GitHub answers
-		// 422): fall through and update the PR it opened.
 		var apiErr *APIError
 		if !errors.As(createErr, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity {
-			return DraftPullRequestResult{}, createErr
+			return PullRequestSyncResult{}, createErr
 		}
+		if draft && strings.Contains(strings.ToLower(APIErrorMessage(createErr)), "draft pull requests are not supported") {
+			return PullRequestSyncResult{}, ErrDraftNotSupported
+		}
+		// A concurrent request for the same head won the create (GitHub answers
+		// 422): fall through and update the PR it opened.
 		if existing, err = c.findOpenPull(ctx, tok.Token, owner, repo, head); err != nil {
-			return DraftPullRequestResult{}, err
+			return PullRequestSyncResult{}, err
 		}
 		if existing.Number == 0 {
-			return DraftPullRequestResult{}, createErr
+			return PullRequestSyncResult{}, createErr
 		}
 	}
 	updated, err := c.updatePull(ctx, tok.Token, owner, repo, existing.Number, title, body)
 	if err != nil {
-		return DraftPullRequestResult{}, err
+		return PullRequestSyncResult{}, err
 	}
 	result.PullRequest = updated
 	return result, nil
 }
 
-// createPull opens head→base as a draft PR.
-func (c *Client) createPull(ctx context.Context, token, owner, repo, head, base, title, body string) (PullRequest, error) {
+// createPull opens head→base, as a draft when draft is set.
+func (c *Client) createPull(ctx context.Context, token, owner, repo, head, base, title, body string, draft bool) (PullRequest, error) {
 	return c.doPull(ctx, token, http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", c.baseURL, owner, repo), struct {
 		Title string `json:"title"`
 		Head  string `json:"head"`
 		Base  string `json:"base"`
 		Body  string `json:"body"`
 		Draft bool   `json:"draft"`
-	}{Title: title, Head: head, Base: base, Body: body, Draft: true}, http.StatusCreated)
+	}{Title: title, Head: head, Base: base, Body: body, Draft: draft}, http.StatusCreated)
 }
 
 // updatePull replaces an existing PR's title and body. It sends only those two

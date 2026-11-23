@@ -510,7 +510,7 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "エージェントが停止します。ブランチにすでにプッシュされたコミットとドラフトの PR は保持されます。",
+      "エージェントが停止します。ブランチにすでにプッシュされたコミットと PR は保持されます。",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

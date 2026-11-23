@@ -291,7 +291,7 @@ describe("Cancel is unchanged beside Stop turn", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("Cancel this session?");
     expect(dialog).toHaveTextContent(
-      "This stops the agent. Any commits already pushed to the branch and the draft PR are preserved.",
+      "This stops the agent. Any commits already pushed to the branch and the pull request are preserved.",
     );
     expect(mutations.cancel).not.toHaveBeenCalled();
     expect(mutations.interrupt).not.toHaveBeenCalled();

@@ -8,7 +8,7 @@
 
 ### The product
 
-"Code on the tenant's GitHub repo, in our cloud": the tenant assigns a task (dashboard, IDE, or MCP), bex runs a coding agent in an isolated sandbox with the repo checked out, and the result comes back as a draft PR — the shape of GitHub Copilot cloud agent, OpenAI Codex cloud, Devin, Claude Code on the web, and Cursor cloud agents. This is pillar 5 territory (ADR008): the sandbox substrate exists (ADR042); this ADR is the product layer on top of it.
+"Code on the tenant's GitHub repo, in our cloud": the tenant assigns a task (dashboard, IDE, or MCP), bex runs a coding agent in an isolated sandbox with the repo checked out, and the result comes back as a pull request — the shape of GitHub Copilot cloud agent, OpenAI Codex cloud, Devin, Claude Code on the web, and Cursor cloud agents. This is pillar 5 territory (ADR008): the sandbox substrate exists (ADR042); this ADR is the product layer on top of it.
 
 ### What the exemplars verifiably do
 
@@ -210,7 +210,7 @@ The applied rung is surfaced on the turn (a `data-` part / turn annotation) so t
 
 ### D4 — Delivery: draft PR + evidence
 
-_Superseded by [ADR090](ADR090-agent-owned-delivery.md) (2026-10-22): the agent commits, pushes its branch and opens or updates its draft PR through the gateway `pull-request` verb and the `bex` stdio MCP tool. The platform pins the branch and PR head, appends the footer and records the PR immediately; the driver only checks Git state and nudges the agent once; the Completer finalizes from the recorded PR. The evidence field and column are deleted. The passages below are kept as history._
+_Superseded by [ADR090](ADR090-agent-owned-delivery.md) (2026-10-22): the agent commits, pushes its branch and opens or updates its pull request through the gateway `pull-request` verb and the `bex` stdio MCP tool (ready for review unless a draft is asked for since 2026-11-22, [ADR090 D3](ADR090-agent-owned-delivery.md#d3--the-pull-request-verb) w10/040 amendment). The platform pins the branch and PR head, appends the footer and records the PR immediately; the driver only checks Git state and nudges the agent once; the Completer finalizes from the recorded PR. The evidence field and column are deleted. The passages below are kept as history._
 
 A session ends (or checkpoints) by pushing its `bex-agent/*` branch with the session token and opening a **draft PR** via the GitHub App from bex-api. The session record attaches Codex-style verifiable evidence — command log, test output tails — sourced from the transcript. Steering channels: new ACP prompt turns on an attached session (phase 2), and a PR-comment loop (webhook → resume session) as a follow-on.
 

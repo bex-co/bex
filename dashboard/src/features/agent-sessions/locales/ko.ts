@@ -510,7 +510,7 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "에이전트가 중지됩니다. 브랜치에 이미 푸시된 커밋과 초안 PR은 유지됩니다.",
+      "에이전트가 중지됩니다. 브랜치에 이미 푸시된 커밋과 PR은 유지됩니다.",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

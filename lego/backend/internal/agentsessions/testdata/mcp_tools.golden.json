@@ -10715,7 +10715,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Send a follow-up message to a cloud coding-agent session. On an idle session (state succeeded or failed) it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. While a turn is running, or behind messages already queued, it is queued instead: the answer carries queuedMessage (its id and place), and it runs as its own turn when the turn before it settles, one message per turn in order, at most 10 queued per session (AGENT_SESSION_QUEUE_FULL). The session must not be archived or canceled. Manage queued messages with list/edit/delete/move_agent_session_queued_message; interrupt_agent_session stops the running turn so a queued message runs now. Pass outputSchema to require a machine-readable result for this turn, read from outcome.result; inline secrets cannot be queued (name workspace secrets in secretNames).",
+    "description": "Send a follow-up message to a cloud coding-agent session. On an idle session (state succeeded or failed) it runs a new turn, re-dispatches the sandbox on the same branch and updates the same pull request. While a turn is running, or behind messages already queued, it is queued instead: the answer carries queuedMessage (its id and place), and it runs as its own turn when the turn before it settles, one message per turn in order, at most 10 queued per session (AGENT_SESSION_QUEUE_FULL). The session must not be archived or canceled. Manage queued messages with list/edit/delete/move_agent_session_queued_message; interrupt_agent_session stops the running turn so a queued message runs now. Pass outputSchema to require a machine-readable result for this turn, read from outcome.result; inline secrets cannot be queued (name workspace secrets in secretNames).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -13146,7 +13146,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR.",
+    "description": "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same pull request.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {

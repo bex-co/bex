@@ -97,7 +97,7 @@ test("gateway refusals pass through verbatim; other failures become upstream_err
   const error = {
     code: "no_pull_request",
     message: "this session has not opened its pull request yet",
-    hint: "Push your work and open the draft pull request first, then call this tool again.",
+    hint: "Push your work and open the pull request first, then call this tool again.",
   };
   const refusing = await stubGateway({ status: 409, body: { error } });
   t.after(refusing.close);

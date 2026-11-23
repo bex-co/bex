@@ -1390,7 +1390,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			Minter: minter,
 			Nonce:  st,
 		})
-		// ADR090: the agent's own draft-PR verb. Same gateway-only HMAC and
+		// ADR090: the agent's own PR verb. Same gateway-only HMAC and
 		// internal-only listener; owner/repo/base/head come from the durable
 		// session, never the request. Unwired without the GitHub App.
 		if ghClient != nil {

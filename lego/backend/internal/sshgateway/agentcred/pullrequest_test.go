@@ -41,6 +41,7 @@ type prForge struct {
 	mu       sync.Mutex
 	calls    int
 	heads    []string
+	drafts   []bool
 	comments []int
 	pr       github.PullRequestDetail
 	readied  []string
@@ -125,13 +126,14 @@ func (f *prForge) BranchProtected(context.Context, int64, string, string, string
 	return false, nil
 }
 
-func (f *prForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo, head, _, _ string) (github.DraftPullRequestResult, error) {
+func (f *prForge) SyncPullRequest(_ context.Context, _ int64, owner, repo, head, _, _ string, draft bool) (github.PullRequestSyncResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
 	f.heads = append(f.heads, head)
-	return github.DraftPullRequestResult{
-		PullRequest: github.PullRequest{Number: 7, HTMLURL: "https://github.com/" + owner + "/" + repo + "/pull/7", State: "open", Draft: true},
+	f.drafts = append(f.drafts, draft)
+	return github.PullRequestSyncResult{
+		PullRequest: github.PullRequest{Number: 7, HTMLURL: "https://github.com/" + owner + "/" + repo + "/pull/7", State: "open", Draft: draft},
 		Created:     f.calls == 1, HeadSHA: "0123456789abcdef0123456789abcdef01234567",
 	}, nil
 }
@@ -207,14 +209,31 @@ func TestPullRequestRouteOpensTheBoundBranchOnly(t *testing.T) {
 		t.Fatalf("status=%d body=%s", reply.code, reply.raw)
 	}
 	var got agentsession.PullRequestResponse
-	if err := json.Unmarshal([]byte(reply.raw), &got); err != nil || got.URL != "https://github.com/octo/repo/pull/7" || got.Number != 7 || !got.Created || got.HeadSHA == "" {
+	if err := json.Unmarshal([]byte(reply.raw), &got); err != nil || got.URL != "https://github.com/octo/repo/pull/7" || got.Number != 7 || !got.Created || got.Draft || got.HeadSHA == "" {
 		t.Fatalf("response=%+v err=%v", got, err)
 	}
-	if len(forge.heads) != 1 || forge.heads[0] != "bex-agent/task-1" {
-		t.Fatalf("GitHub head = %v, want the bound branch", forge.heads)
+	if len(forge.heads) != 1 || forge.heads[0] != "bex-agent/task-1" || forge.drafts[0] {
+		t.Fatalf("GitHub head = %v drafts = %v, want the bound branch, ready for review", forge.heads, forge.drafts)
 	}
 	if len(audit.events) != 1 || audit.events[0].Verb != agentsession.AuditVerbPullRequest || audit.events[0].Caller != "sbx-a-0" || audit.events[0].Target != "agent-session:ags-one" {
 		t.Fatalf("gateway audit = %+v", audit.events)
+	}
+}
+
+// "draft": true is the one choice the sandbox has beyond title and body
+// (w10/040): it crosses the signed hop to GitHub and comes back in the answer.
+func TestPullRequestRouteOpensADraftWhenAsked(t *testing.T) {
+	broker, forge, _ := prHarness(t)
+	reply := postPR(t, broker, prURL(t, "tea-a-sandbox", "ags-one", "bex-agent/task-1"), "10.0.0.1", "application/json", `{"title":"WIP: retries","body":"b","draft":true}`)
+	if reply.code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", reply.code, reply.raw)
+	}
+	var got agentsession.PullRequestResponse
+	if err := json.Unmarshal([]byte(reply.raw), &got); err != nil || !got.Draft || !got.Created {
+		t.Fatalf("response=%+v err=%v", got, err)
+	}
+	if len(forge.drafts) != 1 || !forge.drafts[0] {
+		t.Fatalf("GitHub drafts = %v, want one draft", forge.drafts)
 	}
 }
 
@@ -254,6 +273,7 @@ func TestPullRequestRouteValidatesTheBody(t *testing.T) {
 	}{
 		{"head override", "application/json", `{"title":"t","body":"b","head":"main"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"base override", "application/json", `{"title":"t","body":"b","base":"release"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"draft not a boolean", "application/json", `{"title":"t","body":"b","draft":"yes"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"not json", "application/json", `title=t`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"wrong content type", "text/plain", okBody, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"multi-line title", "application/json", `{"title":"a\nb","body":"b"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},

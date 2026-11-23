@@ -516,7 +516,7 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "Dadurch wird der Agent gestoppt. Bereits in den Branch gepushte Commits und der Draft-PR bleiben erhalten.",
+      "Dadurch wird der Agent gestoppt. Bereits in den Branch gepushte Commits und der PR bleiben erhalten.",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

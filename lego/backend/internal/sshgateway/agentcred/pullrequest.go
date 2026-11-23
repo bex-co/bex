@@ -31,9 +31,9 @@ import (
 // servePullRequest is the PR-side twin of serveGit (ADR090): the same admit
 // gate — limiter, source-IP Pod binding, label-digest authorization, and
 // per-session/workspace budgets — then one signed call to bex-api. The sandbox
-// supplies only {title, body}; the session, repository, and branch it may name
-// are the ones its own Pod labels bind, and bex-api resolves the real targets
-// from the durable record. No credential ever crosses back.
+// supplies only {title, body, draft}; the session, repository, and branch it
+// may name are the ones its own Pod labels bind, and bex-api resolves the real
+// targets from the durable record. No credential ever crosses back.
 func (b *Broker) servePullRequest(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
 	if b.PullRequests == nil {
 		agentsession.WritePullRequestError(w, agentsession.NewPullRequestError(agentsession.PullRequestUnavailable, "pull requests are not available on this gateway"))
@@ -45,11 +45,12 @@ func (b *Broker) servePullRequest(w http.ResponseWriter, r *http.Request, namesp
 		return
 	}
 	defer admitted.release()
-	// Only title and body: an unknown field (head, base, draft, …) is refused
-	// rather than silently ignored, so the agent learns it cannot choose them.
+	// Only title, body and draft: an unknown field (head, base, state, …) is
+	// refused rather than silently ignored, so the agent learns it cannot
+	// choose them.
 	var content agentsession.PullRequestContent
 	if err := core.UnmarshalJSON(core.WithStrictJSONDecoding(admitted.r.Context()), raw, &content); err != nil {
-		agentsession.WritePullRequestError(w, agentsession.NewPullRequestError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"title\" and \"body\""))
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"title\", \"body\" and an optional boolean \"draft\""))
 		return
 	}
 	if invalid := content.Validate(); invalid != nil {

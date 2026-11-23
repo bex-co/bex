@@ -1777,7 +1777,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, works
 	// Repo-less (chat-only) sessions carry no clone URL and never deliver: the
 	// driver runs the agent against the prompt in an empty /workspace and the
 	// completer records an honest no-op. With a repo, the sandbox clones through
-	// the gateway Git proxy and delivers a draft PR (ADR047 D2/D4).
+	// the gateway Git proxy and delivers a pull request (ADR047 D2/D4).
 	repoURL, deliver := "", "0"
 	if strings.TrimSpace(record.Repo) != "" {
 		repoURL, _ = agentsession.ProxyRepositoryURL(s.gitProxyURL(), namespace, record.ID, record.Repo, record.Branch)
@@ -2043,7 +2043,7 @@ func validatePrompt(prompt string) (string, error) {
 // ADR047 D8 phase 1). In phase 1 a new prompt cannot ride the original sandbox — its
 // prompt env is fixed at creation and there is no live attach yet — so steering
 // re-dispatches a fresh sandbox that re-clones the same bex-agent/* branch and
-// runs the new prompt; the Completer then updates the same draft PR. The
+// runs the new prompt; the Completer then updates the same pull request. The
 // delivery mode is recorded on the row.
 func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// SECURITY: steering dispatches a fresh attacker-directed task with provider
@@ -2243,7 +2243,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// one in the background. In phase 1 a new prompt can't ride the old sandbox
 	// (its prompt env is fixed at creation, no live attach yet — ADR047 D8), so the
 	// client sees redispatching immediately and the new turn streams once it
-	// attaches; the Completer updates the same draft PR.
+	// attaches; the Completer updates the same pull request.
 	s.detach(ctx, func(ctx context.Context) { s.runSteerDispatch(ctx, record, spec) })
 	return s.toView(record)
 }

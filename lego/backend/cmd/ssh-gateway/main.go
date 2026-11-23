@@ -361,7 +361,7 @@ func main() {
 		}
 		credentials.MaxGitHubAPIRequestsPerSession = intEnv("BEX_AGENT_GITHUB_API_MAX_REQUESTS_PER_SESSION", 1000)
 		credentials.MaxGitHubAPIRequestsPerWorkspace = intEnv("BEX_AGENT_GITHUB_API_MAX_REQUESTS_PER_WORKSPACE", 10000)
-		// ADR090: the agent opens/updates its own draft PR through the fifth
+		// ADR090: the agent opens/updates its own PR through the fifth
 		// `pull-request` segment of its Git proxy URL; bex-api resolves every
 		// target from the durable session and holds the GitHub token.
 		credentials.PullRequests = &agentsession.PullRequestClient{

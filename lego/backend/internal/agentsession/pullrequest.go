@@ -37,11 +37,11 @@ import (
 
 // The pull-request verb (ADR090) is the PR-side twin of the Git proxy's
 // exact-branch receive-pack rule: the agent in the sandbox opens or updates its
-// own DRAFT pull request, but only for the session's bound branch, into the
+// own pull request, but only for the session's bound branch, into the
 // repository's default branch, through the same Pod-bound gateway hop. The
-// sandbox sends a title and a body and nothing else; owner, repository, base
-// and head all come from the durable session record, and the GitHub token
-// never leaves bex-api.
+// sandbox sends a title, a body and whether to open it as a draft, and nothing
+// else; owner, repository, base and head all come from the durable session
+// record, and the GitHub token never leaves bex-api.
 
 const (
 	// PullRequestProxySegment is the fifth path segment that turns a Git proxy
@@ -95,6 +95,9 @@ const (
 	PullRequestBranchDiverged  = "pr_branch_diverged"
 	PullRequestBranchProtected = "pr_branch_protected"
 	PullRequestClosed          = "pull_request_closed"
+	// PullRequestDraftNotSupported refuses a draft on a repository whose plan
+	// has none; the same call without draft opens it ready for review.
+	PullRequestDraftNotSupported = "draft_not_supported"
 )
 
 // noOtherRoute ends every hint: the agent must not go looking for a token, the
@@ -127,7 +130,7 @@ func NewPullRequestError(code, message string) *PullRequestError {
 	case PullRequestNotAhead:
 		status, hint = http.StatusConflict, "The session branch has no commits beyond the base branch. Commit and push your changes, then call this tool again."
 	case PullRequestInvalidRequest:
-		status, hint = http.StatusUnprocessableEntity, "Send only a JSON object with a non-empty single-line \"title\" and a \"body\"; head and base are fixed by the platform."
+		status, hint = http.StatusUnprocessableEntity, "Send only a JSON object with a non-empty single-line \"title\", a \"body\" and, for a draft, \"draft\": true; head and base are fixed by the platform."
 	case PullRequestTooLarge:
 		status, hint = http.StatusRequestEntityTooLarge, fmt.Sprintf("Keep the title to %d characters on one line and the body under %d bytes, then call this tool again.", MaxPullRequestTitleRunes, MaxPullRequestBodyBytes)
 	case PullRequestForbidden:
@@ -142,6 +145,8 @@ func NewPullRequestError(code, message string) *PullRequestError {
 		status, hint = http.StatusConflict, "The pull request was closed or merged. Tell the user; your commits stay on the session branch."
 	case PullRequestBranchProtected:
 		status, hint = http.StatusForbidden, "Do not call this tool again for it. Tell the user the pull request could not be updated and name your session branch, which has your commits."
+	case PullRequestDraftNotSupported:
+		status, hint = http.StatusUnprocessableEntity, "Call this tool again without \"draft\" to open the pull request ready for review, and tell the user this repository cannot have draft pull requests."
 	}
 	return &PullRequestError{Status: status, Code: code, Message: message, Hint: hint + noOtherRoute}
 }
@@ -162,10 +167,14 @@ func WriteNoStoreJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// PullRequestContent is the sandbox's whole say in the PR: its title and body.
+// PullRequestContent is the sandbox's whole say in the PR: its title, its
+// body, and whether a PR it opens starts as a draft. Draft is omitted when
+// false, so a request that does not ask for a draft is byte-identical to one
+// from before the option (w10/040).
 type PullRequestContent struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
+	Draft bool   `json:"draft,omitempty"`
 }
 
 // Validate enforces the content caps on both hops.
@@ -197,21 +206,23 @@ type PullRequestRequest struct {
 }
 
 // PullRequestResponse is what the sandbox receives. It never carries a token.
-// TakenOver marks the pull request a takeover session works on: the verb
-// fast-forwarded its branch to HeadSHA and changed nothing else on it.
+// Draft is the pull request's draft state as GitHub answered the open or
+// update. TakenOver marks the pull request a takeover session works on: the
+// verb fast-forwarded its branch to HeadSHA and changed nothing else on it.
 type PullRequestResponse struct {
 	URL       string `json:"url"`
 	Number    int    `json:"number"`
 	Created   bool   `json:"created"`
+	Draft     bool   `json:"draft"`
 	HeadSHA   string `json:"headSha"`
 	TakenOver bool   `json:"takenOver,omitempty"`
 }
 
-// PullRequestGitHub opens or updates the draft PR, brings a taken-over one up
+// PullRequestGitHub opens or updates the session's PR, brings a taken-over one up
 // to date, comments on it, marks it ready, and merges it, arms auto-merge on
 // it or queues it (*github.Client).
 type PullRequestGitHub interface {
-	SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error)
+	SyncPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string, draft bool) (github.PullRequestSyncResult, error)
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
 	FastForwardBranch(ctx context.Context, installationID int64, owner, repo, branch, from string) (string, error)
 	BranchProtected(ctx context.Context, installationID int64, owner, repo, branch string) (bool, error)
@@ -246,8 +257,8 @@ type PullRequester struct {
 	Now          func() time.Time
 }
 
-// Sync opens or updates the session's draft PR. Every refusal is a
-// *PullRequestError.
+// Sync opens or updates the session's PR, ready for review unless the request
+// asks for a draft (w10/040). Every refusal is a *PullRequestError.
 func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (response PullRequestResponse, err error) {
 	auditRepository := ""
 	defer func() { p.audit(ctx, AuditVerbPullRequest, req.MintRequest, auditRepository, err) }()
@@ -270,7 +281,7 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 		return p.fastForwardTakenOver(ctx, target)
 	}
 	body := PullRequestBodyWithFooter(req.Body, sessionProfile(session), sessionDashboardURL(p.DashboardURL, session.ID), session.ID)
-	result, err := p.GitHub.SyncDraftPullRequest(ctx, target.installationID, target.owner, target.name, session.Branch, strings.TrimSpace(req.Title), body)
+	result, err := p.GitHub.SyncPullRequest(ctx, target.installationID, target.owner, target.name, session.Branch, strings.TrimSpace(req.Title), body, req.Draft)
 	switch {
 	case errors.Is(err, github.ErrHeadBranchNotFound):
 		refusal := NewPullRequestError(PullRequestBranchNotPushed, "the session branch "+session.Branch+" does not exist on GitHub yet")
@@ -278,6 +289,8 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 		return PullRequestResponse{}, refusal
 	case errors.Is(err, github.ErrHeadNotAhead):
 		return PullRequestResponse{}, NewPullRequestError(PullRequestNotAhead, "the session branch "+session.Branch+" has no commits ahead of the base branch")
+	case errors.Is(err, github.ErrDraftNotSupported):
+		return PullRequestResponse{}, NewPullRequestError(PullRequestDraftNotSupported, "GitHub does not support draft pull requests in "+target.repository+", so none was opened")
 	case err != nil:
 		return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "GitHub refused or failed the pull request request")
 	}
@@ -286,7 +299,7 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 	if recErr := p.Sessions.RecordAgentSessionPullRequest(ctx, session.ID, result.HTMLURL, result.Number, result.HeadSHA); recErr != nil {
 		log.Printf("agent-session pull request: record on session failed (session=%s pr=%s): %v", session.ID, result.HTMLURL, recErr)
 	}
-	return PullRequestResponse{URL: result.HTMLURL, Number: result.Number, Created: result.Created, HeadSHA: result.HeadSHA}, nil
+	return PullRequestResponse{URL: result.HTMLURL, Number: result.Number, Created: result.Created, Draft: result.Draft, HeadSHA: result.HeadSHA}, nil
 }
 
 // fastForwardTakenOver is the PR verb of a session a `/bex` comment handed a
@@ -295,7 +308,8 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 // as a fast-forward only. GitHub refuses anything else, so a rebase or
 // force-push of the session branch can never rewrite the pull request's
 // history. It opens no pull request and never touches the title, body or
-// draft state, which belong to the person who opened it.
+// draft state, which belong to the person who opened it, so a request's draft
+// is not read here.
 func (p *PullRequester) fastForwardTakenOver(ctx context.Context, target pullRequestTarget) (PullRequestResponse, error) {
 	session := target.session
 	pr, err := p.GitHub.GetPullRequest(ctx, target.installationID, target.owner, target.name, session.TakeoverPR)
@@ -343,7 +357,7 @@ func (p *PullRequester) fastForwardTakenOver(ctx context.Context, target pullReq
 	if recErr := p.Sessions.RecordAgentSessionPullRequest(ctx, session.ID, pr.HTMLURL, pr.Number, sha); recErr != nil {
 		log.Printf("agent-session pull request: record taken-over head failed (session=%s pr=%s): %v", session.ID, pr.HTMLURL, recErr)
 	}
-	return PullRequestResponse{URL: pr.HTMLURL, Number: pr.Number, HeadSHA: sha, TakenOver: true}, nil
+	return PullRequestResponse{URL: pr.HTMLURL, Number: pr.Number, Draft: pr.Draft, HeadSHA: sha, TakenOver: true}, nil
 }
 
 // pullRequestTarget is what both PR-side verbs act on, all of it read from the

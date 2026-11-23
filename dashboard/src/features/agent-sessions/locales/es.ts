@@ -518,7 +518,7 @@ const esAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "Esto detiene al agente. Los commits que ya se enviaron a la rama y el PR en borrador se conservan.",
+      "Esto detiene al agente. Los commits que ya se enviaron a la rama y el PR se conservan.",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

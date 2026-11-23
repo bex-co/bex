@@ -116,7 +116,7 @@ test("a dirty tree gets exactly one nudge on the same session", async () => {
   assert.equal(sent.length, 2);
   assert.match(
     sent[1],
-    /^Your changes are not fully delivered: the working tree has uncommitted changes\. Commit, push with `git push origin HEAD:bex-agent\/ags-test` and open or update the draft pull request with `open_or_update_draft_pr`, or explain why not\.$/,
+    /^Your changes are not fully delivered: the working tree has uncommitted changes\. Commit, push with `git push origin HEAD:bex-agent\/ags-test` and open or update the pull request with `open_or_update_draft_pr`, or explain why not\.$/,
   );
   // The overlay preamble rode only the first prompt.
   assert.match(sent[0], /bex platform context/);
@@ -173,7 +173,7 @@ test("pushed commits without a recorded PR are named in the nudge", async () => 
   assert.equal(sent.length, 2);
   assert.match(
     sent[1],
-    /origin\/bex-agent\/ags-test has pushed commits but no draft pull request was recorded/,
+    /origin\/bex-agent\/ags-test has pushed commits but no pull request was recorded/,
   );
   assert.equal(result.git?.unpushedCommits, 0);
   assert.equal(result.git?.prRecorded, false);

@@ -170,7 +170,7 @@ func TestPullRequestCommentRouteRelaysBexAPIRefusals(t *testing.T) {
 	if reply.code != http.StatusConflict || reply.error.Code != agentsession.PullRequestNoPullRequest || forge.calls != 0 {
 		t.Fatalf("no PR yet: status=%d body=%s", reply.code, reply.raw)
 	}
-	if !strings.Contains(reply.error.Hint, "open the draft pull request first") {
+	if !strings.Contains(reply.error.Hint, "open the pull request first") {
 		t.Fatalf("hint = %q", reply.error.Hint)
 	}
 	if len(audit.events) != 1 || audit.events[0].Verb != agentsession.AuditVerbPullRequestComment || audit.events[0].Outcome != core.AuditDenied {

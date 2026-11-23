@@ -521,7 +521,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.cancelConfirmBody": {
     message:
-      "This stops the agent. Any commits already pushed to the branch and the draft PR are preserved.",
+      "This stops the agent. Any commits already pushed to the branch and the pull request are preserved.",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {

@@ -512,7 +512,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Cancel confirm dialog title",
   },
   "agentSessions.cancelConfirmBody": {
-    message: "这将停止智能体。已推送到分支的提交和草稿 PR 都会保留。",
+    message: "这将停止智能体。已推送到分支的提交和 PR 都会保留。",
     description: "Cancel confirm dialog body — states pushed work is preserved",
   },
   "agentSessions.cancelConfirmDismiss": {
