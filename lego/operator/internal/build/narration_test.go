@@ -50,12 +50,12 @@ const rendersBuildSuccessful = "\x1b[32;1m==>\x1b[0;22m \x1b[1mBuild successful 
 func TestShellLinePrintsRendersBytes(t *testing.T) {
 	script := cacheSizeFunc + `bex_t0=$(( $(date +%s) - 7 ))
 bex_bytes=160000000
-` + shellLine(renderlog.BuildShell, `Transferred $(bex_size "$bex_bytes") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s.`)
+` + shellLine(renderlog.BuildShell, `Downloaded $(bex_size "$bex_bytes") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s.`)
 	out, err := exec.Command("sh", "-c", script).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := rendersShellLine("Transferred 160MB in 7s. Extraction took 0s.") + "\n"; string(out) != want {
+	if want := rendersShellLine("Downloaded 160MB in 7s. Extraction took 0s.") + "\n"; string(out) != want {
 		t.Fatalf("printed %q, want %q", out, want)
 	}
 }

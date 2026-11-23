@@ -104,7 +104,7 @@ Failure statuses append the deploy row's `failureReason` when present (`==> Depl
 | platform step | `\x1b[0;34m\x1b[1m==> \x1b[0m\x1b[1m<text>\x1b[0m` | `Deploying...`, the `WEB_CONCURRENCY` line, the troubleshooting line |
 | platform success | `\x1b[0;32m\x1b[1m==> \x1b[0m\x1b[1m<text>\x1b[0m` | `Your service is live 🎉`, each line of the primary URL block (a blank one keeps the marker's space inside the colour) |
 | platform failure | `\x1b[0;31m\x1b[1m==> <text>\x1b[0m` | `Exited with status N`, `Timed Out`, the plain wording's port scan timeout and the docs line after it |
-| build shell | `\x1b[34m\x1b[1m==>\x1b(B\x1b[m \x1b[1m<text>\x1b(B\x1b[m` | `Downloading cache...`, `Transferred … Extraction took …s.`, `Running build command '…'...` |
+| build shell | `\x1b[34m\x1b[1m==>\x1b(B\x1b[m \x1b[1m<text>\x1b(B\x1b[m` | `Downloading cache...`, `Downloaded … Extraction took …s.`, `Running build command '…'...` |
 | build runtime | `\x1b[34;1m==>\x1b[0;22m \x1b[1m<text>\x1b[22m`, `32;1` for a success | Node.js's version and docs lines, `Uploading build...`, `Uploaded in Ns`; `Build successful 🎉` in green |
 | instance | `\x1b[32m\x1b[1m==>\x1b(B\x1b[m \x1b[1m<text>\x1b(B\x1b[m` | `Running '<command>'`: native-init's, and the narration's copy for an older image and a pre-deploy step |
 

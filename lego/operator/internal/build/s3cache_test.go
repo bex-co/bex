@@ -645,12 +645,12 @@ func TestS3CacheScriptsRoundTripALayoutUnchanged(t *testing.T) {
 	}
 }
 
-// renderTransferred is Render's second restore line as its build logs print
+// renderDownloaded is Render's second restore line as its build logs print
 // it after "==> Downloading cache...", on native and Docker builds alike: the
 // size in Render's units, then the transfer's and the extraction's seconds, in
-// Render's shell form (w32/m576).
-var renderTransferred = regexp.MustCompile("^" + strings.Replace(regexp.QuoteMeta(rendersShellLine("\x00")), "\x00",
-	`Transferred [0-9]+(\.[0-9])?(B|KB|MB|GB|TB) in [0-9]+s\. Extraction took [0-9]+s\.`, 1) + "$")
+// Render's shell form (w32/m576, w32/096).
+var renderDownloaded = regexp.MustCompile("^" + strings.Replace(regexp.QuoteMeta(rendersShellLine("\x00")), "\x00",
+	`Downloaded [0-9]+(\.[0-9])?(B|KB|MB|GB|TB) in [0-9]+s\. Extraction took [0-9]+s\.`, 1) + "$")
 
 // dirBytes is what the rig's du reports for dir: its regular files' bytes.
 func dirBytes(t *testing.T, dir string) int64 {
@@ -673,7 +673,7 @@ func dirBytes(t *testing.T, dir string) int64 {
 func TestS3CacheRestoreSaysRendersRestoreLinesOnADockerfileBuild(t *testing.T) {
 	// Render's Docker build log says when it restores a build cache, after the
 	// clone and before BuildKit's first step: "==> Downloading cache..." and
-	// "==> Transferred 149MB in 9s. Extraction took 0s.". cache-restore is the
+	// "==> Downloaded 149MB in 9s. Extraction took 0s.". cache-restore is the
 	// phase between the two.
 	spec := s3Spec(s3CacheOpts())
 	names := make([]string, 0, len(spec.InitContainers))
@@ -705,8 +705,8 @@ func TestS3CacheRestoreSaysRendersRestoreLinesOnADockerfileBuild(t *testing.T) {
 	}
 	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	size := strconv.FormatInt(dirBytes(t, r.in), 10) + "B in "
-	if len(lines) != 2 || lines[0] != rendersShellLine("Downloading cache...") || !renderTransferred.MatchString(lines[1]) ||
-		!strings.HasPrefix(shown(lines[1]), "==> Transferred "+size) || !strings.HasSuffix(shown(lines[1]), " Extraction took 0s.") {
+	if len(lines) != 2 || lines[0] != rendersShellLine("Downloading cache...") || !renderDownloaded.MatchString(lines[1]) ||
+		!strings.HasPrefix(shown(lines[1]), "==> Downloaded "+size) || !strings.HasSuffix(shown(lines[1]), " Extraction took 0s.") {
 		t.Errorf("a warm restore's log, want Render's two lines with the layout's size:\n%s", out)
 	}
 

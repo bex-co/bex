@@ -319,7 +319,7 @@ func TestXDGCacheArchiveRoundTripsBesideTheLayout(t *testing.T) {
 	if fields := strings.Fields(string(transfer)); len(fields) != 3 || fields[0] != strconv.FormatInt(dirBytes(t, r.in), 10) || fields[1] != "13" {
 		t.Errorf("transfer stats = %q, want the layout's bytes, the archive's 13 and the seconds", transfer)
 	}
-	if strings.Count(out, rendersShellLine("Downloading cache...")) != 1 || strings.Contains(shown(out), "==> Transferred") {
+	if strings.Count(out, rendersShellLine("Downloading cache...")) != 1 || strings.Contains(shown(out), "==> Downloaded") {
 		t.Errorf("restore did not say once that it is downloading the cache, as Render does:\n%s", out)
 	}
 }
@@ -370,7 +370,7 @@ func TestXDGCacheRestoreLinesCoverTheLayoutAndTheArchiveTogether(t *testing.T) {
 			if tc.archive {
 				total += int64(len("archive bytes"))
 			}
-			if !renderTransferred.MatchString(line) || !strings.HasPrefix(shown(line), "==> Transferred "+strconv.FormatInt(total, 10)+"B in ") ||
+			if !renderDownloaded.MatchString(line) || !strings.HasPrefix(shown(line), "==> Downloaded "+strconv.FormatInt(total, 10)+"B in ") ||
 				!strings.HasSuffix(shown(line), " Extraction took "+tc.seeded+"s.") {
 				t.Errorf("the build log opens with %q, want Render's line for %d bytes:\n%s", line, total, out)
 			}
@@ -645,13 +645,13 @@ func TestXDGBuildctlSeedsAroundTheImagesOwnSolve(t *testing.T) {
 	}
 	// Render's restore line, the layout and the archive together, and nothing
 	// of the seed's own transcript.
-	if !strings.Contains(out, rendersShellLine("Transferred 35MB in 8s. Extraction took 4s.")+"\n") || strings.Contains(out, "bex-xdg-seed") {
+	if !strings.Contains(out, rendersShellLine("Downloaded 35MB in 8s. Extraction took 4s.")+"\n") || strings.Contains(out, "bex-xdg-seed") {
 		t.Errorf("build log:\n%s", out)
 	}
 	if _, err := os.Stat(filepath.Join(r.xin, xdgCacheObject)); err == nil {
 		t.Error("the fetched archive outlived its seed")
 	}
-	if strings.Index(out, "==> Transferred") > strings.Index(out, "the image's solve") {
+	if strings.Index(out, "==> Downloaded") > strings.Index(out, "the image's solve") {
 		t.Errorf("the restore line follows the build's own output:\n%s", out)
 	}
 }
@@ -664,7 +664,7 @@ func TestXDGBuildctlNamesRendersSizes(t *testing.T) {
 		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
 		writeFile(t, filepath.Join(r.xin, "transfer"), "0 "+size+" 7\n")
 		out, err := r.run(wrapperBuildArgs)
-		if err != nil || !strings.Contains(out, rendersShellLine("Transferred "+want+" in 7s. Extraction took 4s.")) {
+		if err != nil || !strings.Contains(out, rendersShellLine("Downloaded "+want+" in 7s. Extraction took 4s.")) {
 			t.Errorf("%s bytes: %v\n%s", size, err, out)
 		}
 	}
@@ -692,7 +692,7 @@ func TestXDGBuildctlNeverLetsTheCacheDecideTheBuild(t *testing.T) {
 		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
 		writeFile(t, filepath.Join(r.xin, "transfer"), "0 7 1\n")
 		out, err := r.run(wrapperBuildArgs, "FAKE_SEED=unusable")
-		if err != nil || !strings.Contains(out, "bex: no usable build cache; building clean") || strings.Contains(out, "==> Transferred") {
+		if err != nil || !strings.Contains(out, "bex: no usable build cache; building clean") || strings.Contains(out, "==> Downloaded") {
 			t.Errorf("err=%v\n%s", err, out)
 		}
 	})
@@ -702,7 +702,7 @@ func TestXDGBuildctlNeverLetsTheCacheDecideTheBuild(t *testing.T) {
 		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
 		writeFile(t, filepath.Join(r.xin, "transfer"), "2700000 7 3\n")
 		out, err := r.run(wrapperBuildArgs, "FAKE_SEED=unusable")
-		if err != nil || !strings.Contains(out, rendersShellLine("Transferred 2.7MB in 3s. Extraction took 0s.")+"\n") || strings.Contains(out, "no usable") {
+		if err != nil || !strings.Contains(out, rendersShellLine("Downloaded 2.7MB in 3s. Extraction took 0s.")+"\n") || strings.Contains(out, "no usable") {
 			t.Errorf("err=%v\n%s", err, out)
 		}
 	})
@@ -710,7 +710,7 @@ func TestXDGBuildctlNeverLetsTheCacheDecideTheBuild(t *testing.T) {
 		r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
 		writeFile(t, filepath.Join(r.xin, "transfer"), "0 0 2\n")
 		out, err := r.run(wrapperBuildArgs)
-		if err != nil || !strings.Contains(out, "bex: no usable build cache; building clean") || strings.Contains(out, "==> Transferred") {
+		if err != nil || !strings.Contains(out, "bex: no usable build cache; building clean") || strings.Contains(out, "==> Downloaded") {
 			t.Errorf("err=%v\n%s", err, out)
 		}
 	})

@@ -245,7 +245,7 @@ const cacheSizeFunc = `bex_size() {
 // A listed layout that did not arrive whole, or a store that could not be
 // listed, says the build runs clean instead.
 var s3CacheRestored = cacheSizeFunc + `if [ -s ` + cacheInMount + `/index.json ]; then
-  ` + shellLine(renderlog.BuildShell, `Transferred $(bex_size "$(du -sb `+cacheInMount+` | cut -f1)") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s.`) + ` >&2
+  ` + shellLine(renderlog.BuildShell, `Downloaded $(bex_size "$(du -sb `+cacheInMount+` | cut -f1)") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s.`) + ` >&2
 elif [ "$bex_layer_rc" != 1 ]; then
   echo "bex: no usable build cache; building clean" >&2
 fi

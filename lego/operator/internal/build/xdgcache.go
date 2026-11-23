@@ -366,7 +366,7 @@ bex_number() { case $1 in ''|*[!0-9]*) return 1 ;; esac; }
   bex_number "$bex_took" || bex_archive=0 bex_took=0
   if bex_number "$bex_layout" && bex_number "$bex_archive" && bex_number "$bex_secs" &&
     [ $(( bex_layout + bex_archive )) -gt 0 ]; then
-    ` + shellLine(renderlog.BuildShell, "Transferred $(bex_size $(( bex_layout + bex_archive ))) in ${bex_secs}s. Extraction took ${bex_took}s.") + `
+    ` + shellLine(renderlog.BuildShell, "Downloaded $(bex_size $(( bex_layout + bex_archive ))) in ${bex_secs}s. Extraction took ${bex_took}s.") + `
   else
     echo "bex: no usable build cache; building clean"
   fi
