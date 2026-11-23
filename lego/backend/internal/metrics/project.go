@@ -140,7 +140,7 @@ func chartsResource(metric string, r savedsearch.Resource) bool {
 
 // AuditVerbMetrics is the verb a project chart's reads record: each is a
 // Metrics read of one resource, and the project's own listing authorizes as
-// projects.ProjectLogResources.
+// projects.ProjectLogResources. bandwidthSources' hourly reads record it too.
 const AuditVerbMetrics = "metrics.Metrics"
 
 // projectMetrics reads one chart of a project's Service Metrics view. It is

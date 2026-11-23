@@ -118,6 +118,8 @@ func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
 	q.Metric = MetricBandwidth
 	read := q
 	read.Start, read.End, read.Resolution = hourlyRead(q.Start, q.End, now)
+	// The widened reads skip Metrics' cap, so they name its verb themselves.
+	ctx := core.WithAuditVerb(r.Context(), AuditVerbMetrics)
 	out := []bandwidthSourceSeries{}
 	for _, res := range resources {
 		if core.IsDatastoreResource(res) {
@@ -131,7 +133,7 @@ func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
 		read.App = res
 		for _, source := range bandwidthTrafficSources {
 			read.BandwidthSource = source.metric
-			series, err := s.metricsInWindow(r.Context(), read)
+			series, err := s.metricsInWindow(ctx, read)
 			if err != nil {
 				core.WriteErr(w, err)
 				return
