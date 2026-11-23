@@ -19,10 +19,14 @@ package rollout
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -209,6 +213,151 @@ func TestDeployInFlight(t *testing.T) {
 	}
 	boom := errors.New("db down")
 	if _, err := (&Tracker{Store: &liveStore{err: boom}}).DeployInFlight(context.Background(), sourceApp()); !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want %v", err, boom)
+	}
+}
+
+const (
+	heldTag     = "docker.io/library/busybox:1.38"
+	earlierDgst = "docker.io/library/busybox@sha256:0b5ea12d"
+)
+
+// selectedImageFixture is a prebuilt-image App on the API server whose
+// release 4 is the one in force: selected by ref (nil when it ran the saved
+// image) and serving from revision rev-<serving>.
+func selectedImageFixture(t *testing.T, ref *appv1alpha1.ReleaseConfigReference, serving int64, tweak func(*appv1alpha1.App)) (client.Client, *appv1alpha1.App) {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	a := imageApp()
+	a.Namespace = "default"
+	a.Spec.Tier = "starter"
+	a.Spec.ReleaseConfig = ref
+	a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "4"}
+	a.Status = appv1alpha1.AppStatus{ReleaseGeneration: 4, SelectedReleaseGeneration: 4, ActiveRevision: fmt.Sprintf("rev-%d", serving)}
+	if ref == nil {
+		a.Status.SelectedReleaseGeneration = 0
+	}
+	if tweak != nil {
+		tweak(a)
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(a).Build()
+	read := &appv1alpha1.App{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(a), read); err != nil {
+		t.Fatal(err)
+	}
+	return cl, read
+}
+
+// w6/159: a settings release (a plan change) of a prebuilt-image service
+// whose release in force runs a selected image — an imageUrl override, a
+// Restart of one — keeps running it: the live deploy's digest once it serves,
+// the selected image while it is still rolling. A release in force that runs
+// the saved image selects nothing, so a held saved image ships with the plan
+// change (w8/m135), and nothing is selected for a write that changes the
+// image, holds its change, does not roll, or comes from another writer.
+func TestASettingsReleaseKeepsTheSelectedImage(t *testing.T) {
+	override := &appv1alpha1.ReleaseConfigReference{Generation: 4, Image: overrideTag}
+	restart := &appv1alpha1.ReleaseConfigReference{Generation: 4, SourceGeneration: 3, Image: overrideDgst, PreserveGroupValues: true}
+	liveOverride := store.Deploy{Status: store.DeployLive, Generation: 4, Image: overrideTag, ResolvedImage: overrideDgst}
+	liveSaved3 := store.Deploy{Status: store.DeployLive, Generation: 3, Image: savedTag, ResolvedImage: savedDigest}
+	plan := func(a *appv1alpha1.App) error { a.Spec.Tier = "standard"; return nil }
+	for _, tc := range []struct {
+		name    string
+		ref     *appv1alpha1.ReleaseConfigReference
+		serving int64
+		rows    []store.Deploy
+		tweak   func(*appv1alpha1.App)
+		ctx     func(context.Context) context.Context
+		trigger string
+		mutate  func(*appv1alpha1.App) error
+		want    string // the selected image; "" selects nothing
+		wantRow string // the deploy row's image; "" opens none
+	}{
+		{name: "an imageUrl override serves", ref: override, serving: 4, rows: []store.Deploy{liveOverride}, want: overrideDgst, wantRow: overrideDgst},
+		{name: "a Restart of the override serves", ref: restart, serving: 4,
+			rows: []store.Deploy{{Status: store.DeployLive, Generation: 4, Image: overrideDgst, ResolvedImage: overrideDgst}},
+			want: overrideDgst, wantRow: overrideDgst},
+		{name: "an override is still rolling", ref: override, serving: 3,
+			rows: []store.Deploy{{Status: store.DeployUpdateInProgress, Generation: 4, Image: overrideTag}, liveSaved3},
+			want: overrideTag, wantRow: overrideTag},
+		{name: "an override that failed leaves the earlier override serving", ref: override, serving: 3,
+			rows: []store.Deploy{{Status: store.DeployUpdateFailed, Generation: 4, Image: overrideTag},
+				{Status: store.DeployLive, Generation: 3, Image: "docker.io/library/busybox:1.35", ResolvedImage: earlierDgst}},
+			want: earlierDgst, wantRow: earlierDgst},
+		{name: "an override that failed leaves the saved tag serving", ref: override, serving: 3,
+			rows: []store.Deploy{{Status: store.DeployUpdateFailed, Generation: 4, Image: overrideTag}, liveSaved3}, wantRow: savedTag},
+		{name: "a standard deploy serves the saved tag", serving: 4,
+			rows: []store.Deploy{{Status: store.DeployLive, Generation: 4, Image: savedTag, ResolvedImage: savedDigest}}, wantRow: savedTag},
+		{name: "a held image ships with the plan change", serving: 4,
+			rows:  []store.Deploy{{Status: store.DeployLive, Generation: 4, Image: savedTag, ResolvedImage: savedDigest}},
+			tweak: func(a *appv1alpha1.App) { a.Spec.Image = heldTag }, wantRow: heldTag},
+		{name: "a write that changes the image", ref: override, serving: 4, rows: []store.Deploy{liveOverride},
+			mutate: func(a *appv1alpha1.App) error { a.Spec.Tier, a.Spec.Image = "standard", heldTag; return nil }, wantRow: heldTag},
+		{name: "a save-only write", ref: override, serving: 4, rows: []store.Deploy{liveOverride}, ctx: WithSaveOnly},
+		{name: "an operational write", ref: override, serving: 4, rows: []store.Deploy{liveOverride},
+			mutate: func(a *appv1alpha1.App) error { a.Spec.Replicas = 3; return nil }},
+		{name: "a suspended service", ref: override, serving: 4, rows: []store.Deploy{liveOverride},
+			tweak: func(a *appv1alpha1.App) { a.Spec.Suspended = true }},
+		{name: "an environment write selects its own", ref: override, serving: 4, rows: []store.Deploy{liveOverride},
+			trigger: store.TriggerConfigChange, wantRow: savedTag},
+	} {
+		for name, patch := range map[string]func(*Tracker, context.Context, client.Client, *appv1alpha1.App, string, func(*appv1alpha1.App) error) error{
+			"Patch": (*Tracker).Patch, "PatchLocked": (*Tracker).PatchLocked,
+		} {
+			t.Run(tc.name+"/"+name, func(t *testing.T) {
+				cl, a := selectedImageFixture(t, tc.ref, tc.serving, tc.tweak)
+				ds := &liveStore{live: tc.rows}
+				tr := &Tracker{Store: ds, AdoptionWait: -1}
+				ctx, trigger, mutate := context.Background(), store.TriggerSettingsChange, plan
+				if tc.ctx != nil {
+					ctx = tc.ctx(ctx)
+				}
+				if tc.trigger != "" {
+					trigger = tc.trigger
+				}
+				if tc.mutate != nil {
+					mutate = tc.mutate
+				}
+				if err := patch(tr, ctx, cl, a, trigger, mutate); err != nil {
+					t.Fatal(err)
+				}
+				live := &appv1alpha1.App{}
+				if err := cl.Get(ctx, client.ObjectKeyFromObject(a), live); err != nil {
+					t.Fatal(err)
+				}
+				got := live.Spec.ReleaseConfig
+				if tc.want == "" {
+					if got != nil && got.Generation == 6 {
+						t.Fatalf("selected %+v, want nothing", got)
+					}
+				} else if want := (appv1alpha1.ReleaseConfigReference{Generation: 6, Image: tc.want}); got == nil || *got != want {
+					t.Fatalf("selected %+v, want %+v", got, want)
+				}
+				switch {
+				case tc.wantRow == "" && len(ds.created) != 0:
+					t.Fatalf("deploy rows %+v, want none", ds.created)
+				case tc.wantRow != "" && (len(ds.created) != 1 || ds.created[0].Image != tc.wantRow):
+					t.Fatalf("deploy rows %+v, want one recording %s", ds.created, tc.wantRow)
+				}
+			})
+		}
+	}
+}
+
+// A failed history read is not "nothing selected": the settings write fails
+// rather than rolling the saved tag on a guess.
+func TestASettingsReleaseReportsAFailedHistoryRead(t *testing.T) {
+	cl, a := selectedImageFixture(t, &appv1alpha1.ReleaseConfigReference{Generation: 4, Image: overrideTag}, 4, nil)
+	boom := errors.New("db down")
+	tr := &Tracker{Store: &liveStore{err: boom}, AdoptionWait: -1}
+	err := tr.Patch(context.Background(), cl, a, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
+		a.Spec.Tier = "standard"
+		return nil
+	})
+	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want %v", err, boom)
 	}
 }

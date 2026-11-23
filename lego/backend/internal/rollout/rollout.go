@@ -273,13 +273,18 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 // recorded — the bug w6/m51 was filed for.
 //
 // A rolling patch of a repo-backed App refreshes its clone credential first
-// (refresh); a mint failure fails the write before anything is patched.
+// (refresh); a mint failure fails the write before anything is patched. A
+// settings_change of a prebuilt image keeps the image its release in force
+// selected (keepSelectedImage).
 //
 // A nil Tracker still applies the patch; it just records nothing.
 func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App) error) error {
 	before := beforeIn(ctx, a)
 	base := client.MergeFrom(a.DeepCopy())
 	if err := mutate(a); err != nil {
+		return err
+	}
+	if err := t.keepSelectedImage(ctx, trigger, before, a); err != nil {
 		return err
 	}
 	tracked := before.Stamp(a)
@@ -314,6 +319,9 @@ func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alp
 	if err := PatchAppLocked(ctx, cl, a, func(a *appv1alpha1.App) error {
 		before = beforeIn(ctx, a)
 		if err := mutate(a); err != nil {
+			return err
+		}
+		if err := t.keepSelectedImage(ctx, trigger, before, a); err != nil {
 			return err
 		}
 		tracked = before.Stamp(a)

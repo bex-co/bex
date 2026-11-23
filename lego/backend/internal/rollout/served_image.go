@@ -37,7 +37,7 @@ import (
 // deploy history, a suspended service (its change is held, not stamped), or
 // anything that is not a prebuilt image.
 func (t *Tracker) SelectServedImage(ctx context.Context, a *appv1alpha1.App) error {
-	if a == nil || a.Spec.Image == "" || a.Spec.Repo != "" || a.Spec.Suspended || a.Spec.Type == appv1alpha1.TypeStaticSite {
+	if !runsPrebuiltImage(a) || a.Spec.Suspended {
 		return nil
 	}
 	live, err := t.ServedRelease(ctx, a)
@@ -47,11 +47,78 @@ func (t *Tracker) SelectServedImage(ctx context.Context, a *appv1alpha1.App) err
 	if err != nil {
 		return err
 	}
-	if live == nil || servesSavedImage(a, *live) {
+	selectLiveImage(a, live)
+	return nil
+}
+
+// keepSelectedImage makes the release a settings write opens on a
+// prebuilt-image service (a plan change, a Settings save that deploys, a
+// container-policy migration) keep the image the release in force runs when
+// that release runs a selected image rather than the saved one: an imageUrl /
+// imgURL override, a Restart or rollback, or a configuration-only release that
+// kept one (w6/159). Those leave spec.image alone (w4/414), so without a
+// selection a plan change after an override rolled the service back to the
+// tag it was created with. A settings change redeploys what is live, as
+// Restart and an environment "Save and deploy" (w4/m418) do.
+//
+// The selection is the live deploy's resolved image when the selected release
+// serves, and the selected image itself while that release is still rolling,
+// so a plan change behind an override in flight runs after it on the same
+// image. A selected release that ended without serving leaves the live
+// deploy's image, as SelectServedImage would.
+//
+// A release in force that runs the saved image selects nothing, so a saved
+// change held for the next deploy (w8/m135), a new image included, ships with
+// the settings release as before. So do a write that changes the image itself,
+// a save-only or suspended write (nothing rolls), and unknown history.
+func (t *Tracker) keepSelectedImage(ctx context.Context, trigger string, before Snapshot, a *appv1alpha1.App) error {
+	if trigger != store.TriggerSettingsChange || before.saveOnly || !runsPrebuiltImage(a) || a.Spec.Suspended ||
+		a.Spec.Image != before.spec.Image {
 		return nil
 	}
-	SelectReleaseImage(a, live.ResolvedImage)
+	ref := a.ActiveReleaseConfig()
+	if ref == nil || ref.Image == "" || !appv1alpha1.SpecRollsRelease(before.spec, a.Spec) {
+		return nil
+	}
+	lister, appID := t.history(a)
+	if lister == nil {
+		return nil
+	}
+	live, err := t.ServedRelease(ctx, a)
+	if err != nil {
+		return err
+	}
+	if live == nil || live.Generation != ref.Generation {
+		open, err := lister.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
+		if err != nil {
+			return err
+		}
+		for _, d := range open {
+			if d.Generation == ref.Generation {
+				if !savedImageReference(a, ref.Image) {
+					SelectReleaseImage(a, ref.Image)
+				}
+				return nil
+			}
+		}
+	}
+	selectLiveImage(a, live)
 	return nil
+}
+
+// runsPrebuiltImage reports whether a runs a prebuilt image: the services a
+// served-image selection applies to.
+func runsPrebuiltImage(a *appv1alpha1.App) bool {
+	return a != nil && a.Spec.Image != "" && a.Spec.Repo == "" && a.Spec.Type != appv1alpha1.TypeStaticSite
+}
+
+// selectLiveImage selects the live deploy's resolved image for a's release
+// unless that deploy serves the saved image or there is none.
+func selectLiveImage(a *appv1alpha1.App, live *store.Deploy) {
+	if live == nil || servesSavedImage(a, *live) {
+		return
+	}
+	SelectReleaseImage(a, live.ResolvedImage)
 }
 
 // ErrNoLiveBuild reports a source-built service with no live release: there is
@@ -133,11 +200,17 @@ func SelectReleaseImage(a *appv1alpha1.App, image string) {
 // that digest from exactly spec.image (the operator's servesSavedImage reads
 // the networks the same way).
 func servesSavedImage(a *appv1alpha1.App, live store.Deploy) bool {
-	if live.Image == a.Spec.Image || live.ResolvedImage == a.Spec.Image {
+	return live.Image == a.Spec.Image || savedImageReference(a, live.ResolvedImage)
+}
+
+// savedImageReference reports whether image is a's saved image: as written,
+// or the digest a recorded network resolved from exactly spec.image.
+func savedImageReference(a *appv1alpha1.App, image string) bool {
+	if image == a.Spec.Image {
 		return true
 	}
 	for _, network := range []*appv1alpha1.ImageNetworkStatus{a.Status.ServingNetwork, a.Status.ImageNetwork} {
-		if network != nil && network.Image == live.ResolvedImage && network.Source == a.Spec.Image {
+		if network != nil && network.Image == image && network.Source == a.Spec.Image {
 			return true
 		}
 	}

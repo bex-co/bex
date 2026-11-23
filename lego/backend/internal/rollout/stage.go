@@ -267,6 +267,14 @@ func (s *Stage) rebase(live *appv1alpha1.App) (*appv1alpha1.App, error) {
 	if err := json.Unmarshal(merged, next); err != nil {
 		return nil, err
 	}
+	// A staged image selection (keepSelectedImage) was read from the release in
+	// force at original's generation. Over a spec change another writer made
+	// since, such as a deploy that selected its own image, it would replace
+	// that writer's selection, so the live one is kept and the staged release
+	// runs the saved image.
+	if live.Generation != s.original.Generation && !apiequality.Semantic.DeepEqual(s.staged.Spec.ReleaseConfig, s.original.Spec.ReleaseConfig) {
+		next.Spec.ReleaseConfig = live.Spec.ReleaseConfig.DeepCopy()
+	}
 	following := strconv.FormatInt(live.Generation+1, 10)
 	if next.Annotations == nil {
 		next.Annotations = map[string]string{}
