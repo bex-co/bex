@@ -128,6 +128,18 @@ type EnvGroupIndex interface {
 	DetachEnvironment(ctx context.Context, id, expectedEnvironmentID string) error
 }
 
+// SandboxGroupIndex is the narrow contract environments needs to move a
+// sandbox group, the one member kind Render's environment-resources routes
+// reach that only they write (w22/m603): a group's environment is a column of
+// its own row, set at create (w22/m412) and moved by POST and DELETE
+// /environments/{id}/resources. *store.PGStore satisfies it structurally.
+type SandboxGroupIndex interface {
+	SandboxGroups(ctx context.Context, workspaceID string) ([]store.SandboxGroup, error)
+	// SetSandboxGroupEnvironment moves a group still in from ("" for none) to
+	// to ("" for none) and returns where it is afterwards.
+	SetSandboxGroupEnvironment(ctx context.Context, workspaceID, id, from, to string) (string, error)
+}
+
 // Service is the environments feature service. Store nil =>
 // ErrEnvironmentsUnavailable. Databases/KeyValues nil => the corresponding
 // *Ids field resolves empty, SetDatabases/SetKeyValues report
@@ -140,6 +152,11 @@ type Service struct {
 	Databases DatabaseIndex
 	KeyValues KeyValueIndex
 	EnvGroups EnvGroupIndex
+	// SandboxGroups lets the environment-resources routes move sandbox
+	// groups (w22/m603). nil refuses an sbg- id there as unavailable.
+	// Environment reads list no groups, as Render's environment object does
+	// not.
+	SandboxGroups SandboxGroupIndex
 	// Services deletes an environment's services when the environment is
 	// deleted, as Render's dashboard does (w4/m264). nil keeps the former
 	// detach-only behavior (test fakes).
@@ -519,6 +536,55 @@ func (g envGroupTeardown) leave(ctx context.Context, id, expectedEnvironmentID s
 	return g.DetachEnvironment(ctx, id, expectedEnvironmentID)
 }
 
+// sandboxGroupResources is the sandbox-group member kind (w22/m603): as for an
+// env group, membership is the whole of it, with no project and no inbound-IP
+// layer. A group's writes act in the workspace the membership write bound to
+// the context (membershipTarget), which is the environment's own.
+type sandboxGroupResources struct{ SandboxGroupIndex }
+
+func (g sandboxGroupResources) list(ctx context.Context, workspaceID string) ([]environmentResource, error) {
+	groups, err := g.SandboxGroups(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]environmentResource, len(groups))
+	for i, group := range groups {
+		out[i] = environmentResource{id: group.ID, environmentID: group.EnvironmentID}
+	}
+	return out, nil
+}
+
+// join moves the group out of the environment the caller observed it in, so
+// one moved since is refused, as a datastore's join refuses one.
+func (g sandboxGroupResources) join(ctx context.Context, e store.Environment, id, observedEnvironmentID string) error {
+	now, err := g.SetSandboxGroupEnvironment(ctx, e.TenantID, id, observedEnvironmentID, e.ID)
+	if err != nil {
+		return store.MapError(err)
+	}
+	return core.PlacementChanged(now, e.ID)
+}
+
+// leave takes the group out of expectedEnvironmentID; one moved on since stays
+// where it is, as a datastore's leave leaves it.
+func (g sandboxGroupResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
+	workspace, ok := core.WorkspaceFrom(ctx)
+	if !ok {
+		return fmt.Errorf("sandbox group %s: no workspace to act in", id)
+	}
+	_, err := g.SetSandboxGroupEnvironment(ctx, workspace, id, expectedEnvironmentID, "")
+	return store.MapError(err)
+}
+
+// ungroup is leave: a group joins no project.
+func (g sandboxGroupResources) ungroup(ctx context.Context, id, expectedEnvironmentID string) error {
+	return g.leave(ctx, id, expectedEnvironmentID)
+}
+
+// release is leave: a group joins no project.
+func (g sandboxGroupResources) release(ctx context.Context, e store.Environment, id, _ string) error {
+	return g.leave(ctx, id, e.ID)
+}
+
 // databases/keyValues/envGroups adapt the optional feature indexes, returning
 // nil when that kind is unwired — read paths then resolve that kind's
 // membership empty (rather than failing the whole view), write paths report
@@ -543,6 +609,13 @@ func (s *Service) envGroups() resourceIndex {
 		return nil
 	}
 	return envGroupResources{s.EnvGroups}
+}
+
+func (s *Service) sandboxGroups() resourceIndex {
+	if s.SandboxGroups == nil {
+		return nil
+	}
+	return sandboxGroupResources{s.SandboxGroups}
 }
 
 // idsByEnvironment lists every member idx knows about in workspaceID once and

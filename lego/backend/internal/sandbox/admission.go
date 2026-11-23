@@ -198,7 +198,7 @@ func (s *Service) admit(ctx context.Context, key, workspace string, group, defau
 			"this workspace's sandbox creates and resumes are queued behind a slow request; retry in a few seconds", nil)
 	}
 	if errors.Is(err, store.ErrNotFound) {
-		return false, groupNotFound(group.ID) // the group's delete started meanwhile (Bind)
+		return false, core.SandboxGroupNotFound(group.ID) // the group's delete started meanwhile (Bind)
 	}
 	if err != nil {
 		return false, err

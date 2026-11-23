@@ -1129,6 +1129,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		MaxGroupings: d.MaxBlueprintGroupings,
 		ProxiedHosts: d.ProxiedHosts,
 	}
+	// Render's environment-resources routes move sandbox groups too (w22/m603).
+	if groups, ok := d.SandboxGroups.(environments.SandboxGroupIndex); ok {
+		environmentsSvc.SandboxGroups = groups
+	}
 	// Placement writers outside environments check the environments their
 	// write leaves through its one seam (w4/m232); projects reach it through
 	// ProjectMemberClearer.
@@ -1179,6 +1183,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 		sshHost = d.SSHHost
 	}
 	sandboxSvc := sandboxService(base, d, environmentCreateResolver)
+	if sandboxSvc != nil && environmentsSvc.SandboxGroups != nil {
+		// A group's GraphQL and MCP moves are Render's environment-resources
+		// verb, as REST serves it (w22/m603).
+		sandboxSvc.PlaceGroup = func(ctx context.Context, environmentID, groupID string, add bool) error {
+			_, err := environmentsSvc.ChangeResources(ctx, environmentID, []string{groupID}, add)
+			return err
+		}
+	}
 	// Keep the agent-session lifecycle a genuine nil interface when OpenSandbox is
 	// off, so enabled() checks are honest instead of holding a typed-nil pointer.
 	var agentLifecycle agentsessions.SandboxLifecycle

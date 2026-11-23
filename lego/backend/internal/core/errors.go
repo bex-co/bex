@@ -736,3 +736,15 @@ func NewInsufficientScopeError(required string) *CodedError {
 func NotFound(resource string) error {
 	return NewNotFoundError(NotFoundCode, resource+" not found", nil)
 }
+
+// SandboxGroupNotFoundCode is the 404 of a sandbox group id that names no group
+// of the caller's workspace.
+const SandboxGroupNotFoundCode = "SANDBOX_GROUP_NOT_FOUND"
+
+// SandboxGroupNotFound is that 404, "sandbox group not found" as Render's
+// clients read it: the group routes answer it, and so do the
+// environment-resources routes Render's CLI and SDK move a group with
+// (w22/m603).
+func SandboxGroupNotFound(id string) error {
+	return NewNotFoundError(SandboxGroupNotFoundCode, "sandbox group not found", map[string]any{"id": id})
+}

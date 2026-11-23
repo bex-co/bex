@@ -65,6 +65,10 @@ type groupDriver interface {
 	// limit the page size (0 = the surface's default).
 	listGroups(after string, limit int) outcome
 	updateGroup(id string, limit int) outcome
+	// setGroupEnvironment puts a group in an environment, moves it, or with
+	// "" takes it out of the one it is in, as Render's SDK setGroupEnvironment
+	// does (w22/m603).
+	setGroupEnvironment(id, environmentID string) outcome
 	createSandbox(groupID string) outcome
 	listSandboxes(groupID string) outcome
 	// execOn runs a command in a sandbox, which wakes it when it is suspended.
@@ -177,6 +181,30 @@ func (d restDriver) updateGroup(id string, limit int) outcome {
 	return d.call(http.MethodPatch, "/v1/sandbox-groups/"+id, fmt.Sprintf(`{"concurrencyLimit":%d}`, limit))
 }
 
+// setGroupEnvironment sends what Render's SDK and CLI send: an add to the
+// environment, or a read of the group and a removal from the environment it
+// reads; then a read of the group.
+func (d restDriver) setGroupEnvironment(id, environmentID string) outcome {
+	if environmentID == "" {
+		read := d.getGroup(id)
+		if read.Code != "" {
+			return read
+		}
+		current, _ := read.Raw["result"].(map[string]any)["environmentId"].(string)
+		if current == "" {
+			return read
+		}
+		if code, body := d.f.do(d.t, http.MethodDelete, "/v1/environments/"+current+"/resources?resourceIds="+id, ""); code >= 400 {
+			return outcome{Code: errCode(body)}
+		}
+		return d.getGroup(id)
+	}
+	if code, body := d.f.do(d.t, http.MethodPost, "/v1/environments/"+environmentID+"/resources", fmt.Sprintf(`{"resourceIds":[%q]}`, id)); code >= 400 {
+		return outcome{Code: errCode(body)}
+	}
+	return d.getGroup(id)
+}
+
 func (d restDriver) createSandbox(groupID string) outcome {
 	body := `{}`
 	if groupID != "" {
@@ -278,6 +306,14 @@ func (d gqlDriver) updateGroup(id string, limit int) outcome {
 		map[string]any{"id": id, "l": limit})
 }
 
+func (d gqlDriver) setGroupEnvironment(id, environmentID string) outcome {
+	vars := map[string]any{"id": id, "e": nil}
+	if environmentID != "" {
+		vars["e"] = environmentID
+	}
+	return d.run("setSandboxGroupEnvironment", `mutation($id: String!, $e: String) { setSandboxGroupEnvironment(id: $id, environmentId: $e) { `+gqlGroupFields+` } }`, vars)
+}
+
 func (d gqlDriver) createSandbox(groupID string) outcome {
 	args := ""
 	vars := map[string]any{}
@@ -362,6 +398,14 @@ func (d mcpDriver) updateGroup(id string, limit int) outcome {
 	return d.call("update_sandbox_group", map[string]any{"id": id, "concurrencyLimit": limit})
 }
 
+func (d mcpDriver) setGroupEnvironment(id, environmentID string) outcome {
+	args := map[string]any{"id": id}
+	if environmentID != "" {
+		args["environmentId"] = environmentID
+	}
+	return d.call("set_sandbox_group_environment", args)
+}
+
 func (d mcpDriver) createSandbox(groupID string) outcome {
 	args := map[string]any{}
 	if groupID != "" {
@@ -439,6 +483,21 @@ func wantEnvironment(t *testing.T, got outcome, want *string) {
 		t.Errorf("environmentId = %v, want null", field)
 	case want != nil && field != *want:
 		t.Errorf("environmentId = %v, want %s", field, *want)
+	}
+}
+
+// wantGroupIn checks that a refused move left the named group in environment
+// (a public id).
+func wantGroupIn(t *testing.T, f *groupFixture, name, environment string) {
+	t.Helper()
+	groups, err := f.st.SandboxGroups(context.Background(), f.ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range groups {
+		if g.Name == name && ids.EnvironmentPublicID(g.EnvironmentID) != environment {
+			t.Errorf("the refused move left %s in %q, want %s", name, ids.EnvironmentPublicID(g.EnvironmentID), environment)
+		}
 	}
 }
 
@@ -594,6 +653,56 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 			e.f.mustCreateGroupIn(t, "placed", e.f.environment(t, "staging", false))
 			return e.d.listGroups("", 0)
 		}},
+		{"putting a group in an environment", "", func(e env) outcome {
+			g := e.f.createGroup(t, "mover")
+			return e.d.setGroupEnvironment(g.ID, e.f.environment(t, "staging", false))
+		}},
+		{"moving a group to another environment", "", func(e env) outcome {
+			g := e.f.mustCreateGroupIn(t, "mover", e.f.environment(t, "staging", false))
+			return e.d.setGroupEnvironment(g.ID, e.f.environment(t, "production", false))
+		}},
+		{"moving a group to the environment it is in", "", func(e env) outcome {
+			g := e.f.mustCreateGroupIn(t, "mover", e.f.environment(t, "staging", false))
+			return e.d.setGroupEnvironment(g.ID, e.f.lastEnvironment)
+		}},
+		{"taking a group out of its environment", "", func(e env) outcome {
+			g := e.f.mustCreateGroupIn(t, "mover", e.f.environment(t, "staging", false))
+			return e.d.setGroupEnvironment(g.ID, "")
+		}},
+		{"taking out a group in no environment", "", func(e env) outcome {
+			return e.d.setGroupEnvironment(e.f.createGroup(t, "loose").ID, "")
+		}},
+		{"moving an unknown group", CodeSandboxGroupNotFound, func(e env) outcome {
+			return e.d.setGroupEnvironment("sbg-"+strings.Repeat("a", 20), e.f.environment(t, "staging", false))
+		}},
+		{"moving another workspace's group", CodeSandboxGroupNotFound, func(e env) outcome {
+			wsB := e.f.addWorkspace(t, "id-b")
+			_, body := e.f.doAs(t, "id-b", http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"theirs"}`, wsB))
+			var theirs Group
+			_ = json.Unmarshal([]byte(body), &theirs)
+			return e.d.setGroupEnvironment(theirs.ID, e.f.environment(t, "staging", false))
+		}},
+		{"moving a group into an environment that does not exist", core.NotFoundCode, func(e env) outcome {
+			return e.d.setGroupEnvironment(e.f.createGroup(t, "mover").ID, ids.EnvironmentPublicID("env-"+strings.Repeat("a", 20)))
+		}},
+		{"a Developer moving a group into a protected environment", core.ProtectedPlacementCode, func(e env) outcome {
+			g := e.f.mustCreateGroupIn(t, "mover", e.f.environment(t, "staging", false))
+			prod := e.f.environment(t, "production", true)
+			e.f.svc.Base.Authz = managerChecker{admin: false}
+			e.f.lastEnvironment = *g.EnvironmentID
+			return e.d.setGroupEnvironment(g.ID, prod)
+		}},
+		{"a Developer taking a group out of a protected environment", core.ProtectedPlacementCode, func(e env) outcome {
+			e.f.svc.Base.Authz = managerChecker{admin: true}
+			g := e.f.mustCreateGroupIn(t, "mover", e.f.environment(t, "production", true))
+			e.f.svc.Base.Authz = managerChecker{admin: false}
+			return e.d.setGroupEnvironment(g.ID, "")
+		}},
+		{"an Admin moving a group out of a protected environment", "", func(e env) outcome {
+			e.f.svc.Base.Authz = managerChecker{admin: true}
+			g := e.f.mustCreateGroupIn(t, "mover", e.f.environment(t, "production", true))
+			return e.d.setGroupEnvironment(g.ID, e.f.environment(t, "staging", false))
+		}},
 		{"retrieving a group after its environment was deleted", "", func(e env) outcome {
 			env := e.f.environment(t, "doomed", false)
 			g := e.f.mustCreateGroupIn(t, "survivor", env)
@@ -637,6 +746,18 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 		"retrieving a group in an environment":                   placed,
 		"updating a group in an environment":                     placed,
 		"retrieving a group after its environment was deleted":   unplaced,
+		"putting a group in an environment":                      placed,
+		"moving a group to another environment":                  placed,
+		"moving a group to the environment it is in":             placed,
+		"an Admin moving a group out of a protected environment": placed,
+		"taking a group out of its environment":                  unplaced,
+		"taking out a group in no environment":                   unplaced,
+		"a Developer moving a group into a protected environment": func(t *testing.T, e env, _ outcome) {
+			wantGroupIn(t, e.f, "mover", e.f.lastEnvironment)
+		},
+		"a Developer taking a group out of a protected environment": func(t *testing.T, e env, _ outcome) {
+			wantGroupIn(t, e.f, "mover", e.f.lastEnvironment)
+		},
 		"listing groups echoes each one's environment": func(t *testing.T, e env, got outcome) {
 			byName := map[string]any{}
 			for _, item := range got.Raw["result"].([]any) {

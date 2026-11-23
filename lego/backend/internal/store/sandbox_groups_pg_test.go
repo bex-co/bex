@@ -802,3 +802,74 @@ func TestSandboxGroupEnvironmentMigrationPG(t *testing.T) {
 		t.Fatalf("index = %q, want a partial index on environment_id IS NOT NULL", def)
 	}
 }
+
+// w22/m603: a group moves between environments only from where the caller saw
+// it. The write answers where the group is afterwards, so a caller whose view
+// is stale learns where another writer put it instead of overwriting that;
+// another workspace's group, a group being deleted and an environment that
+// does not exist change nothing.
+func TestSetSandboxGroupEnvironmentPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-group-move").ID
+	other := lifecycleTenant(t, st, "sandbox-group-move-other").ID
+	a := sandboxGroupEnvironment(t, st, ws, "a")
+	b := sandboxGroupEnvironment(t, st, ws, "b")
+	g, err := st.CreateSandboxGroup(ctx, ws, "mover", SandboxGroupRegion, "", 10, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func() SandboxGroup {
+		t.Helper()
+		got, err := st.SandboxGroup(ctx, ws, g.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+
+	for _, step := range []struct{ from, to, want string }{
+		{"", a.ID, a.ID},   // into an environment
+		{a.ID, b.ID, b.ID}, // moved to another
+		{a.ID, "", b.ID},   // a stale caller: left where it is
+		{b.ID, b.ID, b.ID}, // already there
+		{b.ID, "", ""},     // out of it
+		{"", "", ""},       // in none, stays in none
+		{b.ID, a.ID, ""},   // stale again
+	} {
+		before := read()
+		now, err := st.SetSandboxGroupEnvironment(ctx, ws, g.ID, step.from, step.to)
+		after := read()
+		if err != nil || now != step.want || after.EnvironmentID != step.want {
+			t.Fatalf("move %q → %q = %q, %v (stored %q), want %q", step.from, step.to, now, err, after.EnvironmentID, step.want)
+		}
+		if moved := before.EnvironmentID != after.EnvironmentID; moved != after.UpdatedAt.After(before.UpdatedAt) {
+			t.Errorf("move %q → %q: moved %v but updatedAt %v → %v", step.from, step.to, moved, before.UpdatedAt, after.UpdatedAt)
+		}
+	}
+
+	if _, err := st.SetSandboxGroupEnvironment(ctx, other, g.ID, "", a.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("another workspace moving the group = %v, want ErrNotFound", err)
+	}
+	if _, err := st.SetSandboxGroupEnvironment(ctx, ws, g.ID, "", "env-"+strings.Repeat("z", 20)); err == nil {
+		t.Fatal("a move into an environment that does not exist was stored")
+	}
+	if got := read(); got.EnvironmentID != "" {
+		t.Fatalf("refused moves left the group in %q", got.EnvironmentID)
+	}
+	if _, err := st.CreateSandboxGroup(ctx, ws, "doomed", SandboxGroupRegion, "", 10, 5); err != nil {
+		t.Fatal(err)
+	}
+	var doomed string
+	for _, sg := range mustSandboxGroups(t, st, ws) {
+		if sg.Name == "doomed" {
+			doomed = sg.ID
+		}
+	}
+	if _, err := st.MarkSandboxGroupDeleting(ctx, ws, doomed); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.SetSandboxGroupEnvironment(ctx, ws, doomed, "", a.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("moving a group being deleted = %v, want ErrNotFound", err)
+	}
+}

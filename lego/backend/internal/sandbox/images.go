@@ -692,7 +692,7 @@ func (s *Service) ImportImage(ctx context.Context, groupID string, req ImportIma
 			fmt.Sprintf("this sandbox group already has %d images importing, its limit; wait for one to finish, then import again", s.Images.maxInFlight()),
 			map[string]any{"limit": s.Images.maxInFlight()})
 	case errors.Is(err, store.ErrNotFound):
-		return Build{}, groupNotFound(groupID)
+		return Build{}, core.SandboxGroupNotFound(groupID)
 	case err != nil:
 		return Build{}, store.MapError(err)
 	}

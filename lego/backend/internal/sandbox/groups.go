@@ -70,7 +70,7 @@ const (
 	// for an owner already at its sandbox group limit" (pinned OpenAPI errorCode).
 	CodeSandboxGroupLimitReached = "sandbox_group_limit_reached"
 	// CodeSandboxGroupNotFound is a group id that names no group in the workspace.
-	CodeSandboxGroupNotFound = "SANDBOX_GROUP_NOT_FOUND"
+	CodeSandboxGroupNotFound = core.SandboxGroupNotFoundCode
 	// CodeSandboxGroupNameTaken is Render's 409 for a name another group has;
 	// Render documents no code for it.
 	CodeSandboxGroupNameTaken = "SANDBOX_GROUP_NAME_TAKEN"
@@ -153,7 +153,8 @@ type CreateGroupRequest struct {
 	Region  string `json:"region,omitempty"`
 	// EnvironmentID places the group in a project environment of the workspace
 	// (evm-…; the legacy env-… spelling is accepted), as Render's dashboard does
-	// (w22/m412). Render's REST create takes none; here it is a bex extension.
+	// (w22/m412) and Render's SDK v1.10.0 createGroup and CLI v2.38.0
+	// `sandbox-groups create --environment` send it (w22/m603).
 	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"optional environment id (evm-...; legacy env-... accepted) in the target workspace to place the group in; it is returned as environmentId. Membership only: who can see or use the group does not change"`
 }
 
@@ -234,10 +235,6 @@ func validateListCursor(q url.Values, kind ids.Kind) error {
 		}
 	}
 	return nil
-}
-
-func groupNotFound(id string) error {
-	return core.NewNotFoundError(CodeSandboxGroupNotFound, "sandbox group not found", map[string]any{"id": id})
 }
 
 // validateGroupName is the group name rule: Render documents only that a name is
@@ -393,10 +390,47 @@ func (s *Service) UpdateGroup(ctx context.Context, id string, concurrencyLimit i
 	}
 	g, err := s.Groups.SetSandboxGroupLimit(ctx, s.WorkspaceOrDefault(ctx), id, s.clampLimit(concurrencyLimit))
 	if errors.Is(err, store.ErrNotFound) {
-		return Group{}, groupNotFound(id)
+		return Group{}, core.SandboxGroupNotFound(id)
 	}
 	if err != nil {
 		return Group{}, store.MapError(err)
+	}
+	return s.groupView(g), nil
+}
+
+// SetGroupEnvironment puts a group in a project environment or moves it to
+// another one, or, with environmentID "", takes it out of the one it is in, as
+// Render's SDK setGroupEnvironment does (w22/m603): an add to the target, or a
+// removal from the environment the group reads. Both go through the
+// environment-resources verb REST serves (PlaceGroup), so a protected
+// environment on either side needs an Admin and every refusal is REST's.
+// Taking a group in no environment out changes nothing. It returns the group
+// as it now reads.
+func (s *Service) SetGroupEnvironment(ctx context.Context, id, environmentID string) (Group, error) {
+	ctx, err := s.writableGroup(ctx, id)
+	if err != nil {
+		return Group{}, err
+	}
+	if s.PlaceGroup == nil {
+		return Group{}, core.NewUnavailableError(CodeSandboxGroupsUnavailable, "moving a sandbox group needs the environments store", nil)
+	}
+	g, err := s.storedGroup(ctx, id)
+	if err != nil {
+		return Group{}, err
+	}
+	switch {
+	case environmentID != "":
+		err = s.PlaceGroup(ctx, environmentID, id, true)
+	case g.EnvironmentID != "":
+		err = s.PlaceGroup(ctx, g.EnvironmentID, id, false)
+	default:
+		return s.groupView(g), nil
+	}
+	if err != nil {
+		return Group{}, err
+	}
+	if g, err = s.storedGroup(ctx, id); err != nil {
+		return Group{}, err
 	}
 	return s.groupView(g), nil
 }
@@ -427,7 +461,7 @@ func (s *Service) SetDefaultGroup(ctx context.Context, id string) (Group, error)
 	}
 	g, err := s.Groups.SetDefaultSandboxGroup(ctx, s.WorkspaceOrDefault(ctx), id)
 	if errors.Is(err, store.ErrNotFound) {
-		return Group{}, groupNotFound(id)
+		return Group{}, core.SandboxGroupNotFound(id)
 	}
 	if err != nil {
 		return Group{}, store.MapError(err)
@@ -451,7 +485,7 @@ func (s *Service) DeleteGroup(ctx context.Context, id string) error {
 			fmt.Sprintf("sandbox group %s is the workspace's default and cannot be deleted; make another group the default first (sandbox-groups default set)", id),
 			map[string]any{"id": id})
 	case errors.Is(err, store.ErrNotFound):
-		return groupNotFound(id)
+		return core.SandboxGroupNotFound(id)
 	case err != nil:
 		return store.MapError(err)
 	}
@@ -602,7 +636,7 @@ func (s *Service) loadGroup(ctx context.Context, workspace, id string) (store.Sa
 	}
 	g, err := s.Groups.SandboxGroup(ctx, workspace, id)
 	if errors.Is(err, store.ErrNotFound) {
-		return store.SandboxGroup{}, groupNotFound(id)
+		return store.SandboxGroup{}, core.SandboxGroupNotFound(id)
 	}
 	if err != nil {
 		return store.SandboxGroup{}, store.MapError(err)

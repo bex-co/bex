@@ -192,3 +192,53 @@ func TestABlueprintSyncPlacesInAProtectedEnvironment(t *testing.T) {
 		t.Fatalf("member's marked exit from prod = %v, want %s", err, core.ProtectedPlacementCode)
 	}
 }
+
+// w22/m603: "Moving a group into or out of a protected environment requires an
+// admin" (Render CLI v2.38.0 `sandbox-groups environment set`). The rule holds
+// on both sides of a move, on Render's environment-resources routes, and a
+// refused request leaves the group, and every other member it names, where
+// they were. A Developer still moves a group between unprotected environments.
+func TestMovingASandboxGroupIntoOrOutOfAProtectedEnvironmentNeedsAnAdmin(t *testing.T) {
+	ctx := ctxAs("user-a")
+	f := newExitFixture(t)
+	groups := &fakeSandboxGroupIndex{}
+	g := groups.add("tea-a")
+	dev := f.developer()
+	dev.SandboxGroups, f.admin.SandboxGroups = groups, groups
+	prod, staging, qa := id.EnvironmentPublicID(f.prod.ID), id.EnvironmentPublicID(f.staging.ID), id.EnvironmentPublicID(f.qa.ID)
+
+	// Unprotected moves stay open to a Developer.
+	if _, err := dev.ChangeResources(ctx, staging, []string{g}, true); err != nil || groups.in(g) != staging {
+		t.Fatalf("developer into staging = %v; group in %q", err, groups.in(g))
+	}
+	// Into protected prod.
+	if _, err := dev.ChangeResources(ctx, prod, []string{g}, true); !placementRefused(err) {
+		t.Fatalf("developer into prod = %v, want %s", err, core.ProtectedPlacementCode)
+	}
+	if groups.in(g) != staging {
+		t.Fatalf("a refused move-in left the group in %q, want staging", groups.in(g))
+	}
+	if _, err := f.admin.ChangeResources(ctx, prod, []string{g}, true); err != nil || groups.in(g) != prod {
+		t.Fatalf("admin into prod = %v; group in %q", err, groups.in(g))
+	}
+	// Out of prod: by removal, and by an add elsewhere, which also names a
+	// service; neither changes anything.
+	if _, err := dev.ChangeResources(ctx, prod, []string{g}, false); !placementRefused(err) {
+		t.Fatalf("developer removal from prod = %v, want %s", err, core.ProtectedPlacementCode)
+	}
+	web := id.New(id.Service)
+	_, err := dev.ChangeResources(ctx, qa, []string{web, g}, true)
+	var coded *core.CodedError
+	if !placementRefused(err) || !errors.As(err, &coded) || coded.Params["environmentId"] != prod {
+		t.Fatalf("developer move from prod to qa = %v, want %s naming prod", err, core.ProtectedPlacementCode)
+	}
+	if groups.in(g) != prod || len(f.servicesIn(t, f.qa)) != 0 {
+		t.Fatalf("refused moves out: group in %q, qa services %v; want the group in prod and qa empty", groups.in(g), f.servicesIn(t, f.qa))
+	}
+	if _, err := f.admin.ChangeResources(ctx, qa, []string{g}, true); err != nil || groups.in(g) != qa {
+		t.Fatalf("admin move from prod to qa = %v; group in %q", err, groups.in(g))
+	}
+	if _, err := dev.ChangeResources(ctx, qa, []string{g}, false); err != nil || groups.in(g) != "" {
+		t.Fatalf("developer removal from qa = %v; group in %q", err, groups.in(g))
+	}
+}

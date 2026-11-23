@@ -251,6 +251,34 @@ func (s *PGStore) SetSandboxGroupLimit(ctx context.Context, workspaceID, id stri
 	return g, nil
 }
 
+// SetSandboxGroupEnvironment moves a group of workspaceID that is still in
+// environment from ("" for none) to environment to ("" for none), and returns
+// the environment the group is in afterwards: to, or the one another writer
+// moved it to since the caller looked, which this write then leaves alone
+// (w22/m603, Render's environment-resources routes). A group that does not
+// exist, or is being deleted, is ErrNotFound, and an environment that does not
+// exist is refused by the database; that to belongs to workspaceID is the
+// caller's check.
+func (s *PGStore) SetSandboxGroupEnvironment(ctx context.Context, workspaceID, id, from, to string) (string, error) {
+	var current string
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := tx.QueryRow(ctx, `SELECT COALESCE(environment_id, '') FROM sandbox_groups
+			WHERE workspace_id = $1 AND id = $2 AND deleting_at IS NULL FOR UPDATE`, workspaceID, id).Scan(&current); err != nil {
+			return err
+		}
+		if current != from || current == to {
+			return nil
+		}
+		current = to
+		_, err := tx.Exec(ctx, `UPDATE sandbox_groups SET environment_id = $2, updated_at = now() WHERE id = $1`, id, nullIfEmpty(to))
+		return err
+	})
+	if err != nil {
+		return "", classify("sandbox group", err)
+	}
+	return current, nil
+}
+
 // lockedSandboxGroup takes the workspace's group lock and the group's row for
 // update, so a default swap and a delete mark never interleave.
 func lockedSandboxGroup(ctx context.Context, tx pgx.Tx, workspaceID, id string) (SandboxGroup, error) {

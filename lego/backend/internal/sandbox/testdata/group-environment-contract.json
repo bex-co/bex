@@ -1,0 +1,122 @@
+{
+  "_comment": "What Render's own clients send and read to put a sandbox group in a project environment, move it to another one or take it out (w22/m603 t001). Read from the clients' source at the commits below on 2026-11-23; group_environment_contract_test.go replays every sequence against bex-api's REST routes. Paths are relative to the API base (bex serves them under /v1). $OWNER, $GROUP, $ENV_A and $ENV_B stand for the workspace, the group and two environments of that workspace. `success` is the statuses the client accepts; a step's `expect` is what the client then reads from the response. To regenerate: clone render-oss/sdk at the two tags and render-oss/cli at its tag, and re-read the files named in each client's `source`.",
+  "clients": {
+    "sdk-typescript": {
+      "tag": "typescript/v1.10.0",
+      "commit": "0529a77a19fd076ddf0c6eccff99b2fc45423ba1",
+      "released": "2026-11-20T03:21:00Z",
+      "source": ["typescript/src/sandboxes/index.ts: createGroup, getGroup, setGroupEnvironment, addGroupToEnvironment, removeGroupFromEnvironment"],
+      "create": "createGroup({name, environmentId}) sends POST /sandbox-groups with {ownerId, name, region, environmentId}; region defaults to oregon",
+      "set": "setGroupEnvironment(group, env) sends POST /environments/{env}/resources {resourceIds:[group]}, accepts any 2xx, then GET /sandbox-groups/{group}",
+      "clear": "setGroupEnvironment(group, null) sends GET /sandbox-groups/{group}; when environmentId is null it returns that read; otherwise DELETE /environments/{environmentId}/resources?resourceIds={group}, accepts any 2xx, then GET /sandbox-groups/{group}",
+      "refuses": "an empty environmentId, client side, before any request"
+    },
+    "sdk-python": {
+      "tag": "python/v1.10.0",
+      "commit": "0529a77a19fd076ddf0c6eccff99b2fc45423ba1",
+      "released": "2026-11-20T03:21:00Z",
+      "source": [
+        "python/render/sandbox/client.py: create_group, set_group_environment",
+        "python/render/sandbox/api.py: create_group, add_group_to_environment, remove_group_from_environment",
+        "python/render/public_api/api/projects_environments/add_resources_to_environment.py, remove_resources_from_environment.py"
+      ],
+      "create": "create_group(name, environment_id=...) sends POST /sandbox-groups with {ownerId, name, environmentId}; region only when given",
+      "set": "the same requests as TypeScript; the generated POST client parses a 201 body as Render's Environment, and DELETE expects 204",
+      "clear": "the same requests as TypeScript",
+      "differences": "region is omitted from the create body when not given (TypeScript sends oregon); otherwise none",
+      "refuses": "an empty environment_id, client side, before any request"
+    },
+    "cli": {
+      "tag": "v2.38.0",
+      "commit": "09b7802aa379c92a087884412d88b2b3f8a75a9a",
+      "released": "2026-11-20T03:27:00Z",
+      "source": [
+        "cmd/sandboxgroupscreate.go, cmd/sandboxgroupsenvironmentset.go, cmd/sandboxgroupsenvironmentremove.go",
+        "pkg/sandboxgroup/service.go: Create, SetEnvironment, ClearEnvironment, resolveEnvironmentID",
+        "pkg/sandboxgroup/repo.go: AddToEnvironment (\"relies on the API to move the group out of any environment it was in\"), RemoveFromEnvironment",
+        "internal/fakes/renderapi/environments.go: 201 with the environment on add, 204 on remove, 404 \"sandbox group not found\" for an unknown group on both"
+      ],
+      "create": "sandbox-groups create --name N --environment <id or name> sends POST /sandbox-groups with {ownerId, name, environmentId}",
+      "set": "sandbox-groups environment set <group> <id or name>: a name is resolved in the active workspace first (GET /projects?ownerId=..., GET /environments?projectId=...&name=...; an evm- id reads GET /environments/{id} and GET /projects/{projectId}), then POST /environments/{env}/resources {resourceIds:[group]}, then GET /sandbox-groups/{group}",
+      "clear": "sandbox-groups environment remove <group>: GET /sandbox-groups/{group}; when environmentId is null it prints that read; otherwise DELETE /environments/{environmentId}/resources?resourceIds={group}, then GET /sandbox-groups/{group}",
+      "help": "Moving a group into or out of a protected environment requires an admin."
+    }
+  },
+  "sequences": {
+    "create": [
+      {
+        "method": "POST",
+        "path": "/sandbox-groups",
+        "body": { "ownerId": "$OWNER", "name": "agents", "environmentId": "$ENV_A" },
+        "success": [201],
+        "expect": { "environmentId": "$ENV_A" }
+      }
+    ],
+    "set": [
+      {
+        "method": "POST",
+        "path": "/environments/$ENV_A/resources",
+        "body": { "resourceIds": ["$GROUP"] },
+        "success": [201]
+      },
+      {
+        "method": "GET",
+        "path": "/sandbox-groups/$GROUP",
+        "success": [200],
+        "expect": { "environmentId": "$ENV_A" }
+      }
+    ],
+    "move": [
+      {
+        "method": "POST",
+        "path": "/environments/$ENV_B/resources",
+        "body": { "resourceIds": ["$GROUP"] },
+        "success": [201]
+      },
+      {
+        "method": "GET",
+        "path": "/sandbox-groups/$GROUP",
+        "success": [200],
+        "expect": { "environmentId": "$ENV_B" }
+      }
+    ],
+    "clear": [
+      {
+        "method": "GET",
+        "path": "/sandbox-groups/$GROUP",
+        "success": [200],
+        "expect": { "environmentId": "$ENV_B" }
+      },
+      {
+        "method": "DELETE",
+        "path": "/environments/$ENV_B/resources?resourceIds=$GROUP",
+        "success": [204]
+      },
+      {
+        "method": "GET",
+        "path": "/sandbox-groups/$GROUP",
+        "success": [200],
+        "expect": { "environmentId": null }
+      }
+    ],
+    "clearWhenInNone": [
+      {
+        "method": "GET",
+        "path": "/sandbox-groups/$GROUP",
+        "success": [200],
+        "expect": { "environmentId": null }
+      }
+    ]
+  },
+  "refusals": {
+    "unknownGroup": {
+      "status": 404,
+      "message": "sandbox group not found",
+      "note": "the CLI fake answers it on add and on remove; both SDKs raise a ClientError"
+    },
+    "protectedEnvironment": {
+      "status": 403,
+      "note": "the CLI prints \"you are not allowed to take this action\" for any 403; both SDKs raise a ClientError"
+    }
+  }
+}

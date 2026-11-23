@@ -207,6 +207,12 @@ type Service struct {
 	// environment is not found and a protected one needs an Admin (w3/m281). nil
 	// refuses a create that names an environment.
 	Environments core.EnvironmentResolver
+	// PlaceGroup is the environment-resources verb behind POST (add) and
+	// DELETE /environments/{id}/resources, which Render's CLI and SDK move a
+	// group with (environments.Service.ChangeResources, w22/m603). The group's
+	// GraphQL and MCP moves go through it too, so the three surfaces answer
+	// alike. nil refuses a move.
+	PlaceGroup func(ctx context.Context, environmentID, groupID string, add bool) error
 	// Images imports Render's sandbox images and resolves a create's buildId or
 	// buildName (w2/m358); nil answers the image routes 503.
 	Images *Images

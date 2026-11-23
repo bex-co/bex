@@ -97,17 +97,27 @@ func newGroupFixture(t *testing.T) *groupFixture {
 	f.svc.Groups = st
 	f.svc.MaxGroups = 3
 	f.svc.MaxGroupConcurrency = RenderMaxGroupConcurrency
-	f.svc.Environments = environments.NewCreateResolver(&environments.Service{Base: f.svc.Base, Store: st})
+	// The environments feature as bex-api wires it: it resolves a create's
+	// environment and serves Render's environment-resources routes, which move
+	// a group (w22/m603), for REST and for the group's GraphQL and MCP verb.
+	envs := &environments.Service{Base: f.svc.Base, Store: st, SandboxGroups: st}
+	f.svc.Environments = environments.NewCreateResolver(envs)
+	f.svc.PlaceGroup = func(ctx context.Context, environmentID, groupID string, add bool) error {
+		_, err := envs.ChangeResources(ctx, environmentID, []string{groupID}, add)
+		return err
+	}
 
 	mux := http.NewServeMux()
 	f.svc.RegisterREST(mux)
-	// Every response to a group operation is checked against the pinned Render
-	// schema. The sandbox responses are not: their 20-character ids differ from
-	// Render's 25 on purpose (the request gate widens the pattern, ids.Sandbox),
-	// which is a recorded divergence this feature does not touch.
+	envs.RegisterREST(mux)
+	// Every response to a group operation, and to the environment-resources
+	// routes that move one, is checked against the pinned Render schema. The
+	// sandbox responses are not: their 20-character ids differ from Render's
+	// 25 on purpose (the request gate widens the pattern, ids.Sandbox), which
+	// is a recorded divergence this feature does not touch.
 	contract := rendertest.Load(t).MuxMatcher(mux)
 	groupsOnly := func(r *http.Request) *routers.Route {
-		if !strings.HasPrefix(r.URL.Path, "/v1/sandbox-groups") {
+		if !strings.HasPrefix(r.URL.Path, "/v1/sandbox-groups") && !strings.HasSuffix(r.URL.Path, "/resources") {
 			return nil
 		}
 		return contract(r)

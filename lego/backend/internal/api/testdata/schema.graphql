@@ -2190,6 +2190,7 @@ type Mutation {
   setRepo(branch: String, buildCommand: String, command: String, confirm: String, deploy: Boolean = false, id: String!, publishPath: String, repo: String!, runtime: String, startCommand: String): Service
   setRootDir(confirm: String, id: String!, rootDir: String!): Service
   setRuntime(confirm: String, id: String!, runtime: String!): Service
+  setSandboxGroupEnvironment(environmentId: String, id: String!, ownerId: String): SandboxGroup
   setSecretFile(content: String, name: String!, serviceId: String!): Boolean
   setServiceIpAllowList(cidrs: [String], entries: [IPAllowListEntryInput!], id: String!): Service
   setStartCommand(command: String!, confirm: String, id: String!): Service

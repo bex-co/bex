@@ -476,7 +476,7 @@ func (s *Service) snapshotRefusal(err error, box Sandbox) error {
 			fmt.Sprintf("sandbox group %s already holds %d snapshots, its limit; delete snapshots you no longer need, then capture again", box.SandboxGroupID, limits.PerGroup),
 			map[string]any{"limit": limits.PerGroup, "sandboxGroupId": box.SandboxGroupID})
 	case errors.Is(err, store.ErrNotFound):
-		return groupNotFound(box.SandboxGroupID)
+		return core.SandboxGroupNotFound(box.SandboxGroupID)
 	}
 	return store.MapError(err)
 }

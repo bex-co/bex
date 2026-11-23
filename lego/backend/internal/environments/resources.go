@@ -28,12 +28,14 @@ import (
 
 // Render's environment-membership API (w8/188): POST and DELETE
 // /environments/{id}/resources add or remove resources by id — a service
-// (srv-), Postgres (dpg-), Key Value (red-) or environment group (evg-) — where
-// bex's own PUT …-links routes replace one kind's whole list. A removed
-// resource leaves the environment's project too and is ungrouped, as on
-// Render, where a resource belongs to a project only through one of its
-// environments (w4/714); the …-links routes keep a dropped member in the
-// project.
+// (srv-), Postgres (dpg-), Key Value (red-), environment group (evg-) or
+// sandbox group (sbg-, w22/m603) — where bex's own PUT …-links routes replace
+// one kind's whole list. A removed resource leaves the environment's project
+// too and is ungrouped, as on Render, where a resource belongs to a project
+// only through one of its environments (w4/714); the …-links routes keep a
+// dropped member in the project. Render's CLI (v2.38.0) and SDK (v1.10.0) move
+// a sandbox group with these routes alone: adding one that is in another
+// environment moves it, and removing it leaves it in none.
 
 // codeEnvironmentNotEmpty names Render's 409 for deleting an environment (or a
 // project) that still holds resources.
@@ -54,7 +56,7 @@ func NotEmptyError(kind, id string) error {
 }
 
 // resourceKinds groups requested ids by the member kind their prefix names.
-type resourceKinds struct{ services, databases, keyValues, envGroups []string }
+type resourceKinds struct{ services, databases, keyValues, envGroups, sandboxGroups []string }
 
 func classifyResources(resourceIDs []string) (resourceKinds, error) {
 	var out resourceKinds
@@ -62,7 +64,7 @@ func classifyResources(resourceIDs []string) (resourceKinds, error) {
 		kind, ok := ids.KindOf(id)
 		switch {
 		case !ok:
-			return out, fmt.Errorf("%w: %q is not a service, Postgres, Key Value or environment group id", core.ErrBadRequest, id)
+			return out, notAResource(id)
 		case kind == ids.Service:
 			out.services = append(out.services, id)
 		case kind == ids.Postgres:
@@ -71,11 +73,38 @@ func classifyResources(resourceIDs []string) (resourceKinds, error) {
 			out.keyValues = append(out.keyValues, id)
 		case kind == ids.EnvGroup:
 			out.envGroups = append(out.envGroups, id)
+		case kind == ids.SandboxGroup:
+			out.sandboxGroups = append(out.sandboxGroups, id)
 		default:
-			return out, fmt.Errorf("%w: %q is not a service, Postgres, Key Value or environment group id", core.ErrBadRequest, id)
+			return out, notAResource(id)
 		}
 	}
 	return out, nil
+}
+
+func notAResource(id string) error {
+	return fmt.Errorf("%w: %q is not a service, Postgres, Key Value, environment group or sandbox group id", core.ErrBadRequest, id)
+}
+
+// requireSandboxGroups refuses, before any member changes, a sandbox group id
+// that names no group of workspaceID: 404 "sandbox group not found", as Render's
+// clients read it, on an add and on a removal alike, and the same answer for
+// another workspace's group as for one that does not exist.
+func (s *Service) requireSandboxGroups(ctx context.Context, workspaceID string, groupIDs []string) error {
+	idx := s.sandboxGroups()
+	if len(groupIDs) == 0 || idx == nil {
+		return nil // an unwired kind is refused where it applies
+	}
+	groups, err := idx.list(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	for _, id := range groupIDs {
+		if !slices.ContainsFunc(groups, func(g environmentResource) bool { return g.id == id }) {
+			return core.SandboxGroupNotFound(id)
+		}
+	}
+	return nil
 }
 
 // ChangeResources adds (or removes) the listed resources to (from) the
@@ -102,7 +131,13 @@ func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []
 	if err != nil {
 		return EnvironmentView{}, err
 	}
+	if err := s.requireSandboxGroups(viewCtx, e.TenantID, want.sandboxGroups); err != nil {
+		return EnvironmentView{}, err
+	}
+	// Sandbox groups go first, so that a protected environment a group would
+	// leave refuses the request before any other member changes (w22/m603).
 	kinds := []memberKind{
+		{requested: want.sandboxGroups, idx: s.sandboxGroups()},
 		{requested: want.services, services: true},
 		{requested: want.databases, idx: s.databases()},
 		{requested: want.keyValues, idx: s.keyValues()},

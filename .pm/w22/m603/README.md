@@ -1,15 +1,15 @@
 # w22 · m603 — A sandbox group moves between project environments through Render's environment-resources route, as CLI v2.38.0 and SDK v1.10.0 do
 
-**Worker:** worker22 **Goal:** the calls Render's own clients added on 2026-11-20 to put a sandbox group in a project environment, move it to another one or take it out work unchanged against bex: `POST /v1/environments/{id}/resources` and `DELETE /v1/environments/{id}/resources?resourceIds=` accept an `sbg-` id, a protected environment needs an Admin on either side of the move, and REST, GraphQL, MCP and the dashboard agree. **Status:** todo
+**Worker:** worker22 **Goal:** the calls Render's own clients added on 2026-11-20 to put a sandbox group in a project environment, move it to another one or take it out work unchanged against bex: `POST /v1/environments/{id}/resources` and `DELETE /v1/environments/{id}/resources?resourceIds=` accept an `sbg-` id, a protected environment needs an Admin on either side of the move, and REST, GraphQL, MCP and the dashboard agree. **Status:** todo (t001, t002, t003, t004 done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                                 | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Freeze the CLI v2.38.0 and SDK v1.10.0 wire contract for a group's environment as fixtures                                                            | 40m | —                |
-| t002 | The environment-resources routes take a sandbox group: add moves it, remove clears it, an unknown or foreign `sbg-` is 404, all-or-nothing with the rest | 75m | t001             |
-| t003 | Moving a group into or out of a protected environment needs an Admin: 403 `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED`                                    | 45m | t002             |
-| t004 | GraphQL and MCP reach the same core verb                                                                                                              | 60m | t002             |
+| t001 | Freeze the CLI v2.38.0 and SDK v1.10.0 wire contract for a group's environment as fixtures — **DONE** | 40m | —                |
+| t002 | The environment-resources routes take a sandbox group: add moves it, remove clears it, an unknown or foreign `sbg-` is 404, all-or-nothing with the rest — **DONE** | 75m | t001             |
+| t003 | Moving a group into or out of a protected environment needs an Admin: 403 `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` — **DONE** | 45m | t002             |
+| t004 | GraphQL and MCP reach the same core verb — **DONE** | 60m | t002             |
 | t005 | Dashboard: the group page shows its environment and moves or removes it, after reading what Render's dashboard offers                                | 90m | t004             |
 | t006 | Documents: `sandbox-groups.md`, ADR104 D7, ADR042 § Sandbox groups, ADR018                                                                            | 25m | t003, t005       |
 | t007 | Render parity                                                                                                                                         | 20m | t003, t004, t005 |
@@ -38,3 +38,25 @@
 - **Why now:** w22/m604 (CLI v2.38.0) and w22/m445 (retargeted to SDK v1.10.0) both need this server path for their done criteria, and the scheduled schema-drift job is red on the CLI pin today. The same handler was just changed by w4/m596 (201 on add), so its context is fresh.
 - **Recorded, not decided here:** whether Render refuses deleting an environment that still holds a group (its 409 `ENVIRONMENT_NOT_EMPTY` for other members) cannot be checked: Render's environment object does not list groups. bex keeps m412's behavior (the group stays and reads `environmentId: null`) and records it as unknown, not enforced. Whether Render's environment object should list groups is likewise unknown, so the REST environment object keeps Render's shape.
 - **Render parity included:** the change touches REST, GraphQL, MCP and the dashboard, so t007 compares every surface with the clients' contract.
+
+## Progress
+
+**Triage (2026-11-23, worker22):** work. At `a52d4422ae`, `classifyResources` (`lego/backend/internal/environments/resources.go`) still answered 400 for an `sbg-` id, so both clients' moves failed; nothing external gates the server, GraphQL, MCP or dashboard work. Only the `bex-canary` walk waits for the production pin.
+
+**t001: the clients' contract** is `lego/backend/internal/sandbox/testdata/group-environment-contract.json`, read on 2026-11-23 from SDK `typescript/v1.10.0` and `python/v1.10.0` (both `0529a77a19fd`) and CLI `v2.38.0` (`09b7802aa379`). Python sends the same requests as TypeScript, except that it leaves `region` out of a create that names none. Its generated POST client parses a 201 body as Render's `Environment`.
+
+**t002: the routes.** `POST` and `DELETE /v1/environments/{id}/resources` take an `sbg-` id. An add moves the group from any environment it was in, and a removal leaves it in none. The groups go first in a request, so a refusal on their account changes no other member. A failure after them returns each group to where it was, and a group that cannot be returned is named in `ENVIRONMENT_MEMBERSHIP_PARTIAL`. The write is a compare-and-set on the group's row (`store.SetSandboxGroupEnvironment`), so a group another request moved meanwhile is refused with `RESOURCE_PLACEMENT_CHANGED`, as a datastore is.
+- An unknown `sbg-` id, or another workspace's, answers 404 `SANDBOX_GROUP_NOT_FOUND`, "sandbox group not found", before anything changes. This holds on a removal too, because the CLI's fake answers it there. The other kinds answer a foreign id with 403 on an add and ignore it on a removal; groups differ because Render's clients read the 404.
+- Removing a known group from an environment it is not in changes nothing and answers 204, as for every other kind.
+- The environment object lists no groups, and deleting an environment still keeps its groups with `environmentId: null`.
+
+**t003: protected environments.** The existing checks cover a group with no new code. The target environment is checked by `authorizeMembershipChange`, and the environment a group leaves by the exit guard. Both answer 403 `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED`. An environment that is isolated or has an IP allowlist, but is not protected, still needs `can_manage` with the plain 403, as for every other kind.
+
+**t004: GraphQL and MCP.** The shape chosen is a group-side verb, as the SDK's `setGroupEnvironment` is one: GraphQL `setSandboxGroupEnvironment(id, environmentId, ownerId)` and MCP `set_sandbox_group_environment {id, environmentId?}`. A null or absent `environmentId` takes the group out of its environment. Both call `sandbox.Service.SetGroupEnvironment`, which sends the add, or the removal from the environment the group reads, to `environments.Service.ChangeResources`, the verb REST serves (`PlaceGroup`). A scoped key needs `projects.move` for both, as for REST's route, and both spend the `group-write` rate class. `TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP` runs eleven move scenarios on all three surfaces.
+
+**t005: what Render's dashboard offers** (bundle read 2026-11-23 22:47 UTC, entry `assets/index-9Nb9X1Dz.js`, 459 chunks, no sign-in):
+- **The group's own page** never shows its environment and has no move control. Its breadcrumbs carry no project or environment, and Settings has only Name, a read-only Concurrency limit, and Delete.
+- **At create,** the "New Sandbox Group" form has an optional Project field with an Environment select ("Add this sandbox group to a project once it's created").
+- **The project page** lists an environment's groups in the same table as its services (`projectResources` asks each environment for `sandboxGroups`). Selected groups move with the bulk **Move** control, into another environment or out to the workspace, through the generic `changeEnvironmentForResources(resourceIDs, environmentID)` mutation. The row "Options" menu is not offered on a group.
+- **Elsewhere:** the environment's "Move Services" dialog lists the workspace's groups as candidates, and the home "Ungrouped Services" table lists groups that are in no environment.
+- **New finding:** the bundle refuses deleting an environment or project that holds the workspace's default group: "This ${t} contains the default sandbox group. Make another group the default first."

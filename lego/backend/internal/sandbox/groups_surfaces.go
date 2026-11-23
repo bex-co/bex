@@ -105,6 +105,19 @@ func (s *Service) groupMutationFields() graphql.Fields {
 				return true, nil
 			},
 		},
+		// Render's SDK setGroupEnvironment (w22/m603): a null environmentId
+		// takes the group out of the environment it is in.
+		"setSandboxGroupEnvironment": &graphql.Field{
+			Type: sandboxGroupGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":            gqlutil.ReqArg(graphql.String),
+				"environmentId": gqlutil.Arg(graphql.String),
+				"ownerId":       gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetGroupEnvironment(gqlutil.OwnerScoped(p), p.Args["id"].(string), gqlutil.Str(p.Args, "environmentId"))
+			},
+		},
 		"updateSandboxGroup": &graphql.Field{
 			Type: sandboxGroupGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -133,6 +146,11 @@ type deleteResult struct {
 	Deleted bool   `json:"deleted"`
 }
 
+type setGroupEnvironmentArgs struct {
+	ID            string `json:"id"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"the environment (evm-...) to put the group in; omit it or pass null to take the group out of its environment"`
+}
+
 type updateGroupArgs struct {
 	ID               string `json:"id"`
 	ConcurrencyLimit int    `json:"concurrencyLimit"`
@@ -149,7 +167,7 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 			g, err := s.GetGroup(ctx, in.ID)
 			return nil, g, err
 		})
-	addTool(s, server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region. environmentId optionally places the group in one of the workspace's project environments (list_environments), as Render's dashboard does; the group returns it as environmentId, null when it is in none. Placement is membership only: who can see or use the group does not change. A protected environment needs a workspace Admin, and another workspace's environment is not found."},
+	addTool(s, server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region. environmentId optionally places the group in one of the workspace's project environments (list_environments), as Render's clients do; the group returns it as environmentId, null when it is in none, and set_sandbox_group_environment moves it later. Placement is membership only: who can see or use the group does not change. A protected environment needs a workspace Admin, and another workspace's environment is not found."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateGroupRequest) (*mcp.CallToolResult, Group, error) {
 			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err
@@ -165,6 +183,11 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 				return nil, deleteResult{}, err
 			}
 			return nil, deleteResult{ID: in.ID, Deleted: true}, nil
+		})
+	addTool(s, server, &mcp.Tool{Name: "set_sandbox_group_environment", Description: "Put a sandbox group in one of the workspace's project environments (list_environments), move it to another one, or, with no environmentId, take it out of the environment it is in, as Render's SDK setGroupEnvironment and CLI `sandbox-groups environment set|remove` do. A group is in at most one environment. Moving a group into or out of a protected environment needs a workspace Admin (PROTECTED_ENVIRONMENT_ADMIN_REQUIRED). Placement is membership only: who can see or use the group does not change. Returns the group with its environmentId."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in setGroupEnvironmentArgs) (*mcp.CallToolResult, Group, error) {
+			g, err := s.SetGroupEnvironment(ctx, in.ID, in.EnvironmentID)
+			return nil, g, err
 		})
 	addTool(s, server, &mcp.Tool{Name: "update_sandbox_group", Description: "Set a sandbox group's concurrencyLimit, the most active sandboxes it allows (at least 1; a higher value is capped to the platform's maximum and the response returns the effective limit). Lowering it stops no running sandbox; the group just admits no new one until its active count is below the limit. Suspended sandboxes do not count."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateGroupArgs) (*mcp.CallToolResult, Group, error) {
