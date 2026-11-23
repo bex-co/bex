@@ -217,6 +217,85 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Workspace Settings",
     description: "Workspace-settings label in topbar navigation and search",
   },
+  "common.searchShortcutEnvVarsDocs": {
+    message: "Environment variables",
+    description:
+      "Search shortcut to the docs page on environment variables and secrets (Render's 'Environment variables' shortcut)",
+  },
+  "common.searchShortcutEnvVarsDocsDescription": {
+    message: "Set environment variables and secrets for a service",
+    description:
+      "One-line description beside the environment variables docs search shortcut",
+  },
+  "common.searchShortcutCustomDomainsDocs": {
+    message: "Custom domains",
+    description: "Search shortcut to the custom domains docs page",
+  },
+  "common.searchShortcutCustomDomainsDocsDescription": {
+    message: "Add a custom domain to a service",
+    description:
+      "One-line description beside the custom domains docs search shortcut",
+  },
+  "common.searchShortcutGitCredentials": {
+    message: "Git credentials",
+    description:
+      "Search shortcut to Account Settings → Integrations, where GitHub is connected",
+  },
+  "common.searchShortcutGitCredentialsDescription": {
+    message: "Connect GitHub",
+    description:
+      "One-line description beside the Git credentials search shortcut; bex connects GitHub only",
+  },
+  "common.searchShortcutAuditLogs": {
+    message: "Audit Logs",
+    description: "Search shortcut to Workspace Settings → Audit Logs",
+  },
+  "common.searchShortcutAuditLogsDescription": {
+    message: "Export audit logs",
+    description: "One-line description beside the Audit Logs search shortcut",
+  },
+  "common.searchShortcutApiKeys": {
+    message: "API Keys",
+    description: "Search shortcut to Account Settings → API Keys",
+  },
+  "common.searchShortcutApiKeysDescription": {
+    message: "Provision API keys",
+    description: "One-line description beside the API Keys search shortcut",
+  },
+  "common.searchShortcutSshKeys": {
+    message: "SSH Keys",
+    description: "Search shortcut to Account Settings → SSH Public Keys",
+  },
+  "common.searchShortcutSshKeysDescription": {
+    message: "Provision SSH public keys",
+    description: "One-line description beside the SSH Keys search shortcut",
+  },
+  "common.searchShortcutCliTokens": {
+    message: "CLI Tokens",
+    description:
+      "Search shortcut to Account Settings → Connected agents, which lists the CLI's tokens",
+  },
+  "common.searchShortcutCliTokensDescription": {
+    message: "Review and revoke CLI tokens",
+    description: "One-line description beside the CLI Tokens search shortcut",
+  },
+  "common.searchShortcutRegistryCredentials": {
+    message: "Container Registry Credentials",
+    description: "Search shortcut to Workspace Settings → Registry Credentials",
+  },
+  "common.searchShortcutRegistryCredentialsDescription": {
+    message: "Manage credentials for external images",
+    description:
+      "One-line description beside the container registry credentials search shortcut",
+  },
+  "common.searchShortcutMcpServer": {
+    message: "MCP Server",
+    description: "Search shortcut to the MCP server docs page",
+  },
+  "common.searchShortcutMcpServerDescription": {
+    message: "Manage your bex services from AI apps",
+    description: "One-line description beside the MCP Server search shortcut",
+  },
   "common.topbarSwitchProject": {
     message: "Switch project",
     description: "Heading in a project breadcrumb dropdown",

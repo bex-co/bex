@@ -3,6 +3,7 @@ import { tableHeaders } from "@/test/table";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { ApiKeysPanelSkeleton } from "@/features/api-keys/components/api-keys-panel-skeleton";
 import type { ApiKeyView } from "@/features/api-keys/types";
@@ -78,6 +79,18 @@ function key(id: string, name: string, createdBy: string | null): ApiKeyView {
 }
 
 describe("ApiKeysPanel", () => {
+  // Search's API Keys shortcut sends `/settings#api-keys`, Render's anchor
+  // for this card (w4/711): the fragment must land on the card itself, clear
+  // of the sticky section bar.
+  it("anchors settings#api-keys on the card", () => {
+    render(<ApiKeysPanel />);
+
+    const target = document.getElementById("api-keys");
+    expect(target).not.toBeNull();
+    expect(within(target!).getByText("API Keys")).toBeInTheDocument();
+    expect(target).toHaveClass(...SECTION_NAVIGATION_TARGET_CLASS.split(" "));
+  });
+
   it("links API key setup to the CLI guide", () => {
     render(<ApiKeysPanel />);
 

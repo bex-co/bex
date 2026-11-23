@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/common/components/ui/card";
 import { PanelCenteredState } from "@/common/components/panel-states";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useSelfSubjects } from "@/common/hooks/use-self-subjects";
@@ -53,8 +54,10 @@ export function ApiKeysPanel() {
     return ok;
   }
 
+  // `#api-keys` is Render's anchor for this card, where search's API Keys
+  // shortcut lands (w4/711).
   return (
-    <Card>
+    <Card id="api-keys" className={SECTION_NAVIGATION_TARGET_CLASS}>
       <CardHeader>
         <CardTitle>{t("apiKeys.title")}</CardTitle>
         <CardDescription>

@@ -222,6 +222,85 @@ const ptCommon: Record<string, TranslationEntry> = {
     message: "Configurações do workspace",
     description: "Workspace-settings label in topbar navigation and search",
   },
+  "common.searchShortcutEnvVarsDocs": {
+    message: "Variáveis de ambiente",
+    description:
+      "Search shortcut to the docs page on environment variables and secrets (Render's 'Environment variables' shortcut)",
+  },
+  "common.searchShortcutEnvVarsDocsDescription": {
+    message: "Defina variáveis de ambiente e segredos para um serviço",
+    description:
+      "One-line description beside the environment variables docs search shortcut",
+  },
+  "common.searchShortcutCustomDomainsDocs": {
+    message: "Domínios personalizados",
+    description: "Search shortcut to the custom domains docs page",
+  },
+  "common.searchShortcutCustomDomainsDocsDescription": {
+    message: "Adicione um domínio personalizado a um serviço",
+    description:
+      "One-line description beside the custom domains docs search shortcut",
+  },
+  "common.searchShortcutGitCredentials": {
+    message: "Credenciais do Git",
+    description:
+      "Search shortcut to Account Settings → Integrations, where GitHub is connected",
+  },
+  "common.searchShortcutGitCredentialsDescription": {
+    message: "Conecte o GitHub",
+    description:
+      "One-line description beside the Git credentials search shortcut; bex connects GitHub only",
+  },
+  "common.searchShortcutAuditLogs": {
+    message: "Logs de auditoria",
+    description: "Search shortcut to Workspace Settings → Audit Logs",
+  },
+  "common.searchShortcutAuditLogsDescription": {
+    message: "Exporte logs de auditoria",
+    description: "One-line description beside the Audit Logs search shortcut",
+  },
+  "common.searchShortcutApiKeys": {
+    message: "Chaves de API",
+    description: "Search shortcut to Account Settings → API Keys",
+  },
+  "common.searchShortcutApiKeysDescription": {
+    message: "Crie chaves de API",
+    description: "One-line description beside the API Keys search shortcut",
+  },
+  "common.searchShortcutSshKeys": {
+    message: "Chaves SSH",
+    description: "Search shortcut to Account Settings → SSH Public Keys",
+  },
+  "common.searchShortcutSshKeysDescription": {
+    message: "Adicione chaves públicas SSH",
+    description: "One-line description beside the SSH Keys search shortcut",
+  },
+  "common.searchShortcutCliTokens": {
+    message: "Tokens da CLI",
+    description:
+      "Search shortcut to Account Settings → Connected agents, which lists the CLI's tokens",
+  },
+  "common.searchShortcutCliTokensDescription": {
+    message: "Revise e revogue tokens da CLI",
+    description: "One-line description beside the CLI Tokens search shortcut",
+  },
+  "common.searchShortcutRegistryCredentials": {
+    message: "Credenciais de registros de contêiner",
+    description: "Search shortcut to Workspace Settings → Registry Credentials",
+  },
+  "common.searchShortcutRegistryCredentialsDescription": {
+    message: "Gerencie credenciais para imagens externas",
+    description:
+      "One-line description beside the container registry credentials search shortcut",
+  },
+  "common.searchShortcutMcpServer": {
+    message: "Servidor MCP",
+    description: "Search shortcut to the MCP server docs page",
+  },
+  "common.searchShortcutMcpServerDescription": {
+    message: "Gerencie seus serviços bex a partir de apps de IA",
+    description: "One-line description beside the MCP Server search shortcut",
+  },
   "common.topbarSwitchProject": {
     message: "Trocar de projeto",
     description: "Heading in a project breadcrumb dropdown",

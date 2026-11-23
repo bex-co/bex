@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { KeyRound, UserRound } from "lucide-react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SectionNavigation } from "@/common/components/section-navigation";
 
 describe("SectionNavigation", () => {
@@ -140,5 +140,96 @@ describe("SectionNavigation forms", () => {
         "location",
       ),
     );
+  });
+});
+
+// w4/711: the router scrolls to a URL's hash once, as the page renders. Cards
+// that load above the section afterwards (Workspace Settings' Agents cards
+// shrink by about 2,000px) carried `#registry-credentials` off the screen, so
+// each content resize re-aligns the section until the reader takes over.
+describe("SectionNavigation holds the URL's section while the page loads", () => {
+  const observers: { callback: () => void; targets: Element[] }[] = [];
+  const OriginalResizeObserver = globalThis.ResizeObserver;
+
+  beforeEach(() => {
+    observers.length = 0;
+    globalThis.ResizeObserver = class {
+      private entry: { callback: () => void; targets: Element[] };
+      constructor(callback: () => void) {
+        this.entry = { callback, targets: [] };
+        observers.push(this.entry);
+      }
+      observe(target: Element) {
+        this.entry.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {
+        this.entry.targets = [];
+      }
+    } as unknown as typeof ResizeObserver;
+  });
+
+  afterEach(() => {
+    globalThis.ResizeObserver = OriginalResizeObserver;
+    history.replaceState(history.state, "", location.pathname);
+    vi.useRealTimers();
+  });
+
+  /** The page's content changed size: run every observer watching it. */
+  function contentResized(content: Element) {
+    for (const { callback, targets } of observers) {
+      if (targets.includes(content)) callback();
+    }
+  }
+
+  function renderPage() {
+    render(
+      <div data-page-scroll="">
+        <div data-testid="content">
+          <SectionNavigation
+            ariaLabel="Sections"
+            items={[
+              { href: "#plan", label: "Plan", icon: UserRound },
+              { href: "#charges", label: "Charges", icon: KeyRound },
+            ]}
+          />
+          <section id="plan" />
+          <section id="charges" />
+        </div>
+      </div>,
+    );
+    const scrolled = vi.fn();
+    document.getElementById("charges")!.scrollIntoView = scrolled;
+    return { content: screen.getByTestId("content"), scrolled };
+  }
+
+  it("re-aligns the section on every content resize until the reader scrolls", () => {
+    history.replaceState(history.state, "", "#charges");
+    const { content, scrolled } = renderPage();
+
+    contentResized(content);
+    contentResized(content);
+    expect(scrolled).toHaveBeenCalledTimes(2);
+    expect(scrolled).toHaveBeenLastCalledWith({ block: "start" });
+
+    fireEvent.wheel(window);
+    contentResized(content);
+    expect(scrolled).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets go after five seconds", () => {
+    vi.useFakeTimers();
+    history.replaceState(history.state, "", "#charges");
+    const { content, scrolled } = renderPage();
+
+    vi.advanceTimersByTime(5000);
+    contentResized(content);
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  it("holds nothing without a hash", () => {
+    const { content, scrolled } = renderPage();
+    contentResized(content);
+    expect(scrolled).not.toHaveBeenCalled();
   });
 });

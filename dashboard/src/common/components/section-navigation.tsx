@@ -192,6 +192,58 @@ function useSectionState(
   return { active, pin, empty };
 }
 
+/** How long a section the URL names is held in place while the page loads. */
+const HASH_HOLD_MS = 5000;
+
+/** What counts as the reader taking over the scroll position. */
+const READER_INPUT_EVENTS = [
+  "wheel",
+  "touchstart",
+  "pointerdown",
+  "keydown",
+] as const;
+
+/**
+ * Holds the section the URL's hash names (`/settings#api-keys`) at the top
+ * of the page while the content above it settles. The router scrolls to the
+ * hash once, as the page renders, and cards that load after it then move the
+ * section away: Workspace Settings' Agents cards shrink by about 2,000px
+ * once they load, which left `#registry-credentials` scrolled past (w4/711).
+ * Every content resize re-aligns the section until the reader scrolls,
+ * clicks or presses a key, or HASH_HOLD_MS passes.
+ */
+function useHoldHashTarget(navRef: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    const nav = navRef.current;
+    if (!id || !nav || typeof ResizeObserver === "undefined") return;
+    const scroller = scrollParent(nav);
+    const content = scroller?.firstElementChild;
+    if (!scroller || !content) return;
+
+    const observer = new ResizeObserver(() => {
+      const target = document.getElementById(id);
+      if (target && scroller.contains(target)) {
+        target.scrollIntoView({ block: "start" });
+      }
+    });
+    let timer = 0;
+    const release = () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+      for (const type of READER_INPUT_EVENTS) {
+        window.removeEventListener(type, release, true);
+      }
+    };
+    observer.observe(content);
+    timer = window.setTimeout(release, HASH_HOLD_MS);
+    for (const type of READER_INPUT_EVENTS) {
+      window.addEventListener(type, release, { capture: true, passive: true });
+    }
+    return release;
+  }, [navRef]);
+}
+
 /**
  * Responsive in-page section navigation shared by long settings surfaces: a
  * tab bar on a narrow page, a right rail on a wide one (see the classes
@@ -214,6 +266,7 @@ export function SectionNavigation({
     items.map((item) => item.href),
     navRef,
   );
+  useHoldHashTarget(navRef);
 
   const visible = items.filter(({ href }) => !empty.has(href));
   const visibleKey = visible.map(({ href }) => href).join("|");

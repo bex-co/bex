@@ -8,8 +8,14 @@ import { NAV_GROUPS, visibleNavGroups } from "../dashboard-nav";
 // The dialog resolves resources through six feature hooks + the router; mock
 // them so the test drives only the service-result rendering. Only services are
 // populated (with distinct types); the other kinds stay empty.
+const navigate = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigate,
+}));
+// The caller's role as the capability check last answered (null: unknown).
+const role = vi.hoisted(() => ({ admin: true as boolean | null }));
+vi.mock("@/features/api-keys/hooks/use-workspace-admin", () => ({
+  useWorkspaceAdmin: () => role.admin,
 }));
 // Mutable per test: each list carries its rows and whether its first read is
 // still pending.
@@ -76,6 +82,8 @@ const SERVICES = [
 ];
 
 beforeEach(() => {
+  navigate.mockReset();
+  role.admin = true;
   flags.agents = true;
   flags.router = true;
   for (const list of Object.values(lists)) {
@@ -290,6 +298,143 @@ describe("GlobalSearchDialog", () => {
     await act(() => i18n.changeLanguage("zh"));
     expect(screen.getByRole("listbox", { name: "建议" })).toBeInTheDocument();
     await act(() => i18n.changeLanguage("en"));
+  });
+
+  // w4/711: Render's search shortcuts, read from its dashboard bundle
+  // (docs/render-artifacts/search-shortcuts.md), jump to a Settings section
+  // or a docs page; a shortcut to a page the palette already lists lends that
+  // page its keywords instead.
+  describe("Render's search shortcuts (w4/711)", () => {
+    const optionNames = () =>
+      screen.queryAllByRole("option").map((o) => o.textContent ?? "");
+
+    function enter(input: HTMLElement) {
+      fireEvent.keyDown(input, { key: "Enter" });
+    }
+
+    it("lands on Account Settings at the API keys card for 'API keys' + Enter", () => {
+      const onOpenChange = vi.fn();
+      render(<GlobalSearchDialog open onOpenChange={onOpenChange} />);
+      const input = typeQuery("API keys");
+
+      const row = screen.getByRole("option", { name: /^API Keys/ });
+      expect(row).toHaveAttribute("aria-selected", "true");
+      expect(row).toHaveTextContent("Provision API keys");
+      enter(input);
+
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/settings",
+        hash: "api-keys",
+      });
+    });
+
+    it.each([
+      ["git", "Git credentials", "/settings", "integrations"],
+      ["audit", "Audit Logs", "/workspace/settings", "audit-logs"],
+      ["ssh", "SSH Keys", "/settings", "ssh-public-keys"],
+      ["CLI tokens", "CLI Tokens", "/settings", "cli-tokens"],
+      [
+        "registry",
+        "Container Registry Credentials",
+        "/workspace/settings",
+        "registry-credentials",
+      ],
+    ])("%s + Enter opens %s at %s#%s", (query, name, to, hash) => {
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      const input = typeQuery(query);
+      expect(screen.getAllByRole("option")[0]).toHaveTextContent(
+        new RegExp(`^${name}`),
+      );
+      enter(input);
+      expect(navigate).toHaveBeenCalledWith({ to, hash });
+    });
+
+    it.each([
+      ["environment variables", "https://bex.co/docs/platform/secrets"],
+      ["custom domain", "https://bex.co/docs/platform/custom-domains"],
+      ["mcp", "https://bex.co/docs/mcp-server"],
+    ])("opens the docs for %s in a new tab", (query, href) => {
+      const open = vi.spyOn(window, "open").mockReturnValue(null);
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      const input = typeQuery(query);
+      const docs = screen
+        .getAllByRole("option")
+        .findIndex((o) => o.querySelector(".lucide-book-open"));
+      for (let i = 0; i < docs; i++)
+        fireEvent.keyDown(input, { key: "ArrowDown" });
+      enter(input);
+      expect(open).toHaveBeenCalledWith(href, "_blank", "noopener,noreferrer");
+      expect(navigate).not.toHaveBeenCalled();
+      open.mockRestore();
+    });
+
+    it("matches Render's keywords: 'token' finds the three credentials", () => {
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      typeQuery("token");
+      const names = optionNames();
+      for (const name of ["API Keys", "SSH Keys", "CLI Tokens"]) {
+        expect(names.some((n) => n.startsWith(name))).toBe(true);
+      }
+    });
+
+    // Render answers no shortcut below three characters, so the open palette
+    // and a two-letter query list the pages alone, as before.
+    it("offers no shortcut to an empty or two-character query", () => {
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      expect(optionNames().some((n) => n.startsWith("API Keys"))).toBe(false);
+      typeQuery("ap");
+      expect(optionNames().some((n) => n.startsWith("API Keys"))).toBe(false);
+      typeQuery("api");
+      expect(optionNames().some((n) => n.startsWith("API Keys"))).toBe(true);
+    });
+
+    it.each([
+      ["home", "Projects", "/"],
+      ["invoice", "Billing", "/billing"],
+      ["secrets", "Environment Groups", "/env-groups"],
+      ["integration", "Webhooks", "/webhooks"],
+      ["members", "Workspace Settings", "/workspace/settings"],
+      ["profile", "Account Settings", "/settings"],
+    ])("'%s' finds the %s page by Render's keywords", (query, name, to) => {
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      const input = typeQuery(query);
+      expect(screen.getAllByRole("option")[0]).toHaveTextContent(name);
+      enter(input);
+      expect(navigate).toHaveBeenCalledWith({ to });
+    });
+
+    // Audit Logs is only on an Admin's Workspace Settings.
+    it.each([false, null])(
+      "offers Audit Logs only to an Admin (admin: %s)",
+      (admin) => {
+        role.admin = admin;
+        render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+        typeQuery("audit");
+        expect(screen.queryByRole("option", { name: /Audit Logs/ })).toBeNull();
+        expect(
+          screen.getByText("No matching pages or resources."),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it("names and finds shortcuts in the selected language", async () => {
+      await act(() => i18n.changeLanguage("zh"));
+      try {
+        render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+        typeQuery("审计日志");
+        expect(
+          screen.getByRole("option", { name: /审计日志 导出审计日志/ }),
+        ).toBeInTheDocument();
+        // Render's keywords stay English: they are the product's own terms.
+        typeQuery("api key");
+        expect(
+          screen.getByRole("option", { name: /API 密钥 创建 API 密钥/ }),
+        ).toBeInTheDocument();
+      } finally {
+        await act(() => i18n.changeLanguage("en"));
+      }
+    });
   });
 
   // w4/342: every service row shows its kind, so typing that kind must find

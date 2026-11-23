@@ -211,6 +211,85 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "工作区设置",
     description: "Workspace-settings label in topbar navigation and search",
   },
+  "common.searchShortcutEnvVarsDocs": {
+    message: "环境变量",
+    description:
+      "Search shortcut to the docs page on environment variables and secrets (Render's 'Environment variables' shortcut)",
+  },
+  "common.searchShortcutEnvVarsDocsDescription": {
+    message: "为服务设置环境变量和密钥",
+    description:
+      "One-line description beside the environment variables docs search shortcut",
+  },
+  "common.searchShortcutCustomDomainsDocs": {
+    message: "自定义域名",
+    description: "Search shortcut to the custom domains docs page",
+  },
+  "common.searchShortcutCustomDomainsDocsDescription": {
+    message: "为服务添加自定义域名",
+    description:
+      "One-line description beside the custom domains docs search shortcut",
+  },
+  "common.searchShortcutGitCredentials": {
+    message: "Git 凭据",
+    description:
+      "Search shortcut to Account Settings → Integrations, where GitHub is connected",
+  },
+  "common.searchShortcutGitCredentialsDescription": {
+    message: "连接 GitHub",
+    description:
+      "One-line description beside the Git credentials search shortcut; bex connects GitHub only",
+  },
+  "common.searchShortcutAuditLogs": {
+    message: "审计日志",
+    description: "Search shortcut to Workspace Settings → Audit Logs",
+  },
+  "common.searchShortcutAuditLogsDescription": {
+    message: "导出审计日志",
+    description: "One-line description beside the Audit Logs search shortcut",
+  },
+  "common.searchShortcutApiKeys": {
+    message: "API 密钥",
+    description: "Search shortcut to Account Settings → API Keys",
+  },
+  "common.searchShortcutApiKeysDescription": {
+    message: "创建 API 密钥",
+    description: "One-line description beside the API Keys search shortcut",
+  },
+  "common.searchShortcutSshKeys": {
+    message: "SSH 密钥",
+    description: "Search shortcut to Account Settings → SSH Public Keys",
+  },
+  "common.searchShortcutSshKeysDescription": {
+    message: "添加 SSH 公钥",
+    description: "One-line description beside the SSH Keys search shortcut",
+  },
+  "common.searchShortcutCliTokens": {
+    message: "CLI 令牌",
+    description:
+      "Search shortcut to Account Settings → Connected agents, which lists the CLI's tokens",
+  },
+  "common.searchShortcutCliTokensDescription": {
+    message: "查看并撤销 CLI 令牌",
+    description: "One-line description beside the CLI Tokens search shortcut",
+  },
+  "common.searchShortcutRegistryCredentials": {
+    message: "容器镜像仓库凭据",
+    description: "Search shortcut to Workspace Settings → Registry Credentials",
+  },
+  "common.searchShortcutRegistryCredentialsDescription": {
+    message: "管理外部镜像的凭据",
+    description:
+      "One-line description beside the container registry credentials search shortcut",
+  },
+  "common.searchShortcutMcpServer": {
+    message: "MCP 服务器",
+    description: "Search shortcut to the MCP server docs page",
+  },
+  "common.searchShortcutMcpServerDescription": {
+    message: "在 AI 应用中管理你的 bex 服务",
+    description: "One-line description beside the MCP Server search shortcut",
+  },
   "common.topbarSwitchProject": {
     message: "切换项目",
     description: "Heading in a project breadcrumb dropdown",

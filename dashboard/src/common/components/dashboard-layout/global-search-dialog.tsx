@@ -21,7 +21,13 @@ import { DialogDescription, DialogTitle } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentsFeatureEnabled } from "@/config/use-growthbook";
 import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
+import {
+  matchesShortcut,
+  PAGE_KEYWORDS,
+  SEARCH_SHORTCUTS,
+} from "./search-shortcuts";
 import { useRouterNavAvailable } from "./use-router-nav-available";
+import { useWorkspaceAdmin } from "@/features/api-keys/hooks/use-workspace-admin";
 import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
@@ -157,6 +163,7 @@ function SearchResults({
       ) => ({
         label,
         icon,
+        keywords: PAGE_KEYWORDS[to] ?? [],
         run: () => void navigate({ to }),
       });
       if (item.to === "/workspace/settings") {
@@ -167,6 +174,24 @@ function SearchResults({
       }
       return [page(t(item.labelKey), item.icon, item.to)];
     });
+  // Render's search shortcuts to a Settings section or a docs page (w4/711).
+  // Like Render's, they answer only a query of three or more characters, so
+  // the open palette still lists just the pages. Audit Logs is only on an
+  // Admin's Workspace Settings, so only an Admin is offered it.
+  const admin = useWorkspaceAdmin() === true;
+  const shortcuts = SEARCH_SHORTCUTS.filter(
+    (shortcut) => admin || !shortcut.adminOnly,
+  ).map((shortcut) => ({
+    id: shortcut.id,
+    label: t(shortcut.labelKey),
+    description: t(shortcut.descriptionKey),
+    keywords: shortcut.keywords,
+    icon: shortcut.icon,
+    run:
+      "href" in shortcut
+        ? () => void window.open(shortcut.href, "_blank", "noopener,noreferrer")
+        : () => void navigate({ to: shortcut.to, hash: shortcut.hash }),
+  }));
 
   const loading =
     servicesLoading ||
@@ -176,7 +201,14 @@ function SearchResults({
     envGroupsLoading ||
     blueprintsLoading;
 
-  const filteredPages = pages.filter((page) => matchesQuery(page.label, query));
+  const filteredPages = pages.filter(
+    (page) =>
+      matchesQuery(page.label, query) ||
+      matchesShortcut(query, page.label, page.keywords),
+  );
+  const filteredShortcuts = shortcuts.filter((shortcut) =>
+    matchesShortcut(query, shortcut.label, shortcut.keywords),
+  );
   const filteredProjects = projects.filter((r) =>
     matchesQuery(
       `${r.name} ${r.id} ${t("common.topbarProjectResource")}`,
@@ -212,7 +244,8 @@ function SearchResults({
   // While any list is still on its first read the Resources group keeps a
   // Loading row, even beside unrelated cached rows: the match may be in the
   // list that hasn't arrived (w4/229).
-  const showNavigation = filteredPages.length > 0;
+  const showNavigation =
+    filteredPages.length > 0 || filteredShortcuts.length > 0;
   const showResources =
     filteredProjects.length > 0 ||
     filteredServices.length > 0 ||
@@ -245,6 +278,19 @@ function SearchResults({
             >
               {page.icon ? <page.icon /> : null}
               {page.label}
+            </CommandItem>
+          ))}
+          {filteredShortcuts.map((shortcut) => (
+            <CommandItem
+              key={`shortcut:${shortcut.id}`}
+              value={`shortcut:${shortcut.id}`}
+              onSelect={() => select(shortcut.run)}
+            >
+              <shortcut.icon />
+              <ShortcutLabel
+                name={shortcut.label}
+                description={shortcut.description}
+              />
             </CommandItem>
           ))}
         </CommandGroup>
@@ -424,6 +470,29 @@ function originalName(service: {
 }): string | undefined {
   const original = service.immutableName ?? "";
   return original && original !== service.name ? original : undefined;
+}
+
+/** A shortcut's name, and Render's one-line description of where it leads,
+ *  which gives way first on a narrow palette. */
+function ShortcutLabel({
+  name,
+  description,
+}: {
+  name: string;
+  description: string;
+}) {
+  return (
+    <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+      <span className="shrink-0">{name}</span>
+      {/* A real space keeps the two apart in the accessible name (w21/018). */}{" "}
+      <span
+        title={description}
+        className="min-w-0 truncate text-xs text-muted-foreground"
+      >
+        {description}
+      </span>
+    </span>
+  );
 }
 
 function SearchResultLabel({

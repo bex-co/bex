@@ -212,6 +212,85 @@ const jaCommon: Record<string, TranslationEntry> = {
     message: "ワークスペース設定",
     description: "Workspace-settings label in topbar navigation and search",
   },
+  "common.searchShortcutEnvVarsDocs": {
+    message: "環境変数",
+    description:
+      "Search shortcut to the docs page on environment variables and secrets (Render's 'Environment variables' shortcut)",
+  },
+  "common.searchShortcutEnvVarsDocsDescription": {
+    message: "サービスの環境変数とシークレットを設定",
+    description:
+      "One-line description beside the environment variables docs search shortcut",
+  },
+  "common.searchShortcutCustomDomainsDocs": {
+    message: "カスタムドメイン",
+    description: "Search shortcut to the custom domains docs page",
+  },
+  "common.searchShortcutCustomDomainsDocsDescription": {
+    message: "サービスにカスタムドメインを追加",
+    description:
+      "One-line description beside the custom domains docs search shortcut",
+  },
+  "common.searchShortcutGitCredentials": {
+    message: "Git 認証情報",
+    description:
+      "Search shortcut to Account Settings → Integrations, where GitHub is connected",
+  },
+  "common.searchShortcutGitCredentialsDescription": {
+    message: "GitHub を接続",
+    description:
+      "One-line description beside the Git credentials search shortcut; bex connects GitHub only",
+  },
+  "common.searchShortcutAuditLogs": {
+    message: "監査ログ",
+    description: "Search shortcut to Workspace Settings → Audit Logs",
+  },
+  "common.searchShortcutAuditLogsDescription": {
+    message: "監査ログをエクスポート",
+    description: "One-line description beside the Audit Logs search shortcut",
+  },
+  "common.searchShortcutApiKeys": {
+    message: "API キー",
+    description: "Search shortcut to Account Settings → API Keys",
+  },
+  "common.searchShortcutApiKeysDescription": {
+    message: "API キーを発行",
+    description: "One-line description beside the API Keys search shortcut",
+  },
+  "common.searchShortcutSshKeys": {
+    message: "SSH キー",
+    description: "Search shortcut to Account Settings → SSH Public Keys",
+  },
+  "common.searchShortcutSshKeysDescription": {
+    message: "SSH 公開鍵を登録",
+    description: "One-line description beside the SSH Keys search shortcut",
+  },
+  "common.searchShortcutCliTokens": {
+    message: "CLI トークン",
+    description:
+      "Search shortcut to Account Settings → Connected agents, which lists the CLI's tokens",
+  },
+  "common.searchShortcutCliTokensDescription": {
+    message: "CLI トークンを確認・取り消し",
+    description: "One-line description beside the CLI Tokens search shortcut",
+  },
+  "common.searchShortcutRegistryCredentials": {
+    message: "コンテナレジストリ認証情報",
+    description: "Search shortcut to Workspace Settings → Registry Credentials",
+  },
+  "common.searchShortcutRegistryCredentialsDescription": {
+    message: "外部イメージの認証情報を管理",
+    description:
+      "One-line description beside the container registry credentials search shortcut",
+  },
+  "common.searchShortcutMcpServer": {
+    message: "MCP サーバー",
+    description: "Search shortcut to the MCP server docs page",
+  },
+  "common.searchShortcutMcpServerDescription": {
+    message: "AI アプリから bex のサービスを管理",
+    description: "One-line description beside the MCP Server search shortcut",
+  },
   "common.topbarSwitchProject": {
     message: "プロジェクトを切り替え",
     description: "Heading in a project breadcrumb dropdown",
