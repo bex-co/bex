@@ -1025,7 +1025,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 				out = append(out, logs.DeployProgress{ID: r.ID, Generation: r.Generation, Status: r.Status, Image: store.PublicImageRef(r.Image), Commit: r.Commit, FailureReason: r.FailureReason, DetectedHTTPPort: r.DetectedHTTPPort, CreatedAt: r.CreatedAt, Built: built[r.ID],
 					StartedAt: at(r.StartedAt), FinishedAt: at(r.FinishedAt), PortScanSince: at(r.PortScanSince), PortScanUntil: at(r.PortScanUntil),
 					PortScanFound: r.PortScanFound, PortScanFoundAt: at(r.PortScanFoundAt), TimedOut: r.End.TimedOutSeconds > 0, ExitCode: r.End.ExitCode, OOMKilled: r.End.OOMKilled,
-					RolloutStartedAt: at(r.Rollout.StartedAt), AppStartedAt: r.Rollout.AppStarts, StartCommand: r.Rollout.Command, WebConcurrencyDefault: r.Rollout.WebConcurrency, LiveURLs: r.LiveURLs, ReadAt: readAt})
+					RolloutStartedAt: at(r.Rollout.StartedAt), AppStartedAt: r.Rollout.AppStarts, StartCommand: r.Rollout.Command, WebConcurrencyDefault: r.Rollout.WebConcurrency, LiveURLs: r.LiveURLs,
+					PreDeploy: logs.PreDeployRun{Status: r.PreDeployStatus, StartedAt: at(r.PreDeployRun.StartedAt), ContainerStartedAt: at(r.PreDeployRun.ContainerStartedAt), FinishedAt: at(r.PreDeployRun.FinishedAt),
+						Command: r.PreDeployRun.Command, Native: r.PreDeployRun.Native, ExitCode: r.PreDeployRun.ExitCode, OOMKilled: r.PreDeployRun.OOMKilled},
+					ReadAt: readAt})
 			}
 			return out, nil
 		}

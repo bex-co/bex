@@ -88,3 +88,41 @@ func TestPrimaryURLBlockReadsEachDeploysOwnRecord(t *testing.T) {
 		t.Fatalf("primary URL lines by deploy = %q, want only dep-new's %q", urls, want)
 	}
 }
+
+// w32/m572: the composition root hands the narration each deploy row's own
+// record of its pre-deploy step, so a failed step's log names its command and
+// closes with its exit status, and a row with no record (an older deploy)
+// keeps bex's line.
+func TestPreDeployLinesReadEachDeploysOwnRecord(t *testing.T) {
+	at := time.Date(2026, 11, 22, 11, 29, 32, 470000000, time.UTC)
+	launched, container, settled := at.Add(-17*time.Second), at.Add(-5*time.Second).Truncate(time.Second), at.Add(-time.Second)
+	code := int32(127)
+	oldEnd := at.Add(-time.Hour)
+	old := store.Deploy{ID: "dep-old", Status: store.DeployPreDeployFailed, PreDeployStatus: store.PreDeployFailed, CreatedAt: oldEnd.Add(-time.Minute),
+		FinishedAt: &oldEnd, FailureReason: "the pre-deploy command exited with code 1; check the pre-deploy logs"}
+	latest := store.Deploy{ID: "dep-new", Status: store.DeployPreDeployFailed, PreDeployStatus: store.PreDeployFailed, CreatedAt: at.Add(-time.Minute),
+		FinishedAt: &at, FailureReason: "the pre-deploy command exited with code 127; check the pre-deploy logs",
+		PreDeployRun: store.DeployPreDeployRun{StartedAt: &launched, ContainerStartedAt: &container, FinishedAt: &settled,
+			Command: "alembic upgrade head", Native: true, ExitCode: &code}}
+	server := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{
+		DeployStore: &conformDeployStore{byApp: map[string][]store.Deploy{"web": {latest, old}}},
+		LogHistory:  func(context.Context, string, logs.LogQuery) ([]logs.LogEntry, error) { return nil, nil },
+	})
+	entries, err := server.Logs.QueryLogs(context.Background(), logs.LogQuery{App: "web", Types: []string{logs.LogTypeBuild}, Since: oldEnd.Add(-time.Hour), End: at.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := map[string][]string{}
+	for _, e := range entries {
+		if strings.Contains(strings.ToLower(e.Message), "pre-deploy") || strings.HasPrefix(e.Message, "==> Running") || strings.HasPrefix(e.Message, "==> Exited") {
+			lines[e.Labels[logs.LabelBuild]] = append(lines[e.Labels[logs.LabelBuild]], e.Message)
+		}
+	}
+	want := []string{"==> Starting pre-deploy: alembic upgrade head", "==> Running 'alembic upgrade head'", "==> Pre-deploy has failed", "==> Exited with status 127"}
+	if !slices.Equal(lines["dep-new"], want) {
+		t.Fatalf("dep-new's step lines = %q, want %q", lines["dep-new"], want)
+	}
+	if want := []string{"==> Pre-deploy failed: the pre-deploy command exited with code 1; check the pre-deploy logs"}; !slices.Equal(lines["dep-old"], want) {
+		t.Fatalf("dep-old's step lines = %q, want bex's %q", lines["dep-old"], want)
+	}
+}

@@ -1686,6 +1686,59 @@ type PreDeployStatus struct {
 	// Message is a short human-readable detail, e.g. the failure reason.
 	// +optional
 	Message string `json:"message,omitempty"`
+
+	// The fields below are what the operator saw of the step's run (w32/m572).
+	// bex-api copies them onto the release's deploy row, and the deploy log
+	// narrates the step as Render's does: `==> Starting pre-deploy:
+	// <command>` at LaunchedAt, `==> Running '<command>'` at
+	// ContainerStartedAt on a native runtime, then `==> Pre-deploy complete!`
+	// or `==> Pre-deploy has failed` and `==> Exited with status N` at
+	// SettledAt. A record an older operator wrote has none of them.
+
+	// Command is the command the step ran, as the release configured it
+	// ($PORT unexpanded), recorded when the operator launched the step's Job.
+	// Empty for a step refused before its Job existed (no build minutes left,
+	// an infrastructure fault).
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	Command string `json:"command,omitempty"`
+
+	// Native reports that Command ran as arguments to a native image's
+	// entrypoint, native-init, as the release's own start command does.
+	// +optional
+	Native bool `json:"native,omitempty"`
+
+	// LaunchedAt is when the operator launched the step, on its first pass
+	// for the release. Microseconds, so it sorts after the build's own last
+	// line. A requeue, a manager restart or a re-check of the verdict never
+	// moves it.
+	// +optional
+	LaunchedAt *metav1.MicroTime `json:"launchedAt,omitempty"`
+
+	// ContainerStartedAt is when the step's container started, as the
+	// kubelet reports it (whole seconds). Unset for a step whose command
+	// never ran: its image could not be pulled, or the runtime could not
+	// launch its program.
+	// +optional
+	ContainerStartedAt *metav1.Time `json:"containerStartedAt,omitempty"`
+
+	// SettledAt is when the operator first saw the step end and recorded its
+	// verdict, in microseconds: after the command's last output line, and
+	// before anything the release does next. Unset while the step runs.
+	// +optional
+	SettledAt *metav1.MicroTime `json:"settledAt,omitempty"`
+
+	// ExitCode is the exit status of the step's container once its command
+	// ended on its own or the kernel killed it for memory (OOMKilled). Unset
+	// while it runs, for a command that never ran, and for one stopped at the
+	// step's time limit.
+	// +optional
+	ExitCode *int32 `json:"exitCode,omitempty"`
+
+	// OOMKilled is true when the kernel killed the step's container for
+	// exceeding its memory limit.
+	// +optional
+	OOMKilled bool `json:"oomKilled,omitempty"`
 }
 
 // BuildRunStatus is when a source build Job actually ran, from the Job's own

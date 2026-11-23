@@ -611,6 +611,45 @@ func terminatedContainer(ctx context.Context, cl client.Reader, j *batchv1.Job) 
 	return nil
 }
 
+// Run is what the step's container shows of its command's run (w32/m572):
+// when it started, as the kubelet reports it (whole seconds), and how it
+// ended. The zero value is a command that has not run, or never will.
+type Run struct {
+	StartedAt metav1.Time
+	// ExitCode is the container's exit status once its command ended on its
+	// own or the kernel killed it for memory (OOMKilled); nil while it runs,
+	// and for a run the Job's time limit stopped.
+	ExitCode  *int32
+	OOMKilled bool
+}
+
+// ContainerRun reads the Run of the step's container on j's pod. A container
+// the runtime could not launch (StartError) never ran its command; one still
+// waiting on its image has not started it.
+func ContainerRun(ctx context.Context, cl client.Reader, j *batchv1.Job) Run {
+	for _, p := range jobPods(ctx, cl, j) {
+		for _, cs := range p.Status.ContainerStatuses {
+			if cs.Name != containerName {
+				continue
+			}
+			if run := cs.State.Running; run != nil {
+				return Run{StartedAt: run.StartedAt}
+			}
+			t := cs.State.Terminated
+			if t == nil || t.Reason == "StartError" || t.StartedAt.IsZero() {
+				return Run{}
+			}
+			out := Run{StartedAt: t.StartedAt}
+			if execution.JobFailedReason(j) != batchv1.JobReasonDeadlineExceeded {
+				code := t.ExitCode
+				out.ExitCode, out.OOMKilled = &code, t.Reason == "OOMKilled"
+			}
+			return out
+		}
+	}
+	return Run{}
+}
+
 // jobPods lists the Job's pods, nil on error.
 func jobPods(ctx context.Context, cl client.Reader, j *batchv1.Job) []corev1.Pod {
 	var pods corev1.PodList

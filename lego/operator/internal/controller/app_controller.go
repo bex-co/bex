@@ -7667,19 +7667,19 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 	gen := releaseGeneration(app)
 
-	// firstForGen is the first reconcile that runs this revision's step; started
-	// is preserved across the requeues that follow. Terminal per release: a
-	// completed step for this revision is decisive, so we never touch the Job
-	// again (no re-run, no re-create after TTL reap).
+	// firstForGen is the first reconcile that runs this revision's step; step
+	// is its record, whose start and launch are preserved across the requeues
+	// that follow. Terminal per release: a completed step for this revision is
+	// decisive, so we never touch the Job again (no re-run, no re-create after
+	// TTL reap).
 	firstForGen := true
-	started := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now()
+	step := appv1alpha1.PreDeployStatus{Generation: gen, StartedAt: now.UTC().Format(time.RFC3339)}
 	recordedJob := ""
 	if pd := app.Status.PreDeploy; pd != nil && pd.Generation == gen {
 		firstForGen = false
 		recordedJob = pd.Job
-		if pd.StartedAt != "" {
-			started = pd.StartedAt
-		}
+		step = launchRecord(*pd, step.StartedAt)
 		switch pd.Status {
 		case appv1alpha1.PreDeploySucceeded:
 			return ctrl.Result{}, false, nil // passed — proceed to the rollout
@@ -7703,8 +7703,9 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	ns := app.Namespace
 	rev := appv1alpha1.BuildRevision(gen)
 	jobName := predeploy.JobName(app.Name, rev)
+	step.Job = jobName
 	notStarted := func(err error) (ctrl.Result, bool, error) {
-		return r.failPreDeploy(ctx, app, failedStep(jobName, gen, started, preDeployNotStarted(ctx, app, err)))
+		return r.failPreDeploy(ctx, app, endedStep(step, preDeployNotStarted(ctx, app, err), time.Now()))
 	}
 
 	if carried {
@@ -7719,7 +7720,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		if err != nil {
 			return ctrl.Result{}, true, err
 		}
-		return r.settlePreDeployJob(ctx, app, job, gen, started)
+		return r.settlePreDeployJob(ctx, app, job, step)
 	}
 
 	if firstForGen {
@@ -7727,7 +7728,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		case err != nil:
 			return notStarted(err)
 		case refused:
-			return r.failPreDeploy(ctx, app, failedStep(jobName, gen, started, appv1alpha1.BuildMinutesExhaustedMessage))
+			return r.failPreDeploy(ctx, app, endedStep(step, appv1alpha1.BuildMinutesExhaustedMessage, time.Now()))
 		}
 	}
 
@@ -7787,20 +7788,27 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	opts.SecurityContext = appSecCtx(app.Spec)
 	opts.Resources = resourcesForTier(app.Spec.Tier)
 	opts.Volumes, opts.VolumeMounts = vols, mounts
+	if firstForGen {
+		// The launch the deploy log narrates (w32/m572): stamped by the pass
+		// that creates the Job, from the step's own start.
+		launched := metav1.NewMicroTime(now)
+		step.Command, step.Native, step.LaunchedAt = command, runsNativeEntrypoint(selected, image, launch), &launched
+	}
 	job, err := predeploy.Ensure(ctx, opts)
 	if err != nil {
 		// A transient API error (create/get) — requeue without marking the deploy
 		// failed; the migration itself hasn't reported an outcome.
 		return ctrl.Result{}, true, err
 	}
-	return r.settlePreDeployJob(ctx, app, job, gen, started)
+	return r.settlePreDeployJob(ctx, app, job, step)
 }
 
 // settlePreDeployJob reads the release's pre-deploy Job once: an ended Job is
-// the step's verdict, a running one holds the rollout. halt is as for
-// reconcilePreDeploy.
-func (r *AppReconciler) settlePreDeployJob(ctx context.Context, app *appv1alpha1.App, job *batchv1.Job, gen int64, started string) (ctrl.Result, bool, error) {
-	running := runningStep(job.Name, gen, started)
+// the step's verdict, a running one holds the rollout. step is the step's
+// record so far. halt is as for reconcilePreDeploy.
+func (r *AppReconciler) settlePreDeployJob(ctx context.Context, app *appv1alpha1.App, job *batchv1.Job, step appv1alpha1.PreDeployStatus) (ctrl.Result, bool, error) {
+	running := step
+	running.Job, running.Status = job.Name, appv1alpha1.PreDeployRunning
 	if ended, ok := r.preDeployEnded(ctx, job, running); ok {
 		if ended.Status == appv1alpha1.PreDeployFailed {
 			return r.failPreDeploy(ctx, app, &ended)
@@ -7822,8 +7830,9 @@ func (r *AppReconciler) settlePreDeployJob(ctx context.Context, app *appv1alpha1
 	case err != nil:
 		return ctrl.Result{}, true, err
 	case msg != "":
-		return r.failPreDeploy(ctx, app, failedStep(job.Name, gen, started, msg))
+		return r.failPreDeploy(ctx, app, endedStep(running, msg, time.Now()))
 	}
+	running.ContainerStartedAt = containerStart(running.ContainerStartedAt, predeploy.ContainerRun(ctx, r.Client, job))
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	app.Status.PreDeploy = &running
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -7876,10 +7885,39 @@ func runningStep(job string, gen int64, started string) appv1alpha1.PreDeploySta
 // failedStep is the record of a pre-deploy plane command (the step or the
 // initial hook) that failed or could not start for release gen.
 func failedStep(job string, gen int64, started, msg string) *appv1alpha1.PreDeployStatus {
-	return &appv1alpha1.PreDeployStatus{
-		Job: job, Generation: gen, Status: appv1alpha1.PreDeployFailed,
-		StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: msg,
+	return endedStep(appv1alpha1.PreDeployStatus{Job: job, Generation: gen, StartedAt: started}, msg, time.Now())
+}
+
+// endedStep is step failed with msg, settled at now: a command that could not
+// start, or that can no longer run. What was recorded of its launch stays.
+func endedStep(step appv1alpha1.PreDeployStatus, msg string, now time.Time) *appv1alpha1.PreDeployStatus {
+	settled := metav1.NewMicroTime(now)
+	step.Status, step.Message, step.FinishedAt, step.SettledAt = appv1alpha1.PreDeployFailed, msg, now.UTC().Format(time.RFC3339), &settled
+	return &step
+}
+
+// launchRecord is the part of a release's recorded step that a later pass
+// keeps (w32/m572): its Job, its start and what the operator recorded when it
+// launched the step. started stands in for a start the record lacks.
+func launchRecord(pd appv1alpha1.PreDeployStatus, started string) appv1alpha1.PreDeployStatus {
+	out := appv1alpha1.PreDeployStatus{
+		Job: pd.Job, Generation: pd.Generation, StartedAt: pd.StartedAt,
+		Command: pd.Command, Native: pd.Native, LaunchedAt: pd.LaunchedAt, ContainerStartedAt: pd.ContainerStartedAt,
 	}
+	if out.StartedAt == "" {
+		out.StartedAt = started
+	}
+	return out
+}
+
+// containerStart is the step's container start: the one recorded, else the
+// one run shows, else nil. A start once recorded never moves.
+func containerStart(recorded *metav1.Time, run predeploy.Run) *metav1.Time {
+	if recorded != nil || run.StartedAt.IsZero() {
+		return recorded
+	}
+	started := run.StartedAt
+	return &started
 }
 
 // stepJobOptions is what every pre-deploy plane Job of app shares for release
@@ -7906,6 +7944,9 @@ func (r *AppReconciler) stepJobOptions(app *appv1alpha1.App, gen int64) predeplo
 
 // preDeployEnded is step settled to how its Job ended, dated by the Job's own
 // finish rather than by when a pass read it; ok is false while the Job runs.
+// It also records the moment the verdict was settled and what the step's
+// container showed of its command's run: its start and its exit status
+// (w32/m572).
 func (r *AppReconciler) preDeployEnded(ctx context.Context, job *batchv1.Job, step appv1alpha1.PreDeployStatus) (appv1alpha1.PreDeployStatus, bool) {
 	switch predeploy.Observe(job) {
 	case predeploy.StateSucceeded:
@@ -7915,7 +7956,12 @@ func (r *AppReconciler) preDeployEnded(ctx context.Context, job *batchv1.Job, st
 	default:
 		return step, false
 	}
-	step.FinishedAt = jobFinishedAt(job, time.Now()).Format(time.RFC3339)
+	now := time.Now()
+	settled := metav1.NewMicroTime(now)
+	run := predeploy.ContainerRun(ctx, r.Client, job)
+	step.FinishedAt, step.SettledAt = jobFinishedAt(job, now).Format(time.RFC3339), &settled
+	step.ContainerStartedAt = containerStart(step.ContainerStartedAt, run)
+	step.ExitCode, step.OOMKilled = run.ExitCode, run.OOMKilled
 	return step, true
 }
 

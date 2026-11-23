@@ -1022,6 +1022,32 @@ func (m *memStore) SetDeployRollout(_ context.Context, id string, rollout Deploy
 	return nil
 }
 
+// SetDeployPreDeployRun mirrors PGStore: open rows only, each part once,
+// with the command and launch riding the start and the exit status the end.
+func (m *memStore) SetDeployPreDeployRun(_ context.Context, id string, run DeployPreDeployRun) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.deploys[id]
+	if !ok || d.FinishedAt != nil {
+		return nil
+	}
+	rec := &d.PreDeployRun
+	if rec.StartedAt == nil && run.StartedAt != nil {
+		rec.StartedAt, rec.Command, rec.Native = new(*run.StartedAt), run.Command, run.Native
+	}
+	if rec.ContainerStartedAt == nil && run.ContainerStartedAt != nil {
+		rec.ContainerStartedAt = new(*run.ContainerStartedAt)
+	}
+	if rec.FinishedAt == nil && run.FinishedAt != nil {
+		rec.FinishedAt, rec.OOMKilled = new(*run.FinishedAt), run.OOMKilled
+		if run.ExitCode != nil {
+			rec.ExitCode = new(*run.ExitCode)
+		}
+	}
+	m.deploys[id] = d
+	return nil
+}
+
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

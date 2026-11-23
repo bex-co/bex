@@ -1548,6 +1548,30 @@ spec:
                   the hook runs after that release's rollout and never gates or fails a
                   deploy (w33/m435). Nil until the hook first starts.
                 properties:
+                  command:
+                    description: |-
+                      Command is the command the step ran, as the release configured it
+                      ($PORT unexpanded), recorded when the operator launched the step's Job.
+                      Empty for a step refused before its Job existed (no build minutes left,
+                      an infrastructure fault).
+                    maxLength: 4096
+                    type: string
+                  containerStartedAt:
+                    description: |-
+                      ContainerStartedAt is when the step's container started, as the
+                      kubelet reports it (whole seconds). Unset for a step whose command
+                      never ran: its image could not be pulled, or the runtime could not
+                      launch its program.
+                    format: date-time
+                    type: string
+                  exitCode:
+                    description: |-
+                      ExitCode is the exit status of the step's container once its command
+                      ended on its own or the kernel killed it for memory (OOMKilled). Unset
+                      while it runs, for a command that never ran, and for one stopped at the
+                      step's time limit.
+                    format: int32
+                    type: integer
                   finishedAt:
                     description: FinishedAt is when it completed or failed (RFC3339);
                       empty while running.
@@ -1563,9 +1587,34 @@ spec:
                       Job is the Kubernetes Job name backing this pre-deploy run
                       ("pre-<name>-gen-<generation>"); the API reads its pod logs from it.
                     type: string
+                  launchedAt:
+                    description: |-
+                      LaunchedAt is when the operator launched the step, on its first pass
+                      for the release. Microseconds, so it sorts after the build's own last
+                      line. A requeue, a manager restart or a re-check of the verdict never
+                      moves it.
+                    format: date-time
+                    type: string
                   message:
                     description: Message is a short human-readable detail, e.g. the
                       failure reason.
+                    type: string
+                  native:
+                    description: |-
+                      Native reports that Command ran as arguments to a native image's
+                      entrypoint, native-init, as the release's own start command does.
+                    type: boolean
+                  oomKilled:
+                    description: |-
+                      OOMKilled is true when the kernel killed the step's container for
+                      exceeding its memory limit.
+                    type: boolean
+                  settledAt:
+                    description: |-
+                      SettledAt is when the operator first saw the step end and recorded its
+                      verdict, in microseconds: after the command's last output line, and
+                      before anything the release does next. Unset while the step runs.
+                    format: date-time
                     type: string
                   startedAt:
                     description: StartedAt is when the pre-deploy Job began (RFC3339);
@@ -1791,6 +1840,30 @@ spec:
                   left to finish (nil when no pre-deploy step is configured or none has run
                   yet). See spec.preDeployCommand.
                 properties:
+                  command:
+                    description: |-
+                      Command is the command the step ran, as the release configured it
+                      ($PORT unexpanded), recorded when the operator launched the step's Job.
+                      Empty for a step refused before its Job existed (no build minutes left,
+                      an infrastructure fault).
+                    maxLength: 4096
+                    type: string
+                  containerStartedAt:
+                    description: |-
+                      ContainerStartedAt is when the step's container started, as the
+                      kubelet reports it (whole seconds). Unset for a step whose command
+                      never ran: its image could not be pulled, or the runtime could not
+                      launch its program.
+                    format: date-time
+                    type: string
+                  exitCode:
+                    description: |-
+                      ExitCode is the exit status of the step's container once its command
+                      ended on its own or the kernel killed it for memory (OOMKilled). Unset
+                      while it runs, for a command that never ran, and for one stopped at the
+                      step's time limit.
+                    format: int32
+                    type: integer
                   finishedAt:
                     description: FinishedAt is when it completed or failed (RFC3339);
                       empty while running.
@@ -1806,9 +1879,34 @@ spec:
                       Job is the Kubernetes Job name backing this pre-deploy run
                       ("pre-<name>-gen-<generation>"); the API reads its pod logs from it.
                     type: string
+                  launchedAt:
+                    description: |-
+                      LaunchedAt is when the operator launched the step, on its first pass
+                      for the release. Microseconds, so it sorts after the build's own last
+                      line. A requeue, a manager restart or a re-check of the verdict never
+                      moves it.
+                    format: date-time
+                    type: string
                   message:
                     description: Message is a short human-readable detail, e.g. the
                       failure reason.
+                    type: string
+                  native:
+                    description: |-
+                      Native reports that Command ran as arguments to a native image's
+                      entrypoint, native-init, as the release's own start command does.
+                    type: boolean
+                  oomKilled:
+                    description: |-
+                      OOMKilled is true when the kernel killed the step's container for
+                      exceeding its memory limit.
+                    type: boolean
+                  settledAt:
+                    description: |-
+                      SettledAt is when the operator first saw the step end and recorded its
+                      verdict, in microseconds: after the command's last output line, and
+                      before anything the release does next. Unset while the step runs.
+                    format: date-time
                     type: string
                   startedAt:
                     description: StartedAt is when the pre-deploy Job began (RFC3339);

@@ -481,6 +481,11 @@ type Deploy struct {
 	// (SetDeployRollout); the zero value is none. The deploy log narrates it
 	// as Render's does; not a Render deploy field.
 	Rollout DeployRollout `json:"-"`
+	// PreDeployRun is the operator's record of this deploy's pre-deploy step
+	// (status.preDeploy, w32/m572), stamped while the row was open
+	// (SetDeployPreDeployRun); the zero value is none. The deploy log
+	// narrates the step as Render's does; not a Render deploy field.
+	PreDeployRun DeployPreDeployRun `json:"-"`
 	// LiveURLs are the URLs a web service's deploy went live at, primary
 	// first, recorded once by its live close (w32/m567); nil is no record.
 	// The deploy log closes with Render's primary URL block from them, so the
@@ -836,6 +841,11 @@ type Store interface {
 	// WEB_CONCURRENCY default once, and the app starts as they grow, up to
 	// appv1alpha1.MaxReleaseRolloutAppStarts. Ignored once the row is terminal.
 	SetDeployRollout(ctx context.Context, id string, rollout DeployRollout) error
+	// SetDeployPreDeployRun copies the operator's record of an OPEN deploy's
+	// pre-deploy step onto its row (w32/m572): the start, command and launch
+	// once, then the container's start, and the end with its exit status
+	// once. Ignored once the row is terminal.
+	SetDeployPreDeployRun(ctx context.Context, id string, run DeployPreDeployRun) error
 	// RecordObservedServiceState persists level-triggered App status edges through
 	// a typed checkpoint; repeated reconciler observations are no-ops.
 	RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error)
@@ -3552,6 +3562,51 @@ func (s *PGStore) SetDeployRollout(ctx context.Context, id string, rollout Deplo
 	return classify("deploy rollout", err)
 }
 
+// DeployPreDeployRun is the operator's record of a deploy's pre-deploy step
+// (appv1alpha1.PreDeployStatus, w32/m572): when the operator launched it
+// (microseconds), the command it ran as configured and whether a native
+// image's entrypoint ran it, when its container started (whole seconds), and
+// when the operator settled its verdict (microseconds) with the exit status
+// of a command that ended on its own or was killed for memory. The zero value
+// is none.
+type DeployPreDeployRun struct {
+	StartedAt          *time.Time
+	ContainerStartedAt *time.Time
+	FinishedAt         *time.Time
+	Command            string
+	Native             bool
+	ExitCode           *int32
+	OOMKilled          bool
+}
+
+// SetDeployPreDeployRun stamps an open row with its release's pre-deploy
+// record. Each part is written once, by the first write that carries it: the
+// start with the command and the launch, the container's start, and the end
+// with the exit status. A write that adds nothing is skipped, and like
+// SetDeployRollout it leaves updated_at alone: it is an observation of the
+// row, not a transition. A terminal row keeps what it had: an end recorded
+// after the close is not this deploy's.
+func (s *PGStore) SetDeployPreDeployRun(ctx context.Context, id string, run DeployPreDeployRun) error {
+	if run.StartedAt == nil && run.ContainerStartedAt == nil && run.FinishedAt == nil {
+		return nil
+	}
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE deploys SET
+		     pre_deploy_started_at = COALESCE(pre_deploy_started_at, $2),
+		     pre_deploy_command = CASE WHEN pre_deploy_started_at IS NULL AND $2::timestamptz IS NOT NULL THEN NULLIF($3, '') ELSE pre_deploy_command END,
+		     pre_deploy_native = CASE WHEN pre_deploy_started_at IS NULL AND $2::timestamptz IS NOT NULL THEN $4 ELSE pre_deploy_native END,
+		     pre_deploy_container_started_at = COALESCE(pre_deploy_container_started_at, $5),
+		     pre_deploy_finished_at = COALESCE(pre_deploy_finished_at, $6),
+		     pre_deploy_exit_code = CASE WHEN pre_deploy_finished_at IS NULL AND $6::timestamptz IS NOT NULL THEN $7 ELSE pre_deploy_exit_code END,
+		     pre_deploy_oom_killed = CASE WHEN pre_deploy_finished_at IS NULL AND $6::timestamptz IS NOT NULL THEN $8 ELSE pre_deploy_oom_killed END
+		 WHERE id = $1 AND finished_at IS NULL
+		   AND ((pre_deploy_started_at IS NULL AND $2::timestamptz IS NOT NULL)
+		     OR (pre_deploy_container_started_at IS NULL AND $5::timestamptz IS NOT NULL)
+		     OR (pre_deploy_finished_at IS NULL AND $6::timestamptz IS NOT NULL))`,
+		id, run.StartedAt, run.Command, run.Native, run.ContainerStartedAt, run.FinishedAt, run.ExitCode, run.OOMKilled)
+	return classify("deploy pre-deploy run", err)
+}
+
 // page, not a crash or a leak of the unfiltered list.
 func pageKeyset(query string, args []any, table, sortCol, cursor string, limit int, oldestFirst bool) (string, []any) {
 	cmp, ord := "<", "DESC"
@@ -3576,13 +3631,15 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), live_urls`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false)`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
 	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
-		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.LiveURLs}, extra...)...)
+		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.LiveURLs,
+		&d.PreDeployRun.StartedAt, &d.PreDeployRun.ContainerStartedAt, &d.PreDeployRun.FinishedAt, &d.PreDeployRun.Command, &d.PreDeployRun.Native,
+		&d.PreDeployRun.ExitCode, &d.PreDeployRun.OOMKilled}, extra...)...)
 	return d, err
 }
 

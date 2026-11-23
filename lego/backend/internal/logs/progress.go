@@ -107,7 +107,32 @@ type DeployProgress struct {
 	// row recorded them when it closed live (w32/m567); nil is no record.
 	// They write Render's primary URL block after the live line.
 	LiveURLs []string
-	ReadAt   time.Time
+	// PreDeploy is the deploy's pre-deploy step as its row recorded it
+	// (w32/m572); the zero value is no step, or one an older operator ran.
+	PreDeploy PreDeployRun
+	ReadAt    time.Time
+}
+
+// PreDeployRun is a deploy's pre-deploy step as its row recorded it from the
+// operator's status.preDeploy (w32/m572). Zero values are none.
+type PreDeployRun struct {
+	// Status is the row's pre_deploy_status: running, succeeded, failed or
+	// canceled.
+	Status string
+	// StartedAt is when the operator launched the step (microseconds),
+	// ContainerStartedAt when its container started (whole seconds), and
+	// FinishedAt when the operator settled its verdict (microseconds).
+	StartedAt          time.Time
+	ContainerStartedAt time.Time
+	FinishedAt         time.Time
+	// Command is the command the step ran, as configured; Native reports that
+	// a native image's entrypoint ran it.
+	Command string
+	Native  bool
+	// ExitCode is the exit status of a command that ended on its own or was
+	// killed for memory (OOMKilled); nil when none was recorded.
+	ExitCode  *int32
+	OOMKilled bool
 }
 
 // DeployProgressSource lists an App's deploy rows, newest-first, created
@@ -125,6 +150,9 @@ const (
 	deployStatusCreated         = "created"
 	deployStatusQueued          = "queued"
 	deployStatusBuildInProgress = "build_in_progress"
+	deployStatusPreDeployFailed = "pre_deploy_failed"
+	// store.PreDeploySucceeded, a row's pre_deploy_status.
+	preDeploySucceeded = "succeeded"
 )
 
 // buildWait is the App's CURRENT reason for a not-yet-running build, read from
@@ -431,6 +459,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			}
 		}
 	}
+	out = append(out, preDeployLines(d)...)
 	out = append(out, rolloutLines(d, repo != "" && d.Built)...)
 	out = append(out, portScanLines(d)...)
 	if !d.FinishedAt.IsZero() {
@@ -454,6 +483,76 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 // line's primary URL block, else the close itself.
 func liveLinesEnd(d DeployProgress) time.Time {
 	return d.FinishedAt.Add(time.Duration(len(primaryURLLines(d))) * primaryURLLineStep)
+}
+
+// Render's pre-deploy narration (w32/m572), from deploy logs users quoted in
+// GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): `==>
+// Starting pre-deploy: <command>` a few seconds after the build's own last
+// line, `==> Running '<command>'` when the step's container starts on a
+// native runtime, the command's output, then `==> Pre-deploy complete!`
+// (BerriAI/litellm#9549, ganjasan/mapsurvey#73) or `==> Pre-deploy has
+// failed`, after which the deploy closes `==> Exited with status N` and the
+// troubleshooting line (Unwrenchable/ATOMIC-FIZZ-CAPS-VAULT-77-WASTELAND-GPS#82,
+// dukens11-create/Flupflap#206). Both quote the command as configured.
+const (
+	preDeployStartingLineFormat = "==> Starting pre-deploy: %s"
+	preDeployCompleteLine       = "==> Pre-deploy complete!"
+	preDeployFailedLine         = "==> Pre-deploy has failed"
+)
+
+// preDeployLines are the lines d earned from the operator's record of its
+// pre-deploy step: the start at the step's launch, `==> Running '<command>'`
+// at a native step container's start, and the step's own verdict at the
+// moment the operator settled it, which follows the command's last output
+// line. Only a step whose launch was recorded is narrated. Each line is held
+// just after the one before it when its moment does not order it (a
+// container's start is whole seconds), and a closed row's lines stay at or
+// before its close, which records the step's failure after the operator
+// settled it. The operator starts the rollout after it settles a passing
+// step, so the rollout's lines follow these.
+func preDeployLines(d DeployProgress) []LogEntry {
+	run, last := d.PreDeploy, d.StartedAt
+	if run.StartedAt.IsZero() || run.Command == "" {
+		return nil
+	}
+	var out []LogEntry
+	add := func(t time.Time, msg string) {
+		if !last.IsZero() && !t.After(last) {
+			t = last.Add(rolloutLineStep)
+		}
+		if !d.FinishedAt.IsZero() && t.After(d.FinishedAt) {
+			t = d.FinishedAt
+		}
+		last = t
+		out = append(out, progressEntry(d.ID, t, msg))
+	}
+	add(run.StartedAt, fmt.Sprintf(preDeployStartingLineFormat, run.Command))
+	if run.Native && !run.ContainerStartedAt.IsZero() {
+		add(run.ContainerStartedAt, fmt.Sprintf(runningLineFormat, run.Command))
+	}
+	switch {
+	case run.FinishedAt.IsZero():
+	case run.Status == preDeploySucceeded:
+		add(run.FinishedAt, preDeployCompleteLine)
+	case preDeployExitStatus(d) != nil:
+		add(run.FinishedAt, preDeployFailedLine)
+	}
+	return out
+}
+
+// preDeployExitStatus is the exit status a failed deploy's narrated
+// pre-deploy step ended with, which Render's log closes with: a command that
+// exited non-zero on its own. nil for every other failure, which keeps bex's
+// own line: a step that never ran its command, one killed for memory, one
+// stopped at its time limit, and a deploy whose step the log does not
+// narrate.
+func preDeployExitStatus(d DeployProgress) *int32 {
+	run := d.PreDeploy
+	if d.Status != deployStatusPreDeployFailed || run.StartedAt.IsZero() || run.Command == "" || run.FinishedAt.IsZero() ||
+		run.ExitCode == nil || *run.ExitCode == 0 || run.OOMKilled {
+		return nil
+	}
+	return run.ExitCode
 }
 
 // Render's rollout narration (w32/m560), from deploy logs users quoted in
@@ -687,10 +786,12 @@ func storyEnd(d DeployProgress, h hookRun) time.Time {
 // #62; w8/391). A failed build reads `==> Build failed 😞` after its output
 // (thedimlebowski/soakup#35, thephm/the-beans#417, zerot-atomic/
 // TaskManagerDevOps#20), and a start command that exited `==> Exited with
-// status N` (rkendel1/freq#187 and #191, darthjee/ward#109; w8/393).
+// status N` (rkendel1/freq#187 and #191, darthjee/ward#109; w8/393), as does
+// a pre-deploy command that exited (w32/m572).
 const (
 	timedOutLine     = "==> Timed Out"
 	buildFailedLine  = "==> Build failed 😞"
+	exitedLineFormat = "==> Exited with status %d"
 	troubleshootLine = "==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys"
 )
 
@@ -757,21 +858,27 @@ func closingLines(d DeployProgress, serviceType string) []string {
 // rendersVerdict is Render's verdict line for a failed deploy whose close
 // Render's logs confirm, "" otherwise: a build whose own work failed (not one
 // that timed out, hit an infrastructure fault or never ran), a rollout that
-// ran out its budget, and a start command that exited, not one the kernel
-// killed for memory. Render's lines for a pre-deploy failure, an image pull
-// failure and an out-of-memory kill are not observed, so those keep bex's.
+// ran out its budget, a start command that exited, not one the kernel killed
+// for memory, and a pre-deploy command that exited (preDeployExitStatus).
+// Render's lines for a pre-deploy step that never ran its command, an image
+// pull failure and an out-of-memory kill are not observed, so those keep
+// bex's.
 func rendersVerdict(d DeployProgress) string {
 	switch d.Status {
 	case "build_failed":
 		if appv1alpha1.IsBuildFailed(strings.TrimSpace(d.FailureReason)) {
 			return buildFailedLine
 		}
+	case deployStatusPreDeployFailed:
+		if code := preDeployExitStatus(d); code != nil {
+			return fmt.Sprintf(exitedLineFormat, *code)
+		}
 	case "update_failed":
 		switch {
 		case d.TimedOut:
 			return timedOutLine
 		case d.ExitCode != nil && !d.OOMKilled:
-			return fmt.Sprintf("==> Exited with status %d", *d.ExitCode)
+			return fmt.Sprintf(exitedLineFormat, *d.ExitCode)
 		}
 	}
 	return ""

@@ -1,22 +1,22 @@
 # w32 · m572 — A deploy with a pre-deploy command narrates the step as Render's log does: `==> Starting pre-deploy: <command>`, then `==> Pre-deploy complete!` or `==> Pre-deploy has failed` and the exit status
 
-**Worker:** worker32 **Goal:** a deploy's log (`bex logs --type build`, the deploy page, the live tail) narrates its pre-deploy step in Render's words, each line at a moment the operator recorded. `==> Starting pre-deploy: <command>` comes when the step starts. On a native runtime, `==> Running '<command>'` comes when the step's container starts. The command's own output follows. The step then closes with `==> Pre-deploy complete!`, or with `==> Pre-deploy has failed`, `==> Exited with status N` and the troubleshooting line. **Status:** todo
+**Worker:** worker32 **Goal:** a deploy's log (`bex logs --type build`, the deploy page, the live tail) narrates its pre-deploy step in Render's words, each line at a moment the operator recorded. `==> Starting pre-deploy: <command>` comes when the step starts. On a native runtime, `==> Running '<command>'` comes when the step's container starts. The command's own output follows. The step then closes with `==> Pre-deploy complete!`, or with `==> Pre-deploy has failed`, `==> Exited with status N` and the troubleshooting line. **Status:** in progress (t001–t007, t010 and t011 done; t008 parked on the production pin and the cost of one starter service)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The operator records the step's command, its launch, its container's start, its exit status and sub-second start and end moments in `status.preDeploy`](t001.md) | 1h30m | — |
-| t002 | [The control plane projects the record onto the deploy row and into `DeployProgress`](t002.md) | 1h30m | t001 |
-| t003 | [`==> Starting pre-deploy: <command>` at the step's start, and `==> Running '<command>'` when a native step's container starts](t003.md) | 45m | t002 |
-| t004 | [`==> Pre-deploy complete!` at a passing step's end, before the rollout's lines](t004.md) | 30m | t003 |
-| t005 | [A failed step closes with `==> Pre-deploy has failed`, `==> Exited with status N` and the troubleshooting line](t005.md) | 45m | t003 |
-| t006 | [The live build tail carries the step's lines as they are recorded](t006.md) | 30m | t004, t005 |
-| t007 | [Record the lines in the progress-line contract and ADR018](t007.md) | 20m | t004, t005 |
+| t001 | [The operator records the step's command, its launch, its container's start, its exit status and sub-second start and end moments in `status.preDeploy`](done/t001.md) — **DONE** | 1h30m | — |
+| t002 | [The control plane projects the record onto the deploy row and into `DeployProgress`](done/t002.md) — **DONE** | 1h30m | t001 |
+| t003 | [`==> Starting pre-deploy: <command>` at the step's start, and `==> Running '<command>'` when a native step's container starts](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [`==> Pre-deploy complete!` at a passing step's end, before the rollout's lines](done/t004.md) — **DONE** | 30m | t003 |
+| t005 | [A failed step closes with `==> Pre-deploy has failed`, `==> Exited with status N` and the troubleshooting line](done/t005.md) — **DONE** | 45m | t003 |
+| t006 | [The live build tail carries the step's lines as they are recorded](done/t006.md) — **DONE** | 30m | t004, t005 |
+| t007 | [Record the lines in the progress-line contract and ADR018](done/t007.md) — **DONE** | 20m | t004, t005 |
 | t008 | [Ship and verify on production](t008.md) | 45m | t006, t007 |
 | t009 | [Render parity](t009.md) | 30m | t008 |
-| t010 | [Simplify](t010.md) | 15m | t009 |
-| t011 | [Test coverage](t011.md) | 30m | t009 |
+| t010 | [Simplify](done/t010.md) — **DONE** | 15m | t009 |
+| t011 | [Test coverage](done/t011.md) — **DONE** | 30m | t009 |
 | t012 | [Closeout](t012.md) | 10m | t010, t011 |
 
 ## Definition of done
@@ -46,8 +46,16 @@
   - dukens11-create/Flupflap#206 (2026-05-12): `==> Build successful 🎉`, `==> Starting pre-deploy: <command>`, `==> Running '<command>'`, Prisma's output, `==> Pre-deploy has failed`, `==> Exited with status 1`, the troubleshooting line.
   - stranske/learning-management-system#191 (2026-05-31), ganjasan/mapsurvey#72 (2026-08-15), healthkey-ai/promop#1636 (2026-09-29) and briankeane/alloy-client-portal#8 (2026-05-09) have the same shape, with exit statuses 127, 2, 127 and 128.
 - **A step that passes** ends `==> Pre-deploy complete!` (BerriAI/litellm#9549, 2025-03-26; ganjasan/mapsurvey#73, 2026-08-15).
-- **A step killed at Render's 30-minute limit** reads "Pre-deploy has failed / Timed out" (jdegreef/open-word-bible#1023, 2026-11-17). t005 reads that log for the exact lines.
+- **A step killed at Render's 30-minute limit** reads "Pre-deploy has failed / Timed out" (jdegreef/open-word-bible#1023, 2026-11-17). t005 reads that log for the exact lines (below: it quotes none).
 - **Not observed:** what follows `==> Pre-deploy complete!` (w32/085, which waits for a Render account), whether a Dockerfile or prebuilt image's step gets `==> Running '<command>'`, and an out-of-memory kill. t003 and t005 look for a log that settles each one and record what they find. Until one does, `Running` follows w32/m560's start-command rule (native runtimes only), and the out-of-memory kill keeps bex's line.
+
+### What t003 and t005 found (2026-11-22, about 700 more public issues and PRs, each runtime read from the repository's `render.yaml` at the commit)
+
+- **A Dockerfile or prebuilt image's step has no `Running` line: settled.** ClipFarmVB/ClipFarm#173 (2026-08-07, Docker): `==> Starting pre-deploy: sh -lc 'cd /app/api && alembic upgrade head'`, sh's `not found`, `==> Pre-deploy has failed`, `==> Exited with status 127`. ganjasan/mapsurvey#72 (2026-08-15, Docker) reads the same with status 2. BerriAI/litellm#9549 (image): the command's output straight after the start line, then `==> Pre-deploy complete!`. briankeane/alloy-client-portal#8 (2026-05-09, image) and khusenov/backend-boilerplate-python#16, Mumbo-Jumbo-3/root-cause-backend#8 have no `Running` line either. Native logs have it and run the command under bash (stranske/learning-management-system#191: `bash: line 1: alembic: command not found`, status 127).
+- **The 30-minute limit: not quoted in jdegreef/open-word-bible#1023.** The PR has no comments and only paraphrases "Pre-deploy has failed / Timed out". Per the definition of done, the window keeps bex's line. MalaysiaKaki/astrail-webmcp#10 (2026-10-03, Docker) shows `==> Pre-deploy timed out` about 33 minutes after the last output line, lowercase, with nothing after it in the excerpt: filed as w32/091.
+- **A program that cannot be launched:** briankeane/alloy-client-portal#8 (image, `preDeployCommand: release`) reads `==> Starting pre-deploy: release`, `==> Pre-deploy has failed`, `==> Exited with status 128`, with no output. The definition of done keeps bex's line for it: filed as w32/091.
+- **What follows `==> Pre-deploy complete!`:** still not settled. ganjasan/mapsurvey#73 (Docker) quotes `==> Pre-deploy complete!` at 15:57:51, the app's `Listening at` line at 15:58:21 and `==> Your service is live 🎉` at 15:58:29, shortened by its author. bex keeps `==> Deploying...` after the step; w32/085 captures it.
+- **An out-of-memory kill and an image pull failure:** no public log. Both keep bex's line.
 
 ## bex today (`c01e2f55c3`)
 

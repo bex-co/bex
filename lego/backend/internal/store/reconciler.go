@@ -1088,6 +1088,14 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			log.Printf("controlplane: set deploy rollout %s: %v", open.ID, err)
 		}
 	}
+	// w32/m572: the operator's record of this row's own pre-deploy step, for
+	// the same log and on the same terms: before the close a failed step
+	// brings, and from the record's generation alone.
+	if run, ok := preDeployRunFor(cur, open.Generation); ok && !open.PreDeployRun.holds(run) {
+		if err := r.Store.SetDeployPreDeployRun(ctx, open.ID, run); err != nil {
+			log.Printf("controlplane: set deploy pre-deploy run %s: %v", open.ID, err)
+		}
+	}
 	if status == "" {
 		return
 	}
@@ -1293,6 +1301,41 @@ func (r DeployRollout) holds(rec DeployRollout) bool {
 		}
 	}
 	return true
+}
+
+// preDeployRunFor is the operator's record of one deploy row's pre-deploy
+// step (status.preDeploy, w32/m572). ok is false when the record is another
+// release's, or holds none of the moments the row keeps.
+func preDeployRunFor(app *appv1alpha1.App, generation int64) (DeployPreDeployRun, bool) {
+	pd := app.Status.PreDeploy
+	if generation == 0 || pd == nil || pd.Generation != generation {
+		return DeployPreDeployRun{}, false
+	}
+	moment := func(t *metav1.Time) *time.Time {
+		if t == nil || t.IsZero() {
+			return nil
+		}
+		return &t.Time
+	}
+	micro := func(t *metav1.MicroTime) *time.Time {
+		if t == nil || t.IsZero() {
+			return nil
+		}
+		return &t.Time
+	}
+	out := DeployPreDeployRun{
+		StartedAt: micro(pd.LaunchedAt), ContainerStartedAt: moment(pd.ContainerStartedAt), FinishedAt: micro(pd.SettledAt),
+		Command: pd.Command, Native: pd.Native, ExitCode: pd.ExitCode, OOMKilled: pd.OOMKilled,
+	}
+	return out, out.StartedAt != nil || out.ContainerStartedAt != nil || out.FinishedAt != nil
+}
+
+// holds reports that a row's pre-deploy run already carries every part rec
+// would add (SetDeployPreDeployRun).
+func (r DeployPreDeployRun) holds(rec DeployPreDeployRun) bool {
+	return (rec.StartedAt == nil || r.StartedAt != nil) &&
+		(rec.ContainerStartedAt == nil || r.ContainerStartedAt != nil) &&
+		(rec.FinishedAt == nil || r.FinishedAt != nil)
 }
 
 // deployCloseEnd is the structured cause an update_failed close records
