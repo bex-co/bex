@@ -510,19 +510,28 @@ func liveLinesEnd(d DeployProgress) time.Time {
 	return d.FinishedAt.Add(time.Duration(len(primaryURLLines(d))) * primaryURLLineStep)
 }
 
-// Render's pre-deploy narration (w32/m572), from deploy logs users quoted in
-// GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): `==>
-// Starting pre-deploy: <command>` a few seconds after the build's own last
+// Render's pre-deploy narration (w32/m572, w32/091), from deploy logs users
+// quoted in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs):
+// `==> Starting pre-deploy: <command>` a few seconds after the build's own last
 // line, `==> Running '<command>'` when the step's container starts on a
 // native runtime, the command's output, then `==> Pre-deploy complete!`
-// (BerriAI/litellm#9549, ganjasan/mapsurvey#73) or `==> Pre-deploy has
-// failed`, after which the deploy closes `==> Exited with status N` and the
-// troubleshooting line (Unwrenchable/ATOMIC-FIZZ-CAPS-VAULT-77-WASTELAND-GPS#82,
-// dukens11-create/Flupflap#206). Both quote the command as configured.
+// (BerriAI/litellm#9549, ganjasan/mapsurvey#73), `==> Pre-deploy timed out`
+// when stopped at its 30-minute limit (MalaysiaKaki/astrail-webmcp#10), or
+// `==> Pre-deploy has failed`, after which the deploy closes `==> Exited with
+// status N` and the troubleshooting line
+// (Unwrenchable/ATOMIC-FIZZ-CAPS-VAULT-77-WASTELAND-GPS#82,
+// dukens11-create/Flupflap#206, and status 128 for a program that cannot be
+// launched in briankeane/alloy-client-portal#8 and
+// ernestkasajtp-glitch/albania-sky#8). Both quote the command as configured.
 const (
 	preDeployStartingLineFormat = "==> Starting pre-deploy: %s"
 	preDeployCompleteLine       = "==> Pre-deploy complete!"
 	preDeployFailedLine         = "==> Pre-deploy has failed"
+	preDeployTimedOutLine       = "==> Pre-deploy timed out"
+	// preDeployStartErrorExitCode is the exit status the kubelet reports for a
+	// StartError container and what Render's log closes an unlaunchable
+	// pre-deploy program with (briankeane/alloy-client-portal#8; w32/091).
+	preDeployStartErrorExitCode int32 = 128
 )
 
 // preDeployLines are the lines d earned from the operator's record of its
@@ -559,25 +568,55 @@ func preDeployLines(d DeployProgress) []LogEntry {
 	case run.FinishedAt.IsZero():
 	case run.Status == preDeploySucceeded:
 		add(run.FinishedAt, preDeployCompleteLine)
+	case preDeployTimedOut(d):
+		add(run.FinishedAt, preDeployTimedOutLine)
 	case preDeployExitStatus(d) != nil:
 		add(run.FinishedAt, preDeployFailedLine)
 	}
 	return out
 }
 
+// preDeployTimedOut reports that a failed deploy's narrated pre-deploy step
+// was stopped at its 30-minute window (DeployReasonPreDeployWindowExceeded),
+// which Render's log closes with `==> Pre-deploy timed out`
+// (MalaysiaKaki/astrail-webmcp#10; w32/091). The public excerpt ends at that
+// line, so nothing follows it at the deploy's close. The control plane's own
+// backstop (DeployReasonPreDeployTimedOut, whose PreDeploy.FinishedAt is zero)
+// and rows an older operator recorded keep bex's own line.
+func preDeployTimedOut(d DeployProgress) bool {
+	run := d.PreDeploy
+	if d.Status != deployStatusPreDeployFailed || run.StartedAt.IsZero() || run.Command == "" || run.FinishedAt.IsZero() ||
+		run.ExitCode != nil || run.OOMKilled {
+		return false
+	}
+	return appv1alpha1.IsPreDeployWindowExceeded(strings.TrimSpace(d.FailureReason))
+}
+
 // preDeployExitStatus is the exit status a failed deploy's narrated
 // pre-deploy step ended with, which Render's log closes with: a command that
-// exited non-zero on its own. nil for every other failure, which keeps bex's
-// own line: a step that never ran its command, one killed for memory, one
-// stopped at its time limit, and a deploy whose step the log does not
-// narrate.
+// exited non-zero on its own, or status 128 when the runtime could not launch
+// its program (StartError, briankeane/alloy-client-portal#8; w32/091). nil for
+// every other failure, which keeps bex's own line (or preDeployTimedOut's
+// line): an image pull failure, one killed for memory, one stopped at its time
+// limit, a step refused before it launched, and a deploy whose step the log
+// does not narrate.
 func preDeployExitStatus(d DeployProgress) *int32 {
 	run := d.PreDeploy
 	if d.Status != deployStatusPreDeployFailed || run.StartedAt.IsZero() || run.Command == "" || run.FinishedAt.IsZero() ||
-		run.ExitCode == nil || *run.ExitCode == 0 || run.OOMKilled {
+		run.OOMKilled {
 		return nil
 	}
-	return run.ExitCode
+	if run.ExitCode != nil {
+		if *run.ExitCode == 0 {
+			return nil
+		}
+		return run.ExitCode
+	}
+	if appv1alpha1.IsPreDeployCouldNotLaunch(strings.TrimSpace(d.FailureReason)) {
+		code := preDeployStartErrorExitCode
+		return &code
+	}
+	return nil
 }
 
 // Render's rollout narration (w32/m560), from deploy logs users quoted in
@@ -967,7 +1006,7 @@ func primaryURLLines(d DeployProgress) []string {
 // directory <dir> does not exist!` before its verdict (EthanM32122/cloaket#1;
 // w8/395). A build's own output is in the log already.
 func closingLines(d DeployProgress, serviceType string) []string {
-	if hasFirstExitVerdict(d) {
+	if hasFirstExitVerdict(d) || preDeployTimedOut(d) {
 		return nil
 	}
 	verdict, form := rendersVerdict(d)
@@ -985,13 +1024,15 @@ func closingLines(d DeployProgress, serviceType string) []string {
 // Render's logs confirm, "" otherwise: a build whose own work failed (not one
 // that timed out, hit an infrastructure fault or never ran), a rollout that
 // ran out its budget, a start command that exited, not one the kernel killed
-// for memory, and a pre-deploy command that exited (preDeployExitStatus).
-// Render's lines for a pre-deploy step that never ran its command, an image
-// pull failure and an out-of-memory kill are not observed, so those keep
-// bex's. form is the line's form (w32/m576): `==> Timed Out` and `==> Exited
-// with status N` are red, as Render's log API returns them
-// (Ishan2036924/upmyrank-poc, kush252/Sentry-AI); no capture shows the codes
-// on `==> Build failed 😞`, which stays plain (w32/085).
+// for memory, and a pre-deploy command that exited or whose program could not
+// be launched (preDeployExitStatus; a timed-out pre-deploy step closes at the
+// step's end with `==> Pre-deploy timed out` in preDeployLines).
+// Render's lines for an image pull failure, a step refused before it launched
+// and an out-of-memory kill are not observed, so those keep bex's. form is the
+// line's form (w32/m576): `==> Timed Out` and `==> Exited with status N` are
+// red, as Render's log API returns them (Ishan2036924/upmyrank-poc,
+// kush252/Sentry-AI); no capture shows the codes on `==> Build failed 😞`,
+// which stays plain (w32/085).
 func rendersVerdict(d DeployProgress) (verdict string, form renderlog.Form) {
 	switch d.Status {
 	case "build_failed":

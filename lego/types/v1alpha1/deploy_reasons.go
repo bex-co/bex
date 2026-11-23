@@ -99,9 +99,17 @@ const (
 	DeployReasonPreDeployExited         = "pre_deploy_exited"
 	DeployReasonPreDeployFailed         = "pre_deploy_failed"
 	DeployReasonPreDeployCouldNotLaunch = "pre_deploy_could_not_launch"
-	DeployReasonBuildNeverStarted       = "build_never_started"
-	DeployReasonBuildAbandoned          = "build_abandoned"
-	DeployReasonDeployAbandoned         = "deploy_abandoned"
+
+	// PreDeployCouldNotStartPrefix and PreDeployNeverRanSuffix frame the
+	// operator's StartError verdicts for a pre-deploy container whose program
+	// the runtime could not launch (predeploy.startErrorMessage, w8/172).
+	// IsPreDeployCouldNotLaunch reads them back so the deploy log can close
+	// those runs with Render's `==> Exited with status 128` (w32/091).
+	PreDeployCouldNotStartPrefix  = "the pre-deploy command could not start: "
+	PreDeployNeverRanSuffix       = "; the program never ran, so there are no pre-deploy logs"
+	DeployReasonBuildNeverStarted = "build_never_started"
+	DeployReasonBuildAbandoned    = "build_abandoned"
+	DeployReasonDeployAbandoned   = "deploy_abandoned"
 
 	// w9/090: the API server refused one of the operator's own writes (an
 	// admission policy, RBAC, a schema check). The customer reads this in
@@ -247,7 +255,7 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonPreDeployOutOfMemory:    "the pre-deploy command ran out of memory (exit code {code}); check the pre-deploy logs",
 	DeployReasonPreDeployExited:         "the pre-deploy command exited with code {code}; check the pre-deploy logs",
 	DeployReasonPreDeployFailed:         "the pre-deploy command failed; check the pre-deploy logs",
-	DeployReasonPreDeployCouldNotLaunch: "the pre-deploy command could not start: the container runtime could not launch its program; the program never ran, so there are no pre-deploy logs",
+	DeployReasonPreDeployCouldNotLaunch: PreDeployCouldNotStartPrefix + "the container runtime could not launch its program" + PreDeployNeverRanSuffix,
 	DeployReasonBuildNeverStarted:       "the build never started: {cause}",
 	DeployReasonBuildAbandoned:          "the build did not finish within the build window, and this service's App record could not be read to explain why",
 	DeployReasonDeployAbandoned:         "the deploy did not finish within its window, and this service's App record could not be read to explain why",
@@ -539,6 +547,23 @@ func ParseDeployReasonParts(tail string) (parts []DeployReasonPart, remainder st
 		tail = tail[len(part.Text):]
 	}
 	return parts, tail
+}
+
+// IsPreDeployWindowExceeded reports a reason formatted from
+// DeployReasonPreDeployWindowExceeded — the operator's verdict when a
+// pre-deploy Job hit its 30-minute deadline (w32/091). The control plane's own
+// backstop (DeployReasonPreDeployTimedOut) and every other reason return false.
+func IsPreDeployWindowExceeded(reason string) bool {
+	code, _, ok := ParseDeployReason(reason)
+	return ok && code == DeployReasonPreDeployWindowExceeded
+}
+
+// IsPreDeployCouldNotLaunch reports a reason written by the operator's
+// pre-deploy StartError diagnosis, whether or not the runtime message named
+// the program (w32/091).
+func IsPreDeployCouldNotLaunch(reason string) bool {
+	return strings.HasPrefix(reason, PreDeployCouldNotStartPrefix) &&
+		strings.HasSuffix(reason, PreDeployNeverRanSuffix)
 }
 
 // parseDeployReasonPart is the part tail starts with; ok is false when no part

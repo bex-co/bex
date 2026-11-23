@@ -35,13 +35,15 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 )
 
-// Render's pre-deploy lines (w32/m572), restated so the tests pin the wire
-// text, for a step whose command is `npx prisma migrate deploy`.
+// Render's pre-deploy lines (w32/m572, w32/091), restated so the tests pin the
+// wire text, for a step whose command is `npx prisma migrate deploy`.
 const (
 	rendersStepStart    = "==> Starting pre-deploy: npx prisma migrate deploy"
 	rendersStepRunning  = "\x1b[32m\x1b[1m==>\x1b(B\x1b[m \x1b[1mRunning 'npx prisma migrate deploy'\x1b(B\x1b[m"
 	rendersStepComplete = "==> Pre-deploy complete!"
 	rendersStepFailed   = "==> Pre-deploy has failed"
+	rendersStepTimedOut = "==> Pre-deploy timed out"
+	rendersExited128    = "\x1b[0;31m\x1b[1m==> Exited with status 128\x1b[0m"
 	stepCommand         = "npx prisma migrate deploy"
 )
 
@@ -143,16 +145,43 @@ func TestPreDeployLinesFollowRendersLogByOutcomeLaunchAndServiceType(t *testing.
 			func(r *PreDeployRun) { r.ExitCode, r.OOMKilled = code(137), true }), web,
 			slices.Concat(built, []string{rendersStepStart, rendersStepRunning,
 				"==> Pre-deploy failed: the pre-deploy command ran out of memory (exit code 137); check the pre-deploy logs"})},
-		{"a step stopped at its time limit keeps bex's line", failedWith("the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs",
+		{"a native step stopped at its 30-minute limit closes with Render's timed out line", failedWith("the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs",
 			func(r *PreDeployRun) { r.ExitCode = nil }), web,
+			slices.Concat(built, []string{rendersStepStart, rendersStepRunning, rendersStepTimedOut})},
+		{"a Docker step stopped at its 30-minute limit closes with Render's timed out line", failedWith("the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs",
+			func(r *PreDeployRun) { r.Native, r.ExitCode = false, nil }), web,
+			slices.Concat(built, []string{rendersStepStart, rendersStepTimedOut})},
+		{"a step closed by the control-plane backstop keeps bex's line", failedWith(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployTimedOut),
+			func(r *PreDeployRun) { r.FinishedAt, r.ExitCode = time.Time{}, nil }), web,
 			slices.Concat(built, []string{rendersStepStart, rendersStepRunning,
-				"==> Pre-deploy failed: the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs"})},
+				"==> Pre-deploy failed: " + appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployTimedOut)})},
+		{"an older-operator row stopped at its window keeps bex's line", failedWith("the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs",
+			func(r *PreDeployRun) { *r = PreDeployRun{Status: "failed"} }), web,
+			slices.Concat(built, []string{"==> Pre-deploy failed: the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs"})},
 		{"an image that could not be pulled keeps bex's line", failedWith("image pull is failing: not found; the pre-deploy command never ran",
 			func(r *PreDeployRun) { r.ContainerStartedAt, r.ExitCode = time.Time{}, nil }), web,
 			slices.Concat(built, []string{rendersStepStart, "==> Pre-deploy failed: image pull is failing: not found; the pre-deploy command never ran"})},
-		{"a program the runtime could not launch keeps bex's line", failedWith(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch),
+		{"a program the runtime could not launch closes with status 128", failedWith(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch),
 			func(r *PreDeployRun) { r.ContainerStartedAt, r.ExitCode = time.Time{}, nil }), web,
-			slices.Concat(built, []string{rendersStepStart, "==> Pre-deploy failed: " + appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch)})},
+			slices.Concat(built, []string{rendersStepStart, rendersStepFailed, rendersExited128, rendersTroubleshoot})},
+		{"an image step whose named program does not exist closes with status 128", with(stepDeploy(), func(d *DeployProgress) {
+			d.Built, d.Commit, d.Image = false, "", "docker.io/library/node:22"
+			d.FailureReason = appv1alpha1.PreDeployCouldNotStartPrefix + `the program "release" does not exist in this image` + appv1alpha1.PreDeployNeverRanSuffix
+			d.PreDeploy.Command, d.PreDeploy.Native, d.PreDeploy.ContainerStartedAt, d.PreDeploy.ExitCode = "release", false, time.Time{}, nil
+		}), progressContext{serviceType: appv1alpha1.TypeWebService},
+			[]string{"==> Deploy queued", "==> Deploying image docker.io/library/node:22", "==> Starting pre-deploy: release",
+				rendersStepFailed, rendersExited128, rendersTroubleshoot}},
+		{"a program that is not executable closes with status 128", failedWith(
+			appv1alpha1.PreDeployCouldNotStartPrefix+`the program "./migrate" is not executable in this image`+appv1alpha1.PreDeployNeverRanSuffix,
+			func(r *PreDeployRun) { r.Native, r.ContainerStartedAt, r.ExitCode = false, time.Time{}, nil }), web,
+			slices.Concat(built, []string{rendersStepStart, rendersStepFailed, rendersExited128, rendersTroubleshoot})},
+		{"a program the runtime could not execute closes with status 128", failedWith(
+			appv1alpha1.PreDeployCouldNotStartPrefix+`the container runtime could not execute "./migrate"`+appv1alpha1.PreDeployNeverRanSuffix,
+			func(r *PreDeployRun) { r.Native, r.ContainerStartedAt, r.ExitCode = false, time.Time{}, nil }), web,
+			slices.Concat(built, []string{rendersStepStart, rendersStepFailed, rendersExited128, rendersTroubleshoot})},
+		{"an older-operator row that could not launch keeps bex's line", failedWith(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch),
+			func(r *PreDeployRun) { *r = PreDeployRun{Status: "failed"} }), web,
+			slices.Concat(built, []string{"==> Pre-deploy failed: " + appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch)})},
 		{"no build minutes left: refused before it launched", failedWith(appv1alpha1.BuildMinutesExhaustedMessage,
 			func(r *PreDeployRun) { *r = PreDeployRun{Status: "failed", FinishedAt: stepSettled} }), web,
 			slices.Concat(built, []string{"==> Pre-deploy failed: " + appv1alpha1.BuildMinutesExhaustedMessage})},
@@ -202,6 +231,45 @@ func TestPreDeployLinesCarryTheRecordedMoments(t *testing.T) {
 	}
 	if !slices.Equal(got[2:], want) {
 		t.Fatalf("lines:\n got %q\nwant %q", got[2:], want)
+	}
+
+	// w32/091: a step stopped at its 30-minute limit closes with `==> Pre-deploy
+	// timed out` at the step's end (stepSettled), with nothing at stepClose.
+	timedOut := stepDeploy()
+	timedOut.FailureReason = appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployWindowExceeded,
+		appv1alpha1.DeployReasonParam{Name: "minutes", Value: "30"})
+	timedOut.PreDeploy.ExitCode = nil
+	got = nil
+	for _, e := range progressLines(timedOut, progressContext{repo: rolloutRepo, serviceType: appv1alpha1.TypeWebService}) {
+		got = append(got, e.Timestamp+" "+e.Message)
+	}
+	wantTimedOut := []string{
+		stamp(stepLaunch) + rendersStepStart,
+		stamp(stepContainer) + rendersStepRunning,
+		stamp(stepSettled) + rendersStepTimedOut,
+	}
+	if !slices.Equal(got[2:], wantTimedOut) {
+		t.Fatalf("timed out lines:\n got %q\nwant %q", got[2:], wantTimedOut)
+	}
+
+	// w32/091: a program the runtime could not launch writes no Running line,
+	// stamps `==> Pre-deploy has failed` at stepSettled, and closes with
+	// `==> Exited with status 128` and the troubleshooting line at stepClose.
+	launch := stepDeploy()
+	launch.FailureReason = appv1alpha1.PreDeployCouldNotStartPrefix + `the program "release" does not exist in this image` + appv1alpha1.PreDeployNeverRanSuffix
+	launch.PreDeploy.Command, launch.PreDeploy.Native, launch.PreDeploy.ContainerStartedAt, launch.PreDeploy.ExitCode = "release", false, time.Time{}, nil
+	got = nil
+	for _, e := range progressLines(launch, progressContext{repo: rolloutRepo, serviceType: appv1alpha1.TypeWebService}) {
+		got = append(got, e.Timestamp+" "+e.Message)
+	}
+	wantLaunch := []string{
+		stamp(stepLaunch) + "==> Starting pre-deploy: release",
+		stamp(stepSettled) + rendersStepFailed,
+		stamp(stepClose) + rendersExited128,
+		stamp(stepClose) + rendersTroubleshoot,
+	}
+	if !slices.Equal(got[2:], wantLaunch) {
+		t.Fatalf("launch failure lines:\n got %q\nwant %q", got[2:], wantLaunch)
 	}
 }
 
@@ -280,6 +348,20 @@ func TestPreDeployLinesReadAroundTheBuildAndTheStepsOutput(t *testing.T) {
 	if got, want := read(passed, buildEnd, first, done), []string{"==> Build successful 🎉", rendersStepStart, rendersStepRunning,
 		first.Message, done.Message, rendersStepComplete, rendersDeploying, rendersWebConc1, rendersRunning, rendersLive}; !slices.Equal(got, want) {
 		t.Fatalf("a passing step reads\n %q\nwant %q", got, want)
+	}
+
+	// w32/091: a step stopped at its 30-minute limit puts `==> Pre-deploy timed
+	// out` right after the command's last output line, with nothing after it
+	// (MalaysiaKaki/astrail-webmcp#10).
+	timedOut := stepDeploy()
+	timedOut.FailureReason = appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployWindowExceeded,
+		appv1alpha1.DeployReasonParam{Name: "minutes", Value: "30"})
+	timedOut.PreDeploy.Native, timedOut.PreDeploy.ExitCode = false, nil
+	timedOut.PreDeploy.FinishedAt = stepLaunch.Add(30 * time.Minute)
+	timedOut.FinishedAt = timedOut.PreDeploy.FinishedAt.Add(time.Second)
+	gateOK := stepOutput(stepLaunch.Add(40*time.Second), "schema gate OK")
+	if got, want := read(timedOut, buildEnd, gateOK), []string{"==> Build successful 🎉", rendersStepStart, gateOK.Message, rendersStepTimedOut}; !slices.Equal(got, want) {
+		t.Fatalf("a timed-out step reads\n %q\nwant %q", got, want)
 	}
 }
 

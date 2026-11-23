@@ -100,6 +100,15 @@ func formStory() []LogEntry {
 	stepExited := DeployProgress{ID: "dep-step", Status: deployStatusPreDeployFailed, Built: true,
 		CreatedAt: at(0), StartedAt: at(1), FinishedAt: at(40),
 		PreDeploy: PreDeployRun{Status: "failed", StartedAt: at(20), FinishedAt: at(39), Command: "exit 3", ExitCode: code(3)}}
+	stepTimedOut := DeployProgress{ID: "dep-step-timeout", Status: deployStatusPreDeployFailed, Built: true,
+		CreatedAt: at(0), StartedAt: at(1), FinishedAt: at(40),
+		FailureReason: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployWindowExceeded,
+			appv1alpha1.DeployReasonParam{Name: "minutes", Value: "30"}),
+		PreDeploy: PreDeployRun{Status: "failed", StartedAt: at(20), FinishedAt: at(39), Command: "sleep 3600"}}
+	stepStartError := DeployProgress{ID: "dep-step-launch", Status: deployStatusPreDeployFailed, Built: true,
+		CreatedAt: at(0), StartedAt: at(1), FinishedAt: at(40),
+		FailureReason: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch),
+		PreDeploy:     PreDeployRun{Status: "failed", StartedAt: at(20), FinishedAt: at(39), Command: "release"}}
 	buildFailed := DeployProgress{ID: "dep-build", Status: "build_failed", Built: true, CreatedAt: at(0), StartedAt: at(1), FinishedAt: at(30),
 		FailureReason: appv1alpha1.FormatBuildFailed("build command", "npm ERR! missing script: build")}
 	publish := buildFailed
@@ -126,6 +135,8 @@ func formStory() []LogEntry {
 		{envPort, progressContext{}},
 		{exited, progressContext{}},
 		{stepExited, repo},
+		{stepTimedOut, repo},
+		{stepStartError, repo},
 		{buildFailed, repo},
 		{publish, repo},
 		{reasons, progressContext{}},
@@ -167,7 +178,10 @@ func TestEveryPlatformLineCarriesItsForm(t *testing.T) {
 		{"==> Running 'npm run migrate'", instance},
 		{preDeployCompleteLine, plain},
 		{"==> Starting pre-deploy: exit 3", plain},
+		{"==> Starting pre-deploy: sleep 3600", plain},
+		{"==> Starting pre-deploy: release", plain},
 		{preDeployFailedLine, plain},
+		{preDeployTimedOutLine, plain},
 		{deployingLine, step},
 		{"==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance", step},
 		{"==> Running 'node main.js'", instance},
@@ -189,6 +203,7 @@ func TestEveryPlatformLineCarriesItsForm(t *testing.T) {
 		{"==> Available at your primary URL https://hello.onbex.co + 1 more domain", success},
 		{"==> Exited with status 1", failure},
 		{"==> Exited with status 3", failure},
+		{"==> Exited with status 128", failure},
 		{timedOutLine, failure},
 		{buildFailedLine, plain},
 		{"==> Publish directory dist does not exist!", plain},

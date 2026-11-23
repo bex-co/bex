@@ -245,19 +245,39 @@ func TestInvalidImageNameFailsOnlyTheOwningPreDeployJob(t *testing.T) {
 	}
 }
 
-// w8/172: a program the runtime could not launch names itself instead of
-// pointing at logs that cannot exist.
+// w8/172, w32/091: a program the runtime could not launch names itself instead
+// of pointing at logs that cannot exist, and every StartError wording reads
+// back through IsPreDeployCouldNotLaunch so the deploy log closes it with
+// Render's `==> Exited with status 128`.
 func TestFailureMessageNamesTheProgramThatNeverStarted(t *testing.T) {
 	job := failedJob("BackoffLimitExceeded")
-	state := corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
-		ExitCode: 128, Reason: "StartError",
-		Message: `failed to create containerd task: exec: "/bin/sh": stat /bin/sh: no such file or directory`,
-	}}
-	cl := fakeClient(job, jobPod(jobUID, job.Namespace, state))
-
-	got := FailureMessage(context.Background(), cl, job, nil)
-	if !strings.Contains(got, `"/bin/sh" does not exist in this image`) || strings.Contains(got, "check the pre-deploy logs") {
-		t.Fatalf("message = %q", got)
+	for name, tc := range map[string]struct {
+		runtimeMsg string
+		wantSub    string
+	}{
+		"missing program":    {`failed to create containerd task: exec: "/bin/sh": stat /bin/sh: no such file or directory`, `"/bin/sh" does not exist in this image`},
+		"not on PATH":        {`failed to create containerd task: exec: "release": executable file not found in $PATH`, `"release" does not exist in this image`},
+		"permission denied":  {`failed to create containerd task: exec: "./migrate": permission denied`, `"./migrate" is not executable in this image`},
+		"other exec failure": {`failed to create containerd task: exec: "./migrate": exec format error`, `could not execute "./migrate"`},
+		"unrecognized error": {`failed to create containerd task: unknown`, `could not launch its program`},
+	} {
+		state := corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+			ExitCode: 128, Reason: "StartError", Message: tc.runtimeMsg,
+		}}
+		got := FailureMessage(context.Background(), fakeClient(job, jobPod(jobUID, job.Namespace, state)), job, nil)
+		if !strings.Contains(got, tc.wantSub) || strings.Contains(got, "check the pre-deploy logs") {
+			t.Errorf("%s: message = %q, want %q", name, got, tc.wantSub)
+		}
+		if !appv1alpha1.IsPreDeployCouldNotLaunch(got) || appv1alpha1.IsPreDeployWindowExceeded(got) {
+			t.Errorf("%s: message %q classified launch=%v window=%v, want true/false",
+				name, got, appv1alpha1.IsPreDeployCouldNotLaunch(got), appv1alpha1.IsPreDeployWindowExceeded(got))
+		}
+	}
+	// A 30-minute deadline classifies as window exceeded only, never launch.
+	deadline := FailureMessage(context.Background(), fakeClient(failedJob(batchv1.JobReasonDeadlineExceeded)), failedJob(batchv1.JobReasonDeadlineExceeded), nil)
+	if !appv1alpha1.IsPreDeployWindowExceeded(deadline) || appv1alpha1.IsPreDeployCouldNotLaunch(deadline) {
+		t.Errorf("deadline %q classified window=%v launch=%v, want true/false",
+			deadline, appv1alpha1.IsPreDeployWindowExceeded(deadline), appv1alpha1.IsPreDeployCouldNotLaunch(deadline))
 	}
 }
 

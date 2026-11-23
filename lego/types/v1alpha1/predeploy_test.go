@@ -85,3 +85,36 @@ func TestInitialDeployHookJobNameNeverCollidesWithAPreDeployJob(t *testing.T) {
 		t.Error("a pre-deploy Job name equals another service's hook Job name")
 	}
 }
+
+// w32/091: bex-api recognizes the operator's 30-minute deadline and StartError
+// pre-deploy verdicts so the deploy log closes them as Render's does, while
+// leaving the control-plane backstop and every other failure on bex's line.
+func TestPreDeployFailureReasonClassifiers(t *testing.T) {
+	window := FormatDeployReason(DeployReasonPreDeployWindowExceeded, DeployReasonParam{Name: "minutes", Value: "30"})
+	if !IsPreDeployWindowExceeded(window) || IsPreDeployCouldNotLaunch(window) {
+		t.Errorf("window reason %q: window=%v launch=%v, want true/false", window, IsPreDeployWindowExceeded(window), IsPreDeployCouldNotLaunch(window))
+	}
+	for _, msg := range []string{
+		FormatDeployReason(DeployReasonPreDeployCouldNotLaunch),
+		PreDeployCouldNotStartPrefix + `the program "release" does not exist in this image` + PreDeployNeverRanSuffix,
+		PreDeployCouldNotStartPrefix + `the program "/app/migrate" is not executable in this image` + PreDeployNeverRanSuffix,
+		PreDeployCouldNotStartPrefix + `the container runtime could not execute "release"` + PreDeployNeverRanSuffix,
+	} {
+		if !IsPreDeployCouldNotLaunch(msg) || IsPreDeployWindowExceeded(msg) {
+			t.Errorf("launch reason %q: launch=%v window=%v, want true/false", msg, IsPreDeployCouldNotLaunch(msg), IsPreDeployWindowExceeded(msg))
+		}
+	}
+	for _, other := range []string{
+		"",
+		FormatDeployReason(DeployReasonPreDeployTimedOut),
+		FormatDeployReason(DeployReasonPreDeployOutOfMemory, DeployReasonParam{Name: "code", Value: "137"}),
+		FormatDeployReason(DeployReasonPreDeployExited, DeployReasonParam{Name: "code", Value: "1"}),
+		FormatDeployReason(DeployReasonPreDeployFailed),
+		"the pre-deploy command could not be started: the platform failed",
+		"image pull is failing: not found; the pre-deploy command never ran",
+	} {
+		if IsPreDeployWindowExceeded(other) || IsPreDeployCouldNotLaunch(other) {
+			t.Errorf("other reason %q: window=%v launch=%v, want false/false", other, IsPreDeployWindowExceeded(other), IsPreDeployCouldNotLaunch(other))
+		}
+	}
+}

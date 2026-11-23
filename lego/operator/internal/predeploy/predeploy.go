@@ -472,7 +472,6 @@ var StartExecFailure = regexp.MustCompile(`exec: "([A-Za-z0-9._/+-]{1,256})": (.
 // startErrorMessage names the program the runtime could not launch, so the
 // owner is not pointed at logs a command that never ran cannot have written.
 func startErrorMessage(runtimeMsg string) string {
-	const neverRan = "; the program never ran, so there are no pre-deploy logs"
 	m := StartExecFailure.FindStringSubmatch(runtimeMsg)
 	if m == nil {
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch)
@@ -480,11 +479,14 @@ func startErrorMessage(runtimeMsg string) string {
 	program, cause := m[1], m[2]
 	switch {
 	case strings.Contains(cause, "no such file or directory"), strings.Contains(cause, "executable file not found"):
-		return fmt.Sprintf("the pre-deploy command could not start: the program %q does not exist in this image%s", program, neverRan)
+		return fmt.Sprintf("%sthe program %q does not exist in this image%s",
+			appv1alpha1.PreDeployCouldNotStartPrefix, program, appv1alpha1.PreDeployNeverRanSuffix)
 	case strings.Contains(cause, "permission denied"):
-		return fmt.Sprintf("the pre-deploy command could not start: the program %q is not executable in this image%s", program, neverRan)
+		return fmt.Sprintf("%sthe program %q is not executable in this image%s",
+			appv1alpha1.PreDeployCouldNotStartPrefix, program, appv1alpha1.PreDeployNeverRanSuffix)
 	}
-	return fmt.Sprintf("the pre-deploy command could not start: the container runtime could not execute %q%s", program, neverRan)
+	return fmt.Sprintf("%sthe container runtime could not execute %q%s",
+		appv1alpha1.PreDeployCouldNotStartPrefix, program, appv1alpha1.PreDeployNeverRanSuffix)
 }
 
 // imagePullGrace is how long the Job's pod may wait on a failing image pull
