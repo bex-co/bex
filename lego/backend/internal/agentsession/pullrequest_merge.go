@@ -34,16 +34,19 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// The mark-ready and merge verbs (ADR090 D3 amendments w10/m538 and
-// w10/m577) let the agent finish the job when its task asks, as Devin does:
-// undraft the session's OWN recorded pull request, and merge it, pinned to the
-// head bex recorded for it, now or, with auto, once its required checks pass
-// (GitHub auto-merge, or the merge queue a base branch requires).
+// The mark-ready and merge verbs (ADR090 D3 amendments w10/m538, w10/m577
+// and w10/041) let the agent finish the job when its task asks, as Devin does:
+// undraft a pull request and merge it, now or, with auto, once its required
+// checks pass (GitHub auto-merge, or the merge queue a base branch requires).
+// By default they act on the session's own recorded pull request, pinned to
+// the head bex recorded for it; a number names another pull request of the
+// session's repository, pinned to the head GitHub reports when the call is
+// made, as Devin's credentials can merge any pull request there.
 // They ride the comment verb's Pod-bound gateway hop. The sandbox names no
-// pull request, owner or repository: all of them come from the durable
-// session record, and the GitHub token never leaves bex-api. Branch
-// protection and rulesets decide whether GitHub merges, and an approval is
-// never one of these verbs, so a required review stays a person's.
+// owner or repository: both come from the durable session record, and the
+// GitHub token never leaves bex-api. Branch protection and rulesets decide
+// whether GitHub merges, and an approval is never one of these verbs, so a
+// required review stays a person's.
 
 const (
 	// PullRequestReadyProxySegment and PullRequestMergeProxySegment are the
@@ -93,11 +96,14 @@ const (
 	// PullRequestAutoMergeNotAllowed refuses auto: the repository's "Allow
 	// auto-merge" setting is off, so GitHub cannot merge it later.
 	PullRequestAutoMergeNotAllowed = "auto_merge_not_allowed"
+	// PullRequestNotFound refuses a number that names no pull request of the
+	// session's repository (w10/041): none was opened, or it is an issue's.
+	PullRequestNotFound = "pull_request_not_found"
 )
 
 // mergeNoOtherRoute ends every hint of these verbs, as noOtherRoute does the
 // PR verb's.
-const mergeNoOtherRoute = " Do not try another route (gh pr ready, gh pr merge, the GitHub API or a token): mark_pull_request_ready and merge_pull_request are the only way this session can change its pull request's state."
+const mergeNoOtherRoute = " Do not try another route (gh pr ready, gh pr merge, the GitHub API or a token): mark_pull_request_ready and merge_pull_request are the only way this session can change a pull request's state."
 
 // NewPullRequestMergeError builds a typed refusal of the mark-ready or merge
 // verb with the code's standard status and hint. Both verbs share it, the PR
@@ -106,14 +112,15 @@ func NewPullRequestMergeError(code, message string) *PullRequestError {
 	status, hint := http.StatusBadGateway, "Retry once later; if it keeps failing, tell the user the pull request was left as it is."
 	switch code {
 	case PullRequestNoPullRequest:
-		status, hint = http.StatusConflict, "This session has no pull request yet. Push your work and open it with open_or_update_draft_pr first."
+		status, hint = http.StatusConflict, "This session has no pull request yet. Push your work and open it with open_or_update_draft_pr first, or pass the \"number\" of the pull request you were asked to act on."
 	case PullRequestClosed:
 		status, hint = http.StatusConflict, "The pull request is closed or already merged, so there is nothing to mark ready or merge. Tell the user."
 	case PullRequestDraft:
 		status, hint = http.StatusConflict, "GitHub does not merge a draft. Call mark_pull_request_ready first, then merge_pull_request."
 	case PullRequestHeadChanged:
-		status, hint = http.StatusConflict, "A merge is pinned to the head bex recorded for the pull request, so a commit it has not recorded is never merged unchecked. "+
-			"Push your work, call open_or_update_draft_pr to record the new head, then call merge_pull_request once more (with \"auto\": true to have GitHub merge it once its checks pass)."
+		status, hint = http.StatusConflict, "A merge is pinned to the head bex recorded for the session's pull request, or for another pull request to the head GitHub reported when you called, so a commit it has not seen is never merged unchecked. "+
+			"For the session's pull request: push your work, call open_or_update_draft_pr to record the new head, then call merge_pull_request once more (with \"auto\": true to have GitHub merge it once its checks pass). "+
+			"For another pull request: look at what was pushed to it, and call merge_pull_request once more only if you were still asked to merge it."
 	case PullRequestMergeBlocked:
 		status, hint = http.StatusConflict, "GitHub refused the merge for the reason in the message; the repository's branch protection decides, not you. "+
 			"Required checks pending: call merge_pull_request with \"auto\": true so GitHub merges it once they pass, and end your turn; or wait until they finish (`gh pr checks --watch`) and call merge_pull_request once more. "+
@@ -129,11 +136,14 @@ func NewPullRequestMergeError(code, message string) *PullRequestError {
 		status, hint = http.StatusConflict, "The repository does not allow auto-merge (its \"Allow auto-merge\" setting is off), so GitHub cannot merge the pull request later. "+
 			"Wait until its required checks pass and call merge_pull_request without \"auto\", or tell the user a person has to turn auto-merge on or merge it."
 	case PullRequestInvalidRequest:
-		status, hint = http.StatusUnprocessableEntity, "mark_pull_request_ready takes no input. merge_pull_request takes only an optional \"method\" (merge, squash or rebase), \"commitTitle\", \"commitMessage\" and \"auto\": true, or \"disableAuto\": true alone; the repository and the pull request are fixed by the platform."
+		status, hint = http.StatusUnprocessableEntity, "mark_pull_request_ready takes only an optional \"number\". merge_pull_request takes only an optional \"number\", \"method\" (merge, squash or rebase), \"commitTitle\", \"commitMessage\" and \"auto\": true, or \"disableAuto\": true with at most a \"number\". "+
+			"\"number\" is a pull request number of the session's repository, which is fixed by the platform; omit it for the session's own pull request."
+	case PullRequestNotFound:
+		status, hint = http.StatusNotFound, "Check the number with `gh pr list` (an issue's number is not a pull request's), or tell the user the pull request was not found."
 	case PullRequestTooLarge:
 		status, hint = http.StatusRequestEntityTooLarge, fmt.Sprintf("Keep the commit title to %d characters on one line and the commit message under %d bytes.", MaxMergeCommitTitleRunes, MaxMergeCommitMessageBytes)
 	case PullRequestForbidden:
-		status, hint = http.StatusForbidden, "This sandbox may only mark ready or merge its own session's pull request while the session is running."
+		status, hint = http.StatusForbidden, "This sandbox may only mark ready or merge pull requests of its own session's repository while the session is running."
 	case PullRequestRateLimited:
 		status, hint = http.StatusTooManyRequests, "Wait and call this tool again later; do not call it in a loop."
 	case PullRequestUnavailable:
@@ -142,12 +152,35 @@ func NewPullRequestMergeError(code, message string) *PullRequestError {
 	return &PullRequestError{Status: status, Code: code, Message: message, Hint: hint + mergeNoOtherRoute}
 }
 
-// PullRequestMergeContent is the sandbox's whole say in a merge: an optional
-// method and commit text, and whether GitHub merges it now or once its
-// required checks pass (Auto, gh pr merge --auto), or stops merging it later
-// (DisableAuto, gh pr merge --disable-auto). Nothing in it names a pull
-// request.
+// PullRequestReadyContent is the sandbox's whole say in a mark-ready: which
+// pull request of the session's repository, the session's own when Number is
+// unset (w10/041).
+type PullRequestReadyContent struct {
+	Number int `json:"number,omitempty"`
+}
+
+// Validate enforces the content rules on both hops.
+func (c PullRequestReadyContent) Validate() *PullRequestError {
+	return validPullRequestNumber(c.Number)
+}
+
+// validPullRequestNumber refuses a number no pull request can have; zero is
+// unset, the session's own pull request.
+func validPullRequestNumber(number int) *PullRequestError {
+	if number < 0 {
+		return NewPullRequestMergeError(PullRequestInvalidRequest, "number must be a positive pull request number")
+	}
+	return nil
+}
+
+// PullRequestMergeContent is the sandbox's whole say in a merge: which pull
+// request of the session's repository (Number, the session's own when unset,
+// w10/041), an optional method and commit text, and whether GitHub merges it
+// now or once its required checks pass (Auto, gh pr merge --auto), or stops
+// merging it later (DisableAuto, gh pr merge --disable-auto). Nothing in it
+// names a repository or a head.
 type PullRequestMergeContent struct {
+	Number        int    `json:"number,omitempty"`
 	Method        string `json:"method,omitempty"`
 	CommitTitle   string `json:"commitTitle,omitempty"`
 	CommitMessage string `json:"commitMessage,omitempty"`
@@ -157,8 +190,11 @@ type PullRequestMergeContent struct {
 
 // Validate enforces the content rules on both hops.
 func (c PullRequestMergeContent) Validate() *PullRequestError {
+	if invalid := validPullRequestNumber(c.Number); invalid != nil {
+		return invalid
+	}
 	if c.DisableAuto && (c.Auto || c.Method != "" || c.CommitTitle != "" || c.CommitMessage != "") {
-		return NewPullRequestMergeError(PullRequestInvalidRequest, "disableAuto takes no other field")
+		return NewPullRequestMergeError(PullRequestInvalidRequest, "disableAuto takes no other field but number")
 	}
 	if c.Method != "" && !slices.Contains(github.MergeMethods, c.Method) {
 		return NewPullRequestMergeError(PullRequestInvalidRequest, "method must be merge, squash or rebase")
@@ -179,20 +215,24 @@ func (c PullRequestMergeContent) Validate() *PullRequestError {
 }
 
 // PullRequestReadyRequest is the signed, kind-tagged gateway→bex-api
-// mark-ready request: the Pod-verified session identity, and nothing else.
+// mark-ready request: the Pod-verified session identity plus the pull request
+// the sandbox named, if any.
 type PullRequestReadyRequest struct {
 	Kind string `json:"kind"`
 	MintRequest
+	PullRequestReadyContent
 }
 
 func (r PullRequestReadyRequest) verbKind() string { return r.Kind }
 
 // PullRequestReadyResponse is what the sandbox receives. AlreadyReady marks
-// a pull request that was not a draft, so nothing changed.
+// a pull request that was not a draft, so nothing changed. OtherPullRequest
+// marks one that is not the session's own (w10/041).
 type PullRequestReadyResponse struct {
-	URL          string `json:"url"`
-	Number       int    `json:"number"`
-	AlreadyReady bool   `json:"alreadyReady,omitempty"`
+	URL              string `json:"url"`
+	Number           int    `json:"number"`
+	AlreadyReady     bool   `json:"alreadyReady,omitempty"`
+	OtherPullRequest bool   `json:"otherPullRequest,omitempty"`
 }
 
 // PullRequestMergeRequest is the signed, kind-tagged gateway→bex-api merge
@@ -206,10 +246,12 @@ type PullRequestMergeRequest struct {
 func (r PullRequestMergeRequest) verbKind() string { return r.Kind }
 
 // PullRequestMergeResponse is what a merge did to the pull request, its URL
-// and number, at the head bex recorded (HeadSHA), with exactly one outcome:
+// and number, at HeadSHA (the head bex recorded for the session's own pull
+// request; for another, OtherPullRequest, the head GitHub reported when the
+// call was made, w10/041), with exactly one outcome:
 //   - Merged: merged now, by SHA (the commit the merge created) and Method;
-//     the driver's delivery check counts from HeadSHA once GitHub deletes the
-//     merged branch;
+//     for the session's own pull request the driver's delivery check counts
+//     from HeadSHA once GitHub deletes the merged branch;
 //   - AutoMerge: GitHub auto-merge is armed with Method, so GitHub merges it
 //     once its required checks pass;
 //   - MergeQueue: it is in its base branch's merge queue, or joins it once
@@ -228,6 +270,7 @@ type PullRequestMergeResponse struct {
 	AutoMerge         bool   `json:"autoMerge,omitempty"`
 	MergeQueue        bool   `json:"mergeQueue,omitempty"`
 	AutoMergeDisabled bool   `json:"autoMergeDisabled,omitempty"`
+	OtherPullRequest  bool   `json:"otherPullRequest,omitempty"`
 }
 
 // wellFormed is an answer the gateway client and the driver accept: the pull
@@ -242,18 +285,22 @@ func (r PullRequestMergeResponse) wellFormed() bool {
 	return r.URL != "" && r.Number > 0 && outcomes == 1 && (!r.Merged || r.SHA != "")
 }
 
-// MarkReady undrafts the session's own recorded pull request. A pull request
-// that is already ready answers AlreadyReady and is left as it is. Every
-// refusal is a *PullRequestError.
+// MarkReady undrafts the session's own recorded pull request, or the pull
+// request of its repository the request names (w10/041). A pull request that
+// is already ready answers AlreadyReady and is left as it is. Every refusal
+// is a *PullRequestError.
 func (p *PullRequester) MarkReady(ctx context.Context, req PullRequestReadyRequest) (response PullRequestReadyResponse, err error) {
-	auditRepository := ""
-	defer func() { p.audit(ctx, AuditVerbPullRequestReady, req.MintRequest, auditRepository, err) }()
-	target, pr, refusal := p.recordedPullRequest(ctx, req.MintRequest)
-	auditRepository = target.repository
+	auditTarget := ""
+	defer func() { p.audit(ctx, AuditVerbPullRequestReady, req.MintRequest, auditTarget, err) }()
+	if invalid := req.PullRequestReadyContent.Validate(); invalid != nil {
+		return PullRequestReadyResponse{}, invalid
+	}
+	target, pr, refusal := p.actedOnPullRequest(ctx, req.MintRequest, req.Number)
+	auditTarget = target.auditName()
 	if refusal != nil {
 		return PullRequestReadyResponse{}, refusal
 	}
-	response = PullRequestReadyResponse{URL: pr.HTMLURL, Number: pr.Number}
+	response = PullRequestReadyResponse{URL: pr.HTMLURL, Number: pr.Number, OtherPullRequest: target.other()}
 	if !pr.Draft {
 		response.AlreadyReady = true
 		return response, nil
@@ -268,8 +315,10 @@ func (p *PullRequester) MarkReady(ctx context.Context, req PullRequestReadyReque
 }
 
 // Merge merges the session's own recorded pull request, pinned to the head
-// bex recorded for it, with the method the agent named or else the
-// repository's first allowed one (ADR090 D3, w10/m577 for the rest):
+// bex recorded for it, or the pull request of its repository the request
+// names, pinned to the head GitHub reports for it now (w10/041), with the
+// method the agent named or else the repository's first allowed one (ADR090
+// D3, w10/m577 for the rest):
 //   - a base branch that requires a merge queue takes it into the queue, with
 //     or without auto, as gh pr merge and GitHub's button do; one already
 //     queued is left as it is;
@@ -278,38 +327,48 @@ func (p *PullRequester) MarkReady(ctx context.Context, req PullRequestReadyReque
 //     one already armed is left as it is;
 //   - disableAuto takes it out of the queue or disables its auto-merge.
 //
-// A merge records prState merged on the session at once, so REST, GraphQL
-// and MCP read it without waiting for the PR-state poller; an armed or
-// queued answer leaves that to the poller and the webhook. Every refusal is
-// a *PullRequestError.
+// A merge records prState merged at once on every session of the workspace
+// that recorded the pull request, so REST, GraphQL and MCP read it without
+// waiting for the PR-state poller; an armed or queued answer leaves that to
+// the poller and the webhook. Every refusal is a *PullRequestError.
 func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) (response PullRequestMergeResponse, err error) {
-	auditRepository := ""
-	defer func() { p.audit(ctx, AuditVerbPullRequestMerge, req.MintRequest, auditRepository, err) }()
+	auditTarget := ""
+	defer func() { p.audit(ctx, AuditVerbPullRequestMerge, req.MintRequest, auditTarget, err) }()
 	if invalid := req.PullRequestMergeContent.Validate(); invalid != nil {
 		return PullRequestMergeResponse{}, invalid
 	}
-	target, pr, refusal := p.recordedPullRequest(ctx, req.MintRequest)
-	auditRepository = target.repository
+	target, pr, refusal := p.actedOnPullRequest(ctx, req.MintRequest, req.Number)
+	auditTarget = target.auditName()
 	if refusal != nil {
 		return PullRequestMergeResponse{}, refusal
 	}
 	session := target.session
-	response = PullRequestMergeResponse{URL: pr.HTMLURL, Number: pr.Number, HeadSHA: session.HeadSHA}
+	// The session's own pull request merges at the head bex recorded for it.
+	// Another has no recorded head, so it merges at the head GitHub reported
+	// just now, which GitHub refuses if a push moves it before the merge.
+	other, pin := target.other(), session.HeadSHA
+	if other {
+		pin = pr.HeadSHA
+	}
+	response = PullRequestMergeResponse{URL: pr.HTMLURL, Number: pr.Number, HeadSHA: pin, OtherPullRequest: other}
 	if req.DisableAuto {
 		// Stopping a later merge is never pinned: any head may be left unmerged.
-		return p.disableAutoMerge(ctx, target, pr, response)
+		return p.disableAutoMerge(ctx, target.pullRequestTarget, pr, response)
 	}
 	if pr.Draft {
 		return PullRequestMergeResponse{}, NewPullRequestMergeError(PullRequestDraft, fmt.Sprintf("pull request #%d is still a draft", pr.Number))
 	}
-	if session.HeadSHA == "" || !strings.EqualFold(session.HeadSHA, pr.HeadSHA) {
+	switch {
+	case other && pin == "":
+		return PullRequestMergeResponse{}, NewPullRequestMergeError(PullRequestUpstreamError, fmt.Sprintf("GitHub did not return pull request #%d's head", pr.Number))
+	case !other && (pin == "" || !strings.EqualFold(pin, pr.HeadSHA)):
 		return PullRequestMergeResponse{}, NewPullRequestMergeError(PullRequestHeadChanged, fmt.Sprintf(
-			"pull request #%d's head is %s, but bex recorded %s for it", pr.Number, ShortSHA(pr.HeadSHA), cmp.Or(ShortSHA(session.HeadSHA), "nothing")))
+			"pull request #%d's head is %s, but bex recorded %s for it", pr.Number, ShortSHA(pr.HeadSHA), cmp.Or(ShortSHA(pin), "nothing")))
 	}
 	opts := github.MergeOptions{
-		SHA: session.HeadSHA, Method: req.Method, CommitTitle: strings.TrimSpace(req.CommitTitle), CommitMessage: req.CommitMessage, Base: pr.BaseRef,
+		SHA: pin, Method: req.Method, CommitTitle: strings.TrimSpace(req.CommitTitle), CommitMessage: req.CommitMessage, Base: pr.BaseRef,
 	}
-	state, stateErr := p.mergeState(ctx, target, pr)
+	state, stateErr := p.mergeState(ctx, target.pullRequestTarget, pr)
 	switch {
 	case stateErr != nil && req.Auto:
 		return PullRequestMergeResponse{}, stateErr
@@ -321,7 +380,7 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 		response.MergeQueue = true
 		return response, nil
 	case state.MergeQueueEnabled:
-		if err := p.GitHub.EnqueuePullRequest(ctx, target.installationID, target.name, pr.NodeID, session.HeadSHA); err != nil {
+		if err := p.GitHub.EnqueuePullRequest(ctx, target.installationID, target.name, pr.NodeID, pin); err != nil {
 			return PullRequestMergeResponse{}, mergeRefusal(err)
 		}
 		response.MergeQueue = true
@@ -344,7 +403,7 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 	if err != nil {
 		return PullRequestMergeResponse{}, mergeRefusal(err)
 	}
-	p.recordMerged(ctx, session.ID)
+	p.recordMerged(ctx, target)
 	response.Merged, response.SHA, response.Method = true, result.SHA, result.Method
 	return response, nil
 }
@@ -377,41 +436,82 @@ func (p *PullRequester) disableAutoMerge(ctx context.Context, target pullRequest
 	return response, nil
 }
 
-// recordedPullRequest is the front half both verbs share: the verified
-// identity, the live sandbox, and the session's recorded pull request read
-// back from GitHub as the session's own (its number, its head branch, its
-// repository) and still open. target is set once the repository is verified,
-// so the caller's audit names it even when a later step refuses.
-func (p *PullRequester) recordedPullRequest(ctx context.Context, req MintRequest) (pullRequestTarget, github.PullRequestDetail, *PullRequestError) {
+// stateTarget is pullRequestTarget plus the number of the pull request whose
+// state both verbs change.
+type stateTarget struct {
+	pullRequestTarget
+	number int
+}
+
+// other reports a pull request other than the session's own (w10/041).
+func (t stateTarget) other() bool {
+	return t.number != t.session.PRNumber
+}
+
+// auditName names the repository, and the pull request once it is chosen,
+// for the verbs' audit.
+func (t stateTarget) auditName() string {
+	return PullRequestAuditName(t.repository, t.number)
+}
+
+// PullRequestAuditName is the audit TargetName of a verb acting on pull
+// request number of repository ("octo/repo#42"), or on the repository alone
+// before a number is known (w10/041).
+func PullRequestAuditName(repository string, number int) string {
+	if repository == "" || number <= 0 {
+		return repository
+	}
+	return fmt.Sprintf("%s#%d", repository, number)
+}
+
+// actedOnPullRequest is the front half both verbs share: the verified
+// identity, the live sandbox, and the pull request read back from GitHub and
+// still open. With number unset (or the session's own) that is the session's
+// recorded pull request, verified as its own (its number, its head branch,
+// its repository); a takeover session's is the person's pull request it took
+// over. Any other number names a pull request of the session's repository,
+// verified as that repository's, from any head branch or fork (w10/041). The
+// target names the repository and the number as soon as each is known, so
+// the caller's audit names them even when a later step refuses.
+func (p *PullRequester) actedOnPullRequest(ctx context.Context, req MintRequest, number int) (stateTarget, github.PullRequestDetail, *PullRequestError) {
 	if p.GitHub == nil || p.Connections == nil || p.Sessions == nil {
-		return pullRequestTarget{}, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestUnavailable, "pull requests are not configured")
+		return stateTarget{}, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestUnavailable, "pull requests are not configured")
 	}
 	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
-		return pullRequestTarget{}, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestForbidden, "incomplete verified identity")
+		return stateTarget{}, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestForbidden, "incomplete verified identity")
 	}
-	target, refusal := p.sessionTarget(ctx, req, NewPullRequestMergeError)
+	resolved, refusal := p.sessionTarget(ctx, req, NewPullRequestMergeError)
+	target := stateTarget{pullRequestTarget: resolved}
 	if refusal != nil {
 		return target, github.PullRequestDetail{}, refusal
 	}
-	session := target.session
-	// The one pull request these verbs can reach is the one the session
-	// recorded; a takeover session's is the person's pull request it took over.
-	if session.PRNumber <= 0 {
+	session := resolved.session
+	target.number = cmp.Or(number, session.PRNumber)
+	if target.number <= 0 {
 		return target, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestNoPullRequest, "this session has not opened its pull request yet")
 	}
-	pr, err := p.GitHub.GetPullRequest(ctx, target.installationID, target.owner, target.name, session.PRNumber)
-	if err != nil {
-		return target, github.PullRequestDetail{}, gitHubStateRefusal(err, PullRequestUpstreamError, "GitHub could not read the session's pull request")
+	pr, err := p.GitHub.GetPullRequest(ctx, target.installationID, target.owner, target.name, target.number)
+	var apiErr *github.APIError
+	switch {
+	case err != nil && target.other() && errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound:
+		return target, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestNotFound, fmt.Sprintf("%s has no pull request #%d", target.repository, target.number))
+	case err != nil:
+		return target, github.PullRequestDetail{}, gitHubStateRefusal(err, PullRequestUpstreamError, fmt.Sprintf("GitHub could not read pull request #%d", target.number))
 	}
-	headRef := session.Branch
-	if session.IsTakeover() {
-		headRef = session.TakeoverHeadRef
+	if pr.Number != target.number || !strings.EqualFold(pr.BaseRepo, target.repository) {
+		return target, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestUpstreamError, fmt.Sprintf("GitHub returned a different pull request than #%d of %s", target.number, target.repository))
 	}
-	if pr.Number != session.PRNumber || pr.HeadRef != headRef || !strings.EqualFold(pr.BaseRepo, target.repository) || !strings.EqualFold(pr.HeadRepo, target.repository) {
-		return target, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestUpstreamError, "GitHub returned a different pull request than the session's own")
+	if !target.other() {
+		headRef := session.Branch
+		if session.IsTakeover() {
+			headRef = session.TakeoverHeadRef
+		}
+		if pr.HeadRef != headRef || !strings.EqualFold(pr.HeadRepo, target.repository) {
+			return target, github.PullRequestDetail{}, NewPullRequestMergeError(PullRequestUpstreamError, "GitHub returned a different pull request than the session's own")
+		}
 	}
 	if pr.Merged {
-		p.recordMerged(ctx, session.ID)
+		p.recordMerged(ctx, target)
 	}
 	if pr.Merged || pr.State != "open" {
 		state := store.PRStateClosed
@@ -423,12 +523,22 @@ func (p *PullRequester) recordedPullRequest(ctx context.Context, req MintRequest
 	return target, pr, nil
 }
 
-// recordMerged records the session's pull request as merged, now, and never
-// read again. The merge stands on GitHub either way, and the PR-state poller
-// would record it later, so a failed write is only logged.
-func (p *PullRequester) recordMerged(ctx context.Context, sessionID string) {
-	if _, err := p.Sessions.RecordAgentSessionPRState(ctx, sessionID, store.PRStateMerged, p.now(), nil); err != nil {
-		log.Printf("agent-session pull request merge: record merged state failed (session=%s): %v", sessionID, err)
+// recordMerged records the target's pull request as merged, now, and never
+// read again: on the session itself when it is the session's own, and
+// otherwise on every session of the workspace that recorded it, another
+// session's included, as a pull_request delivery would (w10/041). The merge
+// stands on GitHub either way, and the PR-state poller would record it later,
+// so a failed write is only logged.
+func (p *PullRequester) recordMerged(ctx context.Context, target stateTarget) {
+	session, number, now := target.session, target.number, p.now()
+	if !target.other() {
+		if _, err := p.Sessions.RecordAgentSessionPRState(ctx, session.ID, store.PRStateMerged, now, nil); err != nil {
+			log.Printf("agent-session pull request merge: record merged state failed (session=%s): %v", session.ID, err)
+		}
+		return
+	}
+	if _, err := p.Sessions.RecordPullRequestState(ctx, []string{session.WorkspaceID}, target.repository, number, store.PRStateMerged, now, nil); err != nil {
+		log.Printf("agent-session pull request merge: record merged state of %s#%d failed (session=%s): %v", target.repository, number, session.ID, err)
 	}
 }
 

@@ -49,6 +49,10 @@ func (commentSessions) RecordAgentSessionPullRequest(context.Context, string, st
 	return nil
 }
 
+func (commentSessions) RecordPullRequestState(context.Context, []string, string, int, string, time.Time, *time.Time) (int, error) {
+	return 0, nil
+}
+
 func (commentSessions) RecordAgentSessionPRState(context.Context, string, string, time.Time, *time.Time) (bool, error) {
 	return true, nil
 }

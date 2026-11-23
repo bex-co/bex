@@ -111,6 +111,12 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
     /if a person asks you not to merge after all, call `merge_pull_request` with `disableAuto: true`/,
   );
   assert.doesNotMatch(text, /gh pr checks --watch/);
+  // w10/041: asked about another pull request of the repository, it passes
+  // that one's number, merged at the head GitHub reports when it calls.
+  assert.match(
+    text,
+    /When the task or a person asks you to mark ready or merge another pull request of this repository, pass its `number` to either tool; that merge is pinned to the head GitHub reports for it when you call/,
+  );
   assert.match(
     text,
     /you cannot approve your own pull request: when GitHub refuses, report its reason as given and do not call the tool in a loop/,

@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -86,6 +87,20 @@ type fakeForge struct {
 	enqueueErr error
 	disabled   []bool
 	disableErr error
+	// other is a second pull request of the repository, a person's or
+	// another session's, which a named number reaches (w10/041).
+	other *github.PullRequestDetail
+}
+
+// byNode is the pull request with GraphQL node id node, nil for none.
+func (f *fakeForge) byNode(node string) *github.PullRequestDetail {
+	switch {
+	case node == f.existing.NodeID:
+		return &f.existing
+	case f.other != nil && node == f.other.NodeID:
+		return f.other
+	}
+	return nil
 }
 
 // forgeMerge is one merge, or one auto-merge armed (by node), the merge verb
@@ -102,7 +117,7 @@ func (f *fakeForge) PullRequestMergeState(_ context.Context, _ int64, _, nodeID 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stateReads++
-	if nodeID != f.existing.NodeID {
+	if f.byNode(nodeID) == nil {
 		return github.MergeState{}, &github.APIError{Status: http.StatusNotFound}
 	}
 	return f.state, f.stateErr
@@ -134,7 +149,7 @@ func (f *fakeForge) DisablePullRequestAutoMerge(_ context.Context, _ int64, _, n
 	if f.disableErr != nil {
 		return f.disableErr
 	}
-	if nodeID != f.existing.NodeID {
+	if f.byNode(nodeID) == nil {
 		return &github.APIError{Status: http.StatusNotFound}
 	}
 	f.disabled = append(f.disabled, queued)
@@ -148,7 +163,9 @@ func (f *fakeForge) MarkPullRequestReady(_ context.Context, _ int64, _, nodeID s
 		return f.readyErr
 	}
 	f.readied = append(f.readied, nodeID)
-	f.existing.Draft = false
+	if pr := f.byNode(nodeID); pr != nil {
+		pr.Draft = false
+	}
 	return nil
 }
 
@@ -173,6 +190,9 @@ func (f *fakeForge) GetPullRequest(_ context.Context, _ int64, _, _ string, numb
 	f.reads++
 	if f.err != nil {
 		return github.PullRequestDetail{}, f.err
+	}
+	if f.other != nil && number == f.other.Number {
+		return *f.other, nil
 	}
 	if number != f.existing.Number {
 		return github.PullRequestDetail{}, &github.APIError{Status: http.StatusNotFound}
@@ -255,9 +275,25 @@ type prSessions struct {
 	mu       sync.Mutex
 	session  store.AgentSession
 	recorded int
-	// states records each pull request state written, and stateErr fails it.
-	states   []string
-	stateErr error
+	// states records each pull request state written, and stateErr fails it;
+	// repoStates records each state written on every session of a workspace
+	// that recorded a pull request ("<workspace> <repo>#<n> <state>").
+	states     []string
+	stateErr   error
+	repoStates []string
+}
+
+func (s *prSessions) RecordPullRequestState(_ context.Context, workspaceIDs []string, repo string, number int, state string, _ time.Time, next *time.Time) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stateErr != nil {
+		return 0, s.stateErr
+	}
+	if next != nil {
+		return 0, errors.New("a merged pull request is never read again")
+	}
+	s.repoStates = append(s.repoStates, fmt.Sprintf("%s %s#%d %s", strings.Join(workspaceIDs, ","), repo, number, state))
+	return 1, nil
 }
 
 func (s *prSessions) RecordAgentSessionPRState(_ context.Context, id, state string, _ time.Time, next *time.Time) (bool, error) {

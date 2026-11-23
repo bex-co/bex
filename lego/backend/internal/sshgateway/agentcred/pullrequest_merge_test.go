@@ -19,6 +19,7 @@ package agentcred
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -55,6 +56,15 @@ func (s mergeSessions) GetAgentSession(ctx context.Context, id string) (store.Ag
 
 func (mergeSessions) RecordAgentSessionPullRequest(context.Context, string, string, int, string) error {
 	return nil
+}
+
+// RecordPullRequestState records "<repo>#<n> <state>" for a merged pull
+// request that is not the session's own (w10/041).
+func (s mergeSessions) RecordPullRequestState(_ context.Context, _ []string, repo string, number int, state string, _ time.Time, _ *time.Time) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	*s.states = append(*s.states, fmt.Sprintf("%s#%d %s", repo, number, state))
+	return 1, nil
 }
 
 func (s mergeSessions) RecordAgentSessionPRState(_ context.Context, _, state string, _ time.Time, _ *time.Time) (bool, error) {
@@ -132,8 +142,14 @@ func TestPullRequestReadyAndMergeRoutesActOnTheSessionsPR(t *testing.T) {
 	verbs := []string{}
 	for _, event := range audit.events {
 		verbs = append(verbs, event.Verb+"/"+string(event.Outcome))
-		if event.Caller != "sbx-a-0" || event.Target != "agent-session:ags-one" || event.TargetName != "octo/repo" {
-			t.Fatalf("gateway audit = %+v", event)
+		// w10/041: an answer names the pull request, as bex-api's audit does;
+		// a refusal that names none names the repository.
+		targetName := "octo/repo#7"
+		if event.Outcome == core.AuditDenied {
+			targetName = "octo/repo"
+		}
+		if event.Caller != "sbx-a-0" || event.Target != "agent-session:ags-one" || event.TargetName != targetName {
+			t.Fatalf("gateway audit = %+v, want it to name %s", event, targetName)
 		}
 	}
 	want := agentsession.AuditVerbPullRequestMerge + "/" + string(core.AuditDenied) + " " + agentsession.AuditVerbPullRequestReady + "/" + string(core.AuditAllowed) + " " +
@@ -164,10 +180,48 @@ func TestPullRequestReadyAndMergeRoutesRefuseForeignPodsAndBranches(t *testing.T
 				if forge.calls != 0 {
 					t.Fatal("a refused request reached GitHub")
 				}
-				if !strings.Contains(reply.error.Hint, "its own session's pull request") || !strings.Contains(reply.error.Hint, "gh pr merge") {
+				if !strings.Contains(reply.error.Hint, "its own session's repository") || !strings.Contains(reply.error.Hint, "gh pr merge") {
 					t.Fatalf("hint = %q", reply.error.Hint)
 				}
 			})
+		}
+	}
+}
+
+// w10/041: a session marks ready and merges a pull request of its repository
+// it did not open when it names its number, here a person's from a fork while
+// the session has none of its own: pinned to the head GitHub reports, its
+// merged state recorded on the workspace's sessions that recorded it, and
+// both hops' audit naming which pull request.
+func TestPullRequestReadyAndMergeRoutesActOnANamedPullRequest(t *testing.T) {
+	const personHead = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	broker, forge, audit, states := mergeHarness(t, 0)
+	forge.pr.HeadRef, forge.pr.HeadRepo, forge.pr.HeadSHA = "fix-typo", "alice/repo", personHead
+	reply := postPR(t, broker, ownReadyURL(t), "10.0.0.1", "application/json", `{"number":7}`)
+	var ready agentsession.PullRequestReadyResponse
+	if reply.code != http.StatusOK || json.Unmarshal([]byte(reply.raw), &ready) != nil || ready.Number != 7 || !ready.OtherPullRequest {
+		t.Fatalf("ready: status=%d body=%s", reply.code, reply.raw)
+	}
+	reply = postPR(t, broker, ownMergeURL(t), "10.0.0.1", "application/json", `{"number":7,"method":"squash"}`)
+	var merged agentsession.PullRequestMergeResponse
+	if reply.code != http.StatusOK || json.Unmarshal([]byte(reply.raw), &merged) != nil || !merged.Merged || merged.Number != 7 || merged.HeadSHA != personHead || !merged.OtherPullRequest {
+		t.Fatalf("merge: status=%d body=%s", reply.code, reply.raw)
+	}
+	if !strings.Contains(reply.raw, `"otherPullRequest":true`) {
+		t.Fatalf("merge answer %s does not say it is another pull request", reply.raw)
+	}
+	if len(forge.readied) != 1 || len(forge.merged) != 1 || forge.merged[0].SHA != personHead {
+		t.Fatalf("GitHub readied=%v merged=%+v, want the named pull request at GitHub's head", forge.readied, forge.merged)
+	}
+	if len(*states) != 1 || (*states)[0] != "octo/repo#7 merged" {
+		t.Fatalf("recorded states = %v, want #7 merged on the workspace's sessions", *states)
+	}
+	if len(audit.events) != 2 {
+		t.Fatalf("gateway audit = %+v", audit.events)
+	}
+	for _, event := range audit.events {
+		if event.Outcome != core.AuditAllowed || event.TargetName != "octo/repo#7" {
+			t.Fatalf("gateway audit = %+v, want allowed naming octo/repo#7", event)
 		}
 	}
 }
@@ -216,19 +270,23 @@ func TestPullRequestMergeRouteArmsAndDisarmsAutoMerge(t *testing.T) {
 	}
 }
 
-// The sandbox names nothing but the merge method and commit text: a request
-// naming the PR, the repository, the head or anything else is refused before
-// bex-api, as is a malformed body.
+// The sandbox names nothing but a pull request number (w10/041), the merge
+// method and commit text: a request naming the repository, the head or
+// anything else is refused before bex-api, as is a malformed body.
 func TestPullRequestReadyAndMergeRoutesValidateTheBody(t *testing.T) {
 	cases := []struct {
 		name, segment, contentType, body string
 		status                           int
 		code                             string
 	}{
-		{"ready names a PR", agentsession.PullRequestReadyProxySegment, "application/json", `{"number":8}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"ready names a negative number", agentsession.PullRequestReadyProxySegment, "application/json", `{"number":-8}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"ready names a number as text", agentsession.PullRequestReadyProxySegment, "application/json", `{"number":"8"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"ready names a repository", agentsession.PullRequestReadyProxySegment, "application/json", `{"number":8,"repository":"octo/other"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"ready not json", agentsession.PullRequestReadyProxySegment, "application/json", ``, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"ready wrong content type", agentsession.PullRequestReadyProxySegment, "text/plain", `{}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
-		{"merge names a PR", agentsession.PullRequestMergeProxySegment, "application/json", `{"number":8}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge names a fractional number", agentsession.PullRequestMergeProxySegment, "application/json", `{"number":8.5}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge names a negative number", agentsession.PullRequestMergeProxySegment, "application/json", `{"number":-8}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
+		{"merge names an owner", agentsession.PullRequestMergeProxySegment, "application/json", `{"number":8,"owner":"octo"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"merge names the head", agentsession.PullRequestMergeProxySegment, "application/json", `{"sha":"abc"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"merge names a repository", agentsession.PullRequestMergeProxySegment, "application/json", `{"repository":"octo/other"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},
 		{"merge snake_case method", agentsession.PullRequestMergeProxySegment, "application/json", `{"merge_method":"squash"}`, http.StatusUnprocessableEntity, agentsession.PullRequestInvalidRequest},

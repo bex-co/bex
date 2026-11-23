@@ -562,15 +562,15 @@ func writeRefusal(repository string) string {
 		"and change code only by pushing your session branch."
 }
 
-// pullRequestStateRefusal answers gh pr ready and gh pr merge (w10/m538): the
-// session's pull request changes state only through the bex tools, which
-// act on that one pull request at the head bex recorded, then what else gh
-// can write here. It names the merge tool's auto and disableAuto, which
-// stand in for gh pr merge --auto, the merge queue and --disable-auto
-// (w10/m577).
+// pullRequestStateRefusal answers gh pr ready and gh pr merge (w10/m538): a
+// pull request changes state only through the bex tools, which act on the
+// session's own pull request at the head bex recorded, or on the one of its
+// repository whose number they are given (w10/041), then what else gh can
+// write here. It names the merge tool's auto and disableAuto, which stand in
+// for gh pr merge --auto, the merge queue and --disable-auto (w10/m577).
 func pullRequestStateRefusal(repository string) string {
 	return "bex: gh pr ready and gh pr merge do not work in this session; call the mark_pull_request_ready and merge_pull_request tools of the bex MCP server instead, " +
-		"only when your task or a person asks. merge_pull_request with \"auto\": true arms auto-merge or joins the merge queue (for gh pr merge --auto), and with \"disableAuto\": true undoes it (for --disable-auto). " +
+		"only when your task or a person asks, with \"number\" for a pull request other than this session's own. merge_pull_request with \"auto\": true arms auto-merge or joins the merge queue (for gh pr merge --auto), and with \"disableAuto\": true undoes it (for --disable-auto). " +
 		strings.TrimPrefix(writeRefusal(repository), "bex: ")
 }
 

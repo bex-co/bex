@@ -82,7 +82,7 @@ const merged = {
   headSha: "0123456789abcdef0123456789abcdef01234567",
 };
 
-test("mark_pull_request_ready posts an empty object to the gateway's ready verb", async (t) => {
+test("mark_pull_request_ready posts an empty object, or only a number, to the gateway's ready verb", async (t) => {
   const gateway = await stubGateway({
     [`${base}/ready`]: { status: 200, body: { url: merged.url, number: 12 } },
   });
@@ -107,10 +107,85 @@ test("mark_pull_request_ready posts an empty object to the gateway's ready verb"
       body: "{}",
     },
   ]);
-  // Arguments name nothing: a pull request number is refused before any request.
-  const named = await markPullRequestReady({ number: 13 }, gateway.env);
-  assert.equal(!named.ok && named.error.code, "invalid_request");
+  // w10/041: a number names another pull request of the repository, and the
+  // answer says it is not the session's own.
+  const other = await stubGateway({
+    [`${base}/ready`]: {
+      status: 200,
+      body: {
+        url: "https://github.com/acme/widgets/pull/13",
+        number: 13,
+        otherPullRequest: true,
+      },
+    },
+  });
+  t.after(other.close);
+  const named = await markPullRequestReady({ number: 13 }, other.env);
+  assert.deepEqual(named, {
+    ok: true,
+    result: {
+      url: "https://github.com/acme/widgets/pull/13",
+      number: 13,
+      otherPullRequest: true,
+    },
+  });
+  assert.equal(other.requests[0].body, JSON.stringify({ number: 13 }));
+  // Nothing else, and no number a pull request cannot have, is sent.
+  for (const args of [
+    { number: 0 },
+    { number: -1 },
+    { number: 1.5 },
+    { number: "13" },
+    { repository: "acme/other" },
+    { number: 13, owner: "acme" },
+    [],
+  ]) {
+    const refused = await markPullRequestReady(args, gateway.env);
+    assert.equal(
+      !refused.ok && refused.error.code,
+      "invalid_request",
+      JSON.stringify(args),
+    );
+  }
   assert.equal(gateway.requests.length, 1);
+});
+
+// w10/041: merging another pull request of the repository by number sends the
+// number, and leaves the session's own pull request record as it was, since
+// that merge is not this session's delivery.
+test("merge_pull_request with a number merges another pull request and keeps the session's record", async (t) => {
+  const otherMerged = {
+    url: "https://github.com/acme/widgets/pull/42",
+    number: 42,
+    merged: true,
+    sha: "1111111111111111111111111111111111111111",
+    method: "merge",
+    headSha: "2222222222222222222222222222222222222222",
+    otherPullRequest: true,
+  };
+  const gateway = await stubGateway({
+    [`${base}/merge`]: { status: 200, body: otherMerged },
+  });
+  t.after(gateway.close);
+  const dir = await mkdtemp(path.join(tmpdir(), "bex-merge-other-"));
+  const record = path.join(dir, "pull-request.json");
+  const own = {
+    url: merged.url,
+    number: 12,
+    created: true,
+    headSha: merged.headSha,
+  };
+  await writeFile(record, JSON.stringify(own));
+  const outcome = await mergePullRequest(
+    { number: 42, method: "merge" },
+    { ...gateway.env, BEX_PR_RECORD_PATH: record },
+  );
+  assert.deepEqual(outcome, { ok: true, result: otherMerged });
+  assert.equal(
+    gateway.requests[0].body,
+    JSON.stringify({ number: 42, method: "merge" }),
+  );
+  assert.deepEqual(JSON.parse(await readFile(record, "utf8")), own);
 });
 
 test("merge_pull_request sends only the method and commit text, and records the merged head", async (t) => {
@@ -315,7 +390,11 @@ test("malformed merges are rejected before any request", async (t) => {
   const cases: [unknown, string][] = [
     [[], "invalid_request"],
     ["squash", "invalid_request"],
-    [{ number: 12 }, "invalid_request"],
+    [{ number: 0 }, "invalid_request"],
+    [{ number: -12 }, "invalid_request"],
+    [{ number: 1.5 }, "invalid_request"],
+    [{ number: "12" }, "invalid_request"],
+    [{ number: 12, repository: "acme/other" }, "invalid_request"],
     [{ sha: "abc" }, "invalid_request"],
     [{ merge_method: "squash" }, "invalid_request"],
     [{ method: "octopus" }, "invalid_request"],
@@ -356,6 +435,15 @@ test("malformed merges are rejected before any request", async (t) => {
     validateMergeInput({ disableAuto: true, auto: false, commitTitle: " " }),
     { ok: true, input: { disableAuto: true } },
   );
+  // w10/041: a number goes with any merge, and with disableAuto too.
+  assert.deepEqual(validateMergeInput({ number: 12, auto: true }), {
+    ok: true,
+    input: { number: 12, auto: true },
+  });
+  assert.deepEqual(validateMergeInput({ disableAuto: true, number: 12 }), {
+    ok: true,
+    input: { number: 12, disableAuto: true },
+  });
 });
 
 test("only repo sessions list the ready and merge tools, saying to use them only when asked", async () => {
@@ -383,10 +471,25 @@ test("only repo sessions list the ready and merge tools, saying to use them only
       /only when the task or a person's message asks for it/,
     );
     assert.equal(tool.inputSchema.additionalProperties, false);
-    assert.ok(
-      !("number" in tool.inputSchema.properties),
-      "no tool takes a pull request number",
+    // w10/041: either tool takes another pull request's number, and nothing
+    // that names a repository or a head.
+    assert.deepEqual(
+      [
+        tool.inputSchema.properties.number.type,
+        tool.inputSchema.properties.number.minimum,
+      ],
+      ["integer", 1],
     );
+    assert.match(
+      tool.description,
+      /another pull request of this repository when you pass its number/,
+    );
+    for (const field of ["repository", "owner", "sha", "head"]) {
+      assert.ok(
+        !(field in tool.inputSchema.properties),
+        `${name} takes no ${field}`,
+      );
+    }
   }
   // w10/m577: the merge tool offers auto and its undo, and says to arm it
   // and end the turn rather than wait for the checks.
@@ -405,7 +508,7 @@ test("only repo sessions list the ready and merge tools, saying to use them only
   );
   assert.match(
     (init as { result: { instructions: string } }).result.instructions,
-    /mark_pull_request_ready and merge_pull_request to mark the session's pull request ready and merge it, only when the task or a person's message asks/,
+    /mark_pull_request_ready and merge_pull_request to mark the session's pull request ready and merge it, only when the task or a person's message asks, and pass number for another pull request of the repository a person names/,
   );
 
   // A repo-less session has no pull request to merge.

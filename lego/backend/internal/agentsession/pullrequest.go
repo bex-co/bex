@@ -236,11 +236,13 @@ type PullRequestGitHub interface {
 }
 
 // PullRequestSessionStore reads the durable session and records the PR on it
-// mid-turn, and a merge's state at once (*store.PGStore).
+// mid-turn, and a merge's state at once, on the session or on every session
+// of the workspace that recorded the merged pull request (*store.PGStore).
 type PullRequestSessionStore interface {
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	RecordAgentSessionPullRequest(ctx context.Context, id, prURL string, prNumber int, headSHA string) error
 	RecordAgentSessionPRState(ctx context.Context, sessionID, state string, at time.Time, next *time.Time) (bool, error)
+	RecordPullRequestState(ctx context.Context, workspaceIDs []string, repo string, number int, state string, at time.Time, next *time.Time) (int, error)
 }
 
 // PullRequester is bex-api's internal-only PR verb. It trusts only a request

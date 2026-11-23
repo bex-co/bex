@@ -77,11 +77,18 @@ func wantMergeCode(t *testing.T, err error, code string, status int) *PullReques
 	return typed
 }
 
+// wantAudit asserts one audit event of verb and outcome naming the session's
+// pull request #7 (w10/041: the audit names which pull request).
 func wantAudit(t *testing.T, audit *auditRecorder, verb string, outcome core.AuditOutcome) {
 	t.Helper()
+	wantAuditOf(t, audit, verb, outcome, "octo/repo#7")
+}
+
+func wantAuditOf(t *testing.T, audit *auditRecorder, verb string, outcome core.AuditOutcome, targetName string) {
+	t.Helper()
 	if len(audit.events) != 1 || audit.events[0].Verb != verb || audit.events[0].Outcome != outcome ||
-		audit.events[0].TargetName != "octo/repo" || audit.events[0].Target != "agent-session:ags-one" || audit.events[0].Caller != "sbx-1-0" {
-		t.Fatalf("audit = %+v, want one %s %s naming the repository", audit.events, verb, outcome)
+		audit.events[0].TargetName != targetName || audit.events[0].Target != "agent-session:ags-one" || audit.events[0].Caller != "sbx-1-0" {
+		t.Fatalf("audit = %+v, want one %s %s naming %s", audit.events, verb, outcome, targetName)
 	}
 }
 
@@ -402,8 +409,9 @@ func TestPullRequestReadyAndMergeHandlersAndClientsRoundTrip(t *testing.T) {
 	if r := postSigned(t, merger.URL, secret, raw, kindMACInput(PullRequestMergeKind, raw)); r.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("replay status = %d, want 401", r.StatusCode)
 	}
-	// An envelope naming a pull request, an owner or a head is not this verb's shape.
-	for _, field := range []string{`"number":8,`, `"owner":"octo",`, `"sha":"abc",`} {
+	// An envelope naming an owner, a repository or a head is not this verb's
+	// shape; a pull request number is (w10/041).
+	for _, field := range []string{`"owner":"octo",`, `"sha":"abc",`, `"pullRequest":8,`} {
 		named := bytes.Replace(raw, []byte(`"kind":`), []byte(field+`"kind":`), 1)
 		if r := postSigned(t, merger.URL, secret, named, kindMACInput(PullRequestMergeKind, named)); r.StatusCode != http.StatusBadRequest {
 			t.Fatalf("envelope with %s status = %d, want 400", field, r.StatusCode)
@@ -634,7 +642,7 @@ func TestPullRequestMergeDisableAutoUndoesTheArm(t *testing.T) {
 	} {
 		forge := armedForge()
 		_, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(content))
-		if typed := wantMergeCode(t, err, PullRequestInvalidRequest, http.StatusUnprocessableEntity); forge.reads != 0 || !strings.Contains(typed.Hint, `"disableAuto": true alone`) {
+		if typed := wantMergeCode(t, err, PullRequestInvalidRequest, http.StatusUnprocessableEntity); forge.reads != 0 || !strings.Contains(typed.Hint, `"disableAuto": true with at most a "number"`) {
 			t.Fatalf("%+v: reads=%d hint=%q", content, forge.reads, typed.Hint)
 		}
 	}
@@ -665,5 +673,214 @@ func TestPullRequestMergeResponseWellFormed(t *testing.T) {
 		if response.wellFormed() != tc.ok {
 			t.Errorf("%s: wellFormed = %v, want %v", tc.name, !tc.ok, tc.ok)
 		}
+	}
+}
+
+// otherHead is the head GitHub reports for a pull request the session did not
+// open, which it never recorded.
+const otherHead = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+// otherPRs are the pull requests of the session's repository w10/041 names
+// by number: a person's, from a fork, and another bex session's.
+func otherPRs() map[string]github.PullRequestDetail {
+	return map[string]github.PullRequestDetail{
+		"a person's": {
+			PullRequest: github.PullRequest{Number: 42, HTMLURL: "https://github.com/octo/repo/pull/42", State: "open"},
+			NodeID:      "PR_kwDOnode42", HeadRef: "fix-typo", HeadSHA: otherHead, HeadRepo: "alice/repo", BaseRepo: "octo/repo", BaseRef: "main",
+		},
+		"another session's": {
+			PullRequest: github.PullRequest{Number: 42, HTMLURL: "https://github.com/octo/repo/pull/42", State: "open"},
+			NodeID:      "PR_kwDOnode42", HeadRef: "bex-agent/task-2", HeadSHA: otherHead, HeadRepo: "octo/repo", BaseRepo: "octo/repo", BaseRef: "release",
+		},
+	}
+}
+
+// w10/041: a number names another pull request of the session's repository,
+// a person's or another session's, as Devin's credentials can merge any pull
+// request there. It is marked ready and merged pinned to the head GitHub
+// reports for it now, its merged state lands on every session of the
+// workspace that recorded it (never on this session, whose own pull request
+// is still open), and the audit names which pull request.
+func TestPullRequestReadyAndMergeOfAnotherPullRequestByNumber(t *testing.T) {
+	for name, other := range otherPRs() {
+		t.Run(name, func(t *testing.T) {
+			draft := other
+			draft.Draft = true
+			forge, sessions, audit := &fakeForge{existing: readyPR(), other: &draft}, &prSessions{session: mergeSession()}, &auditRecorder{}
+			p := newPullRequester(forge, sessions, audit)
+
+			ready, err := p.MarkReady(context.Background(), PullRequestReadyRequest{MintRequest: validMintRequest(), PullRequestReadyContent: PullRequestReadyContent{Number: 42}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ready != (PullRequestReadyResponse{URL: "https://github.com/octo/repo/pull/42", Number: 42, OtherPullRequest: true}) {
+				t.Fatalf("ready = %+v", ready)
+			}
+			if len(forge.readied) != 1 || forge.readied[0] != "PR_kwDOnode42" {
+				t.Fatalf("readied = %v, want the named pull request's node", forge.readied)
+			}
+			wantAuditOf(t, audit, AuditVerbPullRequestReady, core.AuditAllowed, "octo/repo#42")
+
+			audit.events = nil
+			got, err := p.Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 42, Method: github.MergeMethodSquash}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !got.Merged || got.Number != 42 || got.URL != "https://github.com/octo/repo/pull/42" || got.HeadSHA != otherHead || !got.OtherPullRequest || got.SHA == "" {
+				t.Fatalf("merge = %+v", got)
+			}
+			if len(forge.merges) != 1 {
+				t.Fatalf("merges = %+v", forge.merges)
+			}
+			merge := forge.merges[0]
+			if merge.owner != "octo" || merge.repo != "repo" || merge.number != 42 || merge.opts.SHA != otherHead || merge.opts.Base != other.BaseRef {
+				t.Fatalf("GitHub merge = %+v, want #42 of the session's repository at the head GitHub reported", merge)
+			}
+			if len(sessions.states) != 0 || sessions.session.PRState == store.PRStateMerged {
+				t.Fatalf("the session's own pull request was recorded %v", sessions.states)
+			}
+			if len(sessions.repoStates) != 1 || sessions.repoStates[0] != "tea-a octo/repo#42 merged" {
+				t.Fatalf("repository states = %v, want #42 merged on the workspace's sessions", sessions.repoStates)
+			}
+			wantAuditOf(t, audit, AuditVerbPullRequestMerge, core.AuditAllowed, "octo/repo#42")
+		})
+	}
+}
+
+// A session with no pull request of its own can still act on one it names,
+// and naming its own number is the same as naming none: pinned to the head
+// bex recorded, and recorded merged on the session itself.
+func TestPullRequestMergeNamingNoneOrItsOwnNumber(t *testing.T) {
+	other := otherPRs()["a person's"]
+	session := mergeSession()
+	session.PRNumber, session.PRURL, session.HeadSHA = 0, "", ""
+	forge, sessions := &fakeForge{existing: readyPR(), other: &other}, &prSessions{session: session}
+	got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 42}))
+	if err != nil || !got.Merged || !got.OtherPullRequest || forge.merges[0].opts.SHA != otherHead {
+		t.Fatalf("merge without a pull request of its own = %+v err=%v (%+v)", got, err, forge.merges)
+	}
+
+	forge, sessions = &fakeForge{existing: readyPR(), other: &other}, &prSessions{session: mergeSession()}
+	got, err = newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 7}))
+	if err != nil || !got.Merged || got.OtherPullRequest || got.HeadSHA != recordedHead || forge.merges[0].number != 7 || forge.merges[0].opts.SHA != recordedHead {
+		t.Fatalf("merge naming its own number = %+v err=%v (%+v)", got, err, forge.merges)
+	}
+	if len(sessions.states) != 1 || len(sessions.repoStates) != 0 {
+		t.Fatalf("states = %v repository states = %v, want the session's own record", sessions.states, sessions.repoStates)
+	}
+}
+
+// w10/041: auto arms GitHub auto-merge on a named pull request pinned to the
+// head GitHub reported, and disableAuto takes a number too.
+func TestPullRequestMergeAutoAndDisableAutoOfANamedPullRequest(t *testing.T) {
+	other := otherPRs()["another session's"]
+	forge := &fakeForge{existing: readyPR(), other: &other, state: github.MergeState{Status: "BLOCKED"}}
+	sessions := &prSessions{session: mergeSession()}
+	p := newPullRequester(forge, sessions, nil)
+	got, err := p.Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 42, Auto: true}))
+	if err != nil || !got.AutoMerge || got.Merged || !got.OtherPullRequest || got.HeadSHA != otherHead {
+		t.Fatalf("auto = %+v err=%v", got, err)
+	}
+	if len(forge.armed) != 1 || forge.armed[0].node != "PR_kwDOnode42" || forge.armed[0].opts.SHA != otherHead || len(forge.merges) != 0 {
+		t.Fatalf("armed = %+v merges = %+v, want #42 armed at GitHub's head", forge.armed, forge.merges)
+	}
+	forge.state = github.MergeState{Status: "BLOCKED", AutoMerge: true}
+	got, err = p.Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 42, DisableAuto: true}))
+	if err != nil || !got.AutoMergeDisabled || !got.OtherPullRequest || len(forge.disabled) != 1 {
+		t.Fatalf("disableAuto = %+v err=%v (disabled %v)", got, err, forge.disabled)
+	}
+	if len(sessions.states) != 0 || len(sessions.repoStates) != 0 {
+		t.Fatalf("an armed or disarmed pull request was recorded: %v %v", sessions.states, sessions.repoStates)
+	}
+}
+
+// w10/041: a named pull request is refused for what it is, and the denied
+// audit names it.
+func TestPullRequestReadyAndMergeOfANamedPullRequestRefusals(t *testing.T) {
+	cases := []struct {
+		name   string
+		number int
+		mutate func(*fakeForge)
+		code   string
+		status int
+		// message is part of the refusal's message; recorded is the
+		// repository-wide state written, "" for none.
+		message, recorded string
+	}{
+		{name: "no such pull request", number: 99, code: PullRequestNotFound, status: http.StatusNotFound, message: "octo/repo has no pull request #99"},
+		{name: "a negative number", number: -1, code: PullRequestInvalidRequest, status: http.StatusUnprocessableEntity},
+		{name: "GitHub returns another repository's", number: 42, mutate: func(f *fakeForge) { f.other.BaseRepo = "octo/other" }, code: PullRequestUpstreamError, status: http.StatusBadGateway},
+		{name: "closed", number: 42, mutate: func(f *fakeForge) { f.other.State = "closed" }, code: PullRequestClosed, status: http.StatusConflict, message: "#42 is already closed"},
+		{name: "merged by someone", number: 42, mutate: func(f *fakeForge) { f.other.State, f.other.Merged = "closed", true }, code: PullRequestClosed, status: http.StatusConflict,
+			message: "#42 is already merged", recorded: "tea-a octo/repo#42 merged"},
+		{name: "a draft", number: 42, mutate: func(f *fakeForge) { f.other.Draft = true }, code: PullRequestDraft, status: http.StatusConflict},
+		{name: "pushed to after the read", number: 42, mutate: func(f *fakeForge) {
+			f.mergeErr = &github.APIError{Status: http.StatusConflict, Body: `{"message":"Head branch was modified. Review and try the merge again."}`}
+		}, code: PullRequestHeadChanged, status: http.StatusConflict, message: "GitHub: Head branch was modified"},
+		{name: "the PR cannot be read", number: 42, mutate: func(f *fakeForge) { f.err = &github.APIError{Status: http.StatusInternalServerError} }, code: PullRequestUpstreamError, status: http.StatusBadGateway},
+		{name: "GitHub reports no head", number: 42, mutate: func(f *fakeForge) { f.other.HeadSHA = "" }, code: PullRequestUpstreamError, status: http.StatusBadGateway, message: "did not return pull request #42's head"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			other := otherPRs()["a person's"]
+			forge, sessions, audit := &fakeForge{existing: readyPR(), other: &other}, &prSessions{session: mergeSession()}, &auditRecorder{}
+			if tc.mutate != nil {
+				tc.mutate(forge)
+			}
+			_, err := newPullRequester(forge, sessions, audit).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: tc.number}))
+			typed := wantMergeCode(t, err, tc.code, tc.status)
+			if !strings.Contains(typed.Message, tc.message) {
+				t.Fatalf("message %q, want %q", typed.Message, tc.message)
+			}
+			if len(forge.merges) != 0 || len(sessions.states) != 0 {
+				t.Fatalf("merges = %+v states = %v", forge.merges, sessions.states)
+			}
+			if got := strings.Join(sessions.repoStates, ","); got != tc.recorded {
+				t.Fatalf("repository states = %q, want %q", got, tc.recorded)
+			}
+			want := fmt.Sprintf("octo/repo#%d", tc.number)
+			if tc.number < 0 {
+				want = ""
+			}
+			wantAuditOf(t, audit, AuditVerbPullRequestMerge, core.AuditDenied, want)
+		})
+	}
+	// Mark-ready refuses the same way.
+	forge := &fakeForge{existing: readyPR()}
+	_, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).MarkReady(context.Background(),
+		PullRequestReadyRequest{MintRequest: validMintRequest(), PullRequestReadyContent: PullRequestReadyContent{Number: 99}})
+	wantMergeCode(t, err, PullRequestNotFound, http.StatusNotFound)
+	if hint := NewPullRequestMergeError(PullRequestNotFound, "").Hint; !strings.Contains(hint, "gh pr list") {
+		t.Errorf("pull_request_not_found hint %q does not say how to check the number", hint)
+	}
+	if hint := NewPullRequestMergeError(PullRequestHeadChanged, "").Hint; !strings.Contains(hint, "For another pull request") {
+		t.Errorf("head_changed hint %q does not cover another pull request", hint)
+	}
+}
+
+// w10/041: a number crosses the signed hop in both verbs' envelopes, and the
+// gateway client accepts the answer naming another pull request.
+func TestPullRequestReadyAndMergeClientsCarryANumber(t *testing.T) {
+	secret := []byte("secret")
+	other := otherPRs()["a person's"]
+	other.Draft = true
+	forge := &fakeForge{existing: readyPR(), other: &other}
+	pullRequests := newPullRequester(forge, &prSessions{session: mergeSession()}, nil)
+	mux := http.NewServeMux()
+	mux.Handle(InternalPullRequestReadyPath, &PullRequestReadyHandler{Secret: secret, PullRequests: pullRequests, Nonce: &fakeNonceClaimer{}})
+	mux.Handle(InternalPullRequestMergePath, &PullRequestMergeHandler{Secret: secret, PullRequests: pullRequests, Nonce: &fakeNonceClaimer{}})
+	api := httptest.NewServer(mux)
+	defer api.Close()
+	ready := &PullRequestReadyClient{URL: api.URL + InternalPullRequestReadyPath, Secret: secret, HTTP: api.Client()}
+	merger := &PullRequestMergeClient{URL: api.URL + InternalPullRequestMergePath, Secret: secret, HTTP: api.Client()}
+	if got, err := ready.MarkReady(context.Background(), PullRequestReadyRequest{MintRequest: validMintRequest(), PullRequestReadyContent: PullRequestReadyContent{Number: 42}}); err != nil || got.Number != 42 || !got.OtherPullRequest {
+		t.Fatalf("ready = %+v err=%v", got, err)
+	}
+	got, err := merger.Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 42}))
+	if err != nil || !got.Merged || got.Number != 42 || !got.OtherPullRequest || got.HeadSHA != otherHead {
+		t.Fatalf("merge = %+v err=%v", got, err)
+	}
+	if len(forge.merges) != 1 || forge.merges[0].number != 42 {
+		t.Fatalf("merges = %+v", forge.merges)
 	}
 }

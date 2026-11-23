@@ -248,6 +248,10 @@ func assertWriteRefusal(t *testing.T, label string, rec *httptest.ResponseRecord
 			!strings.Contains(msg, `"disableAuto": true undoes it (for --disable-auto)`) {
 			t.Errorf("%s refusal does not name the merge tool's auto and disableAuto: %q", label, msg)
 		}
+		// w10/041: gh pr merge 42 is told the tools take that number.
+		if !strings.Contains(msg, `with "number" for a pull request other than this session's own`) {
+			t.Errorf("%s refusal does not say the tools take another pull request's number: %q", label, msg)
+		}
 	}
 }
 

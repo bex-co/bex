@@ -30,7 +30,8 @@
 //   - mark_pull_request_ready and merge_pull_request (repo sessions,
 //     w10/m538) forward to the gateway's pull-request/ready and
 //     pull-request/merge verbs on the same path: they undraft and merge the
-//     session's own pull request, only when the task or a person asks.
+//     session's own pull request, or another of its repository the agent
+//     names by number (w10/041), only when the task or a person asks.
 //   - share_file (when the deployment stores attachments) posts a file to the
 //     session's Pod-bound share URL.
 //   - submit_result (when the turn carries an outputSchema, ADR094 D5)
@@ -152,8 +153,7 @@ interface PullRequestResult {
 }
 
 type ToolOutcome =
-  | { ok: true; result: PullRequestResult }
-  | { ok: false; error: ToolError };
+  { ok: true; result: PullRequestResult } | { ok: false; error: ToolError };
 
 function invalid(message: string, hint?: string): ToolOutcome {
   return {
@@ -336,7 +336,7 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   }
   if (env.BEX_PR_READY_ENDPOINT && env.BEX_PR_MERGE_ENDPOINT) {
     lines.push(
-      `Use ${markPullRequestReadyToolName} and ${mergePullRequestToolName} to mark the session's pull request ready and merge it, only when the task or a person's message asks; ${mergePullRequestToolName} with auto: true has GitHub merge it once its required checks pass, so the turn can end.`,
+      `Use ${markPullRequestReadyToolName} and ${mergePullRequestToolName} to mark the session's pull request ready and merge it, only when the task or a person's message asks, and pass number for another pull request of the repository a person names; ${mergePullRequestToolName} with auto: true has GitHub merge it once its required checks pass, so the turn can end.`,
     );
   }
   if (env.BEX_SHARE_ENDPOINT) {

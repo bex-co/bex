@@ -55,6 +55,10 @@ func (credentialSessions) RecordAgentSessionPullRequest(context.Context, string,
 	return nil
 }
 
+func (credentialSessions) RecordPullRequestState(context.Context, []string, string, int, string, time.Time, *time.Time) (int, error) {
+	return 0, nil
+}
+
 func (credentialSessions) RecordAgentSessionPRState(context.Context, string, string, time.Time, *time.Time) (bool, error) {
 	return true, nil
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package agentcred
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
@@ -58,7 +59,7 @@ func (b *Broker) servePullRequest(w http.ResponseWriter, r *http.Request, namesp
 		return
 	}
 	response, err := b.PullRequests.Sync(admitted.r.Context(), agentsession.PullRequestRequest{MintRequest: admitted.verified, PullRequestContent: content})
-	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequest, agentsession.NewPullRequestError, response, err)
+	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequest, admitted.verified.Repository, agentsession.NewPullRequestError, response, err)
 }
 
 // servePullRequestComment is the comment twin of servePullRequest (ADR047
@@ -86,52 +87,59 @@ func (b *Broker) servePullRequestComment(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	response, err := b.PullRequestComments.Comment(admitted.r.Context(), agentsession.PullRequestCommentRequest{MintRequest: admitted.verified, PullRequestCommentContent: content})
-	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestComment, agentsession.NewPullRequestCommentError, response, err)
+	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestComment, admitted.verified.Repository, agentsession.NewPullRequestCommentError, response, err)
 }
 
 // servePullRequestReady is the mark-ready twin of servePullRequestComment
 // (w10/m538): the same gate, then one signed call to bex-api. The sandbox
-// sends an empty JSON object; bex-api undrafts the session's recorded pull
-// request, so a request naming a number, a repository or any field is
-// refused here.
+// sends an empty JSON object, or only the number of another pull request of
+// the session's repository (w10/041); bex-api undrafts the session's recorded
+// pull request or that one, so a request naming a repository or any other
+// field is refused here.
 func (b *Broker) servePullRequestReady(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
 	if b.PullRequestReady == nil {
 		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestUnavailable, "marking pull requests ready is not available on this gateway"))
 		return
 	}
 	admitted, raw, ok := b.admitPullRequestVerb(w, r, namespace, claimed, agentsession.NewPullRequestMergeError,
-		"this sandbox may only mark its own session's pull request ready")
+		"this sandbox may only mark pull requests of its own session's repository ready")
 	if !ok {
 		return
 	}
 	defer admitted.release()
-	var content struct{}
+	var content agentsession.PullRequestReadyContent
 	if err := core.UnmarshalJSON(core.WithStrictJSONDecoding(admitted.r.Context()), raw, &content); err != nil {
-		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be an empty JSON object"))
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with at most \"number\" (a pull request number)"))
 		return
 	}
-	response, err := b.PullRequestReady.MarkReady(admitted.r.Context(), agentsession.PullRequestReadyRequest{MintRequest: admitted.verified})
-	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestReady, agentsession.NewPullRequestMergeError, response, err)
+	if invalid := content.Validate(); invalid != nil {
+		agentsession.WritePullRequestError(w, invalid)
+		return
+	}
+	response, err := b.PullRequestReady.MarkReady(admitted.r.Context(), agentsession.PullRequestReadyRequest{MintRequest: admitted.verified, PullRequestReadyContent: content})
+	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestReady, stateAuditName(admitted, response.Number, content.Number), agentsession.NewPullRequestMergeError, response, err)
 }
 
 // servePullRequestMerge is the merge twin (w10/m538). The sandbox supplies
-// at most {method, commitTitle, commitMessage, auto}, or {disableAuto}
-// (w10/m577); bex-api merges the session's recorded pull request at its
-// recorded head, arms GitHub auto-merge on it or queues it, or disarms it.
+// at most {number, method, commitTitle, commitMessage, auto}, or
+// {number, disableAuto} (w10/m577, w10/041); bex-api merges the session's
+// recorded pull request at its recorded head, or the numbered one at the head
+// GitHub reports for it, arms GitHub auto-merge on it or queues it, or
+// disarms it.
 func (b *Broker) servePullRequestMerge(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
 	if b.PullRequestMerges == nil {
 		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestUnavailable, "merging pull requests is not available on this gateway"))
 		return
 	}
 	admitted, raw, ok := b.admitPullRequestVerb(w, r, namespace, claimed, agentsession.NewPullRequestMergeError,
-		"this sandbox may only merge its own session's pull request")
+		"this sandbox may only merge pull requests of its own session's repository")
 	if !ok {
 		return
 	}
 	defer admitted.release()
 	var content agentsession.PullRequestMergeContent
 	if err := core.UnmarshalJSON(core.WithStrictJSONDecoding(admitted.r.Context()), raw, &content); err != nil {
-		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"method\", \"commitTitle\", \"commitMessage\" and \"auto\" (a boolean), or \"disableAuto\" (a boolean) alone"))
+		agentsession.WritePullRequestError(w, agentsession.NewPullRequestMergeError(agentsession.PullRequestInvalidRequest, "the body must be a JSON object with only \"number\" (a pull request number), \"method\", \"commitTitle\", \"commitMessage\" and \"auto\" (a boolean), or \"disableAuto\" (a boolean) with at most \"number\""))
 		return
 	}
 	if invalid := content.Validate(); invalid != nil {
@@ -139,7 +147,7 @@ func (b *Broker) servePullRequestMerge(w http.ResponseWriter, r *http.Request, n
 		return
 	}
 	response, err := b.PullRequestMerges.Merge(admitted.r.Context(), agentsession.PullRequestMergeRequest{MintRequest: admitted.verified, PullRequestMergeContent: content})
-	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestMerge, agentsession.NewPullRequestMergeError, response, err)
+	b.answerPullRequestVerb(w, admitted, agentsession.AuditVerbPullRequestMerge, stateAuditName(admitted, response.Number, content.Number), agentsession.NewPullRequestMergeError, response, err)
 }
 
 // admitPullRequestVerb is the front half both PR-side verbs share: a JSON POST,
@@ -188,9 +196,17 @@ func (b *Broker) admitPullRequestVerb(w http.ResponseWriter, r *http.Request, na
 	return admitted, raw, true
 }
 
+// stateAuditName names the pull request a mark-ready or merge acted on, as
+// bex-api's hop does: the one bex-api answered for, else the one the sandbox
+// named, else the repository alone (w10/041).
+func stateAuditName(admitted admission, answered, named int) string {
+	return agentsession.PullRequestAuditName(admitted.verified.Repository, cmp.Or(answered, named))
+}
+
 // answerPullRequestVerb is the back half: audit bex-api's decision on the
-// gateway hop and relay it, a refusal only in the verb's own vocabulary.
-func (b *Broker) answerPullRequestVerb(w http.ResponseWriter, admitted admission, auditVerb string, refuse func(code, message string) *agentsession.PullRequestError, response any, err error) {
+// gateway hop under targetName, and relay it, a refusal only in the verb's
+// own vocabulary.
+func (b *Broker) answerPullRequestVerb(w http.ResponseWriter, admitted admission, auditVerb, targetName string, refuse func(code, message string) *agentsession.PullRequestError, response any, err error) {
 	verified := admitted.verified
 	outcome := core.AuditAllowed
 	if err != nil {
@@ -199,7 +215,7 @@ func (b *Broker) answerPullRequestVerb(w http.ResponseWriter, admitted admission
 	core.RecordAuditEvent(admitted.r.Context(), b.Audit, core.AuditEvent{
 		Caller: admitted.pod.Name, CallerMethod: "sandbox", Verb: auditVerb,
 		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
-		TargetName: verified.Repository, Outcome: outcome, At: b.now(),
+		TargetName: targetName, Outcome: outcome, At: b.now(),
 	})
 	if err != nil {
 		var typed *agentsession.PullRequestError
