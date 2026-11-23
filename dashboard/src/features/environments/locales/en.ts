@@ -342,7 +342,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "Only workspace Admins can delete, suspend, resume or turn on maintenance mode for this environment's resources.",
+      "Only workspace Admins can delete, suspend, resume or toggle maintenance mode for this environment's resources.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

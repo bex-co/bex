@@ -352,7 +352,7 @@ const esEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "Solo los administradores del espacio de trabajo pueden eliminar, suspender, reanudar o activar el modo de mantenimiento de los recursos de este entorno.",
+      "Solo los administradores del espacio de trabajo pueden eliminar, suspender, reanudar o activar y desactivar el modo de mantenimiento de los recursos de este entorno.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

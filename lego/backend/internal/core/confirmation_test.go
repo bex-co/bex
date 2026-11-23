@@ -96,7 +96,7 @@ func TestRestrictedDecision(t *testing.T) {
 // when the guard answers the coded refusal (w4/728), so a raced click names
 // the reason the disabled control showed.
 func TestRestrictedDecisionAgreesWithRequireEnvironmentAdmin(t *testing.T) {
-	verbs := []string{"create", "move", "delete", "suspend", "resume", "take offline", "shell",
+	verbs := []string{"create", "move", "delete", "suspend", "resume", VerbToggleMaintenanceMode, "shell",
 		VerbViewCredentials, VerbChangeAccessControl, VerbEnvironmentVariables, "restart", "deploy"}
 	for _, verb := range verbs {
 		for _, protected := range []bool{true, false} {
@@ -126,14 +126,14 @@ func TestRestrictedDecisionAgreesWithRequireEnvironmentAdmin(t *testing.T) {
 func TestRequireEnvironmentAdminCodesTheRoleRefusal(t *testing.T) {
 	store := fakeProtection{protected: true}
 	for verb, action := range map[string]string{
-		"delete":                 "delete resources",
-		"suspend":                "suspend resources",
-		"resume":                 "resume resources",
-		"take offline":           "turn on maintenance mode",
-		"shell":                  "open a shell",
-		VerbViewCredentials:      VerbViewCredentials,
-		VerbChangeAccessControl:  VerbChangeAccessControl,
-		VerbEnvironmentVariables: VerbEnvironmentVariables,
+		"delete":                  "delete resources",
+		"suspend":                 "suspend resources",
+		"resume":                  "resume resources",
+		VerbToggleMaintenanceMode: VerbToggleMaintenanceMode,
+		"shell":                   "open a shell",
+		VerbViewCredentials:       VerbViewCredentials,
+		VerbChangeAccessControl:   VerbChangeAccessControl,
+		VerbEnvironmentVariables:  VerbEnvironmentVariables,
 	} {
 		err := RequireEnvironmentAdmin(t.Context(), store, "env-d00000000000000000a0", verb, func() error { return fmt.Errorf("check: %w", ErrForbidden) })
 		var coded *CodedError

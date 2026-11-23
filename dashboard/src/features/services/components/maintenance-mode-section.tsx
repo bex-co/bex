@@ -13,6 +13,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useMaintenanceMode } from "@/features/services/hooks/use-maintenance-mode";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import type { MaintenanceModeView } from "@/features/services/types";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
+import { projectionReason } from "@/features/capabilities/lib/resource-actions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface MaintenanceModeSectionProps {
   serviceId: string;
@@ -28,8 +32,11 @@ export interface MaintenanceModeSectionProps {
  * service offline behind an interstitial page without suspending it, plus an
  * optional custom-page URL. Enabling confirms first (it takes the service
  * offline for every visitor, like the suspend row-action) — disabling runs
- * immediately, mirroring resume's asymmetric guard. web_service only; the
- * Settings page gates rendering by type.
+ * immediately, as resume does. web_service only; the Settings page gates
+ * rendering by type. The switch, in both directions, follows the service's
+ * toggle_maintenance_mode decision, so in a protected environment a Developer
+ * reads Render's "This action is limited to admins." instead of a 403 after
+ * confirming (w4/725). The page URL toggles nothing and stays editable.
  */
 export function MaintenanceModeSection({
   serviceId,
@@ -39,8 +46,24 @@ export function MaintenanceModeSection({
 }: MaintenanceModeSectionProps) {
   const { t } = useTranslations();
   const { setMaintenanceMode, busy } = useMaintenanceMode();
+  const { currentWorkspaceId } = useWorkspace();
+  const serverActions = useServerActions(serviceId);
   const enabled = maintenanceMode?.enabled ?? false;
   const eligible = plan !== "free";
+  // The plan hint already explains a free service's disabled switch.
+  const toggleReason = eligible
+    ? projectionReason(
+        serverActions,
+        currentWorkspaceId,
+        serviceId,
+        "toggle_maintenance_mode",
+        t,
+      )
+    : undefined;
+  // A routine re-check disables the switch for a moment; only a settled
+  // refusal replaces the hint, so the line does not flicker.
+  const refusal =
+    serverActions.status === "checking" ? undefined : toggleReason;
   const current = maintenanceMode?.uri ?? "";
   const [confirmEnable, setConfirmEnable] = useState(false);
 
@@ -61,24 +84,26 @@ export function MaintenanceModeSection({
                 : t("services.maintenanceModeDisabled")}
             </Label>
             <p className="text-muted-foreground mt-1 text-sm">
-              {eligible
-                ? t("services.maintenanceModeSwitchHint")
-                : t("services.maintenanceModePaidOnly")}
+              {!eligible
+                ? t("services.maintenanceModePaidOnly")
+                : (refusal ?? t("services.maintenanceModeSwitchHint"))}
             </p>
           </div>
-          <Switch
-            id="maintenance-mode-switch"
-            checked={enabled}
-            disabled={busy || !eligible}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                setConfirmEnable(true);
-              } else {
-                void setMaintenanceMode(serviceId, false, current);
-              }
-            }}
-            aria-label={t("services.maintenanceModeToggleLabel")}
-          />
+          <PermissionTooltip reason={toggleReason}>
+            <Switch
+              id="maintenance-mode-switch"
+              checked={enabled}
+              disabled={busy || !eligible || !!toggleReason}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setConfirmEnable(true);
+                } else {
+                  void setMaintenanceMode(serviceId, false, current);
+                }
+              }}
+              aria-label={t("services.maintenanceModeToggleLabel")}
+            />
+          </PermissionTooltip>
         </div>
 
         <EditableFieldRow

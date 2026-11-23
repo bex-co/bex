@@ -496,9 +496,10 @@ func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string
 }
 
 // checkMaintenanceMode validates the two-key object and returns it normalized.
-// The protected-environment guard applies only to turning maintenance ON —
-// turning it off restores availability (like Resume), and a URI-only edit
-// changes neither.
+// In a protected environment turning maintenance mode on or off is an Admin's,
+// as on Render ("toggling maintenance mode", render.com/docs/projects; both
+// ways since w4/725, as Resume is restricted beside Suspend); a URI-only edit
+// toggles nothing.
 func (s *Service) checkMaintenanceMode(ctx context.Context, a *appv1alpha1.App, in MaintenanceModeView) (MaintenanceModeView, error) {
 	in.URI = strings.TrimSpace(in.URI)
 	if err := s.validateMaintenanceMode(ctx, a, in); err != nil {
@@ -508,8 +509,8 @@ func (s *Service) checkMaintenanceMode(ctx context.Context, a *appv1alpha1.App, 
 	if current == in {
 		return in, nil
 	}
-	if in.Enabled && !current.Enabled {
-		if err := s.requireUnprotected(ctx, a, "take offline"); err != nil {
+	if in.Enabled != current.Enabled {
+		if err := s.requireUnprotected(ctx, a, core.VerbToggleMaintenanceMode); err != nil {
 			return MaintenanceModeView{}, err
 		}
 	}

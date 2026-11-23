@@ -350,7 +350,7 @@ const ptEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "Somente administradores do workspace podem excluir, suspender, retomar ou ativar o modo de manutenção dos recursos deste ambiente.",
+      "Somente administradores do workspace podem excluir, suspender, retomar ou ativar e desativar o modo de manutenção dos recursos deste ambiente.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

@@ -68,30 +68,34 @@ func EnvironmentProtected(ctx context.Context, store EnvironmentProtectionStore,
 // (render.com/docs/projects): creating resources in the environment
 // ("create"), moving resources into or out of it ("move"; PlacementRefusal
 // below), deleting the environment's resources, suspending or resuming
-// services, turning maintenance mode on ("take offline") and shell access
-// ("shell"; environment variables and secret files are the secrets package's,
-// w8/193). The rest of a service's life — deploys, rollbacks, settings,
-// queries — is open to anyone who may do it elsewhere, and no verb asks for a
+// services, toggling maintenance mode (VerbToggleMaintenanceMode, both ways
+// since w4/725) and shell access ("shell"; environment variables and secret
+// files are the secrets package's, w8/193). The rest of a service's life —
+// deploys, rollbacks, settings, queries — is open to anyone who may do it elsewhere, and no verb asks for a
 // typed phrase (w8/187; the phrase gate of w4/m126 and w4/m127 is retired).
 // The dashboard may still confirm in its own UI. Viewing a datastore's
 // credentials, changing its inbound IP rules and viewing or changing an
 // environment group's variables joined in w4/m594 (the Verb constants below).
 func ProtectedVerbRestricted(verb string) bool {
 	switch verb {
-	case "create", "move", "delete", "suspend", "resume", "take offline", "shell",
-		VerbViewCredentials, VerbChangeAccessControl, VerbEnvironmentVariables:
+	case "create", "move", "delete", "suspend", "resume", "shell",
+		VerbToggleMaintenanceMode, VerbViewCredentials, VerbChangeAccessControl, VerbEnvironmentVariables:
 		return true
 	}
 	return false
 }
 
-// The restricted verbs w4/m594 adds, named once because several packages and
-// their capability projections ask for each (render.com/docs/projects: only
-// Admins in a protected environment "view passwords or connection URLs for any
-// Postgres or Key Value instance", "modify access control IPs for any Postgres
-// or Key Value instance" and "view or modify environment variables or secret
-// files for any service or environment group").
+// The restricted verbs named once because a verb and its capability
+// projection both ask for each (render.com/docs/projects: only Admins in a
+// protected environment are "toggling maintenance mode for any service",
+// w4/725; and, w4/m594, "view passwords or connection URLs for any Postgres or
+// Key Value instance", "modify access control IPs for any Postgres or Key
+// Value instance" and "view or modify environment variables or secret files
+// for any service or environment group").
 const (
+	// VerbToggleMaintenanceMode turns a service's maintenance mode on or off.
+	// Before w4/725 only turning it on ("take offline") was restricted.
+	VerbToggleMaintenanceMode = "toggle maintenance mode"
 	// VerbViewCredentials reveals a Postgres's or Key Value's password or
 	// connection URLs: its connection info, or a new Postgres user's one-time
 	// password.
@@ -165,14 +169,11 @@ func ProtectedAdminRefusal(environmentID, verb string) *CodedError {
 
 // protectedVerbAction words verb as the action a refusal names, so Render's
 // operations, whose 403 carries no bex code (w8/411), still say what was
-// refused: the guard's own names for maintenance mode and shell access are
-// not what a caller did.
+// refused: the guard's own name for shell access is not what a caller did.
 func protectedVerbAction(verb string) string {
 	switch verb {
 	case "delete", "suspend", "resume":
 		return verb + " resources"
-	case "take offline":
-		return "turn on maintenance mode"
 	case "shell":
 		return "open a shell"
 	}

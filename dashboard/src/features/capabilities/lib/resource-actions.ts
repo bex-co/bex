@@ -23,9 +23,11 @@ export const RESOURCE_ACTION_IDS = [
   "view_env_vars",
   "update_env_vars",
   "delete",
-  // Opening a service's shell (serverActions, w4/726), Admin-only in a
-  // protected environment too.
+  // Opening a service's shell (serverActions, w4/726) and turning a web
+  // service's maintenance mode on or off (w4/725), Admin-only in a protected
+  // environment too.
   "shell",
+  "toggle_maintenance_mode",
 ] as const;
 
 export type ResourceActionId = (typeof RESOURCE_ACTION_IDS)[number];
@@ -78,9 +80,10 @@ const KNOWN_REASONS = new Set([
   "missing_oauth_scope",
   "insufficient_permission",
   "authz_unavailable",
-  // A restricted verb (suspend, resume, shell; w4/m594's rows) on a member of a
-  // protected environment, refused because the caller is not a workspace
-  // Admin (w4/m578): Render's "This action is limited to admins."
+  // A restricted verb (suspend, resume, shell, the maintenance toggle;
+  // w4/m594's rows) on a member of a protected environment, refused because
+  // the caller is not a workspace Admin (w4/m578): Render's "This action is
+  // limited to admins."
   "protected_environment_admin_required",
 ]);
 

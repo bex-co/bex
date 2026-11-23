@@ -172,6 +172,86 @@ func TestActionCapabilities_ShellAgreesWithTheVerb(t *testing.T) {
 	}
 }
 
+// TestActionCapabilities_MaintenanceToggleAgreesWithTheVerb (w4/725): for an
+// Admin and a Developer, on a member of a protected and of an unprotected
+// environment, turning maintenance mode on and turning it off, the
+// projection's toggle decision is SetMaintenanceMode's own answer. Before
+// w4/725 serverActions had no such row, so the Settings switch offered a
+// Developer on a protected member a toggle the verb refused with 403 after the
+// confirmation.
+func TestActionCapabilities_MaintenanceToggleAgreesWithTheVerb(t *testing.T) {
+	roles := []struct {
+		name  string
+		as    func(*Service)
+		admin bool
+	}{{"admin", asAdmin, true}, {"developer", asNonAdmin, false}}
+	for _, role := range roles {
+		for _, protected := range []bool{true, false} {
+			for _, on := range []bool{true, false} {
+				t.Run(fmt.Sprintf("%s/protected=%t/turn on=%t", role.name, protected, on), func(t *testing.T) {
+					status := core.ProtectedStatusUnprotected
+					if protected {
+						status = core.ProtectedStatusProtected
+					}
+					rec := &recordingStore{protectedStatus: map[string]string{"srv-1": status}}
+					a := inProtectedEnvironment(managedApp("web", "srv-1"))
+					a.Spec.Type, a.Spec.Tier = appv1alpha1.TypeWebService, "standard"
+					if !on {
+						a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+					}
+					svc, _ := newService(rec, a)
+					role.as(svc)
+					ctx := ctxAs("user-a")
+
+					acts, err := svc.ActionCapabilities(ctx, "web")
+					if err != nil {
+						t.Fatalf("ActionCapabilities: %v", err)
+					}
+					if rec.protectedCalls != 1 {
+						t.Errorf("projection read protection %d times, want once for every restricted row", rec.protectedCalls)
+					}
+					got := actionByID(t, acts, core.ActionToggleMaintenanceMode)
+					_, verbErr := svc.SetMaintenanceMode(ctx, "web", MaintenanceModeView{Enabled: on})
+
+					want := role.admin || !protected
+					if allowed := got.Outcome == core.DecisionAllowed; allowed != want || (verbErr == nil) != want {
+						t.Fatalf("projection %+v and verb error %v disagree, want allowed=%t for both", got, verbErr, want)
+					}
+					if !want && (got.Reason != core.ReasonProtectedEnvironmentAdmin || !adminOnlyRefusal(verbErr)) {
+						t.Errorf("refused toggle = %+v (verb %v), want denied/%s and PROTECTED_ENVIRONMENT_ADMIN_REQUIRED",
+							got, verbErr, core.ReasonProtectedEnvironmentAdmin)
+					}
+					if got.Precondition != "" {
+						t.Errorf("toggle = %+v, want no precondition: eligibility is the service's plan", got)
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestActionCapabilities_MaintenanceToggleOnlyOnWebServices: a toggle row
+// exists exactly for the type SetMaintenanceMode serves (a web service, and an
+// untyped service, which is one); any other type has none, which reads as "not
+// offered here".
+func TestActionCapabilities_MaintenanceToggleOnlyOnWebServices(t *testing.T) {
+	for _, typ := range []string{
+		"", appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite,
+	} {
+		a := managedApp("svc", "srv-1")
+		a.Spec.Type = typ
+		svc, _ := newService(&recordingStore{}, a)
+		acts, err := svc.ActionCapabilities(context.Background(), "svc")
+		if err != nil {
+			t.Fatalf("ActionCapabilities(%s): %v", typ, err)
+		}
+		if got, want := hasAction(acts, core.ActionToggleMaintenanceMode), typ == "" || typ == appv1alpha1.TypeWebService; got != want {
+			t.Errorf("%s projects the maintenance toggle = %t, want %t", typ, got, want)
+		}
+	}
+}
+
 // TestActionCapabilities_ShellOnlyForTypesWithInstances: a shell row exists
 // exactly for the types CreateShellSession serves (web, private, worker, and
 // an untyped service, which is a web service); a cron job or a static site
@@ -195,9 +275,9 @@ func TestActionCapabilities_ShellOnlyForTypesWithInstances(t *testing.T) {
 }
 
 // TestActionCapabilities_ProtectionReadFailureIsUnavailable: when the
-// protection lookup fails, suspend, resume and shell read as unavailable,
-// never as a role refusal and never as allowed, as the verbs fail closed on
-// the same read. Restart does not consult it.
+// protection lookup fails, suspend, resume, shell and the maintenance toggle
+// read as unavailable, never as a role refusal and never as allowed, as the
+// verbs fail closed on the same read. Restart does not consult it.
 func TestActionCapabilities_ProtectionReadFailureIsUnavailable(t *testing.T) {
 	rec := &recordingStore{protectedErr: errors.New("db down")}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
@@ -207,7 +287,7 @@ func TestActionCapabilities_ProtectionReadFailureIsUnavailable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
-	for _, id := range []string{core.ActionSuspend, core.ActionResume, core.ActionShell} {
+	for _, id := range []string{core.ActionSuspend, core.ActionResume, core.ActionShell, core.ActionToggleMaintenanceMode} {
 		if a := actionByID(t, acts, id); a.Outcome != core.DecisionUnavailable || a.Reason != core.ReasonAuthzUnavailable {
 			t.Errorf("%s with a failed protection read = %+v, want unavailable/authz_unavailable", id, a)
 		}
@@ -279,7 +359,7 @@ func TestActionCapabilities_ViewerDeniedWithoutPreconditionLeak(t *testing.T) {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
 	// Shell opens with can_view_sensitive, which a Viewer lacks too.
-	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume, core.ActionShell} {
+	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume, core.ActionShell, core.ActionToggleMaintenanceMode} {
 		a := actionByID(t, acts, id)
 		if a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission {
 			t.Errorf("viewer %s = %+v, want denied/insufficient_permission", id, a)

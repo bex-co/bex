@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
+import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import type { ResourceActionsState } from "@/features/capabilities/hooks/use-resource-actions";
 
 // Stub the mutation hook so tests don't need an Apollo context.
 const mockSetMaintenanceMode = vi.fn().mockResolvedValue(true);
@@ -11,6 +13,43 @@ vi.mock("@/features/services/hooks/use-maintenance-mode", () => ({
     busy: false,
   }),
 }));
+
+vi.mock("@/features/workspaces/context/hooks", async () => {
+  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
+  return mockWorkspaceContext();
+});
+
+// The switch reads the service's toggle decision from serverActions (w4/725).
+let actions: ResourceActionsState;
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useServerActions: () => actions,
+}));
+
+/** The toggle row serverActions answers `caller` about service "web". */
+function toggleAnswer(caller: "allowed" | "adminOnly" | "viewer") {
+  const answer = {
+    allowed: { outcome: "allowed", reason: null },
+    adminOnly: {
+      outcome: "denied",
+      reason: "protected_environment_admin_required",
+    },
+    viewer: { outcome: "denied", reason: "insufficient_permission" },
+  }[caller];
+  return {
+    status: "ready" as const,
+    snapshot: toResourceSnapshot("tea-test", "web", [
+      { action: "toggle_maintenance_mode", ...answer, precondition: null },
+    ]),
+    refresh: async () => undefined,
+  };
+}
+
+const ADMIN_ONLY = "This action is limited to admins.";
+
+beforeEach(() => {
+  mockSetMaintenanceMode.mockClear();
+  actions = toggleAnswer("allowed");
+});
 
 describe("MaintenanceModeSection", () => {
   it("shows disabled when maintenanceMode is null (never configured)", () => {
@@ -144,5 +183,136 @@ describe("MaintenanceModeSection", () => {
     expect(
       screen.queryByRole("button", { name: "Edit maintenance page URL" }),
     ).not.toBeInTheDocument();
+  });
+
+  // In a protected environment only an Admin toggles maintenance mode, either
+  // way (w4/725). Before, a Developer's switch was enabled, the confirmation
+  // opened, and the verb answered 403 after it. An Admin, and a Developer
+  // outside a protected environment, read "allowed" and keep the switch.
+  describe.each([
+    ["on", false],
+    ["off", true],
+  ])("turning maintenance mode %s", (_, enabled) => {
+    it("is disabled with Render's reason for a Developer in a protected environment", async () => {
+      actions = toggleAnswer("adminOnly");
+      const user = userEvent.setup();
+      render(
+        <MaintenanceModeSection
+          serviceId="web"
+          serviceName="web"
+          plan="standard"
+          maintenanceMode={{ enabled, uri: "" }}
+        />,
+      );
+
+      const toggle = screen.getByRole("switch");
+      expect(toggle).toBeDisabled();
+      expect(screen.getByText(ADMIN_ONLY)).toBeInTheDocument();
+      await user.click(toggle);
+      expect(
+        screen.queryByRole("heading", { name: /Enable maintenance mode\?/ }),
+      ).not.toBeInTheDocument();
+      expect(mockSetMaintenanceMode).not.toHaveBeenCalled();
+    });
+
+    it("stays enabled for a caller the projection allows", async () => {
+      const user = userEvent.setup();
+      render(
+        <MaintenanceModeSection
+          serviceId="web"
+          serviceName="web"
+          plan="standard"
+          maintenanceMode={{ enabled, uri: "" }}
+        />,
+      );
+
+      expect(screen.queryByText(ADMIN_ONLY)).not.toBeInTheDocument();
+      await user.click(screen.getByRole("switch"));
+      if (!enabled) {
+        await user.click(
+          screen.getByRole("button", { name: "Enable maintenance mode" }),
+        );
+      }
+      expect(mockSetMaintenanceMode).toHaveBeenCalledWith("web", !enabled, "");
+    });
+  });
+
+  it("gives a Viewer the role reason", () => {
+    actions = toggleAnswer("viewer");
+    render(
+      <MaintenanceModeSection
+        serviceId="web"
+        serviceName="web"
+        maintenanceMode={{ enabled: false, uri: "" }}
+      />,
+    );
+    expect(screen.getByRole("switch")).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Your role can’t perform this action. Ask a workspace admin.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the page URL editable for a Developer in a protected environment", async () => {
+    actions = toggleAnswer("adminOnly");
+    const user = userEvent.setup();
+    render(
+      <MaintenanceModeSection
+        serviceId="web"
+        serviceName="web"
+        maintenanceMode={{ enabled: true, uri: "" }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit maintenance page URL" }),
+    );
+    await user.type(
+      screen.getByLabelText(/Custom maintenance page URL/),
+      "https://status.example.com/m",
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(mockSetMaintenanceMode).toHaveBeenCalledWith(
+      "web",
+      true,
+      "https://status.example.com/m",
+      "uri",
+    );
+  });
+
+  it("holds the switch while access is checked, keeping its hint", () => {
+    actions = { status: "checking", refresh: async () => undefined };
+    render(
+      <MaintenanceModeSection
+        serviceId="web"
+        serviceName="web"
+        maintenanceMode={{ enabled: false, uri: "" }}
+      />,
+    );
+    expect(screen.getByRole("switch")).toBeDisabled();
+    expect(screen.queryByText(ADMIN_ONLY)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Checking whether you can perform this action…"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains a free service's switch by its plan, not the role", () => {
+    actions = toggleAnswer("adminOnly");
+    render(
+      <MaintenanceModeSection
+        serviceId="web"
+        serviceName="web"
+        plan="free"
+        maintenanceMode={{ enabled: false, uri: "" }}
+      />,
+    );
+    expect(screen.getByRole("switch")).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Maintenance mode is available on paid web service plans.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(ADMIN_ONLY)).not.toBeInTheDocument();
   });
 });

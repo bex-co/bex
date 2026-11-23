@@ -342,7 +342,7 @@ const jaEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "この環境のリソースを削除、一時停止、再開したり、メンテナンスモードをオンにしたりできるのは、ワークスペースの管理者のみです。",
+      "この環境のリソースを削除、一時停止、再開したり、メンテナンスモードを切り替えたりできるのは、ワークスペースの管理者のみです。",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

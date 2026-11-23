@@ -136,6 +136,9 @@ const (
 	// Opening a service's shell, in the browser or over SSH (serverActions,
 	// w4/726): Admin-only in a protected environment, as on Render.
 	ActionShell = "shell"
+	// Turning a web service's maintenance mode on or off (serverActions,
+	// w4/725): Admin-only in a protected environment, as on Render.
+	ActionToggleMaintenanceMode = "toggle_maintenance_mode"
 )
 
 // The bounded precondition vocabulary: why a PERMITTED action cannot execute

@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -30,7 +31,7 @@ import (
 // protection_test.go exercises the protected-environment rule (protection.go).
 // It is Render's (w8/187, render.com/docs/projects): in a protectedStatus=protected
 // Environment only a workspace Admin may delete, suspend or resume a service or
-// turn maintenance mode on; everything else — deploys, rollbacks, settings — is
+// toggle its maintenance mode; everything else — deploys, rollbacks, settings — is
 // open to anyone who may do it elsewhere, and no verb asks for a typed phrase.
 // (Before w8/187 w6/m19, w4/m126 and w4/m127 gated a wider set behind
 // ProtectedConfirmation phrases for every caller.)
@@ -335,44 +336,62 @@ func TestProtectedMemberSettingsNeedNeitherPhraseNorAdmin(t *testing.T) {
 	}
 }
 
+// Render keeps toggling maintenance mode to Admins in a protected environment
+// (render.com/docs/projects), so only an Admin turns it on and only an Admin
+// turns it off. Before w4/725 turning it off was open to a Developer.
 func TestProtectedMemberMaintenanceModeNeedsAdmin(t *testing.T) {
-	rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-	svc, cl := newService(rec, inProtectedEnvironment(maintenanceApp()))
-	asNonAdmin(svc)
+	for _, on := range []bool{true, false} {
+		t.Run(fmt.Sprintf("turn on=%t", on), func(t *testing.T) {
+			rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
+			a := inProtectedEnvironment(maintenanceApp())
+			if !on {
+				a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+			}
+			svc, cl := newService(rec, a)
+			asNonAdmin(svc)
+			enabled := func() bool {
+				m := getApp(t, cl, "web").Spec.MaintenanceMode
+				return m != nil && m.Enabled
+			}
 
-	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); !adminOnlyRefusal(err) {
-		t.Fatalf("maintenance on by a non-admin: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
-	}
-	if m := getApp(t, cl, "web").Spec.MaintenanceMode; m != nil && m.Enabled {
-		t.Fatal("a refused verb must not have changed the spec")
-	}
+			if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: on}); !adminOnlyRefusal(err) {
+				t.Fatalf("a non-admin's toggle: got %v, want PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", err)
+			}
+			if enabled() == on {
+				t.Fatal("a refused verb must not have changed the spec")
+			}
 
-	asAdmin(svc)
-	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); err != nil {
-		t.Fatalf("maintenance on by an admin: %v", err)
-	}
-	if m := getApp(t, cl, "web").Spec.MaintenanceMode; m == nil || !m.Enabled {
-		t.Fatal("maintenance mode should be on")
+			asAdmin(svc)
+			if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: on}); err != nil {
+				t.Fatalf("an admin's toggle: %v", err)
+			}
+			if enabled() != on {
+				t.Fatalf("maintenance mode enabled = %t, want %t", enabled(), on)
+			}
+		})
 	}
 }
 
-// Turning maintenance mode off restores availability; a cron reschedule changes
-// when the job runs rather than what it runs.
-func TestProtectedRestoringVerbsStayOpen(t *testing.T) {
-	t.Run("disable maintenance mode", func(t *testing.T) {
-		rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-		a := maintenanceApp()
-		a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
-		svc, cl := newService(rec, a)
-		asNonAdmin(svc)
+// Changing only the maintenance page's URL toggles nothing, so a Developer
+// may still do it on a protected member, with maintenance mode on or off.
+func TestProtectedMaintenancePageEditStaysOpen(t *testing.T) {
+	for _, on := range []bool{true, false} {
+		t.Run(fmt.Sprintf("on=%t", on), func(t *testing.T) {
+			rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
+			a := inProtectedEnvironment(maintenanceApp())
+			a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: on}
+			svc, cl := newService(rec, a)
+			asNonAdmin(svc)
 
-		if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{}); err != nil {
-			t.Fatalf("turning maintenance mode off: %v", err)
-		}
-		if m := getApp(t, cl, "web").Spec.MaintenanceMode; m != nil && m.Enabled {
-			t.Fatal("maintenance mode should be off")
-		}
-	})
+			const uri = "https://status.example.com/maintenance"
+			if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: on, URI: uri}); err != nil {
+				t.Fatalf("a URL-only edit by a non-admin: %v", err)
+			}
+			if m := getApp(t, cl, "web").Spec.MaintenanceMode; m == nil || m.Enabled != on || m.URI != uri {
+				t.Fatalf("maintenance mode = %+v, want enabled=%t with the new URL", m, on)
+			}
+		})
+	}
 }
 
 func TestUnprotectedMemberNeedsNoAdmin(t *testing.T) {

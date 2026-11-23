@@ -35,7 +35,11 @@ import (
 // w4/m578). So does shell, the permission CreateShellSession and native SSH
 // open with (can_view_sensitive), so a client can say only an Admin may before
 // it mints a ticket (w4/726); whether the service can host a shell at all is
-// its sshAddress, not a precondition here. Read-only and non-auditing:
+// its sshAddress, not a precondition here. Toggling maintenance mode reads the
+// same way on a web service, with SetMaintenanceMode's permission (can_operate),
+// so a Developer on a protected member sees the switch disabled for the reason
+// the verb would refuse it (w4/725); its plan eligibility is the service's
+// plan, which the client already reads. Read-only and non-auditing:
 // can_view gates the projection itself; a snapshot is never a bearer grant —
 // the verb still runs its own guards at dispatch.
 //
@@ -44,7 +48,8 @@ import (
 // reach it there, so a client cannot render workspace A's screen from
 // workspace B's resource. Cron actions appear only on a cron_job, and shell
 // only on a type that runs instances — an absent action means "does not exist
-// for this type", never "forbidden".
+// for this type", never "forbidden"; so does the maintenance toggle on any
+// type but a web service.
 func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.ActionDecision, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
@@ -80,9 +85,14 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
 	}
-	if sshTypeHasInstances(effectiveType(a.Spec.Type)) {
+	typ := effectiveType(a.Spec.Type)
+	if sshTypeHasInstances(typ) {
 		shell, _ := core.RestrictedDecision("shell", s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
 		out = append(out, core.DecideAction(core.ActionShell, shell, ""))
+	}
+	if typ == appv1alpha1.TypeWebService {
+		toggle, _ := core.RestrictedDecision(core.VerbToggleMaintenanceMode, operate, protected, admin)
+		out = append(out, core.DecideAction(core.ActionToggleMaintenanceMode, toggle, ""))
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob {
 		out = append(out,

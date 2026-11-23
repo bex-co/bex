@@ -355,7 +355,7 @@ const ruEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "Только администраторы рабочего пространства могут удалять, приостанавливать и возобновлять ресурсы этого окружения или включать для них режим обслуживания.",
+      "Только администраторы рабочего пространства могут удалять, приостанавливать и возобновлять ресурсы этого окружения или включать и выключать для них режим обслуживания.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

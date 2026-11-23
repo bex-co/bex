@@ -337,7 +337,7 @@ const koEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "워크스페이스 관리자만 이 환경의 리소스를 삭제, 일시 중지, 재개하거나 유지 보수 모드를 켤 수 있습니다.",
+      "워크스페이스 관리자만 이 환경의 리소스를 삭제, 일시 중지, 재개하거나 유지 보수 모드를 켜고 끌 수 있습니다.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

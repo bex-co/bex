@@ -328,7 +328,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "只有工作区管理员可以删除、暂停、恢复本环境的资源或为其开启维护模式。",
+      "只有工作区管理员可以删除、暂停、恢复本环境的资源或切换其维护模式。",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

@@ -12,6 +12,7 @@ const ACTIONS = [
   "rollback",
   "cron_run_now",
   "cron_cancel_run",
+  "toggle_maintenance_mode",
 ];
 
 /** Every action allowed, unless `overrides` names its outcome or the

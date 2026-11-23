@@ -346,7 +346,7 @@ const deEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "Nur Workspace-Admins können die Ressourcen dieser Umgebung löschen, pausieren, fortsetzen oder den Wartungsmodus dafür einschalten.",
+      "Nur Workspace-Admins können die Ressourcen dieser Umgebung löschen, pausieren, fortsetzen oder ihren Wartungsmodus ein- und ausschalten.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {
