@@ -17,14 +17,14 @@
 
 ## Definition of done
 
-- On production, at least ten consecutive same-node deploys and restarts of a disk-bearing Starter fixture in `bex-canary` show no `DetachVolume` for its PV in the leader `kube-controller-manager` log (no `Verified volume is safe to detach` line), measured as in [m547 t005](../../blocked/m547/done/t005.md). They mix code deploys and restarts and name the port, as t005 did, and every new instance runs on the volume's node.
+- On production, at least ten consecutive same-node deploys and restarts of a disk-bearing Starter fixture in `bex-canary` show no `DetachVolume` for its PV in the leader `kube-controller-manager` log (no `Verified volume is safe to detach` line), measured as in [m547 t005](../m547/done/t005.md). They mix code deploys and restarts and name the port, as t005 did, and every new instance runs on the volume's node.
 - In each of those runs a holder pod ran on the volume's node from before the old instance stopped until the new instance had the volume mounted, and no holder Job or pod is left once the rollout ends. The cordoned-node run makes no holder, or ends it at once, and moves the volume no slower than t005's 34.24 s plus the time to delete the holder.
 - No customer surface shows the holder: the service's instances (`GET /v1/services/{id}/instances`), SSH targets, metrics and events.
 - ADR082 describes the holder, its measured same-node window and the decision on the 2 s sync. ADR004 and ADR018 no longer list the same-node detach as open.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w6/161](../161.md), filed by w6/m547 t005 on 2026-11-21 and promoted by `/loopx w6` the same day. m547 ([blocked/m547](../../blocked/m547/README.md)) is parked until this milestone and w6/162 ship. Its t011 then re-measures the whole window.
+- **Source:** inbox note [w6/161](../161.md), filed by w6/m547 t005 on 2026-11-21 and promoted by `/loopx w6` the same day. m547 ([m547](../m547/README.md)) is parked until this milestone and w6/162 ship. Its t011 then re-measures the whole window.
 - **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). [Render's persistent disks](https://render.com/docs/disks): "Render stops the old instance before starting the new one, which makes the service unavailable for a few seconds." One same-node swap in ten took 31.75 s instead of 7.25–9.0 s.
 - **Expected outcome:** a same-node deploy or restart never pays Hetzner's detach (about 9.4 s) and attach (15–16 s). The new instance also skips the sync wait (0.03–1.96 s in t005), because the volume stays reported in use. It may skip the LUKS open (about 2.2 s) too, because the holder keeps the mapping open. t005 measures that.
 - **Why now:** it gates m547, and each disk service's deploys, restarts and plan changes hit the race at random. m547 t010's 2 s sync made it likelier, so this milestone also settles whether 2 s stays.
@@ -50,7 +50,7 @@ The note offered two options. This milestone takes the first.
   - ADR082 § D3, ADR004 and ADR018 record the holder and the 2 s sync decision (t004);
   - Simplify and Test coverage ran with the code (t006, t007);
   - [w6/165](../../165.md) files the one swap the holder does not cover, the restore of a served release after a failed rollout.
-- **Gate (cleared 2026-11-22): the pin carried `dd8dfaaf00`.** Then t005 was to run ten or more same-node deploys and restarts and a cordoned run of a disk-bearing Starter fixture in `bex-canary` on a `bex-tenant-0` node, as [m547 t005](../../blocked/m547/done/t005.md) did. It checks that no `DetachVolume` appears and that no holder is left, records the phase table and the bound in ADR082, and deletes the fixture by id. t008 then closes, and m547's t011 re-measures.
+- **Gate (cleared 2026-11-22): the pin carried `dd8dfaaf00`.** Then t005 was to run ten or more same-node deploys and restarts and a cordoned run of a disk-bearing Starter fixture in `bex-canary` on a `bex-tenant-0` node, as [m547 t005](../m547/done/t005.md) did. It checks that no `DetachVolume` appears and that no holder is left, records the phase table and the bound in ADR082, and deletes the fixture by id. t008 then closes, and m547's t011 re-measures.
 
 ## Gate cleared, and t005 found that no rollout held — 2026-11-22
 

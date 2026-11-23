@@ -138,21 +138,25 @@ When `spec.disk` is set, `applyDeploymentSpec` additionally:
 
 **Measured unavailable window (w6/m547, production, 2026-11-21).** Tenant kubelets sync node status every 2 s (`node-status-update-frequency` in the tenant KubeadmConfigTemplates). That matters because the kubelet mounts an attachable volume only after a sync has reported it in use, and the attach/detach controller releases a volume only after the old node's sync reports it free. `bex-tenant-0` rolled onto it that day; `bex-tenant-burst` and `bex-tenant-lg` adopt it when their machines are next replaced. For a Starter disk service whose server listens at once and names its port, the window (first failed request at the edge to first success, probed every 250 ms) is:
 
-| case | before (t001) | after (t005) | with the disk holder (w6/m559 t005, 2026-11-23) |
+| case | before (t001) | after (t005) | with the disk holder (w6/m559 t005 and m547 t011, 2026-11-23) |
 | --- | --- | --- | --- |
-| restart, same node | — | 5.7–6.3 s | 4.0–4.25 s |
-| code deploy, same node | 15.8–23.3 s | 7.25–9.0 s | 4.0–4.25 s |
-| the volume moves (the node was unschedulable) | 39.8–46.8 s | 34.2 s | 33.25 s |
+| restart, same node | — | 5.7–6.3 s | 3.99–4.25 s |
+| code deploy, same node | 15.8–23.3 s | 7.25–9.0 s | 4.0–4.26 s; 6.0 s for a tag new to the node (a 2.1 s pull) |
+| code deploy, same node, a web image that names no port | — | 37.0–44.0 s | 7.24 s; 9.5 s for a tag new to the node |
+| the volume moves (the node was unschedulable) | 39.8–46.8 s | 34.2 s | 33.25–39.75 s |
 
 Before the holder, a same-node swap spent: stop 0.5–1.1 s, the kubelet's sync gate up to 2 s, publish 2.8–3.4 s (the LUKS open, about 2.2 s, plus the mount and the pod sandbox), pull 0.6–2.2 s (`imagePullPolicy: Always` re-checks even a cached digest), and the startup probe 0.5–1.0 s. With the holder (below), the new instance joins a volume the kubelet still has mounted, so the sync gate and the LUKS open are gone: stop 0.63–0.79 s, the volume ready 0.06–0.19 s after the kubelet takes the pod, the sandbox 0.37–0.52 s later, and a cached pull of 0.6 s. The new instance starts 1.8–1.9 s after its pod reaches the node, and the edge follows within 0.74–0.95 s.
+
+m547 t011 measured the whole window again on pin `1a5a8e872398` (2026-11-23), on one fixture: two no-port code deploys, twelve same-node code deploys and restarts with the port named, and a cordoned run. Every unforced rollout held and stayed on the volume's node. With the port named, eleven of the twelve took 3.99–4.26 s, with the same phases as w6/m559 t005 within 0.1 s. The twelfth, a code deploy of a tag new to the node, took 6.0 s. In the cordoned run, Hetzner's detach took 16.1 s, against 9.2–9.4 s before, so the move took 39.75 s ([t011](../.pm/w6/done/m547/done/t011.md)).
 
 The bound excludes:
 
 - the app's own exit and start time;
-- a node that is gone or unschedulable, where Hetzner's detach (about 9.4 s) and attach (15–16 s) dominate;
-- a large image's pull, which [w6/160](../.pm/w6/160.md) would move before the stop.
+- a node that is gone or unschedulable, where Hetzner's detach (9–16 s) and attach (15–16 s) dominate;
+- the pull of an image the node does not have: 2.0–2.1 s for a 5 MB image from Docker Hub, and more for a large one. [w6/160](../.pm/w6/160.md) would move it before the stop;
+- a service that probes by exec: one with a Health Check Path, or a web image that names no port. bex's `bex-health-probe-install` init container adds about 3.3 s to each start: its own start took 2.05–2.22 s, against 0.17 s for the app container, most likely because its 20m CPU limit throttles runc. It then runs 0.59 s, and the kubelet starts the app about 0.7 s after it exits ([w6/170](../.pm/w6/170.md)).
 
-Two terms were open, so m547 is parked:
+Two terms were open while m547 was parked. Both are closed:
 
 - One same-node swap in ten detached and reattached the volume (+25.6 s): the controller checked the volume as the old pod was deleted, after the node's 2 s sync had already reported it free, and 50 ms before the new pod was bound to the same node ([w6/161](../.pm/w6/done/161.md)). The disk holder below closes it: on production, twelve consecutive same-node swaps held and none detached.
 - A web image service that names no port waited 25 s after Ready on each image deploy while its HTTP port was rediscovered: a 20 s grace from the container's start before the operator looked, then 5 s before the pass that promoted it. Under `Recreate` the operator now looks as soon as the new instance is Ready, and the promoting pass follows at once ([w6/162](../.pm/w6/done/162.md)). On production (pin `19fdb46f1758`, 2026-11-22), three code deploys of such a service reached the edge 0.38–0.63 s after the new instance was Ready.

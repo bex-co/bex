@@ -622,7 +622,13 @@ A service with a persistent disk cannot run two instances on one volume, so Rend
 Measured on production on 2026-11-21: restarts took 5.7–6.3 s and code deploys 7.25–9.0 s on the volume's node, against 15.8–23.3 s before. A move to another node took 34 s. Then:
 
 - the attach/detach controller sometimes detached the volume between the two pods on the same node ([w6/161](../.pm/w6/done/161.md)). The holder closed this (w6/m559, above);
-- a web image service that names no port waited 25 s after Ready while its HTTP port was rediscovered. Its port is now looked for once the new instance is Ready (above, w6/162); its production measure is pending.
+- a web image service that names no port waited 25 s after Ready while its HTTP port was rediscovered. Its port is now looked for once the new instance is Ready (above, w6/162).
+
+Measured again on 2026-11-23 (pin `1a5a8e872398`, w6/m547 t011), with both fixes, for a Starter disk service whose server listens at once:
+
+- **The port named.** Same-node restarts and code deploys took 3.99–4.26 s, and every one held its volume on its node. A code deploy of a tag new to the node adds its pull, 2.1 s for a 5 MB image (6.0 s in all; [w6/160](../.pm/w6/160.md)).
+- **No port.** Two code deploys took 7.24 and 9.5 s, against 37–44 s before. The extra 3.3 s is the `bex-health-probe-install` init container, most likely throttled by its 20m CPU limit. Every service that probes by exec pays it, a Health Check Path included ([w6/170](../.pm/w6/170.md)).
+- **A move.** It took 39.75 s, most of it Hetzner's detach and attach (16 s each that day). See [ADR082 § D3](ADR082-persistent-disks.md#d3--mechanism-deployment--operator-managed-pvc-recreate-strategy).
 
 ## Gotchas
 

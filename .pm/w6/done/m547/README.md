@@ -1,6 +1,6 @@
 # w6 · m547 — A disk-bearing service is unavailable for a few seconds on a deploy, as on Render
 
-**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** blocked (t001–t008 and t010 done; t011 re-measures once w6/161 and w6/162 ship)
+**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,10 +13,10 @@
 | t010 | [Tenant kubelets sync node status every 2 s](done/t010.md) — **DONE** | 30m | t001 |
 | t005 | [Ship and re-measure on production](done/t005.md) — **DONE** | 45m | t003, t004, t010 |
 | t006 | [Record the measured bound in ADR082, ADR004 and ADR018](done/t006.md) — **DONE** | 20m | t005 |
-| t011 | [Re-measure once the same-node detach race and the port rediscovery are fixed](t011.md) | 45m | t005 |
+| t011 | [Re-measure once the same-node detach race and the port rediscovery are fixed](done/t011.md) — **DONE** | 45m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008, t011 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008, t011 |
 
 ## Definition of done
 
@@ -58,7 +58,22 @@
 - **Rolled:** `82d55f40d` set `rolloutAfter` on `bex-tenant-0`. All six of its new nodes sync node status every 2 s. The first surge waited 6 min on Hetzner's shared-core limit (78 of 80 in use).
 - **Measured (t005, production pin `cce6c749f6ff`):** with a named port, same-node restarts took 5.74–6.25 s and code deploys 7.25–9.0 s, against 15.8–23.3 s in t001. A move took 34.24 s, against 39.8–46.8 s. All ten unforced runs stayed on the volume's node. The startup probe passed 0.5–1.0 s after start, and the kubelet's sync gate was at most 1.96 s.
 - **Why it does not hold:**
-  - One same-node swap in ten (D1, 31.75 s) detached and reattached the volume, because the node's 2 s sync reported it free before the new pod was bound: [w6/161](../../done/161.md).
-  - A web image service that names no port waited 25 s after Ready on each image deploy (37.0 and 44.0 s): [w6/162](../../done/162.md).
+  - One same-node swap in ten (D1, 31.75 s) detached and reattached the volume, because the node's 2 s sync reported it free before the new pod was bound: [w6/161](../161.md).
+  - A web image service that names no port waited 25 s after Ready on each image deploy (37.0 and 44.0 s): [w6/162](../162.md).
   - The rest of the excess over "about 5 s" is the code deploy's pull (0.6–2.2 s, [w6/160](../../160.md)) and the publish's LUKS open (about 2.2 s).
 - **Gate:** w6/161 and w6/162 ship. Then t011 re-measures on production once it runs their commits, and t009 closes.
+
+## UNBLOCKED — 2026-11-23: production runs w6/161's holder and w6/162's port fix
+
+- **Source:** verified evidence (`/loopx w6`; affects t011 and t009). Nothing the user decides is involved.
+- **The gate held.** w6/161 was promoted to [w6/m559](../m559/README.md), which closed after measuring its holder on production, and w6/162 closed in `c9c5168b5f`: both [`done/161.md`](../161.md) and [`done/162.md`](../162.md) exist. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `e6c65f5c62` (`1a5a8e872398`), and `git merge-base --is-ancestor` holds for the holder `dd8dfaaf00`, its CPU fix `5ada5fbcdc` and the port fix `30fa205aa7` against it. `bex-controller-manager` (started 04:29:43Z) runs that pin's digest, `bex-operator@sha256:65ef4f0d90b1`, and the six `bex-tenant-0` kubelets read `nodeStatusUpdateFrequency: 2s` in `/configz`.
+- **Next:** t011 repeats t005's runs on one fresh fixture in `bex-canary` on a `bex-tenant-0` node: two code deploys with no port, ten or more same-node deploys and restarts with a named port, and the cordoned-node case. It records the phase table beside t005's, updates the bound in ADR082, ADR004 and ADR018, and deletes the fixture by id. t009 then closes if every run is within the definition of done's bound, or its excess phase is named and filed.
+
+## Done — 2026-11-23: a same-node deploy or restart of a disk service is down about 4 s
+
+- **t011 ([record](done/t011.md)).** On pin `1a5a8e872398`, a fresh 1 GB Starter fixture in `bex-canary` (disposable) took twelve same-node code deploys and restarts with its port named. Every one held its volume on `bex-tenant-0-zdp6v-6p4cg`, and none detached it.
+  - Eleven took 3.99–4.26 s, against t005's 5.74–9.0 s and t001's 15.8–23.3 s. The twelfth, a code deploy of a tag new to the node, took 6.00 s, with a 2.08 s pull ([w6/160](../../160.md)).
+  - Two code deploys with no port took 7.24 and 9.50 s, against t005's 37.0 and 44.0 s. The operator found the port within 0.06 s of Ready. The rest of the excess is the health-probe install container, which its 20m CPU limit throttles, filed as [w6/170](../../170.md).
+  - The cordoned run moved the volume in 39.75 s, most of it Hetzner's detach and attach (16.1 s each that day).
+- **The definition of done holds** for the fixture it names (t009). ADR082, ADR004 and ADR018 record the bound and what it does not cover.
+- **Still open, as their own items.** [w6/160](../../160.md) (pre-pull), [w6/170](../../170.md) (the install container's CPU) and [w6/165](../../165.md) (a failed rollout's restore takes no hold).
