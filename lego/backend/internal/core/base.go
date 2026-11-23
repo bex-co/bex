@@ -214,7 +214,9 @@ func LifecycleOrCreate(createLike bool) string {
 // App (see GetApp). GetApp checks it against the caller's resolved tenant, so
 // every feature that fetches an App by name (apps/logs/metrics/secrets)
 // inherits the same cross-tenant gate from the one shared fetch.
-const LabelTenant = "bex.co/tenant"
+// LabelTenant aliases the canonical key in lego/types (v1alpha1), which the
+// operator also reads — the stamp and the read can never drift apart.
+const LabelTenant = appv1alpha1.LabelTenant
 
 // LabelAppID carries a service's Render-shaped typed id (srv-<xid>). The
 // control-plane store mints it and stamps it on projected App CRs; API-created

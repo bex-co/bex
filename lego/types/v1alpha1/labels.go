@@ -68,4 +68,29 @@ const (
 	// bex-api (pod logs, pod selection); it lives here so the stamp and the
 	// read can never drift apart.
 	LabelKeyValue = "app.bex.co/keyvalue"
+	// LabelTenant carries a projected App CR's owning tenant id (tea-<id>).
+	// Stamped by bex-api (store reconciler, apps.Create) and read by the
+	// operator (disk snapshot scoping); it lives here so the stamp and the
+	// read can never drift apart.
+	LabelTenant = "bex.co/tenant"
+	// LabelSandboxID is a sandbox's public id (`sbx-…`), persisted by
+	// OpenSandbox as a pod label. Stamped by bex-api (sandbox creates,
+	// session-egress policies) and selected by the operator (egress meter
+	// allow-list); it lives here so the stamp and the select can never drift
+	// apart.
+	LabelSandboxID = "bex.co/sandbox-id"
+	// LabelAgentSession marks an agent session's sandbox (its session id).
+	// Stamped by bex-api (agent-session creates, session-egress policies)
+	// and read by the operator egress meter, which excludes it from
+	// /v1/sandboxes metering; it lives here so the stamp and the read can
+	// never drift apart.
+	LabelAgentSession = "bex.co/agent-session"
+	// LabelNodePool is the node label infra stamps on every worker, whose
+	// value names the pool. bex-api selects it for the tenant pool's
+	// outbound IPs and the operator selects it for untrusted workload
+	// placement; it lives here so the selects can never drift apart.
+	LabelNodePool = "bex.co/pool"
+	// NodePoolTenant is LabelNodePool's value on the autoscaled tenant pool,
+	// the only pool untrusted tenant workloads may land on.
+	NodePoolTenant = "tenant"
 )

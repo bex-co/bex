@@ -438,7 +438,7 @@ func diskSnapshotWorkspace(app *appv1alpha1.App) string {
 	}
 	// The control plane also stamps the workspace as a bare tenant label on the
 	// CR itself; either is a per-tenant scope under ADR043.
-	if tenant := app.Labels["bex.co/tenant"]; tenant != "" {
+	if tenant := app.Labels[appv1alpha1.LabelTenant]; tenant != "" {
 		return tenant
 	}
 	return app.Namespace
@@ -473,7 +473,7 @@ func (r *AppReconciler) reconcileDiskSnapshotCleanup(ctx context.Context, app *a
 	if !hadDisk && app.Annotations[annotDiskSnapshots] == "" {
 		return true, nil
 	}
-	if workspace, alias := app.Labels[labelWorkspace], app.Labels["bex.co/tenant"]; app.Namespace == "" ||
+	if workspace, alias := app.Labels[labelWorkspace], app.Labels[appv1alpha1.LabelTenant]; app.Namespace == "" ||
 		(workspace != "" && workspace != app.Namespace) || (alias != "" && alias != app.Namespace) {
 		return false, fmt.Errorf("disk snapshot cleanup scope does not match the App namespace")
 	}

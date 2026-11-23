@@ -45,8 +45,11 @@ import (
 )
 
 const (
-	metadataOwner         = "bex.co/owner"
-	metadataWorkspace     = "bex.co/workspace"
+	metadataOwner = "bex.co/owner"
+	// metadataWorkspace aliases the agent-session service's LabelWorkspace:
+	// the same OpenSandbox create-metadata key, so the two stamps can never
+	// drift apart.
+	metadataWorkspace     = agentsession.LabelWorkspace
 	metadataNetworkPolicy = "bex.co/network-policy"
 	// metadataEgress is the label the platform egress policies select a Render
 	// sandbox by (w32/m283). It is separate from metadataNetworkPolicy because
@@ -73,7 +76,7 @@ const (
 	// which keeps OpenSandbox the single source of truth with no bex-side
 	// mapping table to drift (ADR042 D4). Absent ⇒ a legacy (pre-w9/m94) or
 	// agent-session sandbox, whose canonical id stays the substrate id.
-	metadataPublicID     = "bex.co/sandbox-id"
+	metadataPublicID     = appv1alpha1.LabelSandboxID
 	metadataSandboxGroup = sessionegress.SandboxGroupLabel
 	metadataAgentSession = agentsession.LabelSession
 )

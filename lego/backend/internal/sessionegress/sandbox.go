@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Render's sandbox `allow-list` network policy (w32/m283, ADR042 § Sandbox
@@ -45,7 +46,9 @@ import (
 const (
 	// SandboxIDLabel is the sandbox's public id (`sbx-…`), persisted by
 	// OpenSandbox as a Pod label; the allow-list policy selects on it.
-	SandboxIDLabel = "bex.co/sandbox-id"
+	// Aliases the canonical key in lego/types (v1alpha1), shared with the
+	// sandbox service and the operator egress meter.
+	SandboxIDLabel = appv1alpha1.LabelSandboxID
 	// SandboxGroupLabel is the sandbox's immutable sandbox group id (`sbg-…`),
 	// persisted as a Pod label for Pod-bound credential brokering (w2/m534-m535).
 	SandboxGroupLabel = "bex.co/sandbox-group"
