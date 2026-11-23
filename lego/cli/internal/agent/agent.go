@@ -1127,8 +1127,9 @@ func openCommand(d deps) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "open <ags-id>",
 		Short: "Open an agent session in bex desktop or the dashboard",
-		Long: "Opens the session's running sandbox in bex desktop over SSH (like\n" +
-			"`bex edit ags-…`) when the desktop is installed and the sandbox is up;\n" +
+		Long: "Opens the session's sandbox in bex desktop over SSH (like `bex edit\n" +
+			"ags-…`, so a sandbox that closed starts when the editor connects) when\n" +
+			"the desktop is installed and the session can be opened over SSH;\n" +
 			"otherwise opens, and prints, the session's dashboard page.",
 		Args: sessionArgs(0),
 		RunE: func(c *cobra.Command, args []string) error {

@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -348,14 +349,46 @@ func TestSSHExecsSystemSSHOnTheSandbox(t *testing.T) {
 	if strings.Join(argv, " ") != "-v -o ServerAliveInterval=30 ags-up@ssh.bex.co uptime -p" {
 		t.Fatalf("ssh argv %v: the destination goes after the options, before the remote command", argv)
 	}
-	if _, stderr, code := run(t, d, "ssh", "ags-down"); code != 1 || !strings.Contains(stderr, "no running sandbox") {
-		t.Fatalf("no sandbox: exit %d: %s", code, stderr)
+	if _, stderr, code := run(t, d, "ssh", "ags-down"); code != 1 || !strings.Contains(stderr, "does not offer SSH") {
+		t.Fatalf("no address: exit %d: %s", code, stderr)
 	}
 	if _, stderr, code := run(t, d, "ssh", "ags-up", "uptime"); code != exitUsage || !strings.Contains(stderr, "after --") {
 		t.Fatalf("an ssh argument before --: exit %d: %s", code, stderr)
 	}
 	if _, _, code := run(t, d, "ssh", "ags-up", "-v"); code != exitUsage {
 		t.Fatalf("an ssh flag before --: exit %d, want cobra's usage error", code)
+	}
+}
+
+// ADR054 D9: the API gives a session whose sandbox closed its sshAddress and
+// the gateway wakes it on login, so `bex agent ssh` connects with no start of
+// its own; a canceled or archived session has no address and says why.
+func TestSSHConnectsToAClosedSessionAndRefusesOneThatCannotOpen(t *testing.T) {
+	f := newFakeAPI(t)
+	f.raw["ags-closed"] = `{"id":"ags-closed","state":"succeeded","phase":"completed","steerable":true,"turns":1,
+		"agentConfig":{"agent":"claude","task":"t"},"sshAddress":"ags-closed@ssh.bex.co"}`
+	f.raw["ags-canceled"] = `{"id":"ags-canceled","state":"canceled","phase":"canceled","agentConfig":{"agent":"claude","task":"t"}}`
+	f.raw["ags-canceling"] = `{"id":"ags-canceling","state":"working","phase":"canceling","agentConfig":{"agent":"claude","task":"t"}}`
+	f.raw["ags-archived"] = `{"id":"ags-archived","state":"succeeded","phase":"completed","archivedAt":"2026-11-23T18:00:00Z",
+		"agentConfig":{"agent":"claude","task":"t"}}`
+	d := f.deps(t).deps
+	var argv []string
+	d.execSSH = func(args []string, before func()) error { argv = args; before(); return nil }
+	if _, stderr, code := run(t, d, "ssh", "ags-closed"); code != 0 || !slices.Equal(argv, []string{"ags-closed@ssh.bex.co"}) {
+		t.Fatalf("closed sandbox: exit %d argv %v: %s", code, argv, stderr)
+	}
+	if len(f.creates) != 0 || len(f.steers) != 0 {
+		t.Fatalf("ssh started the sandbox itself (creates %d, steers %d); the gateway's login does", len(f.creates), len(f.steers))
+	}
+	for id, want := range map[string]string{
+		"ags-canceled":  "agent session ags-canceled was canceled, so it has no sandbox to open and takes no more messages",
+		"ags-canceling": "agent session ags-canceling was canceled",
+		"ags-archived":  "agent session ags-archived is archived, so it has no sandbox to open. Unarchive it (bex agent unarchive ags-archived)",
+	} {
+		argv = nil
+		if _, stderr, code := run(t, d, "ssh", id); code != 1 || !strings.Contains(stderr, want) || argv != nil {
+			t.Errorf("%s: exit %d argv %v, stderr %q; want %q", id, code, argv, stderr, want)
+		}
 	}
 }
 

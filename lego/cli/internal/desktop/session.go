@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/render-oss/cli/pkg/client"
 )
@@ -33,13 +34,27 @@ import (
 // (lego/backend/internal/agentsessions View). The CLI imports no sibling
 // module, so testdata/agent-session-ssh-contract.json pins the field names.
 type agentSession struct {
-	ID         string `json:"id"`
-	SSHAddress string `json:"sshAddress"`
+	ID         string     `json:"id"`
+	Phase      string     `json:"phase"`
+	SSHAddress string     `json:"sshAddress"`
+	ArchivedAt *time.Time `json:"archivedAt"`
 }
 
-// sessionNotRunning is the answer for a session with no live sandbox: the API
-// omits sshAddress then.
-const sessionNotRunning = "agent session %s has no running sandbox to open; send it a message to start one"
+// NoSSHAddress says why a session the API gave no sshAddress cannot be
+// opened. The API gives one to every session that is neither canceled nor
+// archived, sandbox or not, because an SSH login wakes a closed sandbox
+// (ADR054 D9), so the address is missing only for those two or on a server
+// that offers no SSH. The words follow the gateway's own banners
+// (agentsessions errNoSandboxToOpen).
+func NoSSHAddress(id, phase string, archived bool) error {
+	switch {
+	case phase == "canceling" || phase == "canceled":
+		return fmt.Errorf("agent session %s was canceled, so it has no sandbox to open and takes no more messages", id)
+	case archived:
+		return fmt.Errorf("agent session %s is archived, so it has no sandbox to open. Unarchive it (bex agent unarchive %s), then connect again", id, id)
+	}
+	return fmt.Errorf("agent session %s has no SSH address: this bex server does not offer SSH into agent sandboxes", id)
+}
 
 // sessionSSHAddress reads a session through the upstream client, exactly as a
 // command would, including its token refresh.
@@ -87,7 +102,7 @@ func fetchSSHAddress(ctx context.Context, c *client.Client, id string) (string, 
 		return "", fmt.Errorf("look up agent session %s: %w", id, err)
 	}
 	if session.SSHAddress == "" {
-		return "", fmt.Errorf(sessionNotRunning, id)
+		return "", NoSSHAddress(id, session.Phase, session.ArchivedAt != nil)
 	}
 	return session.SSHAddress, nil
 }

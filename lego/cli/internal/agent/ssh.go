@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/bex-co/bex/lego/cli/internal/desktop"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 )
 
@@ -39,7 +40,8 @@ func sshCommand(d deps) *cobra.Command {
 		Short: "Open a shell on an agent session's sandbox",
 		Long: "Runs your ssh against the session's sandbox (ags-…@ssh.bex.co), with your\n" +
 			"registered SSH key, like `bex edit ags-…` does for the editor. Arguments\n" +
-			"after -- go to ssh unchanged. The sandbox runs only while a turn does.",
+			"after -- go to ssh unchanged. A sandbox that closed starts when you\n" +
+			"connect: ssh says so and continues once it is up.",
 		Args: func(c *cobra.Command, args []string) error {
 			if dash := c.ArgsLenAtDash(); dash > 1 || (dash < 0 && len(args) > 1) {
 				return usageError("put ssh's own arguments after --")
@@ -64,14 +66,16 @@ func sshCommand(d deps) *cobra.Command {
 	}
 }
 
-// sandboxAddress is the SSH address of id's running sandbox.
+// sandboxAddress is the SSH address of id's sandbox. A login to it opens a
+// sandbox that is up, waits for one that is starting and wakes one that
+// closed (ADR054 D9), so the CLI never starts one itself.
 func sandboxAddress(ctx context.Context, a *api, id string) (string, error) {
 	s, _, err := a.session(ctx, id)
 	if err != nil {
 		return "", err
 	}
 	if s.SSHAddress == "" {
-		return "", fmt.Errorf("%s has no running sandbox (it runs while a turn does); send it a message to start one", id)
+		return "", desktop.NoSSHAddress(id, s.Phase, s.ArchivedAt != nil)
 	}
 	return s.SSHAddress, nil
 }

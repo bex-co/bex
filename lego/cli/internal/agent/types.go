@@ -46,6 +46,7 @@ type session struct {
 	Title             string      `json:"title"`
 	Tags              []string    `json:"tags"`
 	AgentConfig       agentConfig `json:"agentConfig"`
+	Phase             string      `json:"phase"`
 	State             string      `json:"state"`
 	Steerable         bool        `json:"steerable"`
 	Turns             int         `json:"turns"`
@@ -60,6 +61,7 @@ type session struct {
 	WaitingFor      string     `json:"waitingFor"`
 	WaitingSince    *time.Time `json:"waitingSince"`
 	SSHAddress      string     `json:"sshAddress"`
+	ArchivedAt      *time.Time `json:"archivedAt"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	Outcome         *outcome   `json:"outcome"`
 	ParentSessionID string     `json:"parentSessionId"`

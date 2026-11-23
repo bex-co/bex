@@ -434,7 +434,7 @@ func TestContractFixtureDecodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := golden.Session
-	if s.ID == "" || s.OwnerID == "" || s.State != stateSucceeded || s.SSHAddress == "" || s.Outcome == nil || s.PendingMessages != 1 ||
+	if s.ID == "" || s.OwnerID == "" || s.Phase != "completed" || s.State != stateSucceeded || s.SSHAddress == "" || s.Outcome == nil || s.PendingMessages != 1 ||
 		s.AgentConfig.GitHubCLI == nil || *s.AgentConfig.GitHubCLI {
 		t.Fatalf("session fields lost: %+v", s)
 	}
@@ -995,7 +995,9 @@ func TestFilesDownloadChecksHashesAndNeverOverwrites(t *testing.T) {
 	}
 }
 
-func TestOpenPrefersTheDesktopOnlyForARunningSandbox(t *testing.T) {
+// open prefers bex desktop for a session with an SSH address, which since
+// ADR054 D9 includes one whose sandbox closed (the editor's login wakes it).
+func TestOpenPrefersTheDesktopForASessionWithAnSSHAddress(t *testing.T) {
 	f := newFakeAPI(t)
 	f.script["ags-o1"] = []string{stateSucceeded}
 	d := f.deps(t)
@@ -1003,8 +1005,14 @@ func TestOpenPrefersTheDesktopOnlyForARunningSandbox(t *testing.T) {
 	d.interactive = func() bool { return true }
 	stdout, _, code := run(t, d.deps, "open", "ags-o1")
 	if code != 0 || stdout != "https://dashboard.bex.co/agents/ags-o1\n" || len(d.desktops) != 0 || len(d.opened) != 1 {
-		t.Fatalf("no sandbox: exit %d stdout %q desktops %v opened %v", code, stdout, d.desktops, d.opened)
+		t.Fatalf("no address: exit %d stdout %q desktops %v opened %v", code, stdout, d.desktops, d.opened)
 	}
+	f.raw["ags-closed"] = `{"id":"ags-closed","state":"succeeded","phase":"completed","agentConfig":{"agent":"claude","task":"t"},
+		"sshAddress":"ags-closed@ssh.bex.co"}`
+	if _, _, code := run(t, d.deps, "open", "ags-closed"); code != 0 || !slices.Equal(d.desktops, []string{"ags-closed"}) {
+		t.Fatalf("closed sandbox: exit %d desktops %v", code, d.desktops)
+	}
+	d.desktops = nil
 	f.ssh["ags-o1"] = "ags-o1@ssh.bex.co"
 	if _, _, code := run(t, d.deps, "open", "ags-o1"); code != 0 || !slices.Equal(d.desktops, []string{"ags-o1"}) {
 		t.Fatalf("running sandbox: exit %d desktops %v", code, d.desktops)

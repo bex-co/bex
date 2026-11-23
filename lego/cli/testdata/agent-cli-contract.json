@@ -25,6 +25,7 @@
     "waitingFor": "",
     "waitingSince": null,
     "sshAddress": "ags-d0abc123def456ghij78@ssh.bex.co",
+    "archivedAt": null,
     "createdAt": "2026-11-05T10:00:00Z",
     "outcome": {
       "state": "succeeded",

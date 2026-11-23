@@ -39,7 +39,7 @@ func TestAgentSessionContractFields(t *testing.T) {
 	if err := json.Unmarshal(raw, &session); err != nil {
 		t.Fatal(err)
 	}
-	if session.ID == "" || session.SSHAddress == "" {
+	if session.ID == "" || session.Phase == "" || session.SSHAddress == "" || session.ArchivedAt == nil {
 		t.Fatalf("contract fields did not decode: %+v", session)
 	}
 }
@@ -51,8 +51,14 @@ func TestFetchSSHAddress(t *testing.T) {
 		want   string
 		err    string
 	}{
-		"running":   {200, `{"id":"ags-a1","phase":"running","sshAddress":"ags-a1@ssh.bex.co"}`, "ags-a1@ssh.bex.co", ""},
-		"closed":    {200, `{"id":"ags-a1","phase":"completed"}`, "", "no running sandbox"},
+		"running": {200, `{"id":"ags-a1","phase":"running","sandboxId":"sbx-1","sshAddress":"ags-a1@ssh.bex.co"}`, "ags-a1@ssh.bex.co", ""},
+		// ADR054 D9: a session whose sandbox closed keeps its address, and
+		// the login wakes it, so the editor opens it like a running one.
+		"closed":    {200, `{"id":"ags-a1","phase":"completed","sshAddress":"ags-a1@ssh.bex.co"}`, "ags-a1@ssh.bex.co", ""},
+		"canceled":  {200, `{"id":"ags-a1","phase":"canceled"}`, "", "agent session ags-a1 was canceled, so it has no sandbox to open and takes no more messages"},
+		"canceling": {200, `{"id":"ags-a1","phase":"canceling"}`, "", "was canceled"},
+		"archived":  {200, `{"id":"ags-a1","phase":"completed","archivedAt":"2026-11-23T18:00:00Z"}`, "", "is archived, so it has no sandbox to open. Unarchive it (bex agent unarchive ags-a1), then connect again"},
+		"no ssh":    {200, `{"id":"ags-a1","phase":"completed"}`, "", "this bex server does not offer SSH into agent sandboxes"},
 		"missing":   {404, `{"id":"not_found","message":"agent session not found"}`, "", "404 agent session not found"},
 		"bex error": {403, `{"error":"insufficient OAuth scope"}`, "", "403 insufficient OAuth scope"},
 		"forbidden": {403, `forbidden`, "", "403 Forbidden"},

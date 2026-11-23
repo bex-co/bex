@@ -148,7 +148,8 @@ There is no `rename`. The title is fixed at create (ADR094 amendment w7/m296), a
 - **`bex agent ssh <session> [-- ssh-args…]`.**
   - Reads the session's `sshAddress` and `exec`s the system `ssh` on it. Arguments after `--` pass through unchanged.
   - Uses the same target, permission (`can_view_sensitive`) and registered key as `bex edit ags-…`.
-  - A session with no running sandbox says "send it a message to start one" and exits 1.
+  - A session whose sandbox closed keeps its `sshAddress`, and the gateway starts the sandbox when ssh logs in, saying so while it starts ([ADR054 D9](ADR054-open-in-zed.md#d9--an-ssh-login-wakes-a-closed-session-w10m597-2026-11-23)). The CLI starts nothing itself (w6/169, 2026-11-23).
+  - A session with no `sshAddress` says why and exits 1: it was canceled, it is archived (unarchive it, then connect again), or the server offers no SSH into agent sandboxes. The words follow the gateway's banners.
   - The gateway keeps deciding which channels it admits. The CLI adds no policy.
 - **`bex agent forward <session> [<local>:]<remote>…`** opens `ssh -N -L 127.0.0.1:<local>:127.0.0.1:<remote>` through the same gateway until Ctrl-C. It is **gated on [OD1](#open-decision)**: until the user signs off, the command is not registered, so no command exists that the gateway refuses. The proposed gateway change is scoped this way:
   - `direct-tcpip` is admitted only for `ags-` targets;

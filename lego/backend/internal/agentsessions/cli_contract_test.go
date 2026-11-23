@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestViewMatchesCLIEditContract pins the session fields `bex edit ags-…`
@@ -36,7 +37,9 @@ func TestViewMatchesCLIEditContract(t *testing.T) {
 	if err := json.Unmarshal(raw, &golden); err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := json.Marshal(View{ID: "ags-x", SSHAddress: "ags-x@ssh.bex.co"})
+	// Every field the golden names is set, since omitempty ones vanish unset.
+	archivedAt := time.Date(2026, 11, 23, 18, 0, 0, 0, time.UTC)
+	encoded, err := json.Marshal(View{ID: "ags-x", Phase: PhaseCompleted, SSHAddress: "ags-x@ssh.bex.co", ArchivedAt: &archivedAt})
 	if err != nil {
 		t.Fatal(err)
 	}

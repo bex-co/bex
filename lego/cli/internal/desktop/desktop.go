@@ -101,8 +101,8 @@ func Command() *cobra.Command {
 			"-a/--add, -e/--existing, -w/--wait, - for stdin, --diff OLD NEW and\n" +
 			"ssh:// URLs.\n\n" +
 			"An agent-session id (ags-…) opens that session's sandbox /workspace over\n" +
-			"SSH, like the dashboard's Open in Zed. The sandbox must be running and you\n" +
-			"need an SSH key registered with bex.\n\n" +
+			"SSH, like the dashboard's Open in Zed. A sandbox that closed starts when\n" +
+			"the editor connects. You need an SSH key registered with bex.\n\n" +
 			"Shorthand: `bex <path>` is `bex edit <path>` when <path> exists and looks\n" +
 			"like a path — `.`, `..`, or starting with ./ ../ / ~ or containing a /.\n" +
 			"A bare word is always a command: `bex docs` runs docs; `bex ./docs`\n" +
