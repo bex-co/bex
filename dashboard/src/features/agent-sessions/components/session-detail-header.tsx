@@ -62,6 +62,7 @@ import type {
 import {
   AgentSessionPhaseChip,
   AgentSessionPrLink,
+  AgentSessionPrMergeBadge,
 } from "@/features/agent-sessions/components/session-list";
 import { EditTagsDialog } from "@/features/agent-sessions/components/edit-tags-dialog";
 import { SandboxWaitStatus } from "@/features/agent-sessions/components/sandbox-wait-status";
@@ -645,16 +646,16 @@ function ZedConnectTargets({ address }: { address: string }) {
 
 /**
  * The inline PR badge `#N` — links `prUrl` in a new tab when present — with
- * the PR's state (Open/Merged/Closed) beside it once bex has read it.
+ * the PR's state (Open/Merged/Closed) beside it once bex has read it, and its
+ * auto-merge or merge queue after that (w10/047).
  */
 function HeaderPrBadge({ session }: { session: AgentSessionView }) {
   if (session.prNumber == null || session.prNumber === 0) return null;
   return (
-    <AgentSessionPrLink
-      session={session}
-      className="hidden shrink-0 sm:inline-flex"
-      iconClassName="size-3.5"
-    />
+    <span className="hidden shrink-0 items-center gap-1 sm:inline-flex">
+      <AgentSessionPrLink session={session} iconClassName="size-3.5" />
+      <AgentSessionPrMergeBadge session={session} />
+    </span>
   );
 }
 

@@ -18,12 +18,18 @@ package agentsessions
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -38,6 +44,7 @@ type fakePRStateStore struct {
 	connections map[string]int64 // workspace/owner -> installation
 	lookups     int
 	byPR        []string // RecordPullRequestState calls
+	marks       []string // RecordPullRequestMergeMarks calls
 }
 
 func (f *fakePRStateStore) ClaimAgentSessionPRChecks(_ context.Context, _ time.Time, retry time.Duration, limit int) ([]store.AgentSessionPRCheck, error) {
@@ -67,6 +74,23 @@ func (f *fakePRStateStore) RecordPullRequestState(_ context.Context, ws []string
 	return 1, nil
 }
 
+func (f *fakePRStateStore) RecordPullRequestMergeMarks(_ context.Context, ws []string, repo string, number int, armed *store.PRAutoMerge, queued bool) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	marks := "none"
+	if armed != nil {
+		marks = fmt.Sprintf("%s by %s", armed.Method, armed.EnabledBy)
+		if armed.EnabledAt != nil {
+			marks += " at " + armed.EnabledAt.Format(time.RFC3339)
+		}
+	}
+	if queued {
+		marks += " queued"
+	}
+	f.marks = append(f.marks, fmt.Sprintf("%v %s#%d %s", ws, repo, number, marks))
+	return 1, nil
+}
+
 func (f *fakePRStateStore) GetGitConnectionByOwner(_ context.Context, ws, owner string) (store.GitConnection, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -82,6 +106,21 @@ type fakePRReader struct {
 	mu    sync.Mutex
 	prs   map[string]github.PullRequestDetail // installation/owner/repo#n
 	reads []string
+	// merge is each pull request's merge state by node id, and mergeErr
+	// fails its read; mergeReads records each read.
+	merge      map[string]github.MergeState
+	mergeErr   error
+	mergeReads []string
+}
+
+func (f *fakePRReader) PullRequestMergeState(_ context.Context, installationID int64, repo, nodeID string) (github.MergeState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.mergeReads = append(f.mergeReads, fmt.Sprintf("%d/%s/%s", installationID, repo, nodeID))
+	if f.mergeErr != nil {
+		return github.MergeState{}, f.mergeErr
+	}
+	return f.merge[nodeID], nil
 }
 
 func (f *fakePRReader) GetPullRequest(_ context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error) {
@@ -146,6 +185,68 @@ func TestPRStatesReadEachDuePullRequest(t *testing.T) {
 	}
 	if n := st.next["ags-draft"]; n == nil || !n.Equal(now.Add(5*time.Minute)) {
 		t.Errorf("a newly open pull request's next read = %v", n)
+	}
+}
+
+// w10/047: an open pull request's auto-merge and merge queue are read with
+// its state and recorded on the workspace's sessions that recorded it: a
+// person arming it on GitHub, the queue taking it, a disarm. A merged or
+// closed one is not asked (its state drops them), and one whose merge state
+// cannot be read keeps the last ones read.
+func TestPRStatesReadAutoMergeOfAnOpenPullRequest(t *testing.T) {
+	now := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
+	armedAt := now.Add(-time.Hour)
+	open := func(node string) github.PullRequestDetail {
+		pr := prDetail("open", false)
+		pr.NodeID = node
+		return pr
+	}
+	run := func(gh *fakePRReader, checks ...store.AgentSessionPRCheck) *fakePRStateStore {
+		t.Helper()
+		st := &fakePRStateStore{states: map[string]string{}, connections: map[string]int64{"tea-a/bex-co": 7}, due: checks}
+		if err := (&PRStates{Store: st, GitHub: gh, Now: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		return st
+	}
+	check := func(id string, number int) store.AgentSessionPRCheck {
+		return store.AgentSessionPRCheck{SessionID: id, WorkspaceID: "tea-a", Repo: "Bex-Co/App", PRNumber: number, PRState: "open"}
+	}
+	gh := &fakePRReader{
+		prs: map[string]github.PullRequestDetail{
+			"7/bex-co/app#1": open("PR_1"), "7/bex-co/app#2": open("PR_2"), "7/bex-co/app#3": open("PR_3"),
+			"7/bex-co/app#4": prDetail("closed", true), "7/bex-co/app#5": prDetail("open", false),
+		},
+		merge: map[string]github.MergeState{
+			"PR_1": {AutoMerge: &store.PRAutoMerge{Method: "squash", EnabledBy: "octocat", EnabledAt: &armedAt}},
+			"PR_2": {MergeQueueEnabled: true, InMergeQueue: true, AutoMerge: &store.PRAutoMerge{Method: "merge", EnabledBy: "bex-co[bot]", EnabledAt: &armedAt}},
+			"PR_3": {}, // disarmed on GitHub, or never armed
+		},
+	}
+	st := run(gh, check("ags-person", 1), check("ags-queued", 2), check("ags-disarmed", 3), check("ags-merged", 4), check("ags-no-node", 5))
+	slices.Sort(st.marks)
+	want := []string{
+		"[tea-a] bex-co/app#1 squash by octocat at 2026-11-22T11:00:00Z",
+		"[tea-a] bex-co/app#2 merge by bex-co[bot] at 2026-11-22T11:00:00Z queued",
+		"[tea-a] bex-co/app#3 none",
+	}
+	if !slices.Equal(st.marks, want) {
+		t.Fatalf("marks = %q, want %q", st.marks, want)
+	}
+	slices.Sort(gh.mergeReads)
+	if !slices.Equal(gh.mergeReads, []string{"7/app/PR_1", "7/app/PR_2", "7/app/PR_3"}) {
+		t.Fatalf("merge state reads = %v, want the open pull requests' with a node id only", gh.mergeReads)
+	}
+	if st.states["ags-merged"] != store.PRStateMerged || st.states["ags-no-node"] != store.PRStateOpen {
+		t.Fatalf("states = %v", st.states)
+	}
+
+	// An unreadable merge state leaves the marks as last read, and the state
+	// read stands.
+	gh = &fakePRReader{prs: map[string]github.PullRequestDetail{"7/bex-co/app#1": open("PR_1")}, mergeErr: errors.New("github: 502")}
+	st = run(gh, check("ags-person", 1))
+	if len(st.marks) != 0 || st.states["ags-person"] != store.PRStateOpen || st.next["ags-person"] == nil {
+		t.Fatalf("an unread merge state = marks %v, state %q next %v", st.marks, st.states["ags-person"], st.next["ags-person"])
 	}
 }
 
@@ -245,5 +346,97 @@ func TestPRStateListFilterAndView(t *testing.T) {
 	view, err := viewOf(store.AgentSession{ID: "ags-x", AgentConfig: []byte(`{}`), PRNumber: 4, PRURL: "https://github.com/a/b/pull/4", PRState: "merged", PRStateAt: &at})
 	if err != nil || view.PRState != "merged" || view.PRStateAt == nil || !view.PRStateAt.Equal(at) {
 		t.Fatalf("view = %+v / %v", view, err)
+	}
+}
+
+// w10/047: REST, GraphQL and MCP read the same auto-merge and merge queue off
+// a session: who armed it, when and with which method, and the queue; a
+// session with neither leaves REST's and MCP's keys out, and GraphQL answers
+// null and false.
+func TestEverySurfaceServesThePullRequestAutoMerge(t *testing.T) {
+	svc, st, _, _ := fixture()
+	ctx := caller("alice")
+	create := func() string {
+		t.Helper()
+		view, err := svc.Create(ctx, createInput())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return view.ID
+	}
+	armedAt := time.Date(2026, 11, 22, 9, 30, 0, 0, time.UTC)
+	armed, queued, neither := create(), create(), create()
+	st.rowMu.Lock()
+	for id, mutate := range map[string]func(*store.AgentSession){
+		armed: func(r *store.AgentSession) {
+			r.PRAutoMerge = &store.PRAutoMerge{Method: "squash", EnabledBy: "octocat", EnabledAt: &armedAt}
+		},
+		queued: func(r *store.AgentSession) {
+			r.PRAutoMerge, r.PRMergeQueued = &store.PRAutoMerge{Method: "merge"}, true
+		},
+		neither: func(*store.AgentSession) {},
+	} {
+		row := st.rows[id]
+		row.PRNumber, row.PRURL, row.PRState = 7, "https://github.com/bex-co/app/pull/7", store.PRStateOpen
+		mutate(&row)
+		st.rows[id] = row
+	}
+	st.rowMu.Unlock()
+	// want is each session's two keys on REST and MCP, which leave out what
+	// is unset; gqlWant is GraphQL's, which answers null and false for it.
+	want := map[string]string{
+		armed:   `{"prAutoMerge":{"enabledAt":"2026-11-22T09:30:00Z","enabledBy":"octocat","method":"squash"}}`,
+		queued:  `{"prAutoMerge":{"method":"merge"},"prMergeQueued":true}`,
+		neither: `{}`,
+	}
+	gqlWant := map[string]string{
+		armed:   `{"prAutoMerge":{"enabledAt":"2026-11-22T09:30:00Z","enabledBy":"octocat","method":"squash"},"prMergeQueued":false}`,
+		queued:  `{"prAutoMerge":{"enabledAt":null,"enabledBy":null,"method":"merge"},"prMergeQueued":true}`,
+		neither: `{"prAutoMerge":null,"prMergeQueued":false}`,
+	}
+	// marksOf keeps the view's two keys, an absent one left out.
+	marksOf := func(surface string, raw []byte) string {
+		t.Helper()
+		var view struct {
+			PRAutoMerge   map[string]any `json:"prAutoMerge,omitempty"`
+			PRMergeQueued *bool          `json:"prMergeQueued,omitempty"`
+		}
+		if err := json.Unmarshal(raw, &view); err != nil {
+			t.Fatalf("%s: %v", surface, err)
+		}
+		out, _ := json.Marshal(view)
+		return string(out)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := newMCPClient(t, ctx, svc)
+	for id, marks := range want {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-sessions/"+id, nil).WithContext(ctx))
+		if got := marksOf("REST", rec.Body.Bytes()); rec.Code != http.StatusOK || got != marks {
+			t.Errorf("REST %s = %d %s, want %s", id, rec.Code, got, marks)
+		}
+
+		result := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ agentSession(id: "` + id + `") { prAutoMerge { enabledAt enabledBy method } prMergeQueued } }`})
+		if len(result.Errors) != 0 {
+			t.Fatalf("GraphQL %s errors = %v", id, result.Errors)
+		}
+		if raw, _ := json.Marshal(result.Data.(map[string]any)["agentSession"]); string(raw) != gqlWant[id] {
+			t.Errorf("GraphQL %s = %s, want %s", id, raw, gqlWant[id])
+		}
+
+		res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "get_agent_session", Arguments: map[string]any{"id": id}})
+		if err != nil || res.IsError {
+			t.Fatalf("MCP %s = %+v err=%v", id, res, err)
+		}
+		raw, _ := json.Marshal(res.StructuredContent)
+		if got := marksOf("MCP", raw); got != marks {
+			t.Errorf("MCP %s = %s, want %s", id, got, marks)
+		}
 	}
 }

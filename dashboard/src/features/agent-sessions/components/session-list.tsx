@@ -1,6 +1,11 @@
 import { Fragment, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, GitPullRequest } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  GitMerge,
+  GitPullRequest,
+} from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -23,6 +28,7 @@ import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { RelativeAge } from "@/common/components/relative-time";
+import { LocalDateTime } from "@/common/components/local-time";
 import type {
   AgentSessionArchivedFilter,
   AgentSessionPhase,
@@ -104,6 +110,68 @@ export function AgentSessionPrStateBadge({
     >
       {t(`agentSessions.prState.${state}`)}
     </Badge>
+  );
+}
+
+const PR_AUTO_MERGE_METHODS = ["merge", "squash", "rebase"] as const;
+
+/**
+ * The GitHub auto-merge armed on a session's open PR, or its place in the
+ * merge queue, beside its state (w10/047), as Devin Review's merge bar shows
+ * them: the badge says which, and its tooltip who armed it, with which method
+ * and when. Renders nothing when neither holds.
+ */
+export function AgentSessionPrMergeBadge({
+  session,
+}: {
+  session: AgentSessionView;
+}) {
+  const { t } = useTranslations();
+  const { prAutoMerge: armed, prMergeQueued: queued } = session;
+  if (!armed && !queued) return null;
+  const method = PR_AUTO_MERGE_METHODS.find((m) => m === armed?.method);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          // Focusable so keyboard users reach who armed it.
+          tabIndex={0}
+          data-pr-merge={queued ? "queued" : "auto"}
+        >
+          <GitMerge />
+          {queued
+            ? t("agentSessions.prMergeQueued")
+            : t("agentSessions.prAutoMerge")}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs space-y-0.5">
+        {queued ? <p>{t("agentSessions.prMergeQueuedHint")}</p> : null}
+        {armed ? (
+          <>
+            <p className="font-medium">
+              {armed.enabledBy
+                ? t("agentSessions.prAutoMergeEnabledBy", {
+                    login: armed.enabledBy,
+                  })
+                : t("agentSessions.prAutoMergeEnabled")}
+            </p>
+            <p>
+              {method
+                ? t(`agentSessions.prAutoMergeMethod.${method}`)
+                : armed.method}
+              {armed.enabledAt ? (
+                <>
+                  {" · "}
+                  <LocalDateTime value={armed.enabledAt} />
+                </>
+              ) : null}
+            </p>
+            {queued ? null : <p>{t("agentSessions.prAutoMergeHint")}</p>}
+          </>
+        ) : null}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

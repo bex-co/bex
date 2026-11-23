@@ -362,10 +362,17 @@ type View struct {
 	// PRState is the pull request's state as bex last read it from GitHub:
 	// open (a draft too), merged or closed (Devin's pr_state); absent until
 	// first read. PRStateAt is when it last changed.
-	PRState      string     `json:"prState,omitempty"`
-	PRStateAt    *time.Time `json:"prStateAt,omitempty"`
-	Turns        int        `json:"turns,omitempty"`
-	DeliveryMode string     `json:"deliveryMode,omitempty"`
+	PRState   string     `json:"prState,omitempty"`
+	PRStateAt *time.Time `json:"prStateAt,omitempty"`
+	// PRAutoMerge is the GitHub auto-merge armed on the open pull request as
+	// bex last read it, with who armed it and when, as Devin Review's merge
+	// bar shows it; absent when none is. PRMergeQueued is set while it is in
+	// its base branch's merge queue. Both clear once it is merged or closed
+	// (w10/047).
+	PRAutoMerge   *PRAutoMerge `json:"prAutoMerge,omitempty"`
+	PRMergeQueued bool         `json:"prMergeQueued,omitempty"`
+	Turns         int          `json:"turns,omitempty"`
+	DeliveryMode  string       `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only
@@ -469,6 +476,15 @@ type Cost struct {
 	ComputeUSD string `json:"computeUSD"`
 	// TotalUSD is ModelUSD + ComputeUSD.
 	TotalUSD string `json:"totalUSD"`
+}
+
+// PRAutoMerge is GitHub auto-merge armed on a session's pull request: its
+// merge method (merge, squash or rebase), and the GitHub login that armed it
+// and when, each absent when GitHub does not say (w10/047).
+type PRAutoMerge struct {
+	Method    string     `json:"method"`
+	EnabledBy string     `json:"enabledBy,omitempty"`
+	EnabledAt *time.Time `json:"enabledAt,omitempty"`
 }
 
 // PullRequest is the PR the agent opened for the session (ADR090).

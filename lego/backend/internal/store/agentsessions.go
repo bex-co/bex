@@ -270,6 +270,12 @@ type AgentSession struct {
 	// PRStateAt is when it last changed (w9/m386).
 	PRState   string
 	PRStateAt *time.Time
+	// PRAutoMerge is the GitHub auto-merge armed on the pull request as bex
+	// last read it, nil when none is; PRMergeQueued is set while it is in its
+	// base branch's merge queue (w10/047). Both clear once it is merged or
+	// closed.
+	PRAutoMerge   *PRAutoMerge
+	PRMergeQueued bool
 	// AppliedSecrets are the secrets the latest dispatch applied, each with
 	// its source (w9/m385): named, inline, or by a workspace or repo scope.
 	// Names only; written by SetAgentSessionAppliedSecrets.
@@ -396,7 +402,8 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
 	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
-	applied_secrets, pr_state, pr_state_at, environment_build_id, failure_cause, sandbox_wait_since, editor_sandbox_id`
+	applied_secrets, pr_state, pr_state_at, environment_build_id, failure_cause, sandbox_wait_since, editor_sandbox_id,
+	pr_auto_merge, pr_merge_queued`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -412,7 +419,8 @@ func agentSessionDest(s *AgentSession) []any {
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
 		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
-		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID, &s.FailureCause, &s.SandboxWaitSince, &s.EditorSandboxID}
+		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID, &s.FailureCause, &s.SandboxWaitSince, &s.EditorSandboxID,
+		&s.PRAutoMerge, &s.PRMergeQueued}
 }
 
 // CreateAgentSession mints the only valid agent-session id kind and persists
@@ -1461,6 +1469,8 @@ func (s *PGStore) RecordAgentSessionPullRequest(ctx context.Context, id, prURL s
 		    -- A new pull request starts unread and is read at once (w9/m386).
 		    pr_state = CASE WHEN pr_number IS DISTINCT FROM $3 THEN '' ELSE pr_state END,
 		    pr_state_at = CASE WHEN pr_number IS DISTINCT FROM $3 THEN NULL ELSE pr_state_at END,
+		    pr_auto_merge = CASE WHEN pr_number IS DISTINCT FROM $3 THEN NULL ELSE pr_auto_merge END,
+		    pr_merge_queued = pr_merge_queued AND pr_number IS NOT DISTINCT FROM $3,
 		    pr_next_check_at = CASE WHEN pr_number IS DISTINCT FROM $3 AND $3 > 0 THEN now() ELSE pr_next_check_at END
 		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
 		  AND (pr_url IS DISTINCT FROM $2 OR pr_number IS DISTINCT FROM $3

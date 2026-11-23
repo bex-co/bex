@@ -461,15 +461,37 @@ func TestPullRequestMergeAutoArmsAutoMergeAtTheRecordedHead(t *testing.T) {
 	if forge.mergeCalls != 0 || len(sessions.states) != 0 || sessions.session.PRState == store.PRStateMerged {
 		t.Fatalf("an armed pull request was merged (%d) or recorded %v", forge.mergeCalls, sessions.states)
 	}
+	// w10/047: the arm is recorded at once, as GitHub reads it back: by the
+	// App, on every session of the workspace that recorded the pull request.
+	if got := strings.Join(sessions.marks, ","); got != "tea-a octo/repo#7 squash by "+forgeAppLogin {
+		t.Fatalf("auto-merge recorded = %q", got)
+	}
 	wantAudit(t, audit, AuditVerbPullRequestMerge, core.AuditAllowed)
 
 	// Armed already, by the session or a person: the same answer with the
-	// armed method, and GitHub is not asked again.
-	forge = armedForge()
-	forge.state.AutoMerge, forge.state.AutoMergeMethod = true, github.MergeMethodRebase
-	again, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
+	// armed method, GitHub is not asked again, and who armed it is recorded.
+	forge, sessions = armedForge(), &prSessions{session: mergeSession()}
+	forge.state.AutoMerge = &store.PRAutoMerge{Method: github.MergeMethodRebase, EnabledBy: "octocat"}
+	again, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true}))
 	if err != nil || !again.AutoMerge || again.Merged || again.Method != github.MergeMethodRebase || len(forge.armed) != 0 || forge.mergeCalls != 0 {
 		t.Fatalf("armed again = %+v err=%v (armed %d, merges %d)", again, err, len(forge.armed), forge.mergeCalls)
+	}
+	if got := strings.Join(sessions.marks, ","); got != "tea-a octo/repo#7 rebase by octocat" {
+		t.Fatalf("a person's auto-merge recorded = %q", got)
+	}
+
+	// The read back fails: the arm is recorded as the answer says, armed by
+	// nobody named, for the PR-state poller to complete; a failed record does
+	// not fail the arm, which stands on GitHub.
+	forge, sessions = armedForge(), &prSessions{session: mergeSession()}
+	forge.rereadErr = &github.APIError{Status: http.StatusBadGateway}
+	if got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true})); err != nil || !got.AutoMerge ||
+		strings.Join(sessions.marks, ",") != "tea-a octo/repo#7 squash by nobody" {
+		t.Fatalf("unread arm = %+v err=%v marks=%v", got, err, sessions.marks)
+	}
+	forge, sessions = armedForge(), &prSessions{session: mergeSession(), marksErr: errors.New("db down")}
+	if got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{Auto: true})); err != nil || !got.AutoMerge {
+		t.Fatalf("an arm whose record failed = %+v err=%v", got, err)
 	}
 }
 
@@ -483,12 +505,12 @@ func TestPullRequestMergeAutoMergesAPullRequestMergeableNow(t *testing.T) {
 		"GitHub says it is clean": func(f *fakeForge) {
 			f.armErr = fmt.Errorf("%w: %w", github.ErrMergeableNow, errors.New("clean status"))
 		},
-		"armed but a plain merge asked": func(f *fakeForge) { f.state.AutoMerge = true },
+		"armed but a plain merge asked": func(f *fakeForge) { f.state.AutoMerge = &store.PRAutoMerge{Method: github.MergeMethodSquash} },
 	} {
 		t.Run(name, func(t *testing.T) {
 			forge, sessions := armedForge(), &prSessions{session: mergeSession()}
 			mutate(forge)
-			content := PullRequestMergeContent{Auto: !forge.state.AutoMerge}
+			content := PullRequestMergeContent{Auto: forge.state.AutoMerge == nil}
 			got, err := newPullRequester(forge, sessions, nil).Merge(context.Background(), mergeRequest(content))
 			if err != nil || !got.Merged || got.AutoMerge || got.SHA == "" || len(forge.merges) != 1 || forge.merges[0].opts.SHA != recordedHead {
 				t.Fatalf("merge = %+v err=%v merges=%+v", got, err, forge.merges)
@@ -515,6 +537,9 @@ func TestPullRequestMergeJoinsTheMergeQueue(t *testing.T) {
 		}
 		if strings.Join(forge.enqueued, ",") != "PR_kwDOnode7@"+recordedHead || forge.mergeCalls != 0 || len(forge.armed) != 0 || len(sessions.states) != 0 {
 			t.Fatalf("%+v: enqueued=%v merges=%d armed=%d states=%v", content, forge.enqueued, forge.mergeCalls, len(forge.armed), sessions.states)
+		}
+		if got := strings.Join(sessions.marks, ","); got != "tea-a octo/repo#7 none queued" {
+			t.Fatalf("%+v: queue recorded = %q", content, got)
 		}
 	}
 	forge := armedForge()
@@ -612,7 +637,7 @@ func TestPullRequestMergeDisableAutoUndoesTheArm(t *testing.T) {
 		moveHead  bool
 		makeDraft bool
 	}{
-		{name: "armed", state: github.MergeState{AutoMerge: true}, disabled: "[false]", moveHead: true},
+		{name: "armed", state: github.MergeState{AutoMerge: &store.PRAutoMerge{Method: github.MergeMethodSquash, EnabledBy: "octocat"}}, disabled: "[false]", moveHead: true},
 		{name: "queued", state: github.MergeState{MergeQueueEnabled: true, InMergeQueue: true}, disabled: "[true]"},
 		{name: "neither", state: github.MergeState{}, disabled: "[]", makeDraft: true},
 	} {
@@ -631,11 +656,15 @@ func TestPullRequestMergeDisableAutoUndoesTheArm(t *testing.T) {
 			if fmt.Sprint(forge.disabled) != tc.disabled || forge.mergeCalls != 0 || len(forge.armed) != 0 || len(sessions.states) != 0 {
 				t.Fatalf("disabled=%v merges=%d armed=%d states=%v", forge.disabled, forge.mergeCalls, len(forge.armed), sessions.states)
 			}
+			// w10/047: the disarm clears the recorded auto-merge and queue.
+			if got := strings.Join(sessions.marks, ","); got != "tea-a octo/repo#7 none" {
+				t.Fatalf("disarm recorded = %q", got)
+			}
 			wantAudit(t, audit, AuditVerbPullRequestMerge, core.AuditAllowed)
 		})
 	}
 	forge := armedForge()
-	forge.state.AutoMerge = true
+	forge.state.AutoMerge = &store.PRAutoMerge{Method: github.MergeMethodSquash}
 	forge.disableErr = &github.APIError{Status: http.StatusForbidden, Body: `{"message":"Resource not accessible by integration"}`}
 	_, err := newPullRequester(forge, &prSessions{session: mergeSession()}, nil).Merge(context.Background(), mergeRequest(PullRequestMergeContent{DisableAuto: true}))
 	wantMergeCode(t, err, PullRequestNotPermitted, http.StatusForbidden)
@@ -786,13 +815,16 @@ func TestPullRequestMergeAutoAndDisableAutoOfANamedPullRequest(t *testing.T) {
 	if len(forge.armed) != 1 || forge.armed[0].node != "PR_kwDOnode42" || forge.armed[0].opts.SHA != otherHead || len(forge.merges) != 0 {
 		t.Fatalf("armed = %+v merges = %+v, want #42 armed at GitHub's head", forge.armed, forge.merges)
 	}
-	forge.state = github.MergeState{Status: "BLOCKED", AutoMerge: true}
 	got, err = p.Merge(context.Background(), mergeRequest(PullRequestMergeContent{Number: 42, DisableAuto: true}))
 	if err != nil || !got.AutoMergeDisabled || !got.OtherPullRequest || len(forge.disabled) != 1 {
 		t.Fatalf("disableAuto = %+v err=%v (disabled %v)", got, err, forge.disabled)
 	}
 	if len(sessions.states) != 0 || len(sessions.repoStates) != 0 {
-		t.Fatalf("an armed or disarmed pull request was recorded: %v %v", sessions.states, sessions.repoStates)
+		t.Fatalf("an armed or disarmed pull request was recorded as merged or closed: %v %v", sessions.states, sessions.repoStates)
+	}
+	// w10/047: both land on the sessions that recorded #42, not on this one's own.
+	if got := strings.Join(sessions.marks, ","); got != "tea-a octo/repo#42 squash by "+forgeAppLogin+",tea-a octo/repo#42 none" {
+		t.Fatalf("named pull request's auto-merge recorded = %q", got)
 	}
 }
 

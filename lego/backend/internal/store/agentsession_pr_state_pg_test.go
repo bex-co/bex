@@ -149,3 +149,112 @@ func TestPGAgentSessionPRStates(t *testing.T) {
 		t.Fatalf("closed list = %v", rows)
 	}
 }
+
+// w10/047: the merge marks land on every session of the workspace that
+// recorded the pull request, never on another workspace's, a repeat writes
+// nothing, a disarm clears them, and they drop once the pull request is
+// merged or closed (by a read or a delivery) or the session records another
+// pull request; a merged or closed one never takes them again.
+func TestPGAgentSessionPRMergeMarks(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "pr-merge-marks")
+	ctx := context.Background()
+	other, err := s.CreateTenant(ctx, "pr-merge-marks-other-"+time.Now().Format("150405.000000000"), PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM tenants WHERE id=$1`, other.ID) })
+	newSession := func(ws string, pr int) string {
+		t.Helper()
+		row, err := s.CreateAgentSession(ctx, AgentSession{WorkspaceID: ws, Repo: "bex-co/app", InitialPrompt: "x"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.RecordAgentSessionPullRequest(ctx, row.ID, "https://github.com/bex-co/app/pull/x", pr, "abc"); err != nil {
+			t.Fatal(err)
+		}
+		return row.ID
+	}
+	read := func(id string) AgentSession {
+		t.Helper()
+		row, err := s.GetAgentSession(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return row
+	}
+	own, takeover, elsewhere := newSession(tenant.ID, 201), newSession(tenant.ID, 201), newSession(other.ID, 201)
+	if row := read(own); row.PRAutoMerge != nil || row.PRMergeQueued {
+		t.Fatalf("a new pull request is armed: %+v %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+
+	enabledAt := time.Date(2026, 11, 22, 9, 30, 0, 0, time.UTC)
+	armed := &PRAutoMerge{Method: "squash", EnabledBy: "octocat", EnabledAt: &enabledAt}
+	if n, err := s.RecordPullRequestMergeMarks(ctx, []string{tenant.ID}, "Bex-Co/App", 201, armed, false); err != nil || n != 2 {
+		t.Fatalf("arm changed %d / %v, want both sessions of the workspace", n, err)
+	}
+	row := read(own)
+	if row.PRAutoMerge == nil || row.PRAutoMerge.Method != "squash" || row.PRAutoMerge.EnabledBy != "octocat" ||
+		row.PRAutoMerge.EnabledAt == nil || !row.PRAutoMerge.EnabledAt.Equal(enabledAt) || row.PRMergeQueued {
+		t.Fatalf("armed = %+v queued %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+	if read(elsewhere).PRAutoMerge != nil {
+		t.Fatal("another workspace's session took the marks")
+	}
+	if n, err := s.RecordPullRequestMergeMarks(ctx, []string{tenant.ID}, "bex-co/app", 201, armed, false); err != nil || n != 0 {
+		t.Fatalf("a repeat changed %d / %v", n, err)
+	}
+	if n, err := s.RecordPullRequestMergeMarks(ctx, []string{tenant.ID}, "bex-co/app", 201, armed, true); err != nil || n != 2 || !read(takeover).PRMergeQueued {
+		t.Fatalf("queued changed %d / %v", n, err)
+	}
+	if n, err := s.RecordPullRequestMergeMarks(ctx, []string{tenant.ID}, "bex-co/app", 201, nil, false); err != nil || n != 2 {
+		t.Fatalf("disarm changed %d / %v", n, err)
+	}
+	if row := read(own); row.PRAutoMerge != nil || row.PRMergeQueued {
+		t.Fatalf("disarmed = %+v queued %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+
+	// A read of merged drops the marks, and a merged pull request never takes them again.
+	if _, err := s.RecordPullRequestMergeMarks(ctx, []string{tenant.ID}, "bex-co/app", 201, armed, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.RecordAgentSessionPRState(ctx, own, PRStateOpen, enabledAt, nil); err != nil {
+		t.Fatal(err)
+	}
+	if row := read(own); row.PRAutoMerge == nil || !row.PRMergeQueued {
+		t.Fatalf("an open read dropped the marks: %+v %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+	if _, err := s.RecordAgentSessionPRState(ctx, own, PRStateMerged, enabledAt, nil); err != nil {
+		t.Fatal(err)
+	}
+	if row := read(own); row.PRAutoMerge != nil || row.PRMergeQueued {
+		t.Fatalf("merged kept the marks: %+v %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+	if n, err := s.RecordPullRequestMergeMarks(ctx, []string{tenant.ID}, "bex-co/app", 201, armed, true); err != nil || n != 0 {
+		t.Fatalf("marks changed %d / %v, want none: one session is merged and the other already carries them", n, err)
+	}
+	if read(own).PRAutoMerge != nil {
+		t.Fatal("a merged pull request was armed again")
+	}
+
+	// A delivery that closes it drops them too.
+	if n, err := s.RecordPullRequestState(ctx, []string{tenant.ID}, "bex-co/app", 201, PRStateClosed, enabledAt, nil); err != nil || n != 2 {
+		t.Fatalf("closed delivery changed %d / %v", n, err)
+	}
+	if row := read(takeover); row.PRAutoMerge != nil || row.PRMergeQueued {
+		t.Fatalf("closed kept the marks: %+v %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+
+	// Another pull request on the same session starts without them.
+	if _, err := s.RecordPullRequestMergeMarks(ctx, []string{other.ID}, "bex-co/app", 201, armed, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='running' WHERE id=$1`, elsewhere); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordAgentSessionPullRequest(ctx, elsewhere, "https://github.com/bex-co/app/pull/202", 202, ""); err != nil {
+		t.Fatal(err)
+	}
+	if row := read(elsewhere); row.PRAutoMerge != nil || row.PRMergeQueued {
+		t.Fatalf("a new pull request kept the old one's marks: %+v %v", row.PRAutoMerge, row.PRMergeQueued)
+	}
+}

@@ -63,6 +63,10 @@ func (credentialSessions) RecordAgentSessionPRState(context.Context, string, str
 	return true, nil
 }
 
+func (credentialSessions) RecordPullRequestMergeMarks(context.Context, []string, string, int, *store.PRAutoMerge, bool) (int, error) {
+	return 0, nil
+}
+
 type credentialGitHub struct{ calls, apiCalls, apiWriteCalls int }
 
 func (g *credentialGitHub) MintRepositoryAPIWriteToken(context.Context, int64, string) (github.InstallationToken, error) {

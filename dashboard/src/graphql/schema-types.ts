@@ -560,6 +560,10 @@ export type AgentSession = {
   /** How many queued messages wait to run as this session's next turns (ADR047 D12); set on lists and single-session reads. */
   pendingMessages: Scalars['Int']['output'];
   phase: Scalars['String']['output'];
+  /** The GitHub auto-merge armed on the open pull request as bex last read it, with who armed it and when; null when none is. */
+  prAutoMerge: Maybe<AgentSessionPrAutoMerge>;
+  /** Whether the pull request is in its base branch's merge queue, as bex last read it. */
+  prMergeQueued: Scalars['Boolean']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
   /** The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read. */
   prState: Maybe<Scalars['String']['output']>;
@@ -670,6 +674,16 @@ export type AgentSessionOutcome = {
   steerable: Scalars['Boolean']['output'];
   summary: Maybe<Scalars['String']['output']>;
   turn: Maybe<Scalars['Int']['output']>;
+};
+
+/** GitHub auto-merge armed on a session's pull request: GitHub merges it once its required reviews and checks pass. */
+export type AgentSessionPrAutoMerge = {
+  __typename: 'AgentSessionPRAutoMerge';
+  enabledAt: Maybe<Scalars['String']['output']>;
+  /** The GitHub login that armed it; null when GitHub does not say. */
+  enabledBy: Maybe<Scalars['String']['output']>;
+  /** The merge method GitHub merges it with: merge, squash or rebase. */
+  method: Scalars['String']['output'];
 };
 
 export type AgentSessionProfile = {

@@ -468,6 +468,78 @@ describe("SessionDetailHeader", () => {
     expect(link.parentElement).toContainElement(badge);
   });
 
+  // w10/047: auto-merge armed on the PR, or its merge queue, sits beside its
+  // state, and says who armed it, with which method and when, as Devin
+  // Review's merge bar does.
+  it("shows the PR's auto-merge and who armed it", async () => {
+    const user = userEvent.setup();
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState: "open",
+          prAutoMerge: {
+            method: "squash",
+            enabledBy: "octocat",
+            enabledAt: "2026-11-22T09:30:00Z",
+          },
+        })}
+      />,
+    );
+    const badge = screen.getByText("Auto-merge");
+    expect(badge).toHaveAttribute("data-pr-merge", "auto");
+    expect(badge.parentElement).toContainElement(screen.getByText("Open"));
+    // Keyboard users reach it too.
+    for (let i = 0; i < 20 && document.activeElement !== badge; i++) {
+      await user.tab();
+    }
+    expect(badge).toHaveFocus();
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent("Auto-merge enabled by octocat");
+    expect(tooltip).toHaveTextContent("Squash and merge");
+    expect(tooltip).toHaveTextContent(
+      "GitHub merges it once its required reviews and checks pass.",
+    );
+  });
+
+  it("shows a queued PR as in the merge queue", async () => {
+    const user = userEvent.setup();
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState: "open",
+          prAutoMerge: { method: "merge", enabledBy: null, enabledAt: null },
+          prMergeQueued: true,
+        })}
+      />,
+    );
+    const badge = screen.getByText("In merge queue");
+    expect(badge).toHaveAttribute("data-pr-merge", "queued");
+    expect(screen.queryByText("Auto-merge")).not.toBeInTheDocument();
+    await user.hover(badge);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent("In the merge queue");
+    expect(tooltip).toHaveTextContent("Auto-merge enabled");
+    expect(tooltip).not.toHaveTextContent("enabled by");
+    expect(tooltip).toHaveTextContent("Create a merge commit");
+  });
+
+  it("shows no merge badge when nothing is armed or queued", () => {
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState: "open",
+        })}
+      />,
+    );
+    expect(document.querySelector("[data-pr-merge]")).toBeNull();
+  });
+
   it("shows no PR state until bex has read it", () => {
     render(
       <SessionDetailHeader

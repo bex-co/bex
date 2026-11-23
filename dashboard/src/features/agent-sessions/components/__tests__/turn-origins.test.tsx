@@ -260,6 +260,8 @@ function detail(
       prUrl: "https://github.com/acme/widgets/pull/7",
       prNumber: 7,
       prState: "open",
+      prAutoMerge: null,
+      prMergeQueued: false,
       turns: 3,
       deliveryMode: null,
       failureReason: null,

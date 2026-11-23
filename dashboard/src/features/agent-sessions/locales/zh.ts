@@ -53,6 +53,51 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "PR state badge beside a session's PR link — the pull request was closed without merging",
   },
+  "agentSessions.prAutoMerge": {
+    message: "自动合并",
+    description:
+      "Badge beside a session's PR state — GitHub auto-merge is armed on the pull request (w10/047)",
+  },
+  "agentSessions.prMergeQueued": {
+    message: "在合并队列中",
+    description:
+      "Badge beside a session's PR state — the pull request is in its base branch's merge queue (w10/047)",
+  },
+  "agentSessions.prMergeQueuedHint": {
+    message: "在合并队列中：排到队首时 GitHub 会合并它。",
+    description:
+      "Tooltip of the merge-queue badge — what being in the merge queue means",
+  },
+  "agentSessions.prAutoMergeEnabledBy": {
+    message: "{login} 已启用自动合并",
+    description:
+      "Tooltip of the auto-merge badge — the GitHub login that armed auto-merge",
+  },
+  "agentSessions.prAutoMergeEnabled": {
+    message: "已启用自动合并",
+    description:
+      "Tooltip of the auto-merge badge when GitHub does not say who armed it",
+  },
+  "agentSessions.prAutoMergeHint": {
+    message: "所需的审查和检查通过后，GitHub 会合并它。",
+    description:
+      "Tooltip of the auto-merge badge — what auto-merge does",
+  },
+  "agentSessions.prAutoMergeMethod.merge": {
+    message: "创建合并提交",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Create a merge commit'",
+  },
+  "agentSessions.prAutoMergeMethod.squash": {
+    message: "压缩合并",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Squash and merge'",
+  },
+  "agentSessions.prAutoMergeMethod.rebase": {
+    message: "变基合并",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Rebase and merge'",
+  },
   "agentSessions.prStateFilter": {
     message: "按拉取请求状态筛选",
     description:

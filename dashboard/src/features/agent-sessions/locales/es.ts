@@ -52,6 +52,51 @@ const esAgentSessions: Record<string, TranslationEntry> = {
     description:
       "PR state badge beside a session's PR link — the pull request was closed without merging",
   },
+  "agentSessions.prAutoMerge": {
+    message: "Fusión automática",
+    description:
+      "Badge beside a session's PR state — GitHub auto-merge is armed on the pull request (w10/047)",
+  },
+  "agentSessions.prMergeQueued": {
+    message: "En cola de fusión",
+    description:
+      "Badge beside a session's PR state — the pull request is in its base branch's merge queue (w10/047)",
+  },
+  "agentSessions.prMergeQueuedHint": {
+    message: "En la cola de fusión: GitHub la fusiona cuando llegue al frente.",
+    description:
+      "Tooltip of the merge-queue badge — what being in the merge queue means",
+  },
+  "agentSessions.prAutoMergeEnabledBy": {
+    message: "Fusión automática activada por {login}",
+    description:
+      "Tooltip of the auto-merge badge — the GitHub login that armed auto-merge",
+  },
+  "agentSessions.prAutoMergeEnabled": {
+    message: "Fusión automática activada",
+    description:
+      "Tooltip of the auto-merge badge when GitHub does not say who armed it",
+  },
+  "agentSessions.prAutoMergeHint": {
+    message: "GitHub la fusiona cuando pasen las revisiones y comprobaciones requeridas.",
+    description:
+      "Tooltip of the auto-merge badge — what auto-merge does",
+  },
+  "agentSessions.prAutoMergeMethod.merge": {
+    message: "Crear un commit de fusión",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Create a merge commit'",
+  },
+  "agentSessions.prAutoMergeMethod.squash": {
+    message: "Squash y fusionar",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Squash and merge'",
+  },
+  "agentSessions.prAutoMergeMethod.rebase": {
+    message: "Rebase y fusionar",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Rebase and merge'",
+  },
   "agentSessions.prStateFilter": {
     message: "Filtrar por estado del pull request",
     description:

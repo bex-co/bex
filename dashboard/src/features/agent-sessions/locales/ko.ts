@@ -52,6 +52,51 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     description:
       "PR state badge beside a session's PR link — the pull request was closed without merging",
   },
+  "agentSessions.prAutoMerge": {
+    message: "자동 병합",
+    description:
+      "Badge beside a session's PR state — GitHub auto-merge is armed on the pull request (w10/047)",
+  },
+  "agentSessions.prMergeQueued": {
+    message: "병합 대기열",
+    description:
+      "Badge beside a session's PR state — the pull request is in its base branch's merge queue (w10/047)",
+  },
+  "agentSessions.prMergeQueuedHint": {
+    message: "병합 대기열에 있음: 맨 앞에 오면 GitHub가 병합합니다.",
+    description:
+      "Tooltip of the merge-queue badge — what being in the merge queue means",
+  },
+  "agentSessions.prAutoMergeEnabledBy": {
+    message: "{login}님이 자동 병합을 활성화함",
+    description:
+      "Tooltip of the auto-merge badge — the GitHub login that armed auto-merge",
+  },
+  "agentSessions.prAutoMergeEnabled": {
+    message: "자동 병합 활성화됨",
+    description:
+      "Tooltip of the auto-merge badge when GitHub does not say who armed it",
+  },
+  "agentSessions.prAutoMergeHint": {
+    message: "필수 리뷰와 검사를 통과하면 GitHub가 병합합니다.",
+    description:
+      "Tooltip of the auto-merge badge — what auto-merge does",
+  },
+  "agentSessions.prAutoMergeMethod.merge": {
+    message: "병합 커밋 만들기",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Create a merge commit'",
+  },
+  "agentSessions.prAutoMergeMethod.squash": {
+    message: "스쿼시 후 병합",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Squash and merge'",
+  },
+  "agentSessions.prAutoMergeMethod.rebase": {
+    message: "리베이스 후 병합",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Rebase and merge'",
+  },
   "agentSessions.prStateFilter": {
     message: "풀 리퀘스트 상태로 필터링",
     description:

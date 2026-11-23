@@ -265,6 +265,33 @@
         "phase": {
           "type": "string"
         },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
+        },
         "prNumber": {
           "type": "integer"
         },
@@ -884,6 +911,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"
@@ -1627,6 +1681,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"
@@ -2922,6 +3003,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"
@@ -4900,6 +5008,33 @@
         "phase": {
           "type": "string"
         },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
+        },
         "prNumber": {
           "type": "integer"
         },
@@ -6088,6 +6223,33 @@
               "phase": {
                 "type": "string"
               },
+              "prAutoMerge": {
+                "additionalProperties": false,
+                "properties": {
+                  "enabledAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "enabledBy": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "prMergeQueued": {
+                "type": "boolean"
+              },
               "prNumber": {
                 "type": "integer"
               },
@@ -6880,6 +7042,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"
@@ -8687,6 +8876,33 @@
               "phase": {
                 "type": "string"
               },
+              "prAutoMerge": {
+                "additionalProperties": false,
+                "properties": {
+                  "enabledAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "enabledBy": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "prMergeQueued": {
+                "type": "boolean"
+              },
               "prNumber": {
                 "type": "integer"
               },
@@ -10265,6 +10481,33 @@
         "phase": {
           "type": "string"
         },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
+        },
         "prNumber": {
           "type": "integer"
         },
@@ -11078,6 +11321,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"
@@ -12022,6 +12292,33 @@
         "phase": {
           "type": "string"
         },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
+        },
         "prNumber": {
           "type": "integer"
         },
@@ -12792,6 +13089,33 @@
         "phase": {
           "type": "string"
         },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
+        },
         "prNumber": {
           "type": "integer"
         },
@@ -13509,6 +13833,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"
@@ -14422,6 +14773,33 @@
         },
         "phase": {
           "type": "string"
+        },
+        "prAutoMerge": {
+          "additionalProperties": false,
+          "properties": {
+            "enabledAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "enabledBy": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "prMergeQueued": {
+          "type": "boolean"
         },
         "prNumber": {
           "type": "integer"

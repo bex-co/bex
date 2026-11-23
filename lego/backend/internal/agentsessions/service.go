@@ -2464,6 +2464,14 @@ func (s *Service) sshHost() string {
 	return host
 }
 
+// prAutoMergeOf is the view of a recorded auto-merge, nil for none.
+func prAutoMergeOf(armed *store.PRAutoMerge) *PRAutoMerge {
+	if armed == nil {
+		return nil
+	}
+	return &PRAutoMerge{Method: armed.Method, EnabledBy: armed.EnabledBy, EnabledAt: armed.EnabledAt}
+}
+
 func viewOf(record store.AgentSession) (View, error) {
 	config, err := decodeAgentConfig(record)
 	if err != nil {
@@ -2477,6 +2485,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
 		Outcome: outcomeOf(record),
 		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber, PRState: record.PRState, PRStateAt: record.PRStateAt,
+		PRAutoMerge: prAutoMergeOf(record.PRAutoMerge), PRMergeQueued: record.PRMergeQueued,
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,

@@ -53,6 +53,51 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "PR state badge beside a session's PR link — the pull request was closed without merging",
   },
+  "agentSessions.prAutoMerge": {
+    message: "Auto-merge",
+    description:
+      "Badge beside a session's PR state — GitHub auto-merge is armed on the pull request (w10/047)",
+  },
+  "agentSessions.prMergeQueued": {
+    message: "In merge queue",
+    description:
+      "Badge beside a session's PR state — the pull request is in its base branch's merge queue (w10/047)",
+  },
+  "agentSessions.prMergeQueuedHint": {
+    message: "In the merge queue: GitHub merges it when it reaches the front.",
+    description:
+      "Tooltip of the merge-queue badge — what being in the merge queue means",
+  },
+  "agentSessions.prAutoMergeEnabledBy": {
+    message: "Auto-merge enabled by {login}",
+    description:
+      "Tooltip of the auto-merge badge — the GitHub login that armed auto-merge",
+  },
+  "agentSessions.prAutoMergeEnabled": {
+    message: "Auto-merge enabled",
+    description:
+      "Tooltip of the auto-merge badge when GitHub does not say who armed it",
+  },
+  "agentSessions.prAutoMergeHint": {
+    message: "GitHub merges it once its required reviews and checks pass.",
+    description:
+      "Tooltip of the auto-merge badge — what auto-merge does",
+  },
+  "agentSessions.prAutoMergeMethod.merge": {
+    message: "Create a merge commit",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Create a merge commit'",
+  },
+  "agentSessions.prAutoMergeMethod.squash": {
+    message: "Squash and merge",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Squash and merge'",
+  },
+  "agentSessions.prAutoMergeMethod.rebase": {
+    message: "Rebase and merge",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Rebase and merge'",
+  },
   "agentSessions.prStateFilter": {
     message: "Filter by pull request state",
     description:

@@ -70,6 +70,15 @@ fragment AgentSessionFields on AgentSession {
   # pr_state): open (a draft counts as open), merged or closed; null until
   # bex has read it, and for a session with no PR.
   prState
+  # The GitHub auto-merge armed on the open PR, with who armed it and when
+  # (null when none is), and whether it is in its base branch's merge queue,
+  # as Devin Review's merge bar shows them (w10/047).
+  prAutoMerge {
+    method
+    enabledBy
+    enabledAt
+  }
+  prMergeQueued
   turns
   deliveryMode
   failureReason

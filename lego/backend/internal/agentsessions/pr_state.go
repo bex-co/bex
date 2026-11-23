@@ -34,7 +34,9 @@ import (
 // A session's pull request state (Devin's pr_state) is read from GitHub by a
 // reconciler on every replica, so it needs no webhook event the App may not be
 // subscribed to; a pull_request delivery, when the App sends one, updates it
-// at once (ADR094 D7).
+// at once (ADR094 D7). An open one's auto-merge (who armed it, when, and its
+// method) and merge queue are read with it, as Devin Review's merge bar shows
+// them (w10/047).
 const (
 	prStateTick        = time.Minute
 	prStateBatch       = 50
@@ -75,12 +77,15 @@ type PRStateStore interface {
 	ClaimAgentSessionPRChecks(ctx context.Context, now time.Time, retry time.Duration, limit int) ([]store.AgentSessionPRCheck, error)
 	RecordAgentSessionPRState(ctx context.Context, sessionID, state string, at time.Time, next *time.Time) (bool, error)
 	RecordPullRequestState(ctx context.Context, workspaceIDs []string, repo string, number int, state string, at time.Time, next *time.Time) (int, error)
+	RecordPullRequestMergeMarks(ctx context.Context, workspaceIDs []string, repo string, number int, autoMerge *store.PRAutoMerge, queued bool) (int, error)
 	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 }
 
-// PRStateGitHub reads one pull request (*github.Client).
+// PRStateGitHub reads one pull request, and an open one's merge state
+// (*github.Client).
 type PRStateGitHub interface {
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
+	PullRequestMergeState(ctx context.Context, installationID int64, repo, nodeID string) (github.MergeState, error)
 }
 
 // PRStates keeps every session's pull request state current.
@@ -177,8 +182,30 @@ func (p *PRStates) read(ctx context.Context, read prRead) error {
 	if state == read.check.PRState && read.check.PRStateAt != nil {
 		changedAt = *read.check.PRStateAt
 	}
-	_, err = p.Store.RecordAgentSessionPRState(ctx, read.check.SessionID, state, now, nextPRCheck(state, changedAt, now))
-	return err
+	if _, err := p.Store.RecordAgentSessionPRState(ctx, read.check.SessionID, state, now, nextPRCheck(state, changedAt, now)); err != nil || state != store.PRStateOpen {
+		return err
+	}
+	p.readMergeMarks(ctx, read, pr)
+	return nil
+}
+
+// readMergeMarks records an open pull request's auto-merge and merge queue,
+// which only GitHub's GraphQL reports in full, on the sessions of the
+// workspace that recorded it. One it cannot read keeps the last ones read
+// until the next read.
+func (p *PRStates) readMergeMarks(ctx context.Context, read prRead, pr github.PullRequestDetail) {
+	repo := read.owner + "/" + read.name
+	if pr.NodeID == "" {
+		log.Printf("agent-pr-states: session=%s %s#%d: no node id to read its auto-merge", read.check.SessionID, repo, read.check.PRNumber)
+		return
+	}
+	merge, err := p.GitHub.PullRequestMergeState(ctx, read.installationID, read.name, pr.NodeID)
+	if err == nil {
+		_, err = p.Store.RecordPullRequestMergeMarks(ctx, []string{read.check.WorkspaceID}, repo, read.check.PRNumber, merge.AutoMerge, merge.InMergeQueue)
+	}
+	if err != nil {
+		log.Printf("agent-pr-states: session=%s %s#%d auto-merge left as last read: %v", read.check.SessionID, repo, read.check.PRNumber, err)
+	}
 }
 
 // HandlePullRequestEvent applies one GitHub App pull_request delivery to the

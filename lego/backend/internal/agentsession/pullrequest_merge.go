@@ -329,8 +329,10 @@ func (p *PullRequester) MarkReady(ctx context.Context, req PullRequestReadyReque
 //
 // A merge records prState merged at once on every session of the workspace
 // that recorded the pull request, so REST, GraphQL and MCP read it without
-// waiting for the PR-state poller; an armed or queued answer leaves that to
-// the poller and the webhook. Every refusal is a *PullRequestError.
+// waiting for the PR-state poller; an armed, queued or disarmed answer
+// records the pull request's auto-merge and merge queue there the same way
+// (w10/047), and the merge itself is left to the poller and the webhook.
+// Every refusal is a *PullRequestError.
 func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) (response PullRequestMergeResponse, err error) {
 	auditTarget := ""
 	defer func() { p.audit(ctx, AuditVerbPullRequestMerge, req.MintRequest, auditTarget, err) }()
@@ -353,7 +355,7 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 	response = PullRequestMergeResponse{URL: pr.HTMLURL, Number: pr.Number, HeadSHA: pin, OtherPullRequest: other}
 	if req.DisableAuto {
 		// Stopping a later merge is never pinned: any head may be left unmerged.
-		return p.disableAutoMerge(ctx, target.pullRequestTarget, pr, response)
+		return p.disableAutoMerge(ctx, target, pr, response)
 	}
 	if pr.Draft {
 		return PullRequestMergeResponse{}, NewPullRequestMergeError(PullRequestDraft, fmt.Sprintf("pull request #%d is still a draft", pr.Number))
@@ -377,21 +379,26 @@ func (p *PullRequester) Merge(ctx context.Context, req PullRequestMergeRequest) 
 		// final, a queue's refusal included.
 		log.Printf("agent-session pull request merge: merge state unread, merging (session=%s): %v", session.ID, stateErr)
 	case state.InMergeQueue:
+		p.recordMergeMarks(ctx, target, state)
 		response.MergeQueue = true
 		return response, nil
 	case state.MergeQueueEnabled:
 		if err := p.GitHub.EnqueuePullRequest(ctx, target.installationID, target.name, pr.NodeID, pin); err != nil {
 			return PullRequestMergeResponse{}, mergeRefusal(err)
 		}
+		p.rereadMergeMarks(ctx, target, pr, github.MergeState{InMergeQueue: true})
 		response.MergeQueue = true
 		return response, nil
-	case req.Auto && state.AutoMerge:
-		response.AutoMerge, response.Method = true, state.AutoMergeMethod
+	case req.Auto && state.AutoMerge != nil:
+		p.recordMergeMarks(ctx, target, state)
+		response.AutoMerge, response.Method = true, state.AutoMerge.Method
 		return response, nil
 	case req.Auto && !state.MergeableNow():
 		method, err := p.GitHub.EnablePullRequestAutoMerge(ctx, target.installationID, target.owner, target.name, pr.NodeID, opts)
 		switch {
 		case err == nil:
+			now := p.now().UTC()
+			p.rereadMergeMarks(ctx, target, pr, github.MergeState{AutoMerge: &store.PRAutoMerge{Method: method, EnabledAt: &now}})
 			response.AutoMerge, response.Method = true, method
 			return response, nil
 		case !errors.Is(err, github.ErrMergeableNow):
@@ -422,18 +429,45 @@ func (p *PullRequester) mergeState(ctx context.Context, target pullRequestTarget
 
 // disableAutoMerge carries out disableAuto: the pull request leaves the merge
 // queue or its auto-merge is disabled; one with neither answers the same.
-func (p *PullRequester) disableAutoMerge(ctx context.Context, target pullRequestTarget, pr github.PullRequestDetail, response PullRequestMergeResponse) (PullRequestMergeResponse, error) {
-	state, refusal := p.mergeState(ctx, target, pr)
+func (p *PullRequester) disableAutoMerge(ctx context.Context, target stateTarget, pr github.PullRequestDetail, response PullRequestMergeResponse) (PullRequestMergeResponse, error) {
+	state, refusal := p.mergeState(ctx, target.pullRequestTarget, pr)
 	if refusal != nil {
 		return PullRequestMergeResponse{}, refusal
 	}
-	if state.InMergeQueue || state.AutoMerge {
+	if state.InMergeQueue || state.AutoMerge != nil {
 		if err := p.GitHub.DisablePullRequestAutoMerge(ctx, target.installationID, target.name, pr.NodeID, state.InMergeQueue); err != nil {
 			return PullRequestMergeResponse{}, gitHubStateRefusal(err, PullRequestUpstreamError, "GitHub refused or failed to disable auto-merge")
 		}
+		p.rereadMergeMarks(ctx, target, pr, github.MergeState{})
+	} else {
+		p.recordMergeMarks(ctx, target, state)
 	}
 	response.AutoMergeDisabled = true
 	return response, nil
+}
+
+// rereadMergeMarks records the pull request's auto-merge and merge queue as
+// GitHub reports them after the verb changed them, or, when that read fails,
+// as implied says (what the verb's answer means), which the PR-state poller
+// corrects on its next read.
+func (p *PullRequester) rereadMergeMarks(ctx context.Context, target stateTarget, pr github.PullRequestDetail, implied github.MergeState) {
+	state, err := p.GitHub.PullRequestMergeState(ctx, target.installationID, target.name, pr.NodeID)
+	if err != nil {
+		log.Printf("agent-session pull request merge: merge state unread after the change, recording the answer (session=%s): %v", target.session.ID, err)
+		state = implied
+	}
+	p.recordMergeMarks(ctx, target, state)
+}
+
+// recordMergeMarks records the auto-merge and merge queue of state on every
+// session of the workspace that recorded the target's pull request (w10/047),
+// as recordMerged records a merge. They stand on GitHub either way, and the
+// PR-state poller would record them later, so a failed write is only logged.
+func (p *PullRequester) recordMergeMarks(ctx context.Context, target stateTarget, state github.MergeState) {
+	session := target.session
+	if _, err := p.Sessions.RecordPullRequestMergeMarks(ctx, []string{session.WorkspaceID}, target.repository, target.number, state.AutoMerge, state.InMergeQueue); err != nil {
+		log.Printf("agent-session pull request merge: record auto-merge of %s#%d failed (session=%s): %v", target.repository, target.number, session.ID, err)
+	}
 }
 
 // stateTarget is pullRequestTarget plus the number of the pull request whose

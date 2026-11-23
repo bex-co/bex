@@ -78,6 +78,18 @@ export const AGENT_SESSION_PR_STATES = ["open", "merged", "closed"] as const;
 
 export type AgentSessionPrState = (typeof AGENT_SESSION_PR_STATES)[number];
 
+/**
+ * The GitHub auto-merge armed on a session's open PR (w10/047): GitHub merges
+ * it with `method` once its required reviews and checks pass. `enabledBy` is
+ * the GitHub login that armed it and `enabledAt` when, each null when GitHub
+ * does not say.
+ */
+export interface AgentSessionPrAutoMerge {
+  method: string;
+  enabledBy: string | null;
+  enabledAt: string | null;
+}
+
 /** A known PR state, or undefined for anything else (search value or wire). */
 export function parseAgentSessionPrState(
   value: unknown,
@@ -265,6 +277,10 @@ export interface AgentSessionView {
    * does not know.
    */
   prState: AgentSessionPrState | null;
+  /** The auto-merge armed on the open PR, as bex last read it; null for none. */
+  prAutoMerge: AgentSessionPrAutoMerge | null;
+  /** The PR is in its base branch's merge queue, as bex last read it. */
+  prMergeQueued: boolean;
   /** Number of prompt turns taken so far. */
   turns: number;
   deliveryMode: AgentSessionDeliveryMode | null;

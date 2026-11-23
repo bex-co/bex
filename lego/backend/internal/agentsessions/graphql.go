@@ -364,6 +364,16 @@ var agentSessionPullRequestGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentSessionPRAutoMergeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSessionPRAutoMerge",
+	Description: "GitHub auto-merge armed on a session's pull request: GitHub merges it once its required reviews and checks pass.",
+	Fields: graphql.Fields{
+		"method":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "The merge method GitHub merges it with: merge, squash or rebase.", Resolve: gqlutil.Field(func(v PRAutoMerge) any { return v.Method })},
+		"enabledBy": &graphql.Field{Type: graphql.String, Description: "The GitHub login that armed it; null when GitHub does not say.", Resolve: gqlutil.OptionalStrField(func(v PRAutoMerge) any { return v.EnabledBy }).Resolve},
+		"enabledAt": gqlutil.TimeField(func(v PRAutoMerge) any { return v.EnabledAt }),
+	},
+})
+
 var agentSessionCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentSessionCost",
 	Description: "What the session has cost so far, in USD decimal strings: its platform-route model requests and its attributed sandbox compute (ADR094 D7).",
@@ -459,6 +469,13 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"prUrl":              gqlutil.StrField(func(v View) any { return v.PRURL }),
 		"prState":            &graphql.Field{Type: graphql.String, Description: "The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read.", Resolve: gqlutil.OptionalStrField(func(v View) any { return v.PRState }).Resolve},
 		"prStateAt":          gqlutil.TimeField(func(v View) any { return v.PRStateAt }),
+		"prAutoMerge": &graphql.Field{Type: agentSessionPRAutoMergeGQLType, Description: "The GitHub auto-merge armed on the open pull request as bex last read it, with who armed it and when; null when none is.", Resolve: gqlutil.Field(func(v View) any {
+			if v.PRAutoMerge == nil {
+				return nil
+			}
+			return *v.PRAutoMerge
+		})},
+		"prMergeQueued": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "Whether the pull request is in its base branch's merge queue, as bex last read it.", Resolve: gqlutil.Field(func(v View) any { return v.PRMergeQueued })},
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil

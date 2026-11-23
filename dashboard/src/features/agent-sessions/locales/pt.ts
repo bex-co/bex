@@ -52,6 +52,51 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     description:
       "PR state badge beside a session's PR link — the pull request was closed without merging",
   },
+  "agentSessions.prAutoMerge": {
+    message: "Mesclagem automática",
+    description:
+      "Badge beside a session's PR state — GitHub auto-merge is armed on the pull request (w10/047)",
+  },
+  "agentSessions.prMergeQueued": {
+    message: "Na fila de mesclagem",
+    description:
+      "Badge beside a session's PR state — the pull request is in its base branch's merge queue (w10/047)",
+  },
+  "agentSessions.prMergeQueuedHint": {
+    message: "Na fila de mesclagem: o GitHub a mescla quando chegar à frente.",
+    description:
+      "Tooltip of the merge-queue badge — what being in the merge queue means",
+  },
+  "agentSessions.prAutoMergeEnabledBy": {
+    message: "Mesclagem automática ativada por {login}",
+    description:
+      "Tooltip of the auto-merge badge — the GitHub login that armed auto-merge",
+  },
+  "agentSessions.prAutoMergeEnabled": {
+    message: "Mesclagem automática ativada",
+    description:
+      "Tooltip of the auto-merge badge when GitHub does not say who armed it",
+  },
+  "agentSessions.prAutoMergeHint": {
+    message: "O GitHub a mescla quando as revisões e verificações obrigatórias passarem.",
+    description:
+      "Tooltip of the auto-merge badge — what auto-merge does",
+  },
+  "agentSessions.prAutoMergeMethod.merge": {
+    message: "Criar um commit de mesclagem",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Create a merge commit'",
+  },
+  "agentSessions.prAutoMergeMethod.squash": {
+    message: "Squash e mesclar",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Squash and merge'",
+  },
+  "agentSessions.prAutoMergeMethod.rebase": {
+    message: "Rebase e mesclar",
+    description:
+      "Tooltip of the auto-merge badge — the merge method, GitHub's 'Rebase and merge'",
+  },
   "agentSessions.prStateFilter": {
     message: "Filtrar por estado do pull request",
     description:

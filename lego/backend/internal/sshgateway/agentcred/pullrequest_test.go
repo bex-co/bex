@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // prForge stands in for GitHub behind bex-api's real PullRequester. pr is
@@ -64,7 +65,7 @@ func (f *prForge) EnablePullRequestAutoMerge(_ context.Context, _ int64, _, _, _
 	defer f.mu.Unlock()
 	f.calls++
 	f.armed = append(f.armed, opts)
-	f.state.AutoMerge, f.state.AutoMergeMethod = true, github.MergeMethodSquash
+	f.state.AutoMerge = &store.PRAutoMerge{Method: github.MergeMethodSquash}
 	return github.MergeMethodSquash, nil
 }
 
@@ -77,7 +78,7 @@ func (f *prForge) DisablePullRequestAutoMerge(context.Context, int64, string, st
 	defer f.mu.Unlock()
 	f.calls++
 	f.disarmed++
-	f.state.AutoMerge = false
+	f.state.AutoMerge = nil
 	return nil
 }
 

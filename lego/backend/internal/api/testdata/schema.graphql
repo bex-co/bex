@@ -407,6 +407,8 @@ type AgentSession {
   parentSessionId: String
   pendingMessages: Int!
   phase: String!
+  prAutoMerge: AgentSessionPRAutoMerge
+  prMergeQueued: Boolean!
   prNumber: Int
   prState: String
   prStateAt: String
@@ -494,6 +496,12 @@ type AgentSessionOutcome {
   steerable: Boolean!
   summary: String
   turn: Int
+}
+
+type AgentSessionPRAutoMerge {
+  enabledAt: String
+  enabledBy: String
+  method: String!
 }
 
 type AgentSessionProfile {

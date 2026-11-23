@@ -53,6 +53,8 @@ export function agentSessionView({
     prUrl: null,
     prNumber: null,
     prState: null,
+    prAutoMerge: null,
+    prMergeQueued: false,
     turns: 0,
     deliveryMode: null,
     failureReason: null,

@@ -74,6 +74,10 @@ func (s mergeSessions) RecordAgentSessionPRState(_ context.Context, _, state str
 	return true, nil
 }
 
+func (mergeSessions) RecordPullRequestMergeMarks(context.Context, []string, string, int, *store.PRAutoMerge, bool) (int, error) {
+	return 1, nil
+}
+
 // mergeHarness is prHarness with the mark-ready and merge verbs wired over
 // the same signed hop and the same Pod table; GitHub's PR #7 is a draft at
 // mergeHead.

@@ -118,6 +118,14 @@ export function toAgentSessionView(
     // "PR is ready" phrase and PR card key off genuine delivery, not 0.
     prNumber: wire.prNumber || null,
     prState: parseAgentSessionPrState(wire.prState) ?? null,
+    prAutoMerge: wire.prAutoMerge
+      ? {
+          method: wire.prAutoMerge.method,
+          enabledBy: wire.prAutoMerge.enabledBy ?? null,
+          enabledAt: wire.prAutoMerge.enabledAt ?? null,
+        }
+      : null,
+    prMergeQueued: wire.prMergeQueued ?? false,
     turns: wire.turns ?? 0,
     deliveryMode:
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,

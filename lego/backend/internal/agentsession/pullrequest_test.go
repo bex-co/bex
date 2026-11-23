@@ -81,6 +81,9 @@ type fakeForge struct {
 	state      github.MergeState
 	stateErr   error
 	stateReads int
+	// rereadErr fails every state read after the first, as GitHub's read
+	// back after an arm, a queue or a disarm may.
+	rereadErr  error
 	armed      []forgeMerge
 	armErr     error
 	enqueued   []string
@@ -120,6 +123,9 @@ func (f *fakeForge) PullRequestMergeState(_ context.Context, _ int64, _, nodeID 
 	if f.byNode(nodeID) == nil {
 		return github.MergeState{}, &github.APIError{Status: http.StatusNotFound}
 	}
+	if f.stateReads > 1 && f.rereadErr != nil {
+		return github.MergeState{}, f.rereadErr
+	}
 	return f.state, f.stateErr
 }
 
@@ -130,8 +136,14 @@ func (f *fakeForge) EnablePullRequestAutoMerge(_ context.Context, installation i
 		return "", f.armErr
 	}
 	f.armed = append(f.armed, forgeMerge{installation: installation, owner: owner, repo: repo, node: nodeID, opts: opts})
-	return cmp.Or(opts.Method, github.MergeMethodSquash), nil
+	method := cmp.Or(opts.Method, github.MergeMethodSquash)
+	armedAt := time.Date(2026, 11, 22, 9, 30, 0, 0, time.UTC)
+	f.state.AutoMerge = &store.PRAutoMerge{Method: method, EnabledBy: forgeAppLogin, EnabledAt: &armedAt}
+	return method, nil
 }
+
+// forgeAppLogin is the login GitHub names the App by when it arms auto-merge.
+const forgeAppLogin = "bex-co[bot]"
 
 func (f *fakeForge) EnqueuePullRequest(_ context.Context, _ int64, _, nodeID, headSHA string) error {
 	f.mu.Lock()
@@ -140,6 +152,7 @@ func (f *fakeForge) EnqueuePullRequest(_ context.Context, _ int64, _, nodeID, he
 		return f.enqueueErr
 	}
 	f.enqueued = append(f.enqueued, nodeID+"@"+headSHA)
+	f.state.InMergeQueue = true
 	return nil
 }
 
@@ -153,6 +166,7 @@ func (f *fakeForge) DisablePullRequestAutoMerge(_ context.Context, _ int64, _, n
 		return &github.APIError{Status: http.StatusNotFound}
 	}
 	f.disabled = append(f.disabled, queued)
+	f.state.AutoMerge, f.state.InMergeQueue = nil, false
 	return nil
 }
 
@@ -281,6 +295,34 @@ type prSessions struct {
 	states     []string
 	stateErr   error
 	repoStates []string
+	// marks records each auto-merge and merge queue written on every session
+	// of a workspace that recorded a pull request ("<workspace> <repo>#<n>
+	// <marks>", w10/047), and marksErr fails it.
+	marks    []string
+	marksErr error
+}
+
+// mergeMarks spells an auto-merge and a merge queue for the marks record:
+// "squash by octocat", "none", with " queued" when it is in the queue.
+func mergeMarks(armed *store.PRAutoMerge, queued bool) string {
+	out := "none"
+	if armed != nil {
+		out = armed.Method + " by " + cmp.Or(armed.EnabledBy, "nobody")
+	}
+	if queued {
+		out += " queued"
+	}
+	return out
+}
+
+func (s *prSessions) RecordPullRequestMergeMarks(_ context.Context, workspaceIDs []string, repo string, number int, armed *store.PRAutoMerge, queued bool) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.marksErr != nil {
+		return 0, s.marksErr
+	}
+	s.marks = append(s.marks, fmt.Sprintf("%s %s#%d %s", strings.Join(workspaceIDs, ","), repo, number, mergeMarks(armed, queued)))
+	return 1, nil
 }
 
 func (s *prSessions) RecordPullRequestState(_ context.Context, workspaceIDs []string, repo string, number int, state string, _ time.Time, next *time.Time) (int, error) {

@@ -99,6 +99,8 @@ const wireSession = (phase: string) => ({
   prUrl: null,
   prNumber: null,
   prState: null,
+  prAutoMerge: null,
+  prMergeQueued: false,
   turns: 2,
   deliveryMode: null,
   failureReason: null,

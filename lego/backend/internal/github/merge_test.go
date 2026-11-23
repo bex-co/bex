@@ -25,6 +25,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // fakeMergeAPI is GitHub's surface for one repository (octo/repo) as the
@@ -449,19 +452,23 @@ func TestDisablePullRequestAutoMergeOrLeaveTheQueue(t *testing.T) {
 
 // w10/m577: the state read asks for what gh pr merge reads, with the PR
 // read's token, and tells the queue, an armed pull request and one GitHub
-// would merge now apart.
+// would merge now apart; w10/047: an armed one says who armed it and when.
 func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
-	api := &fakeMergeAPI{answers: map[string]string{"node(id": `{"data":{"node":{"isMergeQueueEnabled":true,"isInMergeQueue":false,"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH"}}}}`}}
+	api := &fakeMergeAPI{answers: map[string]string{"node(id": `{"data":{"node":{"isMergeQueueEnabled":true,"isInMergeQueue":false,"mergeStateStatus":"BLOCKED","autoMergeRequest":{"mergeMethod":"SQUASH","enabledAt":"2026-11-22T09:30:00Z","enabledBy":{"login":"octocat"}}}}}`}}
 	state, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state != (MergeState{MergeQueueEnabled: true, Status: "BLOCKED", AutoMerge: true, AutoMergeMethod: MergeMethodSquash}) || state.MergeableNow() {
-		t.Fatalf("state = %+v", state)
+	armed := state.AutoMerge
+	state.AutoMerge = nil
+	if state != (MergeState{MergeQueueEnabled: true, Status: "BLOCKED"}) || state.MergeableNow() || armed == nil ||
+		armed.Method != MergeMethodSquash || armed.EnabledBy != "octocat" || armed.EnabledAt == nil ||
+		!armed.EnabledAt.Equal(time.Date(2026, 11, 22, 9, 30, 0, 0, time.UTC)) {
+		t.Fatalf("state = %+v, auto-merge %+v", state, armed)
 	}
 	query, _ := api.mutations[0]["query"].(string)
 	variables, _ := api.mutations[0]["variables"].(map[string]any)
-	for _, field := range []string{"isMergeQueueEnabled", "isInMergeQueue", "mergeStateStatus", "autoMergeRequest { mergeMethod }"} {
+	for _, field := range []string{"isMergeQueueEnabled", "isInMergeQueue", "mergeStateStatus", "autoMergeRequest { mergeMethod enabledAt enabledBy { login } }"} {
 		if !strings.Contains(query, field) {
 			t.Fatalf("query %q does not read %s", query, field)
 		}
@@ -475,6 +482,18 @@ func TestPullRequestMergeStateReadsWhatGhReads(t *testing.T) {
 	for status, now := range map[string]bool{"CLEAN": true, "HAS_HOOKS": true, "UNSTABLE": true, "BLOCKED": false, "BEHIND": false, "DIRTY": false, "UNKNOWN": false, "DRAFT": false} {
 		if (MergeState{Status: status}).MergeableNow() != now {
 			t.Errorf("%s mergeable now = %v, want %v (gh's isImmediatelyMergeable)", status, !now, now)
+		}
+	}
+	// A ghost (deleted) account that armed it reads as nobody, and a pull
+	// request with nothing armed as no auto-merge.
+	for answer, want := range map[string]*store.PRAutoMerge{
+		`{"data":{"node":{"isInMergeQueue":true,"mergeStateStatus":"CLEAN","autoMergeRequest":{"mergeMethod":"MERGE","enabledAt":null,"enabledBy":null}}}}`: {Method: MergeMethodMerge},
+		`{"data":{"node":{"isInMergeQueue":true,"mergeStateStatus":"CLEAN","autoMergeRequest":null}}}`:                                                      nil,
+	} {
+		api := &fakeMergeAPI{answers: map[string]string{"node(id": answer}}
+		state, err := pullsClient(t, api).PullRequestMergeState(context.Background(), 42, "repo", "PR_kwDOnode7")
+		if err != nil || !state.InMergeQueue || (want == nil) != (state.AutoMerge == nil) || (want != nil && *state.AutoMerge != *want) {
+			t.Fatalf("%s = %+v %+v / %v", answer, state, state.AutoMerge, err)
 		}
 	}
 	for _, answer := range []string{`{"data":{"node":null}}`, graphQLRefusal("node", "NOT_FOUND", "Could not resolve to a node")} {

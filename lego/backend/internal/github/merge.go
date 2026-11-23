@@ -27,7 +27,10 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // The writes behind an agent session's mark-ready and merge verbs (ADR090
@@ -336,10 +339,9 @@ type MergeState struct {
 	// Status is GitHub's mergeStateStatus: CLEAN, UNSTABLE, HAS_HOOKS,
 	// BLOCKED, BEHIND, DIRTY, DRAFT or UNKNOWN.
 	Status string
-	// AutoMerge is set when auto-merge is armed on the pull request, with
-	// AutoMergeMethod its method in lower case.
-	AutoMerge       bool
-	AutoMergeMethod string
+	// AutoMerge is the auto-merge armed on the pull request, nil when none
+	// is: its method in lower case, and who armed it when (w10/047).
+	AutoMerge *store.PRAutoMerge
 }
 
 // MergeableNow is gh's isImmediatelyMergeable: GitHub would merge the pull
@@ -366,11 +368,15 @@ func (c *Client) PullRequestMergeState(ctx context.Context, installationID int64
 			IsInMergeQueue      bool   `json:"isInMergeQueue"`
 			MergeStateStatus    string `json:"mergeStateStatus"`
 			AutoMergeRequest    *struct {
-				MergeMethod string `json:"mergeMethod"`
+				MergeMethod string     `json:"mergeMethod"`
+				EnabledAt   *time.Time `json:"enabledAt"`
+				EnabledBy   *struct {
+					Login string `json:"login"`
+				} `json:"enabledBy"`
 			} `json:"autoMergeRequest"`
 		} `json:"node"`
 	}
-	if err := c.gitHubGraphQL(ctx, token, `query($id: ID!) { node(id: $id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus autoMergeRequest { mergeMethod } } } }`,
+	if err := c.gitHubGraphQL(ctx, token, `query($id: ID!) { node(id: $id) { ... on PullRequest { isMergeQueueEnabled isInMergeQueue mergeStateStatus autoMergeRequest { mergeMethod enabledAt enabledBy { login } } } } }`,
 		map[string]any{"id": nodeID}, &out); err != nil {
 		return MergeState{}, err
 	}
@@ -378,8 +384,11 @@ func (c *Client) PullRequestMergeState(ctx context.Context, installationID int64
 		return MergeState{}, errors.New("github: the merge state read found no pull request")
 	}
 	state := MergeState{MergeQueueEnabled: out.Node.IsMergeQueueEnabled, InMergeQueue: out.Node.IsInMergeQueue, Status: out.Node.MergeStateStatus}
-	if out.Node.AutoMergeRequest != nil {
-		state.AutoMerge, state.AutoMergeMethod = true, strings.ToLower(out.Node.AutoMergeRequest.MergeMethod)
+	if request := out.Node.AutoMergeRequest; request != nil {
+		state.AutoMerge = &store.PRAutoMerge{Method: strings.ToLower(request.MergeMethod), EnabledAt: request.EnabledAt}
+		if request.EnabledBy != nil {
+			state.AutoMerge.EnabledBy = request.EnabledBy.Login
+		}
 	}
 	return state, nil
 }

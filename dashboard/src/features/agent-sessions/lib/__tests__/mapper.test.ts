@@ -240,6 +240,45 @@ describe("toAgentSessionView", () => {
     );
   });
 
+  // w10/047: the auto-merge armed on the PR and its merge queue.
+  it("carries the PR's auto-merge and merge queue", () => {
+    const armed = toAgentSessionView(
+      wire({
+        prNumber: 7,
+        prAutoMerge: {
+          __typename: "AgentSessionPRAutoMerge",
+          method: "squash",
+          enabledBy: "octocat",
+          enabledAt: "2026-11-22T09:30:00Z",
+        },
+        prMergeQueued: true,
+      }),
+    );
+    expect(armed.prAutoMerge).toEqual({
+      method: "squash",
+      enabledBy: "octocat",
+      enabledAt: "2026-11-22T09:30:00Z",
+    });
+    expect(armed.prMergeQueued).toBe(true);
+    // GitHub did not say who or when: null, never undefined.
+    expect(
+      toAgentSessionView(
+        wire({
+          prAutoMerge: {
+            __typename: "AgentSessionPRAutoMerge",
+            method: "merge",
+            enabledBy: null,
+            enabledAt: null,
+          },
+        }),
+      ).prAutoMerge,
+    ).toEqual({ method: "merge", enabledBy: null, enabledAt: null });
+    // Nothing armed, or a cache entry from before the fields.
+    const none = toAgentSessionView(wire());
+    expect(none.prAutoMerge).toBeNull();
+    expect(none.prMergeQueued).toBe(false);
+  });
+
   it("maps an unread, absent or unknown PR state to null", () => {
     expect(toAgentSessionView(wire({ prState: null })).prState).toBeNull();
     expect(toAgentSessionView(wire()).prState).toBeNull();

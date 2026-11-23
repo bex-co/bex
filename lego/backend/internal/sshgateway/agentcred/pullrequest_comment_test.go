@@ -57,6 +57,10 @@ func (commentSessions) RecordAgentSessionPRState(context.Context, string, string
 	return true, nil
 }
 
+func (commentSessions) RecordPullRequestMergeMarks(context.Context, []string, string, int, *store.PRAutoMerge, bool) (int, error) {
+	return 0, nil
+}
+
 // commentHarness is prHarness with the comment verb wired as well, over the
 // same signed hop and the same Pod table.
 func commentHarness(t *testing.T, prNumber int) (*Broker, *prForge, *credentialAudit) {
