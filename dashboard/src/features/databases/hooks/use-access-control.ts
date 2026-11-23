@@ -20,6 +20,7 @@ import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 
 export interface PooledStrings {
   internal: string;
@@ -107,7 +108,7 @@ export function useAccessControl(id: string) {
         return true;
       } catch (e) {
         toast.error(
-          mutationErrorMessage(e, t("databases.accessAllowListError")),
+          adminOnlyErrorMessage(e, t("databases.accessAllowListError"), t),
         );
         return false;
       }
@@ -188,7 +189,9 @@ export function useAccessControl(id: string) {
         ),
       });
     } catch (err) {
-      toast.error(mutationErrorMessage(err, t("databases.accessPoolerError")));
+      toast.error(
+        adminOnlyErrorMessage(err, t("databases.accessPoolerError"), t),
+      );
     } finally {
       setPoolLoading(false);
     }

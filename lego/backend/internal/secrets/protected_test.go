@@ -82,8 +82,11 @@ func TestProtectedEnvironmentRestrictsVariablesAndFilesToAdmins(t *testing.T) {
 			svc := newService(newStore(), sampleApp("web"))
 			svc.Protection = protectionStub{protected: true}
 			svc.Authz = denyWorkspaceManage{}
-			if err := call(svc); !errors.Is(err, core.ErrForbidden) {
-				t.Fatalf("by a non-admin in a protected environment = %v, want ErrForbidden", err)
+			// Coded as an environment group's refusal is (w4/m594), so both
+			// Environment tabs give the same reason.
+			var coded *core.CodedError
+			if err := call(svc); !errors.As(err, &coded) || coded.Code != core.ProtectedPlacementCode || !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("by a non-admin in a protected environment = %v, want ErrForbidden coded %s", err, core.ProtectedPlacementCode)
 			}
 			svc.Authz = allowAllRelations{}
 			if err := call(svc); err != nil {

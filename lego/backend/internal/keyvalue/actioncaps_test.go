@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,9 +40,9 @@ func actionByID(t *testing.T, acts []core.ActionDecision, id string) core.Action
 	return core.ActionDecision{}
 }
 
-// TestActionCapabilities_SuspendResumeOnly (ADR087, w6/m136): the Key Value
-// projection offers exactly suspend/resume — no invented restart.
-func TestActionCapabilities_SuspendResumeOnly(t *testing.T) {
+// TestActionCapabilities_NoRestart (ADR087, w6/m136): the Key Value projection
+// offers suspend/resume and the w4/m594 rows — no invented restart.
+func TestActionCapabilities_NoRestart(t *testing.T) {
 	kv := keyValueForProtection("red-cache", "cache", true)
 	svc, _, _ := protectedKeyValueService(kv)
 
@@ -49,8 +50,13 @@ func TestActionCapabilities_SuspendResumeOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActionCapabilities: %v", err)
 	}
-	if len(acts) != 2 || acts[0].Action != core.ActionSuspend || acts[1].Action != core.ActionResume {
-		t.Fatalf("want exactly suspend+resume, got %+v", acts)
+	var ids []string
+	for _, a := range acts {
+		ids = append(ids, a.Action)
+	}
+	want := []string{core.ActionSuspend, core.ActionResume, core.ActionViewConnectionInfo, core.ActionUpdateIPAllowList}
+	if !slices.Equal(ids, want) {
+		t.Fatalf("actions = %v, want exactly %v", ids, want)
 	}
 }
 

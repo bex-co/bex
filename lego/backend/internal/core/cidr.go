@@ -137,6 +137,23 @@ func EffectiveAllowList(public bool, list []appv1alpha1.IPAllowEntry) []IPAllowL
 	return AllowListFromSpec(list)
 }
 
+// AllowListPatchChanges reports whether a datastore PATCH's ipAllowList and
+// public fields, applied as postgres and keyvalue apply them (a list publishes
+// when nonempty, an explicit public wins), change the rules in effect on a
+// store that is public with list now: the access-control change a protected
+// environment keeps to Admins (w4/m594). Re-sending what a read returned
+// changes nothing, so it is no change.
+func AllowListPatchChanges(public bool, list []appv1alpha1.IPAllowEntry, patchList *[]IPAllowListEntry, patchPublic *bool) bool {
+	nextPublic, nextList := public, list
+	if patchList != nil {
+		nextPublic, nextList = len(*patchList) > 0, AllowListToSpec(*patchList)
+	}
+	if patchPublic != nil {
+		nextPublic = *patchPublic
+	}
+	return !slices.Equal(EffectiveAllowList(public, list), EffectiveAllowList(nextPublic, nextList))
+}
+
 // AllowListCIDRs projects entries down to their CIDR strings — the
 // product-neutral string-list shape GraphQL/MCP's legacy arguments and the
 // bex-native {"cidrs"} REST routes keep speaking.

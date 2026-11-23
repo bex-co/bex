@@ -66,6 +66,15 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   })),
 }));
 
+// The protected-environment gates of a datastore's and an environment group's
+// controls (w4/m594) read the resource's action projection through Apollo, so
+// default to "nothing refused", as useCapabilities above grants everything.
+// Gating tests override per file with
+// vi.mocked(useAdminOnlyActions).mockReturnValue; the hook's own test unmocks it.
+vi.mock("@/features/capabilities/hooks/use-admin-only-actions", () => ({
+  useAdminOnlyActions: vi.fn(() => () => undefined),
+}));
+
 // Whether the workspace is offered Router (w21/042) is the router flag AND the
 // companion service's answer, read through Apollo's useQuery — so every test
 // that renders the sidebar or the ⌘K palette would otherwise need an

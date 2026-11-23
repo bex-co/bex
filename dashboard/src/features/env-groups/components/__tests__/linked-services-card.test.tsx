@@ -11,6 +11,9 @@ import {
 import { LinkedServicesCard } from "@/features/env-groups/components/linked-services-card";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import { ADMIN_ONLY_REASON, adminOnlyAs } from "@/test/mocks/admin-only";
+import userEvent from "@testing-library/user-event";
 
 function service(id: string, name: string): ServiceView {
   return { id, name } as unknown as ServiceView;
@@ -213,5 +216,39 @@ describe("LinkedServicesCard — scope index still loading (w4/257)", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.queryByText(/Linked outside/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("linked-row-pending")).not.toBeInTheDocument();
+  });
+});
+
+// w4/m594: a link or an unlink changes the service's environment variables,
+// which a protected environment keeps to Admins.
+describe("LinkedServicesCard — a protected group's links", () => {
+  it("disables Link and Unlink for a Developer with Render's reason, and sends nothing", async () => {
+    adminOnlyAs("developer");
+    const user = userEvent.setup();
+    unlinkGroup.mockClear();
+    renderCard({
+      group: { ...WORKSPACE_GROUP, environmentId: "env-prod" },
+      services: [service("web", "web"), service("api", "api")],
+      serviceEnvironmentById: new Map([
+        ["web", "env-prod"],
+        ["api", "env-prod"],
+      ]),
+    });
+    expect(useAdminOnlyActions).toHaveBeenCalledWith("envGroup", "eg-1");
+    const unlink = await screen.findByRole("button", { name: /unlink web/i });
+    expect(unlink).toBeDisabled();
+    await user.hover(unlink.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      ADMIN_ONLY_REASON,
+    );
+    await user.click(unlink);
+    expect(unlinkGroup).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("combobox", { name: "Select a service" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /link service/i }),
+    ).toBeDisabled();
+    adminOnlyAs("admin");
   });
 });

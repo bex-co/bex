@@ -1,20 +1,20 @@
 # w4 · m594 — In a protected environment only Admins read datastore passwords, change datastore IP rules or touch environment groups' variables, as on Render
 
-**Worker:** worker4 **Goal:** in a protected environment, the remaining actions Render reserves to Admins are Admin-only on bex too: viewing a Postgres's or Key Value's password and connection URLs, changing a Postgres's or Key Value's inbound IP rules, and viewing or changing an environment group's variables and secret files (and deleting the group). A non-Admin is refused with `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` on REST, GraphQL and MCP, and the dashboard shows each control disabled with Render's _This action is limited to admins._ before the click. A Blueprint's own sync keeps Render's exception. **Status:** todo
+**Worker:** worker4 **Goal:** in a protected environment, the remaining actions Render reserves to Admins are Admin-only on bex too: viewing a Postgres's or Key Value's password and connection URLs, changing a Postgres's or Key Value's inbound IP rules, and viewing or changing an environment group's variables and secret files (and deleting the group). A non-Admin is refused with `PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` on REST, GraphQL and MCP, and the dashboard shows each control disabled with Render's _This action is limited to admins._ before the click. A Blueprint's own sync keeps Render's exception. **Status:** todo (t001–t005 and t007–t009 done; t006 replaying on dev-4)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Datastore passwords and connection URLs are Admin-only in a protected environment | 50m | — |
-| [t002](t002.md) | Datastore inbound IP rules are Admin-only in a protected environment | 45m | — |
-| [t003](t003.md) | An environment group's variables, secret files and Delete are Admin-only in a protected environment | 1h15m | — |
-| [t004](t004.md) | The datastore projections and the env-group view say so before the click | 45m | t001, t002, t003 |
-| [t005](t005.md) | Dashboard: the reveal, IP-rule and env-group controls read Render's admin-only reason | 1h30m | t004 |
+| [t001](done/t001.md) | Datastore passwords and connection URLs are Admin-only in a protected environment — **DONE** | 50m | — |
+| [t002](done/t002.md) | Datastore inbound IP rules are Admin-only in a protected environment — **DONE** | 45m | — |
+| [t003](done/t003.md) | An environment group's variables, secret files and Delete are Admin-only in a protected environment — **DONE** | 1h15m | — |
+| [t004](done/t004.md) | The datastore projections and the env-group view say so before the click — **DONE** | 45m | t001, t002, t003 |
+| [t005](done/t005.md) | Dashboard: the reveal, IP-rule and env-group controls read Render's admin-only reason — **DONE** | 1h30m | t004 |
 | [t006](t006.md) | Live check on dev-4 as an Admin, a Developer and a Viewer at 1440 and 390 | 45m | t005 |
-| [t007](t007.md) | Render parity | 25m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 30m | t007, t008 |
+| [t007](done/t007.md) | Render parity — **DONE** | 25m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 7h10m**.

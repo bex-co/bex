@@ -1,6 +1,8 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { EnvironmentEditor } from "@/features/services/components/service-environment-editor";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
 import {
   envVarKeys,
   secretFileNames,
@@ -25,6 +27,9 @@ export function EnvGroupEditors({
   const revealEnv = useRevealEnvGroupVar(group.id);
   const revealFile = useRevealEnvGroupSecretFile(group.id);
   const patch = useEnvGroupEnvironmentPatch(group.id, refetch);
+  // In a protected environment only an Admin views or changes a group's
+  // variables and secret files (w4/m594).
+  const adminOnly = useAdminOnlyActions("envGroup", group.id);
 
   return (
     <EnvironmentEditor
@@ -35,6 +40,13 @@ export function EnvGroupEditors({
       secretFileNames={secretFileNames(group)}
       loading={loading}
       errorKind={classifySecretStoreError(error)}
+      refusalBody={
+        isAdminOnlyRefusal(error)
+          ? t("capabilities.actionAdminOnly")
+          : undefined
+      }
+      writeBlockedReason={adminOnly("update_env_vars")}
+      revealBlockedReason={adminOnly("view_env_vars")}
       revealEnv={revealEnv}
       revealFile={revealFile}
       revision={group.revision}

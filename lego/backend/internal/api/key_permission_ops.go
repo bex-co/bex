@@ -375,6 +375,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.diskSnapshots":                                               {core.KeyServicesView},
 	"GQL Query.disks":                                                       {core.KeyServicesView},
 	"GQL Query.envGroup":                                                    {core.KeyEnvGroupsView},
+	"GQL Query.envGroupActions":                                             {core.KeyEnvGroupsView},
 	"GQL Query.envGroupSecretFile":                                          {core.KeyEnvGroupsValues},
 	"GQL Query.envGroupVar":                                                 {core.KeyEnvGroupsValues},
 	"GQL Query.envGroups":                                                   {core.KeyEnvGroupsView},

@@ -1,5 +1,5 @@
 // Fail-closed normalizer for per-resource action projections (serverActions /
-// deployActions / databaseActions / keyValueActions). Unknown action ids,
+// deployActions / databaseActions / keyValueActions / envGroupActions). Unknown action ids,
 // outcomes, or blocking codes can never enable an operation, and a decision
 // fetched for one resource (or workspace) answers nothing about another
 // (ADR087 / w6/m143).
@@ -15,6 +15,14 @@ export const RESOURCE_ACTION_IDS = [
   "rollback",
   "cron_run_now",
   "cron_cancel_run",
+  // The verbs a protected environment keeps to Admins (w4/m594): a
+  // datastore's connection-info reveal and IP rules, an environment group's
+  // values, their changes and its delete.
+  "view_connection_info",
+  "update_ip_allow_list",
+  "view_env_vars",
+  "update_env_vars",
+  "delete",
 ] as const;
 
 export type ResourceActionId = (typeof RESOURCE_ACTION_IDS)[number];
@@ -67,9 +75,9 @@ const KNOWN_REASONS = new Set([
   "missing_oauth_scope",
   "insufficient_permission",
   "authz_unavailable",
-  // A restricted verb (suspend, resume) on a member of a protected
-  // environment, refused because the caller is not a workspace Admin
-  // (w4/m578): Render's "This action is limited to admins."
+  // A restricted verb (suspend, resume; w4/m594's rows) on a member of a
+  // protected environment, refused because the caller is not a workspace
+  // Admin (w4/m578): Render's "This action is limited to admins."
   "protected_environment_admin_required",
 ]);
 

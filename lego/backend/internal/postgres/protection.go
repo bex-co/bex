@@ -31,6 +31,15 @@ func (s *Service) requireUnprotected(ctx context.Context, database *appv1alpha1.
 	})
 }
 
+// requireProtectedAdmin is requireUnprotected for the verbs w4/m594 restricts
+// (viewing the credentials, changing the IP rules), with a non-Admin's refusal
+// coded PROTECTED_ENVIRONMENT_ADMIN_REQUIRED (core.RequireEnvironmentAdminCoded).
+func (s *Service) requireProtectedAdmin(ctx context.Context, database *appv1alpha1.Database, verb string) error {
+	return core.RequireEnvironmentAdminCoded(ctx, s.Protection, database.Labels[core.LabelEnvironment], verb, func() error {
+		return s.AuthorizeDatabaseFresh(ctx, core.RelCanManage, database)
+	})
+}
+
 // protectedDatabasePatchVerb names the confirmation a PATCH needs on a member of
 // a protected environment, or "" when the patch changes nothing protection
 // covers.

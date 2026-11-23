@@ -132,9 +132,12 @@ const AuditVerbRevealEnvGroup = "envgroups.RevealEnvGroup"
 // caller refused can_view_sensitive gets the group without them, from a probe
 // that records nothing: nothing is revealed or denied. Every other caller goes
 // through revealedOne's audited, fresh check, so a check that cannot be answered
-// still fails the read rather than hiding values that exist.
+// still fails the read rather than hiding values that exist. In a protected
+// environment only Admins read them (render.com/docs/projects; w4/m594), so a
+// non-Admin there is such a caller too (valuesWithheld).
 func (s *Service) retrieved(ctx context.Context, group renderEnvGroup) (any, error) {
-	if s.CanDecisionOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(group.OwnerID)).Outcome == core.DecisionDenied {
+	if s.CanDecisionOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(group.OwnerID)).Outcome == core.DecisionDenied ||
+		s.valuesWithheld(ctx, group) {
 		return envGroupMeta(group), nil
 	}
 	// A scoped API key not granted the values reads the group without them,
@@ -164,6 +167,9 @@ func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup, rea
 			return nil, err
 		}
 		if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
+			return nil, err
+		}
+		if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
 			return nil, err
 		}
 		var contents groupContents

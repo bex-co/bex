@@ -1084,7 +1084,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// same deploy-history row an explicit deploy does.
 	rollouts := &rollout.Tracker{Store: d.DeployStore}
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets, Rollout: rollouts}
-	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Groups: d.EnvGroupsStore, Rollout: rollouts, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Groups: d.EnvGroupsStore, Rollout: rollouts, Protection: protectionStore, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
 	if apps, ok := d.Store.(interface {
 		GetApp(context.Context, string) (store.App, error)
 	}); ok {

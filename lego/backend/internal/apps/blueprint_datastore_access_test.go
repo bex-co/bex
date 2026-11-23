@@ -26,6 +26,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -228,4 +229,44 @@ func TestBlueprintUnsoldPostgresPlanNamesBexLimit(t *testing.T) {
 			t.Errorf("plan %s: %+v, err %v; want %q", tc.plan, v.Errors, err, tc.want)
 		}
 	}
+}
+
+// Render: in a protected environment only Admins change a datastore's IP
+// rules, but "non-Admin workspace members can still modify those resources by
+// publishing an update to the corresponding render.yaml file"
+// (render.com/docs/projects; w4/m594). A Developer's sync of a Blueprint that
+// changes a protected Postgres's and Key Value's rules applies them.
+func TestBlueprintSyncChangesAProtectedDatastoresRulesForADeveloper(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	svc, cl := newService(nil)
+	publicManifest := blueprintDatastoreManifest("    ipAllowList: "+blueprintDatastoreRules, blueprintDatastoreRules)
+	result, err := svc.DeployStack(ctx, DeployRequest{Manifest: publicManifest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, obj := range []client.Object{&appv1alpha1.Database{}, &appv1alpha1.KeyValue{}} {
+		name := result.Databases[0].ID
+		if _, ok := obj.(*appv1alpha1.KeyValue); ok {
+			name = result.KeyValues[0].ID
+		}
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, obj); err != nil {
+			t.Fatal(err)
+		}
+		labels := obj.GetLabels()
+		if labels == nil {
+			labels = map[string]string{}
+		}
+		labels[core.LabelEnvironment] = "env-production"
+		obj.SetLabels(labels)
+		if err := cl.Update(ctx, obj); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc.Authz = denyWorkspaceManage{}
+	developer := core.WithIdentity(ctx, core.Identity{Subject: "dana", Method: "session"})
+	if _, err := svc.DeployStack(developer, DeployRequest{Manifest: blueprintDatastoreManifest("    ipAllowList: []", "[]")}); err != nil {
+		t.Fatalf("a Developer's sync of a protected datastore's rules: %v", err)
+	}
+	assertBlueprintDatastoreAccess(t, svc, result, false, nil)
 }

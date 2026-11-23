@@ -1628,12 +1628,14 @@ func (s *PGStore) GetAppProtectedStatus(ctx context.Context, appID string) (stri
 
 // GetEnvironmentProtectedStatus returns an Environment's protectedStatus.
 // Missing, NULL, and empty values are all unprotected: protection is opt-in,
-// and a resource may race with deletion of its Environment row.
+// and a resource may race with deletion of its Environment row. Either id
+// spelling names the row: a view's public evm- alias read as missing made a
+// protected environment's group read as unprotected (w4/m594).
 func (s *PGStore) GetEnvironmentProtectedStatus(ctx context.Context, environmentID string) (string, error) {
 	var protectedStatus *string
 	err := s.Pool.QueryRow(ctx,
 		`SELECT protected_status FROM environments WHERE id = $1`,
-		environmentID,
+		ids.EnvironmentStorageID(environmentID),
 	).Scan(&protectedStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "unprotected", nil

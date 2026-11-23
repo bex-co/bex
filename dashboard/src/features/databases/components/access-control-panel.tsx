@@ -23,6 +23,7 @@ import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-databas
 import { useUpdateDatabaseConnectionPool } from "@/features/databases/hooks/use-update-database-connection-pool";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import {
   connectionURLPassword,
@@ -55,6 +56,9 @@ export function AccessControlPanel({
   const planUnsupported =
     instanceTypes.find((it) => it.id === database.plan)
       ?.supportsConnectionPooling === false;
+  // In a protected environment only an Admin changes the IP rules or reads
+  // the pooled strings, which carry the password (w4/m594).
+  const adminOnly = useAdminOnlyActions("database", database.id);
 
   return (
     <Card>
@@ -68,6 +72,7 @@ export function AccessControlPanel({
         <AllowListSection
           key={ipAllowListEntryKey(access.allowList)}
           access={access}
+          disabledReason={adminOnly("update_ip_allow_list")}
         />
         <CredentialsSection access={access} />
         <PoolerSection
@@ -75,6 +80,7 @@ export function AccessControlPanel({
           access={access}
           planUnsupported={planUnsupported}
           onChanged={onChanged}
+          revealReason={adminOnly("view_connection_info")}
         />
       </CardContent>
     </Card>
@@ -83,7 +89,13 @@ export function AccessControlPanel({
 
 type Access = ReturnType<typeof useAccessControl>;
 
-function AllowListSection({ access }: { access: Access }) {
+function AllowListSection({
+  access,
+  disabledReason,
+}: {
+  access: Access;
+  disabledReason: string | undefined;
+}) {
   const { t } = useTranslations();
   return (
     <section className="space-y-2">
@@ -100,6 +112,7 @@ function AllowListSection({ access }: { access: Access }) {
         pendingRows={access.allowListPending ? 2 : undefined}
         saving={access.savingAllowList}
         onSave={access.saveAllowList}
+        disabledReason={disabledReason}
         labels={{
           hint: t("databases.accessAllowListHint"),
           empty: t("databases.accessAllowListEmpty"),
@@ -270,7 +283,13 @@ function PoolerSection({
   access,
   planUnsupported,
   onChanged,
-}: AccessControlPanelProps & { access: Access; planUnsupported: boolean }) {
+  revealReason,
+}: AccessControlPanelProps & {
+  access: Access;
+  planUnsupported: boolean;
+  /** Why the pooled strings may not be revealed now (w4/m594). */
+  revealReason: string | undefined;
+}) {
   const { id, name, poolerEnabled, highAvailabilityEnabled } = database;
   const { t } = useTranslations();
   const capabilities = useCapabilities();
@@ -384,19 +403,21 @@ function PoolerSection({
               {t("databases.accessPoolerStarting")}
             </p>
           ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void access.revealPooled()}
-            disabled={access.poolLoading}
-          >
-            {access.poolLoading ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Eye />
-            )}
-            {t("databases.accessPoolerReveal")}
-          </Button>
+          <PermissionTooltip reason={revealReason}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void access.revealPooled()}
+              disabled={access.poolLoading || revealReason != null}
+            >
+              {access.poolLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Eye />
+              )}
+              {t("databases.accessPoolerReveal")}
+            </Button>
+          </PermissionTooltip>
         </>
       )}
 

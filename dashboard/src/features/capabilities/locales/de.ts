@@ -40,7 +40,7 @@ const deCapabilities: Record<string, TranslationEntry> = {
   "capabilities.actionAdminOnly": {
     message: "Diese Aktion ist Admins vorbehalten.",
     description:
-      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+      "Tooltip on an action refused to a non-admin in a protected environment: Suspend or Resume, per resource and in bulk (Render's copy, w4/m578); a datastore's connection-info reveal and IP rules, and an environment group's variables, secret files, links and Delete (w4/m594)",
   },
   "capabilities.actionUnavailable": {
     message:

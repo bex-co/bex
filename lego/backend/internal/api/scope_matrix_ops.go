@@ -340,6 +340,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.diskSnapshots":                                         core.OpClassRead,
 	"GQL Query.disks":                                                 core.OpClassRead,
 	"GQL Query.envGroup":                                              core.OpClassRead,
+	"GQL Query.envGroupActions":                                       core.OpClassRead,
 	"GQL Query.envGroupSecretFile":                                    core.OpClassSensitive,
 	"GQL Query.envGroupVar":                                           core.OpClassSensitive,
 	"GQL Query.envGroups":                                             core.OpClassRead,

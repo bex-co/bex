@@ -117,6 +117,10 @@ import { useSensitiveReveals } from "@/features/services/hooks/use-sensitive-rev
 import { EnvImportDialog } from "./env-import-dialog";
 import { SecretFileContentDialog } from "./secret-file-content-dialog";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import {
+  adminOnlyErrorMessage,
+  isAdminOnlyRefusal,
+} from "@/features/capabilities/lib/admin-only";
 
 type SaveChoice = "only" | "deploy" | "rebuild";
 
@@ -215,6 +219,13 @@ export function ServiceEnvironmentEditor({
       errorKind={
         classifySecretStoreError(env.error) ??
         classifySecretStoreError(files.error)
+      }
+      // A protected service's values are an Admin's alone (w8/193), and the
+      // refusal says so (w4/m594).
+      refusalBody={
+        isAdminOnlyRefusal(env.error ?? files.error)
+          ? t("capabilities.actionAdminOnly")
+          : undefined
       }
       // Both lists read again; a refusal that persists keeps its state.
       onRetry={() => {
@@ -322,6 +333,21 @@ export interface EnvironmentEditorProps {
    * items stay disabled with this reason.
    */
   deployBlockedReason?: string;
+  /**
+   * Why the caller may not change the values now although their role may: an
+   * environment group in a protected environment, whose values only an Admin
+   * changes (w4/m594), or that check still running. Every write stays
+   * disabled with this reason, as for a role that may not create.
+   */
+  writeBlockedReason?: string;
+  /** The same for revealing, copying or exporting a value (w4/m594). */
+  revealBlockedReason?: string;
+  /**
+   * The body a refused read's card shows instead of the role sentence: the
+   * resource is in a protected environment, whose values only an Admin reads
+   * (w8/193, w4/m594).
+   */
+  refusalBody?: string;
 }
 
 /**
@@ -348,6 +374,9 @@ export function EnvironmentEditor({
   copy,
   headingLevel = "h2",
   deployBlockedReason,
+  writeBlockedReason,
+  revealBlockedReason,
+  refusalBody,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
   const envTitle = copy?.envTitle ?? t("services.envTitle");
@@ -381,14 +410,16 @@ export function EnvironmentEditor({
   );
   const capabilities = useCapabilities();
   const { canCreate, canViewSensitive } = capabilities;
-  const createDenied = !canCreate;
-  const sensitiveDenied = !canViewSensitive;
+  const createDenied = !canCreate || writeBlockedReason != null;
+  const sensitiveDenied = !canViewSensitive || revealBlockedReason != null;
   const createReasonKey = capabilities.reasonKey("can_create");
   const sensitiveReasonKey = capabilities.reasonKey("can_view_sensitive");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  const createReason = createReasonKey
+    ? t(createReasonKey)
+    : writeBlockedReason;
   const sensitiveReason = sensitiveReasonKey
     ? t(sensitiveReasonKey)
-    : undefined;
+    : revealBlockedReason;
   const writeReasonID = useId();
   const nextID = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -411,13 +442,15 @@ export function EnvironmentEditor({
   const [restoredDraft, setRestoredDraft] = useState(false);
   const reveals = useSensitiveReveals(
     { env: revealEnv, file: revealFile },
-    (kind) =>
+    (kind, err) =>
       toast.error(
-        t(
-          kind === "env"
-            ? "services.envRevealError"
-            : "services.secretFileRevealError",
-        ),
+        isAdminOnlyRefusal(err)
+          ? t("capabilities.actionAdminOnly")
+          : t(
+              kind === "env"
+                ? "services.envRevealError"
+                : "services.secretFileRevealError",
+            ),
       ),
   );
   const [importOpen, setImportOpen] = useState(false);
@@ -705,7 +738,7 @@ export function EnvironmentEditor({
       toast.error(
         hasGraphQLErrorCode(err, "ENV_GROUP_REVISION_CONFLICT")
           ? t("services.environmentDraftStale")
-          : mutationErrorMessage(err, t("services.environmentSaveError")),
+          : adminOnlyErrorMessage(err, t("services.environmentSaveError"), t),
       );
       return;
     }
@@ -851,7 +884,9 @@ export function EnvironmentEditor({
             ? {
                 kind: errorKind,
                 title: t(ENV_ERROR_COPY[errorKind].title),
-                body: t(ENV_ERROR_COPY[errorKind].body),
+                body:
+                  (errorKind === "forbidden" ? refusalBody : undefined) ??
+                  t(ENV_ERROR_COPY[errorKind].body),
                 onRetry,
               }
             : undefined
@@ -984,7 +1019,8 @@ export function EnvironmentEditor({
                 body:
                   errorKind === "generic"
                     ? t("services.secretFilesReloadWithVariables")
-                    : t(FILES_ERROR_COPY[errorKind].body),
+                    : ((errorKind === "forbidden" ? refusalBody : undefined) ??
+                      t(FILES_ERROR_COPY[errorKind].body)),
                 compact: true,
               }
             : undefined

@@ -1375,6 +1375,13 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 			return KeyValueView{}, err
 		}
 	}
+	// And the inbound IP rules, asked on their own so a patch that also
+	// renames cannot carry them past it (w4/m594).
+	if core.AllowListPatchChanges(kv.Spec.Public, kv.Spec.IPAllowList, patch.IPAllowList, patch.Public) {
+		if err := s.requireProtectedAdmin(ctx, kv, core.VerbChangeAccessControl); err != nil {
+			return KeyValueView{}, err
+		}
+	}
 	if err := requireRestartConfirmation(ctx, kv, patch); err != nil {
 		return KeyValueView{}, err
 	}
@@ -1489,6 +1496,11 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	// can_view_sensitive uncached before assembling them, so a revocation inside
 	// PositiveTTL cannot surface one last credential.
 	if err := s.AuthorizeKeyValueFresh(ctx, core.RelCanViewSensitive, kv); err != nil {
+		return KeyValueConnectionInfo{}, err
+	}
+	// In a protected environment only an Admin views the password and the
+	// connection URLs (render.com/docs/projects; w4/m594).
+	if err := s.requireProtectedAdmin(ctx, kv, core.VerbViewCredentials); err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
 	if kv.Spec.Public && kv.Status.ExternalHost == "" {

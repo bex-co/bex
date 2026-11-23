@@ -233,6 +233,8 @@ func (s *Service) scopeAuthorized(ctx context.Context, a *appv1alpha1.App, reque
 	}
 	// Render: in a protected environment only Admins view or modify the
 	// environment variables and secret files (w8/193). A failed lookup refuses.
+	// A non-Admin's refusal is coded as an environment group's is (w4/m594), so
+	// the service's and the group's Environment tabs give the same reason.
 	if s.Protection != nil {
 		protected, err := s.Protection.AppProtected(ctx, a)
 		if err != nil {
@@ -240,7 +242,7 @@ func (s *Service) scopeAuthorized(ctx context.Context, a *appv1alpha1.App, reque
 		}
 		if protected {
 			if err := s.AuthorizeAppFresh(ctx, core.RelCanManage, a); err != nil {
-				return nil, nil, "", err
+				return nil, nil, "", core.ProtectedAdminError(a.Labels[core.LabelEnvironment], core.VerbEnvironmentVariables, err)
 			}
 		}
 	}

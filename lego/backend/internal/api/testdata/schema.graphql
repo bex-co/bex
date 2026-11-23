@@ -2596,6 +2596,7 @@ type Query {
   diskSnapshots(id: String!): [DiskSnapshot]
   disks(serviceId: String): [Disk]
   envGroup(id: String!): EnvGroup
+  envGroupActions(id: String!, ownerId: String): [ActionDecision!]!
   envGroupSecretFile(confirm: String, id: String!, name: String!): EnvGroupSecretFile
   envGroupVar(confirm: String, id: String!, key: String!): EnvGroupVar
   envGroups(cursor: String, limit: Int, ownerId: String): [EnvGroup]

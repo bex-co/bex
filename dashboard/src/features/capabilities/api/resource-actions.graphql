@@ -1,4 +1,4 @@
-# Per-resource action projections (ADR087 / w6/m143; datastores w4/m578). Minimum fields for
+# Per-resource action projections (ADR087 / w6/m143; datastores w4/m578, env groups w4/m594). Minimum fields for
 # target/action permission, blocking precondition, and confirmation — no
 # configuration, secrets, or scopes. The selected workspace travels with each
 # query so a shared workspace never falls back to the caller's personal one.
@@ -31,6 +31,17 @@ query DatabaseActions($id: String!, $ownerId: String!) {
 
 query KeyValueActions($id: String!, $ownerId: String!) {
   keyValueActions(id: $id, ownerId: $ownerId) {
+    action
+    outcome
+    reason
+    precondition
+  }
+}
+
+# An environment group's restricted verbs (w4/m594): revealing its values,
+# changing them, and deleting it, Admin-only in a protected environment.
+query EnvGroupActions($id: String!, $ownerId: String!) {
+  envGroupActions(id: $id, ownerId: $ownerId) {
     action
     outcome
     reason

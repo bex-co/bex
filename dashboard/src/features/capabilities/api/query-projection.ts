@@ -1,25 +1,31 @@
 // One read of a per-resource action projection (ADR087 / w6/m143), shared by
 // the projection hooks and the dispatch recheck so both ask the same question
-// the same way. Datastores joined in w4/m578.
+// the same way. Datastores joined in w4/m578, environment groups in w4/m594.
 
 import type { ApolloClient } from "@apollo/client";
 import type { DocumentNode } from "graphql";
 import {
   DatabaseActionsDocument,
   DeployActionsDocument,
+  EnvGroupActionsDocument,
   KeyValueActionsDocument,
   ServerActionsDocument,
 } from "@/graphql/definitions";
 import type { ResourceActionInput } from "@/features/capabilities/lib/resource-actions";
 
 export type ProjectionField =
-  "serverActions" | "deployActions" | "databaseActions" | "keyValueActions";
+  | "serverActions"
+  | "deployActions"
+  | "databaseActions"
+  | "keyValueActions"
+  | "envGroupActions";
 
 const DOCUMENTS: Record<ProjectionField, DocumentNode> = {
   serverActions: ServerActionsDocument,
   deployActions: DeployActionsDocument,
   databaseActions: DatabaseActionsDocument,
   keyValueActions: KeyValueActionsDocument,
+  envGroupActions: EnvGroupActionsDocument,
 };
 
 /**

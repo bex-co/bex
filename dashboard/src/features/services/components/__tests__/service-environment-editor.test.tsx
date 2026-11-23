@@ -35,6 +35,8 @@ let fileNames: Array<{ id: string; name: string }> = [];
 // hold the keys read open while the flag has not arrived.
 let envKeys: Array<{ id: string; key: string; managedBy?: string | null }> = [];
 let envKeysLoading = false;
+// Mutable so a test can refuse the keys read (w4/m594).
+let envKeysError: Error | undefined;
 
 vi.mock("sonner", () => ({
   toast: {
@@ -48,7 +50,7 @@ vi.mock("@/features/services/hooks/use-env-vars", () => ({
   useEnvVarKeys: () => ({
     keys: envKeys,
     loading: envKeysLoading,
-    error: undefined,
+    error: envKeysError,
     refetch: refetchEnv,
   }),
   useRevealEnvVar: () => revealEnv,
@@ -106,6 +108,7 @@ beforeEach(() => {
     { id: "BETA", key: "BETA", managedBy: "" },
   ];
   envKeysLoading = false;
+  envKeysError = undefined;
   toastSuccess.mockReset();
   toastError.mockReset();
   toastWarning.mockReset();
@@ -124,6 +127,20 @@ beforeEach(() => {
 });
 
 describe("ServiceEnvironmentEditor", () => {
+  // w8/193 keeps a protected service's values to Admins; since w4/m594 the
+  // refusal is coded, and the card gives Render's reason, as an environment
+  // group's does.
+  it("says a refused read of a protected service's values is an Admin's alone", async () => {
+    envKeysError = codedGraphQLError("PROTECTED_ENVIRONMENT_ADMIN_REQUIRED");
+    renderEditor();
+    // Both cards, the variables' and the secret files'.
+    expect(
+      await screen.findAllByText("This action is limited to admins."),
+    ).toHaveLength(2);
+    // A denial, not a failed read: no Try again.
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
+  });
+
   it("disables every write entry for a contributor while sensitive reads remain available", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),

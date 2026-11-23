@@ -39,11 +39,10 @@ const enCapabilities: Record<string, TranslationEntry> = {
   "capabilities.actionAdminOnly": {
     message: "This action is limited to admins.",
     description:
-      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+      "Tooltip on an action refused to a non-admin in a protected environment: Suspend or Resume, per resource and in bulk (Render's copy, w4/m578); a datastore's connection-info reveal and IP rules, and an environment group's variables, secret files, links and Delete (w4/m594)",
   },
   "capabilities.actionUnavailable": {
-    message:
-      "The server could not confirm this action right now. Try again.",
+    message: "The server could not confirm this action right now. Try again.",
     description:
       "Tooltip when an action projection is unavailable or returned an unknown outcome",
   },
@@ -83,8 +82,7 @@ const enCapabilities: Record<string, TranslationEntry> = {
     description: "Blocked reason for billing_blocked",
   },
   "capabilities.blockedUnavailable": {
-    message:
-      "The server could not confirm this action right now. Try again.",
+    message: "The server could not confirm this action right now. Try again.",
     description: "Blocked reason for unavailable precondition",
   },
   "capabilities.blockedGeneric": {

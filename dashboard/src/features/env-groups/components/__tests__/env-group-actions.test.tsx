@@ -5,6 +5,12 @@ import { EnvGroupActions } from "@/features/env-groups/components/env-group-acti
 import type { EnvGroupView } from "@/features/env-groups/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({
@@ -187,5 +193,51 @@ describe("EnvGroupActions — protected placement (w3/m281)", () => {
     expect(move).not.toHaveAttribute("aria-disabled");
     await user.click(move);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+});
+
+// w4/m594: Render keeps deleting a protected environment's group to Admins, and
+// its values, which a clone copies.
+describe("EnvGroupActions — a protected group's Delete and Clone", () => {
+  afterEach(() => adminOnlyAs("admin"));
+
+  it("keeps a Developer's Delete and Clone focusable with Render's reason, opening nothing", async () => {
+    adminOnlyAs("developer");
+    const user = userEvent.setup();
+    renderActions({ ...WORKSPACE_GROUP, environmentId: "env-prod" });
+    expect(useAdminOnlyActions).toHaveBeenCalledWith("envGroup", "eg-1");
+    await user.click(screen.getByRole("button", { name: /manage/i }));
+    for (const name of [/delete/i, /clone/i]) {
+      const item = screen.getByRole("menuitem", { name });
+      expect(item).toHaveAttribute("aria-disabled", "true");
+      await user.hover(item);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        ADMIN_ONLY_REASON,
+      );
+      await user.click(item);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+    }
+  });
+
+  it("gives a Viewer the role reason", async () => {
+    adminOnlyAs("viewer");
+    const user = userEvent.setup();
+    renderActions(WORKSPACE_GROUP);
+    await user.click(screen.getByRole("button", { name: /manage/i }));
+    const remove = screen.getByRole("menuitem", { name: /delete/i });
+    expect(remove).toHaveAttribute("aria-disabled", "true");
+    await user.hover(remove);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(ROLE_REASON);
+  });
+
+  it("lets an Admin open Delete", async () => {
+    const user = userEvent.setup();
+    renderActions({ ...WORKSPACE_GROUP, environmentId: "env-prod" });
+    await user.click(screen.getByRole("button", { name: /manage/i }));
+    const remove = screen.getByRole("menuitem", { name: /delete/i });
+    expect(remove).not.toHaveAttribute("aria-disabled");
+    await user.click(remove);
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
   });
 });

@@ -41,6 +41,11 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	if err := s.authorizeGroupSensitiveFresh(ctx, source); err != nil {
 		return EnvGroupView{}, err
 	}
+	// A clone copies every value of the source: in a protected environment
+	// only an Admin reads them (w4/m594).
+	if err := s.requireGroupAdmin(ctx, source, core.VerbEnvironmentVariables); err != nil {
+		return EnvGroupView{}, err
+	}
 	targetCtx := core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(targetCtx), core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err

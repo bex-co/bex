@@ -124,6 +124,15 @@ const (
 	ActionRollback      = "rollback"
 	ActionCronRunNow    = "cron_run_now"
 	ActionCronCancelRun = "cron_cancel_run"
+	// The verbs a protected environment keeps to Admins (w4/m594), projected
+	// so a client can say so before the click: a datastore's connection-info
+	// reveal and its inbound IP rules, and an environment group's values
+	// (envGroupActions), their changes and its delete.
+	ActionViewConnectionInfo = "view_connection_info"
+	ActionUpdateIPAllowList  = "update_ip_allow_list"
+	ActionViewEnvVars        = "view_env_vars"
+	ActionUpdateEnvVars      = "update_env_vars"
+	ActionDelete             = "delete"
 )
 
 // The bounded precondition vocabulary: why a PERMITTED action cannot execute

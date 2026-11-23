@@ -1153,6 +1153,11 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, d); err != nil {
 		return PostgresConnectionInfo{}, err
 	}
+	// In a protected environment only an Admin views the password and the
+	// connection URLs (render.com/docs/projects; w4/m594).
+	if err := s.requireProtectedAdmin(ctx, d, core.VerbViewCredentials); err != nil {
+		return PostgresConnectionInfo{}, err
+	}
 	if d.Spec.Public && d.Status.ExternalHost == "" {
 		return PostgresConnectionInfo{}, fmt.Errorf(
 			"%w: Postgres %q has public access enabled but no external host; configure BEX_DB_DOMAIN and wait for reconciliation",
@@ -1902,6 +1907,13 @@ func (s *Service) checkUpdateFields(ctx context.Context, d *appv1alpha1.Database
 	// Protection reaches identity and availability, not only lifecycle (w4/m127).
 	if verb := protectedDatabasePatchVerb(patch); verb != "" {
 		if err := s.requireUnprotected(ctx, d, verb); err != nil {
+			return err
+		}
+	}
+	// And the inbound IP rules, asked on their own so a patch that also
+	// upgrades or renames cannot carry them past it (w4/m594).
+	if core.AllowListPatchChanges(d.Spec.Public, d.Spec.IPAllowList, patch.IPAllowList, patch.Public) {
+		if err := s.requireProtectedAdmin(ctx, d, core.VerbChangeAccessControl); err != nil {
 			return err
 		}
 	}

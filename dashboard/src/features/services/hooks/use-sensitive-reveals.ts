@@ -29,7 +29,7 @@ type RevealStore = {
  */
 export function useSensitiveReveals(
   reveal: Record<RevealKind, (name: string) => Promise<string>>,
-  onError: (kind: RevealKind) => void,
+  onError: (kind: RevealKind, err: unknown) => void,
 ): SensitiveReveals {
   const { generation, canViewSensitive } = useCapabilities();
   const [store, setStore] = useState<RevealStore>({
@@ -46,8 +46,7 @@ export function useSensitiveReveals(
   return {
     value: (kind, name) => active.values[`${kind}:${name}`],
     busy: (kind, name) => active.pending === `${kind}:${name}`,
-    clear: () =>
-      setStore({ generation, values: {}, pending: null }),
+    clear: () => setStore({ generation, values: {}, pending: null }),
     toggle: (kind, name) => {
       if (!canViewSensitive) return;
       const id = `${kind}:${name}`;
@@ -75,8 +74,8 @@ export function useSensitiveReveals(
             };
           }),
         )
-        .catch(() => {
-          onError(kind);
+        .catch((err: unknown) => {
+          onError(kind, err);
           setStore((current) =>
             current.generation === generation
               ? { ...current, pending: null }

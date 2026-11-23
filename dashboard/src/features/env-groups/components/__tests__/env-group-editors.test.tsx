@@ -19,6 +19,13 @@ import {
 import { EnvGroupEditors } from "@/features/env-groups/components/env-group-editors";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import {
+  ADMIN_ONLY_REASON,
+  ROLE_REASON,
+  adminOnlyAs,
+} from "@/test/mocks/admin-only";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
 const revealEnv = vi.fn();
@@ -106,6 +113,7 @@ function renderEditors(initial: EnvGroupView = GROUP) {
 
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  adminOnlyAs("admin");
   revealEnv.mockReset().mockResolvedValue("secret");
   revealFile.mockReset().mockResolvedValue("file");
   mutate.mockReset();
@@ -645,5 +653,59 @@ describe("EnvGroupEditors generated secret names (w4/286)", () => {
       screen.queryByText(/variable key must be unique/i),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Save/ })).toBeEnabled();
+  });
+});
+
+// w4/m594: Render keeps viewing and changing a protected environment's group
+// variables and secret files to Admins. A Developer was offered every write
+// and every reveal, and read a 403 after the click.
+describe("EnvGroupEditors — a protected group's values", () => {
+  it("disables every write and reveal for a Developer with Render's reason, and sends nothing", async () => {
+    adminOnlyAs("developer");
+    const user = userEvent.setup();
+    renderEditors({ ...GROUP, environmentId: "evm-prod" });
+    expect(useAdminOnlyActions).toHaveBeenCalledWith("envGroup", "eg-1");
+    const edit = await screen.findByRole("button", { name: "Edit" });
+    expect(edit).toBeDisabled();
+    await user.hover(edit.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      ADMIN_ONLY_REASON,
+    );
+    const reveal = screen.getByRole("button", { name: "Reveal FOO" });
+    expect(reveal).toBeDisabled();
+    await user.click(reveal);
+    await user.click(edit);
+    expect(revealEnv).not.toHaveBeenCalled();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("gives a Viewer the role reason", async () => {
+    adminOnlyAs("viewer");
+    const user = userEvent.setup();
+    renderEditors();
+    const reveal = await screen.findByRole("button", { name: "Reveal FOO" });
+    expect(reveal).toBeDisabled();
+    await user.hover(reveal.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(ROLE_REASON);
+  });
+
+  it("keeps them for an Admin", async () => {
+    const user = userEvent.setup();
+    renderEditors();
+    await user.click(await screen.findByRole("button", { name: "Reveal FOO" }));
+    expect(revealEnv).toHaveBeenCalledWith("FOO");
+    expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
+  });
+
+  it("reads a raced refusal of a reveal as the same reason", async () => {
+    revealEnv.mockRejectedValue(
+      codedGraphQLError("PROTECTED_ENVIRONMENT_ADMIN_REQUIRED"),
+    );
+    const user = userEvent.setup();
+    renderEditors();
+    await user.click(await screen.findByRole("button", { name: "Reveal FOO" }));
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(ADMIN_ONLY_REASON),
+    );
   });
 });

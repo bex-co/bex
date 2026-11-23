@@ -3442,6 +3442,7 @@ export type MutationPurgeServiceCacheArgs = {
 
 
 export type MutationRecoverDatabaseArgs = {
+  environmentId?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
   plan?: InputMaybe<Scalars['String']['input']>;
@@ -4850,6 +4851,7 @@ export type Query = {
   diskSnapshots: Maybe<Array<Maybe<DiskSnapshot>>>;
   disks: Maybe<Array<Maybe<Disk>>>;
   envGroup: Maybe<EnvGroup>;
+  envGroupActions: Array<ActionDecision>;
   envGroupSecretFile: Maybe<EnvGroupSecretFile>;
   envGroupVar: Maybe<EnvGroupVar>;
   envGroups: Maybe<Array<Maybe<EnvGroup>>>;
@@ -5374,6 +5376,12 @@ export type QueryDisksArgs = {
 
 export type QueryEnvGroupArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryEnvGroupActionsArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

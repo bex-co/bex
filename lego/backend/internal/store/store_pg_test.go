@@ -1058,6 +1058,12 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	if got, err := s.GetEnvironmentProtectedStatus(ctx, env.ID); err != nil || got != "protected" {
 		t.Fatalf("GetEnvironmentProtectedStatus(protected) = %q, %v", got, err)
 	}
+	// The public evm- spelling every view answers with names the same row
+	// (w4/m594): read as missing, it made a protected group's REST read
+	// reveal its values' refusal instead of omitting them.
+	if got, err := s.GetEnvironmentProtectedStatus(ctx, ids.EnvironmentPublicID(env.ID)); err != nil || got != "protected" {
+		t.Fatalf("GetEnvironmentProtectedStatus(public id) = %q, %v, want protected", got, err)
+	}
 	if got, err := s.GetEnvironmentProtectedStatus(ctx, "env-deleted"); err != nil || got != "unprotected" {
 		t.Fatalf("GetEnvironmentProtectedStatus(missing) = %q, %v, want unprotected, nil", got, err)
 	}

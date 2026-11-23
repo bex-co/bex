@@ -47,6 +47,7 @@ import type { EnvironmentView } from "@/features/environments/hooks/use-environm
 import type { EnvGroupView } from "@/features/env-groups/types";
 import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 
 export function EnvGroupActions({
   group,
@@ -108,6 +109,11 @@ export function EnvGroupActions({
   )
     ? placement.reason
     : undefined;
+  // In a protected environment only an Admin deletes a group or reads its
+  // values, which a clone copies (w4/m594).
+  const adminOnly = useAdminOnlyActions("envGroup", group.id);
+  const cloneReason = adminOnly("view_env_vars");
+  const deleteReason = adminOnly("delete");
 
   function open(next: NonNullable<typeof dialog>) {
     setName(next === "clone" ? `${group.name}-copy` : group.name);
@@ -178,16 +184,20 @@ export function EnvGroupActions({
           >
             <MoveRight /> {t("envGroups.moveButton")}
           </PermissionMenuItem>
-          <DropdownMenuItem onSelect={() => open("clone")}>
+          <PermissionMenuItem
+            permissionReason={cloneReason}
+            onSelect={() => open("clone")}
+          >
             <Copy /> {t("envGroups.cloneButton")}
-          </DropdownMenuItem>
+          </PermissionMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
+          <PermissionMenuItem
             variant="destructive"
+            permissionReason={deleteReason}
             onSelect={() => open("delete")}
           >
             <Trash2 /> {t("envGroups.deleteButton")}
-          </DropdownMenuItem>
+          </PermissionMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

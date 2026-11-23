@@ -34,6 +34,7 @@ import {
   mutationErrorMessage,
   relayableReason,
 } from "@/common/lib/graphql-error";
+import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type {
   CreateEnvGroupInput,
@@ -291,7 +292,7 @@ export function useEnvGroupMutations(
         toast.success(t("envGroups.deleteSuccess"));
         return true;
       } catch (err) {
-        toast.error(mutationErrorMessage(err, t("envGroups.deleteError")));
+        toast.error(adminOnlyErrorMessage(err, t("envGroups.deleteError"), t));
         return false;
       } finally {
         setBusy(false);
@@ -311,7 +312,7 @@ export function useEnvGroupMutations(
         });
         return true;
       } catch (err) {
-        toast.error(mutationErrorMessage(err, t("envGroups.linkError")));
+        toast.error(adminOnlyErrorMessage(err, t("envGroups.linkError"), t));
         return false;
       } finally {
         setBusy(false);
@@ -331,7 +332,7 @@ export function useEnvGroupMutations(
         });
         return true;
       } catch (err) {
-        toast.error(mutationErrorMessage(err, t("envGroups.unlinkError")));
+        toast.error(adminOnlyErrorMessage(err, t("envGroups.unlinkError"), t));
         return false;
       } finally {
         setBusy(false);

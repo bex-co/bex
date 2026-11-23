@@ -34,7 +34,7 @@ const zhCapabilities: Record<string, TranslationEntry> = {
   "capabilities.actionAdminOnly": {
     message: "此操作仅限管理员执行。",
     description:
-      "Tooltip on a Suspend or Resume refused to a non-admin in a protected environment, per resource and in bulk (Render's copy, w4/m578)",
+      "Tooltip on an action refused to a non-admin in a protected environment: Suspend or Resume, per resource and in bulk (Render's copy, w4/m578); a datastore's connection-info reveal and IP rules, and an environment group's variables, secret files, links and Delete (w4/m594)",
   },
   "capabilities.actionUnavailable": {
     message: "服务器暂时无法确认此操作。请稍后重试。",

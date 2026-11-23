@@ -173,6 +173,15 @@ func (s *Service) createUser(ctx context.Context, name, field, role string, asDe
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
 		return CreateUserResult{}, nil, err
 	}
+	// CreateUser answers the new role's password, a credential view a
+	// protected environment keeps to Admins (w4/m594). CreateCredential
+	// echoes nothing: its password is read back through the gated connection
+	// info.
+	if !asDefault {
+		if err := s.requireProtectedAdmin(ctx, d, core.VerbViewCredentials); err != nil {
+			return CreateUserResult{}, nil, err
+		}
+	}
 	if err := ValidateRoleIdentifier(field, role); err != nil {
 		return CreateUserResult{}, nil, err
 	}

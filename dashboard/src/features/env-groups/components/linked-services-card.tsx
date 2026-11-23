@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
 
@@ -42,6 +44,12 @@ export function LinkedServicesCard({
   scopeReady: boolean;
 }) {
   const { t } = useTranslations();
+  // A link or an unlink changes a service's environment variables, which a
+  // protected environment keeps to Admins (w4/m594).
+  const linkReason = useAdminOnlyActions(
+    "envGroup",
+    group.id,
+  )("update_env_vars");
   const [selected, setSelected] = useState("");
   const byId = new Map(services.map((service) => [service.id, service]));
   const available = scopeReady
@@ -80,7 +88,7 @@ export function LinkedServicesCard({
             <Select
               value={selected}
               onValueChange={setSelected}
-              disabled={busy}
+              disabled={busy || linkReason != null}
             >
               <SelectTrigger
                 aria-label={t("envGroups.selectService")}
@@ -96,14 +104,16 @@ export function LinkedServicesCard({
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              size="sm"
-              disabled={!selected || busy}
-              onClick={() => void handleLink()}
-            >
-              {busy ? <Loader2 className="animate-spin" /> : null}
-              {t("envGroups.linkButton")}
-            </Button>
+            <PermissionTooltip reason={linkReason}>
+              <Button
+                size="sm"
+                disabled={!selected || busy || linkReason != null}
+                onClick={() => void handleLink()}
+              >
+                {busy ? <Loader2 className="animate-spin" /> : null}
+                {t("envGroups.linkButton")}
+              </Button>
+            </PermissionTooltip>
           </div>
         ) : null}
 
@@ -152,18 +162,20 @@ export function LinkedServicesCard({
                       </p>
                     ) : null}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => void unlinkGroup(group.id, serviceId)}
-                    aria-label={t("envGroups.unlinkServiceAria", {
-                      name: service?.name ?? serviceId,
-                    })}
-                  >
-                    <Link2Off />
-                    {t("envGroups.unlinkButton")}
-                  </Button>
+                  <PermissionTooltip reason={linkReason}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy || linkReason != null}
+                      onClick={() => void unlinkGroup(group.id, serviceId)}
+                      aria-label={t("envGroups.unlinkServiceAria", {
+                        name: service?.name ?? serviceId,
+                      })}
+                    >
+                      <Link2Off />
+                      {t("envGroups.unlinkButton")}
+                    </Button>
+                  </PermissionTooltip>
                 </li>
               );
             })}

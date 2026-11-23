@@ -73,14 +73,36 @@ func EnvironmentProtected(ctx context.Context, store EnvironmentProtectionStore,
 // w8/193). The rest of a service's life — deploys, rollbacks, settings,
 // queries — is open to anyone who may do it elsewhere, and no verb asks for a
 // typed phrase (w8/187; the phrase gate of w4/m126 and w4/m127 is retired).
-// The dashboard may still confirm in its own UI.
+// The dashboard may still confirm in its own UI. Viewing a datastore's
+// credentials, changing its inbound IP rules and viewing or changing an
+// environment group's variables joined in w4/m594 (the Verb constants below).
 func ProtectedVerbRestricted(verb string) bool {
 	switch verb {
-	case "create", "move", "delete", "suspend", "resume", "take offline", "shell":
+	case "create", "move", "delete", "suspend", "resume", "take offline", "shell",
+		VerbViewCredentials, VerbChangeAccessControl, VerbEnvironmentVariables:
 		return true
 	}
 	return false
 }
+
+// The restricted verbs w4/m594 adds, named once because several packages and
+// their capability projections ask for each (render.com/docs/projects: only
+// Admins in a protected environment "view passwords or connection URLs for any
+// Postgres or Key Value instance", "modify access control IPs for any Postgres
+// or Key Value instance" and "view or modify environment variables or secret
+// files for any service or environment group").
+const (
+	// VerbViewCredentials reveals a Postgres's or Key Value's password or
+	// connection URLs: its connection info, or a new Postgres user's one-time
+	// password.
+	VerbViewCredentials = "view credentials"
+	// VerbChangeAccessControl changes the inbound IP rules in effect on a
+	// Postgres's or Key Value's external endpoint.
+	VerbChangeAccessControl = "change access control"
+	// VerbEnvironmentVariables reveals or changes an environment group's
+	// variables or secret files, or which services receive them.
+	VerbEnvironmentVariables = "view or change environment variables"
+)
 
 // ProtectedPlacementCode is the 403 a non-Admin receives for creating a
 // resource in, or moving one into or out of, a protected environment (w3/m281).
@@ -127,6 +149,45 @@ func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionSto
 	return admin()
 }
 
+// ProtectedAdminRefusal is the ProtectedPlacementCode refusal of verb, a
+// restricted verb other than a placement, on a member of the protected
+// environment environmentID (w4/m594): the same code and params, so every
+// surface, and the dashboard's raced-403 path, names the reason without
+// parsing the message.
+func ProtectedAdminRefusal(environmentID, verb string) *CodedError {
+	return NewForbiddenError(ProtectedPlacementCode,
+		"only workspace Admins can "+verb+" in a protected environment",
+		map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID)})
+}
+
+// RequireEnvironmentAdminCoded is RequireEnvironmentAdmin with admin's plain
+// role refusal answered as ProtectedAdminRefusal (w4/m594). A refusal coded
+// with its own cause (a token missing the scope, a two-factor requirement) and
+// an outage pass through, as in protectedAdminDecision.
+func RequireEnvironmentAdminCoded(ctx context.Context, store EnvironmentProtectionStore, environmentID, verb string, admin func() error) error {
+	return RequireEnvironmentAdmin(ctx, store, environmentID, verb, func() error {
+		return ProtectedAdminError(environmentID, verb, admin())
+	})
+}
+
+// ProtectedAdminError is err, a fresh workspace-manage check's answer for verb
+// on a member of the protected environment environmentID, with a plain role
+// refusal coded as ProtectedAdminRefusal. nil, a refusal coded with its own
+// cause and an outage pass through.
+func ProtectedAdminError(environmentID, verb string, err error) error {
+	if plainRoleRefusal(err) {
+		return ProtectedAdminRefusal(environmentID, verb)
+	}
+	return err
+}
+
+// plainRoleRefusal reports the bare ErrForbidden, however wrapped: a role
+// refusal, not a refusal coded with a cause of its own.
+func plainRoleRefusal(err error) bool {
+	var coded *CodedError
+	return errors.As(err, &coded) && error(coded) == ErrForbidden
+}
+
 // RestrictedDecision projects RequireEnvironmentAdmin onto a capability
 // decision (ADR087, w4/m578): what a projection reports for verb, given
 // operate (the permission the verb itself opens with), protected (the guard's
@@ -159,8 +220,7 @@ func RestrictedDecision(verb string, operate Decision, protected func() (bool, e
 // missing the scope, a two-factor requirement) and an outage keep the reason
 // ClassifyDecision gives them.
 func protectedAdminDecision(err error) Decision {
-	var coded *CodedError
-	if errors.As(err, &coded) && error(coded) == ErrForbidden {
+	if plainRoleRefusal(err) {
 		return Decision{Outcome: DecisionDenied, Reason: ReasonProtectedEnvironmentAdmin}
 	}
 	return ClassifyDecision(err)

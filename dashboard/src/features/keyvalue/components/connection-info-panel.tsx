@@ -18,6 +18,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/keyvalue/hooks/use-connection-info";
 import { useEnableKeyValueInternalAuth } from "@/features/keyvalue/hooks/use-enable-key-value-internal-auth";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { ConnectionField } from "@/common/components/connection-field";
 import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
@@ -51,11 +53,15 @@ export function ConnectionInfoPanel({
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
   // Revealing the URIs is can_view_sensitive — the password lives inside the
   // `redis://` string, so the whole reveal is gated exactly like the databases
-  // twin's connection strings + password (w9/m84).
+  // twin's connection strings + password (w9/m84), and in a protected
+  // environment it is an Admin's alone (w4/m594).
   const capabilities = useCapabilities();
   const { canViewSensitive } = capabilities;
   const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
-  const revealReason = revealReasonKey ? t(revealReasonKey) : undefined;
+  const adminOnly = useAdminOnlyActions("keyValue", id);
+  const revealReason = revealReasonKey
+    ? t(revealReasonKey)
+    : adminOnly("view_connection_info");
 
   return (
     <Card>
@@ -67,7 +73,11 @@ export function ConnectionInfoPanel({
         {error ? (
           <Alert variant="destructive">
             <AlertTitle>{t("keyvalue.connErrorTitle")}</AlertTitle>
-            <AlertDescription>{t("keyvalue.connErrorBody")}</AlertDescription>
+            <AlertDescription>
+              {isAdminOnlyRefusal(error)
+                ? t("capabilities.actionAdminOnly")
+                : t("keyvalue.connErrorBody")}
+            </AlertDescription>
           </Alert>
         ) : null}
 
@@ -84,7 +94,7 @@ export function ConnectionInfoPanel({
           <PermissionTooltip reason={revealReason}>
             <Button
               onClick={() => void reveal()}
-              disabled={loading || !canViewSensitive}
+              disabled={loading || !canViewSensitive || revealReason != null}
             >
               {loading ? <Loader2 className="animate-spin" /> : <Eye />}
               {t("keyvalue.connReveal")}

@@ -73,6 +73,11 @@ type Service struct {
 	// environment or moving one into it needs an Admin, as on Render (w3/m281).
 	// nil keeps the EnvironmentWorkspace same-workspace check alone.
 	Environments core.EnvironmentResolver
+	// Protection reads a group's environment's protectedStatus: in a protected
+	// environment only Admins view or change a group's values, or delete it
+	// (requireGroupAdmin, w4/m594). nil leaves every group unprotected
+	// (environments unwired).
+	Protection core.EnvironmentProtectionStore
 	// RebuildService starts one full rebuild for a linked service. The API
 	// composition root wires deploys.Service.Rebuild, recorded as a
 	// configuration change (w4/347); nil makes only the explicit
@@ -867,11 +872,15 @@ func GroupRename(s *Service) func(ctx context.Context, groupID, name string) err
 // compare-and-set on the row, finds no group and backs out (w4/m97); the links
 // to detach come from the deleted row.
 func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
-	if _, err := s.authorizeGroup(ctx, core.RelCanCreate, gid); err != nil {
+	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
+	if err != nil {
+		return err
+	}
+	if err := s.requireGroupAdmin(ctx, g, "delete"); err != nil {
 		return err
 	}
 	var deleted store.EnvGroup
-	err := s.Groups.WithEnvGroupContentLock(ctx, gid, func(ctx context.Context) error {
+	err = s.Groups.WithEnvGroupContentLock(ctx, gid, func(ctx context.Context) error {
 		var err error
 		deleted, err = s.Groups.DeleteEnvGroup(ctx, gid)
 		return err
@@ -908,6 +917,9 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVarView) ([]EnvVarView, error) {
 	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
 		return nil, err
 	}
 	desired := make(map[string]EnvVarView, len(vars))
@@ -960,6 +972,9 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
 		return EnvVarView{}, err
 	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
+		return EnvVarView{}, err
+	}
 	var env map[string]string
 	err = s.withGroupContent(ctx, gid, func(ctx context.Context, g store.EnvGroup) error {
 		var err error
@@ -994,6 +1009,9 @@ func (s *Service) SetEnvGroupVarInput(ctx context.Context, gid string, input Env
 	if err != nil {
 		return EnvVarView{}, err
 	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
+		return EnvVarView{}, err
+	}
 	key := strings.TrimSpace(input.Key)
 	if err := core.CheckEnvKey(key); err != nil {
 		return EnvVarView{}, err
@@ -1015,6 +1033,9 @@ func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error 
 	if err != nil {
 		return err
 	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
+		return err
+	}
 	if !slices.Contains(g.EnvKeys, key) {
 		return core.ErrNotFound
 	}
@@ -1031,6 +1052,9 @@ func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error 
 func (s *Service) SetEnvGroupFile(ctx context.Context, gid, name, content string) (SecretFileView, error) {
 	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
+		return SecretFileView{}, err
+	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
 		return SecretFileView{}, err
 	}
 	name = strings.TrimSpace(name)
@@ -1053,6 +1077,9 @@ func (s *Service) DeleteEnvGroupFile(ctx context.Context, gid, name string) erro
 	if err != nil {
 		return err
 	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
+		return err
+	}
 	if !slices.Contains(g.FileNames, name) {
 		return core.ErrNotFound
 	}
@@ -1071,6 +1098,9 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 	// reassertion GetEnvGroupVar (round-8 #8) applies, so a revocation inside
 	// PositiveTTL cannot ride a cached positive to one last read.
 	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
+		return SecretFileView{}, err
+	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
 		return SecretFileView{}, err
 	}
 	var files map[string]string
@@ -1152,6 +1182,14 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 	}
 	if err := validateGroupServiceEnvironment(g.EnvironmentID, key, serviceEnv); err != nil {
 		return err
+	}
+	// A link adds the group's values to the service's environment variables,
+	// which a protected environment keeps to Admins (w4/m594). A Blueprint's
+	// own link is the render.yaml's to make (syncLink).
+	if w == ownerLink {
+		if err := s.requireEnvironmentAdmin(ctx, g.TenantID, serviceEnv, core.VerbEnvironmentVariables); err != nil {
+			return err
+		}
 	}
 	if _, err := s.rollLinked(ctx, a, s.now(), gid, w); err != nil {
 		return err
@@ -1354,6 +1392,15 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	mounted := mountsGroup(a, gid)
 	if !mounted && !slices.Contains(g.ServiceLinks, key) {
 		return nil
+	}
+	// An unlink takes the group's values out of the service's environment
+	// variables, which a protected environment keeps to Admins (w4/m594).
+	serviceEnv, err := s.serviceEnvironment(ctx, a)
+	if err != nil {
+		return err
+	}
+	if err := s.requireEnvironmentAdmin(ctx, g.TenantID, serviceEnv, core.VerbEnvironmentVariables); err != nil {
+		return err
 	}
 	if mounted {
 		if err := s.detachFetched(ctx, gid, a); err != nil {

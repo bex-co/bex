@@ -17,6 +17,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { downloadTextFile } from "@/common/lib/download-file";
 import { useConnectionInfo } from "@/features/databases/hooks/use-connection-info";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { CopyButton } from "@/common/components/copy-button";
 import { ConnectionField } from "@/common/components/connection-field";
@@ -34,11 +36,15 @@ import { LogicalReplicationNote } from "@/features/databases/components/logical-
 export function ConnectionInfoPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
-  // Revealing the connection strings + password is can_view_sensitive (w9/m84).
+  // Revealing the connection strings + password is can_view_sensitive (w9/m84),
+  // and in a protected environment an Admin's alone (w4/m594).
   const capabilities = useCapabilities();
   const { canViewSensitive } = capabilities;
   const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
-  const revealReason = revealReasonKey ? t(revealReasonKey) : undefined;
+  const adminOnly = useAdminOnlyActions("database", id);
+  const revealReason = revealReasonKey
+    ? t(revealReasonKey)
+    : adminOnly("view_connection_info");
 
   return (
     <Card>
@@ -50,7 +56,11 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
         {error ? (
           <Alert variant="destructive">
             <AlertTitle>{t("databases.connErrorTitle")}</AlertTitle>
-            <AlertDescription>{t("databases.connErrorBody")}</AlertDescription>
+            <AlertDescription>
+              {isAdminOnlyRefusal(error)
+                ? t("capabilities.actionAdminOnly")
+                : t("databases.connErrorBody")}
+            </AlertDescription>
           </Alert>
         ) : null}
 
@@ -65,7 +75,7 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
           <PermissionTooltip reason={revealReason}>
             <Button
               onClick={() => void reveal()}
-              disabled={loading || !canViewSensitive}
+              disabled={loading || !canViewSensitive || revealReason != null}
             >
               {loading ? <Loader2 className="animate-spin" /> : <Eye />}
               {t("databases.connReveal")}

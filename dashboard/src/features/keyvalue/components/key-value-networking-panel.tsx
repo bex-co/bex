@@ -16,6 +16,7 @@ import {
   useKeyValueNetworking,
   type RestartRefusal,
 } from "@/features/keyvalue/hooks/use-key-value-networking";
+import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 
 /**
  * The Key Value detail's Networking section: the external-endpoint IP
@@ -31,6 +32,8 @@ import {
 export function KeyValueNetworkingPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const networking = useKeyValueNetworking(id);
+  // In a protected environment only an Admin changes the IP rules (w4/m594).
+  const adminOnly = useAdminOnlyActions("keyValue", id);
   const [pending, setPending] = useState<{
     entries: IPAllowListEntryDraft[];
     refusal: RestartRefusal;
@@ -86,6 +89,7 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
           entries={networking.allowList}
           saving={networking.savingAllowList}
           onSave={requestSave}
+          disabledReason={adminOnly("update_ip_allow_list")}
           labels={{
             hint: t(
               networking.externalAccessRestarts

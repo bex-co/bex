@@ -165,6 +165,25 @@ export function useDeployActions(
 }
 
 /**
+ * The decisions of the verbs a protected environment keeps to Admins on a
+ * datastore or an environment group (w4/m594): `databaseActions`,
+ * `keyValueActions` or `envGroupActions`. A null id asks nothing.
+ */
+export function useAdminOnlyProjection(
+  kind: "database" | "keyValue" | "envGroup",
+  id: string | null,
+): ResourceActionsState {
+  return useProjection(
+    kind === "database"
+      ? "databaseActions"
+      : kind === "keyValue"
+        ? "keyValueActions"
+        : "envGroupActions",
+    id,
+  );
+}
+
+/**
  * A datastore's lifecycle decisions, `databaseActions` or `keyValueActions`
  * (w4/m578); a null id asks nothing.
  */

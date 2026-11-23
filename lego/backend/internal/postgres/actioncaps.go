@@ -29,7 +29,10 @@ import (
 // suspend and resume read as the Admin check setSuspended adds there
 // (core.RestrictedDecision, w4/m578); suspend carries the protected-environment
 // confirmation hint for that Admin and resume the dunning gate — computed by
-// the same core predicates setSuspended enforces.
+// the same core predicates setSuspended enforces. view_connection_info
+// (can_view_sensitive) and update_ip_allow_list (can_operate, the PATCH's own
+// permission) read the same way as the verbs a protected environment keeps to
+// Admins (w4/m594), so a client can say so before the click.
 // Read-only; the verbs re-run their own guards at dispatch. Failover and
 // delete are deliberately absent: neither is a mobile-scope action (ADR087),
 // and an absent action reads as "not offered here", never as permitted.
@@ -44,10 +47,11 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	// Bound to the acting workspace above — probe it directly, and compute
 	// preconditions only for an allowed decision (a viewer pays no protection
 	// or billing reads, and learns nothing from them).
-	operate := s.CanDecisionOn(ctx, core.RelCanOperate, core.WorkspaceObject(s.WorkspaceOrDefault(ctx)))
-	// Suspend and resume are restricted verbs: on a protected member they
-	// read as requireUnprotected's own fresh workspace-manage check, one
-	// protection read and one check shared by both (w4/m578).
+	workspace := core.WorkspaceObject(s.WorkspaceOrDefault(ctx))
+	operate := s.CanDecisionOn(ctx, core.RelCanOperate, workspace)
+	// Every row but restart is a restricted verb: on a protected member each
+	// reads as the verb's own fresh workspace-manage check, one protection
+	// read and one check shared by all (w4/m578, w4/m594).
 	protected := sync.OnceValues(func() (bool, error) {
 		return core.EnvironmentProtected(ctx, s.Protection, d.Labels[core.LabelEnvironment])
 	})
@@ -57,9 +61,13 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	suspendPre, resumePre := core.LifecyclePreconditions(d.Spec.Suspended, isProtected, resume, func() string {
 		return s.BillingPreconditionFor(ctx, d.Labels[core.LabelTenant])
 	})
+	credentials, _ := core.RestrictedDecision(core.VerbViewCredentials, s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
+	accessControl, _ := core.RestrictedDecision(core.VerbChangeAccessControl, operate, protected, admin)
 	return []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
+		core.DecideAction(core.ActionViewConnectionInfo, credentials, ""),
+		core.DecideAction(core.ActionUpdateIPAllowList, accessControl, ""),
 	}, nil
 }

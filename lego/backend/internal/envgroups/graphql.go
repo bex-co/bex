@@ -224,7 +224,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return pageEnvGroups(groups, cursor, limit, cursorSet || limitSet), nil
 			},
 		},
-		"envGroup":           gqlutil.IDVerb(envGroupGQLType, s.GetEnvGroup),
+		"envGroup": gqlutil.IDVerb(envGroupGQLType, s.GetEnvGroup),
+		// envGroupActions projects the group's restricted verbs' decisions
+		// (ADR087; w4/m594): revealing its values, changing them and deleting
+		// it, Admin-only in a protected environment. A bex extension.
+		"envGroupActions":    gqlutil.OwnedIDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
 		"envGroupVar":        gqlutil.ArgMutation(envGroupVarGQLType, "key", s.GetEnvGroupVar),
 		"envGroupSecretFile": gqlutil.ArgMutation(envGroupFileGQLType, "name", s.GetEnvGroupFile),
 	}

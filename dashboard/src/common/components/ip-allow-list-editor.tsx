@@ -4,6 +4,7 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { isValidCIDR } from "@/common/lib/cidr";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import {
   ALLOW_ALL_ENTRIES,
   isAllowAllRule,
@@ -77,6 +78,7 @@ export function IPAllowListEditor({
   readOnly,
   emptyBlocks,
   pendingRows,
+  disabledReason,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
@@ -109,7 +111,15 @@ export function IPAllowListEditor({
    * (w4/m315). The caller remounts the editor when the list arrives.
    */
   pendingRows?: number;
+  /**
+   * Why the caller may not change the list right now (a non-Admin in a
+   * protected environment, w4/m594, or the check still running): the editor
+   * keeps its shape with every input and action disabled, and Add and Save
+   * say why.
+   */
+  disabledReason?: string;
 }) {
+  const off = disabledReason != null;
   // Keep keys independent of editable values and positions so typing, moving
   // and removing rows preserve the surviving inputs' focus and caret.
   const nextRowID = useRef(entries.length);
@@ -279,6 +289,7 @@ export function IPAllowListEditor({
                 }
                 aria-invalid={!isValidCIDR(entry.cidrBlock)}
                 aria-label={labels.cidrRule(index + 1)}
+                disabled={off}
                 className="max-w-xs font-mono"
               />
               <Input
@@ -288,6 +299,7 @@ export function IPAllowListEditor({
                 }
                 aria-label={labels.descriptionRule(index + 1)}
                 placeholder={labels.descriptionPlaceholder}
+                disabled={off}
                 className="max-w-xs"
               />
               <Button
@@ -295,7 +307,7 @@ export function IPAllowListEditor({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={labels.moveUp(entry.cidrBlock)}
-                disabled={index === 0}
+                disabled={off || index === 0}
                 onClick={() => move(index, -1)}
               >
                 <ArrowUp />
@@ -305,7 +317,7 @@ export function IPAllowListEditor({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={labels.moveDown(entry.cidrBlock)}
-                disabled={index === draft.length - 1}
+                disabled={off || index === draft.length - 1}
                 onClick={() => move(index, 1)}
               >
                 <ArrowDown />
@@ -315,6 +327,7 @@ export function IPAllowListEditor({
                 variant="ghost"
                 size="icon-sm"
                 aria-label={labels.remove(entry.cidrBlock)}
+                disabled={off}
                 onClick={() =>
                   setDraft(
                     draft.filter((_, entryIndex) => entryIndex !== index),
@@ -340,7 +353,7 @@ export function IPAllowListEditor({
           placeholder="203.0.113.0/24"
           aria-label={labels.cidr}
           aria-invalid={invalid}
-          disabled={!!pendingRows}
+          disabled={!!pendingRows || off}
           className="max-w-xs"
         />
         <Input
@@ -351,19 +364,21 @@ export function IPAllowListEditor({
           }
           aria-label={labels.description}
           placeholder={labels.descriptionPlaceholder}
-          disabled={!!pendingRows}
+          disabled={!!pendingRows || off}
           className="max-w-xs"
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={add}
-          disabled={!cidr.trim()}
-        >
-          <Plus />
-          {labels.add}
-        </Button>
+        <PermissionTooltip reason={disabledReason}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={add}
+            disabled={off || !cidr.trim()}
+          >
+            <Plus />
+            {labels.add}
+          </Button>
+        </PermissionTooltip>
         {labels.cancel ? (
           <Button
             type="button"
@@ -375,15 +390,17 @@ export function IPAllowListEditor({
             {labels.cancel}
           </Button>
         ) : null}
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => void onSave(draftEntries)}
-          disabled={!dirty || saving || draftInvalid}
-        >
-          {saving ? <Loader2 className="animate-spin" /> : null}
-          {labels.save}
-        </Button>
+        <PermissionTooltip reason={disabledReason}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void onSave(draftEntries)}
+            disabled={off || !dirty || saving || draftInvalid}
+          >
+            {saving ? <Loader2 className="animate-spin" /> : null}
+            {labels.save}
+          </Button>
+        </PermissionTooltip>
       </div>
       {invalid || draftInvalid ? (
         <p role="alert" className="text-xs text-destructive">

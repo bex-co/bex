@@ -137,6 +137,9 @@ func (s *Service) PatchEnvironment(ctx context.Context, gid string, patch Enviro
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
+	if err := s.requireGroupAdmin(ctx, g, core.VerbEnvironmentVariables); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
 	result, err := s.commitEnvironment(ctx, g, patch)
 	if err != nil {
 		return EnvironmentPatchResult{}, err
