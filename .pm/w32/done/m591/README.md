@@ -1,6 +1,6 @@
 # w32 · m591 — A failed deploy's one `==> Exited with status N` comes after the start command's first exit, as Render's does
 
-**Worker:** worker32 **Goal:** when a deploy fails because its start command exited, its deploy log (`bex logs --type build`, the interleaved `bex logs`, the live tail, the deploy page, GraphQL and MCP) places its one `==> Exited with status N` and troubleshooting line right after the start command's first exit, with that run's exit status, rather than at the deploy's close after the third run. Later restarts follow it, and the close adds no second verdict. **Status:** blocked (t001–t004, t007 and t008 done and shipped as `d34935a3c8`; t005 walks production once the pin carries it; t006 and t009 follow)
+**Worker:** worker32 **Goal:** when a deploy fails because its start command exited, its deploy log (`bex logs --type build`, the interleaved `bex logs`, the live tail, the deploy page, GraphQL and MCP) places its one `==> Exited with status N` and troubleshooting line right after the start command's first exit, with that run's exit status, rather than at the deploy's close after the third run. Later restarts follow it, and the close adds no second verdict. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [The control plane projects the first exit onto the deploy row and into `DeployProgress`](done/t002.md) — **DONE** | 1h | t001 |
 | t003 | [Narrate `==> Exited with status N` and the troubleshooting line at the first exit, and verify the live tail](done/t003.md) — **DONE** | 1h15m | t002 |
 | t004 | [Record the first-exit timing in the progress-line contract and ADR018](done/t004.md) — **DONE** | 20m | t003 |
-| t005 | [Ship and verify on production](t005.md) | 45m | t003, t004 |
-| t006 | [Render parity](t006.md) | 30m | t005 |
+| t005 | [Ship and verify on production](done/t005.md) — **DONE** | 45m | t003, t004 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 30m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -44,7 +44,7 @@
 - **darthjee/ward#109** (Docker): run 1, the pair at `01:32:22.77`, run 2 (yarn's `Command failed with exit code 1.` at `01:32:28.24`), a port-scan line at `01:32:30.86`, then run 3 from `01:32:49.19`. Neither later run gets a pair.
 - **muppetbrown/mana_meeples_singles_market#63** (native Node): the pair at `05:25:58.31`, `==> Running 'node server.js'` again at `05:25:59.10`. **omkarwarik02/DevLens#1** has the pair, then `==> Running 'node src/index.js'`.
 - **One exception:** **muppetbrown/mana_meeples_singles_market#84**: run 1's output ends at `18:21:58.24` with no pair, and the pair follows run 2's at `18:22:04.28`.
-- **Open question (left to [w32/085](../085.md)):** Render may fail the deploy at the first exit and restart the instance after that (its deploy page would then show the later runs because its window runs shortly after `finishedAt`, w32/084). bex holds the deploy open for two restarts (`crashSettleRestarts = 2`, w4/454). This milestone does not block on that question: it records the first exit and places the verdict there once the deploy settles `update_failed`, leaving an eventually-live deploy unchanged.
+- **Open question (left to [w32/085](../../blocked/085.md)):** Render may fail the deploy at the first exit and restart the instance after that (its deploy page would then show the later runs because its window runs shortly after `finishedAt`, w32/084). bex holds the deploy open for two restarts (`crashSettleRestarts = 2`, w4/454). This milestone does not block on that question: it records the first exit and places the verdict there once the deploy settles `update_failed`, leaving an eventually-live deploy unchanged.
 
 ## bex today (`5aac2dc93b`)
 
@@ -52,3 +52,20 @@
 - `recordReleaseRollout` (`lego/operator/internal/controller/release_rollout.go:51-62`) calls only `withAppStarts`; `permanentRolloutCrash` (`lego/operator/internal/controller/app_controller.go:4514`) settles after `crashSettleRestarts = 2` (three runs).
 - `closingLines` / `rendersVerdict` (`lego/backend/internal/logs/progress.go:902-944`) emit `==> Exited with status N` (`renderlog.PlatformFailure`) and `troubleshootLine` (`renderlog.PlatformStep`) at `d.FinishedAt`, using the last exit (`end_exit_code`).
 - Since w32/m575, newly built native images set `InstanceAnnounces: true` and write `==> Running '<command>'` from `native-init` into `type=app`, while older images (`InstanceAnnounces: false`) keep `rolloutLines`'s `type=build` copies. In both cases the interleaved deploy log shows all three runs before the verdict.
+
+## Unblocked (2026-11-23)
+
+**Source:** verified evidence (`/pm unblock w32/m591`, run by the `/loopx w32` worker for this milestone). **Affected:** t005, t006, t009. **Finding:** the gate ``pin must carry `d34935a3c8` `` holds. The newest pin commit on `origin/main` is `cded300699` (`chore(deploy): pin platform images to 9fdf7e0a1171`), and `git merge-base --is-ancestor d34935a3c8 9fdf7e0a1171` succeeds. On the control plane (`167.233.216.116`), `bex-controller-manager` and both `bex-api` pods are ready on `ghcr.io/bex-co/bex-operator@sha256:df6e69bd31bf…` (matching `deploy/gitops/base/bex.yaml`), and `dashboard` is ready on `ghcr.io/bex-co/bex-dashboard@sha256:4b110f45db91…` (matching `deploy/gitops/base/dashboard.yaml`).
+
+**Remaining gates:** none. **Next:** run t005's live walk on two free disposable fixtures in `bex-canary` with the released `bex` v0.9.0 and a human device login (a native Node web service from `examples/hello-node` and a Dockerfile web service from `examples/hello-go`, each exiting 1), check t006's surfaces (REST `GET /v1/logs` and `/v1/logs/subscribe`, GraphQL `logs`, MCP `list_logs`, CLI text/JSON/live `--tail`, and dashboard deploy page `useDeployLogs` merge), delete every created fixture by ID, confirm 404s, and close out (t009).
+
+## Closed (2026-11-23)
+
+The definition of done holds:
+
+- **Production walk.** On pin `9fdf7e0a1171` (`bex-operator@sha256:df6e69bd31bf…`, `bex-dashboard@sha256:4b110f45db91…`), the released `bex` v0.9.0 walked both free disposable fixtures in `bex-canary` ([t005 § Walk](done/t005.md)):
+  - Native Node web service `srv-dc28806dfl0s73a7e9bg` (disposable, `examples/hello-node`, `sh -c 'echo run-failed; exit 1'`): on deploy 2 (`dep-dc28aveurl5c7380qplg`, `update_failed`), interleaved history (`--type app --type build`, REST, GraphQL `useDeployLogs` merge, MCP) returned all 10 rollout lines in exact Render order — `Deploying...`, `WEB_CONCURRENCY=1`, run 1's `==> Running 'sh -c 'echo run-failed; exit 1''` (`type=app`, green `Instance` ANSI) + `run-failed`, the single red `==> Exited with status 1` (`PlatformFailure`) + blue troubleshooting line (`PlatformStep`) stamped at run 1's exit (`18:28:42.999999999Z`, 19.4 s before `finishedAt`), then runs 2 and 3's `Running` + `run-failed`, with nothing more at close. `--type build` ended at the verdict pair with zero `Running` lines. Deploy 1 (`dep-dc28806dfl0s73a7e9c0`) verified type-less live `--tail` delivery of all three runs + the single verdict pair at run 1's exit (`18:23:13.999999999Z`) and zero premature emission while `update_in_progress`.
+  - Dockerfile web service `srv-dc2880edfl0s73a7e9dg` (disposable, `examples/hello-go`, `dockerCommand: "sh -c 'echo docker-failed; exit 1'"`): on deploy 2 (`dep-dc289f6url5c7380qpd0`, `update_failed`), interleaved history returned all 7 rollout lines in exact Render order with zero `Running` lines — `Deploying...`, `WEB_CONCURRENCY=1`, run 1 `docker-failed`, the single red `==> Exited with status 1` + blue troubleshooting pair at run 1's exit (`18:25:18.999999999Z`, 19.7 s before `finishedAt`), then runs 2 and 3 `docker-failed`, with nothing more at close; live `--tail` delivered the exact verdict pair once settled and zero while `update_in_progress`.
+  - Both disposable fixtures (`srv-dc28806dfl0s73a7e9bg` and `srv-dc2880edfl0s73a7e9dg`, disposable) were deleted by ID and answered `HTTP 404` on `GET /v1/services/<id>`.
+- **Surfaces.** REST `GET /v1/logs`, `GET /v1/logs/subscribe` (WebSocket `--tail` + SSE `type=build`), GraphQL `logs`, MCP `list_logs`, CLI `bex logs` (`-o text`, `-o json`, `--tail`), and the dashboard's `useDeployLogs` merge + `ansi.ts` (verified directly on live GraphQL payloads under Node 24 since this host has no Playwright browser) all returned identical IDs, timestamps, labels, and Render ANSI bytes with zero new drift ([t006](done/t006.md)).
+- **Code, tests, and docs.** Operator first-exit recording, migration `0337`, control-plane projection, `progressLines`/live-tail updates, unit/envtest/real-Postgres tests ([t001](done/t001.md)–[t004](done/t004.md), [t007](done/t007.md), [t008](done/t008.md)), and updates to `docs/render-artifacts/live-deploy-following.md` and `docs/ADR018-render-parity.md` shipped in `d34935a3c8`.
