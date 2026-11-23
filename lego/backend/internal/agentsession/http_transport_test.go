@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
 	"strings"
 	"sync"
 	"testing"
@@ -132,15 +133,45 @@ func captureBrokerLog(t *testing.T) *bytes.Buffer {
 	return buf
 }
 
+// poolReturn is a context for the checks whose connections a later request
+// must find in the transport's idle pool, and waitPooled(n) blocks until n of
+// them are there. A check returning does not mean its connection is pooled.
+// Go 1.27's decoder stops after the 64 bytes of the verb's JSON answer, so
+// postSignedMint closes the body before the encoder's trailing newline; the
+// transport then drains that byte on its read loop and pools the connection
+// after Check has returned, and a request sent first dials a new connection.
+// That race, lost under load, was w10/045's flake.
+func poolReturn(t *testing.T) (ctx context.Context, waitPooled func(n int)) {
+	t.Helper()
+	put := make(chan error, 2)
+	ctx = httptrace.WithClientTrace(context.Background(), &httptrace.ClientTrace{
+		PutIdleConn: func(err error) { put <- err },
+	})
+	return ctx, func(n int) {
+		t.Helper()
+		for range n {
+			select {
+			case err := <-put:
+				if err != nil {
+					t.Fatalf("the transport kept the connection out of its idle pool: %v", err)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("the connection never went back to the transport's idle pool")
+			}
+		}
+	}
+}
+
 func TestSignedPostReplaysADeadPooledConnectionOnANewOne(t *testing.T) {
 	logged := captureBrokerLog(t)
 	s, client := newConnResetServer(t, resetRequest(2), false)
-	ctx := context.Background()
+	pooled, waitPooled := poolReturn(t)
 
-	if err := client.Check(ctx, transportTestSubject); err != nil {
+	if err := client.Check(pooled, transportTestSubject); err != nil {
 		t.Fatalf("first check = %v, want allowed", err)
 	}
-	if err := client.Check(ctx, transportTestSubject); err != nil {
+	waitPooled(1)
+	if err := client.Check(context.Background(), transportTestSubject); err != nil {
 		t.Fatalf("check on the dead pooled connection = %v, want it answered by the retry", err)
 	}
 
@@ -193,17 +224,18 @@ func TestSignedPostReplaysOnANewConnectionWhenEveryPooledOneIsDead(t *testing.T)
 			bothArrived.Wait()
 		}
 	}
-	ctx := context.Background()
+	warmCtx, waitPooled := poolReturn(t)
 
 	warm := make(chan error, 2)
 	for range 2 {
-		go func() { warm <- client.Check(ctx, transportTestSubject) }()
+		go func() { warm <- client.Check(warmCtx, transportTestSubject) }()
 	}
 	for range 2 {
 		if err := <-warm; err != nil {
 			t.Fatalf("warm-up check = %v, want allowed", err)
 		}
 	}
+	waitPooled(2)
 	requests, _ := s.seen()
 	mu.Lock()
 	for _, r := range requests {
@@ -215,7 +247,7 @@ func TestSignedPostReplaysOnANewConnectionWhenEveryPooledOneIsDead(t *testing.T)
 		t.Fatalf("warm-up used %d connections, want 2 in the pool", pooled)
 	}
 
-	if err := client.Check(ctx, transportTestSubject); err != nil {
+	if err := client.Check(context.Background(), transportTestSubject); err != nil {
 		t.Fatalf("check with every pooled connection dead = %v, want it answered on a new connection", err)
 	}
 	requests, resolved := s.seen()
@@ -233,12 +265,13 @@ func TestSignedPostReplaysOnANewConnectionWhenEveryPooledOneIsDead(t *testing.T)
 func TestSignedPostReportsAReplayBexAPIRefusesAsSeenUnavailable(t *testing.T) {
 	logged := captureBrokerLog(t)
 	s, client := newConnResetServer(t, resetRequest(2), true)
-	ctx := context.Background()
+	pooled, waitPooled := poolReturn(t)
 
-	if err := client.Check(ctx, transportTestSubject); err != nil {
+	if err := client.Check(pooled, transportTestSubject); err != nil {
 		t.Fatalf("first check = %v, want allowed", err)
 	}
-	err := client.Check(ctx, transportTestSubject)
+	waitPooled(1)
+	err := client.Check(context.Background(), transportTestSubject)
 	if err == nil || err.Error() != "agent credential broker unavailable" || errors.Is(err, ErrForbidden) {
 		t.Fatalf("check whose answer was lost = %v, want the unavailable error, never a refusal", err)
 	}
@@ -293,7 +326,7 @@ func TestSignedPostRetriesAFailedDialOnce(t *testing.T) {
 
 func TestSignedPostDoesNotReplayATimeout(t *testing.T) {
 	logged := captureBrokerLog(t)
-	release := make(chan struct{})
+	release, arrived := make(chan struct{}), make(chan struct{})
 	var mu sync.Mutex
 	served := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -303,6 +336,9 @@ func TestSignedPostDoesNotReplayATimeout(t *testing.T) {
 		n := served
 		mu.Unlock()
 		if n > 1 { // the pooled connection's next request may be running in bex-api: it never answers in time
+			if n == 2 {
+				close(arrived)
+			}
 			<-release
 			return
 		}
@@ -310,14 +346,25 @@ func TestSignedPostDoesNotReplayATimeout(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	t.Cleanup(func() { close(release) })
-	client := &EmailVerificationClient{URL: srv.URL, Secret: []byte("exec-secret"), HTTP: &http.Client{Timeout: 200 * time.Millisecond}}
+	// One transport, so the timed check finds the warm-up's connection in its
+	// pool; only the timed check runs on the short budget.
+	clientOn := func(timeout time.Duration) *EmailVerificationClient {
+		return &EmailVerificationClient{URL: srv.URL, Secret: []byte("exec-secret"), HTTP: &http.Client{Timeout: timeout, Transport: srv.Client().Transport}}
+	}
+	pooled, waitPooled := poolReturn(t)
 
-	if err := client.Check(context.Background(), transportTestSubject); err != nil {
+	if err := clientOn(5*time.Second).Check(pooled, transportTestSubject); err != nil {
 		t.Fatalf("first check = %v, want allowed", err)
 	}
-	err := client.Check(context.Background(), transportTestSubject)
+	waitPooled(1)
+	err := clientOn(200*time.Millisecond).Check(context.Background(), transportTestSubject)
 	if err == nil || err.Error() != "agent credential broker unavailable" {
 		t.Fatalf("check = %v, want the unavailable error", err)
+	}
+	select {
+	case <-arrived:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the timed-out request never reached bex-api")
 	}
 	mu.Lock()
 	defer mu.Unlock()
