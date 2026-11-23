@@ -27,6 +27,7 @@
 
 ## Inbox
 
+- [ ] [093](093.md) — A Node service with a Bun lockfile writes Render's `==> Using Bun version …` pair at each instance start, before `==> Running '<command>'` (~1h) ← follow-up from w32/m575 t001's public-log search, 2026-11-22 (Pranav7758/AniCircle, harshagavadi/akshay); parity, minor
 - [ ] [092](092.md) — The CLI's live build tail carries a pre-deploy step's own output, as Render's deploy log does (likely >1h, promote if so) ← follow-up from w32/m572 t006, 2026-11-22 (`followBuilds` streams only build pods); parity, minor
 - [ ] [091](091.md) — A pre-deploy step stopped at its 30-minute limit, or whose program cannot be launched, closes as Render's log does: `==> Pre-deploy timed out`, or `==> Exited with status 128` (~1h) ← follow-up from w32/m572's public-log search, 2026-11-22 (MalaysiaKaki/astrail-webmcp#10, briankeane/alloy-client-portal#8); parity, minor
 - [ ] [090](090.md) — A failed deploy's one `==> Exited with status N` comes after the start command's first exit on Render, and at the close after its third run on bex, behind three `==> Running '<command>'` lines (likely >1h, promote if so) ← follow-up from w32/086's triage, 2026-11-22 (DerekSopok/EMS-Kahoot#3, darthjee/ward#109, rkendel1/freq#191); parity, minor
