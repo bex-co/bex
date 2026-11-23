@@ -49,3 +49,15 @@ On existing supported managed PostgreSQL13–18, with compatible extension relea
 ## Shared operand qualification checkpoint — 2026-10-31
 
 The corrected shared operand/restore source and maintained tests shipped in `fa85c4418`. Historical SQL results remain partial evidence: the renewed complete ordinary-owner restore and original IMMV maintenance checks, actual CNPG 1.30.1 with Free resources, every supported major on both architectures, published-artifact review/adoption and this milestone's original hosted SQL acceptance remain open. The dependency is qualified [w8/m92/t008](../m92/t008.md) output, not another product or restart decision. Preserve the existing ADR092 D4 single rolling-restart approval, every original DoD and all prior evidence.
+
+## The gate that remains after the image — 2026-11-23 (`/pmx what are verified to w21`)
+
+- **Affected IDs:** w8/m112.
+- **Source:** verified evidence and the plan's recommendation, not a user decision.
+  - The image this milestone waited on moves to [w21/m584](../../../w21/m584/README.md), which admits each extension on its own gate. TimescaleDB fails its ordinary-owner restore on every major (run `45019148603`, `check.sh:193`), so m584 ships with `timescaledb` in the image and its preload but out of the allowlist; admitting it later is a reload.
+  - A `SECURITY DEFINER` wrapper around `timescaledb_pre_restore()` was considered and **rejected**: that function only sets `timescaledb.restoring` (`sql/maintenance_utils.sql:5-17` upstream), and `pg_restore` then writes `_timescaledb_catalog` and `_timescaledb_config`, which ADR092 deliberately never grants because `bgw_job` names the role a job runs as; a grant there lets the owner schedule a job as the superuser.
+  - Render's restore guide ([postgresql-backups](https://render.com/docs/postgresql-backups), read 2026-11-23) runs a plain `pg_restore --no-owner --no-privileges` as the database user and says nothing about TimescaleDB, so whether a Render user can restore a TimescaleDB export is unknown.
+- **Recommendation:** capture Render's answer: on a Render PostgreSQL 16 database, as the default user, `CREATE EXTENSION timescaledb`, a hypertable with rows, `pg_dump -Fd`, then `pg_restore --no-owner --no-privileges` into a second database with and without `timescaledb_pre_restore()`.
+  - If Render fails too, the owner-restore criterion is stricter than Render: under ADR008, admit `timescaledb` (a reload), record the shared limitation in ADR018, and file the stricter restore as a follow-up.
+  - If Render succeeds, read how (catalog ownership, `\dp _timescaledb_catalog.*`, the role's attributes) and match it.
+- **Remaining gate:** w21/m584 closes, and a captured Render restore of a TimescaleDB export (needs the user's Render workspace or API key), or the user's decision without it.

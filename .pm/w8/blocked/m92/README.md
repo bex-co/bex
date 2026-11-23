@@ -70,3 +70,11 @@ A fresh Free PG18 (`qa-20261101-3093-pgx`, `dpg-dbjbcjluhrks73c4dong`) still run
 - `pg-operand-image` has never passed on main. `acde09993` fixed the gate's extension order (`timescaledb` before `pg_duckdb`, duckdb/pg_duckdb#934), so PG 16/17/18 no longer fail on `time_bucket`.
 - Run 42019084199: PG 13/14/15 stop at the fatal ordinary-owner restore check as intended (this milestone's upstream gate, left fatal on purpose); PG 16/17/18 now crash the server right after creating all extensions — filed as [w8/234](../../234.md).
 - The images are still unreferenced (`bexOperandImages` is empty), so production Postgres is unaffected.
+
+## Re-homed adoption — 2026-11-23 (`/pmx what are verified to w21`)
+
+- **Affected IDs:** w8/m92 (t008, t001); shared with m104, m109, m110, m111, m112.
+- **Source:** verified evidence, not a user decision. `pg-operand-image.yml` run `45019148603` (2026-11-22) failed on all six majors at one step only, the ordinary-owner restore at `deploy/pg-operand/check.sh:193` (`permission denied to set parameter "timescaledb.restoring"`); every allowlisted extension had been created and used before it, and the platform restore after it passed. The loop at `.github/workflows/pg-operand-image.yml:168` runs arm64 first under `bash -e`, so the amd64 leg has never run. 12 runs since 2026-11-04 failed; nothing was published.
+- **Chosen behavior (the plan's recommendation under ADR008 § Render parity first and AGENTS.md "Never park parity work on an optional decision"):** gate each extension on its own; one that fails ADR092 D3 property 5 stays out of the allowlist instead of holding back the image. No allowlisted extension loses property 5, so D3's rule against weakening a property holds. The user's 2026-10-29 decision (image, on-demand activation, one approved rolling restart) is unchanged.
+- **Where the work goes:** [w21/m584](../../../w21/m584/README.md) carries t008's remaining qualification and publication and t001's adoption. This milestone keeps t002–t007 (PostGIS reconciliation and acceptance).
+- **Remaining gate:** w21/m584 closes. Its t006 then closes t008 and t001 here as carried by m584 and resumes t002.
