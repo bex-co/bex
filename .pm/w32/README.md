@@ -26,6 +26,8 @@
 
 ## Inbox
 
+- [ ] [092](092.md) — The CLI's live build tail carries a pre-deploy step's own output, as Render's deploy log does (likely >1h, promote if so) ← follow-up from w32/m572 t006, 2026-11-22 (`followBuilds` streams only build pods); parity, minor
+- [ ] [091](091.md) — A pre-deploy step stopped at its 30-minute limit, or whose program cannot be launched, closes as Render's log does: `==> Pre-deploy timed out`, or `==> Exited with status 128` (~1h) ← follow-up from w32/m572's public-log search, 2026-11-22 (MalaysiaKaki/astrail-webmcp#10, briankeane/alloy-client-portal#8); parity, minor
 - [ ] [090](090.md) — A failed deploy's one `==> Exited with status N` comes after the start command's first exit on Render, and at the close after its third run on bex, behind three `==> Running '<command>'` lines (likely >1h, promote if so) ← follow-up from w32/086's triage, 2026-11-22 (DerekSopok/EMS-Kahoot#3, darthjee/ward#109, rkendel1/freq#191); parity, minor
 - [ ] [089](089.md) — Render's log API returns its `==>` lines with ANSI colour codes (blue marker for a step, green for a success); bex's carry none (~1h) ← follow-up from w32/085's public-log search, 2026-11-22 (ivanseibel/tretta's Render log API capture, kush252/Sentry-AI); parity, minor
 - [ ] [088](088.md) — A native service's own log writes `==> Running '<start command>'` each time its instance starts, free spin-ups included, as Render's does, not only inside a deploy's rollout (~1h) ← follow-up from w32/085's public-log search, 2026-11-22 (ivanseibel/tretta's Render log API capture); parity, minor
