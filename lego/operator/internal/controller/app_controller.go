@@ -51,6 +51,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	crbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -4380,9 +4381,15 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 		if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 			return ctrl.Result{}, err
 		}
-		restored, err := r.restoreServedTemplate(ctx, app, dep)
+		restored, wait, err := r.restoreServedTemplate(ctx, app, dep, ptr.Deref(dep.Spec.Replicas, 1))
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+		if wait > 0 {
+			// The volume is not held on its node yet. The stored verdict plans the
+			// failed-rollout hold (actHoldVerdict), which writes the served
+			// template once it is and settles the phase.
+			return ctrl.Result{RequeueAfter: wait}, nil
 		}
 		if restored {
 			if err := r.restoreServedRouting(ctx, app); err != nil {

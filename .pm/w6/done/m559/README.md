@@ -49,7 +49,7 @@ The note offered two options. This milestone takes the first.
   - the operator's stall and node-loss diagnostics, bex-api's store-less log reads and the metrics-server fallback no longer read the holder as an instance (t003);
   - ADR082 § D3, ADR004 and ADR018 record the holder and the 2 s sync decision (t004);
   - Simplify and Test coverage ran with the code (t006, t007);
-  - [w6/165](../../165.md) files the one swap the holder does not cover, the restore of a served release after a failed rollout.
+  - [w6/165](../165.md) files the one swap the holder does not cover, the restore of a served release after a failed rollout.
 - **Gate (cleared 2026-11-22): the pin carried `dd8dfaaf00`.** Then t005 was to run ten or more same-node deploys and restarts and a cordoned run of a disk-bearing Starter fixture in `bex-canary` on a `bex-tenant-0` node, as [m547 t005](../m547/done/t005.md) did. It checks that no `DetachVolume` appears and that no holder is left, records the phase table and the bound in ADR082, and deletes the fixture by id. t008 then closes, and m547's t011 re-measures.
 
 ## Gate cleared, and t005 found that no rollout held — 2026-11-22
@@ -78,4 +78,4 @@ The note offered two options. This milestone takes the first.
   - No `dskhld-` Job or pod was left. The instances list, the events and the instance-count series never showed a holder.
   - The fixture was deleted by id, with its disk, PV and attachment.
 - **The 2 s sync stays.** The run showed no cost from it.
-- **Not covered here.** [w6/165](../../165.md), the failed-rollout restore, stays open. m547's t011 re-measures the whole window.
+- **Not covered here.** [w6/165](../165.md), the failed-rollout restore, stays open. m547's t011 re-measures the whole window.

@@ -607,32 +607,49 @@ func failedRolloutOverServed(app *appv1alpha1.App) bool {
 // from, and the caller must not report the prior release as serving.
 // Callers establish that the current release is not the served one, which is what
 // makes the revision label tell the two templates apart.
-func (r *AppReconciler) restoreServedTemplate(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (bool, error) {
+//
+// The swap back is a Recreate rollout like any other, so a disk-bearing App's
+// restore takes the same disk hold (disk_holder.go, w6/165): wait > 0 writes
+// nothing yet, because the volume is not held on its node, and the caller
+// requeues. replicas is what the Deployment runs once the template is back.
+// Every later pass that finds the template restored ends the holder once the
+// restored instance has the volume, as a rollout's next pass does.
+func (r *AppReconciler) restoreServedTemplate(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32) (restored bool, wait time.Duration, err error) {
 	// Already back on the served release: every held pass comes through here, and
 	// the record is read uncached.
 	if dep.Spec.Template.Labels[labelRevision] == app.Status.ActiveRevision {
-		return true, nil
+		r.holdDiskThroughRollout(ctx, app, app.Spec.Tier, replicas, func(*appsv1.Deployment) *corev1.PodTemplateSpec { return nil })
+		return true, 0, nil
 	}
 	tmpl, err := r.servedPodTemplate(ctx, app)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 	if tmpl == nil {
 		if tmpl, err = r.servedReplicaSetTemplate(ctx, app, dep); err != nil || tmpl == nil {
-			return false, err
+			return false, 0, err
 		}
 	}
+	hold := r.holdDiskThroughRollout(ctx, app, app.Spec.Tier, replicas, func(d *appsv1.Deployment) *corev1.PodTemplateSpec {
+		prior := d.Spec.Template.DeepCopy()
+		d.Spec.Template = *tmpl.DeepCopy()
+		return prior
+	})
+	if hold.wait > 0 {
+		return true, hold.wait, nil
+	}
 	if equality.Semantic.DeepEqual(dep.Spec.Template, *tmpl) {
-		return true, nil
+		return true, 0, nil
 	}
 	base := dep.DeepCopy()
 	dep.Spec.Template = *tmpl.DeepCopy()
 	if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
-		return false, err
+		return false, 0, err
 	}
+	hold.count()
 	logf.FromContext(ctx).Info("restored the served release's pod template",
 		"app", app.Name, "servedRevision", app.Status.ActiveRevision, "releaseGeneration", releaseGeneration(app))
-	return true, nil
+	return true, 0, nil
 }
 
 // servedReplicaSetTemplate is the pod template of the served release's newest
@@ -800,13 +817,7 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 	}); err != nil {
 		return 0, err
 	}
-	// A held write is one the hold found rolling the template.
-	if hold.held {
-		diskHoldsTotal.WithLabelValues(diskHoldHeld).Inc()
-	}
-	if hold.prePull != "" {
-		diskPrePullsTotal.WithLabelValues(hold.prePull).Inc()
-	}
+	hold.count()
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
 	if restore == nil {

@@ -380,6 +380,17 @@ func (r *AppReconciler) startDiskHold(ctx context.Context, app *appv1alpha1.App,
 	return step
 }
 
+// count records what the template write this step let through waited for: a
+// held write is one the hold found rolling the template.
+func (s diskHoldStep) count() {
+	if s.held {
+		diskHoldsTotal.WithLabelValues(diskHoldHeld).Inc()
+	}
+	if s.prePull != "" {
+		diskPrePullsTotal.WithLabelValues(s.prePull).Inc()
+	}
+}
+
 // skipDiskHold counts a rollout that goes on without a hold.
 func skipDiskHold(result string) diskHoldStep {
 	diskHoldsTotal.WithLabelValues(result).Inc()

@@ -446,10 +446,15 @@ func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.A
 			}
 			return held(r.settleHeldRuntime(ctx, app, *plan, failed, 0))
 		case actHoldVerdict, actHoldParked:
-			restored, err := r.restoreServedTemplate(ctx, app, plan.prior.dep)
+			restored, wait, err := r.restoreServedTemplate(ctx, app, plan.prior.dep, plan.replicas)
 			if err != nil {
 				// Unrecorded: a read that failed says nothing about the serving release.
 				return true, ctrl.Result{}, err
+			}
+			if wait > 0 {
+				// The volume is not held on its node yet: a later pass writes the
+				// served template and settles the phase.
+				return true, ctrl.Result{RequeueAfter: wait}, updateStatusIfChanged(ctx, r.Client, app)
 			}
 			if !restored {
 				plan.unrestorable()
