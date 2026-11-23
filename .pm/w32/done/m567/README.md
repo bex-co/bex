@@ -1,6 +1,6 @@
 # w32 · m567 — A web service's deploy log follows `==> Your service is live 🎉` with Render's primary URL block
 
-**Worker:** worker32 **Goal:** a web service deploy that goes live closes its log (`bex logs --type build`, the live tail, the deploy page, GraphQL and MCP) with the block Render writes after its live line, naming the URL the deploy went live at. The URL is the one recorded on the deploy's own row, so an older deploy's log does not change when the service later gets a custom domain. **Status:** blocked (t001–t003, t006 and t007 done; t004's production walk, t005's surface walk and t008 wait for the pin)
+**Worker:** worker32 **Goal:** a web service deploy that goes live closes its log (`bex logs --type build`, the live tail, the deploy page, GraphQL and MCP) with the block Render writes after its live line, naming the URL the deploy went live at. The URL is the one recorded on the deploy's own row, so an older deploy's log does not change when the service later gets a custom domain. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | [Record the URLs a deploy went live at on its row](done/t001.md) — **DONE** | 1h | — |
 | t002 | [Narrate Render's primary URL block after a web service's live line](done/t002.md) — **DONE** | 1h | t001 |
 | t003 | [Record the block in the progress-line contract and ADR018](done/t003.md) — **DONE** | 20m | t002 |
-| t004 | [Ship and verify on production](t004.md) | 45m | t002, t003 |
-| t005 | [Render parity](t005.md) | 30m | t004 |
+| t004 | [Ship and verify on production](done/t004.md) — **DONE** | 45m | t002, t003 |
+| t005 | [Render parity](done/t005.md) — **DONE** | 30m | t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 ## Render's block
 
@@ -78,3 +78,20 @@ What 18 public GitHub issue logs show, read with `gh issue view` on 2026-11-22:
 - **Expected outcome:** a bex web service's deploy log ends as Render's does, with its URL, including the primary custom domain once one is verified.
 - **Why now:** w32/081 and w32/m560 brought the rest of the log's close and rollout to Render's wording, and this block is the last Render line after a successful web deploy that bex does not write. w32/084 (the instance's own output in the deploy log) is separate, and this milestone leaves it alone.
 - **Render parity task included:** the block appears on tenant-facing surfaces: REST `/v1/logs`, the subscribe stream, GraphQL `logs`, MCP `list_logs`, the CLI and the dashboard's deploy log pane.
+
+## Unblocked (2026-11-23)
+
+**Source:** verified evidence (`/pm unblock w32/m567`, run by the `/loopx w32` worker for this milestone). **Affected:** t004, t005, t008. **Finding:** the gate ``pin must carry `51581a27ab` `` holds. The newest pin commit on `origin/main` is `e6c65f5c62` (`chore(deploy): pin platform images to 1a5a8e872398`), and `git merge-base --is-ancestor 51581a27ab 1a5a8e872398` succeeds. On the control plane (`167.233.216.116`), `bex-controller-manager` and both `bex-api` pods are ready on `ghcr.io/bex-co/bex-operator@sha256:65ef4f0d90b1…` (matching `deploy/gitops/base/bex.yaml`), and `dashboard` is ready on `ghcr.io/bex-co/bex-dashboard@sha256:5829a2c3945e…` (matching `deploy/gitops/base/dashboard.yaml`, which carries `deployWindowEnd`).
+
+**Remaining gates:** none. **Next:** run t004's production walk in `bex-canary` with the released `bex` v0.9.0 and a human device login (a free web service and a free static site), walk t005's five surfaces before deleting the fixtures by ID and confirming 404s, then close out (t008).
+
+## Closed (2026-11-23)
+
+The definition of done holds:
+
+- **Production walk.** On pin `1a5a8e872398`, the released `bex` v0.9.0 read the logs in `bex-canary` ([t004 § Walk](done/t004.md)).
+  - The free web service (`examples/hello-go`) logged `==> Your service is live 🎉` followed by the six exact lines (`==> `, the 59-slash rule, `==> `, `==> Available at your primary URL https://<slug>.onbex.co` with no trailing slash, `==> `, and the 59-slash rule) on six distinct timestamps (`+1..+6 ms` past the live line), with trailing spaces preserved, in `bex logs -r <srv> --type build -o text`, `-o json`, and a live `--tail`.
+  - The free no-build static site (`examples/static-site`, publish dir `.`) ended at `==> Your site is live 🎉` with no primary URL block.
+  - Both fixtures were deleted by ID, and each answered `404` on `GET /v1/services/<id>` and its public URL.
+- **Surfaces.** REST `GET /v1/logs`, the subscribe stream (`bex logs --tail`), GraphQL `logs` (with `deployWindowEnd`'s `finishedAt + 7 ms`), and MCP `list_logs` returned the exact same seven lines, IDs, timestamps, and bytes. The dashboard's deploy log pane was checked via its GraphQL `Logs` legs (`build` + `app`) and `useDeployLogs` merge (this host has no Playwright browser); its plain-text URL rendering (vs Render's clickable link) was filed as [w32/095](../../095.md) ([t005 § Production walk](done/t005.md)).
+- **Tests and docs.** Unit and real-database store tests ([t007](done/t007.md)) and the progress-line contract / ADR018 updates ([t003](done/t003.md)) shipped in `51581a27ab`.
