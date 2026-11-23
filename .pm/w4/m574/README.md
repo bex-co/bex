@@ -1,17 +1,17 @@
 # w4 · m574 — A sandbox terminal edits and flushes typed input as Linux does
 
-**Worker:** worker4 **Goal:** a PTY inside a bex sandbox handles typed input the way Linux's n_tty line discipline does, beyond the signal echo w4/m545 fixed. Ctrl-C throws away the line typed so far and Ctrl-U erases it. Ctrl-V, Ctrl-R and ECHONL work, Ctrl-S and Ctrl-Q stop and start output, and `stty intr undef` stops NUL from sending SIGINT. A program that drives a terminal (a test harness, an editor, a REPL) then behaves in a sandbox as it does on a developer machine or a CI runner. **Status:** todo
+**Worker:** worker4 **Goal:** a PTY inside a bex sandbox handles typed input the way Linux's n_tty line discipline does, beyond the signal echo w4/m545 fixed. Ctrl-C throws away the line typed so far and Ctrl-U erases it. Ctrl-V, Ctrl-R and ECHONL work, Ctrl-S and Ctrl-Q stop and start output, and `stty intr undef` stops NUL from sending SIGINT. A program that drives a terminal (a test harness, an editor, a REPL) then behaves in a sandbox as it does on a developer machine or a CI runner. **Status:** in progress (t001–t006 done; t008 next)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | A disabled control character is never special | 20m | — |
-| t002 | A signal character flushes the pending input unless NOFLSH is set | 45m | t001 |
-| t003 | VKILL erases the line in canonical mode, as ECHOK and ECHOKE say | 45m | t001 |
-| t004 | VLNEXT, VREPRINT and ECHONL in canonical mode | 45m | t001 |
-| t005 | IXON flow control: STOP holds output and START resumes it | 1h | t001 |
-| t006 | Extend the PTY probe and the runsc CI check to the flush and VKILL | 30m | t002, t003 |
+| t001 | A disabled control character is never special — **DONE** | 20m | — |
+| t002 | A signal character flushes the pending input unless NOFLSH is set — **DONE** | 45m | t001 |
+| t003 | VKILL erases the line in canonical mode, as ECHOK and ECHOKE say — **DONE** | 45m | t001 |
+| t004 | VLNEXT, VREPRINT and ECHONL in canonical mode — **DONE** | 45m | t001 |
+| t005 | IXON flow control: STOP holds output and START resumes it — **DONE** | 1h | t001 |
+| t006 | Extend the PTY probe and the runsc CI check to the flush and VKILL — **DONE** | 30m | t002, t003 |
 | t007 | Send the fixes upstream to gVisor | 30m | t001, t002, t003, t004, t005 |
 | t008 | Build `release-20260622.0-bex.2`, pin it and roll the sandbox pool | 1h | t001, t002, t003, t004, t005, t006 |
 | t009 | Live check: a production sandbox PTY flushes on Ctrl-C and erases on Ctrl-U | 30m | t008 |
@@ -47,3 +47,42 @@
   - The user is already asked to sign off m545's upstream patch, so these can be reviewed in the same sitting.
   - The flush and VKILL are what a tenant typing at a prompt notices first.
 - **Render parity:** included (t010). Sandbox and agent terminals face tenants. Devin, the reference for agent surfaces, runs a real Linux kernel, whose n_tty behaves as this milestone's DoD says. Render's `sandboxes exec` has no TTY (w4/m545 t005), so the PTYs a tenant meets are the ones programs open inside the sandbox. These fixes cover them.
+
+## Record 2026-11-22 (/loopx w4)
+
+**Fixes (t001–t005).** Fork [bex-co/gvisor](https://github.com/bex-co/gvisor), five commits stacked on w4/m545's `devpts: Echo signal characters…`, each with its tests in `test/syscalls/linux/pty.cc` and, where useful, the devpts unit test:
+
+| Fix | Upstream branch `bex/line-discipline` | Release branch | New syscall tests |
+| --- | --- | --- | --- |
+| `devpts: Never treat a disabled control character as special` (t001) | `e957a67ce` | `a99d10a24` | `DisabledChar*` (2) |
+| `devpts: Flush input and output on a signal character unless NOFLSH is set` (t002) | `1f5fabdf2` | `e06027fff` | `SignalCharFlush*` (5) |
+| `devpts: Erase the line on VKILL in canonical mode` (t003) | `6ef7a9160` | `43e88d7e0` | `KillChar*`, `EraseCharWithoutECHOE` (8) |
+| `devpts: Implement VLNEXT, VREPRINT and ECHONL in canonical mode` (t004) | `09e1ab5f6` | `9861d5226` | `LiteralNext*`, `ReprintChar*`, `EchoNL*` (7) |
+| `devpts: Implement IXON flow control` (t005) | `b66db2b09` | `b77cc2628` | `StopChar*` (9) |
+
+`bex/line-discipline` (`b66db2b09`) is master plus m545's commit and these five, for upstream (t007). `bex/release-20260622.0-echo-signal-chars` (`44a08e148`) carries the same five on the release bex pins, then the fork's CI workflow, renamed `bex-line-discipline.yml`; `bex/line-discipline-ci` (`9397bd7ca`) is the upstream branch plus that workflow. What the fixes do, beyond the task files:
+
+- **Disabled characters.** `KernelTermios.IsControlChar(c, i)` matches nothing for a disabled character, and every special character of the input path uses it (`IsEOF` and `IsTerminating` too).
+- **The flush.** Input processing now collects echoes and writes them once it has processed a write, as n_tty does at the end of `n_tty_receive_buf()`, and sends signals after that, so the echo of `^C` still lands before the process's output. The flush then drops the echoes not written yet, as `isig()` does: writing `abc\x03\n` at once echoes `^C\r\n`. It also drops the output the master has no room for (pty.c's `pty_flush_buffer()` empties the master's flip buffer), and a packet mode master reads `TIOCPKT_FLUSHREAD | TIOCPKT_FLUSHWRITE`. Input processing cannot take `termiosMu` for writing or notify waiters, so it leaves packet status and replica events for `notifyInputEvents`, which runs once the locks are released.
+- **VKILL** reuses the VERASE/VWERASE erase loop. VERASE without ECHOE now echoes the erase character, as `eraser()` does.
+- **VLNEXT** keeps its state across writes and is forgotten when canonical mode is turned off. A literal newline does not end the line.
+- **IXON.** While output is stopped, the replica is not writable and a write writes nothing, so a blocking writer waits and a nonblocking one gets `EAGAIN`; the echoes of input wait too. VSTART, a signal character, any character under IXANY, and clearing IXON start output again. `TIOCPKT_STOP` and `TIOCPKT_START` each replace the other. Flow control and signal characters are now handled before the other special characters, as in `n_tty_receive_char_special()`. `setTermios` and `setTermios2` share `updateTermios`.
+
+**Verification, locally (the fork's CI could not run).** GitHub has disabled Actions on bex-co/gvisor: the pushes of 2026-11-23 03:05Z started no run, and a dispatch answers `422 Actions has been disabled for this repository` while the repository's Actions setting reads enabled. So the checks the fork's workflow encodes ran in docker on this machine (Linux 7.0.12, arm64, gVisor's systrap platform), with `pty_test` built by g++ against Debian's gtest and absl (one absl incompatibility in `test/util/mount_util.cc` patched in that copy only):
+
+- **Native Linux:** the 41 new and m545 tests pass. Upstream's whole `pty_test` passes but `BasicPtyTest.SetMode`, which the container's devpts mount fails before and after these changes.
+- **Patched runsc:** the whole `pty_test` passes, 144 of 144. On runsc with m545's fix only, every test that failed was a new one, so no existing test changed outcome.
+- **Each fix reverted** (the line discipline and `tty.go` as they were before that fix): exactly the tests listed in the workflow fail. Four describe what gVisor already did and pass there too: `SignalCharFlushSkippedWithNOFLSH`, `KillCharInNoncanonicalMode`, `LiteralNextAndReprintCharInNoncanonicalMode` and `StopCharWithoutIXONIsOrdinary`.
+- **The devpts unit test** passes, and `TestSignalFlushesOutputMasterHasNoRoomFor` fails without t002's fix. (That case is a unit test because on Linux how much output the master keeps depends on how far a worker thread got: 2,048 or 4,095 bytes in the native runs.)
+- **checklocks** reports no lock errors on the master branch; its notes are the advisory kind master already prints.
+- **A 71-case harness** of typed input, run natively and on runsc, now differs from Linux in 3 cases: erasing a tab and ECHOPRT (left as they were), and typeahead (below).
+
+**The probe (t006).** `scripts/pty-signal-echo-probe.py` gains three line cases, typed one step at a time at a process that ignores SIGINT and reads one line: Ctrl-C reads `\n`, Ctrl-C under `noflsh` reads `abc\n`, and Ctrl-U reads `def\n` with each character erased from the screen. It reports 0 of 8 differing natively on Linux and on macOS 26.5 and on the patched runsc, and 2 of 8 (the flush and Ctrl-U) on m545's build. The workflow's paths are unchanged.
+
+**Typeahead, found on the way:** while a complete line waits unread in canonical mode, gVisor processes no more input, so a line typed ahead is not echoed and a Ctrl-C after it does not interrupt a program that is not reading its terminal. Filed as w4/723 with the three differences this milestone leaves (tab erase, ECHOPRT, `tcflow()`), and recorded in [ADR104 § Terminals in a sandbox](../../../docs/ADR104-sandbox-render-parity.md#terminals-in-a-sandbox-w4m545-w4m574) and ADR018's terminal row as awaiting the user's sign-off.
+
+**Build (t008, first half).** Without the fork's CI, `runsc` was built with `go build` from gVisor's go branch, the tree upstream publishes for it: `d10071d63` is master at `d01b8319a`, four commits past the release tag, so their seven files go back to the tag's (every one of the tree's 1,440 shared Go files then equals the release branch's), and the fixes and two stateify fields are applied. Three builds, one with an empty cache and one from a fresh checkout plus the published patch, give the same digest. Published as [release-20260622.0-bex.2](https://github.com/bex-co/gvisor/releases/tag/release-20260622.0-bex.2), with `bex-go-tree.patch` and the build command in its notes:
+
+- runsc `a907f14a…b807c96a`; `runsc --version` reports `44a08e148eae`.
+- shim `6670b239…2d4049a`, bex.1's binary unchanged (it does not contain the line discipline).
+

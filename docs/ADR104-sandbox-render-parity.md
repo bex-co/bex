@@ -417,6 +417,16 @@ Parity widens what a sandbox can do: `allow-all` egress by default, 30-day reten
 - **API calls:** a workspace's sandbox operations together are bounded at 10,000 a minute, above the 3,610 one user can send under Render's per-user table ([D7 § API rate limits](#api-rate-limits-w22m443), w22/m443). It replaces the general 500-a-minute workspace bucket for sandbox calls.
 - **Privileged capture path:** the constraints in D4.
 
+### Terminals in a sandbox (w4/m545, w4/m574)
+
+Render's `sandboxes exec` has no TTY (w4/m545 t005), so the terminals a tenant meets in a sandbox are the PTYs programs open inside it, and the agent session's web Shell and SSH terminal, which reach it through `pods/exec` with a TTY. All of them use gVisor's devpts line discipline, and Devin, the reference for agent surfaces (ADR047), runs a real Linux kernel. Since `release-20260622.0-bex.2` (w4/m574) the sandbox pool's line discipline matches Linux's `n_tty` in each case its syscall tests check natively and on the patched runsc: the echo of signal characters (m545); the flush of the typed line and pending output on a signal character unless `NOFLSH`; VKILL under `ECHOK`, `ECHOKE` and `ECHOE`; VLNEXT, VREPRINT and ECHONL; IXON and IXANY flow control, with `TIOCPKT_STOP` and `TIOCPKT_START`; disabled control characters; and VERASE without `ECHOE`. `scripts/pty-signal-echo-probe.py` checks the signal echo, the flush and Ctrl-U on every pin (`sandbox-runsc-pty.yml`).
+
+**Known differences**, recorded in ADR018 as awaiting the user's sign-off, with the fix filed as w4/723:
+
+- **Typeahead.** While a complete line waits unread in canonical mode, gVisor processes no more input until the program reads that line: what is typed is not echoed, and a Ctrl-C or Ctrl-S in it waits. Linux processes it at once, so Ctrl-C interrupts a program that is not reading its terminal (`ls`, Enter, Ctrl-C while `sleep` runs) and discards the line typed ahead.
+- **Erasing a tab from the screen.** VERASE, VWERASE or VKILL over a tab moves the cursor back to where the tab started on Linux; gVisor echoes nothing for the tab. ECHOPRT's `\…/` echo of erased characters is not implemented either.
+- **`tcflow()`** (`TCXONC`) is not implemented, so a program cannot stop or start output itself.
+
 ## Gaps, owners and order
 
 | # | Gap | Owner |

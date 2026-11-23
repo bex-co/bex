@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs scripts/pty-signal-echo-probe.py under the runsc the sandbox pool
 # installs, so a gVisor change that stops a sandbox terminal echoing ^C, ^\ and
-# ^Z like Linux (w4/m545) fails here before it reaches the pool.
+# ^Z like Linux (w4/m545), or flushing the line on ^C and erasing it on ^U
+# (w4/m574), fails here before it reaches the pool.
 #
 # The pool's own install item is extracted from
 # infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml and run with its
