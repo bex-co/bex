@@ -340,9 +340,9 @@ def extra_cases():
    f=d/'two words 雪.txt';f.write_bytes(original);f.chmod(0o640);os.utime(f,(1700000000,1700000000));assert pigz(f.name)[0]==0 and not f.exists()
    z=d/(f.name+'.gz');raw=z.read_bytes();assert (raw[3],struct.unpack('<I',raw[4:8])[0],raw[10:].split(b'\0',1)[0],z.stat().st_mode&0o777,int(z.stat().st_mtime))==(8,1700000000,f.name.encode(),0o640,1700000000)
    z.rename(d/'renamed.gz');assert pigz('-d','-N','renamed.gz')[0]==0 and not (d/'renamed.gz').exists() and (f.read_bytes(),f.stat().st_mode&0o777,int(f.stat().st_mtime))==(original,0o640,1700000000)
-   # The output does not depend on the thread count: a 14-block input gives the same bytes on 1, 2, 4 and 8 threads; -i (independent blocks) differs and still inflates.
-   big=original+b''.join(hashlib.sha256(i.to_bytes(4,'big')).digest() for i in range(12800))+original;outs={pigz('-b','32','-p',p,'-c',data=big)[1] for p in '1248'}
-   assert len(outs)==1 and zlib.decompress(next(iter(outs)),wbits=31)==big;indep=pigz('-i','-b','32','-p','4','-c',data=big)[1];assert indep not in outs and zlib.decompress(indep,wbits=31)==big
+   # The output does not depend on the thread count: a 14-block input gives the same bytes on 1, 2, 4 and 8 threads (-n omits wall-clock MTIME on stdin); -i (independent blocks) differs and still inflates.
+   big=original+b''.join(hashlib.sha256(i.to_bytes(4,'big')).digest() for i in range(12800))+original;outs={pigz('-n','-b','32','-p',p,'-c',data=big)[1] for p in '1248'}
+   assert len(outs)==1 and zlib.decompress(next(iter(outs)),wbits=31)==big;indep=pigz('-n','-i','-b','32','-p','4','-c',data=big)[1];assert indep not in outs and zlib.decompress(indep,wbits=31)==big
    # zlib (-z, Adler-32 trailer), single-entry ZIP (-K) and zopfli (-11) formats, concatenated members, unpigz, and options read from PIGZ.
    zl=pigz('-z','-c',data=original)[1];assert zl[:2]==b'\x78\x5e' and zlib.decompress(zl)==original and struct.unpack('>I',zl[-4:])[0]==zlib.adler32(original)
    (d/'member.txt').write_bytes(original);assert pigz('-K','-k','member.txt')[0]==0
