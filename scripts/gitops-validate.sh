@@ -1471,6 +1471,13 @@ for render in base=Recreate:: prod=RollingUpdate:0:1; do
   fi
 done
 
+# w6/164: a Traefik roll gives open native SSH sessions Render's hour, its
+# second new pod does not wait that hour behind a draining one, and Prometheus
+# does not scrape the draining pod (scripts/edge-ssh-drain-validate.sh).
+echo "==> a Traefik roll drains native SSH for an hour without stalling or failing egress windows (w6/164)"
+TRAEFIK_BASE_RENDER="$tmp/traefik-base.yaml" TRAEFIK_PROD_RENDER="$tmp/traefik-prod.yaml" \
+  bash scripts/edge-ssh-drain-validate.sh || fail=1
+
 check_fixed_edge_nodeport() {
   local label="$1" manifest="$2" service="$3" port_name="$4" expected="$5"
   local service_type traffic_policy node_port lb_name
@@ -1586,13 +1593,16 @@ fi
 
 check_request_path_ha() {
   local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"
-  local replicas required preferred min_available
+  local replicas required preferred spread min_available
   replicas="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.replicas" "$manifest" | tr -d '\n')"
   # w2/029: node-spread may be required OR preferred (weight >= 1, hostname
   # topologyKey). Required left rollout surge pods Pending (FailedScheduling)
   # on the 3-node platform pool; hydra/kratos/bex-api moved to preferred,
-  # openfga/traefik keep required.
+  # openfga keeps required. A hostname topology spread that refuses to
+  # schedule (DoNotSchedule) counts too: traefik uses one, because the
+  # scheduler counts its pods draining SSH for anti-affinity (w6/164).
   required="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution | length" "$manifest" | tr -d '\n')"
+  spread="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.template.spec.topologySpreadConstraints[]? | select(.topologyKey == \"kubernetes.io/hostname\" and .whenUnsatisfiable == \"DoNotSchedule\") | .maxSkew" "$manifest" | { grep -c . || true; })"
   # Count the matching terms line by line: the array-length form printed a
   # value per document, and the joined digits were then read as one octal
   # number that overflowed, so the verdict depended on how many documents
@@ -1603,8 +1613,9 @@ check_request_path_ha() {
     echo "FAIL: $label renders replicas '$replicas', want >=2" >&2
     fail=1
   fi
-  if { ! [[ "$required" =~ ^[0-9]+$ ]] || (( required < 1 )); } && { ! [[ "$preferred" =~ ^[0-9]+$ ]] || (( preferred < 1 )); }; then
-    echo "FAIL: $label has no hostname pod anti-affinity (required or preferred)" >&2
+  if { ! [[ "$required" =~ ^[0-9]+$ ]] || (( required < 1 )); } && { ! [[ "$preferred" =~ ^[0-9]+$ ]] || (( preferred < 1 )); } \
+    && { ! [[ "$spread" =~ ^[0-9]+$ ]] || (( spread < 1 )); }; then
+    echo "FAIL: $label has no hostname pod anti-affinity (required or preferred) or DoNotSchedule hostname topology spread" >&2
     fail=1
   fi
   if [ "$min_available" != "1" ]; then

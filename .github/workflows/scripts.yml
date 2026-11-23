@@ -314,6 +314,10 @@ jobs:
       # and gitops.yml does not trigger on infra/ (w1/m150).
       - name: Edge PROXY-protocol guard self-test
         run: bash scripts/edge-proxyprotocol-validate.test.sh
+      # w6/164: reads the real Prometheus Application, which gitops.yml's
+      # deploy/** trigger also covers; its Traefik renders are fixtures.
+      - name: Edge SSH-drain guard self-test
+        run: bash scripts/edge-ssh-drain-validate.test.sh
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
       - name: bex CLI installer + formula renderer offline tests

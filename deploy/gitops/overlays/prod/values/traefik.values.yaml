@@ -15,19 +15,28 @@ hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
   replicas: 2 # one edge remains behind the stable LB during a node drain
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)
+  # The ssh entrypoint's hour (ports.ssh below) plus Traefik's own close and a
+  # margin, or the kubelet kills a draining edge pod mid-session (w6/164).
+  terminationGracePeriodSeconds: 3660
 # Behind the LB the edge rolls (chart default 0 unavailable / 1 surge, which
-# needs a spare platform node under the anti-affinity below); base's Recreate
-# is only for the single hostNetwork edge (w4/338).
+# needs a spare platform node under the spread below); base's Recreate is only
+# for the single hostNetwork edge (w4/338).
 updateStrategy:
   type: RollingUpdate
-affinity:
-  podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app.kubernetes.io/instance: traefik-traefik
-            app.kubernetes.io/name: traefik
-        topologyKey: kubernetes.io/hostname
+# One live edge pod per node. A topology spread, not required pod anti-affinity
+# (w6/164): an old pod drains open SSH sessions for up to an hour, and the
+# scheduler counts a terminating pod for anti-affinity, so the roll's second new
+# pod would wait Pending behind it for that hour. A spread does not count it,
+# so the new pod starts beside the draining one. No matchLabelKeys: spreading
+# per pod-template-hash would let two live pods share a node.
+topologySpreadConstraints:
+  - labelSelector:
+      matchLabels:
+        app.kubernetes.io/instance: traefik-traefik
+        app.kubernetes.io/name: traefik
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
@@ -71,6 +80,15 @@ ports:
     expose:
       default: true
     protocol: TCP
+    # Render's SSH maintenance hour (w6/164, docs/ADR035-ssh.md § Sessions
+    # across an edge roll): a terminating edge pod keeps the SSH streams it
+    # carries for up to an hour instead of Traefik's default 10 s, and exits
+    # as soon as the last one ends. It takes no new connection meanwhile; the
+    # HTTP entrypoints keep their 10 s. Production only: base's Recreate edge
+    # would have no pod at all while one drained.
+    transport:
+      lifeCycle:
+        graceTimeOut: 3600s
     # w9/m451 t010: the same contract as web, so the client address Traefik
     # forwards to the ssh-gateway (its own PROXY v2 hop, w4/m82) is the SSH
     # client's, not 10.10.0.7. This trust rolls out before the Terraform :22
