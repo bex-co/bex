@@ -1,6 +1,6 @@
 # w21 · m617 — A multi-instance service's instances run on different nodes, as on Render
 
-**Worker:** worker21 **Goal:** a service scaled or autoscaled to N instances runs them on N different nodes when the pool has N, so one node's failure never takes every instance down. **Status:** blocked (t001–t003, t005, t006 done; t004's production check waits for production to carry `9a8b728d7e`, then t007)
+**Worker:** worker21 **Goal:** a service scaled or autoscaled to N instances runs them on N different nodes when the pool has N, so one node's failure never takes every instance down. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | [t001](done/t001.md) | Measure placement on the mock cluster and record the spread decision in ADR004 — **DONE** | 45m | — |
 | [t002](done/t002.md) | The operator projects a hostname topology spread for multi-instance services, carried by rollouts the service makes anyway — **DONE** | 1h | t001 |
 | [t003](done/t003.md) | Mock cluster: a full node makes the second instance add a node, and drain-guard's evacuation still lands — **DONE** | 1h | t002 |
-| [t004](t004.md) | ADR018 row "Multiple instances run on different nodes" and a production check with a disposable two-instance service | 45m | t003 |
+| [t004](done/t004.md) | ADR018 row "Multiple instances run on different nodes" and a production check with a disposable two-instance service — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
-| [t007](t007.md) | Closeout | 10m | t005, t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -27,8 +27,8 @@
 1. Holds on the mock cluster: two, three and five instances over four usable nodes, three runs each, ran one per node and 2-1-1-1 ([t001](done/t001.md), [ADR004 § Multiple instances run on different nodes](../../../../docs/ADR004-app-deployment.md#multiple-instances-run-on-different-nodes-w21m617)).
 2. Holds on the mock cluster: the second instance waited, the autoscaler added a node within 46 s and the instance ran there at 76 s; before the change it landed beside the first ([t003](done/t003.md)).
 3. Holds by construction and test: the spread is adopted only by a roll the service makes anyway; the envtest stores a pre-change Deployment of each kind (two instances, one, Free, disk) and the upgraded projection writes none of them ([t002](done/t002.md), [t006](done/t006.md)).
-4. Pending: production must carry t002's commit first ([t004](t004.md)).
-5. ADR004 has the rule and the mock evidence; the ADR018 row is in, ◐ until the production reading.
+4. Holds on production (pin `fa30302aef2a`, 2026-11-24): the disposable Starter service `w21-m617-spread` in `bex-canary` ran its two instances on two tenant nodes, a scale to three made no rollout and put the third on a third node, and the service was deleted ([t004](done/t004.md)).
+5. ADR004 has the rule with the mock and production evidence, and the ADR018 row is ✅ citing the production reading.
 
 ## Source + Goal linkage
 
@@ -41,3 +41,10 @@
 - **Why now:** with no multi-instance tenant service on production, the rule lands with no tenant rollout. After the first one exists (signup is open since 2026-11-21), the change would roll a live service.
 - **Decision state.** `DoNotSchedule` with `maxSkew: 1` on `kubernetes.io/hostname` and `matchLabelKeys: [pod-template-hash]` is this proposal's recommendation, resting on ADR008 Render parity first (Render states a placement, not a preference). It can make the autoscaler add a node that bin-packing would have avoided; that cost is the price of the guarantee. `ScheduleAnyway` would be a divergence that needs the user's ADR018 sign-off. The constraint is carried only by rollouts a service makes anyway, so the upgrade itself rolls nothing; t001 records how a scale from 1 to 2 of a service whose template lacks it is handled.
 - **Render parity:** omitted. The placement is operator-internal: no REST, GraphQL, MCP or dashboard field changes, and Render shows none.
+
+## Unblock record (2026-11-24)
+
+- **Affected:** w21/m617 t004, t007.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to fa30302aef2a` on `origin/main` (`9d6aed32e4`) carries t002's commit: `git merge-base --is-ancestor 9a8b728d7e fa30302aef2a` holds.
+- **Next:** t004 step 2 creates a disposable two-instance paid service on production, reads its pods' nodes and deletes it; the ADR018 row goes to ✅ citing the reading; t007 closes the milestone when the definition of done holds.
+- **Remaining gates:** none.
