@@ -365,9 +365,12 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.BuildFilter != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			bf, err := checkBuildFilter(probe, id, p.BuildFilter)
+			bf, changed, err := checkBuildFilter(probe, id, p.BuildFilter)
+			if err != nil || !changed {
+				return err
+			}
 			probe.Spec.BuildFilter = bf
-			return err
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetBuildFilter(ctx, id, p.BuildFilter)
@@ -481,7 +484,7 @@ var servicePatchTable = []servicePatchOp{
 			if err := s.checkCommands(ctx, probe, p.BuildCommand, p.StartCommand); err != nil {
 				return err
 			}
-			if p.BuildCommand != nil {
+			if p.BuildCommand != nil && !imageBuildCommandEcho(probe.Spec, p.BuildCommand) {
 				setBuildCommand(&probe.Spec, *p.BuildCommand)
 			}
 			if p.StartCommand != nil {
@@ -504,6 +507,12 @@ var servicePatchTable = []servicePatchOp{
 			if err != nil {
 				return err
 			}
+			// Echoing the read runtime ("image") of a prebuilt-image service
+			// changes nothing: the retained runtime and builder stay for a
+			// switch back to Git (w4/m202, w32/103).
+			if prebuiltImageSource(probe.Spec) && runtime == "image" {
+				return nil
+			}
 			applyRuntimeChange(&probe.Spec, runtime, builder, !patchHasExplicitStart(ctx))
 			return nil
 		},
@@ -516,9 +525,12 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.DockerfilePath != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			path, err := s.checkDockerfilePath(ctx, probe, id, *p.DockerfilePath)
+			path, changed, err := s.checkDockerfilePath(ctx, probe, id, *p.DockerfilePath)
+			if err != nil || !changed {
+				return err
+			}
 			probe.Spec.DockerfilePath = path
-			return err
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetDockerfilePath(ctx, id, *p.DockerfilePath)
@@ -531,9 +543,12 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.DockerContext != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			context, err := s.checkDockerContext(ctx, probe, id, *p.DockerContext)
+			context, changed, err := s.checkDockerContext(ctx, probe, id, *p.DockerContext)
+			if err != nil || !changed {
+				return err
+			}
 			probe.Spec.DockerContext = storedDockerContext(probe.Spec.RootDir, context)
-			return err
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetDockerContext(ctx, id, *p.DockerContext)

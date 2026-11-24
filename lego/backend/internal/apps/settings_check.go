@@ -223,12 +223,37 @@ func (s *Service) checkRootDir(ctx context.Context, a *appv1alpha1.App, name, ro
 	return true, nil
 }
 
-func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, name, dockerfilePath string) (string, error) {
-	if err := s.checkDockerBuildSetting(ctx, a, name, "dockerfile path"); err != nil {
-		return "", err
+// viewDockerfilePath reports the Dockerfile path a service actually builds
+// from: empty when it runs a prebuilt image, since spec.DockerfilePath is
+// retained only for a later switch back to Git (w4/m202, w32/103).
+func viewDockerfilePath(spec appv1alpha1.AppSpec) string {
+	if prebuiltImageSource(spec) {
+		return ""
+	}
+	return spec.DockerfilePath
+}
+
+func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, name, dockerfilePath string) (string, bool, error) {
+	// What gets built is what runs, so this is the same identity change that
+	// repointing the source is (w4/m126).
+	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+		return "", false, err
 	}
 	dockerfilePath = strings.TrimSpace(dockerfilePath)
-	return dockerfilePath, checkRepoPath("dockerfilePath", dockerfilePath)
+	// Echoing the read value changes nothing: on a prebuilt-image service the
+	// read value is "" (the retained path stays for a switch back), and on a
+	// repo-backed service it is the stored path. Either way there is nothing
+	// to refuse and no rebuild to start (w32/103).
+	if dockerfilePath == viewDockerfilePath(a.Spec) {
+		return dockerfilePath, false, nil
+	}
+	if err := s.checkDockerBuildSetting(ctx, a, name, "dockerfile path"); err != nil {
+		return "", false, err
+	}
+	if err := checkRepoPath("dockerfilePath", dockerfilePath); err != nil {
+		return "", false, err
+	}
+	return dockerfilePath, true, nil
 }
 
 // checkDockerBuildSetting gates a change to a Dockerfile-build setting (the
@@ -258,19 +283,85 @@ func (s *Service) checkDockerBuildSetting(ctx context.Context, a *appv1alpha1.Ap
 // update: the same Dockerfile-build-only refusal as a Dockerfile path, and
 // create's path rule (no '..', not absolute). Empty restores the default
 // context, rootDir itself (w8/m128).
-func (s *Service) checkDockerContext(ctx context.Context, a *appv1alpha1.App, name, dockerContext string) (string, error) {
-	if err := s.checkDockerBuildSetting(ctx, a, name, "docker context"); err != nil {
-		return "", err
+func (s *Service) checkDockerContext(ctx context.Context, a *appv1alpha1.App, name, dockerContext string) (string, bool, error) {
+	// What gets built is what runs, so this is the same identity change that
+	// repointing the source is (w4/m126).
+	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+		return "", false, err
 	}
 	dockerContext = strings.TrimSpace(dockerContext)
-	return dockerContext, checkDockerContextPath("dockerContext", dockerContext)
+	// Echoing the read value changes nothing. On a prebuilt-image service the
+	// read value is "" (the retained context stays for a switch back); on a
+	// repo-backed service the stored form of the sent wire value already
+	// matches, so there is no rebuild to start (w32/103).
+	if prebuiltImageSource(a.Spec) {
+		if dockerContext == "" {
+			return "", false, nil
+		}
+	} else if storedDockerContext(a.Spec.RootDir, dockerContext) == a.Spec.DockerContext {
+		return dockerContext, false, nil
+	}
+	if err := s.checkDockerBuildSetting(ctx, a, name, "docker context"); err != nil {
+		return "", false, err
+	}
+	if err := checkDockerContextPath("dockerContext", dockerContext); err != nil {
+		return "", false, err
+	}
+	return dockerContext, true, nil
 }
 
-func checkBuildFilter(a *appv1alpha1.App, name string, filter *BuildFilterView) (*appv1alpha1.BuildFilterSpec, error) {
-	if err := requireRepoBacked(a, name, "build filters only apply to build-from-git"); err != nil {
-		return nil, err
+// buildFilterInputIsEmpty reports whether filter carries no pattern: nil, or
+// only blank entries that normalizeBuildFilter would drop. It never validates,
+// so an invalid glob still reaches normalizeBuildFilter's error after the
+// repo-backed gate, exactly as before.
+func buildFilterInputIsEmpty(filter *BuildFilterView) bool {
+	if filter == nil {
+		return true
 	}
-	return normalizeBuildFilter(filter)
+	for _, g := range filter.Paths {
+		if strings.TrimSpace(g) != "" {
+			return false
+		}
+	}
+	for _, g := range filter.IgnoredPaths {
+		if strings.TrimSpace(g) != "" {
+			return false
+		}
+	}
+	return true
+}
+
+func checkBuildFilter(a *appv1alpha1.App, name string, filter *BuildFilterView) (*appv1alpha1.BuildFilterSpec, bool, error) {
+	// Echoing the read value changes nothing: on a prebuilt-image service
+	// reads publish no filter (the retained one stays for a switch back), so
+	// an empty filter is a no-op while a patterned one is refused below
+	// (w32/103).
+	if prebuiltImageSource(a.Spec) && buildFilterInputIsEmpty(filter) {
+		return nil, false, nil
+	}
+	if err := requireRepoBacked(a, name, "build filters only apply to build-from-git"); err != nil {
+		return nil, false, err
+	}
+	bf, err := normalizeBuildFilter(filter)
+	if err != nil {
+		return nil, false, err
+	}
+	// Echoing the stored filter changes nothing: no write, no rollout.
+	if (bf == nil && a.Spec.BuildFilter == nil) ||
+		(bf != nil && a.Spec.BuildFilter != nil &&
+			slices.Equal(bf.Paths, a.Spec.BuildFilter.Paths) &&
+			slices.Equal(bf.IgnoredPaths, a.Spec.BuildFilter.IgnoredPaths)) {
+		return bf, false, nil
+	}
+	return bf, true, nil
+}
+
+// imageBuildCommandEcho reports whether buildCommand restates the read value
+// ("") of a prebuilt-image service. Its retained spec.BuildCommand stays for
+// a switch back to Git (w4/m202, w32/103): writing the echo would clear what
+// reads hide, so callers leave the spec alone.
+func imageBuildCommandEcho(spec appv1alpha1.AppSpec, buildCommand *string) bool {
+	return buildCommand != nil && prebuiltImageSource(spec) && strings.TrimSpace(*buildCommand) == ""
 }
 
 func (s *Service) checkPreDeployCommand(ctx context.Context, a *appv1alpha1.App, command string) error {

@@ -456,3 +456,263 @@ func TestSwitchedImageServiceHidesGitBuildFieldsAcrossSurfacesAndClones(t *testi
 		}
 	})
 }
+
+// Echoing a switched-image service's read build settings is a no-op on every
+// write surface: the plan stays empty, the apply writes nothing (no
+// restartedAt bump), and the retained spec fields survive for a switch back.
+// Real changes to those frozen settings are still refused. Extends w32/103's
+// rootDir echo (and w9/068's maintenanceMode, w9/113's no-op) to the sibling
+// projections of the same contract: dockerfilePath, dockerContext,
+// buildFilter, runtime, and buildCommand.
+func TestSwitchedImageServiceEchoesSiblingBuildSettings(t *testing.T) {
+	ctx := context.Background()
+	const (
+		image = "docker.io/library/nginx:1.27-alpine"
+		root  = "examples/hello-node"
+	)
+	// A Dockerfile build with every retained field populated. (A Dockerfile
+	// build's own build command does not survive the switch:
+	// settleSourceSwitch drops it from the spec since an image service
+	// refuses it; only native commands move to annotations. The echo case
+	// for a retained build command is covered below with a legacy CR.)
+	switched := func(t *testing.T) (*Service, client.Client) {
+		t.Helper()
+		app := gitServiceApp("svc", appv1alpha1.TypeWebService)
+		app.Spec.Tier = "starter"
+		app.Spec.Replicas = 1
+		app.Spec.Runtime = "docker"
+		app.Spec.Builder = "dockerfile"
+		app.Spec.BuildCommand = ""
+		app.Spec.StartCommand = ""
+		app.Spec.DockerfilePath = "docker/Dockerfile.prod"
+		app.Spec.DockerContext = root + "/ctx"
+		app.Spec.RootDir = root
+		svc, cl := newService(nil, app)
+		target := image
+		if _, err := svc.ApplyServicePatch(ctx, "svc", ServicePatch{Image: &target}); err != nil {
+			t.Fatalf("switch to image: %v", err)
+		}
+		stored := getApp(t, cl, "svc").Spec
+		if stored.DockerfilePath != "docker/Dockerfile.prod" || stored.DockerContext != root+"/ctx" ||
+			stored.BuildFilter == nil ||
+			stored.Runtime != "docker" || stored.Builder != "dockerfile" {
+			t.Fatalf("switch dropped retained Git fields: %+v", stored)
+		}
+		return svc, cl
+	}
+	// The apply must write nothing: restartedAt stays as it was, retained
+	// fields byte for byte.
+	assertNoop := func(t *testing.T, cl client.Client, before appv1alpha1.AppSpec) {
+		t.Helper()
+		after := getApp(t, cl, "svc").Spec
+		if after.RestartedAt != before.RestartedAt {
+			t.Errorf("echo bumped restartedAt to %q (was %q): a no-op echo rebuilt the service", after.RestartedAt, before.RestartedAt)
+		}
+		if after.DockerfilePath != before.DockerfilePath || after.DockerContext != before.DockerContext ||
+			!reflect.DeepEqual(after.BuildFilter, before.BuildFilter) || after.BuildCommand != before.BuildCommand ||
+			after.Runtime != before.Runtime || after.Builder != before.Builder || after.RootDir != before.RootDir {
+			t.Errorf("echo changed retained fields:\nbefore: %+v\n after: %+v", before, after)
+		}
+	}
+
+	t.Run("echoes are accepted with no write", func(t *testing.T) {
+		empty, blank := "", "   "
+		rtImage := "image"
+		for _, tc := range []struct {
+			name  string
+			patch ServicePatch
+		}{
+			{"dockerfilePath", ServicePatch{DockerfilePath: &empty}},
+			{"dockerContext", ServicePatch{DockerContext: &empty}},
+			{"buildFilter nil", ServicePatch{BuildFilter: nil}},
+			{"runtime image", ServicePatch{Runtime: &rtImage}},
+			{"buildCommand empty", ServicePatch{BuildCommand: &blank}},
+		} {
+			t.Run("patch/"+tc.name, func(t *testing.T) {
+				svc, cl := switched(t)
+				before := getApp(t, cl, "svc").Spec
+				if _, err := svc.ApplyServicePatch(ctx, "svc", tc.patch); err != nil {
+					t.Fatalf("PATCH echo %s = %v, want accepted no-op", tc.name, err)
+				}
+				assertNoop(t, cl, before)
+			})
+		}
+		// An explicitly empty (all-blank) filter also normalizes to unset.
+		t.Run("patch/buildFilter blank", func(t *testing.T) {
+			svc, cl := switched(t)
+			before := getApp(t, cl, "svc").Spec
+			if _, err := svc.ApplyServicePatch(ctx, "svc", ServicePatch{BuildFilter: &BuildFilterView{Paths: []string{"  "}}}); err != nil {
+				t.Fatalf("PATCH echo blank buildFilter = %v, want accepted no-op", err)
+			}
+			assertNoop(t, cl, before)
+		})
+		t.Run("verbs", func(t *testing.T) {
+			svc, cl := switched(t)
+			before := getApp(t, cl, "svc").Spec
+			if _, err := svc.SetDockerfilePath(ctx, "svc", ""); err != nil {
+				t.Fatalf("SetDockerfilePath echo = %v, want accepted no-op", err)
+			}
+			if _, err := svc.SetDockerContext(ctx, "svc", ""); err != nil {
+				t.Fatalf("SetDockerContext echo = %v, want accepted no-op", err)
+			}
+			if _, err := svc.SetBuildFilter(ctx, "svc", nil); err != nil {
+				t.Fatalf("SetBuildFilter echo = %v, want accepted no-op", err)
+			}
+			if _, err := svc.SetRuntime(ctx, "svc", "image"); err != nil {
+				t.Fatalf("SetRuntime echo = %v, want accepted no-op", err)
+			}
+			if _, err := svc.SetCommands(ctx, "svc", &empty, nil); err != nil {
+				t.Fatalf("SetCommands echo = %v, want accepted no-op", err)
+			}
+			assertNoop(t, cl, before)
+		})
+		// The REST read shape round-trips through PATCH unchanged.
+		t.Run("rest", func(t *testing.T) {
+			svc, cl := switched(t)
+			before := getApp(t, cl, "svc").Spec
+			for _, body := range []string{
+				`{"serviceDetails":{"envSpecificDetails":{"dockerfilePath":""}}}`,
+				`{"serviceDetails":{"envSpecificDetails":{"dockerContext":""}}}`,
+				`{"serviceDetails":{"runtime":"image"}}`,
+				`{"buildFilter":{}}`,
+			} {
+				rec := serveRESTStrict(t, svc, http.MethodPatch, "/v1/services/svc", body)
+				if rec.Code != http.StatusOK {
+					t.Fatalf("PATCH %s = %d: %s, want accepted no-op", body, rec.Code, rec.Body.String())
+				}
+			}
+			assertNoop(t, cl, before)
+		})
+	})
+
+	t.Run("real changes are still refused and change nothing", func(t *testing.T) {
+		otherPath, otherCtx, makeCmd := "other/Dockerfile", "other", "make"
+		rtDocker := "docker"
+		for _, tc := range []struct {
+			name  string
+			patch ServicePatch
+			want  string
+		}{
+			{"dockerfilePath", ServicePatch{DockerfilePath: &otherPath}, "dockerfile path only applies to"},
+			{"dockerContext", ServicePatch{DockerContext: &otherCtx}, "docker context only applies to"},
+			{"buildFilter", ServicePatch{BuildFilter: &BuildFilterView{Paths: []string{"docs/**"}}}, "build filters only apply to"},
+			{"buildCommand", ServicePatch{BuildCommand: &makeCmd}, "prebuilt image services cannot declare buildCommand"},
+			{"runtime", ServicePatch{Runtime: &rtDocker}, "runtime docker requires repo and no image"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				svc, cl := switched(t)
+				before := getApp(t, cl, "svc").Spec
+				if _, err := svc.ApplyServicePatch(ctx, "svc", tc.patch); err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("PATCH %s = %v, want refusal containing %q", tc.name, err, tc.want)
+				}
+				assertNoop(t, cl, before)
+			})
+		}
+	})
+
+	t.Run("echoes preserve switch back", func(t *testing.T) {
+		svc, cl := switched(t)
+		empty, rtImage := "", "image"
+		for _, p := range []ServicePatch{
+			{DockerfilePath: &empty},
+			{DockerContext: &empty},
+			{BuildFilter: nil},
+			{Runtime: &rtImage},
+			{BuildCommand: &empty},
+		} {
+			if _, err := svc.ApplyServicePatch(ctx, "svc", p); err != nil {
+				t.Fatalf("PATCH echo %+v = %v", p, err)
+			}
+		}
+		targetRepo, targetBranch := "https://github.com/bex-co/bex", "main"
+		if _, err := svc.ApplyServicePatch(ctx, "svc", ServicePatch{Repo: &targetRepo, Branch: &targetBranch}); err != nil {
+			t.Fatalf("switch back to Git: %v", err)
+		}
+		back := getApp(t, cl, "svc").Spec
+		if back.Runtime != "docker" || back.Builder != "dockerfile" ||
+			back.DockerfilePath != "docker/Dockerfile.prod" || back.DockerContext != root+"/ctx" ||
+			back.RootDir != root || back.BuildFilter == nil {
+			t.Errorf("switch back lost retained fields: %+v", back)
+		}
+	})
+
+	// A prebuilt-image CR that still carries a build command directly (legacy
+	// records predate the create refusal, w4/418): echoing the read value ""
+	// must not clear what reads hide.
+	t.Run("legacy retained buildCommand echo", func(t *testing.T) {
+		a := managedImageApp("legacy")
+		a.Spec.BuildCommand = "npm ci"
+		svc, cl := newService(nil, a)
+		empty := ""
+		if _, err := svc.SetCommands(ctx, "legacy", &empty, nil); err != nil {
+			t.Fatalf("SetCommands echo = %v, want accepted no-op", err)
+		}
+		if _, err := svc.ApplyServicePatch(ctx, "legacy", ServicePatch{BuildCommand: &empty}); err != nil {
+			t.Fatalf("PATCH echo = %v, want accepted no-op", err)
+		}
+		if got := getApp(t, cl, "legacy").Spec.BuildCommand; got != "npm ci" {
+			t.Errorf("echo cleared retained buildCommand: %q", got)
+		}
+	})
+}
+
+// Echoing a repo-backed service's read build settings changes nothing either:
+// before this fix, the plan stayed empty while the apply bumped restartedAt
+// and started a spurious rebuild.
+func TestGitServiceEchoesBuildSettingsWithoutRebuild(t *testing.T) {
+	ctx := context.Background()
+	mk := func(t *testing.T) *Service {
+		t.Helper()
+		app := gitServiceApp("svc", appv1alpha1.TypeWebService)
+		app.Spec.Tier = "starter"
+		app.Spec.Replicas = 1
+		app.Spec.Runtime = "docker"
+		app.Spec.Builder = "dockerfile"
+		app.Spec.DockerfilePath = "docker/Dockerfile.prod"
+		app.Spec.DockerContext = "examples/hello-node/ctx"
+		app.Spec.RootDir = "examples/hello-node"
+		svc, _ := newService(nil, app)
+		return svc
+	}
+	t.Run("verbs", func(t *testing.T) {
+		svc := mk(t)
+		before := getApp(t, svc.Client, "svc").Spec
+		if _, err := svc.SetDockerfilePath(ctx, "svc", "docker/Dockerfile.prod"); err != nil {
+			t.Fatalf("echo dockerfilePath = %v", err)
+		}
+		if _, err := svc.SetDockerContext(ctx, "svc", "ctx"); err != nil {
+			t.Fatalf("echo dockerContext = %v", err)
+		}
+		if _, err := svc.SetRootDir(ctx, "svc", "examples/hello-node"); err != nil {
+			t.Fatalf("echo rootDir = %v", err)
+		}
+		if _, err := svc.SetBuildFilter(ctx, "svc", &BuildFilterView{Paths: []string{"examples/hello-node/**"}}); err != nil {
+			t.Fatalf("echo buildFilter = %v", err)
+		}
+		after := getApp(t, svc.Client, "svc").Spec
+		if after.RestartedAt != before.RestartedAt {
+			t.Errorf("echo bumped restartedAt to %q (was %q)", after.RestartedAt, before.RestartedAt)
+		}
+		if !reflect.DeepEqual(after, before) {
+			t.Errorf("echo changed the spec:\nbefore: %+v\n after: %+v", before, after)
+		}
+	})
+	t.Run("patch", func(t *testing.T) {
+		svc := mk(t)
+		before := getApp(t, svc.Client, "svc").Spec
+		path, wireCtx, rootDir := "docker/Dockerfile.prod", "ctx", "examples/hello-node"
+		if _, err := svc.ApplyServicePatch(ctx, "svc", ServicePatch{
+			DockerfilePath: &path, DockerContext: &wireCtx, RootDir: &rootDir,
+			BuildFilter: &BuildFilterView{Paths: []string{"examples/hello-node/**"}},
+		}); err != nil {
+			t.Fatalf("PATCH echo = %v", err)
+		}
+		after := getApp(t, svc.Client, "svc").Spec
+		if after.RestartedAt != before.RestartedAt {
+			t.Errorf("PATCH echo bumped restartedAt to %q (was %q)", after.RestartedAt, before.RestartedAt)
+		}
+		if !reflect.DeepEqual(after, before) {
+			t.Errorf("PATCH echo changed the spec:\nbefore: %+v\n after: %+v", before, after)
+		}
+	})
+}
