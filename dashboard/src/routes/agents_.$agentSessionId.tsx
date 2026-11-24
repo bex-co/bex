@@ -36,6 +36,7 @@ import {
 } from "@/features/agent-sessions/lib/mapper";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
+import { SteeringComposerSkeleton } from "@/features/agent-sessions/components/steering-composer-skeleton";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import {
   parseAgentSessionArchivedFilter,
@@ -254,20 +255,7 @@ function DetailSkeleton() {
         </div>
       </div>
 
-      {/* Match SteeringComposer's dock, including the bordered input shell,
-          send button, and the hint line beneath it. */}
-      <div
-        data-skeleton-region="composer"
-        className="bg-background shrink-0 border-t"
-      >
-        <div className="mx-auto w-full max-w-3xl space-y-1.5 px-4 py-2">
-          <div className="border-input bg-background flex items-end gap-2 rounded-xl border px-2.5 py-1.5 shadow-xs">
-            <Skeleton className="my-1.5 h-4 flex-1" />
-            <Skeleton className="h-8 w-20 shrink-0 rounded-xl" />
-          </div>
-          <Skeleton className="mx-1 h-3 w-52 max-w-[70%]" />
-        </div>
-      </div>
+      <SteeringComposerSkeleton />
     </div>
   );
 }

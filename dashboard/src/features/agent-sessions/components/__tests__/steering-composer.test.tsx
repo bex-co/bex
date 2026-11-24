@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
+import { SteeringComposerSkeleton } from "@/features/agent-sessions/components/steering-composer-skeleton";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import type {
   AgentSessionPhase,
@@ -628,7 +629,97 @@ describe("SteeringComposer model switch", () => {
     capabilitiesState.capabilities.models = {
       claude: { model: null, models: [] },
     };
-    render(<SteeringComposer session={onModel("claude-opus-4-1")} chat={null} />);
+    render(
+      <SteeringComposer session={onModel("claude-opus-4-1")} chat={null} />,
+    );
     expect(screen.queryByRole("combobox", { name: "Model" })).toBeNull();
+  });
+});
+
+// w10/056: at 390 px the text box shared one row with Attach, Skills, the
+// model and Send, and was squeezed to 44 px, one placeholder word per line.
+// jsdom has no layout, so these pin the structure that gives it the
+// composer's width (measured in a browser: 356 px at 390, 734 px at 1280):
+// a row of its own above the toolbar, which no longer has to leave it room.
+describe("SteeringComposer layout (w10/056)", () => {
+  beforeEach(() => {
+    capabilitiesState.capabilities.models = {
+      claude: {
+        model: "anthropic/claude-sonnet-5.5",
+        models: ["anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"],
+      },
+    };
+  });
+
+  it("gives the text box a row of its own, above the toolbar", () => {
+    render(<SteeringComposer session={view("completed")} chat={null} />);
+    const input = screen.getByRole("textbox");
+    const toolbar = screen.getByTestId("steering-composer-toolbar");
+    expect(toolbar).not.toContainElement(input);
+    expect(input.nextElementSibling).toBe(toolbar);
+    expect(input).toHaveClass("w-full");
+    const tools = within(toolbar);
+    expect(tools.getByRole("button", { name: "Attach files" })).toBeVisible();
+    expect(tools.getByRole("button", { name: "Skills" })).toBeVisible();
+    expect(tools.getByRole("button", { name: "Send" })).toHaveClass("ml-auto");
+    // The model shows its whole name: its width was capped (120 px on a
+    // phone, 168 px above) only to leave the text box room in the shared row.
+    const model = tools.getByRole("combobox", { name: "Model" });
+    expect(model).toHaveTextContent("claude-sonnet-5.5");
+    expect(model).toHaveClass("w-auto", "min-w-0");
+    expect(model.className).not.toMatch(/max-w-\[/);
+  });
+
+  it("keeps the text box's row when a canceled session shows only Send", () => {
+    render(<SteeringComposer session={view("canceled")} chat={null} />);
+    const toolbar = screen.getByTestId("steering-composer-toolbar");
+    expect(screen.getByRole("textbox").nextElementSibling).toBe(toolbar);
+    expect(within(toolbar).getAllByRole("button")).toHaveLength(1);
+  });
+
+  it("has a pending skeleton with the same rows, type and copy", () => {
+    const { container } = render(<SteeringComposerSkeleton />);
+    const skeleton = within(container);
+    const box = container.querySelector(
+      '[data-skeleton-region="composer-box"]',
+    );
+    const skeletonInput = container.querySelector(
+      '[data-skeleton-region="composer-input"]',
+    );
+    const skeletonToolbar = container.querySelector(
+      '[data-skeleton-region="composer-toolbar"]',
+    );
+    expect(Array.from(box?.children ?? [])).toEqual([
+      skeletonInput,
+      skeletonToolbar,
+    ]);
+
+    render(<SteeringComposer session={view("completed")} chat={null} />);
+    const input = screen.getByRole("textbox");
+    const toolbar = screen.getByTestId("steering-composer-toolbar");
+    // The text row wraps the idle placeholder in the text box's own padding
+    // and type, so it takes as many lines as the ready text box.
+    expect(skeletonInput).toHaveTextContent(
+      input.getAttribute("placeholder") ?? "",
+    );
+    for (const cls of ["px-3", "pt-2.5", "pb-1", "text-base", "md:text-sm"]) {
+      expect(input).toHaveClass(cls);
+      expect(skeletonInput).toHaveClass(cls);
+    }
+    expect(skeletonToolbar?.className).toBe(toolbar.className);
+    // Attach, Skills, the model and Send, which sits at the right.
+    const controls = Array.from(skeletonToolbar?.children ?? []);
+    expect(controls).toHaveLength(4);
+    expect(controls[0]).toHaveClass("size-8");
+    expect(controls[1]).toHaveClass("size-8");
+    expect(controls[2]).toHaveClass("h-8");
+    expect(controls[3]).toHaveClass("ml-auto");
+    expect(controls[3]).toHaveTextContent("Send");
+    // The hint line under the box carries the idle hint the ready one shows.
+    expect(
+      skeleton.getByText(
+        "This session is idle — sending a message continues the conversation in a fresh sandbox on the same branch.",
+      ),
+    ).toHaveAttribute("data-skeleton-region", "composer-hint");
   });
 });

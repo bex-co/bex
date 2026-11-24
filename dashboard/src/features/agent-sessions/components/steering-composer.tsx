@@ -11,6 +11,10 @@ import { Button } from "@/common/components/ui/button";
 import { Textarea } from "@/common/components/ui/textarea";
 import { cn } from "@/common/lib/utils/utils";
 import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
+import {
+  STEERING_COMPOSER_INPUT_CLASS,
+  STEERING_COMPOSER_TOOLBAR_CLASS,
+} from "@/features/agent-sessions/components/steering-composer-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
@@ -253,7 +257,32 @@ export function SteeringComposer({
               onChange={setSkills}
               disabled={pending}
             />
-            <div className="flex items-end gap-2 px-2.5 py-1.5">
+            {/* A row of its own above the toolbar, as in the new-session
+                composer: in the toolbar's row it was squeezed to 44 px at
+                390 px, one placeholder word per line (w10/056).
+                `field-sizing-content` (base Textarea) auto-grows it to fit;
+                the max-height + overflow bound it for a long follow-up. */}
+            <Textarea
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={hardDisabled}
+              placeholder={
+                willQueue
+                  ? t("agentSessions.steerPlaceholderQueue")
+                  : t("agentSessions.steerPlaceholderIdle")
+              }
+              data-testid="steering-composer-input"
+              className={cn(
+                "max-h-[200px] min-h-0 resize-none overflow-y-auto border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent",
+                STEERING_COMPOSER_INPUT_CLASS,
+              )}
+            />
+            <div
+              data-testid="steering-composer-toolbar"
+              className={STEERING_COMPOSER_TOOLBAR_CLASS}
+            >
               {canAttach ? (
                 <AttachButton onFiles={uploads.add} disabled={pending} />
               ) : null}
@@ -265,6 +294,8 @@ export function SteeringComposer({
                   disabled={pending}
                 />
               ) : null}
+              {/* Sized to the model's name; `min-w-0` truncates it only when
+                  the row cannot fit it. */}
               {!hardDisabled ? (
                 <ModelPicker
                   offer={modelOffer}
@@ -272,29 +303,14 @@ export function SteeringComposer({
                   current={sessionModel}
                   onChange={setModel}
                   disabled={pending}
-                  className="w-auto max-w-[7.5rem] sm:max-w-[10.5rem]"
+                  className="w-auto max-w-full min-w-0"
                 />
               ) : null}
-              {/* `field-sizing-content` (base Textarea) auto-grows the input to
-                fit; the max-height + overflow bound it for a long follow-up. */}
-              <Textarea
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                disabled={hardDisabled}
-                placeholder={
-                  willQueue
-                    ? t("agentSessions.steerPlaceholderQueue")
-                    : t("agentSessions.steerPlaceholderIdle")
-                }
-                className="max-h-[200px] min-h-0 resize-none overflow-y-auto border-0 bg-transparent p-0 py-1.5 shadow-none focus-visible:ring-0 dark:bg-transparent"
-              />
               <Button
                 type="submit"
                 size="sm"
                 disabled={submitDisabled}
-                className="shrink-0 rounded-xl"
+                className="ml-auto shrink-0 rounded-xl"
               >
                 {pending ? (
                   <>

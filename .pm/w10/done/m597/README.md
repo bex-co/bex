@@ -65,7 +65,7 @@ The code shipped in `9f5f70e8e0` and `0b80058275`. t006's live check needs produ
   - It offers Open in Zed (`zed://ssh/ags-dc2diopnpn2c73ckv6kg@ssh.bex.co/workspace`), the `ssh` command with Copy, and the hint "A sandbox that closed starts when you connect." There is no Start the sandbox button.
   - At 390 px the menu is 304 px wide inside the viewport, and the page does not scroll sideways. The command is cut with an ellipsis; its full text is in `title` and Copy copies it.
   - The spinner of a `resuming` session was not seen live, because the start settled in 5 s. `open-in-zed.test.tsx` covers it.
-  - Filed from the walk: below 640 px the trigger has no accessible name ([w10/055](../../055.md)), and at 390 px the steering composer's text box is 44 px wide ([w10/056](../../056.md)).
+  - Filed from the walk: below 640 px the trigger has no accessible name ([w10/055](../../055.md)), and at 390 px the steering composer's text box is 44 px wide ([w10/056](../056.md)).
 - **Not provoked live.** DoD 2 (refusals) and DoD 3 (a start that ends without a sandbox) need a second account or a failed start. `wake_test.go` and `ssh_wake_pg_test.go` cover them (t003, t009).
 - **`MintCredential`.** No denied credential mint showed in bex-api or gateway logs around the create or either wake.
 - **Cleanup.** The session was canceled and deleted, and `GET` answers `404 AGENT_SESSION_NOT_FOUND`. The sandbox namespace has no Pod. The QA API key was revoked and the QA sign-in logged out (`ok logged-out`). No SSH key was added or removed, and no OAuth grant or consent session was touched.
