@@ -81,6 +81,10 @@ type Service struct {
 	// default for new Git-built Docker private services (BEX_PRIVATE_IMAGE_PORTS
 	// =off, the w6/m148 rollback switch). Existing rows keep their port mode.
 	PrivateImagePortsDisabled bool
+	// OutboundIPSet is the published egress set (BEX_OUTBOUND_IPS, ADR125
+	// D2) as /32 prefixes: when set, every service's outbound IPs answer it
+	// instead of the tenant nodes' addresses.
+	OutboundIPSet []string
 	// DomainTraffic checks whether a custom domain's traffic DNS points at the
 	// service before any custom host enters App.spec and becomes routable
 	// (ADR005: the traffic record is the verification). nil uses the system

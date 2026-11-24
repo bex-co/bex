@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strconv"
@@ -342,6 +343,7 @@ type Config struct {
 	MaxBlueprintGroupings              int
 	ImageCompatibilityWorkspaces       map[string]bool
 	PrivateImagePortsDisabled          bool
+	OutboundIPs                        []string
 	MaxEnvGroupsPerWorkspace           int
 	MaxGitConnectionsPerWorkspace      int
 	MaxWorkspacesPerGitInstallation    int
@@ -754,6 +756,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.SandboxSnapshotContainer = p.str("BEX_SANDBOX_SNAPSHOT_CONTAINER", sandbox.DefaultSnapshotContainer)
 	cfg.ImageCompatibilityWorkspaces = p.imageCompatibilityWorkspaces("BEX_IMAGE_COMPATIBILITY_WORKSPACES")
 	cfg.PrivateImagePortsDisabled = !p.onOff("BEX_PRIVATE_IMAGE_PORTS", true)
+	cfg.OutboundIPs = p.outboundIPs("BEX_OUTBOUND_IPS")
 	// Round-11 #3, ADR075 §2, codex-security geyRc8 F1 + round 18 quotas.
 	cfg.MaxEnvGroupsPerWorkspace = p.zeroableInt("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
 	cfg.MaxGitConnectionsPerWorkspace = p.zeroableInt("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
@@ -948,6 +951,42 @@ func (p *parser) imageCompatibilityWorkspaces(name string) map[string]bool {
 		}
 		set[v] = true
 	}
+	return set
+}
+
+// outboundIPs — policy "fail": the published egress set (ADR125 D2), the
+// comma-separated public addresses tenant egress leaves from, each written as
+// an address or a single-address prefix and answered as a /32 (/128). Unset ⇒
+// nil, and services' outbound IPs are read from the tenant nodes. A malformed
+// or non-public entry, or a wider prefix, refuses startup: an allowlist built
+// from a wrong answer refuses the customer's own traffic.
+func (p *parser) outboundIPs(name string) []string {
+	var set []string
+	seen := map[string]bool{}
+	for _, v := range strings.Split(p.getenv(name), ",") {
+		if v = strings.TrimSpace(v); v == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(v)
+		if err != nil {
+			addr, addrErr := netip.ParseAddr(v)
+			if addrErr != nil {
+				p.errorf("%s: %q is not an IP address", name, v)
+				continue
+			}
+			prefix = netip.PrefixFrom(addr, addr.BitLen())
+		}
+		addr := prefix.Addr()
+		if !prefix.IsSingleIP() || addr.Zone() != "" || !addr.IsGlobalUnicast() || addr.IsPrivate() {
+			p.errorf("%s: %q is not a single public address", name, v)
+			continue
+		}
+		if cidr := prefix.String(); !seen[cidr] {
+			seen[cidr] = true
+			set = append(set, cidr)
+		}
+	}
+	slices.Sort(set)
 	return set
 }
 

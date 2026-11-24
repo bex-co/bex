@@ -1925,6 +1925,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	deps.MaxBlueprintGroupings = cfg.MaxBlueprintGroupings
 	deps.ImageCompatibilityWorkspaces = cfg.ImageCompatibilityWorkspaces
 	deps.PrivateImagePortsDisabled = cfg.PrivateImagePortsDisabled
+	deps.OutboundIPs = cfg.OutboundIPs
 	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).
 	deps.MaxEnvGroupsPerWorkspace = cfg.MaxEnvGroupsPerWorkspace
 	// ADR075 §2: per-workspace GitHub-connection quota (default 10; 0 disables).

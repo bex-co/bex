@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"slices"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -35,20 +36,24 @@ var tenantNodePoolSelector = client.MatchingLabels{appv1alpha1.LabelNodePool: ap
 
 // OutboundIPs implements Render's retrieve-service-outbound-ips read
 // (GET /v1/services/{id}/outbound-ips → {type, ips, dedicatedIpId?}).
-// Authorization and App resolution happen before the Node list, against the
-// App's own workspace — the same gate as reading the service itself.
+// Authorization and App resolution happen first, against the App's own
+// workspace — the same gate as reading the service itself.
 //
-// The truthful answer is the tenant pool's current ExternalIP set: there is
-// no NAT gateway, so a pod's egress sources from the public IP of whichever
-// pool node it runs on. The set moves WITH the autoscaler as nodes join and
-// leave — exactly how Render warns its own shared regional IPs drift. A
-// cluster whose pool nodes carry no ExternalIP (the local CAPD mock)
-// truthfully reports an empty ips array. Type is always "shared": bex has no
-// dedicated egress IP sets (a recorded non-goal, .pm/DO_NOT_DO.md), so
-// dedicatedIpId is never present.
+// With a published egress set configured (OutboundIPSet, ADR125 D2), tenant
+// egress leaves through the egress gateway from those addresses, so the answer
+// is that fixed set, as Render answers its region's ranges. Without one, a
+// pod's egress is masqueraded to the public IP of whichever tenant pool node it
+// runs on, so the truthful answer is the pool's current ExternalIP set, which
+// changes as nodes join and leave (the divergence ADR018 records). A cluster
+// whose pool nodes carry no ExternalIP (the local CAPD mock) reports an empty
+// ips array. Type is always "shared": bex has no dedicated egress IP sets (a
+// recorded non-goal, .pm/DO_NOT_DO.md), so dedicatedIpId is never present.
 func (s *Service) OutboundIPs(ctx context.Context, name string) (core.OutboundIPs, error) {
 	if _, err := s.AuthorizeApp(ctx, core.RelCanView, name); err != nil {
 		return core.OutboundIPs{}, err
+	}
+	if len(s.OutboundIPSet) > 0 {
+		return core.OutboundIPs{Type: "shared", IPs: slices.Clone(s.OutboundIPSet)}, nil
 	}
 	var nodes corev1.NodeList
 	if err := s.Client.List(ctx, &nodes, tenantNodePoolSelector); err != nil {

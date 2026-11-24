@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -117,6 +118,30 @@ func TestOutboundIPsAuthorizesBeforeObservingNodes(t *testing.T) {
 	}
 	if trap.nodeListCalled {
 		t.Fatal("OutboundIPs observed Nodes before App authorization")
+	}
+}
+
+// With a published egress set (ADR125 D2) every service answers that set,
+// whatever nodes exist, and the node list is never read.
+func TestOutboundIPsAnswersThePublishedSetWithoutReadingNodes(t *testing.T) {
+	app := outboundIPTestApp()
+	node := outboundIPNode("tenant-a", "tenant", externalIP("203.0.113.10"))
+	trap := &nodeListTrapClient{Client: fakeClient(app, node)}
+	set := []string{"198.51.100.7/32", "198.51.100.8/32"}
+	svc := &Service{Base: &core.Base{Client: trap, Namespace: "default"}, OutboundIPSet: set}
+	got, err := svc.OutboundIPs(context.Background(), testServiceID)
+	if err != nil {
+		t.Fatalf("OutboundIPs: %v", err)
+	}
+	if got.Type != "shared" || got.DedicatedIPID != "" || !slices.Equal(got.IPs, set) {
+		t.Fatalf("OutboundIPs = %+v, want type=shared ips=%v", got, set)
+	}
+	if trap.nodeListCalled {
+		t.Fatal("OutboundIPs listed nodes although a published set is configured")
+	}
+	got.IPs[0] = "mutated"
+	if svc.OutboundIPSet[0] != set[0] {
+		t.Fatal("OutboundIPs handed out the configured slice itself")
 	}
 }
 

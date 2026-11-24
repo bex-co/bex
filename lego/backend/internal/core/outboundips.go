@@ -20,11 +20,12 @@ import "context"
 
 // OutboundIPs is Render's outboundIps schema (GET /services/{serviceId}/
 // outbound-ips, operationId retrieve-service-outbound-ips): the addresses a
-// service's outbound traffic originates from. bex runs tenant pods on a
-// shared, autoscaled node pool with no NAT gateway, so Type is always
-// "shared" and IPs is the pool nodes' current ExternalIP set — per-workspace
-// dedicated egress IPs are a recorded non-goal (.pm/DO_NOT_DO.md), so
-// DedicatedIPID is never populated (Render emits it only for type=dedicated).
+// service's outbound traffic originates from. Every tenant service shares one
+// set, so Type is always "shared": the published egress set when one is
+// configured (ADR125), else the tenant pool nodes' current ExternalIPs.
+// Per-workspace dedicated egress IPs are a recorded non-goal
+// (.pm/DO_NOT_DO.md), so DedicatedIPID is never populated (Render emits it
+// only for type=dedicated).
 type OutboundIPs struct {
 	Type          string   `json:"type"`
 	DedicatedIPID string   `json:"dedicatedIpId,omitempty"`

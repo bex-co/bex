@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -594,6 +595,26 @@ func TestLoadConfigPrivateImagePorts(t *testing.T) {
 	for _, bad := range []string{"1", "true", "false", "OFF", "disabled"} {
 		if _, _, err := loadFor(t, map[string]string{"BEX_PRIVATE_IMAGE_PORTS": bad}); err == nil ||
 			!strings.Contains(err.Error(), "BEX_PRIVATE_IMAGE_PORTS") {
+			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
+		}
+	}
+}
+
+// BEX_OUTBOUND_IPS is the published egress set (ADR125 D2): unset reads the
+// tenant nodes, and an entry that is not one public address refuses startup,
+// because an allowlist built from a wrong answer refuses the customer's traffic.
+func TestLoadConfigOutboundIPs(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{})
+	if err != nil || cfg.OutboundIPs != nil {
+		t.Fatalf("unset: OutboundIPs=%v err=%v, want nil", cfg.OutboundIPs, err)
+	}
+	cfg, _, err = loadFor(t, map[string]string{"BEX_OUTBOUND_IPS": " 198.51.100.7/32, 203.0.113.9 ,,203.0.113.9/32"})
+	if err != nil || !slices.Equal(cfg.OutboundIPs, []string{"198.51.100.7/32", "203.0.113.9/32"}) {
+		t.Fatalf("OutboundIPs=%v err=%v, want the sorted, deduplicated /32s", cfg.OutboundIPs, err)
+	}
+	for _, bad := range []string{"203.0.113", "203.0.113.0/24", "10.0.0.5", "192.168.1.1/32", "127.0.0.1", "169.254.169.254", "0.0.0.0", "fe80::1%eth0", "srv-abc"} {
+		if _, _, err := loadFor(t, map[string]string{"BEX_OUTBOUND_IPS": "198.51.100.7," + bad}); err == nil ||
+			!strings.Contains(err.Error(), "BEX_OUTBOUND_IPS") {
 			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
 		}
 	}
