@@ -6,6 +6,8 @@ import {
   HeadersEditor,
   StaticSiteSection,
 } from "@/features/services/components/static-site-section";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 import type {
   ServiceView,
   StaticHeaderView,
@@ -105,6 +107,138 @@ describe("HeadersEditor accessibility", () => {
     expect(
       screen.getByRole("button", { name: "Remove header 1" }),
     ).toBeInTheDocument();
+  });
+});
+
+// w9/143: bex-api decides the edge rules on can_create (w9/m619), so a
+// Contributor or Viewer reads every write control held with the role's reason
+// instead of editing rules that answer 403 on save.
+describe("edge-rule editors follow the role (w9/143)", () => {
+  const route = { type: "redirect", source: "/old", destination: "/new" };
+  const header = { path: "/*", name: "X-QA", value: "on" };
+
+  function renderRoutes() {
+    const onSave = vi.fn(async (rows: StaticRouteView[]) => ({
+      ok: true,
+      saved: rows,
+    }));
+    render(<RoutesEditor routes={[route]} onSave={onSave} busy={false} />);
+    return onSave;
+  }
+  function renderHeaders() {
+    const onSave = vi.fn(async (rows: StaticHeaderView[]) => ({
+      ok: true,
+      saved: rows,
+    }));
+    render(<HeadersEditor headers={[header]} onSave={onSave} busy={false} />);
+    return onSave;
+  }
+  function routeControls() {
+    return [
+      screen.getByRole("button", { name: "Add rule" }),
+      screen.getByRole("combobox", { name: "Rule 1 type" }),
+      screen.getByRole("textbox", { name: "Rule 1 source" }),
+      screen.getByRole("textbox", { name: "Rule 1 destination" }),
+      screen.getByRole("button", { name: "Remove rule 1" }),
+      screen.getByRole("button", { name: "Save routes" }),
+    ];
+  }
+  function headerControls() {
+    return [
+      screen.getByRole("button", { name: "Add header" }),
+      screen.getByRole("textbox", { name: "Header 1 path" }),
+      screen.getByRole("textbox", { name: "Header 1 name" }),
+      screen.getByRole("textbox", { name: "Header 1 value" }),
+      screen.getByRole("button", { name: "Remove header 1" }),
+      screen.getByRole("button", { name: "Save headers" }),
+    ];
+  }
+
+  it("holds every Redirects/Rewrites control for a contributor, with the reason", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    const onSave = renderRoutes();
+    for (const control of routeControls()) expect(control).toBeDisabled();
+    expect(screen.getByText(CREATE_REASON)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add rule" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Rule 1 source" }),
+      "/x",
+    );
+    expect(screen.queryByRole("textbox", { name: "Rule 2 source" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Rule 1 source" })).toHaveValue(
+      "/old",
+    );
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("holds every Headers control for a viewer, with the same reason", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canCreate: false, canOperate: false }),
+    );
+    const user = userEvent.setup();
+    const onSave = renderHeaders();
+    for (const control of headerControls()) expect(control).toBeDisabled();
+    expect(screen.getByText(CREATE_REASON)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove header 1" }));
+    expect(
+      screen.getByRole("textbox", { name: "Header 1 name" }),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("holds the editors while the role is still checking, without claiming one", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ canCreate: false, loaded: false, loading: true }),
+    );
+    renderRoutes();
+    for (const control of routeControls()) expect(control).toBeDisabled();
+    expect(screen.queryByText(CREATE_REASON)).toBeNull();
+  });
+
+  it("leaves both editors unchanged for a developer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    const user = userEvent.setup();
+    const saveRoutes = renderRoutes();
+    const [add, type, source, destination, remove] = routeControls();
+    for (const control of [add, type, source, destination, remove]) {
+      expect(control).toBeEnabled();
+    }
+    expect(screen.queryByText(CREATE_REASON)).toBeNull();
+    await user.type(source, "/*");
+    await user.click(screen.getByRole("button", { name: "Save routes" }));
+    expect(saveRoutes).toHaveBeenCalledWith([{ ...route, source: "/old/*" }]);
+  });
+
+  it("leaves the Headers editor writable for a developer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    const user = userEvent.setup();
+    const saveHeaders = renderHeaders();
+    const controls = headerControls();
+    for (const control of controls.slice(0, 5)) expect(control).toBeEnabled();
+    expect(screen.queryByText(CREATE_REASON)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Add header" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Header 2 name" }),
+      "X-Frame-Options",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Header 2 value" }),
+      "DENY",
+    );
+    await user.click(screen.getByRole("button", { name: "Save headers" }));
+    expect(saveHeaders).toHaveBeenCalledWith([
+      header,
+      { path: "/*", name: "X-Frame-Options", value: "DENY" },
+    ]);
   });
 });
 

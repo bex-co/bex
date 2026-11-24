@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { publishDirectoryError } from "@/features/services/lib/publish-directory";
@@ -222,6 +223,10 @@ export function RoutesEditor({
 }) {
   const { t } = useTranslations();
   const [draft, setDraft] = useSavedRulesDraft(routes);
+  // Render's role table gives a Contributor no "Modify service configuration",
+  // and bex-api decides the rules on can_create (w9/m619): a refused role reads
+  // every control held with the reason instead of a 403 on save (w9/143).
+  const { denied, reason } = useCapabilityGate("canCreate");
   const dirty = JSON.stringify(draft) !== JSON.stringify(routes);
   const save = useAdoptAcceptedRows(draft, setDraft, onSave);
   const errors = draft.map(routeErrors);
@@ -250,10 +255,18 @@ export function RoutesEditor({
             {t("services.routesHint")}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={addRow}>
-          <Plus /> {t("services.routeAdd")}
-        </Button>
+        <PermissionTooltip reason={reason}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={denied}
+            onClick={addRow}
+          >
+            <Plus /> {t("services.routeAdd")}
+          </Button>
+        </PermissionTooltip>
       </div>
+      <RoleReason reason={reason} />
       {draft.length > 0 && (
         // A minimum width keeps every rule field readable on a narrow screen;
         // the table container scrolls horizontally instead of crushing them.
@@ -272,6 +285,7 @@ export function RoutesEditor({
                 <TableCell>
                   <Select
                     value={r.type}
+                    disabled={denied}
                     onValueChange={(v) => update(i, { type: v })}
                   >
                     {/* The <th>s label cells, not the controls inside them, so
@@ -302,6 +316,7 @@ export function RoutesEditor({
                     id={`route-${i}-source`}
                     value={r.source}
                     onChange={(source) => update(i, { source })}
+                    disabled={denied}
                     label={t("services.routeSourceAria", { n: String(i + 1) })}
                     placeholder="/old/*"
                     error={
@@ -314,6 +329,7 @@ export function RoutesEditor({
                     id={`route-${i}-destination`}
                     value={r.destination}
                     onChange={(destination) => update(i, { destination })}
+                    disabled={denied}
                     label={t("services.routeDestinationAria", {
                       n: String(i + 1),
                     })}
@@ -330,6 +346,7 @@ export function RoutesEditor({
                     variant="ghost"
                     size="icon-sm"
                     aria-label={t("services.routeRemove", { n: String(i + 1) })}
+                    disabled={denied}
                     onClick={() => removeRow(i)}
                   >
                     <Trash2 />
@@ -347,12 +364,14 @@ export function RoutesEditor({
           </Button>
         )}
         <SaveBlockedNote blocked={dirty ? blocked : null} />
-        <Button
-          disabled={busy || !dirty || blocked !== null}
-          onClick={() => void save()}
-        >
-          {t("services.routesSave")}
-        </Button>
+        <PermissionTooltip reason={reason}>
+          <Button
+            disabled={denied || busy || !dirty || blocked !== null}
+            onClick={() => void save()}
+          >
+            {t("services.routesSave")}
+          </Button>
+        </PermissionTooltip>
       </div>
     </div>
   );
@@ -360,7 +379,7 @@ export function RoutesEditor({
 
 /** The custom-headers editor: an editable list of {path, name, value} rows with
  *  add/remove, saved as a bulk replace (Render's /headers). Rendered by the
- *  dedicated Headers page (w5/m48/t002). */
+ *  dedicated Headers page (w5/m48/t002), gated like RoutesEditor (w9/143). */
 export function HeadersEditor({
   headers,
   onSave,
@@ -374,6 +393,7 @@ export function HeadersEditor({
 }) {
   const { t } = useTranslations();
   const [draft, setDraft] = useSavedRulesDraft(headers);
+  const { denied, reason } = useCapabilityGate("canCreate");
   const dirty = JSON.stringify(draft) !== JSON.stringify(headers);
   const save = useAdoptAcceptedRows(draft, setDraft, onSave);
   const errors = draft.map(headerErrors);
@@ -401,10 +421,18 @@ export function HeadersEditor({
             {t("services.headersHint")}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={addRow}>
-          <Plus /> {t("services.headerAdd")}
-        </Button>
+        <PermissionTooltip reason={reason}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={denied}
+            onClick={addRow}
+          >
+            <Plus /> {t("services.headerAdd")}
+          </Button>
+        </PermissionTooltip>
       </div>
+      <RoleReason reason={reason} />
       {draft.length > 0 && (
         // A minimum width keeps every rule field readable on a narrow screen;
         // the table container scrolls horizontally instead of crushing them.
@@ -427,6 +455,7 @@ export function HeadersEditor({
                     id={`header-${i}-path`}
                     value={h.path}
                     onChange={(path) => update(i, { path })}
+                    disabled={denied}
                     label={t("services.headerPathAria", { n: String(i + 1) })}
                     placeholder="/*"
                     error={errors[i].path}
@@ -437,6 +466,7 @@ export function HeadersEditor({
                     id={`header-${i}-name`}
                     value={h.name}
                     onChange={(name) => update(i, { name })}
+                    disabled={denied}
                     label={t("services.headerNameAria", { n: String(i + 1) })}
                     placeholder="X-Frame-Options"
                     error={started(h) ? errors[i].name : undefined}
@@ -446,6 +476,7 @@ export function HeadersEditor({
                   <Input
                     value={h.value}
                     onChange={(e) => update(i, { value: e.target.value })}
+                    disabled={denied}
                     aria-label={t("services.headerValueAria", {
                       n: String(i + 1),
                     })}
@@ -460,6 +491,7 @@ export function HeadersEditor({
                     aria-label={t("services.headerRemove", {
                       n: String(i + 1),
                     })}
+                    disabled={denied}
                     onClick={() => removeRow(i)}
                   >
                     <Trash2 />
@@ -477,12 +509,14 @@ export function HeadersEditor({
           </Button>
         )}
         <SaveBlockedNote blocked={dirty ? blocked : null} />
-        <Button
-          disabled={busy || !dirty || blocked !== null}
-          onClick={() => void save()}
-        >
-          {t("services.headersSave")}
-        </Button>
+        <PermissionTooltip reason={reason}>
+          <Button
+            disabled={denied || busy || !dirty || blocked !== null}
+            onClick={() => void save()}
+          >
+            {t("services.headersSave")}
+          </Button>
+        </PermissionTooltip>
       </div>
     </div>
   );
@@ -502,6 +536,12 @@ function rulesBlocked<T>(
   );
   if (bad.length === 0) return null;
   return bad.some(started) ? "invalid" : "empty";
+}
+
+/** The role's sentence under a held editor's header, once there is one. */
+function RoleReason({ reason }: { reason: string | undefined }) {
+  if (!reason) return null;
+  return <p className="text-muted-foreground text-sm">{reason}</p>;
 }
 
 function SaveBlockedNote({ blocked }: { blocked: "invalid" | "empty" | null }) {
@@ -525,6 +565,7 @@ function RuleInput({
   label,
   placeholder,
   error,
+  disabled,
 }: {
   id: string;
   value: string;
@@ -532,6 +573,7 @@ function RuleInput({
   label: string;
   placeholder: string;
   error: keyof typeof en | undefined;
+  disabled: boolean;
 }) {
   const { t } = useTranslations();
   return (
@@ -543,6 +585,7 @@ function RuleInput({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         placeholder={placeholder}
+        disabled={disabled}
         className="font-mono text-xs"
       />
       {error ? (

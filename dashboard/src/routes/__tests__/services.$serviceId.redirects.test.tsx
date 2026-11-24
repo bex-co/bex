@@ -18,6 +18,8 @@ import type {
 } from "@/features/services/types";
 import type { StaticRuleSaveResult } from "@/features/services/hooks/use-static-site";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 
 const serverState: UseServerResult = {
   service: null,
@@ -354,5 +356,46 @@ describe("static rule editors before hydration (w4/m219)", () => {
     expect(
       getAllByRole("textbox", { name: /^Header \d+ value$/ }),
     ).toHaveLength(2);
+  });
+});
+
+// w9/143: the rules are can_create on bex-api (w9/m619), so a Contributor's
+// pages hold every write control with the role's reason instead of a 403 on
+// save; the page cases above run as an Admin and stay writable.
+describe("a Contributor's Redirects/Rewrites and Headers pages (w9/143)", () => {
+  beforeEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+  });
+
+  it("holds every rule control on the Redirects/Rewrites page", async () => {
+    renderPage("redirects");
+    expect(await screen.findByText(CREATE_REASON)).toBeInTheDocument();
+    for (const control of [
+      screen.getByRole("button", { name: "Add rule" }),
+      screen.getByRole("combobox", { name: "Rule 1 type" }),
+      screen.getByRole("textbox", { name: "Rule 1 source" }),
+      screen.getByRole("textbox", { name: "Rule 1 destination" }),
+      screen.getByRole("button", { name: "Remove rule 1" }),
+      screen.getByRole("button", { name: "Save routes" }),
+    ]) {
+      expect(control).toBeDisabled();
+    }
+  });
+
+  it("holds every header control on the Headers page", async () => {
+    renderPage("headers");
+    expect(await screen.findByText(CREATE_REASON)).toBeInTheDocument();
+    for (const control of [
+      screen.getByRole("button", { name: "Add header" }),
+      screen.getByRole("textbox", { name: "Header 1 path" }),
+      screen.getByRole("textbox", { name: "Header 1 name" }),
+      screen.getByRole("textbox", { name: "Header 1 value" }),
+      screen.getByRole("button", { name: "Remove header 1" }),
+      screen.getByRole("button", { name: "Save headers" }),
+    ]) {
+      expect(control).toBeDisabled();
+    }
   });
 });
