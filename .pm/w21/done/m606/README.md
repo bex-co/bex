@@ -1,6 +1,6 @@
 # w21 · m606 — An owner's `pgaudit` survives a restart: CloudNativePG leaves an extension whose library the cluster preloads, from a bex build until upstream releases it
 
-**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** blocked — ``pin must carry `4fdf3e3338` `` (t001–t005, t007 and t008 done; t006 and t009 wait for production)
+**Worker:** worker21 **Goal:** on a bex operand, an owner's `CREATE EXTENSION pgaudit` survives a pod restart, a failover and an in-place instance-manager upgrade, as it does on Render, and no database gets a `pgaudit` it did not ask for. Production runs a CloudNativePG operator built from the pinned upstream tag plus one reviewed patch, and the patch is ready to go upstream. **Status:** done (2026-11-24) — accepted on production: an owner's `pgaudit` survived a primary pod delete and Render's restart, a second new database created its own, and every managed cluster's instance manager moved to the bex build in place
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | [t003](done/t003.md) | `TestApplicationDatabaseExtensionsOnCNPG` covers the restart, CI runs it on kind against the patched image, and it fails on stock 1.30.1 — **DONE** | 1h15m | t002 |
 | [t004](done/t004.md) | Adopt the patched image: `cnpg-operator.yaml`, `gitops-validate.sh`, the qualification pin, mock-cluster and dev-env, ADR092 and ADR018 — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Ready the patch for upstream: an issue text and a PR branch on a `bex-co` fork of `cloudnative-pg`, and an inbox note for the user's DCO sign-off — **DONE** | 30m | t001 |
-| [t006](t006.md) | Production: an owner's `pgaudit` survives a primary restart on a new Free database (disposable), and another new database still creates it | 45m | t004 |
+| [t006](done/t006.md) | Production: an owner's `pgaudit` survives a primary restart on a new Free database (disposable), and another new database still creates it — **DONE** | 45m | t004 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 40m | t006 |
-| [t009](t009.md) | Closeout | 10m | t005, t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t005, t007, t008 |
 
 ## Definition of done
 
@@ -47,9 +47,9 @@
 
 - **The patch (t001, `cce1b285dd`):** `deploy/cnpg-operator/patches/0001-instance-keep-extensions-the-cluster-preloads.patch` on `v1.30.1` (`2a35abb46`, `deploy/cnpg-operator/UPSTREAM`).
 - **The image (t002):** `ghcr.io/bex-co/bex-operator:cnpg-1.30.1-bex.1-07557237b85d3984fdf38665f8310288fb166596@sha256:5f8658442ad6979fb2c9060e3889dd5e54b13f4107d65243c67c79d9f88daa85`, published, signed and verified by `cnpg-operator-image.yml` run 45288684433.
-- **Upstream (t005):** branch `bex-co/cloudnative-pg@bex/keep-preloaded-extensions` (`d7310e91b7`, on upstream `main` `f076d5ba99`); the user's steps are inbox note [w21/123](../123.md).
+- **Upstream (t005):** branch `bex-co/cloudnative-pg@bex/keep-preloaded-extensions` (`d7310e91b7`, on upstream `main` `f076d5ba99`); the user's steps are inbox note [w21/123](../../blocked/123.md).
 - **Adoption and gate (t003, t004, `4fdf3e3338`):** `deploy/gitops/base/cnpg-operator.yaml` pins the build; `gitops-validate.sh`, the mock and every `dev-N` follow it. `cnpg-operator-qualify.yml` runs `TestOwnerPgauditAcrossRestartOnCNPG/PG18` on kind on arm64 and amd64: it passed on the build (run 45293927285) and failed on the release at the restart, `pgaudit` gone (run 45293944381). The full `TestApplicationDatabaseExtensionsOnCNPG` covers the same step but its owner export and restore phase has never passed on a real CloudNativePG (w21/124).
-- **Definition of done so far:** item 4 holds (CI and the release's failure). Item 5 holds (the branch, the note, and ADR092's removal condition). Items 1–3 are production's and wait for the pin.
+- **Definition of done:** item 4 holds (CI and the release's failure). Item 5 holds (the branch, the note, and ADR092's removal condition). Items 1–3 hold on production (2026-11-24, below).
 
 ## Parked (2026-11-23)
 
@@ -59,3 +59,29 @@
   2. No PostgreSQL restart: an in-place update keeps each instance pod and its postgres container (same pod UID, `restartCount`, container `startedAt`), so for every managed cluster `pg_postmaster_start_time()` is earlier than the creation time of the operator's new ReplicaSet, while the cluster's `status.cloudNativePGCommitHash` is `2a35abb46-bex.1` and its pods report the new instance manager. `bex-postgres` and the auth databases are healthy.
   3. In `bex-canary`, a new Free database (disposable) on PG18: as the default user over the external URL, Render's `CREATE EXTENSION pgaudit;`, `\dx`; delete the primary pod and wait for `available`; `pgaudit` is still in `pg_extension`; `DROP EXTENSION pgaudit;` succeeds. A second new database (disposable) answers `CREATE EXTENSION pgaudit;` with success. Delete both (404).
   4. Record it here, in ADR092 § The CloudNativePG build and in ADR018's extensions row, then close with t009.
+
+## Unblocked (2026-11-24)
+
+- **Affected:** w21/m606 t006 and t009. **Source:** verified evidence (the `/loopx w21` orchestrator read production at about 05:40Z, and this worker read it again), not a user decision.
+- **The gate's form was wrong.** ``pin must carry `4fdf3e3338` `` waited for the platform-image pin, but the CloudNativePG operator is not in it. Argo CD syncs `deploy/gitops/base/cnpg-operator.yaml` from `main` (`deploy/gitops/bootstrap/prod.yaml`, `targetRevision: main`), so `4fdf3e3338` (committed 23:37:05Z) reached production when Argo synced it: the operator's new ReplicaSet was created at 23:40:27Z, half an hour before the item was parked at 00:10Z. The pin `f46c44d9ddb1` does not contain `4fdf3e3338` and never had to. A change that only Argo deploys has no self-clearing gate form; its check is the live object, read on production before parking.
+- **Verified:** `cnpg-system/cnpg-operator-cloudnative-pg` runs `ghcr.io/bex-co/bex-operator:cnpg-1.30.1-bex.1-07557237b85d3984fdf38665f8310288fb166596@sha256:5f8658442ad6979fb2c9060e3889dd5e54b13f4107d65243c67c79d9f88daa85` and is Available, and the Argo Application `cnpg-operator` is Synced and Healthy. No gate remains, so t006 ran the same day.
+
+## Result (2026-11-24)
+
+- **Item 3, the adoption:** the operator's log starts with `Starting CloudNativePG Operator`, version `1.30.1`, commit `2a35abb46-bex.1`, at 23:40:31Z.
+  - From 23:40:37Z to 23:40:41Z it logged `Upgrading instance manager` 15 times, once per instance of the 11 clusters then running: two each in the four platform clusters, one each in seven app clusters. Every one went from hash `6d915657…` to `e4bb31f7…`. Each cluster read unhealthy for 4 to 14 s while its manager re-executed, and all were `Cluster in healthy state` again by 23:40:52Z.
+  - It logged no restart, switchover or pod creation until 00:00:58Z, when the bex operator's w21/m584 rollout changed every app cluster's operand image ([m584 t005](../m584/done/t005.md)).
+  - The four platform clusters (`bex-db`, which `bex-postgres.yaml` defines, and the auth databases `hydra-db`, `kratos-db` and `openfga-db`) kept all eight pods. Every postmaster started on 2026-11-12 or 2026-11-14 (`pg_postmaster_start_time()`, unchanged), with 0 container restarts.
+  - The app clusters' postmasters started from 00:04Z to 00:17Z, during m584's operand roll, not the adoption.
+  - At 05:30Z and again at 05:55Z, all nine clusters were `Cluster in healthy state`, with `cloudNativePGCommitHash` `2a35abb46-bex.1`. In every pod, `/controller/manager version` reports `1.30.1` `2a35abb46-bex.1` and its sha256 is `e4bb31f7a78d…`.
+- **Item 2, nothing preinstalled:** at 05:30Z no database had `pgaudit`. That covers all 27 connectable databases in the nine clusters, read as `postgres` on each primary, although every app cluster preloads `pgaudit`.
+- **Item 1, on `qa-m606-pgaudit-a`** (`dpg-dc2i44ha05ic738s5mq0`, Free, PG18, `bex-canary`, (disposable)). It went `creating` → `available` in 89 s, with a publicly trusted certificate (`sslmode=verify-full`, `sslrootcert=system`).
+  - The steps ran as the default user `dpg_dc2i44ha05ic738s5mq0_user` (`rolsuper` f) over the external URL. `pgaudit` count 0, then Render's `CREATE EXTENSION pgaudit;` → `CREATE EXTENSION`, exit 0. `\dx` lists `pgaudit` 18.0, and DDL still works.
+  - The primary pod was deleted at 05:37:38Z. The new pod was created at 05:37:47Z, its postmaster started at 05:37:57Z, and REST read `available` at 05:38:07Z.
+  - `pgaudit` 18.0 was still in `pg_extension` at 05:38:14Z and at 05:42:16Z, 4 min 19 s after the postmaster started. The owner's `DROP EXTENSION pgaudit;` → exit 0, count 0.
+- **Item 2, on `qa-m606-pgaudit-b`** (`dpg-dc2i93pnpn2c73ckvfvg`, Free, PG18, `bex-canary`, (disposable)). It was created after `a` was deleted, because a workspace holds one Free database, as on Render (`this workspace already has a free Postgres database`).
+  - `pgaudit` count 0 before, then `CREATE EXTENSION pgaudit;` → success, with no "already exists".
+  - It survived Render's restart verb: `POST /v1/postgres/{id}/restart` → 202, postmaster started at 05:47:46Z, still there at 05:48:30Z, and the owner's `DROP` succeeded. The `postgres` database had none.
+  - Created again, it survived a second pod delete: postmaster started at 05:49:13Z, still there at 05:51:29Z (2 min 16 s later), and the owner's `DROP` succeeded.
+- **Cleanup:** both databases answer 404 (05:45:43Z and 05:51:42Z), and `bex-canary` lists no Postgres. Both QA API keys named `qa-m606-t006` are revoked (the one used now gets 401), and the QA session is logged out.
+- **Not covered here:** a failover, because a Free database has one instance, and other majors, which t006 leaves out of scope.
