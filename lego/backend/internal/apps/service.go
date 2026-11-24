@@ -1241,10 +1241,10 @@ func view(a *appv1alpha1.App) AppView {
 	// `services create --from` never read values create rejects (w32/103).
 	buildCommand := a.Spec.BuildCommand
 	builder := a.Spec.Builder
-	dockerfilePath := a.Spec.DockerfilePath
+	dockerfilePath := viewDockerfilePath(a.Spec)
 	buildFilter := buildFilterView(a.Spec.BuildFilter)
 	if prebuiltImageSource(a.Spec) {
-		buildCommand, builder, dockerfilePath, buildFilter = "", "", "", nil
+		buildCommand, builder, buildFilter = "", "", nil
 	}
 	return AppView{
 		ID:                        appID,
@@ -5215,9 +5215,12 @@ func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath st
 	if err != nil {
 		return AppView{}, err
 	}
-	dockerfilePath, err = s.checkDockerfilePath(ctx, a, name, dockerfilePath)
+	dockerfilePath, changed, err := s.checkDockerfilePath(ctx, a, name, dockerfilePath)
 	if err != nil {
 		return AppView{}, err
+	}
+	if !changed {
+		return s.view(a), nil
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetDockerfilePath, a, func(a *appv1alpha1.App) {
 		a.Spec.DockerfilePath = dockerfilePath
@@ -5235,9 +5238,12 @@ func (s *Service) SetDockerContext(ctx context.Context, name, dockerContext stri
 	if err != nil {
 		return AppView{}, err
 	}
-	dockerContext, err = s.checkDockerContext(ctx, a, name, dockerContext)
+	dockerContext, changed, err := s.checkDockerContext(ctx, a, name, dockerContext)
 	if err != nil {
 		return AppView{}, err
+	}
+	if !changed {
+		return s.view(a), nil
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetDockerContext, a, func(a *appv1alpha1.App) {
 		a.Spec.DockerContext = storedDockerContext(a.Spec.RootDir, dockerContext)
@@ -5258,9 +5264,12 @@ func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *Build
 	if err != nil {
 		return AppView{}, err
 	}
-	bf, err := checkBuildFilter(a, name, filter)
+	bf, changed, err := checkBuildFilter(a, name, filter)
 	if err != nil {
 		return AppView{}, err
+	}
+	if !changed {
+		return s.view(a), nil
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetBuildFilter, a, func(a *appv1alpha1.App) {
 		a.Spec.BuildFilter = bf
@@ -5308,7 +5317,7 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 		return AppView{}, err
 	}
 	set := func(spec *appv1alpha1.AppSpec) {
-		if buildCommand != nil {
+		if buildCommand != nil && !imageBuildCommandEcho(*spec, buildCommand) {
 			setBuildCommand(spec, *buildCommand)
 		}
 		if startCommand != nil {

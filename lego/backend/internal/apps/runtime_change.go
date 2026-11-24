@@ -68,6 +68,12 @@ func (s *Service) SetRuntime(ctx context.Context, name, runtime string) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
+	// Echoing the read runtime ("image") of a prebuilt-image service changes
+	// nothing: the retained runtime and builder stay for a switch back to Git
+	// (w4/m202, w32/103).
+	if prebuiltImageSource(a.Spec) && runtime == "image" {
+		return s.view(a), nil
+	}
 	dropNativeStart := !patchHasExplicitStart(ctx)
 	return s.recordedPatch(ctx, core.AuditVerbSetRuntime, a, func(a *appv1alpha1.App) {
 		applyRuntimeChange(&a.Spec, runtime, builder, dropNativeStart)

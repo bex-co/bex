@@ -72,8 +72,8 @@ func TestImageToGitSourceSaveReadsDockerRuntime(t *testing.T) {
 	}
 	// A Dockerfile path is a Dockerfile-build setting, which the legacy record is.
 	svc, _ := newService(nil, &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "legacy", Namespace: "default"}, Spec: legacy})
-	if _, err := svc.checkDockerfilePath(ctx, getApp(t, svc.Client, "legacy"), "legacy", "Dockerfile"); err != nil {
-		t.Fatalf("dockerfilePath on the legacy record = %v, want accepted", err)
+	if _, changed, err := svc.checkDockerfilePath(ctx, getApp(t, svc.Client, "legacy"), "legacy", "Dockerfile"); err != nil || !changed {
+		t.Fatalf("dockerfilePath on the legacy record = %v changed=%v, want accepted change", err, changed)
 	}
 	// Controls: a genuine image and an explicit native Git runtime keep theirs.
 	if got := core.EffectiveRuntime(appv1alpha1.AppSpec{Image: "nginx:1", Runtime: "image"}, appv1alpha1.TypeWebService); got != "image" {
