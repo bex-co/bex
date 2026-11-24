@@ -37,27 +37,16 @@ cd "$(dirname "$0")/.."
 printf 'header = "Authorization: Bearer %s"\n' "$BEX_WS_A_OWNER_SECOND_TOKEN" >"$fixture_dir/owner2.curl"
 
 execs="${BEX_MEASURE_RATE_EXECS:-600}"
-exec_parallel="${BEX_MEASURE_RATE_EXEC_PARALLEL:-20}"
+# How many execs the client keeps in flight, as an agent running commands in
+# parallel does. Waves of 20 sent 600 in 88 s on production (run 45408380111:
+# 30 waves of about 2.9 s, every exec answered); 40 in flight fit a minute.
+exec_parallel="${BEX_MEASURE_RATE_EXEC_PARALLEL:-40}"
 # One bucket per bex-api replica, and one more for a rollout's surge pod.
 replicas="${BEX_MEASURE_RATE_REPLICAS:-$(kubectl -n "${BEX_API_NAMESPACE:-bex-system}" get deployment bex-api -o jsonpath='{.spec.replicas}' 2>/dev/null || true)}"
 [[ "$replicas" =~ ^[1-9][0-9]*$ ]] || replicas=1
 buckets=$((replicas + 1))
 creates="${BEX_MEASURE_RATE_CREATES:-$((buckets * 100 + 100))}"
 create_parallel="${BEX_MEASURE_RATE_CREATE_PARALLEL:-30}"
-
-# in_waves <count> <parallel> <function>: call <function> <n> for n = 1..count,
-# <parallel> at a time.
-in_waves() {
-  local count="$1" parallel="$2" fn="$3" n=0 wave
-  while [ "$n" -lt "$count" ]; do
-    for wave in $(seq 1 "$parallel"); do
-      n=$((n + 1))
-      [ "$n" -le "$count" ] || break
-      "$fn" "$n" &
-    done
-    wait
-  done
-}
 
 # rate_limited <status> <body file>: true when the answer is the rate limiter's
 # 429, which carries `id: rate_limited` and no domain code.
@@ -71,7 +60,7 @@ wait_status "$sandbox_id" running 300
 group_id="$(jq -er '.sandboxGroupId' "$fixture_dir/sandbox.json")"
 sandbox_exec "$sandbox_id" true "$fixture_dir/warm.txt" || fail "the first exec in sandbox $sandbox_id did not complete: $(head -c 300 "$fixture_dir/warm.txt.sse" 2>/dev/null)"
 
-echo "==> $execs execs inside a minute, $exec_parallel at a time"
+echo "==> $execs execs inside a minute, $exec_parallel in flight"
 mkdir "$fixture_dir/exec"
 # one_exec <n>: mint and redeem one `true`, and write "<mint status> <redeem
 # status> <limited|ok|failed>" to exec/<n>.result.
@@ -98,7 +87,7 @@ one_exec() {
   printf '%s %s %s\n' "$mint" "$redeem" "$verdict" >"$out.result"
 }
 exec_started="$SECONDS"
-in_waves "$execs" "$exec_parallel" one_exec
+in_flight "$execs" "$exec_parallel" one_exec
 exec_seconds=$((SECONDS - exec_started))
 exec_ok="$(cat "$fixture_dir"/exec/*.result | grep -c ' ok$' || true)"
 exec_limited="$(cat "$fixture_dir"/exec/*.result | grep -c ' limited$' || true)"
@@ -133,7 +122,7 @@ one_create() {
   printf '%s %s %s\n' "$status" "$verdict" "$(($1 % 2))" >"$out.result"
 }
 create_started="$(date +%s.%N)"
-in_waves "$creates" "$create_parallel" one_create
+in_flight "$creates" "$create_parallel" one_create
 create_seconds="$(awk -v a="$create_started" -v b="$(date +%s.%N)" 'BEGIN { printf "%.1f", b - a }')"
 # A create the group admitted after all started a sandbox: end it on exit.
 for created in "$fixture_dir"/create/*.json; do

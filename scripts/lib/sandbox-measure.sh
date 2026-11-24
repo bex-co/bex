@@ -51,6 +51,25 @@ check() {
 # measure <name> <json>: one evidence line.
 measure() { printf 'MEASURE %s %s\n' "$1" "$2"; }
 
+# in_flight <count> <parallel> <function>: call <function> <n> in the background
+# for n = 1..count, starting the next call as soon as one of the <parallel>
+# running ends, then wait for the rest. Waves of <parallel> that each waited for
+# their slowest call held the rate leg's 600 execs to 30 waves in 88 s (run
+# 45408380111). `wait -n` also returns for a leg's other background jobs (a
+# port-forward that exits), which only lets one more call start early.
+in_flight() {
+  local count="$1" parallel="$2" fn="$3" n running=0
+  for n in $(seq 1 "$count"); do
+    if [ "$running" -ge "$parallel" ]; then
+      wait -n || true
+      running=$((running - 1))
+    fi
+    "$fn" "$n" &
+    running=$((running + 1))
+  done
+  wait
+}
+
 measure_cleanup() {
   set +e
   local pid id

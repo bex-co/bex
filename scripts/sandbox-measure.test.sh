@@ -111,5 +111,29 @@ expect "dd's work is the byte count GNU dd prints on SIGUSR1" \
 expect "a dd that printed no count reports no work, so the leg fails by name instead of pricing zero bytes" \
   "$(run 1 "echo \"[\$(load_work syscall <'$tmp/dd-silent.out')]\"" | tr '\n' ' ')" "[] status=0 reads=0 "
 
+# The rate leg's execs (w22/m623 t005). Waves of 20 that each waited for their
+# slowest exec sent 600 in 88 s, every one answered (run 45408380111). Call 1
+# here ends only once call 5 has started, which waves of 2 never allow.
+cat >"$tmp/flight.sh" <<'FLIGHT'
+flight_call() {
+  mkdir "$FLIGHT/run-$1"
+  [ "$(find "$FLIGHT" -maxdepth 1 -name 'run-*' | wc -l)" -le 2 ] || touch "$FLIGHT/over"
+  touch "$FLIGHT/started-$1"
+  if [ "$1" = 1 ]; then
+    for _ in $(seq 1 50); do [ -e "$FLIGHT/started-5" ] && break; sleep 0.1; done
+    if [ -e "$FLIGHT/started-5" ]; then touch "$FLIGHT/one-saw-five"; fi
+  fi
+  rmdir "$FLIGHT/run-$1"
+}
+flight_report() {
+  echo "calls=$(find "$FLIGHT" -name 'started-*' | wc -l | tr -d ' ')" \
+    "one-saw-five=$([ -e "$FLIGHT/one-saw-five" ] && echo yes || echo no)" \
+    "over-two=$([ -e "$FLIGHT/over" ] && echo yes || echo no)"
+}
+FLIGHT
+expect "in_flight starts the next call when one of the running ends, never more than its limit at once" \
+  "$(run 1 "export FLIGHT='$tmp/flight'; mkdir -p \"\$FLIGHT\"; . '$tmp/flight.sh'; in_flight 5 2 flight_call; flight_report" | tr '\n' ' ')" \
+  "calls=5 one-saw-five=yes over-two=no status=0 reads=0 "
+
 [ "$fails" = 0 ] || { echo "$fails case(s) failed"; exit 1; }
 echo "all cases passed"
