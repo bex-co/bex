@@ -18,8 +18,7 @@ limitations under the License.
 // workspace registers a destination URL + an event-type subscription, and bex
 // pushes signed, thin-payload notifications when those transitions happen —
 // Render's /webhooks direction (Render → you), closing bex's inbound-only
-// webhook asymmetry (docs/ADR018-render-parity.md § Platform events &
-// integrations).
+// webhook asymmetry (docs/ADR018/platform-events-integrations.md).
 //
 // # One instrumentation pass (w3/m11/t002)
 //

@@ -20,7 +20,9 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -85,18 +87,34 @@ func TestAllowlistCitesADR018Rows(t *testing.T) {
 	}
 }
 
-// adr018AllowlistRows reads the first cells of the table under ADR018's
-// "Allowlisted response-schema divergences" heading.
+// adr018AllowlistFile holds ADR018's "Allowlisted response-schema
+// divergences" table: the API contract part of the parity ledger, which moved
+// out of docs/ADR018-render-parity.md in w10/m607. backend-test.yml's paths
+// list it, so editing the table runs this suite.
+var adr018AllowlistFile = filepath.Join("..", "..", "..", "..", "docs", "ADR018", "api-contract.md")
+
+// adr018AllowlistRows reads the first cells of ADR018's allowlisted-divergences
+// table from adr018AllowlistFile.
 func adr018AllowlistRows(t *testing.T) map[string]bool {
 	t.Helper()
-	f, err := os.Open(filepath.Join("..", "..", "..", "..", "docs", "ADR018-render-parity.md"))
+	f, err := os.Open(adr018AllowlistFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = f.Close() }()
+	rows, err := allowlistTableRows(f)
+	if err != nil {
+		t.Fatalf("%s: %v", adr018AllowlistFile, err)
+	}
+	return rows
+}
+
+// allowlistTableRows reads the first cells of the table under the
+// "Allowlisted response-schema divergences" heading, up to the next heading.
+func allowlistTableRows(r io.Reader) (map[string]bool, error) {
 	rows := map[string]bool{}
 	inSection := false
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 1<<20), 1<<24)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -111,12 +129,47 @@ func adr018AllowlistRows(t *testing.T) map[string]bool {
 		rows[strings.Trim(cell, "*")] = true
 	}
 	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	if len(rows) == 0 {
-		t.Fatal(`ADR018 has no "Allowlisted response-schema divergences" table`)
+		return nil, errors.New(`no "Allowlisted response-schema divergences" table`)
 	}
-	return rows
+	return rows, nil
+}
+
+// TestAllowlistTableRows: the reader takes the first cells of the table under
+// the allowlisted-divergences heading and of no other table, and refuses a file
+// without it, so a cited row that leaves the table, or a table that leaves
+// adr018AllowlistFile, fails TestAllowlistCitesADR018Rows.
+func TestAllowlistTableRows(t *testing.T) {
+	doc := strings.Join([]string{
+		"## API contract",
+		"| Rate limits (429 + Retry-After) | ✅ |",
+		"### Allowlisted response-schema divergences (w3/m272)",
+		"| Allowlisted divergence | Operations | Record |",
+		"| --- | --- | --- |",
+		"| **Dry-run previews** | create-service | the bex dryRun extension |",
+		"| Partial serviceDetails projection | list-services | fixture gap |",
+		"## Platform events & integrations",
+		"| Outbound event webhooks | ◐ |",
+	}, "\n")
+	rows, err := allowlistTableRows(strings.NewReader(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Dry-run previews", "Partial serviceDetails projection"} {
+		if !rows[want] {
+			t.Errorf("row %q not read", want)
+		}
+	}
+	for _, other := range []string{"Rate limits (429 + Retry-After)", "Outbound event webhooks"} {
+		if rows[other] {
+			t.Errorf("row %q of another table read as an allowlisted divergence", other)
+		}
+	}
+	if _, err := allowlistTableRows(strings.NewReader("## API contract\n| Rate limits | ✅ |\n")); err == nil {
+		t.Error("a file without the allowlisted-divergences table read as one")
+	}
 }
 
 // customDomains is a list-custom-domains body that conforms, with one field

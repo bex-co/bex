@@ -19,7 +19,7 @@ limitations under the License.
 // (Docker Hub, GHCR, GitLab Container Registry, ECR, etc.), so an
 // existing-image service can pull from a non-public, non-Zot source —
 // closing bex's only-public-or-internal-Zot image-source limitation
-// (docs/ADR018-render-parity.md, "Registry credentials").
+// (docs/ADR018/deployment-sources-iac.md, "Registry credentials").
 //
 // A credential's metadata (host, username, expiry, workspace) lives in the
 // control-plane Postgres store (internal/store); the actual secret value

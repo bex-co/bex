@@ -1,14 +1,14 @@
 # w10 · m607 — The Render parity ledger is split into per-surface files under `docs/ADR018/`, with ADR018 as the index, and a soft size guard refuses any markdown file well before the 1 MiB blob limit
 
-**Worker:** worker10 **Goal:** no Render parity ledger file is near the 1 MiB blob limit that `scripts/repo-artifact-guard.sh` enforces in ship-gates and CI, every link into `docs/ADR018-render-parity.md` (path and anchor) still resolves, and a growing markdown file is caught by a soft guard long before the hard refusal, so a parity amendment never again fails a ship or turns `repo artifact guard` red on main. **Status:** todo (t001 done)
+**Worker:** worker10 **Goal:** no Render parity ledger file is near the 1 MiB blob limit that `scripts/repo-artifact-guard.sh` enforces in ship-gates and CI, every link into `docs/ADR018-render-parity.md` (path and anchor) still resolves, and a growing markdown file is caught by a soft guard long before the hard refusal, so a parity amendment never again fails a ship or turns `repo artifact guard` red on main. **Status:** todo (t001, t002, t003 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Headroom now: move Services & lifecycle (217 KB) into `docs/ADR018/services-lifecycle.md`, ADR018 keeping its heading as a pointer — **DONE** | 45m | — |
-| [t002](t002.md) | Split every remaining top-level section (and the preamble's dated paragraphs) into files under `docs/ADR018/`; ADR018 becomes the index | 1h30m | t001 |
-| [t003](t003.md) | Move the code and tooling that read ADR018 with it: the allowlist test, backend-test.yml paths, `ci_test_inputs.py`, `render-schema-drift.sh`, Go comments | 45m | t002 |
+| [t002](done/t002.md) | Split every remaining top-level section (and the preamble's dated paragraphs) into files under `docs/ADR018/`; ADR018 becomes the index — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | Move the code and tooling that read ADR018 with it: the allowlist test, backend-test.yml paths, `ci_test_inputs.py`, `render-schema-drift.sh`, Go comments — **DONE** | 45m | t002 |
 | [t004](t004.md) | Every `ADR018-render-parity.md#…` anchor in use resolves, and the docs link gate checks anchors into the ledger files | 1h | t002 |
 | [t005](t005.md) | Soft size guard: ship-gates and CI refuse a tracked markdown file over a soft limit, with a warning band below it | 1h | t001 |
 | [t006](t006.md) | Pointers: root AGENTS.md, `docs/AGENTS.md`, and the skills that tell agents to amend ADR018 name the ledger files | 30m | t002 |

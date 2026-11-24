@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E for outbound event webhooks (w3/m11, docs/ADR018-render-parity.md
+# E2E for outbound event webhooks (w3/m11, docs/ADR018/platform-events-integrations.md
 # "Outbound event webhooks"). It proves the milestone's Definition of Done live:
 #
 #   1. REGISTER: a workspace registers a webhook URL + event subscription over

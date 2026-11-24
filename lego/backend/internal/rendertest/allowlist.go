@@ -30,8 +30,8 @@ type Divergence struct {
 	// precise (lead with the JSON pointer's tail) so it cannot mask an
 	// unrelated future error in the same operation.
 	Contains string
-	// ADR018 is the exact first cell of the docs/ADR018-render-parity.md
-	// "Allowlisted response-schema divergences" row recording the divergence;
+	// ADR018 is the exact first cell of the "Allowlisted response-schema
+	// divergences" row in docs/ADR018/api-contract.md recording the divergence;
 	// TestAllowlistCitesADR018Rows fails a citation with no such row.
 	ADR018 string
 	// Suite is the test package whose full run reproduces the divergence:

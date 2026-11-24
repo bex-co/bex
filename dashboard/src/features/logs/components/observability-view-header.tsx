@@ -33,7 +33,8 @@ export function ObservabilityViewHeader({
 /**
  * Render's three header buttons. Without handlers they are the pending
  * state's copies; a `reason` disables them and explains why in a
- * keyboard-reachable tooltip (ADR018 § Role-aware dashboard controls).
+ * keyboard-reachable tooltip (docs/ADR018/surface-pins-and-corrections.md, Role-aware dashboard
+ * controls).
  */
 export function ViewActionButtons({
   onEdit,

@@ -534,7 +534,7 @@ func liveLinesEnd(d DeployProgress) time.Time {
 }
 
 // Render's pre-deploy narration (w32/m572, w32/091), from deploy logs users
-// quoted in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs):
+// quoted in GitHub issues (docs/ADR018/logs.md, Build logs):
 // `==> Starting pre-deploy: <command>` a few seconds after the build's own last
 // line, `==> Running '<command>'` when the step's container starts on a
 // native runtime, the command's output, then `==> Pre-deploy complete!`
@@ -646,7 +646,7 @@ func preDeployExitStatus(d DeployProgress) *int32 {
 }
 
 // Render's rollout narration (w32/m560), from deploy logs users quoted in
-// GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): `==>
+// GitHub issues (docs/ADR018/logs.md, Build logs): `==>
 // Deploying...` opens the rollout of every built service, native or Docker
 // (DerekSopok/EMS-Kahoot#3, darthjee/ward#109); the WEB_CONCURRENCY line
 // follows about 0.1 s later; and on a native runtime `==> Running
@@ -776,7 +776,7 @@ func runningLine(command string) string {
 // five times, then gives up with the timeout line about five minutes in; the
 // docs line follows each. The deploy itself runs on to its 15-minute budget.
 // The wording and the count are Render's own, read from deploy logs users
-// quoted in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs).
+// quoted in GitHub issues (docs/ADR018/logs.md, Build logs).
 const (
 	// w32/099: Render's green port-detection pair (kush252/Sentry-AI
 	// investigation_data.jsonl at 13d4e291cc; render.com/tutorials/
@@ -979,7 +979,7 @@ func storyEnd(d DeployProgress, h hookRun) time.Time {
 }
 
 // Render's closing lines for a failed deploy, from deploy logs users quoted
-// in GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): the
+// in GitHub issues (docs/ADR018/logs.md, Build logs): the
 // verdict carries no cause, and the troubleshooting line follows it in the
 // same instant. A deploy that ran out its rollout budget reads `==> Timed Out`
 // since 2026-05 (vincentbellemare90-commits/Mon-bot#1, frayel/devagent#38 and
@@ -996,7 +996,7 @@ const (
 )
 
 // Render's primary URL block (w32/m567), from deploy logs users quoted in
-// GitHub issues (docs/ADR018-render-parity.md § Logs, Build logs): six lines
+// GitHub issues (docs/ADR018/logs.md, Build logs): six lines
 // after a web service's `==> Your service is live 🎉`, a blank marker that
 // keeps its trailing space, a rule of 59 slashes, the URL line between two
 // more blank markers, and the rule again (falcon-Z/z0-auth#12,

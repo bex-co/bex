@@ -147,10 +147,11 @@ else
     echo "${removed_operations:-(none)}" | sed 's/^/  /'
     cat <<MSG
 
-Action: run a drift round (docs/ADR018-render-parity.md, the round paragraphs at
-the top): re-pin the OpenAPI with renderOpenAPISHA256
-(lego/backend/internal/api/render_openapi.go), then mount, refuse by name or
-document every added operation in renderOperationOmissions with an owner.
+Action: run a drift round (recorded newest first in
+docs/ADR018/surface-pins-and-corrections.md): re-pin the OpenAPI with
+renderOpenAPISHA256 (lego/backend/internal/api/render_openapi.go), then mount,
+refuse by name or document every added operation in renderOperationOmissions
+with an owner.
 MSG
   } >&2
   failed=1
@@ -203,9 +204,9 @@ else
       echo "$changed_operations" | sed 's/^/  /'
       cat <<MSG
 
-Action: run a drift round (docs/ADR018-render-parity.md): diff each operation
-above against the pin, decide how bex answers every changed parameter, body or
-response field, then re-pin the OpenAPI with renderOpenAPISHA256
+Action: run a drift round (docs/ADR018/surface-pins-and-corrections.md): diff
+each operation above against the pin, decide how bex answers every changed
+parameter, body or response field, then re-pin the OpenAPI with renderOpenAPISHA256
 (lego/backend/internal/api/render_openapi.go).
 MSG
     } >&2

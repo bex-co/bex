@@ -27,7 +27,7 @@ limitations under the License.
 // they cannot drift apart.
 //
 // A line no capture shows with its codes stays Plain until w32/085's capture
-// shows it (docs/ADR018-render-parity.md § Logs, Build logs).
+// shows it (docs/ADR018/logs.md, Build logs).
 package renderlog
 
 import "strings"

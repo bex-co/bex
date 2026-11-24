@@ -26,8 +26,8 @@
 #
 # Since w4/m18: leg 14 proves the revocation half of the agent-token story — the
 # thing that made "revocable, scoped token" only half true after m16 shipped
-# remembered consent with no way to undo it (docs/ADR018-render-parity.md
-# § bex ahead). Reuses JAR_USER (its live Kratos session cookie is exactly what
+# remembered consent with no way to undo it (docs/ADR018/bex-ahead-of-render.md).
+# Reuses JAR_USER (its live Kratos session cookie is exactly what
 # `/api/connected-agents` reads) and leg 13's still-live access token.
 #
 # Since w7/079: a browser signed in on the dashboard's own login page, which

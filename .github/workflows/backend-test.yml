@@ -24,7 +24,7 @@ on:
       - "deploy/gitops/base/values/grafana.values.yaml"
       - "deploy/gitops/base/values/kratos-email-templates.values.yaml"
       - "deploy/gitops/base/values/traefik.values.yaml"
-      - "docs/ADR018-render-parity.md"
+      - "docs/ADR018/api-contract.md"
       - "docs/ADR101-agent-automations.md"
       - "infra/wasabi/object-storage-read-s3-policy.json"
       - "infra/wasabi/object-storage-s3-policy.json"
@@ -60,7 +60,7 @@ on:
       - "deploy/gitops/base/values/grafana.values.yaml"
       - "deploy/gitops/base/values/kratos-email-templates.values.yaml"
       - "deploy/gitops/base/values/traefik.values.yaml"
-      - "docs/ADR018-render-parity.md"
+      - "docs/ADR018/api-contract.md"
       - "docs/ADR101-agent-automations.md"
       - "infra/wasabi/object-storage-read-s3-policy.json"
       - "infra/wasabi/object-storage-s3-policy.json"
@@ -256,7 +256,8 @@ jobs:
       #  2. Run this job's go test ./... (with the test database).
       #  3. Fix each new response failure. rendertest.Allowlist only shrinks
       #     (TestAllowlistOnlyShrinks); each entry cites a row of ADR018's
-      #     "Allowlisted response-schema divergences" table.
+      #     "Allowlisted response-schema divergences" table
+      #     (docs/ADR018/api-contract.md).
       #  4. A full run fails any allowlist entry no response reproduces any
       #     more (bex now conforms there): remove it and lower allowlistSize.
       # Fill the module cache first, with retries: a single proxy.golang.org

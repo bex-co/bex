@@ -31,7 +31,8 @@ import (
 )
 
 // rest.go mounts Render's owner-scoped audit-logs path
-// (GET /owners/{ownerId}/audit-logs, docs/ADR018-render-parity.md "Audit logs" row) —
+// (GET /owners/{ownerId}/audit-logs, docs/ADR018/identity-workspaces-account.md
+// "Audit logs" row) —
 // NOT a bex-own /v1/audit-events noun (t003's explicit instruction). The wire
 // shape below matches Render's published `auditLog` schema, captured from the
 // public OpenAPI 2026-07-15 (w4/m26 — the schema was unresolvable from public

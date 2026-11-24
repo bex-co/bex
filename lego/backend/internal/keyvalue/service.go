@@ -82,7 +82,7 @@ type Service struct {
 // KeyValueView is the Render-shaped "key-value" object. maxmemoryPolicy /
 // persistenceMode (Render's eviction + persistence settings) are now backed by
 // KeyValue CR fields (w5/011); the object stays a safe superset a Render client
-// can read (docs/ADR018-render-parity.md § Key Value).
+// can read (docs/ADR018/other-datastores-storage.md, Key Value row).
 type KeyValueView struct {
 	ID        string `json:"id"` // the immutable red- id (metadata.name); stable across rename
 	Name      string `json:"name"`

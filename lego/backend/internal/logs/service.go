@@ -157,7 +157,7 @@ var projectDiscoverableLabels = []string{LabelHost, LabelInstance, LabelLevel, L
 // still serves at most maxLogLimit lines with hasMore and cursors, so the
 // viewer keeps paging. Whether Render's server fills such a page past 100 is
 // unverified; serving 100 is w3/m475's recorded recommendation, not a user
-// sign-off (docs/ADR018-render-parity.md, Application logs).
+// sign-off (docs/ADR018/logs.md, Application logs).
 const (
 	defaultLogLimit = 20
 	maxLogLimit     = 100

@@ -17,7 +17,8 @@ import { ViewActionButtons } from "./observability-view-header";
  * view and opens the copy, and the trash button deletes the view after a
  * typed confirmation and lands on the project's first remaining view, or its
  * overview when none is left. A member who may not edit the project sees
- * them disabled with the reason (ADR018 § Role-aware dashboard controls);
+ * them disabled with the reason (docs/ADR018/surface-pins-and-corrections.md, Role-aware
+ * dashboard controls);
  * bex-api refuses them too.
  */
 export function ObservabilityViewActions({

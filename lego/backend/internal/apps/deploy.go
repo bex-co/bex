@@ -370,7 +370,8 @@ type bexEnvGroup struct {
 // bexService is one entry in services:. It accepts Render Blueprint field names
 // (plan, numInstances, type, runtime, domains, staticPublishPath, …).
 // Fields bex does not honor are parsed elsewhere or rejected with a clear error
-// (see docs/ADR018-render-parity.md's Blueprint row for the field-by-field map).
+// (see the "Blueprint / render.yaml IaC" row in
+// docs/ADR018/deployment-sources-iac.md for the field-by-field map).
 type bexService struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`    // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site

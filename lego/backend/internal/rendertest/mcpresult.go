@@ -62,8 +62,8 @@ type MCPResultType struct {
 }
 
 // MCPResultExtensions are the keys bex adds to a Render type on MCP, as REST
-// does: the additive extensions docs/ADR018-render-parity.md § "MCP parity is
-// pinned and measured" records (bex fields with no Render counterpart, each
+// does: the additive extensions docs/ADR018/surface-pins-and-corrections.md
+// § "MCP parity is pinned and measured" records (bex fields with no Render counterpart, each
 // already returned by the REST object the tool shares). A key not here and
 // not in Render's type fails AssertRenderMCPResult; add one only with its
 // ADR018 record.
