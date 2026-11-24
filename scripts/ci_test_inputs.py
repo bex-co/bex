@@ -131,6 +131,7 @@ SUITES = {
         "dashboard/package.json": "written into the self-tests' throwaway repositories",
         "dashboard/src/routes/index.tsx": "a file deploy-superseded.test.sh commits in its throwaway repository",
         "docs/ADR013-secrets.md": "named in bao-init.sh's failure message",
+        "docs/ADR018-render-parity.md": "the ledger whose anchors docs-links-validate.sh checks, which test_loopx_guard.py names in a fixture",
         "docs/ADR018/surface-pins-and-corrections.md": "named in render-schema-drift.sh's drift report",
         "docs/ADR019-infra-credentials.md": "named in the kubeconfig and public-log helpers' messages",
         "docs/ADR049-render-yaml-parity.md": "named in render-schema-drift.sh's drift report",
