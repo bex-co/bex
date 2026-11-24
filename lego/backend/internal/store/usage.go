@@ -44,14 +44,17 @@ const (
 	// before PGStore.SandboxUsageBilledFrom were recorded beside
 	// sandbox_compute_seconds, which already charged for the memory, and are
 	// shown and never billed; from that instant a sandbox billed on use writes
-	// this kind instead of the weighted one, and it is billed (w22/m314).
+	// this kind instead of the weighted one, and it is billed (w22/m314), as
+	// an agent session's does from PGStore.AgentSandboxUsageBilledFrom
+	// (w6/m566).
 	UsageKindSandboxMemoryGBSeconds = "sandbox_memory_gb_seconds"
 	// UsageKindSandboxCPUSeconds is the CPU-seconds a sandbox's pod used while
 	// the sandbox ran, read from Prometheus per running interval: the CPU half
 	// of Render's billing model (w22/m314, ADR104 D8, ADR023 § Sandbox CPU
 	// billed on use). Like the memory kind it is shown and not billed before
-	// PGStore.SandboxUsageBilledFrom, nor for an agent session's sandbox, whose
-	// rows of both kinds are marked unbilled (w6/m566).
+	// PGStore.SandboxUsageBilledFrom, nor for an agent session's sandbox before
+	// PGStore.AgentSandboxUsageBilledFrom, whose rows of both kinds are marked
+	// unbilled until then (w6/m566).
 	UsageKindSandboxCPUSeconds = "sandbox_cpu_seconds"
 	// UsageKindSandboxSnapshotGBSeconds is a suspended sandbox's retained image
 	// in decimal GB multiplied by the seconds it is retained: Render's snapshot
@@ -210,8 +213,9 @@ type UsageSummaryRow struct {
 	ResourceKind string // ResourceKindService / ResourceKindPostgres / ResourceKindKeyValue
 	Total        int64
 	// Unbilled marks sandbox CPU and memory recorded before
-	// PGStore.SandboxUsageBilledFrom, or for an agent session's sandbox
-	// (usage_hourly.unbilled, w6/m566): shown, never charged, because the
+	// PGStore.SandboxUsageBilledFrom, or for an agent session's sandbox before
+	// PGStore.AgentSandboxUsageBilledFrom (usage_hourly.unbilled, w6/m566):
+	// shown, never charged, because the
 	// weighted compute meter billed those hours (w22/m314). Such usage is a
 	// row of its own beside the billed one of the same kind.
 	Unbilled bool

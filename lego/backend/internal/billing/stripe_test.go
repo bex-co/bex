@@ -281,6 +281,7 @@ func TestStripeIngestBatchEmitsMeterEvents(t *testing.T) {
 
 func TestStripeMeterEventMapping(t *testing.T) {
 	sandboxSwitch := pricing.Default.SandboxUsageBilledFrom()
+	agentSwitch := pricing.Default.AgentSandboxUsageBilledFrom()
 	cases := []struct {
 		name              string
 		e                 Event
@@ -311,11 +312,15 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"sandbox memory with no window skipped", Event{EventType: "sandbox_memory_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
 		{"sandbox cpu billed on the weighted meter", Event{EventType: "sandbox_cpu_seconds", Timestamp: sandboxSwitch, Properties: map[string]string{"resource_kind": "sandbox", "value": "600"}}, "sandbox_compute_seconds", "563128.491620111725", false},
 		{"sandbox memory billed on the weighted meter", Event{EventType: "sandbox_memory_gb_seconds", Timestamp: sandboxSwitch.Add(48 * time.Hour), Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "sandbox_compute_seconds", "1069944.134078212383", false},
-		// w6/m566: an agent session's sandbox keeps the weighted charge, and its
-		// CPU and memory, recorded beside it marked unbilled, are never sent,
-		// whatever their hour.
-		{"agent sandbox cpu after the switch skipped", Event{EventType: "sandbox_cpu_seconds", Timestamp: sandboxSwitch.Add(48 * time.Hour), Unbilled: true, Properties: map[string]string{"resource_kind": "sandbox", "value": "600"}}, "", "", true},
-		{"agent sandbox memory after the switch skipped", Event{EventType: "sandbox_memory_gb_seconds", Timestamp: sandboxSwitch.Add(48 * time.Hour), Unbilled: true, Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		// w6/m566: an agent session's sandbox kept the weighted charge until its
+		// own switch, and its CPU and memory before it, recorded beside it
+		// marked unbilled, are never sent, whatever their hour. From it the
+		// meter writes them unmarked, and they ride the weighted meter as any
+		// sandbox's do: the priced amount ÷ sandbox.usdPerWeightedSecond.
+		{"agent sandbox cpu before its switch skipped", Event{EventType: "sandbox_cpu_seconds", Timestamp: agentSwitch.Add(-time.Hour), Unbilled: true, Properties: map[string]string{"resource_kind": "sandbox", "value": "600"}}, "", "", true},
+		{"agent sandbox memory before its switch skipped", Event{EventType: "sandbox_memory_gb_seconds", Timestamp: agentSwitch.Add(-time.Hour), Unbilled: true, Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		{"agent sandbox cpu from its switch billed on the weighted meter", Event{EventType: "sandbox_cpu_seconds", Timestamp: agentSwitch, Properties: map[string]string{"resource_kind": "sandbox", "value": "600"}}, "sandbox_compute_seconds", "563128.491620111725", false},
+		{"agent sandbox memory from its switch billed on the weighted meter", Event{EventType: "sandbox_memory_gb_seconds", Timestamp: agentSwitch, Properties: map[string]string{"resource_kind": "sandbox", "value": "28800"}}, "sandbox_compute_seconds", "4279776.536312849533", false},
 		// ADR112 D8: the object storage meters are shadow meters. They are skipped,
 		// never sent to Stripe under their own names (the default branch would),
 		// whatever the quantity.

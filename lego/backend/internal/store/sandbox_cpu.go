@@ -151,9 +151,10 @@ func (s *PGStore) ClaimSandboxCPUWindows(ctx context.Context, now, readyBefore t
 
 // AccrueSandboxCPUWindow adds the CPU-seconds read for one window to the
 // sandbox's sandbox_cpu_seconds row of the window's hour and advances the
-// interval past it, in one transaction. The row is marked unbilled when the
-// interval's sandbox is not billed on use (an agent session's, w6/m566): the
-// weighted meter charged for that hour. It reports false, adding nothing, when
+// interval past it, in one transaction. The row of an agent session's sandbox
+// is marked unbilled before AgentSandboxUsageBilledFrom, which its weighted
+// meter charged for; from then it is billed and added to its session's total
+// (w6/m566). It reports false, adding nothing, when
 // the interval is no longer at the window's start: another replica read the
 // same window first, so a replay or a race never counts it twice. Zero seconds
 // is a reading too (an idle window); a window with no reading is deferred with
@@ -167,6 +168,13 @@ func (s *PGStore) AccrueSandboxCPUWindow(ctx context.Context, w SandboxCPUWindow
 		return false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// The meter's per-sandbox lock, taken before the interval row as the
+	// cursor's accrual takes it: the agent_session_bind_sandbox trigger seeds a
+	// newly adopted sandbox's session totals under it, so a reading either
+	// lands in that seed or updates the new binding, never neither.
+	if err := lockSandboxMeter(ctx, tx, w.WorkspaceID, w.SandboxID); err != nil {
+		return false, err
+	}
 	var through time.Time
 	var remainder int64
 	var usageBilled bool
@@ -182,10 +190,19 @@ func (s *PGStore) AccrueSandboxCPUWindow(ctx context.Context, w SandboxCPUWindow
 		return false, err
 	}
 	micros := int64(math.Round(cpuSeconds*sandboxCPUMicros)) + remainder
-	chunk := sandboxUsageChunk{window: w.From.UTC().Truncate(time.Hour), quantity: micros / sandboxCPUMicros}
+	window := w.From.UTC().Truncate(time.Hour)
+	chunk := sandboxUsageChunk{window: window, quantity: micros / sandboxCPUMicros, unbilled: s.sandboxUsageUnbilled(usageBilled, window)}
 	if chunk.quantity > 0 {
-		if _, err := addSandboxUsage(ctx, tx, w.WorkspaceID, w.SandboxID, UsageKindSandboxCPUSeconds, w.Tier, !usageBilled, []sandboxUsageChunk{chunk}); err != nil {
+		billed, err := addSandboxUsage(ctx, tx, w.WorkspaceID, w.SandboxID, UsageKindSandboxCPUSeconds, w.Tier, []sandboxUsageChunk{chunk})
+		if err != nil {
 			return false, err
+		}
+		if billed > 0 && !usageBilled {
+			if _, err := tx.Exec(ctx, `
+				UPDATE agent_session_sandboxes SET cpu_seconds = cpu_seconds + $3
+				WHERE workspace_id = $1 AND sandbox_id = $2`, w.WorkspaceID, w.SandboxID, billed); err != nil {
+				return false, err
+			}
 		}
 	}
 	if _, err := tx.Exec(ctx, `

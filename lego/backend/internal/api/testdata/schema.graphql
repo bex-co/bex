@@ -1648,6 +1648,7 @@ input EnvironmentSecretFilePatchInput {
 }
 
 type EstimatedCost {
+  agentSandboxUsageBilledFrom: String
   meters: [MeterEstimate]
   resources: [ResourceEstimate]
   sandboxUsageBilledFrom: String

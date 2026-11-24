@@ -40,8 +40,10 @@ export interface ChargeLine {
   costUsd: string;
   /**
    * Sandbox CPU or memory recorded before
-   * `EstimatedCost.sandboxUsageBilledFrom` (w22/m314): shown at a rate of 0,
-   * because the sandbox compute line charged for those hours.
+   * `EstimatedCost.sandboxUsageBilledFrom` (w22/m314), or for an agent
+   * session's sandbox before `EstimatedCost.agentSandboxUsageBilledFrom`
+   * (w6/m566): shown at a rate of 0, because the sandbox compute line charged
+   * for those hours.
    */
   unbilled?: boolean;
 }
@@ -71,6 +73,12 @@ export interface EstimatedCost {
    * charge (w22/m314). Empty or absent when the period has no sandbox usage.
    */
   sandboxUsageBilledFrom?: string;
+  /**
+   * RFC3339 instant from which an agent session's sandbox is billed the same
+   * way; before it, it kept the weighted sandbox compute charge (w6/m566).
+   * Empty or absent when `sandboxUsageBilledFrom` is.
+   */
+  agentSandboxUsageBilledFrom?: string;
 }
 
 /**
@@ -300,6 +308,8 @@ export function useUsage(
                   totalUsd: raw.estimatedCost.totalUsd ?? "0.00",
                   sandboxUsageBilledFrom:
                     raw.estimatedCost.sandboxUsageBilledFrom ?? "",
+                  agentSandboxUsageBilledFrom:
+                    raw.estimatedCost.agentSandboxUsageBilledFrom ?? "",
                   resources: (raw.estimatedCost.resources ?? [])
                     .filter(Boolean)
                     .map((r) => ({

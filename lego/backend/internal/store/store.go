@@ -905,6 +905,12 @@ type PGStore struct {
 	// billed. An hour boundary; the composition root sets it from the price
 	// sheet. Zero means the switch never happens.
 	SandboxUsageBilledFrom time.Time
+	// AgentSandboxUsageBilledFrom is the same switch for an agent session's
+	// sandbox (w6/m566), which kept the weighted meter until then: from it
+	// the meter stops writing the weighted meter for it and writes its CPU
+	// and memory as billed rows, and attributes them to its session. An hour
+	// boundary, never before SandboxUsageBilledFrom. Zero means never.
+	AgentSandboxUsageBilledFrom time.Time
 	// SandboxCredentialLockTimeout overrides the per-group write lock timeout
 	// for sandbox group credential mutations (default 2s).
 	SandboxCredentialLockTimeout time.Duration

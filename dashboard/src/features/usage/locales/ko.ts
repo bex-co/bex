@@ -666,6 +666,12 @@ const koUsage: Record<string, TranslationEntry> = {
     description:
       "Note under the charge tree of a period with sandbox usage; date is the instant billing switched, formatted in UTC",
   },
+  "usage.agentSandboxUsageBilledFromNote": {
+    message:
+      "에이전트 세션의 샌드박스는 {date} UTC부터 이 방식으로 요금이 청구됩니다. 그 이전 사용량은 샌드박스 컴퓨팅으로 청구됩니다.",
+    description:
+      "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
   "usage.chargeSandboxSnapshotStorage": {
     message: "샌드박스 스냅샷 스토리지",
     description:

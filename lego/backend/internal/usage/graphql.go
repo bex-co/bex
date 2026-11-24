@@ -43,7 +43,8 @@ var usageRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"total": gqlutil.FloatField(func(r store.UsageSummaryRow) any { return r.Total }),
 		// unbilled marks sandbox CPU or memory recorded before
 		// estimatedCost.sandboxUsageBilledFrom, or for an agent session's
-		// sandbox: shown, never charged (w22/m314, w6/m566).
+		// sandbox before estimatedCost.agentSandboxUsageBilledFrom: shown,
+		// never charged (w22/m314, w6/m566).
 		"unbilled": gqlutil.BoolField(func(r store.UsageSummaryRow) any { return r.Unbilled }),
 	},
 })
@@ -83,7 +84,8 @@ var chargeLineGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"costUsd":  gqlutil.StrField(func(c pricing.ChargeLine) any { return c.CostUSD }),
 		// unbilled marks a sandbox CPU or memory line recorded before
 		// EstimatedCost.sandboxUsageBilledFrom, or for an agent session's
-		// sandbox: its rate is 0 (w22/m314, w6/m566).
+		// sandbox before EstimatedCost.agentSandboxUsageBilledFrom: its rate
+		// is 0 (w22/m314, w6/m566).
 		"unbilled": gqlutil.BoolField(func(c pricing.ChargeLine) any { return c.Unbilled }),
 	},
 })
@@ -114,6 +116,10 @@ var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// weighted sandbox compute charge; empty for a period with no sandbox
 		// usage (w22/m314).
 		"sandboxUsageBilledFrom": gqlutil.StrField(func(e pricing.EstimatedCost) any { return e.SandboxUsageBilledFrom }),
+		// agentSandboxUsageBilledFrom is the instant from which an agent
+		// session's sandbox is billed the same way; before it, it kept the
+		// weighted charge. Empty when sandboxUsageBilledFrom is (w6/m566).
+		"agentSandboxUsageBilledFrom": gqlutil.StrField(func(e pricing.EstimatedCost) any { return e.AgentSandboxUsageBilledFrom }),
 	},
 })
 

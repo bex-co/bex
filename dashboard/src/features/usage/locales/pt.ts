@@ -675,6 +675,12 @@ const ptUsage: Record<string, TranslationEntry> = {
     description:
       "Note under the charge tree of a period with sandbox usage; date is the instant billing switched, formatted in UTC",
   },
+  "usage.agentSandboxUsageBilledFromNote": {
+    message:
+      "O sandbox de uma sessão de agente é cobrado assim a partir de {date} UTC; antes disso, seu uso é cobrado como computação de sandbox.",
+    description:
+      "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
   "usage.chargeSandboxSnapshotStorage": {
     message: "Armazenamento de snapshots de sandbox",
     description:

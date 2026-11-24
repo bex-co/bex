@@ -37,8 +37,9 @@ type usageRow struct {
 	Tier  string `json:"tier,omitempty"`
 	Total int64  `json:"total"`
 	// Unbilled marks sandbox CPU or memory recorded before
-	// estimatedCost.sandboxUsageBilledFrom, or for an agent session's sandbox:
-	// shown, never charged (w22/m314, w6/m566).
+	// estimatedCost.sandboxUsageBilledFrom, or for an agent session's sandbox
+	// before estimatedCost.agentSandboxUsageBilledFrom: shown, never charged
+	// (w22/m314, w6/m566).
 	Unbilled bool `json:"unbilled,omitempty"`
 }
 

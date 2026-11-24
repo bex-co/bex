@@ -1098,6 +1098,10 @@ func TestSandboxBilledOnUseAcrossAdapters(t *testing.T) {
 	if got := rest.EstimatedCost.SandboxUsageBilledFrom; got != pricing.Default.SandboxUsageBilledFrom().Format(time.RFC3339) {
 		t.Errorf("REST sandboxUsageBilledFrom = %q, want the price sheet's switch instant", got)
 	}
+	// w6/m566: the agent session's switch is named beside it.
+	if got := rest.EstimatedCost.AgentSandboxUsageBilledFrom; got == "" || got != pricing.Default.AgentSandboxUsageBilledFrom().Format(time.RFC3339) {
+		t.Errorf("REST agentSandboxUsageBilledFrom = %q, want the price sheet's agent switch instant", got)
+	}
 	wantRows := []usageRow{
 		{Kind: store.UsageKindSandboxComputeSeconds, Tier: "1c-2g", Total: 1211 * 3600},
 		{Kind: store.UsageKindSandboxCPUSeconds, Tier: "1c-2g", Total: 600, Unbilled: true},
@@ -1139,13 +1143,14 @@ func TestSandboxBilledOnUseAcrossAdapters(t *testing.T) {
 	}
 	gql := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ usage {
 		services { rows { kind tier total unbilled } }
-		estimatedCost { totalUsd sandboxUsageBilledFrom resources { charges { kind rateUsd costUsd unbilled } } } } }`})
+		estimatedCost { totalUsd sandboxUsageBilledFrom agentSandboxUsageBilledFrom resources { charges { kind rateUsd costUsd unbilled } } } } }`})
 	if len(gql.Errors) > 0 {
 		t.Fatalf("GraphQL errors: %v", gql.Errors)
 	}
 	usageData := gql.Data.(map[string]any)["usage"].(map[string]any)
 	est := usageData["estimatedCost"].(map[string]any)
-	if est["sandboxUsageBilledFrom"] != rest.EstimatedCost.SandboxUsageBilledFrom || est["totalUsd"] != rest.EstimatedCost.TotalUSD {
+	if est["sandboxUsageBilledFrom"] != rest.EstimatedCost.SandboxUsageBilledFrom || est["agentSandboxUsageBilledFrom"] != rest.EstimatedCost.AgentSandboxUsageBilledFrom ||
+		est["totalUsd"] != rest.EstimatedCost.TotalUSD {
 		t.Errorf("GraphQL estimate = %v, want REST's %q and %s", est, rest.EstimatedCost.SandboxUsageBilledFrom, rest.EstimatedCost.TotalUSD)
 	}
 	var gqlLines []line

@@ -80,11 +80,14 @@ func TestAgentSessionComputeAttributionPG(t *testing.T) {
 	}
 	total := func(sessionID string) int64 {
 		t.Helper()
-		n, err := st.AgentSessionComputeMilliSeconds(ctx, sessionID)
+		u, err := st.AgentSessionSandboxUsage(ctx, sessionID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return n
+		if u.CPUSeconds != 0 || u.MemoryGBSeconds != 0 {
+			t.Fatalf("a session with no agent switch attributed used CPU or memory: %+v", u)
+		}
+		return u.ComputeMilliSeconds
 	}
 
 	session := newSession("first")
@@ -150,5 +153,148 @@ func TestAgentSessionComputeAttributionPG(t *testing.T) {
 	}
 	if got := total(session.ID); got != 0 {
 		t.Fatalf("after deleting the session: %d, want 0", got)
+	}
+}
+
+// w6/m566 t004: from AgentSandboxUsageBilledFrom an agent session's sandbox is
+// billed for the CPU it used and the memory it was allocated, and its session
+// is attributed exactly those billed rows: the weighted compute of the hours
+// before the switch, the CPU and memory from it, and none of the CPU and
+// memory marked unbilled before it. The binding seeds all three from what the
+// meters wrote before the session adopted the sandbox, and the totals equal
+// the sums of the sandbox's billed usage_hourly rows of each kind.
+func TestAgentSessionUsageAcrossAgentSwitchPG(t *testing.T) {
+	st, ws := sandboxCPUTestStore(t, "agent-usage-switch")
+	ctx := context.Background()
+	agentFrom := time.Date(2026, 11, 26, 0, 0, 0, 0, time.UTC)
+	st.SandboxUsageBilledFrom = agentFrom.Add(-8 * 24 * time.Hour)
+	st.AgentSandboxUsageBilledFrom = agentFrom
+	session, err := st.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: ws, AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "p",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	observe := func(sandbox, phase string, at time.Time) {
+		t.Helper()
+		if err := st.ObserveSandboxMeter(ctx, SandboxMeterObservation{
+			WorkspaceID: ws, SandboxID: sandbox, Phase: phase, Tier: "agent-4c-8g", WeightMilli: 4845, MemoryMiB: 8192,
+			PodName: sandbox + "-0", ObservedAt: at,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// readCPU reads one sandbox's windows in order, one claim each, as the
+	// meter hands out an interval's next window only.
+	readCPU := func(windows ...float64) {
+		t.Helper()
+		for i, seconds := range windows {
+			w, err := st.ClaimSandboxCPUWindows(ctx, agentFrom.Add(3*time.Hour), agentFrom.Add(3*time.Hour), 100)
+			if err != nil || len(w) != 1 {
+				t.Fatalf("window %d = %+v err=%v, want one", i, w, err)
+			}
+			if ok, err := st.AccrueSandboxCPUWindow(ctx, w[0], seconds); err != nil || !ok {
+				t.Fatal(ok, err)
+			}
+		}
+	}
+	usage := func() AgentSessionSandboxUsage {
+		t.Helper()
+		u, err := st.AgentSessionSandboxUsage(ctx, session.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return u
+	}
+	adopt := func(sandbox string) {
+		t.Helper()
+		if _, err := st.SetAgentSessionLifecycle(ctx, session.ID, sandbox, "running", "running", false); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The first turn's sandbox ran 30 minutes before the switch and 10 after
+	// it before the session row adopted it: the binding starts from the
+	// weighted half hour and the billed 10 minutes of 8 GiB.
+	observe("os-a", "running", agentFrom.Add(-30*time.Minute))
+	observe("os-a", "running", agentFrom.Add(10*time.Minute))
+	adopt("os-a")
+	if got, want := usage(), (AgentSessionSandboxUsage{ComputeMilliSeconds: 4845 * 1800, MemoryGBSeconds: 8 * 600}); got != want {
+		t.Fatalf("after adoption = %+v, want %+v", got, want)
+	}
+	// It runs 20 more minutes and stops; the CPU meter reads 300 CPU-seconds
+	// before the switch (shown, not billed, not the session's) and 450 after.
+	observe("os-a", "suspended", agentFrom.Add(30*time.Minute))
+	readCPU(300, 450)
+	if got, want := usage(), (AgentSessionSandboxUsage{ComputeMilliSeconds: 4845 * 1800, CPUSeconds: 450, MemoryGBSeconds: 8 * 1800}); got != want {
+		t.Fatalf("after the turn = %+v, want %+v", got, want)
+	}
+
+	// The next turn's sandbox runs entirely after the switch, and the CPU
+	// meter reads it before the session adopts it: the seed counts its CPU.
+	observe("os-b", "running", agentFrom.Add(time.Hour))
+	observe("os-b", "suspended", agentFrom.Add(time.Hour+10*time.Minute))
+	readCPU(60.4)
+	adopt("os-b")
+	want := AgentSessionSandboxUsage{ComputeMilliSeconds: 4845 * 1800, CPUSeconds: 450 + 60, MemoryGBSeconds: 8 * (1800 + 600)}
+	if got := usage(); got != want {
+		t.Fatalf("across two turns = %+v, want %+v", got, want)
+	}
+
+	// An hour a binary from before the switch already marked keeps its mark
+	// (a deploy that lands after the switch), and the session is not charged
+	// for what lands in it.
+	if _, err := st.Pool.Exec(ctx, `
+		INSERT INTO usage_hourly (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity, unbilled)
+		VALUES ($1, 'os-c', $2, 'agent-4c-8g', $3, $4, 8, true)`,
+		ws, UsageKindSandboxMemoryGBSeconds, ResourceKindSandbox, agentFrom.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	adopt("os-c")
+	observe("os-c", "running", agentFrom.Add(2*time.Hour+time.Second))
+	observe("os-c", "terminated", agentFrom.Add(2*time.Hour+11*time.Second))
+	if got := usage(); got != want {
+		t.Fatalf("after an hour already marked = %+v, want %+v", got, want)
+	}
+	if _, err := st.Pool.Exec(ctx, `DELETE FROM usage_hourly WHERE service_id = 'os-c'`); err != nil {
+		t.Fatal(err)
+	}
+
+	// The session's totals are its sandboxes' billed rows, to the unit; what
+	// was marked unbilled is the CPU and memory of the half hour before.
+	type line struct {
+		kind     string
+		unbilled bool
+	}
+	rows := map[line]int64{}
+	rs, err := st.Pool.Query(ctx, `
+		SELECT kind, unbilled, SUM(quantity)::bigint FROM usage_hourly
+		WHERE workspace_id = $1 AND service_id IN ('os-a', 'os-b') GROUP BY kind, unbilled`, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rs.Next() {
+		var l line
+		var n int64
+		if err := rs.Scan(&l.kind, &l.unbilled, &n); err != nil {
+			t.Fatal(err)
+		}
+		rows[l] = n
+	}
+	rs.Close()
+	wantRows := map[line]int64{
+		{UsageKindSandboxComputeSeconds, false}:  want.ComputeMilliSeconds,
+		{UsageKindSandboxCPUSeconds, false}:      want.CPUSeconds,
+		{UsageKindSandboxMemoryGBSeconds, false}: want.MemoryGBSeconds,
+		{UsageKindSandboxCPUSeconds, true}:       300,
+		{UsageKindSandboxMemoryGBSeconds, true}:  8 * 1800,
+	}
+	if len(rows) != len(wantRows) {
+		t.Errorf("usage rows = %v, want %v", rows, wantRows)
+	}
+	for k, v := range wantRows {
+		if rows[k] != v {
+			t.Errorf("usage %+v = %d, want %d", k, rows[k], v)
+		}
 	}
 }

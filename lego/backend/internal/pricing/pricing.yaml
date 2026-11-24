@@ -214,13 +214,18 @@ sandboxSnapshot:
 # 2026-11-06, read 2026-11-17); render.com/pricing carries no sandbox prices,
 # so re-read the article before changing these. CPU and memory recorded before
 # billedFrom are shown and never billed, and nothing is re-priced. billedFrom
-# is a UTC hour boundary. An agent session's sandbox keeps the weighted meter
-# (ADR047 D6). Neither kind has a Stripe meter of its own: the catalog is at
+# is a UTC hour boundary. An agent session's sandbox kept the weighted meter
+# (ADR047 D6) until agentBilledFrom, and from it is billed the same way in every
+# workspace (w6/m566, the user's approval of 2026-11-22): its CPU and memory
+# before it are shown and never billed. agentBilledFrom is a UTC hour boundary,
+# not before billedFrom, and after the deploy that carries it. Neither kind has
+# a Stripe meter of its own: the catalog is at
 # Stripe's 20 items per Subscription, so both are exported on the
 # sandbox_compute_seconds meter as the number of weighted units that costs the
 # same (rate ÷ sandbox.usdPerWeightedSecond).
 sandboxUsage:
   billedFrom: "2026-11-18T00:00:00Z"
+  agentBilledFrom: "2026-11-26T00:00:00Z"
   usdPerCPUSecond: 0.000023333333333333333333333333        # $0.084 / 3,600
   usdPerMemoryGBSecond: 0.000003694444444444444444444444   # $0.0133 / 3,600
 

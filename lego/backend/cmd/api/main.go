@@ -401,6 +401,8 @@ func main() {
 		// One instant for every workspace: the sandbox meter writes by it and
 		// the usage reads price by it (w22/m314).
 		st.SandboxUsageBilledFrom = pricing.Default.SandboxUsageBilledFrom()
+		// An agent session's sandbox switches at its own instant (w6/m566).
+		st.AgentSandboxUsageBilledFrom = pricing.Default.AgentSandboxUsageBilledFrom()
 		// ADR088 §4 store-level guards: invite redemption into the pinned ops
 		// workspace skips seat/plan gating, and account-deletion disposition
 		// classifies a sole-member ops workspace blocked instead of delete.

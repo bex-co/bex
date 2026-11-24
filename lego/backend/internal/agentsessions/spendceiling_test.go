@@ -142,12 +142,12 @@ func TestOutcomeCostMatchesTheMeterToTheMicroDollar(t *testing.T) {
 }
 
 type fakeCompute struct {
-	milli map[string]int64
+	usage map[string]store.AgentSessionSandboxUsage
 	err   error
 }
 
-func (f *fakeCompute) AgentSessionComputeMilliSeconds(_ context.Context, sessionID string) (int64, error) {
-	return f.milli[sessionID], f.err
+func (f *fakeCompute) AgentSessionSandboxUsage(_ context.Context, sessionID string) (store.AgentSessionSandboxUsage, error) {
+	return f.usage[sessionID], f.err
 }
 
 // w9/m178 (ADR094 D7): outcome.cost folds the session's attributed sandbox
@@ -159,7 +159,7 @@ func TestOutcomeCostFoldsSandboxComputeIntoOneTotal(t *testing.T) {
 	svc, st, fga, _ := fixture()
 	id := seedSession(st, fga, func(r *store.AgentSession) { r.Phase, r.Turns = PhaseCompleted, 2 })
 	model := &fakeModelCosts{}
-	compute := &fakeCompute{milli: map[string]int64{}}
+	compute := &fakeCompute{usage: map[string]store.AgentSessionSandboxUsage{}}
 	svc.ModelCosts, svc.Compute = model, compute
 	cost := func() *Cost {
 		t.Helper()
@@ -175,14 +175,14 @@ func TestOutcomeCostFoldsSandboxComputeIntoOneTotal(t *testing.T) {
 	}
 
 	// Compute only: one vCPU-hour at the sheet's $0.0895.
-	compute.milli[id] = 3_600_000
+	compute.usage[id] = store.AgentSessionSandboxUsage{ComputeMilliSeconds: 3_600_000}
 	if c := cost(); c == nil || *c != (Cost{ModelUSD: "0.00", ComputeUSD: "0.0895", TotalUSD: "0.0895"}) {
 		t.Fatalf("compute only: cost = %+v", c)
 	}
 
 	// Model plus compute, rounded to the micro-dollar: 40 vCPU-seconds is
 	// $0.000994 (0.00099444…).
-	compute.milli[id] = 40_000
+	compute.usage[id] = store.AgentSessionSandboxUsage{ComputeMilliSeconds: 40_000}
 	model.read = store.AgentSessionModelCost{Turns: []store.AgentTurnModelUsage{{Turn: 1, Requests: 2, PriceMicroUSD: 1_200_500}}}
 	c := cost()
 	if c == nil || *c != (Cost{ModelUSD: "1.2005", ComputeUSD: "0.000994", TotalUSD: "1.201494"}) {
@@ -193,8 +193,17 @@ func TestOutcomeCostFoldsSandboxComputeIntoOneTotal(t *testing.T) {
 		t.Fatalf("wire cost = %s", raw)
 	}
 
+	// w6/m566: from the agent switch its sandboxes bill used CPU and allocated
+	// memory, and the cost prices them at the same rates: a turn that ran 30
+	// minutes of the weighted meter, then an hour of an 8 GiB sandbox using
+	// 900 CPU-seconds, is $0.04475 + $0.021 + $0.1064.
+	compute.usage[id] = store.AgentSessionSandboxUsage{ComputeMilliSeconds: 1_800_000, CPUSeconds: 900, MemoryGBSeconds: 8 * 3600}
+	if c := cost(); c == nil || *c != (Cost{ModelUSD: "1.2005", ComputeUSD: "0.17215", TotalUSD: "1.37265"}) {
+		t.Fatalf("across the agent switch: cost = %+v", c)
+	}
+
 	// Zero compute (an unattributed, pre-migration session) reads "0.00".
-	compute.milli[id] = 0
+	compute.usage[id] = store.AgentSessionSandboxUsage{}
 	if c := cost(); c == nil || c.ComputeUSD != "0.00" || c.TotalUSD != "1.2005" {
 		t.Fatalf("model only: cost = %+v", c)
 	}
@@ -202,7 +211,7 @@ func TestOutcomeCostFoldsSandboxComputeIntoOneTotal(t *testing.T) {
 	// A failed compute read hides the cost rather than report a total that
 	// leaves the compute out while reading as the one number to bill against.
 	compute.err = errors.New("meter offline")
-	compute.milli[id] = 3_600_000
+	compute.usage[id] = store.AgentSessionSandboxUsage{ComputeMilliSeconds: 3_600_000}
 	if c := cost(); c != nil {
 		t.Fatalf("compute read failure: cost = %+v, want none", c)
 	}

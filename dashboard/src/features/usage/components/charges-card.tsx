@@ -63,6 +63,16 @@ import type {
  * provider's cost plus a markup rather than a per-unit rate (ADR091). */
 const isAgentModelCharge = (kind: string) => kind.startsWith("agent_model_");
 
+/**
+ * A billing-switch instant from the API (RFC 3339), or null when it is empty
+ * or unreadable. Formatted in UTC by the caller, so SSR and the client agree.
+ */
+function parseInstant(value: string | undefined): Date | null {
+  if (!value) return null;
+  const at = new Date(value);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
 /** The rate column. A zero rate is "Included" only for plan-priced meters: an
  * agent-model token line is a usage breakdown that ADR091's cost line bills,
  * never a plan allowance, so it shows no rate instead of claiming one. */
@@ -430,13 +440,16 @@ export function ChargesCard({
   // When sandbox billing switched to used CPU plus allocated memory (w22/m314).
   // The period's tree can carry both models, and lines the old one charged for.
   // A fixed instant formatted in UTC, so SSR and the client agree.
-  const sandboxSwitchAt = estimatedCost?.sandboxUsageBilledFrom
-    ? new Date(estimatedCost.sandboxUsageBilledFrom)
+  const sandboxSwitch = parseInstant(estimatedCost?.sandboxUsageBilledFrom);
+  // An agent session's sandbox switched later, at its own instant (w6/m566).
+  const agentSandboxSwitch = sandboxSwitch
+    ? parseInstant(estimatedCost?.agentSandboxUsageBilledFrom)
     : null;
-  const sandboxSwitch =
-    sandboxSwitchAt && !Number.isNaN(sandboxSwitchAt.getTime())
-      ? sandboxSwitchAt
-      : null;
+  const switchDate = new Intl.DateTimeFormat(i18n.language || "en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  });
   const projected =
     !hydrated || !isCurrentMonth
       ? null
@@ -499,12 +512,16 @@ export function ChargesCard({
             {sandboxSwitch && (
               <p className="text-xs text-muted-foreground">
                 {t("usage.sandboxUsageBilledFromNote", {
-                  date: new Intl.DateTimeFormat(i18n.language || "en", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                    timeZone: "UTC",
-                  }).format(sandboxSwitch),
+                  date: switchDate.format(sandboxSwitch),
                 })}
+                {agentSandboxSwitch && (
+                  <>
+                    {" "}
+                    {t("usage.agentSandboxUsageBilledFromNote", {
+                      date: switchDate.format(agentSandboxSwitch),
+                    })}
+                  </>
+                )}
               </p>
             )}
           </>

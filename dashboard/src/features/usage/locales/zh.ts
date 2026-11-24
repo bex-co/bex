@@ -658,6 +658,12 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Note under the charge tree of a period with sandbox usage; date is the instant billing switched, formatted in UTC",
   },
+  "usage.agentSandboxUsageBilledFromNote": {
+    message:
+      "智能体会话的沙箱自 {date} UTC 起按此方式计费；此前其用量按沙箱计算计费。",
+    description:
+      "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
   "usage.chargeSandboxSnapshotStorage": {
     message: "沙箱快照存储",
     description:

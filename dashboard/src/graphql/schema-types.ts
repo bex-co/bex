@@ -1990,6 +1990,7 @@ export type EnvironmentSecretFilePatchInput = {
 
 export type EstimatedCost = {
   __typename: 'EstimatedCost';
+  agentSandboxUsageBilledFrom: Maybe<Scalars['String']['output']>;
   meters: Maybe<Array<Maybe<MeterEstimate>>>;
   resources: Maybe<Array<Maybe<ResourceEstimate>>>;
   sandboxUsageBilledFrom: Maybe<Scalars['String']['output']>;

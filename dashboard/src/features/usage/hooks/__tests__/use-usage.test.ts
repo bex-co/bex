@@ -44,6 +44,7 @@ describe("useUsage", () => {
           estimatedCost: {
             totalUsd: "4.92",
             sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
+            agentSandboxUsageBilledFrom: "2026-11-26T00:00:00Z",
             resources: [
               {
                 serviceId: "srv-cms",
@@ -101,6 +102,8 @@ describe("useUsage", () => {
         totalUsd: "4.92",
         // When sandbox billing switched to use (w22/m314); "" when absent.
         sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
+        // When an agent session's sandbox did (w6/m566).
+        agentSandboxUsageBilledFrom: "2026-11-26T00:00:00Z",
         resources: [
           {
             serviceId: "srv-cms",

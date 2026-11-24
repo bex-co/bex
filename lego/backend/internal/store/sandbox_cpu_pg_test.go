@@ -324,7 +324,8 @@ func TestSandboxCPUWindowsPG(t *testing.T) {
 // w22/m314 t004: billing switches at one instant for every workspace. Before
 // it every sandbox writes the weighted meter (billed) and memory (shown). From
 // it a sandbox billed on use writes memory only, and the reads mark what was
-// recorded before as unbilled. An agent session's sandbox keeps the weighted
+// recorded before as unbilled. An agent session's sandbox, with no switch of
+// its own here (TestAgentSandboxUsageSwitchPG has one), keeps the weighted
 // meter on both sides, and its used CPU and allocated memory are recorded
 // beside it marked unbilled (w6/m566 t001): shown, never priced, exported,
 // settled or compacted, and the weighted charge is what it was.
@@ -504,5 +505,120 @@ func TestSandboxUsageSwitchPG(t *testing.T) {
 	}
 	if after := totals("os-agent"); len(after) != 1 || after[line{UsageKindSandboxComputeSeconds, false}] != 2*1000*3600 {
 		t.Errorf("after compaction the agent sandbox reads %v, want its weighted charge alone", after)
+	}
+}
+
+// w6/m566 t003: an agent session's sandbox switches at its own instant, in
+// every workspace. Its hour before AgentSandboxUsageBilledFrom bills the
+// weighted meter, with its CPU and memory recorded beside it marked unbilled;
+// its hour after bills the CPU it used and the memory it was allocated, with
+// nothing on the weighted meter. Nothing recorded before is re-priced: the
+// reads, the billing outbox and settle-before-delete all see exactly that.
+func TestAgentSandboxUsageSwitchPG(t *testing.T) {
+	s, ws := sandboxCPUTestStore(t, "agent-sandbox-usage-switch")
+	ctx := context.Background()
+	billedFrom := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	agentFrom := billedFrom.Add(2 * time.Hour)
+	s.SandboxUsageBilledFrom, s.AgentSandboxUsageBilledFrom = billedFrom, agentFrom
+	start, end := agentFrom.Add(-time.Hour), agentFrom.Add(time.Hour)
+	for _, o := range []struct {
+		phase string
+		at    time.Time
+	}{{"running", start}, {"running", agentFrom.Add(-20 * time.Minute)}, {"running", agentFrom.Add(15 * time.Minute)}, {"suspended", end}} {
+		if err := s.ObserveSandboxMeter(ctx, SandboxMeterObservation{
+			WorkspaceID: ws, SandboxID: "os-agent", Phase: o.phase, Tier: "1c-2g", WeightMilli: 1000, MemoryMiB: 2048,
+			PodName: "os-agent-0", ObservedAt: o.at,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The used-CPU meter reads 600 CPU-seconds in each hour.
+	for i, at := range []time.Time{start, agentFrom} {
+		w, err := s.ClaimSandboxCPUWindows(ctx, end.Add(time.Hour), end.Add(time.Hour), 100)
+		if err != nil || len(w) != 1 || !w[0].From.Equal(at) {
+			t.Fatalf("window %d = %+v err=%v, want one from %s", i, w, err, at)
+		}
+		if ok, err := s.AccrueSandboxCPUWindow(ctx, w[0], 600); err != nil || !ok {
+			t.Fatal(ok, err)
+		}
+	}
+
+	type line struct {
+		kind     string
+		window   time.Time
+		unbilled bool
+	}
+	want := map[line]int64{
+		{UsageKindSandboxComputeSeconds, start, false}:      1000 * 3600, // the hour before: weighted, billed
+		{UsageKindSandboxCPUSeconds, start, true}:           600,         // beside it: shown
+		{UsageKindSandboxMemoryGBSeconds, start, true}:      2 * 3600,
+		{UsageKindSandboxCPUSeconds, agentFrom, false}:      600, // the hour after: billed on use
+		{UsageKindSandboxMemoryGBSeconds, agentFrom, false}: 2 * 3600,
+	}
+	// The billing outbox hands the export exactly these rows, each with its
+	// mark: the export sends the unmarked ones, CPU and memory as weighted
+	// units, and stamps the marked ones emitted without sending them.
+	pending, err := s.SelectWorkspaceUnemittedUsage(ctx, ws, start.Add(-time.Hour), UsageSeal{Before: end.Add(time.Hour)}, 100, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[line]int64{}
+	for _, r := range pending {
+		got[line{r.Kind, r.WindowStart.UTC(), r.Unbilled}] += r.Quantity
+	}
+	if len(got) != len(want) {
+		t.Errorf("outbox rows = %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("outbox %+v = %d, want %d", k, got[k], v)
+		}
+	}
+
+	// The month's read shows the marked CPU and memory as lines of their own.
+	rows, err := s.UsageMonthToDate(ctx, ws, end.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type total struct {
+		kind     string
+		unbilled bool
+	}
+	read := map[total]int64{}
+	for _, r := range rows {
+		read[total{r.Kind, r.Unbilled}] += r.Total
+	}
+	wantRead := map[total]int64{
+		{UsageKindSandboxComputeSeconds, false}:  1000 * 3600,
+		{UsageKindSandboxCPUSeconds, true}:       600,
+		{UsageKindSandboxMemoryGBSeconds, true}:  2 * 3600,
+		{UsageKindSandboxCPUSeconds, false}:      600,
+		{UsageKindSandboxMemoryGBSeconds, false}: 2 * 3600,
+	}
+	if len(read) != len(wantRead) {
+		t.Errorf("month-to-date = %v, want %v", read, wantRead)
+	}
+	for k, v := range wantRead {
+		if read[k] != v {
+			t.Errorf("month-to-date %+v = %d, want %d", k, read[k], v)
+		}
+	}
+
+	// Settle before delete counts what was exported: the weighted hour before
+	// and the CPU and memory of the hour after.
+	if _, err := s.Pool.Exec(ctx, `UPDATE usage_hourly SET billing_export_state = 'emitted', emitted_at = $2 WHERE workspace_id = $1`, ws, end); err != nil {
+		t.Fatal(err)
+	}
+	exported, err := s.ExportedUsageTotals(ctx, ws, start.Add(-time.Hour), end.Add(time.Hour), end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotExported := map[string]int64{}
+	for _, e := range exported {
+		gotExported[e.Kind] += e.Quantity
+	}
+	if len(gotExported) != 3 || gotExported[UsageKindSandboxComputeSeconds] != 1000*3600 ||
+		gotExported[UsageKindSandboxCPUSeconds] != 600 || gotExported[UsageKindSandboxMemoryGBSeconds] != 2*3600 {
+		t.Errorf("exported totals = %v, want the weighted hour before and the CPU and memory of the hour after", gotExported)
 	}
 }

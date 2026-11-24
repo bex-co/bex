@@ -81,6 +81,10 @@ query Usage($period: String, $ownerId: String) {
       # weighted sandbox compute charge (w22/m314); empty when the period has
       # no sandbox usage.
       sandboxUsageBilledFrom
+      # agentSandboxUsageBilledFrom: the instant from which an agent session's
+      # sandbox is billed the same way; before it, it kept the weighted charge
+      # (w6/m566). Empty when sandboxUsageBilledFrom is.
+      agentSandboxUsageBilledFrom
       # resources is the same total grouped by the resource that incurred it,
       # each with the charge lines behind it (rate x quantity = cost, all in
       # one display unit). This is what the billing page's charge tree renders;

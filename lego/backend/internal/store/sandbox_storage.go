@@ -439,7 +439,7 @@ func accrueSandboxStorageTx(ctx context.Context, tx pgx.Tx, o *SandboxStorageObj
 		return false, nil
 	}
 	chunks, remainder := storageIntervalChunks(*o.Bytes, o.AccruedThrough, seconds, o.remainder)
-	if _, err := addSandboxUsage(ctx, tx, o.WorkspaceID, o.ObjectID, UsageKindSandboxSnapshotGBSeconds, "", false, chunks); err != nil {
+	if _, err := addSandboxUsage(ctx, tx, o.WorkspaceID, o.ObjectID, UsageKindSandboxSnapshotGBSeconds, "", chunks); err != nil {
 		return false, err
 	}
 	o.AccruedThrough = o.AccruedThrough.Add(time.Duration(seconds) * time.Second)

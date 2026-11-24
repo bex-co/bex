@@ -87,18 +87,22 @@ type Sheet struct {
 	sandbox      float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 	// sandboxCPU and sandboxMemory are $/CPU-second used and $/GiB-second
 	// allocated for sandbox_cpu_seconds and sandbox_memory_gb_seconds, billed
-	// from sandboxUsageFrom (w22/m314). sandboxUsageUnits is, per kind, how many
-	// weighted sandbox_compute_seconds units cost what one unit of it does: the
-	// Stripe meter both are exported on.
-	sandboxCPU        float64
-	sandboxMemory     float64
-	sandboxUsageFrom  time.Time
-	sandboxUsageUnits map[string]*big.Rat
+	// from sandboxUsageFrom (w22/m314), and an agent session's sandbox from
+	// agentSandboxUsageFrom (w6/m566). sandboxUsageRates is each rate exact,
+	// and sandboxUsageUnits, per kind, how many weighted
+	// sandbox_compute_seconds units cost what one unit of it does: the Stripe
+	// meter both are exported on.
+	sandboxCPU            float64
+	sandboxMemory         float64
+	sandboxUsageFrom      time.Time
+	agentSandboxUsageFrom time.Time
+	sandboxUsageRates     map[string]*big.Rat
+	sandboxUsageUnits     map[string]*big.Rat
 	// cronMinimumMicroUSD is what a cron job active in a calendar month is
 	// charged at least, in micro-USD (cronJob.minimumUsdPerMonth, w9/m448).
 	cronMinimumMicroUSD int64
 	// sandboxUSD is the same rate, exact, for pricing one session's compute
-	// (SandboxComputeMicroUSD).
+	// (SandboxSessionMicroUSD).
 	sandboxUSD *big.Rat
 	workspace  map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
 	// agentModelMarkup is the platform model route's price multiplier on
@@ -200,18 +204,32 @@ func (s *Sheet) KeyValueCostMicroUSD(tier, seconds string) (string, bool) {
 	return TrimDecimal(n.Mul(n, rate), 6), true
 }
 
-// SandboxComputeMicroUSD prices weighted milli-vCPU seconds of sandbox compute
-// at the sandbox_compute_seconds rate the bill uses, in micro-USD rounded to
-// the nearest unit, the unit an agent session's modelUSD is kept in (w9/m178).
-// The arithmetic is exact rational on the rate float's shortest decimal; an
-// unpriced sheet reads 0.
-func (s *Sheet) SandboxComputeMicroUSD(milliSeconds int64) int64 {
-	if s == nil || s.sandboxUSD == nil || milliSeconds <= 0 {
+// SandboxSessionMicroUSD prices what the sandbox meters attributed to one agent
+// session at the rates the bill uses: weighted milli-vCPU seconds at the
+// sandbox_compute_seconds rate (w9/m178), and used CPU-seconds and allocated
+// GiB-seconds at the sandboxUsage rates (w6/m566). The sum is exact rational
+// on each rate float's shortest decimal, rounded once to the nearest
+// micro-USD, the unit an agent session's modelUSD is kept in, so it is what
+// the session's rows cost to the micro-dollar. An unpriced part reads 0.
+func (s *Sheet) SandboxSessionMicroUSD(u store.AgentSessionSandboxUsage) int64 {
+	if s == nil {
 		return 0
 	}
-	micro := new(big.Rat).Mul(big.NewRat(milliSeconds, 1), s.sandboxUSD)
-	micro.Mul(micro, big.NewRat(1_000_000, 1))
-	n, _ := new(big.Int).SetString(micro.FloatString(0), 10)
+	usd := new(big.Rat)
+	for _, part := range []struct {
+		quantity int64
+		rate     *big.Rat
+	}{
+		{u.ComputeMilliSeconds, s.sandboxUSD},
+		{u.CPUSeconds, s.sandboxUsageRates[store.UsageKindSandboxCPUSeconds]},
+		{u.MemoryGBSeconds, s.sandboxUsageRates[store.UsageKindSandboxMemoryGBSeconds]},
+	} {
+		if part.quantity > 0 && part.rate != nil {
+			usd.Add(usd, new(big.Rat).Mul(big.NewRat(part.quantity, 1), part.rate))
+		}
+	}
+	usd.Mul(usd, big.NewRat(1_000_000, 1))
+	n, _ := new(big.Int).SetString(usd.FloatString(0), 10)
 	return n.Int64()
 }
 
@@ -223,6 +241,17 @@ func (s *Sheet) SandboxUsageBilledFrom() time.Time {
 		return time.Time{}
 	}
 	return s.sandboxUsageFrom
+}
+
+// AgentSandboxUsageBilledFrom is the instant an agent session's sandbox
+// switches from the weighted charge to used CPU plus allocated memory, in
+// every workspace (sandboxUsage.agentBilledFrom, w6/m566); zero when it never
+// does. It is never before SandboxUsageBilledFrom.
+func (s *Sheet) AgentSandboxUsageBilledFrom() time.Time {
+	if s == nil {
+		return time.Time{}
+	}
+	return s.agentSandboxUsageFrom
 }
 
 // SandboxUsageBilledAt reports whether sandbox CPU and memory metered in the
@@ -380,6 +409,11 @@ type EstimatedCost struct {
 	// explains a period that carries both, and the unbilled CPU and memory
 	// lines recorded before it.
 	SandboxUsageBilledFrom string `json:"sandboxUsageBilledFrom,omitempty"`
+	// AgentSandboxUsageBilledFrom is the instant (RFC 3339, UTC) from which an
+	// agent session's sandbox is billed the same way; until then it kept the
+	// weighted charge, and its CPU and memory are unbilled lines (w6/m566).
+	// Present with SandboxUsageBilledFrom when the sheet has the instant.
+	AgentSandboxUsageBilledFrom string `json:"agentSandboxUsageBilledFrom,omitempty"`
 }
 
 // ResourceEstimate is one resource's estimated cost for the period, with the
@@ -428,8 +462,8 @@ type ChargeLine struct {
 	CostUSD string `json:"costUsd"`
 	// Unbilled marks sandbox CPU or memory recorded before
 	// EstimatedCost.SandboxUsageBilledFrom, or for an agent session's sandbox
-	// (w6/m566): shown at a rate of 0, because the sandbox compute line
-	// charged for those hours.
+	// before EstimatedCost.AgentSandboxUsageBilledFrom (w6/m566): shown at a
+	// rate of 0, because the sandbox compute line charged for those hours.
 	Unbilled bool `json:"unbilled,omitempty"`
 }
 
@@ -538,9 +572,12 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 			order = append(order, k)
 		}
 	}
-	billedFrom := ""
+	billedFrom, agentBilledFrom := "", ""
 	if from := s.SandboxUsageBilledFrom(); sandboxUsage && !from.IsZero() {
 		billedFrom = from.UTC().Format(time.RFC3339)
+		if agent := s.AgentSandboxUsageBilledFrom(); !agent.IsZero() {
+			agentBilledFrom = agent.UTC().Format(time.RFC3339)
+		}
 	}
 
 	resources, meterCents, totalCents := s.resourceEstimates(rows, covered)
@@ -567,7 +604,8 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 		Meters:    meters,
 		Resources: resources,
 
-		SandboxUsageBilledFrom: billedFrom,
+		SandboxUsageBilledFrom:      billedFrom,
+		AgentSandboxUsageBilledFrom: agentBilledFrom,
 	}
 }
 
@@ -896,6 +934,7 @@ type sandboxRate struct {
 // allocated-memory rates and the instant they replace the weighted charge.
 type sandboxUsage struct {
 	BilledFrom           string  `json:"billedFrom"`
+	AgentBilledFrom      string  `json:"agentBilledFrom"`
 	USDPerCPUSecond      float64 `json:"usdPerCPUSecond"`
 	USDPerMemoryGBSecond float64 `json:"usdPerMemoryGBSecond"`
 }
@@ -929,6 +968,9 @@ type sheetFile struct {
 // neither kind and never switches. A priced one needs billedFrom on a UTC hour
 // boundary (usage is kept by the hour, so no hour is billed on two models) and
 // the weighted rate, whose Stripe meter both kinds are exported on.
+// agentBilledFrom, when set, is an hour boundary too and not before
+// billedFrom: an agent session's rows from it are billed, and the reads leave
+// every row before billedFrom out of the bill.
 func (s *Sheet) parseSandboxUsage(f sandboxUsage) error {
 	if f == (sandboxUsage{}) {
 		return nil
@@ -937,11 +979,19 @@ func (s *Sheet) parseSandboxUsage(f sandboxUsage) error {
 	if err != nil || !from.Equal(from.Truncate(time.Hour)) {
 		return fmt.Errorf("sandboxUsage.billedFrom %q must be an RFC 3339 instant on an hour boundary", f.BilledFrom)
 	}
+	if f.AgentBilledFrom != "" {
+		agent, err := time.Parse(time.RFC3339, f.AgentBilledFrom)
+		if err != nil || !agent.Equal(agent.Truncate(time.Hour)) || agent.Before(from) {
+			return fmt.Errorf("sandboxUsage.agentBilledFrom %q must be an RFC 3339 instant on an hour boundary, not before billedFrom", f.AgentBilledFrom)
+		}
+		s.agentSandboxUsageFrom = agent.UTC()
+	}
 	if s.sandboxUSD == nil {
 		return fmt.Errorf("sandboxUsage needs sandbox.usdPerWeightedSecond: its Stripe meter carries both kinds")
 	}
 	s.sandboxUsageFrom = from.UTC()
 	s.sandboxCPU, s.sandboxMemory = f.USDPerCPUSecond, f.USDPerMemoryGBSecond
+	s.sandboxUsageRates = map[string]*big.Rat{}
 	s.sandboxUsageUnits = map[string]*big.Rat{}
 	for kind, rate := range map[string]float64{
 		store.UsageKindSandboxCPUSeconds:      f.USDPerCPUSecond,
@@ -951,7 +1001,8 @@ func (s *Sheet) parseSandboxUsage(f sandboxUsage) error {
 			return fmt.Errorf("sandboxUsage rate for %s must be positive, got %v", kind, rate)
 		}
 		r, _ := new(big.Rat).SetString(strconv.FormatFloat(rate, 'f', -1, 64))
-		s.sandboxUsageUnits[kind] = r.Quo(r, s.sandboxUSD)
+		s.sandboxUsageRates[kind] = r
+		s.sandboxUsageUnits[kind] = new(big.Rat).Quo(r, s.sandboxUSD)
 	}
 	return nil
 }

@@ -64,8 +64,9 @@ func (s *Service) fillOutcome(ctx context.Context, record store.AgentSession, ou
 
 // outcomeCost is what the session has cost so far (ADR094 D7, w9/m178): its
 // platform-route model requests, to the micro-dollar from the same events
-// ADR091 bills (ModelCost reads them to the cent), and the sandbox compute the
-// meter attributed to it, priced at the billed rate. Nil when it has neither,
+// ADR091 bills (ModelCost reads them to the cent), and its sandboxes, priced
+// as the bill prices their rows: weighted compute before the agent switch,
+// used CPU and allocated memory from it (w6/m566). Nil when it has neither,
 // or when either read fails: a total missing one part would understate the
 // bill while reading as authoritative.
 func (s *Service) outcomeCost(ctx context.Context, sessionID string) *Cost {
@@ -83,12 +84,12 @@ func (s *Service) outcomeCost(ctx context.Context, sessionID string) *Cost {
 	}
 	var compute int64
 	if s.Compute != nil {
-		milli, err := s.Compute.AgentSessionComputeMilliSeconds(ctx, sessionID)
+		usage, err := s.Compute.AgentSessionSandboxUsage(ctx, sessionID)
 		if err != nil {
 			log.Printf("agent-session outcome: read sandbox compute session=%s: %v", sessionID, err)
 			return nil
 		}
-		compute = s.sheet().SandboxComputeMicroUSD(milli)
+		compute = s.sheet().SandboxSessionMicroUSD(usage)
 	}
 	if requests == 0 && compute == 0 {
 		return nil

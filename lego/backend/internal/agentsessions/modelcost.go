@@ -33,10 +33,11 @@ type ModelCostStore interface {
 	AgentSessionModelUsage(ctx context.Context, sessionID string) (store.AgentSessionModelCost, error)
 }
 
-// ComputeStore reads the weighted milli-vCPU seconds the sandbox compute meter
-// attributed to one session's sandboxes (store, migration 0206).
+// ComputeStore reads what the sandbox meters billed for one session's
+// sandboxes: weighted compute before the agent switch, used CPU and allocated
+// memory from it (store, migrations 0206 and 0345).
 type ComputeStore interface {
-	AgentSessionComputeMilliSeconds(ctx context.Context, sessionID string) (int64, error)
+	AgentSessionSandboxUsage(ctx context.Context, sessionID string) (store.AgentSessionSandboxUsage, error)
 }
 
 // ModelCost is what one session's platform-route model requests cost the

@@ -886,31 +886,41 @@ func TestKeyValueCostMicroUSD(t *testing.T) {
 	}
 }
 
-// SandboxComputeMicroUSD prices a session's attributed compute at the billed
-// sandbox_compute_seconds rate, in micro-USD (w9/m178): one vCPU-hour is the
-// sheet's $0.0895, sub-micro-dollar usage rounds to 0, and an unpriced sheet
-// reads 0 rather than guessing.
-func TestSandboxComputeMicroUSD(t *testing.T) {
+// SandboxSessionMicroUSD prices what the meters attributed to a session at
+// the rates the bill uses, in micro-USD (w9/m178, w6/m566): one weighted
+// vCPU-hour is the sheet's $0.0895, an hour of 8 GiB is $0.1064 and a used
+// CPU-hour $0.084; the parts are summed exactly and rounded once, sub-micro-
+// dollar usage rounds to 0, and an unpriced sheet reads 0 rather than
+// guessing.
+func TestSandboxSessionMicroUSD(t *testing.T) {
 	for _, tc := range []struct {
-		milliSeconds int64
-		want         int64
+		usage store.AgentSessionSandboxUsage
+		want  int64
 	}{
-		{0, 0},
-		{-5, 0},
-		{1, 0},                      // $0.0000000249: below a micro-dollar
-		{40_000, 994},               // 40 seconds of a 1-vCPU sandbox
-		{3_600_000, 89_500},         // one vCPU-hour
-		{1_000_000_000, 24_861_111}, // rounded to the nearest micro-dollar
+		{store.AgentSessionSandboxUsage{}, 0},
+		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: -5, CPUSeconds: -1, MemoryGBSeconds: -1}, 0},
+		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: 1}, 0},                      // $0.0000000249: below a micro-dollar
+		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: 40_000}, 994},               // 40 seconds of a 1-vCPU sandbox
+		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: 3_600_000}, 89_500},         // one vCPU-hour
+		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: 1_000_000_000}, 24_861_111}, // rounded to the nearest micro-dollar
+		{store.AgentSessionSandboxUsage{CPUSeconds: 3600}, 84_000},                       // a used CPU-hour
+		{store.AgentSessionSandboxUsage{MemoryGBSeconds: 8 * 3600}, 106_400},             // an idle hour of agent-4c-8g
+		{store.AgentSessionSandboxUsage{CPUSeconds: 1}, 23},                              // $0.0000233…
+		{store.AgentSessionSandboxUsage{MemoryGBSeconds: 1}, 4},                          // $0.0000036944…
+		// Summed before rounding: a CPU-second alone is 23 (23.33…) and two
+		// GiB-seconds 7 (7.38…), but together 31 (30.72…).
+		{store.AgentSessionSandboxUsage{CPUSeconds: 1, MemoryGBSeconds: 2}, 31},
+		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: 1_800_000, CPUSeconds: 900, MemoryGBSeconds: 8 * 3600}, 172_150},
 	} {
-		if got := Default.SandboxComputeMicroUSD(tc.milliSeconds); got != tc.want {
-			t.Errorf("SandboxComputeMicroUSD(%d) = %d, want %d", tc.milliSeconds, got, tc.want)
+		if got := Default.SandboxSessionMicroUSD(tc.usage); got != tc.want {
+			t.Errorf("SandboxSessionMicroUSD(%+v) = %d, want %d", tc.usage, got, tc.want)
 		}
 	}
 	var unpriced *Sheet
-	if got := unpriced.SandboxComputeMicroUSD(3_600_000); got != 0 {
+	if got := unpriced.SandboxSessionMicroUSD(store.AgentSessionSandboxUsage{ComputeMilliSeconds: 3_600_000, CPUSeconds: 1}); got != 0 {
 		t.Errorf("nil sheet = %d, want 0", got)
 	}
-	if got := (&Sheet{}).SandboxComputeMicroUSD(3_600_000); got != 0 {
+	if got := (&Sheet{}).SandboxSessionMicroUSD(store.AgentSessionSandboxUsage{ComputeMilliSeconds: 3_600_000, MemoryGBSeconds: 1}); got != 0 {
 		t.Errorf("unpriced sheet = %d, want 0", got)
 	}
 }
@@ -944,14 +954,14 @@ func TestEstimateSandboxBilledOnUse(t *testing.T) {
 	if est.TotalUSD != "0.04" || est.Resources[0].CostUSD != "0.04" {
 		t.Errorf("total = %s / %s, want 0.04 (0.014 + 0.0266)", est.TotalUSD, est.Resources[0].CostUSD)
 	}
-	if est.SandboxUsageBilledFrom != "2026-11-18T00:00:00Z" {
-		t.Errorf("SandboxUsageBilledFrom = %q, want the dated switch", est.SandboxUsageBilledFrom)
+	if est.SandboxUsageBilledFrom != "2026-11-18T00:00:00Z" || est.AgentSandboxUsageBilledFrom != "2026-11-26T00:00:00Z" {
+		t.Errorf("SandboxUsageBilledFrom = %q, AgentSandboxUsageBilledFrom = %q, want the dated switches", est.SandboxUsageBilledFrom, est.AgentSandboxUsageBilledFrom)
 	}
 	// The same rates never price another resource kind's rows.
 	other := Default.Estimate([]store.UsageSummaryRow{
 		{ServiceID: "srv-1", Kind: store.UsageKindSandboxCPUSeconds, ResourceKind: store.ResourceKindService, Total: 3600 * 1000},
 	})
-	if other.TotalUSD != "0.00" || other.SandboxUsageBilledFrom != "" {
+	if other.TotalUSD != "0.00" || other.SandboxUsageBilledFrom != "" || other.AgentSandboxUsageBilledFrom != "" {
 		t.Errorf("a non-sandbox resource was priced for sandbox CPU: %+v", other)
 	}
 	// An idle running hour: about no CPU, the memory in full.
@@ -1031,6 +1041,10 @@ func TestSandboxUsageSwitchInstant(t *testing.T) {
 	if Default.SandboxUsageBilledAt(from.Add(-time.Hour)) || !Default.SandboxUsageBilledAt(from) || !Default.SandboxUsageBilledAt(from.Add(time.Hour)) {
 		t.Error("an hour is billed on use exactly when it starts at or after the switch")
 	}
+	// w6/m566: an agent session's sandbox switches at its own instant, later.
+	if agent, want := Default.AgentSandboxUsageBilledFrom(), time.Date(2026, 11, 26, 0, 0, 0, 0, time.UTC); !agent.Equal(want) {
+		t.Fatalf("AgentSandboxUsageBilledFrom = %s, want %s", agent, want)
+	}
 	sheet := string(sheetYAML)
 	edit := func(old, new string) string {
 		t.Helper()
@@ -1040,11 +1054,15 @@ func TestSandboxUsageSwitchInstant(t *testing.T) {
 		return strings.Replace(sheet, old, new, 1)
 	}
 	const instant = `billedFrom: "2026-11-18T00:00:00Z"`
+	const agentInstant = `agentBilledFrom: "2026-11-26T00:00:00Z"`
 	for name, raw := range map[string]string{
-		"not on the hour": edit(instant, `billedFrom: "2026-11-18T00:30:00Z"`),
-		"no instant":      edit(instant, ""),
-		"a free kind":     edit("usdPerCPUSecond: 0.000023333333333333333333333333", "usdPerCPUSecond: 0"),
-		"no weighted":     edit("usdPerWeightedSecond: 0.000000024861111111111111111111", "usdPerWeightedSecond: 0"),
+		"not on the hour":               edit(instant, `billedFrom: "2026-11-18T00:30:00Z"`),
+		"no instant":                    edit(instant, ""),
+		"agent switch not on the hour":  edit(agentInstant, `agentBilledFrom: "2026-11-26T00:00:01Z"`),
+		"agent switch before the first": edit(agentInstant, `agentBilledFrom: "2026-11-17T23:00:00Z"`),
+		"agent switch not an instant":   edit(agentInstant, `agentBilledFrom: "2026-11-26"`),
+		"a free kind":                   edit("usdPerCPUSecond: 0.000023333333333333333333333333", "usdPerCPUSecond: 0"),
+		"no weighted":                   edit("usdPerWeightedSecond: 0.000000024861111111111111111111", "usdPerWeightedSecond: 0"),
 	} {
 		if _, err := parseSheet([]byte(raw)); err == nil || !strings.Contains(err.Error(), "sandboxUsage") {
 			t.Errorf("%s: err = %v, want the sandboxUsage section refused", name, err)
@@ -1061,8 +1079,19 @@ func TestSandboxUsageSwitchInstant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !plain.SandboxUsageBilledFrom().IsZero() || plain.SandboxUsageBilledAt(time.Now()) ||
+	if !plain.SandboxUsageBilledFrom().IsZero() || plain.SandboxUsageBilledAt(time.Now()) || !plain.AgentSandboxUsageBilledFrom().IsZero() ||
 		plain.rateFor(store.UsageKindSandboxCPUSeconds, "", store.ResourceKindSandbox) != 0 {
 		t.Error("a sheet without sandboxUsage switched or priced sandbox CPU")
+	}
+	// Without agentBilledFrom an agent session's sandbox never switches.
+	noAgent, err := parseSheet([]byte(edit(agentInstant, "")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !noAgent.AgentSandboxUsageBilledFrom().IsZero() || !noAgent.SandboxUsageBilledFrom().Equal(from) {
+		t.Error("a sheet without agentBilledFrom switched an agent session's sandbox")
+	}
+	if est := noAgent.Estimate([]store.UsageSummaryRow{{ServiceID: "sbx-1", Kind: store.UsageKindSandboxCPUSeconds, ResourceKind: store.ResourceKindSandbox, Total: 1}}); est.AgentSandboxUsageBilledFrom != "" {
+		t.Errorf("estimate names an agent switch the sheet does not have: %q", est.AgentSandboxUsageBilledFrom)
 	}
 }

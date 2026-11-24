@@ -219,6 +219,9 @@ The input is `{ ids: [ags-…] (1–20), until: "any" | "all" (default "all"), t
 **As built (w9/m178, 2026-11-06; user decision 2026-11-06).** `outcome.cost` is `{modelUSD, computeUSD, totalUSD}`. Like Devin's single per-session consumption figure, `totalUSD` is the one number to compare with the bill, and the parts say where it went. No raw `sandboxSeconds` is exposed.
 
 - `computeUSD` is the sandbox compute the meter attributed to the session's sandboxes, priced at the billed `sandbox_compute_seconds` rate (`pricing.yaml` `sandbox.usdPerWeightedSecond`, exact rational, rounded to the micro-dollar).
+  - _Amended 2026-11-24 (w6/m566): it follows the bill across the agent switch._ From `sandboxUsage.agentBilledFrom` (2026-11-26T00:00:00Z) a session's sandbox is billed for used CPU and allocated memory instead (ADR030 §17). `computeUSD` is then the weighted compute of the hours before that instant, plus the CPU-seconds and GiB-seconds billed from it, each at its billed rate. The sum is exact and rounded once to the micro-dollar, so it equals what the session's rows cost.
+  - Migration 0345 adds the two running totals beside `compute_milli_seconds`.
+  - The `maxSpendUSD` ceiling (D8) is unchanged: it bounds the session's model spend only, and never counted sandbox compute.
 - `totalUSD` is `modelUSD + computeUSD`.
 - All three are micro-dollar decimal strings in the same format, so `"0.00"` is a zero part. The cost is absent when the session has neither a priced model request nor attributed compute, or when a read fails (below).
 

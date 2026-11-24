@@ -729,6 +729,59 @@ describe("ChargesCard", () => {
     expect(screen.queryByText(/a running sandbox is billed/)).toBeNull();
   });
 
+  // w6/m566: an agent session's sandbox switches at its own, later instant,
+  // and the note names it beside the first. Without it the note keeps one
+  // sentence.
+  it("names the instant an agent session's sandbox is billed on use", () => {
+    const sandbox = resource({
+      resourceKind: "sandbox",
+      costUsd: "0.11",
+      charges: [
+        {
+          kind: "sandbox_memory_gb_seconds",
+          tier: "agent-4c-8g",
+          unit: "GiB-hr",
+          rateUsd: "0.0133",
+          quantity: "8.00",
+          costUsd: "0.11",
+        },
+      ],
+    });
+    const { rerender } = render(
+      <ChargesCard
+        estimatedCost={{
+          ...estimate([sandbox]),
+          sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
+          agentSandboxUsageBilledFrom: "2026-11-26T00:00:00Z",
+        }}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Since Nov 18, 2026, 12:00 AM UTC, a running sandbox is billed for the CPU it uses and the memory it is allocated. Sandbox usage before then was billed as sandbox compute. An agent session's sandbox is billed this way from Nov 26, 2026, 12:00 AM UTC; before then, its usage is billed as sandbox compute.",
+      ),
+    ).toBeInTheDocument();
+    rerender(
+      <ChargesCard
+        estimatedCost={{
+          ...estimate([sandbox]),
+          sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
+          agentSandboxUsageBilledFrom: "",
+        }}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.getByText(/a running sandbox is billed/)).toBeInTheDocument();
+    expect(screen.queryByText(/agent session's sandbox/)).toBeNull();
+  });
+
   // w21/086: a workspace's object storage (ADR112 D8) is one resource whose id
   // is the workspace's, with three shadow meters at no charge. The shape is the
   // one `GET /v1/usage` returned on production. bex-api names it "Object
