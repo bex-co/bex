@@ -83,6 +83,11 @@ const jaCapabilities: Record<string, TranslationEntry> = {
       "この操作を実行する前に、請求の確認が必要です。請求ページで解決してください。",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "無料プランの有効期限が切れたため、このリソースは一時停止のままです。再開するには有料プランにアップグレードしてください。",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "サーバーが現在、この操作を確認できませんでした。もう一度お試しください。",

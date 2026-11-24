@@ -166,6 +166,10 @@ const (
 	PrecondNoEligibleRollbackTarget = "no_eligible_rollback_target"
 	// Billing enforcement (dunning) currently refuses billable mutations.
 	PrecondBillingBlocked = "billing_blocked"
+	// The free plan expired on the resource: it stays suspended until it is
+	// upgraded (postgres free-expiry, ADR009). A billing-blocked resume names
+	// dunning instead — the verb checks billing before expiry.
+	PrecondExpired = "expired"
 	// The precondition itself could not be computed — blocked, not waived.
 	PrecondUnavailable = "unavailable"
 )

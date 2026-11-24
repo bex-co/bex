@@ -82,6 +82,11 @@ const koCapabilities: Record<string, TranslationEntry> = {
       "이 작업을 실행하려면 먼저 결제 문제를 확인해야 합니다. 결제에서 해결하세요.",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "무료 플랜이 만료되어 이 리소스는 일시 중단된 상태로 유지됩니다. 다시 시작하려면 유료 플랜으로 업그레이드하세요.",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message: "서버가 지금 이 작업을 확인하지 못했습니다. 다시 시도하세요.",
     description: "Blocked reason for unavailable precondition",
