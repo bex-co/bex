@@ -68,4 +68,4 @@ The definition of done holds on production pin `9fdf7e0a1171` ([t005](done/t005.
 - **Nothing left, nothing shown.** No `dskpul-` Job or pod outlived its rollout. The instances list never showed more than one instance, and no event or log line named a pre-pull.
 - **The ADRs.** ADR082 § D3 records the measured window, and ADR004 and ADR018 no longer list the pull as an excess term (t004).
 
-t005 changed no code, so t006 and t007 stand. Filed on the way: [w6/173](../../blocked/173.md) (a move pulls a large image only after the volume reaches the new node: 47.76–48.0 s).
+t005 changed no code, so t006 and t007 stand. Filed on the way: [w6/173](../173.md) (a move pulls a large image only after the volume reaches the new node: 47.76–48.0 s).
