@@ -89,7 +89,7 @@ Devin's [release notes](https://docs.devin.ai/release-notes/2026), re-read 2026-
 | A live sandbox | The shell opened at 1.1 s, in `/workspace` as uid 10001 | "running commands on Devin's machine" | Same |
 | While it is open | The sandbox stays up past the 5-minute idle close, up to the 4-hour cap | Not documented | No counterpart. It matches an editor's SSH login (ADR054 D8) |
 | On each visit | The sheet starts closed and does not remember being open | The pane starts closed and remembers per session whether it was open | Drift: [w10/060](../../060.md) |
-| Header on a cold load | Terminal appears after Files, Connect and "…", once the capabilities query answers | — | Layout shift: [w10/059](../../059.md) |
+| Header on a cold load | Terminal appears after Files, Connect and "…", once the capabilities query answers | — | Layout shift: [w10/059](../059.md) |
 | Canceled session | The sheet says "This session was canceled, so it has no sandbox to open." REST and GraphQL mints answer `409 AGENT_SESSION_NOT_ATTACHABLE` (`phase` `canceled`) with the same reason | Not documented | bex says why (DoD 3) |
 | Archived session | The sheet says "This session is archived, and its sandbox has closed. Unarchive it to open its Terminal." REST and GraphQL answer `409 AGENT_SESSION_NOT_ATTACHABLE` with "Unarchive it on its page in the dashboard, then connect again" | Not documented | bex says why (DoD 3) |
 | Ticket mint | REST `POST /v1/agent-sessions/{id}/shell-ticket` returns `201` with `ticket`, `url` `wss://ssh.bex.co/shell`, `expiresAt` and `sandbox` `up`. GraphQL `createAgentSessionShellSession` returns the same fields. MCP has no mint, as the service Shell has none | Devin's API has no Terminal endpoint | A bex extension. REST and GraphQL agree |

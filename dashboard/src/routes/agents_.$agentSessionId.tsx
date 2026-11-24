@@ -24,6 +24,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
 import { useAgentSessionTree } from "@/features/agent-sessions/hooks/use-agent-session-tree";
+import { warmAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { AgentsPanel } from "@/features/agent-sessions/components/agents-panel";
 import {
   descendantsOf,
@@ -87,6 +88,18 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   // second copy of a prompt that runs to 100k chars.
   loader: async ({ context, params, cause }) => {
     let failed = false;
+    let ownerId: string | null = null;
+    // The header offers its Terminal once its workspace's capabilities say
+    // this deployment serves one (ADR054 D10). Warmed here, the read is in the
+    // cache the SSR pass and hydration render from, so the button paints with
+    // Files and Connect instead of arriving between them when a client query
+    // answers (w10/059). A session is usually the selected workspace's, so
+    // that read starts beside the session's; another workspace's session
+    // warms its own owner's once the session names it.
+    const selected = context.workspaceId;
+    const warming = selected
+      ? [warmAgentSessionCapabilities(context.client, selected)]
+      : [];
     const result = await loadRouteResource(
       async () => {
         const answer = await context.client.query({
@@ -96,6 +109,7 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
           errorPolicy: "all",
         });
         failed = answer.error != null;
+        ownerId = answer.data?.agentSession?.ownerId ?? null;
         return answer;
       },
       (data) =>
@@ -103,6 +117,10 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
           ? agentSessionNameSource(data.agentSession)
           : null,
     );
+    if (ownerId && ownerId !== selected) {
+      warming.push(warmAgentSessionCapabilities(context.client, ownerId));
+    }
+    await Promise.all(warming);
     // A refused read (an unknown or foreign id answers FORBIDDEN) leaves a null
     // session in Apollo's cache without its error, so a cache-served re-run
     // read "no error" and titled the tab "Page not found" while the body said

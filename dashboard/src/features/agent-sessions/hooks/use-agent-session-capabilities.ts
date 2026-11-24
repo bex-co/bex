@@ -1,8 +1,35 @@
 import { useMemo } from "react";
+import type { ApolloClient } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { AgentSessionCapabilitiesDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { AgentSessionCapabilitiesView } from "@/features/agent-sessions/types";
+
+// The hook's and the loader's one policy: what the loader warms is what the
+// hook reads on mount (`PRIMED_FETCH_POLICY`'s rule, w9/m62).
+const CAPABILITIES_FETCH_POLICY = "cache-first";
+
+/**
+ * Warms the read `useAgentSessionCapabilities(ownerId)` makes, with the same
+ * document, variables and policy, from a route loader: the session header's
+ * Terminal renders from it (w10/059), so a cold load that waited for the
+ * client query inserted the button between Files and Connect after first
+ * paint. Best-effort: it never rejects, and the hook re-runs a read that
+ * failed here.
+ */
+export async function warmAgentSessionCapabilities(
+  client: Pick<ApolloClient, "query">,
+  ownerId: string,
+): Promise<void> {
+  await client
+    .query({
+      query: AgentSessionCapabilitiesDocument,
+      variables: { ownerId },
+      fetchPolicy: CAPABILITIES_FETCH_POLICY,
+      errorPolicy: "all",
+    })
+    .catch(() => undefined);
+}
 
 export interface UseAgentSessionCapabilitiesResult {
   capabilities: AgentSessionCapabilitiesView | null;
@@ -26,7 +53,7 @@ export function useAgentSessionCapabilities(
     {
       variables: { ownerId: workspaceId },
       skip: !resolved,
-      fetchPolicy: "cache-first",
+      fetchPolicy: CAPABILITIES_FETCH_POLICY,
       errorPolicy: "all",
     },
   );

@@ -491,12 +491,21 @@ describe("production route heads", () => {
         },
       },
     );
-    expect(query).toHaveBeenCalledTimes(1);
-    expect(query.mock.calls[0]?.[0]).toMatchObject({
+    // The title read, and beside it the selected workspace's capabilities,
+    // which the header's Terminal renders from (w10/059).
+    expect(query).toHaveBeenCalledTimes(2);
+    const titleReads = query.mock.calls.filter(
+      ([options]) => (options.variables as { id?: string }).id === "as-private",
+    );
+    expect(titleReads).toHaveLength(1);
+    expect(titleReads[0]?.[0]).toMatchObject({
       variables: { id: "as-private" },
       fetchPolicy: "network-only",
       errorPolicy: "all",
     });
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({ variables: { ownerId: "tea-selfhost" } }),
+    );
     // Only the two fields the name derives from — a prompt runs to 100k chars
     // and must not ride the SSR payload for a <title>.
     expect(result).toEqual({
