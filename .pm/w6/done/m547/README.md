@@ -73,7 +73,7 @@
 
 - **t011 ([record](done/t011.md)).** On pin `1a5a8e872398`, a fresh 1 GB Starter fixture in `bex-canary` (disposable) took twelve same-node code deploys and restarts with its port named. Every one held its volume on `bex-tenant-0-zdp6v-6p4cg`, and none detached it.
   - Eleven took 3.99–4.26 s, against t005's 5.74–9.0 s and t001's 15.8–23.3 s. The twelfth, a code deploy of a tag new to the node, took 6.00 s, with a 2.08 s pull ([w6/m595](../m595/README.md)).
-  - Two code deploys with no port took 7.24 and 9.50 s, against t005's 37.0 and 44.0 s. The operator found the port within 0.06 s of Ready. The rest of the excess is the health-probe install container, which its 20m CPU limit throttles, filed as [w6/170](../../blocked/170.md).
+  - Two code deploys with no port took 7.24 and 9.50 s, against t005's 37.0 and 44.0 s. The operator found the port within 0.06 s of Ready. The rest of the excess is the health-probe install container, which its 20m CPU limit throttles, filed as [w6/170](../170.md).
   - The cordoned run moved the volume in 39.75 s, most of it Hetzner's detach and attach (16.1 s each that day).
 - **The definition of done holds** for the fixture it names (t009). ADR082, ADR004 and ADR018 record the bound and what it does not cover.
-- **Still open, as their own items.** [w6/m595](../m595/README.md) (pre-pull), [w6/170](../../blocked/170.md) (the install container's CPU) and [w6/165](../165.md) (a failed rollout's restore takes no hold).
+- **Still open, as their own items.** [w6/m595](../m595/README.md) (pre-pull), [w6/170](../170.md) (the install container's CPU) and [w6/165](../165.md) (a failed rollout's restore takes no hold).
