@@ -1,6 +1,6 @@
 # w22 · m623 — One user's concurrent sandbox execs and file transfers are not held to the SSH session cap, and a concurrency refusal is a 429
 
-**Worker:** worker22 **Goal:** a user can run Render's 1,000 sandbox execs a minute: the ssh-gateway holds sandbox exec and file streams to a limiter of their own, sized so Render's per-minute classes bind first, native SSH, the web shell and agent attach keep their 5 per identity, and a refusal that remains answers 429 with `Retry-After`, never 400. **Status:** todo (t001–t004, t006–t008 done; t005 waits for production to run the fix)
+**Worker:** worker22 **Goal:** a user can run Render's 1,000 sandbox execs a minute: the ssh-gateway holds sandbox exec and file streams to a limiter of their own, sized so Render's per-minute classes bind first, native SSH, the web shell and agent attach keep their 5 per identity, and a refusal that remains answers 429 with `Retry-After`, never 400. **Status:** blocked (t001–t004 and t006–t008 done and shipped in `f27106b204`; t005 waits for production to run it, then t009)
 
 ## Tasks (in order)
 
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w22/029](../done/029.md) (found by the w22/m443 worker, 2026-11-23, running m443's production check), 2026-11-24; the premise was verified at `origin/main` `3829308659`.
+- **Source:** promoted from [w22/029](../../done/029.md) (found by the w22/m443 worker, 2026-11-23, running m443's production check), 2026-11-24; the premise was verified at `origin/main` `3829308659`.
   - [Run 45279460837](https://github.com/bex-co/bex/actions/runs/45279460837) of `sandbox-measure.yml`, leg `rate`, production pin `9fdf7e0a1171`: of 600 execs sent 20 at a time in one sandbox, none was rate limited, 394 streamed exit code 0, and 206 redeems answered **400** `too many concurrent exec sessions`. The 600 took 76 s.
   - The 400 comes from the gateway's session cap. `serveSandboxExec` refuses with 429 `session limit reached` when `Limits.Acquire(claims.Subject)` fails (`lego/backend/internal/sshgateway/sandboxsse/sandboxsse.go:126`). The file server does the same with `c.LimitKey(sandboxexec.SystemSubject)` (`sandboxfiles/sandboxfiles.go:118`). `mintAndDial` turns the 429 into `errExecSessionLimit` (`internal/sandbox/exec.go:361`), which wraps `core.ErrBadRequest` (`internal/sandbox/reachability.go:56`). The file redeem's reverse proxy passes the gateway's 429 JSON through unchanged (`internal/sandbox/file_connect.go`), without `Retry-After`.
   - One `SessionLimiter` per process (`cmd/ssh-gateway/main.go:218`) is shared by native SSH, the web shell, agent attach, sandbox exec and sandbox files. Production runs it at `BEX_SSH_MAX_SESSIONS` 100 and `BEX_SSH_MAX_SESSIONS_PER_IDENTITY` 5 on 2 replicas (`lego/operator/config/ssh/deployment.yaml`), so one user holds at most 10 concurrent sandbox streams, and fewer when the load balancer puts a sixth on one replica. Sandbox streams also spend the 100 global slots that native SSH needs.
@@ -70,3 +70,5 @@ The code is kept on these routes: none of the three redeem paths nor `POST …/e
 | `Transient` no longer reads the refusal | `TestStreamLimitIsTransientForASessionRead` |
 
 `TestSandboxStreamPools` also holds that a release on one pool never frees a slot on the other, in both directions, and `TestSandboxStreamsDoNotSpendSSHSessionSlots` that sandbox streams leave the session limiter's 100 slots whole.
+
+**Parked (2026-11-24, worker22):** t005 step 1. The fix is `f27106b204` on `origin/main`; w22/m443's gate and this milestone's both read ``pin must carry `f27106b204` ``. When production's pin carries it, t005 runs `gh workflow run sandbox-measure.yml -f leg=rate` and records the run, the pin, the exec count and seconds, the refusals by status and `bex_ssh_gateway_limit_rejections_total` by scope here and in w22/m443, then t009 closes the milestone. Nothing is needed from the user.
