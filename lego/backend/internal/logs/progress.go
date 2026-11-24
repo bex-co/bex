@@ -30,6 +30,7 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // Platform progress lines (w1/m48): Render's deploy feed is never silent — the
@@ -1378,12 +1379,13 @@ func (s *Service) progressInstanceValues(ctx context.Context, q LogQuery, resour
 // emitted, so subscribe-time catch-up, wait-loop transitions, the reads while
 // the build streams and the close wait each emit a line exactly once.
 type progressFollower struct {
-	s        *Service
-	q        LogQuery
-	resource string
-	pc       progressContext
-	emitted  map[string]bool
-	row      DeployProgress // the deploy row read last: the newest, or the followed one
+	s         *Service
+	q         LogQuery
+	selectors []string
+	resource  string
+	pc        progressContext
+	emitted   map[string]bool
+	row       DeployProgress // the deploy row read last: the newest, or the followed one
 	// followed is the deploy whose build pod the tail attached to; the reads
 	// while the build streams and the close wait read its row, not a newer one.
 	followed string
@@ -1489,6 +1491,15 @@ func (f *progressFollower) emitReached(ctx context.Context, emit func(LogEntry) 
 		return nil
 	}
 	isBS := f.pc.isBuildSource()
+	if len(f.selectors) > 0 {
+		cands := make([]ids.InstanceCandidate, 0, len(rows))
+		for _, r := range rows {
+			if bid := publicBuildID(isBS, r.ID); bid != "" {
+				cands = append(cands, ids.InstanceCandidate{Name: bid})
+			}
+		}
+		f.q.mergeResolvedInstances(f.selectors, f.resource, cands)
+	}
 	idx := -1
 	if len(f.q.Build) == 0 {
 		if f.q.keepPod(publicBuildID(isBS, rows[0].ID)) {

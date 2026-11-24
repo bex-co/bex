@@ -1685,9 +1685,9 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
 		if q.renderStream {
-			return s.followBuilds(ctx, q, resource, newProgressContext(app), emit, heartbeat)
+			return s.followBuilds(ctx, q, selectors, resource, newProgressContext(app), emit, heartbeat)
 		}
-		return s.followBuildLogs(ctx, q, resource, newProgressContext(app), emit)
+		return s.followBuildLogs(ctx, q, selectors, resource, newProgressContext(app), emit)
 	}
 	if q.mixesBuild() || (q.renderStream && len(q.Types) == 0) {
 		return s.followPodsAndBuilds(ctx, q, selectors, target, podsLive, resource, newProgressContext(app), emit, heartbeat)
@@ -1730,7 +1730,7 @@ const followBuildsDedupe = 1024
 // the last line sent, one progress follower narrates each platform line once,
 // and recent line identities are kept as a second guard. heartbeat (nil-safe)
 // is written on its interval under the same lock as every line.
-func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error, heartbeat func() error) error {
+func (s *Service) followBuilds(ctx context.Context, q LogQuery, selectors []string, resource string, pc progressContext, emit func(LogEntry) error, heartbeat func() error) error {
 	if q.Since.IsZero() {
 		q.Since = time.Now()
 	}
@@ -1786,12 +1786,13 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 	}
 	prog := s.newProgressFollower(q, resource, pc)
 	if prog != nil {
+		prog.selectors = selectors
 		prog.streamPreDeploy = !pc.isBuildSource()
 	}
 	seenPreDeploy := map[string]bool{}
 	for {
 		passStart := time.Now()
-		_ = s.followBuild(ctx, q, resource, pc.isBuildSource(), prog, send)
+		_ = s.followBuild(ctx, q, selectors, resource, pc.isBuildSource(), prog, send)
 		mu.Lock()
 		failed := writeErr
 		mu.Unlock()
@@ -1802,7 +1803,7 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 			return ctx.Err()
 		}
 		if !pc.isBuildSource() {
-			_ = s.followPreDeploy(ctx, q, resource, pc.namespace, prog, seenPreDeploy, send)
+			_ = s.followPreDeploy(ctx, q, selectors, resource, pc.namespace, prog, seenPreDeploy, send)
 		}
 		mu.Lock()
 		failed, resume := writeErr, last.Add(time.Nanosecond)
@@ -1840,9 +1841,9 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 // streaming (or the step settles with no started container), so even a fast
 // step prints its output before `==> Pre-deploy has failed` or `==> Pre-deploy
 // complete!`.
-func (s *Service) followPreDeploy(ctx context.Context, q LogQuery, resource, appNS string, prog *progressFollower, seenPods map[string]bool, emit func(LogEntry) error) error {
+func (s *Service) followPreDeploy(ctx context.Context, q LogQuery, selectors []string, resource, appNS string, prog *progressFollower, seenPods map[string]bool, emit func(LogEntry) error) error {
 	if prog == nil {
-		pod, found := s.findPreDeployPod(ctx, q, appNS, 0, q.readFrom(), seenPods)
+		pod, found := s.findPreDeployPod(ctx, q, selectors, resource, appNS, 0, q.readFrom(), seenPods)
 		if !found || !containerStarted(&pod, core.PreDeployContainer) {
 			return nil
 		}
@@ -1872,7 +1873,7 @@ func (s *Service) followPreDeploy(ctx context.Context, q LogQuery, resource, app
 				gen = prog.row.Generation
 			}
 		}
-		pod, found := s.findPreDeployPod(ctx, q, appNS, gen, since, seenPods)
+		pod, found := s.findPreDeployPod(ctx, q, selectors, resource, appNS, gen, since, seenPods)
 		if found && containerStarted(&pod, core.PreDeployContainer) {
 			if prog.row.PreDeploy.Native && prog.row.PreDeploy.ContainerStartedAt.IsZero() && preDeployOpen(prog.row) && runningWaitLeft > 0 {
 				runningWaitLeft--
@@ -1904,11 +1905,12 @@ func (s *Service) followPreDeploy(ctx context.Context, q LogQuery, resource, app
 // findPreDeployPod resolves the newest unseen pre-deploy step pod for q.App in
 // appNS. When gen > 0 it matches the exact Job name for that release
 // generation, excluding other deploys' pods and initialDeployHook pods.
-func (s *Service) findPreDeployPod(ctx context.Context, q LogQuery, appNS string, gen int64, since time.Time, seenPods map[string]bool) (corev1.Pod, bool) {
+func (s *Service) findPreDeployPod(ctx context.Context, q LogQuery, selectors []string, resource, appNS string, gen int64, since time.Time, seenPods map[string]bool) (corev1.Pod, bool) {
 	pods, err := s.PreDeployPods(ctx, q.App, appNS)
 	if err != nil {
 		return corev1.Pod{}, false
 	}
+	q.mergeResolvedInstances(selectors, resource, candidatesFromPods(pods))
 	var job string
 	if gen > 0 {
 		job = appv1alpha1.PreDeployJobName(q.App, appv1alpha1.BuildRevision(gen))
@@ -2035,7 +2037,7 @@ func (s *Service) followPodsAndBuilds(ctx context.Context, q LogQuery, selectors
 	rest := q
 	rest.Types = withoutBuild(q.Types)
 	if (len(q.Level) > 0 && !q.negates(LabelLevel)) ||
-		(len(q.Instance) > 0 && !q.negates(LabelInstance) && !instanceMayMatchBuild(q.Instance, pods)) {
+		(len(q.Instance) > 0 && !q.negates(LabelInstance) && !hasInstancePattern(selectors) && !instanceMayMatchBuild(q.Instance, pods)) {
 		return s.followPods(ctx, rest, selectors, target, pods, emit, heartbeat)
 	}
 	var mu sync.Mutex
@@ -2058,7 +2060,7 @@ func (s *Service) followPodsAndBuilds(ctx context.Context, q LogQuery, selectors
 	defer cancel()
 	buildErr := make(chan error, 1)
 	go func() {
-		err := s.followBuilds(ctx, builds, resource, pc, serial, nil)
+		err := s.followBuilds(ctx, builds, selectors, resource, pc, serial, nil)
 		cancel()
 		buildErr <- err
 	}()
@@ -2247,14 +2249,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 			if err != nil {
 				continue // a failed list is retried next tick; the tail stays up
 			}
-			if len(selectors) > 0 {
-				resolved := ids.ResolveInstanceSelectors(selectors, target.resource, candidatesFromPods(current))
-				for _, name := range resolved {
-					if !slices.Contains(q.Instance, name) {
-						q.Instance = append(q.Instance, name)
-					}
-				}
-			}
+			q.mergeResolvedInstances(selectors, target.resource, candidatesFromPods(current))
 			attach(current)
 		case end := <-ended:
 			if f := follows[end.key]; f != nil {
@@ -2465,19 +2460,23 @@ func (s *Service) revalidateTailTarget(ctx context.Context, namespace, name stri
 // narration is read on the same cadence, so `==> Building from` arrives when
 // the row records the build's start, not after the build (w8/m159 t009); after
 // the pod's streams end, the tail waits for the row's verdict (awaitClose).
-func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error) error {
-	return s.followBuild(ctx, q, resource, pc.isBuildSource(), s.newProgressFollower(q, resource, pc), emit)
+func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, selectors []string, resource string, pc progressContext, emit func(LogEntry) error) error {
+	prog := s.newProgressFollower(q, resource, pc)
+	if prog != nil {
+		prog.selectors = selectors
+	}
+	return s.followBuild(ctx, q, selectors, resource, pc.isBuildSource(), prog, emit)
 }
 
 // followBuild is followBuildLogs with its narration follower supplied, so a
 // tail that follows several builds narrates each platform line once
 // (followBuilds).
-func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, isBuildSource bool, prog *progressFollower, emit func(LogEntry) error) error {
+func (s *Service) followBuild(ctx context.Context, q LogQuery, selectors []string, resource string, isBuildSource bool, prog *progressFollower, emit func(LogEntry) error) error {
 	prog.beginBuild()
 	if err := prog.emitReached(ctx, emit); err != nil {
 		return err
 	}
-	pod, err := s.awaitBuildPod(ctx, q, prog, emit)
+	pod, err := s.awaitBuildPod(ctx, q, selectors, resource, prog, emit)
 	if err != nil {
 		return err
 	}
@@ -2619,13 +2618,14 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 // belongs to Loki). Each wait tick also re-reads the deploy row
 // through prog (nil-safe) so phase transitions narrate live while the pod is
 // still silent.
-func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, error) {
+func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, selectors []string, resource string, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, error) {
 	wait := s.buildPodWait()
 	for {
 		pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
 		if err != nil {
 			return corev1.Pod{}, err
 		}
+		q.mergeResolvedInstances(selectors, resource, candidatesFromPods(pods))
 		var active []corev1.Pod
 		waiting := false
 		for i := range pods {
@@ -2851,7 +2851,7 @@ func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, names
 			}
 		}
 	}
-	resolved := ids.ResolveInstanceSelectors(q.Instance, resourceID, cands)
+	resolved := resolveInstanceSelectors(q.Instance, resourceID, cands)
 	if len(resolved) == 0 {
 		// A negated set that resolves to none excludes noSuchInstance, which
 		// is nothing: a project view's instance of one resource leaves
@@ -3031,7 +3031,7 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS, resource stri
 	if len(q.Instance) > 0 {
 		// This source reads only extant migration pods, so historical App
 		// instance discovery cannot supply its candidates.
-		q.Instance = ids.ResolveInstanceSelectors(q.Instance, resource, candidatesFromPods(pods))
+		q.Instance = resolveInstanceSelectors(q.Instance, resource, candidatesFromPods(pods))
 		if len(q.Instance) == 0 && !q.negates(LabelInstance) {
 			return nil, nil
 		}

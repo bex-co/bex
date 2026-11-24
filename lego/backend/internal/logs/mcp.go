@@ -51,7 +51,7 @@ type logFilters struct {
 	Region      string   `json:"region,omitempty" jsonschema:"bex extension (Render REST parity) — Render region filter (frankfurt|ohio|oregon|singapore|virginia); requires project"`
 	Level       []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|notice|warning|error|critical|alert|emergency, or unknown for a line with no structured severity); * wildcards and /regex/ supported"`
 	Type        []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
-	Instance    []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
+	Instance    []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; * wildcards and /regex/ supported"`
 	Host        []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards and /regex/ supported"`
 	StatusCode  []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards and /regex/ supported"`
 	Method      []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards and /regex/ supported"`
