@@ -330,26 +330,7 @@ func TestOperandGuardsDirectParametersAndBoundsDuckDB(t *testing.T) {
 // allowlisted extension, while untrusted extensions stay refused and the owner
 // stays non-superuser. Opt-in: needs the cluster, kubectl and the images.
 func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
-	kubeconfig := os.Getenv("BEX_CNPG_KUBECONFIG")
-	images := os.Getenv("BEX_PG_OPERAND_IMAGES")
-	if kubeconfig == "" || images == "" {
-		t.Skip("set BEX_CNPG_KUBECONFIG and BEX_PG_OPERAND_IMAGES")
-	}
-	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cl, err := client.New(cfg, client.Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	operands, err := qualificationOperands(images, os.Getenv("BEX_CNPG_MAJORS"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	verifyCNPGOperandController(t, cl, cfg.Host)
-	withBexOperands(t, operands)
-
+	cl, kubeconfig, operands := operandQualificationCluster(t)
 	for _, major := range slices.Sorted(maps.Keys(operands)) {
 		t.Run("PG"+major, func(t *testing.T) {
 			// A tenant's own parameter override rides along, as it would in
@@ -486,6 +467,54 @@ func ownerPgauditAcrossRestartOnCNPG(t *testing.T, cl client.Client, kubeconfig,
 	if out, err := asOwner("DROP EXTENSION pgaudit; SELECT count(*) FROM pg_extension WHERE extname = 'pgaudit'"); err != nil || !strings.HasSuffix(out, "0") {
 		t.Fatalf("the owner's DROP EXTENSION pgaudit after the restart = %v %q", err, out)
 	}
+}
+
+// TestOwnerPgauditAcrossRestartOnCNPG is the restart step alone, on the same
+// real CloudNativePG and operands as TestApplicationDatabaseExtensionsOnCNPG:
+// the owner runs Render's `CREATE EXTENSION pgaudit;` in a new database, the
+// instance pod restarts, and the extension is still there (w21/m606). It is
+// what cnpg-operator-qualify.yml runs on every CloudNativePG pin, and it fails
+// on the release bex's build patches.
+func TestOwnerPgauditAcrossRestartOnCNPG(t *testing.T) {
+	cl, kubeconfig, operands := operandQualificationCluster(t)
+	for _, major := range slices.Sorted(maps.Keys(operands)) {
+		t.Run("PG"+major, func(t *testing.T) {
+			const dbname = "audit_prod"
+			namespace, asOwner := startCNPGDatabase(t, cl, kubeconfig, "bex-pgaudit-it", major, dbname, "audit_app", nil)
+			if out, err := asOwner("CREATE EXTENSION pgaudit; SELECT rolsuper FROM pg_roles WHERE rolname = current_user"); err != nil || !strings.HasSuffix(out, "f") {
+				t.Fatalf("the owner's CREATE EXTENSION pgaudit = %v %q", err, out)
+			}
+			ownerPgauditAcrossRestartOnCNPG(t, cl, kubeconfig, namespace, dbname, asOwner)
+		})
+	}
+}
+
+// operandQualificationCluster connects to the CloudNativePG cluster
+// BEX_CNPG_KUBECONFIG names, checks it runs the qualified controller, and
+// adopts BEX_PG_OPERAND_IMAGES (narrowed by BEX_CNPG_MAJORS) as the operands
+// for the test. It skips the test when either variable is unset.
+func operandQualificationCluster(t *testing.T) (client.Client, string, map[string]string) {
+	t.Helper()
+	kubeconfig := os.Getenv("BEX_CNPG_KUBECONFIG")
+	images := os.Getenv("BEX_PG_OPERAND_IMAGES")
+	if kubeconfig == "" || images == "" {
+		t.Skip("set BEX_CNPG_KUBECONFIG and BEX_PG_OPERAND_IMAGES")
+	}
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl, err := client.New(cfg, client.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	operands, err := qualificationOperands(images, os.Getenv("BEX_CNPG_MAJORS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyCNPGOperandController(t, cl, cfg.Host)
+	withBexOperands(t, operands)
+	return cl, kubeconfig, operands
 }
 
 // ownerContribOnCNPG: Render's untrusted contrib modules, created by the

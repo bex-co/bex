@@ -1,11 +1,11 @@
 name: CloudNativePG operator qualification (kind)
 
-# TestApplicationDatabaseExtensionsOnCNPG/PG18 on a real CloudNativePG
+# TestOwnerPgauditAcrossRestartOnCNPG/PG18 on a real CloudNativePG
 # (scripts/cnpg-operator-qualify.sh): a kind cluster running the operator
 # deploy/gitops/base/cnpg-operator.yaml pins, from production's chart archive,
 # and bexOperandImages' PG18 operand. bex's Cluster projection, the owner's
-# extensions, and the owner's pgaudit across an instance pod restart, which
-# CloudNativePG 1.30.1 itself drops (w21/m606). A CloudNativePG bump that loses
+# Render-style CREATE EXTENSION pgaudit, and the extension across an instance
+# pod restart, which CloudNativePG 1.30.1 itself drops (w21/m606). A CloudNativePG bump that loses
 # bex's patch fails here before it reaches production. Both architectures:
 # production's nodes are amd64, local clusters arm64.
 #

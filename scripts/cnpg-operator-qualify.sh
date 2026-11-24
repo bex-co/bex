@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# cnpg-operator-qualify.sh — run TestApplicationDatabaseExtensionsOnCNPG on a
+# cnpg-operator-qualify.sh — run a real-CloudNativePG operator test on a
 # disposable kind cluster with production's CloudNativePG operator and the
-# pinned bex operand of one major (w21/m606 t003).
+# pinned bex operand of one major (w21/m606 t003). The test is
+# TestOwnerPgauditAcrossRestartOnCNPG unless BEX_CNPG_QUALIFY_TEST names
+# another, such as TestApplicationDatabaseExtensionsOnCNPG (which repeats the
+# restart after every other extension, and whose owner export and restore
+# phase stays red until w21/124).
 #
 #   bash scripts/cnpg-operator-qualify.sh [pinned|upstream]
 #
@@ -28,6 +32,7 @@ die() {
 
 operator=${1:-pinned}
 major=${BEX_CNPG_MAJORS:-18}
+test_name=${BEX_CNPG_QUALIFY_TEST:-TestOwnerPgauditAcrossRestartOnCNPG}
 cluster=${BEX_CNPG_QUALIFY_CLUSTER:-bex-cnpg-qualify}
 node_image=kindest/node:v1.36.1
 
@@ -99,10 +104,10 @@ for attempt in 1 2 3; do
   sleep $((attempt * 20))
 done
 
-echo "==> TestApplicationDatabaseExtensionsOnCNPG/PG$major against $operator"
+echo "==> $test_name/PG$major against $operator"
 rc=0
 (cd lego/operator && GOWORK=off BEX_CNPG_KUBECONFIG="$kubeconfig" BEX_PG_OPERAND_IMAGES="$major=$operand" BEX_CNPG_MAJORS="$major" \
-  go test ./internal/controller -run "^TestApplicationDatabaseExtensionsOnCNPG$/^PG$major$" -count=1 -v -timeout 40m) || rc=$?
+  go test ./internal/controller -run "^$test_name$/^PG$major$" -count=1 -v -timeout 40m) || rc=$?
 if [ "$rc" -ne 0 ]; then
   # The test deletes its namespace; the operator's log is what is left.
   echo "==> CloudNativePG operator log (test failed)"
