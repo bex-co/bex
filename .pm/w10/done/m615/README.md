@@ -1,6 +1,6 @@
 # w10 · m615 — An agent session's page has a Terminal that opens a shell in its sandbox and wakes a closed one, as Devin's Terminal tab does
 
-**Worker:** worker10 **Goal:** a member who may operate an agent session gets a shell in its sandbox from the session's page, with no local terminal and no registered SSH key, the way a service's Web Shell works. Opening it on a session whose sandbox closed starts the sandbox, says so while it starts, and opens the shell once it is up, as Devin's Terminal tab does ("opening Files or Terminal wakes Devin"). Canceled and archived sessions say why there is no Terminal. **Status:** blocked (t001–t005, t008 and t009 done; t006 waits for production to run the code)
+**Worker:** worker10 **Goal:** a member who may operate an agent session gets a shell in its sandbox from the session's page, with no local terminal and no registered SSH key, the way a service's Web Shell works. Opening it on a session whose sandbox closed starts the sandbox, says so while it starts, and opens the shell once it is up, as Devin's Terminal tab does ("opening Files or Terminal wakes Devin"). Canceled and archived sessions say why there is no Terminal. **Status:** done (2026-11-24: every task done; t006's live Terminal woke a closed session in `tian-personal` on production at 1280 px and 390 px)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Gateway: the Web Shell opens an agent session's sandbox from its ticket, holds the WebSocket with progress while the sandbox starts, then bridges the shell — **DONE** | 2h | t002 |
 | [t004](done/t004.md) | Dashboard: the session page's Terminal, its starting state and its refusals, in every locale, at 1280 px and 390 px — **DONE** | 2h | t001, t002 |
 | [t005](done/t005.md) | Security review of the agent-session Terminal ticket and the held WebSocket, in the gateway review chain — **DONE** | 1h | t002, t003 |
-| [t006](t006.md) | Live check: open the Terminal on a closed session in `tian-personal` on production, session deleted afterwards | 45m | t003, t004, t005 |
-| [t007](t007.md) | Render parity (Devin) | 30m | t006 |
+| [t006](done/t006.md) | Live check: open the Terminal on a closed session in `tian-personal` on production, session deleted afterwards — **DONE** | 45m | t003, t004, t005 |
+| [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 9h45m**.
 
@@ -38,11 +38,11 @@ Decided 2026-11-23 against `c620e080ee`; every choice follows Devin's "The sessi
 - **t005** [ADR126](../../../../docs/ADR126-security-review-agent-session-terminal.md).
 - **t008** `/simplify` (three reviewers): the resolver's no-sandbox refusal is read by one helper, `agentsessions.SSHNoSandbox`, in native SSH's `wakeOf` and `sessionRefusal` and in the Web Shell; `core.IsRoleRefusal` is exported for the mint; the Web Shell has one browser-input path for both targets (a single reader started once, the shell's stdin opened at once for a service); the elapsed time uses `common/lib/format`'s `formatDuration`. A real bug it found is fixed: resizes sent while a sandbox started filled the 8-entry size queue nothing read yet, so the shell opened at a stale size; the wait now keeps only the latest size (`TestTerminalWaitsForAStartingSandboxThenOpensTheShell` sends 21 and fails when the first is kept). Declined: sharing the poll loop with native SSH (its waits are per channel on stderr, the Terminal's one WebSocket), re-asking a key's grant only once a minute while waiting (keys only, at most 480 calls in a 16-minute wait), a GraphQL enum for `sandbox` (REST returns the same two strings), and an `ssh_sessions (service_id, transport)` index (the idle close's scan predates this change).
 - **t009** Every DoD 1–5 behavior has a test that fails when its code is reverted, checked by reverting each: dropping the `can_view_sensitive` check fails `TestTerminalNeedsCanViewSensitive`; dropping the archived and canceled refusal fails `TestTerminalSaysWhyACanceledOrArchivedSessionHasNone`; starting without `Resume` fails `TestTerminalOnAClosedSessionStartsItOnceAsTheCaller`, `TestTerminalRefusesToStartAClosedSessionForAViewer`, `TestTerminalHoldsABexAPIKeyToItsGrant`, `TestTerminalKeepsAdmissionsRefusal` and `TestTerminalHoldsAnOAuthDelegationToItsScopes`; dropping the key's Agents manage check fails `TestTerminalHoldsABexAPIKeyToItsGrant`; removing the wait fails `TestTerminalWaitsForAStartingSandboxThenOpensTheShell`, `TestTerminalWaitEndings`, `TestTerminalClosedMidWaitFreesItsSlot` and `TestTerminalWaitEndsWhenTheKeysGrantNarrows`. DoD 1: `TestTerminalOpensALiveSandboxAtOnce`, `TestTerminalTicketsAreRoutedByTheirFieldAndSingleUse`, `TestSessionTicketNamesOneAgentSession`. DoD 2: `TestTerminalStartsAClosedSessionOnceAcrossTabsPG`, `TestTerminalWaitsForAStartingSandboxThenOpensTheShell`, `session-terminal-sheet.test.tsx` ("says the sandbox is starting until the gateway opens the shell"). DoD 3: `TestTerminalRefusesToStartAClosedSessionForAViewer`, `TestTerminalKeepsAdmissionsRefusal`, `TestTerminalRefusesArchivedAndCanceledSessionsPG`, `TestTerminalRefusesAtConnect`, the sheet's refusal cases. DoD 4: `TestTerminalWaitEndings` (ceiling, cap, drain, revoked, no sandbox), `TestTerminalClosedMidWaitFreesItsSlot`, `TestTheConversationStreamIsNotAnEditorPG` (an open Terminal holds the sandbox), `TestPGGitMintAdmitsAFinishedTurnsSandboxWhileAnSSHLoginIsOpen` (and lets its `git push` through while open, as an SSH login since w6/175). DoD 5: `TestRepresentativeVerbsGateOnExpectedRelation`, `TestStreamTicketMintsNeedTheActionTheGatewayHoldsThemTo`, `TestGraphQLSchemaMatchesTheGolden`, `TestAgentMCPToolsGolden`.
-- t006, t007 and t010 need production to run the code.
+- t006, t007 and t010 needed production to run the code (done 2026-11-24, see Live check and Devin walk).
 
 ## Parked (2026-11-24)
 
-The code shipped in `1963832217`. t006's live check needs production to run it: **pin must carry `1963832217`**. Then, in `tian-personal`, one short repo-less session at a time (the sandbox node is near capacity, w9/m349; [m597's live check](../../done/m597/README.md) has the session recipe and the cleanup):
+The code shipped in `1963832217`. t006's live check needs production to run it: **pin must carry `1963832217`**. Then, in `tian-personal`, one short repo-less session at a time (the sandbox node is near capacity, w9/m349; [m597's live check](../m597/README.md) has the session recipe and the cleanup):
 
 1. Create the session, let its turn end, and wait past the 5-minute idle close until it reads `completed` with no sandbox.
 2. Sign in as the QA user (`bash scripts/qa-login.sh`) and open the session's page at 1280 px. Press **Terminal**: the sheet says "Starting the sandbox…", then shows a shell. Run `uname -a`, `id -u` and `pwd` (expect `/workspace`, uid 10001), and close the sheet.
@@ -51,6 +51,51 @@ The code shipped in `1963832217`. t006's live check needs production to run it: 
 5. Cancel and delete the session, revoke any key the check minted, log the QA sign-in out.
 
 t007's Devin walk follows on the same run, then t010.
+
+## Unblocked (2026-11-24)
+
+- **Source:** verified evidence (`/loopx w10` worker). The gate was ``pin must carry `1963832217` ``.
+- **Finding:** `origin/main`'s newest pin, `21e89d31c4` "chore(deploy): pin platform images to 19638322178a" (19:25:57Z), is m615's own commit: `git merge-base --is-ancestor 1963832217 19638322178a` holds.
+- **Running build, checked before judging (19:32Z):** Argo CD synced `21e89d31c4`. Both bex-api pods and both ssh-gateway pods run `bex-operator@sha256:fbdce999…`, the dashboard pod runs `bex-dashboard@sha256:49cf9d54…`, and bex-api's `BEX_AGENT_SESSION_IMAGE` is `bex-agent-sandbox@sha256:96bc225a…`, each the digest the pin commit names.
+- **Next:** t006's live Terminal on a closed session in `tian-personal` at 1280 and 390 px, t007's Devin walk, then t010's closeout if the definition of done holds.
+
+## Live check (t006, production, 2026-11-24 19:33–19:52Z)
+
+- **Build.** Pin `19638322178a`, with the digests the Unblocked section lists running.
+- **Session.** `POST /v1/agent-sessions` in `tian-personal` with no repository (`claude` on `deepseek/deepseek-v4.1-flash-1017`, template `agent`, `maxSpendUSD` 1) started `ags-dc2ud9pth50c73dp3t10` (disposable) at 19:33:59Z, with a QA API key minted for the check. Its turn ended at 19:35:42Z. At 19:40:44Z the idle close left it `completed` with no `sandboxId` and no Pod in the workspace's sandbox namespace.
+- **1280 px, closed sandbox (DoD 1, 2, 6).** The QA user opened the session's page, and the header showed Files, Terminal, Connect and "…". Pressing Terminal opened a 768 px sheet on the right.
+  - At 0.1 s it read "Connecting to the sandbox…". At 1.1 s it read "Starting the sandbox…" with "The shell opens once the sandbox is up, usually within a minute.", and at 7.7 s "Connected" with a `$` prompt.
+  - bex-api logged `the editor's start settled, the sandbox is up` at 19:41:38Z.
+  - `uname -a` printed `Linux af095e68-…-0 4.19.0-gvisor … x86_64 GNU/Linux`, `id -u` printed 10001 and `pwd` printed `/workspace`.
+- **Held while open (DoD 4).** bex-api logged `deferring teardown, editor SSH open` at 19:41:42Z. At 19:48:50Z the same sandbox still answered in the open sheet: `/proc/uptime` read 436 s, 2 minutes past its 5-minute idle close, and its Pod was Running. The sheet was closed at 19:48:57Z.
+- **390 px, live sandbox (DoD 1, 6).** The header has no Terminal button, and the "…" menu lists Terminal, Edit tags, Archive and Delete. Terminal from the menu read "Connected" at 1.1 s with no starting state, in a 390 × 844 sheet. `pwd` printed `/workspace` and `id -u` printed 10001. `document.documentElement.scrollWidth` was 390, the viewport's width, so the page did not scroll sideways.
+- **Metric (DoD 4).** `bex_ssh_gateway_web_shell_wakes_total{result="opened"}` went from absent to 1 on one of the two gateway pods, and stayed absent on the other. The second open found the sandbox up and was not a wake. `result` is its only label. Read with `kubectl port-forward` to each pod's `:9090`.
+- **Capabilities.** `terminalEnabled` read `true` on REST `GET /v1/agent-sessions/capabilities`, GraphQL `agentSessionCapabilities`, and MCP `get_agent_session_capabilities` on `/mcp` and on `/mcp/cloud-agents`.
+- **Logs.** bex-api and the gateways logged no denied credential mint and no panic during the check.
+- **Cleanup.** The session was archived (its sandbox closed at 19:50:57Z), then canceled and deleted. `GET` answers `404 AGENT_SESSION_NOT_FOUND`, and the sandbox namespace has no Pod. The QA API key was revoked and the QA sign-in logged out (`ok logged-out`). No OAuth grant or consent session was touched.
+- **Reproduce.**
+  1. Sign in with `bash scripts/qa-login.sh --serve`, load the cookies into the browser, and mint a key with `scripts/qa-mcp.py mint-key --owner-id <tian-personal>`.
+  2. Create the session as above. Wait until `GET /v1/agent-sessions/{id}` shows no `sandboxId`, about 5 minutes after its turn ends.
+  3. Open `/agents/<id>` at 1280 px and press Terminal. At 390 px use the "…" menu. Then cancel and delete the session, revoke the key and run `qa-login.sh --logout`.
+
+## Devin walk (t007, 2026-11-24)
+
+Devin's [release notes](https://docs.devin.ai/release-notes/2026), re-read 2026-11-24, say: "The session workspace has a new Terminal tab for running commands on Devin's machine." and "opening Files or Terminal wakes Devin" (2026-10-05). They also say "The workspace pane remembers per session whether it was open, and a session starts with it closed." (2026-11-13). They do not say who may use the Terminal or how long it keeps Devin awake. The bex column was read on production during t006.
+
+| Surface | bex | Devin | Verdict |
+| --- | --- | --- | --- |
+| Where it opens | The Terminal button beside Files from 640 px up, and the "…" menu below that. Either opens a sheet: 768 px wide at 1280, the full width at 390 | A Terminal tab in the session workspace | Same (the sheet is the session page's side pane, ADR054 D10) |
+| A closed session | Opening it starts the sandbox and says "Starting the sandbox…". The shell opened at 7.7 s | "opening Files or Terminal wakes Devin" | Same |
+| A live sandbox | The shell opened at 1.1 s, in `/workspace` as uid 10001 | "running commands on Devin's machine" | Same |
+| While it is open | The sandbox stays up past the 5-minute idle close, up to the 4-hour cap | Not documented | No counterpart. It matches an editor's SSH login (ADR054 D8) |
+| On each visit | The sheet starts closed and does not remember being open | The pane starts closed and remembers per session whether it was open | Drift: [w10/060](../../060.md) |
+| Header on a cold load | Terminal appears after Files, Connect and "…", once the capabilities query answers | — | Layout shift: [w10/059](../../059.md) |
+| Canceled session | The sheet says "This session was canceled, so it has no sandbox to open." REST and GraphQL mints answer `409 AGENT_SESSION_NOT_ATTACHABLE` (`phase` `canceled`) with the same reason | Not documented | bex says why (DoD 3) |
+| Archived session | The sheet says "This session is archived, and its sandbox has closed. Unarchive it to open its Terminal." REST and GraphQL answer `409 AGENT_SESSION_NOT_ATTACHABLE` with "Unarchive it on its page in the dashboard, then connect again" | Not documented | bex says why (DoD 3) |
+| Ticket mint | REST `POST /v1/agent-sessions/{id}/shell-ticket` returns `201` with `ticket`, `url` `wss://ssh.bex.co/shell`, `expiresAt` and `sandbox` `up`. GraphQL `createAgentSessionShellSession` returns the same fields. MCP has no mint, as the service Shell has none | Devin's API has no Terminal endpoint | A bex extension. REST and GraphQL agree |
+| `terminalEnabled` | `true` on REST, GraphQL, `/mcp` and `/mcp/cloud-agents` | — | The surfaces agree |
+| Session view | `phase`, `sandboxId` and `sshAddress` agreed on REST, GraphQL and both MCP endpoints while the sandbox was up | — | The surfaces agree |
+| A service's Shell | `/services/<id>/shell` for a `tian-personal` web service connected, and `pwd` printed `/opt/render/project/src` | Render's Shell | Unchanged |
 
 ## Definition of done
 
@@ -63,7 +108,7 @@ t007's Devin walk follows on the same run, then t010.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/057](../../done/057.md), filed by w10/m597 t007's Devin walk on 2026-11-23 and promoted by `/loopx w10` on 2026-11-23.
+- **Source:** inbox note [w10/057](../057.md), filed by w10/m597 t007's Devin walk on 2026-11-23 and promoted by `/loopx w10` on 2026-11-23.
 - **Triage evidence (2026-11-23, `b3d242e57f`):**
   - **The premise holds.** The gateway's Web Shell resolves only services: `webshell.Server{Apps: appService}` (`lego/backend/cmd/ssh-gateway/main.go:297-300`), while native SSH gets the composite resolver that routes `ags-…` to `agentsessions.SSHResolver` (`main.go:201`, `lego/backend/internal/sshgateway/composite.go`). Its ticket binds a `srv-…` service (`shellticket.Claims.ServiceID`, `lego/backend/internal/shellticket/shellticket.go`), minted only by `apps.Service.CreateShellSession` (`lego/backend/internal/apps/service.go:1931`, REST `POST /v1/services/{id}/shell-ticket`, GraphQL `createShellSession`). The session header offers Files and Connect only (`dashboard/src/features/agent-sessions/components/session-detail-header.tsx:352-354`), and the browser terminal is the service-only `WebShellTerminal` (`dashboard/src/features/services/components/web-shell-terminal.tsx`).
   - **What already exists.** The sandbox exec target (`agentsessions.SSHResolver.ResolveSSHSession`, `ssh.go:62`) and the wake: `Service.Resume` starts a closed session's sandbox, and its refusal params tell `closed` from `starting` (`errNoSandboxToOpen`, `ssh.go`). w10/m597 held an SSH login while the sandbox starts (`lego/backend/internal/sshgateway/nativessh/wake.go`), but its verb re-reads an SSH key by fingerprint, which a browser does not have. The dashboard's session hooks still carry a `resume` mutation (`dashboard/src/features/agent-sessions/hooks/use-agent-session-mutations.ts`).
