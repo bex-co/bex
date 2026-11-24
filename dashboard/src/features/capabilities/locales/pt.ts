@@ -11,7 +11,7 @@ const ptCapabilities: Record<string, TranslationEntry> = {
     message:
       "Sua função só pode visualizar este serviço. Peça a um administrador do workspace para fazer alterações.",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message:

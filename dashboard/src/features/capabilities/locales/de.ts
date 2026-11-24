@@ -11,7 +11,7 @@ const deCapabilities: Record<string, TranslationEntry> = {
     message:
       "Deine Rolle darf diesen Service nur ansehen. Bitte einen Workspace-Admin, Änderungen vorzunehmen.",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message:

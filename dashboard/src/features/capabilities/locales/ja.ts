@@ -11,7 +11,7 @@ const jaCapabilities: Record<string, TranslationEntry> = {
     message:
       "あなたのロールでは、このサービスを閲覧のみできます。変更するには、ワークスペースの管理者に依頼してください。",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message:

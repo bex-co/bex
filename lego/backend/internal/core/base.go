@@ -143,8 +143,8 @@ type PaymentGate interface {
 const (
 	RelCanView          = "can_view"            // viewer and up: lists, details, metrics
 	RelCanViewLogs      = "can_view_logs"       // contributor and up (Render: viewers can't see logs)
-	RelCanOperate       = "can_operate"         // contributor and up: restart/suspend/resume
-	RelCanCreate        = "can_create"          // developer and up: create/delete resources
+	RelCanOperate       = "can_operate"         // contributor and up: runtime actions (deploy, restart, suspend/resume, cron runs, cache purge, failover)
+	RelCanCreate        = "can_create"          // developer and up: create/delete resources and change their settings (w9/m619)
 	RelCanViewSensitive = "can_view_sensitive"  // developer and up: connection strings
 	RelCanManageKeys    = "can_manage_keys"     // developer and up: workspace API keys
 	RelCanManageSSHKeys = "can_manage_ssh_keys" // any workspace member: their own SSH public keys and API keys (w9/m514)
@@ -188,16 +188,14 @@ const (
 
 // LifecycleOrCreate picks a verb's relation when the SAME verb is lifecycle for
 // some calls and create-like for others — a deploy trigger that may or may not
-// carry an imageUrl, a cron update that may or may not carry a command, a
-// Postgres patch that may or may not turn on statement logging (w1/m68).
+// carry an imageUrl or commitId (w1/m68).
 //
 // It exists to name the pattern rather than to save four lines. The relation
 // must be decided from the REQUEST, before the single AuthorizeApp/
 // AuthorizeDatabase fetch, because a second authorization pass on an
 // already-fetched resource resolves a different workspace than the first (see
 // backend/AGENTS.md) — so every such verb has to compute it the same way, up
-// front. Three verbs did that independently before this helper; the fourth
-// should not have to rediscover the shape.
+// front.
 //
 // createLike true => can_create (developer and up); false => can_operate
 // (contributor and up).

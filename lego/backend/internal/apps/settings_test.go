@@ -94,14 +94,9 @@ func TestServicePatchTableCoversEveryFieldExactlyOnce(t *testing.T) {
 		if row.present == nil || row.apply == nil {
 			t.Errorf("servicePatchTable[%d] (%v) is missing its present/apply func", i, row.fields)
 		}
-		// w9/m166: a row with no relation is invisible to the preflight, so
-		// its permission would only be checked once its verb ran — after the
-		// earlier rows had already written. w5/m116: a row with no check
-		// leaves its change out of the probe, which admission judges before
-		// the first write and a dry-run answers with.
-		if row.relation == nil {
-			t.Errorf("servicePatchTable[%d] (%v) names no relation — the preflight could not authorize it before the patch's first write", i, row.fields)
-		}
+		// w5/m116: a row with no check leaves its change out of the probe,
+		// which admission judges before the first write and a dry-run
+		// answers with.
 		if row.check == nil {
 			t.Errorf("servicePatchTable[%d] (%v) has no check — its change would reach neither admission's dry-run nor a dry-run's answer", i, row.fields)
 		}

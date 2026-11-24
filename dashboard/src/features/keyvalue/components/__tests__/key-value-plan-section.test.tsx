@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 const updatePlan = vi.fn();
@@ -156,9 +156,9 @@ describe("KeyValuePlanSection", () => {
     expect(screen.getByRole("radio", { name: /Starter/ })).toBeEnabled();
   });
 
-  it("lets a contributor change plan through can_operate", async () => {
+  it("lets a developer change plan (can_create)", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
     );
     const onChanged = vi.fn();
     const user = userEvent.setup();
@@ -192,25 +192,26 @@ describe("KeyValuePlanSection", () => {
     );
   });
 
-  it("disables plan controls for a viewer with the operate reason", async () => {
+  // Render gives a Contributor no configuration change, a plan included
+  // (w9/m619): a Contributor, who keeps can_operate, reads the role's reason.
+  it("disables plan controls for a contributor with the create reason", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "VIEWER", canOperate: false }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
     const user = userEvent.setup();
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
 
     const starter = screen.getByRole("radio", { name: /Starter/ });
     expect(starter).toBeDisabled();
-    expect(
-      screen.getByText(/Your role can only view this service/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByText(CREATE_REASON)).toBeInTheDocument();
     await user.click(starter);
     expect(updatePlan).not.toHaveBeenCalled();
   });
 
   it("fail-closes plan controls until capabilities are definitive", () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ canOperate: false, loading: true, loaded: false }),
+      mockCapabilities({ canCreate: false, loading: true, loaded: false }),
     );
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
     expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();

@@ -46,7 +46,7 @@ import {
   UpdateDatabaseHighAvailabilityDocument,
 } from "@/graphql/definitions";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import {
   READ_REPLICA_NAME_MAX_LENGTH,
@@ -67,7 +67,8 @@ interface HAPanelProps {
 /**
  * The HA panel: shows whether HA is enabled, a failover button for HA databases
  * (with a confirmation dialog), and the named read replicas, which a member
- * who can operate the database may add and remove (w5/m138).
+ * who can change the database's settings (can_create) may add and remove
+ * (w5/m138, w9/m619).
  * Mirrors Render's HA surface (docs/render-artifacts/postgres-ha.md):
  *   - highAvailabilityEnabled: reflects the operator's live observed state
  *   - failoverDatabase mutation: sends POST /v1/postgres/{id}/failover intent
@@ -76,9 +77,12 @@ interface HAPanelProps {
  */
 export function HAPanel({ database, refetch }: HAPanelProps) {
   const { t } = useTranslations();
-  const capabilities = useCapabilities();
-  const operateReasonKey = capabilities.reasonKey("can_operate");
-  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
+  // Failover is a lifecycle verb (can_operate); the HA switch and the read
+  // replicas are settings PATCH /v1/postgres changes (can_create).
+  const { denied: operateDenied, reason: operateReason } =
+    useCapabilityGate("canOperate");
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -114,7 +118,7 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
   const names = database.readReplicas.map((r) => r.name);
   const addBlock = readReplicaAddBlock(database, plan);
   const addDisabledReason =
-    operateReason ?? (addBlock ? addBlockMessage(t, addBlock) : undefined);
+    createReason ?? (addBlock ? addBlockMessage(t, addBlock) : undefined);
   const nameProblem = readReplicaNameProblem(newName, names);
   // An empty field shows the hint, not an error; submit stays disabled.
   const nameError = !newName
@@ -237,24 +241,24 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
             </div>
             <div className="flex items-center gap-3">
               {database.highAvailabilityEnabled ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmOpen(true)}
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="animate-spin" /> : null}
-                  {t("databases.haFailover")}
-                </Button>
+                <PermissionTooltip reason={operateReason}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={operateDenied || loading}
+                  >
+                    {loading ? <Loader2 className="animate-spin" /> : null}
+                    {t("databases.haFailover")}
+                  </Button>
+                </PermissionTooltip>
               ) : null}
-              <PermissionTooltip reason={operateReason}>
+              <PermissionTooltip reason={createReason}>
                 <Switch
                   aria-label={t("databases.haToggleLabel")}
                   checked={requested}
                   disabled={
-                    operateReason != null ||
-                    savingHA ||
-                    (!requested && enableBlocked)
+                    createDenied || savingHA || (!requested && enableBlocked)
                   }
                   onCheckedChange={setHaTarget}
                 />
@@ -276,7 +280,7 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={addDisabledReason != null || savingReplicas}
+                  disabled={createDenied || addBlock != null || savingReplicas}
                   onClick={() => {
                     setNewName("");
                     setAdding(true);
@@ -321,11 +325,11 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
                         </div>
                       ) : null}
                     </div>
-                    <PermissionTooltip reason={operateReason}>
+                    <PermissionTooltip reason={createReason}>
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={operateReason != null || savingReplicas}
+                        disabled={createDenied || savingReplicas}
                         onClick={() => setRemoving(r.name)}
                       >
                         {t("databases.haRemoveReplica")}

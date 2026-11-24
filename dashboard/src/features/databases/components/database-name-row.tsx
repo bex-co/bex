@@ -1,4 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { isValidLabel } from "@/common/lib/utils/resource-label";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useRenameDatabase } from "@/features/databases/hooks/use-rename-database";
@@ -19,6 +20,8 @@ export interface DatabaseNameRowProps {
 export function DatabaseNameRow({ database, onRenamed }: DatabaseNameRowProps) {
   const { t } = useTranslations();
   const { rename, busy } = useRenameDatabase();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   return (
     <EditableFieldRow
@@ -27,6 +30,8 @@ export function DatabaseNameRow({ database, onRenamed }: DatabaseNameRowProps) {
       value={database.name}
       editLabel={t("databases.nameEdit")}
       busy={busy}
+      disabled={createDenied}
+      disabledReason={createReason}
       validate={(draft) =>
         isValidLabel(draft) ? null : t("databases.nameInvalid")
       }

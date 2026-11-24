@@ -368,11 +368,14 @@ var representativeVerbRelations = map[string]string{
 	// can_view_logs — contributor and up (viewers can't see logs).
 	"*logs.Service.QueryLogs":             core.RelCanViewLogs,
 	"*keyvalue.Service.QueryKeyValueLogs": core.RelCanViewLogs,
-	// can_operate — contributor and up (lifecycle / settings, no create/delete).
+	// can_operate — contributor and up: runtime actions on what exists
+	// (deploy, restart, suspend/resume, cron runs, cache purge, failover).
+	// No settings and no create/delete: Render's Contributor cannot modify
+	// service configuration (w9/m619, the block below).
 	"*apps.Service.Suspend":          core.RelCanOperate,
 	"*apps.Service.Restart":          core.RelCanOperate,
-	"*apps.Service.Scale":            core.RelCanOperate,
-	"*apps.Service.SetPlan":          core.RelCanOperate,
+	"*apps.Service.PurgeCache":       core.RelCanOperate,
+	"*postgres.Service.Failover":     core.RelCanOperate,
 	"*postgres.Service.CreateExport": core.RelCanOperate,
 	// ADR087 mobile role-view rows (w6/m136): the mobile client derives its
 	// hide/show matrix from these exact relations, so each is pinned
@@ -397,13 +400,13 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.TriggerCronRun":       core.RelCanOperate,
 	"*apps.Service.CancelCronRun":        core.RelCanOperate,
 	"*apps.Service.CancelCurrentCronRun": core.RelCanOperate,
-	// Two verbs are CONDITIONAL (codex round-5 F2): their relation depends on
+	// Trigger is CONDITIONAL (codex round-5 F2): its relation depends on
 	// whether the call supplies executable content. The reflection sweep invokes
-	// them with zero-valued arguments, so what these two pins capture is the
-	// LIFECYCLE branch — a bare redeploy and a schedule-only cron change, both of
-	// which must stay available to contributors. The create-like branch is pinned
-	// separately by TestExecutableSelectionRequiresCanCreate, which calls them
-	// WITH the parameters; changing either branch alone turns one of the two red.
+	// it with zero-valued arguments, so what this pin captures is the LIFECYCLE
+	// branch — a bare redeploy, which must stay available to contributors. The
+	// create-like branch is pinned separately by
+	// TestExecutableSelectionRequiresCanCreate, which calls it WITH the
+	// parameters; changing either branch alone turns one of the two red.
 	"*deploys.Service.Trigger": core.RelCanOperate,
 	// Restart deploys the live commit, never caller-chosen content, so it stays
 	// a lifecycle verb (w1/m148).
@@ -411,12 +414,45 @@ var representativeVerbRelations = map[string]string{
 	// Rebuild builds the configured branch head, never caller-chosen content —
 	// a bare redeploy recorded as a configuration change (w4/347).
 	"*deploys.Service.Rebuild": core.RelCanOperate,
-	"*apps.Service.SetCronJob": core.RelCanOperate,
 	// AttachTicket is CONDITIONAL the same way (codex r7 #3): the zero-value
 	// action this sweep captures is the transcript READ branch (contributor,
 	// the documented ADR054 boundary); a live prompt turn is can_create,
 	// pinned with parameters by agentsessions.TestAttachTicketRelationPerAction.
 	"*agentsessions.Service.AttachTicket": core.RelCanOperate,
+	// can_create — developer and up: every service and datastore setting
+	// (w9/m619). Render's role table gives a Contributor no "Modify service
+	// configuration" and no "Manage inbound IP rules"
+	// (render.com/docs/team-members, read 2026-11-23), so each of these, a
+	// Contributor's before m619, is pinned here: one moved back to can_operate
+	// turns this red.
+	"*apps.Service.SetDisplayName":                 core.RelCanCreate,
+	"*apps.Service.SetPlan":                        core.RelCanCreate,
+	"*apps.Service.Scale":                          core.RelCanCreate,
+	"*apps.Service.SetAutoscaling":                 core.RelCanCreate,
+	"*apps.Service.DeleteAutoscaling":              core.RelCanCreate,
+	"*apps.Service.SetIdleTTL":                     core.RelCanCreate,
+	"*apps.Service.SetMaxShutdownDelay":            core.RelCanCreate,
+	"*apps.Service.SetHealthCheckPath":             core.RelCanCreate,
+	"*apps.Service.SetBuildFilter":                 core.RelCanCreate,
+	"*apps.Service.SetAutoDeploy":                  core.RelCanCreate,
+	"*apps.Service.SetAutoDeployTrigger":           core.RelCanCreate,
+	"*apps.Service.SetCronJob":                     core.RelCanCreate,
+	"*apps.Service.SetMaintenanceMode":             core.RelCanCreate,
+	"*apps.Service.ConfigureMaintenanceMode":       core.RelCanCreate,
+	"*apps.Service.SetCacheProfile":                core.RelCanCreate,
+	"*apps.Service.SetSubdomainPolicy":             core.RelCanCreate,
+	"*apps.Service.SetIPAllowList":                 core.RelCanCreate,
+	"*apps.Service.SetNotifyOnFail":                core.RelCanCreate,
+	"*apps.Service.SetNotificationsToSend":         core.RelCanCreate,
+	"*apps.Service.SetPreviewNotificationsEnabled": core.RelCanCreate,
+	"*apps.Service.AddDomain":                      core.RelCanCreate,
+	"*apps.Service.VerifyDomain":                   core.RelCanCreate,
+	"*apps.Service.DeleteDomain":                   core.RelCanCreate,
+	"*postgres.Service.UpdatePostgres":             core.RelCanCreate,
+	"*postgres.Service.SetPlan":                    core.RelCanCreate,
+	"*postgres.Service.SetVersion":                 core.RelCanCreate,
+	"*keyvalue.Service.UpdateKeyValue":             core.RelCanCreate,
+	"*keyvalue.Service.SetPlan":                    core.RelCanCreate,
 	// can_create — developer and up (create/delete resources).
 	"*apps.Service.Create":             core.RelCanCreate,
 	"*apps.Service.Delete":             core.RelCanCreate,

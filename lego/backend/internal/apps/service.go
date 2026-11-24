@@ -4922,7 +4922,7 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 // trigger a new deploy"), and the service keeps running, and being billed
 // on, the plan it runs until a deploy applies it.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
-	_, a, err := s.authorizeToChange(ctx, name, false, core.RelCanOperate)
+	_, a, err := s.authorizeToChange(ctx, name, false)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5003,30 +5003,23 @@ func (s *Service) SetPlanDryRun(ctx context.Context, name, plan string) (AppView
 	return s.applyServicePatchDryRun(ctx, name, ServicePatch{Plan: &plan})
 }
 
-// authorizeToChange is AuthorizeApp for a verb that changes name. The real
-// call authorizes each of relations, deferring its allowed audit row to the
+// authorizeToChange is AuthorizeApp for a verb that changes name's settings,
+// which needs can_create: Render's Contributor cannot modify service
+// configuration (w9/m619). The real call defers its allowed audit row to the
 // write. Its dry-run authorizes can_view, so a viewer can still preview, and
-// shows billing refusals only to a caller who holds them all (core.PreviewOf).
-// The context it returns is the one the verb's checks run under.
-func (s *Service) authorizeToChange(ctx context.Context, name string, dryRun bool, relations ...string) (context.Context, *appv1alpha1.App, error) {
+// shows billing refusals only to a caller who holds can_create
+// (core.PreviewOf). The context it returns is the one the verb's checks run
+// under.
+func (s *Service) authorizeToChange(ctx context.Context, name string, dryRun bool) (context.Context, *appv1alpha1.App, error) {
 	if dryRun {
 		a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 		if err != nil {
 			return ctx, nil, err
 		}
-		return s.PreviewOf(ctx, a.Labels, relations...), a, nil
+		return s.PreviewOf(ctx, a.Labels, core.RelCanCreate), a, nil
 	}
-	var a *appv1alpha1.App
-	for _, relation := range relations {
-		fetched, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), relation, name)
-		if err != nil {
-			return ctx, nil, err
-		}
-		if a == nil {
-			a = fetched
-		}
-	}
-	return ctx, a, nil
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
+	return ctx, a, err
 }
 
 // diskPlanError mirrors the paid-tier disk constraint before any intent write.
@@ -5103,7 +5096,7 @@ func planDowngradeError(a *appv1alpha1.App, tier, plan string) error {
 // maps spec.replicas 0 to 1 (the default), so 0 is ambiguous — scale-to-zero
 // (m4) owns redefining that, and will keep this 1-based verb valid.
 func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5175,7 +5168,7 @@ const MaxIdleTTLSeconds int32 = 7 * 24 * 60 * 60
 // effect only if the App is both a web service and free. The dashboard gates
 // the control on that same policy and the operator is the final authority.
 func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5287,7 +5280,7 @@ func (s *Service) SetDockerContext(ctx context.Context, name, dockerContext stri
 // does not itself rebuild the current revision. Rejected for an image-backed App
 // (no repo, so no push to filter).
 func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *BuildFilterView) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5708,9 +5701,9 @@ func (s *Service) recordBranchChangedFact(ctx context.Context, a *appv1alpha1.Ap
 func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command *string) (AppView, error) {
 	// SECURITY (codex round-5 F2): the command IS the code the cron runs, so
 	// supplying one (including clearing it, which changes what executes) is
-	// create-like. A schedule-only change is genuine lifecycle — when the cron
-	// runs, not what it runs — and stays available to contributors.
-	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(command != nil), name)
+	// create-like. A schedule-only change is a service setting, which Render's
+	// Contributor cannot modify either (w9/m619), so both need can_create.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5784,7 +5777,7 @@ var errCronScheduleFormat = core.NewBadRequestError(cronScheduleInvalid,
 // documented migration for a service created before m80, which still carries a
 // "/" the CRD default persisted at write time.
 func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5806,7 +5799,7 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 // and stores none: a value it still holds from before the rule is cleared, and
 // otherwise nothing is written.
 func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds int32) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5933,7 +5926,7 @@ func validateServicePort(port int32) error {
 // not projection-owned (mirrors Builder/RootDir), and no restartedAt bump —
 // flipping the toggle changes future push behavior, it does not itself redeploy.
 func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -5944,7 +5937,7 @@ func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) 
 // off, commit, or checksPass, which waits for the pushed commit's GitHub
 // checks (w1/m181) and needs the GitHub App's Checks: read permission.
 func (s *Service) SetAutoDeployTrigger(ctx context.Context, name, trigger string) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -6018,7 +6011,7 @@ func (s *Service) SetNotifyOnFail(ctx context.Context, name, value string) (AppV
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+	return s.patch(ctx, name, func(a *appv1alpha1.App) {
 		a.Spec.NotifyOnFail = normalized
 		a.Spec.NotificationsToSend = ""
 	})
@@ -6031,7 +6024,7 @@ func (s *Service) SetNotificationsToSend(ctx context.Context, name, value string
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+	return s.patch(ctx, name, func(a *appv1alpha1.App) {
 		a.Spec.NotificationsToSend = normalized
 		a.Spec.NotifyOnFail = appv1alpha1.NotifyOnFailForNotificationsToSend(normalized)
 	})
@@ -6045,7 +6038,7 @@ func (s *Service) SetPreviewNotificationsEnabled(ctx context.Context, name, valu
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+	return s.patch(ctx, name, func(a *appv1alpha1.App) {
 		a.Spec.PreviewNotificationsEnabled = normalized
 	})
 }
@@ -6086,7 +6079,7 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	if _, err := normalizeSubdomainPolicy(policy); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -6109,7 +6102,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 	if err := core.ValidateAllowList(entries); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -6158,7 +6151,7 @@ func (s *Service) SetMaintenanceMode(ctx context.Context, name string, in Mainte
 // Configure alias above.
 func (s *Service) setMaintenanceMode(ctx context.Context, name string, in MaintenanceModeView) (AppView, error) {
 	auditCtx := core.WithDeferredAllowedWriteAudit(ctx)
-	a, err := s.AuthorizeApp(auditCtx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(auditCtx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -6213,7 +6206,7 @@ func (s *Service) labelNewService(ctx context.Context, name, label string) (AppV
 }
 
 func (s *Service) setDisplayName(ctx context.Context, name, displayName string, recordRename bool) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -6370,13 +6363,12 @@ func (s *Service) writeThroughStoreFetched(
 	return s.patchFetched(ctx, a, mutate)
 }
 
-// patch authorizes and fetches the App by name (against its own workspace,
-// core.Base.AuthorizeApp) then applies mutate. Restart/SetAutoDeploy's
-// single-fetch shape; a row-writing verb instead reuses the App it already
-// fetched via writeThroughStoreFetched/patchFetched. relation is the one the
-// calling verb needs.
-func (s *Service) patch(ctx context.Context, relation, name string, mutate func(*appv1alpha1.App)) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, relation, name)
+// patch authorizes can_create on the App by name (against its own workspace,
+// core.Base.AuthorizeApp), as every service setting needs (w9/m619), then
+// applies mutate. A row-writing verb instead reuses the App it already
+// fetched via writeThroughStoreFetched/patchFetched.
+func (s *Service) patch(ctx context.Context, name string, mutate func(*appv1alpha1.App)) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -7112,7 +7104,7 @@ func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingV
 // The autoscaling config is written directly to the CR spec (not row-first,
 // like SetRootDir) — autoscaling is not a projection-owned field.
 func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutoscalingRequest) (AutoscalingView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AutoscalingView{}, err
 	}
@@ -7160,7 +7152,7 @@ func autoscalingOn(as *appv1alpha1.AutoscalingSpec) bool {
 // them for the next enable (w4/597). A type autoscaling never applies to has
 // its stale settings cleared instead. Idempotent — already-disabled is a no-op.
 func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}

@@ -27,7 +27,7 @@ import {
 } from "@/common/components/datastore-plan-preview";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useUpdateDatabasePlan } from "@/features/databases/hooks/use-update-database-plan";
 import { useUpdateDatabaseDiskSize } from "@/features/databases/hooks/use-update-database-disk-size";
@@ -53,11 +53,8 @@ export function DatabasePlanSection({
   onChanged,
 }: DatabasePlanSectionProps) {
   const { t } = useTranslations();
-  const capabilities = useCapabilities();
-  const { canOperate } = capabilities;
-  const operateDenied = !canOperate;
-  const operateReasonKey = capabilities.reasonKey("can_operate");
-  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const { instanceTypes, loading, retry, retrying } =
     useDatabaseInstanceTypes();
   const { updatePlan, busy } = useUpdateDatabasePlan();
@@ -107,7 +104,7 @@ export function DatabasePlanSection({
   const canSave = dirty && selectedType != null && planError == null;
 
   async function handleConfirm() {
-    if (operateDenied || !canSave) return;
+    if (createDenied || !canSave) return;
     setConfirming(false);
     if (!selectedType) return;
     const ok = await updatePlan(
@@ -125,9 +122,9 @@ export function DatabasePlanSection({
         <CardDescription>{t("databases.planDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {operateReason ? (
+        {createReason ? (
           <p className="text-muted-foreground text-sm" role="status">
-            {operateReason}
+            {createReason}
           </p>
         ) : null}
         {loading && instanceTypes.length === 0 ? (
@@ -142,7 +139,7 @@ export function DatabasePlanSection({
           <ComputePlanList
             instanceTypes={instanceTypes}
             value={selected ?? ""}
-            disabled={operateDenied}
+            disabled={createDenied}
             ariaLabel={t("databases.planTitle")}
             onChange={setSelected}
           />
@@ -158,15 +155,15 @@ export function DatabasePlanSection({
           <Button
             variant="outline"
             onClick={() => setSelected(database.plan)}
-            disabled={!dirty || busy || operateDenied}
+            disabled={!dirty || busy || createDenied}
           >
             {t("databases.planPickerCancel")}
           </Button>
-          <PermissionTooltip reason={operateReason}>
+          <PermissionTooltip reason={createReason}>
             <Button
-              disabled={!canSave || busy || operateDenied}
+              disabled={!canSave || busy || createDenied}
               onClick={() => {
-                if (!operateDenied) setConfirming(true);
+                if (!createDenied) setConfirming(true);
               }}
             >
               {t("databases.planPickerSave")}
@@ -177,15 +174,14 @@ export function DatabasePlanSection({
         <StorageRow
           database={database}
           plan={instanceTypes.find((it) => it.id === database.plan)}
-          operateReason={operateReason}
           onChanged={onChanged}
         />
       </CardContent>
 
       <ConfirmDialog
-        open={confirming && !operateDenied}
+        open={confirming && !createDenied}
         onOpenChange={(open) => {
-          if (!operateDenied) setConfirming(open);
+          if (!createDenied) setConfirming(open);
         }}
         title={
           selectedType
@@ -216,16 +212,16 @@ export function DatabasePlanSection({
 function StorageRow({
   database,
   plan,
-  operateReason,
   onChanged,
 }: {
   database: DatabaseDetailView;
   /** The database's current plan, or undefined while the catalog loads. */
   plan: DatabaseInstanceTypeView | undefined;
-  operateReason: string | undefined;
   onChanged: () => void;
 }) {
   const { t } = useTranslations();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const { updateDiskSize, busy } = useUpdateDatabaseDiskSize();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
@@ -284,14 +280,14 @@ function StorageRow({
           </p>
         ) : null}
       </div>
-      <PermissionTooltip reason={operateReason}>
+      <PermissionTooltip reason={createReason}>
         <Button
           variant="outline"
           size="sm"
           aria-label={t("databases.storageEditAria")}
           // Until the catalog names the plan, a free database's fixed disk
           // is unknown, so the edit waits for it.
-          disabled={operateReason != null || plan == null || fixed || busy}
+          disabled={createDenied || plan == null || fixed || busy}
           onClick={startEditing}
         >
           {t("databases.storageEdit")}

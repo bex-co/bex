@@ -682,13 +682,13 @@ func (b *Base) RecordMaintenanceModeEffects(
 	target := canonicalAppTarget(app)
 	if uri != nil {
 		ev := b.verbAuditEvent(ctx, AuditVerbMaintenanceModeURIUpdated, resource, target)
-		ev.Relation = RelCanOperate
+		ev.Relation = RelCanCreate
 		ev.MaintenanceURIFrom, ev.MaintenanceURITo = &uri.From, &uri.To
 		b.recordAudit(ctx, ev)
 	}
 	if enabledChanged != nil {
 		ev := b.verbAuditEvent(ctx, AuditVerbMaintenanceModeEnabled, resource, target)
-		ev.Relation = RelCanOperate
+		ev.Relation = RelCanCreate
 		ev.MaintenanceModeTo = enabledChanged
 		b.recordAudit(ctx, ev)
 	}

@@ -258,3 +258,31 @@ func TestActionCapabilities_RestartBillingAndViewerGuards(t *testing.T) {
 		}
 	})
 }
+
+// TestActionCapabilities_AContributorChangesNoIPRules (w9/m619): the inbound
+// IP rules are a setting, which Render's Contributor cannot change ("Manage
+// inbound IP rules" ❌), so a Contributor's projection reads
+// update_ip_allow_list denied, as the PATCH refuses it, while restart,
+// suspend and resume stay allowed.
+func TestActionCapabilities_AContributorChangesNoIPRules(t *testing.T) {
+	db := databaseForProtection("dpg-orders", "orders", false)
+	svc, _, _ := protectedPostgresService(db)
+	svc.Base.Authz = &roleChecker{grants: contributorGrants}
+
+	acts, err := svc.ActionCapabilities(ctxAsCaller(), db.Name)
+	if err != nil {
+		t.Fatalf("ActionCapabilities: %v", err)
+	}
+	if a := actionByID(t, acts, core.ActionUpdateIPAllowList); a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission {
+		t.Errorf("a Contributor's update_ip_allow_list = %+v, want denied/insufficient_permission", a)
+	}
+	empty := []core.IPAllowListEntry{}
+	if _, err := svc.UpdatePostgres(ctxAsCaller(), db.Name, PostgresPatch{IPAllowList: &empty}); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("a Contributor's IP rules PATCH = %v, want ErrForbidden as the projection says", err)
+	}
+	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume} {
+		if a := actionByID(t, acts, id); a.Outcome != core.DecisionAllowed {
+			t.Errorf("a Contributor's %s = %+v, want allowed", id, a)
+		}
+	}
+}

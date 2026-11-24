@@ -1,4 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useDisplayName } from "@/features/services/hooks/use-display-name";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 
@@ -25,6 +26,8 @@ export function DisplayNameRow({
 }: DisplayNameRowProps) {
   const { t } = useTranslations();
   const { setDisplayName, busy, unpublished } = useDisplayName();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const current = displayName?.trim() ?? "";
   const visible = current || name?.trim() || serviceId;
 
@@ -35,9 +38,9 @@ export function DisplayNameRow({
       value={visible}
       editLabel={t("services.displayNameEdit")}
       busy={busy}
-      disabled={unpublished}
+      disabled={unpublished || createDenied}
       disabledReason={
-        unpublished ? t("services.displayNameUnpublished") : undefined
+        unpublished ? t("services.displayNameUnpublished") : createReason
       }
       // Clearing an already-empty label back to the immutable-id fallback is
       // not a change; anything else that differs from the visible value is.

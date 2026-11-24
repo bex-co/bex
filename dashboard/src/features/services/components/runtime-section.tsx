@@ -16,6 +16,8 @@ import {
 } from "@/common/components/ui/select";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useRuntime } from "@/features/services/hooks/use-runtime";
 import { isDockerBuild } from "@/features/services/lib/service-type";
 import { RUNTIME_DEFS, type GitRuntime } from "@/features/services/lib/runtime";
@@ -70,6 +72,8 @@ export function RuntimeSection({
 }: RuntimeSectionProps) {
   const { t } = useTranslations();
   const { setRuntime, saving } = useRuntime();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const saved = currentRuntime(runtime, builder);
   // null follows the saved runtime, so a save (or a refetch) re-syncs it.
   const [draft, setDraft] = useState<GitRuntime | null>(null);
@@ -93,10 +97,15 @@ export function RuntimeSection({
             <div className="mt-1 text-sm text-muted-foreground">
               {t("services.runtimeNote")}
             </div>
+            {createReason ? (
+              <div className="mt-1 text-sm text-muted-foreground">
+                {createReason}
+              </div>
+            ) : null}
           </div>
           <Select
             value={selected ?? ""}
-            disabled={saving}
+            disabled={saving || createDenied}
             onValueChange={(v) => setDraft(v as GitRuntime)}
           >
             <SelectTrigger
@@ -117,13 +126,15 @@ export function RuntimeSection({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            disabled={!dirty || saving}
-            onClick={() => setConfirming(true)}
-          >
-            {saving ? t("services.runtimeSaving") : t("services.runtimeSave")}
-          </Button>
+          <PermissionTooltip reason={createReason}>
+            <Button
+              size="sm"
+              disabled={!dirty || saving || createDenied}
+              onClick={() => setConfirming(true)}
+            >
+              {saving ? t("services.runtimeSaving") : t("services.runtimeSave")}
+            </Button>
+          </PermissionTooltip>
         </div>
       </CardContent>
 

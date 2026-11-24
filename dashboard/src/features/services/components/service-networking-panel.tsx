@@ -9,6 +9,7 @@ import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { IPAllowListProxiedNotice } from "@/common/components/ip-allow-list-proxied-notice";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useServiceNetworking } from "@/features/services/hooks/use-service-networking";
 import { useWorkspace } from "@/features/workspaces/context";
 import { inboundIpRulesPlan } from "@/features/workspaces/types";
@@ -49,6 +50,12 @@ export function ServiceNetworkingPanel({
   const networking = useServiceNetworking();
   const { currentWorkspace } = useWorkspace();
   const belowScale = !inboundIpRulesPlan(currentWorkspace?.plan);
+  // Render's role table gives a Contributor no "Manage inbound IP rules".
+  // Until the capability is known the editor is held without claiming a role.
+  const create = useCapabilityGate("canCreate");
+  const disabledReason = create.denied
+    ? (create.reason ?? t("capabilities.actionChecking"))
+    : undefined;
 
   // Not loaded yet is not "no rules": an empty list means the service is
   // blocked, so nothing is claimed until the list is known.
@@ -74,6 +81,7 @@ export function ServiceNetworkingPanel({
             key={ipAllowListEntryKey(normalized)}
             entries={normalized}
             saving={networking.saving}
+            disabledReason={disabledReason}
             clearOnly={
               belowScale
                 ? {

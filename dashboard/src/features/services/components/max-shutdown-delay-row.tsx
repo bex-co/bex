@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useMaxShutdownDelay } from "@/features/services/hooks/use-max-shutdown-delay";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 
@@ -45,6 +46,8 @@ export function MaxShutdownDelayRow({
 }: MaxShutdownDelayRowProps) {
   const { t } = useTranslations();
   const { setMaxShutdownDelay, busy } = useMaxShutdownDelay();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const current = hasDisk ? 30 : (maxShutdownDelaySeconds ?? 30);
   const hint = hasDisk ? (
     <>
@@ -65,7 +68,9 @@ export function MaxShutdownDelayRow({
     <EditableFieldRow
       label={t("services.settingsMaxShutdownDelay")}
       hint={hint}
-      disabled={hasDisk}
+      disabled={hasDisk || createDenied}
+      // A disk's own reason is the hint; the role's is a line beneath.
+      disabledReason={createReason}
       value={String(current)}
       editLabel={t("services.maxShutdownDelayEdit")}
       type="number"

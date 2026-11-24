@@ -11,7 +11,7 @@ import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
@@ -37,11 +37,8 @@ export function KeyValuePlanSection({
   onChanged,
 }: KeyValuePlanSectionProps) {
   const { t } = useTranslations();
-  const capabilities = useCapabilities();
-  const { canOperate } = capabilities;
-  const operateDenied = !canOperate;
-  const operateReasonKey = capabilities.reasonKey("can_operate");
-  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const { instanceTypes, loading, retry, retrying } =
     useKeyValueInstanceTypes();
   const { updatePlan, busy } = useUpdateKeyValuePlan();
@@ -76,7 +73,7 @@ export function KeyValuePlanSection({
     selected !== keyValue.plan && selectedType?.available !== false;
 
   async function handleConfirm() {
-    if (operateDenied) return;
+    if (createDenied) return;
     setConfirming(false);
     if (!selectedType) return;
     const ok = await updatePlan(
@@ -94,9 +91,9 @@ export function KeyValuePlanSection({
         <CardDescription>{t("keyvalue.planDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {operateReason ? (
+        {createReason ? (
           <p className="text-muted-foreground text-sm" role="status">
-            {operateReason}
+            {createReason}
           </p>
         ) : null}
         {loading && instanceTypes.length === 0 ? (
@@ -111,7 +108,7 @@ export function KeyValuePlanSection({
           <ComputePlanList
             instanceTypes={planCards}
             value={selected}
-            disabled={operateDenied}
+            disabled={createDenied}
             ariaLabel={t("keyvalue.planTitle")}
             onChange={setSelected}
           />
@@ -121,15 +118,15 @@ export function KeyValuePlanSection({
           <Button
             variant="outline"
             onClick={() => setSelected(currentPlan)}
-            disabled={!canSave || busy || operateDenied}
+            disabled={!canSave || busy || createDenied}
           >
             {t("keyvalue.planPickerCancel")}
           </Button>
-          <PermissionTooltip reason={operateReason}>
+          <PermissionTooltip reason={createReason}>
             <Button
-              disabled={!canSave || busy || operateDenied}
+              disabled={!canSave || busy || createDenied}
               onClick={() => {
-                if (!operateDenied) setConfirming(true);
+                if (!createDenied) setConfirming(true);
               }}
             >
               {t("keyvalue.planPickerSave")}
@@ -139,9 +136,9 @@ export function KeyValuePlanSection({
       </CardContent>
 
       <ConfirmDialog
-        open={confirming && !operateDenied}
+        open={confirming && !createDenied}
         onOpenChange={(open) => {
-          if (!operateDenied) setConfirming(open);
+          if (!createDenied) setConfirming(open);
         }}
         title={
           selectedType

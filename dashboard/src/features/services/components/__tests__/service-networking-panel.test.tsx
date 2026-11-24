@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const mocks = vi.hoisted(() => ({
   saveAllowList: vi.fn(async () => true),
@@ -280,5 +282,62 @@ describe("ServiceNetworkingPanel", () => {
       />,
     );
     expect(screen.queryByTestId("ip-allow-list-proxied-notice")).toBeNull();
+  });
+});
+
+// Render's role table gives a Contributor no "Manage inbound IP rules": the
+// service's rules are can_create (w9/m619).
+describe("ServiceNetworkingPanel role gating (w9/m619)", () => {
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it("holds the rules for a contributor, on Scale and below", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    mocks.plan = "scale";
+    const { unmount } = render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={allowAll}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Add allowlist entry" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save allowlist" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: "CIDR block for rule 1" }),
+    ).toBeDisabled();
+    unmount();
+
+    mocks.plan = "hobby";
+    const user = userEvent.setup();
+    render(
+      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+    );
+    const open = screen.getByRole("button", { name: "Allow all traffic" });
+    expect(open).toBeDisabled();
+    await user.click(open);
+    expect(mocks.saveAllowList).not.toHaveBeenCalled();
+  });
+
+  it("leaves the rules editable for a developer", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    mocks.plan = "scale";
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={allowAll}
+      />,
+    );
+    expect(
+      screen.getByRole("textbox", { name: "CIDR block for rule 1" }),
+    ).toBeEnabled();
   });
 });

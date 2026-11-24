@@ -9,7 +9,7 @@ const zhCapabilities: Record<string, TranslationEntry> = {
   "capabilities.reasonCanOperate": {
     message: "你的角色只能查看此服务。请联系工作区管理员进行更改。",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message: "你的角色无法查看机密值。请联系工作区管理员。",

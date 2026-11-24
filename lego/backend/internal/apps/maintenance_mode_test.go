@@ -520,8 +520,8 @@ func TestMaintenanceModeChangedFieldsAuditOnceAndNoopDoesNotAudit(t *testing.T) 
 	// Render's Maintenance Mode URI Updated fromURI/toURI (w3/m317): from the
 	// default page ("") to the new one; the toggle row carries no URI.
 	if uri := sink.events[0]; uri.MaintenanceURIFrom == nil || *uri.MaintenanceURIFrom != "" ||
-		uri.MaintenanceURITo == nil || *uri.MaintenanceURITo != mode.URI || uri.Relation != core.RelCanOperate {
-		t.Fatalf("maintenance URI audit = %+v, want from \"\" to %s under %s", uri, mode.URI, core.RelCanOperate)
+		uri.MaintenanceURITo == nil || *uri.MaintenanceURITo != mode.URI || uri.Relation != core.RelCanCreate {
+		t.Fatalf("maintenance URI audit = %+v, want from \"\" to %s under %s", uri, mode.URI, core.RelCanCreate)
 	}
 	if toggle := sink.events[1]; toggle.MaintenanceURIFrom != nil || toggle.MaintenanceURITo != nil {
 		t.Fatalf("maintenance toggle audit carries a URI: %+v", toggle)

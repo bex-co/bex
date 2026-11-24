@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useServiceNotifications } from "@/features/services/hooks/use-service-notifications";
 import { useOwnerNotificationSettings } from "@/features/notifications/hooks/use-owner-notification-settings";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
@@ -31,6 +32,8 @@ export function ServiceNotificationsRow({
 }: ServiceNotificationsRowProps) {
   const { t } = useTranslations();
   const { setNotificationsToSend, busy } = useServiceNotifications();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const { settings } = useOwnerNotificationSettings(ownerId);
   const current = notificationsToSend || "default";
   const workspaceLevel = settings?.notificationsToSend;
@@ -57,6 +60,8 @@ export function ServiceNotificationsRow({
       editLabel={t("services.notificationsEdit")}
       busy={busy}
       options={options}
+      disabled={createDenied}
+      disabledReason={createReason}
       onSave={(value) => setNotificationsToSend(serviceId, value)}
     />
   );

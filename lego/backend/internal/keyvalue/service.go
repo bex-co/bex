@@ -1125,7 +1125,7 @@ func (s *Service) SetPlanDryRun(ctx context.Context, name, plan string) (KeyValu
 }
 
 func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (KeyValueView, error) {
-	ctx, kv, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
+	ctx, kv, err := s.fetchToChange(ctx, name, dryRun)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -1178,22 +1178,23 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	return view, nil
 }
 
-// fetchToChange fetches name for a verb that changes it. The real call
-// authorizes relation, deferring its allowed audit row to the write. Its
-// dry-run authorizes can_view, so a viewer can still preview, and shows billing
-// refusals only to a caller who holds relation (core.PreviewOf). A store being
-// deleted is not found either way.
-func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool, relation string) (context.Context, *appv1alpha1.KeyValue, error) {
+// fetchToChange fetches name for a verb that changes its settings. The real
+// call authorizes can_create, as every datastore setting needs (w9/m619),
+// deferring its allowed audit row to the write. Its dry-run authorizes
+// can_view, so a viewer can still preview, and shows billing refusals only to
+// a caller who holds can_create (core.PreviewOf). A store being deleted is not
+// found either way.
+func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool) (context.Context, *appv1alpha1.KeyValue, error) {
 	if !dryRun {
 		ctx = core.WithDeferredAllowedWriteAudit(ctx)
-		kv, err := s.fetchLiveKeyValue(ctx, relation, name)
+		kv, err := s.fetchLiveKeyValue(ctx, core.RelCanCreate, name)
 		return ctx, kv, err
 	}
 	kv, err := s.fetchLiveKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return ctx, nil, err
 	}
-	return s.PreviewOf(ctx, kv.Labels, relation), kv, nil
+	return s.PreviewOf(ctx, kv.Labels, core.RelCanCreate), kv, nil
 }
 
 // patchKeyValueObj applies mutate to an already-fetched KeyValue and merge-
@@ -1354,7 +1355,7 @@ func (s *Service) UpdateKeyValueDryRun(ctx context.Context, name string, patch K
 }
 
 func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValuePatch, dryRun bool) (KeyValueView, error) {
-	ctx, kv, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
+	ctx, kv, err := s.fetchToChange(ctx, name, dryRun)
 	if err != nil {
 		return KeyValueView{}, err
 	}

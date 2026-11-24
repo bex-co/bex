@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useUpdateDatabaseVersion } from "@/features/databases/hooks/use-update-database-version";
 import { postgresUpgradeTargets } from "@/features/databases/lib/versions";
 import type { DatabaseDetailView } from "@/features/databases/types";
@@ -41,6 +43,8 @@ export function DatabaseVersionControl({
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState(targets[0] ?? "");
   const { updateVersion, busy, error, clearError } = useUpdateDatabaseVersion();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   const selectedTarget = targets.includes(target) ? target : (targets[0] ?? "");
 
@@ -67,18 +71,21 @@ export function DatabaseVersionControl({
             {t("databases.versionUpgrading")}
           </span>
         ) : targets.length > 0 ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              clearError();
-              setTarget(targets[0] ?? "");
-              setOpen(true);
-            }}
-          >
-            {t("databases.versionUpgradeAction")}
-          </Button>
+          <PermissionTooltip reason={createReason}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={createDenied}
+              onClick={() => {
+                clearError();
+                setTarget(targets[0] ?? "");
+                setOpen(true);
+              }}
+            >
+              {t("databases.versionUpgradeAction")}
+            </Button>
+          </PermissionTooltip>
         ) : null}
       </div>
 
@@ -146,7 +153,7 @@ export function DatabaseVersionControl({
             </Button>
             <Button
               type="button"
-              disabled={busy || !selectedTarget}
+              disabled={busy || !selectedTarget || createDenied}
               onClick={() => void submit()}
             >
               {busy ? <Loader2 className="animate-spin" /> : null}

@@ -1,7 +1,17 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  afterEach,
+  beforeEach,
+  beforeAll,
+} from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CustomDomainView } from "@/features/services/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 
 // Drive the section by mocking the feature hooks — the same pattern as the
 // env-vars panel test. The query hook is a vi.fn so each test picks the data;
@@ -693,5 +703,67 @@ describe("CustomDomainsSection", () => {
 
     expect(screen.queryByText(/Certificate blocked/)).not.toBeInTheDocument();
     expect(screen.queryByText(/must be DNS-only/)).not.toBeInTheDocument();
+  });
+});
+
+// Render's role table gives a Contributor no "Modify service configuration":
+// adding, verifying and deleting a custom domain are can_create (w9/m619).
+describe("CustomDomainsSection role gating (w9/m619)", () => {
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it("holds add, re-check and delete for a contributor", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    const add = screen.getByRole("button", { name: "Add Custom Domain" });
+    expect(add).toBeDisabled();
+    // The held button sits in the reason's tooltip trigger.
+    expect(add.closest('[data-slot="tooltip-trigger"]')).not.toBeNull();
+    await user.hover(add.closest('[data-slot="tooltip-trigger"]')!);
+    expect((await screen.findAllByText(CREATE_REASON)).length).toBeGreaterThan(
+      0,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Re-check api.example.com" }),
+    ).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Actions for api.example.com" }),
+    );
+    const remove = await screen.findByRole("menuitem", { name: "Delete" });
+    expect(remove).toHaveAttribute("aria-disabled", "true");
+    await user.click(remove);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mockAddDomain).not.toHaveBeenCalled();
+    expect(mockVerifyDomain).not.toHaveBeenCalled();
+    expect(mockDeleteDomain).not.toHaveBeenCalled();
+  });
+
+  it("leaves add, re-check and delete enabled for a developer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    const add = screen.getByRole("button", { name: "Add Custom Domain" });
+    expect(add).toBeEnabled();
+    expect(add.closest('[data-slot="tooltip-trigger"]')).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Re-check api.example.com" }),
+    ).toBeEnabled();
+    await user.click(
+      screen.getByRole("button", { name: "Actions for api.example.com" }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
   });
 });

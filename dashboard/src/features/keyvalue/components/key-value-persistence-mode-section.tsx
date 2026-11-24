@@ -8,6 +8,7 @@ import {
 } from "@/common/components/ui/card";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import {
   EditableFieldRow,
   EditableFieldRowPreview,
@@ -38,6 +39,8 @@ export function KeyValuePersistenceModeSection({
     id,
     onChanged,
   );
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const [pending, setPending] = useState<{
     id: string;
     from: string;
@@ -107,7 +110,8 @@ export function KeyValuePersistenceModeSection({
             value={mode}
             editLabel={t("keyvalue.persistenceEdit")}
             busy={saving}
-            disabled={!modeKnown}
+            disabled={!modeKnown || createDenied}
+            disabledReason={createReason}
             options={options}
             onSave={requestSave}
           />

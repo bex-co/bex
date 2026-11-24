@@ -16,7 +16,7 @@ import {
   type Translate,
 } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { DeployCard } from "@/features/services/components/deploy-card";
 import {
   buildFilterPatternError,
@@ -163,15 +163,10 @@ export function BuildDeploySection({
   live = true,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
-  // Choosing what a service builds and runs (source, branch, root dir, commands,
-  // Dockerfile path, pre-deploy) is can_create — a contributor is refused on save
-  // (docs/ADR024-members.md). Disable those rows with a reason instead (w9/m84);
-  // Auto-Deploy stays editable (it is can_operate, contributor-and-up).
-  const capabilities = useCapabilities();
-  const { canCreate, canOperate } = capabilities;
-  const createDisabled = !canCreate;
-  const createReasonKey = capabilities.reasonKey("can_create");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  // Every setting on these cards, Auto-Deploy and Build Filters included, is
+  // can_create (docs/ADR024-members.md).
+  const { denied: createDisabled, reason: createReason } =
+    useCapabilityGate("canCreate");
   const { setRootDir, busy } = useRootDir();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
@@ -227,6 +222,8 @@ export function BuildDeploySection({
       editLabel={t("services.autoDeployEdit")}
       busy={autoDeployBusy}
       options={autoDeployOptions}
+      disabled={createDisabled}
+      disabledReason={createReason}
       // Bound to the saved prop, never a local copy: a poll or another tab's
       // save must reach an untouched row, its Edit baseline and Cancel (w4/281).
       // The accepted mutation normalizes Service.autoDeploy into the cache.
@@ -351,7 +348,6 @@ export function BuildDeploySection({
           <BuildFilterEditor
             serviceId={serviceId}
             buildFilter={buildFilter ?? null}
-            canOperate={canOperate}
           />
 
           {/* A cron_job has no Deploy card (its Deploy section holds the
@@ -388,19 +384,14 @@ export function BuildDeploySection({
 function BuildFilterEditor({
   serviceId,
   buildFilter,
-  canOperate,
 }: {
   serviceId: string;
   buildFilter: BuildFilterView | null;
-  canOperate: boolean;
 }) {
   const { t } = useTranslations();
   const { setBuildFilter, busy } = useBuildFilter();
-  // SetBuildFilter is RelCanOperate, same class as Auto-Deploy.
-  // Caller passes fail-closed canOperate; reason stays role copy when denied.
-  const operateReason = canOperate
-    ? undefined
-    : t("capabilities.reasonCanOperate");
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const current = {
     paths: buildFilter?.paths ?? [],
     ignoredPaths: buildFilter?.ignoredPaths ?? [],
@@ -450,8 +441,8 @@ function BuildFilterEditor({
         <div className="mt-1 text-sm text-muted-foreground">
           {t("services.buildFilterHint")}
         </div>
-        {operateReason && (
-          <p className="text-muted-foreground mt-1 text-sm">{operateReason}</p>
+        {createReason && (
+          <p className="text-muted-foreground mt-1 text-sm">{createReason}</p>
         )}
       </div>
       <PathList
@@ -463,7 +454,7 @@ function BuildFilterEditor({
         values={draft.paths}
         onChange={(paths) => setDraft((d) => ({ ...d, paths }))}
         validate={patternError}
-        disabled={!canOperate}
+        disabled={createDenied}
       />
       <PathList
         title={t("services.buildFilterIgnoredTitle")}
@@ -474,20 +465,20 @@ function BuildFilterEditor({
         values={draft.ignoredPaths}
         onChange={(ignoredPaths) => setDraft((d) => ({ ...d, ignoredPaths }))}
         validate={patternError}
-        disabled={!canOperate}
+        disabled={createDenied}
       />
       <div className="flex justify-end gap-2">
         {dirty && (
           <Button
             variant="ghost"
-            disabled={busy || !canOperate}
+            disabled={busy || createDenied}
             onClick={() => setDraft(current)}
           >
             {t("services.buildDeployCancel")}
           </Button>
         )}
         <Button
-          disabled={busy || !dirty || !canOperate || invalid}
+          disabled={busy || !dirty || createDenied || invalid}
           onClick={() => void handleSave()}
         >
           {busy && <Loader2 className="animate-spin" />}

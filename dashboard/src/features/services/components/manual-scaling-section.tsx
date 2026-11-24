@@ -4,6 +4,8 @@ import { Button } from "@/common/components/ui/button";
 import { Card, CardContent } from "@/common/components/ui/card";
 import { ManualScalingHeader } from "@/features/services/components/scaling-frames";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useScaleService } from "@/features/services/hooks/use-scale-service";
 import {
   INSTANCE_MAX,
@@ -35,6 +37,8 @@ export function ManualScalingSection({
 }: ManualScalingSectionProps) {
   const { t } = useTranslations();
   const { scaleService, busy } = useScaleService();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   // Render offers no free horizontal scaling: the free plan caps at a single
   // running instance, so the copy and the slider ceiling both narrow (w6/m118).
   const isFree = plan === "free";
@@ -48,7 +52,7 @@ export function ManualScalingSection({
   const dirty = draft != null && draft !== replicas;
 
   async function handleSave() {
-    if (draft == null) return;
+    if (draft == null || createDenied) return;
     const accepted = await scaleService(serviceId, draft);
     // Mutation success means the desired count was accepted; Apollo updates the
     // cached spec.replicas selection, while operator/Deployment convergence is
@@ -67,6 +71,9 @@ export function ManualScalingSection({
           <p className="text-sm font-medium">
             {t("services.scalingManualInstances")}
           </p>
+          {createReason ? (
+            <p className="text-muted-foreground text-sm">{createReason}</p>
+          ) : null}
           <SliderInput
             id="manual-instances"
             label={t("services.scalingManualInstances")}
@@ -76,20 +83,22 @@ export function ManualScalingSection({
             // Free caps at one instance, so there is nothing to choose: leave
             // the count visible but inert rather than accepting an edit the
             // plan will refuse.
-            disabled={busy || isFree}
+            disabled={busy || isFree || createDenied}
             onChange={setDraft}
           />
-          <Button
-            size="sm"
-            disabled={!dirty || busy}
-            onClick={() => void handleSave()}
-          >
-            {busy ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              t("services.scalingSaveChanges")
-            )}
-          </Button>
+          <PermissionTooltip reason={createReason}>
+            <Button
+              size="sm"
+              disabled={!dirty || busy || createDenied}
+              onClick={() => void handleSave()}
+            >
+              {busy ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                t("services.scalingSaveChanges")
+              )}
+            </Button>
+          </PermissionTooltip>
         </div>
       </CardContent>
     </Card>

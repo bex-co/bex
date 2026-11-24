@@ -1404,7 +1404,7 @@ func (s *Service) SetPlanDryRun(ctx context.Context, name, plan string) (Postgre
 }
 
 func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (PostgresView, error) {
-	ctx, d, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
+	ctx, d, err := s.fetchToChange(ctx, name, dryRun)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -1437,22 +1437,23 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	return view, nil
 }
 
-// fetchToChange fetches name for a verb that changes it. The real call
-// authorizes relation, deferring its allowed audit row to the write. Its
-// dry-run authorizes can_view, so a viewer can still preview, and shows billing
-// refusals only to a caller who holds relation (core.PreviewOf). A database
-// being deleted is not found either way.
-func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool, relation string) (context.Context, *appv1alpha1.Database, error) {
+// fetchToChange fetches name for a verb that changes its settings. The real
+// call authorizes can_create, as every datastore setting needs (w9/m619),
+// deferring its allowed audit row to the write. Its dry-run authorizes
+// can_view, so a viewer can still preview, and shows billing refusals only to
+// a caller who holds can_create (core.PreviewOf). A database being deleted is
+// not found either way.
+func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool) (context.Context, *appv1alpha1.Database, error) {
 	if !dryRun {
 		ctx = core.WithDeferredAllowedWriteAudit(ctx)
-		d, err := s.fetchLiveDatabase(ctx, relation, name)
+		d, err := s.fetchLiveDatabase(ctx, core.RelCanCreate, name)
 		return ctx, d, err
 	}
 	d, err := s.fetchLiveDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return ctx, nil, err
 	}
-	return s.PreviewOf(ctx, d.Labels, relation), d, nil
+	return s.PreviewOf(ctx, d.Labels, core.RelCanCreate), d, nil
 }
 
 // PostgresPatch is the mutable-field set for PATCH /v1/postgres/{id} — Render's
@@ -1825,7 +1826,7 @@ func (s *Service) UpdatePostgresDryRun(ctx context.Context, name string, patch P
 }
 
 func (s *Service) updatePostgres(ctx context.Context, name string, patch PostgresPatch, dryRun bool) (PostgresView, error) {
-	ctx, d, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
+	ctx, d, err := s.fetchToChange(ctx, name, dryRun)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -2120,7 +2121,7 @@ func (s *Service) checkVersionUpgrade(ctx context.Context, d *appv1alpha1.Databa
 // row is recorded only once the write succeeds: postgres_upgrade_started names
 // its caller as the user (w4/654).
 func (s *Service) SetVersion(ctx context.Context, name, target string) (PostgresView, error) {
-	ctx, d, err := s.fetchToChange(ctx, name, false, core.RelCanOperate)
+	ctx, d, err := s.fetchToChange(ctx, name, false)
 	if err != nil {
 		return PostgresView{}, err
 	}

@@ -1,4 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { isValidLabel } from "@/common/lib/utils/resource-label";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useRenameKeyValue } from "@/features/keyvalue/hooks/use-rename-key-value";
@@ -19,6 +20,8 @@ export interface KeyValueNameRowProps {
 export function KeyValueNameRow({ keyValue, onRenamed }: KeyValueNameRowProps) {
   const { t } = useTranslations();
   const { rename, busy } = useRenameKeyValue();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   return (
     <EditableFieldRow
@@ -27,6 +30,8 @@ export function KeyValueNameRow({ keyValue, onRenamed }: KeyValueNameRowProps) {
       value={keyValue.name}
       editLabel={t("keyvalue.nameEdit")}
       busy={busy}
+      disabled={createDenied}
+      disabledReason={createReason}
       validate={(draft) =>
         isValidLabel(draft) ? null : t("keyvalue.nameInvalid")
       }

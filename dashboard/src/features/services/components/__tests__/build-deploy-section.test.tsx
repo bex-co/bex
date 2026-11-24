@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 
 const setRootDir = vi.fn(async () => true);
 const setAutoDeployTrigger = vi.fn(async () => true);
@@ -191,7 +191,10 @@ describe("BuildDeploySection", () => {
     },
   );
 
-  it("gates the create-only build config for a contributor, but not Auto-Deploy (w9/m84)", () => {
+  // Render's role table gives a Contributor no "Modify service
+  // configuration": every row here, Auto-Deploy and Build Filters included,
+  // is can_create (w9/m84, w9/m619).
+  it("gates every build and deploy setting for a contributor, Auto-Deploy included", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
@@ -204,18 +207,39 @@ describe("BuildDeploySection", () => {
         showPreDeployCommand={true}
       />,
     );
-    // A contributor cannot choose what the service runs: the create-gated rows
-    // hide their edit pencil and show the role reason instead of a 403-on-save.
+    // The create-gated rows hide their edit pencil and show the role reason
+    // instead of a 403-on-save.
     expect(
       screen.queryByRole("button", { name: "Edit Pre-Deploy Command" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getAllByText(/can’t make this change/i).length,
-    ).toBeGreaterThan(0);
-    // Auto-Deploy is can_operate — a contributor keeps it.
+      screen.queryByRole("button", { name: "Edit Auto-Deploy" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Auto-Deploy" }),
+    ).toBeDisabled();
+    // Root Directory, Pre-Deploy Command, Auto-Deploy and Build Filters each
+    // say why.
+    expect(screen.getAllByText(CREATE_REASON).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("leaves Auto-Deploy editable for a developer", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={true}
+      />,
+    );
     expect(
       screen.getByRole("button", { name: "Edit Auto-Deploy" }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/can’t make this change/i)).toBeNull();
   });
 
   it("shows an empty Root Directory input when rootDir is unset", () => {
@@ -913,14 +937,11 @@ describe("BuildDeploySection", () => {
     expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
   });
 
-  it("disables Build Filters for a viewer without can_operate", () => {
-    // SetBuildFilter is RelCanOperate, not can_create — a contributor still edits.
+  it("disables Build Filters for a contributor without can_create (w9/m619)", () => {
+    // SetBuildFilter is can_create: Render gives a Contributor no
+    // configuration change.
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({
-        role: "VIEWER",
-        canCreate: false,
-        canOperate: false,
-      }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
     render(
       <BuildDeploySection
@@ -940,14 +961,33 @@ describe("BuildDeploySection", () => {
     expect(
       screen.getByRole("button", { name: "Save Build Filters" }),
     ).toBeDisabled();
-    expect(
-      screen.getByText(/Your role can only view this service/i),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText(CREATE_REASON).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/can only view this service/i)).toBeNull();
   });
 
-  it("lets a contributor save Build Filters (can_operate)", async () => {
+  it("does not claim a role while the capability is still checking", () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+      mockCapabilities({ canCreate: false, loading: true, loaded: false }),
+    );
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    // Held, fail-closed, but with no role sentence.
+    expect(
+      screen.getByRole("button", { name: "Add included path" }),
+    ).toBeDisabled();
+    expect(screen.queryByText(/can’t make this change/i)).toBeNull();
+  });
+
+  it("lets a developer save Build Filters (can_create)", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
     );
     const user = userEvent.setup();
     render(

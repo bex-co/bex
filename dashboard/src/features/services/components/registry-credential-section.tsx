@@ -9,6 +9,8 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { useRegistryCredential } from "@/features/services/hooks/use-registry-credential";
 
@@ -29,6 +31,8 @@ export function RegistryCredentialSection({
   const [draft, setDraft] = useState(current);
   const { setRegistryCredential, busy } = useRegistryCredential();
   const changed = draft !== current;
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   async function save() {
     const ok = await setRegistryCredential(serviceId, draft);
@@ -49,12 +53,20 @@ export function RegistryCredentialSection({
           value={draft}
           onValueChange={setDraft}
           description={t("services.createRegistryCredentialDescription")}
-          disabled={busy}
+          disabled={busy || createDenied}
         />
-        <Button disabled={!changed || busy} onClick={() => void save()}>
-          {busy ? <Loader2 className="animate-spin" /> : null}
-          {t("services.registryCredentialSave")}
-        </Button>
+        {createReason ? (
+          <p className="text-muted-foreground text-sm">{createReason}</p>
+        ) : null}
+        <PermissionTooltip reason={createReason}>
+          <Button
+            disabled={!changed || busy || createDenied}
+            onClick={() => void save()}
+          >
+            {busy ? <Loader2 className="animate-spin" /> : null}
+            {t("services.registryCredentialSave")}
+          </Button>
+        </PermissionTooltip>
       </CardContent>
     </Card>
   );

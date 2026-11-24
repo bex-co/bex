@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import {
   EditableFieldRow,
   EditableFieldRowPreview,
@@ -42,6 +43,8 @@ export function KeyValueMaxmemoryPolicySection({
     id,
     onChanged,
   );
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   // Stable identity so EditableFieldRow's focus effect doesn't re-run each render.
   const options = useMemo(
     () =>
@@ -77,6 +80,8 @@ export function KeyValueMaxmemoryPolicySection({
             editLabel={t("keyvalue.maxmemoryEdit")}
             busy={saving}
             options={options}
+            disabled={createDenied}
+            disabledReason={createReason}
             onSave={save}
           />
         )}

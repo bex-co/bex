@@ -113,9 +113,9 @@ export function IPAllowListEditor({
   pendingRows?: number;
   /**
    * Why the caller may not change the list right now (a non-Admin in a
-   * protected environment, w4/m594, or the check still running): the editor
-   * keeps its shape with every input and action disabled, and Add and Save
-   * say why.
+   * protected environment, w4/m594, a role without can_create, w9/m619, or
+   * the check still running): the editor keeps its shape with every input and
+   * action disabled, and Add, Save and the clear-only action say why.
    */
   disabledReason?: string;
 }) {
@@ -205,28 +205,30 @@ export function IPAllowListEditor({
   const locked = readOnly ?? clearOnly;
   if (locked) {
     const clear = readOnly ? null : (
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() =>
-          void onSave(
-            emptyBlocks ? (emptyBlocks.allowAll ?? ALLOW_ALL_ENTRIES) : [],
-          )
-        }
-        disabled={saving}
-      >
-        {/* Where an empty list blocks everything, the action adds the
-            allow-all rule: a plus, not the trash can of a clear. */}
-        {saving ? (
-          <Loader2 className="animate-spin" />
-        ) : emptyBlocks ? (
-          <Plus />
-        ) : (
-          <Trash2 />
-        )}
-        {clearOnly?.clearAll}
-      </Button>
+      <PermissionTooltip reason={disabledReason}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            void onSave(
+              emptyBlocks ? (emptyBlocks.allowAll ?? ALLOW_ALL_ENTRIES) : [],
+            )
+          }
+          disabled={saving || off}
+        >
+          {/* Where an empty list blocks everything, the action adds the
+              allow-all rule: a plus, not the trash can of a clear. */}
+          {saving ? (
+            <Loader2 className="animate-spin" />
+          ) : emptyBlocks ? (
+            <Plus />
+          ) : (
+            <Trash2 />
+          )}
+          {clearOnly?.clearAll}
+        </Button>
+      </PermissionTooltip>
     );
     return (
       <section className="space-y-2">

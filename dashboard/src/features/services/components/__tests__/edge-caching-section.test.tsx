@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EdgeCachingSection } from "@/features/services/components/edge-caching-section";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 
 // Stub the mutation hook so tests don't need an Apollo context.
 const mockSetCacheProfile = vi.fn().mockResolvedValue(true);
@@ -147,7 +149,86 @@ describe("EdgeCachingSection", () => {
     for (const option of screen.getAllByRole("radio")) {
       expect(option).toBeDisabled();
     }
-    expect(screen.getByRole("button", { name: "Save edge caching" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save edge caching" }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Purge cache" })).toBeDisabled();
+  });
+});
+
+// The cache profile is a service setting (can_create) while a purge is an
+// operation a Contributor keeps (can_operate), as Render's role table has it
+// (w9/m619).
+describe("EdgeCachingSection role gating (w9/m619)", () => {
+  beforeEach(() => {
+    mockSetCacheProfile.mockClear();
+    mockPurgeCache.mockClear();
+  });
+
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it("holds the profile for a contributor but keeps the purge", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    render(
+      <EdgeCachingSection
+        serviceId="web"
+        plan="starter"
+        cacheProfile="origin-controlled"
+      />,
+    );
+    for (const option of screen.getAllByRole("radio")) {
+      expect(option).toBeDisabled();
+    }
+    expect(
+      screen.getByRole("button", { name: "Save edge caching" }),
+    ).toBeDisabled();
+    expect(screen.getByText(CREATE_REASON)).toBeInTheDocument();
+    await user.click(radio(/All files/));
+    expect(mockSetCacheProfile).not.toHaveBeenCalled();
+
+    const purge = screen.getByRole("button", { name: "Purge cache" });
+    expect(purge).toBeEnabled();
+    await user.click(purge);
+    await user.click(screen.getByRole("button", { name: "Purge cache" }));
+    expect(mockPurgeCache).toHaveBeenCalledWith("web");
+  });
+
+  it("leaves the profile and the purge enabled for a developer", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    render(
+      <EdgeCachingSection
+        serviceId="web"
+        plan="starter"
+        cacheProfile="origin-controlled"
+      />,
+    );
+    for (const option of screen.getAllByRole("radio")) {
+      expect(option).toBeEnabled();
+    }
+    expect(screen.getByRole("button", { name: "Purge cache" })).toBeEnabled();
+    expect(screen.queryByText(CREATE_REASON)).toBeNull();
+  });
+
+  it("holds the purge for a viewer without can_operate", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canOperate: false, canCreate: false }),
+    );
+    render(
+      <EdgeCachingSection
+        serviceId="web"
+        plan="starter"
+        cacheProfile="origin-controlled"
+      />,
+    );
+    const purge = screen.getByRole("button", { name: "Purge cache" });
+    expect(purge).toBeDisabled();
+    expect(purge.closest('[data-slot="tooltip-trigger"]')).not.toBeNull();
   });
 });

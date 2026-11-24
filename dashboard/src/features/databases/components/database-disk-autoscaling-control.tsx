@@ -1,5 +1,7 @@
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useUpdateDatabaseDiskAutoscaling } from "@/features/databases/hooks/use-update-database-disk-autoscaling";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import type { DatabaseDetailView } from "@/features/databases/types";
@@ -19,8 +21,11 @@ export function DatabaseDiskAutoscalingControl({
   const plan = instanceTypes.find((it) => it.id === database.plan);
   const enableBlocked = !plan?.supportsDiskAutoscaling;
   const planBlocked = plan != null && enableBlocked;
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   async function handleChange(enabled: boolean) {
+    if (createDenied) return;
     if (enabled && enableBlocked) return;
     if (await updateDiskAutoscaling(database.id, enabled)) onChanged();
   }
@@ -53,13 +58,19 @@ export function DatabaseDiskAutoscalingControl({
           </span>
         ) : null}
       </div>
-      <Switch
-        id="database-disk-autoscaling"
-        checked={database.diskAutoscalingEnabled}
-        disabled={busy || (enableBlocked && !database.diskAutoscalingEnabled)}
-        aria-describedby="database-disk-autoscaling-hint"
-        onCheckedChange={(enabled) => void handleChange(enabled)}
-      />
+      <PermissionTooltip reason={createReason}>
+        <Switch
+          id="database-disk-autoscaling"
+          checked={database.diskAutoscalingEnabled}
+          disabled={
+            busy ||
+            createDenied ||
+            (enableBlocked && !database.diskAutoscalingEnabled)
+          }
+          aria-describedby="database-disk-autoscaling-hint"
+          onCheckedChange={(enabled) => void handleChange(enabled)}
+        />
+      </PermissionTooltip>
       {/* When blocked, the visible note above is the description; repeating
           it here made screen readers announce it twice. */}
       {planBlocked ? null : (

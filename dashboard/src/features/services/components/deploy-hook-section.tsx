@@ -13,6 +13,8 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { CopyButton } from "@/common/components/copy-button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useDeployHook } from "@/features/services/hooks/use-deploy-hook";
 
 export interface DeployHookSectionProps {
@@ -50,6 +52,10 @@ export function DeployHookRows({ serviceId }: DeployHookSectionProps) {
   const { url, loading, error, regenerate, regenerating } =
     useDeployHook(serviceId);
   const [revealed, setRevealed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  // Rotating the hook is can_create (bex-api's RegenerateDeployHook).
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   async function handleRegenerate() {
     if (await regenerate()) setRevealed(true);
@@ -108,17 +114,21 @@ export function DeployHookRows({ serviceId }: DeployHookSectionProps) {
         {t("services.deployHookSecretHint")}
       </p>
 
+      {/* Outside the dialog, so the role's tooltip can wrap the trigger. */}
+      <PermissionTooltip reason={createReason}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!url || regenerating || createDenied}
+          onClick={() => setConfirming(true)}
+        >
+          <RotateCw />
+          {t("services.deployHookRegenerate")}
+        </Button>
+      </PermissionTooltip>
       <ConfirmDialog
-        trigger={
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!url || regenerating}
-          >
-            <RotateCw />
-            {t("services.deployHookRegenerate")}
-          </Button>
-        }
+        open={confirming}
+        onOpenChange={setConfirming}
         title={t("services.deployHookRegenerateTitle")}
         description={t("services.deployHookRegenerateWarning")}
         cancelLabel={t("services.deployHookCancel")}

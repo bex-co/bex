@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
 import userEvent from "@testing-library/user-event";
@@ -6,6 +6,8 @@ import {
   CronDeploySection,
   type CronDeploySectionProps,
 } from "@/features/services/components/cron-deploy-section";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 
 const updateCronJob = vi.fn(async () => true);
 const setStartCommand = vi.fn(async () => true);
@@ -281,8 +283,7 @@ describe("CronDeploySection command clearing (w4/137)", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     // null means keep. Sending "" here would turn every reschedule of a
-    // commandless cron into an explicit command write, which selects a
-    // different authorization path on the server.
+    // commandless cron into an explicit command write: a clear.
     expect(updateCronJob).toHaveBeenCalledWith(
       "nightly",
       "0 8 * * 1",
@@ -508,4 +509,52 @@ describe("CronDeploySection on a container cron (w8/m69)", () => {
       expect(setStartCommand).not.toHaveBeenCalled();
     },
   );
+});
+
+// The schedule is a service setting whether or not the cron carries a command:
+// can_create, as Render's role table gives a Contributor no "Modify service
+// configuration" (w9/m619).
+describe("CronDeploySection role gating (w9/m619)", () => {
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it.each([
+    ["a commandless", null],
+    ["a command-bearing", "node daily.js"],
+  ])("holds the schedule of %s cron for a contributor", (_, command) => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    renderCron({ schedule: "0 6 * * *", command });
+    expect(
+      screen.queryByRole("button", { name: "Edit schedule" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit command" }),
+    ).not.toBeInTheDocument();
+    // Schedule and Command each say why.
+    expect(screen.getAllByText(CREATE_REASON)).toHaveLength(2);
+    expect(screen.queryByText(/can only view this service/)).toBeNull();
+  });
+
+  it("offers the schedule to a developer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    const user = userEvent.setup();
+    renderCron({ schedule: "0 6 * * *", command: null });
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
+    await user.clear(schedInput);
+    await user.type(schedInput, "0 8 * * 1");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 8 * * 1",
+      null,
+      "schedule",
+    );
+    expect(screen.queryByText(CREATE_REASON)).toBeNull();
+  });
 });

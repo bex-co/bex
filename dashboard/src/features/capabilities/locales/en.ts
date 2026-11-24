@@ -13,7 +13,7 @@ const enCapabilities: Record<string, TranslationEntry> = {
     message:
       "Your role can only view this service. Ask a workspace admin to make changes.",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message: "Your role can’t reveal secret values. Ask a workspace admin.",

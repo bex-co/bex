@@ -195,3 +195,58 @@ func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
 		t.Errorf("suspended resume precondition = %q, want none", r.Precondition)
 	}
 }
+
+// contributorChecker grants what model.fga gives a Contributor: can_view,
+// can_view_logs and can_operate.
+type contributorChecker struct{}
+
+func (contributorChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	return relation == core.RelCanView || relation == core.RelCanViewLogs || relation == core.RelCanOperate, nil
+}
+
+// TestActionCapabilities_AContributorChangesNoKeyValueSetting (w9/m619): a Key
+// Value store's settings are a Developer's, as on Render, so a Contributor's
+// projection reads update_ip_allow_list denied and the PATCH, plan change
+// included, refuses them before writing; suspend and resume stay allowed.
+func TestActionCapabilities_AContributorChangesNoKeyValueSetting(t *testing.T) {
+	kv := keyValueForProtection("red-cache", "cache", false)
+	svc, cl, _ := protectedKeyValueService(kv)
+	svc.Base.Authz = contributorChecker{}
+
+	acts, err := svc.ActionCapabilities(ctxAsCaller(), kv.Name)
+	if err != nil {
+		t.Fatalf("ActionCapabilities: %v", err)
+	}
+	if a := actionByID(t, acts, core.ActionUpdateIPAllowList); a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission {
+		t.Errorf("a Contributor's update_ip_allow_list = %+v, want denied/insufficient_permission", a)
+	}
+	for _, id := range []string{core.ActionSuspend, core.ActionResume} {
+		if a := actionByID(t, acts, id); a.Outcome != core.DecisionAllowed {
+			t.Errorf("a Contributor's %s = %+v, want allowed", id, a)
+		}
+	}
+
+	name, plan, empty := "renamed", "standard", []core.IPAllowListEntry{}
+	for label, call := range map[string]func() error{
+		"rename": func() error {
+			_, err := svc.UpdateKeyValue(ctxAsCaller(), kv.Name, KeyValuePatch{Name: &name})
+			return err
+		},
+		"IP rules": func() error {
+			_, err := svc.UpdateKeyValue(ctxAsCaller(), kv.Name, KeyValuePatch{IPAllowList: &empty})
+			return err
+		},
+		"plan": func() error { _, err := svc.SetPlan(ctxAsCaller(), kv.Name, plan); return err },
+	} {
+		if err := call(); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("a Contributor's %s = %v, want ErrForbidden", label, err)
+		}
+	}
+	var after appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &after); err != nil {
+		t.Fatal(err)
+	}
+	if after.Spec.Name != kv.Spec.Name || after.Spec.Plan != kv.Spec.Plan || after.Spec.Public != kv.Spec.Public {
+		t.Errorf("a refused setting wrote the store: %+v -> %+v", kv.Spec, after.Spec)
+	}
+}

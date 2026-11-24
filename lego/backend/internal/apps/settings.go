@@ -19,7 +19,6 @@ package apps
 import (
 	"context"
 	"log"
-	"slices"
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -158,15 +157,14 @@ func applyPreDeployRow(ctx context.Context, s *Service, id string, p ServicePatc
 // ServicePatch fields the row owns (bookkeeping for the completeness guard —
 // every ServicePatch field must be owned by exactly one row, so a field added
 // to the type cannot be forgotten in the table), the presence test that
-// queues it, the permission its verb requires, the read-only preflight that
-// decides whether its verb would be refused, and the Service verb it runs.
+// queues it, the read-only preflight that decides whether its verb would be
+// refused, and the Service verb it runs. Every row is a service setting, so
+// every verb authorizes can_create (a Developer and up): Render's Contributor
+// cannot modify service configuration (render.com/docs/team-members, read
+// 2026-11-23; w9/m619), and the preflight asks that once for the whole patch.
 type servicePatchOp struct {
 	fields  []string
 	present func(p ServicePatch) bool
-	// relation is the OpenFGA relation the row's verb authorizes on. The
-	// preflight checks it up front so a patch whose LAST row the caller may
-	// not perform cannot apply its earlier rows first (w9/m166).
-	relation func(p ServicePatch) string
 	// check runs the row's post-authorization validation and policy guards
 	// against probe — a scratch App carrying the state this row will actually
 	// see, i.e. the current App with every EARLIER row's spec change already
@@ -181,11 +179,6 @@ type servicePatchOp struct {
 	apply func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error)
 }
 
-// canOperate/canCreate are the two fixed relations most rows use; only the
-// cron row picks its relation from the patch.
-func canOperate(ServicePatch) string { return core.RelCanOperate }
-func canCreate(ServicePatch) string  { return core.RelCanCreate }
-
 // servicePatchTable is THE ordered op table behind PATCH /v1/services/{id}
 // and update_service. The order is REST's application order — the order MCP's
 // tool always declared canonical — and is pinned by
@@ -193,9 +186,8 @@ func canCreate(ServicePatch) string  { return core.RelCanCreate }
 // a multi-field patch does on BOTH surfaces at once.
 var servicePatchTable = []servicePatchOp{
 	{
-		fields:   []string{"DisplayName"},
-		present:  func(p ServicePatch) bool { return p.DisplayName != nil },
-		relation: canOperate,
+		fields:  []string{"DisplayName"},
+		present: func(p ServicePatch) bool { return p.DisplayName != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			trimmed, err := checkDisplayName(probe, *p.DisplayName)
 			if err != nil {
@@ -234,7 +226,6 @@ var servicePatchTable = []servicePatchOp{
 		present: func(p ServicePatch) bool {
 			return p.Repo != nil || p.Image != nil || p.Branch != nil || p.RegistryCredentialID != nil
 		},
-		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			next, changed, err := s.checkSourcePatch(ctx, probe, servicePatchSource(p))
 			if err != nil {
@@ -258,10 +249,9 @@ var servicePatchTable = []servicePatchOp{
 		// patch is a simultaneous free downgrade, the maintenance write
 		// runs here, before the plan write, instead of at its late row
 		// below. Exactly one of the two maintenance rows ever queues.
-		fields:   []string{"MaintenanceBeforeFreeDowngrade"},
-		present:  ServicePatch.maintenanceBeforePlan,
-		relation: canOperate,
-		check:    checkMaintenanceRow,
+		fields:  []string{"MaintenanceBeforeFreeDowngrade"},
+		present: ServicePatch.maintenanceBeforePlan,
+		check:   checkMaintenanceRow,
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.ConfigureMaintenanceMode(ctx, id, *p.MaintenanceMode)
 		},
@@ -270,18 +260,16 @@ var servicePatchTable = []servicePatchOp{
 		// The pre-deploy twin of the maintenance reorder above: when armed
 		// and the patch clears the command while downgrading to free, the
 		// clear runs here, ahead of the plan write.
-		fields:   []string{"PreDeployBeforeFreeDowngrade"},
-		present:  ServicePatch.preDeployBeforePlan,
-		relation: canCreate,
+		fields:  []string{"PreDeployBeforeFreeDowngrade"},
+		present: ServicePatch.preDeployBeforePlan,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			return checkPreDeployRow(ctx, s, probe, p)
 		},
 		apply: applyPreDeployRow,
 	},
 	{
-		fields:   []string{"Plan"},
-		present:  func(p ServicePatch) bool { return p.Plan != nil },
-		relation: canOperate,
+		fields:  []string{"Plan"},
+		present: func(p ServicePatch) bool { return p.Plan != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			tier, err := s.checkPlan(ctx, probe, *p.Plan)
 			if err != nil {
@@ -298,9 +286,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"IdleTTLSeconds"},
-		present:  func(p ServicePatch) bool { return p.IdleTTLSeconds != nil },
-		relation: canOperate,
+		fields:  []string{"IdleTTLSeconds"},
+		present: func(p ServicePatch) bool { return p.IdleTTLSeconds != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			probe.Spec.IdleTTLSeconds = *p.IdleTTLSeconds
 			return checkIdleTTL(*p.IdleTTLSeconds)
@@ -310,9 +297,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"MaxShutdownDelaySeconds"},
-		present:  func(p ServicePatch) bool { return p.MaxShutdownDelaySeconds != nil },
-		relation: canOperate,
+		fields:  []string{"MaxShutdownDelaySeconds"},
+		present: func(p ServicePatch) bool { return p.MaxShutdownDelaySeconds != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			hasDisk := probe.Spec.Disk != nil
 			if err := validateMaxShutdownDelaySeconds(probe.Spec.Type, hasDisk, p.MaxShutdownDelaySeconds); err != nil {
@@ -326,9 +312,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"CacheProfile"},
-		present:  func(p ServicePatch) bool { return p.CacheProfile != nil },
-		relation: canOperate,
+		fields:  []string{"CacheProfile"},
+		present: func(p ServicePatch) bool { return p.CacheProfile != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			profile, err := checkCacheProfile(probe, *p.CacheProfile)
 			probe.Spec.CacheProfile = profile
@@ -339,9 +324,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"RootDir"},
-		present:  func(p ServicePatch) bool { return p.RootDir != nil },
-		relation: canCreate,
+		fields:  []string{"RootDir"},
+		present: func(p ServicePatch) bool { return p.RootDir != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			rootDir := store.NormalizeRootDir(*p.RootDir)
 			if changed, err := s.checkRootDir(ctx, probe, id, rootDir); err != nil || !changed {
@@ -356,9 +340,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"BuildFilter"},
-		present:  func(p ServicePatch) bool { return p.BuildFilter != nil },
-		relation: canOperate,
+		fields:  []string{"BuildFilter"},
+		present: func(p ServicePatch) bool { return p.BuildFilter != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			bf, changed, err := checkBuildFilter(probe, id, p.BuildFilter)
 			if err != nil || !changed {
@@ -372,9 +355,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"AutoDeploy", "AutoDeployChecksPass"},
-		present:  func(p ServicePatch) bool { return p.AutoDeploy != nil },
-		relation: canOperate,
+		fields:  []string{"AutoDeploy", "AutoDeployChecksPass"},
+		present: func(p ServicePatch) bool { return p.AutoDeploy != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			// The source row runs first, so probe already carries a repo this
 			// same PATCH switches to.
@@ -387,7 +369,7 @@ var servicePatchTable = []servicePatchOp{
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			// Named, not derived: this runs as a package-level function literal, whose
 			// name a derived verb would record (w21/093). It is SetAutoDeploy's own.
-			a, err := s.AuthorizeAppAs(core.WithDeferredAllowedWriteAudit(ctx), core.AuditVerbSetAutoDeploy, core.RelCanOperate, id)
+			a, err := s.AuthorizeAppAs(core.WithDeferredAllowedWriteAudit(ctx), core.AuditVerbSetAutoDeploy, core.RelCanCreate, id)
 			if err != nil {
 				return AppView{}, err
 			}
@@ -399,9 +381,6 @@ var servicePatchTable = []servicePatchOp{
 		// other unchanged.
 		fields:  []string{"Schedule", "Command"},
 		present: func(p ServicePatch) bool { return p.Schedule != nil || p.Command != nil },
-		// Supplying a command changes what the cron RUNS — create-like;
-		// rescheduling when it runs stays lifecycle (SetCronJob's split).
-		relation: func(p ServicePatch) string { return core.LifecycleOrCreate(p.Command != nil) },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			if err := s.checkCronJob(ctx, probe, id, p.Schedule, p.Command); err != nil {
 				return err
@@ -432,9 +411,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"HealthCheckPath"},
-		present:  func(p ServicePatch) bool { return p.HealthCheckPath != nil },
-		relation: canOperate,
+		fields:  []string{"HealthCheckPath"},
+		present: func(p ServicePatch) bool { return p.HealthCheckPath != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			trimmed, err := checkHealthCheckPath(probe, *p.HealthCheckPath)
 			probe.Spec.HealthCheckPath = trimmed
@@ -445,18 +423,16 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"PreDeployCommand"},
-		present:  func(p ServicePatch) bool { return p.PreDeployCommand != nil && !p.preDeployBeforePlan() },
-		relation: canCreate,
+		fields:  []string{"PreDeployCommand"},
+		present: func(p ServicePatch) bool { return p.PreDeployCommand != nil && !p.preDeployBeforePlan() },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			return checkPreDeployRow(ctx, s, probe, p)
 		},
 		apply: applyPreDeployRow,
 	},
 	{
-		fields:   []string{"PublishPath"},
-		present:  func(p ServicePatch) bool { return p.PublishPath != nil },
-		relation: canCreate,
+		fields:  []string{"PublishPath"},
+		present: func(p ServicePatch) bool { return p.PublishPath != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			if err := checkPublishPath(probe, id, *p.PublishPath); err != nil {
 				return err
@@ -472,9 +448,8 @@ var servicePatchTable = []servicePatchOp{
 		// One SetCommands call for both: setting only one leaves the other
 		// unchanged (nil), which is why the setter pair could fold without
 		// either clearing the other.
-		fields:   []string{"BuildCommand", "StartCommand"},
-		present:  func(p ServicePatch) bool { return p.BuildCommand != nil || p.StartCommand != nil },
-		relation: canCreate,
+		fields:  []string{"BuildCommand", "StartCommand"},
+		present: func(p ServicePatch) bool { return p.BuildCommand != nil || p.StartCommand != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			if err := s.checkCommands(ctx, probe, p.BuildCommand, p.StartCommand); err != nil {
 				return err
@@ -494,9 +469,8 @@ var servicePatchTable = []servicePatchOp{
 	{
 		// After the commands, so a PATCH moving docker to a native runtime
 		// can carry the build and start commands that runtime needs.
-		fields:   []string{"Runtime"},
-		present:  func(p ServicePatch) bool { return p.Runtime != nil },
-		relation: canCreate,
+		fields:  []string{"Runtime"},
+		present: func(p ServicePatch) bool { return p.Runtime != nil },
 		check: func(ctx context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			runtime, builder, err := checkRuntime(probe, *p.Runtime)
 			if err != nil {
@@ -516,9 +490,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"DockerfilePath"},
-		present:  func(p ServicePatch) bool { return p.DockerfilePath != nil },
-		relation: canCreate,
+		fields:  []string{"DockerfilePath"},
+		present: func(p ServicePatch) bool { return p.DockerfilePath != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			path, changed, err := s.checkDockerfilePath(ctx, probe, id, *p.DockerfilePath)
 			if err != nil || !changed {
@@ -534,9 +507,8 @@ var servicePatchTable = []servicePatchOp{
 	{
 		// After RootDir in this table, so a PATCH naming both resolves the
 		// context against the new root directory.
-		fields:   []string{"DockerContext"},
-		present:  func(p ServicePatch) bool { return p.DockerContext != nil },
-		relation: canCreate,
+		fields:  []string{"DockerContext"},
+		present: func(p ServicePatch) bool { return p.DockerContext != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			context, changed, err := s.checkDockerContext(ctx, probe, id, *p.DockerContext)
 			if err != nil || !changed {
@@ -550,9 +522,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"Port"},
-		present:  func(p ServicePatch) bool { return p.Port != nil },
-		relation: canCreate,
+		fields:  []string{"Port"},
+		present: func(p ServicePatch) bool { return p.Port != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			port, mode, err := portChange(probe, *p.Port)
 			if err != nil {
@@ -566,9 +537,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"NotifyOnFail"},
-		present:  func(p ServicePatch) bool { return p.NotifyOnFail != nil },
-		relation: canOperate,
+		fields:  []string{"NotifyOnFail"},
+		present: func(p ServicePatch) bool { return p.NotifyOnFail != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			normalized, err := normalizeNotifyOnFail(*p.NotifyOnFail)
 			probe.Spec.NotifyOnFail, probe.Spec.NotificationsToSend = normalized, ""
@@ -579,9 +549,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"NotificationsToSend"},
-		present:  func(p ServicePatch) bool { return p.NotificationsToSend != nil },
-		relation: canOperate,
+		fields:  []string{"NotificationsToSend"},
+		present: func(p ServicePatch) bool { return p.NotificationsToSend != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			normalized, err := normalizeNotificationsToSend(*p.NotificationsToSend)
 			probe.Spec.NotificationsToSend = normalized
@@ -593,9 +562,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"PreviewNotificationsEnabled"},
-		present:  func(p ServicePatch) bool { return p.PreviewNotificationsEnabled != nil },
-		relation: canOperate,
+		fields:  []string{"PreviewNotificationsEnabled"},
+		present: func(p ServicePatch) bool { return p.PreviewNotificationsEnabled != nil },
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			normalized, err := normalizePreviewNotificationsEnabled(*p.PreviewNotificationsEnabled)
 			probe.Spec.PreviewNotificationsEnabled = normalized
@@ -606,9 +574,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"RenderSubdomainPolicy"},
-		present:  func(p ServicePatch) bool { return p.RenderSubdomainPolicy != nil },
-		relation: canOperate,
+		fields:  []string{"RenderSubdomainPolicy"},
+		present: func(p ServicePatch) bool { return p.RenderSubdomainPolicy != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			normalized, err := s.checkSubdomainPolicy(ctx, probe, *p.RenderSubdomainPolicy)
 			probe.Spec.SubdomainPolicy = normalized
@@ -619,9 +586,8 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"IPAllowList"},
-		present:  func(p ServicePatch) bool { return p.IPAllowList != nil },
-		relation: canOperate,
+		fields:  []string{"IPAllowList"},
+		present: func(p ServicePatch) bool { return p.IPAllowList != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			saved, err := s.stageIPAllowList(ctx, probe, *p.IPAllowList)
 			if err != nil {
@@ -641,8 +607,7 @@ var servicePatchTable = []servicePatchOp{
 		present: func(p ServicePatch) bool {
 			return p.MaintenanceMode != nil && !p.maintenanceBeforePlan()
 		},
-		relation: canOperate,
-		check:    checkMaintenanceRow,
+		check: checkMaintenanceRow,
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.ConfigureMaintenanceMode(ctx, id, *p.MaintenanceMode)
 		},
@@ -652,9 +617,8 @@ var servicePatchTable = []servicePatchOp{
 		// with the service, so re-read it after the write (get_autoscaling
 		// still serves the autoscaling view, and disable_autoscaling still
 		// turns it off).
-		fields:   []string{"Autoscaling"},
-		present:  func(p ServicePatch) bool { return p.Autoscaling != nil },
-		relation: canOperate,
+		fields:  []string{"Autoscaling"},
+		present: func(p ServicePatch) bool { return p.Autoscaling != nil },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			as, err := s.checkAutoscaling(ctx, probe, *p.Autoscaling)
 			probe.Spec.Autoscaling = &as
@@ -710,12 +674,12 @@ func checkMaintenanceRow(ctx context.Context, s *Service, probe *appv1alpha1.App
 //
 // Two passes, in table order:
 //
-//   - Authorization, once per DISTINCT relation the present rows need. Row
-//     order is preserved across the distinct set, so the error a mixed-relation
-//     patch returns is the one the old sequential application returned. The
-//     audit context is the deferred one, so an allowed preflight records
-//     nothing and each row's own verb still records its own effect; a DENIED
-//     preflight records the denial exactly once and stops here.
+//   - Authorization of can_create, once: every row is a service setting
+//     (w9/m619), so a caller refused one field is refused the patch before
+//     any field is written. The audit context is the deferred one, so an
+//     allowed preflight records nothing and each row's own verb still records
+//     its own effect; a DENIED preflight records the denial exactly once and
+//     stops here.
 //   - Each row's check against a scratch App that accumulates the earlier
 //     rows' proposed spec changes, so coupled settings (disable maintenance
 //     then downgrade to free; repoint the source then set a build filter)
@@ -741,13 +705,7 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 		// authorizes can_view through Get. Nothing to preflight.
 		return ctx, nil, nil, nil
 	}
-	relations := make([]string, 0, 2)
-	for _, row := range rows {
-		if relation := row.relation(p); !slices.Contains(relations, relation) {
-			relations = append(relations, relation)
-		}
-	}
-	ctx, a, err := s.authorizeToChange(ctx, id, dryRun, relations...)
+	ctx, a, err := s.authorizeToChange(ctx, id, dryRun)
 	if err != nil {
 		return ctx, nil, nil, err
 	}

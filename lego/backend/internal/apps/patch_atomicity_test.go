@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -177,13 +178,15 @@ func TestPatchDeniedOnALaterRowAppliesNothingEarlier(t *testing.T) {
 	}
 }
 
-// The preflight authorizes from each row's DECLARED relation, while the apply
-// pass authorizes from inside each verb. If a row ever declares the weaker of
-// the two, the preflight would wave a patch through that its own verb then
-// refuses — mid-table, with the earlier rows already written, which is the bug
-// this milestone closed. So: every relation the apply pass asks for must be
-// one the preflight already asked for.
-func TestPreflightAuthorizesEveryRelationTheApplyPassUses(t *testing.T) {
+// The preflight authorizes can_create once for the whole patch, while the
+// apply pass authorizes from inside each verb. If a row's verb ever asked for
+// anything else, the preflight would wave a patch through that its own verb
+// then refuses — mid-table, with the earlier rows already written, which is
+// the bug w9/m166 closed. And since every row is a service setting, which
+// Render's Contributor cannot modify (w9/m619), a verb that asked for the
+// weaker can_operate would hand a Contributor that setting back. So: every
+// relation the apply pass asks for is can_create.
+func TestEveryServicePatchRowAuthorizesCanCreate(t *testing.T) {
 	// Every field present, so each row's apply can read the value it owns and
 	// reach its verb's AuthorizeApp. The values need not be valid: the
 	// assertion is on which relations the verb ASKS OpenFGA about, which is
@@ -211,8 +214,9 @@ func TestPreflightAuthorizesEveryRelationTheApplyPassUses(t *testing.T) {
 	}
 	ctx := ctxAs("owner")
 
-	// The cron row is the one whose relation depends on the patch: supplying a
-	// command is create-like, rescheduling alone is not. Both spellings.
+	// The cron row once picked its relation from the patch (a command was
+	// create-like, a schedule alone was not); both spellings stay covered so a
+	// return of that split turns this red.
 	patches := map[string]ServicePatch{"with command": full(), "schedule only": full()}
 	scheduleOnly := patches["schedule only"]
 	scheduleOnly.Command = nil
@@ -223,7 +227,6 @@ func TestPreflightAuthorizesEveryRelationTheApplyPassUses(t *testing.T) {
 			if !row.present(p) {
 				continue
 			}
-			declared := row.relation(p)
 			svc, _ := populatedService(t)
 			// Allow everything, so the verb runs to completion and asks for
 			// every relation it would ever ask for. What it ASKED is the
@@ -236,19 +239,19 @@ func TestPreflightAuthorizesEveryRelationTheApplyPassUses(t *testing.T) {
 			svc.Authz = checker
 			_, _ = row.apply(ctx, svc, "web", p)
 
-			if len(checker.asked) == 0 {
-				t.Errorf("%s: servicePatchTable[%d] (%v) authorized nothing — it cannot be preflighted",
-					label, i, row.fields)
+			if !slices.Contains(checker.asked, core.RelCanCreate) {
+				t.Errorf("%s: servicePatchTable[%d] (%v) never authorized can_create (asked %v)",
+					label, i, row.fields, checker.asked)
 			}
 			for _, asked := range checker.asked {
 				// can_view is exempt: a verb may read the result back to
 				// return it, which the preflight has no reason to pre-check.
-				if asked == declared || asked == core.RelCanView {
+				if asked == core.RelCanCreate || asked == core.RelCanView {
 					continue
 				}
-				t.Errorf("%s: servicePatchTable[%d] (%v) declares %q but its verb authorizes on %q — "+
-					"the preflight would check the wrong permission and that denial would land "+
-					"after the earlier rows had written", label, i, row.fields, declared, asked)
+				t.Errorf("%s: servicePatchTable[%d] (%v) authorizes on %q — a service setting is "+
+					"can_create, and the preflight would not have checked it before the earlier rows wrote",
+					label, i, row.fields, asked)
 			}
 		}
 	}

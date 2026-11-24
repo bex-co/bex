@@ -1031,7 +1031,7 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	// produced five "Custom domain verified" rows while the domain's own row
 	// still read Pending. The row is recorded only at an actual promotion,
 	// in checkAndPromoteClaim.
-	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
+	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, appName)
 	if err != nil {
 		return DomainView{}, err
 	}
@@ -1740,7 +1740,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	// quota refusal) as `custom_domain_added` for a host that was never
 	// attached. Observed live: one refused add plus one accepted add produced
 	// two identical rows at the same second.
-	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
+	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, appName)
 	if err != nil {
 		return DomainView{}, false, err
 	}
@@ -1902,7 +1902,7 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 	// Deferred audit (w4/m122), same rule as its two siblings: a delete that
 	// removed nothing — an unknown host — must leave no `custom_domain_removed`
 	// row behind.
-	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
+	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, appName)
 	if err != nil {
 		return err
 	}

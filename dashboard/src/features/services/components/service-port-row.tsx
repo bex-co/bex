@@ -1,4 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { usePort } from "@/features/services/hooks/use-port";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import {
@@ -51,6 +52,8 @@ export function ServicePortRow({
 }: ServicePortRowProps) {
   const { t } = useTranslations();
   const { setPort, busy } = usePort();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const detected = !imagePorts && portDetected && port != null;
   // An image-port service with no port set shows none: its image chooses the
   // port, and a resolved port shown here would read as a setting (w4/m323).
@@ -90,6 +93,8 @@ export function ServicePortRow({
       min={MIN_SERVICE_PORT}
       max={MAX_SERVICE_PORT}
       busy={busy}
+      disabled={createDenied}
+      disabledReason={createReason}
       // Dirty-compare the parsed port, not the text: "03000" is port 3000, and
       // saving it would roll an identical deploy (w4/278). An image-port
       // service may clear its port to serve the image's port again, the fix

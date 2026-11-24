@@ -81,7 +81,7 @@ func checkCacheProfile(a *appv1alpha1.App, profile string) (string, error) {
 // or edge_cache_disabled (w9/m345); one that keeps it on (static <-> all) is
 // audited with no event, as Render records none.
 func (s *Service) SetCacheProfile(ctx context.Context, name, profile string) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}

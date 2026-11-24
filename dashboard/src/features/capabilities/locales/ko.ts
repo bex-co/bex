@@ -11,7 +11,7 @@ const koCapabilities: Record<string, TranslationEntry> = {
     message:
       "현재 역할로는 이 서비스를 볼 수만 있습니다. 변경하려면 워크스페이스 관리자에게 문의하세요.",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message:

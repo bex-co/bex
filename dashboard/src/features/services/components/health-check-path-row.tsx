@@ -1,4 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useHealthCheckPath } from "@/features/services/hooks/use-health-check-path";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { healthCheckPathError } from "@/features/services/lib/build-settings-validation";
@@ -29,6 +30,8 @@ export function HealthCheckPathRow({
 }: HealthCheckPathRowProps) {
   const { t } = useTranslations();
   const { setHealthCheckPath, busy } = useHealthCheckPath();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const current = healthCheckPath ?? "";
 
   return (
@@ -40,6 +43,8 @@ export function HealthCheckPathRow({
       editLabel={t("services.settingsHealthCheckPathEdit")}
       mono
       busy={busy}
+      disabled={createDenied}
+      disabledReason={createReason}
       // A path may carry meaningful characters, so compare the raw draft.
       // Empty is passed through, not coerced: it clears the path and selects
       // the TCP check.

@@ -2,6 +2,8 @@ import { useId, useState } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
 import {
   ComputePlanRowFrame,
@@ -72,14 +74,22 @@ function CurrentComputePlan({
   onEdit: () => void;
 }) {
   const { t } = useTranslations();
+  const { denied, reason } = useCapabilityGate("canCreate");
   return (
     <ComputePlanRowFrame
       summary={<ComputePlanSummary plan={plan} />}
       action={
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          <Pencil />
-          {t("services.computePlanEdit")}
-        </Button>
+        <PermissionTooltip reason={reason}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={denied}
+            onClick={onEdit}
+          >
+            <Pencil />
+            {t("services.computePlanEdit")}
+          </Button>
+        </PermissionTooltip>
       }
     />
   );

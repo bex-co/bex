@@ -22,7 +22,7 @@ import { isReservedPostgresRole } from "@/features/databases/lib/identifiers";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useUpdateDatabaseConnectionPool } from "@/features/databases/hooks/use-update-database-connection-pool";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import {
@@ -292,9 +292,8 @@ function PoolerSection({
 }) {
   const { id, name, poolerEnabled, highAvailabilityEnabled } = database;
   const { t } = useTranslations();
-  const capabilities = useCapabilities();
-  const operateReasonKey = capabilities.reasonKey("can_operate");
-  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const { updateConnectionPool, busy } = useUpdateDatabaseConnectionPool();
   const [target, setTarget] = useState<boolean | null>(null);
   const hasPooledStrings = Boolean(
@@ -329,14 +328,12 @@ function PoolerSection({
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-4">
         <h4 className="text-sm font-medium">{t("databases.accessPooler")}</h4>
-        <PermissionTooltip reason={operateReason}>
+        <PermissionTooltip reason={createReason}>
           <Switch
             aria-label={t("databases.poolerToggleLabel")}
             checked={poolerEnabled}
             disabled={
-              operateReason != null ||
-              busy ||
-              (!poolerEnabled && planUnsupported)
+              createDenied || busy || (!poolerEnabled && planUnsupported)
             }
             onCheckedChange={setTarget}
           />

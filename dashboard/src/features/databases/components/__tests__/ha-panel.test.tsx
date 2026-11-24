@@ -213,19 +213,28 @@ describe("HAPanel read replicas (w5/m138)", () => {
     expect(add()).toBeEnabled();
   });
 
-  it("disables add and remove for a member who cannot operate the database", () => {
+  // Read replicas are a setting PATCH /v1/postgres changes: can_create, so a
+  // Contributor, who keeps can_operate, is held (w9/m619).
+  it("disables add and remove for a contributor, and keeps them for a developer", () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({
-        canOperate: false,
-        reasonKey: (action) =>
-          action === "can_operate" ? "databases.haFailover" : undefined,
-      }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
-    render(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
+    const { rerender } = render(
+      <HAPanel database={WITH_REPLICA} refetch={vi.fn()} />,
+    );
     expect(
       screen.getByRole("button", { name: "Add read replica" }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
+
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    rerender(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Add read replica" }),
+    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
   });
 });
 
@@ -310,18 +319,100 @@ describe("HAPanel high availability switch (w2/m171)", () => {
     expect(haSwitch()).toBeEnabled();
   });
 
-  it("disables the switch for a member who cannot operate the database", () => {
+  // The HA switch is a setting (can_create) while failover is a lifecycle
+  // verb a Contributor keeps (can_operate), as Render's role table has it
+  // (w9/m619).
+  it("holds the switch for a contributor but keeps failover enabled", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const live = {
+      ...DATABASE,
+      plan: "pro",
+      highAvailabilityRequested: true,
+      highAvailabilityEnabled: true,
+    };
+    render(<HAPanel database={live} refetch={vi.fn()} />);
+    expect(haSwitch()).toBeDisabled();
+    expect(haSwitch().closest('[data-slot="tooltip-trigger"]')).not.toBeNull();
+    const failover = screen.getByRole("button", { name: "Trigger failover" });
+    expect(failover).toBeEnabled();
+    await userEvent.click(failover);
+    expect(screen.getByText("Trigger failover on shop?")).toBeInTheDocument();
+  });
+
+  it("leaves the switch and failover enabled for a developer", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    render(
+      <HAPanel
+        database={{
+          ...DATABASE,
+          plan: "pro",
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: true,
+        }}
+        refetch={vi.fn()}
+      />,
+    );
+    expect(haSwitch()).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Trigger failover" }),
+    ).toBeEnabled();
+  });
+
+  it("holds failover for a viewer without can_operate", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canOperate: false, canCreate: false }),
+    );
+    render(
+      <HAPanel
+        database={{
+          ...DATABASE,
+          plan: "pro",
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: true,
+        }}
+        refetch={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Trigger failover" }),
+    ).toBeDisabled();
+  });
+
+  // Fail-closed: no answer yet is no grant, so every control is held, and
+  // none claims a role reason it has not been given.
+  it("holds the switch, failover and replicas while capabilities are still checking", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({
         canOperate: false,
-        reasonKey: (action) =>
-          action === "can_operate" ? "databases.haFailover" : undefined,
+        canCreate: false,
+        loading: true,
+        loaded: false,
       }),
     );
     render(
-      <HAPanel database={{ ...DATABASE, plan: "pro" }} refetch={vi.fn()} />,
+      <HAPanel
+        database={{
+          ...WITH_REPLICA,
+          plan: "pro",
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: true,
+        }}
+        refetch={vi.fn()}
+      />,
     );
     expect(haSwitch()).toBeDisabled();
+    expect(haSwitch().closest('[data-slot="tooltip-trigger"]')).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Trigger failover" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Add read replica" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
   });
 
   // Render bills the standby like the primary, so the confirmation names

@@ -14,6 +14,7 @@ import { useMaintenanceMode } from "@/features/services/hooks/use-maintenance-mo
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import type { MaintenanceModeView } from "@/features/services/types";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { projectionReason } from "@/features/capabilities/lib/resource-actions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -36,7 +37,9 @@ export interface MaintenanceModeSectionProps {
  * rendering by type. The switch, in both directions, follows the service's
  * toggle_maintenance_mode decision, so in a protected environment a Developer
  * reads Render's "This action is limited to admins." instead of a 403 after
- * confirming (w4/725). The page URL toggles nothing and stays editable.
+ * confirming (w4/725). The page URL toggles nothing; like every service
+ * setting it is can_create, so a Contributor reads the role's reason under it
+ * (w9/m619).
  */
 export function MaintenanceModeSection({
   serviceId,
@@ -48,6 +51,8 @@ export function MaintenanceModeSection({
   const { setMaintenanceMode, busy } = useMaintenanceMode();
   const { currentWorkspaceId } = useWorkspace();
   const serverActions = useServerActions(serviceId);
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const enabled = maintenanceMode?.enabled ?? false;
   const eligible = plan !== "free";
   // The plan hint already explains a free service's disabled switch.
@@ -115,8 +120,10 @@ export function MaintenanceModeSection({
           mono
           busy={busy}
           // The switch's own hint already explains the paid-plan requirement,
-          // so the disabled URL field needs no duplicate reason.
-          disabled={!eligible}
+          // so the disabled URL field needs no duplicate reason; a role that
+          // cannot change settings reads its own.
+          disabled={!eligible || createDenied}
+          disabledReason={eligible ? createReason : undefined}
           // Changing the URL re-applies with the current on/off state; the URL
           // edit never itself flips maintenance mode.
           onSave={(value) =>

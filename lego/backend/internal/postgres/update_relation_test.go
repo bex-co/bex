@@ -18,6 +18,8 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,11 +27,12 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// update_relation_test.go — UpdatePostgres is a lifecycle verb: it gates on
-// can_operate, so a contributor can make an ordinary settings change. Before
-// w2/066 a parameterOverrides write that turned on statement logging escalated
-// to can_create (w1/m68 F7); with the field retired that escalation has nothing
-// left to guard, and every update takes the plain lifecycle rung.
+// update_relation_test.go — a Postgres instance's settings are a Developer's
+// to change: UpdatePostgres, SetPlan and SetVersion gate on can_create, so a
+// Contributor, who Render's role table gives no "Modify service configuration"
+// (render.com/docs/team-members, read 2026-11-23), is refused them before
+// anything is written (w9/m619). Restart, suspend, resume and failover are
+// runtime actions and stay on can_operate.
 
 // roleChecker allows only the relations a role holds.
 type roleChecker struct {
@@ -50,6 +53,15 @@ var contributorGrants = map[string]bool{
 	core.RelCanOperate:  true,
 }
 
+// developerGrants adds can_create and can_view_sensitive.
+var developerGrants = map[string]bool{
+	core.RelCanView:          true,
+	core.RelCanViewLogs:      true,
+	core.RelCanOperate:       true,
+	core.RelCanCreate:        true,
+	core.RelCanViewSensitive: true,
+}
+
 func serviceAs(t *testing.T, grants map[string]bool, objs ...client.Object) (*Service, *roleChecker, context.Context) {
 	t.Helper()
 	svc, _ := newService(objs...)
@@ -59,27 +71,93 @@ func serviceAs(t *testing.T, grants map[string]bool, objs ...client.Object) (*Se
 	return svc, chk, ctx
 }
 
-// TestUpdatePostgresGatesOnOperate proves a contributor's rename lands on the
-// can_operate rung and never asks for can_create.
-func TestUpdatePostgresGatesOnOperate(t *testing.T) {
-	svc, chk, ctx := serviceAs(t, contributorGrants)
-	seedDatabase(t, svc.Base.Client, "param-db")
+// TestAContributorChangesNoPostgresSetting proves each setting verb refuses a
+// Contributor with ErrForbidden and leaves the instance as it was, read back
+// from the store.
+func TestAContributorChangesNoPostgresSetting(t *testing.T) {
+	name, plan, version := "renamed-db", "basic_256mb", "18"
+	for verb, call := range map[string]func(*Service, context.Context) error{
+		"UpdatePostgres": func(s *Service, ctx context.Context) error {
+			_, err := s.UpdatePostgres(ctx, "settings-db", PostgresPatch{Name: &name})
+			return err
+		},
+		"UpdatePostgres(plan)": func(s *Service, ctx context.Context) error {
+			_, err := s.UpdatePostgres(ctx, "settings-db", PostgresPatch{Plan: &plan})
+			return err
+		},
+		"SetPlan": func(s *Service, ctx context.Context) error {
+			_, err := s.SetPlan(ctx, "settings-db", plan)
+			return err
+		},
+		"SetVersion": func(s *Service, ctx context.Context) error {
+			_, err := s.SetVersion(ctx, "settings-db", version)
+			return err
+		},
+	} {
+		t.Run(verb, func(t *testing.T) {
+			svc, chk, ctx := serviceAs(t, contributorGrants)
+			seedDatabase(t, svc.Base.Client, "settings-db")
+			before := getDatabase(t, svc.Base.Client, "settings-db").Spec
+
+			if err := call(svc, ctx); !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("contributor %s => %v, want ErrForbidden", verb, err)
+			}
+			if !slices.Contains(chk.relations, core.RelCanCreate) {
+				t.Errorf("contributor %s asked %v, want a can_create check", verb, chk.relations)
+			}
+			after := getDatabase(t, svc.Base.Client, "settings-db").Spec
+			if after.Name != before.Name || after.Plan != before.Plan || after.Version != before.Version {
+				t.Errorf("a refused %s wrote the spec: %+v -> %+v", verb, before, after)
+			}
+		})
+	}
+}
+
+// TestADeveloperChangesPostgresSettings is the counterweight: the same rename
+// lands for a Developer.
+func TestADeveloperChangesPostgresSettings(t *testing.T) {
+	svc, _, ctx := serviceAs(t, developerGrants)
+	seedDatabase(t, svc.Base.Client, "settings-db")
 
 	name := "renamed-db"
-	if _, err := svc.UpdatePostgres(ctx, "param-db", PostgresPatch{Name: &name}); err != nil {
-		t.Fatalf("contributor rename => %v, want success", err)
+	if _, err := svc.UpdatePostgres(ctx, "settings-db", PostgresPatch{Name: &name}); err != nil {
+		t.Fatalf("developer rename => %v, want success", err)
 	}
+	if got := getDatabase(t, svc.Base.Client, "settings-db").Spec.Name; got != name {
+		t.Errorf("developer rename stored %q, want %q", got, name)
+	}
+}
 
-	var sawOperate bool
-	for _, rel := range chk.relations {
-		if rel == core.RelCanOperate {
-			sawOperate = true
-		}
-		if rel == core.RelCanCreate {
-			t.Errorf("an ordinary update gated on can_create — over-tightened")
-		}
-	}
-	if !sawOperate {
-		t.Error("no can_operate check observed; the fixture is not exercising the gate")
+// TestAContributorKeepsPostgresRuntimeActions pins the other side of the line:
+// restart, suspend, resume and failover are not settings, so a Contributor is
+// never refused them for their role (a verb may still refuse on state).
+func TestAContributorKeepsPostgresRuntimeActions(t *testing.T) {
+	for verb, call := range map[string]func(*Service, context.Context) error{
+		"Restart": func(s *Service, ctx context.Context) error {
+			_, err := s.Restart(ctx, "runtime-db")
+			return err
+		},
+		"Suspend": func(s *Service, ctx context.Context) error {
+			_, err := s.Suspend(ctx, "runtime-db")
+			return err
+		},
+		"Resume": func(s *Service, ctx context.Context) error {
+			_, err := s.Resume(ctx, "runtime-db")
+			return err
+		},
+		"Failover": func(s *Service, ctx context.Context) error {
+			return s.Failover(ctx, "runtime-db")
+		},
+	} {
+		t.Run(verb, func(t *testing.T) {
+			svc, chk, ctx := serviceAs(t, contributorGrants)
+			seedDatabase(t, svc.Base.Client, "runtime-db")
+			if err := call(svc, ctx); errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("contributor %s => %v, want no role refusal", verb, err)
+			}
+			if slices.Contains(chk.relations, core.RelCanCreate) {
+				t.Errorf("contributor %s asked can_create (%v); a runtime action must stay can_operate", verb, chk.relations)
+			}
+		})
 	}
 }

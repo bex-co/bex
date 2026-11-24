@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { publishDirectoryError } from "@/features/services/lib/publish-directory";
 import { useServiceBase } from "@/features/services/lib/service-base";
@@ -178,6 +179,8 @@ function PublishPathRow({
   const { t } = useTranslations();
   const current = publishPath ?? "";
   const prefix = rootDirPrefix(rootDir);
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   return (
     <EditableFieldRow
@@ -189,6 +192,8 @@ function PublishPathRow({
       valuePrefix={prefix || undefined}
       mono
       busy={busy}
+      disabled={createDenied}
+      disabledReason={createReason}
       // A publish directory is required, so an empty value is never savable.
       dirty={(value) => value !== "" && value !== current}
       // A path that can never publish is marked before Save (w21/050).

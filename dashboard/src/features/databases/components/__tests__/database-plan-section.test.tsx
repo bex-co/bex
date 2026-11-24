@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { shape } from "@/test/card-shape";
 import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
@@ -94,9 +94,9 @@ beforeEach(() => {
 });
 
 describe("DatabasePlanSection", () => {
-  it("lets a contributor change plan through can_operate", async () => {
+  it("lets a developer change plan (can_create)", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
     );
     const onChanged = vi.fn();
     const user = userEvent.setup();
@@ -111,18 +111,20 @@ describe("DatabasePlanSection", () => {
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
-  it("disables plan controls for a viewer with the operate reason", async () => {
+  // Render gives a Contributor no configuration change, a plan included
+  // (w9/m619): the plan is can_create, so a Contributor, who keeps
+  // can_operate, reads the role's reason on held controls.
+  it("disables plan controls for a contributor with the create reason", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "VIEWER", canOperate: false }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
     const user = userEvent.setup();
     render(<DatabasePlanSection database={DATABASE} onChanged={vi.fn()} />);
 
     const starter = screen.getByRole("radio", { name: /Starter/ });
     expect(starter).toBeDisabled();
-    expect(
-      screen.getByText(/Your role can only view this service/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByText(CREATE_REASON)).toBeInTheDocument();
     await user.click(starter);
     expect(updatePlan).not.toHaveBeenCalled();
   });
@@ -286,7 +288,7 @@ describe("DatabasePlanSection", () => {
 
   it("fail-closes plan controls until capabilities are definitive", () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ canOperate: false, loading: true, loaded: false }),
+      mockCapabilities({ canCreate: false, loading: true, loaded: false }),
     );
     render(<DatabasePlanSection database={DATABASE} onChanged={vi.fn()} />);
     expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();
@@ -395,9 +397,9 @@ describe("DatabasePlanSection storage", () => {
     expect(screen.getByRole("button", { name: "Edit storage" })).toBeDisabled();
   });
 
-  it("disables Edit for a member who cannot operate the database", () => {
+  it("disables Edit for a contributor, who cannot change settings (w9/m619)", () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "VIEWER", canOperate: false }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
     render(<DatabasePlanSection database={STARTER} onChanged={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Edit storage" })).toBeDisabled();

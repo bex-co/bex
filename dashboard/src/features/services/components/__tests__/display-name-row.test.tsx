@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 
 const setDisplayName = vi.fn(async () => true);
 
@@ -88,5 +90,46 @@ describe("DisplayNameRow", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(setDisplayName).toHaveBeenCalledWith("stable-id", "");
+  });
+});
+
+// A rename is a service setting: can_create, as Render's role table gives a
+// Contributor no "Modify service configuration" (w9/m619).
+describe("DisplayNameRow role gating (w9/m619)", () => {
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it("holds the rename for a contributor with the role's reason", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    render(<DisplayNameRow serviceId="srv-1" displayName="API" name="api" />);
+    expect(
+      screen.queryByRole("button", { name: "Edit service name" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(CREATE_REASON)).toBeInTheDocument();
+  });
+
+  it("offers the rename to a developer", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    render(<DisplayNameRow serviceId="srv-1" displayName="API" name="api" />);
+    expect(
+      screen.getByRole("button", { name: "Edit service name" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/can’t make this change/)).toBeNull();
+  });
+
+  it("holds the row without claiming a role while the check runs", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ canCreate: false, loading: true, loaded: false }),
+    );
+    render(<DisplayNameRow serviceId="srv-1" displayName="API" name="api" />);
+    expect(
+      screen.queryByRole("button", { name: "Edit service name" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/can’t make this change/)).toBeNull();
   });
 });

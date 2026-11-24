@@ -44,7 +44,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
@@ -52,6 +51,9 @@ import { Separator } from "@/common/components/ui/separator";
 import { CopyButton } from "@/common/components/copy-button";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import {
   useCustomDomains,
   useCustomDomainMutations,
@@ -207,6 +209,7 @@ function CustomDomainRow({
   busy: boolean;
 }) {
   const { t } = useTranslations();
+  const gate = useCapabilityGate("canCreate");
   const [confirming, setConfirming] = useState(false);
   // Unverified DNS or TLS still needs action/visibility, so open it by default.
   const [open, setOpen] = useState(
@@ -328,13 +331,14 @@ function CustomDomainRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
+              <PermissionMenuItem
                 variant="destructive"
-                disabled={busy}
+                disabled={busy || gate.denied}
+                permissionReason={gate.reason}
                 onSelect={() => setConfirming(true)}
               >
                 <Trash2 /> {t("services.domainDelete")}
-              </DropdownMenuItem>
+              </PermissionMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -471,20 +475,25 @@ function DnsInstructions({
   busy: boolean;
 }) {
   const { t } = useTranslations();
+  const gate = useCapabilityGate("canCreate");
   return (
     <div className="space-y-3 py-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">{t("services.domainDnsTitle")}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          // Names its domain like the row's other controls (w4/540).
-          aria-label={t("services.domainRecheckAria", { domain: domain.name })}
-          onClick={() => void onVerify(domain.name)}
-        >
-          <RefreshCw /> {t("services.domainRecheck")}
-        </Button>
+        <PermissionTooltip reason={gate.reason}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || gate.denied}
+            // Names its domain like the row's other controls (w4/540).
+            aria-label={t("services.domainRecheckAria", {
+              domain: domain.name,
+            })}
+            onClick={() => void onVerify(domain.name)}
+          >
+            <RefreshCw /> {t("services.domainRecheck")}
+          </Button>
+        </PermissionTooltip>
       </div>
       <DnsRecordFields domain={domain} />
     </div>
@@ -624,6 +633,7 @@ function AddDomainButton({
   disabled: boolean;
 }) {
   const { t } = useTranslations();
+  const gate = useCapabilityGate("canCreate");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<DomainNameError | null>(null);
@@ -660,14 +670,16 @@ function AddDomainButton({
         if (!o) reset();
       }}
     >
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        <Plus /> {t("services.domainAdd")}
-      </Button>
+      <PermissionTooltip reason={gate.reason}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled || gate.denied}
+          onClick={() => setOpen(true)}
+        >
+          <Plus /> {t("services.domainAdd")}
+        </Button>
+      </PermissionTooltip>
       <DialogContent>
         {added ? (
           <>
@@ -750,7 +762,10 @@ function AddDomainButton({
               <Button variant="ghost" onClick={reset}>
                 {t("services.domainCancel")}
               </Button>
-              <Button disabled={disabled} onClick={() => void submit()}>
+              <Button
+                disabled={disabled || gate.denied}
+                onClick={() => void submit()}
+              >
                 {t("services.domainAddButton")}
               </Button>
             </DialogFooter>

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -13,6 +13,8 @@ vi.mock("@/common/hooks/use-copy-to-clipboard", () => ({
 }));
 
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const hookURL = "https://api.bex.co/v1/deploy-hooks/dhk-secret";
 const regenerate = vi.fn();
@@ -84,6 +86,29 @@ describe("DeployHookSection", () => {
       within(dialog).getByRole("button", { name: "Regenerate" }),
     );
     await waitFor(() => expect(regenerate).toHaveBeenCalledOnce());
+  });
+
+  // Rotating the hook is can_create (w9/m619): a Contributor reads the
+  // role's reason on a held button and no dialog opens.
+  describe("role gating (w9/m619)", () => {
+    afterEach(() => {
+      vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+    });
+
+    it("holds Regenerate for a contributor", async () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+      );
+      const user = userEvent.setup();
+      render(<DeployHookSection serviceId="web" />);
+
+      const rotate = screen.getByRole("button", { name: "Regenerate Hook" });
+      expect(rotate).toBeDisabled();
+      expect(rotate.closest('[data-slot="tooltip-trigger"]')).not.toBeNull();
+      await user.click(rotate);
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(regenerate).not.toHaveBeenCalled();
+    });
   });
 
   it("shows an honest load failure without a copyable value", () => {

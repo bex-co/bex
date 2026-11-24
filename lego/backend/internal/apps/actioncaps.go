@@ -36,10 +36,11 @@ import (
 // open with (can_view_sensitive), so a client can say only an Admin may before
 // it mints a ticket (w4/726); whether the service can host a shell at all is
 // its sshAddress, not a precondition here. Toggling maintenance mode reads the
-// same way on a web service, with SetMaintenanceMode's permission (can_operate),
-// so a Developer on a protected member sees the switch disabled for the reason
-// the verb would refuse it (w4/725); its plan eligibility is the service's
-// plan, which the client already reads. Delete reads the same way, with
+// same way on a web service, with SetMaintenanceMode's permission (can_create,
+// a service setting since w9/m619), so a Contributor sees the switch disabled
+// and a Developer on a protected member sees it disabled for the reason the
+// verb would refuse it (w4/725); its plan eligibility is the service's plan,
+// which the client already reads. Delete reads the same way, with
 // Delete's own permission (can_create), on every type, so a Developer on a
 // protected member sees Delete disabled before typing its phrase (w4/724).
 // Read-only and non-auditing: can_view gates the projection itself; a
@@ -83,7 +84,8 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		return compute()
 	}
 	suspendPre, resumePre := core.LifecyclePreconditions(a.Spec.Suspended, isProtected, resume, billing)
-	remove, _ := core.RestrictedDecision("delete", s.CanDecisionOn(ctx, core.RelCanCreate, workspace), protected, admin)
+	create := s.CanDecisionOn(ctx, core.RelCanCreate, workspace)
+	remove, _ := core.RestrictedDecision("delete", create, protected, admin)
 	out := []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
@@ -96,7 +98,7 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		out = append(out, core.DecideAction(core.ActionShell, shell, ""))
 	}
 	if typ == appv1alpha1.TypeWebService {
-		toggle, _ := core.RestrictedDecision(core.VerbToggleMaintenanceMode, operate, protected, admin)
+		toggle, _ := core.RestrictedDecision(core.VerbToggleMaintenanceMode, create, protected, admin)
 		out = append(out, core.DecideAction(core.ActionToggleMaintenanceMode, toggle, ""))
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob {

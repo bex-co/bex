@@ -10,6 +10,8 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useCardRadioGroup } from "@/common/hooks/use-card-radio-group";
 import { cn } from "@/common/lib/utils/utils";
 import { useEdgeCache } from "@/features/services/hooks/use-edge-cache";
@@ -65,6 +67,12 @@ export function EdgeCachingSection({
 }: EdgeCachingSectionProps) {
   const { t } = useTranslations();
   const { setCacheProfile, purgeCache, saving, purging } = useEdgeCache();
+  // The cache profile is a setting; purging the cache is an operation a
+  // Contributor keeps (can_operate).
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
+  const { denied: operateDenied, reason: operateReason } =
+    useCapabilityGate("canOperate");
   const saved = toCacheProfile(cacheProfile);
   const eligible = plan !== "free";
   // null follows the saved profile, so a save (or a refetch) re-syncs it.
@@ -72,7 +80,7 @@ export function EdgeCachingSection({
   const selected = draft ?? saved;
   const dirty = selected !== saved;
   const [confirmPurge, setConfirmPurge] = useState(false);
-  const locked = !eligible || saving;
+  const locked = !eligible || saving || createDenied;
   const radio = useCardRadioGroup(CACHE_PROFILES, selected, setDraft, locked);
 
   return (
@@ -131,28 +139,38 @@ export function EdgeCachingSection({
               ? t("services.edgeCachingPurgeOnDeploy")
               : t("services.edgeCachingPaidOnly")}
           </p>
+          {/* The plan line already explains a free service's locked picker. */}
+          {eligible && createReason ? (
+            <p className="text-muted-foreground text-sm">{createReason}</p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            disabled={!eligible || !dirty || saving}
-            onClick={async () => {
-              if (await setCacheProfile(serviceId, selected)) setDraft(null);
-            }}
-          >
-            {saving
-              ? t("services.edgeCachingSaving")
-              : t("services.edgeCachingSave")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!eligible || saved === "no-cache" || purging}
-            onClick={() => setConfirmPurge(true)}
-          >
-            {t("services.edgeCachingPurgeAction")}
-          </Button>
+          <PermissionTooltip reason={eligible ? createReason : undefined}>
+            <Button
+              size="sm"
+              disabled={!eligible || !dirty || saving || createDenied}
+              onClick={async () => {
+                if (await setCacheProfile(serviceId, selected)) setDraft(null);
+              }}
+            >
+              {saving
+                ? t("services.edgeCachingSaving")
+                : t("services.edgeCachingSave")}
+            </Button>
+          </PermissionTooltip>
+          <PermissionTooltip reason={eligible ? operateReason : undefined}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={
+                !eligible || saved === "no-cache" || purging || operateDenied
+              }
+              onClick={() => setConfirmPurge(true)}
+            >
+              {t("services.edgeCachingPurgeAction")}
+            </Button>
+          </PermissionTooltip>
         </div>
       </CardContent>
 

@@ -6,6 +6,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useIdleTimeout } from "@/features/services/hooks/use-idle-timeout";
 import {
   autoSleepEligibleType,
@@ -48,6 +49,8 @@ export function IdleTimeoutRow({
 }: IdleTimeoutRowProps) {
   const { t } = useTranslations();
   const { setIdleTimeout, busy } = useIdleTimeout();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
 
   if (!autoSleepEligibleType(serviceType)) return null;
 
@@ -80,10 +83,15 @@ export function IdleTimeoutRow({
         <div className="mt-1 text-sm text-muted-foreground">
           {t("services.settingsIdleTimeoutHint")}
         </div>
+        {createReason && (
+          <div className="mt-1 text-sm text-muted-foreground">
+            {createReason}
+          </div>
+        )}
       </div>
       <Select
         value={String(idleTTLSeconds)}
-        disabled={busy}
+        disabled={busy || createDenied}
         onValueChange={(v) => {
           const next = Number(v);
           if (next !== idleTTLSeconds) void setIdleTimeout(serviceId, next);

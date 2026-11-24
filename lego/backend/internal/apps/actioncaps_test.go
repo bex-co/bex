@@ -539,3 +539,44 @@ func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
 		}
 	})
 }
+
+// TestActionCapabilities_AContributorTogglesNoMaintenanceMode (w9/m619):
+// maintenance mode is a service setting, which Render's Contributor cannot
+// modify, so a Contributor's projection reads toggle_maintenance_mode denied,
+// as the verb refuses it, while the runtime actions (restart, suspend, resume
+// and a cron job's run and cancel) stay allowed.
+func TestActionCapabilities_AContributorTogglesNoMaintenanceMode(t *testing.T) {
+	contributor := map[string]bool{core.RelCanView: true, core.RelCanViewLogs: true, core.RelCanOperate: true}
+	web := managedApp("web", "srv-1")
+	web.Spec.Type, web.Spec.Tier = appv1alpha1.TypeWebService, "standard"
+	cron := managedApp("job", "srv-2")
+	cron.Spec.Type, cron.Spec.Tier, cron.Spec.Schedule = appv1alpha1.TypeCronJob, "starter", "0 * * * *"
+	svc, _ := newService(&recordingStore{}, web, cron)
+	svc.Base.Authz = &relationChecker{allow: contributor}
+	ctx := ctxAs("contributor-1")
+
+	acts, err := svc.ActionCapabilities(ctx, "web")
+	if err != nil {
+		t.Fatalf("ActionCapabilities: %v", err)
+	}
+	if a := actionByID(t, acts, core.ActionToggleMaintenanceMode); a.Outcome != core.DecisionDenied || a.Reason != core.ReasonInsufficientPermission {
+		t.Errorf("a Contributor's toggle_maintenance_mode = %+v, want denied/insufficient_permission", a)
+	}
+	if _, err := svc.SetMaintenanceMode(ctx, "web", MaintenanceModeView{Enabled: true}); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("a Contributor's SetMaintenanceMode = %v, want ErrForbidden as the projection says", err)
+	}
+	for _, id := range []string{core.ActionRestart, core.ActionSuspend, core.ActionResume} {
+		if a := actionByID(t, acts, id); a.Outcome != core.DecisionAllowed {
+			t.Errorf("a Contributor's %s = %+v, want allowed", id, a)
+		}
+	}
+	cronActs, err := svc.ActionCapabilities(ctx, "job")
+	if err != nil {
+		t.Fatalf("ActionCapabilities(cron): %v", err)
+	}
+	for _, id := range []string{core.ActionCronRunNow, core.ActionCronCancelRun} {
+		if a := actionByID(t, cronActs, id); a.Outcome != core.DecisionAllowed {
+			t.Errorf("a Contributor's %s = %+v, want allowed", id, a)
+		}
+	}
+}

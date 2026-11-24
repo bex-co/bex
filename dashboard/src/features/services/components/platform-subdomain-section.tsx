@@ -2,6 +2,8 @@ import { ExternalLink } from "lucide-react";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { safeHttpHref } from "@/common/lib/external-url";
 import { useSubdomainPolicy } from "@/features/services/hooks/use-subdomain-policy";
 import type { CustomDomainView } from "@/features/services/types";
@@ -35,6 +37,8 @@ export function PlatformSubdomainRow({
 }) {
   const { t } = useTranslations();
   const { setSubdomainPolicy, busy } = useSubdomainPolicy();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const enabled = (renderSubdomainPolicy ?? "enabled") === "enabled";
   const pending = (domains ?? []).filter((d) => !d.dnsVerified);
   const cannotDisable =
@@ -93,21 +97,23 @@ export function PlatformSubdomainRow({
               ? t("services.platformSubdomainEnabled")
               : t("services.platformSubdomainDisabled")}
           </Label>
-          <Switch
-            id="platform-subdomain-switch"
-            checked={enabled}
-            disabled={busy || cannotDisable}
-            onCheckedChange={(checked) =>
-              void setSubdomainPolicy(
-                serviceId,
-                checked ? "enabled" : "disabled",
-              )
-            }
-            aria-label={t("services.platformSubdomainToggleLabel")}
-            aria-describedby={
-              disableHint ? "platform-subdomain-hint" : undefined
-            }
-          />
+          <PermissionTooltip reason={createReason}>
+            <Switch
+              id="platform-subdomain-switch"
+              checked={enabled}
+              disabled={busy || cannotDisable || createDenied}
+              onCheckedChange={(checked) =>
+                void setSubdomainPolicy(
+                  serviceId,
+                  checked ? "enabled" : "disabled",
+                )
+              }
+              aria-label={t("services.platformSubdomainToggleLabel")}
+              aria-describedby={
+                disableHint ? "platform-subdomain-hint" : undefined
+              }
+            />
+          </PermissionTooltip>
         </div>
       </div>
       {disableHint && (

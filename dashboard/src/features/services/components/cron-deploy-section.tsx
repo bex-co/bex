@@ -8,7 +8,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { commandText } from "@/features/services/lib/command-text";
 import { isNativeRuntime } from "@/features/services/lib/runtime";
 import {
@@ -52,8 +52,8 @@ export function CronDeploySection({
   const { t } = useTranslations();
   const { updateCronJob, setStartCommand, busy, staleId } = useCronJob();
   const native = isNativeRuntime(runtime);
-  const capabilities = useCapabilities();
-  const { canCreate, canOperate } = capabilities;
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
   const loading = schedule === null;
   // A committed save whose authoritative re-read failed: the shown values
   // may be pre-save, so neither row is writable until the retry publishes
@@ -63,24 +63,7 @@ export function CronDeploySection({
     ? t("services.deployRefreshPending")
     : undefined;
 
-  // Setting the entrypoint command is can_create (it chooses code the job runs).
-  // The dashboard re-sends the existing command when saving the schedule, so
-  // editing the schedule of a command-bearing cron also needs can_create; a
-  // command-less schedule is a plain settings change (can_operate). Mirror that
-  // so a member sees a disabled row with a reason, not a 403 on save (w9/m84).
   const hasCommand = (command ?? "").trim() !== "";
-  const scheduleNeedsCreate = hasCommand;
-  const scheduleBlocked = scheduleNeedsCreate ? !canCreate : !canOperate;
-  const scheduleReasonKey = capabilities.reasonKey(
-    scheduleNeedsCreate ? "can_create" : "can_operate",
-  );
-  const scheduleReason = scheduleBlocked
-    ? scheduleReasonKey
-      ? t(scheduleReasonKey)
-      : undefined
-    : undefined;
-  const commandReasonKey = capabilities.reasonKey("can_create");
-  const commandReason = commandReasonKey ? t(commandReasonKey) : undefined;
   // What the job runs; the Schedule row keys on the override alone.
   const runCommand =
     native && !hasCommand ? (startCommand ?? "") : (command ?? "");
@@ -100,8 +83,8 @@ export function CronDeploySection({
           editLabel={t("services.deployScheduleEdit")}
           mono
           busy={busy}
-          disabled={loading || refreshStale || scheduleBlocked}
-          disabledReason={refreshStaleReason ?? scheduleReason}
+          disabled={loading || refreshStale || createDenied}
+          disabledReason={refreshStaleReason ?? createReason}
           validate={(draft) => {
             const sched = draft.trim();
             if (!sched) return t("services.deployScheduleRequired");
@@ -119,11 +102,11 @@ export function CronDeploySection({
           }}
           // Schedule save replays the stored command when there is one, and
           // sends null when there is not — null means "keep", so a commandless
-          // reschedule stays a plain can_operate settings change rather than
-          // becoming an explicit command write (w4/137). Sending "" here would
-          // silently turn every reschedule into a clear. The replay is the
-          // stored text byte for byte: trimming it would rewrite a command
-          // ending in an escaped space on every reschedule (w8/m68).
+          // reschedule never becomes an explicit command write (w4/137).
+          // Sending "" here would silently turn every reschedule into a clear.
+          // The replay is the stored text byte for byte: trimming it would
+          // rewrite a command ending in an escaped space on every reschedule
+          // (w8/m68).
           onSave={(value) =>
             updateCronJob(
               serviceId,
@@ -146,8 +129,8 @@ export function CronDeploySection({
           optional={!native}
           mono
           busy={busy}
-          disabled={loading || refreshStale || !canCreate}
-          disabledReason={refreshStaleReason ?? commandReason}
+          disabled={loading || refreshStale || createDenied}
+          disabledReason={refreshStaleReason ?? createReason}
           // Forwards exactly what the user left behind, "" included: it clears
           // a container cron's override, and a native cron refuses it.
           normalize={commandText}

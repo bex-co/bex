@@ -528,13 +528,11 @@ describe("AccessControlPanel connection pool switch (w2/m307)", () => {
     ).toBeVisible();
   });
 
-  it("disables the switch for a member who cannot operate the database", () => {
+  // The pooler is a setting PATCH /v1/postgres changes: can_create, so a
+  // Contributor, who keeps can_operate, is held (w9/m619).
+  it("disables the switch for a contributor, who cannot change settings", () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({
-        canOperate: false,
-        reasonKey: (action) =>
-          action === "can_operate" ? "databases.haFailover" : undefined,
-      }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
     renderPanel({ plan: "basic-1gb" });
     expect(poolSwitch()).toBeDisabled();

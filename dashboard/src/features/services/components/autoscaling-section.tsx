@@ -20,6 +20,8 @@ import {
 import { autoscalingLock } from "@/features/services/lib/autoscaling-lock";
 import { Card, CardContent } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
 
 // Render uses 1–100 for instance count and 1–90 for utilization targets, with
@@ -209,6 +211,10 @@ export function AutoscalingSection({
   workspacePlan?: string | null;
 }) {
   const { t } = useTranslations();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
+  // Every control of the card is held while a save runs or the role denies.
+  const inert = as.saving || createDenied;
 
   // null = no local edits; fall through to server state. A draft's existence
   // is what keeps the card open, so a draft is always "enabled" — the old
@@ -267,6 +273,7 @@ export function AutoscalingSection({
   }
 
   function handleMainToggle(checked: boolean) {
+    if (createDenied) return;
     if (locked) {
       // On free, or below Pro, the switch can only turn a stored config off.
       if (!checked && as.enabled) setConfirmDisable(true);
@@ -290,6 +297,7 @@ export function AutoscalingSection({
   }
 
   async function handleSave() {
+    if (createDenied) return;
     const err = validate(form);
     if (err) {
       setValidationError(err);
@@ -334,12 +342,14 @@ export function AutoscalingSection({
       <AutoscalingHeader
         control={
           <>
-            <Switch
-              id="autoscaling-enabled"
-              checked={switchedOn}
-              disabled={as.saving || (locked && !as.enabled)}
-              onCheckedChange={handleMainToggle}
-            />
+            <PermissionTooltip reason={createReason}>
+              <Switch
+                id="autoscaling-enabled"
+                checked={switchedOn}
+                disabled={inert || (locked && !as.enabled)}
+                onCheckedChange={handleMainToggle}
+              />
+            </PermissionTooltip>
             <Label htmlFor="autoscaling-enabled" className="text-sm">
               {switchedOn ? t("services.scalingOn") : t("services.scalingOff")}
             </Label>
@@ -405,7 +415,7 @@ export function AutoscalingSection({
                 absMax={INSTANCE_MAX}
                 valueMin={form.minInstances}
                 valueMax={form.maxInstances}
-                disabled={as.saving}
+                disabled={inert}
                 onChangeMin={(v) =>
                   patch({
                     minInstances: v,
@@ -435,7 +445,7 @@ export function AutoscalingSection({
                 <Switch
                   id="cpu-enabled"
                   checked={form.cpuEnabled}
-                  disabled={as.saving}
+                  disabled={inert}
                   onCheckedChange={(v) => patch({ cpuEnabled: v })}
                   aria-label={t("services.scalingCPUTitle")}
                 />
@@ -448,7 +458,7 @@ export function AutoscalingSection({
                     value={form.targetCPUPercent}
                     min={UTIL_MIN}
                     max={UTIL_MAX}
-                    disabled={as.saving}
+                    disabled={inert}
                     onChange={(v) => patch({ targetCPUPercent: v })}
                   />
                   <span className="text-sm text-muted-foreground">%</span>
@@ -470,7 +480,7 @@ export function AutoscalingSection({
                 <Switch
                   id="mem-enabled"
                   checked={form.memEnabled}
-                  disabled={as.saving}
+                  disabled={inert}
                   onCheckedChange={(v) => patch({ memEnabled: v })}
                   aria-label={t("services.scalingMemoryTitle")}
                 />
@@ -483,7 +493,7 @@ export function AutoscalingSection({
                     value={form.targetMemoryPercent}
                     min={UTIL_MIN}
                     max={UTIL_MAX}
-                    disabled={as.saving}
+                    disabled={inert}
                     onChange={(v) => patch({ targetMemoryPercent: v })}
                   />
                   <span className="text-sm text-muted-foreground">%</span>
@@ -504,9 +514,11 @@ export function AutoscalingSection({
               >
                 {t("services.scalingCancel")}
               </Button>
-              <Button size="sm" disabled={as.saving} onClick={handleSave}>
-                {t("services.scalingSaveChanges")}
-              </Button>
+              <PermissionTooltip reason={createReason}>
+                <Button size="sm" disabled={inert} onClick={handleSave}>
+                  {t("services.scalingSaveChanges")}
+                </Button>
+              </PermissionTooltip>
             </div>
           </div>
         </CardContent>

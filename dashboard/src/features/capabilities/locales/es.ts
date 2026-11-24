@@ -11,7 +11,7 @@ const esCapabilities: Record<string, TranslationEntry> = {
     message:
       "Tu rol solo puede ver este servicio. Pide a un administrador del espacio de trabajo que haga los cambios.",
     description:
-      "Tooltip/hint on an operate-gated control (e.g. a command-less cron schedule) for a viewer without can_operate",
+      "Tooltip/hint on an operate-gated lifecycle control (e.g. a service restart) for a viewer without can_operate",
   },
   "capabilities.reasonCanViewSensitive": {
     message:

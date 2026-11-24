@@ -1,6 +1,10 @@
 import type { Capabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { CapabilityAction } from "@/features/capabilities/lib/capability-policy";
 
+/** The en `capabilities.reasonCanCreate` sentence a can_create-gated control shows. */
+export const CREATE_REASON =
+  "Your role can’t make this change. Ask a workspace admin.";
+
 /**
  * A fully-permitted capability set (every relation granted, role ADMIN) for
  * tests that render a role-gated control (w9/m84 / w6/m144). Pass overrides to
