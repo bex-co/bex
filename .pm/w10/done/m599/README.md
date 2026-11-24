@@ -1,6 +1,6 @@
 # w10 · m599 — A workspace admin changes a session's `gh` binding from its settings after it starts, as Devin changes a session's security profile
 
-**Worker:** worker10 **Goal:** an admin who started a session with `gh` off, or on, changes it without starting a new session. A workspace admin sets a session's `agentConfig.githubCli` to inherit, on or off after create on REST, GraphQL, MCP, the CLI and the session's settings in the dashboard. A member is refused, and nobody turns `gh` on under a mandatory off. The session's next `gh` mint and next dispatch follow the change, and a child still only tightens its tree. **Status:** blocked (t001–t004, t006–t008 done 2026-11-23; t005, the live check, waits for a production pin carrying `cd74ac106e`, then t009)
+**Worker:** worker10 **Goal:** an admin who started a session with `gh` off, or on, changes it without starting a new session. A workspace admin sets a session's `agentConfig.githubCli` to inherit, on or off after create on REST, GraphQL, MCP, the CLI and the session's settings in the dashboard. A member is refused, and nobody turns `gh` on under a mandatory off. The session's next `gh` mint and next dispatch follow the change, and a child still only tightens its tree. **Status:** done (2026-11-24: t001–t004, t006–t008 done 2026-11-23; t005's live check held on production's pin `f46c44d9ddb1` and on `dev-10`; t009 closed it)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Backend: the change verb on REST, GraphQL and MCP over the store, with the refusals, the audit, and the session level's refusal text — **DONE** | 1h45m | t001 |
 | [t003](done/t003.md) | CLI: change a session's binding with `--github-cli on\|off\|inherit`, and `bex agent get` shows it — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | Dashboard: the session's settings offer the GitHub CLI binding, admin-only, and the GraphQL clients are regenerated — **DONE** | 1h15m | t002 |
-| [t005](t005.md) | Live check: an admin turns a running repo session's `gh` off and back to inherit, and a member is refused | 45m | t002, t003, t004 |
+| [t005](done/t005.md) | Live check: an admin turns a running repo session's `gh` off and back to inherit, and a member is refused — **DONE** | 45m | t002, t003, t004 |
 | [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 7h**.
 
@@ -123,6 +123,49 @@ No drift left to file: the one gap the design first left (a child's inherit unna
 | the dashboard dialog: inherit named, an admin's off and inherit, a member's lock, the mandatory lock, both refusals, an automation's and a child's chain | `session-settings-dialog.test.tsx`, `github-cli.test.ts`, `use-agent-session-mutations.test.ts`, `session-detail-header.test.tsx` |
 
 Reverts, each watched failing and restored: dropping `UpdateSession`'s `refuseGitHubCLIBinding` call fails the surface test at "REST: a member's off"; disabling the mandatory check fails it at "an admin's on under a mandatory off"; letting a child's own `true` count in `GitHubCLIChain.Resolve` fails `TestPGMintFollowsAChangedSessionBinding` at "a child's own on under its root's off". The next-mint test fails by construction if the write does nothing (its first refusal is the off).
+
+## Unblocked (2026-11-24)
+
+- **Source:** verified evidence, `/loopx w10`. The gate was ``pin must carry `cd74ac106e` ``.
+- **Finding:** the newest pin on `origin/main` is `eb52a59622` (`chore(deploy): pin platform images to f46c44d9ddb1`), and `git merge-base --is-ancestor` shows `f46c44d9ddb1` carries `cd74ac106e` and `c3a7d4f372`. Production (`hetzner-prod`, read 2026-11-24T02:57Z) runs that pin: both `bex-api` and both `bex-ssh-gateway` Pods on `bex-operator@sha256:3c16403a…`, the dashboard on `bex-dashboard@sha256:a37ac43b…`, and bex-api's `BEX_AGENT_SESSION_IMAGE` is `bex-agent-sandbox@sha256:d0f86b91…`. These match the pin's `deploy/gitops/base/bex.yaml`, `dashboard.yaml` and `lego/operator/config/api/deployment.yaml`, and every Pod's `imageID` matches too.
+- **Remaining gates:** none. Next: t005's live check as written, then t009's closeout if the definition of done holds.
+
+## Live check (t005, 2026-11-24)
+
+**Production, `tian-personal`, 03:00–03:12Z, pin `f46c44d9ddb1`** (digests as the Unblocked section reads them). Before the check the workspace had `gh` on, not mandatory, and the automations default inheriting. The check changed none of them, and a read afterwards gave the same. Signed in with `bash scripts/qa-login.sh --serve`. REST, GraphQL and MCP used an API key minted for the check. The CLI was built from `main`, because the released v0.2.1 has no `bex agent update`. One session ran on `claude` with `deepseek/deepseek-v4.1-flash-1017`, $0.073 for four turns.
+
+- **Fixture.** A new private repository, `puncsky/qa-20261124-m599-gh-update` (disposable), with only its README.
+- **Session.** `bex agent run --repo puncsky/qa-20261124-m599-gh-update --max-spend 1` started `ags-dc2frk9npn2c73ckvag0` (disposable) with no binding, so `gh` was inherited (on). Turn 1 ran `gh api repos/<fixture> --jq .full_name` seven times, 15 s apart, and every call printed the repository (`exit=0`).
+- **Off from the session's settings (DoD 1, 3, 6).**
+  - On the session page, "…" → **Settings** opened **Session settings** with "GitHub CLI (gh)" reading **Inherit (on)** and **Save settings** disabled.
+  - Turn 2 ran the same loop twelve times. The admin chose **Off** and saved at 03:04:40Z, and the dialog closed with "Settings saved". bex-api logged `agent-session gh binding changed (… from=inherit to=off)`.
+  - The loop's call at 03:04:32Z had printed the repository. The next one, at 03:04:48Z, got `HTTP 403` with "bex: gh is turned off for this agent session (its agentConfig.githubCli, or that of the session that started it). A workspace admin turns it back on by setting that session's GitHub CLI to inherit or on in its settings in the dashboard or with `bex agent update <session> --github-cli inherit`. Pushes to your session branch and the bex MCP tools … still work." (`exit=1`). So did every later call in the loop.
+  - The gateway logged `agent github api: refused (… status=403 result=github_cli_off)`, and bex-api logged `credential mint denied … gh is turned off for this agent session (the session binding)`.
+  - REST `GET /v1/agent-sessions/{id}`, GraphQL `agentSession { agentConfig { githubCli } }` and MCP `get_agent_session` read `githubCli: false`, and `bex agent get` printed `GitHub CLI  off`.
+- **A turn dispatched under the off.** Turn 3's sandbox had no `GH_*` variable, and `gh api` asked for `gh auth login` (`exit=4`). The agent quoted its overlay: "There is no GitHub token in the sandbox, and this session's GitHub CLI setting, or that of the session that started it, turned `gh` off, so `gh` and direct GitHub API calls do not work here; do not try to authenticate it."
+- **Back to inherit from the CLI.** `bex agent update ags-dc2frk9npn2c73ckvag0 --github-cli inherit` printed `GitHub CLI  inherit` at 03:08:43Z, and bex-api logged `from=off to=inherit`. Afterwards REST and MCP had no `githubCli` key, GraphQL read `null`, and `bex agent get` printed `inherit`. Turn 4's sandbox had `GH_TOKEN`, `GH_REPO` and the other `GH_*` variables back, and `gh api` printed the repository (`exit=0`).
+- **The dialog at 1280 px and 390 px.** Read on the same session after inherit, with "Inherit (on)" stored.
+  - At 1280 px the dialog is 492 × 267 px, centred. It holds the title, "What applies to this session while it runs. Only a workspace admin changes it.", the picker (444 px), the help line "Off turns gh off for this session and the sessions it starts from their next gh call. On or Inherit gives gh back from the session's next turn." and **Save settings** on the right, disabled until a choice changes.
+  - At 390 px it is 358 px wide with 16 px margins. The picker and **Save settings** are full width (308 px), and its list ("Inherit (on)", "On", "Off") opens inside the viewport. Neither width scrolls sideways.
+  - The dialog is a plain `Dialog` opened on a loaded page, so there is no skeleton to compare.
+- **Not a regression.** Each follow-up turn (2, 3 and 4) logged one bare `credential mint denied … agent credential request forbidden` about 3 s after it was sent, with `gh` off or inherited. This is the sandbox-id mint race at a turn's start, which the driver retries (`gitRemote`, `lego/agent-image/driver/src/git-setup.ts`). Every turn then ran normally.
+- **Cleanup.** No branch other than `main` was pushed, and no pull request was opened. The session was canceled and deleted (`404 AGENT_SESSION_NOT_FOUND`), and no sandbox Pod is left. The repository is deleted. The QA API key was revoked, and the QA sign-in was logged out (`ok logged-out`). No OAuth grant or consent session was touched.
+
+**`dev-10`, 03:15–03:19Z: the member's refusal (DoD 2, 6).** Production has no member fixture: the QA account is an admin of all three of its workspaces. bex-api was built from `main` (`f029257800`) by `bash scripts/dev-env.sh 10 up`. Authz was enforced by a dedicated in-memory OpenFGA seeded with `scripts/authz-model.sh` and passed as `DEV_OPENFGA_URL`. OpenSandbox, the model proxy and the gateway were unreachable stand-ins, as in m568, m573 and m592, because `dev-9` holds the agent-session leg. Two throwaway Kratos identities, with emails verified through the admin API, were used. The admin moved their workspace `tea-dc2g3b9jg4r3iomrtl9g` (disposable) to Pro and invited the other as a **Developer**, which OpenFGA recorded as `developer`. Each made one repo-less session, `ags-dc2g421jg4r3iomrtlf0` and `ags-dc2g42pjg4r3iomrtlg0` (both disposable). Both failed at the unreachable sandbox. A failed session still takes a change.
+
+- The admin's `PATCH {"agentConfig":{"githubCli":false}}` on their own session answered `200`.
+- **The member on the admin's session (stored off).**
+  - Inherit (`null`), `true` and `{"resetGithubCli":true}` each answered `403 AGENT_SESSION_GITHUB_CLI_LOCKED`, `params` `{"field":"agentConfig.githubCli","reason":"admin_required"}`, "only a workspace admin chooses or changes gh for an automation or a session; leave it out to inherit, or unchanged on an update".
+  - An unchanged `false` answered `200`.
+- **The member on their own session (inherit).** `false` and `true` got the same refusal. An unchanged `null` answered `200`.
+- **The other surfaces.** As the member, GraphQL `updateAgentSession` (with `resetGithubCli`, and with `agentConfig: {githubCli: false}`) answered with `extensions` `{code: AGENT_SESSION_GITHUB_CLI_LOCKED, field: agentConfig.githubCli, reason: admin_required}`. MCP `update_agent_session` returned `isError: true` with the same code and text. `bex agent update … --github-cli off` and `--github-cli inherit` printed `403 AGENT_SESSION_GITHUB_CLI_LOCKED: …` and exited 1.
+- **Nothing moved.** After the refusals the admin's session still read off and the member's inherit. The admin's `null` then returned theirs to inherit.
+- **An archived session.** It answered the admin's change with `409 AGENT_SESSION_ARCHIVED`.
+- **Torn down.** Both sessions are deleted (`404`). Both keys were revoked, both users logged out and both identities deleted. `bash scripts/dev-env.sh 10 down` ran, and the OpenFGA container was removed.
+
+## Closeout (t009, 2026-11-24)
+
+The definition of done holds. Items 1–5 hold in t002–t004's code, t006's surface walk and t008's tests and reverts. Item 6 held live above: production's off refused the very next `gh` call naming the session level, and the turn after the return to inherit had `gh`. A member's change was refused on `dev-10` on all four surfaces, and every session the check created is deleted. Items 1, 3 and 4 were also seen live: the reads on every surface, the next mint and next dispatch, the refusal text and the overlay line.
 
 ## Source + Goal linkage
 
