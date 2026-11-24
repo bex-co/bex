@@ -1,150 +1,132 @@
 #!/usr/bin/env bash
-# Production measurement leg for w22/m314 t001: does cAdvisor report usable
-# per-sandbox CPU for a gVisor (runsc) pod, as the figure a "billed on use"
-# meter would read from Prometheus? The thresholds are fixed in
-# the board item w22/m314 t001 before any measurement:
+# Production measurement leg `cpu`: what a gVisor (runsc) sandbox pod's cgroup
+# CPU counter, the figure the used-CPU meter bills (ADR104 D8), reads for a
+# known load, against the same load in a plain runc pod on the same node.
 #
+# w22/m314 t001 (2026-11-15, run 43696023922) fixed its thresholds before it
+# measured, in the board item w22/m314 t001:
 #   accuracy  a one-core busy load must read its CPU-seconds within +-5%;
 #   idle      an idle running sandbox must read at most 2% of one core;
 #   syscalls  a syscall-heavy load must read at most 2x the same load under runc.
+# Its runc pod was refused by PodSecurity, so the last was only bounded.
+#
+# w22/019 asks for the factor a gVisor overhead divisor would use: the pod CPU
+# one unit of the same work costs under gVisor, divided by what it costs under
+# runc. Both pods have the sandbox's CPU limit as their quota (w22/020), and a
+# load that fills the quota reads the same CPU-seconds in both, so each load
+# also counts its own work (loop iterations, bytes copied) and the factor is
+# taken per unit of work. Both pods run the loads through `kubectl exec`, the
+# same path on both sides; the public exec stream is not what is compared, and
+# it is cut on long commands (w22/028).
 #
 # Run by sandbox-measure.yml (leg `cpu`) through
 # scripts/verify-sandbox-isolation-live.sh, which provides one disposable,
-# billing-excluded workspace. One sandbox is created; every number is printed as
-# `MEASURE <name> <json>`. Bounded: BEX_MEASURE_BURSTS x 60 s of one-core load
-# (default 10), BEX_MEASURE_IDLE_SECONDS of idle (default 600), 3 x 60 s of
-# syscall-heavy load, one reference pod for the runc comparison.
+# billing-excluded workspace. One sandbox and one reference pod are created;
+# every number is printed as `MEASURE <name> <json>`. Bounded: BEX_MEASURE_BURSTS
+# x 60 s of one-core load in the sandbox (default 10) and BEX_MEASURE_REF_BURSTS
+# in the reference pod (default 5), BEX_MEASURE_IDLE_SECONDS of idle (default
+# 600), and 3 x 60 s of syscall-heavy load in each.
 
 cd "$(dirname "$0")/.."
 # shellcheck source=lib/sandbox-measure.sh
 . scripts/lib/sandbox-measure.sh
 
 bursts="${BEX_MEASURE_BURSTS:-10}"
+ref_bursts="${BEX_MEASURE_REF_BURSTS:-5}"
 idle_seconds="${BEX_MEASURE_IDLE_SECONDS:-600}"
 sys_runs=3
+ref_ns="${BEX_MEASURE_REF_NAMESPACE:-opensandbox-system}"
+ref="cpu-runc-ref-$(date -u +%H%M%S)"
+trap 'kubectl -n "$ref_ns" delete pod "$ref" --ignore-not-found --wait=false >/dev/null 2>&1; measure_cleanup' EXIT
 
 echo "==> create a sandbox and find its pod"
 sandbox_id="$(create_sandbox "$fixture_dir/sandbox.json" '{"type":"deny-all"}')"
 wait_status "$sandbox_id" running 300
-read -r pod node cr < <(find_pod "$sandbox_id")
+read -r pod node _ < <(find_pod "$sandbox_id")
 [ -n "${pod:-}" ] && [ -n "${node:-}" ] || fail "no pod or node found for sandbox $sandbox_id"
-measure pod "$(jq -cn --arg ns "$namespace_a" --arg pod "$pod" --arg node "$node" '{namespace: $ns, pod: $pod, node: $node}')"
-prom_forward
-[ -n "$prom_url" ] || fail "Prometheus is not reachable through a port-forward"
-tools="$(sandbox_exec "$sandbox_id" 'for t in timeout dd bash; do command -v $t >/dev/null 2>&1 && printf "%s " $t; done; echo' "$fixture_dir/tools.txt" && tr -d '\n' <"$fixture_dir/tools.txt" || true)"
-measure tools "$(jq -cn --arg t "$tools" '{available: $t}')"
-printf '%s' "$tools" | grep -qw timeout && printf '%s' "$tools" | grep -qw dd || fail "the sandbox lacks timeout or dd (have: $tools)"
+IFS='|' read -r container image cpu_limit runtime < <(kubectl -n "$namespace_a" get pod "$pod" -o json | jq -r '
+  ([.spec.containers[] | select(.name | test("execd") | not)][0]) as $c
+  | "\($c.name // "")|\($c.image // "")|\($c.resources.limits.cpu // "")|\(.spec.runtimeClassName // "")"')
+[ -n "${container:-}" ] && [ -n "${image:-}" ] && [ -n "${cpu_limit:-}" ] || fail "pod $pod has no workload container with a CPU limit"
+measure pod "$(jq -cn --arg ns "$namespace_a" --arg pod "$pod" --arg node "$node" --arg cpu "$cpu_limit" --arg rt "$runtime" \
+  '{namespace: $ns, pod: $pod, node: $node, cpuLimit: $cpu, runtimeClass: $rt}')"
+[ "$runtime" = gvisor ] || fail "sandbox pod $pod runs RuntimeClass '$runtime', want gvisor"
+kubectl -n "$namespace_a" exec "$pod" -c "$container" -- bash -c 'for t in dd sleep; do command -v $t >/dev/null || exit 1; done' \
+  || fail "the sandbox's image lacks bash, dd or sleep"
 
-# cpu_prom <pod> <namespace>: the pod's cumulative CPU seconds in Prometheus,
-# summed over its series with a container label (the job drops container="").
-cpu_prom() {
-  prom_query "sum(last_over_time(container_cpu_usage_seconds_total{namespace=\"$2\",pod=\"$1\",container!=\"\"}[3m]))" \
-    | jq -r '.[0].value[1] // "null"'
-}
-# cpu_cadvisor <pod> <node>: the pod-level cgroup's cumulative CPU seconds read
-# straight from the node's cAdvisor. Under gVisor the workload container's own
-# cgroup carries no series, so the only CPU series cAdvisor holds for a sandbox
-# pod have container="" (the pod slice and the pause container): exactly the
-# series Prometheus' kubernetes-cadvisor job drops. Pod slice = id ends in .slice.
-cpu_cadvisor() {
-  node_cadvisor "$2" "$fixture_dir/cadvisor-cpu.txt"
-  grep -F "pod=\"$1\"" "$fixture_dir/cadvisor-cpu.txt" | grep '^container_cpu_usage_seconds_total' | grep 'id="[^"]*\.slice"' | awk '{print $2}' | head -1
-}
-# cpu_kubelet <pod> <namespace> <node>: the same, from the kubelet summary at this instant.
-cpu_kubelet() {
-  node_summary "$3" "$fixture_dir/summary-cpu.json"
-  jq -r --arg ns "$2" --arg p "$1" '[.pods[] | select(.podRef.namespace == $ns and .podRef.name == $p)][0].cpu.usageCoreNanoSeconds // empty | . / 1e9' "$fixture_dir/summary-cpu.json"
-}
-# window <name> <pod> <ns> <node> <start prom> <start kubelet> <seconds> <start cadvisor>: print the deltas.
-window() {
-  local name="$1" p="$2" ns="$3" nd="$4" sp="$5" sk="$6" secs="$7" sc="${8:-}" ep ek ec
-  sleep 45 # two scrapes, so the series carries the end of the window
-  ep="$(cpu_prom "$p" "$ns")"
-  ek="$(cpu_kubelet "$p" "$ns" "$nd")"
-  ec="$(cpu_cadvisor "$p" "$nd")"
-  measure "$name" "$(jq -cn --arg sp "$sp" --arg ep "$ep" --arg sk "$sk" --arg ek "$ek" --arg sc "$sc" --arg ec "$ec" --argjson s "$secs" '
-    {windowSeconds: $s,
-     prometheusCpuSeconds: (if ($sp == "null" or $ep == "null") then null else (($ep | tonumber) - ($sp | tonumber)) end),
-     kubeletCpuSeconds: (if ($sk == "" or $ek == "") then null else (($ek | tonumber) - ($sk | tonumber)) end),
-     cadvisorPodCpuSeconds: (if ($sc == "" or $ec == "") then null else (($ec | tonumber) - ($sc | tonumber)) end)}')"
+echo "==> a plain runc pod on the same node, with the sandbox's image and CPU limit"
+ref_ok=false
+if runc_reference_pod "$ref" "$node" "$image" "$cpu_limit" | kubectl -n "$ref_ns" apply -f - >"$fixture_dir/ref-apply.txt" 2>&1 \
+  && kubectl -n "$ref_ns" wait --for=condition=Ready "pod/$ref" --timeout=240s >"$fixture_dir/ref-wait.txt" 2>&1; then
+  ref_ok=true
+  ref_runtime="$(kubectl -n "$ref_ns" get pod "$ref" -o jsonpath='{.spec.runtimeClassName}')"
+  [ -z "$ref_runtime" ] || fail "the reference pod runs RuntimeClass '$ref_runtime', want the node's default (runc)"
+fi
+measure reference "$(jq -cn --argjson ok "$ref_ok" --arg ns "$ref_ns" --arg pod "$ref" \
+  --arg a "$(head -c 400 "$fixture_dir/ref-apply.txt" 2>/dev/null)" --arg w "$(head -c 400 "$fixture_dir/ref-wait.txt" 2>/dev/null)" \
+  '{started: $ok, namespace: $ns, pod: $pod} + (if $ok then {} else {apply: $a, wait: $w} end)')"
+
+# run_load <name> <namespace> <pod> <container> <runs> <busy|syscall>: runs the
+# load <runs> times, one exec each, and prints and saves ($fixture_dir/<name>.json)
+# the pod counter's delta over the window, the work done and the load's own CPU.
+run_load() {
+  local name="$1" ns="$2" p="$3" c="$4" runs="$5" kind="$6" cmd start finish i out w o work=0 own=0
+  [ "$kind" = busy ] && cmd="$busy_load" || cmd="$syscall_load"
+  sleep 20
+  start="$(pod_cpu_new "$p" "$node")"
+  [ -n "$start" ] || fail "$name: the node's cAdvisor has no pod-level CPU row for $p"
+  for i in $(seq 1 "$runs"); do
+    out="$fixture_dir/$name-$i.txt"
+    kubectl -n "$ns" exec "$p" -c "$c" -- bash -c "$cmd" >"$out" 2>"$out.err" \
+      || fail "$name run $i did not complete: $(head -c 300 "$out.err" 2>/dev/null)"
+    w="$(load_work "$kind" <"$out")"
+    o="$(load_own_cpu "$kind" <"$out")"
+    [ -n "$w" ] && [ -n "$o" ] || fail "$name run $i printed no work count or times: $(head -c 300 "$out")"
+    work="$(awk -v a="$work" -v b="$w" 'BEGIN { printf "%.0f", a + b }')"
+    own="$(awk -v a="$own" -v b="$o" 'BEGIN { print a + b }')"
+  done
+  sleep 30 # cAdvisor refreshes a pod's row about every 15 s
+  finish="$(pod_cpu_new "$p" "$node")"
+  [ -n "$finish" ] || fail "$name: the pod-level CPU row for $p disappeared"
+  jq -cn --arg s "$start" --arg f "$finish" --argjson work "$work" --argjson own "$own" --argjson runs "$runs" '
+    (($f | tonumber) - ($s | tonumber)) as $cpu
+    | {runs: $runs, requestedSeconds: ($runs * 60), podCpuSeconds: $cpu, ownCpuSeconds: $own, work: $work,
+       workPerPodCpuSecond: (if $cpu > 0 then $work / $cpu else null end),
+       podOverOwn: (if $own > 0 then $cpu / $own else null end)}' >"$fixture_dir/$name.json"
+  measure "$name" "$(cat "$fixture_dir/$name.json")"
 }
 
-echo "==> accuracy: $bursts bursts of one busy core for 60 s each (expected about $((bursts * 60)) CPU-seconds)"
-sleep 30
-p0="$(cpu_prom "$pod" "$namespace_a")"
-k0="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
-c0="$(cpu_cadvisor "$pod" "$node")"
-measure accuracy-start "$(jq -cn --arg p "$p0" --arg k "$k0" --arg c "$c0" '{prometheus: $p, kubelet: $k, cadvisorPod: $c}')"
-# Each burst reports its own user+sys CPU (bash's `times`, the shell is the only
-# process), so the pod-level reading is compared with what the load really used,
-# not with the 60 s it was asked for (the loop overruns by up to a second).
-inside_cpu=0
-for i in $(seq 1 "$bursts"); do
-  sandbox_exec "$sandbox_id" 'end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do :; done; times' "$fixture_dir/burst-$i.txt" \
-    || fail "busy burst $i did not complete: $(head -c 300 "$fixture_dir/burst-$i.sse" 2>/dev/null)"
-  used="$(head -1 "$fixture_dir/burst-$i.txt" | awk '{ for (i = 1; i <= NF; i++) { split($i, a, "m"); s += a[1] * 60 + a[2] } print s + 0 }')"
-  inside_cpu="$(awk -v a="$inside_cpu" -v b="${used:-0}" 'BEGIN { print a + b }')"
-done
-measure accuracy-reference "$(jq -cn --argjson inside "$inside_cpu" --argjson bursts "$bursts" '{inSandboxCpuSeconds: $inside, requestedSeconds: ($bursts * 60)}')"
-window accuracy "$pod" "$namespace_a" "$node" "$p0" "$k0" "$((bursts * 60))" "$c0"
+# factor <name> <gvisor load> <runc load>: the pod CPU one unit of work costs
+# under gVisor over what it costs under runc (above 1: gVisor bills more).
+factor() {
+  measure "$1" "$(jq -cn --slurpfile g "$fixture_dir/$2.json" --slurpfile r "$fixture_dir/$3.json" '
+    ($g[0].workPerPodCpuSecond) as $gw | ($r[0].workPerPodCpuSecond) as $rw
+    | {gvisorWorkPerPodCpuSecond: $gw, runcWorkPerPodCpuSecond: $rw,
+       factor: (if ($gw // 0) > 0 and $rw != null then $rw / $gw else null end)}')"
+}
+
+echo "==> busy load in the sandbox: $bursts x 60 s of one core"
+run_load busy-gvisor "$namespace_a" "$pod" "$container" "$bursts" busy
 
 echo "==> idle baseline: $idle_seconds s with nothing running"
 sleep 30
-pi="$(cpu_prom "$pod" "$namespace_a")"
-ki="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
-ci="$(cpu_cadvisor "$pod" "$node")"
+ci="$(pod_cpu_new "$pod" "$node")"
 sleep "$idle_seconds"
-window idle "$pod" "$namespace_a" "$node" "$pi" "$ki" "$idle_seconds" "$ci"
+cf="$(pod_cpu_new "$pod" "$node")"
+[ -n "$ci" ] && [ -n "$cf" ] || fail "idle: no pod-level CPU row for $pod"
+measure idle "$(jq -cn --arg s "$ci" --arg f "$cf" --argjson secs "$idle_seconds" \
+  '(($f | tonumber) - ($s | tonumber)) as $cpu | {windowSeconds: $secs, podCpuSeconds: $cpu, coreShare: ($cpu / $secs)}')"
 
 echo "==> syscall-heavy load in the sandbox: $sys_runs x 60 s of dd bs=1"
-ps_="$(cpu_prom "$pod" "$namespace_a")"
-ks="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
-cs="$(cpu_cadvisor "$pod" "$node")"
-for i in $(seq 1 "$sys_runs"); do
-  sandbox_exec "$sandbox_id" 'timeout 60 dd if=/dev/zero of=/dev/null bs=1 2>/dev/null; echo finished' "$fixture_dir/sys-$i.txt" \
-    || fail "syscall burst $i did not complete: out='$(head -c 200 "$fixture_dir/sys-$i.txt" 2>/dev/null)' sse='$(head -c 400 "$fixture_dir/sys-$i.sse" 2>/dev/null | tr '\n' ' ')'"
-done
-window syscall-gvisor "$pod" "$namespace_a" "$node" "$ps_" "$ks" "$((sys_runs * 60))" "$cs"
+run_load syscall-gvisor "$namespace_a" "$pod" "$container" "$sys_runs" syscall
 
-echo "==> the same load under runc, on the same node (best effort)"
-image="$(kubectl -n "$namespace_a" get pod "$pod" -o json | jq -r '[.spec.containers[] | select(.name != "execd" and (.name | test("execd") | not))][0].image // empty')"
-ref="m314-runc-ref-$(date -u +%H%M%S)"
-ref_ns="${BEX_MEASURE_REF_NAMESPACE:-opensandbox-system}"
-ref_ok=false
-if [ -n "$image" ]; then
-  if kubectl -n "$ref_ns" apply -f - >"$fixture_dir/ref-apply.txt" 2>&1 <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: $ref
-  labels: {app.bex.co/m314-fixture: "true"}
-spec:
-  restartPolicy: Never
-  automountServiceAccountToken: false
-  nodeName: $node
-  tolerations: [{operator: Exists}]
-  containers:
-    - name: ref
-      image: $image
-      command: ["bash", "-c", "sleep 3600"]
-      resources: {requests: {cpu: "1", memory: 256Mi}, limits: {cpu: "1", memory: 1Gi}}
-EOF
-  then
-    if kubectl -n "$ref_ns" wait --for=condition=Ready "pod/$ref" --timeout=240s >"$fixture_dir/ref-wait.txt" 2>&1; then ref_ok=true; fi
-  fi
-fi
 if [ "$ref_ok" = true ]; then
-  pr="$(cpu_prom "$ref" "$ref_ns")"
-  kr="$(cpu_kubelet "$ref" "$ref_ns" "$node")"
-  cr_ref="$(cpu_cadvisor "$ref" "$node")"
-  for i in $(seq 1 "$sys_runs"); do
-    kubectl -n "$ref_ns" exec "$ref" -- bash -c 'timeout 60 dd if=/dev/zero of=/dev/null bs=1 2>/dev/null; true' || true
-  done
-  window syscall-runc "$ref" "$ref_ns" "$node" "$pr" "$kr" "$((sys_runs * 60))" "$cr_ref"
-else
-  measure syscall-runc "$(jq -cn --arg a "$(head -c 400 "$fixture_dir/ref-apply.txt" 2>/dev/null)" --arg w "$(head -c 400 "$fixture_dir/ref-wait.txt" 2>/dev/null)" --arg i "${image:-}" \
-    '{skipped: "the runc reference pod did not start", image: $i, apply: $a, wait: $w}')"
+  echo "==> the same loads under runc: $ref_bursts x 60 s busy, $sys_runs x 60 s of dd bs=1"
+  run_load busy-runc "$ref_ns" "$ref" ref "$ref_bursts" busy
+  run_load syscall-runc "$ref_ns" "$ref" ref "$sys_runs" syscall
+  factor factor-busy busy-gvisor busy-runc
+  factor factor-syscall syscall-gvisor syscall-runc
 fi
-kubectl -n "$ref_ns" delete pod "$ref" --ignore-not-found --wait=false >/dev/null 2>&1 || true
-
-pass "cpu leg measured pod $pod on $node (read the MEASURE lines against the thresholds in the board item w22/m314 t001)"
+check "the runc reference pod started on the sandbox's node" "$ref_ok" "see MEASURE reference"
+[ "$failures" = 0 ] || fail "cpu leg: $failures check(s) failed"
+pass "cpu leg measured pod $pod on $node against $ref (read the MEASURE lines against w22/m314 t001 and w22/019)"

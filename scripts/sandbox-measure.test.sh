@@ -60,5 +60,56 @@ expect "a row that never appears reads empty after twelve tries, and the leg goe
 expect "pod_cpu reads the pod cgroup's row, not the pause container's or another pod's" \
   "$(run 1 'echo "c=$(pod_cpu new-0 node-a) other=$(pod_cpu other-0 node-a)"' | tr '\n' ' ')" "c=0.947664 other=7.5 status=0 reads=2 "
 
+# The cpu leg's runc reference pod (w22/019). Run 43696023922's pod named no
+# securityContext and PodSecurity `restricted` refused it in opensandbox-system.
+expect "the runc reference pod carries what PodSecurity restricted requires, the node's default runtime and the sandbox's CPU limit" \
+  "$(run 1 'runc_reference_pod ref-1 node-a img:1 500m | jq -c "{
+    restricted: (.spec.securityContext.runAsNonRoot == true and .spec.securityContext.runAsUser > 0
+      and .spec.securityContext.seccompProfile.type == \"RuntimeDefault\"
+      and all(.spec.containers[]; .securityContext.allowPrivilegeEscalation == false
+        and .securityContext.capabilities.drop == [\"ALL\"] and (.securityContext.privileged // false) == false)),
+    runtimeClass: (.spec.runtimeClassName // null), node: .spec.nodeName, image: .spec.containers[0].image,
+    cpu: [.spec.containers[0].resources.requests.cpu, .spec.containers[0].resources.limits.cpu],
+    token: .spec.automountServiceAccountToken}"' | tr '\n' ' ')" \
+  '{"restricted":true,"runtimeClass":null,"node":"node-a","image":"img:1","cpu":["500m","500m"],"token":false} status=0 reads=0 '
+
+# The loads' own reports, as a 6 s busy loop and a 4 s dd printed them in
+# bash:5.3 (BusyBox dd) and debian:12-slim (GNU dd), 2026-11-24.
+cat >"$tmp/busy.out" <<'OUT'
+beat
+beat
+beat
+loops 1636068
+0m5.705s 0m0.014s
+0m0.000s 0m0.000s
+OUT
+cat >"$tmp/dd-busybox.out" <<'OUT'
+beat
+beat
+12059252+0 records in
+12059251+0 records out
+12059251 bytes (11.5MB) copied, 4.002210 seconds, 2.9MB/s
+0m0.009s 0m0.005s
+0m1.124s 0m3.376s
+OUT
+cat >"$tmp/dd-gnu.out" <<'OUT'
+beat
+beat
+12082652+0 records in
+12082652+0 records out
+12082652 bytes (12 MB, 12 MiB) copied, 4.00194 s, 3.0 MB/s
+0m0.006s 0m0.007s
+0m1.139s 0m3.362s
+OUT
+printf 'beat\nbeat\n0m0.009s 0m0.005s\n0m1.1s 0m3.3s\n' >"$tmp/dd-silent.out"
+expect "the busy loop's work is its loop count, and its CPU the shell's own times line" \
+  "$(run 1 "echo \$(load_work busy <'$tmp/busy.out') \$(load_own_cpu busy <'$tmp/busy.out')" | tr '\n' ' ')" "1636068 5.719 status=0 reads=0 "
+expect "dd's work is the byte count BusyBox prints on SIGUSR1, and its CPU the children's times line" \
+  "$(run 1 "echo \$(load_work syscall <'$tmp/dd-busybox.out') \$(load_own_cpu syscall <'$tmp/dd-busybox.out')" | tr '\n' ' ')" "12059251 4.5 status=0 reads=0 "
+expect "dd's work is the byte count GNU dd prints on SIGUSR1" \
+  "$(run 1 "echo \$(load_work syscall <'$tmp/dd-gnu.out') \$(load_own_cpu syscall <'$tmp/dd-gnu.out')" | tr '\n' ' ')" "12082652 4.501 status=0 reads=0 "
+expect "a dd that printed no count reports no work, so the leg fails by name instead of pricing zero bytes" \
+  "$(run 1 "echo \"[\$(load_work syscall <'$tmp/dd-silent.out')]\"" | tr '\n' ' ')" "[] status=0 reads=0 "
+
 [ "$fails" = 0 ] || { echo "$fails case(s) failed"; exit 1; }
 echo "all cases passed"

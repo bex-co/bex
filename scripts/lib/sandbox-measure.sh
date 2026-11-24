@@ -214,6 +214,71 @@ pod_cpu_new() {
   echo "$value"
 }
 
+# runc_reference_pod <name> <node> <image> <cpu limit>: the manifest (JSON) of
+# the plain pod the cpu leg runs the same loads in (w22/019): the sandbox's own
+# image on the sandbox's node, the node's default runtime (runc: no
+# RuntimeClass), and the sandbox's CPU limit, so both pods have the same quota.
+# It carries the securityContext PodSecurity `restricted` requires, which
+# opensandbox-system enforces: without it the pod of run 43696023922 was
+# refused and the runc figure was only bounded (w22/m314 t001).
+runc_reference_pod() {
+  jq -n --arg name "$1" --arg node "$2" --arg image "$3" --arg cpu "$4" '{
+    apiVersion: "v1", kind: "Pod",
+    metadata: {name: $name, labels: {"app.bex.co/cpu-reference": "true"}},
+    spec: {
+      restartPolicy: "Never",
+      automountServiceAccountToken: false,
+      activeDeadlineSeconds: 5400,
+      nodeName: $node,
+      tolerations: [{operator: "Exists"}],
+      securityContext: {runAsNonRoot: true, runAsUser: 65534, runAsGroup: 65534, seccompProfile: {type: "RuntimeDefault"}},
+      containers: [{
+        name: "ref", image: $image, command: ["sleep", "5400"],
+        securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: ["ALL"]}},
+        resources: {requests: {cpu: $cpu, memory: "256Mi"}, limits: {cpu: $cpu, memory: "1Gi"}}
+      }]
+    }}'
+}
+
+# The cpu leg's two loads. Each counts the work it did as well as taking CPU,
+# so the same work can be priced in two pods whose quota both loads fill
+# (w22/019). Each prints a line every 10 s, so neither is a silent stream.
+# busy_load: one core of shell arithmetic for 60 s; prints `loops <n>`, then `times`.
+busy_load='n=0; end=$((SECONDS + 60)); beat=$((SECONDS + 10))
+while [ "$SECONDS" -lt "$end" ]; do
+  n=$((n + 1))
+  if [ "$SECONDS" -ge "$beat" ]; then echo beat; beat=$((beat + 10)); fi
+done
+echo "loops $n"
+times'
+# syscall_load: one thread of `dd bs=1` (a read and a write per byte) for 60 s;
+# dd prints its byte count on SIGUSR1 (GNU and BusyBox alike), then `times`.
+syscall_load='dd if=/dev/zero of=/dev/null bs=1 2>&1 &
+p=$!
+for i in 1 2 3 4 5 6; do sleep 10; echo beat; done
+kill -USR1 "$p"; sleep 0.5; kill "$p"; wait "$p" 2>/dev/null
+times'
+
+# times_seconds: the user+sys seconds of one `times` line ("0m59.120s 0m0.010s") on stdin.
+times_seconds() { awk '{ for (i = 1; i <= NF; i++) { split($i, a, "m"); s += a[1] * 60 + a[2] } print s + 0; exit }'; }
+# load_work <busy|syscall>: the work a load's output on stdin reports (loop
+# iterations, or the last byte count dd printed); "" when it reports none.
+load_work() {
+  case "$1" in
+    busy) awk '/^loops [0-9]+$/ { n = $2 } END { if (n != "") print n }' ;;
+    syscall) awk '/^[0-9]+ bytes/ { n = $1 } END { if (n != "") print n }' ;;
+  esac
+}
+# load_own_cpu <busy|syscall>: the CPU seconds the load used by its own count,
+# from the `times` it ends with (output on stdin): the shell's own line for the
+# busy loop, which runs in the shell, and the children's line (the last) for dd.
+load_own_cpu() {
+  case "$1" in
+    busy) awk 'f { print; exit } /^loops [0-9]+$/ { f = 1 }' | times_seconds ;;
+    syscall) tail -1 | times_seconds ;;
+  esac
+}
+
 # prom_forward: start a port-forward to Prometheus and set $prom_url ("" when
 # it did not start). The apiserver service proxy times out for the monitoring
 # namespace (Cilium remote-node denial; scripts/alerting-heartbeat.sh), so use

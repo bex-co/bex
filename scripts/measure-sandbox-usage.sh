@@ -120,7 +120,7 @@ inside_cpu=0
 for i in $(seq 1 "$bursts"); do
   sandbox_exec "$busy" 'end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do :; done; times' "$fixture_dir/burst-$i.txt" \
     || fail "busy burst $i did not complete: $(head -c 300 "$fixture_dir/burst-$i.sse" 2>/dev/null)"
-  used="$(head -1 "$fixture_dir/burst-$i.txt" | awk '{ for (i = 1; i <= NF; i++) { split($i, a, "m"); s += a[1] * 60 + a[2] } print s + 0 }')"
+  used="$(times_seconds <"$fixture_dir/burst-$i.txt")"
   inside_cpu="$(awk -v a="$inside_cpu" -v b="${used:-0}" 'BEGIN { print a + b }')"
 done
 sleep 20 # the node's cAdvisor refreshes about every 15 s
