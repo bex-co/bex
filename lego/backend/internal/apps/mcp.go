@@ -119,7 +119,7 @@ type updateServiceArgs struct {
 	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: a /bin/sh override of the command each run executes; empty clears the override. A native-runtime cron's own command is its startCommand, which runs in Bash"`
 	Repo                    *string                  `json:"repo,omitempty" jsonschema:"Git repository URL to build from. Setting it switches an image-backed service to Git and clears the image"`
 	Image                   *string                  `json:"image,omitempty" jsonschema:"prebuilt OCI image to deploy. Setting it switches a Git-backed service to an image and clears the repository"`
-	Branch                  *string                  `json:"branch,omitempty" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
+	Branch                  *string                  `json:"branch,omitempty" jsonschema:"the Git branch to build and deploy; empty restores the default (the new repository's default branch on a repo switch, or main on the same repo)"`
 	RegistryCredentialID    *string                  `json:"registryCredentialId,omitempty" jsonschema:"stored private-registry credential id to bind to an image-backed service or Dockerfile build; empty clears the binding"`
 	RootDir                 *string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from (monorepo support); empty builds from the repo root. Triggers a fresh build scoped to that subdirectory"`
 	BuildCommand            *string                  `json:"buildCommand,omitempty" jsonschema:"the build command (e.g. npm run build) for static sites and native-runtime services; empty clears it (builder default)"`

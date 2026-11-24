@@ -3885,12 +3885,12 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 }
 
 // useRepositoryDefaultBranch gives spec, whose branch the caller omitted, the
-// default branch its repository reported, per Render's Create service and
-// Blueprint branch contracts (w8/m76, w8/m80). With no opinion ("": GitHub
-// off, a Git host that did not answer or names no HEAD branch) the
-// request-shape DefaultBranch stays. The build
-// passes the ref to git, so only a safe ref is built; an unusable default is
-// the caller's to override, never a guess.
+// default branch its repository reported, per Render's Create service, source
+// switch, and Blueprint branch contracts (w8/m76, w8/m80, w32/108). With no
+// opinion ("": GitHub off, a Git host that did not answer or names no HEAD
+// branch) the request-shape DefaultBranch stays. The build passes the ref to
+// git, so only a safe ref is built; an unusable default is the caller's to
+// override, never a guess.
 func useRepositoryDefaultBranch(spec *appv1alpha1.AppSpec, reported string) error {
 	if reported == "" {
 		return nil
@@ -5524,6 +5524,19 @@ type sourceFields struct {
 	// start command the build baked into its image (settleSourceSwitch).
 	// checkSourcePatch reads it from the carrier.
 	nativeLink bool
+	// resolveDefaultBranch reports that the patch switched to a different
+	// repository without specifying a non-empty branch, so checkSourcePatch
+	// adopts ValidateRepo's reported default branch (w32/108).
+	resolveDefaultBranch bool
+}
+
+// resolvesRepoDefaultBranch reports whether switching from currentRepo to
+// nextRepo with patchBranch should resolve nextRepo's default branch from
+// ValidateRepo rather than preserving the previous branch (w32/108).
+func resolvesRepoDefaultBranch(currentRepo, nextRepo string, patchBranch *string) bool {
+	return nextRepo != "" &&
+		core.CanonicalRepo(nextRepo) != core.CanonicalRepo(currentRepo) &&
+		(patchBranch == nil || strings.TrimSpace(*patchBranch) == "")
 }
 
 // applyTo writes the resolved source onto a's spec. One writer for all three
@@ -5595,14 +5608,24 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 		}
 		next.repo = ""
 	}
+	next.resolveDefaultBranch = resolvesRepoDefaultBranch(a.Spec.Repo, next.repo, patch.Branch)
 	if patch.Branch != nil {
 		next.branch = strings.TrimSpace(*patch.Branch)
 		// An explicit empty means "back to the default" — the setter family's
-		// convention (empty clears to the default, cf. SetCommands); the
-		// fallback below applies it. Only a non-empty ref is validated.
+		// convention (empty clears to the default, cf. SetCommands); on a repo
+		// switch checkSourcePatch resolves the new repository's default branch,
+		// otherwise the fallback below restores DefaultBranch. Only a non-empty
+		// ref is validated.
 		if next.branch != "" && !store.ValidGitRef(next.branch) {
 			return sourceFields{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
 		}
+	} else if next.resolveDefaultBranch {
+		// A branch names a ref of one repository, so switching to another
+		// repository without specifying a branch starts from the new repo's
+		// default (resolved by checkSourcePatch, falling back to DefaultBranch
+		// when ValidateRepo has no opinion) instead of keeping an image's
+		// placeholder "main" or the old repository's branch (w32/108).
+		next.branch = ""
 	}
 	if next.branch == "" {
 		next.branch = appv1alpha1.DefaultBranch

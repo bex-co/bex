@@ -784,6 +784,7 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 		branch:               probe.Spec.Branch,
 		registryCredentialID: clonePtr(probe.Spec.RegistryCredentialID),
 		githubRepoID:         core.GitHubRepoID(probe),
+		resolveDefaultBranch: resolvesRepoDefaultBranch(a.Spec.Repo, probe.Spec.Repo, p.Branch),
 	}), a, probe, nil
 }
 

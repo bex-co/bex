@@ -632,11 +632,14 @@ func withProbedSource(ctx context.Context, probed sourceFields) context.Context 
 }
 
 // probedSource is the source the preflight probed when it is next, carrying
-// what the probes learned (the repository's GitHub id).
+// what the probes learned (the repository's GitHub id and, on a repo switch
+// with no explicit branch, the resolved default branch).
 func probedSource(ctx context.Context, next sourceFields) (sourceFields, bool) {
 	probed, ok := ctx.Value(probedSourceKey{}).(sourceFields)
+	branchMatch := probed.resolveDefaultBranch == next.resolveDefaultBranch &&
+		(next.resolveDefaultBranch || probed.branch == next.branch)
 	same := ok && probed.repo == next.repo && probed.image == next.image &&
-		probed.branch == next.branch &&
+		branchMatch &&
 		sameStringPtr(probed.registryCredentialID, next.registryCredentialID)
 	return probed, same
 }
@@ -701,13 +704,17 @@ func (s *Service) checkSourcePatch(ctx context.Context, a *appv1alpha1.App, patc
 		return sourceFields{}, false, err
 	}
 	if next.repo != "" && next.repo != a.Spec.Repo && s.GitHub != nil {
-		// The reported default is unused: a source edit keeps its own branch
-		// rule (explicit empty restores the legacy default).
-		_, repoID, err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo)
+		defaultBranch, repoID, err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo)
 		if err != nil {
 			return sourceFields{}, false, err
 		}
 		next.githubRepoID = repoID
+		if next.resolveDefaultBranch {
+			if err := useRepositoryDefaultBranch(&probe.Spec, defaultBranch); err != nil {
+				return sourceFields{}, false, err
+			}
+			next.branch = probe.Spec.Branch
+		}
 	}
 	return next, true, nil
 }
