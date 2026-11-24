@@ -85,6 +85,11 @@ const esCapabilities: Record<string, TranslationEntry> = {
       "La facturación necesita atención antes de poder ejecutar esta acción. Resuélvelo en Facturación.",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "El plan gratuito venció, por lo que este recurso sigue suspendido. Cambia a un plan de pago para reanudarlo.",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "El servidor no pudo confirmar esta acción en este momento. Inténtalo de nuevo.",

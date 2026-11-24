@@ -85,6 +85,11 @@ const ptCapabilities: Record<string, TranslationEntry> = {
       "O faturamento precisa de atenção antes de esta ação poder ser executada. Resolva em Faturamento.",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "O plano gratuito expirou, por isso este recurso permanece suspenso. Mude para um plano pago para retomá-lo.",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "O servidor não conseguiu confirmar esta ação no momento. Tente novamente.",

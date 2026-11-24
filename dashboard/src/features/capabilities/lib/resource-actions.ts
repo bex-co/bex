@@ -44,6 +44,8 @@ export const RESOURCE_PRECONDITIONS = [
   "no_active_run",
   "no_eligible_rollback_target",
   "billing_blocked",
+  // The free plan expired: the resource stays suspended until upgraded.
+  "expired",
   "unavailable",
 ] as const;
 
@@ -232,6 +234,8 @@ export function blockedReasonKey(
       return "capabilities.blockedNoEligibleRollbackTarget";
     case "billing_blocked":
       return "capabilities.blockedBillingBlocked";
+    case "expired":
+      return "capabilities.blockedExpired";
     case "unavailable":
       return "capabilities.blockedUnavailable";
     case "":

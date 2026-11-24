@@ -185,6 +185,29 @@ describe("not_suspended (w4/132)", () => {
     expect(snapshot.decisions.resume?.precondition).toBe("not_suspended");
   });
 
+  it("keeps expired known: an expired resume blocks with its upgrade reason", () => {
+    const state = toResourceSnapshot("tea-1", "dpg-1", [
+      {
+        action: "resume",
+        outcome: "allowed",
+        reason: null,
+        precondition: "expired",
+      },
+    ]);
+    expect(state.decisions.resume?.precondition).toBe("expired");
+    expect(
+      gateAction(
+        { outcome: "allowed", reason: "", precondition: "expired" },
+        "ready",
+      ),
+    ).toMatchObject({
+      kind: "blocked",
+      precondition: "expired",
+      reasonKey: "capabilities.blockedExpired",
+    });
+    expect(blockedReasonKey("expired")).toBe("capabilities.blockedExpired");
+  });
+
   it("blocks the control with its own reason, never the suspended one", () => {
     const gate = gateAction(
       { outcome: "allowed", reason: "", precondition: "not_suspended" },

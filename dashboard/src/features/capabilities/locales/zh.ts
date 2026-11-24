@@ -74,6 +74,10 @@ const zhCapabilities: Record<string, TranslationEntry> = {
     message: "账单需要处理后方可执行此操作。请前往账单页面解决。",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message: "免费套餐已过期，因此该资源保持暂停状态。请升级到付费套餐以恢复它。",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message: "服务器暂时无法确认此操作。请稍后重试。",
     description: "Blocked reason for unavailable precondition",

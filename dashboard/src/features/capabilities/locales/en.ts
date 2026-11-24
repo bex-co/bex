@@ -81,6 +81,11 @@ const enCapabilities: Record<string, TranslationEntry> = {
       "Billing needs attention before this action can run. Resolve it in Billing.",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "The free plan expired, so this resource stays suspended. Upgrade to a paid plan to resume it.",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message: "The server could not confirm this action right now. Try again.",
     description: "Blocked reason for unavailable precondition",

@@ -86,6 +86,11 @@ const deCapabilities: Record<string, TranslationEntry> = {
       "Die Abrechnung braucht Aufmerksamkeit, bevor diese Aktion ausgeführt werden kann. Kläre das unter Abrechnung.",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "Der kostenlose Plan ist abgelaufen, daher bleibt diese Ressource pausiert. Wechsle zu einem kostenpflichtigen Plan, um sie fortzusetzen.",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "Der Server konnte diese Aktion gerade nicht bestätigen. Versuche es erneut.",

@@ -28,15 +28,15 @@ import (
 // resume are all can_operate (the roleladder pins), and on a protected member
 // suspend and resume read as the Admin check setSuspended adds there
 // (core.RestrictedDecision, w4/m578); suspend carries the protected-environment
-// confirmation hint for that Admin, resume carries the dunning gate, and
-// restart carries the suspended / dunning preconditions — computed by the same
-// core predicates setSuspended and Restart enforce. view_connection_info
-// (can_view_sensitive) and update_ip_allow_list (can_create, the PATCH's own
-// permission since w9/m619) read the same way as the verbs a protected
-// environment keeps to Admins (w4/m594), so a client can say so before the
-// click. Delete reads the same way with DeletePostgres's own permission
-// (can_create), so a Developer on a protected database sees Delete disabled
-// before typing its phrase (w4/724).
+// confirmation hint for that Admin, resume carries the dunning and free-expiry
+// gates, and restart carries the suspended / dunning preconditions — computed
+// by the same core predicates setSuspended and Restart enforce.
+// view_connection_info (can_view_sensitive) and update_ip_allow_list
+// (can_create, the PATCH's own permission since w9/m619) read the same way as
+// the verbs a protected environment keeps to Admins (w4/m594), so a client can
+// say so before the click. Delete reads the same way with DeletePostgres's own
+// permission (can_create), so a Developer on a protected database sees Delete
+// disabled before typing its phrase (w4/724).
 // Read-only; the verbs re-run their own guards at dispatch. Failover is
 // deliberately absent: it is not a mobile-scope action (ADR087), and an absent
 // action reads as "not offered here", never as permitted.
@@ -72,6 +72,13 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		}
 	}
 	suspendPre, resumePre := core.LifecyclePreconditions(d.Spec.Suspended, isProtected, resume, billing)
+	if resume.Allowed() && resumePre == "" && freeExpired(d) {
+		// The verb refuses a resume the other guards pass (400
+		// POSTGRES_FREE_EXPIRED): an expired free database stays suspended
+		// until it is upgraded. Billing still wins when it blocks — the verb
+		// checks dunning before expiry.
+		resumePre = core.PrecondExpired
+	}
 	credentials, _ := core.RestrictedDecision(core.VerbViewCredentials, s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
 	create := s.CanDecisionOn(ctx, core.RelCanCreate, workspace)
 	accessControl, _ := core.RestrictedDecision(core.VerbChangeAccessControl, create, protected, admin)

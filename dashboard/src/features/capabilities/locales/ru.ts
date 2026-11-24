@@ -83,6 +83,11 @@ const ruCapabilities: Record<string, TranslationEntry> = {
       "Прежде чем выполнить это действие, нужно разобраться с оплатой. Решите вопрос в разделе «Оплата».",
     description: "Blocked reason for billing_blocked",
   },
+  "capabilities.blockedExpired": {
+    message:
+      "Срок бесплатного плана истёк, поэтому ресурс остаётся приостановленным. Перейдите на платный план, чтобы возобновить его.",
+    description: "Blocked reason for expired precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "Сервер сейчас не смог подтвердить это действие. Повторите попытку.",
