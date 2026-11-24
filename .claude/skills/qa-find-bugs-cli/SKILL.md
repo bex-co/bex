@@ -17,7 +17,7 @@ Read these before probing:
 - `lego/cli/UPSTREAM_RENDER_CLI.md` and `lego/cli/go.mod`: exact release, commit, and dependency pin. Never substitute latest upstream for the tested pin.
 - `docs/bex-cli.md`: Bex configuration, OAuth, native additions, and branding boundaries.
 - `docs/cli-compatibility-checklist.md`: supported commands, partial support, upstream defects, and deliberate non-goals. Historical checkmarks are leads to re-test, not proof of current production behavior.
-- `.pm/DO_NOT_DO.md` and `docs/ADR018-render-parity.md`: excluded work.
+- `.pm/DO_NOT_DO.md` and the parity ledger (`docs/ADR018-render-parity.md`, the index, and its section files under `docs/ADR018/`): excluded work.
 
 Preserve `render.yaml`, upstream schema/enum names, truthful compatibility version, and protocol identifiers. Help examples, executable identity, docs destinations, and Bex-owned messages should use Bex branding. Do not blindly replace every `render` string. Documented runtime-copy, User-Agent, and upstream skills-path residuals are not new bugs without a changed requirement or regression. Coding-provider launchers, installation, self-update, and upstream skills management are outside the default hosting sweep.
 

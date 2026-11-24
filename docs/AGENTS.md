@@ -25,7 +25,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 ### API, parity, Blueprint
 
 - [ADR006-bex-api.md](ADR006-bex-api.md) — REST/GraphQL/MCP: one core, thin adapters, Render compat
-- [ADR018-render-parity.md](ADR018-render-parity.md) — parity ledger (capability × surface); sections too large for one file under the 1 MiB blob limit live in [ADR018/](ADR018/) (Services & lifecycle: [services-lifecycle.md](ADR018/services-lifecycle.md)), each keeping its heading in ADR018 as a pointer
+- [ADR018-render-parity.md](ADR018-render-parity.md) — parity ledger (capability × surface), split in w10/m607 to stay under the blob limits. ADR018 is the index (method, legend, headline, evidence sources, every section heading as a pointer, so its anchors resolve). Each section's rows live in one file under [ADR018/](ADR018/), named after the section (e.g. [deploys.md](ADR018/deploys.md), [logs.md](ADR018/logs.md), [api-contract.md](ADR018/api-contract.md) with the allowlisted response-schema divergences `rendertest` reads). The MCP pins, upstream drift re-baseline rounds and dated cross-cutting corrections live in [surface-pins-and-corrections.md](ADR018/surface-pins-and-corrections.md). Amend a row in its section's file. A new section gets a file of its own plus a pointer heading in ADR018
 - [cli-compatibility-checklist.md](cli-compatibility-checklist.md) — Render CLI compat matrix
 - [terraform-compatibility-checklist.md](terraform-compatibility-checklist.md) — Render Terraform provider compat, graded by its own acceptance suite re-recorded against bex (`scripts/terraform-provider-verify.sh`, w9/m474)
 - [ADR049-render-yaml-parity.md](ADR049-render-yaml-parity.md) — `render.yaml` canonical Blueprint contract

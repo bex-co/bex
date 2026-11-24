@@ -12,11 +12,17 @@
 # level, and .pm/wN/README.md (the board's own index, which a `/pm` move breaks
 # first). Not checked: the rest of the workstream history under .pm/wN/
 # (milestone READMEs, tasks, notes, done/ and blocked/), the vendored and generated trees .prettierignore
-# lists, fenced code and inline code, external URLs (any scheme), absolute
-# paths, and #anchors (a heading slug needs GitHub's rules: the file must exist,
-# the heading is not checked). A target must exist with exactly the case
-# written, since CI is case-sensitive and a developer's disk may not be, and
-# must lie inside the repository.
+# lists, fenced code and inline code, external URLs (any scheme), and absolute
+# paths. A target must exist with exactly the case written, since CI is
+# case-sensitive and a developer's disk may not be, and must lie inside the
+# repository.
+#
+# #anchors are checked only into the Render parity ledger
+# (docs/ADR018-render-parity.md and docs/ADR018/, w10/m607): its sections move
+# between files, and a link must name a heading the file it points at has, by
+# GitHub's slug rules (lower case, punctuation dropped, spaces to hyphens, -1,
+# -2 for a repeated heading) or an <a id>/<a name>. Elsewhere only the file
+# must exist.
 #
 # DOCS_LINKS_ROOT is overridable so the self-test
 # (scripts/docs-links-validate.test.sh) can run against throwaway fixture trees.
@@ -127,8 +133,8 @@ def without_code_spans(line: str) -> str:
     return "".join(kept)
 
 
-def targets(text: str):
-    """Yield (line number, raw target) for each link outside code."""
+def prose(text: str):
+    """Yield (line number, line) for each line outside fenced code."""
     fence = ""
     for number, line in enumerate(text.split("\n"), 1):
         line = line.rstrip("\r")
@@ -141,12 +147,68 @@ def targets(text: str):
         if opener:
             fence = opener.group(1) or opener.group(2)
             continue
+        yield number, line
+
+
+def targets(text: str):
+    """Yield (line number, raw target) for each link outside code."""
+    for number, line in prose(text):
         line = without_code_spans(line)
         for match in INLINE.finditer(line):
             yield number, match.group(1)
         reference = REFERENCE.match(line)
         if reference:
             yield number, reference.group(1)
+
+
+# Files whose #anchors are checked: the parity ledger (w10/m607).
+ANCHORED = ("docs/ADR018-render-parity.md", "docs/ADR018/")
+HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+HTML_ANCHOR = re.compile(r"""<a\s[^>]*\b(?:id|name)\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
+LINK_TEXT = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+
+
+def anchored(rel: str) -> bool:
+    return rel == ANCHORED[0] or rel.startswith(ANCHORED[1])
+
+
+def slug(heading: str) -> str:
+    """GitHub's anchor for a heading: its text without link targets, tags and
+    emphasis or code markers, lower-cased, with every character that is not a
+    letter, digit, underscore, hyphen or space dropped and spaces made hyphens."""
+    text = re.sub(r"<[^>]*>", "", LINK_TEXT.sub(r"\1", heading)).replace("`", "").replace("*", "")
+    return re.sub(r"[^\w\- ]", "", text.strip().lower()).replace(" ", "-")
+
+
+_anchors: dict[str, set[str]] = {}
+
+
+def anchors(rel: str) -> set[str]:
+    """The #fragments a document answers: each heading's slug, a repeated one
+    suffixed -1, -2 as GitHub does, and every <a id> or <a name>."""
+    if rel not in _anchors:
+        found: set[str] = set()
+        repeats: dict[str, int] = {}
+        with open(os.path.join(root, rel), encoding="utf-8") as handle:
+            text = handle.read()
+        for _, line in prose(text):
+            heading = HEADING.match(line)
+            if heading:
+                base = slug(heading.group(1))
+                count = repeats.get(base, 0)
+                repeats[base] = count + 1
+                found.add(f"{base}-{count}" if count else base)
+            found.update(HTML_ANCHOR.findall(line))
+        _anchors[rel] = found
+    return _anchors[rel]
+
+
+def missing_anchor(rel: str, target: str) -> bool:
+    """Whether target's #fragment names no anchor of rel, a ledger file."""
+    if not anchored(rel):
+        return False
+    fragment = urllib.parse.unquote(target.partition("#")[2])
+    return bool(fragment) and fragment not in anchors(rel)
 
 
 _listings: dict[str, set[str]] = {}
@@ -170,7 +232,9 @@ def exists_exactly(path: str) -> bool:
 
 def broken(rel: str, number: int, raw: str):
     target = raw.strip("<>").strip()
-    if not target or target.startswith(("#", "/")) or SCHEME.match(target):
+    if target.startswith("#"):
+        return f"{rel}:{number} -> {target} (no such heading)" if missing_anchor(rel, target) else None
+    if not target or target.startswith("/") or SCHEME.match(target):
         return None
     path = urllib.parse.unquote(re.split(r"[#?]", target, maxsplit=1)[0])
     if not path:
@@ -178,6 +242,9 @@ def broken(rel: str, number: int, raw: str):
     resolved = os.path.normpath(os.path.join(root, os.path.dirname(rel), path))
     inside = resolved == root or resolved.startswith(root + os.sep)
     if inside and exists_exactly(resolved):
+        dest = os.path.relpath(resolved, root)
+        if os.path.isfile(resolved) and missing_anchor(dest, target):
+            return f"{rel}:{number} -> {target} (no such heading in {dest})"
         return None
     return f"{rel}:{number} -> {target}"
 
@@ -198,7 +265,9 @@ if problems:
     print(
         f"docs-links-validate: {len(problems)} broken relative link(s) in {len(files)} file(s). "
         "Point each at the file's current path, or write the path as plain text when the "
-        "file is gone for good (purged evidence, a removed item).",
+        "file is gone for good (purged evidence, a removed item). A #anchor into the parity "
+        "ledger (docs/ADR018-render-parity.md, docs/ADR018/) must name a heading of the file "
+        "it points at: point it at the file its section moved to.",
         file=sys.stderr,
     )
     sys.exit(1)

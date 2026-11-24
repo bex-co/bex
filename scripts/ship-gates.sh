@@ -21,8 +21,9 @@
 #      dashboard pushes nothing checked before CI (w6/m159).
 #   4. A commit in the push adds a build artifact or evidence dump: a blob over
 #      1 MiB or a binary/archive under .pm/ (scripts/repo-artifact-guard.sh,
-#      w6/100 D10). Blocks; this is also what stops a stale checkout from
-#      replaying pre-rewrite history.
+#      w6/100 D10), or leaves a markdown file it changes at 768 KiB or more
+#      (512 KiB or more only warns; split it, w10/m607). Blocks; this is also
+#      what stops a stale checkout from replaying pre-rewrite history.
 #   5. The push changes a file the native qualification records by name
 #      (native-common-qualify.py source-paths), a .github/scripts native module
 #      or a native-* workflow, and the native suites fail (about a minute).

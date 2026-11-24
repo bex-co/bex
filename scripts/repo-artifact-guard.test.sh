@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # repo-artifact-guard.test.sh — repo-artifact-guard.sh against throwaway repos:
 # a big blob, a .pm archive, small evidence dumps, a big blob a later commit
-# deletes, and a size-filtered partial clone whose big blob was never fetched.
+# deletes, markdown under, in and over the soft limit's bands, and a
+# size-filtered partial clone whose big blob was never fetched.
 set -euo pipefail
 
 guard=$(cd "$(dirname "$0")" && pwd)/repo-artifact-guard.sh
@@ -51,6 +52,38 @@ for dump in "${dumps[@]}"; do grep -qF "$dump (evidence dump)" "$tmp/err" || fai
 git rm -q "${dumps[@]}" && commit drop-dumps
 mkdir -p .pm/w1/m6 lego/testdata && echo x >.pm/w1/m6/evidence-locator.md && echo x >lego/testdata/evidence.json
 git add . && commit kept
+passes
+
+# Markdown soft limit (w10/m607): under 512 KiB is silent, the warning band
+# passes with a warning naming the file and its size, 768 KiB or more is
+# refused with the split remedy, in both forms. The range form counts only the
+# markdown it adds or changes, at its size at HEAD.
+mkdir -p docs/ledger
+head -c $((512 * 1024 - 1)) /dev/zero >docs/ledger/under.md
+git add . && commit md-under
+passes
+if grep -q warning "$tmp/err"; then fail "a markdown file under 512 KiB drew a warning: $(cat "$tmp/err")"; fi
+md_base=$(git rev-parse HEAD)
+head -c $((512 * 1024)) /dev/zero >docs/ledger/band.md
+git add . && commit md-band
+passes
+grep -qF "warning: docs/ledger/band.md is 524288 bytes, past the 512 KiB markdown warning band" "$tmp/err" ||
+  fail "the warning band does not name the file and its size: $(cat "$tmp/err")"
+GITHUB_ACTIONS=true bash "$guard" "$md_base" >"$tmp/out" 2>"$tmp/err" || fail "the warning band was refused: $(cat "$tmp/err")"
+grep -qF "::warning file=docs/ledger/band.md," "$tmp/out" || fail "no Actions warning annotation: $(cat "$tmp/out")"
+head -c $((768 * 1024)) /dev/zero >docs/ledger/over.md
+git add . && commit md-over
+rejects "docs/ledger/over.md (786432 bytes >= 768 KiB)"
+grep -qF "split each into files of its own" "$tmp/err" || fail "the refusal names no remedy: $(cat "$tmp/err")"
+rejects "docs/ledger/over.md (786432 bytes >= 768 KiB)" "$md_base"
+over_base=$(git rev-parse HEAD)
+echo x >docs/ledger/other.md
+git add . && commit md-other
+bash "$guard" "$over_base" 2>"$tmp/err" || fail "the range form refused a markdown file it did not change: $(cat "$tmp/err")"
+head -c 1000 /dev/zero >docs/ledger/over.md
+git add . && commit md-split
+bash "$guard" "$md_base" 2>"$tmp/err" || fail "a markdown file split later in the range was refused: $(cat "$tmp/err")"
+git rm -q -r docs/ledger && commit drop-md
 passes
 
 head -c 1048576 /dev/zero >lego-binary

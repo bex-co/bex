@@ -2,7 +2,10 @@ name: repo artifact guard
 
 # Build artifacts and evidence dumps never enter git (user decision 2026-11-04,
 # w6/100 D10): no blob over 1 MiB, no binary/archive under .pm/. Every push and
-# PR, no path filter: a wheel dropped into .pm/ must fail here too.
+# PR, no path filter: a wheel dropped into .pm/ must fail here too. A markdown
+# file of 768 KiB or more fails as well, and one of 512 KiB or more is a
+# warning annotation, so a growing document is split before the 1 MiB refusal
+# (w10/m607).
 on:
   pull_request:
   push:

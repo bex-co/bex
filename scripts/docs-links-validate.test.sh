@@ -230,6 +230,73 @@ print("[x](nowhere/dense.md)")
 PY
 assert "lines of backtick runs, one 3000 long and unclosed, and of 20000 brackets are read in linear time" 1 "$dense" "docs/a.md:6 -> nowhere/dense.md"
 
+# --- #anchors into the parity ledger name a heading of the file (w10/m607) ---
+# ledger <dir> — a fixture tree plus a split parity ledger, every anchor good.
+ledger() {
+  local dir="$1"
+  fixture "$dir"
+  mkdir -p "$dir/docs/ADR018"
+  cat >"$dir/docs/ADR018-render-parity.md" <<'MD'
+# Render parity matrix
+
+## Deploys
+
+This section lives in [ADR018/deploys.md](ADR018/deploys.md).
+
+### Sandbox create flags (w2/m263)
+
+### CLI runtime copy: `ea blueprints` next steps (w2/m263)
+
+## Notes
+
+## Notes
+
+```
+## Fenced heading
+```
+MD
+  cat >"$dir/docs/ADR018/deploys.md" <<'MD'
+# Deploys
+
+<a id="pinned-row"></a>
+
+| Deploy history | see [above](#deploys) and [the index](../ADR018-render-parity.md#notes-1) |
+MD
+  printf '# a\n\n[d](ADR018-render-parity.md#deploys) [f](ADR018-render-parity.md#sandbox-create-flags-w2m263) [c](ADR018-render-parity.md#cli-runtime-copy-ea-blueprints-next-steps-w2m263) [n](ADR018-render-parity.md#notes) [file](ADR018/deploys.md#deploys) [id](ADR018/deploys.md#pinned-row) [plain](ADR018/deploys.md)\n' >"$dir/docs/a.md"
+}
+
+anchors_green="$tmp/anchors-green"
+ledger "$anchors_green"
+assert "anchors into the ledger that name a heading, a repeated heading or an <a id> pass" 0 "$anchors_green"
+
+anchors_red="$tmp/anchors-red"
+ledger "$anchors_red"
+printf '# a\n\n[gone](ADR018-render-parity.md#deploy)\n' >"$anchors_red/docs/a.md"
+assert "an anchor into the ledger that names no heading is red" 1 "$anchors_red" \
+  "docs/a.md:3 -> ADR018-render-parity.md#deploy (no such heading in docs/ADR018-render-parity.md)"
+
+anchors_moved="$tmp/anchors-moved"
+ledger "$anchors_moved"
+printf '# a\n\n[row](ADR018/deploys.md#sandbox-create-flags-w2m263)\n' >"$anchors_moved/docs/a.md"
+assert "an anchor whose heading lives in another ledger file is red" 1 "$anchors_moved" \
+  "docs/a.md:3 -> ADR018/deploys.md#sandbox-create-flags-w2m263 (no such heading in docs/ADR018/deploys.md)"
+
+anchors_self="$tmp/anchors-self"
+ledger "$anchors_self"
+printf '# Deploys\n\nSee [below](#history).\n' >"$anchors_self/docs/ADR018/deploys.md"
+assert "a same-file anchor inside a ledger file that names no heading is red" 1 "$anchors_self" \
+  "docs/ADR018/deploys.md:3 -> #history (no such heading)"
+
+anchors_fenced="$tmp/anchors-fenced"
+ledger "$anchors_fenced"
+printf '# a\n\n[fenced](ADR018-render-parity.md#fenced-heading)\n' >"$anchors_fenced/docs/a.md"
+assert "a heading inside fenced code is no anchor" 1 "$anchors_fenced" "ADR018-render-parity.md#fenced-heading"
+
+anchors_elsewhere="$tmp/anchors-elsewhere"
+ledger "$anchors_elsewhere"
+printf '# b\n\nSee [a](../a.md#no-such-heading) and [here](#nowhere).\n' >"$anchors_elsewhere/docs/sub/b.md"
+assert "anchors into or within other documents are not checked" 0 "$anchors_elsewhere"
+
 # --- the failure names how many, and exits non-zero with every miss listed ---
 many="$tmp/many"
 fixture "$many"

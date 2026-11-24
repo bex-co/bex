@@ -14,7 +14,7 @@ Drive the production MCP endpoint (`https://api.bex.co/mcp`) the way an agent do
 
 - `lego/backend/internal/api/openapi/render-mcp-tools.json`: the pinned upstream `tools/list` (names, args, types, required, annotations) and its `pin.note` history. `render-mcp-results.json` beside it pins what each shared tool answers.
 - `lego/backend/internal/api/mcp_parity.go`: `mcpAcceptedDivergences` (each deliberate departure and its reason) and `mcpKnownUpstreamOnly` (upstream tools bex does not ship: Workflows, a recorded non-goal, and session selection, replaced by a per-call `workspaceId`).
-- `docs/ADR006-bex-api.md` § MCP ("Transports & auth"), `docs/ADR025-connect-an-agent.md` (the customer's connect recipe, OAuth discovery, API-key bearer), `docs/ADR094-coding-agent-mcp.md` (the `/mcp/cloud-agents` toolset), `docs/ADR018-render-parity.md` (MCP column), `.pm/DO_NOT_DO.md`.
+- `docs/ADR006-bex-api.md` § MCP ("Transports & auth"), `docs/ADR025-connect-an-agent.md` (the customer's connect recipe, OAuth discovery, API-key bearer), `docs/ADR094-coding-agent-mcp.md` (the `/mcp/cloud-agents` toolset), `docs/ADR018-render-parity.md` (MCP column; the rows live in its section files under `docs/ADR018/`, the MCP pins in `docs/ADR018/surface-pins-and-corrections.md`), `.pm/DO_NOT_DO.md`.
 
 **When the correct behavior is unclear, learn it from Render before deciding.** Read the upstream server's source at the pin's `source.commit` (`github.com/render-oss/render-mcp-server`), Render's MCP docs (`https://render.com/docs/mcp-server`) and the REST endpoint the upstream tool calls (`render-public-api-1.json` beside the pin). Never call Render's hosted server or use a Render credential. For `/mcp/cloud-agents` and every coding-agent tool, the reference product is **Devin**, as ADR094 says. Render parity is the top product rule (`AGENTS.md`): a divergence that ADR018 does not record with the user's sign-off is a finding, even when a bex ADR chose it.
 
@@ -102,7 +102,7 @@ Research each finding as `../qa-find-bugs-cli/SKILL.md` § 4 does, and write one
 
 The evidence rules of that § 4 apply, including that the board is public ([rule](../../../.pm/AGENTS.md#the-board-is-public)): a list or search answer can carry other tenants' ids and names, which are hashed or left out of the record.
 
-Dedupe, filing and shipping follow `../qa-find-bugs-cli/SKILL.md` § 5: search `.pm/` open and done, `.pm/DO_NOT_DO.md`, ADR018 and `git log -S`; file only through `/pm` into the target workstream (default `w6`); a deploy-lag result is reported, not filed. **Commit or push only with an explicit `/ship`/`$ship`**, or when a `/loopx` routine runs this skill, which is that authorization; ship only this hunt's filing.
+Dedupe, filing and shipping follow `../qa-find-bugs-cli/SKILL.md` § 5: search `.pm/` open and done, `.pm/DO_NOT_DO.md`, ADR018 (`docs/ADR018/`) and `git log -S`; file only through `/pm` into the target workstream (default `w6`); a deploy-lag result is reported, not filed. **Commit or push only with an explicit `/ship`/`$ship`**, or when a `/loopx` routine runs this skill, which is that authorization; ship only this hunt's filing.
 
 ## 5 — Cleanup and report
 

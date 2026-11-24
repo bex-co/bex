@@ -100,7 +100,7 @@ Capture as you go: `browser_console_messages` and `browser_network_requests` aft
 
 What counts as a bug: the UI lying (status disagreeing between list, detail and events), a promise not kept (Live badge over a 404 URL), states that never resolve, mutations that report success and did nothing (or the reverse), lost form input, dishonest empty states, search/pagination that does not narrow, uncaught console errors, failed background requests, wrong English, i18n gaps, missing accessible names on primary controls, and Render-parity divergences. When a field looks wrong in the UI, check whether REST/GraphQL/MCP agree — a disagreement is the more valuable finding.
 
-What is **not** a bug: upstream Ory Elements cosmetics, anything in `.pm/DO_NOT_DO.md`, the deliberate `—` non-goals in `docs/ADR018-render-parity.md`, plan-gated features, your own bad input, and anything already fixed on `main` but not yet deployed (Phase 5 catches these).
+What is **not** a bug: upstream Ory Elements cosmetics, anything in `.pm/DO_NOT_DO.md`, the deliberate `—` non-goals in the parity ledger (`docs/ADR018/`, indexed by `docs/ADR018-render-parity.md`), plan-gated features, your own bad input, and anything already fixed on `main` but not yet deployed (Phase 5 catches these).
 
 ## Phase 3 — Triage
 
@@ -120,7 +120,7 @@ For every surviving bug, find the root cause in this repo and cite `file:line`. 
 - UI: `dashboard/src/routes/<route>.tsx`, `dashboard/src/features/<area>/` (`services`, `deploys`, `env-groups`, `databases`, `keyvalue`, `logs`, `metrics`, `projects`, `blueprints`, `usage`)
 - API: `lego/backend/internal/<area>/` — REST + GraphQL + MCP live together, so a fix in one is a fix in three ([docs/ADR006-bex-api.md](../../../docs/ADR006-bex-api.md))
 - Runtime/reconcile: `lego/operator/` (Deployment/Service/Ingress, build pipeline, activator)
-- Read the governing ADR before proposing anything — catalog in [docs/AGENTS.md](../../../docs/AGENTS.md); most relevant here are ADR004 (deploys), ADR005 (custom domains), ADR009 (Postgres), ADR021 (Key Value), ADR029 (static sites), ADR049 (`render.yaml` parity), ADR018 (parity ledger).
+- Read the governing ADR before proposing anything — catalog in [docs/AGENTS.md](../../../docs/AGENTS.md); most relevant here are ADR004 (deploys), ADR005 (custom domains), ADR009 (Postgres), ADR021 (Key Value), ADR029 (static sites), ADR049 (`render.yaml` parity), ADR018 (parity ledger; its rows live in `docs/ADR018/`).
 - Compare against render.com's behavior for the same surface; record deliberate divergence as divergence, not as a bug.
 
 ### Before you call a root cause found

@@ -28,7 +28,7 @@ Total: **8 tasks, about 5h35m**.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity in backend for w5` (2026-11-23, round 11 item 3), verified against `main@3854adf442`: `lego/backend/internal/postgres/rest.go:302-322` (`recovery field environmentId is unsupported`), `lego/backend/internal/postgres/recovery.go:438`, `lego/backend/internal/api/render_declared_fields_test.go:61-74` (6 ops probed, web PATCH only), and `lego/backend/internal/api/render_gated_bodies_test.go:38-78` (28 ops covered).
-- **Goal linkage:** Advances Render API parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) and closes the `recover-postgres` `environmentId` refusal recorded at [ADR018 line 597](../../../../docs/ADR018-render-parity.md#L597).
+- **Goal linkage:** Advances Render API parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) and closes the `recover-postgres` `environmentId` refusal recorded under [ADR018 § Render operation omissions](../../../../docs/ADR018/render-operation-omissions.md#render-operation-omissions).
 - **Expected outcome:** Every served Render JSON-body operation is mechanically guarded against schema-vs-struct drift and validator/decoder deadlocks, and Postgres PITR recovery honors Render's `environmentId`.
 - **Why now:** ~30 body operations landed after `w5/m146` and `w8/137` without joining either guard, recreating the exact class of deadlocks `w8/135` and `w9/m472` hit.
 - **Render parity:** Included (`t005`). Adds `environmentId` to Postgres recovery across REST/GraphQL/MCP and aligns all served REST JSON-body contracts.

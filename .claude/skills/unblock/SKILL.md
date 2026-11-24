@@ -24,7 +24,7 @@ description: >-
 
 - **对标产品决定推荐方向（用户偏好 2026-10-30）。** 托管（hosting）面向客户的行为对标 render.com（[ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)）。云端编码 agent（agent sessions、`/agents`、沙箱、PR 交付）对标 Devin（[ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)）。
   - 推荐项必须是与对标产品一致的那一项。推荐前先核实对标产品的实际行为，不凭记忆；说明“Render / Devin 怎么做”，并作为推荐理由写出来。
-  - 与对标产品不一致的选项可以列出，但不能作为推荐项，并要讲明它造成的偏离。偏离只有经用户签字、记录进 [ADR018](../../../docs/ADR018-render-parity.md)（Render）或相应 agent ADR（Devin）后才成立。
+  - 与对标产品不一致的选项可以列出，但不能作为推荐项，并要讲明它造成的偏离。偏离只有经用户签字、记录进 [ADR018](../../../docs/ADR018-render-parity.md)（Render；写在 `docs/ADR018/` 下该章节的文件里）或相应 agent ADR（Devin）后才成立。
   - 可选增强不能挡住对齐所需的实现：先按对齐方案恢复，更严或更松的变体另开条目。已有规则或对标产品的行为能决定的做法，直接记为复核结论，不再要求用户拍板。确需产品取舍、外部资源或用户专属操作的才交给用户。
 
 ## 2. 核心交付：告诉用户能怎样帮忙，并讨论到可行动
