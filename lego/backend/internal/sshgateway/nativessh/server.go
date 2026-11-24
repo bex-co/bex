@@ -87,7 +87,18 @@ type Server struct {
 	ChannelLimits *sshgateway.ChannelLimiter
 
 	HandshakeTimeout time.Duration
-	SessionTimeout   time.Duration
+	// SessionTimeout bounds an agent-session sandbox connection (ADR054 D6)
+	// and a service connection that has not opened its shell yet. A service
+	// shell itself has no time limit, as on Render (w6/174): it ends with its
+	// client, its access, its instance or the gateway's drain bound.
+	SessionTimeout time.Duration
+	// KeepaliveInterval is how often the gateway asks the client whether it is
+	// still there (keepalive@openssh.com, as sshd's ClientAliveInterval does);
+	// a connection whose client has not answered within keepaliveMisses
+	// intervals is closed, so a client that vanished without closing its
+	// connection cannot hold a session slot forever (w6/174). 0 gets the
+	// default (one minute); negative disables it.
+	KeepaliveInterval time.Duration
 
 	// MaxPreAuthConns bounds how many connections may be in the pre-authentication
 	// phase (TCP accepted, SSH handshake + public-key database lookups in flight)
@@ -118,9 +129,9 @@ type Server struct {
 	// RevalidateInterval is how often an ESTABLISHED exec stream re-runs the
 	// fresh key + target authorization the channel-open path performs (codex
 	// round-9 #6): a revocation mid-stream cancels the stream's context instead
-	// of waiting for a disconnect or the 4h session cap. 0 => the platform
-	// default (sshgateway.DefaultRevalidateInterval); negative disables the
-	// watchdog (the pre-round-9 admission-only behavior).
+	// of waiting for a disconnect. 0 => the platform default
+	// (sshgateway.DefaultRevalidateInterval); negative disables the watchdog
+	// (the pre-round-9 admission-only behavior).
 	RevalidateInterval time.Duration
 
 	// TrustedProxies lists the immediate peers (Traefik's pod network) allowed
@@ -264,6 +275,9 @@ func (s *Server) defaults() {
 	}
 	if s.SessionTimeout <= 0 {
 		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.KeepaliveInterval == 0 {
+		s.KeepaliveInterval = defaultKeepaliveInterval
 	}
 	if s.MaxPreAuthConns <= 0 {
 		s.MaxPreAuthConns = 256
@@ -607,8 +621,19 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	defer func() { sshgateway.RecordShellEvent(s.Audit, core.AuditVerbEndShell, shell, time.Now().UTC()) }()
 
 	go ssh.DiscardRequests(requests)
+	keepaliveCtx, stopKeepalive := context.WithCancel(ctx)
+	defer stopKeepalive()
+	go keepalive(keepaliveCtx, conn, s.KeepaliveInterval)
 	sessionCtx, cancel := context.WithTimeout(ctx, s.SessionTimeout)
 	defer cancel()
+	// A service shell lasts as long as its client, its access and its
+	// instance, with no time limit, as on Render (w6/174, ADR035 § How long a
+	// session lasts); sessionCtx bounds only the wait for it. An agent-session
+	// sandbox connection keeps the cap whole (ADR054 D6).
+	lifetime := ctx
+	if target.Sandbox {
+		lifetime = sessionCtx
+	}
 
 	// An agent-session sandbox target (ADR054 D3) accepts Zed's multiplexed
 	// remoting: many concurrent session channels over one connection, each its own
@@ -640,11 +665,11 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 			continue
 		}
 		// codex round-8 #5: the transport may outlive the auth-time decision by
-		// hours (BEX_SSH_SESSION_TIMEOUT); re-read the key and re-resolve +
-		// re-authorize (uncached) the target immediately before accepting the
-		// channel. A revocation after transport auth ends the transport, not just
-		// this channel — an already-open channel is a stream in flight, but no
-		// NEW exec may start against a decision that is hours stale.
+		// hours; re-read the key and re-resolve + re-authorize (uncached) the
+		// target immediately before accepting the channel. A revocation after
+		// transport auth ends the transport, not just this channel — an
+		// already-open channel is a stream in flight, but no NEW exec may start
+		// against a decision that is hours stale.
 		resolved, err := s.reauthorize(ctx, subject, fingerprint, connUser, sticky)
 		if err != nil {
 			_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
@@ -678,15 +703,15 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		}()
 		// codex round-9 #6: keep re-running the channel-open reauthorization
 		// while the exec is LIVE, not only at admission — a revocation cancels
-		// the stream's context from below. sessionCtx still bounds the lifetime.
-		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky, nil))
+		// the stream's context from below. lifetime still bounds it.
+		streamCtx, cancelStream := sshgateway.WithRevalidation(lifetime, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky, nil))
 		err = serveSession(streamCtx, channel, channelRequests, s.Executor, resolved, nil)
 		cancelStream()
 		s.ChannelLimits.ReleaseChannel(subject)
 		s.Metrics.ChannelClosed()
 		if err != nil {
 			result = "failed"
-			if sessionCtx.Err() == nil && streamCtx.Err() != nil {
+			if lifetime.Err() == nil && streamCtx.Err() != nil {
 				result = "revoked" // the watchdog, not the client, ended the stream
 			}
 			return err
@@ -701,7 +726,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// `ssh host 'head -c 1M /dev/urandom'` delivered a fraction of it.
 		select {
 		case <-clientClosed:
-		case <-sessionCtx.Done():
+		case <-lifetime.Done():
 		case <-time.After(clientCloseGrace):
 		}
 		return nil
@@ -712,6 +737,59 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 // for its client to disconnect, so a client that never closes cannot hold a
 // session slot.
 const clientCloseGrace = 30 * time.Second
+
+// keepaliveRequest is OpenSSH's keepalive global request. Clients answer a
+// request they do not know with a failure, which is an answer all the same.
+const keepaliveRequest = "keepalive@openssh.com"
+
+// defaultKeepaliveInterval and keepaliveMisses close a connection whose client
+// has not answered for about three minutes, sshd's ClientAliveInterval 60 with
+// ClientAliveCountMax 3.
+const (
+	defaultKeepaliveInterval = time.Minute
+	keepaliveMisses          = 3
+)
+
+// keepalive asks the client every interval whether it is still there and
+// closes the connection when an answer has not come within keepaliveMisses
+// intervals (w6/174). Without it, a client that vanished without closing its
+// connection (a laptop that slept on another network) would hold its session
+// slot until the gateway's next release, since a service shell has no time
+// limit. It returns when ctx ends or the connection does; a negative interval
+// disables it.
+func keepalive(ctx context.Context, conn ssh.Conn, interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		// SendRequest waits for the client's answer; closing the connection
+		// releases it.
+		answered := make(chan error, 1)
+		go func() {
+			_, _, err := conn.SendRequest(keepaliveRequest, true, nil)
+			answered <- err
+		}()
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-answered:
+			if err != nil {
+				return // the connection is gone
+			}
+		case <-time.After(keepaliveMisses * interval):
+			log.Printf("ssh gateway: closing a connection whose client stopped answering keepalives")
+			_ = conn.Close()
+			return
+		}
+	}
+}
 
 // serveMultiChannel serves an agent-session sandbox connection that may open
 // several concurrent session channels (Zed's ControlMaster protocol, its

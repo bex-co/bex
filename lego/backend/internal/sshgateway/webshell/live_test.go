@@ -105,49 +105,6 @@ func TestGatewayRealKubernetesWebShell(t *testing.T) {
 	}
 }
 
-// TestGatewayRealKubernetesWebShellTimeout proves the deployed gateway closes
-// an attached Kubernetes exec stream when its configured session deadline
-// expires. Set the gateway's BEX_SSH_SESSION_TIMEOUT to a short value before
-// running this opt-in acceptance test.
-func TestGatewayRealKubernetesWebShellTimeout(t *testing.T) {
-	baseURL := os.Getenv("BEX_TEST_SHELL_WS_URL")
-	ticket := os.Getenv("BEX_TEST_SHELL_TICKET")
-	if baseURL == "" || ticket == "" || os.Getenv("BEX_TEST_SHELL_EXPECT_TIMEOUT") != "1" {
-		t.Skip("set the live Web Shell inputs and BEX_TEST_SHELL_EXPECT_TIMEOUT=1")
-	}
-
-	conn, resp, err := dialLiveWebSocket(baseURL, ticket)
-	if err != nil {
-		status := 0
-		if resp != nil {
-			status = resp.StatusCode
-		}
-		t.Fatalf("dial deployed web shell: status=%d err=%v", status, err)
-	}
-	defer conn.Close()
-	if err := conn.WriteMessage(websocket.BinaryMessage, []byte("sleep 30\n")); err != nil {
-		t.Fatalf("start long-running command: %v", err)
-	}
-
-	_ = conn.SetReadDeadline(time.Now().Add(15 * time.Second))
-	for {
-		messageType, data, err := conn.ReadMessage()
-		if err != nil {
-			t.Fatalf("read timeout close: %v", err)
-		}
-		if messageType != websocket.TextMessage {
-			continue
-		}
-		var control serverControl
-		if json.Unmarshal(data, &control) == nil && control.Type == "error" {
-			if control.Reason != endTimeout {
-				t.Fatalf("timeout frame = %+v, want reason %q", control, endTimeout)
-			}
-			return
-		}
-	}
-}
-
 // TestGatewayRealKubernetesWebShellPodDeletion attaches first, then deletes the
 // disposable target pod and proves the browser stream closes. It is opt-in
 // because it mutates the named live-test workload; its Deployment is expected

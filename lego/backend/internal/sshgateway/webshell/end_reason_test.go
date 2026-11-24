@@ -158,18 +158,6 @@ func TestWebSocketUnverifiableAccessEndsTheShellAsUnverified(t *testing.T) {
 	wantEnd(t, readErrorFrame(t, conn), endUnverified)
 }
 
-// The session cap ends a shell as timeout, not as a revocation.
-func TestWebSocketSessionTimeoutEndsTheShellNamed(t *testing.T) {
-	conn, st, _ := startHeldShell(t, &gatewaytest.FakeResolver{}, "srv-abcdeabcdeabcdeabcde", func(s *Server) {
-		s.SessionTimeout = 100 * time.Millisecond
-		s.RevalidateInterval = -1
-	})
-	wantEnd(t, readErrorFrame(t, conn), endTimeout)
-	if ended := waitEndedSessions(t, st, 1); len(ended) != 1 || !strings.HasSuffix(ended[0], ":failed") {
-		t.Fatalf("session audit result = %v, want one entry ending :failed", ended)
-	}
-}
-
 // The attached pod stopping under the stream (the executor sees it terminate)
 // is named instance_gone, not "unable to start a shell in this image".
 func TestWebSocketTerminatedTargetEndsTheShellNamed(t *testing.T) {

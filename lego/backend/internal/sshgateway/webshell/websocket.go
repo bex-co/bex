@@ -88,13 +88,15 @@ type Server struct {
 	Limits   *sshgateway.SessionLimiter
 	Nonces   *sshgateway.NonceGuard
 
+	// HandshakeTimeout bounds the upgrade. A shell itself has no time limit,
+	// as on Render (w6/174): it ends with the browser, its access, its
+	// instance or the gateway's drain bound.
 	HandshakeTimeout time.Duration
-	SessionTimeout   time.Duration
 
 	// RevalidateInterval is how often an ESTABLISHED shell bridge re-runs the
 	// target resolution + fresh can_operate authorization the upgrade path
 	// performs (codex round-9 #6): a revocation mid-shell cancels the exec
-	// context instead of waiting for the browser to disconnect or the 4h cap.
+	// context instead of waiting for the browser to disconnect.
 	// 0 => the platform default; negative disables (pre-round-9 behavior).
 	RevalidateInterval time.Duration
 
@@ -116,9 +118,6 @@ type Server struct {
 func (s *Server) defaults() {
 	if s.HandshakeTimeout <= 0 {
 		s.HandshakeTimeout = 10 * time.Second
-	}
-	if s.SessionTimeout <= 0 {
-		s.SessionTimeout = 4 * time.Hour
 	}
 	if s.RevalidateInterval == 0 {
 		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
@@ -352,12 +351,10 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	// codex round-9 #6: keep re-running the ticket-time resolution + fresh
 	// authorization while the shell is LIVE — a revocation cancels the exec
 	// context (the bridge and both pump goroutines end with it) instead of
-	// waiting for the browser to disconnect or the session cap. The watchdog
-	// owns execCtx exclusively (the bridge pumps cancel only bridgeCtx), so a
-	// canceled execCtx under a live request context is unambiguously revoked.
-	timedCtx, cancelTimeout := context.WithTimeout(ctx, s.SessionTimeout)
-	defer cancelTimeout()
-	execCtx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
+	// waiting for the browser to disconnect. The watchdog owns execCtx
+	// exclusively (the bridge pumps cancel only bridgeCtx), so a canceled
+	// execCtx under a live request context is unambiguously revoked.
+	execCtx, cancelExec := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, func(c context.Context) error {
 		resolveCtx := core.WithIdentity(c, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
 		if _, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username()); err != nil {
 			return err
@@ -372,14 +369,12 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	switch {
 	case err == nil:
 		result = "completed"
-	case execCtx.Err() != nil && timedCtx.Err() == nil:
+	case execCtx.Err() != nil && ctx.Err() == nil:
 		result = "revoked" // the watchdog ended the stream, not the client
 		ws.end(watchdogEndReason(context.Cause(execCtx)))
 	case errors.Is(context.Cause(ctx), sshgateway.ErrGatewayShutdown):
-		// A terminating gateway's drain bound passed (w6/m482): like the
-		// session cap, a time limit ended the session.
-		ws.end(endTimeout)
-	case ctx.Err() == nil && errors.Is(timedCtx.Err(), context.DeadlineExceeded):
+		// A terminating gateway's drain bound passed (w6/m482): a time limit
+		// ended the session.
 		ws.end(endTimeout)
 	case errors.Is(err, sshgateway.ErrTargetTerminated), errors.Is(err, sshgateway.ErrTargetNotReady):
 		// The attached pod stopped under the stream: a restart, a deploy's old

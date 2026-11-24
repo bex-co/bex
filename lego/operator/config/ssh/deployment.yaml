@@ -87,6 +87,9 @@ spec:
                   optional: true
             - name: BEX_SSH_HANDSHAKE_TIMEOUT
               value: 10s
+            # Caps an agent-session connection, an agent attach stream, a
+            # sandbox exec and a service connection before its shell opens.
+            # A service shell has no time limit, as on Render (w6/174).
             - name: BEX_SSH_SESSION_TIMEOUT
               value: 4h
             - name: BEX_SSH_MAX_SESSIONS

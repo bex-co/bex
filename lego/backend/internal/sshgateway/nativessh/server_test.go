@@ -682,35 +682,23 @@ func TestGatewayRejectsAdditionalSessionWhileFirstIsRunning(t *testing.T) {
 func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
+		user       string
+		target     apps.SSHInstanceTarget
 		timeout    time.Duration
 		disconnect bool
 	}{
-		{name: "session timeout", timeout: 40 * time.Millisecond},
-		{name: "client disconnect", timeout: time.Minute, disconnect: true},
+		// The cap still bounds an agent-session connection (ADR054 D6).
+		{name: "agent session timeout", user: "ags-abcdeabcdeabcdeabcde", target: sandboxTarget(), timeout: 40 * time.Millisecond},
+		{name: "client disconnect", user: "srv-abcdeabcdeabcdeabcde", timeout: time.Minute, disconnect: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clientSigner := signer(t)
 			executor := &gatewaytest.FakeExecutor{Block: true, Started: make(chan struct{}, 1), Stopped: make(chan error, 1)}
-			addr, stop := startGatewayConfigured(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner, func(server *Server) {
+			addr, stop := startGatewayConfigured(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{Target: tc.target}, executor, clientSigner, func(server *Server) {
 				server.SessionTimeout = tc.timeout
 			})
 			defer stop()
-			client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
-			if err != nil {
-				t.Fatal(err)
-			}
-			session, err := client.NewSession()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := session.Start("hold"); err != nil {
-				t.Fatal(err)
-			}
-			select {
-			case <-executor.Started:
-			case <-time.After(time.Second):
-				t.Fatal("exec did not start")
-			}
+			client := startHeldExec(t, addr, tc.user, clientSigner, executor)
 			if tc.disconnect {
 				_ = client.Close()
 			}
@@ -725,6 +713,121 @@ func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 			_ = client.Close()
 		})
 	}
+}
+
+// startHeldExec opens a session on client and starts a command the blocking
+// executor holds until its context ends.
+func startHeldExec(t *testing.T, addr, user string, clientSigner ssh.Signer, executor *gatewaytest.FakeExecutor) *ssh.Client {
+	t.Helper()
+	client, err := dialGateway(addr, user, clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	return holdExec(t, client, executor)
+}
+
+func holdExec(t *testing.T, client *ssh.Client, executor *gatewaytest.FakeExecutor) *ssh.Client {
+	t.Helper()
+	session, err := client.NewSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Start("hold"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-executor.Started:
+	case <-time.After(time.Second):
+		t.Fatal("exec did not start")
+	}
+	return client
+}
+
+// A service shell has no time limit, as on Render (w6/174): it runs past
+// SessionTimeout, which bounds only the wait for it, and a client answering
+// the gateway's keepalives keeps it. It ends when the client leaves.
+func TestServiceShellOutlivesTheSessionTimeout(t *testing.T) {
+	clientSigner := signer(t)
+	st := &gatewaytest.FakeStore{}
+	executor := &gatewaytest.FakeExecutor{Block: true, Started: make(chan struct{}, 1), Stopped: make(chan error, 1)}
+	addr, stop := startGatewayConfigured(t, st, &gatewaytest.FakeResolver{}, executor, clientSigner, func(server *Server) {
+		server.SessionTimeout = 30 * time.Millisecond
+		server.KeepaliveInterval = 10 * time.Millisecond
+		server.RevalidateInterval = 10 * time.Millisecond
+	})
+	defer stop()
+	client := startHeldExec(t, addr, "srv-abcdeabcdeabcdeabcde", clientSigner, executor)
+
+	select {
+	case err := <-executor.Stopped:
+		t.Fatalf("the service shell ended at the session timeout (%v), want it running", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if ended := st.EndedSessions(); len(ended) != 0 {
+		t.Fatalf("session audit ended = %v while the shell runs", ended)
+	}
+
+	_ = client.Close()
+	select {
+	case <-executor.Stopped:
+	case <-time.After(time.Second):
+		t.Fatal("closing the connection did not end the shell")
+	}
+}
+
+// A client that stops answering the gateway's keepalives (one that vanished
+// without closing its connection) loses its connection, its shell and its
+// session slot, though a service shell has no time limit (w6/174).
+func TestKeepaliveClosesAConnectionWhoseClientStoppedAnswering(t *testing.T) {
+	clientSigner := signer(t)
+	st := &gatewaytest.FakeStore{}
+	executor := &gatewaytest.FakeExecutor{Block: true, Started: make(chan struct{}, 1), Stopped: make(chan error, 1)}
+	addr, stop := startGatewayConfigured(t, st, &gatewaytest.FakeResolver{}, executor, clientSigner, func(server *Server) {
+		server.KeepaliveInterval = 20 * time.Millisecond
+		server.Limits = sshgateway.NewSessionLimiter(1, 0)
+	})
+	defer stop()
+
+	raw, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, channels, _, err := ssh.NewClientConn(raw, addr, &ssh.ClientConfig{
+		User: "srv-abcdeabcdeabcdeabcde", Auth: []ssh.AuthMethod{ssh.PublicKeys(clientSigner)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: 2 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// nil requests: the client never reads, so never answers, the gateway's
+	// keepalives, as one that went away would not.
+	silent := ssh.NewClient(conn, channels, nil)
+	defer silent.Close()
+	holdExec(t, silent, executor)
+
+	select {
+	case <-executor.Stopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the shell of a client that stopped answering kept running")
+	}
+	waitFor(t, func() bool { return len(st.EndedSessions()) == 1 })
+
+	// The only slot is free again: a client that answers opens a channel,
+	// which a connection over the session limit never gets to.
+	waitFor(t, func() bool {
+		again, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+		if err != nil {
+			return false
+		}
+		defer again.Close()
+		session, err := again.NewSession()
+		if err != nil {
+			return false
+		}
+		_ = session.Close()
+		return true
+	})
 }
 
 // TestServeConnHonorsPROXYHeaderFromTrustedPeer proves w4/029.md #10's fix: a

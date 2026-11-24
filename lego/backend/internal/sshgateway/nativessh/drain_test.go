@@ -29,6 +29,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
@@ -78,7 +79,13 @@ type shell struct {
 
 func openShell(t *testing.T, addr string, clientSigner ssh.Signer) *shell {
 	t.Helper()
-	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+	return openShellAs(t, addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+}
+
+// openShellAs is openShell for the target user names.
+func openShellAs(t *testing.T, addr, user string, clientSigner ssh.Signer) *shell {
+	t.Helper()
+	client, err := dialGateway(addr, user, clientSigner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,19 +242,24 @@ func TestDrainBoundEndsTheRemainingSessions(t *testing.T) {
 }
 
 // Draining changes nothing about what else ends a session: a revocation and
-// the session cap still end it, and Shutdown returns with it.
+// an agent session's cap still end it, and Shutdown returns with it.
 func TestDrainingSessionStillEndsOnRevocationAndTheSessionCap(t *testing.T) {
 	for name, tc := range map[string]struct {
+		user      string
+		target    apps.SSHInstanceTarget
 		configure func(*Server)
 		trigger   func(*gatewaytest.FakeResolver)
 		result    string
 	}{
 		"revocation": {
+			user:      "srv-abcdeabcdeabcdeabcde",
 			configure: func(s *Server) { s.RevalidateInterval = 10 * time.Millisecond },
 			trigger:   func(r *gatewaytest.FakeResolver) { r.SetFlip(core.ErrForbidden) },
 			result:    ":revoked",
 		},
-		"session cap": {
+		"agent session cap": {
+			user:      "ags-abcdeabcdeabcdeabcde",
+			target:    sandboxTarget(),
 			configure: func(s *Server) { s.SessionTimeout = 300 * time.Millisecond },
 			trigger:   func(*gatewaytest.FakeResolver) {},
 			result:    ":failed",
@@ -256,9 +268,9 @@ func TestDrainingSessionStillEndsOnRevocationAndTheSessionCap(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			clientSigner := signer(t)
 			st := &gatewaytest.FakeStore{}
-			resolver := &gatewaytest.FakeResolver{}
+			resolver := &gatewaytest.FakeResolver{Target: tc.target}
 			gw := startDrainingGateway(t, st, resolver, clientSigner, tc.configure)
-			sh := openShell(t, gw.addr, clientSigner)
+			sh := openShellAs(t, gw.addr, tc.user, clientSigner)
 			sh.echo(t, "before the drain")
 
 			shutdown := shutdownAsync(gw.server, context.Background())

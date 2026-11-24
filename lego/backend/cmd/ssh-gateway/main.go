@@ -240,6 +240,10 @@ func main() {
 		executor.Budget.Metrics = metrics
 	}
 	handshakeTimeout := durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second)
+	// The cap on an agent-session connection (ADR054 D6), an agent attach
+	// stream and a sandbox exec, and on a service connection that has not
+	// opened its shell yet. A service shell, native SSH or the Web Shell, has
+	// no time limit, as on Render (w6/174, ADR035 § How long a session lasts).
 	sessionTimeout := durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour)
 	// codex round-9 #6: every established stream (native-SSH exec, web shell,
 	// agent attach) re-runs its fresh authorization on this interval, so a
@@ -299,7 +303,6 @@ func main() {
 		Limits:           limits,
 		Nonces:           nonces,
 		HandshakeTimeout: handshakeTimeout,
-		SessionTimeout:   sessionTimeout,
 		// Live-shell revalidation cadence for the browser bridge (round-9 #6).
 		RevalidateInterval: revalidateInterval,
 		// The WebSocket listener is HTTP behind the same Traefik pod network as
