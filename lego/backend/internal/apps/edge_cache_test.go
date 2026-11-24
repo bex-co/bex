@@ -294,6 +294,56 @@ func TestASavedPlanAcrossFreeMovesNoEdgeCacheYet(t *testing.T) {
 	}
 }
 
+// w6/m609 follow-up: the service view reads the cache profile back on the
+// plan the instances run (App.RunningTier), like purge and the operator —
+// not on the plan saved for the next deploy. A running-Free service with a
+// paid plan saved reads no-cache while purge still refuses; a running-paid
+// service with a Free plan saved keeps reading its caching profile while
+// purge still works. (The save gate stays on the saved plan so one PATCH can
+// hold a plan together with its profile for a single deploy.)
+func TestSavedPlanLeavesTheCacheProfileViewOnTheRunningPlan(t *testing.T) {
+	freeRunning := cacheApp("free-running", "standard", "")
+	freeRunning.Spec.CacheProfile = appv1alpha1.CacheProfileStatic
+	freeRunning.Status.ServedTier = "free"
+	paidRunning := cacheApp("paid-running", "free", "")
+	paidRunning.Spec.CacheProfile = appv1alpha1.CacheProfileStatic
+	paidRunning.Status.ServedTier = "standard"
+	svc, _ := newService(nil, freeRunning, paidRunning)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	readProfile := func(name string) string {
+		t.Helper()
+		rec := restDo(t, mux, http.MethodGet, "/v1/services/"+name, "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s => %d: %s", name, rec.Code, rec.Body)
+		}
+		var read struct {
+			ServiceDetails struct {
+				Cache struct{ Profile string } `json:"cache"`
+			} `json:"serviceDetails"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &read); err != nil {
+			t.Fatalf("GET %s: %v", name, err)
+		}
+		return read.ServiceDetails.Cache.Profile
+	}
+	if got := readProfile("free-running"); got != appv1alpha1.CacheProfileNone {
+		t.Fatalf("running-Free view = %q, want no-cache until the saved paid plan deploys", got)
+	}
+	if got := readProfile("paid-running"); got != appv1alpha1.CacheProfileStatic {
+		t.Fatalf("running-paid view = %q, want the caching profile until the saved Free plan deploys", got)
+	}
+
+	ctx := context.Background()
+	if _, err := svc.PurgeCache(ctx, "free-running"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("purge on a service still running Free: want 400, got %v", err)
+	}
+	if _, err := svc.PurgeCache(ctx, "paid-running"); err != nil {
+		t.Fatalf("purge of the cache still running on the paid plan: %v", err)
+	}
+}
+
 // A refused save records nothing for the feed: the verb authorizes under
 // deferred audit, so only a save that landed is an event.
 func TestRefusedCacheProfileSaveRecordsNoEvent(t *testing.T) {
