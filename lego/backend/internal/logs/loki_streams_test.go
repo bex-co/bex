@@ -195,6 +195,27 @@ func (f *frontendLoki) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"status": "success", "data": map[string]any{"resultType": "streams", "result": results}})
 	default:
+		if rest, ok := strings.CutPrefix(r.URL.Path, "/loki/api/v1/label/"); ok {
+			if labelName, ok := strings.CutSuffix(rest, "/values"); ok && labelName != "" {
+				q := v.Get("query")
+				seen := map[string]struct{}{}
+				data := []string{}
+				for _, s := range f.streams {
+					if len(s.within(start, end)) == 0 || !s.matches(q) {
+						continue
+					}
+					if val := s.labels[labelName]; val != "" {
+						if _, dup := seen[val]; !dup {
+							seen[val] = struct{}{}
+							data = append(data, val)
+						}
+					}
+				}
+				slices.Sort(data)
+				_ = json.NewEncoder(w).Encode(map[string]any{"status": "success", "data": data})
+				return
+			}
+		}
 		http.NotFound(w, r)
 	}
 }

@@ -1497,6 +1497,10 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 	// app.Namespace is the App's `<ws>` namespace under ADR043 (see QueryLogs);
 	// the discoverable stream labels live there, not in the shared s.Namespace.
 	nq := q.normalized()
+	if len(nq.Instance) > 0 {
+		pods, _ := s.ownPods(ctx, app.Namespace, nq)
+		s.translateInstanceFilter(ctx, resource, app.Namespace, isBuildSource, &nq, candidatesFromPods(pods))
+	}
 	var values []string
 	for _, part := range nq.storeReads() {
 		vals, err := s.LabelValues(ctx, app.Namespace, label, part)
@@ -1508,6 +1512,9 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 	if label == LabelInstance {
 		values = append(values, s.progressInstanceValues(ctx, nq, resource, newProgressContext(app))...)
 		return projectLogLabelValues(resource, values), nil
+	}
+	if label == LabelType && len(s.progressInstanceValues(ctx, nq, resource, newProgressContext(app))) > 0 {
+		values = append(values, LogTypeBuild)
 	}
 	if q.noRequest && label == LabelType {
 		values = slices.DeleteFunc(values, func(v string) bool { return v == LogTypeRequest })
@@ -1542,7 +1549,12 @@ func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q L
 		return nil, fmt.Errorf("%w: managed datastore log label %q is unsupported (want %s)", core.ErrBadRequest, label, strings.Join(datastoreLogLabels, "|"))
 	}
 	if s.LabelValues != nil {
-		values, err := s.LabelValues(ctx, target.namespace, label, q.normalized())
+		nq := q.normalized()
+		if len(nq.Instance) > 0 {
+			pods, _ := target.list(ctx)
+			s.translateInstanceFilter(ctx, target.resource, target.namespace, false, &nq, candidatesFromPods(pods))
+		}
+		values, err := s.LabelValues(ctx, target.namespace, label, nq)
 		if err != nil {
 			return nil, err
 		}
@@ -1558,8 +1570,15 @@ func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q L
 	if err != nil {
 		return nil, err
 	}
+	nq := q.normalized()
+	if len(nq.Instance) > 0 {
+		s.translateInstanceFilter(ctx, target.resource, target.namespace, false, &nq, candidatesFromPods(pods))
+	}
 	values := make([]string, 0, len(pods))
 	for i := range pods {
+		if !nq.keepPod(pods[i].Name) {
+			continue
+		}
 		values = append(values, pods[i].Name)
 	}
 	return projectLogLabelValues(target.resource, values), nil

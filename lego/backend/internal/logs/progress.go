@@ -1365,7 +1365,7 @@ func (s *Service) progressInstanceValues(ctx context.Context, q LogQuery, resour
 			continue
 		}
 		buildID := publicBuildID(isBS, d.ID)
-		if !q.inBuilds(buildID) || !matchesDeployFilter(q, d.ID, buildID) {
+		if !q.keepPod(buildID) || !matchesDeployFilter(q, d.ID, buildID) {
 			continue
 		}
 		if slices.ContainsFunc(rowProgressLines(d, pc, i == 0), window.keep) {
