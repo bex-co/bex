@@ -5575,9 +5575,12 @@ func (f sourceFields) applyTo(a *appv1alpha1.App) {
 }
 
 // resolveSourcePatch folds a sourcePatch onto the App's current source,
-// validating each supplied field. Repo and image are mutually exclusive, so
-// setting either clears the other.
+// validating each supplied field. Repo and image are mutually exclusive: a
+// single patch cannot supply both, and setting either clears the other.
 func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, error) {
+	if patch.Repo != nil && patch.Image != nil {
+		return sourceFields{}, errPrebuiltImageField("repo")
+	}
 	next := sourceFields{
 		repo:                 a.Spec.Repo,
 		image:                a.Spec.Image,
