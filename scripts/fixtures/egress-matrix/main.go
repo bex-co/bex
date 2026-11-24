@@ -76,6 +76,10 @@ func main() {
 		err = servePublicFixture(os.Args[2:])
 	case "direct-client":
 		err = runDirectClient(os.Args[2:])
+	case "source-echo":
+		err = serveSourceEcho(argument(os.Args[2:], 0, ":18001"))
+	case "source-client":
+		err = runSourceClient(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown mode %q", os.Args[1])
 	}
@@ -531,4 +535,78 @@ func runDirectClient(args []string) error {
 	}
 	fmt.Printf("protocol=%s request_payload=%d response_payload=%d\n", args[0], requestBytes, responseBytes)
 	return nil
+}
+
+// serveSourceEcho answers every TCP connection with the address it arrived
+// from, so the egress-gateway matrix reads which address a pod's traffic left
+// the cluster from at a peer it controls, never a third-party echo service.
+func serveSourceEcho(addr string) error {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	for {
+		conn, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			return acceptErr
+		}
+		host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+		_, _ = fmt.Fprintln(conn, host)
+		_ = conn.Close()
+	}
+}
+
+// runSourceClient prints the address a source-echo peer saw, once per attempt:
+// `source-client <addr> [attempts] [interval-ms]`. Each attempt prints
+// `<unix-ms> ok <address>` or `<unix-ms> err <reason>`; one attempt (the
+// default) exits non-zero on failure, so a refused connection fails the step.
+func runSourceClient(args []string) error {
+	if len(args) < 1 {
+		return errors.New("usage: egress-fixture source-client <addr> [attempts] [interval-ms]")
+	}
+	attempts, interval := 1, 100
+	var err error
+	if len(args) > 1 {
+		if attempts, err = strconv.Atoi(args[1]); err != nil {
+			return err
+		}
+	}
+	if len(args) > 2 {
+		if interval, err = strconv.Atoi(args[2]); err != nil {
+			return err
+		}
+	}
+	var last error
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(interval) * time.Millisecond)
+		}
+		source, readErr := readSource(args[0])
+		now := time.Now().UnixMilli()
+		if readErr != nil {
+			last = readErr
+			fmt.Printf("%d err %v\n", now, readErr)
+			continue
+		}
+		last = nil
+		fmt.Printf("%d ok %s\n", now, source)
+	}
+	if attempts == 1 {
+		return last
+	}
+	return nil
+}
+
+func readSource(addr string) (string, error) {
+	conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+	line, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(line), nil
 }

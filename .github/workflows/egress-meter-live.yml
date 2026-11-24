@@ -39,3 +39,34 @@ jobs:
         run: go install sigs.k8s.io/kind@v0.33.0
       - name: Run isolated Cilium traffic matrix
         run: bash scripts/verify-egress-meter.sh
+
+  egress-gateway-matrix:
+    # ADR125 / w21/m616 t003: the egress gateway, the free-plan SMTP deny and
+    # the meter under the datapath ADR125 D9 asks production for. Dispatch-only,
+    # like the meter matrix: it builds the product image and a kind cluster.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    env:
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: lego/operator/go.sum
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.19.0
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+        with:
+          version: v1.36.1
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+      - name: Run the egress gateway matrix
+        run: bash scripts/verify-egress-gateway.sh
