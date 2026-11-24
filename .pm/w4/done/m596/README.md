@@ -1,20 +1,20 @@
 # w4 · m596 — Render's OpenAPI of 2026-11-23: sandbox suspend, a build's deploy scope, and logs and metrics by project
 
-**Worker:** worker4 **Goal:** bex answers Render's live public API of 2026-11-23 on every operation it serves. `POST /v1/sandboxes/{id}/suspend` suspends a sandbox. A build-source build takes Render's `deploy.serviceScope` and answers the deploys it started. The three logs reads and the 18 metrics reads take Render's `project`, `environment` and `region`. The pin and ADR018 record the round, so the weekly `render-schema` drift job is green again. **Status:** blocked — pin must carry `3e9c94d635` before t009 runs the live production checks in `bex-canary`
+**Worker:** worker4 **Goal:** bex answers Render's live public API of 2026-11-23 on every operation it serves. `POST /v1/sandboxes/{id}/suspend` suspends a sandbox. A build-source build takes Render's `deploy.serviceScope` and answers the deploys it started. The three logs reads and the 18 metrics reads take Render's `project`, `environment` and `region`. The pin and ADR018 record the round, so the weekly `render-schema` drift job is green again. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](done/t001.md) | Re-pin Render's 2026-11-23 OpenAPI and land the dispositions that need no new behavior | 1h | — |
-| [t002](done/t002.md) | A build-source build takes Render's `deploy.serviceScope` and `serviceIds`, and answers the deploys it started and the services it skipped | 1h45m | t001 |
-| [t003](done/t003.md) | `POST /v1/sandboxes/{id}/suspend` suspends a sandbox with Render's 202 and `sandbox_not_running` | 50m | t001 |
-| [t004](done/t004.md) | The three logs reads take Render's `project`, `environment` and `region` | 1h30m | t001 |
-| [t005](done/t005.md) | The 18 metrics reads take Render's `project`, `environment` and `region` | 2h | t001 |
-| [t006](done/t006.md) | Render parity, the round 9 record in ADR018, and a green drift dispatch | 45m | t002, t003, t004, t005 |
-| [t007](done/t007.md) | Simplify | 15m | t006 |
-| [t008](done/t008.md) | Test coverage | 45m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t001](done/t001.md) | Re-pin Render's 2026-11-23 OpenAPI and land the dispositions that need no new behavior — **DONE** | 1h | — |
+| [t002](done/t002.md) | A build-source build takes Render's `deploy.serviceScope` and `serviceIds`, and answers the deploys it started and the services it skipped — **DONE** | 1h45m | t001 |
+| [t003](done/t003.md) | `POST /v1/sandboxes/{id}/suspend` suspends a sandbox with Render's 202 and `sandbox_not_running` — **DONE** | 50m | t001 |
+| [t004](done/t004.md) | The three logs reads take Render's `project`, `environment` and `region` — **DONE** | 1h30m | t001 |
+| [t005](done/t005.md) | The 18 metrics reads take Render's `project`, `environment` and `region` — **DONE** | 2h | t001 |
+| [t006](done/t006.md) | Render parity, the round 9 record in ADR018, and a green drift dispatch — **DONE** | 45m | t002, t003, t004, t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 9h**.
 
@@ -57,3 +57,10 @@ Total: **9 tasks, about 9h**.
 - **2026-11-23 — t001–t008 shipped in `3e9c94d635`:** OpenAPI re-pinned to `d075b0cb…` (265 ops / 166 paths / 170 schemas / 74 bodies), `POST /v1/sandboxes/{id}/suspend` (202, retiring `/pause`), build-source `deploy.serviceScope`/`deploys`/`skippedServices` (migration `0341`), shared `savedsearch.ResolveScope` + project/environment/region scope and `too_many_resources` on logs and all 18 metrics, `201` on `add-resources-to-environment`, ADR018 round 9 + `docs/render-artifacts/openapi-rebaseline-round9.md`, and `allowlistSize` lowered 22 → 18.
 - **Drift dispatch (`t006`):** [45239352057](https://github.com/bex-co/bex/actions/runs/45239352057) on `main` (`3e9c94d635`): `render-mcp`, `render-changelog`, and `render-examples` green; `render-schema` passed Blueprint schema, 68-value webhook enum, 265 REST operations, and all 220 served REST operation schemas, and failed only on `render-oss/cli v2.38.0` vs pin `v2.37.0` (owned by `w22/026`).
 - **Blocked on deploy pin (`t009`):** production's image pin (`9fdf7e0a1171` in `cded300699`) does not yet carry `3e9c94d635`. Once the pin carries `3e9c94d635`, run the three live production checks above as the QA user (`bash scripts/qa-login.sh`) in `bex-canary`, delete the disposable fixtures, and close with `t009`.
+- **2026-11-24 — Unblocked and closed (`t009`) on production pin `f46c44d9ddb1` (`eb52a59622`, carries `3e9c94d635`):**
+  - Source: verified evidence (`git merge-base --is-ancestor 3e9c94d635 f46c44d9ddb1`, `bash scripts/render-schema-drift.sh`, and live QA probes on production).
+  - Drift re-check (`bash scripts/render-schema-drift.sh`): Blueprint schema, 68-value webhook enum, all 265 REST operations, and all 220 served operation schemas match Render's live OpenAPI; only `render-oss/cli v2.38.0` vs pin `v2.37.0` remains (owned by `w22/026` / `w22/m604`).
+  - Live production checks as the QA user (`bash scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with disposable `qa-20261124-m596-*` fixtures (all deleted and QA session logged out afterwards):
+    - **Sandbox suspend:** `POST /v1/sandboxes/{id}/suspend` on a running sandbox answered `202` with an empty body; the sandbox transitioned `suspending` → `suspended`; a second call answered `202` with an empty body; after `POST /v1/sandboxes/{id}/terminate`, `POST /v1/sandboxes/{id}/suspend` answered `409` `"code": "sandbox_not_running"`; an unknown sandbox answered `404`.
+    - **Build-source builds `deploy.serviceScope`:** on a git build source (`examples/hello-go`) linked to two web services (`autoDeploy: "yes"` and `autoDeploy: "no"`), `{"deploy":{"serviceScope":"none"}}` answered `201` with `"deploys": []`, `"skippedServices": []` and started no deploy; `{"deploy":{"serviceScope":"custom","serviceIds":[<svc-b>]}}` answered `201` with one deploy for `svc-b` (immediately readable via `GET /v1/services/{id}/deploys/{deployId}` and shipped to `live`, with zero deploys on `svc-a`); `{}` (no `deploy`) answered `201` with one deploy for `svc-a` (autodeploy on), which shipped to `live`, and zero new deploys on `svc-b`.
+    - **Project-scoped logs and metrics:** `GET /v1/logs?ownerId=tea-daif693dqjvc73e7as3g&project=<prj>` (without `resource`) answered `200` with 17 lines spanning both linked services (and `200` with `&environment=<env>`); `GET /v1/metrics/cpu?project=<prj>` (without `resource`) answered `200` with 4 series and 9 data points (and `200` with `&environment=<env>`); `GET /v1/metrics/cpu?project=prj-00000000000000000000` answered `404`.
