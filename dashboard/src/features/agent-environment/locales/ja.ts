@@ -314,6 +314,12 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
       "信頼ティア {tier}: エージェントのモデル支出は月末に請求されます。",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message:
+      "信頼ティア {tier}: エージェントのモデル支出が月中にカードへ請求されることはありません。",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "新しいワークスペースでは、請求クレジットを超えたエージェントのモデル支出が {amount} に達した時点でカードに請求されます。請求が成功するとセッションは継続して実行され、上限はプランの上限まで引き上げられます。",

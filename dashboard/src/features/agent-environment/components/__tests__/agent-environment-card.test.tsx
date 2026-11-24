@@ -630,6 +630,93 @@ describe("AgentEnvironmentCard", () => {
       );
     });
 
+    it("promises no card charge where bex cannot charge it", () => {
+      // A payment-locked T0 workspace, as bex-api projects it: no threshold,
+      // and the verdict says no charge applies. The tier line must not fall
+      // back to the month-end charge, and the new-workspace note stays off.
+      const { rerender } = setup({
+        ...SPEND,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: true,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T0: agent model spend is not charged to a card mid-cycle.",
+      );
+      expect(screen.getByTestId("spend-tier-note")).toHaveTextContent(
+        "A failed or disputed payment limits this workspace",
+      );
+      // A stale threshold with the same verdict reads the same: the verdict,
+      // not the figure, decides.
+      rerender({
+        ...SPEND,
+        nextChargeThresholdUsd: 10,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T0: agent model spend is not charged to a card mid-cycle.",
+      );
+      expect(screen.getByTestId("spend-tier-note").textContent?.trim()).toBe(
+        "",
+      );
+      // T1–T3 never set a cap ceiling (agentModelSpendCapTierLimited is false),
+      // yet an unchargeable / balance-due / BYO workspace there still must not
+      // fall back to month-end copy.
+      rerender({
+        ...SPEND,
+        trustTier: "T1",
+        agentModelSpendCapTierLimited: false,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T1: agent model spend is not charged to a card mid-cycle.",
+      );
+      // A T0 workspace whose admin override sits below the $10 ceiling is not
+      // tier-limited either, and still reads no-mid-cycle-charge when locked.
+      rerender({
+        ...SPEND,
+        trustTier: "T0",
+        agentModelSpendCapTierLimited: false,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: true,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T0: agent model spend is not charged to a card mid-cycle.",
+      );
+      // A BYO-key T4 workspace is never charged by bex either, whereas a
+      // chargeable T4 with agentModelChargesAtThreshold=false still reads the
+      // month-end line.
+      rerender({
+        ...SPEND,
+        trustTier: "T4",
+        agentModelSpendCapTierLimited: false,
+        modelKeySet: true,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T4: agent model spend is not charged to a card mid-cycle.",
+      );
+      rerender({
+        ...SPEND,
+        trustTier: "T4",
+        agentModelSpendCapTierLimited: false,
+        modelKeySet: false,
+        billingBalanceDue: false,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T4: agent model spend is charged at month end.",
+      );
+    });
+
     it("announces unavailable spend instead of an empty 0% bar", () => {
       setup({
         ...SPEND,

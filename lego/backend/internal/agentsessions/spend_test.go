@@ -37,16 +37,17 @@ import (
 // fakeSpend is the SpendStore over the fake environments and sessions.
 type fakeSpend struct {
 	*fakeEnvironments
-	plan       string
-	trust      store.BillingTrust
-	used       int64
-	credit     int64
-	balanceDue bool
-	chargeable bool
+	plan        string
+	trust       store.BillingTrust
+	used        int64
+	credit      int64
+	balanceDue  bool
+	chargeable  bool
+	modelKeySet bool
 }
 
 func (f *fakeSpend) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
-	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, CreditMicroUSD: f.credit, BalanceDue: f.balanceDue, Chargeable: f.chargeable}, nil
+	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, CreditMicroUSD: f.credit, BalanceDue: f.balanceDue, Chargeable: f.chargeable, ModelKeySet: f.modelKeySet}, nil
 }
 
 func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *fakeSpend) {
@@ -64,7 +65,7 @@ var paidT1 = store.BillingTrust{LifetimePaidCents: 1000}
 // even on Pro, and a paid one gets its plan cap.
 func TestEnvironmentReportsSpendControls(t *testing.T) {
 	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
-	spend.used = 1_234_567
+	spend.used, spend.chargeable = 1_234_567, true
 	got, err := svc.Environment(caller("dev"), "tea-a")
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +73,7 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	if *got.AgentModelMonthlySpendCapUSD != 10 || *got.AgentModelPlanSpendCapUSD != 200 || *got.TrustTier != "T0" ||
 		*got.NextChargeThresholdUSD != 10 || *got.AgentModelSpendMonthToDateUSD != 1.234567 ||
 		*got.AgentModelMaxSpendCapUSD != 2000 || got.AgentModelSpendCapOverrideUSD != nil ||
-		!*got.AgentModelSpendCapTierLimited || *got.TrustTierLocked || *got.BillingBalanceDue {
+		!*got.AgentModelChargesAtThreshold || !*got.AgentModelSpendCapTierLimited || *got.TrustTierLocked || *got.BillingBalanceDue {
 		t.Fatalf("T0 Pro view = %+v", got)
 	}
 	spend.trust = store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6}
@@ -82,12 +83,50 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 		t.Fatalf("T4 Pro view = %+v", got)
 	}
 	// A failed payment: the tier is locked at T0 and model spend is refused
-	// until the invoice is paid (ADR091 D10.1, D10.3).
+	// until the invoice is paid (ADR091 D10.1, D10.3). No mid-cycle charge
+	// will ever be made, so no threshold is projected.
 	spend.trust = store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6, LockedUntil: store.LockedIndefinitely}
 	spend.balanceDue = true
 	got, _ = svc.Environment(caller("dev"), "tea-a")
-	if *got.TrustTier != "T0" || !*got.TrustTierLocked || !*got.BillingBalanceDue {
+	if *got.TrustTier != "T0" || !*got.TrustTierLocked || !*got.BillingBalanceDue || got.NextChargeThresholdUSD != nil {
 		t.Fatalf("locked view = %+v", got)
+	}
+}
+
+// The next charge threshold is projected exactly where the mint would charge
+// the card mid-cycle (ADR091 D10.2a): a payment hold, an unpaid invoice, the
+// workspace's own key, or an unchargeable workspace never sees a charge, so
+// the view carries no threshold for the settings copy to promise.
+func TestEnvironmentOmitsTheChargeThresholdWhereBexCannotCharge(t *testing.T) {
+	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
+	newT0 := store.BillingTrust{}
+	locked := store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6, LockedUntil: store.LockedIndefinitely}
+	for _, tc := range []struct {
+		name        string
+		trust       store.BillingTrust
+		chargeable  bool
+		balanceDue  bool
+		modelKeySet bool
+		want        *float64
+	}{
+		{"chargeable T0", newT0, true, false, false, ptr(10.0)},
+		{"unchargeable T0", newT0, false, false, false, nil},
+		{"locked T0", locked, true, false, false, nil},
+		{"balance due T0", newT0, true, true, false, nil},
+		{"own model key T0", newT0, true, false, true, nil},
+	} {
+		spend.trust, spend.chargeable, spend.balanceDue, spend.modelKeySet = tc.trust, tc.chargeable, tc.balanceDue, tc.modelKeySet
+		got, err := svc.Environment(caller("dev"), "tea-a")
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if (got.NextChargeThresholdUSD == nil) != (tc.want == nil) ||
+			(tc.want != nil && *got.NextChargeThresholdUSD != *tc.want) {
+			t.Errorf("%s: nextChargeThresholdUsd = %v, want %v", tc.name, got.NextChargeThresholdUSD, tc.want)
+		}
+		if got.AgentModelChargesAtThreshold == nil || *got.AgentModelChargesAtThreshold != (tc.want != nil) {
+			t.Errorf("%s: agentModelChargesAtThreshold = %v, want %t", tc.name, got.AgentModelChargesAtThreshold, tc.want != nil)
+		}
 	}
 }
 
@@ -196,7 +235,7 @@ func TestEnvironmentSpendFiguresAreBillingDetails(t *testing.T) {
 	spend.used, spend.credit, spend.balanceDue = 300_000_000, 5_000_000, true
 	figures := []string{
 		"agentModelMonthlySpendCapUsd", "agentModelPlanSpendCapUsd", "agentModelSpendCapOverrideUsd",
-		"agentModelMaxSpendCapUsd", "agentModelSpendMonthToDateUsd", "trustTier", "nextChargeThresholdUsd",
+		"agentModelMaxSpendCapUsd", "agentModelSpendMonthToDateUsd", "trustTier",
 		"agentModelCreditUsd", "agentModelUnbilledUsd", "trustTierLocked", "agentModelSpendCapTierLimited",
 		"agentModelChargesAtThreshold",
 	}
@@ -204,7 +243,8 @@ func TestEnvironmentSpendFiguresAreBillingDetails(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	schema := environmentSchema(t, svc)
-	query := `{ agentEnvironment(ownerId: "tea-a") { ` + strings.Join(append(slices.Clone(figures), verdicts...), " ") + ` } }`
+	// The threshold stays queried so every surface pins its absence below.
+	query := `{ agentEnvironment(ownerId: "tea-a") { ` + strings.Join(append(append(slices.Clone(figures), "nextChargeThresholdUsd"), verdicts...), " ") + ` } }`
 	asMap := func(v any) map[string]any {
 		raw, _ := json.Marshal(v)
 		var out map[string]any
@@ -244,6 +284,11 @@ func TestEnvironmentSpendFiguresAreBillingDetails(t *testing.T) {
 					t.Errorf("%s's %s %s = %v, want true", subject, surface, field, out[field])
 				}
 			}
+			// The failed invoice means no mid-cycle charge will ever be made,
+			// so no surface projects a threshold to promise one.
+			if out["nextChargeThresholdUsd"] != nil {
+				t.Errorf("%s's %s nextChargeThresholdUsd = %v, want nil (balance due)", subject, surface, out["nextChargeThresholdUsd"])
+			}
 		}
 	}
 }
@@ -251,7 +296,10 @@ func TestEnvironmentSpendFiguresAreBillingDetails(t *testing.T) {
 // Only an admin writes the cap; above 10× the plan default it is a typed 400
 // on every surface; an explicit null clears it back to the plan default.
 func TestSpendCapOverrideWrites(t *testing.T) {
-	svc, _ := spendEnvironmentService(store.PlanHobby, paidT1)
+	svc, spend := spendEnvironmentService(store.PlanHobby, paidT1)
+	// A chargeable T1 workspace, so the mutation response carries its $25
+	// mid-cycle threshold below.
+	spend.chargeable = true
 	for _, subject := range []string{"dev", "viewer", "stranger"} {
 		if _, err := svc.UpdateEnvironment(caller(subject), "tea-a", EnvironmentInput{AgentModelMonthlySpendCapUSD: ptr(50.0)}); !errors.Is(err, core.ErrForbidden) {
 			t.Errorf("%s cap write = %v, want forbidden", subject, err)

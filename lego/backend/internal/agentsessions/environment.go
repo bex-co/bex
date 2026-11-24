@@ -141,7 +141,12 @@ type Environment struct {
 	AgentModelSpendMonthToDateUSD *float64 `json:"agentModelSpendMonthToDateUsd"`
 	AgentModelMaxSpendCapUSD      *float64 `json:"agentModelMaxSpendCapUsd"`
 	TrustTier                     *string  `json:"trustTier"`
-	NextChargeThresholdUSD        *float64 `json:"nextChargeThresholdUsd"`
+	// NextChargeThresholdUSD is the spend beyond billing credits that
+	// charges the card mid-cycle (nil at the top tier, which bills at month
+	// end); nil too wherever bex would not charge it — a payment hold, an
+	// unpaid invoice, the workspace's own key, or an unchargeable workspace
+	// — so no reader can promise a charge the mint will never make.
+	NextChargeThresholdUSD *float64 `json:"nextChargeThresholdUsd"`
 	// AgentModelCreditUSD is the billing credit the mint takes off the charge
 	// window's spend (credits pay first, D10.2a; 0 until one is read in the
 	// window), and AgentModelUnbilledUSD the spend a charge would collect now:

@@ -15,6 +15,7 @@ import type { AgentEnvironmentInput } from "@/graphql/definitions";
 import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
 import {
   NEW_WORKSPACE_TIER,
+  TOP_TRUST_TIER,
   parseSpendCap,
   spendPosition,
 } from "@/features/agent-environment/lib/spend";
@@ -124,8 +125,26 @@ export function SpendCapSection({
   const tier = billingDenied ? null : saved.trustTier;
   const next = saved.nextChargeThresholdUsd;
   const credit = saved.agentModelCreditUsd;
+  // The card is charged mid-cycle only where the mint would charge it
+  // (agentModelChargesAtThreshold): a payment hold, an unpaid invoice, the
+  // workspace's own key, or an unchargeable workspace never sees a charge,
+  // so neither the charge line nor the new-workspace note may promise one.
+  // An older API sends no verdict, and the tier name alone still reads.
+  const chargeApplies = saved.agentModelChargesAtThreshold !== false;
+  // When ChargesAtThreshold is false, only a chargeable top-tier (T4)
+  // workspace bills at month end: T0–T3 always carry a threshold unless bex
+  // cannot charge the workspace, and a payment hold, unpaid invoice, or BYO
+  // key never sees a mid-cycle charge even when the tier ceiling doesn't bind
+  // (T1–T3 never set a cap ceiling, and an admin override below $10 unbinds T0).
+  const noMidCycleCharge =
+    !chargeApplies &&
+    ((saved.agentModelSpendCapTierLimited ?? false) ||
+      saved.trustTierLocked === true ||
+      saved.billingBalanceDue === true ||
+      saved.modelKeySet === true ||
+      tier !== TOP_TRUST_TIER);
   const tierLine = tier
-    ? next != null
+    ? next != null && chargeApplies
       ? credit != null && credit > 0
         ? t("agentEnvironment.spendTierNextChargeCredit", {
             tier,
@@ -133,13 +152,15 @@ export function SpendCapSection({
             credit: usd(credit),
           })
         : t("agentEnvironment.spendTierNextCharge", { tier, amount: usd(next) })
-      : t("agentEnvironment.spendTierMonthEnd", { tier })
+      : noMidCycleCharge
+        ? t("agentEnvironment.spendTierNoCharge", { tier })
+        : t("agentEnvironment.spendTierMonthEnd", { tier })
     : null;
   const tierNote = !tier
     ? null
     : saved.trustTierLocked
       ? t("agentEnvironment.spendTierLocked")
-      : tier === NEW_WORKSPACE_TIER && next != null
+      : tier === NEW_WORKSPACE_TIER && next != null && chargeApplies
         ? t("agentEnvironment.spendTierNew", { amount: usd(next) })
         : null;
 

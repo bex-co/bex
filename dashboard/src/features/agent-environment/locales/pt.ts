@@ -323,6 +323,12 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
       "Nível de confiança {tier}: os gastos com o modelo do agente são cobrados no fim do mês.",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message:
+      "Nível de confiança {tier}: os gastos com o modelo do agente não são cobrados em um cartão no meio do ciclo.",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "Workspaces novos são cobrados quando os gastos com o modelo do agente, além de eventuais créditos de faturamento, chegam a {amount}: o cartão é cobrado nesse momento, as sessões continuam em execução assim que a cobrança é concluída, e o limite sobe para o teto do seu plano.",
