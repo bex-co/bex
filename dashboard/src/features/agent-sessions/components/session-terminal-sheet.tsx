@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { SquareTerminal } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Play, SquareTerminal } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   Sheet,
@@ -62,9 +62,15 @@ const CANCELED = new Set(["canceling", "canceled"]);
  * beside it, as Files does (ADR095 D10), full width on a phone. Opening it
  * on a session whose sandbox closed starts the sandbox, which "opening Files
  * or Terminal wakes Devin" also does: the terminal says the sandbox is
- * starting until the gateway opens the shell. The sheet starts closed on
- * every visit and closing it ends the shell; a canceled or archived session
- * says why it has none.
+ * starting until the gateway opens the shell. Closing the sheet ends the
+ * shell; a canceled or archived session says why it has none.
+ *
+ * The page remembers per session whether the sheet was open (w10/060), as
+ * Devin's workspace pane does, and a session never opened starts with it
+ * closed. A sheet the page reopened from that memory (`restored`) opens its
+ * shell at once while the sandbox is up, and asks before it starts one that
+ * closed, as a sleeping Devin's Desktop tab offers "Wake up Devin" instead of
+ * waking it: a page load never starts metered sandbox compute on its own.
  *
  * Its header button shows from 640 px up. Below that the header row has no
  * room for it beside Files, Connect, Stop and Cancel, so the header's "…"
@@ -73,10 +79,13 @@ const CANCELED = new Set(["canceling", "canceled"]);
 export function SessionTerminalSheet({
   session,
   open,
+  restored = false,
   onOpenChange,
 }: {
   session: AgentSessionView;
   open: boolean;
+  /** The page reopened the sheet from an earlier visit; nobody clicked. */
+  restored?: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslations();
@@ -100,16 +109,43 @@ export function SessionTerminalSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-          {open ? <SessionTerminal session={session} /> : null}
+          {open ? (
+            <SessionTerminal session={session} restored={restored} />
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
   );
 }
 
-/** The sheet's body: why there is no Terminal, or the Terminal itself. */
-function SessionTerminal({ session }: { session: AgentSessionView }) {
+/**
+ * Whether opening a shell would start the session's sandbox: an idle session
+ * (completed or failed, not archived) whose sandbox has closed. bex-api's
+ * mint starts exactly these (`terminalSandbox`); every other session's
+ * sandbox is up, already starting, or never coming back.
+ */
+function sandboxClosed(session: AgentSessionView): boolean {
+  return session.isSteerable && !session.sandboxId;
+}
+
+/**
+ * The sheet's body: why there is no Terminal, the question a restored sheet
+ * asks before it starts a closed sandbox, or the Terminal itself.
+ */
+function SessionTerminal({
+  session,
+  restored,
+}: {
+  session: AgentSessionView;
+  restored: boolean;
+}) {
   const { t } = useTranslations();
+  const closed = sandboxClosed(session);
+  // Decided when the sheet opens: a restored sheet holds a closed sandbox's
+  // start until the person asks for it. Once the shell opens it stays, and a
+  // sandbox that came up meanwhile (a turn started) needs no start.
+  const [held, setHeld] = useState(restored && closed);
+  if (held && !closed) setHeld(false);
   const none = CANCELED.has(session.phase)
     ? t("agentSessions.terminalCanceled")
     : session.isArchived
@@ -120,6 +156,19 @@ function SessionTerminal({ session }: { session: AgentSessionView }) {
       <p className="text-muted-foreground py-6 text-sm" role="status">
         {none}
       </p>
+    );
+  }
+  if (held) {
+    return (
+      <div className="flex flex-col items-start gap-3 py-6">
+        <p className="text-muted-foreground text-sm" role="status">
+          {t("agentSessions.terminalSandboxClosed")}
+        </p>
+        <Button size="sm" className="gap-1.5" onClick={() => setHeld(false)}>
+          <Play className="size-4" />
+          {t("agentSessions.terminalStartSandbox")}
+        </Button>
+      </div>
     );
   }
   return <SessionShell sessionId={session.id} />;

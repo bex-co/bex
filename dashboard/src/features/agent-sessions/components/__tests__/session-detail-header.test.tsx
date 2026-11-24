@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
@@ -6,7 +6,13 @@ import type {
   AgentSessionView,
   AgentTemplateOffer,
 } from "@/features/agent-sessions/types";
-import { hydrateAcrossBoundary } from "@/test/hydration";
+import {
+  BROWSER_ENVIRONMENT,
+  hydrateAcrossBoundary,
+  hydrateAcrossEnvironments,
+} from "@/test/hydration";
+import { memoryStorage } from "@/test/mocks/storage";
+import { SESSION_PANES_KEY } from "@/features/agent-sessions/hooks/use-session-pane";
 import {
   agentSessionView,
   repoLessAgentSessionView,
@@ -138,6 +144,29 @@ vi.mock(
     useAgentSessionTerminal: () => ({ createTerminal }),
   }),
 );
+// The Files sheet's table (ADR095 D10) reads its own query; nothing else in
+// the header asks Apollo.
+vi.mock("@apollo/client/react", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@apollo/client/react")>();
+  return {
+    ...real,
+    useQuery: (...args: Parameters<typeof real.useQuery>) => {
+      const [definition] = args[0].definitions;
+      if (
+        definition?.kind !== "OperationDefinition" ||
+        definition.name?.value !== "AgentSessionAttachments"
+      ) {
+        return real.useQuery(...args);
+      }
+      return {
+        data: { agentSessionAttachments: [] },
+        loading: false,
+        error: undefined,
+        fetchMore: vi.fn(),
+      };
+    },
+  };
+});
 vi.mock("@xterm/xterm", () => ({
   Terminal: function Terminal() {
     return {
@@ -1051,5 +1080,157 @@ describe("SessionDetailHeader sandbox (w10/m519)", () => {
       ).toBeVisible();
       await waitFor(() => expect(createTerminal).toHaveBeenCalledTimes(1));
     });
+  });
+});
+
+// w10/060: the page remembers per session, in this browser, which sheet was
+// open, as Devin's workspace pane "remembers per session whether it was
+// open, and a session starts with it closed". At 390 px the Terminal opens
+// from the "…" menu (its header button is hidden below 640 px) and the
+// remembered sheet reopens there all the same.
+describe("SessionDetailHeader open sheet, remembered per session (w10/060)", () => {
+  const WIDTHS = [1280, 390] as const;
+  const closed = () =>
+    view({ id: "ags-closed00000000000000", phase: "completed" });
+  const live = () =>
+    view({
+      id: "ags-live0000000000000000",
+      phase: "running",
+      sandboxId: "sbx-1",
+      isTerminal: false,
+      isFinished: false,
+    });
+  const remember = (id: string, pane: "files" | "terminal") =>
+    localStorage.setItem(SESSION_PANES_KEY, JSON.stringify({ [id]: pane }));
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    capabilities.terminalEnabled = true;
+    createTerminal.mockClear();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    capabilities.terminalEnabled = false;
+  });
+
+  function atWidth(px: number) {
+    vi.stubGlobal("innerWidth", px);
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  async function openTerminalAt(px: number) {
+    if (px >= 640) {
+      await userEvent.click(screen.getByRole("button", { name: "Terminal" }));
+      return;
+    }
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Terminal" }));
+  }
+
+  it.each(WIDTHS)(
+    "starts a session never opened with both sheets closed at %i px",
+    (px) => {
+      atWidth(px);
+      render(<SessionDetailHeader session={closed()} />);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(createTerminal).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(WIDTHS)(
+    "reopens the Terminal a session had open on the next visit at %i px",
+    async (px) => {
+      atWidth(px);
+      const first = render(<SessionDetailHeader session={live()} />);
+      await openTerminalAt(px);
+      await screen.findByRole("dialog", { name: "Terminal" });
+      await waitFor(() => expect(createTerminal).toHaveBeenCalledTimes(1));
+      first.unmount();
+
+      // The next visit: the sheet is open with nobody clicking, and the
+      // sandbox is up, so its shell opens at once.
+      render(<SessionDetailHeader session={live()} />);
+      const sheet = await screen.findByRole("dialog", { name: "Terminal" });
+      expect(sheet.className).toMatch(/\bw-full\b.*\bsm:max-w-3xl\b/);
+      await waitFor(() => expect(createTerminal).toHaveBeenCalledTimes(2));
+    },
+  );
+
+  it.each(WIDTHS)(
+    "reopens Files on the next visit, and forgets it once closed, at %i px",
+    async (px) => {
+      atWidth(px);
+      const first = render(<SessionDetailHeader session={closed()} />);
+      await userEvent.click(screen.getByRole("button", { name: "Files" }));
+      await screen.findByRole("dialog", { name: "Session files" });
+      first.unmount();
+
+      const second = render(<SessionDetailHeader session={closed()} />);
+      expect(
+        await screen.findByRole("dialog", { name: "Session files" }),
+      ).toBeVisible();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      second.unmount();
+
+      render(<SessionDetailHeader session={closed()} />);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(createTerminal).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(WIDTHS)(
+    "asks before a remembered Terminal starts a closed sandbox at %i px",
+    async (px) => {
+      atWidth(px);
+      remember(closed().id, "terminal");
+      render(<SessionDetailHeader session={closed()} />);
+      const sheet = await screen.findByRole("dialog", { name: "Terminal" });
+      expect(
+        within(sheet).getByText(
+          "This session's sandbox has closed. Start it to open a shell.",
+        ),
+      ).toBeVisible();
+      expect(createTerminal).not.toHaveBeenCalled();
+      await userEvent.click(
+        within(sheet).getByRole("button", { name: "Start the sandbox" }),
+      );
+      await waitFor(() => expect(createTerminal).toHaveBeenCalledTimes(1));
+    },
+  );
+
+  it("keeps each session's sheet to itself", async () => {
+    remember(closed().id, "terminal");
+    render(<SessionDetailHeader session={live()} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(createTerminal).not.toHaveBeenCalled();
+  });
+
+  // The server and the hydrating render cannot read storage, so both have
+  // the sheets closed; the remembered one opens right after hydration.
+  it("hydrates with the sheets closed, then reopens the remembered one", async () => {
+    let opened: HTMLElement | null = null;
+    const probe = await hydrateAcrossEnvironments(
+      () => <SessionDetailHeader session={closed()} />,
+      {
+        client: {
+          ...BROWSER_ENVIRONMENT,
+          storage: {
+            [SESSION_PANES_KEY]: JSON.stringify({
+              [closed().id]: "terminal",
+            }),
+          },
+        },
+        inspect: () => {
+          opened = document.querySelector('[role="dialog"]');
+        },
+      },
+    );
+    expect(probe.recovered).toEqual([]);
+    expect(probe.failed).toEqual([]);
+    expect(probe.html).not.toContain('role="dialog"');
+    expect(opened).not.toBeNull();
+    expect(opened!.textContent).toContain("Start the sandbox");
+    expect(createTerminal).not.toHaveBeenCalled();
   });
 });

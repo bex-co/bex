@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
@@ -236,6 +236,89 @@ describe("SessionTerminalSheet", () => {
     expect(screen.getByText("Session ended")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Reconnect" }));
     await waitFor(() => expect(h.createTerminal).toHaveBeenCalledTimes(2));
+  });
+
+  // w10/060: the page reopens a Terminal it remembers from an earlier visit.
+  // A page load never starts a closed sandbox, as a sleeping Devin's pane
+  // offers "Wake up Devin" instead of waking it; a sandbox that is up opens
+  // its shell at once, as Devin's live Terminal tab shows it.
+  describe("reopened from an earlier visit", () => {
+    const closedSandbox = () =>
+      session({ phase: "completed", isSteerable: true, sandboxId: null });
+
+    function Restored({ view }: { view: AgentSessionView }) {
+      const [open, setOpen] = useState(true);
+      return (
+        <SessionTerminalSheet
+          session={view}
+          open={open}
+          restored
+          onOpenChange={setOpen}
+        />
+      );
+    }
+
+    it("asks before it starts a sandbox that closed", async () => {
+      render(<Restored view={closedSandbox()} />);
+      const sheet = await screen.findByRole("dialog", { name: "Terminal" });
+      expect(
+        within(sheet).getByText(
+          "This session's sandbox has closed. Start it to open a shell.",
+        ),
+      ).toBeVisible();
+      expect(h.createTerminal).not.toHaveBeenCalled();
+      expect(FakeWebSocket.instances).toHaveLength(0);
+
+      h.createTerminal.mockResolvedValue({
+        ticket: "tkt-ags",
+        url: "wss://ssh.bex.co/shell",
+        starting: true,
+      });
+      await userEvent.click(
+        within(sheet).getByRole("button", { name: "Start the sandbox" }),
+      );
+      await socket();
+      expect(h.createTerminal).toHaveBeenCalledTimes(1);
+      expect(await screen.findByText("Starting the sandbox…")).toBeVisible();
+    });
+
+    it("opens the shell at once while the sandbox is up", async () => {
+      render(
+        <Restored
+          view={session({
+            phase: "completed",
+            isSteerable: true,
+            sandboxId: "sbx-1",
+          })}
+        />,
+      );
+      await socket();
+      expect(h.createTerminal).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByRole("button", { name: "Start the sandbox" }),
+      ).toBeNull();
+    });
+
+    it("opens the shell once a turn brings the sandbox up meanwhile", async () => {
+      const { rerender } = render(<Restored view={closedSandbox()} />);
+      expect(
+        await screen.findByRole("button", { name: "Start the sandbox" }),
+      ).toBeVisible();
+      rerender(
+        <Restored view={session({ phase: "running", sandboxId: "sbx-2" })} />,
+      );
+      await socket();
+      expect(h.createTerminal).toHaveBeenCalledTimes(1);
+    });
+
+    it("starts a closed sandbox at once when the person opens it", async () => {
+      await openTerminal(closedSandbox());
+      await socket();
+      expect(h.createTerminal).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByRole("button", { name: "Start the sandbox" }),
+      ).toBeNull();
+    });
   });
 
   it.each([

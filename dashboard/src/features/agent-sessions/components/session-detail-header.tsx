@@ -36,6 +36,7 @@ import { CopyButton } from "@/common/components/copy-button";
 import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
 import { SessionTerminalSheet } from "@/features/agent-sessions/components/session-terminal-sheet";
 import { useSessionTerminalOffered } from "@/features/agent-sessions/hooks/use-agent-session-terminal";
+import { useSessionPane } from "@/features/agent-sessions/hooks/use-session-pane";
 import { SessionModelCost } from "@/features/agent-sessions/components/session-model-cost";
 import { shortModel } from "@/features/agent-sessions/lib/models";
 import { namedTemplateLabel } from "@/features/agent-sessions/lib/templates";
@@ -125,7 +126,9 @@ export function SessionDetailHeader({
   // The Terminal's sheet (w10/m615): its header button from 640 px up, the
   // "…" menu below that.
   const terminalOffered = useSessionTerminalOffered(session);
-  const [terminalOpen, setTerminalOpen] = useState(false);
+  // The open sheet, Files or Terminal, remembered per session in this
+  // browser (w10/060).
+  const { pane, restored: paneRestored, setPane } = useSessionPane(session.id);
   const [deleting, setDeleting] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -357,13 +360,18 @@ export function SessionDetailHeader({
 
       <HeaderPrBadge session={session} />
 
-      <SessionFilesButton sessionId={session.id} />
+      <SessionFilesButton
+        sessionId={session.id}
+        open={pane === "files"}
+        onOpenChange={(open) => setPane(open ? "files" : null)}
+      />
 
       {terminalOffered ? (
         <SessionTerminalSheet
           session={session}
-          open={terminalOpen}
-          onOpenChange={setTerminalOpen}
+          open={pane === "terminal"}
+          restored={paneRestored}
+          onOpenChange={(open) => setPane(open ? "terminal" : null)}
         />
       ) : null}
 
@@ -410,7 +418,7 @@ export function SessionDetailHeader({
           {terminalOffered ? (
             <DropdownMenuItem
               className="sm:hidden"
-              onClick={() => setTerminalOpen(true)}
+              onClick={() => setPane("terminal")}
             >
               <SquareTerminal className="size-4" />
               {t("agentSessions.terminalButton")}

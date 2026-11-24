@@ -2136,6 +2136,16 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
+  "agentSessions.terminalSandboxClosed": {
+    message: "此会话的沙盒已关闭。启动沙盒即可打开 shell。",
+    description:
+      "Terminal sheet the page reopened from an earlier visit, on a session whose sandbox has closed: nothing starts until the button below is pressed (w10/060)",
+  },
+  "agentSessions.terminalStartSandbox": {
+    message: "启动沙盒",
+    description:
+      "Button in a reopened Terminal sheet that starts the session's closed sandbox and opens the shell (w10/060)",
+  },
 };
 
 export default zhAgentSessions;

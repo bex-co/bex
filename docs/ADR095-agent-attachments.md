@@ -250,7 +250,7 @@ Each file uploads immediately (D2) and shows as a chip above the input with name
 - **User turns** render their `data-user-prompt.attachments`. Images show as thumbnails through the presigned URL (D7) and open a lightbox. Other files show as cards (icon, name, size) that download.
 - **Agent turns.** A `share_file` tool part renders as a file card ("Shared report.csv · 12 KB") instead of a generic tool row.
 
-**Files panel.** The session detail page gains a **Files** tab listing inputs and outputs, newest first, with direction, turn, size and download (`GET …/attachments`).
+**Files panel.** The session detail page gains a **Files** tab listing inputs and outputs, newest first, with direction, turn, size and download (`GET …/attachments`). It shipped as a sheet opened from the session header. Since w10/060 the page remembers per session, in the browser, whether that sheet was open, and reopens it on the next visit ([ADR054 D10](ADR054-open-in-zed.md)).
 
 **Skeletons.** The Files tab's pending state follows the repo rule: a structural preview of the same table geometry at desktop and narrow mobile (AGENTS.md, `dashboard/AGENTS.md`).
 

@@ -2254,6 +2254,16 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
+  "agentSessions.terminalSandboxClosed": {
+    message: "This session's sandbox has closed. Start it to open a shell.",
+    description:
+      "Terminal sheet the page reopened from an earlier visit, on a session whose sandbox has closed: nothing starts until the button below is pressed (w10/060)",
+  },
+  "agentSessions.terminalStartSandbox": {
+    message: "Start the sandbox",
+    description:
+      "Button in a reopened Terminal sheet that starts the session's closed sandbox and opens the shell (w10/060)",
+  },
 };
 
 export default enAgentSessions;

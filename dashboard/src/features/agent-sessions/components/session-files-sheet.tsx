@@ -38,12 +38,21 @@ const SKELETON_ROWS = 6;
  * every file the agent shared, oldest first, each downloadable through a fresh
  * presigned URL. Opened from the session header — the detail page is one
  * full-page conversation, so the list lives in a sheet rather than a tab.
+ * The header holds whether it is open (`open`, `onOpenChange`), which the page
+ * remembers per session in this browser (w10/060).
  */
-export function SessionFilesButton({ sessionId }: { sessionId: string }) {
+export function SessionFilesButton({
+  sessionId,
+  open,
+  onOpenChange,
+}: {
+  sessionId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useTranslations();
-  const [open, setOpen] = useState(false);
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
         <Button
           variant="outline"
