@@ -235,9 +235,15 @@ func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 	view.BillingBalanceDue = &balanceDue
 	view.AgentModelSpendCapReached = &reached
 	view.AgentModelChargesAtThreshold = &charges
-	if t := status.Tier.ChargeThresholdUSD; t != nil {
-		threshold := *t
-		view.NextChargeThresholdUSD = &threshold
+	// The threshold is the spend that charges the card mid-cycle, so it is
+	// only projected where bex would actually charge it: a payment hold, an
+	// unpaid invoice, the workspace's own key, or an unchargeable workspace
+	// never sees a charge, and the settings copy must not promise one.
+	if charges {
+		if t := status.Tier.ChargeThresholdUSD; t != nil {
+			threshold := *t
+			view.NextChargeThresholdUSD = &threshold
+		}
 	}
 	return view
 }

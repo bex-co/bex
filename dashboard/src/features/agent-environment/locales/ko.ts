@@ -308,6 +308,12 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     message: "신뢰 등급 {tier}: 에이전트 모델 지출은 월말에 청구됩니다.",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message:
+      "신뢰 등급 {tier}: 에이전트 모델 지출은 월 중간에 카드로 청구되지 않습니다.",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "새 워크스페이스는 결제 크레딧을 제외한 에이전트 모델 지출이 {amount}에 도달하면 청구됩니다. 도달하는 즉시 카드가 청구되고, 결제에 성공하면 세션이 계속 실행되며 한도는 요금제의 상한까지 올라갑니다.",

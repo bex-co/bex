@@ -323,6 +323,12 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
       "Vertrauensstufe {tier}: Die Ausgaben für Agent-Modelle werden zum Monatsende abgerechnet.",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message:
+      "Vertrauensstufe {tier}: Für Ausgaben für Agent-Modelle erfolgt keine untermonatliche Kartenbelastung.",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "Neue Workspaces werden belastet, sobald die Ausgaben für Agent-Modelle über etwaiges Abrechnungsguthaben hinaus {amount} erreichen: Die Karte wird sofort belastet, Sitzungen laufen nach erfolgreicher Zahlung weiter, und das Limit steigt auf die Obergrenze deines Tarifs.",

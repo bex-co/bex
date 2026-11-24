@@ -310,6 +310,12 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Trust tier {tier}: agent model spend is charged at month end.",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message:
+      "Trust tier {tier}: agent model spend is not charged to a card mid-cycle.",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "New workspaces are charged when agent model spend beyond any billing credits reaches {amount}: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",

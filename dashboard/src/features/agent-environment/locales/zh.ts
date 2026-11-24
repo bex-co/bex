@@ -303,6 +303,11 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "信任等级 {tier}：智能体模型支出在月底结算。",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message: "信任等级 {tier}：智能体模型支出不会在周期中途从卡中扣款。",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "新工作区的智能体模型支出先用 billing credits 抵扣，超出部分达到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",

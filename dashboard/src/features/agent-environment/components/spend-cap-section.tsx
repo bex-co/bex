@@ -124,8 +124,18 @@ export function SpendCapSection({
   const tier = billingDenied ? null : saved.trustTier;
   const next = saved.nextChargeThresholdUsd;
   const credit = saved.agentModelCreditUsd;
+  // The card is charged mid-cycle only where the mint would charge it
+  // (agentModelChargesAtThreshold): a payment hold, an unpaid invoice, the
+  // workspace's own key, or an unchargeable workspace never sees a charge,
+  // so neither the charge line nor the new-workspace note may promise one.
+  // An older API sends no verdict, and the tier name alone still reads.
+  const chargeApplies = saved.agentModelChargesAtThreshold !== false;
+  // No mid-cycle charge while the tier's ceiling binds: the threshold is
+  // absent (or stale), and month-end copy would promise a charge too.
+  const noMidCycleCharge =
+    !chargeApplies && (saved.agentModelSpendCapTierLimited ?? false);
   const tierLine = tier
-    ? next != null
+    ? next != null && chargeApplies
       ? credit != null && credit > 0
         ? t("agentEnvironment.spendTierNextChargeCredit", {
             tier,
@@ -133,13 +143,15 @@ export function SpendCapSection({
             credit: usd(credit),
           })
         : t("agentEnvironment.spendTierNextCharge", { tier, amount: usd(next) })
-      : t("agentEnvironment.spendTierMonthEnd", { tier })
+      : noMidCycleCharge
+        ? t("agentEnvironment.spendTierNoCharge", { tier })
+        : t("agentEnvironment.spendTierMonthEnd", { tier })
     : null;
   const tierNote = !tier
     ? null
     : saved.trustTierLocked
       ? t("agentEnvironment.spendTierLocked")
-      : tier === NEW_WORKSPACE_TIER && next != null
+      : tier === NEW_WORKSPACE_TIER && next != null && chargeApplies
         ? t("agentEnvironment.spendTierNew", { amount: usd(next) })
         : null;
 

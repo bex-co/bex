@@ -324,6 +324,12 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
       "Уровень доверия {tier}: расходы на модель агентов списываются в конце месяца.",
     description: "Top trust tier, charged only at month end",
   },
+  "agentEnvironment.spendTierNoCharge": {
+    message:
+      "Уровень доверия {tier}: расходы на модель агентов не списываются с карты в середине цикла.",
+    description:
+      "Trust tier with no mid-cycle card charge: a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace (ADR091 D10.2a)",
+  },
   "agentEnvironment.spendTierNew": {
     message:
       "Для новых рабочих пространств плата списывается, когда расходы на модель агентов сверх кредитов на оплату достигают {amount}: с карты списывается сумма сразу, сессии продолжают работать после успешного списания, а лимит повышается до предела вашего тарифа.",
