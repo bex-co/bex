@@ -1,6 +1,6 @@
 # w22 · m603 — A sandbox group moves between project environments through Render's environment-resources route, as CLI v2.38.0 and SDK v1.10.0 do
 
-**Worker:** worker22 **Goal:** the calls Render's own clients added on 2026-11-20 to put a sandbox group in a project environment, move it to another one or take it out work unchanged against bex: `POST /v1/environments/{id}/resources` and `DELETE /v1/environments/{id}/resources?resourceIds=` accept an `sbg-` id, a protected environment needs an Admin on either side of the move, and REST, GraphQL, MCP and the dashboard agree. **Status:** blocked (t001–t009 done; t010 waits for the production walk)
+**Worker:** worker22 **Goal:** the calls Render's own clients added on 2026-11-20 to put a sandbox group in a project environment, move it to another one or take it out work unchanged against bex: `POST /v1/environments/{id}/resources` and `DELETE /v1/environments/{id}/resources?resourceIds=` accept an `sbg-` id, a protected environment needs an Admin on either side of the move, and REST, GraphQL, MCP and the dashboard agree. **Status:** done
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Render parity — **DONE** | 20m | t003, t004, t005 |
 | t008 | Simplify — **DONE** | 20m | t007             |
 | t009 | Test coverage — **DONE** | 30m | t007             |
-| t010 | Closeout                                                                                                                                              | 10m | t006, t008, t009 |
+| t010 | Closeout — **DONE** | 10m | t006, t008, t009 |
 
 ## Definition of done
 
@@ -110,3 +110,19 @@ Every task except t010 is done and shipped. The routes are in `4248da08fc` and t
 4. **Dashboard:** on the project page, the group appears in its environment's card, moves with bulk Move, and leaves with Manage resources, at desktop and 390 px.
 
 Record the runs here. Then close: move t010 to `done/`, and this directory to `w22/done/m603/`.
+
+## Unblocked (2026-11-24)
+
+**Finding (verified evidence, loopx worker22):** the gate cleared by itself. The newest pin on `origin/main`, `d9dd27d687` (`chore(deploy): pin platform images to ff5de0a130e6`, 2026-11-24 06:28 UTC), carries `b8b8da8e29` (the dashboard) and `4248da08fc` (the routes): `git merge-base --is-ancestor` succeeds for both against `ff5de0a130e6`. No decision was needed and none was made. Next: t010 runs the four walks of § Parked in `bex-canary` and records them here, then closes the milestone.
+
+## Closed (2026-11-24)
+
+**t010: the production walk** ran from 07:59 to 08:07 UTC against `https://api.bex.co` and `https://dashboard.bex.co`, with main's pin at `ff5de0a130e6`. It ran as the QA user in `bex-canary`, with a human OAuth token from a headless device login of released `bex` v0.9.0 (qa-find-bugs § Approving a CLI device login without a browser). The run created a project with two environments, A and B, and one group `qa-20261124-099dbd-g` (disposable), and deleted all of them at the end.
+
+- **REST (`curl`):** `POST /v1/environments/A/resources` with the `sbg-` id answered 201 and the group read A; the same to B answered 201 and it read B; `DELETE …/B/resources?resourceIds=<sbg>` answered 204 and it read `null`. An unknown `sbg-` id answered 404 "sandbox group not found" on an add and on a removal, and `[<group>, <unknown sbg->]` answered 404 and left the group where it was. With A protected, the QA user (an Admin) moved the group into A and then out of it to B, 201 both times.
+- **SDK v1.10.0, unmodified:** TypeScript `@renderinc/sdk@1.10.0` on Node 24 and Python `render-sdk==1.10.0` on Python 3.12 each called `setGroupEnvironment(g, A)`, `(g, B)` and `(g, null)`. Both the returned group and `getGroup` read A, B and `null`. Python's `RenderAsync` did the same for B and `null`. An unknown group raised `ClientError` with status 404 in both.
+- **CLI v2.38.0,** built from `render-oss/cli` `09b7802aa379` with `RENDER_HOST=https://api.bex.co/v1/`: `sandbox-groups environment set <group> <A's evm- id>` and `set <group> <B's name>` exited 0 and the group read A, then B. `environment remove <group>` exited 0 and it read `null`; a second `remove` of a group in no environment also exited 0. `set` on an unknown group exited 1 with "received response code 404: sandbox group not found".
+- **Dashboard:** at 1280 px and at 390 px, the project page listed the group in A's card as a "Sandbox Group" row, Ready, in Frankfurt. Bulk Move put it in B, and A's card then showed 0 resources. Manage resources on B, under its Sandbox Groups tab, showed the group checked; unchecking it and saving took it out, and REST read `null`. No other member of either environment changed. With the GraphQL responses held back for 4 s, the pending skeleton matched the ready page at both widths: the same header, environment picker, actions, five filter pills, search, Move bar and table positions. The skeleton previews three table rows where the ready page had one.
+- **Not walked live:** a non-Admin's 403 (the run has one identity), a group from another workspace, and MCP. They are covered by `TestMovingASandboxGroupIntoOrOutOfAProtectedEnvironmentNeedsAnAdmin`, the environments refusal tests and `TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP`. The dashboard's moves go through GraphQL's `setSandboxGroupEnvironment`.
+- **Cleanup:** afterwards `bex-canary` held only its `Default` group and no project, and both environments answered 404. The device token was logged out and answers 401, and this run's Kratos sessions were logged out. Screenshots stay local, outside the repository.
+- **The dev-N substitute:** the DoD's `dev-N` runs were replaced by these production runs, as § Parked recorded (the local CAPD cluster was unreachable on 2026-11-23).
