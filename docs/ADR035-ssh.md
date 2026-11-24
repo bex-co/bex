@@ -158,7 +158,7 @@ Native SSH reaches the gateway through Traefik's `ssh` entrypoint, and every cha
 
 `scripts/edge-ssh-drain-validate.sh` keeps all four over the rendered releases (run by `scripts/gitops-validate.sh`; `scripts/edge-ssh-drain-validate.test.sh` proves each failure).
 
-A roll can leave a draining pod's node without a Ready edge pod. The load balancer's `:22` health check then marks that node unhealthy, and Hetzner does not document whether an established connection to an unhealthy target survives. w6/164's production check holds sessions through a roll and records the answer here.
+A roll leaves a draining pod's node without a Ready edge pod: the second new pod starts beside the first draining one, so the second draining pod's node has none. The load balancer's `:22` health check then marks that node unhealthy (with `:80` and `:443`). Hetzner does not document what happens to an established connection to an unhealthy target, so w6/164 checked it on production on 2026-11-24. The load balancer sends that node no new connection but keeps the ones it already carries. Two sessions were held on each old pod through a `rollout restart`. The two on the pod whose node stayed unhealthy for its whole drain ticked every 10 s for the hour, like the two beside a new pod. Each session ended 3600 s after its own pod's `SIGTERM`. So the edge needs no Ready pod on every draining node.
 
 Render parity: Render's hour covers the "underlying infrastructure that enables SSH connections" ([render.com/docs/ssh § Automatic session closure](https://render.com/docs/ssh), read 2026-11-21). The edge's `:22` hop is part of that infrastructure, so its roll gives open sessions the same hour as a gateway release.
 
