@@ -84,10 +84,23 @@ type SessionStore interface {
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 }
 
+// SSHLoginStore reads whether a person's SSH login into a session is open:
+// the ssh_sessions rows the gateway writes, read as the idle close reads
+// them (ADR054 D6). *store.PGStore satisfies it.
+type SSHLoginStore interface {
+	AgentSessionSSHActivity(ctx context.Context, resourceID string, freshSince time.Time) (hasFreshOpen bool, lastEnded *time.Time, err error)
+}
+
+// SSHLoginCap is how long an SSH login into a session sandbox can last: the
+// gateway's session cap (BEX_SSH_SESSION_TIMEOUT's default). An open
+// ssh_sessions row older than that is one a crashed gateway replica never
+// closed, so neither the idle close nor the Git mint counts it.
+const SSHLoginCap = 4 * time.Hour
+
 // credentialMintPhases is deliberately a fail-closed allowlist shared by the
 // Git and model minters. A terminal row's old pod can still exist (idle grace,
 // failed teardown); a denylist would make every future phase
-// credential-eligible by default. The one exception is editorGitCaller's.
+// credential-eligible by default. The one exception is finishedGitCaller's.
 var credentialMintPhases = map[string]bool{
 	"creating": true, "running": true, "resuming": true, "redispatching": true,
 }
@@ -105,14 +118,27 @@ func CurrentSandboxCaller(session store.AgentSession, workspace, podName, podUID
 	return credentialMintPhases[session.Phase] && boundPod(session.WorkspaceID, session.SandboxID, workspace, podName, podUID)
 }
 
-// editorGitCaller admits the Git mint, and only it, to the sandbox resume
-// started or kept for a person's editor once the session is finished again
-// (w6/168, ADR054 D8): no agent runs there, and a person with a shell in it
-// pushes as from a Devin machine's terminal. A finished turn's own sandbox,
-// an archived session and every other verb stay on the live-phase allowlist.
-func editorGitCaller(session store.AgentSession, workspace, podName, podUID string) bool {
-	return (session.Phase == "completed" || session.Phase == "failed") && session.ArchivedAt == nil &&
-		session.EditorSandbox() && boundPod(session.WorkspaceID, session.SandboxID, workspace, podName, podUID)
+// finishedGitCaller admits the Git mint, and only it, to a finished,
+// unarchived session's sandbox where a person may be at its terminal (ADR054
+// D8 § Pushing from it), as a Devin machine's terminal pushes whenever the
+// machine is awake: the sandbox resume started or kept for an editor
+// (w6/168), or the sandbox a person's SSH login into the session holds open,
+// a finished turn's own in its idle window included (w6/175). With neither,
+// a finished turn's sandbox is refused, and every other verb stays on the
+// live-phase allowlist.
+func (m *Minter) finishedGitCaller(ctx context.Context, session store.AgentSession, req MintRequest) (bool, error) {
+	if (session.Phase != "completed" && session.Phase != "failed") || session.ArchivedAt != nil ||
+		!boundPod(session.WorkspaceID, session.SandboxID, req.Workspace, req.PodName, req.PodUID) {
+		return false, nil
+	}
+	if session.EditorSandbox() {
+		return true, nil
+	}
+	if m.Logins == nil {
+		return false, nil
+	}
+	open, _, err := m.Logins.AgentSessionSSHActivity(ctx, session.ID, m.now().Add(-SSHLoginCap))
+	return open, err
 }
 
 // boundPod reports whether the gateway-resolved Pod is the sandbox a durable
@@ -139,8 +165,11 @@ type Minter struct {
 	// session's tree (w10/m561); nil reads every automation as binding
 	// nothing.
 	Automations AutomationStore
-	Audit       core.AuditSink
-	Now         func() time.Time
+	// Logins admits the Git mint to a finished turn's sandbox while a
+	// person's SSH login into the session is open (w6/175); nil admits none.
+	Logins SSHLoginStore
+	Audit  core.AuditSink
+	Now    func() time.Time
 }
 
 func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
@@ -242,7 +271,7 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (resp
 	// a retained or compromised pod mint a fresh one-hour contents:write token
 	// after the task was completed, failed, or canceled. Fail closed unless the
 	// durable record is still active, in this workspace, and holds a live sandbox,
-	// or the Git mint's caller is a finished session's editor sandbox.
+	// or the Git mint's caller is a finished session's sandbox a person may be at.
 	if m.Sessions == nil {
 		return MintResponse{}, fmt.Errorf("agent credentials unavailable")
 	}
@@ -253,8 +282,12 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (resp
 		}
 		return MintResponse{}, sessErr
 	}
-	admitted := CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) ||
-		(kind == mintGit && editorGitCaller(session, req.Workspace, req.PodName, req.PodUID))
+	admitted := CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID)
+	if !admitted && kind == mintGit {
+		if admitted, err = m.finishedGitCaller(ctx, session, req); err != nil {
+			return MintResponse{}, err
+		}
+	}
 	if !admitted {
 		return MintResponse{}, ErrForbidden
 	}

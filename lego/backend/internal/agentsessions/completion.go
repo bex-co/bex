@@ -489,7 +489,8 @@ func (c *Completer) transcriptQuota() int64 {
 
 // defaultSSHGraceTTL mirrors the gateway's default BEX_SSH_SESSION_TIMEOUT so a
 // deferred sandbox can outlive one full-length editor session but no longer.
-const defaultSSHGraceTTL = 4 * time.Hour
+// The Git mint counts an open login the same way.
+const defaultSSHGraceTTL = agentsession.SSHLoginCap
 
 func (c *Completer) sshGraceTTL() time.Duration {
 	if c.SSHGraceTTL > 0 {

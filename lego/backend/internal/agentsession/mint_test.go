@@ -447,6 +447,107 @@ func TestMinterAdmitsGitOnlyToAFinishedSessionsEditorSandbox(t *testing.T) {
 	}
 }
 
+// fakeLogins answers whether a person's SSH login into a session is open,
+// and records what it was asked.
+type fakeLogins struct {
+	open       bool
+	err        error
+	calls      int
+	session    string
+	freshSince time.Time
+}
+
+func (f *fakeLogins) AgentSessionSSHActivity(_ context.Context, id string, freshSince time.Time) (bool, *time.Time, error) {
+	f.calls++
+	f.session, f.freshSince = id, freshSince
+	return f.open, nil, f.err
+}
+
+// w6/175: a finished turn's own sandbox pushes the session branch while a
+// person's SSH login into the session is open, as a Devin machine's terminal
+// pushes whenever the machine is awake. With no open login, on the gh
+// route's mints, for an archived, canceled or foreign session, another Pod
+// or another branch, it is refused as before, and a login read that fails
+// mints nothing.
+func TestMinterAdmitsGitToAFinishedTurnsSandboxWhileAnSSHLoginIsOpen(t *testing.T) {
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	turn := func(phase string) store.AgentSession {
+		return store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: phase}
+	}
+	minter := func(session store.AgentSession, logins *fakeLogins) (*Minter, *fakeSessionGitHub, *auditRecorder) {
+		gh, audit := &fakeSessionGitHub{}, &auditRecorder{}
+		m := &Minter{
+			GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}},
+			Sessions: fakeSessions{session: session}, Environments: noEnvironment, Audit: audit, Now: func() time.Time { return now },
+		}
+		if logins != nil {
+			m.Logins = logins
+		}
+		return m, gh, audit
+	}
+	for _, phase := range []string{"completed", "failed"} {
+		logins := &fakeLogins{open: true}
+		m, gh, audit := minter(turn(phase), logins)
+		got, err := m.Mint(context.Background(), validMintRequest())
+		if err != nil || got.Token != "ghs_scoped" || gh.calls != 1 || gh.repository != "repo" {
+			t.Fatalf("%s turn's sandbox with a login open: response=%+v err=%v fake=%+v", phase, got, err, gh)
+		}
+		if logins.session != "ags-one" || !logins.freshSince.Equal(now.Add(-SSHLoginCap)) {
+			t.Fatalf("%s: the login read asked for %q since %s, want ags-one since %s", phase, logins.session, logins.freshSince, now.Add(-SSHLoginCap))
+		}
+		if len(audit.events) != 1 || audit.events[0].Outcome != core.AuditAllowed || audit.events[0].Verb != AuditVerbMintCredential {
+			t.Fatalf("%s audit = %+v", phase, audit.events)
+		}
+		for _, kind := range githubAPIMints {
+			logins := &fakeLogins{open: true}
+			m, gh, _ := minter(turn(phase), logins)
+			if _, err := kind.mint(m, context.Background(), validMintRequest()); !errors.Is(err, ErrForbidden) || gh.apiCalls+gh.apiWriteCalls != 0 || logins.calls != 0 {
+				t.Fatalf("%s turn's sandbox with a login open, gh %s: err=%v fake=%+v logins=%+v", phase, kind.name, err, gh, logins)
+			}
+		}
+	}
+
+	// A turn that runs mints as always, without reading logins.
+	logins := &fakeLogins{}
+	m, _, _ := minter(turn("running"), logins)
+	if _, err := m.Mint(context.Background(), validMintRequest()); err != nil || logins.calls != 0 {
+		t.Fatalf("running turn: err=%v login reads=%d", err, logins.calls)
+	}
+
+	archived := turn("completed")
+	archived.ArchivedAt = new(now)
+	for name, c := range map[string]struct {
+		session store.AgentSession
+		logins  *fakeLogins
+		req     func(*MintRequest)
+	}{
+		"no login open":         {turn("completed"), &fakeLogins{}, nil},
+		"logins unwired":        {turn("completed"), nil, nil},
+		"archived":              {archived, &fakeLogins{open: true}, nil},
+		"canceling":             {turn("canceling"), &fakeLogins{open: true}, nil},
+		"canceled":              {turn("canceled"), &fakeLogins{open: true}, nil},
+		"unknown phase":         {turn("future-phase"), &fakeLogins{open: true}, nil},
+		"the sandbox ended":     {store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", Phase: "completed"}, &fakeLogins{open: true}, nil},
+		"foreign workspace":     {func() store.AgentSession { s := turn("completed"); s.WorkspaceID = "tea-b"; return s }(), &fakeLogins{open: true}, nil},
+		"another Pod":           {turn("completed"), &fakeLogins{open: true}, func(r *MintRequest) { r.PodName = "sbx-9-0" }},
+		"no Pod UID":            {turn("completed"), &fakeLogins{open: true}, func(r *MintRequest) { r.PodUID = "" }},
+		"another branch":        {turn("completed"), &fakeLogins{open: true}, func(r *MintRequest) { r.Branch = "main" }},
+		"the login read failed": {turn("completed"), &fakeLogins{open: true, err: errors.New("database unavailable")}, nil},
+	} {
+		m, gh, audit := minter(c.session, c.logins)
+		req := validMintRequest()
+		if c.req != nil {
+			c.req(&req)
+		}
+		if _, err := m.Mint(context.Background(), req); err == nil || gh.calls != 0 {
+			t.Fatalf("%s: err=%v fake=%+v", name, err, gh)
+		}
+		if len(audit.events) != 1 || audit.events[0].Outcome != core.AuditDenied {
+			t.Fatalf("%s audit = %+v", name, audit.events)
+		}
+	}
+}
+
 func TestMinterAuditsMalformedRepositoryWithoutRawInput(t *testing.T) {
 	gh := &fakeSessionGitHub{}
 	audit := &auditRecorder{}
