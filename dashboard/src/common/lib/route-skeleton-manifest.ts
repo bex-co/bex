@@ -125,6 +125,42 @@ export const ROUTE_SKELETON_MANIFEST = {
       "link-services",
     ],
   },
+  "/build-sources/$buildSourceId": {
+    kind: "render",
+    owner: "routes/build-sources_.$buildSourceId.tsx",
+    shape: "build-source-detail",
+    regions: ["page-header", "detail-tabs", "builds-list"],
+  },
+  "/build-sources/$buildSourceId/": {
+    kind: "render",
+    owner: "routes/build-sources_.$buildSourceId.index.tsx",
+    shape: "build-source-builds",
+    regions: ["builds-list"],
+  },
+  "/build-sources/$buildSourceId/builds/$buildId": {
+    kind: "render",
+    owner: "routes/build-sources_.$buildSourceId.builds.$buildId.tsx",
+    shape: "build-source-build-detail",
+    regions: ["build-header", "build-fanout", "build-logs"],
+  },
+  "/build-sources/$buildSourceId/services": {
+    kind: "render",
+    owner: "routes/build-sources_.$buildSourceId.services.tsx",
+    shape: "build-source-services",
+    regions: ["linked-services"],
+  },
+  "/build-sources/$buildSourceId/environment": {
+    kind: "render",
+    owner: "routes/build-sources_.$buildSourceId.environment.tsx",
+    shape: "build-source-environment",
+    regions: ["build-environment"],
+  },
+  "/build-sources/$buildSourceId/settings": {
+    kind: "render",
+    owner: "routes/build-sources_.$buildSourceId.settings.tsx",
+    shape: "build-source-settings",
+    regions: ["build-settings"],
+  },
   "/env-groups": {
     kind: "render",
     owner: "routes/env-groups.tsx",

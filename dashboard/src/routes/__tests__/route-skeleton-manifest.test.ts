@@ -25,15 +25,10 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 110: + /build-sources and /build-sources/new (w2/m613). 108 before them:
-    // the create pages at Render's URLs (/web/new, /pserv/new, /worker/new,
-    // /cron/new, /blueprint/new; /static/new and /new/redis turned from
-    // redirects into pages). 103 before them: + /sandbox-groups and
-    // /sandbox-groups/$sandboxGroupId (w2/m533); before them 101: + a
-    // project's Service Metrics view (w3/m508); before it 100: + a project's
-    // Application Logs and Request Logs views (w3/m505); before them 98: + a
-    // service's Compute page (w6/m483)
-    expect(classified).toHaveLength(110);
+    // 116: + /build-sources/$buildSourceId detail layout, Builds index,
+    // Build Detail, Services, Environment, and Settings routes (w2/m614).
+    // 110 before them: + /build-sources and /build-sources/new (w2/m613).
+    expect(classified).toHaveLength(116);
   });
 
   it("points every classification at a real route owner", () => {

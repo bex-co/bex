@@ -314,6 +314,454 @@ const esBuildSources: Record<string, TranslationEntry> = {
     message: "Aún no hay fuentes de compilación asociadas a este proyecto.",
     description: "Empty state text inside Project Overview Build Sources section",
   },
+  "buildSources.viewBuildSource": {
+    message: "Abrir fuente de compilación",
+    description: "Button navigating to a newly created Build Source detail page",
+  },
+  "buildSources.detailTabsLabel": {
+    message: "Secciones de la fuente de compilación",
+    description: "Accessible label for the Build Source detail tab navigation",
+  },
+  "buildSources.tabBuilds": {
+    message: "Compilaciones",
+    description: "Tab label for Build Source build history",
+  },
+  "buildSources.tabServices": {
+    message: "Servicios",
+    description: "Tab label for Build Source linked services",
+  },
+  "buildSources.tabEnvironment": {
+    message: "Entorno",
+    description: "Tab label for Build Source build-time environment",
+  },
+  "buildSources.tabSettings": {
+    message: "Configuración",
+    description: "Tab label for Build Source settings and danger zone",
+  },
+  "buildSources.triggerBuildButton": {
+    message: "Iniciar compilación",
+    description: "Primary CTA to trigger a new build on a Git build source",
+  },
+  "buildSources.triggerSubmitting": {
+    message: "Iniciando…",
+    description: "Submit button label while triggerBuild mutation is in flight",
+  },
+  "buildSources.triggerDialogTitle": {
+    message: "Iniciar compilación",
+    description: "Title of the Trigger Build modal dialog",
+  },
+  "buildSources.triggerDialogDescription": {
+    message: 'Inicia una nueva compilación para "{name}" y elige qué servicios vinculados desplegarán el resultado.',
+    description: "Description of the Trigger Build modal dialog",
+  },
+  "buildSources.triggerScopeLegend": {
+    message: "Desplegar tras completar la compilación",
+    description: "Legend for the deploy.serviceScope radio group",
+  },
+  "buildSources.triggerScopeAutoDeploy": {
+    message: "Desplegar automáticamente los servicios vinculados",
+    description: "Radio option for deploy.serviceScope=autodeploy_only",
+  },
+  "buildSources.triggerScopeAutoDeployHint": {
+    message: "Despliega todos los servicios vinculados con despliegue automático activado.",
+    description: "Hint text for deploy.serviceScope=autodeploy_only",
+  },
+  "buildSources.triggerScopeNone": {
+    message: "Solo compilar (sin desplegar)",
+    description: "Radio option for deploy.serviceScope=none",
+  },
+  "buildSources.triggerScopeNoneHint": {
+    message: "Genera el artefacto de compilación sin desplegar ningún servicio vinculado.",
+    description: "Hint text for deploy.serviceScope=none",
+  },
+  "buildSources.triggerScopeCustom": {
+    message: "Servicios seleccionados",
+    description: "Radio option for deploy.serviceScope=custom",
+  },
+  "buildSources.triggerScopeCustomHint": {
+    message: "Elige qué servicios vinculados desplegar cuando finalice la compilación.",
+    description: "Hint text for deploy.serviceScope=custom",
+  },
+  "buildSources.triggerScopeCustomNoServices": {
+    message: "Todavía no hay servicios vinculados a esta fuente de compilación.",
+    description: "Message inside custom deploy scope when serviceLinks is empty",
+  },
+  "buildSources.triggerScopeCustomSelectOne": {
+    message: "Selecciona al menos un servicio para desplegar.",
+    description: "Validation hint when custom scope has zero checked services",
+  },
+  "buildSources.triggerClearCache": {
+    message: "Limpiar caché de compilación",
+    description: "Checkbox label for clearCache=clear",
+  },
+  "buildSources.triggerClearCacheHint": {
+    message: "Compila desde cero sin reutilizar capas en caché.",
+    description: "Hint text for clearCache checkbox",
+  },
+  "buildSources.triggerResultTitle": {
+    message: "Compilación iniciada",
+    description: "Confirmation heading in Trigger Build dialog after success",
+  },
+  "buildSources.triggerResultDescription": {
+    message: "La compilación {id} se ha puesto en cola.",
+    description: "Confirmation summary naming the new bld- ID",
+  },
+  "buildSources.triggerResultDeploysTitle_one": {
+    message: "{count} despliegue de servicio en cola",
+    description: "Singular heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultDeploysTitle_many": {
+    message: "{count} de despliegues de servicio en cola",
+    description: "Many heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultDeploysTitle_other": {
+    message: "{count} despliegues de servicio en cola",
+    description: "Plural heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultNoDeploys": {
+    message: "No se puso en cola ningún despliegue de servicio para esta compilación.",
+    description: "Message when triggerBuild returned an empty deploys array",
+  },
+  "buildSources.triggerResultSkippedTitle_one": {
+    message: "{count} servicio vinculado omitido",
+    description: "Singular alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultSkippedTitle_many": {
+    message: "{count} de servicios vinculados omitidos",
+    description: "Many alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultSkippedTitle_other": {
+    message: "{count} servicios vinculados omitidos",
+    description: "Plural alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultViewLogs": {
+    message: "Ver registros de compilación",
+    description: "Primary action navigating from Trigger Build confirmation to Build Detail",
+  },
+  "buildSources.skippedReasonSuspended": {
+    message: "Suspendido",
+    description: "Badge label when a service was skipped because it is suspended",
+  },
+  "buildSources.buildStatusSucceeded": {
+    message: "Completada",
+    description: "Build status badge for succeeded builds",
+  },
+  "buildSources.buildStatusFailed": {
+    message: "Fallida",
+    description: "Build status badge for failed builds",
+  },
+  "buildSources.buildStatusCanceled": {
+    message: "Cancelada",
+    description: "Build status badge for canceled builds",
+  },
+  "buildSources.buildStatusInProgress": {
+    message: "Compilando",
+    description: "Build status badge for in-progress builds",
+  },
+  "buildSources.buildStatusCreated": {
+    message: "En cola",
+    description: "Build status badge for newly queued builds",
+  },
+  "buildSources.buildStatusUnknown": {
+    message: "Desconocido",
+    description: "Fallback build status badge",
+  },
+  "buildSources.buildsEmptyTitle": {
+    message: "Todavía no hay compilaciones",
+    description: "Empty state heading on the Builds tab",
+  },
+  "buildSources.buildsEmptyGitDescription": {
+    message: "Inicia una compilación manualmente o haz push a la rama rastreada para crear tu primer artefacto.",
+    description: "Empty state description on Builds tab for Git build sources",
+  },
+  "buildSources.buildsEmptyImageDescription": {
+    message: "Las fuentes de imagen Docker registran revisiones de imagen cuando se despliegan los servicios vinculados.",
+    description: "Empty state description on Builds tab for image build sources",
+  },
+  "buildSources.buildsRefreshError": {
+    message: "No se pudieron actualizar las compilaciones. Se muestran resultados en caché.",
+    description: "Inline error banner when polling builds fails over cached rows",
+  },
+  "buildSources.buildsLoadMore": {
+    message: "Cargar más compilaciones",
+    description: "Pagination button loading older builds",
+  },
+  "buildSources.colBuildId": {
+    message: "ID de compilación",
+    description: "Table header for build ID column",
+  },
+  "buildSources.colStatus": {
+    message: "Estado",
+    description: "Table header for build status column",
+  },
+  "buildSources.colArtifact": {
+    message: "Commit / Imagen",
+    description: "Table header for commit SHA or image digest column",
+  },
+  "buildSources.colDuration": {
+    message: "Duración",
+    description: "Table header for build duration column",
+  },
+  "buildSources.colDeploys": {
+    message: "Despliegues",
+    description: "Table header for fan-out deploys count column",
+  },
+  "buildSources.colStarted": {
+    message: "Iniciada",
+    description: "Table header for build start timestamp column",
+  },
+  "buildSources.buildDeploysCount_one": {
+    message: "{count} despliegue",
+    description: "Singular badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildDeploysCount_many": {
+    message: "{count} de despliegues",
+    description: "Many badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildDeploysCount_other": {
+    message: "{count} despliegues",
+    description: "Plural badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildSkippedCount_one": {
+    message: "{count} omitido",
+    description: "Singular badge count of skipped services on a build",
+  },
+  "buildSources.buildSkippedCount_many": {
+    message: "{count} de omitidos",
+    description: "Many badge count of skipped services on a build",
+  },
+  "buildSources.buildSkippedCount_other": {
+    message: "{count} omitidos",
+    description: "Plural badge count of skipped services on a build",
+  },
+  "buildSources.backToBuilds": {
+    message: "Volver a Compilaciones",
+    description: "Back link from Build Detail to the Builds tab",
+  },
+  "buildSources.copyBuildId": {
+    message: "Copiar ID de compilación",
+    description: "Accessible label for copying a bld- ID",
+  },
+  "buildSources.buildDetailSubtitle": {
+    message: "Compilación de {name}",
+    description: "Subtitle under the bld- ID on Build Detail",
+  },
+  "buildSources.buildDetailRefreshError": {
+    message: "No se pudieron actualizar los detalles de la compilación. Se muestra el último estado cargado.",
+    description: "Inline error banner when build detail polling fails",
+  },
+  "buildSources.factStarted": {
+    message: "Iniciada",
+    description: "Fact label for build start timestamp",
+  },
+  "buildSources.factCommit": {
+    message: "Confirmación",
+    description: "Fact label for build commit SHA",
+  },
+  "buildSources.factArtifact": {
+    message: "Artefacto",
+    description: "Fact label for built image reference and digest",
+  },
+  "buildSources.fanoutTitle": {
+    message: "Despliegues de servicios vinculados",
+    description: "Card heading listing fan-out deploys on Build Detail",
+  },
+  "buildSources.fanoutEmpty": {
+    message: "Todavía no se ha desplegado ningún servicio desde esta compilación.",
+    description: "Empty message inside fan-out deploys card",
+  },
+  "buildSources.buildLogsSearchLabel": {
+    message: "Filtrar registros de compilación",
+    description: "Accessible label for search input in BuildLogPanel",
+  },
+  "buildSources.buildLogsEmptyTitle": {
+    message: "Todavía no hay registros de compilación",
+    description: "Empty state heading in BuildLogPanel",
+  },
+  "buildSources.buildLogsEmptyBody": {
+    message: "Los registros de esta compilación aparecerán aquí en cuanto comience a generar salida.",
+    description: "Empty state body in BuildLogPanel",
+  },
+  "buildSources.imageBuildLogsNotice": {
+    message: "Las fuentes de imagen Docker reutilizan una imagen existente y no generan registros de compilación.",
+    description: "Notice shown on Build Detail for image-backed build sources",
+  },
+  "buildSources.servicesTabTitle": {
+    message: "Servicios vinculados",
+    description: "Heading of the Linked Services tab",
+  },
+  "buildSources.servicesTabDescription": {
+    message: "Los servicios vinculados a esta fuente de compilación despliegan los artefactos generados por sus compilaciones.",
+    description: "Description of the Linked Services tab",
+  },
+  "buildSources.linkExistingService": {
+    message: "Vincular servicio existente",
+    description: "Button opening the Link Existing Service dialog",
+  },
+  "buildSources.servicesEmptyTitle": {
+    message: "Sin servicios vinculados",
+    description: "Empty state heading on Linked Services tab",
+  },
+  "buildSources.servicesEmptyDescription": {
+    message: "Vincula Web Services, Private Services, Background Workers o Cron Jobs existentes para compartir compilaciones de esta fuente.",
+    description: "Empty state description on Linked Services tab",
+  },
+  "buildSources.autoDeployOn": {
+    message: "Despliegue automático activado",
+    description: "Badge indicating a linked service auto-deploys new builds",
+  },
+  "buildSources.autoDeployOff": {
+    message: "Despliegue automático desactivado",
+    description: "Badge indicating a linked service requires manual deploys",
+  },
+  "buildSources.changeOrUnlinkSource": {
+    message: "Cambiar fuente",
+    description: "Link to a service's settings page to switch or unlink its source",
+  },
+  "buildSources.linkDialogTitle": {
+    message: "Vincular servicio existente",
+    description: "Heading of the Link Existing Service dialog",
+  },
+  "buildSources.linkDialogDescription": {
+    message: 'Asocia un servicio existente del espacio de trabajo a "{name}". Vincular guarda la fuente sin iniciar un despliegue.',
+    description: "Description of the Link Existing Service dialog",
+  },
+  "buildSources.linkDialogNoEligible": {
+    message: "Todos los servicios elegibles de este espacio de trabajo ya están vinculados o todavía no existe ninguno.",
+    description: "Message when no linkable unlinked services exist",
+  },
+  "buildSources.linkDialogServiceLabel": {
+    message: "Servicio",
+    description: "Select label in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogServicePlaceholder": {
+    message: "Elige un servicio…",
+    description: "Select placeholder in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogRegionMismatch": {
+    message: "La región no coincide: esta fuente Git está en {sourceRegion}, mientras que el servicio seleccionado está en {serviceRegion}.",
+    description: "Inline error when linking a Git build source to a service in another region",
+  },
+  "buildSources.linkDialogStartCommandHint": {
+    message: "Obligatorio para fuentes con entorno de ejecución nativo para indicar cómo inicia el servicio.",
+    description: "Help text for startCommand input in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogSubmit": {
+    message: "Vincular servicio",
+    description: "Submit button label in Link Existing Service dialog",
+  },
+  "buildSources.envImageUnsupportedTitle": {
+    message: "El entorno de compilación no está disponible para fuentes de imagen Docker",
+    description: "Fallback heading if an image build source visits /environment",
+  },
+  "buildSources.envImageUnsupportedBody": {
+    message: "Solo las fuentes de compilación basadas en Git ejecutan compilaciones con variables de entorno y archivos secretos.",
+    description: "Fallback body if an image build source visits /environment",
+  },
+  "buildSources.envSaveOnlyNote": {
+    message: "Los cambios se guardan sin iniciar una compilación y se aplican en la siguiente.",
+    description: "Top note on Build-time Environment tab",
+  },
+  "buildSources.envVarsDescription": {
+    message: "Disponibles durante las compilaciones de esta fuente. Los cambios surten efecto en la próxima compilación.",
+    description: "Environment Variables card description on Build-time Environment tab",
+  },
+  "buildSources.secretFilesDescription": {
+    message: "Se montan durante las compilaciones de esta fuente. Los cambios surten efecto en la próxima compilación.",
+    description: "Secret Files card description on Build-time Environment tab",
+  },
+  "buildSources.envGroupsPanelDescription": {
+    message: "Grupos de entorno a nivel de espacio de trabajo vinculados a la compilación. Los cambios se aplican en la siguiente compilación sin desplegar.",
+    description: "Environment Groups card description on Build-time Environment tab",
+  },
+  "buildSources.envGroupsNoneLinked": {
+    message: "No hay grupos de entorno vinculados a esta fuente de compilación.",
+    description: "Empty state when no env groups are linked to a build source",
+  },
+  "buildSources.settingsIdentityTitle": {
+    message: "Identidad y alcance",
+    description: "Heading of read-only identity card on Settings tab",
+  },
+  "buildSources.settingsIdentityDescription": {
+    message: "Identificadores inmutables y alcance de esta fuente de compilación.",
+    description: "Description of read-only identity card on Settings tab",
+  },
+  "buildSources.settingsFieldId": {
+    message: "ID de fuente de compilación",
+    description: "Label for read-only bds- ID field on Settings tab",
+  },
+  "buildSources.settingsConfigTitle": {
+    message: "Configuración de compilación",
+    description: "Heading of editable settings card on Settings tab",
+  },
+  "buildSources.settingsNoBuildNote": {
+    message: "Guardar la configuración actualiza esta fuente de compilación sin iniciar una compilación.",
+    description: "Inline note explaining Settings edits do not rebuild",
+  },
+  "buildSources.settingsFieldRepoUrl": {
+    message: "URL del repositorio",
+    description: "Input label for Git repository URL on Settings tab",
+  },
+  "buildSources.settingsInvalidRepoUrl": {
+    message: "Introduce una URL de repositorio Git válida.",
+    description: "Validation error for malformed repo URL on Settings tab",
+  },
+  "buildSources.settingsInvalidImageUrl": {
+    message: "Introduce una referencia de imagen Docker válida.",
+    description: "Validation error for malformed image URL on Settings tab",
+  },
+  "buildSources.settingsSaveButton": {
+    message: "Guardar cambios",
+    description: "Submit button label on Settings tab",
+  },
+  "buildSources.settingsSaving": {
+    message: "Guardando…",
+    description: "Submit button label while updateBuildSource is in flight",
+  },
+  "buildSources.dangerZoneTitle": {
+    message: "Zona de peligro",
+    description: "Heading of Delete Build Source card on Settings tab",
+  },
+  "buildSources.dangerZoneDescription": {
+    message: "Elimina permanentemente esta fuente de compilación y su configuración de compilación. Esta acción no se puede deshacer.",
+    description: "Description of Delete Build Source card",
+  },
+  "buildSources.deleteBlockedTitle_one": {
+    message: "Desvincula {count} servicio antes de eliminar",
+    description: "Singular alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedTitle_many": {
+    message: "Desvincula {count} de servicios antes de eliminar",
+    description: "Many alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedTitle_other": {
+    message: "Desvincula {count} servicios antes de eliminar",
+    description: "Plural alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedDescription": {
+    message: "No se puede eliminar una fuente de compilación mientras existan servicios vinculados. Cambia primero cada servicio vinculado a otra fuente:",
+    description: "Explanation under delete-blocked alert",
+  },
+  "buildSources.deleteButton": {
+    message: "Eliminar fuente de compilación",
+    description: "Destructive button opening the delete confirmation dialog",
+  },
+  "buildSources.deleteConfirmTitle": {
+    message: '¿Eliminar "{name}"?',
+    description: "Title of Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmBody": {
+    message: "Esto elimina permanentemente la fuente de compilación y su entorno de compilación. El historial y la configuración no se pueden recuperar.",
+    description: "Body of Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmPrompt": {
+    message: "Escribe {phrase} abajo para confirmar.",
+    description: "Sudo command prompt inside Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmButton": {
+    message: "Eliminar fuente de compilación",
+    description: "Confirm action label inside Delete Build Source confirmation dialog",
+  },
 };
 
 export default esBuildSources;

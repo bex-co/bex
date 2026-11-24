@@ -93,3 +93,63 @@ func TestBuildSourceEnvironmentOverGraphQL(t *testing.T) {
 		t.Errorf("GET /v1/services/%s/env-vars = %d %s, want 404: a service route never reaches a build source", id, res.Code, res.Body.String())
 	}
 }
+
+// w2/m614: nested BuildSource.envVar(key) and BuildSource.secretFile(name)
+// reveal build-time values for git build sources (gated on sensitive read /
+// KeyBuildSourcesEnv) and refuse Docker image build sources cleanly.
+func TestBuildSourceGraphQLNestedSecretReveal(t *testing.T) {
+	gitID := ids.New(ids.BuildSource)
+	imgID := ids.New(ids.BuildSource)
+	gitCarrier := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: gitID, Namespace: "default",
+			Labels: map[string]string{store.LabelAppID: gitID, core.LabelTenant: "tea-a"}},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeBuildSource, Repo: "https://github.com/acme/mono"},
+	}
+	imgCarrier := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: imgID, Namespace: "default",
+			Labels: map[string]string{store.LabelAppID: imgID, core.LabelTenant: "tea-a"}},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeBuildSource, Image: "ghcr.io/acme/app:1.0"},
+	}
+	kv := newMemSecretStore()
+	base := &core.Base{Client: fakeClient(eventsApp(), gitCarrier, imgCarrier), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, _ := serverWith(t, base, Deps{Secrets: kv})
+
+	// Seed build-time env var + secret file through the build-source REST routes.
+	if res := do(t, h, "PUT", "/v1/build-sources/"+gitID+"/env-vars", testToken, `[{"key":"NPM_TOKEN","value":"tok-123"}]`); res.Code != http.StatusOK {
+		t.Fatalf("PUT build-source env-vars = %d %s", res.Code, res.Body.String())
+	}
+	if res := do(t, h, "PUT", "/v1/build-sources/"+gitID+"/secret-files/npmrc", testToken, `{"content":"//registry.npmjs.org/:_authToken=tok-123"}`); res.Code != http.StatusCreated && res.Code != http.StatusOK {
+		t.Fatalf("PUT build-source secret-file = %d %s", res.Code, res.Body.String())
+	}
+
+	// Git build source reveals both envVar(key) and secretFile(name) via GraphQL.
+	revealed := gql(t, h, `{ buildSource(id:"`+gitID+`") {
+		envVar(key:"NPM_TOKEN") { id key value revision }
+		secretFile(name:"npmrc") { id name content }
+	} }`)["buildSource"].(map[string]any)
+	ev := revealed["envVar"].(map[string]any)
+	if ev["key"] != "NPM_TOKEN" || ev["value"] != "tok-123" || ev["revision"] == "" {
+		t.Fatalf("buildSource.envVar = %+v", ev)
+	}
+	sf := revealed["secretFile"].(map[string]any)
+	if sf["name"] != "npmrc" || sf["content"] != "//registry.npmjs.org/:_authToken=tok-123" {
+		t.Fatalf("buildSource.secretFile = %+v", sf)
+	}
+
+	// Image build source refuses nested envVar / secretFile reveal with 400.
+	imgBody, _ := json.Marshal(map[string]string{
+		"query": `{ buildSource(id:"` + imgID + `") { envVar(key:"NPM_TOKEN") { value } } }`,
+	})
+	imgRes := do(t, h, "POST", "/graphql", testToken, string(imgBody)).Body.String()
+	if !strings.Contains(imgRes, "image-backed build sources do not support build-time environment") {
+		t.Errorf("image buildSource.envVar = %s, want image refusal", imgRes)
+	}
+
+	// Scoped API key with only Services Read (no build_sources_env) is refused.
+	srv, grants := scopedKeyServer(t)
+	grants.set("key-services-only", grantOf("services:read", "build_sources:read"))
+	denied := graphqlDo(t, srv, keyOf("key-services-only"), `{ buildSource(id:"`+gitID+`") { envVar(key:"NPM_TOKEN") { value } } }`)
+	if graphqlCode(denied) != core.KeyPermissionDeniedCode {
+		t.Errorf("buildSource.envVar without build_sources_env grant = %v, want %s", denied, core.KeyPermissionDeniedCode)
+	}
+}

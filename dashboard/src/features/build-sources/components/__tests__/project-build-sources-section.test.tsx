@@ -51,6 +51,11 @@ function renderSection(projectId = "prj-1") {
       path: "/build-sources/new",
       component: () => null,
     }),
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/build-sources/$buildSourceId",
+      component: () => null,
+    }),
   ];
   const router = createRouter({
     routeTree: rootRoute.addChildren(routes),
@@ -121,6 +126,9 @@ describe("ProjectBuildSourcesSection", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("storefront-shared").length).toBeGreaterThan(0);
     expect(screen.queryByText("other-project-src")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "storefront-shared" })[0],
+    ).toHaveAttribute("href", "/build-sources/bds-1");
     expect(
       screen.getByRole("link", { name: "New Build Source" }),
     ).toHaveAttribute("href", "/build-sources/new?projectId=prj-1");

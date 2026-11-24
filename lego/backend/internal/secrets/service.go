@@ -981,7 +981,7 @@ func (s *Service) EnvVarKeys(ctx context.Context, service string) ([]core.EnvVar
 // scoped API key needs its grant to cover the values read here as well as at
 // the GraphQL gate, as an env group's values do (envgroups.retrieved).
 func (s *Service) EnvVarValue(ctx context.Context, service, key string) (core.EnvVar, error) {
-	if err := s.RequireKeyGrant(ctx, core.KeyServicesEnv); err != nil {
+	if err := s.RequireKeyGrant(ctx, envValueKeyGrant(service)); err != nil {
 		return core.EnvVar{}, err
 	}
 	v, a, err := s.envVarValue(ctx, service, key)

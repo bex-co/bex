@@ -1,8 +1,32 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
 import { DeployHeader } from "@/features/deploys/components/deploy-header";
 import type { DeployView } from "@/features/deploys/hooks/use-deploy";
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    params,
+    children,
+    ...rest
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) => {
+    const href = Object.entries(params ?? {}).reduce(
+      (acc, [key, value]) => acc.replace(`$${key}`, value),
+      to,
+    );
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
+  },
+}));
 
 function deploy(over: Partial<DeployView> = {}): DeployView {
   return {
@@ -341,12 +365,20 @@ describe("DeployHeader", () => {
     );
     const buildFact = screen.getByTestId("deploy-build-id");
     expect(buildFact).toHaveTextContent("bld-abc12345");
+    expect(screen.getByRole("link", { name: "bld-abc12345" })).toHaveAttribute(
+      "href",
+      "/build-sources/bds-mono001/builds/bld-abc12345",
+    );
     expect(
       screen.getByRole("button", { name: "Copy Build ID" }),
     ).toBeInTheDocument();
 
     const sourceFact = screen.getByTestId("deploy-build-source");
     expect(sourceFact).toHaveTextContent("Monorepo Build");
+    expect(screen.getByRole("link", { name: "Monorepo Build" })).toHaveAttribute(
+      "href",
+      "/build-sources/bds-mono001",
+    );
     expect(sourceFact).toHaveTextContent("bds-mono001");
     expect(
       screen.getByRole("button", { name: "Copy Build Source ID" }),

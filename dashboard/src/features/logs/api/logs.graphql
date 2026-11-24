@@ -47,6 +47,7 @@ query Logs(
   $endTime: String
   $limit: Int
   $deployId: String
+  $build: [String!]
 ) {
   logs(
     resource: $resource
@@ -65,6 +66,7 @@ query Logs(
     endTime: $endTime
     limit: $limit
     deployId: $deployId
+    build: $build
   ) {
     hasMore
     nextStartTime

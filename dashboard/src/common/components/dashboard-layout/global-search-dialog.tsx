@@ -471,8 +471,8 @@ function SearchResults({
               onSelect={() =>
                 select(() => {
                   void navigate({
-                    to: "/build-sources",
-                    search: { q: source.name, kind: undefined },
+                    to: "/build-sources/$buildSourceId",
+                    params: { buildSourceId: source.id },
                   });
                 })
               }

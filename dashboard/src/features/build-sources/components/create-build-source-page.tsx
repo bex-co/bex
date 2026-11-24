@@ -227,7 +227,10 @@ export function CreateBuildSourcePage({
     if (!submittable || currentWorkspaceId == null) return;
     const created = await create(buildCreateBuildSourceParams(form));
     if (!created) return;
-    void navigate({ to: "/build-sources" });
+    void navigate({
+      to: "/build-sources/$buildSourceId",
+      params: { buildSourceId: created.id },
+    });
   }
 
   const header = (
@@ -327,9 +330,18 @@ export function CreateBuildSourcePage({
               ) : null}
               <div className="pt-1">
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/build-sources">
-                    {t("buildSources.viewBuildSources")}
-                  </Link>
+                  {partiallyLinked.buildSourceId ? (
+                    <Link
+                      to="/build-sources/$buildSourceId"
+                      params={{ buildSourceId: partiallyLinked.buildSourceId }}
+                    >
+                      {t("buildSources.viewBuildSource")}
+                    </Link>
+                  ) : (
+                    <Link to="/build-sources">
+                      {t("buildSources.viewBuildSources")}
+                    </Link>
+                  )}
                 </Button>
               </div>
             </AlertDescription>

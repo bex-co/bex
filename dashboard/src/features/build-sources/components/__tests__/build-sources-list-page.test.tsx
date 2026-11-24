@@ -107,6 +107,11 @@ function renderPage(ui: React.ReactNode) {
     }),
     createRoute({
       getParentRoute: () => rootRoute,
+      path: "/build-sources/$buildSourceId",
+      component: () => null,
+    }),
+    createRoute({
+      getParentRoute: () => rootRoute,
       path: "/project/$projectId",
       component: () => null,
     }),
@@ -147,6 +152,12 @@ describe("BuildSourcesListPage", () => {
     expect(screen.getAllByText("1 service").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Core Platform").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Frankfurt, Germany").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: "monorepo-backend" })[0],
+    ).toHaveAttribute("href", "/build-sources/bds-git-1");
+    expect(
+      screen.getAllByRole("link", { name: "nginx-base" })[0],
+    ).toHaveAttribute("href", "/build-sources/bds-img-1");
     expect(
       screen.getByRole("link", { name: "New Build Source" }),
     ).toHaveAttribute("href", "/build-sources/new");

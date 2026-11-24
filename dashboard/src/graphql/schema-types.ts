@@ -1380,14 +1380,26 @@ export type BuildSource = {
   __typename: 'BuildSource';
   createdAt: Maybe<Scalars['String']['output']>;
   cursor: Maybe<Scalars['String']['output']>;
+  envVar: Maybe<EnvVar>;
   git: Maybe<BuildSourceGit>;
   id: Maybe<Scalars['String']['output']>;
   image: Maybe<BuildSourceImage>;
   name: Maybe<Scalars['String']['output']>;
   ownerId: Maybe<Scalars['String']['output']>;
   projectId: Maybe<Scalars['String']['output']>;
+  secretFile: Maybe<SecretFile>;
   serviceLinks: Maybe<Array<Maybe<BuildSourceServiceLink>>>;
   updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+
+export type BuildSourceEnvVarArgs = {
+  key: Scalars['String']['input'];
+};
+
+
+export type BuildSourceSecretFileArgs = {
+  name: Scalars['String']['input'];
 };
 
 export type BuildSourceGit = {

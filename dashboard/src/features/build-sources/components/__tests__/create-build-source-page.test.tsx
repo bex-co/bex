@@ -131,6 +131,11 @@ function renderWizard(ui: React.ReactNode) {
     }),
     createRoute({
       getParentRoute: () => rootRoute,
+      path: "/build-sources/$buildSourceId",
+      component: () => <div data-testid="build-source-detail-dest" />,
+    }),
+    createRoute({
+      getParentRoute: () => rootRoute,
       path: "/build-sources/new",
       component: () => <>{ui}</>,
     }),
@@ -211,7 +216,7 @@ describe("CreateBuildSourcePage", () => {
       envGroupIds: ["evg-ws"],
       serviceIds: ["srv-web"],
     });
-    expect(router.state.location.pathname).toBe("/build-sources");
+    expect(router.state.location.pathname).toBe("/build-sources/bds-new");
   });
 
   it("hides git build settings and build-time environment for Docker image sources", async () => {
@@ -272,8 +277,8 @@ describe("CreateBuildSourcePage", () => {
     expect(screen.getByText("Linked: api-web")).toBeInTheDocument();
     expect(screen.getByText("Failed to link: jobs-worker")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "View Build Sources" }),
-    ).toHaveAttribute("href", "/build-sources");
+      screen.getByRole("link", { name: "Open Build Source" }),
+    ).toHaveAttribute("href", "/build-sources/bds-partial-1");
   });
 
   it("blocks Viewers (canCreate: false) from seeing the create form", async () => {

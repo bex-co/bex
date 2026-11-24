@@ -1100,12 +1100,14 @@ type BuildRun {
 type BuildSource {
   createdAt: String
   cursor: String
+  envVar(key: String!): EnvVar
   git: BuildSourceGit
   id: String
   image: BuildSourceImage
   name: String
   ownerId: String
   projectId: String
+  secretFile(name: String!): SecretFile
   serviceLinks: [BuildSourceServiceLink]
   updatedAt: String
 }

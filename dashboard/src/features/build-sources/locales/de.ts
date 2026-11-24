@@ -313,6 +313,434 @@ const deBuildSources: Record<string, TranslationEntry> = {
     message: "Diesem Projekt sind noch keine Build-Quellen zugeordnet.",
     description: "Empty state text inside Project Overview Build Sources section",
   },
+  "buildSources.viewBuildSource": {
+    message: "Build-Quelle öffnen",
+    description: "Button navigating to a newly created Build Source detail page",
+  },
+  "buildSources.detailTabsLabel": {
+    message: "Bereiche der Build-Quelle",
+    description: "Accessible label for the Build Source detail tab navigation",
+  },
+  "buildSources.tabBuilds": {
+    message: "Build-Verlauf",
+    description: "Tab label for Build Source build history",
+  },
+  "buildSources.tabServices": {
+    message: "Dienste",
+    description: "Tab label for Build Source linked services",
+  },
+  "buildSources.tabEnvironment": {
+    message: "Umgebung",
+    description: "Tab label for Build Source build-time environment",
+  },
+  "buildSources.tabSettings": {
+    message: "Einstellungen",
+    description: "Tab label for Build Source settings and danger zone",
+  },
+  "buildSources.triggerBuildButton": {
+    message: "Build auslösen",
+    description: "Primary CTA to trigger a new build on a Git build source",
+  },
+  "buildSources.triggerSubmitting": {
+    message: "Wird ausgelöst…",
+    description: "Submit button label while triggerBuild mutation is in flight",
+  },
+  "buildSources.triggerDialogTitle": {
+    message: "Build auslösen",
+    description: "Title of the Trigger Build modal dialog",
+  },
+  "buildSources.triggerDialogDescription": {
+    message: 'Starte einen neuen Build für „{name}“ und wähle aus, welche verknüpften Dienste das Ergebnis deployen sollen.',
+    description: "Description of the Trigger Build modal dialog",
+  },
+  "buildSources.triggerScopeLegend": {
+    message: "Nach erfolgreichem Build deployen",
+    description: "Legend for the deploy.serviceScope radio group",
+  },
+  "buildSources.triggerScopeAutoDeploy": {
+    message: "Verknüpfte Dienste automatisch deployen",
+    description: "Radio option for deploy.serviceScope=autodeploy_only",
+  },
+  "buildSources.triggerScopeAutoDeployHint": {
+    message: "Deployt alle verknüpften Dienste mit aktiviertem Auto-Deploy.",
+    description: "Hint text for deploy.serviceScope=autodeploy_only",
+  },
+  "buildSources.triggerScopeNone": {
+    message: "Nur bauen (nicht deployen)",
+    description: "Radio option for deploy.serviceScope=none",
+  },
+  "buildSources.triggerScopeNoneHint": {
+    message: "Erstellt das Build-Artefakt, ohne verknüpfte Dienste zu deployen.",
+    description: "Hint text for deploy.serviceScope=none",
+  },
+  "buildSources.triggerScopeCustom": {
+    message: "Ausgewählte Dienste",
+    description: "Radio option for deploy.serviceScope=custom",
+  },
+  "buildSources.triggerScopeCustomHint": {
+    message: "Wähle bestimmte verknüpfte Dienste aus, die nach dem Build deployt werden.",
+    description: "Hint text for deploy.serviceScope=custom",
+  },
+  "buildSources.triggerScopeCustomNoServices": {
+    message: "Mit dieser Build-Quelle sind noch keine Dienste verknüpft.",
+    description: "Message inside custom deploy scope when serviceLinks is empty",
+  },
+  "buildSources.triggerScopeCustomSelectOne": {
+    message: "Wähle mindestens einen Dienst zum Deployen aus.",
+    description: "Validation hint when custom scope has zero checked services",
+  },
+  "buildSources.triggerClearCache": {
+    message: "Build-Cache leeren",
+    description: "Checkbox label for clearCache=clear",
+  },
+  "buildSources.triggerClearCacheHint": {
+    message: "Baut komplett neu, ohne zwischengespeicherte Layer wiederzuverwenden.",
+    description: "Hint text for clearCache checkbox",
+  },
+  "buildSources.triggerResultTitle": {
+    message: "Build gestartet",
+    description: "Confirmation heading in Trigger Build dialog after success",
+  },
+  "buildSources.triggerResultDescription": {
+    message: "Build {id} wurde in die Warteschlange gestellt.",
+    description: "Confirmation summary naming the new bld- ID",
+  },
+  "buildSources.triggerResultDeploysTitle_one": {
+    message: "{count} Dienst-Deploy eingereiht",
+    description: "Singular heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultDeploysTitle_other": {
+    message: "{count} Dienst-Deploys eingereiht",
+    description: "Plural heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultNoDeploys": {
+    message: "Für diesen Build wurden keine Dienst-Deploys eingereiht.",
+    description: "Message when triggerBuild returned an empty deploys array",
+  },
+  "buildSources.triggerResultSkippedTitle_one": {
+    message: "{count} verknüpfter Dienst übersprungen",
+    description: "Singular alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultSkippedTitle_other": {
+    message: "{count} verknüpfte Dienste übersprungen",
+    description: "Plural alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultViewLogs": {
+    message: "Build-Logs anzeigen",
+    description: "Primary action navigating from Trigger Build confirmation to Build Detail",
+  },
+  "buildSources.skippedReasonSuspended": {
+    message: "Pausiert",
+    description: "Badge label when a service was skipped because it is suspended",
+  },
+  "buildSources.buildStatusSucceeded": {
+    message: "Erfolgreich",
+    description: "Build status badge for succeeded builds",
+  },
+  "buildSources.buildStatusFailed": {
+    message: "Fehlgeschlagen",
+    description: "Build status badge for failed builds",
+  },
+  "buildSources.buildStatusCanceled": {
+    message: "Abgebrochen",
+    description: "Build status badge for canceled builds",
+  },
+  "buildSources.buildStatusInProgress": {
+    message: "Wird gebaut",
+    description: "Build status badge for in-progress builds",
+  },
+  "buildSources.buildStatusCreated": {
+    message: "In Warteschlange",
+    description: "Build status badge for newly queued builds",
+  },
+  "buildSources.buildStatusUnknown": {
+    message: "Unbekannt",
+    description: "Fallback build status badge",
+  },
+  "buildSources.buildsEmptyTitle": {
+    message: "Noch keine Builds",
+    description: "Empty state heading on the Builds tab",
+  },
+  "buildSources.buildsEmptyGitDescription": {
+    message: "Löse manuell einen Build aus oder pushe auf den verfolgten Branch, um dein erstes Build-Artefakt zu erstellen.",
+    description: "Empty state description on Builds tab for Git build sources",
+  },
+  "buildSources.buildsEmptyImageDescription": {
+    message: "Docker-Image-Build-Quellen zeichnen Image-Revisionen auf, sobald verknüpfte Dienste deployt werden.",
+    description: "Empty state description on Builds tab for image build sources",
+  },
+  "buildSources.buildsRefreshError": {
+    message: "Builds konnten nicht aktualisiert werden. Zwischengespeicherte Ergebnisse werden angezeigt.",
+    description: "Inline error banner when polling builds fails over cached rows",
+  },
+  "buildSources.buildsLoadMore": {
+    message: "Weitere Builds laden",
+    description: "Pagination button loading older builds",
+  },
+  "buildSources.colBuildId": {
+    message: "Build-ID",
+    description: "Table header for build ID column",
+  },
+  "buildSources.colStatus": {
+    message: "Zustand",
+    description: "Table header for build status column",
+  },
+  "buildSources.colArtifact": {
+    message: "Commit / Image",
+    description: "Table header for commit SHA or image digest column",
+  },
+  "buildSources.colDuration": {
+    message: "Dauer",
+    description: "Table header for build duration column",
+  },
+  "buildSources.colDeploys": {
+    message: "Deployments",
+    description: "Table header for fan-out deploys count column",
+  },
+  "buildSources.colStarted": {
+    message: "Gestartet",
+    description: "Table header for build start timestamp column",
+  },
+  "buildSources.buildDeploysCount_one": {
+    message: "{count} Deployment",
+    description: "Singular badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildDeploysCount_other": {
+    message: "{count} Deployments",
+    description: "Plural badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildSkippedCount_one": {
+    message: "{count} übersprungen",
+    description: "Singular badge count of skipped services on a build",
+  },
+  "buildSources.buildSkippedCount_other": {
+    message: "{count} übersprungen",
+    description: "Plural badge count of skipped services on a build",
+  },
+  "buildSources.backToBuilds": {
+    message: "Zurück zum Build-Verlauf",
+    description: "Back link from Build Detail to the Builds tab",
+  },
+  "buildSources.copyBuildId": {
+    message: "Build-ID kopieren",
+    description: "Accessible label for copying a bld- ID",
+  },
+  "buildSources.buildDetailSubtitle": {
+    message: "Build für {name}",
+    description: "Subtitle under the bld- ID on Build Detail",
+  },
+  "buildSources.buildDetailRefreshError": {
+    message: "Build-Details konnten nicht aktualisiert werden. Letzter geladener Stand wird angezeigt.",
+    description: "Inline error banner when build detail polling fails",
+  },
+  "buildSources.factStarted": {
+    message: "Gestartet",
+    description: "Fact label for build start timestamp",
+  },
+  "buildSources.factCommit": {
+    message: "Git-Commit",
+    description: "Fact label for build commit SHA",
+  },
+  "buildSources.factArtifact": {
+    message: "Artefakt",
+    description: "Fact label for built image reference and digest",
+  },
+  "buildSources.fanoutTitle": {
+    message: "Deploys verknüpfter Dienste",
+    description: "Card heading listing fan-out deploys on Build Detail",
+  },
+  "buildSources.fanoutEmpty": {
+    message: "Aus diesem Build wurden noch keine Dienste deployt.",
+    description: "Empty message inside fan-out deploys card",
+  },
+  "buildSources.buildLogsSearchLabel": {
+    message: "Build-Logs filtern",
+    description: "Accessible label for search input in BuildLogPanel",
+  },
+  "buildSources.buildLogsEmptyTitle": {
+    message: "Noch keine Build-Logs",
+    description: "Empty state heading in BuildLogPanel",
+  },
+  "buildSources.buildLogsEmptyBody": {
+    message: "Logs für diesen Build erscheinen hier, sobald der Build Ausgaben schreibt.",
+    description: "Empty state body in BuildLogPanel",
+  },
+  "buildSources.imageBuildLogsNotice": {
+    message: "Docker-Image-Build-Quellen verwenden ein vorhandenes Image weiter und erzeugen keine Build-Logs.",
+    description: "Notice shown on Build Detail for image-backed build sources",
+  },
+  "buildSources.servicesTabTitle": {
+    message: "Verknüpfte Dienste",
+    description: "Heading of the Linked Services tab",
+  },
+  "buildSources.servicesTabDescription": {
+    message: "Dienste, die mit dieser Build-Quelle verknüpft sind, deployen die von ihren Builds erzeugten Artefakte.",
+    description: "Description of the Linked Services tab",
+  },
+  "buildSources.linkExistingService": {
+    message: "Bestehenden Dienst verknüpfen",
+    description: "Button opening the Link Existing Service dialog",
+  },
+  "buildSources.servicesEmptyTitle": {
+    message: "Keine verknüpften Dienste",
+    description: "Empty state heading on Linked Services tab",
+  },
+  "buildSources.servicesEmptyDescription": {
+    message: "Verknüpfe bestehende Web Services, Private Services, Background Workers oder Cron Jobs, um Builds aus dieser Quelle zu teilen.",
+    description: "Empty state description on Linked Services tab",
+  },
+  "buildSources.autoDeployOn": {
+    message: "Auto-Deploy an",
+    description: "Badge indicating a linked service auto-deploys new builds",
+  },
+  "buildSources.autoDeployOff": {
+    message: "Auto-Deploy aus",
+    description: "Badge indicating a linked service requires manual deploys",
+  },
+  "buildSources.changeOrUnlinkSource": {
+    message: "Quelle ändern",
+    description: "Link to a service's settings page to switch or unlink its source",
+  },
+  "buildSources.linkDialogTitle": {
+    message: "Bestehenden Dienst verknüpfen",
+    description: "Heading of the Link Existing Service dialog",
+  },
+  "buildSources.linkDialogDescription": {
+    message: 'Verbinde einen bestehenden Workspace-Dienst mit „{name}“. Beim Verknüpfen wird die Quelle gespeichert, ohne ein Deploy auszulösen.',
+    description: "Description of the Link Existing Service dialog",
+  },
+  "buildSources.linkDialogNoEligible": {
+    message: "Alle zulässigen Dienste in diesem Workspace sind bereits verknüpft oder noch nicht vorhanden.",
+    description: "Message when no linkable unlinked services exist",
+  },
+  "buildSources.linkDialogServiceLabel": {
+    message: "Dienst",
+    description: "Select label in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogServicePlaceholder": {
+    message: "Dienst auswählen…",
+    description: "Select placeholder in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogRegionMismatch": {
+    message: "Region stimmt nicht überein: Diese Git-Build-Quelle liegt in {sourceRegion}, der ausgewählte Dienst jedoch in {serviceRegion}.",
+    description: "Inline error when linking a Git build source to a service in another region",
+  },
+  "buildSources.linkDialogStartCommandHint": {
+    message: "Für Build-Quellen mit nativer Runtime erforderlich, damit der Dienst gestartet werden kann.",
+    description: "Help text for startCommand input in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogSubmit": {
+    message: "Dienst verknüpfen",
+    description: "Submit button label in Link Existing Service dialog",
+  },
+  "buildSources.envImageUnsupportedTitle": {
+    message: "Build-Zeit-Umgebung ist für Docker-Image-Quellen nicht verfügbar",
+    description: "Fallback heading if an image build source visits /environment",
+  },
+  "buildSources.envImageUnsupportedBody": {
+    message: "Nur Git-basierte Build-Quellen führen Builds mit Build-Zeit-Umgebungsvariablen und Secret-Dateien aus.",
+    description: "Fallback body if an image build source visits /environment",
+  },
+  "buildSources.envSaveOnlyNote": {
+    message: "Änderungen werden ohne Build gespeichert und gelten ab dem nächsten Build.",
+    description: "Top note on Build-time Environment tab",
+  },
+  "buildSources.envVarsDescription": {
+    message: "Während der Builds dieser Build-Quelle verfügbar. Änderungen gelten ab dem nächsten Build.",
+    description: "Environment Variables card description on Build-time Environment tab",
+  },
+  "buildSources.secretFilesDescription": {
+    message: "Während der Builds dieser Build-Quelle eingebunden. Änderungen gelten ab dem nächsten Build.",
+    description: "Secret Files card description on Build-time Environment tab",
+  },
+  "buildSources.envGroupsPanelDescription": {
+    message: "Workspace-weite Umgebungsgruppen für die Build-Zeit. Änderungen gelten ab dem nächsten Build ohne Deploy.",
+    description: "Environment Groups card description on Build-time Environment tab",
+  },
+  "buildSources.envGroupsNoneLinked": {
+    message: "Mit dieser Build-Quelle sind keine Umgebungsgruppen verknüpft.",
+    description: "Empty state when no env groups are linked to a build source",
+  },
+  "buildSources.settingsIdentityTitle": {
+    message: "Identität & Bereich",
+    description: "Heading of read-only identity card on Settings tab",
+  },
+  "buildSources.settingsIdentityDescription": {
+    message: "Unveränderliche Kennungen und Geltungsbereich dieser Build-Quelle.",
+    description: "Description of read-only identity card on Settings tab",
+  },
+  "buildSources.settingsFieldId": {
+    message: "Build-Quellen-ID",
+    description: "Label for read-only bds- ID field on Settings tab",
+  },
+  "buildSources.settingsConfigTitle": {
+    message: "Build-Konfiguration",
+    description: "Heading of editable settings card on Settings tab",
+  },
+  "buildSources.settingsNoBuildNote": {
+    message: "Das Speichern der Einstellungen aktualisiert diese Build-Quelle, ohne einen Build zu starten.",
+    description: "Inline note explaining Settings edits do not rebuild",
+  },
+  "buildSources.settingsFieldRepoUrl": {
+    message: "Repository-URL",
+    description: "Input label for Git repository URL on Settings tab",
+  },
+  "buildSources.settingsInvalidRepoUrl": {
+    message: "Gib eine gültige Git-Repository-URL ein.",
+    description: "Validation error for malformed repo URL on Settings tab",
+  },
+  "buildSources.settingsInvalidImageUrl": {
+    message: "Gib eine gültige Docker-Image-Referenz ein.",
+    description: "Validation error for malformed image URL on Settings tab",
+  },
+  "buildSources.settingsSaveButton": {
+    message: "Änderungen speichern",
+    description: "Submit button label on Settings tab",
+  },
+  "buildSources.settingsSaving": {
+    message: "Wird gespeichert…",
+    description: "Submit button label while updateBuildSource is in flight",
+  },
+  "buildSources.dangerZoneTitle": {
+    message: "Gefahrenzone",
+    description: "Heading of Delete Build Source card on Settings tab",
+  },
+  "buildSources.dangerZoneDescription": {
+    message: "Lösche diese Build-Quelle und ihre Build-Zeit-Konfiguration dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.",
+    description: "Description of Delete Build Source card",
+  },
+  "buildSources.deleteBlockedTitle_one": {
+    message: "Trenne zuerst {count} Dienst vor dem Löschen",
+    description: "Singular alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedTitle_other": {
+    message: "Trenne zuerst {count} Dienste vor dem Löschen",
+    description: "Plural alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedDescription": {
+    message: "Eine Build-Quelle kann nicht gelöscht werden, solange noch Dienste darauf verweisen. Stelle zuerst jeden verknüpften Dienst auf eine andere Quelle um:",
+    description: "Explanation under delete-blocked alert",
+  },
+  "buildSources.deleteButton": {
+    message: "Build-Quelle löschen",
+    description: "Destructive button opening the delete confirmation dialog",
+  },
+  "buildSources.deleteConfirmTitle": {
+    message: "„{name}“ löschen?",
+    description: "Title of Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmBody": {
+    message: "Dadurch werden die Build-Quelle und ihre Build-Zeit-Umgebung dauerhaft gelöscht. Build-Verlauf und Konfiguration können nicht wiederhergestellt werden.",
+    description: "Body of Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmPrompt": {
+    message: "Gib unten {phrase} zur Bestätigung ein.",
+    description: "Sudo command prompt inside Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmButton": {
+    message: "Build-Quelle löschen",
+    description: "Confirm action label inside Delete Build Source confirmation dialog",
+  },
 };
 
 export default deBuildSources;

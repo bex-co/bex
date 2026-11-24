@@ -24,6 +24,7 @@ describe("LogsDocument consumers", () => {
 
   it("finds the known consumers (guards the glob itself)", () => {
     expect(consumers).toEqual([
+      "/src/features/build-sources/hooks/use-build-logs.ts",
       "/src/features/deploys/hooks/use-deploy-logs.ts",
       "/src/features/logs/hooks/use-log-history.ts",
     ]);

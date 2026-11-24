@@ -963,16 +963,30 @@ func envVarKeysResolve(p graphql.ResolveParams) (any, error) {
 	return r.EnvVarKeys(withParentWorkspace(p.Context, a), a.Name)
 }
 
+func envSourceTarget(ctx context.Context, source any) (context.Context, string, bool, error) {
+	switch s := source.(type) {
+	case AppView:
+		return withParentWorkspace(ctx, s), s.Name, true, nil
+	case BuildSourceView:
+		if s.Image != nil {
+			return ctx, "", false, fmt.Errorf("%w: image-backed build sources do not support build-time environment", core.ErrBadRequest)
+		}
+		return core.WithBuildSources(core.WithWorkspace(ctx, s.OwnerID)), s.ID, true, nil
+	default:
+		return ctx, "", false, nil
+	}
+}
+
 func envVarValueResolve(p graphql.ResolveParams) (any, error) {
-	a, ok := p.Source.(AppView)
-	if !ok {
-		return nil, nil
+	ctx, target, ok, err := envSourceTarget(p.Context, p.Source)
+	if err != nil || !ok {
+		return nil, err
 	}
 	r, ok := core.EnvVarsFrom(p.Context)
 	if !ok {
 		return nil, core.ErrSecretsUnavailable
 	}
-	return r.EnvVarValue(withParentWorkspace(p.Context, a), a.Name, p.Args["key"].(string))
+	return r.EnvVarValue(ctx, target, p.Args["key"].(string))
 }
 
 // secretFileGQLType renders the kernel's neutral core.SecretFile ({id,name,content}),
@@ -1000,15 +1014,15 @@ func secretFileNamesResolve(p graphql.ResolveParams) (any, error) {
 }
 
 func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
-	a, ok := p.Source.(AppView)
-	if !ok {
-		return nil, nil
+	ctx, target, ok, err := envSourceTarget(p.Context, p.Source)
+	if err != nil || !ok {
+		return nil, err
 	}
 	r, ok := core.SecretFilesFrom(p.Context)
 	if !ok {
 		return nil, core.ErrSecretsUnavailable
 	}
-	return r.SecretFileContent(withParentWorkspace(p.Context, a), a.Name, p.Args["name"].(string))
+	return r.SecretFileContent(ctx, target, p.Args["name"].(string))
 }
 
 // outboundIPsGQLType renders the kernel's neutral core.OutboundIPs — Render's

@@ -82,9 +82,23 @@ var buildSourceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"git":          gqlutil.Typed(buildSourceGitGQLType, func(b BuildSourceView) any { return b.Git }),
 		"image":        gqlutil.Typed(buildSourceImageGQLType, func(b BuildSourceView) any { return b.Image }),
 		"serviceLinks": gqlutil.Typed(graphql.NewList(buildSourceServiceLinkGQLType), func(b BuildSourceView) any { return b.ServiceLinks }),
-		"cursor":       gqlutil.StrField(func(b BuildSourceView) any { return b.ID }),
-		"createdAt":    gqlutil.StrField(func(b BuildSourceView) any { return b.CreatedAt }),
-		"updatedAt":    gqlutil.StrField(func(b BuildSourceView) any { return b.UpdatedAt }),
+		"envVar": &graphql.Field{
+			Type: envVarGQLType,
+			Args: graphql.FieldConfigArgument{
+				"key": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: envVarValueResolve,
+		},
+		"secretFile": &graphql.Field{
+			Type: secretFileGQLType,
+			Args: graphql.FieldConfigArgument{
+				"name": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: secretFileContentResolve,
+		},
+		"cursor":    gqlutil.StrField(func(b BuildSourceView) any { return b.ID }),
+		"createdAt": gqlutil.StrField(func(b BuildSourceView) any { return b.CreatedAt }),
+		"updatedAt": gqlutil.StrField(func(b BuildSourceView) any { return b.UpdatedAt }),
 	},
 })
 

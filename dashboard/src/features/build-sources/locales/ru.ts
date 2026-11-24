@@ -318,6 +318,474 @@ const ruBuildSources: Record<string, TranslationEntry> = {
     message: "К этому проекту пока не привязаны источники сборки.",
     description: "Empty state text inside Project Overview Build Sources section",
   },
+  "buildSources.viewBuildSource": {
+    message: "Открыть источник сборки",
+    description: "Button navigating to a newly created Build Source detail page",
+  },
+  "buildSources.detailTabsLabel": {
+    message: "Разделы источника сборки",
+    description: "Accessible label for the Build Source detail tab navigation",
+  },
+  "buildSources.tabBuilds": {
+    message: "Сборки",
+    description: "Tab label for Build Source build history",
+  },
+  "buildSources.tabServices": {
+    message: "Сервисы",
+    description: "Tab label for Build Source linked services",
+  },
+  "buildSources.tabEnvironment": {
+    message: "Окружение",
+    description: "Tab label for Build Source build-time environment",
+  },
+  "buildSources.tabSettings": {
+    message: "Настройки",
+    description: "Tab label for Build Source settings and danger zone",
+  },
+  "buildSources.triggerBuildButton": {
+    message: "Запустить сборку",
+    description: "Primary CTA to trigger a new build on a Git build source",
+  },
+  "buildSources.triggerSubmitting": {
+    message: "Запуск…",
+    description: "Submit button label while triggerBuild mutation is in flight",
+  },
+  "buildSources.triggerDialogTitle": {
+    message: "Запустить сборку",
+    description: "Title of the Trigger Build modal dialog",
+  },
+  "buildSources.triggerDialogDescription": {
+    message: "Запустите новую сборку для «{name}» и выберите, какие связанные сервисы развернуть после завершения.",
+    description: "Description of the Trigger Build modal dialog",
+  },
+  "buildSources.triggerScopeLegend": {
+    message: "Развернуть после успешной сборки",
+    description: "Legend for the deploy.serviceScope radio group",
+  },
+  "buildSources.triggerScopeAutoDeploy": {
+    message: "Авторазвёртывание связанных сервисов",
+    description: "Radio option for deploy.serviceScope=autodeploy_only",
+  },
+  "buildSources.triggerScopeAutoDeployHint": {
+    message: "Развернуть все связанные сервисы с включённым авторазвёртыванием.",
+    description: "Hint text for deploy.serviceScope=autodeploy_only",
+  },
+  "buildSources.triggerScopeNone": {
+    message: "Только сборка (без развёртывания)",
+    description: "Radio option for deploy.serviceScope=none",
+  },
+  "buildSources.triggerScopeNoneHint": {
+    message: "Собрать артефакт без развёртывания связанных сервисов.",
+    description: "Hint text for deploy.serviceScope=none",
+  },
+  "buildSources.triggerScopeCustom": {
+    message: "Выбранные сервисы",
+    description: "Radio option for deploy.serviceScope=custom",
+  },
+  "buildSources.triggerScopeCustomHint": {
+    message: "Выберите конкретные связанные сервисы для развёртывания после успешной сборки.",
+    description: "Hint text for deploy.serviceScope=custom",
+  },
+  "buildSources.triggerScopeCustomNoServices": {
+    message: "К этому источнику сборки ещё не привязаны сервисы.",
+    description: "Message inside custom deploy scope when serviceLinks is empty",
+  },
+  "buildSources.triggerScopeCustomSelectOne": {
+    message: "Выберите хотя бы один сервис для развёртывания.",
+    description: "Validation hint when custom scope has zero checked services",
+  },
+  "buildSources.triggerClearCache": {
+    message: "Очистить кеш сборки",
+    description: "Checkbox label for clearCache=clear",
+  },
+  "buildSources.triggerClearCacheHint": {
+    message: "Выполнить чистую сборку без повторного использования кешированных слоёв.",
+    description: "Hint text for clearCache checkbox",
+  },
+  "buildSources.triggerResultTitle": {
+    message: "Сборка запущена",
+    description: "Confirmation heading in Trigger Build dialog after success",
+  },
+  "buildSources.triggerResultDescription": {
+    message: "Сборка {id} поставлена в очередь.",
+    description: "Confirmation summary naming the new bld- ID",
+  },
+  "buildSources.triggerResultDeploysTitle_one": {
+    message: "В очереди {count} развёртывание сервиса",
+    description: "Singular heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultDeploysTitle_few": {
+    message: "В очереди {count} развёртывания сервисов",
+    description: "Few heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultDeploysTitle_many": {
+    message: "В очереди {count} развёртываний сервисов",
+    description: "Many heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultDeploysTitle_other": {
+    message: "В очереди {count} развёртывания сервисов",
+    description: "Other heading listing fan-out deploys queued by triggerBuild",
+  },
+  "buildSources.triggerResultNoDeploys": {
+    message: "Для этой сборки не запланировано ни одного развёртывания сервиса.",
+    description: "Message when triggerBuild returned an empty deploys array",
+  },
+  "buildSources.triggerResultSkippedTitle_one": {
+    message: "Пропущен {count} связанный сервис",
+    description: "Singular alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultSkippedTitle_few": {
+    message: "Пропущено {count} связанных сервиса",
+    description: "Few alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultSkippedTitle_many": {
+    message: "Пропущено {count} связанных сервисов",
+    description: "Many alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultSkippedTitle_other": {
+    message: "Пропущено {count} связанных сервисов",
+    description: "Other alert heading when triggerBuild returns skippedServices",
+  },
+  "buildSources.triggerResultViewLogs": {
+    message: "Открыть логи сборки",
+    description: "Primary action navigating from Trigger Build confirmation to Build Detail",
+  },
+  "buildSources.skippedReasonSuspended": {
+    message: "Приостановлен",
+    description: "Badge label when a service was skipped because it is suspended",
+  },
+  "buildSources.buildStatusSucceeded": {
+    message: "Успешно",
+    description: "Build status badge for succeeded builds",
+  },
+  "buildSources.buildStatusFailed": {
+    message: "Ошибка",
+    description: "Build status badge for failed builds",
+  },
+  "buildSources.buildStatusCanceled": {
+    message: "Отменена",
+    description: "Build status badge for canceled builds",
+  },
+  "buildSources.buildStatusInProgress": {
+    message: "Сборка",
+    description: "Build status badge for in-progress builds",
+  },
+  "buildSources.buildStatusCreated": {
+    message: "В очереди",
+    description: "Build status badge for newly queued builds",
+  },
+  "buildSources.buildStatusUnknown": {
+    message: "Неизвестно",
+    description: "Fallback build status badge",
+  },
+  "buildSources.buildsEmptyTitle": {
+    message: "Сборок пока нет",
+    description: "Empty state heading on the Builds tab",
+  },
+  "buildSources.buildsEmptyGitDescription": {
+    message: "Запустите сборку вручную или отправьте изменения в отслеживаемую ветку, чтобы получить первый артефакт.",
+    description: "Empty state description on Builds tab for Git build sources",
+  },
+  "buildSources.buildsEmptyImageDescription": {
+    message: "Источники сборки из Docker-образа фиксируют версии образов при развёртывании связанных сервисов.",
+    description: "Empty state description on Builds tab for image build sources",
+  },
+  "buildSources.buildsRefreshError": {
+    message: "Не удалось обновить список сборок. Показаны кешированные данные.",
+    description: "Inline error banner when polling builds fails over cached rows",
+  },
+  "buildSources.buildsLoadMore": {
+    message: "Загрузить ещё сборки",
+    description: "Pagination button loading older builds",
+  },
+  "buildSources.colBuildId": {
+    message: "ID сборки",
+    description: "Table header for build ID column",
+  },
+  "buildSources.colStatus": {
+    message: "Статус",
+    description: "Table header for build status column",
+  },
+  "buildSources.colArtifact": {
+    message: "Коммит / Образ",
+    description: "Table header for commit SHA or image digest column",
+  },
+  "buildSources.colDuration": {
+    message: "Длительность",
+    description: "Table header for build duration column",
+  },
+  "buildSources.colDeploys": {
+    message: "Развёртывания",
+    description: "Table header for fan-out deploys count column",
+  },
+  "buildSources.colStarted": {
+    message: "Запущена",
+    description: "Table header for build start timestamp column",
+  },
+  "buildSources.buildDeploysCount_one": {
+    message: "{count} развёртывание",
+    description: "Singular badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildDeploysCount_few": {
+    message: "{count} развёртывания",
+    description: "Few badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildDeploysCount_many": {
+    message: "{count} развёртываний",
+    description: "Many badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildDeploysCount_other": {
+    message: "{count} развёртывания",
+    description: "Other badge count of fan-out deploys on a build",
+  },
+  "buildSources.buildSkippedCount_one": {
+    message: "пропущен {count}",
+    description: "Singular badge count of skipped services on a build",
+  },
+  "buildSources.buildSkippedCount_few": {
+    message: "пропущено {count}",
+    description: "Few badge count of skipped services on a build",
+  },
+  "buildSources.buildSkippedCount_many": {
+    message: "пропущено {count}",
+    description: "Many badge count of skipped services on a build",
+  },
+  "buildSources.buildSkippedCount_other": {
+    message: "пропущено {count}",
+    description: "Other badge count of skipped services on a build",
+  },
+  "buildSources.backToBuilds": {
+    message: "Назад к сборкам",
+    description: "Back link from Build Detail to the Builds tab",
+  },
+  "buildSources.copyBuildId": {
+    message: "Скопировать ID сборки",
+    description: "Accessible label for copying a bld- ID",
+  },
+  "buildSources.buildDetailSubtitle": {
+    message: "Сборка для {name}",
+    description: "Subtitle under the bld- ID on Build Detail",
+  },
+  "buildSources.buildDetailRefreshError": {
+    message: "Не удалось обновить сведения о сборке. Показано последнее загруженное состояние.",
+    description: "Inline error banner when build detail polling fails",
+  },
+  "buildSources.factStarted": {
+    message: "Запущена",
+    description: "Fact label for build start timestamp",
+  },
+  "buildSources.factCommit": {
+    message: "Коммит",
+    description: "Fact label for build commit SHA",
+  },
+  "buildSources.factArtifact": {
+    message: "Артефакт",
+    description: "Fact label for built image reference and digest",
+  },
+  "buildSources.fanoutTitle": {
+    message: "Развёртывания связанных сервисов",
+    description: "Card heading listing fan-out deploys on Build Detail",
+  },
+  "buildSources.fanoutEmpty": {
+    message: "Из этой сборки ещё не развёрнут ни один сервис.",
+    description: "Empty message inside fan-out deploys card",
+  },
+  "buildSources.buildLogsSearchLabel": {
+    message: "Фильтровать логи сборки",
+    description: "Accessible label for search input in BuildLogPanel",
+  },
+  "buildSources.buildLogsEmptyTitle": {
+    message: "Логов сборки пока нет",
+    description: "Empty state heading in BuildLogPanel",
+  },
+  "buildSources.buildLogsEmptyBody": {
+    message: "Логи этой сборки появятся здесь, как только сборка начнёт выводить сообщения.",
+    description: "Empty state body in BuildLogPanel",
+  },
+  "buildSources.imageBuildLogsNotice": {
+    message: "Источники сборки из Docker-образа используют готовый образ и не создают логов сборки.",
+    description: "Notice shown on Build Detail for image-backed build sources",
+  },
+  "buildSources.servicesTabTitle": {
+    message: "Связанные сервисы",
+    description: "Heading of the Linked Services tab",
+  },
+  "buildSources.servicesTabDescription": {
+    message: "Сервисы, привязанные к этому источнику сборки, развёртывают артефакты его сборок.",
+    description: "Description of the Linked Services tab",
+  },
+  "buildSources.linkExistingService": {
+    message: "Привязать существующий сервис",
+    description: "Button opening the Link Existing Service dialog",
+  },
+  "buildSources.servicesEmptyTitle": {
+    message: "Нет связанных сервисов",
+    description: "Empty state heading on Linked Services tab",
+  },
+  "buildSources.servicesEmptyDescription": {
+    message: "Привяжите существующие Web Service, Private Service, Background Worker или Cron Job, чтобы использовать общие сборки.",
+    description: "Empty state description on Linked Services tab",
+  },
+  "buildSources.autoDeployOn": {
+    message: "Авторазвёртывание вкл.",
+    description: "Badge indicating a linked service auto-deploys new builds",
+  },
+  "buildSources.autoDeployOff": {
+    message: "Авторазвёртывание выкл.",
+    description: "Badge indicating a linked service requires manual deploys",
+  },
+  "buildSources.changeOrUnlinkSource": {
+    message: "Изменить источник",
+    description: "Link to a service's settings page to switch or unlink its source",
+  },
+  "buildSources.linkDialogTitle": {
+    message: "Привязать существующий сервис",
+    description: "Heading of the Link Existing Service dialog",
+  },
+  "buildSources.linkDialogDescription": {
+    message: "Привяжите существующий сервис рабочего пространства к «{name}». Привязка сохраняет источник без запуска развёртывания.",
+    description: "Description of the Link Existing Service dialog",
+  },
+  "buildSources.linkDialogNoEligible": {
+    message: "Все подходящие сервисы в этом рабочем пространстве уже привязаны или ещё не созданы.",
+    description: "Message when no linkable unlinked services exist",
+  },
+  "buildSources.linkDialogServiceLabel": {
+    message: "Сервис",
+    description: "Select label in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogServicePlaceholder": {
+    message: "Выберите сервис…",
+    description: "Select placeholder in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogRegionMismatch": {
+    message: "Регионы не совпадают: этот Git-источник сборки находится в {sourceRegion}, а выбранный сервис — в {serviceRegion}.",
+    description: "Inline error when linking a Git build source to a service in another region",
+  },
+  "buildSources.linkDialogStartCommandHint": {
+    message: "Обязательно для источников с нативной средой выполнения, чтобы сервис знал, как запускаться.",
+    description: "Help text for startCommand input in Link Existing Service dialog",
+  },
+  "buildSources.linkDialogSubmit": {
+    message: "Привязать сервис",
+    description: "Submit button label in Link Existing Service dialog",
+  },
+  "buildSources.envImageUnsupportedTitle": {
+    message: "Окружение сборки недоступно для источников из Docker-образа",
+    description: "Fallback heading if an image build source visits /environment",
+  },
+  "buildSources.envImageUnsupportedBody": {
+    message: "Переменные окружения и секретные файлы сборки поддерживаются только для Git-источников сборки.",
+    description: "Fallback body if an image build source visits /environment",
+  },
+  "buildSources.envSaveOnlyNote": {
+    message: "Изменения сохраняются без запуска сборки и применяются при следующей сборке.",
+    description: "Top note on Build-time Environment tab",
+  },
+  "buildSources.envVarsDescription": {
+    message: "Доступны во время сборок этого источника. Изменения вступят в силу при следующей сборке.",
+    description: "Environment Variables card description on Build-time Environment tab",
+  },
+  "buildSources.secretFilesDescription": {
+    message: "Монтируются во время сборок этого источника. Изменения вступят в силу при следующей сборке.",
+    description: "Secret Files card description on Build-time Environment tab",
+  },
+  "buildSources.envGroupsPanelDescription": {
+    message: "Группы окружения уровня рабочего пространства для этапа сборки. Изменения применяются при следующей сборке без развёртывания.",
+    description: "Environment Groups card description on Build-time Environment tab",
+  },
+  "buildSources.envGroupsNoneLinked": {
+    message: "К этому источнику сборки не привязана ни одна группа окружения.",
+    description: "Empty state when no env groups are linked to a build source",
+  },
+  "buildSources.settingsIdentityTitle": {
+    message: "Идентификация и область",
+    description: "Heading of read-only identity card on Settings tab",
+  },
+  "buildSources.settingsIdentityDescription": {
+    message: "Неизменяемые идентификаторы и область действия этого источника сборки.",
+    description: "Description of read-only identity card on Settings tab",
+  },
+  "buildSources.settingsFieldId": {
+    message: "ID источника сборки",
+    description: "Label for read-only bds- ID field on Settings tab",
+  },
+  "buildSources.settingsConfigTitle": {
+    message: "Конфигурация сборки",
+    description: "Heading of editable settings card on Settings tab",
+  },
+  "buildSources.settingsNoBuildNote": {
+    message: "Сохранение настроек обновляет источник сборки без запуска сборки.",
+    description: "Inline note explaining Settings edits do not rebuild",
+  },
+  "buildSources.settingsFieldRepoUrl": {
+    message: "URL репозитория",
+    description: "Input label for Git repository URL on Settings tab",
+  },
+  "buildSources.settingsInvalidRepoUrl": {
+    message: "Введите корректный URL Git-репозитория.",
+    description: "Validation error for malformed repo URL on Settings tab",
+  },
+  "buildSources.settingsInvalidImageUrl": {
+    message: "Введите корректную ссылку на Docker-образ.",
+    description: "Validation error for malformed image URL on Settings tab",
+  },
+  "buildSources.settingsSaveButton": {
+    message: "Сохранить изменения",
+    description: "Submit button label on Settings tab",
+  },
+  "buildSources.settingsSaving": {
+    message: "Сохранение…",
+    description: "Submit button label while updateBuildSource is in flight",
+  },
+  "buildSources.dangerZoneTitle": {
+    message: "Опасная зона",
+    description: "Heading of Delete Build Source card on Settings tab",
+  },
+  "buildSources.dangerZoneDescription": {
+    message: "Безвозвратно удалите этот источник сборки и его конфигурацию сборки. Это действие нельзя отменить.",
+    description: "Description of Delete Build Source card",
+  },
+  "buildSources.deleteBlockedTitle_one": {
+    message: "Отвяжите {count} сервис перед удалением",
+    description: "Singular alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedTitle_few": {
+    message: "Отвяжите {count} сервиса перед удалением",
+    description: "Few alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedTitle_many": {
+    message: "Отвяжите {count} сервисов перед удалением",
+    description: "Many alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedTitle_other": {
+    message: "Отвяжите {count} сервисов перед удалением",
+    description: "Other alert heading blocking delete when services remain linked",
+  },
+  "buildSources.deleteBlockedDescription": {
+    message: "Источник сборки нельзя удалить, пока на него ссылаются сервисы. Сначала переключите каждый связанный сервис на другой источник:",
+    description: "Explanation under delete-blocked alert",
+  },
+  "buildSources.deleteButton": {
+    message: "Удалить источник сборки",
+    description: "Destructive button opening the delete confirmation dialog",
+  },
+  "buildSources.deleteConfirmTitle": {
+    message: "Удалить «{name}»?",
+    description: "Title of Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmBody": {
+    message: "Источник сборки и его окружение сборки будут безвозвратно удалены. Историю сборок и настройки восстановить не удастся.",
+    description: "Body of Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmPrompt": {
+    message: "Введите {phrase} ниже для подтверждения.",
+    description: "Sudo command prompt inside Delete Build Source confirmation dialog",
+  },
+  "buildSources.deleteConfirmButton": {
+    message: "Удалить источник сборки",
+    description: "Confirm action label inside Delete Build Source confirmation dialog",
+  },
 };
 
 export default ruBuildSources;

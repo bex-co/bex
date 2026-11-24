@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, TriangleAlert } from "lucide-react";
 import {
   Alert,
@@ -201,14 +201,17 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
               {props.buildSourceId ? (
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span>
-                      {linked?.name ??
-                        (linkedLoading ? (
-                          <Skeleton className="inline-block h-4 w-32 align-middle" />
-                        ) : (
-                          props.buildSourceId
-                        ))}
-                    </span>
+                    {linkedLoading && !linked ? (
+                      <Skeleton className="inline-block h-4 w-32 align-middle" />
+                    ) : (
+                      <Link
+                        to="/build-sources/$buildSourceId"
+                        params={{ buildSourceId: props.buildSourceId }}
+                        className="text-primary hover:underline"
+                      >
+                        {linked?.name ?? props.buildSourceId}
+                      </Link>
+                    )}
                     {linked ? (
                       <Badge
                         variant="outline"

@@ -42,6 +42,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { useEnvGroup } from "@/features/env-groups/hooks/use-env-groups";
+import { useBuildSource } from "@/features/build-sources/hooks/use-build-source";
 import {
   CREATE_TYPE_ITEMS,
   currentCreateType,
@@ -57,6 +58,7 @@ type DashboardParams = {
   databaseId?: string;
   keyValueId?: string;
   groupId?: string;
+  buildSourceId?: string;
   blueprintId?: string;
   webhookId?: string;
 };
@@ -87,6 +89,9 @@ export function DashboardBreadcrumbs() {
   }
   if (params.groupId) {
     return <EnvGroupBreadcrumbs id={params.groupId} />;
+  }
+  if (params.buildSourceId) {
+    return <BuildSourceBreadcrumbs id={params.buildSourceId} />;
   }
   return <PageBreadcrumb pathname={pathname} params={params} />;
 }
@@ -423,6 +428,27 @@ function EnvGroupBreadcrumbs({ id }: { id: string }) {
   );
 }
 
+function BuildSourceBreadcrumbs({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const { buildSource } = useBuildSource(id);
+  return (
+    <nav
+      aria-label={t("common.topbarBreadcrumbs")}
+      className="flex min-w-0 items-center gap-0.5"
+    >
+      <BreadcrumbLink
+        to="/build-sources"
+        icon={Package}
+        label={t("common.navBuildSources")}
+      />
+      <BreadcrumbSeparator />
+      <span className="flex min-w-0 items-center gap-1.5 px-2 text-sm font-medium">
+        <span className="max-w-48 truncate">{buildSource?.name ?? id}</span>
+      </span>
+    </nav>
+  );
+}
+
 function ProjectBreadcrumbs({ projectId }: { projectId: string }) {
   const { t } = useTranslations();
   const { projects } = useProjects({ poll: false });
@@ -549,7 +575,7 @@ function BreadcrumbLink({
   icon: Icon,
   label,
 }: {
-  to: "/" | "/env-groups";
+  to: "/" | "/env-groups" | "/build-sources";
   icon: LucideIcon;
   label: string;
 }) {

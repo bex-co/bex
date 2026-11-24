@@ -522,8 +522,8 @@ describe("GlobalSearchDialog", () => {
     });
   });
 
-  describe("Build Sources search (w2/m613)", () => {
-    it("finds build sources by name, repo URL, or image URL and navigates to /build-sources", () => {
+  describe("Build Sources search (w2/m613, w2/m614)", () => {
+    it("finds build sources by name, repo URL, or image URL and navigates to /build-sources/$buildSourceId", () => {
       lists.buildSources.rows = [
         {
           id: "bds-1",
@@ -554,8 +554,8 @@ describe("GlobalSearchDialog", () => {
       });
       fireEvent.click(imageRow);
       expect(navigate).toHaveBeenCalledWith({
-        to: "/build-sources",
-        search: { q: "edge-proxy", kind: undefined },
+        to: "/build-sources/$buildSourceId",
+        params: { buildSourceId: "bds-2" },
       });
     });
   });

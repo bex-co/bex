@@ -83,6 +83,28 @@ query BuildSource($id: String!) {
   }
 }
 
+query BuildSourceEnvVarValue($id: String!, $key: String!) {
+  buildSource(id: $id) {
+    id
+    envVar(key: $key) {
+      id
+      key
+      value
+    }
+  }
+}
+
+query BuildSourceSecretFileContent($id: String!, $name: String!) {
+  buildSource(id: $id) {
+    id
+    secretFile(name: $name) {
+      id
+      name
+      content
+    }
+  }
+}
+
 query BuildSourceBuilds(
   $buildSourceId: String!
   $cursor: String

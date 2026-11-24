@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/rand"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -105,4 +106,13 @@ func (s *Service) envScope(ctx context.Context, id string) (context.Context, err
 	}
 	ctx, err := s.BuildSourceScope(ctx, id)
 	return WithStagedWrite(ctx), err
+}
+
+// envValueKeyGrant picks the scoped API key permission for single-item secret
+// reads (GraphQL envVar/secretFile nested under Service vs BuildSource).
+func envValueKeyGrant(service string) core.KeyAction {
+	if k, ok := ids.KindOf(service); ok && k == ids.BuildSource {
+		return core.KeyBuildSourcesEnv
+	}
+	return core.KeyServicesEnv
 }

@@ -69,6 +69,27 @@ const repos = [
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
   useNavigate: () => navigate,
+  Link: ({
+    to,
+    params,
+    children,
+    ...rest
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) => {
+    const href = Object.entries(params ?? {}).reduce(
+      (acc, [key, value]) => acc.replace(`$${key}`, value),
+      to,
+    );
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
+  },
 }));
 vi.mock("@/features/services/lib/service-base", () => ({
   useServiceBase: () => currentBase,
@@ -1197,7 +1218,10 @@ describe("ServiceSourceCard — build sources", () => {
         startCommand="node server.js"
       />,
     );
-    expect(screen.getByText("Mono")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Mono" })).toHaveAttribute(
+      "href",
+      "/build-sources/bds-mono",
+    );
     expect(screen.getByText("Git repository")).toBeInTheDocument();
     expect(screen.getByText("bds-mono")).toBeInTheDocument();
     expect(

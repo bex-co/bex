@@ -120,8 +120,8 @@ export function ProjectBuildSourcesSection({
                   <TableRow key={source.id}>
                     <TableCell className="py-3 font-medium">
                       <Link
-                        to="/build-sources"
-                        search={{ q: source.name, kind: undefined }}
+                        to="/build-sources/$buildSourceId"
+                        params={{ buildSourceId: source.id }}
                         className="hover:underline"
                       >
                         {source.name}
@@ -155,8 +155,8 @@ export function ProjectBuildSourcesSection({
                 <CardContent className="space-y-2 px-4">
                   <div className="flex items-center justify-between gap-2">
                     <Link
-                      to="/build-sources"
-                      search={{ q: source.name, kind: undefined }}
+                      to="/build-sources/$buildSourceId"
+                      params={{ buildSourceId: source.id }}
                       className="truncate font-medium hover:underline"
                     >
                       {source.name}

@@ -279,6 +279,8 @@ export interface EnvironmentEditorCopy {
   secretFilesEmptyBody?: string;
   /** The secret-file dialog's sentence on where the file is available. */
   secretFileDialogDescription?: string;
+  /** Override the single save button label when `saveOnly` is true. */
+  saveOnlyLabel?: string;
 }
 
 export interface EnvironmentEditorProps {
@@ -328,6 +330,12 @@ export interface EnvironmentEditorProps {
    */
   headingLevel?: "h2" | "h3";
   /**
+   * When true (Build Sources build-time environment, w2/m614), the editor
+   * renders a single "Save changes" action with no deploy/rebuild menu: edits
+   * are saved without triggering a build and apply on the next build.
+   */
+  saveOnly?: boolean;
+  /**
    * Why the deploying save modes cannot run now — a suspended service
    * (w4/m234). Save only becomes the primary action, and the two deploying
    * items stay disabled with this reason.
@@ -373,6 +381,7 @@ export function EnvironmentEditor({
   generateOnServer = false,
   copy,
   headingLevel = "h2",
+  saveOnly = false,
   deployBlockedReason,
   writeBlockedReason,
   revealBlockedReason,
@@ -1180,58 +1189,71 @@ export function EnvironmentEditor({
               >
                 {t("services.envCancel")}
               </Button>
-              <DropdownMenu>
+              {saveOnly ? (
                 <PermissionTooltip reason={createReason}>
-                  <div className="flex flex-1 @2xl/page:flex-none">
-                    <Button
-                      className="flex-1 rounded-r-none @2xl/page:flex-none"
-                      disabled={saveDisabled}
-                      onClick={() =>
-                        void commit(deployBlockedReason ? "only" : "deploy")
-                      }
-                    >
-                      {busy ? <Loader2 className="animate-spin" /> : <Check />}
-                      {t(
-                        deployBlockedReason
-                          ? "services.environmentSaveOnly"
-                          : "services.environmentSaveDeploy",
-                      )}
-                    </Button>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        className="rounded-l-none border-l border-primary-foreground/30 px-2"
-                        disabled={saveDisabled}
-                        aria-label={t("services.environmentSaveOptions")}
-                      >
-                        <ChevronDown />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </div>
+                  <Button
+                    className="flex-1 @2xl/page:flex-none"
+                    disabled={saveDisabled}
+                    onClick={() => void commit("only")}
+                  >
+                    {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                    {copy?.saveOnlyLabel ?? t("services.environmentSaveOnly")}
+                  </Button>
                 </PermissionTooltip>
-                <DropdownMenuContent align="end">
-                  <PermissionMenuItem
-                    disabled={saveDisabled}
-                    permissionReason={deployBlockedReason}
-                    onSelect={() => void commit("rebuild")}
-                  >
-                    {t("services.environmentSaveRebuild")}
-                  </PermissionMenuItem>
-                  <PermissionMenuItem
-                    disabled={saveDisabled}
-                    permissionReason={deployBlockedReason}
-                    onSelect={() => void commit("deploy")}
-                  >
-                    {t("services.environmentSaveDeploy")}
-                  </PermissionMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={saveDisabled}
-                    onSelect={() => void commit("only")}
-                  >
-                    {t("services.environmentSaveOnly")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              ) : (
+                <DropdownMenu>
+                  <PermissionTooltip reason={createReason}>
+                    <div className="flex flex-1 @2xl/page:flex-none">
+                      <Button
+                        className="flex-1 rounded-r-none @2xl/page:flex-none"
+                        disabled={saveDisabled}
+                        onClick={() =>
+                          void commit(deployBlockedReason ? "only" : "deploy")
+                        }
+                      >
+                        {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                        {t(
+                          deployBlockedReason
+                            ? "services.environmentSaveOnly"
+                            : "services.environmentSaveDeploy",
+                        )}
+                      </Button>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          className="rounded-l-none border-l border-primary-foreground/30 px-2"
+                          disabled={saveDisabled}
+                          aria-label={t("services.environmentSaveOptions")}
+                        >
+                          <ChevronDown />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </div>
+                  </PermissionTooltip>
+                  <DropdownMenuContent align="end">
+                    <PermissionMenuItem
+                      disabled={saveDisabled}
+                      permissionReason={deployBlockedReason}
+                      onSelect={() => void commit("rebuild")}
+                    >
+                      {t("services.environmentSaveRebuild")}
+                    </PermissionMenuItem>
+                    <PermissionMenuItem
+                      disabled={saveDisabled}
+                      permissionReason={deployBlockedReason}
+                      onSelect={() => void commit("deploy")}
+                    >
+                      {t("services.environmentSaveDeploy")}
+                    </PermissionMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      disabled={saveDisabled}
+                      onSelect={() => void commit("only")}
+                    >
+                      {t("services.environmentSaveOnly")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </CardContent>
         </Card>

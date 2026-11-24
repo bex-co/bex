@@ -7,6 +7,7 @@ import {
   Timer,
   Zap,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Fragment, useId, type ReactNode } from "react";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -211,7 +212,17 @@ export function DeployHeader({
               className="inline-flex min-w-0 flex-wrap items-center gap-1 font-mono"
               data-testid="deploy-build-id"
             >
-              <span className="break-all">{deploy.buildId}</span>
+              {buildSourceId ? (
+                <Link
+                  to="/build-sources/$buildSourceId/builds/$buildId"
+                  params={{ buildSourceId, buildId: deploy.buildId }}
+                  className="text-primary break-all hover:underline"
+                >
+                  {deploy.buildId}
+                </Link>
+              ) : (
+                <span className="break-all">{deploy.buildId}</span>
+              )}
               <CopyButton
                 value={deploy.buildId}
                 label={t("common.copyField", {
@@ -229,13 +240,17 @@ export function DeployHeader({
               className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5"
               data-testid="deploy-build-source"
             >
-              {buildSourceName ? (
-                <span className="font-medium break-words">
-                  {buildSourceName}
-                </span>
-              ) : null}
+              <Link
+                to="/build-sources/$buildSourceId"
+                params={{ buildSourceId }}
+                className="text-primary font-medium break-words hover:underline"
+              >
+                {buildSourceName ?? buildSourceId}
+              </Link>
               <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs text-muted-foreground">
-                <span className="break-all">{buildSourceId}</span>
+                {buildSourceName ? (
+                  <span className="break-all">{buildSourceId}</span>
+                ) : null}
                 <CopyButton
                   value={buildSourceId}
                   label={t("common.copyField", {

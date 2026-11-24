@@ -7,6 +7,7 @@ import {
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { trackOwnDelete } from "@/common/lib/own-delete";
 
 export interface UseDeleteBuildSourceResult {
   remove: (id: string, name?: string) => Promise<boolean>;
@@ -24,16 +25,18 @@ export function useDeleteBuildSource(): UseDeleteBuildSourceResult {
     async (id: string, name?: string) => {
       setBusy(true);
       try {
-        const res = await mutate({
-          variables: { id },
-          update: (cache) => {
-            const cacheId = cache.identify({ __typename: "BuildSource", id });
-            if (cacheId) {
-              cache.evict({ id: cacheId });
-              cache.gc();
-            }
-          },
-        });
+        const res = await trackOwnDelete(() =>
+          mutate({
+            variables: { id },
+            update: (cache) => {
+              const cacheId = cache.identify({ __typename: "BuildSource", id });
+              if (cacheId) {
+                cache.evict({ id: cacheId });
+                cache.gc();
+              }
+            },
+          }),
+        );
         if (!res.data?.deleteBuildSource) {
           throw new Error("deleteBuildSource returned false");
         }

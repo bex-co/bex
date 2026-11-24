@@ -55,6 +55,8 @@ export function subscribeUrl(opts: {
   /** A project view's scope (w3/m505): sent instead of `resource`; bex-api
    *  resolves the view's resources and follows them all. */
   project?: ProjectLogScope;
+  /** Scope a build-log tail to one Build Source build (`bld-…`, w2/m611). */
+  build?: string;
   type: LogTypeFilter;
   text: string;
   textMode: LogTextMode | undefined;
@@ -65,6 +67,7 @@ export function subscribeUrl(opts: {
   const {
     resource,
     project,
+    build,
     type,
     text,
     textMode,
@@ -80,6 +83,7 @@ export function subscribeUrl(opts: {
         }
       : { resource },
   );
+  if (build) params.set("build", build);
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
   if (text && textMode) params.set("textMode", textMode);
@@ -122,6 +126,8 @@ export interface UseLiveLogsOptions {
   resource: string;
   /** Tail a project view (w3/m505) instead of `resource`. */
   project?: ProjectLogScope;
+  /** Scope a build-log tail to one Build Source build (`bld-…`, w2/m611). */
+  build?: string;
   /**
    * Live toggle — off closes the stream (pause); on (re)opens it (resume). A
    * pause KEEPS the lines already received (w4/m192): the reader is unchanged,
@@ -193,6 +199,7 @@ const FLUSH_MS = 100;
 export function useLiveLogs({
   resource,
   project,
+  build,
   enabled,
   type,
   text,
@@ -227,7 +234,7 @@ export function useLiveLogs({
   const scopeKey = project
     ? JSON.stringify([project.project, project.filterDocument])
     : resource;
-  const subKey = `${scopeKey}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}|${requestFilters.host}`;
+  const subKey = `${scopeKey}|${build ?? ""}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}|${requestFilters.host}`;
   const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
     key: subKey,
     lines: [],
@@ -283,6 +290,7 @@ export function useLiveLogs({
       subscribeUrl({
         resource,
         project,
+        build,
         type,
         text,
         textMode,
@@ -370,6 +378,7 @@ export function useLiveLogs({
   }, [
     resource,
     project,
+    build,
     enabled,
     type,
     text,

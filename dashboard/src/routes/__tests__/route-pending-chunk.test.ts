@@ -16,6 +16,12 @@ import {
   SandboxGroupsListRouteSkeleton,
 } from "@/features/sandbox-groups/components/sandbox-group-skeletons";
 import {
+  BuildDetailRouteSkeleton,
+  BuildSourceBuildsTabSkeleton,
+  BuildSourceDetailRouteSkeleton,
+  BuildSourceEnvironmentTabSkeleton,
+  BuildSourceServicesTabSkeleton,
+  BuildSourceSettingsTabSkeleton,
   BuildSourcesListRouteSkeleton,
   CreateBuildSourceRouteSkeleton,
 } from "@/features/build-sources/components/build-source-skeletons";
@@ -32,6 +38,12 @@ import { Route as SandboxGroupsRoute } from "../sandbox-groups";
 import { Route as SandboxGroupDetailRoute } from "../sandbox-groups_.$sandboxGroupId";
 import { Route as BuildSourcesRoute } from "../build-sources";
 import { Route as BuildSourcesNewRoute } from "../build-sources_.new";
+import { Route as BuildSourceDetailRoute } from "../build-sources_.$buildSourceId";
+import { Route as BuildSourceBuildsRoute } from "../build-sources_.$buildSourceId.index";
+import { Route as BuildSourceBuildDetailRoute } from "../build-sources_.$buildSourceId.builds.$buildId";
+import { Route as BuildSourceServicesRoute } from "../build-sources_.$buildSourceId.services";
+import { Route as BuildSourceEnvironmentRoute } from "../build-sources_.$buildSourceId.environment";
+import { Route as BuildSourceSettingsRoute } from "../build-sources_.$buildSourceId.settings";
 
 /**
  * Where a route's `pendingComponent` lands when the router plugin code-splits
@@ -84,7 +96,7 @@ describe("route pending components and code splitting (w3/066)", () => {
       SandboxGroupDetailRoute,
       SandboxGroupDetailRouteSkeleton,
     ],
-    // w2/m613: build sources list & create skeletons live in a skeleton-only module.
+    // w2/m613–m614: build sources list, create & detail skeletons live in a skeleton-only module.
     [
       "/build-sources",
       BuildSourcesRoute,
@@ -94,6 +106,36 @@ describe("route pending components and code splitting (w3/066)", () => {
       "/build-sources/new",
       BuildSourcesNewRoute,
       CreateBuildSourceRouteSkeleton,
+    ],
+    [
+      "/build-sources/$buildSourceId",
+      BuildSourceDetailRoute,
+      BuildSourceDetailRouteSkeleton,
+    ],
+    [
+      "/build-sources/$buildSourceId/",
+      BuildSourceBuildsRoute,
+      BuildSourceBuildsTabSkeleton,
+    ],
+    [
+      "/build-sources/$buildSourceId/builds/$buildId",
+      BuildSourceBuildDetailRoute,
+      BuildDetailRouteSkeleton,
+    ],
+    [
+      "/build-sources/$buildSourceId/services",
+      BuildSourceServicesRoute,
+      BuildSourceServicesTabSkeleton,
+    ],
+    [
+      "/build-sources/$buildSourceId/environment",
+      BuildSourceEnvironmentRoute,
+      BuildSourceEnvironmentTabSkeleton,
+    ],
+    [
+      "/build-sources/$buildSourceId/settings",
+      BuildSourceSettingsRoute,
+      BuildSourceSettingsTabSkeleton,
     ],
   ] as const)(
     "%s keeps its skeleton out of the page's lazy chunk",

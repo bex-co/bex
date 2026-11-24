@@ -375,7 +375,13 @@ function BuildSourceTableRow({
     <TableRow>
       <TableCell className="py-3.5">
         <div className="min-w-0 space-y-0.5">
-          <p className="truncate font-medium">{source.name}</p>
+          <Link
+            to="/build-sources/$buildSourceId"
+            params={{ buildSourceId: source.id }}
+            className="block truncate font-medium hover:underline"
+          >
+            {source.name}
+          </Link>
           <div className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
             <span className="truncate">{source.id}</span>
             <CopyButton
@@ -436,7 +442,13 @@ function BuildSourceMobileCard({
       <CardContent className="space-y-3 px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-0.5">
-            <p className="truncate font-medium">{source.name}</p>
+            <Link
+              to="/build-sources/$buildSourceId"
+              params={{ buildSourceId: source.id }}
+              className="block truncate font-medium hover:underline"
+            >
+              {source.name}
+            </Link>
             <div className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
               <span className="truncate">{source.id}</span>
               <CopyButton
