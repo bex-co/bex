@@ -102,7 +102,7 @@ spec:
             authorization-mode: Webhook
             cloud-provider: external
             event-qps: "5"
-            feature-gates: UserNamespacesSupport=true
+            feature-gates: UserNamespacesSupport=true,ImageVolume=true
             kubeconfig: /etc/kubernetes/kubelet.conf
             max-pods: "220"
             # Tenant Apps and every tenant-controlled execution Job are pinned
@@ -292,7 +292,7 @@ spec:
             authorization-mode: Webhook
             cloud-provider: external
             event-qps: "5"
-            feature-gates: UserNamespacesSupport=true
+            feature-gates: UserNamespacesSupport=true,ImageVolume=true
             kubeconfig: /etc/kubernetes/kubelet.conf
             max-pods: "220"
             # Tenant Apps and every tenant-controlled execution Job are pinned
@@ -482,7 +482,7 @@ spec:
             authorization-mode: Webhook
             cloud-provider: external
             event-qps: "5"
-            feature-gates: UserNamespacesSupport=true
+            feature-gates: UserNamespacesSupport=true,ImageVolume=true
             kubeconfig: /etc/kubernetes/kubelet.conf
             max-pods: "220"
             # Tenant Apps and every tenant-controlled execution Job are pinned
@@ -673,7 +673,7 @@ spec:
             authorization-mode: Webhook
             cloud-provider: external
             event-qps: "5"
-            feature-gates: UserNamespacesSupport=true
+            feature-gates: UserNamespacesSupport=true,ImageVolume=true
             kubeconfig: /etc/kubernetes/kubelet.conf
             max-pods: "220"
             # Tenant Apps and every tenant-controlled execution Job are pinned
@@ -1251,7 +1251,12 @@ spec:
           etcd-cafile: /etc/kubernetes/pki/etcd/ca.crt
           etcd-certfile: /etc/kubernetes/pki/etcd/server.crt
           etcd-keyfile: /etc/kubernetes/pki/etcd/server.key
-          feature-gates: UserNamespacesSupport=true
+          # ImageVolume (beta, off by default until v1.35; w6/m624): without it
+          # the API server drops a pod's `image` volume source, and the
+          # operator mounts its health-probe helper from one when
+          # BEX_HEALTH_PROBE_IMAGE_VOLUME is on. The App pools' kubelets carry
+          # it too (scripts/clusterapi-validate.sh).
+          feature-gates: UserNamespacesSupport=true,ImageVolume=true
           kubelet-client-certificate: /etc/kubernetes/pki/apiserver-kubelet-client.crt
           kubelet-client-key: /etc/kubernetes/pki/apiserver-kubelet-client.key
           # InternalIP first (w1/m19 t006): apiserver→kubelet (logs/exec/metrics)
@@ -1458,7 +1463,7 @@ spec:
           authorization-mode: Webhook
           cloud-provider: external
           event-qps: "5"
-          feature-gates: UserNamespacesSupport=true
+          feature-gates: UserNamespacesSupport=true,ImageVolume=true
           kubeconfig: /etc/kubernetes/kubelet.conf
           max-pods: "120"
           read-only-port: "0"
@@ -1478,7 +1483,7 @@ spec:
           authorization-mode: Webhook
           cloud-provider: external
           event-qps: "5"
-          feature-gates: UserNamespacesSupport=true
+          feature-gates: UserNamespacesSupport=true,ImageVolume=true
           kubeconfig: /etc/kubernetes/kubelet.conf
           max-pods: "120"
           read-only-port: "0"

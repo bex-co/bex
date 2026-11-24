@@ -1043,4 +1043,33 @@ if [ "$staged" != "$cp_key_stage,$cp_key_stage.pub" ] \
   fail=1
 fi
 
+# The operator mounts its health-probe helper from an `image` volume when
+# BEX_HEALTH_PROBE_IMAGE_VOLUME is on (w6/m624). ImageVolume is beta and off by
+# default on v1.34: an API server without it drops the volume's source, so the
+# Deployment's pods are Invalid, and a kubelet without it cannot mount one. So
+# the API server, the control plane's kubelets and the kubelet of every pool
+# that runs Apps (bex-tenant-0 and each serving pool) keep the gate.
+echo "==> $OVERLAY keeps ImageVolume on the API server and every App pool's kubelet"
+image_volume_sites=(
+  "KubeadmControlPlane bex-control-plane .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs"
+  "KubeadmControlPlane bex-control-plane .spec.kubeadmConfigSpec.initConfiguration.nodeRegistration.kubeletExtraArgs"
+  "KubeadmControlPlane bex-control-plane .spec.kubeadmConfigSpec.joinConfiguration.nodeRegistration.kubeletExtraArgs"
+)
+while read -r md; do
+  [ -n "$md" ] || continue
+  cfg="$(md_field "$md" .spec.template.spec.bootstrap.configRef.name)"
+  image_volume_sites+=("KubeadmConfigTemplate ${cfg:-<none>} .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs")
+done < <(
+  echo bex-tenant-0
+  yq -N "select(.kind==\"MachineDeployment\") | select((.metadata.annotations.\"capacity.cluster-autoscaler.kubernetes.io/taints\" // \"\") | test(\"$SERVING_KEY\")) | .metadata.name" "$OVERLAY"
+)
+for site in "${image_volume_sites[@]}"; do
+  read -r kind name path <<<"$site"
+  gates="$(overlay_one "$kind" "$name" "$path.\"feature-gates\"")"
+  if ! printf '%s\n' "$gates" | tr ',' '\n' | grep -qx 'ImageVolume=true'; then
+    echo "FAIL: $kind/$name $path feature-gates is '$gates', want ImageVolume=true among them (w6/m624): the operator's health-probe image volume needs it there" >&2
+    fail=1
+  fi
+done
+
 [ "$fail" -eq 0 ] && echo "PASS: CAPH overlay is internally consistent (reviewed snapshot ⟺ no privileged bootstrap downloads)" || { echo "FAIL: see errors above" >&2; exit 1; }
