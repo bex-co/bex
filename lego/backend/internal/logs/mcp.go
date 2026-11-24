@@ -219,7 +219,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		all := []string{}
 		for _, id := range resolved.IDs {
-			if resolved.Scoped && core.IsDatastoreResource(id) && !slices.Contains(datastoreLogLabels, in.Label) {
+			if q.skipDatastoreForLabelValues(id, in.Label) {
+				if !resolved.Scoped {
+					if _, err := s.authorizeLogOwner(ctx, id); err != nil {
+						return nil, nil, err
+					}
+				}
 				continue
 			}
 			values, err := s.LogLabelValues(ctx, in.Label, q.forResource(id))

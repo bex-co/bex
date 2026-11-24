@@ -139,7 +139,13 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 	}
 	all := []string{}
 	for _, res := range resolved.IDs {
-		if resolved.Scoped && core.IsDatastoreResource(res) && !slices.Contains(datastoreLogLabels, label) {
+		if q.skipDatastoreForLabelValues(res, label) {
+			if !resolved.Scoped {
+				if _, err := s.authorizeLogOwner(ctx, res); err != nil {
+					core.WriteErr(w, err)
+					return
+				}
+			}
 			continue
 		}
 		values, err := s.LogLabelValues(ctx, label, q.forResource(res))
@@ -259,9 +265,12 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queries := make([]LogQuery, len(resolved.IDs))
-	for i, resource := range resolved.IDs {
-		queries[i] = q.forResource(resource)
+	queries := make([]LogQuery, 0, len(resolved.IDs))
+	for _, resource := range resolved.IDs {
+		if q.skipDatastoreForQuery(resource) {
+			continue
+		}
+		queries = append(queries, q.forResource(resource))
 	}
 	if err := s.checkLiveSubscribable(queries); err != nil {
 		core.WriteErr(w, err)
@@ -297,17 +306,27 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Admission retains a final process ceiling and adds caller/workspace shares
 	// after resource authorization, leaving capacity for unrelated tenants —
 	// one slot per followed resource, so a multi-resource tail costs what that
-	// many single tails would. Check the workspace plan's request-log gate right
-	// after resource authorization so a Hobby refusal answers HTTP 400 before
-	// any streaming header or WebSocket 101 (w32/102).
-	for i := range queries {
-		workspace, release, err := s.acquireSubscriptionWorkspace(r.Context(), queries[i])
+	// many single tails would. Skipped datastores in a mixed service+datastore
+	// query are still authorized (preserving 403/404) without holding a slot.
+	// Check the workspace plan's request-log gate right after resource
+	// authorization so a Hobby refusal answers HTTP 400 before any streaming
+	// header or WebSocket 101 (w32/102).
+	for _, resource := range resolved.IDs {
+		if q.skipDatastoreForQuery(resource) {
+			if _, err := s.authorizeLogOwner(r.Context(), resource); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			continue
+		}
+		rq := q.forResource(resource)
+		workspace, release, err := s.acquireSubscriptionWorkspace(r.Context(), rq)
 		if err != nil {
 			writeSubscriptionRefusal(w, err)
 			return
 		}
 		defer release()
-		if err := s.checkRequestLogsPlan(ctx, workspace, queries[i]); err != nil {
+		if err := s.checkRequestLogsPlan(ctx, workspace, rq); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -432,9 +451,12 @@ func (s *Service) projectSubscribe(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
-	queries := make([]LogQuery, len(resources))
-	for i, res := range resources {
-		queries[i] = q.forResource(res.ID)
+	queries := make([]LogQuery, 0, len(resources))
+	for _, res := range resources {
+		if q.skipDatastoreForQuery(res.ID) {
+			continue
+		}
+		queries = append(queries, q.forResource(res.ID))
 	}
 	if err := s.checkLiveSubscribable(queries); err != nil {
 		core.WriteErr(w, err)

@@ -206,20 +206,77 @@ func (s *Service) filterReadableLogResources(ctx context.Context, workspace stri
 	return readable, nil
 }
 
-// keepLogResourceForTypes filters a project's resources to the kinds that emit
-// the requested log types when no explicit `resource` list is given.
-func keepLogResourceForTypes(types []string) func(savedsearch.Resource) bool {
-	if slices.Equal(types, []string{LogTypeRequest}) {
+// includesDatastore reports whether a managed datastore (Postgres or Key Value)
+// can contribute lines to q in a project-scoped or mixed service+datastore
+// read: datastores emit process logs only (matching `app` or untyped reads) and
+// carry no request, build, or deploy labels.
+func (q LogQuery) includesDatastore() bool {
+	if len(q.requestFilters()) > 0 || len(q.Build) > 0 || q.Deploy != "" {
+		return false
+	}
+	return len(q.Types) == 0 || slices.Contains(q.Types, LogTypeApp)
+}
+
+// hasMixedLogResources reports whether resources mixes at least one service
+// (App) with at least one managed datastore (Postgres or Key Value).
+func hasMixedLogResources(resources []string) bool {
+	hasApp, hasDatastore := false, false
+	for _, id := range resources {
+		if core.IsDatastoreResource(id) {
+			hasDatastore = true
+		} else {
+			hasApp = true
+		}
+		if hasApp && hasDatastore {
+			return true
+		}
+	}
+	return false
+}
+
+// skipDatastoreForQuery reports whether id is a managed datastore that should
+// be authorized and skipped for q rather than run through datastoreFilters.
+// Single-datastore and datastore-only reads never skip, preserving
+// datastoreFilters's 400 refusal.
+func (q LogQuery) skipDatastoreForQuery(id string) bool {
+	return (q.mixedResources || q.projectScope) && core.IsDatastoreResource(id) && !q.includesDatastore()
+}
+
+// skipDatastoreForLabelValues reports whether id is a managed datastore that
+// contributes no values for label under q in a project-scoped or mixed read.
+func (q LogQuery) skipDatastoreForLabelValues(id, label string) bool {
+	if !(q.mixedResources || q.projectScope) || !core.IsDatastoreResource(id) {
+		return false
+	}
+	return !q.includesDatastore() || !slices.Contains(datastoreLogLabels, label)
+}
+
+// keepLogResourceForQuery filters a project's resources to the kinds that can
+// contribute lines to q when no explicit `resource` list is given.
+func keepLogResourceForQuery(q LogQuery) func(savedsearch.Resource) bool {
+	isDatastore := func(r savedsearch.Resource) bool {
+		return r.Type == savedsearch.KindPostgres || r.Type == savedsearch.KindKeyValue
+	}
+	if len(q.Build) > 0 || q.Deploy != "" {
+		return func(r savedsearch.Resource) bool {
+			return !isDatastore(r)
+		}
+	}
+	if len(q.requestFilters()) > 0 || slices.Equal(q.Types, []string{LogTypeRequest}) {
 		return func(r savedsearch.Resource) bool {
 			return r.Type == "" || r.Type == appv1alpha1.TypeWebService
 		}
 	}
-	if slices.Equal(types, []string{LogTypeBuild}) {
+	if len(q.Types) > 0 && !slices.Contains(q.Types, LogTypeApp) {
 		return func(r savedsearch.Resource) bool {
-			return r.Type != savedsearch.KindPostgres && r.Type != savedsearch.KindKeyValue
+			return !isDatastore(r)
 		}
 	}
+	wantBuild := slices.Contains(q.Types, LogTypeBuild)
 	return func(r savedsearch.Resource) bool {
+		if wantBuild && r.Type == appv1alpha1.TypeStaticSite {
+			return true
+		}
 		return r.ResourceType() != ""
 	}
 }
@@ -232,17 +289,19 @@ func (s *Service) resolveLogScope(ctx context.Context, req savedsearch.ScopeRequ
 	resolved, err := savedsearch.ResolveScope(ctx, s.Projects, req, savedsearch.ScopePolicy{
 		RequireProjectForEnvironment: true,
 		MaxResources:                 maxLogResources,
-		Keep:                         keepLogResourceForTypes(q.Types),
+		Keep:                         keepLogResourceForQuery(*q),
 		Unavailable:                  ErrProjectLogsUnavailable,
 	})
 	if err != nil {
 		return savedsearch.ResolvedScope{}, err
 	}
 	if !resolved.Scoped {
+		q.mixedResources = hasMixedLogResources(resolved.IDs)
 		return resolved, nil
 	}
-	q.projectScope = true
-	if slices.Equal(q.Types, []string{LogTypeRequest}) {
+	q.projectScope = len(req.Resources) == 0
+	q.mixedResources = hasMixedLogResources(resolved.IDs)
+	if slices.Contains(q.Types, LogTypeRequest) {
 		wp, err := s.workspacePlanOf(ctx, resolved.WorkspaceID)
 		if err != nil {
 			return savedsearch.ResolvedScope{}, err
@@ -260,12 +319,13 @@ func (s *Service) resolveLogScope(ctx context.Context, req savedsearch.ScopeRequ
 	return resolved, nil
 }
 
-// forResource is q pointed at one resource. A project view's Application Logs
-// read a datastore's process log, which carries no log type (its own
-// contract refuses one), so the view's type filter stays off it.
+// forResource is q pointed at one resource. In a project-scoped or mixed
+// service+datastore read, a datastore's process log matches `app` (or untyped)
+// reads, but its own contract refuses a type filter, so q.Types is cleared
+// only when the query actually includes datastores.
 func (q LogQuery) forResource(id string) LogQuery {
 	q.App = id
-	if q.projectScope && core.IsDatastoreResource(id) {
+	if (q.projectScope || q.mixedResources) && core.IsDatastoreResource(id) && q.includesDatastore() {
 		q.Types = nil
 	}
 	return q
@@ -337,7 +397,7 @@ func (s *Service) queryProjectLabelValues(ctx context.Context, project string, r
 	var g errgroup.Group
 	g.SetLimit(maxConcurrentLogReads)
 	for i, r := range resources {
-		if core.IsDatastoreResource(r.ID) && !slices.Contains(datastoreLogLabels, label) {
+		if q.skipDatastoreForLabelValues(r.ID, label) {
 			continue
 		}
 		g.Go(func() error {
@@ -433,6 +493,9 @@ func (s *Service) followDynamicScope(ctx context.Context, q LogQuery, initial []
 	}
 	defer stopAll()
 	for _, r := range initial {
+		if q.skipDatastoreForQuery(r.ID) {
+			continue
+		}
 		start(r.ID)
 	}
 	rescope := time.NewTicker(s.projectRescopeInterval())
@@ -469,6 +532,9 @@ func (s *Service) followDynamicScope(ctx context.Context, q LogQuery, initial []
 			}
 			want := map[string]bool{}
 			for _, r := range next {
+				if q.skipDatastoreForQuery(r.ID) {
+					continue
+				}
 				want[r.ID] = true
 				if active[r.ID] == nil {
 					if _, err := q.forResource(r.ID).liveSubscribable(); err == nil {

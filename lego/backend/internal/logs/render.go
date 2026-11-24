@@ -145,6 +145,9 @@ func (s *Service) lineBeyond(ctx context.Context, resources []string, q LogQuery
 	next := q
 	next.Since, next.End, next.Limit = since, until, 1
 	for _, id := range resources {
+		if next.skipDatastoreForQuery(id) {
+			continue
+		}
 		entries, err := s.QueryLogs(ctx, next.forResource(id))
 		var partial *ScanIncompleteError
 		if errors.As(err, &partial) || len(entries) > 0 {
@@ -172,11 +175,18 @@ type resourceRead struct {
 // time, and answers in resource order, so the page's first error is the
 // first failing resource's, as a sequential read answered.
 func (s *Service) readEach(ctx context.Context, resources []string, q LogQuery) []resourceRead {
+	if core.CurrentVerb(ctx) == "" {
+		ctx = core.WithAuditVerb(ctx, AuditVerbQueryLogs)
+	}
 	reads := make([]resourceRead, len(resources))
 	var g errgroup.Group
 	g.SetLimit(maxConcurrentLogReads)
 	for i, id := range resources {
 		g.Go(func() error {
+			if q.skipDatastoreForQuery(id) {
+				_, reads[i].err = s.authorizeLogOwner(ctx, id)
+				return nil
+			}
 			reads[i].entries, reads[i].err = s.QueryLogs(ctx, q.forResource(id))
 			return nil
 		})
@@ -211,6 +221,9 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 	// The resources' workspace plans are read once for the whole page, the
 	// line-beyond probe included.
 	ctx = core.WithRequestMemo(ctx)
+	if !q.mixedResources && hasMixedLogResources(resources) {
+		q.mixedResources = true
+	}
 	n := q.normalized()
 	forward := n.Direction == DirectionForward
 	// Each resource is read one line past the page, so the page can say

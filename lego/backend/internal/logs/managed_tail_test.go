@@ -131,7 +131,7 @@ func TestSubscribeRefusesManagedTailsBeforeStreaming(t *testing.T) {
 		{"resource=" + postgresID, true, http.StatusForbidden},
 		{"resource=" + keyValueID, true, http.StatusForbidden},
 		{"resource=" + keyValueID + "&method=GET", false, http.StatusBadRequest},
-		{"resource=web&resource=" + keyValueID + "&method=GET", false, http.StatusBadRequest},
+		{"resource=" + postgresID + "&resource=" + keyValueID + "&method=GET", false, http.StatusBadRequest},
 	} {
 		for _, accept := range []string{"text/event-stream", ""} {
 			svc := newManagedTailService()

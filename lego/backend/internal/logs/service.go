@@ -402,10 +402,19 @@ type LogQuery struct {
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
 	probe bool
-	// projectScope marks a project view's read (w3/m505): its type filter
-	// names the view, not a datastore's lines (forResource). Set by
-	// newProjectView, never by a caller.
+	// projectScope marks a project view's or project-wide scope's read
+	// (w3/m505, w4/m596): its type filter names the scope, not a datastore's
+	// lines (forResource). Set by newProjectView / resolveLogScope, never by a
+	// caller.
 	projectScope bool
+	// mixedResources marks a multi-resource read that mixes at least one
+	// service (App) with at least one managed datastore (w32/107): a datastore
+	// contributes its process logs when the query includes `app` (stripping
+	// q.Types in forResource) and is authorized then skipped when the query
+	// asks only for service-specific types, request/build/deploy filters, or
+	// service-only labels. Single-datastore and datastore-only reads leave
+	// this false so datastoreFilters keeps its 400 refusal.
+	mixedResources bool
 	// renderStream marks the tail of Render's own transport, the WebSocket
 	// subscription the pinned Render CLI opens (w8/m159). Render's subscribe
 	// "stream[s] logs matching the provided filters ... in real-time as they are

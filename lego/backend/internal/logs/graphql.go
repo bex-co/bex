@@ -280,7 +280,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					}
 					values := []string{}
 					for _, r := range resolved.Resources {
-						if core.IsDatastoreResource(r.ID) && !slices.Contains(datastoreLogLabels, label) {
+						if q.skipDatastoreForLabelValues(r.ID, label) {
 							continue
 						}
 						got, err := s.labelValues(ctx, label, q.forResource(r.ID), projectDiscoverableLabels)
