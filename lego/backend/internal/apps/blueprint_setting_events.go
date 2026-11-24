@@ -147,7 +147,7 @@ func (s *Service) recordBlueprintSourceChange(ctx context.Context, a *appv1alpha
 		if from := core.BuildSourceIDOfLink(tenant, before.BuildSource); from != "" && after.BuildSource == nil {
 			s.RecordServiceBuildSourceLinked(ctx, a, from, "")
 		} else {
-			s.recordSourceChanged(ctx, a, before.Branch, after.Branch, "")
+			s.recordSourceChanged(ctx, a, before.Repo, after.Repo, before.Branch, after.Branch, "")
 		}
 	}
 }

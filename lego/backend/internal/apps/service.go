@@ -5423,6 +5423,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			s.recordGitHubRepoID(ctx, id, next)
 		}
 	}
+	previousRepo := a.Spec.Repo
 	previousBranch := a.Spec.Branch
 	previousBuildSourceID := core.BuildSourceIDOfLink(a.Labels[core.LabelTenant], a.Spec.BuildSource)
 	// SECURITY (codex #5): when the repository origin changes, the retained GitHub
@@ -5452,7 +5453,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if previousBuildSourceID != "" && (next.repo != "" || next.image != "") {
 		s.RecordServiceBuildSourceLinked(ctx, a, previousBuildSourceID, "")
 	} else {
-		s.recordSourceChanged(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
+		s.recordSourceChanged(ctx, a, previousRepo, next.repo, previousBranch, next.branch, updated.UpdatedAt)
 	}
 	return updated, nil
 }
@@ -5475,11 +5476,13 @@ func (s *Service) triggerSourceDeploy(ctx context.Context, id string, view AppVi
 
 // recordSourceChanged records a service's source change: source_changed, and
 // the branch_changed fact, at updatedAt, when the change moved a tracked branch
-// from fromBranch to toBranch. SetSourceAndRegistryCredential and a Blueprint
-// apply (w9/092) record through it; a link to a build source, which tracks no
-// branch of its own, passes none.
-func (s *Service) recordSourceChanged(ctx context.Context, a *appv1alpha1.App, fromBranch, toBranch, updatedAt string) {
-	if fromBranch != "" && fromBranch != toBranch {
+// from fromBranch to toBranch on a repo-backed service (both before and after
+// have a Git repository, w32/110). Switching to or from a prebuilt image, or
+// touching an image service, never emits branch_changed.
+// SetSourceAndRegistryCredential and a Blueprint apply (w9/092) record through
+// it; a link to a build source, which tracks no branch of its own, passes none.
+func (s *Service) recordSourceChanged(ctx context.Context, a *appv1alpha1.App, fromRepo, toRepo, fromBranch, toBranch, updatedAt string) {
+	if fromRepo != "" && toRepo != "" && fromBranch != "" && toBranch != "" && fromBranch != toBranch {
 		s.recordBranchChangedFact(ctx, a, fromBranch, toBranch, updatedAt)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
@@ -5612,26 +5615,38 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 		next.repo = ""
 	}
 	next.resolveDefaultBranch = resolvesRepoDefaultBranch(a.Spec.Repo, next.repo, patch.Branch)
-	if patch.Branch != nil {
-		next.branch = strings.TrimSpace(*patch.Branch)
-		// An explicit empty means "back to the default" — the setter family's
-		// convention (empty clears to the default, cf. SetCommands); on a repo
-		// switch checkSourcePatch resolves the new repository's default branch,
-		// otherwise the fallback below restores DefaultBranch. Only a non-empty
-		// ref is validated.
-		if next.branch != "" && !store.ValidGitRef(next.branch) {
-			return sourceFields{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
+	if next.repo == "" {
+		// A service with no Git repository (prebuilt image or build-source link)
+		// cannot declare a non-empty branch (w32/110); echoing empty "" stays a
+		// no-op and preserves any retained spec.Branch for a switch back to Git.
+		if patch.Branch != nil && strings.TrimSpace(*patch.Branch) != "" {
+			if next.image != "" {
+				return sourceFields{}, errPrebuiltImageField("branch")
+			}
+			return sourceFields{}, fmt.Errorf("%w: service %q has no repo to build (branch only applies to build-from-git)", core.ErrBadRequest, a.Name)
 		}
-	} else if next.resolveDefaultBranch {
-		// A branch names a ref of one repository, so switching to another
-		// repository without specifying a branch starts from the new repo's
-		// default (resolved by checkSourcePatch, falling back to DefaultBranch
-		// when ValidateRepo has no opinion) instead of keeping an image's
-		// placeholder "main" or the old repository's branch (w32/108).
-		next.branch = ""
-	}
-	if next.branch == "" {
-		next.branch = appv1alpha1.DefaultBranch
+	} else {
+		if patch.Branch != nil {
+			next.branch = strings.TrimSpace(*patch.Branch)
+			// An explicit empty means "back to the default" — the setter family's
+			// convention (empty clears to the default, cf. SetCommands); on a repo
+			// switch checkSourcePatch resolves the new repository's default branch,
+			// otherwise the fallback below restores DefaultBranch. Only a non-empty
+			// ref is validated.
+			if next.branch != "" && !store.ValidGitRef(next.branch) {
+				return sourceFields{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
+			}
+		} else if next.resolveDefaultBranch {
+			// A branch names a ref of one repository, so switching to another
+			// repository without specifying a branch starts from the new repo's
+			// default (resolved by checkSourcePatch, falling back to DefaultBranch
+			// when ValidateRepo has no opinion) instead of keeping an image's
+			// placeholder "main" or the old repository's branch (w32/108).
+			next.branch = ""
+		}
+		if next.branch == "" {
+			next.branch = appv1alpha1.DefaultBranch
+		}
 	}
 	if patch.RegistryCredentialID != nil {
 		value := strings.TrimSpace(*patch.RegistryCredentialID)

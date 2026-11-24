@@ -43,7 +43,7 @@ func managedImageApp(name string) *appv1alpha1.App {
 // refuses, on every write surface (w4/418).
 func TestImageServiceRefusesGitSettingsOnUpdate(t *testing.T) {
 	ctx := context.Background()
-	yes, no, build := true, false, "make"
+	yes, no, build, dev := true, false, "make", "dev"
 	for _, tc := range []struct {
 		name, field string
 		edit        func(*Service) error
@@ -64,6 +64,14 @@ func TestImageServiceRefusesGitSettingsOnUpdate(t *testing.T) {
 			_, err := s.SetCommands(ctx, "web", &build, nil)
 			return err
 		}},
+		{"patch branch", "branch", func(s *Service) error {
+			_, err := s.ApplyServicePatch(ctx, "web", ServicePatch{Branch: &dev})
+			return err
+		}},
+		{"graphql setBranch", "branch", func(s *Service) error {
+			_, err := s.SetSourceAndRegistryCredential(ctx, "web", sourcePatch{Branch: &dev})
+			return err
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, cl := newService(nil, managedImageApp("web"))
@@ -72,7 +80,7 @@ func TestImageServiceRefusesGitSettingsOnUpdate(t *testing.T) {
 				t.Fatalf("err = %v, want the create refusal for %s", err, tc.field)
 			}
 			var got appv1alpha1.App
-			if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &got); err != nil || got.Spec.AutoDeploy || got.Spec.BuildCommand != "" {
+			if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &got); err != nil || got.Spec.AutoDeploy || got.Spec.BuildCommand != "" || got.Spec.Branch != appv1alpha1.DefaultBranch {
 				t.Fatalf("refused write changed the App: %+v, %v", got.Spec, err)
 			}
 		})
@@ -84,13 +92,13 @@ func TestImageServiceRefusesGitSettingsOnUpdate(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	// A branch is kept, hidden from reads, for a later switch to a repo: the
-	// CLI sends image and branch together, and w8/088's two-step switch sets
-	// branch first.
-	t.Run("a staged branch stays accepted", func(t *testing.T) {
-		branch := "main"
+	// Echoing the read value ("") for branch stays a no-op; non-empty branch
+	// values on a prebuilt-image service are refused (w32/110, superseding
+	// w4/418's staged-branch rationale after w32/108).
+	t.Run("empty branch echo stays accepted as a no-op", func(t *testing.T) {
+		empty := ""
 		svc, _ := newService(nil, managedImageApp("web"))
-		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Branch: &branch}); err != nil {
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Branch: &empty}); err != nil {
 			t.Fatal(err)
 		}
 	})

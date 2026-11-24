@@ -377,12 +377,12 @@ func TestRESTPatchAcceptsOfficialCLISourceFields(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"nginx:stable","ownerId":""},"branch":"release"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"nginx:stable","ownerId":""}}`)))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("PATCH image/branch = %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("PATCH image = %d: %s", rec.Code, rec.Body.String())
 	}
 	got := getApp(t, cl, "web")
-	if got.Spec.Image != "nginx:stable" || got.Spec.Repo != "" || got.Spec.Branch != "release" {
+	if got.Spec.Image != "nginx:stable" || got.Spec.Repo != "" {
 		t.Fatalf("image source update = %+v", got.Spec)
 	}
 

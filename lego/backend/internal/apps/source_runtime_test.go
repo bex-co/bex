@@ -47,9 +47,9 @@ func TestImageToGitSourceSaveReadsDockerRuntime(t *testing.T) {
 			if _, err := svc.Create(ctx, req); err != nil {
 				t.Fatalf("Create: %v", err)
 			}
-			branch := "main"
-			if v, err := svc.ApplyServicePatch(ctx, req.Name, ServicePatch{Branch: &branch}); err != nil || v.Runtime != "image" {
-				t.Fatalf("branch-only save on the image = %q, %v; want image kept", v.Runtime, err)
+			emptyBranch := ""
+			if v, err := svc.ApplyServicePatch(ctx, req.Name, ServicePatch{Branch: &emptyBranch}); err != nil || v.Runtime != "image" {
+				t.Fatalf("empty-branch echo on the image = %q, %v; want image kept", v.Runtime, err)
 			}
 			v, err := svc.ApplyServicePatch(ctx, req.Name, ServicePatch{Repo: &repo})
 			if err != nil {
@@ -61,6 +61,10 @@ func TestImageToGitSourceSaveReadsDockerRuntime(t *testing.T) {
 			}
 			if spec := getApp(t, cl, req.Name).Spec; spec.Runtime != "" || spec.Image != "" || spec.Repo != repo || buildStrategy(spec) != buildDockerfile {
 				t.Fatalf("spec = runtime %q image %q repo %q strategy %q", spec.Runtime, spec.Image, spec.Repo, buildStrategy(spec))
+			}
+			branch := "release"
+			if v, err := svc.ApplyServicePatch(ctx, req.Name, ServicePatch{Branch: &branch}); err != nil || v.Runtime != "docker" {
+				t.Fatalf("branch-only save on the Git service = %q, %v; want docker kept", v.Runtime, err)
 			}
 		})
 	}
