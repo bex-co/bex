@@ -154,6 +154,18 @@ printf '# w9\n\n- [x] [m5](done/m5/README.md)\n[evidence](evidence/gone.log)\n' 
 assert "a workstream README link to a moved item is red" 1 "$workstream" ".pm/w9/README.md:3 -> done/m5/README.md"
 assert "a workstream README link to purged evidence is red" 1 "$workstream" ".pm/w9/README.md:4 -> evidence/gone.log"
 
+# The closed lines scripts/pm-roll-closed.py rolled out of the README into
+# done/closed-K.md are the index's history and stay checked.
+rolled="$tmp/rolled"
+fixture "$rolled"
+mkdir -p "$rolled/.pm/w9/done/m5"
+printf '# m5\n' >"$rolled/.pm/w9/done/m5/README.md"
+printf '# w9 closed\n\n- [x] [m5](m5/README.md) after [m6](../blocked/m6/README.md)\n' >"$rolled/.pm/w9/done/closed-1.md"
+assert "a rolled closed line whose cross-reference moved is red" 1 "$rolled" ".pm/w9/done/closed-1.md:3 -> ../blocked/m6/README.md"
+mkdir -p "$rolled/.pm/w9/blocked/m6"
+printf '# m6\n' >"$rolled/.pm/w9/blocked/m6/README.md"
+assert "a rolled closed line whose links resolve from done/ is green" 0 "$rolled"
+
 # A tree .prettierignore does not list is checked, so the list is the only source.
 unlisted="$tmp/unlisted"
 fixture "$unlisted"

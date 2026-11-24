@@ -71,6 +71,15 @@ grep -qF "warning: docs/ledger/band.md is 524288 bytes, past the 512 KiB markdow
   fail "the warning band does not name the file and its size: $(cat "$tmp/err")"
 GITHUB_ACTIONS=true bash "$guard" "$md_base" >"$tmp/out" 2>"$tmp/err" || fail "the warning band was refused: $(cat "$tmp/err")"
 grep -qF "::warning file=docs/ledger/band.md," "$tmp/out" || fail "no Actions warning annotation: $(cat "$tmp/out")"
+# A workstream README in the band is rolled, not split (w10/058).
+head -c $((512 * 1024)) /dev/zero >.pm/w1/README.md
+git add . && commit md-board
+passes
+grep -qF "warning: .pm/w1/README.md is 524288 bytes, past the 512 KiB markdown warning band; roll its closed lines out with python3 scripts/pm-roll-closed.py w1 before" "$tmp/err" ||
+  fail "a workstream README in the band is not pointed at the roll: $(cat "$tmp/err")"
+grep -qF "warning: docs/ledger/band.md is 524288 bytes, past the 512 KiB markdown warning band; split it before" "$tmp/err" ||
+  fail "a document in the band is not told to split: $(cat "$tmp/err")"
+git rm -q .pm/w1/README.md && commit drop-md-board
 head -c $((768 * 1024)) /dev/zero >docs/ledger/over.md
 git add . && commit md-over
 rejects "docs/ledger/over.md (786432 bytes >= 768 KiB)"

@@ -80,8 +80,10 @@ md_over=$(awk -v refuse="$md_refuse" -v kib="$refuse_kib" '$1 >= refuse { size =
 while IFS= read -r warned; do
   [ -n "$warned" ] || continue
   path=${warned#* }
-  echo "repo-artifact-guard: warning: $path is ${warned%% *} bytes, past the $warn_kib markdown warning band; split it before it reaches $refuse_kib, when this guard refuses it" >&2
-  [ "${GITHUB_ACTIONS:-}" != true ] || echo "::warning file=$path,title=Markdown file near the size limit::$path is ${warned%% *} bytes; split it before it reaches $refuse_kib"
+  how="split it"
+  [[ ! "$path" =~ ^\.pm/(w[0-9]+)/README\.md$ ]] || how="roll its closed lines out with python3 scripts/pm-roll-closed.py ${BASH_REMATCH[1]}"
+  echo "repo-artifact-guard: warning: $path is ${warned%% *} bytes, past the $warn_kib markdown warning band; $how before it reaches $refuse_kib, when this guard refuses it" >&2
+  [ "${GITHUB_ACTIONS:-}" != true ] || echo "::warning file=$path,title=Markdown file near the size limit::$path is ${warned%% *} bytes; $how before it reaches $refuse_kib"
 done < <(awk -v warn="$md_warn" -v refuse="$md_refuse" '$1 >= warn && $1 < refuse' <<<"$md_sizes")
 
 if [ -n "$bad" ]; then
@@ -92,6 +94,6 @@ fi
 if [ -n "$md_over" ]; then
   echo "repo-artifact-guard: markdown files must stay under $refuse_kib (the soft limit before the 1 MiB blob refusal):" >&2
   printf '  %s\n' "${md_over//$'\n'/$'\n  '}" >&2
-  echo "repo-artifact-guard: split each into files of its own, leaving a pointer where each part was, as docs/ADR018/ split the parity ledger (w10/m607); a board README moves finished history out instead" >&2
+  echo "repo-artifact-guard: split each into files of its own, leaving a pointer where each part was, as docs/ADR018/ split the parity ledger (w10/m607); a workstream README rolls its closed lines into done/ instead (python3 scripts/pm-roll-closed.py wN)" >&2
 fi
 [ -z "$bad" ] && [ -z "$md_over" ]

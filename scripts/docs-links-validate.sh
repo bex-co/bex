@@ -9,8 +9,9 @@
 # a file or directory that does not exist, and names each as file:line -> target.
 #
 # Checked: docs/**/*.md, every AGENTS.md and README.md, .pm/*.md at the top
-# level, and .pm/wN/README.md (the board's own index, which a `/pm` move breaks
-# first). Not checked: the rest of the workstream history under .pm/wN/
+# level, .pm/wN/README.md (the board's own index, which a `/pm` move breaks
+# first) and the closed lines scripts/pm-roll-closed.py rolled out of it into
+# .pm/wN/done/closed-K.md. Not checked: the rest of the workstream history under .pm/wN/
 # (milestone READMEs, tasks, notes, done/ and blocked/), the vendored and generated trees .prettierignore
 # lists, fenced code and inline code, external URLs (any scheme), and absolute
 # paths. A target must exist with exactly the case written, since CI is
@@ -75,8 +76,11 @@ def in_scope(rel: str) -> bool:
     base = os.path.basename(rel)
     if rel.startswith(".pm/"):
         # The conventions at the top of the board and each workstream's own
-        # README, not the rest of the wN history.
-        return (rel.count("/") == 1 and base.endswith(".md")) or re.fullmatch(r"\.pm/w\d+/README\.md", rel) is not None
+        # README with the closed lines rolled out of it, not the rest of the
+        # wN history.
+        return (rel.count("/") == 1 and base.endswith(".md")) or re.fullmatch(
+            r"\.pm/w\d+/(?:README|done/closed-\d+)\.md", rel
+        ) is not None
     return rel.startswith("docs/") or base in ("AGENTS.md", "README.md")
 
 
