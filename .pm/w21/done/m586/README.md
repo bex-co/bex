@@ -1,19 +1,19 @@
 # w21 · m586 — `CREATE EXTENSION vector;` works as Render documents it: a new database gets pgvector on demand, not preinstalled
 
-**Worker:** worker21 **Goal:** on a new database the default user runs Render's literal `CREATE EXTENSION vector;` and it succeeds, and can `DROP EXTENSION vector`; existing databases keep the vector they have. **Status:** blocked — `pin must carry` `bf4250fe60` (t001, t003, t006, t007 done; t002 waits for its amd64 gate run)
+**Worker:** worker21 **Goal:** on a new database the default user runs Render's literal `CREATE EXTENSION vector;` and it succeeds, and can `DROP EXTENSION vector`; existing databases keep the vector they have. **Status:** done (2026-11-24)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Amend ADR092 D2 and ADR009 § pgvector: a new database gets `vector` on demand; an existing database keeps its installed extension — **DONE** | 30m | w21/m584/t001 |
-| [t002](t002.md) | Admit `vector` on every major; the gate runs Render's literal `CREATE EXTENSION vector;` and the owner's `DROP EXTENSION vector` | 45m | t001 |
+| [t002](done/t002.md) | Admit `vector` on every major; the gate runs Render's literal `CREATE EXTENSION vector;` and the owner's `DROP EXTENSION vector` — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | Operator: a new database gets no vector Database child and no `InitializingExtensions` wait; an existing database's child is released without dropping `vector` — **DONE** | 1h | t002 |
-| [t004](t004.md) | Production: Render's command on a new database exits 0, and an existing database's vectors and HNSW index are unchanged | 30m | t003, w21/m584/t005 |
-| [t005](t005.md) | Render parity | 30m | t004 |
+| [t004](done/t004.md) | Production: Render's command on a new database exits 0, and an existing database's vectors and HNSW index are unchanged — **DONE** | 30m | t003, w21/m584/t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 30m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -42,3 +42,17 @@
   1. t002: read the `pg-operand-image.yml` run on `bf4250fe60` (or the first later run); with both architectures green on every major, close t002.
   2. t004: the after-reading on `qa-m586-existing-pg16` (its before-state and steps are in t004), then two new databases per t004 step 2, then delete every m586 database. The fixture is on a paid plan until then.
   3. t005: one new database's `creating` → `available` on REST, GraphQL, MCP `get_postgres` and the dashboard, with no extension-wait state; then t008.
+
+## Unblock record (2026-11-24)
+
+- **Affected:** t002, t004, t005, t008. **Source:** verified evidence. **Finding:** production's pin `eb52a59622` (`chore(deploy): pin platform images to f46c44d9ddb1`, 2026-11-23T23:57Z) carries `bf4250fe60` (`git merge-base --is-ancestor bf4250fe60 f46c44d9ddb1` holds), so the `pin must carry` gate has cleared. `pg-operand-image.yml` run 45281992305 on `bf4250fe60` is green: the arm64 `build` and the `gate-amd64` (`ubuntu-latest`) jobs pass on all six majors, each with `owner_restore_vector=PASS` and TimescaleDB still the only `FAIL`, and the six images published.
+- **Next:** close t002; t004 reads `qa-m586-existing-pg16` against its before-state (m584's adoption restarted it by a manual pod delete, ADR092 § D4, w21/125), then runs Render's command on two new databases and deletes every m586 database; t005 reads one new database's status on the four surfaces; then t008.
+
+## Closeout (2026-11-24)
+
+- **Definition of done 1:** t004 § Result. On a new Free `qa-m586-new-pg13` (13.22) and `qa-m586-new-pg18` (18.7) in `bex-canary` (disposable), the default user's `psql -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector;'` exits 0. A `vector(3)` column with an HNSW index answers a nearest-neighbour query through the index, and the same user's `DROP EXTENSION vector` succeeds.
+- **2:** t005 § Result. A new database reads `creating` → `available` (58 s on 18, 78 s on 13) the same way on REST, GraphQL, MCP `get_postgres` and the dashboard's badge, with no `InitializingExtensions` step and no `ExtensionsReady` condition.
+- **3:** `qa-m586-existing-pg16` kept its preinstalled `vector` 0.8.6 through the operator change and m584's restart. Its rows (md5 `37ff3566…`), its HNSW index and the nearest-neighbour answer were unchanged, and no CloudNativePG Database child remains on the cluster to reconcile it.
+- **4:** ADR092 D1/D2 and § D4 (Production acceptance of `vector` on demand), ADR009 § pgvector (with its production record) and ADR018's Postgres CRUD and extensions rows describe on-demand `vector` and the residual on existing databases. ADR018's w4/m223 first-Available text, which still described the extension wait, is amended.
+- **Cleanup:** every m586 database answers 404, the QA API key `qa-m586-t004` is revoked, and the QA sessions are logged out.
+
