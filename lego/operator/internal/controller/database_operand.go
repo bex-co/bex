@@ -92,10 +92,15 @@ func admittedExtensions(major int) []string {
 // where they exist: pg_surgery from 14, adminpack until 16 and old_snapshot on
 // 14-16 (PostgreSQL 17 removed both). Each is admitted with PostgreSQL's own
 // grants unchanged, so a superuser-only function stays superuser-only (ADR092
-// D1, w21/m585).
+// D1, w21/m585). pg_stat_statements is also what CloudNativePG creates as the
+// superuser in every database for query insights (pg_stat_statements.track);
+// admitting it is what lets the owner's restore of its own export run the
+// dump's COMMENT ON EXTENSION pg_stat_statements, and the owner drop it and run
+// Render's CREATE EXTENSION pg_stat_statements (w21/124).
 func untrustedContribExtensions(major int) []string {
 	list := []string{"amcheck", "autoinc", "bloom", "dblink", "dict_xsyn", "earthdistance", "file_fdw",
-		"insert_username", "intagg", "moddatetime", "pageinspect", "pg_buffercache", "pg_freespacemap", "pg_prewarm"}
+		"insert_username", "intagg", "moddatetime", "pageinspect", "pg_buffercache", "pg_freespacemap", "pg_prewarm",
+		"pg_stat_statements"}
 	if major >= 14 {
 		list = append(list, "pg_surgery")
 	}

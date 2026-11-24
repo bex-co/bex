@@ -206,7 +206,12 @@ func TestOperandQualificationDoesNotSilentlyNarrowMatrix(t *testing.T) {
 // The original owner restore is a required outcome for every admitted
 // extension. Its exact failure remains a red matrix result; a stronger
 // platform actor never substitutes for it. TimescaleDB's pre/post-restore
-// protocol runs only when it is admitted, so it is in the database.
+// protocol runs only when it is admitted, so it is in the database. Both
+// targets are new databases, so each holds the pg_stat_statements
+// CloudNativePG created in template1, and the dump's COMMENT ON EXTENSION
+// pg_stat_statements must go through the allowlist (w21/124). The same export
+// is then restored by the same owner through the image's restore consumer,
+// bex-postgres-restore, which refuses a TimescaleDB archive by design.
 func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, namespace string, timescale bool) {
 	t.Helper()
 	var secret corev1.Secret
@@ -219,8 +224,10 @@ func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, na
 		body, err := exec.Command("kubectl", append(argv, arguments...)...).CombinedOutput()
 		return string(body), err
 	}
-	if out, err := run("psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres", "-c", "CREATE DATABASE owner_restored OWNER geo_app"); err != nil {
-		t.Fatalf("prepare own restore database: %v %s", err, out)
+	for _, database := range []string{"owner_restored", "owner_consumer"} {
+		if out, err := run("psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres", "-c", "CREATE DATABASE "+database+" OWNER geo_app"); err != nil {
+			t.Fatalf("prepare own restore database %s: %v %s", database, err, out)
+		}
 	}
 	// CloudNativePG's instance container has a read-only root filesystem;
 	// /run is its writable scratch volume.
@@ -232,7 +239,7 @@ func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, na
 	const sidecarFile = exportRoot + "/fixture/pg_ivm_restore.sql"
 	sidecar := []string{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-f", sidecarFile}
 	check := "INSERT INTO ivm_base VALUES(4,40); SELECT (SELECT s FROM ivm_sum)=100 AND NOT rolsuper FROM pg_roles WHERE rolname=current_user"
-	commands := make([][]string, 0, 4)
+	commands := make([][]string, 0, 6)
 	if timescale {
 		commands = append(commands,
 			[]string{"psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", "CREATE EXTENSION timescaledb; SELECT timescaledb_pre_restore()"},
@@ -242,10 +249,19 @@ func verifyCNPGOwnerExportRestore(t *testing.T, cl client.Client, kubeconfig, na
 	} else {
 		commands = append(commands, restore, sidecar)
 	}
-	commands = append(commands, []string{"psql", "-X", "-At", "-v", "ON_ERROR_STOP=1", "-d", "owner_restored", "-c", check})
+	verify := func(database string) []string {
+		return []string{"psql", "-X", "-At", "-v", "ON_ERROR_STOP=1", "-d", database, "-c", check}
+	}
+	commands = append(commands, verify("owner_restored"))
+	if !timescale {
+		// The consumer renders its SQL under TMPDIR, and only /run is writable.
+		commands = append(commands,
+			[]string{"PGDATABASE=owner_consumer", "TMPDIR=/run", "bex-postgres-restore", exportRoot + "/fixture/geo_prod"},
+			verify("owner_consumer"))
+	}
 	for i, command := range commands {
 		out, err := run(append(slices.Clone(ownerEnv), command...)...)
-		if err != nil || (i == len(commands)-1 && !strings.HasSuffix(strings.TrimSpace(out), "t")) {
+		if err != nil || (slices.Contains(command, check) && !strings.HasSuffix(strings.TrimSpace(out), "t")) {
 			t.Errorf("ordinary-owner complete restore phase%d remains unqualified: %v %s", i, err, out)
 			return
 		}

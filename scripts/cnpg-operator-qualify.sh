@@ -2,10 +2,10 @@
 # cnpg-operator-qualify.sh — run a real-CloudNativePG operator test on a
 # disposable kind cluster with production's CloudNativePG operator and the
 # pinned bex operand of one major (w21/m606 t003). The test is
-# TestOwnerPgauditAcrossRestartOnCNPG unless BEX_CNPG_QUALIFY_TEST names
-# another, such as TestApplicationDatabaseExtensionsOnCNPG (which repeats the
-# restart after every other extension, and whose owner export and restore
-# phase stays red until w21/124).
+# TestApplicationDatabaseExtensionsOnCNPG (every admitted extension, the
+# owner's export and restore, and the owner's pgaudit across an instance pod
+# restart; w21/124) unless BEX_CNPG_QUALIFY_TEST names another, such as
+# TestOwnerPgauditAcrossRestartOnCNPG, the restart step alone.
 #
 #   bash scripts/cnpg-operator-qualify.sh [pinned|upstream]
 #
@@ -32,7 +32,7 @@ die() {
 
 operator=${1:-pinned}
 major=${BEX_CNPG_MAJORS:-18}
-test_name=${BEX_CNPG_QUALIFY_TEST:-TestOwnerPgauditAcrossRestartOnCNPG}
+test_name=${BEX_CNPG_QUALIFY_TEST:-TestApplicationDatabaseExtensionsOnCNPG}
 cluster=${BEX_CNPG_QUALIFY_CLUSTER:-bex-cnpg-qualify}
 node_image=kindest/node:v1.36.1
 

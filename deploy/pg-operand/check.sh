@@ -78,6 +78,12 @@ expect() { # want sql
   [ "$got" = "$1" ] || fail "'$2' = '$got', want '$1'"
 }
 
+# CloudNativePG creates pg_stat_statements as the superuser in every database
+# that allows connections, template1 included, because bex sets
+# pg_stat_statements.track for query insights, and every database created
+# later copies it. The gate's databases hold it the same way, so every owner
+# export below carries its COMMENT ON EXTENSION pg_stat_statements (w21/124).
+super "CREATE EXTENSION pg_stat_statements" template1
 super "CREATE ROLE app LOGIN; CREATE ROLE other LOGIN; CREATE DATABASE appdb OWNER app"
 # The operator makes every owner a pg_monitor member for query insights
 # (insightsMonitorRole), which opens the read-only inspection modules.
@@ -126,7 +132,9 @@ done
 # TimescaleDB first: pg_duckdb defines public.time_bucket only when no
 # conflicting function exists (duckdb/pg_duckdb#934), so the reverse order makes
 # TimescaleDB's install fail with "function time_bucket already exists".
-create_order="$(has timescaledb && echo timescaledb; for e in ${carried//,/ }; do [ "$e" = timescaledb ] || echo "$e"; done)"
+# pg_stat_statements is already there, CloudNativePG's (template1, above).
+create_order="$(has timescaledb && echo timescaledb
+  for e in ${carried//,/ }; do [ "$e" = timescaledb ] || [ "$e" = pg_stat_statements ] || echo "$e"; done)"
 for ext in $create_order; do
   as app appdb "CREATE EXTENSION ${ext} CASCADE" >/dev/null
   echo "created ${ext}"
@@ -281,6 +289,18 @@ has pg_freespacemap && expect t "SELECT count(*) > 0 FROM pg_freespace('contrib_
 has pg_visibility && expect t "SELECT count(*) > 0 FROM pg_visibility('contrib_rows')"
 has pgstattuple && expect 11 "SELECT tuple_count FROM pgstattuple('contrib_rows')"
 has pgrowlocks && expect 0 "SELECT count(*) FROM pgrowlocks('contrib_rows')"
+if has pg_stat_statements; then
+  # CloudNativePG's pg_stat_statements meets Render's command as PostgreSQL
+  # meets any installed extension, and IF NOT EXISTS is a no-op. The owner, a
+  # pg_monitor member, reads every role's statements, and resetting them stays
+  # superuser-only, as PostgreSQL ships it. Through the allowlist the owner
+  # drops it and runs Render's command (w21/124).
+  refused app appdb "CREATE EXTENSION pg_stat_statements;" 'extension "pg_stat_statements" already exists'
+  as app appdb "CREATE EXTENSION IF NOT EXISTS pg_stat_statements" >/dev/null
+  expect t "SELECT count(*) > 0 AND bool_and(query <> '<insufficient privilege>') FROM pg_stat_statements WHERE userid = 'postgres'::regrole"
+  refused app appdb "SELECT pg_stat_statements_reset()" "permission denied for function pg_stat_statements_reset"
+  as app appdb "DROP EXTENSION pg_stat_statements; CREATE EXTENSION pg_stat_statements;" >/dev/null
+fi
 # pgvector's fixture: three vectors with an HNSW index, whose nearest
 # neighbour of [1,1,2] is item 3 (here and in property 5 below).
 vector_items="CREATE TABLE items (id int PRIMARY KEY, embedding vector(3));
@@ -371,6 +391,8 @@ seed() { # ext db: what a database using only this extension holds
     bloom) as app "$2" "CREATE EXTENSION bloom; CREATE TABLE bloomed (a int, b int);
       INSERT INTO bloomed SELECT g, g % 7 FROM generate_series(1, 1000) g; CREATE INDEX bloomed_ab ON bloomed USING bloom (a, b)" ;;
     vector) as app "$2" "CREATE EXTENSION vector; $vector_items" ;;
+    # The owner replaces CloudNativePG's with its own, by Render's command.
+    pg_stat_statements) as app "$2" "DROP EXTENSION pg_stat_statements; CREATE EXTENSION pg_stat_statements;" ;;
     adminpack | amcheck | autoinc | dblink | dict_xsyn | file_fdw | insert_username | intagg | old_snapshot | pageinspect | \
       pg_buffercache | pg_freespacemap | pg_prewarm | pg_surgery | pg_visibility | pgaudit | pgrowlocks | pgstattuple | refint | sslinfo | xml2)
       as app "$2" "CREATE EXTENSION $1" ;;
@@ -401,7 +423,18 @@ restored() { # ext db: the restore gave the data back, and it still works
       [ "$(as app "$2" "SET enable_seqscan = off; SELECT count(*) FROM bloomed WHERE a = 7 AND b = 0")" = 1 ] ;;
     vector) [ "$(as app "$2" "SELECT amname FROM pg_class JOIN pg_am ON pg_am.oid = relam WHERE relname = 'items_embedding'")" = hnsw ] &&
       [ "$(as app "$2" "$nearest")" = 3 ] ;;
+    pg_stat_statements) [ "$(as app "$2" "SELECT count(*) > 0 FROM pg_stat_statements")" = t ] ;;
   esac
+}
+# The same export restored by the same owner through the image's restore
+# consumer, bex-postgres-restore (one transaction with the IMMV sidecar), must
+# give the data back too. It refuses a TimescaleDB archive before connecting.
+consumer_restore() { # ext dump
+  [ "$1" = timescaledb ] && return
+  super "CREATE DATABASE \"con_$1\" OWNER app" &&
+    PGDATABASE="con_$1" bex-postgres-restore "$2/src_$1" &&
+    [ "$(as app "con_$1" "SELECT count(*) FROM pg_extension WHERE extname = '$1'")" = 1 ] &&
+    restored "$1" "con_$1"
 }
 owner_restore() { # ext
   local dump="$BEX_POSTGRES_EXPORT_ROOT/owner-$1"
@@ -414,6 +447,7 @@ owner_restore() { # ext
     psql -X -q -v ON_ERROR_STOP=1 -U app -d "dst_$1" -f "$dump/pg_ivm_restore.sql" >/dev/null &&
     [ "$(as app "dst_$1" "SELECT count(*) FROM pg_extension WHERE extname = '$1'")" = 1 ] &&
     restored "$1" "dst_$1" &&
+    consumer_restore "$1" "$dump" &&
     [ "$(as app "dst_$1" "SELECT rolsuper FROM pg_roles WHERE rolname = current_user")" = f ]
 }
 passed=""

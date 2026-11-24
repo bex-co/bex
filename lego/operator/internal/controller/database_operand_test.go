@@ -85,8 +85,11 @@ func TestPGExtensionAllowlistMatchesTheImageGate(t *testing.T) {
 // for (render.com/docs/postgresql-extensions, read 2026-11-23; PostgreSQL 17
 // removed adminpack and old_snapshot), less TimescaleDB, whose own gate fails
 // (ADR092 D1, D3 property 1). pgvector (`vector`, PostgreSQL 13+) is among
-// them since a new database no longer gets it preinstalled (w21/m586).
-// Nothing else gets the allowlist path.
+// them since a new database no longer gets it preinstalled (w21/m586), and
+// so is pg_stat_statements, which CloudNativePG still creates in every
+// database: without the allowlist the owner's restore of its own export stops
+// at COMMENT ON EXTENSION pg_stat_statements (w21/124). Nothing else gets the
+// allowlist path.
 func TestAllowlistIsRendersUntrustedListPerMajor(t *testing.T) {
 	all := [2]int{13, 18}
 	render := map[string][2]int{
@@ -94,7 +97,7 @@ func TestAllowlistIsRendersUntrustedListPerMajor(t *testing.T) {
 		"pg_partman": {14, 18}, "pg_ivm": all, "pg_similarity": {13, 15}, "pg_duckdb": {16, 18}, "pg_repack": {16, 18},
 		"amcheck": all, "autoinc": all, "bloom": all, "dblink": all, "dict_xsyn": all, "earthdistance": all,
 		"file_fdw": all, "insert_username": all, "intagg": all, "moddatetime": all, "pageinspect": all,
-		"pg_buffercache": all, "pg_freespacemap": all, "pg_prewarm": all, "pg_surgery": {14, 18}, "pg_visibility": all,
+		"pg_buffercache": all, "pg_freespacemap": all, "pg_prewarm": all, "pg_stat_statements": all, "pg_surgery": {14, 18}, "pg_visibility": all,
 		"pgaudit": all, "pgrowlocks": all, "pgstattuple": all, "refint": all, "sslinfo": all, "xml2": all,
 		"adminpack": {13, 16}, "old_snapshot": {14, 16}, "timescaledb": all, "vector": all,
 	}
@@ -254,7 +257,7 @@ func TestClusterSpecProjectsTheAllowlistOnlyWithABexOperand(t *testing.T) {
 		"local_preload_libraries": "pgextwlist",
 		"extwlist.extensions": "postgis,postgis_raster,postgis_topology,postgis_tiger_geocoder,pg_partman,pg_ivm,pg_duckdb,pg_repack,vector," +
 			"amcheck,autoinc,bloom,dblink,dict_xsyn,earthdistance,file_fdw,insert_username,intagg,moddatetime,pageinspect," +
-			"pg_buffercache,pg_freespacemap,pg_prewarm,pg_surgery,pg_visibility,pgaudit,pgrowlocks,pgstattuple,refint,sslinfo,xml2," +
+			"pg_buffercache,pg_freespacemap,pg_prewarm,pg_stat_statements,pg_surgery,pg_visibility,pgaudit,pgrowlocks,pgstattuple,refint,sslinfo,xml2," +
 			"adminpack,old_snapshot",
 		"extwlist.restrict_to_database_owner": "on",
 		"extwlist.custom_path":                "/usr/share/bex/extwlist",
@@ -379,6 +382,10 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 					" CREATE INDEX ON items USING hnsw (embedding vector_l2_ops);" +
 					" SET enable_seqscan = off; SELECT id FROM items ORDER BY embedding <-> '[1,1,2]' LIMIT 1", "3"},
 				{"DROP TABLE items; DROP EXTENSION vector; SELECT count(*) FROM pg_extension WHERE extname = 'vector'", "0"},
+				// CloudNativePG created pg_stat_statements as the superuser
+				// (pg_stat_statements.track); through the allowlist the owner
+				// replaces it by Render's command (w21/124).
+				{"DROP EXTENSION pg_stat_statements; CREATE EXTENSION pg_stat_statements; SELECT count(*) > 0 FROM pg_stat_statements", "t"},
 				{"SELECT rolsuper FROM pg_roles WHERE rolname = current_user", "f"},
 			}
 			timescale := ownerTimescaleOnCNPG(t, major, asOwner)
@@ -472,9 +479,10 @@ func ownerPgauditAcrossRestartOnCNPG(t *testing.T, cl client.Client, kubeconfig,
 // TestOwnerPgauditAcrossRestartOnCNPG is the restart step alone, on the same
 // real CloudNativePG and operands as TestApplicationDatabaseExtensionsOnCNPG:
 // the owner runs Render's `CREATE EXTENSION pgaudit;` in a new database, the
-// instance pod restarts, and the extension is still there (w21/m606). It is
-// what cnpg-operator-qualify.yml runs on every CloudNativePG pin, and it fails
-// on the release bex's build patches.
+// instance pod restarts, and the extension is still there (w21/m606). It fails
+// on the release bex's build patches. cnpg-operator-qualify.yml runs
+// TestApplicationDatabaseExtensionsOnCNPG, which ends with the same step
+// (w21/124); BEX_CNPG_QUALIFY_TEST selects this one alone.
 func TestOwnerPgauditAcrossRestartOnCNPG(t *testing.T) {
 	cl, kubeconfig, operands := operandQualificationCluster(t)
 	for _, major := range slices.Sorted(maps.Keys(operands)) {
