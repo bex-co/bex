@@ -1,6 +1,6 @@
 # w6 · m609 — A plan change through Render's Update Service is saved for the next deploy, and billing follows the plan the service runs
 
-**Worker:** worker6 **Goal:** `PATCH /v1/services/{id}` and MCP `update_service` save a compute plan change without deploying, as Render's Update Service does. The service keeps running and being billed on its old plan until a deploy applies the new one. The dashboard's Compute page still deploys at once, as Render's dashboard does. **Status:** todo (t001–t004 and t006–t008 done; t005's live check waits for the 07:00Z hour's bill)
+**Worker:** worker6 **Goal:** `PATCH /v1/services/{id}` and MCP `update_service` save a compute plan change without deploying, as Render's Update Service does. The service keeps running and being billed on its old plan until a deploy applies the new one. The dashboard's Compute page still deploys at once, as Render's dashboard does. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [The operator keeps running the old plan until a deploy applies the saved one](done/t002.md) — **DONE** | 1h | — |
 | t003 | [Billing and the Free instance hours follow the plan the service runs](done/t003.md) — **DONE** | 2h | t002 |
 | t004 | [Record the saved plan in ADR018, ADR004 and ADR040](done/t004.md) — **DONE** | 30m | t001, t002, t003 |
-| t005 | [Ship and check on production](t005.md) | 1h | t004 |
+| t005 | [Ship and check on production](done/t005.md) — **DONE** | 1h | t004 |
 | t006 | [Render parity](done/t006.md) — **DONE** | 45m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
