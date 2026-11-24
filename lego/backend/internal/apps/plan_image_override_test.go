@@ -123,6 +123,34 @@ func TestASavedPlanAfterAnImageOverrideLeavesItServing(t *testing.T) {
 	}
 }
 
+// The deploy that applies a plan saved after an override keeps serving the
+// override (w6/m609 t008): a dashboard Settings save deploys the saved plan
+// with the live release's image (keepSelectedImage, w6/159), not the tag the
+// service was created with, and the saved image stays the created one.
+func TestTheDeployThatAppliesASavedPlanKeepsTheOverridesImage(t *testing.T) {
+	a, st := overriddenWhoami()
+	svc, cl := newService(st, a)
+	plan := "standard"
+	if _, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{Plan: &plan}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetMaxShutdownDelay(context.Background(), "web", 60); err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "web")
+	release := got.Annotations[appv1alpha1.AnnotationReleaseGeneration]
+	want := appv1alpha1.ReleaseConfigReference{Generation: 7, Image: overrideDigest}
+	if got.Spec.Tier != plan || got.Spec.ReleaseConfig == nil || *got.Spec.ReleaseConfig != want || release != "7" {
+		t.Fatalf("tier %q, release %q, release config %+v; want %s released as 7 on %+v", got.Spec.Tier, release, got.Spec.ReleaseConfig, plan, want)
+	}
+	if got.Spec.Image != savedWhoami {
+		t.Fatalf("saved image %q, want %s kept", got.Spec.Image, savedWhoami)
+	}
+	if len(st.deployCalls) != 1 || st.deployCalls[0].Trigger != store.TriggerSettingsChange || st.deployCalls[0].Image != overrideDigest {
+		t.Fatalf("deploy rows = %+v, want one settings_change row running %s", st.deployCalls, overrideDigest)
+	}
+}
+
 // A deploy that lands between a compound PATCH's read and its publish keeps
 // its own image selection: the saved plan neither overwrites the deploy's
 // image nor its release.

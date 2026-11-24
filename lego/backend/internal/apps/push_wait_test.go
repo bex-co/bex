@@ -210,12 +210,15 @@ func TestWritesThroughNameTheReleaseTheAppAdopted(t *testing.T) {
 // change for the next deploy. Held first, the change held that deploy too:
 // the operator releases no deploy stamped below a pending save, so it stayed
 // created until another deploy canceled it. A saved setting and a saved
-// source (Update Source) wait alike, and the deploy ahead keeps its stamp.
+// source (Update Source) wait alike, and the deploy ahead keeps its stamp. A
+// plan saves only too (w6/m609), so it waits alike and stays pending behind
+// that deploy.
 func TestAnUpdateServiceSaveWaitsForTheDeployAheadToBeAdopted(t *testing.T) {
-	delay, image := int32(120), "new:1"
+	delay, image, plan := int32(120), "new:1", "standard"
 	for name, patch := range map[string]ServicePatch{
 		"setting": {MaxShutdownDelaySeconds: &delay},
 		"source":  {Image: &image},
+		"plan":    {Plan: &plan},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ls := &listingStore{recordingStore: &recordingStore{}, open: []store.Deploy{{ID: "dep-settings", Status: store.DeployCreated, Generation: 3}}}
@@ -268,6 +271,9 @@ func TestAnUpdateServiceSaveWaitsForTheDeployAheadToBeAdopted(t *testing.T) {
 			got := getApp(t, cl, "web")
 			if got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "3" || got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "4" || len(ls.deployCalls) != 0 {
 				t.Fatalf("annotations %v, rows %d; want release 3 still stamped and the save pending at 4, with no deploy of its own", got.Annotations, len(ls.deployCalls))
+			}
+			if patch.Plan != nil && got.Spec.Tier != plan {
+				t.Fatalf("spec.tier = %q, want the saved %q", got.Spec.Tier, plan)
 			}
 		})
 	}

@@ -1,6 +1,6 @@
 # w6 · m609 — A plan change through Render's Update Service is saved for the next deploy, and billing follows the plan the service runs
 
-**Worker:** worker6 **Goal:** `PATCH /v1/services/{id}` and MCP `update_service` save a compute plan change without deploying, as Render's Update Service does. The service keeps running and being billed on its old plan until a deploy applies the new one. The dashboard's Compute page still deploys at once, as Render's dashboard does. **Status:** blocked (t001–t004 done, shipped in `05a4803948`; t005 waits for production to run it)
+**Worker:** worker6 **Goal:** `PATCH /v1/services/{id}` and MCP `update_service` save a compute plan change without deploying, as Render's Update Service does. The service keeps running and being billed on its old plan until a deploy applies the new one. The dashboard's Compute page still deploys at once, as Render's dashboard does. **Status:** todo (t001–t004 and t006–t008 done; t005's live check waits for the 07:00Z hour's bill)
 
 ## Tasks (in order)
 
@@ -11,9 +11,9 @@
 | t003 | [Billing and the Free instance hours follow the plan the service runs](done/t003.md) — **DONE** | 2h | t002 |
 | t004 | [Record the saved plan in ADR018, ADR004 and ADR040](done/t004.md) — **DONE** | 30m | t001, t002, t003 |
 | t005 | [Ship and check on production](t005.md) | 1h | t004 |
-| t006 | [Render parity](t006.md) | 45m | t005 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 45m | t005 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
 
 ## Definition of done
@@ -39,3 +39,9 @@ The note's "Check first" questions, answered from the code at `ddc314ffdb`:
 - **Billing would switch at the save.** `SetPlan` writes `Store.SetAppTier` (`lego/backend/internal/apps/service.go`, `SetPlan`), and the hourly meter bills `instance_seconds` at `store.App.Tier` (`lego/backend/internal/usage/service.go`, `processAppMeterWindowResult`). The Free instance hours enforcer reads `a.Spec.Tier` (`lego/backend/internal/freehours/freehours.go`). Today the plan deploys at once, so both are near enough. Once a plan can wait for a deploy, a saved upgrade bills the new plan for instances still on the old one, and a saved downgrade the reverse. A saved paid plan on a Free service would also exempt its still-free instances from the monthly hours. t003 moves both onto the plan the service runs.
 - **Render's MCP server cannot change a plan.** The pinned upstream tool list (`lego/backend/internal/api/openapi/render-mcp-tools.json`, captured 2026-11-17) has no update tool for services: upstream removed its placeholder `update_web_service`, `update_static_site` and `update_cron_job` in `b5f93eb`. bex's `update_service` is a bex extension that mirrors REST Update Service, so it follows REST.
 - **What changes in the backend.** `servicePatchTable`'s plan row is the only one marked `deploys: true` (`lego/backend/internal/apps/settings.go`), and `ApplyServicePatch` is `rollout.Batch`'s only caller. With the flag gone, every row runs under `rollout.WithSaveOnly` and the batch has nothing left to collapse. `SetPlan` has side effects that assume the plan applies at once: `resumeFromBilling` for a service the Free instance hours suspended, and the `plan_changed` row with its `edge_cache_enabled` / `edge_cache_disabled` beside it (`planEdgeCacheToggle`). t001 settles each against Render.
+
+## Unblocked 2026-11-24 (w6 loopx, verified evidence)
+
+- **Affected:** w6/m609 t005–t009. **Source:** verified evidence, no new decision.
+- **The gate cleared.** The newest pin on `origin/main` is `ff5de0a130e6` (`d9dd27d687`), and `git merge-base --is-ancestor 05a4803948 ff5de0a130e6` holds. Production runs it: the `bex-api` and `bex-controller-manager` pods in `bex-system` run `bex-operator@sha256:93c96486…`, the controller digest that pin writes into `deploy/gitops/base/bex.yaml`, since 06:30Z, and the live `apps.app.bex.co` CRD carries `status.servedTier`.
+- **Next:** t005 steps 2–7 on production as the QA user in `bex-canary`, then t006–t009. The acceptance checks are the definition of done above.

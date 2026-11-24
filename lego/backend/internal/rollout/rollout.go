@@ -214,26 +214,19 @@ func SaveOnly(ctx context.Context) bool {
 	return held
 }
 
-// Before captures a. Callers take it before mutating, exactly where they take
-// the merge-patch base.
-func Before(a *appv1alpha1.App) Snapshot {
+// beforeIn captures a for a write made under ctx, which may be save-only.
+// Callers take it before mutating, exactly where they take the merge-patch
+// base.
+func beforeIn(ctx context.Context, a *appv1alpha1.App) Snapshot {
 	if a == nil {
-		return Snapshot{}
+		return Snapshot{saveOnly: SaveOnly(ctx)}
 	}
 	return Snapshot{
 		appID:      store.ManagedAppID(a.Labels),
 		generation: a.Generation,
 		spec:       *a.Spec.DeepCopy(),
+		saveOnly:   SaveOnly(ctx),
 	}
-}
-
-// beforeIn is Before for a write made under ctx, which may be save-only.
-// A Stage's publish re-stamps only what its staged writes already stamped,
-// so it uses Before.
-func beforeIn(ctx context.Context, a *appv1alpha1.App) Snapshot {
-	s := Before(a)
-	s.saveOnly = SaveOnly(ctx)
-	return s
 }
 
 // Stamp reports whether the mutation a now carries rolls a new release, and

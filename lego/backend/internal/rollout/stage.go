@@ -25,6 +25,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -204,7 +205,7 @@ func isDryRunUpdate(opts []client.UpdateOption) bool {
 //
 // A lost race re-reads the live App and re-applies this request's own change on
 // top of it — the same field-level outcome the setters' individual merge
-// patches had — re-stamping the generation annotations against the new read.
+// patches had — re-stamping the pending-source marker against the new read.
 // Publish is safe to call more than once; later calls publish what was staged
 // since the last.
 func (s *Stage) Publish(ctx context.Context) (*appv1alpha1.App, error) {
@@ -230,9 +231,11 @@ func (s *Stage) Publish(ctx context.Context) (*appv1alpha1.App, error) {
 }
 
 // rebase re-applies the staged change on top of live — on the first attempt
-// live is original, so the result is exactly the staged App. The two
-// generation annotations a setter stamps name "the generation my write
-// produces", which after a lost race is live's next one, not original's.
+// live is original, so the result is exactly the staged App. The pending-source
+// marker a setter stamps names "the generation my write produces", which after
+// a lost race is live's next one, not original's. Every staged write is
+// save-only (ApplyServicePatch, rollout.WithSaveOnly), so none stamps a release
+// or selects a release image for rebase to carry.
 func (s *Stage) rebase(live *appv1alpha1.App) (*appv1alpha1.App, error) {
 	original, err := json.Marshal(s.original)
 	if err != nil {
@@ -258,31 +261,8 @@ func (s *Stage) rebase(live *appv1alpha1.App) (*appv1alpha1.App, error) {
 	if err := json.Unmarshal(merged, next); err != nil {
 		return nil, err
 	}
-	// A staged image selection (keepSelectedImage) was read from the release in
-	// force at original's generation. Over a spec change another writer made
-	// since, such as a deploy that selected its own image, it would replace
-	// that writer's selection, so the live one is kept and the staged release
-	// runs the saved image.
-	if live.Generation != s.original.Generation && !apiequality.Semantic.DeepEqual(s.staged.Spec.ReleaseConfig, s.original.Spec.ReleaseConfig) {
-		next.Spec.ReleaseConfig = live.Spec.ReleaseConfig.DeepCopy()
-	}
-	following := strconv.FormatInt(live.Generation+1, 10)
-	if next.Annotations == nil {
-		next.Annotations = map[string]string{}
-	}
 	if s.staged.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != s.original.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] {
-		next.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] = following
-	}
-	if s.staged.Annotations[appv1alpha1.AnnotationReleaseGeneration] != s.original.Annotations[appv1alpha1.AnnotationReleaseGeneration] {
-		// Stamp decides against live, so a suspend that landed after the
-		// staged steps holds the change instead of stamping a release.
-		if prior, ok := live.Annotations[appv1alpha1.AnnotationReleaseGeneration]; ok {
-			next.Annotations[appv1alpha1.AnnotationReleaseGeneration] = prior
-		} else {
-			delete(next.Annotations, appv1alpha1.AnnotationReleaseGeneration)
-		}
-		before := Before(live)
-		before.Stamp(next)
+		metav1.SetMetaDataAnnotation(&next.ObjectMeta, appv1alpha1.AnnotationPendingSourceGeneration, strconv.FormatInt(live.Generation+1, 10))
 	}
 	return next, nil
 }

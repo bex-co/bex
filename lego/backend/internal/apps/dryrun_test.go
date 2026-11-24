@@ -24,6 +24,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -34,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -101,23 +103,45 @@ func TestRESTDryRunCreateServiceQueryParam(t *testing.T) {
 	}
 }
 
-func TestRESTDryRunPatchServicePlan(t *testing.T) {
-	svc, cl := newService(nil)
-	seedAppWithPlan(t, cl, "patch-svc", "free")
+// w6/m609: a REST plan PATCH saves the plan for the next deploy. Its dry run
+// still previews the saved plan and writes nothing: no plan, no pending
+// marker, no deploy row, no store write and no plan_changed row.
+func TestRESTDryRunPlanPreviewsTheSaveAndWritesNothing(t *testing.T) {
+	st := &recordingStore{}
+	a := managedApp("web", "srv-1")
+	a.Spec.Tier = "starter"
+	a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}
+	svc, cl := newService(st, a)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	before := getApp(t, cl, "web")
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	// dryRun PATCH with plan => 200, plan not written.
-	body := `{"serviceDetails":{"plan":"starter"},"dryRun":true}`
 	rec := httptest.NewRecorder()
-	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/patch-svc", strings.NewReader(body)))
+	body := `{"serviceDetails":{"plan":"standard"},"dryRun":true}`
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("dry-run patch => 200, got %d: %s", rec.Code, rec.Body)
 	}
-	// The CR must still carry the original plan tier.
-	got := getApp(t, cl, "patch-svc")
-	if got.Spec.Tier != "free" {
-		t.Fatalf("dry-run patch must not modify CR, got tier=%q", got.Spec.Tier)
+	var got struct {
+		ServiceDetails struct {
+			Plan string `json:"plan"`
+		} `json:"serviceDetails"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || got.ServiceDetails.Plan != "standard" {
+		t.Fatalf("preview plan = %q (%v), want the saved standard: %s", got.ServiceDetails.Plan, err, rec.Body)
+	}
+	after := getApp(t, cl, "web")
+	if after.ResourceVersion != before.ResourceVersion || after.Spec.Tier != "starter" || !maps.Equal(after.Annotations, before.Annotations) {
+		t.Fatalf("after the dry run: tier %q, annotations %v, resourceVersion %s→%s; want the App untouched",
+			after.Spec.Tier, after.Annotations, before.ResourceVersion, after.ResourceVersion)
+	}
+	if len(st.deployCalls) != 0 || len(st.tierCalls) != 0 {
+		t.Fatalf("deploy rows %+v, store plan writes %+v; want none", st.deployCalls, st.tierCalls)
+	}
+	if n := sink.countVerb(core.AuditVerbSetPlan); n != 0 {
+		t.Fatalf("the dry run recorded %d plan_changed rows, want 0", n)
 	}
 }
 

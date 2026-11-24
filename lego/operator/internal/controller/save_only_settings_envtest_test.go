@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -363,6 +364,64 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 		Expect(tier).To(Equal("starter"))
 		Expect(getApp().Status.ServedTier).To(Equal("starter"))
 		Expect(undeployed()).To(BeFalse())
+	})
+
+	// A plan saved on a suspended service waits through Resume, which deploys
+	// nothing on Render either: the resumed pods keep the plan they were
+	// suspended on (ADR004 § Resume, then deploy). A rollback is a deploy, so
+	// it applies the saved plan with its target's image, as a Restart does
+	// (w6/m609 t002, ADR004 § Settings saves wait for a deploy).
+	It("keeps a saved plan through Suspend and Resume, and a rollback applies it (w6/m609)", func() {
+		use("save-only-plan-resume")
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: "busybox:1.36", Port: 3000, Replicas: 1, Tier: "starter"},
+		})).To(Succeed())
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal("rev-1"), "precondition: generation 1 serves")
+		first := strings.TrimPrefix(getApp().Status.Image, "/") // no registry in this suite
+
+		By("a deploy of a newer image serves on Starter")
+		second := deploy(func(app *appv1alpha1.App, _ int64) { app.Spec.Image = "busybox:1.37" })
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", second)))
+		Expect(appContainer(template()).Image).To(HaveSuffix("busybox:1.37"))
+
+		By("Standard saved while suspended stays saved through Resume")
+		update(func(app *appv1alpha1.App) { app.Spec.Suspended = true })
+		pass(3)
+		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.Tier = "standard" })
+		pass(3)
+		update(func(app *appv1alpha1.App) { app.Spec.Suspended = false })
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		app := getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(second), "a resume opens no release")
+		Expect(app.Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", second)))
+		tier, _, _ := runsPlan()
+		Expect(tier).To(Equal("starter"), "the resumed pods keep Starter's CPU and memory")
+		Expect(app.Status.ServedTier).To(Equal("starter"), "billing keeps reading Starter")
+		Expect(undeployed()).To(BeTrue(), "the saved plan is still not deployed")
+
+		By("a rollback to generation 1 runs its image on the saved Standard plan")
+		rollback := deploy(func(app *appv1alpha1.App, gen int64) {
+			app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: gen, SourceGeneration: 1,
+				Image: first, PreserveGroupValues: true}
+		})
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", rollback)))
+		Expect(appContainer(template()).Image).To(HaveSuffix("busybox:1.36"), "the rollback runs its target's image")
+		tier, _, _ = runsPlan()
+		Expect(tier).To(Equal("standard"))
+		Expect(getApp().Status.ServedTier).To(Equal("standard"), "billing moves to Standard with the rollback")
 	})
 
 	It("keeps a hibernating Free service asleep on Free while a saved Starter plan waits (w6/m609)", func() {

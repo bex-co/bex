@@ -71,11 +71,7 @@ func (s AppSpec) EdgeCaching() bool {
 // caching profile (EdgeCaching) on a paid web service. A free web service
 // never caches, as Render offers no edge caching on free web services; an
 // empty tier is the free tier. The port mode does not matter: on an
-// image-port service the sidecar fronts the image network's primary. The
-// operator starts the sidecar on exactly this (plus knowing its own image),
-// and bex-api reads it on both sides of a profile save, so
-// edge_cache_enabled / edge_cache_disabled never name a cache the operator
-// does not run (w9/m345).
+// image-port service the sidecar fronts the image network's primary.
 func (s AppSpec) ServesEdgeCache() bool {
 	return s.EdgeCaching() && s.Tier != "" && s.Tier != "free"
 }
@@ -94,7 +90,10 @@ func (a *App) RunningTier() string {
 // RunsEdgeCache is ServesEdgeCache on the plan the App's instances run
 // (RunningTier): a saved plan starts or stops the cache with the deploy that
 // applies it, so a Free service with a paid plan saved gets no cache before
-// it runs that plan.
+// it runs that plan. The operator starts the sidecar on exactly this (plus
+// knowing its own image), and bex-api reads it on both sides of a profile
+// save, so edge_cache_enabled / edge_cache_disabled never name a cache the
+// operator does not run (w9/m345).
 func (a *App) RunsEdgeCache() bool {
 	spec := a.Spec
 	spec.Tier = a.RunningTier()
