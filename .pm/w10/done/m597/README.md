@@ -87,7 +87,7 @@ Devin's [2026 release notes](https://docs.devin.ai/release-notes/2026) were re-r
 | `sshAddress` on REST, GraphQL and both MCP endpoints | Present on a closed session; the four reads agree | SSH is offered into a sleeping session | Same |
 | Dashboard Connect menu | `zed://` and `ssh` right away with a hint; no Start the sandbox | No wake step before SSH | Same |
 | Files | The session's attachments; needs no sandbox, so it opens on a closed session | "The Files tab can now be opened while Devin is asleep" (2026-10-05) | Same |
-| Terminal | None on an agent session (the Web Shell serves services only) | "opening Files or Terminal wakes Devin" (2026-10-05) | Drift that predates m597: [w10/057](../../057.md) |
+| Terminal | None on an agent session (the Web Shell serves services only) | "opening Files or Terminal wakes Devin" (2026-10-05) | Drift that predates m597: [w10/057](../057.md) |
 | CLI `bex agent ssh`, `bex edit` | Read `sshAddress`, so the gateway wakes the session | — | w6/169 already tracks the CLI |
 
 ## Definition of done
