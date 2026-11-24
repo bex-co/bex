@@ -26,6 +26,13 @@ import {
   LOG_THEME_CASES,
   LogThemeContext,
 } from "@/test/log-theme";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  LOGS_REASON,
+  billingCapabilities,
+  contributorCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // Options ends with Theme Settings, a router Link (w3/m528): render it as
 // its anchor, with no router around the component.
@@ -652,4 +659,45 @@ describe("DatastoreLogViewer under Log Explorer Theme (w3/m531)", () => {
       expect(explorerThemeClasses(container)).toEqual([...classes]);
     },
   );
+});
+
+// w9/145: Render's role table gives neither a Viewer nor a Billing member
+// "View service logs"; a Contributor reads a datastore's logs.
+describe("DatastoreLogViewer per role", () => {
+  it.each([
+    ["a Viewer", viewerCapabilities, "databases"],
+    ["a Billing member", billingCapabilities, "keyvalue"],
+  ] as const)(
+    // The tab's default Last hour watches for new lines over a stream.
+    "%s sees why, and neither the history nor a stream is read",
+    (_, capabilities, kind) => {
+      vi.mocked(useCapabilities).mockReturnValue(capabilities());
+      const sources: string[] = [];
+      render(
+        <DatastoreLogViewer
+          kind={kind}
+          resource={kind === "databases" ? "dpg-example" : "red-example"}
+          createEventSource={(url) => {
+            sources.push(url);
+            return new FakeEventSource(url);
+          }}
+        />,
+      );
+
+      expect(screen.getByText("Not available to your role")).toBeVisible();
+      expect(screen.getByText(LOGS_REASON)).toBeVisible();
+      expect(useHistorySpy).not.toHaveBeenCalled();
+      expect(sources).toEqual([]);
+    },
+  );
+
+  it("a Contributor reads the logs", () => {
+    vi.mocked(useCapabilities).mockReturnValue(contributorCapabilities());
+    state.lines = [line(0)];
+    render(<DatastoreLogViewer kind="keyvalue" resource="red-example" />);
+
+    expect(screen.getByText("checkpoint complete")).toBeInTheDocument();
+    expect(useHistorySpy).toHaveBeenCalled();
+    expect(screen.queryByText(LOGS_REASON)).not.toBeInTheDocument();
+  });
 });

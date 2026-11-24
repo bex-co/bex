@@ -14,7 +14,9 @@ import { useDeploy, type DeployView } from "../../hooks/use-deploy";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   ACTIVITY_REASON,
+  LOGS_REASON,
   billingCapabilities,
+  contributorCapabilities,
   viewerCapabilities,
 } from "@/test/mocks/capabilities";
 
@@ -165,7 +167,7 @@ beforeEach(() => {
 // w9/m621: Render's role table gives the Billing role no "View service
 // events", which is where Render's deploys live; bex-api refuses the deploy
 // read to it (can_view_activity). A Viewer reads the page as an Admin does.
-describe("DeployDetailPage per role (w9/m621)", () => {
+describe("DeployDetailPage per role (w9/m621, w9/145)", () => {
   it("a Billing member sees why, and the deploy is never read", () => {
     vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
     render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
@@ -177,7 +179,9 @@ describe("DeployDetailPage per role (w9/m621)", () => {
     expect(useDeploy).not.toHaveBeenCalled();
   });
 
-  it("a Viewer reads the deploy", () => {
+  // w9/145: nor does a Viewer "View service logs", so the deploy's log panel
+  // (and its reads and build tail) gives way to the role's reason.
+  it("a Viewer reads the deploy, with the role's reason in place of its logs", () => {
     vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
     render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
 
@@ -185,6 +189,16 @@ describe("DeployDetailPage per role (w9/m621)", () => {
     expect(screen.getByTestId("deploy-timeline")).toBeInTheDocument();
     expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
     expect(useDeploy).toHaveBeenCalledWith("web", "dep-1");
+    expect(screen.queryByTestId("build-log")).not.toBeInTheDocument();
+    expect(screen.getByText(LOGS_REASON)).toBeInTheDocument();
+  });
+
+  it("a Contributor reads the deploy and its logs", () => {
+    vi.mocked(useCapabilities).mockReturnValue(contributorCapabilities());
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    expect(screen.getByTestId("build-log")).toBeInTheDocument();
+    expect(screen.queryByText(LOGS_REASON)).not.toBeInTheDocument();
   });
 });
 

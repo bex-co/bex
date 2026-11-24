@@ -12,6 +12,7 @@ import { useServiceBase } from "@/features/services/lib/service-base";
 import { useBuildSource } from "@/features/services/hooks/use-build-sources";
 import { useServer } from "@/features/services/hooks/use-server";
 import { ActivityGate } from "@/features/capabilities/components/activity-gate";
+import { LogsGate } from "@/features/capabilities/components/logs-gate";
 import { useDeploy } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { deployWindowEnd } from "../lib/deploy-window";
@@ -219,25 +220,30 @@ function DeployDetail({
       <div className={DEPLOY_BODY_CLASS}>
         {/* Keyed per deploy: the live build tail keeps its rows through a pause
             (w4/m192), so a same-service deploy switch must start a fresh reader
-            rather than carry the previous build's streamed lines. */}
-        <DeployLogPanel
-          key={deployId}
-          resource={serviceId}
-          title={deployTitle(deploy?.commitMessage, deployId)}
-          deployId={deployId}
-          startTime={window ? window.start : deployStart}
-          endTime={window ? window.end : deployEnd}
-          // Render's deploy page passes the deploy's creation whatever the
-          // range: its log lines' From start (w4/716).
-          startedAt={deploy?.createdAt ?? undefined}
-          hasPreDeploy={
-            !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
-          }
-          followBuild={deploy?.status === "build_in_progress"}
-          range={range}
-          onRangeChange={onRangeChange}
-          limitedWindow={limitedWindow}
-        />
+            rather than carry the previous build's streamed lines. A Viewer
+            reads the deploy but not its logs (w9/145): the role's reason
+            stands in for the panel, and neither its reads nor its build
+            tail start. */}
+        <LogsGate>
+          <DeployLogPanel
+            key={deployId}
+            resource={serviceId}
+            title={deployTitle(deploy?.commitMessage, deployId)}
+            deployId={deployId}
+            startTime={window ? window.start : deployStart}
+            endTime={window ? window.end : deployEnd}
+            // Render's deploy page passes the deploy's creation whatever the
+            // range: its log lines' From start (w4/716).
+            startedAt={deploy?.createdAt ?? undefined}
+            hasPreDeploy={
+              !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
+            }
+            followBuild={deploy?.status === "build_in_progress"}
+            range={range}
+            onRangeChange={onRangeChange}
+            limitedWindow={limitedWindow}
+          />
+        </LogsGate>
         <DeployTimeline serviceId={serviceId} deploy={deploy} />
       </div>
     </div>

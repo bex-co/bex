@@ -17,7 +17,9 @@ import type { InstanceTypeView } from "@/features/services/hooks/use-instance-ty
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
+  LOGS_REASON,
   billingCapabilities,
+  contributorCapabilities,
   viewerCapabilities,
 } from "@/test/mocks/capabilities";
 
@@ -354,6 +356,36 @@ describe("service header's latest deploy per role (w9/m621)", () => {
 
     expect(await screen.findByText("Latest deploy")).toBeInTheDocument();
     expect(useLatestDeploy).toHaveBeenCalledWith("app", { skip: false });
+  });
+});
+
+// w9/145: Render's role table gives neither a Viewer nor a Billing member
+// "View service logs"; a Contributor has it. A denied deep link keeps the
+// tab's heading over the role's reason, and the viewer never mounts.
+describe("service Logs tab per role (w9/145)", () => {
+  it.each([
+    ["a Viewer", viewerCapabilities],
+    ["a Billing member", billingCapabilities],
+  ])(
+    "%s gets the role's reason, and no log viewer",
+    async (_, capabilities) => {
+      vi.mocked(useCapabilities).mockReturnValue(capabilities());
+      renderAt("/services/app/logs");
+
+      expect(await screen.findByText(LOGS_REASON)).toBeVisible();
+      expect(screen.getByRole("heading", { name: "Logs" })).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Search logs"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("a Contributor reads the logs", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(contributorCapabilities());
+    renderAt("/services/app/logs");
+
+    expect(await screen.findByPlaceholderText("Search logs")).toBeVisible();
+    expect(screen.queryByText(LOGS_REASON)).not.toBeInTheDocument();
   });
 });
 

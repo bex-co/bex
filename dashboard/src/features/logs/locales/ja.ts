@@ -371,17 +371,6 @@ const jaLogs: Record<string, TranslationEntry> = {
     description:
       "Project Request Logs view with no web service in it (w3/m505)",
   },
-  "logs.projectRoleLimitTitle": {
-    message: "ログを表示できません",
-    description:
-      "Project log view state: the caller's workspace role reads no logs, so the view reads nothing (w3/078)",
-  },
-  "logs.projectRoleLimitBody": {
-    message:
-      "このワークスペースのログを表示するには、コントリビューター以上のロールが必要です。ワークスペースの管理者にロールの変更を依頼してください。",
-    description:
-      "Project log view state body: logs need the Contributor role or higher, as on Render (w3/078)",
-  },
   "logs.projectEmptyTitle": {
     message: "この期間のログはありません",
     description:

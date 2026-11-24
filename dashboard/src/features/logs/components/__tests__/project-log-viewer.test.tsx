@@ -19,8 +19,6 @@ import {
 import { logContextSearch } from "../../lib/log-search";
 import { parseCustomRange } from "@/features/metrics/lib/range";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
-import { mockCapabilities } from "@/test/mocks/capabilities";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { ProjectLogViewPageSkeleton } from "@/common/components/route-skeletons";
 import {
   explorerThemeClasses,
@@ -166,7 +164,6 @@ beforeEach(() => {
   useHistorySpy.mockReset();
   useLiveLogsSpy.mockReset();
   retentionSpy.mockReset();
-  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
 });
 
 describe("ProjectLogViewer", () => {
@@ -214,54 +211,6 @@ describe("ProjectLogViewer", () => {
         "Request Logs read the project's web services, and there are none in this view yet.",
       ),
     ).toBeInTheDocument();
-  });
-
-  // w3/078: bex-api reads a caller without log access an empty scope, so a
-  // Viewer's view must not claim the project has nothing in it.
-  it("tells a Viewer their role reads no logs, not that the view is empty", () => {
-    vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "VIEWER", canViewLogs: false }),
-    );
-    historyState.resources = [];
-    viewer(LOG_TYPE_APP);
-    expect(screen.getByText("You can't view logs")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Logs in this workspace need the Contributor role or higher. Ask a workspace admin to change your role.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Nothing to read in this view yet"),
-    ).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ["a Contributor", mockCapabilities({ role: "CONTRIBUTOR" })],
-    [
-      "a role not yet confirmed",
-      mockCapabilities({ canViewLogs: false, loaded: false, loading: true }),
-    ],
-  ])("keeps the empty-view copy for %s", (_, capabilities) => {
-    vi.mocked(useCapabilities).mockReturnValue(capabilities);
-    historyState.resources = [];
-    viewer(LOG_TYPE_APP);
-    expect(
-      screen.getByText("Nothing to read in this view yet"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("You can't view logs")).not.toBeInTheDocument();
-  });
-
-  it("shows the lines a page read, whatever the role answer says", () => {
-    vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "VIEWER", canViewLogs: false }),
-    );
-    historyState.resources = resources;
-    historyState.lines = [
-      line({ key: "1", resource: "srv-web", message: "web line" }),
-    ];
-    viewer(LOG_TYPE_APP);
-    expect(screen.getByText("web line")).toBeInTheDocument();
-    expect(screen.queryByText("You can't view logs")).not.toBeInTheDocument();
   });
 
   it("says a quiet range is quiet", () => {

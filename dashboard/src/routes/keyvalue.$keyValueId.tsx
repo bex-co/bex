@@ -21,6 +21,7 @@ import {
 } from "@/common/hooks/use-not-found-redirect";
 import { DetailTabNav } from "@/common/components/detail-tab-nav";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-metadata-card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
@@ -121,6 +122,7 @@ export function KeyValueDetailPage() {
   const { tab } = search;
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const logsDenied = useCapabilities().denied("can_view_logs");
   const router = useRouter();
   // Functional form: committed verbatim, so a patch's explicit undefineds
   // actually clear stale keys (w7/m42); the spread keeps `tab` and the
@@ -199,13 +201,20 @@ export function KeyValueDetailPage() {
               onSelect: () =>
                 void navigate({ to: ".", search: { tab: "metrics" } }),
             },
-            {
-              id: "logs",
-              label: t("keyvalue.logsTab"),
-              active: tab === "logs",
-              onSelect: () =>
-                void navigate({ to: ".", search: { tab: "logs" } }),
-            },
+            // Neither a Viewer nor a Billing member views logs (w9/145):
+            // the tab is left out, but a deep link to it still names the
+            // open tab, over the role's reason.
+            ...(logsDenied && tab !== "logs"
+              ? []
+              : [
+                  {
+                    id: "logs",
+                    label: t("keyvalue.logsTab"),
+                    active: tab === "logs",
+                    onSelect: () =>
+                      void navigate({ to: ".", search: { tab: "logs" } }),
+                  },
+                ]),
           ]}
         />
 

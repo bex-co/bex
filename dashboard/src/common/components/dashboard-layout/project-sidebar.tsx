@@ -89,12 +89,15 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
     },
   });
   const { views, loading: viewsLoading } = useSavedSearches(projectId);
-  // A Billing member views no metrics (w9/m621): its Observability group
-  // lists no Service Metrics view once capabilities confirm the role.
-  const metricsDenied = useCapabilities().denied("can_view_activity");
-  const shownViews = metricsDenied
-    ? views.filter((view) => view.type !== SavedSearchType.Metrics)
-    : views;
+  // A Billing member views no metrics (w9/m621), and neither a Viewer nor a
+  // Billing member views logs (w9/145): once capabilities confirm the role,
+  // the Observability group lists no view of what it may not read.
+  const { denied } = useCapabilities();
+  const metricsDenied = denied("can_view_activity");
+  const logsDenied = denied("can_view_logs");
+  const shownViews = views.filter((view) =>
+    view.type === SavedSearchType.Metrics ? !metricsDenied : !logsDenied,
+  );
 
   return (
     <Sidebar collapsible="icon">

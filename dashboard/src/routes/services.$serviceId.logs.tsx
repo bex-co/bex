@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
+import { LogsGate } from "@/features/capabilities/components/logs-gate";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import {
   CLEARED_LOG_SEARCH,
@@ -113,21 +114,34 @@ function RouteComponent() {
 // reconstructed router without the file Route's param context. A pure
 // passthrough apart from the service type, which decides whether request
 // logs are offered; the optional props default inside LogViewer.
-export function ServiceLogsPage({
-  serviceId,
-  range,
-  onRangeChange,
-  urlFilters,
-  onFiltersChange,
-  contextLine,
-}: {
+//
+// Behind the role's logs gate (w9/145): a Viewer or a Billing member gets the
+// role's reason, and neither the history read nor the live tail opens.
+export function ServiceLogsPage(props: ServiceLogsPageProps) {
+  return (
+    <LogsGate>
+      <ServiceLogs {...props} />
+    </LogsGate>
+  );
+}
+
+interface ServiceLogsPageProps {
   serviceId: string;
   range?: LogRange;
   onRangeChange?: (range: LogRange) => void;
   urlFilters?: LogFilters;
   onFiltersChange?: (filters: LogFilters) => void;
   contextLine?: string;
-}) {
+}
+
+function ServiceLogs({
+  serviceId,
+  range,
+  onRangeChange,
+  urlFilters,
+  onFiltersChange,
+  contextLine,
+}: ServiceLogsPageProps) {
   // A worker, cron job or private service receives no public HTTP requests,
   // so it is offered no request logs, as on Render (w4/613); a stale
   // `?type=request` link reads its application logs. The layout mounts this

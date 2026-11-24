@@ -21,6 +21,7 @@ import {
 } from "@/common/hooks/use-not-found-redirect";
 import { DetailTabNav } from "@/common/components/detail-tab-nav";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
@@ -164,6 +165,7 @@ function DatabaseDetailPage() {
   const { tab } = search;
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const logsDenied = useCapabilities().denied("can_view_logs");
   const router = useRouter();
   // Functional form: committed verbatim, so a patch's explicit undefineds
   // actually clear stale keys (w7/m42); the spread keeps `tab` and the
@@ -248,13 +250,20 @@ function DatabaseDetailPage() {
               active: tab !== "logs",
               onSelect: () => void navigate({ to: ".", search: {} }),
             },
-            {
-              id: "logs",
-              label: t("databases.logsTab"),
-              active: tab === "logs",
-              onSelect: () =>
-                void navigate({ to: ".", search: { tab: "logs" } }),
-            },
+            // Neither a Viewer nor a Billing member views logs (w9/145):
+            // the tab is left out, but a deep link to it still names the
+            // open tab, over the role's reason.
+            ...(logsDenied && tab !== "logs"
+              ? []
+              : [
+                  {
+                    id: "logs",
+                    label: t("databases.logsTab"),
+                    active: tab === "logs",
+                    onSelect: () =>
+                      void navigate({ to: ".", search: { tab: "logs" } }),
+                  },
+                ]),
           ]}
         />
 

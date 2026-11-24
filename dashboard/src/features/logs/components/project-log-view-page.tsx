@@ -11,13 +11,21 @@ import type { ProjectLogViewType } from "../lib/project-log-views";
 import { viewLogType } from "../lib/view-filters";
 import { type EventSourceFactory } from "../hooks/use-live-logs";
 import { ProjectLogViewer } from "./project-log-viewer";
-import { ProjectViewPage } from "./project-view-page";
+import { ProjectViewFrame, ProjectViewPage } from "./project-view-page";
+import {
+  LogsDeniedState,
+  LogsGate,
+} from "@/features/capabilities/components/logs-gate";
 
 /**
  * A project's Application Logs or Request Logs view (w3/m505): Render's
  * `/project/{prj}/observability/logs/{application|request}?savedSearchId=…&r=…`
  * page, the log explorer over every resource the view reads, on Last hour
  * when neither the URL nor the view names a range, as Render's (w3/m537).
+ *
+ * Behind the role's logs gate (w9/145): a Viewer or a Billing member gets the
+ * page's title and the role's reason, and neither the view's logs nor its
+ * live tail are read.
  */
 export function ProjectLogViewPage({
   projectId,
@@ -41,26 +49,34 @@ export function ProjectLogViewPage({
     [projectId, viewType, savedSearchId],
   );
   return (
-    <ProjectViewPage
-      projectId={projectId}
-      viewType={viewType}
-      search={search}
-      onSearchChange={onSearchChange}
-      skeleton={<ProjectLogViewPageSkeleton />}
-      iconName="ScrollText"
+    <LogsGate
+      fallback={
+        <ProjectViewFrame viewType={viewType}>
+          <LogsDeniedState />
+        </ProjectViewFrame>
+      }
     >
-      {({ viewId, scope, viewRange, onRangeChange }) => (
-        <ProjectLogViewer
-          key={viewId}
-          scope={scope}
-          logType={viewLogType(viewType)}
-          range={projectLogRange(search, viewRange ?? DEFAULT_LOG_RANGE)}
-          onRangeChange={onRangeChange}
-          contextLine={search.contextLine}
-          contextHref={contextHref}
-          createEventSource={createEventSource}
-        />
-      )}
-    </ProjectViewPage>
+      <ProjectViewPage
+        projectId={projectId}
+        viewType={viewType}
+        search={search}
+        onSearchChange={onSearchChange}
+        skeleton={<ProjectLogViewPageSkeleton />}
+        iconName="ScrollText"
+      >
+        {({ viewId, scope, viewRange, onRangeChange }) => (
+          <ProjectLogViewer
+            key={viewId}
+            scope={scope}
+            logType={viewLogType(viewType)}
+            range={projectLogRange(search, viewRange ?? DEFAULT_LOG_RANGE)}
+            onRangeChange={onRangeChange}
+            contextLine={search.contextLine}
+            contextHref={contextHref}
+            createEventSource={createEventSource}
+          />
+        )}
+      </ProjectViewPage>
+    </LogsGate>
   );
 }

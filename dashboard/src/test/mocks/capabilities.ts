@@ -74,6 +74,10 @@ export function mockCapabilities(
 export const ACTIVITY_REASON =
   enCapabilities["capabilities.reasonCanViewActivity"].message;
 
+/** The en `capabilities.reasonCanViewLogs` sentence (w9/145). */
+export const LOGS_REASON =
+  enCapabilities["capabilities.reasonCanViewLogs"].message;
+
 /**
  * A Billing member's confirmed grants, as on Render (w9/m620, w9/m621): it
  * reads the workspace's billing, and no service events, deploys, metrics or
@@ -101,6 +105,23 @@ export function viewerCapabilities(): Capabilities {
     role: "VIEWER",
     canViewLogs: false,
     canOperate: false,
+    canCreate: false,
+    canViewSensitive: false,
+    canManageKeys: false,
+    canManage: false,
+    canManageBilling: false,
+    canViewBilling: false,
+  });
+}
+
+/**
+ * A Contributor's confirmed grants (w9/m619, w9/145): it reads service
+ * activity and logs and runs the runtime actions, but changes no setting and
+ * reads no secret or billing.
+ */
+export function contributorCapabilities(): Capabilities {
+  return mockCapabilities({
+    role: "CONTRIBUTOR",
     canCreate: false,
     canViewSensitive: false,
     canManageKeys: false,

@@ -33,7 +33,7 @@ export function ActivityDeniedState() {
   return (
     <EmptyState
       iconName="LockKeyhole"
-      title={t("capabilities.activityDeniedTitle")}
+      title={t("capabilities.roleDeniedTitle")}
       description={t("capabilities.reasonCanViewActivity")}
     />
   );

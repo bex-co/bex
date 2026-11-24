@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Loader2, Search } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
 import { classifyRefusal } from "@/common/lib/graphql-error";
+import { LogsGate } from "@/features/capabilities/components/logs-gate";
 import { Input } from "@/common/components/ui/input.tsx";
 import {
   Select,
@@ -133,16 +134,18 @@ function datastoreLogCopy(
 // down from the hosting route (`databases.$databaseId` / `keyvalue.$keyValueId`,
 // w6/065, w4/228) — this is a component, not a route, so persistence has to
 // come from its host. A standalone mount (unit tests) falls back to local state.
-export function DatastoreLogViewer({
-  kind,
-  resource,
-  range: rangeProp,
-  onRangeChange,
-  filters: urlFilters,
-  onFiltersChange,
-  contextLine,
-  createEventSource,
-}: {
+//
+// Behind the role's logs gate (w9/145): a Viewer or a Billing member gets the
+// role's reason, and neither the history read nor the live tail opens.
+export function DatastoreLogViewer(props: DatastoreLogViewerProps) {
+  return (
+    <LogsGate>
+      <DatastoreLogs {...props} />
+    </LogsGate>
+  );
+}
+
+interface DatastoreLogViewerProps {
   kind: DatastoreLogKind;
   resource: string;
   /** Live tail tails; the tab opens on its one-shot Last hour. */
@@ -154,7 +157,18 @@ export function DatastoreLogViewer({
   contextLine?: string;
   /** The live tail's stream factory; tests inject a fake (as LogViewer). */
   createEventSource?: EventSourceFactory;
-}) {
+}
+
+function DatastoreLogs({
+  kind,
+  resource,
+  range: rangeProp,
+  onRangeChange,
+  filters: urlFilters,
+  onFiltersChange,
+  contextLine,
+  createEventSource,
+}: DatastoreLogViewerProps) {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
   const copy = datastoreLogCopy(kind, t);

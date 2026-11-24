@@ -403,17 +403,6 @@ const esLogs: Record<string, TranslationEntry> = {
     description:
       "Project Request Logs view with no web service in it (w3/m505)",
   },
-  "logs.projectRoleLimitTitle": {
-    message: "No puedes ver los logs",
-    description:
-      "Project log view state: the caller's workspace role reads no logs, so the view reads nothing (w3/078)",
-  },
-  "logs.projectRoleLimitBody": {
-    message:
-      "Los logs de este espacio de trabajo requieren el rol Colaborador o superior. Pide a un administrador del espacio de trabajo que cambie tu rol.",
-    description:
-      "Project log view state body: logs need the Contributor role or higher, as on Render (w3/078)",
-  },
   "logs.projectEmptyTitle": {
     message: "No hay logs en este intervalo",
     description:

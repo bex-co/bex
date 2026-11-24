@@ -78,7 +78,7 @@ export function actionForBoolean(key: CapabilityBoolean): CapabilityAction {
 
 export const ROLE_REASON_KEYS: Record<CapabilityAction, string> = {
   can_view: "capabilities.reasonCanCreate", // unused for view-only gates today
-  can_view_logs: "capabilities.reasonCanOperate",
+  can_view_logs: "capabilities.reasonCanViewLogs",
   can_operate: "capabilities.reasonCanOperate",
   can_create: "capabilities.reasonCanCreate",
   can_view_sensitive: "capabilities.reasonCanViewSensitive",

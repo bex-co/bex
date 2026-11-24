@@ -10,7 +10,6 @@ import {
   relayableReason,
 } from "@/common/lib/graphql-error";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import {
   useLiveLogs,
@@ -112,7 +111,6 @@ export function ProjectLogViewer({
   createEventSource,
 }: ProjectLogViewerProps) {
   const { t } = useTranslations();
-  const { denied } = useCapabilities();
   const hydrated = useIsHydrated();
   const [draft, setDraft] = useState("");
   const [committed, setCommitted] = useState<{ text: string; picks: Picks }>({
@@ -279,17 +277,6 @@ export function ProjectLogViewer({
     body = <LogPanelSkeleton fillViewport />;
   } else if (cleared.cleared && cleared.lines.length === 0) {
     body = <LogClearedState fillViewport onRestore={cleared.restore} />;
-  } else if (emptyScope && lines.length === 0 && denied("can_view_logs")) {
-    // bex-api reads a caller without log access an empty scope, never naming
-    // a resource (ADR010 § Project views), so the role says why it is empty.
-    body = (
-      <LogPanelState
-        fillViewport
-        icon={LockKeyhole}
-        title={t("logs.projectRoleLimitTitle")}
-        body={t("logs.projectRoleLimitBody")}
-      />
-    );
   } else if (emptyScope && lines.length === 0) {
     body = (
       <LogPanelState

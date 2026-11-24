@@ -16,6 +16,7 @@ import { SavedSearchType } from "@/graphql/definitions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   billingCapabilities,
+  contributorCapabilities,
   mockCapabilities,
   viewerCapabilities,
 } from "@/test/mocks/capabilities";
@@ -195,24 +196,23 @@ describe("ProjectSidebar", () => {
     expect(labels).toEqual(["Observability", "Manage"]);
   });
 
-  // w9/m621: Render's role table gives the Billing role no "View service
-  // metrics"; a Viewer has it.
-  it("lists no Service Metrics view to a Billing member, and keeps the log views", async () => {
+  // w9/m621, w9/145: Render's role table gives the Billing role neither
+  // "View service metrics" nor "View service logs", and a Viewer metrics but
+  // no logs; a Contributor has both.
+  const viewLinks = () =>
+    ["Application Logs", "Request Logs", "Service Metrics"].filter((name) =>
+      screen.queryByRole("link", { name }),
+    );
+
+  it("lists no view to a Billing member, under the Observability heading", async () => {
     vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
     renderAt("/project/prj-1");
 
-    expect(
-      await screen.findByRole("link", { name: "Application Logs" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Request Logs" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Service Metrics" }),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Observability")).toBeInTheDocument();
+    expect(viewLinks()).toEqual([]);
   });
 
-  it("lists the Service Metrics view to a Viewer", async () => {
+  it("lists the Service Metrics view alone to a Viewer", async () => {
     vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
     renderAt("/project/prj-1");
 
@@ -222,6 +222,38 @@ describe("ProjectSidebar", () => {
       "href",
       "/project/prj-1/observability/metrics?savedSearchId=svs-metrics",
     );
+    expect(viewLinks()).toEqual(["Service Metrics"]);
+  });
+
+  it("lists every view to a Contributor", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(contributorCapabilities());
+    renderAt("/project/prj-1");
+
+    await screen.findByRole("link", { name: "Application Logs" });
+    expect(viewLinks()).toEqual([
+      "Application Logs",
+      "Request Logs",
+      "Service Metrics",
+    ]);
+  });
+
+  it("lists every view while capabilities are still checking", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        loading: true,
+        loaded: false,
+        canViewActivity: false,
+        canViewLogs: false,
+      }),
+    );
+    renderAt("/project/prj-1");
+
+    await screen.findByRole("link", { name: "Application Logs" });
+    expect(viewLinks()).toEqual([
+      "Application Logs",
+      "Request Logs",
+      "Service Metrics",
+    ]);
   });
 
   it("marks the open view active, not Overview, and links back to the project", async () => {

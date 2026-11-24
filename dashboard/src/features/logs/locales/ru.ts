@@ -418,17 +418,6 @@ const ruLogs: Record<string, TranslationEntry> = {
     description:
       "Project Request Logs view with no web service in it (w3/m505)",
   },
-  "logs.projectRoleLimitTitle": {
-    message: "Вы не можете просматривать логи",
-    description:
-      "Project log view state: the caller's workspace role reads no logs, so the view reads nothing (w3/078)",
-  },
-  "logs.projectRoleLimitBody": {
-    message:
-      "Для просмотра логов в этом рабочем пространстве нужна роль «Участник-исполнитель» или выше. Попросите администратора рабочего пространства изменить вашу роль.",
-    description:
-      "Project log view state body: logs need the Contributor role or higher, as on Render (w3/078)",
-  },
   "logs.projectEmptyTitle": {
     message: "Нет логов за этот период",
     description:

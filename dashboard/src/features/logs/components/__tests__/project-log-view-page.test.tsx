@@ -2,10 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ProjectLogViewPage } from "../project-log-view-page";
+import type { ProjectLogViewType } from "../../lib/project-log-views";
 import type { ProjectLogViewerProps } from "../project-log-viewer";
 import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { SavedSearchType } from "@/graphql/definitions";
 import { parseRangePreset } from "@/features/metrics/lib/range";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  LOGS_REASON,
+  billingCapabilities,
+  contributorCapabilities,
+  mockCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // A project's observability view page (w3/m505): the view comes from the
 // project's saved searches by the URL's id, its name heads the page, its
@@ -16,8 +25,12 @@ const savedSearches: {
   loading: boolean;
   error: Error | undefined;
 } = { views: [], loading: false, error: undefined };
+const useSavedSearches = vi.fn();
 vi.mock("@/features/projects/hooks/use-saved-searches", () => ({
-  useSavedSearches: () => savedSearches,
+  useSavedSearches: (projectId: string) => {
+    useSavedSearches(projectId);
+    return savedSearches;
+  },
 }));
 // The header's view actions (w3/m507) have their own test; here they only
 // show which view they act on, and can report one leaving.
@@ -83,6 +96,8 @@ const APP_FILTERS = {
 };
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  useSavedSearches.mockClear();
   viewerProps.length = 0;
   savedSearches.loading = false;
   savedSearches.error = undefined;
@@ -239,5 +254,68 @@ describe("ProjectLogViewPage", () => {
     expect(
       container.querySelector('[data-route-skeleton="project-log-view"]'),
     ).not.toBeNull();
+  });
+});
+
+// w9/145: Render's role table gives neither a Viewer nor a Billing member
+// "View service logs"; a Contributor reads the view as an Admin does.
+describe("ProjectLogViewPage per role", () => {
+  const open = (viewType: ProjectLogViewType, savedSearchId: string) =>
+    render(
+      <ProjectLogViewPage
+        projectId="prj-observed"
+        viewType={viewType}
+        search={{ savedSearchId }}
+        onSearchChange={() => undefined}
+      />,
+    );
+
+  it.each([
+    [
+      "a Viewer",
+      viewerCapabilities,
+      SavedSearchType.ApplicationLogs,
+      "svs-app",
+    ],
+    [
+      "a Billing member",
+      billingCapabilities,
+      SavedSearchType.RequestLogs,
+      "svs-req",
+    ],
+  ] as const)(
+    "%s sees the page's title and why, and no log is read",
+    (_, capabilities, viewType, savedSearchId) => {
+      vi.mocked(useCapabilities).mockReturnValue(capabilities());
+      open(viewType, savedSearchId);
+
+      expect(
+        screen.getByRole("heading", {
+          name:
+            viewType === SavedSearchType.RequestLogs
+              ? "Request Logs"
+              : "Application Logs",
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Not available to your role")).toBeVisible();
+      expect(screen.getByText(LOGS_REASON)).toBeVisible();
+      expect(viewerProps).toHaveLength(0);
+      expect(useSavedSearches).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["a Contributor", contributorCapabilities],
+    [
+      "a role not yet confirmed",
+      () =>
+        mockCapabilities({ canViewLogs: false, loaded: false, loading: true }),
+    ],
+  ])("%s reads the view", (_, capabilities) => {
+    vi.mocked(useCapabilities).mockReturnValue(capabilities());
+    open(SavedSearchType.ApplicationLogs, "svs-app");
+
+    expect(viewerProps.at(-1)?.scope.project).toBe("prj-observed");
+    expect(screen.queryByText(LOGS_REASON)).not.toBeInTheDocument();
   });
 });

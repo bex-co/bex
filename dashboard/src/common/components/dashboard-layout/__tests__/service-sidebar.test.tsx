@@ -14,6 +14,7 @@ import type { UseServerResult } from "@/features/services/hooks/use-server";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   billingCapabilities,
+  contributorCapabilities,
   mockCapabilities,
   viewerCapabilities,
 } from "@/test/mocks/capabilities";
@@ -58,16 +59,17 @@ beforeEach(() => {
   serverState.loading = false;
 });
 
-// w9/m621: Render's role table gives the Billing role neither "View service
-// events" nor "View service metrics"; a Viewer has both.
-describe("ServiceSidebar per role (w9/m621)", () => {
+// w9/m621, w9/145: Render's role table gives the Billing role neither "View
+// service events" nor "View service metrics", and neither a Viewer nor a
+// Billing member "View service logs"; a Contributor has all three.
+describe("ServiceSidebar per role (w9/m621, w9/145)", () => {
   const linkNames = () =>
     screen
       .getAllByRole("link")
       .map((link) => link.textContent)
       .filter(Boolean);
 
-  it("drops Deploys, Events and Metrics for a Billing member once the role is confirmed", async () => {
+  it("drops Deploys, Events, Logs and Metrics for a Billing member once the role is confirmed", async () => {
     vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
     renderAt("/services/srv-1/settings");
 
@@ -75,7 +77,6 @@ describe("ServiceSidebar per role (w9/m621)", () => {
     expect(linkNames()).toEqual([
       "Dashboard",
       "Settings",
-      "Logs",
       "Environment",
       "Disk",
       "Shell",
@@ -83,8 +84,26 @@ describe("ServiceSidebar per role (w9/m621)", () => {
     ]);
   });
 
-  it("keeps every entry for a Viewer", async () => {
+  it("drops Logs alone for a Viewer", async () => {
     vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    renderAt("/services/srv-1/settings");
+
+    await screen.findByRole("link", { name: "Settings" });
+    expect(linkNames()).toEqual([
+      "Dashboard",
+      "Deploys",
+      "Settings",
+      "Events",
+      "Metrics",
+      "Environment",
+      "Disk",
+      "Shell",
+      "Compute",
+    ]);
+  });
+
+  it("keeps every entry for a Contributor", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(contributorCapabilities());
     renderAt("/services/srv-1/settings");
 
     await screen.findByRole("link", { name: "Settings" });
@@ -108,12 +127,14 @@ describe("ServiceSidebar per role (w9/m621)", () => {
         loading: true,
         loaded: false,
         canViewActivity: false,
+        canViewLogs: false,
       }),
     );
     renderAt("/services/srv-1/settings");
 
     expect(await screen.findByRole("link", { name: "Deploys" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Metrics" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Logs" })).toBeVisible();
   });
 });
 

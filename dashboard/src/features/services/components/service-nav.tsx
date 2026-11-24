@@ -69,19 +69,26 @@ const ACTIVITY_TABS = new Set<SidebarNavItem["labelKey"]>([
 
 /**
  * The service's nav groups. `activityDenied` (w9/m621) is a confirmed
- * can_view_activity denial, a Billing member's, and drops the activity tabs
- * with any group they leave empty. While capabilities are still checking it is
- * false, so an allowed member's nav never shifts.
+ * can_view_activity denial, a Billing member's, and drops the activity tabs;
+ * `logsDenied` (w9/145) is a confirmed can_view_logs denial, a Viewer's or a
+ * Billing member's, and drops Logs. Either drops any group it leaves empty.
+ * While capabilities are still checking both are false, so an allowed
+ * member's nav never shifts.
  */
 export function serviceNavGroups(
   type: ServiceTypeKey | null,
   base: ServiceBase = "/services",
-  { activityDenied = false }: { activityDenied?: boolean } = {},
+  {
+    activityDenied = false,
+    logsDenied = false,
+  }: { activityDenied?: boolean; logsDenied?: boolean } = {},
 ): SidebarNavGroup[] {
-  const groups = serviceNavGroupsForType(type, base);
-  return activityDenied
-    ? filterNavGroups(groups, (item) => !ACTIVITY_TABS.has(item.labelKey))
-    : groups;
+  return filterNavGroups(
+    serviceNavGroupsForType(type, base),
+    (item) =>
+      !(activityDenied && ACTIVITY_TABS.has(item.labelKey)) &&
+      !(logsDenied && item.labelKey === "services.navLogs"),
+  );
 }
 
 function serviceNavGroupsForType(

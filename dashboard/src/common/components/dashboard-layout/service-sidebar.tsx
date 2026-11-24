@@ -42,8 +42,11 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   // not-found state, and a sidebar of dead links would contradict it. While
   // still loading, keep the nav (a legit id must not flash empty→full).
   const showNav = loading || service !== null;
-  // A Billing member views no service events, deploys or metrics (w9/m621).
-  const activityDenied = useCapabilities().denied("can_view_activity");
+  // A Billing member views no service events, deploys or metrics (w9/m621),
+  // and neither a Viewer nor a Billing member views logs (w9/145).
+  const { denied } = useCapabilities();
+  const activityDenied = denied("can_view_activity");
+  const logsDenied = denied("can_view_logs");
 
   return (
     <Sidebar collapsible="icon">
@@ -68,7 +71,7 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
             groups={serviceNavGroups(
               service ? deriveServiceType(service.type) : null,
               base,
-              { activityDenied },
+              { activityDenied, logsDenied },
             )}
             linkParams={{ serviceId }}
             isItemActive={(to) =>

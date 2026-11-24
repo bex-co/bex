@@ -168,6 +168,52 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
       );
     });
   });
+
+  // w9/145: neither a Viewer nor a Billing member views service logs, as on
+  // Render ("View service logs" ❌ for both).
+  describe("for a role confirmed unable to view logs", () => {
+    it("a Viewer's compute type: drops Logs alone", () => {
+      expect(
+        labels(serviceNavGroups("web", "/services", { logsDenied: true })),
+      ).toEqual([
+        ["services.navDeploys", "services.navSettings"],
+        ["services.navEvents", "services.navMetrics"],
+        [
+          "services.navEnvironment",
+          "services.navDisk",
+          "services.navShell",
+          "services.navCompute",
+        ],
+      ]);
+    });
+
+    it("a Billing member's: drops the Monitor group it leaves empty", () => {
+      const groups = serviceNavGroups("cron", "/services", {
+        activityDenied: true,
+        logsDenied: true,
+      });
+      expect(labels(groups)).toEqual([
+        ["services.navSettings"],
+        ["services.navEnvironment", "services.navShell"],
+      ]);
+      expect(groups.map((group) => group.labelKey)).toEqual([
+        undefined,
+        "common.navManageGroup",
+      ]);
+    });
+
+    it("static_site: unchanged, it has no Logs to drop", () => {
+      expect(
+        serviceNavGroups("static", "/static", { logsDenied: true }),
+      ).toEqual(serviceNavGroups("static", "/static"));
+    });
+
+    it("leaves the Logs heading alone: a deep link still names its tab", () => {
+      expect(serviceTabLabelKey("/services/srv-1/logs", "srv-1")).toBe(
+        "services.navLogs",
+      );
+    });
+  });
 });
 
 describe("serviceTabLabelKey (the detail layout's tab heading)", () => {
