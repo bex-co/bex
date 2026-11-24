@@ -75,7 +75,7 @@ const zhCapabilities: Record<string, TranslationEntry> = {
     description: "Blocked reason for billing_blocked",
   },
   "capabilities.blockedExpired": {
-    message: "免费计划已过期，因此该资源保持暂停状态。请升级到付费计划以恢复它。",
+    message: "免费套餐已过期，因此该资源保持暂停状态。请升级到付费套餐以恢复它。",
     description: "Blocked reason for expired precondition",
   },
   "capabilities.blockedUnavailable": {
