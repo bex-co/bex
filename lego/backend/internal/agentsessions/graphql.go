@@ -142,14 +142,26 @@ func withTemplateFields[T any](fields graphql.Fields, offer func(T) TemplateOffe
 var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionCapabilities",
 	Fields: withTemplateFields(graphql.Fields{
-		"enabled":       gqlutil.ReqBoolField(func(v Capabilities) any { return v.Enabled }),
-		"github":        gqlutil.Typed(graphql.NewNonNull(githubReadinessGQLType), func(v Capabilities) any { return v.GitHub }),
-		"modelKeyReady": gqlutil.ReqBoolField(func(v Capabilities) any { return v.ModelKeyReady }),
-		"attachments":   &graphql.Field{Type: graphql.NewNonNull(attachmentLimitsGQLType), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Attachments })},
-		"agents":        gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentProfileGQLType))), func(v Capabilities) any { return v.Agents }),
-		"ready":         gqlutil.ReqBoolField(func(v Capabilities) any { return v.Ready }),
-		"sshEnabled":    gqlutil.ReqBoolField(func(v Capabilities) any { return v.SSHEnabled }),
+		"enabled":         gqlutil.ReqBoolField(func(v Capabilities) any { return v.Enabled }),
+		"github":          gqlutil.Typed(graphql.NewNonNull(githubReadinessGQLType), func(v Capabilities) any { return v.GitHub }),
+		"modelKeyReady":   gqlutil.ReqBoolField(func(v Capabilities) any { return v.ModelKeyReady }),
+		"attachments":     &graphql.Field{Type: graphql.NewNonNull(attachmentLimitsGQLType), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Attachments })},
+		"agents":          gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentProfileGQLType))), func(v Capabilities) any { return v.Agents }),
+		"ready":           gqlutil.ReqBoolField(func(v Capabilities) any { return v.Ready }),
+		"sshEnabled":      gqlutil.ReqBoolField(func(v Capabilities) any { return v.SSHEnabled }),
+		"terminalEnabled": gqlutil.ReqBoolField(func(v Capabilities) any { return v.TerminalEnabled }),
 	}, func(v Capabilities) TemplateOffer { return v.TemplateOffer }),
+})
+
+var agentSessionShellSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSessionShellSession",
+	Description: "A Terminal ticket for an agent session's sandbox: the browser presents ticket to the gateway WebSocket at url before expiresAt. sandbox is up when the shell opens at once, starting when it opens once the sandbox started.",
+	Fields: graphql.Fields{
+		"ticket":    gqlutil.ReqStrField(func(v ShellSessionView) any { return v.Ticket }),
+		"url":       gqlutil.ReqStrField(func(v ShellSessionView) any { return v.URL }),
+		"expiresAt": gqlutil.ReqStrField(func(v ShellSessionView) any { return v.ExpiresAt }),
+		"sandbox":   gqlutil.ReqStrField(func(v ShellSessionView) any { return v.Sandbox }),
+	},
 })
 
 var agentNetworkTierGQLEnum = graphql.NewEnum(graphql.EnumConfig{
@@ -1114,6 +1126,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"resumeAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Resume),
+		// createAgentSessionShellSession mints the session page's Terminal
+		// ticket (w10/m615, ADR054 D10), as createShellSession mints a
+		// service's Shell ticket: the browser opens the gateway WebSocket at url
+		// with it. A sandbox that closed is started as the caller, and sandbox
+		// says whether the shell opens at once or after the start.
+		"createAgentSessionShellSession": gqlutil.IDVerb(agentSessionShellSessionGQLType, s.CreateShellSession),
 		"attachAgentSession": &graphql.Field{
 			Type: agentSessionGQLType,
 			Args: graphql.FieldConfigArgument{

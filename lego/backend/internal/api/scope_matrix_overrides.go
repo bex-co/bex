@@ -133,6 +133,11 @@ var scopeClassOverrides = map[string]string{
 	// Browser Web Shell ticket: can_view_sensitive, short-lived, not mint.
 	"REST POST /v1/services/{id}/shell-ticket": core.OpClassSensitive,
 	"GQL Mutation.createShellSession":          core.OpClassSensitive,
+	// An agent session's Terminal ticket (w10/m615): the same shell, into its
+	// sandbox. Its mint may start the sandbox, which Resume's own can_operate
+	// check holds to the write capability.
+	"REST POST /v1/agent-sessions/{id}/shell-ticket": core.OpClassSensitive,
+	"GQL Mutation.createAgentSessionShellSession":    core.OpClassSensitive,
 
 	// Membership issuance (an invite, its resend, a role change) is mint too:
 	// it outlives the caller's credential (round 24, H-1).

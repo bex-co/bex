@@ -17,12 +17,15 @@ limitations under the License.
 // Package webshell is the Browser Web Shell transport of the isolated SSH
 // gateway (docs/ADR035-ssh.md § Browser Web Shell). A browser opens a
 // WebSocket to the gateway carrying the exec ticket bex-api minted after
-// AuthorizeApp(can_operate). The gateway verifies the ticket, re-runs
-// ResolveSSHSession (so it re-authorizes and re-selects a Ready pod itself —
-// bex-api's decision is not trusted transitively), and bridges the browser to
-// one pods/exec stream. pods/exec stays confined to the gateway process;
-// bex-api never gains it. The stream is never logged or persisted, and the
-// audit row carries no terminal content — the same boundary as native SSH.
+// can_view_sensitive on its target: a service's Shell page, or an agent
+// session's Terminal (w10/m615, docs/ADR054-open-in-zed.md D10). The gateway
+// verifies the ticket, re-runs ResolveSSHSession (so it re-authorizes and
+// re-selects a Ready pod itself — bex-api's decision is not trusted
+// transitively), and bridges the browser to one pods/exec stream. An agent
+// session's sandbox that is still starting is waited for on the open
+// WebSocket. pods/exec stays confined to the gateway process; bex-api never
+// gains it. The stream is never logged or persisted, and the audit row
+// carries no terminal content — the same boundary as native SSH.
 package webshell
 
 import (
@@ -39,6 +42,7 @@ import (
 	"github.com/gorilla/websocket"
 	"k8s.io/client-go/tools/remotecommand"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -81,12 +85,18 @@ type Server struct {
 	// disabled and every request is refused with 503.
 	TicketSecret []byte
 
-	Store    Store
-	Apps     sshgateway.TargetResolver
-	Executor sshgateway.Executor
-	Metrics  *sshgateway.Metrics
-	Limits   *sshgateway.SessionLimiter
-	Nonces   *sshgateway.NonceGuard
+	Store Store
+	Apps  sshgateway.TargetResolver
+	// AgentSessions resolves a ticket naming an agent session (its
+	// SessionID) to the session's sandbox: agentsessions.SSHResolver, the
+	// resolver native SSH routes ags-… logins to. nil refuses every such
+	// ticket. A ticket is routed by the field it names, never by an id's
+	// prefix, so a service ticket keeps Apps byte-identically.
+	AgentSessions sshgateway.TargetResolver
+	Executor      sshgateway.Executor
+	Metrics       *sshgateway.Metrics
+	Limits        *sshgateway.SessionLimiter
+	Nonces        *sshgateway.NonceGuard
 
 	// HandshakeTimeout bounds the upgrade. A shell itself has no time limit,
 	// as on Render (w6/174): it ends with the browser, its access, its
@@ -113,6 +123,21 @@ type Server struct {
 	// to the key's current grant at connect and on every revalidation tick
 	// (w9/125). nil refuses every key's ticket; a person's never asks.
 	KeyGrants *sshgateway.KeyGrantGate
+
+	// SessionTimeout caps an agent session's Terminal, as it caps an SSH
+	// connection to an agent session (BEX_SSH_SESSION_TIMEOUT, ADR054 D6),
+	// whose open row keeps the sandbox from its idle close. 0 => no cap. A
+	// service's shell has none, as on Render (w6/174).
+	SessionTimeout time.Duration
+	// WakeTimeout bounds how long a Terminal waits for an agent session's
+	// sandbox that is starting: the start's own ceiling
+	// (agentsessions.SSHWakeTimeout) when 0.
+	WakeTimeout time.Duration
+	// wakePollInterval is how often a waiting Terminal reads whether the
+	// session settled (defaultWakePollInterval when 0), and wakeProgress how
+	// often it says it still waits (wakeProgressInterval); tests shorten them.
+	wakePollInterval time.Duration
+	wakeProgress     time.Duration
 }
 
 func (s *Server) defaults() {
@@ -127,6 +152,15 @@ func (s *Server) defaults() {
 	}
 	if s.Nonces == nil {
 		s.Nonces = &sshgateway.NonceGuard{}
+	}
+	if s.WakeTimeout <= 0 {
+		s.WakeTimeout = agentsessions.SSHWakeTimeout
+	}
+	if s.wakePollInterval <= 0 {
+		s.wakePollInterval = defaultWakePollInterval
+	}
+	if s.wakeProgress <= 0 {
+		s.wakeProgress = wakeProgressInterval
 	}
 }
 
@@ -164,14 +198,18 @@ type clientControl struct {
 // serverControl is a server→client text frame: the terminal exit code or a
 // bounded error message. Terminal output is sent as binary frames.
 type serverControl struct {
-	Type    string `json:"type"`              // "exit" | "error"
+	Type    string `json:"type"`              // "exit" | "error" | "starting" | "ready"
 	Code    int    `json:"code,omitempty"`    // for type=exit
 	Message string `json:"message,omitempty"` // for type=error
 	// Reason classifies an error frame that ENDED a live session (w4/m352), one
 	// of the end* codes, so the dashboard can name it in the reader's language;
-	// Message stays the English fallback. Empty for a refusal before the shell
-	// started and for a transport failure.
+	// Message stays the English fallback. It also names why a Terminal's wait
+	// for an agent session's sandbox ended without one (w10/m615). Empty for a
+	// refusal before the shell started and for a transport failure.
 	Reason string `json:"reason,omitempty"`
+	// Elapsed is how long a Terminal has waited for its sandbox, in seconds,
+	// on a "starting" frame after the first (w10/m615).
+	Elapsed int `json:"elapsed,omitempty"`
 }
 
 // The reasons a live session ended, sent as serverControl.Reason (w4/m352).
@@ -182,10 +220,16 @@ const (
 	endInstanceGone = apps.ShellRefusalInstanceGone
 	endTimeout      = "timeout"
 	endUnverified   = "unverified"
+	// A Terminal's wait for an agent session's sandbox ended without one
+	// (w10/m615): the start ended with none, or its ceiling passed.
+	endNoSandbox   = "no_sandbox"
+	endWakeTimeout = "wake_timeout"
 )
 
 var endMessages = map[string]string{
 	endRevoked:      "your access to this service ended",
+	endNoSandbox:    "the sandbox did not start; open the Terminal again to try again",
+	endWakeTimeout:  "the sandbox did not start in time; open the Terminal again to try again",
 	endSuspended:    "the service was suspended, which ended this session; resume it to open a new one",
 	endIneligible:   "the service no longer has shell access (its plan or type changed), which ended this session",
 	endInstanceGone: "the instance this session ran on stopped",
@@ -215,9 +259,9 @@ func watchdogEndReason(err error) string {
 // keyGrantRefusal is what the terminal shows when a key's grant refuses its
 // shell at connect: the refusal itself when the grant no longer covers it,
 // else that it could not be checked.
-func keyGrantRefusal(err error) string {
+func keyGrantRefusal(err error, target string) string {
 	if errors.Is(err, core.ErrForbidden) {
-		return "this API key is no longer granted shell access to this service"
+		return "this API key is no longer granted shell access to this " + target
 	}
 	return "this API key's permissions couldn't be checked; reconnect to try again"
 }
@@ -279,25 +323,39 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 
 // runWebSocketSession resolves the target, enforces caps, and bridges the
 // browser to one pods/exec stream. Post-upgrade failures are delivered as an
-// {type:"error"} control frame so the terminal can display them.
+// {type:"error"} control frame so the terminal can display them. An agent
+// session's sandbox that is starting is waited for first (awaitSandbox).
 func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims shellticket.Claims, remoteAddress string, origin core.RequestOrigin) {
 	ctx = core.WithRequestOrigin(ctx, origin)
-	resolveCtx := core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
-	resolveCtx, cancelResolve := context.WithTimeout(resolveCtx, s.HandshakeTimeout)
-	target, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
+	t := s.ticketTarget(claims)
+	resolveCtx, cancelResolve := context.WithTimeout(t.as(ctx), s.HandshakeTimeout)
+	target, err := t.resolve(resolveCtx)
+	starting := false
 	if err != nil {
-		cancelResolve()
-		log.Printf("web shell target resolution failed: %v", err)
-		s.Metrics.Authentication("rejected_target")
-		ws.fail("this service has no instance available for a shell right now")
-		return
+		switch t.sandboxState(err) {
+		case agentsessions.SSHSandboxStarting:
+			starting = true
+		case agentsessions.SSHSandboxClosed:
+			// The start bex-api's mint began ended without a sandbox.
+			cancelResolve()
+			s.Metrics.Authentication("rejected_target")
+			s.Metrics.WebShellWake(wakeNoSandbox)
+			t.end(ws, endNoSandbox)
+			return
+		default:
+			cancelResolve()
+			log.Printf("web shell target resolution failed: %v", err)
+			s.Metrics.Authentication("rejected_target")
+			ws.fail(t.refusal(err))
+			return
+		}
 	}
 	// A key's shell also needs the key's grant, as its mint did (w9/125).
-	err = s.KeyGrants.RequireTicket(resolveCtx, claims.Subject, claims.KeyAction)
+	err = t.keyGrant(resolveCtx)
 	cancelResolve()
 	if err != nil {
 		s.Metrics.Authentication("rejected_target")
-		ws.fail(keyGrantRefusal(err))
+		ws.fail(keyGrantRefusal(err, t.noun()))
 		return
 	}
 
@@ -309,6 +367,22 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	}
 	defer s.Limits.Release(claims.Subject)
 	s.Metrics.Authentication("accepted")
+	if t.session && s.SessionTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeoutCause(ctx, s.SessionTimeout, errSessionCap)
+		defer cancel()
+	}
+	// One reader takes the browser's frames for the WebSocket's whole life
+	// (a gorilla connection allows one). A Terminal on a sandbox that is
+	// starting holds the WebSocket until it is up, so a closed tab ends the
+	// wait (w10/m615).
+	in := startBrowserInput(ctx, ws)
+	if !starting {
+		in.openStdin()
+	} else if target, err = s.awaitSandbox(ctx, ws, in, t); err != nil {
+		t.endWait(ws, err)
+		return
+	}
 
 	sessionID := ids.New(ids.SSHSession)
 	started := time.Now().UTC()
@@ -355,33 +429,32 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	// exclusively (the bridge pumps cancel only bridgeCtx), so a canceled
 	// execCtx under a live request context is unambiguously revoked.
 	execCtx, cancelExec := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, func(c context.Context) error {
-		resolveCtx := core.WithIdentity(c, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
-		if _, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username()); err != nil {
+		if _, err := t.resolve(t.as(c)); err != nil {
 			return err
 		}
-		return s.KeyGrants.RequireTicket(c, claims.Subject, claims.KeyAction)
+		return t.keyGrant(c)
 	})
 	defer cancelExec()
 	bridgeCtx, cancelBridge := context.WithCancel(execCtx)
 	defer cancelBridge()
-	err = bridgeShell(bridgeCtx, cancelBridge, ws, s.Executor, target)
+	err = bridgeShell(bridgeCtx, cancelBridge, ws, s.Executor, target, in)
 	result = "failed"
 	switch {
 	case err == nil:
 		result = "completed"
 	case execCtx.Err() != nil && ctx.Err() == nil:
 		result = "revoked" // the watchdog ended the stream, not the client
-		ws.end(watchdogEndReason(context.Cause(execCtx)))
-	case errors.Is(context.Cause(ctx), sshgateway.ErrGatewayShutdown):
-		// A terminating gateway's drain bound passed (w6/m482): a time limit
-		// ended the session.
-		ws.end(endTimeout)
+		t.end(ws, t.endReason(context.Cause(execCtx)))
+	case timeLimited(context.Cause(ctx)):
+		// A terminating gateway's drain bound passed (w6/m482), or an agent
+		// session's Terminal reached its cap: a time limit ended the session.
+		t.end(ws, endTimeout)
 	case errors.Is(err, sshgateway.ErrTargetTerminated), errors.Is(err, sshgateway.ErrTargetNotReady):
 		// The attached pod stopped under the stream: a restart, a deploy's old
 		// instance going away once the new release is live, an eviction. The
 		// stream never moves to another replica (ADR035 § Fail-closed
 		// behavior); the end is named instead.
-		ws.end(endInstanceGone)
+		t.end(ws, endInstanceGone)
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		ws.fail("session closed") // the browser went away
 	default:
@@ -390,12 +463,11 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 }
 
 // pumpBrowserInput forwards the browser's frames to the shell: binary frames are
-// stdin bytes, text frames are resize control messages. Any read error ends the
-// exec stream via cancel — that is how a closed browser tab tears the session
-// down. Each frame also re-arms the read deadline the pong handler maintains, so
-// a live session is never reaped as silent.
-func pumpBrowserInput(ws *wsConn, pw *io.PipeWriter, sizes *sshgateway.SizeQueue, cancel context.CancelFunc) {
-	defer func() { _ = pw.Close() }()
+// stdin bytes, text frames are resize control messages. It returns on any read
+// error — a closed browser tab — which the caller watches for to tear the
+// session down. Each frame also re-arms the read deadline the pong handler
+// maintains, so a live session is never reaped as silent.
+func pumpBrowserInput(ws *wsConn, stdin io.Writer, sizes *heldSizes) {
 	ws.conn.SetReadLimit(wsReadLimit)
 	_ = ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
 	ws.conn.SetPongHandler(func(string) error {
@@ -404,19 +476,18 @@ func pumpBrowserInput(ws *wsConn, pw *io.PipeWriter, sizes *sshgateway.SizeQueue
 	for {
 		mt, data, err := ws.conn.ReadMessage()
 		if err != nil {
-			cancel()
 			return
 		}
 		_ = ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
 		switch mt {
 		case websocket.BinaryMessage:
-			if _, err := pw.Write(data); err != nil {
+			if _, err := stdin.Write(data); err != nil {
 				return
 			}
 		case websocket.TextMessage:
 			var ctrl clientControl
 			if json.Unmarshal(data, &ctrl) == nil && ctrl.Type == "resize" && sshgateway.ValidTerminalSize(uint32(ctrl.Cols), uint32(ctrl.Rows)) {
-				sizes.Push(remotecommand.TerminalSize{Width: ctrl.Cols, Height: ctrl.Rows})
+				sizes.push(remotecommand.TerminalSize{Width: ctrl.Cols, Height: ctrl.Rows})
 			}
 		}
 	}
@@ -424,7 +495,9 @@ func pumpBrowserInput(ws *wsConn, pw *io.PipeWriter, sizes *sshgateway.SizeQueue
 
 // pumpKeepalive pings the browser on a timer so a silently dead connection is
 // detected and the session closed rather than pinned open.
-func pumpKeepalive(ctx context.Context, ws *wsConn, cancel context.CancelFunc) {
+// A failed ping closes the connection, which ends the browser's frames and so
+// the session.
+func pumpKeepalive(ctx context.Context, ws *wsConn) {
 	ticker := time.NewTicker(wsPingPeriod)
 	defer ticker.Stop()
 	for {
@@ -433,7 +506,7 @@ func pumpKeepalive(ctx context.Context, ws *wsConn, cancel context.CancelFunc) {
 			return
 		case <-ticker.C:
 			if err := ws.ping(); err != nil {
-				cancel()
+				_ = ws.conn.Close()
 				return
 			}
 		}
@@ -443,27 +516,22 @@ func pumpKeepalive(ctx context.Context, ws *wsConn, cancel context.CancelFunc) {
 // bridgeShell runs one interactive /bin/sh in the target and pumps it over the
 // WebSocket. It returns nil when the shell ran to completion (any exit code),
 // after sending the exit frame, and otherwise the error that stopped it, which
-// the caller classifies into the terminal's error frame.
-func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor sshgateway.Executor, target apps.SSHInstanceTarget) error {
-	pr, pw := io.Pipe()
-	sizes := sshgateway.NewSizeQueue(ctx, &remotecommand.TerminalSize{Width: 80, Height: 24})
-
-	// inputDone closes when the browser's frames stop: its close reply, a
-	// read error, or the read deadline.
-	inputDone := make(chan struct{})
+// the caller classifies into the terminal's error frame. The browser leaving
+// (its frames stopping) cancels the shell.
+func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor sshgateway.Executor, target apps.SSHInstanceTarget, in *browserInput) error {
+	stdin, sizes := in.open(ctx)
 	go func() {
-		pumpBrowserInput(ws, pw, sizes, cancel)
-		close(inputDone)
+		select {
+		case <-in.done:
+			cancel()
+		case <-ctx.Done():
+		}
 	}()
-
-	pingCtx, stopPing := context.WithCancel(ctx)
-	defer stopPing()
-	go pumpKeepalive(pingCtx, ws, cancel)
 
 	// One WebSocket maps to one interactive /bin/sh with a TTY. stderr is nil for
 	// a TTY (Kubernetes merges it into stdout), matching the native SSH shell path.
-	code, err := executor.Execute(ctx, target, []string{"/bin/sh"}, true, sizes, pr, ws, nil)
-	_ = pr.Close()
+	code, err := executor.Execute(ctx, target, []string{"/bin/sh"}, true, sizes, stdin, ws, nil)
+	_ = stdin.Close()
 	if err != nil {
 		return err
 	}
@@ -473,7 +541,7 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 	// connection (w6/102): closing with its frames unread resets the
 	// connection and drops output still in flight, as native SSH did (w6/096).
 	select {
-	case <-inputDone:
+	case <-in.done:
 	case <-time.After(wsCloseGrace):
 	}
 	return nil
@@ -523,8 +591,11 @@ func (w *wsConn) fail(message string) {
 }
 
 // end tells the terminal why the server ended its live session, then closes.
-func (w *wsConn) end(reason string) {
-	_ = w.control(serverControl{Type: "error", Reason: reason, Message: endMessages[reason]})
+func (w *wsConn) end(reason string) { w.endWith(reason, endMessages[reason]) }
+
+// endWith is end with message as the reason's English fallback.
+func (w *wsConn) endWith(reason, message string) {
+	_ = w.control(serverControl{Type: "error", Reason: reason, Message: message})
 	w.close(websocket.CloseNormalClosure, "")
 }
 

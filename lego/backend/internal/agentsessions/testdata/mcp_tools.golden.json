@@ -5393,7 +5393,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session: each agent's model (what a session that names none runs) and models (what agentConfig.model or a message's model may name: on the platform model route the catalog models the workspace's admins left on; empty means any model the workspace's own provider serves), and the agent sandbox templates agentConfig.template may name (templates: name, cpu cores and memoryGb, smallest first) with defaultTemplate, the one a session that names none runs on. sshEnabled says sessions can be opened in an editor over SSH: every session that is neither canceled nor archived has an sshAddress, and connecting to it starts a sandbox that closed, as resume_agent_session does. Never returns model endpoints, template images, egress, or credentials.",
+    "description": "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session: each agent's model (what a session that names none runs) and models (what agentConfig.model or a message's model may name: on the platform model route the catalog models the workspace's admins left on; empty means any model the workspace's own provider serves), and the agent sandbox templates agentConfig.template may name (templates: name, cpu cores and memoryGb, smallest first) with defaultTemplate, the one a session that names none runs on. sshEnabled says sessions can be opened in an editor over SSH: every session that is neither canceled nor archived has an sshAddress, and connecting to it starts a sandbox that closed, as resume_agent_session does. terminalEnabled says a session's page in the dashboard can open a shell in its sandbox from the browser, which also starts a sandbox that closed. Never returns model endpoints, template images, egress, or credentials.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -5536,6 +5536,9 @@
             "null",
             "array"
           ]
+        },
+        "terminalEnabled": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -5546,6 +5549,7 @@
         "ready",
         "attachments",
         "sshEnabled",
+        "terminalEnabled",
         "defaultTemplate",
         "templates"
       ],

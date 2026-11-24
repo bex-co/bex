@@ -42,6 +42,8 @@ func TestStreamTicketMintsNeedTheActionTheGatewayHoldsThemTo(t *testing.T) {
 		"REST POST /v1/agent-sessions/{id}/attach-ticket":      agentsessions.AttachKeyAction,
 		"GQL Mutation.attachAgentSession":                      agentsessions.AttachKeyAction,
 		"MCP attach_agent_session":                             agentsessions.AttachKeyAction,
+		"REST POST /v1/agent-sessions/{id}/shell-ticket":       agentsessions.ShellKeyAction,
+		"GQL Mutation.createAgentSessionShellSession":          agentsessions.ShellKeyAction,
 	} {
 		if needed := keyPermissionOps[op]; !slices.Equal(needed, []core.KeyAction{held}) {
 			t.Errorf("%s needs %v, but the gateway holds the stream it opens to %q", op, needed, held)

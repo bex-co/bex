@@ -79,8 +79,7 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.prAutoMergeHint": {
     message: "필수 리뷰와 검사를 통과하면 GitHub가 병합합니다.",
-    description:
-      "Tooltip of the auto-merge badge — what auto-merge does",
+    description: "Tooltip of the auto-merge badge — what auto-merge does",
   },
   "agentSessions.prAutoMergeMethod.merge": {
     message: "병합 커밋 만들기",
@@ -1182,7 +1181,8 @@ const koAgentSessions: Record<string, TranslationEntry> = {
       "Connect menu — hotlink that opens the sandbox as a Zed remote project",
   },
   "agentSessions.openInZedHint": {
-    message: "SSH로 샌드박스의 /workspace를 엽니다. Zed 편집기가 필요합니다. 닫힌 샌드박스는 연결하면 시작됩니다.",
+    message:
+      "SSH로 샌드박스의 /workspace를 엽니다. Zed 편집기가 필요합니다. 닫힌 샌드박스는 연결하면 시작됩니다.",
     description:
       "Connect menu — helper text under the Open-in-Zed action; a closed sandbox starts when the editor or ssh connects (ADR054 D9)",
   },
@@ -2008,7 +2008,8 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     description: "Session settings dialog title (w10/m599)",
   },
   "agentSessions.settingsDescription": {
-    message: "실행 중인 이 세션에 적용되는 설정입니다. 워크스페이스 관리자만 변경할 수 있습니다.",
+    message:
+      "실행 중인 이 세션에 적용되는 설정입니다. 워크스페이스 관리자만 변경할 수 있습니다.",
     description:
       "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
   },
@@ -2025,6 +2026,118 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.settingsSaved": {
     message: "설정을 저장했습니다",
     description: "Toast after a session's settings were saved (w10/m599)",
+  },
+  "agentSessions.terminalButton": {
+    message: "터미널",
+    description:
+      "Session header button that opens the session's Terminal (w10/m615)",
+  },
+  "agentSessions.terminalTitle": {
+    message: "터미널",
+    description: "Title of the sheet holding the session's Terminal",
+  },
+  "agentSessions.terminalDescription": {
+    message:
+      "이 세션 샌드박스의 /workspace에서 여는 셸입니다. 열면 닫힌 샌드박스가 시작됩니다.",
+    description: "Description under the Terminal sheet's title",
+  },
+  "agentSessions.terminalConnecting": {
+    message: "샌드박스에 연결하는 중…",
+    description: "Terminal status while it connects to the sandbox",
+  },
+  "agentSessions.terminalStarting": {
+    message: "샌드박스를 시작하는 중…",
+    description: "Terminal status while the session's sandbox starts",
+  },
+  "agentSessions.terminalStartingDetail": {
+    message: "샌드박스가 시작되면 셸이 열립니다. 보통 1분 안에 열립니다.",
+    description: "Terminal detail while the session's sandbox starts",
+  },
+  "agentSessions.terminalStillStarting": {
+    message:
+      "샌드박스를 아직 시작하는 중입니다({elapsed}). 시작되면 셸이 열립니다.",
+    description:
+      "Terminal detail every 30 seconds while the sandbox still starts; {elapsed} is how long, e.g. 1m 30s",
+  },
+  "agentSessions.terminalConnected": {
+    message: "연결됨",
+    description: "Terminal status when the shell is live",
+  },
+  "agentSessions.terminalClosed": {
+    message: "세션 닫힘",
+    description: "Terminal status when the shell ended",
+  },
+  "agentSessions.terminalErrorStatus": {
+    message: "연결 오류",
+    description: "Terminal status when it failed to connect or errored",
+  },
+  "agentSessions.terminalEnded": {
+    message: "세션 종료됨",
+    description: "Terminal status when the server ended it for a stated reason",
+  },
+  "agentSessions.terminalReconnect": {
+    message: "다시 연결",
+    description: "Button that opens the Terminal again",
+  },
+  "agentSessions.terminalErrorGeneric": {
+    message: "샌드박스에서 셸을 열 수 없습니다.",
+    description: "Terminal generic connection error",
+  },
+  "agentSessions.terminalUnavailable": {
+    message:
+      "이 플랫폼에서는 브라우저 터미널이 활성화되어 있지 않습니다. 대신 연결에서 SSH로 샌드박스를 여세요.",
+    description:
+      "Terminal error when the browser terminal is not configured on the platform (503)",
+  },
+  "agentSessions.terminalCanceled": {
+    message: "이 세션은 취소되어 열 샌드박스가 없습니다.",
+    description: "Why a canceled session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalArchived": {
+    message:
+      "이 세션은 보관되었고 샌드박스가 닫혔습니다. 터미널을 열려면 보관을 해제하세요.",
+    description: "Why an archived session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalCannotStart": {
+    message:
+      "이 세션은 실행 중이 아니며 샌드박스가 닫혔습니다. 다시 시작하려면 세션에 메시지를 보낸 다음 터미널을 다시 여세요.",
+    description:
+      "Terminal refusal for a member who may view the sandbox but not start it, as the SSH banner says",
+  },
+  "agentSessions.terminalStartRefused": {
+    message: "샌드박스를 시작할 수 없습니다: {reason}",
+    description:
+      "Terminal refusal when the sandbox could not start; {reason} is the refusal (payment method, billing, the live-sandbox limit)",
+  },
+  "agentSessions.terminalEndRevoked": {
+    message: "이 세션에 대한 접근 권한이 종료되었습니다.",
+    description:
+      "Terminal end reason: the caller lost access to the session (deliberately unspecific)",
+  },
+  "agentSessions.terminalEndSandboxGone": {
+    message: "샌드박스가 중지되었습니다. 다시 연결하면 다시 시작됩니다.",
+    description: "Terminal end reason: the sandbox stopped under the shell",
+  },
+  "agentSessions.terminalEndTimeout": {
+    message:
+      "터미널이 시간 제한에 도달했습니다. 계속 작업하려면 다시 연결하세요.",
+    description: "Terminal end reason: it reached its time limit",
+  },
+  "agentSessions.terminalEndUnverified": {
+    message:
+      "접근 권한을 다시 확인할 수 없어 터미널을 닫았습니다. 다시 연결해 보세요.",
+    description:
+      "Terminal end reason: the periodic access check could not complete",
+  },
+  "agentSessions.terminalEndNoSandbox": {
+    message: "샌드박스가 시작되지 않았습니다. 다시 연결해 보세요.",
+    description:
+      "Terminal end reason: the sandbox's start ended without a sandbox",
+  },
+  "agentSessions.terminalEndWakeTimeout": {
+    message: "샌드박스가 제시간에 시작되지 않았습니다. 다시 연결해 보세요.",
+    description:
+      "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
 };
 

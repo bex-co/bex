@@ -1,0 +1,13 @@
+# createAgentSessionShellSession mints the session page's Terminal ticket
+# (w10/m615, docs/ADR054-open-in-zed.md D10), as createShellSession mints a
+# service's Shell ticket. A sandbox that closed is started as the caller;
+# `sandbox` is `up` when the shell opens at once and `starting` when the
+# gateway holds the WebSocket until it is up. bex extension.
+mutation CreateAgentSessionShellSession($id: String!) {
+  createAgentSessionShellSession(id: $id) {
+    ticket
+    url
+    expiresAt
+    sandbox
+  }
+}

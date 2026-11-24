@@ -74,7 +74,9 @@ func (s *PGStore) EndSSHSession(ctx context.Context, sessionID, result string, e
 // time (ended_at), which feeds the idle clock `now − max(last turn end, last SSH
 // disconnect)`. `freshSince` (now − the SSH session cap) discards a leaked row a
 // crashed gateway replica never closed, so an editor pin stays bounded. It
-// subsumes ADR054 D6's earlier open-only check. Only SSH logins count: the
+// subsumes ADR054 D6's earlier open-only check. Only a shell counts: an SSH
+// login, and the session page's Terminal (a web shell into the sandbox,
+// w10/m615), which a person types in as in an editor's terminal. The
 // conversation stream's rows (agent attach) are a reader of the transcript,
 // not an editor, and a dashboard tab left open on a session held its sandbox
 // for the 4-hour cap (w6/m564).
@@ -85,8 +87,8 @@ func (s *PGStore) AgentSessionSSHActivity(ctx context.Context, resourceID string
 			COALESCE(bool_or(ended_at IS NULL AND started_at >= $2), false),
 			max(ended_at)
 		FROM ssh_sessions
-		WHERE service_id = $1 AND transport = $3`,
-		resourceID, freshSince, SSHTransportSSH).Scan(&hasFreshOpen, &lastEnded)
+		WHERE service_id = $1 AND transport IN ($3, $4)`,
+		resourceID, freshSince, SSHTransportSSH, SSHTransportWebShell).Scan(&hasFreshOpen, &lastEnded)
 	return hasFreshOpen, lastEnded, err
 }
 

@@ -1312,6 +1312,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		ModelProxyURL:  d.AgentModelProxyURL,
 		EgressProxyURL: d.AgentEgressProxyURL,
 		SSHHost:        sshHost, ModelKeys: d.Secrets, GitHub: gh,
+		// The session page's Terminal rides the Browser Web Shell (w10/m615).
+		ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL,
 		MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
 		TurnTimeout:      d.AgentTurnTimeout,
 		TurnIdleTimeout:  d.AgentTurnIdleTimeout,

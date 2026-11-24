@@ -18,7 +18,6 @@ package nativessh
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -76,13 +75,10 @@ type sessionWake struct {
 // wake is off (no verb wired, or the multi-channel carve-out disabled), or
 // the session was canceled or archived, or err is some other refusal.
 func (s *Server) wakeOf(connUser string, err error) sessionWake {
-	var coded *core.CodedError
-	if s.Wakes == nil || s.MaxChannelsPerConn <= 0 || !sshgateway.AgentSessionUsername(connUser) ||
-		!errors.As(err, &coded) || coded.Code != core.CodeAgentSessionNotAttachable {
+	if s.Wakes == nil || s.MaxChannelsPerConn <= 0 || !sshgateway.AgentSessionUsername(connUser) {
 		return sessionWake{}
 	}
-	state, _ := coded.Params[agentsessions.SSHSandboxParam].(string)
-	workspace, _ := coded.Params[agentsessions.SSHWorkspaceParam].(string)
+	_, state, workspace := agentsessions.SSHNoSandbox(err)
 	if (state != agentsessions.SSHSandboxClosed && state != agentsessions.SSHSandboxStarting) || workspace == "" {
 		return sessionWake{}
 	}

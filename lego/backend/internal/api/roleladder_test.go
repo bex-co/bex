@@ -520,6 +520,9 @@ var representativeVerbRelations = map[string]string{
 	// the relation belongs to the sink, not the transport.
 	"*apps.Service.CreateShellSession": core.RelCanViewSensitive,
 	"*apps.Service.ResolveSSHSession":  core.RelCanViewSensitive,
+	// The same sink in an agent session's sandbox (ADR054 D2): its Terminal
+	// ticket (w10/m615) is pinned beside the SSH resolver's relation.
+	"*agentsessions.Service.CreateShellSession": core.RelCanViewSensitive,
 	// can_manage_ssh_keys — every member role mints their own API keys, as
 	// on Render (w9/m514); the key acts with no more than its creator's role.
 	"*apikeys.Service.CreateAPIKey": core.RelCanManageSSHKeys,

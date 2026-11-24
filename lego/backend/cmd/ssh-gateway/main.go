@@ -292,9 +292,15 @@ func main() {
 		Wakes: newSessionWaker(os.Getenv("BEX_SANDBOX_EXEC_SECRET"), env.Or("BEX_AGENT_SESSION_WAKE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalSessionWakePath)),
 	}
 	shell := &webshell.Server{
-		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
-		Store:            st,
-		Apps:             appService,
+		TicketSecret: []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		Store:        st,
+		Apps:         appService,
+		// An agent session's Terminal (w10/m615, ADR054 D10): its ticket
+		// names the session, which the same sandbox resolver native SSH uses
+		// opens, waiting while a sandbox bex-api's mint started comes up, and
+		// capped like an SSH connection to an agent session.
+		AgentSessions:    agentResolver,
+		SessionTimeout:   sessionTimeout,
 		Executor:         executor,
 		Metrics:          metrics,
 		Limits:           limits,

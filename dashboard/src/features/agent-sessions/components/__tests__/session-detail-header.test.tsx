@@ -107,20 +107,54 @@ vi.mock(
 // The sandbox template list (w10/m519) comes from the capabilities read.
 const capabilities = vi.hoisted(() => ({
   sandbox: null as AgentTemplateOffer | null,
+  terminalEnabled: false,
 }));
 vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-capabilities",
   () => ({
     useAgentSessionCapabilities: () => ({
-      capabilities: capabilities.sandbox
-        ? { sandbox: capabilities.sandbox }
-        : null,
+      capabilities:
+        capabilities.sandbox || capabilities.terminalEnabled
+          ? {
+              sandbox: capabilities.sandbox,
+              terminalEnabled: capabilities.terminalEnabled,
+            }
+          : null,
       loading: false,
       error: undefined,
       refetch: vi.fn(),
     }),
   }),
 );
+
+// The Terminal's sheet (w10/m615) mints through its own hook; xterm is a spy.
+const createTerminal = vi.hoisted(() => vi.fn(() => new Promise(() => {})));
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-terminal",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/agent-sessions/hooks/use-agent-session-terminal")
+    >()),
+    useAgentSessionTerminal: () => ({ createTerminal }),
+  }),
+);
+vi.mock("@xterm/xterm", () => ({
+  Terminal: function Terminal() {
+    return {
+      loadAddon: () => {},
+      open: () => {},
+      onData: () => {},
+      write: () => {},
+      dispose: () => {},
+    };
+  },
+}));
+vi.mock("@xterm/addon-fit", () => ({
+  FitAddon: function FitAddon() {
+    return { fit: () => {} };
+  },
+}));
+vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
   return agentSessionView({ phase: "completed", turns: 1, ...over });
@@ -980,5 +1014,42 @@ describe("SessionDetailHeader sandbox (w10/m519)", () => {
     expect(screen.getByTestId("session-sandbox").textContent).toBe(
       "agent-8c-16g",
     );
+  });
+
+  // w10/m615: the Terminal's header button shows from 640 px up (its class
+  // hides it below), and the "…" menu opens the same sheet below 640 px,
+  // where the header row has no room for another button.
+  describe("Terminal", () => {
+    beforeEach(() => {
+      capabilities.terminalEnabled = false;
+      createTerminal.mockClear();
+    });
+
+    it("is not offered where the deployment serves no browser terminal", async () => {
+      render(<SessionDetailHeader session={view()} />);
+      expect(screen.queryByRole("button", { name: "Terminal" })).toBeNull();
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+      expect(screen.queryByRole("menuitem", { name: "Terminal" })).toBeNull();
+    });
+
+    it("opens from the header from 640 px up, and from the menu below", async () => {
+      capabilities.terminalEnabled = true;
+      render(<SessionDetailHeader session={view()} />);
+      const button = screen.getByRole("button", { name: "Terminal" });
+      expect(button.className).toMatch(/\bhidden\b.*\bsm:inline-flex\b/);
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+      const item = screen.getByRole("menuitem", { name: "Terminal" });
+      expect(item.className).toMatch(/\bsm:hidden\b/);
+      await userEvent.click(item);
+      const sheet = await screen.findByRole("dialog", { name: "Terminal" });
+      expect(
+        within(sheet).getByText(/A shell in this session's sandbox/),
+      ).toBeVisible();
+      await waitFor(() => expect(createTerminal).toHaveBeenCalledTimes(1));
+    });
   });
 });

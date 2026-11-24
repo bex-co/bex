@@ -227,7 +227,7 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 	// A database's admin app is born with its credential (w4/m551).
 	case op == "GQL Mutation.deployPostgresAdminApp":
 		return core.OpClassSensitive, true
-	case strings.Contains(op, "shell-ticket") || strings.Contains(op, "createShellSession") ||
+	case strings.Contains(op, "shell-ticket") || strings.Contains(op, "ShellSession") ||
 		strings.Contains(op, "create_shell_session"):
 		return core.OpClassSensitive, true
 	default:

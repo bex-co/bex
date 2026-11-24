@@ -239,6 +239,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	// The session page's Terminal ticket (w10/m615, ADR054 D10): a bex
+	// extension, as POST /v1/services/{id}/shell-ticket is. A sandbox that
+	// closed is started as the caller; sandbox says whether the shell opens at
+	// once or after the start.
+	mux.HandleFunc("POST /v1/agent-sessions/{id}/shell-ticket", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		return s.CreateShellSession(r.Context(), r.PathValue("id"))
+	}))
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/steer", func(w http.ResponseWriter, r *http.Request) {
 		var req SteerRequest
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))

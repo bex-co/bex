@@ -17,6 +17,7 @@ limitations under the License.
 package shellticket
 
 import (
+	"encoding/base64"
 	"errors"
 	"strings"
 	"testing"
@@ -132,5 +133,49 @@ func TestNonceExpiryCoversVerifyWindow(t *testing.T) {
 	}
 	if _, err := Verify(testSecret, token, lastAccepted.Add(time.Second)); !errors.Is(err, ErrExpired) {
 		t.Fatalf("Verify just past the window = %v, want ErrExpired", err)
+	}
+}
+
+// w10/m615: a ticket for an agent session's Terminal names the session and
+// nothing else, so the gateway routes it by the field it names.
+func TestSessionTicketNamesOneAgentSession(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	const session = "ags-d4ae2ab0f8cs73a9ejo0"
+	claims := func(c Claims) Claims {
+		c.Subject, c.IssuedAt, c.ExpiresAt = "user-1", now.Unix(), now.Add(time.Minute).Unix()
+		return c
+	}
+	got, err := Verify(testSecret, mint(t, claims(Claims{SessionID: session, KeyAction: "sandboxes.exec"})), now)
+	if err != nil {
+		t.Fatalf("Verify a session ticket: %v", err)
+	}
+	if got.SessionID != session || got.ServiceID != "" || got.Username() != session || got.KeyAction != "sandboxes.exec" {
+		t.Fatalf("session ticket = %+v (username %q), want the session alone", got, got.Username())
+	}
+	for name, c := range map[string]Claims{
+		"no target":                   {},
+		"a service and a session":     {ServiceID: "srv-d4ae2ab0f8cs73a9ejo0", SessionID: session},
+		"an instance and a session":   {InstanceID: "srv-d4ae2ab0f8cs73a9ejo0-abcde", SessionID: session},
+		"a service id as the session": {SessionID: "srv-d4ae2ab0f8cs73a9ejo0"},
+		"not an id":                   {SessionID: "ags-nope"},
+	} {
+		if _, err := Verify(testSecret, mint(t, claims(c)), now); !errors.Is(err, ErrMalformed) {
+			t.Errorf("%s: Verify = %v, want ErrMalformed", name, err)
+		}
+	}
+}
+
+// A service ticket's encoding is unchanged by the session field: an older
+// gateway reads it exactly as before, and refuses a session ticket, which
+// names no service, as malformed.
+func TestServiceTicketEncodingIsUnchanged(t *testing.T) {
+	token := mint(t, Claims{Subject: "user-1", ServiceID: "srv-abc", IssuedAt: 1, ExpiresAt: 2, Nonce: "n"})
+	body, _, _ := strings.Cut(token, ".")
+	raw, err := base64.RawURLEncoding.DecodeString(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"sub":"user-1","svc":"srv-abc","iat":1,"exp":2,"jti":"n"}`; string(raw) != want {
+		t.Fatalf("service ticket body = %s, want %s", raw, want)
 	}
 }

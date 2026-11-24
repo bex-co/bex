@@ -222,6 +222,14 @@ type Service struct {
 	// `ags-<xid>@<host>` for the "Open in Zed" affordance (ADR054 D5). Empty =>
 	// no address is surfaced and the feature is invisible (byte-identical default).
 	SSHHost string
+	// ShellTicketSecret and ShellWSURL wire the session page's Terminal
+	// (w10/m615, ADR054 D10) over the Browser Web Shell (ADR035): the HMAC key
+	// shared only with the gateway (BEX_SHELL_TICKET_SECRET) and the gateway's
+	// browser-reachable WebSocket (BEX_SHELL_WS_URL). Either empty =>
+	// CreateShellSession answers ErrShellUnavailable and no session offers a
+	// Terminal. bex-api mints the ticket but never gains pods/exec.
+	ShellTicketSecret []byte
+	ShellWSURL        string
 	// GitProxyURL is the trusted in-cluster smart-HTTP origin. Empty uses the
 	// gateway default; the derived repository URL carries no credential.
 	GitProxyURL string
@@ -1122,6 +1130,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	}
 	caps := Capabilities{Enabled: s.enabled() && s.modelProxyEnabled() && s.ticketEnabled(), Attachments: s.attachmentLimits()}
 	caps.SSHEnabled = caps.Enabled && s.sshHost() != ""
+	caps.TerminalEnabled = caps.Enabled && s.terminalEnabled()
 	if !caps.Enabled {
 		// An unwired deployment advertises NO profiles (the phone renders a
 		// configuration callout off Enabled:false) — but "none" is an empty

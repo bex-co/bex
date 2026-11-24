@@ -445,6 +445,7 @@ type AgentSessionCapabilities {
   ready: Boolean!
   sshEnabled: Boolean!
   templates: [AgentSandboxTemplate!]!
+  terminalEnabled: Boolean!
 }
 
 type AgentSessionConfig {
@@ -545,6 +546,13 @@ type AgentSessionQueuedMessage {
 input AgentSessionSecretInput {
   name: String!
   value: String!
+}
+
+type AgentSessionShellSession {
+  expiresAt: String!
+  sandbox: String!
+  ticket: String!
+  url: String!
 }
 
 type AgentSessionSkill {
@@ -2014,6 +2022,7 @@ type Mutation {
   connectGit(ownerId: String): GitConnection
   createAgentAutomation(input: AgentAutomationInput!, ownerId: String): AgentAutomation!
   createAgentSession(agentConfig: AgentSessionConfigInput!, attachmentIds: [String!], branch: String, egressAllowlist: [String!], idempotencyKey: String, maxSpendUSD: Float, outputRequired: Boolean, outputSchema: String, ownerId: String, parentSessionId: String, repo: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!], tags: [String!], title: String): AgentSession
+  createAgentSessionShellSession(id: String!): AgentSessionShellSession
   createAgentSkill(input: AgentSkillInput!, ownerId: String): AgentSkill!
   createApiKey(name: String!, ownerId: String, permissions: ApiKeyPermissionsInput): ApiKey
   createBillingCheckoutSession(cancelUrl: String!, successUrl: String!, workspaceId: String!): BillingHostedSession

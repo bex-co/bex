@@ -163,6 +163,11 @@ export interface AgentSessionCapabilitiesView {
    * starts a sandbox that closed (D9), as `resume` does (D8).
    */
   sshEnabled: boolean;
+  /**
+   * A session's page opens a shell in its sandbox from the browser here
+   * (w10/m615, ADR054 D10): its Terminal, which starts a sandbox that closed.
+   */
+  terminalEnabled: boolean;
 }
 
 /**

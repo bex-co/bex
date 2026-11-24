@@ -18,6 +18,7 @@ package agentsessions
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -104,6 +105,20 @@ const (
 	// Completer has settled the session either way.
 	SSHWakeTimeout = editorStartBound
 )
+
+// SSHNoSandbox reads err as the resolver's refusal of a session with no
+// sandbox to open (errNoSandboxToOpen): the refusal itself, and the sandbox
+// state and workspace its params name, both "" for a canceled or archived
+// session. refusal is nil for any other error. The gateway's held SSH login
+// (w10/m597) and its waiting Terminal (w10/m615) both read it.
+func SSHNoSandbox(err error) (refusal *core.CodedError, state, workspace string) {
+	if !errors.As(err, &refusal) || refusal.Code != core.CodeAgentSessionNotAttachable {
+		return nil, "", ""
+	}
+	state, _ = refusal.Params[SSHSandboxParam].(string)
+	workspace, _ = refusal.Params[SSHWorkspaceParam].(string)
+	return refusal, state, workspace
+}
 
 // errNoSandboxToOpen is the refusal of a session that openableSandbox turns
 // down. The gateway wakes a closed session for a caller who may start it,

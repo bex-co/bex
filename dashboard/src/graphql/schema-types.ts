@@ -611,6 +611,7 @@ export type AgentSessionCapabilities = {
   sshEnabled: Scalars['Boolean']['output'];
   /** The agent sandbox templates a session may name, smallest first. */
   templates: Array<AgentSandboxTemplate>;
+  terminalEnabled: Scalars['Boolean']['output'];
 };
 
 export type AgentSessionConfig = {
@@ -739,6 +740,15 @@ export type AgentSessionSecretInput = {
   name: Scalars['String']['input'];
   /** 1 B to 32 KiB; never returned, redacted from the transcript. */
   value: Scalars['String']['input'];
+};
+
+/** A Terminal ticket for an agent session's sandbox: the browser presents ticket to the gateway WebSocket at url before expiresAt. sandbox is up when the shell opens at once, starting when it opens once the sandbox started. */
+export type AgentSessionShellSession = {
+  __typename: 'AgentSessionShellSession';
+  expiresAt: Scalars['String']['output'];
+  sandbox: Scalars['String']['output'];
+  ticket: Scalars['String']['output'];
+  url: Scalars['String']['output'];
 };
 
 export type AgentSessionSkill = {
@@ -2399,6 +2409,7 @@ export type Mutation = {
   /** Add an automation owned by the caller. */
   createAgentAutomation: AgentAutomation;
   createAgentSession: Maybe<AgentSession>;
+  createAgentSessionShellSession: Maybe<AgentSessionShellSession>;
   /** Add a workspace skill (admins only). */
   createAgentSkill: AgentSkill;
   createApiKey: Maybe<ApiKey>;
@@ -2808,6 +2819,11 @@ export type MutationCreateAgentSessionArgs = {
   skills?: InputMaybe<Array<AgentSessionSkillInput>>;
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateAgentSessionShellSessionArgs = {
+  id: Scalars['String']['input'];
 };
 
 

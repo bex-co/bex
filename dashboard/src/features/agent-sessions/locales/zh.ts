@@ -80,8 +80,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.prAutoMergeHint": {
     message: "所需的审查和检查通过后，GitHub 会合并它。",
-    description:
-      "Tooltip of the auto-merge badge — what auto-merge does",
+    description: "Tooltip of the auto-merge badge — what auto-merge does",
   },
   "agentSessions.prAutoMergeMethod.merge": {
     message: "创建合并提交",
@@ -1180,7 +1179,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Connect menu — hotlink that opens the sandbox as a Zed remote project",
   },
   "agentSessions.openInZedHint": {
-    message: "通过 SSH 打开沙箱的 /workspace，需要安装 Zed 编辑器。已关闭的沙箱会在连接时启动。",
+    message:
+      "通过 SSH 打开沙箱的 /workspace，需要安装 Zed 编辑器。已关闭的沙箱会在连接时启动。",
     description:
       "Connect menu — helper text under the Open-in-Zed action; a closed sandbox starts when the editor or ssh connects (ADR054 D9)",
   },
@@ -2005,7 +2005,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
   },
   "agentSessions.settingsGithubCliHint": {
-    message: "关闭后，此会话及其启动的会话从下一次 gh 调用起无法使用 gh。开启或继承后，gh 从会话的下一轮起恢复。",
+    message:
+      "关闭后，此会话及其启动的会话从下一次 gh 调用起无法使用 gh。开启或继承后，gh 从会话的下一轮起恢复。",
     description:
       "Session settings dialog — when a GitHub CLI change applies: an off at the next gh call, an on or inherit at the next turn (w10/m599)",
   },
@@ -2016,6 +2017,113 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.settingsSaved": {
     message: "设置已保存",
     description: "Toast after a session's settings were saved (w10/m599)",
+  },
+  "agentSessions.terminalButton": {
+    message: "终端",
+    description:
+      "Session header button that opens the session's Terminal (w10/m615)",
+  },
+  "agentSessions.terminalTitle": {
+    message: "终端",
+    description: "Title of the sheet holding the session's Terminal",
+  },
+  "agentSessions.terminalDescription": {
+    message:
+      "在此会话沙盒的 /workspace 中打开的 shell。打开时会启动已关闭的沙盒。",
+    description: "Description under the Terminal sheet's title",
+  },
+  "agentSessions.terminalConnecting": {
+    message: "正在连接沙盒…",
+    description: "Terminal status while it connects to the sandbox",
+  },
+  "agentSessions.terminalStarting": {
+    message: "正在启动沙盒…",
+    description: "Terminal status while the session's sandbox starts",
+  },
+  "agentSessions.terminalStartingDetail": {
+    message: "沙盒启动后 shell 即会打开，通常在一分钟内。",
+    description: "Terminal detail while the session's sandbox starts",
+  },
+  "agentSessions.terminalStillStarting": {
+    message: "仍在启动沙盒（{elapsed}）。启动后 shell 即会打开。",
+    description:
+      "Terminal detail every 30 seconds while the sandbox still starts; {elapsed} is how long, e.g. 1m 30s",
+  },
+  "agentSessions.terminalConnected": {
+    message: "已连接",
+    description: "Terminal status when the shell is live",
+  },
+  "agentSessions.terminalClosed": {
+    message: "会话已关闭",
+    description: "Terminal status when the shell ended",
+  },
+  "agentSessions.terminalErrorStatus": {
+    message: "连接错误",
+    description: "Terminal status when it failed to connect or errored",
+  },
+  "agentSessions.terminalEnded": {
+    message: "会话已结束",
+    description: "Terminal status when the server ended it for a stated reason",
+  },
+  "agentSessions.terminalReconnect": {
+    message: "重新连接",
+    description: "Button that opens the Terminal again",
+  },
+  "agentSessions.terminalErrorGeneric": {
+    message: "无法在沙盒中打开 shell。",
+    description: "Terminal generic connection error",
+  },
+  "agentSessions.terminalUnavailable": {
+    message: "此平台未启用浏览器终端。请改用“连接”通过 SSH 打开沙盒。",
+    description:
+      "Terminal error when the browser terminal is not configured on the platform (503)",
+  },
+  "agentSessions.terminalCanceled": {
+    message: "此会话已取消，没有可打开的沙盒。",
+    description: "Why a canceled session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalArchived": {
+    message: "此会话已归档，其沙盒已关闭。取消归档后即可打开终端。",
+    description: "Why an archived session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalCannotStart": {
+    message:
+      "此会话未在运行，其沙盒已关闭。要再次启动，请先向会话发送一条消息，然后重新打开终端。",
+    description:
+      "Terminal refusal for a member who may view the sandbox but not start it, as the SSH banner says",
+  },
+  "agentSessions.terminalStartRefused": {
+    message: "沙盒无法启动：{reason}",
+    description:
+      "Terminal refusal when the sandbox could not start; {reason} is the refusal (payment method, billing, the live-sandbox limit)",
+  },
+  "agentSessions.terminalEndRevoked": {
+    message: "你对此会话的访问权限已结束。",
+    description:
+      "Terminal end reason: the caller lost access to the session (deliberately unspecific)",
+  },
+  "agentSessions.terminalEndSandboxGone": {
+    message: "沙盒已停止。重新连接即可再次启动。",
+    description: "Terminal end reason: the sandbox stopped under the shell",
+  },
+  "agentSessions.terminalEndTimeout": {
+    message: "终端已达到时间上限。重新连接以继续工作。",
+    description: "Terminal end reason: it reached its time limit",
+  },
+  "agentSessions.terminalEndUnverified": {
+    message: "无法重新验证你的访问权限，终端已关闭。请重新连接重试。",
+    description:
+      "Terminal end reason: the periodic access check could not complete",
+  },
+  "agentSessions.terminalEndNoSandbox": {
+    message: "沙盒未能启动。请重新连接重试。",
+    description:
+      "Terminal end reason: the sandbox's start ended without a sandbox",
+  },
+  "agentSessions.terminalEndWakeTimeout": {
+    message: "沙盒未能及时启动。请重新连接重试。",
+    description:
+      "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
 };
 

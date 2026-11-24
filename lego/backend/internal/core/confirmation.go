@@ -185,15 +185,16 @@ func protectedVerbAction(verb string) string {
 // refusal coded as ProtectedAdminRefusal. nil, a refusal coded with its own
 // cause and an outage pass through.
 func ProtectedAdminError(environmentID, verb string, err error) error {
-	if plainRoleRefusal(err) {
+	if IsRoleRefusal(err) {
 		return ProtectedAdminRefusal(environmentID, verb)
 	}
 	return err
 }
 
-// plainRoleRefusal reports the bare ErrForbidden, however wrapped: a role
-// refusal, not a refusal coded with a cause of its own.
-func plainRoleRefusal(err error) bool {
+// IsRoleRefusal reports the bare ErrForbidden, however wrapped: a role
+// refusal, not a refusal coded with a cause of its own (an OAuth scope, a
+// login requirement, a key's grant).
+func IsRoleRefusal(err error) bool {
 	var coded *CodedError
 	return errors.As(err, &coded) && error(coded) == ErrForbidden
 }
@@ -230,7 +231,7 @@ func RestrictedDecision(verb string, operate Decision, protected func() (bool, e
 // missing the scope, a two-factor requirement) and an outage keep the reason
 // ClassifyDecision gives them.
 func protectedAdminDecision(err error) Decision {
-	if plainRoleRefusal(err) {
+	if IsRoleRefusal(err) {
 		return Decision{Outcome: DecisionDenied, Reason: ReasonProtectedEnvironmentAdmin}
 	}
 	return ClassifyDecision(err)

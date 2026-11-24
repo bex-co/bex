@@ -159,6 +159,25 @@ func TestTheConversationStreamIsNotAnEditorPG(t *testing.T) {
 			t.Fatalf("sandbox %q at 5m01s after a page view at 4m, want closed", got)
 		}
 	})
+	// w10/m615: the session page's Terminal is a shell a person types in,
+	// as in an editor's terminal: it keeps the sandbox, and its close moves
+	// the idle clock.
+	t.Run("an open Terminal keeps the sandbox", func(t *testing.T) {
+		id := e.create(t, "").ID
+		row(t, id, store.SSHTransportWebShell, time.Time{})
+		ended := finishTurn(t, c, e.pg, e.lc, id).UpdatedAt
+		if sandboxAt(t, c, e.pg, id, ended.Add(time.Hour)) == "" {
+			t.Fatal("closed an hour after the turn under an open Terminal")
+		}
+	})
+	t.Run("a Terminal closed after the turn moves the idle clock", func(t *testing.T) {
+		id := e.create(t, "").ID
+		ended := finishTurn(t, c, e.pg, e.lc, id).UpdatedAt
+		row(t, id, store.SSHTransportWebShell, ended.Add(4*time.Minute))
+		if sandboxAt(t, c, e.pg, id, ended.Add(5*time.Minute+time.Second)) == "" {
+			t.Fatal("closed at 5m01s, one minute after the Terminal closed")
+		}
+	})
 	t.Run("an SSH disconnect after the turn still moves it", func(t *testing.T) {
 		id := e.create(t, "").ID
 		ended := finishTurn(t, c, e.pg, e.lc, id).UpdatedAt

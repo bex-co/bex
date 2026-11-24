@@ -79,8 +79,7 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.prAutoMergeHint": {
     message: "必須のレビューとチェックが通ると GitHub がマージします。",
-    description:
-      "Tooltip of the auto-merge badge — what auto-merge does",
+    description: "Tooltip of the auto-merge badge — what auto-merge does",
   },
   "agentSessions.prAutoMergeMethod.merge": {
     message: "マージコミットを作成",
@@ -2019,7 +2018,8 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     description: "Session settings dialog title (w10/m599)",
   },
   "agentSessions.settingsDescription": {
-    message: "実行中のこのセッションに適用される設定です。変更できるのはワークスペースの管理者のみです。",
+    message:
+      "実行中のこのセッションに適用される設定です。変更できるのはワークスペースの管理者のみです。",
     description:
       "Session settings dialog description: the settings apply while the session runs and only a workspace admin changes them (w10/m599)",
   },
@@ -2036,6 +2036,122 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.settingsSaved": {
     message: "設定を保存しました",
     description: "Toast after a session's settings were saved (w10/m599)",
+  },
+  "agentSessions.terminalButton": {
+    message: "ターミナル",
+    description:
+      "Session header button that opens the session's Terminal (w10/m615)",
+  },
+  "agentSessions.terminalTitle": {
+    message: "ターミナル",
+    description: "Title of the sheet holding the session's Terminal",
+  },
+  "agentSessions.terminalDescription": {
+    message:
+      "このセッションのサンドボックス内の /workspace で開くシェルです。閉じたサンドボックスは開くと起動します。",
+    description: "Description under the Terminal sheet's title",
+  },
+  "agentSessions.terminalConnecting": {
+    message: "サンドボックスに接続しています…",
+    description: "Terminal status while it connects to the sandbox",
+  },
+  "agentSessions.terminalStarting": {
+    message: "サンドボックスを起動しています…",
+    description: "Terminal status while the session's sandbox starts",
+  },
+  "agentSessions.terminalStartingDetail": {
+    message:
+      "サンドボックスが起動するとシェルが開きます。通常は 1 分以内です。",
+    description: "Terminal detail while the session's sandbox starts",
+  },
+  "agentSessions.terminalStillStarting": {
+    message:
+      "サンドボックスを起動しています ({elapsed})。起動するとシェルが開きます。",
+    description:
+      "Terminal detail every 30 seconds while the sandbox still starts; {elapsed} is how long, e.g. 1m 30s",
+  },
+  "agentSessions.terminalConnected": {
+    message: "接続済み",
+    description: "Terminal status when the shell is live",
+  },
+  "agentSessions.terminalClosed": {
+    message: "セッションが終了しました",
+    description: "Terminal status when the shell ended",
+  },
+  "agentSessions.terminalErrorStatus": {
+    message: "接続エラー",
+    description: "Terminal status when it failed to connect or errored",
+  },
+  "agentSessions.terminalEnded": {
+    message: "セッションが終了しました",
+    description: "Terminal status when the server ended it for a stated reason",
+  },
+  "agentSessions.terminalReconnect": {
+    message: "再接続",
+    description: "Button that opens the Terminal again",
+  },
+  "agentSessions.terminalErrorGeneric": {
+    message: "サンドボックスでシェルを開けませんでした。",
+    description: "Terminal generic connection error",
+  },
+  "agentSessions.terminalUnavailable": {
+    message:
+      "このプラットフォームではブラウザーのターミナルが有効になっていません。代わりに「接続」から SSH でサンドボックスを開いてください。",
+    description:
+      "Terminal error when the browser terminal is not configured on the platform (503)",
+  },
+  "agentSessions.terminalCanceled": {
+    message:
+      "このセッションはキャンセルされたため、開くサンドボックスがありません。",
+    description: "Why a canceled session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalArchived": {
+    message:
+      "このセッションはアーカイブされ、サンドボックスは閉じています。ターミナルを開くにはアーカイブを解除してください。",
+    description: "Why an archived session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalCannotStart": {
+    message:
+      "このセッションは実行中ではなく、サンドボックスは閉じています。再び起動するには、セッションにメッセージを送ってから、もう一度ターミナルを開いてください。",
+    description:
+      "Terminal refusal for a member who may view the sandbox but not start it, as the SSH banner says",
+  },
+  "agentSessions.terminalStartRefused": {
+    message: "サンドボックスを起動できませんでした: {reason}",
+    description:
+      "Terminal refusal when the sandbox could not start; {reason} is the refusal (payment method, billing, the live-sandbox limit)",
+  },
+  "agentSessions.terminalEndRevoked": {
+    message: "このセッションへのアクセス権がなくなりました。",
+    description:
+      "Terminal end reason: the caller lost access to the session (deliberately unspecific)",
+  },
+  "agentSessions.terminalEndSandboxGone": {
+    message: "サンドボックスが停止しました。再接続すると再び起動します。",
+    description: "Terminal end reason: the sandbox stopped under the shell",
+  },
+  "agentSessions.terminalEndTimeout": {
+    message:
+      "ターミナルが時間制限に達しました。作業を続けるには再接続してください。",
+    description: "Terminal end reason: it reached its time limit",
+  },
+  "agentSessions.terminalEndUnverified": {
+    message:
+      "アクセス権を再確認できなかったため、ターミナルを閉じました。再接続してもう一度お試しください。",
+    description:
+      "Terminal end reason: the periodic access check could not complete",
+  },
+  "agentSessions.terminalEndNoSandbox": {
+    message:
+      "サンドボックスが起動しませんでした。再接続してもう一度お試しください。",
+    description:
+      "Terminal end reason: the sandbox's start ended without a sandbox",
+  },
+  "agentSessions.terminalEndWakeTimeout": {
+    message:
+      "サンドボックスが時間内に起動しませんでした。再接続してもう一度お試しください。",
+    description:
+      "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
 };
 

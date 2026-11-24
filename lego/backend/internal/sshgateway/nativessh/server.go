@@ -237,8 +237,8 @@ type refusal struct{ banner, reason, metric string }
 // brings the sandbox back. Every other target refusal stays a bare rejection
 // (ADR035 § Fail-closed behavior). ok is false for every other error.
 func sessionRefusal(err error) (r refusal, ok bool) {
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != core.CodeAgentSessionNotAttachable {
+	coded, _, _ := agentsessions.SSHNoSandbox(err)
+	if coded == nil {
 		return refusal{}, false
 	}
 	return refusal{banner: "bex: " + coded.Error() + ".\n", reason: coded.Error(), metric: "rejected_no_sandbox"}, true

@@ -376,7 +376,7 @@ func TestEveryMethodTheTwoFactorVerbAcceptsIsTheOneItsProducerSets(t *testing.T)
 	}
 	producers := map[string]string{
 		"../sshgateway/nativessh/server.go":     core.MethodSSH,
-		"../sshgateway/webshell/websocket.go":   core.MethodShell,
+		"../sshgateway/webshell/wake.go":        core.MethodShell,
 		"../sshgateway/revalidate.go":           core.MethodSandboxExec,
 		"../agentsessions/attach_revalidate.go": core.MethodAgentAttach,
 	}

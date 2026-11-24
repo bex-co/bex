@@ -242,6 +242,16 @@ func TestPGGitMintAdmitsAFinishedTurnsSandboxWhileAnSSHLoginIsOpen(t *testing.T)
 	}
 	refused(t, "once the login ended", mint((*Minter).Mint))
 
+	// w10/m615: the session page's Terminal is a person at the sandbox too.
+	terminal := login(t, store.SSHTransportWebShell, time.Now().UTC())
+	if err := mint((*Minter).Mint); err != nil {
+		t.Fatalf("the finished turn's sandbox with a Terminal open: %v", err)
+	}
+	if err := pg.EndSSHSession(ctx, terminal, "closed", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	refused(t, "once the Terminal closed", mint((*Minter).Mint))
+
 	login(t, store.SSHTransportSSH, time.Now().UTC())
 	if err := mint((*Minter).Mint); err != nil {
 		t.Fatalf("a second login: %v", err)

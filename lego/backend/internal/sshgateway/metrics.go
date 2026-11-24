@@ -37,6 +37,7 @@ type Metrics struct {
 	activeChannels             prometheus.Gauge
 	reauths                    *prometheus.CounterVec
 	sessionWakes               *prometheus.CounterVec
+	webShellWakes              *prometheus.CounterVec
 	twoFactor                  *prometheus.CounterVec
 	gitUpstream                *prometheus.CounterVec
 	modelUsage                 *prometheus.CounterVec
@@ -109,6 +110,10 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "session_wakes_total",
 			Help: "Native SSH logins into an agent session whose sandbox was closed or starting (w10/m597), once each, by bounded result: refused (the caller may not start it), refused_start (bex-api refused the start: admission, or the session's state), unavailable (no answer from bex-api; the login got the banner), opened (the sandbox came up), no_sandbox (the start ended without one), timed_out (the start's ceiling passed), abandoned (the connection, its authorization or the gateway ended first). No session, workspace or subject label.",
 		}, []string{"result"}),
+		webShellWakes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "web_shell_wakes_total",
+			Help: "Agent-session Terminals (web shells, w10/m615) that waited for the sandbox bex-api's mint started, or found that start already ended, once each, by bounded result: opened (the sandbox came up), no_sandbox (the start ended without one, or the session was canceled or archived meanwhile), timed_out (the start's ceiling passed), abandoned (the browser, the subject's access, the key's grant, the Terminal's cap or the gateway ended first). No session, workspace or subject label.",
+		}, []string{"result"}),
 		twoFactor: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "two_factor_refusals_total",
 			Help: "Gateway authorizations (native SSH, web shell, agent attach, sandbox exec and files) refused by a workspace's login requirements, by bounded result: not_enrolled (two-factor), not_google (Google login, w7/m465), or unavailable (bex-api could not answer, failed closed). No workspace or subject label.",
@@ -162,7 +167,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 	for _, pool := range []string{sandboxPoolCaller, sandboxPoolPlatform} {
 		m.activeSandboxStreams.WithLabelValues(pool)
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.activeSandboxStreams, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.sessionWakes, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.activeSandboxStreams, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.sessionWakes, m.webShellWakes, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
 	return m
 }
 
@@ -223,6 +228,14 @@ func (m *Metrics) sandboxStreamEnded(pool, result string, elapsed time.Duration)
 func (m *Metrics) SessionWake(result string) {
 	if m != nil {
 		m.sessionWakes.WithLabelValues(result).Inc()
+	}
+}
+
+// WebShellWake records how one agent-session Terminal's wait for its
+// sandbox ended (w10/m615).
+func (m *Metrics) WebShellWake(result string) {
+	if m != nil {
+		m.webShellWakes.WithLabelValues(result).Inc()
 	}
 }
 

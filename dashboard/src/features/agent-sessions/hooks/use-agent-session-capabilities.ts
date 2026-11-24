@@ -40,6 +40,7 @@ export function useAgentSessionCapabilities(
         ? {
             enabled: value.enabled,
             sshEnabled: value.sshEnabled,
+            terminalEnabled: value.terminalEnabled,
             agents: value.agents.map((agent) => agent.id),
             modelKeyReadyAgents: value.agents
               .filter((agent) => agent.modelKeyReady)

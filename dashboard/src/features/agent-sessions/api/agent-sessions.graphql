@@ -143,6 +143,7 @@ query AgentSessionCapabilities($ownerId: String) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
     sshEnabled
+    terminalEnabled
     agents {
       id
       modelKeyReady

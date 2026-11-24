@@ -180,6 +180,11 @@ type Capabilities struct {
 	// archived, and connecting to it wakes a sandbox that closed (D9), as
 	// resume does (D8).
 	SSHEnabled bool `json:"sshEnabled"`
+	// TerminalEnabled says a session's page can open a shell in its sandbox
+	// from the browser (w10/m615, ADR054 D10): createAgentSessionShellSession
+	// mints a Terminal ticket for every session that is neither canceled nor
+	// archived, starting a sandbox that closed, as resume does.
+	TerminalEnabled bool `json:"terminalEnabled"`
 	TemplateOffer
 }
 

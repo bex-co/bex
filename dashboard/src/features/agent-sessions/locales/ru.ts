@@ -79,8 +79,7 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.prAutoMergeHint": {
     message: "GitHub сольёт его, когда пройдут обязательные ревью и проверки.",
-    description:
-      "Tooltip of the auto-merge badge — what auto-merge does",
+    description: "Tooltip of the auto-merge badge — what auto-merge does",
   },
   "agentSessions.prAutoMergeMethod.merge": {
     message: "Создать коммит слияния",
@@ -1387,7 +1386,8 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
       "Connect menu — hotlink that opens the sandbox as a Zed remote project",
   },
   "agentSessions.openInZedHint": {
-    message: "Открывает /workspace песочницы по SSH. Требуется редактор Zed. Закрытая песочница запускается при подключении.",
+    message:
+      "Открывает /workspace песочницы по SSH. Требуется редактор Zed. Закрытая песочница запускается при подключении.",
     description:
       "Connect menu — helper text under the Open-in-Zed action; a closed sandbox starts when the editor or ssh connects (ADR054 D9)",
   },
@@ -2277,6 +2277,122 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.settingsSaved": {
     message: "Настройки сохранены",
     description: "Toast after a session's settings were saved (w10/m599)",
+  },
+  "agentSessions.terminalButton": {
+    message: "Терминал",
+    description:
+      "Session header button that opens the session's Terminal (w10/m615)",
+  },
+  "agentSessions.terminalTitle": {
+    message: "Терминал",
+    description: "Title of the sheet holding the session's Terminal",
+  },
+  "agentSessions.terminalDescription": {
+    message:
+      "Оболочка в песочнице этой сессии, в /workspace. При открытии закрытая песочница запускается.",
+    description: "Description under the Terminal sheet's title",
+  },
+  "agentSessions.terminalConnecting": {
+    message: "Подключение к песочнице…",
+    description: "Terminal status while it connects to the sandbox",
+  },
+  "agentSessions.terminalStarting": {
+    message: "Запуск песочницы…",
+    description: "Terminal status while the session's sandbox starts",
+  },
+  "agentSessions.terminalStartingDetail": {
+    message:
+      "Оболочка откроется, как только песочница запустится, обычно в течение минуты.",
+    description: "Terminal detail while the session's sandbox starts",
+  },
+  "agentSessions.terminalStillStarting": {
+    message:
+      "Песочница всё ещё запускается ({elapsed}). Оболочка откроется, как только она запустится.",
+    description:
+      "Terminal detail every 30 seconds while the sandbox still starts; {elapsed} is how long, e.g. 1m 30s",
+  },
+  "agentSessions.terminalConnected": {
+    message: "Подключено",
+    description: "Terminal status when the shell is live",
+  },
+  "agentSessions.terminalClosed": {
+    message: "Сессия закрыта",
+    description: "Terminal status when the shell ended",
+  },
+  "agentSessions.terminalErrorStatus": {
+    message: "Ошибка подключения",
+    description: "Terminal status when it failed to connect or errored",
+  },
+  "agentSessions.terminalEnded": {
+    message: "Сессия завершена",
+    description: "Terminal status when the server ended it for a stated reason",
+  },
+  "agentSessions.terminalReconnect": {
+    message: "Переподключиться",
+    description: "Button that opens the Terminal again",
+  },
+  "agentSessions.terminalErrorGeneric": {
+    message: "Не удалось открыть оболочку в песочнице.",
+    description: "Terminal generic connection error",
+  },
+  "agentSessions.terminalUnavailable": {
+    message:
+      "Терминал в браузере не включён на этой платформе. Откройте песочницу по SSH через «Подключиться».",
+    description:
+      "Terminal error when the browser terminal is not configured on the platform (503)",
+  },
+  "agentSessions.terminalCanceled": {
+    message: "Эта сессия отменена, поэтому открывать нечего.",
+    description: "Why a canceled session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalArchived": {
+    message:
+      "Эта сессия в архиве, и её песочница закрыта. Разархивируйте её, чтобы открыть терминал.",
+    description: "Why an archived session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalCannotStart": {
+    message:
+      "Эта сессия не выполняется, и её песочница закрыта. Чтобы снова запустить её, отправьте сессии сообщение, а затем снова откройте терминал.",
+    description:
+      "Terminal refusal for a member who may view the sandbox but not start it, as the SSH banner says",
+  },
+  "agentSessions.terminalStartRefused": {
+    message: "Не удалось запустить песочницу: {reason}",
+    description:
+      "Terminal refusal when the sandbox could not start; {reason} is the refusal (payment method, billing, the live-sandbox limit)",
+  },
+  "agentSessions.terminalEndRevoked": {
+    message: "Ваш доступ к этой сессии прекращён.",
+    description:
+      "Terminal end reason: the caller lost access to the session (deliberately unspecific)",
+  },
+  "agentSessions.terminalEndSandboxGone": {
+    message:
+      "Песочница остановилась. Переподключитесь, чтобы снова запустить её.",
+    description: "Terminal end reason: the sandbox stopped under the shell",
+  },
+  "agentSessions.terminalEndTimeout": {
+    message:
+      "Терминал достиг ограничения по времени. Переподключитесь, чтобы продолжить работу.",
+    description: "Terminal end reason: it reached its time limit",
+  },
+  "agentSessions.terminalEndUnverified": {
+    message:
+      "Не удалось повторно проверить ваш доступ, поэтому терминал закрыт. Переподключитесь, чтобы попробовать снова.",
+    description:
+      "Terminal end reason: the periodic access check could not complete",
+  },
+  "agentSessions.terminalEndNoSandbox": {
+    message:
+      "Песочница не запустилась. Переподключитесь, чтобы попробовать снова.",
+    description:
+      "Terminal end reason: the sandbox's start ended without a sandbox",
+  },
+  "agentSessions.terminalEndWakeTimeout": {
+    message:
+      "Песочница не запустилась вовремя. Переподключитесь, чтобы попробовать снова.",
+    description:
+      "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
 };
 

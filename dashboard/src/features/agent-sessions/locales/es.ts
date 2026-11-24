@@ -78,9 +78,9 @@ const esAgentSessions: Record<string, TranslationEntry> = {
       "Tooltip of the auto-merge badge when GitHub does not say who armed it",
   },
   "agentSessions.prAutoMergeHint": {
-    message: "GitHub la fusiona cuando pasen las revisiones y comprobaciones requeridas.",
-    description:
-      "Tooltip of the auto-merge badge — what auto-merge does",
+    message:
+      "GitHub la fusiona cuando pasen las revisiones y comprobaciones requeridas.",
+    description: "Tooltip of the auto-merge badge — what auto-merge does",
   },
   "agentSessions.prAutoMergeMethod.merge": {
     message: "Crear un commit de fusión",
@@ -1329,7 +1329,8 @@ const esAgentSessions: Record<string, TranslationEntry> = {
       "Connect menu — hotlink that opens the sandbox as a Zed remote project",
   },
   "agentSessions.openInZedHint": {
-    message: "Abre el /workspace del sandbox por SSH. Requiere el editor Zed. Un sandbox cerrado se inicia al conectarte.",
+    message:
+      "Abre el /workspace del sandbox por SSH. Requiere el editor Zed. Un sandbox cerrado se inicia al conectarte.",
     description:
       "Connect menu — helper text under the Open-in-Zed action; a closed sandbox starts when the editor or ssh connects (ADR054 D9)",
   },
@@ -2209,6 +2210,120 @@ const esAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.settingsSaved": {
     message: "Configuración guardada",
     description: "Toast after a session's settings were saved (w10/m599)",
+  },
+  "agentSessions.terminalButton": {
+    message: "Terminal",
+    description:
+      "Session header button that opens the session's Terminal (w10/m615)",
+  },
+  "agentSessions.terminalTitle": {
+    message: "Terminal",
+    description: "Title of the sheet holding the session's Terminal",
+  },
+  "agentSessions.terminalDescription": {
+    message:
+      "Una shell en el sandbox de esta sesión, en /workspace. Al abrirla se inicia un sandbox que se cerró.",
+    description: "Description under the Terminal sheet's title",
+  },
+  "agentSessions.terminalConnecting": {
+    message: "Conectando con el sandbox…",
+    description: "Terminal status while it connects to the sandbox",
+  },
+  "agentSessions.terminalStarting": {
+    message: "Iniciando el sandbox…",
+    description: "Terminal status while the session's sandbox starts",
+  },
+  "agentSessions.terminalStartingDetail": {
+    message:
+      "La shell se abre en cuanto el sandbox está activo, normalmente en menos de un minuto.",
+    description: "Terminal detail while the session's sandbox starts",
+  },
+  "agentSessions.terminalStillStarting": {
+    message:
+      "Todavía se está iniciando el sandbox ({elapsed}). La shell se abre en cuanto esté activo.",
+    description:
+      "Terminal detail every 30 seconds while the sandbox still starts; {elapsed} is how long, e.g. 1m 30s",
+  },
+  "agentSessions.terminalConnected": {
+    message: "Conectado",
+    description: "Terminal status when the shell is live",
+  },
+  "agentSessions.terminalClosed": {
+    message: "Sesión cerrada",
+    description: "Terminal status when the shell ended",
+  },
+  "agentSessions.terminalErrorStatus": {
+    message: "Error de conexión",
+    description: "Terminal status when it failed to connect or errored",
+  },
+  "agentSessions.terminalEnded": {
+    message: "Sesión finalizada",
+    description: "Terminal status when the server ended it for a stated reason",
+  },
+  "agentSessions.terminalReconnect": {
+    message: "Reconectar",
+    description: "Button that opens the Terminal again",
+  },
+  "agentSessions.terminalErrorGeneric": {
+    message: "No se pudo abrir una shell en el sandbox.",
+    description: "Terminal generic connection error",
+  },
+  "agentSessions.terminalUnavailable": {
+    message:
+      "La terminal en el navegador no está habilitada en esta plataforma. Usa Conectar para abrir el sandbox por SSH.",
+    description:
+      "Terminal error when the browser terminal is not configured on the platform (503)",
+  },
+  "agentSessions.terminalCanceled": {
+    message: "Esta sesión se canceló, así que no tiene un sandbox que abrir.",
+    description: "Why a canceled session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalArchived": {
+    message:
+      "Esta sesión está archivada y su sandbox se cerró. Desarchívala para abrir su Terminal.",
+    description: "Why an archived session's Terminal has nothing to open",
+  },
+  "agentSessions.terminalCannotStart": {
+    message:
+      "Esta sesión no se está ejecutando y su sandbox se cerró. Para volver a iniciarla, envía un mensaje a la sesión y luego abre de nuevo el Terminal.",
+    description:
+      "Terminal refusal for a member who may view the sandbox but not start it, as the SSH banner says",
+  },
+  "agentSessions.terminalStartRefused": {
+    message: "El sandbox no pudo iniciarse: {reason}",
+    description:
+      "Terminal refusal when the sandbox could not start; {reason} is the refusal (payment method, billing, the live-sandbox limit)",
+  },
+  "agentSessions.terminalEndRevoked": {
+    message: "Tu acceso a esta sesión terminó.",
+    description:
+      "Terminal end reason: the caller lost access to the session (deliberately unspecific)",
+  },
+  "agentSessions.terminalEndSandboxGone": {
+    message: "El sandbox se detuvo. Reconecta para iniciarlo de nuevo.",
+    description: "Terminal end reason: the sandbox stopped under the shell",
+  },
+  "agentSessions.terminalEndTimeout": {
+    message:
+      "El Terminal alcanzó su límite de tiempo. Reconecta para seguir trabajando.",
+    description: "Terminal end reason: it reached its time limit",
+  },
+  "agentSessions.terminalEndUnverified": {
+    message:
+      "No se pudo volver a comprobar tu acceso, así que el Terminal se cerró. Reconecta para intentarlo de nuevo.",
+    description:
+      "Terminal end reason: the periodic access check could not complete",
+  },
+  "agentSessions.terminalEndNoSandbox": {
+    message: "El sandbox no se inició. Reconecta para intentarlo de nuevo.",
+    description:
+      "Terminal end reason: the sandbox's start ended without a sandbox",
+  },
+  "agentSessions.terminalEndWakeTimeout": {
+    message:
+      "El sandbox no se inició a tiempo. Reconecta para intentarlo de nuevo.",
+    description:
+      "Terminal end reason: the sandbox did not start within the start's ceiling",
   },
 };
 

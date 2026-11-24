@@ -16,6 +16,7 @@ import {
   PackageCheck,
   Server,
   Settings2,
+  SquareTerminal,
   Tag,
   Terminal,
   Trash2,
@@ -33,6 +34,8 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { CopyButton } from "@/common/components/copy-button";
 import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
+import { SessionTerminalSheet } from "@/features/agent-sessions/components/session-terminal-sheet";
+import { useSessionTerminalOffered } from "@/features/agent-sessions/hooks/use-agent-session-terminal";
 import { SessionModelCost } from "@/features/agent-sessions/components/session-model-cost";
 import { shortModel } from "@/features/agent-sessions/lib/models";
 import { namedTemplateLabel } from "@/features/agent-sessions/lib/templates";
@@ -84,7 +87,8 @@ export interface SessionDetailHeaderProps {
  * (the wait for a sandbox machine while the pool is full (w10/m497), branch
  * when there is one, ticking duration, turns, the model and the sandbox
  * template it runs on (w10/m516, w10/m519), model cost — ADR091 D6),
- * an inline draft-PR badge `#N`, the Open in Zed action (w2/m65), a "…"
+ * an inline draft-PR badge `#N`, Files, the Terminal (w10/m615), the Open
+ * in Zed action (w2/m65), a "…"
  * overflow menu (open PR), and cancel-with-confirm. The duration ticks live
  * while the session is non-terminal; once terminal it pins to the session's
  * own end timestamp (via the mapper). Cancel is offered only while the session can
@@ -118,6 +122,10 @@ export function SessionDetailHeader({
   // running after the 202 and Stop turn must not offer itself again.
   const [stoppedTurn, setStoppedTurn] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // The Terminal's sheet (w10/m615): its header button from 640 px up, the
+  // "…" menu below that.
+  const terminalOffered = useSessionTerminalOffered(session);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -351,6 +359,14 @@ export function SessionDetailHeader({
 
       <SessionFilesButton sessionId={session.id} />
 
+      {terminalOffered ? (
+        <SessionTerminalSheet
+          session={session}
+          open={terminalOpen}
+          onOpenChange={setTerminalOpen}
+        />
+      ) : null}
+
       <OpenInZedButton session={session} />
 
       {/* resuming starts a sandbox for an editor (ADR054 D8): no turn runs. */}
@@ -391,6 +407,15 @@ export function SessionDetailHeader({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {terminalOffered ? (
+            <DropdownMenuItem
+              className="sm:hidden"
+              onClick={() => setTerminalOpen(true)}
+            >
+              <SquareTerminal className="size-4" />
+              {t("agentSessions.terminalButton")}
+            </DropdownMenuItem>
+          ) : null}
           {session.prUrl ? (
             <DropdownMenuItem asChild>
               <a href={session.prUrl} target="_blank" rel="noreferrer">
@@ -541,9 +566,8 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
         {/* Gate the doomed payload behind key registration (w2/m66): with no
             key, the zed:// link + ssh command would fail off-surface in Zed's
             own dialog, so swap them for an add-key CTA that returns here. The
-            trigger stays visible so the feature is still discoverable. Agent
-            sessions have no in-dashboard terminal yet (ADR047 D8 is phase 2), so
-            there is no second "browser terminal" door here — only on services. */}
+            trigger stays visible so the feature is still discoverable. The
+            in-browser door needs no key: the header's Terminal (w10/m615). */}
         <RequiresSshKey
           surface="agent-session-zed"
           fallback={

@@ -35,6 +35,7 @@ function capabilitiesKeptAfterSave(): boolean {
         __typename: "AgentSessionCapabilities",
         enabled: true,
         sshEnabled: false,
+        terminalEnabled: false,
         defaultTemplate: "agent",
         agents: [],
         templates: [],
