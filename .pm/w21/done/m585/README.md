@@ -1,6 +1,6 @@
 # w21 · m585 — Every contrib extension on Render's list can be created by the database owner, and `pg_repack` works for a table's owner
 
-**Worker:** worker21 **Goal:** on each major 13–18 the default user runs `CREATE EXTENSION` for every contrib module Render lists for that major (`dblink`, `earthdistance`, `moddatetime`, `bloom`, `pgaudit` and the rest), admitted by a reload of the allowlist with no restart, and a table's owner repacks it with `pg_repack -k` on 16+. **Status:** blocked — `pin must carry` `979d68fdc1` (t001, t002, t005 and t006 done; t004's gate half done)
+**Worker:** worker21 **Goal:** on each major 13–18 the default user runs `CREATE EXTENSION` for every contrib module Render lists for that major (`dblink`, `earthdistance`, `moddatetime`, `bloom`, `pgaudit` and the rest), admitted by a reload of the allowlist with no restart, and a table's owner repacks it with `pg_repack -k` on 16+. **Status:** done (2026-11-24)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Record a disposition per extension in ADR092: the majors Render lists it on, PostgreSQL's default grants kept, and the `dblink` and `file_fdw` review — **DONE** | 1h | w21/m584/t001 |
 | [t002](done/t002.md) | The allowlist and the gate: the admitted lists per major, `check.sh`'s refusals of `file_fdw`, `dblink` and `adminpack` turned into creations, and a non-listed untrusted extension still refused — **DONE** | 1h | t001 |
-| [t003](t003.md) | Reload the allowlist on production and run w8/276's acceptance | 45m | t002, w21/m584/t005 |
-| [t004](t004.md) | `pg_repack -k` as a table's owner on 16+ over the external URL, in the gate and on production | 30m | t003 |
+| [t003](done/t003.md) | Reload the allowlist on production and run w8/276's acceptance — **DONE** | 45m | t002, w21/m584/t005 |
+| [t004](done/t004.md) | `pg_repack -k` as a table's owner on 16+ over the external URL, in the gate and on production — **DONE** | 30m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
-| [t007](t007.md) | Closeout | 10m | t005, t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -36,9 +36,22 @@
 ## Parked 2026-11-23 (`/loopx w21`)
 
 - **Shipped:** `979d68fdc1` admits Render's 24 untrusted extensions per major in `admittedExtensions()` and `matrix.json` `admitted`, with PostgreSQL's own grants and no image change; ADR092 D1 § Render's untrusted contrib modules records each disposition, the `dblink` and `file_fdw` review and the `CREATEROLE` reopen condition; the gate creates, uses and judges each one, and checks the owner's `pg_repack` (rows, space, another role's table refused). Local gate on the six pinned digests: every major `PASS`.
-- **Decision (the plan's recommendation, not a user decision):** `pgaudit` is admitted although CloudNativePG's instance manager drops it from every database at its next start on a primary while no `pgaudit.*` parameter is set (v1.30.1 `reconcileDatabases`); a `pgaudit.*` parameter would preinstall it everywhere instead, which ADR092 D2 rules out. Keeping it across restarts is [w21/122](../../done/122.md), promoted to [w21/m606](../m606/README.md).
+- **Decision (the plan's recommendation, not a user decision):** `pgaudit` is admitted although CloudNativePG's instance manager drops it from every database at its next start on a primary while no `pgaudit.*` parameter is set (v1.30.1 `reconcileDatabases`); a `pgaudit.*` parameter would preinstall it everywhere instead, which ADR092 D2 rules out. Keeping it across restarts is [w21/122](../../done/122.md), promoted to [w21/m606](../../blocked/m606/README.md).
 - **Gate:** production's pin must carry `979d68fdc1` (which contains m584's `b8c7ac47b2`). On 2026-11-23 at 21:30Z the pin was `9fdf7e0a1171`, which carries neither.
 - **Next (t003, then t004's production half, then t007):**
   1. Confirm every managed cluster runs the bex operand image (w21/m584 t005 records the adoption) and `SHOW extwlist.extensions` lists the 24 names on its major.
   2. Restarts: if the first pin carrying `979d68fdc1` also brought `b8c7ac47b2`, each cluster restarted once for m584's adoption and the list arrived with it, so definition-of-done item 5 is "no restart beyond m584's one" and the reload path is the gate's (`check.sh` widens the list by a reload). If an earlier pin had already adopted the image, read each cluster's postmaster start time before and after this pin: unchanged.
   3. On a new Free database per major 13–18 in `bex-canary` (disposable): every `CREATE EXTENSION` of definition-of-done item 1, `cube` + `earthdistance` + `earth_distance`, a `moddatetime` trigger, `rolsuper` false, `CREATE EXTENSION postgres_fdw` refused, and an export and its restore; then on a 16+ one, `pg_repack --no-superuser-check` 1.5.3 over the external URL (rows compared, another role's table refused). Record in ADR092 and w8/276, delete the databases (404).
+
+## Unblock record (2026-11-24)
+
+- **Affected:** t003, t004, t007. **Source:** verified evidence. **Finding:** production's pin `eb52a59622` (`chore(deploy): pin platform images to f46c44d9ddb1`, 2026-11-23T23:57Z) carries `979d68fdc1` (`git merge-base --is-ancestor 979d68fdc1 f46c44d9ddb1` holds) and m584's `b8c7ac47b2`, so the `pin must carry` gate has cleared. It is the first pin to carry either, so the list arrived with m584's one restart, and definition-of-done item 5 reads "no restart beyond m584's one" (Next, step 2). At 00:51Z all six operator-managed clusters run the bex digest and their `extwlist.extensions` lists the admitted contrib names for their major (24 on 16, 22 on 18), each postmaster started once, between 00:04Z and 00:18Z, with 0 container restarts.
+- **Next:** t003 runs w8/276's acceptance on a new Free database per major 13–18 in `bex-canary`, one at a time (disposable), allowing ~13 s after `available` for the owner's `pg_monitor` membership (ADR092 § D4); t004 runs the owner's `pg_repack` over the external URL on a 16+ one; t007 closes once the start times read unchanged.
+
+## Closeout (2026-11-24)
+
+- **Definition of done 1 and 2:** t003 § Result. On a new Free database per major 13–18 in `bex-canary` (disposable), every listed `CREATE EXTENSION` succeeds (22 on 13, 24 on 14–16, 22 on 17–18). `earth_distance` returns `111320.03184534168`, and the `moddatetime` trigger updates its column.
+- **3:** `rolsuper` stays `false` and `postgres_fdw` is refused on every major. The superuser-only functions stay refused. The owner's `pg_dump` and its restore into a new database give every extension and its data back. The remaining restore fault, `COMMENT ON EXTENSION pg_stat_statements` under `--exit-on-error`, is w21/124's, and it is reproduced on production.
+- **4:** t004 § Production. On 16, 17 and 18, the owner's `pg_repack --no-superuser-check` over the external URL with a 1.5.3 client rewrites the table with its rows unchanged, and another role's table is refused.
+- **5:** no managed cluster restarted for this milestone. The admission came with m584's one restart (the same pin), and every postmaster start time read the same at 00:51Z and 01:30Z.
+- **Record:** ADR092 § D4 (Production acceptance of Render's untrusted contrib modules), ADR018's "Postgres extensions" rows, and w8/276.
