@@ -97,11 +97,12 @@ const (
 )
 
 // edgeCaches reports whether the App gets the edge-cache tier: a publicly
-// routed web service whose spec serves one (AppSpec.ServesEdgeCache, which
-// bex-api's edge-cache events and purge read too), on a Kubernetes operator
-// that knows its own image.
+// routed web service that runs one on the plan its instances run
+// (App.RunsEdgeCache, which bex-api's edge-cache events and purge read too),
+// on a Kubernetes operator that knows its own image. A plan saved for the
+// next deploy moves the cache with that deploy, not the save (w6/m609).
 func (r *AppReconciler) edgeCaches(app *appv1alpha1.App) bool {
-	return r.Mode == ModeKubernetes && r.BackupHelperImage != "" && app.Spec.ServesEdgeCache() && app.Spec.PubliclyRoutable()
+	return r.Mode == ModeKubernetes && r.BackupHelperImage != "" && app.RunsEdgeCache() && app.Spec.PubliclyRoutable()
 }
 
 // edgeCacheTierName names an App's tier Deployment and its headless Service.
@@ -112,7 +113,7 @@ func edgeCacheTierName(appName string) string {
 // edgeCacheProfileFor is the profile app's proxies cache by: its saved one
 // while the cache runs, and no-cache, a pass-through, once it does not.
 func edgeCacheProfileFor(app *appv1alpha1.App) string {
-	if app.Spec.ServesEdgeCache() {
+	if app.RunsEdgeCache() {
 		return app.Spec.CacheProfile
 	}
 	return appv1alpha1.CacheProfileNone

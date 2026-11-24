@@ -1905,8 +1905,10 @@ func TestRESTListTimeWindowExcludes(t *testing.T) {
 	}
 }
 
+// A REST plan change answers the saved plan (w6/m609: held for the next
+// deploy, TestSurfaceSaveSemantics).
 func TestRESTPatchServicePlan(t *testing.T) {
-	svc, _ := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, sampleApp("web"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -1922,6 +1924,9 @@ func TestRESTPatchServicePlan(t *testing.T) {
 	}
 	if out.ServiceDetails["plan"] != "pro_plus" {
 		t.Errorf("serviceDetails.plan = %v, want %q", out.ServiceDetails["plan"], "pro_plus")
+	}
+	if a := getApp(t, cl, "web"); a.Spec.Tier != "pro-plus" {
+		t.Errorf("spec.tier = %q, want the saved pro-plus", a.Spec.Tier)
 	}
 
 	// Unknown plan => 400, and it must not have changed anything.

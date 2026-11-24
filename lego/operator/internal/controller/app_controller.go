@@ -5569,6 +5569,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if err != nil {
 		return r.failStep(ctx, app, err)
 	}
+	recordServedTier(app, effectiveApp.Spec.Tier, restore)
 
 	app.Status.Image = image
 	app.Status.URL = "" // a cron_job has no serving URL

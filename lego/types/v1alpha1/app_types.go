@@ -80,6 +80,27 @@ func (s AppSpec) ServesEdgeCache() bool {
 	return s.EdgeCaching() && s.Tier != "" && s.Tier != "free"
 }
 
+// RunningTier is the compute plan the App's instances run: Status.ServedTier,
+// or spec.tier before the operator has rolled a template for it. The two
+// differ while a plan saved through Render's Update Service waits for its
+// deploy (w6/m609).
+func (a *App) RunningTier() string {
+	if a.Status.ServedTier != "" {
+		return a.Status.ServedTier
+	}
+	return a.Spec.Tier
+}
+
+// RunsEdgeCache is ServesEdgeCache on the plan the App's instances run
+// (RunningTier): a saved plan starts or stops the cache with the deploy that
+// applies it, so a Free service with a paid plan saved gets no cache before
+// it runs that plan.
+func (a *App) RunsEdgeCache() bool {
+	spec := a.Spec
+	spec.Tier = a.RunningTier()
+	return spec.ServesEdgeCache()
+}
+
 // AnnotationSavedConfigRevision is an opaque notification for an effective
 // service-local Save-only write. It contains no configuration or value digest,
 // changes no release identity, and wakes only configuration-status comparison.
@@ -2472,6 +2493,17 @@ type AppStatus struct {
 	// retained release. Empty while UndeployedChanges is false.
 	// +optional
 	UndeployedChangesReason string `json:"undeployedChangesReason,omitempty"`
+
+	// ServedTier is the compute plan (a spec.tier value) of the instances the
+	// App runs: the tier of the pod template the operator last rolled out. A
+	// plan saved through Render's Update Service waits for a deploy (w6/m609),
+	// as Render's "compute plan does not change until the first successful
+	// deploy after you update it", so spec.tier can name the next plan while
+	// this one still runs. Billing, the Free instance hours and the edge cache
+	// follow this one (App.RunningTier). Empty until the operator rolls a
+	// template for the App.
+	// +optional
+	ServedTier string `json:"servedTier,omitempty"`
 
 	// PendingReleaseGeneration is the newest requested release generation coalesced
 	// while a release is in flight (0 = none). It is observability + SLI

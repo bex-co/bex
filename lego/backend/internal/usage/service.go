@@ -1276,6 +1276,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 	var ok bool
 	var health []store.UsageSourceObservation
 	expectedFrom := usageExpectedFrom(app.CreatedAt)
+	tier := ""
 	switch kind {
 	case store.UsageKindInstanceSeconds:
 		// The pods are named after the App's Kubernetes object, NOT after
@@ -1287,6 +1288,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// per-tenant namespace its pods actually live in under ADR043; the shared
 		// namespace holds none of them after the migration.
 		cr, resolved := s.resolveAppCR(ctx, app, store.UsageKindInstanceSeconds)
+		tier = meteredTier(app, cr)
 		if isCronApp(app, cr) {
 			quantity, ok = s.queryCronRunSeconds(ctx, app.ID, cr, window, end)
 			health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
@@ -1329,10 +1331,6 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		s.recordSourceHealth(ctx, app.TenantID, store.ResourceKindService, app.ID, kind, window, health)
 		return appMeterWindowSourceUnavailable
 	}
-	tier := ""
-	if kind == store.UsageKindInstanceSeconds {
-		tier = app.Tier
-	}
 	if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
 		WorkspaceID:  app.TenantID,
 		ServiceID:    app.ID,
@@ -1347,6 +1345,21 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		return appMeterWindowStoreFailure
 	}
 	return appMeterWindowSuccess
+}
+
+// meteredTier is the plan an App's instance_seconds bill at: the plan its
+// instances run (status.servedTier, which the operator records from the
+// template it rolled), not the one saved for the next deploy. Render's plan
+// "does not change until the first successful deploy after you update it"
+// (render.com/docs/compute-plans), and a REST or MCP plan change waits for
+// that deploy (w6/m609). It falls back to the control-plane row's plan when the
+// CR is unreadable or no template has been rolled for it. A whole hour bills
+// at one plan, as before.
+func meteredTier(app store.App, cr *appv1alpha1.App) string {
+	if cr != nil && cr.Status.ServedTier != "" {
+		return cr.Status.ServedTier
+	}
+	return app.Tier
 }
 
 func usageExpectedFrom(created time.Time) time.Time {

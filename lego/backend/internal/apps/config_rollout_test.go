@@ -348,6 +348,35 @@ func TestSurfaceSaveSemantics(t *testing.T) {
 		}
 		assertHeldForNextDeploy(t, a, "5")
 	})
+	// Render: the dashboard's plan change "automatically triggers a deploy to
+	// apply the new compute plan", while "the Update service endpoint does not
+	// trigger a new deploy" (render.com/docs/compute-plans, w6/m609).
+	t.Run("graphql updateServicePlan saves and deploys", func(t *testing.T) {
+		st := &recordingStore{}
+		svc, _ := newService(st, managedRepoApp("web"))
+		if _, err := svc.SetPlan(ctx, "web", "standard"); err != nil {
+			t.Fatalf("SetPlan: %v", err)
+		}
+		if len(st.deployCalls) != 1 || st.deployCalls[0].Trigger != store.TriggerSettingsChange {
+			t.Fatalf("produced %d rows %+v, want exactly one settings_change deploy", len(st.deployCalls), st.deployCalls)
+		}
+	})
+	t.Run("rest/mcp plan saves only", func(t *testing.T) {
+		st := &recordingStore{}
+		svc, cl := newService(st, managedRepoApp("web"))
+		plan := "standard"
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: &plan}); err != nil {
+			t.Fatalf("ApplyServicePatch: %v", err)
+		}
+		if len(st.deployCalls) != 0 {
+			t.Fatalf("produced %d rows %+v, want none", len(st.deployCalls), st.deployCalls)
+		}
+		a := getApp(t, cl, "web")
+		if a.Spec.Tier != plan {
+			t.Fatalf("tier = %q, want the saved %q", a.Spec.Tier, plan)
+		}
+		assertHeldForNextDeploy(t, a, "5")
+	})
 }
 
 // TestServicePatchHoldsEveryReleaseField is w8/m135 t001 per field: each
@@ -394,6 +423,10 @@ func TestServicePatchHoldsEveryReleaseField(t *testing.T) {
 			func(s appv1alpha1.AppSpec) bool { return s.DockerfilePath != "" }},
 		{"port", image(), ServicePatch{Port: i32(9000)},
 			func(s appv1alpha1.AppSpec) bool { return s.Port == 9000 }},
+		// render.com/docs/compute-plans: "The Update service endpoint does
+		// not trigger a new deploy" (w6/m609).
+		{"plan", image(), ServicePatch{Plan: str("standard")},
+			func(s appv1alpha1.AppSpec) bool { return s.Tier == "standard" }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

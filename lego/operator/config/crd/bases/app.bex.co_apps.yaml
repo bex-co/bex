@@ -2304,6 +2304,17 @@ spec:
                   for a publication an older operator recorded, and for other service
                   types.
                 type: string
+              servedTier:
+                description: |-
+                  ServedTier is the compute plan (a spec.tier value) of the instances the
+                  App runs: the tier of the pod template the operator last rolled out. A
+                  plan saved through Render's Update Service waits for a deploy (w6/m609),
+                  as Render's "compute plan does not change until the first successful
+                  deploy after you update it", so spec.tier can name the next plan while
+                  this one still runs. Billing, the Free instance hours and the edge cache
+                  follow this one (App.RunningTier). Empty until the operator rolls a
+                  template for the App.
+                type: string
               servingNetwork:
                 description: ServingNetwork retains the active release's ports while
                   a candidate starts.

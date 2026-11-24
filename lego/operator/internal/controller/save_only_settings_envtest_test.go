@@ -85,12 +85,16 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 			metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationPendingSourceGeneration, fmt.Sprint(app.Generation+1))
 		})
 	}
-	// deploy is a deploy verb: it stamps the generation it opens.
-	deploy := func() int64 {
+	// deploy is a deploy verb: it stamps the generation it opens. selecting,
+	// when set, selects a recorded release as a Restart or rollback does.
+	deploy := func(selecting func(app *appv1alpha1.App, gen int64)) int64 {
 		GinkgoHelper()
 		update(func(app *appv1alpha1.App) {
 			app.Spec.RestartedAt = time.Now().UTC().Format(time.RFC3339Nano)
 			metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, fmt.Sprint(app.Generation+1))
+			if selecting != nil {
+				selecting(app, app.Generation+1)
+			}
 		})
 		return getApp().Generation
 	}
@@ -157,7 +161,7 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 		Expect(undeployed()).To(BeTrue(), "the saved settings are reported as not yet deployed")
 
 		By("a deploy that is canceled leaves the served release and the saved settings pending")
-		canceled := deploy()
+		canceled := deploy(nil)
 		pass(2)
 		_, err = preDeployJob(canceled)
 		Expect(err).NotTo(HaveOccurred(), "the deploy runs the saved pre-deploy command")
@@ -169,7 +173,7 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 		Expect(undeployed()).To(BeTrue(), "a canceled deploy leaves the saved settings pending")
 
 		By("the next deploy applies every saved field together")
-		next := deploy()
+		next := deploy(nil)
 		pass(2)
 		job, err := preDeployJob(next)
 		Expect(err).NotTo(HaveOccurred())
@@ -233,12 +237,177 @@ var _ = Describe("Saved settings wait for the next deploy (w8/m135)", func() {
 		Expect(undeployed()).To(BeTrue(), "the 120-second save waits for the next deploy")
 
 		By("the next deploy applies the saved delay")
-		next := deploy()
+		next := deploy(nil)
 		pass(3)
 		markEnvtestDeploymentReady(nn)
 		pass(2)
 		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", next)))
 		Expect(delay()).To(Equal(int64(120)))
+		Expect(undeployed()).To(BeFalse())
+	})
+
+	// runsPlan reads the plan the serving template runs from its app
+	// container's CPU and memory, its serving pool and WEB_CONCURRENCY.
+	runsPlan := func() (tier, pool, concurrency string) {
+		GinkgoHelper()
+		t := template()
+		tier, ok := templateTier(*t)
+		Expect(ok).To(BeTrue(), "the template runs a catalog plan")
+		if a := t.Spec.Affinity; a != nil && a.NodeAffinity != nil && a.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+			pool = a.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]
+		}
+		for _, env := range appContainer(t).Env {
+			if env.Name == webConcurrencyEnvName {
+				concurrency = env.Value
+			}
+		}
+		return tier, pool, concurrency
+	}
+
+	// Render's Update Service saves a plan without deploying it, and "your
+	// service's compute plan does not change until the first successful deploy
+	// after you update it" (render.com/docs/compute-plans). bex-api holds a
+	// REST or MCP plan change like any other saved field (w6/m609): the
+	// serving pods keep their plan's CPU, memory, node pool and worker count
+	// until a deploy, and status.servedTier, which billing reads, keeps naming
+	// it.
+	It("holds a saved plan until a deploy applies it, through a cancel (w6/m609)", func() {
+		use("save-only-plan")
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: "busybox:1.36", Port: 3000, Replicas: 1, Tier: "starter", PreDeployCommand: "echo migrate"},
+		})).To(Succeed())
+		pass(2)
+		job, err := preDeployJob(1)
+		Expect(err).NotTo(HaveOccurred())
+		completeEnvtestJob(job, metav1.Now())
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal("rev-1"), "precondition: generation 1 serves")
+		tier, pool, concurrency := runsPlan()
+		Expect([]string{tier, pool, concurrency}).To(Equal([]string{"starter", "", "1"}))
+		Expect(getApp().Status.ServedTier).To(Equal("starter"))
+		served := template()
+
+		By("an Update Service save of Pro Plus rolls nothing and runs no pre-deploy")
+		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.Tier = "pro-plus" })
+		pass(3)
+		app := getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)), "a save opens no release")
+		_, err = preDeployJob(app.Generation)
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "a save runs no pre-deploy command")
+		tier, pool, concurrency = runsPlan()
+		Expect(tier).To(Equal("starter"), "the pods keep Starter's CPU and memory")
+		Expect(pool).To(BeEmpty(), "and stay off Pro Plus's xl pool")
+		Expect(concurrency).To(Equal("1"), "and keep Starter's WEB_CONCURRENCY")
+		Expect(equality.Semantic.DeepEqual(*served, *template())).To(BeTrue())
+		Expect(app.Status.ServedTier).To(Equal("starter"), "billing keeps reading Starter")
+		Expect(undeployed()).To(BeTrue(), "the saved plan is reported as not yet deployed")
+
+		By("a deploy that is canceled keeps Starter and the saved plan pending")
+		canceled := deploy(nil)
+		pass(2)
+		_, err = preDeployJob(canceled)
+		Expect(err).NotTo(HaveOccurred(), "the deploy runs its pre-deploy command first")
+		update(func(app *appv1alpha1.App) {
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, fmt.Sprint(canceled))
+		})
+		pass(3)
+		Expect(equality.Semantic.DeepEqual(*served, *template())).To(BeTrue(), "the cancel keeps the served release")
+		Expect(getApp().Status.ServedTier).To(Equal("starter"))
+		Expect(undeployed()).To(BeTrue())
+
+		By("the next deploy applies Pro Plus in one release")
+		next := deploy(nil)
+		pass(2)
+		job, err = preDeployJob(next)
+		Expect(err).NotTo(HaveOccurred())
+		completeEnvtestJob(job, metav1.Now())
+		pass(3)
+		tier, pool, concurrency = runsPlan()
+		Expect(tier).To(Equal("pro-plus"))
+		Expect(pool).To(Equal("xl"))
+		Expect(concurrency).To(Equal("4"))
+		Expect(getApp().Status.ServedTier).To(Equal("pro-plus"), "billing moves to Pro Plus with the rollout")
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", next)))
+		Expect(undeployed()).To(BeFalse())
+
+		By("a Restart applies a plan saved since, as the special form of manual deploy Render's is")
+		// render.com/docs/deploys: "a service restart is actually a special
+		// form of manual deploy", and the plan changes with "the first
+		// successful deploy after you update it". The Restart runs the live
+		// release's commit and recorded settings with the saved plan, as it
+		// did before w6/m609 (ADR004 § Settings saves wait for a deploy).
+		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.Tier = "starter" })
+		pass(3)
+		tier, _, _ = runsPlan()
+		Expect(tier).To(Equal("pro-plus"), "the save alone rolls nothing")
+		Expect(undeployed()).To(BeTrue())
+		restart := deploy(func(app *appv1alpha1.App, gen int64) {
+			app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: gen, SourceGeneration: next,
+				Image: app.Status.Image, PreserveGroupValues: true}
+		})
+		pass(2)
+		if job, err := preDeployJob(restart); err == nil {
+			completeEnvtestJob(job, metav1.Now())
+		}
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", restart)))
+		tier, _, _ = runsPlan()
+		Expect(tier).To(Equal("starter"))
+		Expect(getApp().Status.ServedTier).To(Equal("starter"))
+		Expect(undeployed()).To(BeFalse())
+	})
+
+	It("keeps a hibernating Free service asleep on Free while a saved Starter plan waits (w6/m609)", func() {
+		use("save-only-plan-free")
+		// The activator is the wake path a Free service sleeps behind.
+		r.ActivatorService, r.ActivatorPort = "bex-activator", 8888
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: "busybox:1.36", Port: 3000, Replicas: 1, Tier: "free"},
+		})).To(Succeed())
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal("rev-1"), "precondition: generation 1 serves")
+		replicas := func() int32 { GinkgoHelper(); return *envtestDeployment(nn).Spec.Replicas }
+
+		By("idle past Free's window, it hibernates")
+		update(func(app *appv1alpha1.App) {
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotLastActive, time.Now().Add(-time.Hour).UTC().Format(time.RFC3339))
+		})
+		pass(3)
+		Expect(replicas()).To(BeZero())
+		Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+
+		By("a saved Starter plan leaves it asleep on Free")
+		saveOnly(func(spec *appv1alpha1.AppSpec) { spec.Tier = "starter" })
+		pass(3)
+		Expect(replicas()).To(BeZero(), "a saved paid plan does not stop Free's spin-down")
+		Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+		tier, _, _ := runsPlan()
+		Expect(tier).To(Equal("free"))
+		Expect(getApp().Status.ServedTier).To(Equal("free"))
+		Expect(undeployed()).To(BeTrue())
+
+		By("the deploy applies Starter, which never spins down")
+		next := deploy(nil)
+		pass(3)
+		markEnvtestDeploymentReady(nn)
+		pass(2)
+		Expect(getApp().Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", next)))
+		Expect(replicas()).To(Equal(int32(1)))
+		tier, _, _ = runsPlan()
+		Expect(tier).To(Equal("starter"))
+		Expect(getApp().Status.ServedTier).To(Equal("starter"))
 		Expect(undeployed()).To(BeFalse())
 	})
 })

@@ -83,7 +83,9 @@ func (s *Service) SetCacheProfile(ctx context.Context, name, profile string) (Ap
 	if err != nil {
 		return AppView{}, err
 	}
-	before := a.Spec.ServesEdgeCache()
+	// On the plan the instances run (App.RunsEdgeCache): a plan saved for the
+	// next deploy moves the cache only with that deploy (w6/m609).
+	before := a.RunsEdgeCache()
 	view, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.CacheProfile = profile
 	})
@@ -91,7 +93,7 @@ func (s *Service) SetCacheProfile(ctx context.Context, name, profile string) (Ap
 		return AppView{}, err
 	}
 	var enabledTo *bool
-	if after := a.Spec.ServesEdgeCache(); after != before {
+	if after := a.RunsEdgeCache(); after != before {
 		enabledTo = &after
 	}
 	s.RecordCacheProfileChanged(ctx, a, enabledTo)
@@ -109,7 +111,7 @@ func (s *Service) PurgeCache(ctx context.Context, name string) (AppView, error) 
 	if err != nil {
 		return AppView{}, err
 	}
-	if !a.Spec.ServesEdgeCache() {
+	if !a.RunsEdgeCache() {
 		return AppView{}, fmt.Errorf("%w: edge caching is not enabled for this service", core.ErrBadRequest)
 	}
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)

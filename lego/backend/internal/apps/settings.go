@@ -179,10 +179,6 @@ type servicePatchOp struct {
 	// with it (w5/m116).
 	check func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error
 	apply func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error)
-	// deploys marks the one row whose change still deploys at once: a plan
-	// (instance type) change resizes the running service, as it does on
-	// Render. Every other row saves only (rollout.WithSaveOnly, w8/m135).
-	deploys bool
 }
 
 // canOperate/canCreate are the two fixed relations most rows use; only the
@@ -300,7 +296,6 @@ var servicePatchTable = []servicePatchOp{
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetPlan(ctx, id, *p.Plan)
 		},
-		deploys: true,
 	},
 	{
 		fields:   []string{"IdleTTLSeconds"},
@@ -818,14 +813,12 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	if read == nil {
 		return s.Get(ctx, id)
 	}
-	ctx = context.WithValue(ctx, patchJudgedKey{}, true)
-	// Every row but plan saves only (rollout.WithSaveOnly, w8/m135). A plan
-	// change deploys at once, carrying every change held so far, and Batch
-	// keeps the request to one deploy row. Deferred rather than run on success
-	// only: a table that fails partway after the plan row has still rolled the
-	// service, and that rollout is still owed its row.
-	ctx, flushRollout := rollout.Batch(ctx)
-	defer flushRollout()
+	// Every row saves only, as Render's Update Service does (rollout.WithSaveOnly,
+	// w8/m135): "Changes will not be deployed automatically". A plan change
+	// too (w6/m609): "The Update service endpoint does not trigger a new
+	// deploy", and the plan changes with "the first successful deploy after
+	// you update it" (render.com/docs/compute-plans).
+	ctx = rollout.WithSaveOnly(context.WithValue(ctx, patchJudgedKey{}, true))
 	// Each setter would also commit its own App write, and the operator
 	// reconciles every one: clearing the health check and the pre-deploy
 	// command together released "health cleared, old command" first, which ran
@@ -841,12 +834,8 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	// carry it to the final view.
 	var proxied []string
 	for _, row := range presentServicePatchRows(p) {
-		rowCtx := ctx
-		if !row.deploys {
-			rowCtx = rollout.WithSaveOnly(ctx)
-		}
 		ops.Add(true, func() (AppView, error) {
-			v, err := row.apply(rowCtx, staged, id, p)
+			v, err := row.apply(ctx, staged, id, p)
 			if v.IPAllowListProxiedDomains != nil {
 				proxied = v.IPAllowListProxiedDomains
 			}

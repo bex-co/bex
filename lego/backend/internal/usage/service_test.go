@@ -1856,6 +1856,60 @@ func TestAppInstanceSecondsSelectsByKubernetesObjectName(t *testing.T) {
 	}
 }
 
+// w6/m609: instance_seconds bill at the plan the service's instances run
+// (status.servedTier), not the plan saved for its next deploy. Render's plan
+// "does not change until the first successful deploy after you update it"
+// (render.com/docs/compute-plans): a service saved from Starter to Standard and
+// not deployed bills its hour at starter, and once the deploy rolls Standard
+// the next hour bills standard.
+func TestAppInstanceSecondsBillThePlanTheServiceRuns(t *testing.T) {
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"240"]}]}}`))
+	}))
+	defer prom.Close()
+	app := store.App{ID: "srv-acc-002", TenantID: "tea-acc-001", Name: "hello-go", Tier: "standard"}
+	cl := appMeterClient(t, app)
+	var cr appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: app.TenantID + "-" + app.Name}, &cr); err != nil {
+		t.Fatal(err)
+	}
+	cr.Spec.Tier, cr.Status.ServedTier = "standard", "starter"
+	if err := cl.Update(context.Background(), &cr); err != nil {
+		t.Fatal(err)
+	}
+	st := newMemUsageStore()
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+	billed := func(window time.Time) string {
+		t.Helper()
+		if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSuccess {
+			t.Fatalf("instance_seconds window %s: want success, got %v", window, got)
+		}
+		st.mu.Lock()
+		defer st.mu.Unlock()
+		var tiers []string
+		for k := range st.rows {
+			if k.serviceID == app.ID && k.windowStart.Equal(window) {
+				tiers = append(tiers, k.tier)
+			}
+		}
+		if len(tiers) != 1 {
+			t.Fatalf("window %s: rows at tiers %v, want one", window, tiers)
+		}
+		return tiers[0]
+	}
+	window := time.Date(2026, 11, 23, 10, 0, 0, 0, time.UTC)
+	if got := billed(window); got != "starter" {
+		t.Fatalf("saved Standard, running Starter: billed %q, want starter", got)
+	}
+	cr.Status.ServedTier = "standard"
+	if err := cl.Update(context.Background(), &cr); err != nil {
+		t.Fatal(err)
+	}
+	if got := billed(window.Add(time.Hour)); got != "standard" {
+		t.Fatalf("after the deploy rolled Standard: billed %q, want standard", got)
+	}
+}
+
 // TestAppInstanceSecondsMatchesTruncatedPodNames is Defect B reached through the
 // meter: a service whose name pushes the generated pod name past Kubernetes'
 // 58-char truncation point loses the hyphen before the random suffix, and the

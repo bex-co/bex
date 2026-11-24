@@ -30,7 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -257,11 +256,12 @@ func TestCompoundPatchRebasesOnALostRace(t *testing.T) {
 	}
 }
 
-// TestCompoundPatchWithPlanDeploysEveryHeldChange: a plan change still
-// deploys at once, as on Render, and the one release it opens carries the
-// settings the same request saved — the stamp reaches the pending generation,
-// so nothing stays held behind it (w8/m135).
-func TestCompoundPatchWithPlanDeploysEveryHeldChange(t *testing.T) {
+// TestCompoundPatchWithPlanHoldsEveryChange: a plan change is saved for the
+// next deploy like every other field (w6/m609; render.com/docs/compute-plans:
+// "The Update service endpoint does not trigger a new deploy"), so a PATCH
+// that carries it with another setting publishes both as one held change and
+// opens no deploy.
+func TestCompoundPatchWithPlanHoldsEveryChange(t *testing.T) {
 	st := &recordingStore{}
 	svc, cl := newService(st, preDeployApp())
 	writes := observeAppWrites(svc, cl)
@@ -270,16 +270,15 @@ func TestCompoundPatchWithPlanDeploysEveryHeldChange(t *testing.T) {
 		t.Fatalf("ApplyServicePatch: %v", err)
 	}
 	stored := writes.specChanges(preDeployApp())
-	if len(stored) != 1 || stored[0].Spec.HealthCheckPath != health {
+	if len(stored) != 1 || stored[0].Spec.HealthCheckPath != health || stored[0].Spec.Tier != plan {
 		t.Fatalf("stored spec changes = %+v, want one carrying the plan and the health path", stored)
 	}
-	release, _ := strconv.ParseInt(stored[0].Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
-	pending, _ := strconv.ParseInt(stored[0].Annotations[appv1alpha1.AnnotationPendingSourceGeneration], 10, 64)
-	if release != 5 || pending > release {
-		t.Errorf("release = %d pending = %d, want release 5 covering every held change", release, pending)
+	assertHeldForNextDeploy(t, &stored[0], "5")
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %+v, want none: a plan PATCH deploys nothing", st.deployCalls)
 	}
-	if len(st.deployCalls) != 1 || st.deployCalls[0].Generation != 5 || st.deployCalls[0].Trigger != store.TriggerSettingsChange {
-		t.Fatalf("deploy rows = %+v, want one settings_change row filed under generation 5", st.deployCalls)
+	if len(st.tierCalls) != 1 || st.tierCalls[0].tier != plan {
+		t.Errorf("store plan writes = %v, want the saved %s", st.tierCalls, plan)
 	}
 }
 

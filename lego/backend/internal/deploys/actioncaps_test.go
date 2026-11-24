@@ -140,6 +140,24 @@ func TestActionCapabilities_SuspendedAndUnmanagedPreconditions(t *testing.T) {
 		t.Fatalf("cancel is exempt from the suspended gate, got %+v", c)
 	}
 
+	// A paid plan saved on a service the Free instance hours suspended is
+	// deployable: the deploy lifts the suspension (w6/m609). Rollback is not.
+	suspended.Spec.Tier = "starter"
+	suspended.Annotations = map[string]string{core.AnnotFreeHoursSuspended: "2026-11"}
+	suspended.Status.ServedTier = "free"
+	svc, _ = newService(ds, suspended)
+	acts, err = svc.ActionCapabilities(ctx, "asleep")
+	if err != nil {
+		t.Fatalf("ActionCapabilities(saved paid plan): %v", err)
+	}
+	if d := actionByID(t, acts, core.ActionDeploy); d.Precondition != "" {
+		t.Fatalf("deploy of a saved paid plan over the Free hours suspension = %+v, want ready", d)
+	}
+	if r := actionByID(t, acts, core.ActionRollback); r.Precondition != core.PrecondSuspended {
+		t.Fatalf("rollback with a saved paid plan = %+v, want suspended", r)
+	}
+	svc, _ = newService(ds, sampleApp("bare", ""))
+
 	bareActs, err := svc.ActionCapabilities(ctx, "bare")
 	if err != nil {
 		t.Fatalf("ActionCapabilities(bare): %v", err)

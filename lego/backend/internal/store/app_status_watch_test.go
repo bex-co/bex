@@ -289,6 +289,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"UndeployedChanges":          "read by service views, not recorded",
 		"UndeployedChangesApplying":  "read by service views, not recorded",
 		"UndeployedChangesReason":    "read by service views, not recorded",
+		"ServedTier":                 "read by the hourly meter, the Free hours sweep and the edge-cache verbs, not recorded",
 		"PendingReleaseGeneration":   "the pending release's verdict arrives through the phase and conditions",
 		"SelectedReleaseGeneration":  "the selected release's verdict arrives through the phase and conditions",
 		"LastSuccessfulRunAt":        "moves when a run in Runs succeeds, which already kicks; read by service views",

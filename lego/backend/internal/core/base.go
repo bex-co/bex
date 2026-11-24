@@ -389,6 +389,20 @@ func Suspenders(suspended bool) []string {
 // App leaves the free plan.
 const AnnotFreeHoursSuspended = "app.bex.co/free-hours-suspended"
 
+// DeployLiftsFreeHoursSuspension reports whether a deploy of a lifts the
+// suspension the monthly Free instance hours alone put on it: it still runs
+// Free, and a paid plan saved through Render's Update Service waits for that
+// deploy (w6/m609). Render lifts the suspension when the service moves "to any
+// paid compute plan" (render.com/docs/free), and an API plan change "does not
+// change until the first successful deploy after you update it"
+// (render.com/docs/compute-plans). A plan that applies at once (the dashboard's
+// Compute page) lifts it at once instead (apps.SetPlan).
+func DeployLiftsFreeHoursSuspension(a *appv1alpha1.App) bool {
+	return a.Spec.Suspended && a.Annotations[AnnotFreeHoursSuspended] != "" &&
+		a.Annotations[AnnotBandwidthSuspended] == "" && a.Annotations[AnnotCrashLoopSuspended] == "" &&
+		PaidPlan(a.Spec.Tier) && !PaidPlan(a.RunningTier())
+}
+
 // AnnotBandwidthSuspended marks an App suspended because its workspace, with
 // no payment method, used its plan's included outbound bandwidth (w6/m319,
 // docs/ADR030 §14); its value is the UTC month ("2006-01"). Such an App reports

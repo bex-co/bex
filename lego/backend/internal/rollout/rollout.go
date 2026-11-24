@@ -40,7 +40,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"sync"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -199,14 +198,18 @@ type saveOnlyKey struct{}
 // WithSaveOnly marks ctx so a rolling write through Patch or PatchLocked is
 // saved and held for the next deploy rather than deployed: Render's Update
 // Service contract, "Changes will not be deployed automatically. Instead you
-// must call the deploy API" (w8/m135). The REST PATCH /v1/services/{id} and
-// MCP update_service rows run under it; the dashboard's GraphQL Settings
-// saves do not, so they keep saving and deploying.
+// must call the deploy API" (w8/m135). Every REST PATCH /v1/services/{id} and
+// MCP update_service row runs under it, a plan change included (w6/m609); the
+// dashboard's GraphQL Settings saves do not, so they keep saving and
+// deploying.
 func WithSaveOnly(ctx context.Context) context.Context {
 	return context.WithValue(ctx, saveOnlyKey{}, true)
 }
 
-func saveOnly(ctx context.Context) bool {
+// SaveOnly reports whether ctx is WithSaveOnly's: a write a verb makes under
+// it waits for the next deploy, so the verb's own effects of a change that
+// applies at once wait too (apps.SetPlan, w6/m609).
+func SaveOnly(ctx context.Context) bool {
 	held, _ := ctx.Value(saveOnlyKey{}).(bool)
 	return held
 }
@@ -229,7 +232,7 @@ func Before(a *appv1alpha1.App) Snapshot {
 // so it uses Before.
 func beforeIn(ctx context.Context, a *appv1alpha1.App) Snapshot {
 	s := Before(a)
-	s.saveOnly = saveOnly(ctx)
+	s.saveOnly = SaveOnly(ctx)
 	return s
 }
 
@@ -389,17 +392,6 @@ func (t *Tracker) Open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	if t == nil || t.Store == nil || a == nil || !snapshot.rolls || snapshot.appID == "" {
 		return
 	}
-	// Inside a Batch, one request's several field writes are ONE rollout: hold
-	// the newest and let the flush record it, so a Settings save that changes
-	// four fields does not read back as four deploys, three of them canceled.
-	if b, ok := ctx.Value(batchKey{}).(*batch); ok {
-		b.hold(t, snapshot, a, trigger)
-		return
-	}
-	t.open(ctx, snapshot, a, trigger)
-}
-
-func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.App, trigger string) {
 	// max(after, before+1): a real API server has already incremented
 	// metadata.generation on the patch; the fake client used off-cluster and in
 	// tests has not (deploys.patchedGeneration, the same monotonic fallback).
@@ -429,50 +421,4 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	if _, err := t.Store.CreateDeploy(store.WithAdoptedRelease(ctx, a), snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false); err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
 	}
-}
-
-type batchKey struct{}
-
-// batch holds the newest rollout recorded under a Batch context. Only the last
-// one survives: the final release generation is the one the row must be filed
-// under for the reconciler to close it. Earlier writes in the same request are
-// steps toward it, not deploys of their own — which holds only because a Stage
-// keeps those steps off the API server; Batch alone collapses the rows, not the
-// writes the operator reconciles (w8/m56). Stage.Publish re-files the held row
-// under the generation its one write produced.
-type batch struct {
-	mu       sync.Mutex
-	tracker  *Tracker
-	snapshot Snapshot
-	app      *appv1alpha1.App
-	trigger  string
-}
-
-func (b *batch) hold(t *Tracker, snapshot Snapshot, a *appv1alpha1.App, trigger string) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.tracker, b.snapshot, b.app, b.trigger = t, snapshot, a, trigger
-}
-
-// Batch scopes a request whose several App patches are one rollout — a Render
-// PATCH /v1/services/{id} or the update_service MCP tool, each of which applies
-// its fields as an ordered table of individual setters. Every tracked patch
-// under the returned context collapses into a single deploy row, written by the
-// returned flush. Callers defer the flush: an op table that fails partway
-// through has still rolled the service for the fields it did apply, and that
-// rollout is still owed its row.
-func Batch(ctx context.Context) (context.Context, func()) {
-	b := &batch{}
-	batched := context.WithValue(ctx, batchKey{}, b)
-	return batched, func() { b.flush(batched) }
-}
-
-func (b *batch) flush(ctx context.Context) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.tracker == nil {
-		return
-	}
-	b.tracker.open(ctx, b.snapshot, b.app, b.trigger)
-	b.tracker, b.app = nil, nil
 }

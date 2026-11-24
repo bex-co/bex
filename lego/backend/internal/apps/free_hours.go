@@ -72,14 +72,21 @@ func (s *Service) resumeFromBilling(ctx context.Context, a *appv1alpha1.App, ann
 }
 
 // requireFreeHoursAvailable refuses a manual resume of a service the budget
-// suspended while it is still the same month on the free plan.
+// suspended while it is still the same month and the service still runs the
+// free plan. A paid plan saved for the next deploy does not count: the service
+// would resume on Free (w6/m609), so the refusal names the deploy that applies
+// the saved plan and lifts the suspension instead.
 func (s *Service) requireFreeHoursAvailable(a *appv1alpha1.App) error {
 	month := a.Annotations[core.AnnotFreeHoursSuspended]
-	if month == "" || month != FreeHoursMonth(s.Now()) || core.PaidPlan(a.Spec.Tier) {
+	if month == "" || month != FreeHoursMonth(s.Now()) || core.PaidPlan(a.RunningTier()) {
 		return nil
 	}
+	next := fmt.Sprintf("upgrade %q to a paid plan to run it now", core.DisplayedAppName(a))
+	if core.DeployLiftsFreeHoursSuspension(a) {
+		next = fmt.Sprintf("deploy %q to apply its saved %s plan and run it now", core.DisplayedAppName(a), renderPlanName(a.Spec.Tier))
+	}
 	return core.NewBadRequestError(FreeHoursErrorCode,
-		fmt.Sprintf("this workspace has used its monthly Free instance hours; Free web services resume at the start of next month, or upgrade %q to a paid plan to run it now", core.DisplayedAppName(a)),
+		"this workspace has used its monthly Free instance hours; Free web services resume at the start of next month, or "+next,
 		map[string]any{"month": month})
 }
 

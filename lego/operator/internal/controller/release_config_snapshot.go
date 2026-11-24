@@ -39,6 +39,7 @@ import (
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/bex-co/bex/lego/types/k8sname"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -818,12 +819,49 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		return 0, err
 	}
 	hold.count()
+	recordServedTier(app, runtime.Spec.Tier, restore)
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
 	if restore == nil {
 		r.recordReleaseRollout(ctx, app, dep, nativeLaunchCommand(runtime, params.image, launch), announces, params.webConcurrency)
 	}
 	return 0, nil
+}
+
+// recordServedTier records the compute plan of the template this pass just
+// wrote (Status.ServedTier, w6/m609): tier, the plan of the spec it was
+// projected from, or for a served release's template restored verbatim the
+// plan whose CPU and memory its app container carries. A restored template
+// no plan matches (the catalog changed since it was recorded) leaves the
+// record as it was. A pass that writes no template, such as one holding the
+// served release while a newer one builds, records nothing: its instances
+// keep the plan they run.
+func recordServedTier(app *appv1alpha1.App, tier string, restored *corev1.PodTemplateSpec) {
+	if restored != nil {
+		var ok bool
+		if tier, ok = templateTier(*restored); !ok {
+			return
+		}
+	}
+	app.Status.ServedTier = tier
+}
+
+// templateTier is the compute plan whose CPU and memory tmpl's app container
+// requests. The catalog's plans differ in both (TestComputePlansDifferInCPUOrMemory).
+func templateTier(tmpl corev1.PodTemplateSpec) (string, bool) {
+	for _, c := range tmpl.Spec.Containers {
+		if c.Name != appContainerName {
+			continue
+		}
+		cpu, mem := c.Resources.Requests[corev1.ResourceCPU], c.Resources.Requests[corev1.ResourceMemory]
+		for _, id := range tiers.Compute.IDs() {
+			want := resourcesForTier(id).Requests
+			if cpu.Cmp(want[corev1.ResourceCPU]) == 0 && mem.Cmp(want[corev1.ResourceMemory]) == 0 {
+				return id, true
+			}
+		}
+	}
+	return "", false
 }
 
 // applyServingCronJob is applyServingDeployment for a cron job: it converges the

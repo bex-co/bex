@@ -40,7 +40,8 @@ func (s *mcpBehaviorDeployStore) CreateDeploy(ctx context.Context, appID, trigge
 	return s.deployHookStore.CreateDeploy(ctx, appID, trigger, image, generation, commit, triggeredBy, clearCache...)
 }
 
-func (*mcpBehaviorDeployStore) SetAppImage(context.Context, string, string) error { return nil }
+func (*mcpBehaviorDeployStore) SetAppImage(context.Context, string, string) error   { return nil }
+func (*mcpBehaviorDeployStore) SetAppSuspended(context.Context, string, bool) error { return nil }
 
 // TestMCPComposedInputSchemaValidation exercises w5/m600 end-to-end through
 // Server.MCPServer(): the MCP Go SDK's JSON Schema validator must accept valid

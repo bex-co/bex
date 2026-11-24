@@ -37,7 +37,7 @@ import (
 )
 
 // fakeDeployStore records CreateDeploy arguments and returns a configured prior
-// commit from LatestDeployCommit — enough to unit-test Tracker.open's carry.
+// commit from LatestDeployCommit — enough to unit-test Tracker.Open's carry.
 type fakeDeployStore struct {
 	prior   store.CommitInfo
 	created []store.Deploy
@@ -66,7 +66,7 @@ func openConfigChange(t *testing.T, ds *fakeDeployStore) {
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 2},
 		Spec:       appv1alpha1.AppSpec{Image: "web:v1"},
 	}
-	tr.open(context.Background(), Snapshot{appID: "srv-web", generation: 1, rolls: true}, a, store.TriggerConfigChange)
+	tr.Open(context.Background(), Snapshot{appID: "srv-web", generation: 1, rolls: true}, a, store.TriggerConfigChange)
 	if len(ds.created) != 1 {
 		t.Fatalf("CreateDeploy calls = %d, want 1", len(ds.created))
 	}
@@ -98,7 +98,7 @@ func TestOpenNamesTheReleaseTheAppAdopted(t *testing.T) {
 	ds := &fakeDeployStore{}
 	a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 4}, Spec: appv1alpha1.AppSpec{Image: "web:v1"}}
 	a.Status.ReleaseGeneration = 3
-	(&Tracker{Store: ds}).open(context.Background(), Snapshot{appID: "srv-web", generation: 3, rolls: true}, a, store.TriggerConfigChange)
+	(&Tracker{Store: ds}).Open(context.Background(), Snapshot{appID: "srv-web", generation: 3, rolls: true}, a, store.TriggerConfigChange)
 	if len(ds.adopted) != 1 || ds.adopted[0] != 3 {
 		t.Fatalf("adopted releases named = %v, want [3]", ds.adopted)
 	}

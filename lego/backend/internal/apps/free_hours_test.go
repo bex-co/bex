@@ -95,3 +95,42 @@ func TestFreeHoursRefusalNamesThePublicService(t *testing.T) {
 		t.Fatal("refused resume changed the billing suspension")
 	}
 }
+
+// w6/m609: through Render's Update Service a plan "does not change until the
+// first successful deploy after you update it" (render.com/docs/compute-plans),
+// so a paid plan saved on a service the Free instance hours suspended leaves it
+// on Free and suspended. A manual resume is still refused, and the refusal
+// names the deploy that applies the saved plan instead of the upgrade already
+// made.
+func TestASavedUpgradeLeavesTheFreeHoursSuspension(t *testing.T) {
+	ctx := context.Background()
+	month := FreeHoursMonth(time.Now())
+	app := freeHoursSuspendedApp("capped", month)
+	app.Status.ServedTier = "free"
+	svc, cl := newService(nil, app)
+	plan := "starter"
+	if _, err := svc.ApplyServicePatch(ctx, "capped", ServicePatch{Plan: &plan}); err != nil {
+		t.Fatalf("saved upgrade: %v", err)
+	}
+	stored := getApp(t, cl, "capped")
+	if stored.Spec.Tier != "starter" || !stored.Spec.Suspended || stored.Annotations[core.AnnotFreeHoursSuspended] != month {
+		t.Fatalf("tier %q suspended %v annotations %v; want starter saved and the Free hours suspension kept",
+			stored.Spec.Tier, stored.Spec.Suspended, stored.Annotations)
+	}
+	if !core.DeployLiftsFreeHoursSuspension(stored) {
+		t.Fatal("the deploy that applies the saved plan must lift the suspension")
+	}
+	_, err := svc.Resume(ctx, "capped")
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `deploy "capped" to apply its saved starter plan`) {
+		t.Fatalf("manual resume: want the refusal naming the deploy, got %v", err)
+	}
+
+	// The dashboard's Compute page deploys the plan at once, so it lifts the
+	// suspension at once, as before.
+	if _, err := svc.SetPlan(ctx, "capped", "standard"); err != nil {
+		t.Fatalf("dashboard upgrade: %v", err)
+	}
+	if after := getApp(t, cl, "capped"); after.Spec.Suspended || after.Annotations[core.AnnotFreeHoursSuspended] != "" {
+		t.Fatalf("suspended %v annotations %v; want a dashboard upgrade to run at once", after.Spec.Suspended, after.Annotations)
+	}
+}

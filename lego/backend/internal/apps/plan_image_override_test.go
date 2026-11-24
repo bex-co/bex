@@ -75,47 +75,57 @@ func overriddenWhoami() (*appv1alpha1.App, *historyStore) {
 
 // w6/159: a Starter → Standard change after an imageUrl deploy rolled the
 // service back to the tag it was created with, because the settings release
-// ran spec.image. Through the dashboard (updateServicePlan) and the REST
-// PATCH /v1/services/{id} alike, the release the plan change opens now runs
-// the digest the override shipped, and its deploy row says so. The saved
-// image stays the one the service was created with, as Render's settings do.
+// ran spec.image. Through the dashboard (updateServicePlan), which deploys a
+// plan change at once, the release the plan change opens now runs the digest
+// the override shipped, and its deploy row says so. The saved image stays the
+// one the service was created with, as Render's settings do.
 func TestAPlanChangeAfterAnImageOverrideKeepsItsImage(t *testing.T) {
-	for name, change := range map[string]func(*Service) error{
-		"updateServicePlan": func(svc *Service) error {
-			_, err := svc.SetPlan(context.Background(), "web", "standard")
-			return err
-		},
-		"PATCH /v1/services/{id}": func(svc *Service) error {
-			plan := "standard"
-			_, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{Plan: &plan})
-			return err
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			a, st := overriddenWhoami()
-			svc, cl := newService(st, a)
-			if err := change(svc); err != nil {
-				t.Fatal(err)
-			}
-			got := getApp(t, cl, "web")
-			want := appv1alpha1.ReleaseConfigReference{Generation: 7, Image: overrideDigest}
-			if got.Spec.Tier != "standard" || got.Spec.ReleaseConfig == nil || *got.Spec.ReleaseConfig != want {
-				t.Fatalf("tier %q, release config %+v; want standard on %+v", got.Spec.Tier, got.Spec.ReleaseConfig, want)
-			}
-			if got.Spec.Image != savedWhoami || got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "7" {
-				t.Fatalf("saved image %q, release %q; want %s kept and release 7", got.Spec.Image, got.Annotations[appv1alpha1.AnnotationReleaseGeneration], savedWhoami)
-			}
-			if len(st.deployCalls) != 1 || st.deployCalls[0].Trigger != store.TriggerSettingsChange || st.deployCalls[0].Image != overrideDigest {
-				t.Fatalf("deploy rows = %+v, want one settings_change row running %s", st.deployCalls, overrideDigest)
-			}
-		})
+	a, st := overriddenWhoami()
+	svc, cl := newService(st, a)
+	if _, err := svc.SetPlan(context.Background(), "web", "standard"); err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "web")
+	want := appv1alpha1.ReleaseConfigReference{Generation: 7, Image: overrideDigest}
+	if got.Spec.Tier != "standard" || got.Spec.ReleaseConfig == nil || *got.Spec.ReleaseConfig != want {
+		t.Fatalf("tier %q, release config %+v; want standard on %+v", got.Spec.Tier, got.Spec.ReleaseConfig, want)
+	}
+	if got.Spec.Image != savedWhoami || got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "7" {
+		t.Fatalf("saved image %q, release %q; want %s kept and release 7", got.Spec.Image, got.Annotations[appv1alpha1.AnnotationReleaseGeneration], savedWhoami)
+	}
+	if len(st.deployCalls) != 1 || st.deployCalls[0].Trigger != store.TriggerSettingsChange || st.deployCalls[0].Image != overrideDigest {
+		t.Fatalf("deploy rows = %+v, want one settings_change row running %s", st.deployCalls, overrideDigest)
+	}
+}
+
+// The same change through Render's Update Service is saved for the next
+// deploy (w6/m609): the override keeps serving, its selection is left alone,
+// and no deploy is opened.
+func TestASavedPlanAfterAnImageOverrideLeavesItServing(t *testing.T) {
+	a, st := overriddenWhoami()
+	svc, cl := newService(st, a)
+	plan := "standard"
+	if _, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{Plan: &plan}); err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "web")
+	want := appv1alpha1.ReleaseConfigReference{Generation: 6, Image: overrideWhoami}
+	if got.Spec.Tier != "standard" || got.Spec.ReleaseConfig == nil || *got.Spec.ReleaseConfig != want {
+		t.Fatalf("tier %q, release config %+v; want standard saved beside the override's %+v", got.Spec.Tier, got.Spec.ReleaseConfig, want)
+	}
+	if got.Spec.Image != savedWhoami || got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "6" ||
+		got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "7" {
+		t.Fatalf("saved image %q, annotations %v; want %s kept, release 6 and the plan pending for generation 7",
+			got.Spec.Image, got.Annotations, savedWhoami)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %+v, want none", st.deployCalls)
 	}
 }
 
 // A deploy that lands between a compound PATCH's read and its publish keeps
-// its own image selection: the plan change's selection was read from the
-// release that deploy replaced, so the plan change runs the saved image
-// behind it rather than overwriting the deploy's image.
+// its own image selection: the saved plan neither overwrites the deploy's
+// image nor its release.
 func TestAPlanChangeRacedByADeployKeepsTheDeploysImage(t *testing.T) {
 	a, st := overriddenWhoami()
 	svc, cl := newService(st, a)
@@ -145,7 +155,12 @@ func TestAPlanChangeRacedByADeployKeepsTheDeploysImage(t *testing.T) {
 	if got.Spec.Tier != "standard" || got.Spec.ReleaseConfig == nil || *got.Spec.ReleaseConfig != racer {
 		t.Fatalf("tier %q, release config %+v; want standard with the racing deploy's %+v", got.Spec.Tier, got.Spec.ReleaseConfig, racer)
 	}
-	if len(st.deployCalls) != 1 || st.deployCalls[0].Image != savedWhoami {
-		t.Fatalf("deploy rows = %+v, want one running the saved %s", st.deployCalls, savedWhoami)
+	// The plan is saved behind the racing deploy (w6/m609), which keeps its
+	// own release stamp; the PATCH opens no deploy of its own.
+	if got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "7" || got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "8" {
+		t.Fatalf("annotations %v, want the racing release 7 kept and the plan pending for generation 8", got.Annotations)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %+v, want none", st.deployCalls)
 	}
 }

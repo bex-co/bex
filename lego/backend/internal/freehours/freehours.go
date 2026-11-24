@@ -150,15 +150,19 @@ func (w *Sweeper) reconcileApp(ctx context.Context, a *appv1alpha1.App, month st
 	if !a.DeletionTimestamp.IsZero() {
 		return nil
 	}
+	// A service is Free while its instances run Free (App.RunningTier),
+	// whatever plan is saved for its next deploy: Render's plan "does not
+	// change until the first successful deploy after you update it" (w6/m609).
+	running := a.RunningTier()
 	suspendedIn := a.Annotations[core.AnnotFreeHoursSuspended]
 	if suspendedIn != "" {
-		// The month ended, or the service is no longer on the free plan.
-		if suspendedIn != month || core.PaidPlan(a.Spec.Tier) {
+		// The month ended, or the service no longer runs the free plan.
+		if suspendedIn != month || core.PaidPlan(running) {
 			return w.Apps.Resume(ctx, a)
 		}
 		return nil
 	}
-	if core.PaidPlan(a.Spec.Tier) || (a.Spec.Type != "" && a.Spec.Type != appv1alpha1.TypeWebService) {
+	if core.PaidPlan(running) || (a.Spec.Type != "" && a.Spec.Type != appv1alpha1.TypeWebService) {
 		return nil
 	}
 	if !exhausted[a.Labels[core.LabelTenant]] {

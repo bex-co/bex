@@ -258,6 +258,11 @@ func (s *Service) deployPreconditions(ctx context.Context, a *appv1alpha1.App) (
 		gatePre = s.BillingPreconditionFor(ctx, a.Labels[core.LabelTenant])
 	}
 	deployPre, rollbackPre = gatePre, gatePre
+	// A deploy that applies a paid plan saved on a service the Free instance
+	// hours suspended lifts that suspension (validateTrigger, w6/m609).
+	if core.DeployLiftsFreeHoursSuspension(a) {
+		deployPre = s.BillingPreconditionFor(ctx, a.Labels[core.LabelTenant])
+	}
 	rows, err := s.Store.ListDeploys(ctx, appStoreID(a), store.DeployFilter{Limit: eligibilityScanLimit})
 	if err != nil {
 		cancelPre = core.PrecondUnavailable

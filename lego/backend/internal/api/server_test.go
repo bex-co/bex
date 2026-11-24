@@ -169,6 +169,10 @@ func (deployHookStore) SetAppImage(context.Context, string, string) error {
 	return errors.New("unexpected SetAppImage")
 }
 
+func (deployHookStore) SetAppSuspended(context.Context, string, bool) error {
+	return errors.New("unexpected SetAppSuspended")
+}
+
 func (deployHookStore) InsertServiceEventFact(context.Context, store.ServiceEventFact) (bool, error) {
 	return false, errors.New("unexpected InsertServiceEventFact")
 }

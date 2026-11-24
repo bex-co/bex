@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -249,6 +250,47 @@ func TestPlanChangeAcrossFreeRecordsTheEdgeCacheToggle(t *testing.T) {
 				t.Fatalf("toggle = caching %s by %q (%s), want caching %s by member-1", got, ev.Caller, ev.Outcome, tc.want)
 			}
 		})
+	}
+}
+
+// w6/m609: a plan saved through Render's Update Service waits for a deploy,
+// and the edge cache runs on the plan the instances run (App.RunsEdgeCache).
+// The save records its plan_changed, and no edge-cache toggle, which would
+// name a cache change that has not happened. The cache keeps running, and
+// purging it keeps working, on the paid plan the service still runs.
+func TestASavedPlanAcrossFreeMovesNoEdgeCacheYet(t *testing.T) {
+	app := cacheApp("web", "standard", appv1alpha1.TypeWebService)
+	app.Spec.Replicas, app.Spec.CacheProfile = 1, appv1alpha1.CacheProfileStatic
+	app.Status.ServedTier = "standard"
+	svc, cl := newService(nil, app)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "member-1", Method: "session"})
+	plan := "free"
+	if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: &plan}); err != nil {
+		t.Fatalf("saved downgrade: %v", err)
+	}
+	if n := sink.countVerb(core.AuditVerbSetPlan); n != 1 {
+		t.Fatalf("saved plan recorded %d plan_changed rows, want 1", n)
+	}
+	if n := sink.countVerb(core.AuditVerbSetPlanEdgeCache); n != 0 {
+		t.Fatalf("saved plan recorded %d edge-cache toggles, want none before the deploy", n)
+	}
+	saved := getApp(t, cl, "web")
+	if saved.Spec.Tier != "free" || !saved.RunsEdgeCache() {
+		t.Fatalf("tier %q, cache runs %v; want Free saved and the cache still on Standard", saved.Spec.Tier, saved.RunsEdgeCache())
+	}
+	if _, err := svc.PurgeCache(ctx, "web"); err != nil {
+		t.Fatalf("purge of the cache still running: %v", err)
+	}
+
+	// A Free service with Standard saved runs no cache to purge yet.
+	free := cacheApp("free-web", "standard", appv1alpha1.TypeWebService)
+	free.Spec.CacheProfile = appv1alpha1.CacheProfileStatic
+	free.Status.ServedTier = "free"
+	svc, _ = newService(nil, free)
+	if _, err := svc.PurgeCache(ctx, "free-web"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("purge on a service still running Free: want 400, got %v", err)
 	}
 }
 

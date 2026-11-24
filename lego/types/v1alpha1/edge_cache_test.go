@@ -42,3 +42,30 @@ func TestServesEdgeCache(t *testing.T) {
 		}
 	}
 }
+
+// The edge cache follows the plan the instances run, so a plan saved for the
+// next deploy starts or stops it with that deploy (w6/m609).
+func TestRunsEdgeCacheFollowsTheRunningPlan(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		saved, wants string
+		want         bool
+	}{
+		{"no template rolled yet reads the saved plan", "standard", "", true},
+		{"a saved paid plan on a service still running Free", "standard", "free", false},
+		{"a saved Free plan on a service still running Standard", "free", "standard", true},
+		{"the running plan once the deploy rolls it", "free", "free", false},
+	} {
+		app := &App{Spec: AppSpec{Tier: tc.saved, CacheProfile: CacheProfileStatic}, Status: AppStatus{ServedTier: tc.wants}}
+		if got := app.RunsEdgeCache(); got != tc.want {
+			t.Errorf("%s: RunsEdgeCache() = %v, want %v", tc.name, got, tc.want)
+		}
+		running := tc.wants
+		if running == "" {
+			running = tc.saved
+		}
+		if got := app.RunningTier(); got != running {
+			t.Errorf("%s: RunningTier() = %q, want %q", tc.name, got, running)
+		}
+	}
+}

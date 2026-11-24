@@ -153,6 +153,33 @@ func TestSweepResumesAtMonthEndAndOnUpgrade(t *testing.T) {
 	}
 }
 
+// w6/m609: a service is Free while its instances run Free, whatever plan is
+// saved for its next deploy (render.com/docs/compute-plans: the plan "does not
+// change until the first successful deploy after you update it"). A paid plan
+// saved and not deployed neither exempts a running Free service from the
+// spent hours nor resumes one they suspended; a deployed one does both.
+func TestSweepFollowsThePlanTheServiceRuns(t *testing.T) {
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	st := &fakeStore{claimed: map[string]bool{}, seconds: map[string]int64{"tea-b": 11 * 3600}}
+	running := func(a *appv1alpha1.App, tier string) *appv1alpha1.App { a.Status.ServedTier = tier; return a }
+	sw, cl, _ := newSweeper(t, now, st,
+		running(app("saved-paid", "tea-b", "starter", appv1alpha1.TypeWebService, false, ""), "free"),
+		running(app("saved-paid-suspended", "tea-b", "starter", appv1alpha1.TypeWebService, true, "2026-11"), "free"),
+		running(app("saved-free", "tea-b", "free", appv1alpha1.TypeWebService, false, ""), "starter"),
+		running(app("deployed-paid", "tea-b", "starter", appv1alpha1.TypeWebService, true, "2026-11"), "starter"),
+	)
+	if err := sw.SweepOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for name, wantSuspended := range map[string]bool{
+		"saved-paid": true, "saved-paid-suspended": true, "saved-free": false, "deployed-paid": false,
+	} {
+		if got := get(t, cl, "tea-b", name); got.Spec.Suspended != wantSuspended {
+			t.Errorf("%s suspended = %v, want %v", name, got.Spec.Suspended, wantSuspended)
+		}
+	}
+}
+
 func TestSweepFractionalBudgetThresholds(t *testing.T) {
 	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
 	st := &fakeStore{claimed: map[string]bool{}, seconds: map[string]int64{"tea-a": 143}}

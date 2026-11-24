@@ -38,9 +38,7 @@ import (
 // and each setter used to commit its own App patch. The operator reconciles
 // every stored generation, so a patch clearing the health check and the
 // pre-deploy command together first published "health cleared, old pre-deploy
-// command" — a release that ran the command the same request removed. Batch
-// collapsed the deploy-history ROWS of such a request; it never held the App
-// writes the rows describe.
+// command" — a release that ran the command the same request removed.
 //
 // Stage is a client.Client: reads of the staged App answer the staged copy, and
 // writes to it are applied to that copy instead of the API server. Every other
@@ -106,8 +104,7 @@ func (s *Stage) List(ctx context.Context, list client.ObjectList, opts ...client
 // so does a write that leaves the spec alone: it moves nothing the operator
 // releases, and a setter may need it durable before its store write — the
 // source row's pending-source marker must reach the App before the projector
-// can see the new source row (SetSourceAndRegistryCredential). The stage takes
-// s.mu, then the Batch's lock (refile, drop); never the reverse.
+// can see the new source row (SetSourceAndRegistryCredential).
 func (s *Stage) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	a, ok := s.holds(obj)
 	if !ok || isDryRun(opts) {
@@ -202,8 +199,7 @@ func isDryRunUpdate(opts []client.UpdateOption) bool {
 	return len(uo.DryRun) > 0
 }
 
-// Publish writes the staged App in one patch under an optimistic lock, and
-// re-files a held Batch rollout under the generation that write produced. It
+// Publish writes the staged App in one patch under an optimistic lock. It
 // answers nil when nothing was staged.
 //
 // A lost race re-reads the live App and re-applies this request's own change on
@@ -218,22 +214,17 @@ func (s *Stage) Publish(ctx context.Context) (*appv1alpha1.App, error) {
 		apiequality.Semantic.DeepEqual(s.original.Spec, s.staged.Spec) {
 		return nil, nil
 	}
-	var live *appv1alpha1.App
 	next := s.original.DeepCopy()
 	if err := PatchAppLocked(ctx, s.Client, next, func(a *appv1alpha1.App) error {
-		live = a.DeepCopy()
-		rebased, err := s.rebase(live)
+		rebased, err := s.rebase(a.DeepCopy())
 		if err != nil {
 			return err
 		}
 		*a = *rebased
 		return nil
 	}); err != nil {
-		// Nothing was published, so no release is rolling to record.
-		drop(ctx)
 		return nil, err
 	}
-	refile(ctx, live, next)
 	s.original, s.staged = next.DeepCopy(), next.DeepCopy()
 	return next, nil
 }
@@ -294,37 +285,4 @@ func (s *Stage) rebase(live *appv1alpha1.App) (*appv1alpha1.App, error) {
 		before.Stamp(next)
 	}
 	return next, nil
-}
-
-// drop discards a Batch's held rollout.
-func drop(ctx context.Context) {
-	if b, ok := ctx.Value(batchKey{}).(*batch); ok {
-		b.mu.Lock()
-		b.tracker, b.app = nil, nil
-		b.mu.Unlock()
-	}
-}
-
-// refile points a Batch's held rollout at the write that actually published
-// it: from live (the App the publish patched) to published. The staged setters
-// held snapshots of in-memory steps; the operator reconciles only this one.
-// A held rollout the published change no longer rolls (a racing writer already
-// made it) is dropped. Nothing is held for an untracked change — a saved source
-// update stays deferred.
-func refile(ctx context.Context, live, published *appv1alpha1.App) {
-	b, ok := ctx.Value(batchKey{}).(*batch)
-	if !ok {
-		return
-	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.tracker == nil {
-		return
-	}
-	before := Before(live)
-	if !before.Stamp(published.DeepCopy()) {
-		b.tracker, b.app = nil, nil
-		return
-	}
-	b.snapshot, b.app = before, published
 }

@@ -96,6 +96,7 @@ type fakeStore struct {
 	byApp    map[string][]store.Deploy
 	nextID   int
 	setImage map[string]string        // appID -> last SetAppImage call, for assertions
+	resumed  []string                 // appIDs SetAppSuspended(false) was called for
 	facts    []store.ServiceEventFact // InsertServiceEventFact calls, for assertions
 	seenKeys map[string]bool          // source keys already inserted, for idempotency
 	mintIDs  bool                     // mint real dep- ids instead of dep-N, for id-shape callers
@@ -508,6 +509,15 @@ func (f *fakeStore) SetAppImage(_ context.Context, id string, image string) erro
 	return nil
 }
 
+func (f *fakeStore) SetAppSuspended(_ context.Context, id string, suspended bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !suspended {
+		f.resumed = append(f.resumed, id)
+	}
+	return nil
+}
+
 // InsertServiceEventFact mirrors PGStore's idempotent-by-source-key insert
 // (ON CONFLICT (source_key) DO NOTHING) so a test asserting Cancel's fact
 // emission also exercises the same no-duplicate guarantee the real store
@@ -681,6 +691,42 @@ func TestTriggerRefusesSuspendedService(t *testing.T) {
 
 	if _, err := svc.Trigger(context.Background(), "web", TriggerParams{}); !errors.Is(err, core.ErrConflict) {
 		t.Errorf("suspended trigger: want core.ErrConflict, got %v", err)
+	}
+}
+
+// w6/m609: a paid plan saved through Render's Update Service on a service the
+// Free instance hours suspended applies with "the first successful deploy after
+// you update it" (render.com/docs/compute-plans), and Render lifts that
+// suspension once the service moves "to any paid compute plan"
+// (render.com/docs/free). So the deploy runs: it lifts the suspension in the
+// store and on the App in the write that stamps its release. Rollback still
+// refuses the suspended service, and so does a deploy with nothing paid saved.
+func TestTriggerAppliesASavedPaidPlanOverTheFreeHoursSuspension(t *testing.T) {
+	capped := func(name, id, saved string) *appv1alpha1.App {
+		a := sampleApp(name, id)
+		a.Spec.Tier, a.Spec.Suspended = saved, true
+		a.Annotations = map[string]string{core.AnnotFreeHoursSuspended: "2026-11"}
+		a.Status.ServedTier = "free"
+		return a
+	}
+	ds := newFakeStore()
+	svc, cl := newService(ds, capped("upgraded", "srv-up", "starter"), capped("still", "srv-free", "free"))
+	ctx := context.Background()
+	if _, err := svc.Trigger(ctx, "upgraded", TriggerParams{}); err != nil {
+		t.Fatalf("deploy of the saved paid plan: %v", err)
+	}
+	got := getApp(t, cl, "upgraded")
+	if got.Spec.Suspended || got.Annotations[core.AnnotFreeHoursSuspended] != "" || got.Annotations[appv1alpha1.AnnotationReleaseGeneration] == "" {
+		t.Fatalf("suspended %v annotations %v; want the suspension lifted with the release", got.Spec.Suspended, got.Annotations)
+	}
+	if len(ds.resumed) != 1 || ds.resumed[0] != "srv-up" {
+		t.Fatalf("store resumes = %v, want srv-up", ds.resumed)
+	}
+	if _, err := svc.Trigger(ctx, "still", TriggerParams{}); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("deploy of a service still saved on Free: want core.ErrConflict, got %v", err)
+	}
+	if !getApp(t, cl, "still").Spec.Suspended || len(ds.resumed) != 1 {
+		t.Fatal("a refused deploy must leave the suspension alone")
 	}
 }
 

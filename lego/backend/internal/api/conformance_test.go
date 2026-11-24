@@ -103,6 +103,10 @@ func (s *conformDeployStore) CloseDeploy(_ context.Context, _, _, _ string) (boo
 func (s *conformDeployStore) SetAppImage(_ context.Context, _, _ string) error {
 	return errors.New("conformDeployStore: SetAppImage not expected")
 }
+
+func (s *conformDeployStore) SetAppSuspended(context.Context, string, bool) error {
+	return errors.New("conformDeployStore: SetAppSuspended not expected")
+}
 func (s *conformDeployStore) InsertServiceEventFact(_ context.Context, _ store.ServiceEventFact) (bool, error) {
 	return false, errors.New("conformDeployStore: InsertServiceEventFact not expected")
 }

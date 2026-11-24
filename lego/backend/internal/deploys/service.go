@@ -72,6 +72,9 @@ type DeployStore interface {
 	// SetAppImage clears a legacy row image when deploying from a repository.
 	// Image overrides and rollbacks select a release without changing this row.
 	SetAppImage(ctx context.Context, id string, image string) error
+	// SetAppSuspended lifts a Free instance hours suspension with the deploy
+	// that applies a saved paid plan (core.DeployLiftsFreeHoursSuspension).
+	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	// InsertServiceEventFact appends a closed lifecycle fact exactly once
 	// (store.PGStore's idempotent-by-source-key insert) — Cancel's route to the
 	// build_started/build_ended pair the reconciler itself can never emit for a
@@ -781,7 +784,7 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	if s.Store == nil {
 		return core.ErrDeploysUnavailable
 	}
-	if a.Spec.Suspended {
+	if a.Spec.Suspended && !core.DeployLiftsFreeHoursSuspension(a) {
 		return fmt.Errorf("%w: service %q is suspended", core.ErrConflict, service)
 	}
 	if appStoreID(a) == "" {
@@ -1028,10 +1031,27 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		return nil
 	}
+	// A service the Free instance hours suspended, with a paid plan saved for
+	// this deploy, runs again on that plan with it (w6/m609). Decided once: the
+	// store write below may reach the App before the release write re-reads it.
+	lift := core.DeployLiftsFreeHoursSuspension(a)
+	if lift {
+		writeRow := rowWrite
+		rowWrite = func() error {
+			if err := s.Store.SetAppSuspended(ctx, appID, false); err != nil {
+				return err
+			}
+			return writeRow()
+		}
+	}
 	// The trigger auto-deploy was on with, read under the lock from the App
 	// the release write changes; "" when this write leaves auto-deploy alone.
 	disabledTrigger := ""
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
+		if lift {
+			a.Spec.Suspended = false
+			delete(a.Annotations, core.AnnotFreeHoursSuspended)
+		}
 		core.StampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
 		disabledTrigger = ""

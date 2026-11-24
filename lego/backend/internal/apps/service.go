@@ -4907,7 +4907,13 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 // caller maps core.ErrInvalid to 400/a GraphQL error, listing the valid
 // plans. A plan change resizes the pod (new requests==limits), which is a
 // Deployment rollout — the same restart-shaped cost as Render's own plan
-// changes.
+// changes. The dashboard's Compute page (GraphQL updateServicePlan) deploys
+// it at once, as Render's dashboard does ("Render automatically triggers a
+// deploy to apply the new compute plan"). Under rollout.WithSaveOnly, a REST
+// or MCP Update Service row, it is saved for the next deploy instead (w6/m609;
+// render.com/docs/compute-plans: "The Update service endpoint does not
+// trigger a new deploy"), and the service keeps running, and being billed
+// on, the plan it runs until a deploy applies it.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
 	_, a, err := s.authorizeToChange(ctx, name, false, core.RelCanOperate)
 	if err != nil {
@@ -4918,16 +4924,28 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 		return AppView{}, err
 	}
 	fromTier := a.Spec.Tier
+	saved := rollout.SaveOnly(ctx)
 	// Upgrading a service the monthly Free instance hours suspended lets it run
-	// at once (w8/m139).
-	if core.PaidPlan(tier) {
+	// at once (w8/m139). A saved upgrade leaves it on the Free plan the hours
+	// ran out on, as Render's plan "does not change until the first successful
+	// deploy after you update it", so the deploy that applies the paid plan
+	// lifts the suspension (core.DeployLiftsFreeHoursSuspension).
+	if core.PaidPlan(tier) && !saved {
 		if err := s.resumeFromBilling(ctx, a, core.AnnotFreeHoursSuspended); err != nil {
 			return AppView{}, err
 		}
 	}
-	next := a.Spec
-	next.Tier = tier
-	edgeCacheTo := planEdgeCacheToggle(&a.Spec, &next)
+	// The edge cache runs on the plan the instances run (App.RunsEdgeCache),
+	// so a plan that applies at once starts or stops it from there. A saved
+	// plan moves it only with the deploy that applies it, which records no
+	// edge_cache_enabled or _disabled: the toggle is bex's own (w9/088), and
+	// recording it at the save would name a change that has not happened.
+	var edgeCacheTo *bool
+	if !saved {
+		running, next := a.Spec, a.Spec
+		running.Tier, next.Tier = a.RunningTier(), tier
+		edgeCacheTo = planEdgeCacheToggle(&running, &next)
+	}
 	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error {
 			_, err := s.Store.SetAppTier(ctx, id, tier)
@@ -4940,7 +4958,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	// Same no-op guard as Scale: a plan change to the current plan, by any of
 	// its spellings, emits no plan_changed audit row or webhook (the
 	// allowed-write audit is deferred here). The row names Render's plan
-	// spelling of each tier, as a Blueprint's plan change does (w9/091).
+	// spelling of each tier, as a Blueprint's plan change does (w9/091). A
+	// saved plan records it at the save, from the plan saved before, as every
+	// save-only write records its change when the member makes it (w8/m135).
 	if tier != fromTier {
 		s.RecordPlanChanged(ctx, a, renderPlanName(fromTier), renderPlanName(tier), edgeCacheTo)
 	}
