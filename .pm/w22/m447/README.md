@@ -1,6 +1,6 @@
 # w22 · m447 — The default sandbox image runs Render's three official agent templates
 
-**Worker:** worker22 **Goal:** a sandbox created with no image runs the executor install scripts of Render's three first-party agent templates (Claude Managed Agents, Cursor Cloud Agents, OpenAI Agents API) unchanged, under each template's own network allow-list, and the installed executor starts. ADR104's open question 5 (what the default image must contain) is answered from that evidence. **Status:** todo (t001, t002 done)
+**Worker:** worker22 **Goal:** a sandbox created with no image runs the executor install scripts of Render's three first-party agent templates (Claude Managed Agents, Cursor Cloud Agents, OpenAI Agents API) unchanged, under each template's own network allow-list, and the installed executor starts. ADR104's open question 5 (what the default image must contain) is answered from that evidence. **Status:** todo (t001–t005, t007–t009 done)
 
 ## Tasks (in order)
 
@@ -8,13 +8,13 @@
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | Read the three templates' install scripts and launch policies, list everything they assume of the image, and run each in today's image — **DONE** | 50m | —                |
 | t002 | Design record in ADR104 D2: the new base image, what it carries and why, and open question 5 answered with the limits of the evidence — **DONE** | 30m | t001             |
-| t003 | Move the `base` template to the new image, digest-pinned, with its entrypoint and `/bin/bash` kept working                                    | 60m | t002             |
-| t004 | Re-prove what depended on the old image: name resolution under an allow-list, the file gateway's scripts, and the isolation matrix's probes   | 75m | t003             |
-| t005 | Sandboxes created before the change: they keep their image across suspend and resume, stated in the docs and pinned by a test                 | 30m | t003             |
+| t003 | Move the `base` template to the new image, digest-pinned, with its entrypoint and `/bin/bash` kept working — **DONE** | 60m | t002             |
+| t004 | Re-prove what depended on the old image: name resolution under an allow-list, the file gateway's scripts, and the isolation matrix's probes — **DONE** | 75m | t003             |
+| t005 | Sandboxes created before the change: they keep their image across suspend and resume, stated in the docs and pinned by a test — **DONE** | 30m | t003             |
 | t006 | Production check: the three install scripts exit 0 under their allow-lists in a default sandbox and each executor prints its version          | 60m | t004             |
-| t007 | Render parity                                                                                                                                 | 20m | t004, t005       |
-| t008 | Simplify                                                                                                                                      | 20m | t007             |
-| t009 | Test coverage                                                                                                                                 | 30m | t007             |
+| t007 | Render parity — **DONE** | 20m | t004, t005       |
+| t008 | Simplify — **DONE** | 20m | t007             |
+| t009 | Test coverage — **DONE** | 30m | t007             |
 | t010 | Closeout                                                                                                                                      | 10m | t006, t008, t009 |
 
 ## Definition of done
@@ -54,6 +54,24 @@ Launch policies (network policy `allow-list`, every rule `https`; no plan, so `1
 **Adding `curl` to the Alpine image is not enough.** Run in a container of the pinned `bash:5.3` digest with bex's entrypoint, `HOME` and exec wrapper (linux/arm64, 2026-11-23), working around each failure by hand: with `curl` added, Cursor and Claude stop at `sha256sum --check`; with GNU coreutils added as well, Claude installs and `ant --version` prints `ant version 2.1.0`, and Cursor's agent cannot start on musl; with Alpine's `nodejs` and `npm`, OpenAI installs and prints `codex-cli 0.163.0`. So the image needs glibc, GNU coreutils and findutils, and Node with npm.
 
 The same three runs on the new image (`deploy/sandbox-base/`, built locally from the same base digest) exit 0 on linux/arm64 and on linux/amd64 (emulated): `Cursor Agent CLI: 2026.10.19-6bbf2c4`, `ant version 2.1.0`, `installed codex-cli 0.163.0`. How to reproduce: clone the three repositories outside this one, start the image with `/bin/sh -c` and the base entrypoint (`lego/backend/cmd/api/main.go`), copy the script to `/tmp/install-executor.sh` and run the template's command above through the exec wrapper (`lego/backend/internal/sandbox/exec.go`). This machine's container network could not reach Cloudflare or Fastly hosts, so the containers reached them through a forward proxy on the host; the scripts ran unchanged.
+
+## Local re-proof (t003, t004)
+
+The image is published by `sandbox-base-image.yml` [run 45313132167](https://github.com/bex-co/bex/actions/runs/45313132167) (`check.sh` passed on linux/arm64 and linux/amd64, each on its native runner, then signed with an SBOM) and pinned as `ghcr.io/bex-co/bex-operator:sandbox-base-ddcfca92d9b807614df7f5cf98bb00695b13f71d@sha256:014b703a2024f9bc99b8f0fc81cb68393e112444bc7c251dc7abc9433bb021cc`. Every check below ran on that digest, pulled with `crane` and loaded into Docker, on 2026-11-23.
+
+The local CAPD cluster was unreachable that day (its API port answered plain HTTP to kubectl, as w22/m603 also found), and this machine's container network could not reach Cloudflare or Fastly hosts, so no sandbox ran on a local cluster. Each check ran the image the way the base template does instead: `/bin/sh -c` with the base entrypoint, `HOME=/home/render`, and commands through the exec wrapper. The sandbox-level checks under gVisor and Cilium are t006's.
+
+| Check | How | Result |
+| --- | --- | --- |
+| The three install scripts | the templates' own commands (t001), linux/arm64 and linux/amd64 (emulated) | all six exit 0: `Cursor Agent CLI: 2026.10.19-6bbf2c4`, `ant version 2.1.0`, `installed codex-cli 0.163.0` |
+| Size | compressed layers per platform | 115.9 MB (linux/amd64), 115.9 MB (linux/arm64); `bash:5.3` was 6.8 MB |
+| Pull time | `crane pull --platform linux/amd64` from this machine, cold | 5.3 s for the new image, 1.6 s for `bash:5.3`. Production nodes pull it once per digest; its first create on a node waits for that pull |
+| t003 check command | `bash -c 'curl --version \| head -1 && wget --version \| head -1 && echo $HOME'` through the wrapper | exit 0: curl 7.88.1, GNU Wget 1.21.3, `/home/render` |
+| Name resolution under an allow-list | a resolver that answers listed names and `REFUSED` for everything else, search candidates included (Cilium's DNS filter's shape), rules `api.github.com`, `*.example.com`, `registry.npmjs.org`, the Pod's three search domains | new image, at `ndots:1` and at `ndots:5`: `getent hosts` resolves `api.github.com`, `registry.npmjs.org` and `a.example.com`, and fails `www.github.com`, `example.com` and `x.y.example.com`; `curl https://www.github.com` exits 6 (could not resolve) and `curl https://api.github.com` reaches the answered address; Node's `dns.lookup` resolves `registry.npmjs.org` and fails `nodejs.org`. Control: `bash:5.3` resolves the listed names at `ndots:1` and none at `ndots:5`, ADR042's musl finding. No Pod DNS change needed |
+| File gateway scripts | `internal/sshgateway/sandboxfiles` and `internal/sandbox`'s round-trip tests built for linux/arm64 and run inside the image (dash, GNU tar and coreutils) | all 45 `sandboxfiles` tests pass, the large-directory index tests included; `TestFileGatewayHTTPRoundtrip`, `TestAGzippedFileUploadIsStoredDecoded`, `TestFileGatewayPropagatesLateExecutorFailure` pass, and `TestPinnedCLISandboxFileRoundtrip` passes with the launcher built for linux (binary, empty, directory, links) |
+| Exec wrapper and command registry | `TestExec*`, `TestARegisteredCommand…`, `TestTheExitLogRotates…` and the other registry tests inside the image | pass: `bash -c` in `$HOME`, the `/bin/sh` fallback, the registry's `/proc` reads, `stat -c` and `awk` |
+| Isolation matrix's in-sandbox commands | `printenv`, a relative read, the bash-syntax line, `/bin/busybox cat > /tmp/m35-netprobe`, `/bin/busybox httpd -f -p 18080`, `wget -S -T 15 -O /dev/null … \| grep -q HTTP/`, `/bin/sh -c true` | all work; the matrix runs no python inside a sandbox |
+| `check.sh` without `curl` (t009 mutation) | `rm /usr/bin/curl`, then `check.sh` | fails: `curl is missing`, `curl speaks https` |
 
 ## Source + Goal linkage
 

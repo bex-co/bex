@@ -79,6 +79,11 @@ type fakeOpenSandbox struct {
 	// resumeStatus, when set, is what a resume answers instead of accepting it (a
 	// failing runtime).
 	resumeStatus int
+	// resumeImages is each image a resume request named, in order. OpenSandbox
+	// resumes a BatchSandbox from its own committed root filesystem, so bex
+	// sends none; a resume that named one would boot the sandbox from it, and
+	// the fake does (w22/m447).
+	resumeImages []string
 	// terminateStatus, when set, is what a terminate answers instead of
 	// removing the box (an OpenSandbox outage, w2/m359).
 	terminateStatus int
@@ -305,6 +310,18 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"id":%q,"sandboxId":%q,"name":%q,"status":{"state":"Creating"}}`, id, parts[0], body.Name)
 	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "resume":
 		f.calls = append(f.calls, "resume "+parts[0])
+		var named struct {
+			Image struct {
+				URI string `json:"uri"`
+			} `json:"image"`
+		}
+		if r.Body != nil {
+			_ = json.NewDecoder(r.Body).Decode(&named)
+		}
+		if named.Image.URI != "" {
+			f.resumeImages = append(f.resumeImages, named.Image.URI)
+			b.image = named.Image.URI
+		}
 		if f.resumeStatus != 0 {
 			w.WriteHeader(f.resumeStatus)
 			return
@@ -496,7 +513,8 @@ type idleFixture struct {
 	svc      *Service
 	sweeper  *IdleSuspender
 	now      time.Time
-	gwStates []string // the sandbox's state each time the exec gateway was dialed
+	gwStates []string   // the sandbox's state each time the exec gateway was dialed
+	gwArgv   [][]string // the argv of each command the exec gateway was asked to run
 	mu       sync.Mutex
 	// The command registry probe's answer (commands_test.go): its stdout and
 	// exit code, and the ids each probe asked about.
@@ -537,6 +555,7 @@ func newIdleFixture(t *testing.T) *idleFixture {
 			return
 		}
 		f.gwStates = append(f.gwStates, f.os.state(claims.SandboxID))
+		f.gwArgv = append(f.gwArgv, slices.Clone(claims.Command))
 		f.mu.Unlock()
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"marker\\n\"}\n\nevent: exit\ndata: {\"exit_code\":0}\n\n"))

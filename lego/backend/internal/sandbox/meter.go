@@ -295,15 +295,24 @@ func (m *Meter) Label(ctx context.Context, raw osSandbox) {
 	}
 }
 
+// defaultImageTag is how deploy/sandbox-base's image is tagged, by commit, in
+// the public package bex's platform images share.
+const defaultImageTag = "ghcr.io/bex-co/bex-operator:sandbox-base-"
+
 // sandboxChargeLabel is `plan · image` with the image shortened to what a person
 // reads: no digest, and no implicit Docker Hub prefix (`alpine:3`, not
 // `docker.io/library/alpine:3@sha256:…`). The tag stays, so two sandboxes on
-// different images never share a label.
+// different images never share a label. bex's own default image is its tag
+// with the commit cut to 12 characters (`sandbox-base-ddcfca92d9b8`): the
+// package that hosts it is named for the operator (w22/m447).
 func sandboxChargeLabel(plan, image string) string {
 	if at := strings.Index(image, "@"); at >= 0 {
 		image = image[:at]
 	}
 	image = strings.TrimPrefix(strings.TrimPrefix(image, "docker.io/"), "library/")
+	if commit, ok := strings.CutPrefix(image, defaultImageTag); ok && len(commit) == 40 {
+		image = "sandbox-base-" + commit[:12]
+	}
 	switch {
 	case image == "":
 		return ""

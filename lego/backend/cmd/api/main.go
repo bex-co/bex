@@ -96,11 +96,12 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// baseEntrypoint links /bin/bash to the official bash image's
-// /usr/local/bin/bash, so a script with a `#!/bin/bash` line runs as it would
-// on Render (w32/m348), creates the home directory (baseHome), then sleeps.
-// An image that already has /bin/bash, or has no /usr/local/bin/bash, is left
-// alone.
+// baseEntrypoint links /bin/bash to /usr/local/bin/bash where an image has
+// only the latter (the official bash image, which sandboxes ran before
+// w22/m447 and a user may import), so a script with a `#!/bin/bash` line runs
+// as it would on Render (w32/m348), creates the home directory (baseHome),
+// then sleeps. An image that already has /bin/bash, as the default does, or
+// has no /usr/local/bin/bash, is left alone.
 const baseEntrypoint = `if [ ! -e /bin/bash ] && [ -x /usr/local/bin/bash ]; then ln -s /usr/local/bin/bash /bin/bash; fi
 mkdir -p -- "${HOME:-/root}"
 exec sleep infinity`

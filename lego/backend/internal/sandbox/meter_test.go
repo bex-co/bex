@@ -293,6 +293,10 @@ func TestSandboxChargeLabel(t *testing.T) {
 	for _, tc := range []struct{ plan, image, want string }{
 		{"starter", "docker.io/library/alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b", "starter · alpine:3"},
 		{"starter", "ghcr.io/bex-co/bex-agent-sandbox:v2", "starter · ghcr.io/bex-co/bex-agent-sandbox:v2"},
+		// w22/m447: the default image reads by its tag, not by the package
+		// that hosts it, and keeps a commit so rebuilds stay apart.
+		{"1c-2g", "ghcr.io/bex-co/bex-operator:sandbox-base-ddcfca92d9b807614df7f5cf98bb00695b13f71d@sha256:014b703a2024f9bc99b8f0fc81cb68393e112444bc7c251dc7abc9433bb021cc", "1c-2g · sandbox-base-ddcfca92d9b8"},
+		{"1c-2g", "ghcr.io/bex-co/bex-operator:16.15-postgres-abc", "1c-2g · ghcr.io/bex-co/bex-operator:16.15-postgres-abc"},
 		{"pro", "docker.io/someone/tool:1", "pro · someone/tool:1"},
 		{"", "alpine:3", "alpine:3"},
 		{"starter", "", ""},

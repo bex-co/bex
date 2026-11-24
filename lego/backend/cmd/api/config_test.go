@@ -17,6 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -963,5 +966,29 @@ func TestLoadConfigSandboxBroker(t *testing.T) {
 		"BEX_SANDBOX_BROKER_CA_CERT_URL": "ftp://invalid",
 	}); err == nil || !strings.Contains(err.Error(), "BEX_SANDBOX_BROKER_CA_CERT_URL") {
 		t.Errorf("bad CA cert URL err = %v, want BEX_SANDBOX_BROKER_CA_CERT_URL refusal", err)
+	}
+}
+
+// w22/m447: the default sandbox image is bex's own, pinned by digest, and the
+// one ADR104 D2 "Image" names, so the default cannot change without the
+// design record saying so. A deployment may still override it.
+func TestTheDefaultSandboxImageIsPinnedAndRecorded(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{"BEX_OPENSANDBOX_URL": "http://sandbox"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`^ghcr\.io/bex-co/bex-operator:sandbox-base-[0-9a-f]{40}@sha256:[0-9a-f]{64}$`).MatchString(cfg.SandboxImage) {
+		t.Fatalf("default sandbox image = %q, want deploy/sandbox-base's published tag pinned by digest", cfg.SandboxImage)
+	}
+	adr, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "docs", "ADR104-sandbox-render-parity.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(adr), "`"+cfg.SandboxImage+"`") {
+		t.Fatalf("ADR104 does not name the default sandbox image %q", cfg.SandboxImage)
+	}
+	overridden, _, err := loadFor(t, map[string]string{"BEX_OPENSANDBOX_URL": "http://sandbox", "BEX_SANDBOX_IMAGE": "example.com/own@sha256:" + strings.Repeat("a", 64)})
+	if err != nil || overridden.SandboxImage != "example.com/own@sha256:"+strings.Repeat("a", 64) {
+		t.Fatalf("BEX_SANDBOX_IMAGE override = %q (%v)", overridden.SandboxImage, err)
 	}
 }
