@@ -1,6 +1,6 @@
 # w6 · m609 — A plan change through Render's Update Service is saved for the next deploy, and billing follows the plan the service runs
 
-**Worker:** worker6 **Goal:** `PATCH /v1/services/{id}` and MCP `update_service` save a compute plan change without deploying, as Render's Update Service does. The service keeps running and being billed on its old plan until a deploy applies the new one. The dashboard's Compute page still deploys at once, as Render's dashboard does. **Status:** todo (t001–t004 done)
+**Worker:** worker6 **Goal:** `PATCH /v1/services/{id}` and MCP `update_service` save a compute plan change without deploying, as Render's Update Service does. The service keeps running and being billed on its old plan until a deploy applies the new one. The dashboard's Compute page still deploys at once, as Render's dashboard does. **Status:** blocked (t001–t004 done, shipped in `05a4803948`; t005 waits for production to run it)
 
 ## Tasks (in order)
 
@@ -25,8 +25,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w6/172](../done/172.md), filed by w6/159's Render check on 2026-11-23 and promoted by `/loopx w6` the same day.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/compute-plans](https://render.com/docs/compute-plans) § Changing a service's compute plan: "The Update service endpoint does not trigger a new deploy." "For Update service, follow up with a request to the Trigger deploy endpoint to apply the new compute plan." "Your service's compute plan does not change until the first successful deploy after you update it."
+- **Source:** inbox note [w6/172](../../done/172.md), filed by w6/159's Render check on 2026-11-23 and promoted by `/loopx w6` the same day.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). [render.com/docs/compute-plans](https://render.com/docs/compute-plans) § Changing a service's compute plan: "The Update service endpoint does not trigger a new deploy." "For Update service, follow up with a request to the Trigger deploy endpoint to apply the new compute plan." "Your service's compute plan does not change until the first successful deploy after you update it."
 - **Expected outcome:** a client that follows Render's documented "update, then deploy" sequence gets one deploy, not two, and a client that only saves gets no restart it did not ask for. The bill matches the plan the instances run.
 - **Why now:** w8/m135 made every other Update Service field save only and left plan out as an unverified exception. w6/159 read Render's page and found the exception is a divergence ADR018 never signed off. w6/159 (`f5c781bbc8`) and w6/163 (`14cf6f55fb`, `rollout.AwaitAdoptionBeforeHold`) have since settled what a save-only write and a plan release do around a deploy, so the plan row can join them.
 - **Render parity task included:** the change is to REST, MCP and the dashboard's view of a saved plan.
