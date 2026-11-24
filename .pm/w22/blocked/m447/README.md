@@ -1,6 +1,6 @@
 # w22 · m447 — The default sandbox image runs Render's three official agent templates
 
-**Worker:** worker22 **Goal:** a sandbox created with no image runs the executor install scripts of Render's three first-party agent templates (Claude Managed Agents, Cursor Cloud Agents, OpenAI Agents API) unchanged, under each template's own network allow-list, and the installed executor starts. ADR104's open question 5 (what the default image must contain) is answered from that evidence. **Status:** todo (t001–t005, t007–t009 done)
+**Worker:** worker22 **Goal:** a sandbox created with no image runs the executor install scripts of Render's three first-party agent templates (Claude Managed Agents, Cursor Cloud Agents, OpenAI Agents API) unchanged, under each template's own network allow-list, and the installed executor starts. ADR104's open question 5 (what the default image must contain) is answered from that evidence. **Status:** blocked (t001–t005, t007–t009 done; t006 waits for the production deploy carrying 89076a3d9a)
 
 ## Tasks (in order)
 
