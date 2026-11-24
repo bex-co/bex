@@ -21,10 +21,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 )
 
@@ -274,6 +276,87 @@ func TestMCPGetMetricsScopesEachArgumentToRendersReads(t *testing.T) {
 		}
 		if rec := serveREST(svc, "/v1/metrics/http-latency?resource=web&aggregateBy=host"); rec.Code != http.StatusBadRequest {
 			t.Errorf("REST latency aggregateBy=host = %d, want 400", rec.Code)
+		}
+	})
+}
+
+// TestMCPGetMetricsRejectsEmptyMetricTypes guards w5/200: empty metricTypes: []
+// previously skipped the per-metric read loop, bypassing resource authorization
+// and returning 200 {metrics: []} instead of Render's "at least one metric type
+// must be specified" refusal. Unknown metric types on a foreign resource must
+// still be denied by resource authorization rather than leaking or bypassing it.
+func TestMCPGetMetricsRejectsEmptyMetricTypes(t *testing.T) {
+	ownApp := sampleApp("web")
+	ownApp.Labels = map[string]string{core.LabelTenant: "tea-own", core.LabelAppID: "srv-own"}
+	foreignApp := sampleApp("foreign")
+	foreignApp.Labels = map[string]string{core.LabelTenant: "tea-other", core.LabelAppID: "srv-foreign"}
+
+	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
+		webInst: {CPUCores: 0.5},
+	}), nil, ownApp, foreignApp, podWithLimits(webInst))
+	svc.Authz = selectiveAuthChecker{allowed: map[string]bool{core.WorkspaceObject("tea-own"): true}}
+	svc.Workspace = multiWorkspaceResolver{defaultTenant: "tea-own", members: map[string]bool{"tea-own": true}}
+
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-1", Method: "session"})
+	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatalf("MCP server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("MCP client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+
+	callErrText := func(t *testing.T, tool string, args map[string]any) string {
+		t.Helper()
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: tool, Arguments: args})
+		if err != nil {
+			t.Fatalf("%s %v: protocol error: %v", tool, args, err)
+		}
+		if !res.IsError {
+			t.Fatalf("%s %v: want tool error (isError=true), got success %+v", tool, args, res.Content)
+		}
+		var sb strings.Builder
+		for _, c := range res.Content {
+			if tc, ok := c.(*mcp.TextContent); ok {
+				sb.WriteString(tc.Text)
+			}
+		}
+		return sb.String()
+	}
+
+	for _, tc := range []struct {
+		name string
+		tool string
+		args map[string]any
+	}{
+		{name: "authorized resource", tool: "get_metrics", args: map[string]any{"resourceId": "srv-own", "metricTypes": []string{}}},
+		{name: "unauthorized foreign resource", tool: "get_metrics", args: map[string]any{"resourceId": "srv-foreign", "metricTypes": []string{}}},
+		{name: "nonexistent resource", tool: "get_metrics", args: map[string]any{"resourceId": "srv-doesnotexist", "metricTypes": []string{}}},
+		{name: "datastore metrics empty list", tool: "get_datastore_metrics", args: map[string]any{"resourceId": "dpg-doesnotexist", "metricTypes": []string{}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := callErrText(t, tc.tool, tc.args)
+			if !strings.Contains(got, "at least one metric type must be specified") {
+				t.Errorf("%s error = %q, want %q", tc.tool, got, "at least one metric type must be specified")
+			}
+		})
+	}
+
+	t.Run("unknown metric on foreign resource still fails authorization", func(t *testing.T) {
+		got := callErrText(t, "get_metrics", map[string]any{"resourceId": "srv-foreign", "metricTypes": []string{"not_a_metric"}})
+		if strings.Contains(got, "unknown metric") {
+			t.Errorf("unknown metric on foreign resource bypassed authz: %q", got)
+		}
+	})
+
+	t.Run("unknown metric on authorized resource fails cleanly", func(t *testing.T) {
+		got := callErrText(t, "get_metrics", map[string]any{"resourceId": "srv-own", "metricTypes": []string{"not_a_metric"}})
+		if !strings.Contains(got, "unknown metric") {
+			t.Errorf("unknown metric on own resource = %q, want unknown metric error", got)
 		}
 	})
 }

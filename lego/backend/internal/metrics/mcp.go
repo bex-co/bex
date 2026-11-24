@@ -225,6 +225,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			mcputil.PropEnum("cpuUsageAggregationMethod", "AVG", cpuAggregationMax, cpuAggregationMin),
 		),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, any, error) {
+		if len(in.MetricTypes) == 0 {
+			return nil, nil, fmt.Errorf("%w: at least one metric type must be specified", core.ErrBadRequest)
+		}
 		var explicit []string
 		if in.ResourceID != "" {
 			explicit = []string{in.ResourceID}
@@ -404,6 +407,9 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 		Name:        "get_datastore_metrics",
 		Description: "Get disk usage, disk activity and operations, cpu/memory and their limits, active-connections, replication-lag, network activity, transaction volume and lock-delayed queries (Postgres), and connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, datastoreMetricsResult, error) {
+		if len(in.MetricTypes) == 0 {
+			return nil, datastoreMetricsResult{}, fmt.Errorf("%w: at least one metric type must be specified", core.ErrBadRequest)
+		}
 		resource, err := in.resource()
 		if err != nil {
 			return nil, datastoreMetricsResult{}, err

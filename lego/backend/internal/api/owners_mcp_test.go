@@ -128,6 +128,67 @@ func TestMCP_ExplicitWorkspaceScopesListServices(t *testing.T) {
 	callToolError(t, cs, "get_service", map[string]any{"serviceId": "second-web", "workspaceId": first.ID})
 }
 
+// TestMCP_WorkspaceIDNullVsEmptyErrors guards w5/200: JSON null is a wrong type
+// ("workspaceId must be a string", matching upstream pkg/validate/params.go and
+// other non-string values), distinct from an empty/blank string ("workspaceId
+// cannot be empty"). Go's json.Unmarshal("null", &s) is a no-op that otherwise
+// fell through to the empty check.
+func TestMCP_WorkspaceIDNullVsEmptyErrors(t *testing.T) {
+	st := newFakeWSStore()
+	mustCreate(t, st, "first", "hobby", "client-1")
+
+	base := &core.Base{Client: fakeClient(), Namespace: "default", Workspace: &apiFakeResolver{store: st}}
+	srv := NewServer(base, Deps{WorkspaceStore: st})
+	cs := mcpSessionAs(t, srv, "client-1")
+
+	callMsg := func(t *testing.T, args map[string]any) string {
+		t.Helper()
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "list_services", Arguments: args})
+		if err != nil {
+			t.Fatalf("list_services %v: protocol error: %v", args, err)
+		}
+		if !res.IsError {
+			t.Fatalf("list_services %v: want tool error, got normal result %+v", args, res.Content)
+		}
+		var sb strings.Builder
+		for _, c := range res.Content {
+			if tc, ok := c.(*mcp.TextContent); ok {
+				sb.WriteString(tc.Text)
+			}
+		}
+		return sb.String()
+	}
+
+	for _, tc := range []struct {
+		name string
+		args map[string]any
+		want string
+	}{
+		{name: "null", args: map[string]any{"workspaceId": nil}, want: "workspaceId must be a string"},
+		{name: "number", args: map[string]any{"workspaceId": 123}, want: "workspaceId must be a string"},
+		{name: "empty", args: map[string]any{"workspaceId": ""}, want: "workspaceId cannot be empty"},
+		{name: "whitespace", args: map[string]any{"workspaceId": "   "}, want: "workspaceId cannot be empty"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := callMsg(t, tc.args)
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("list_services %s error = %q, want %q", tc.name, got, tc.want)
+			}
+		})
+	}
+
+	// Direct unit check for whitespace-padded JSON null.
+	_, _, err := takeMCPWorkspaceID(&mcp.CallToolRequest{
+		Params: &mcp.CallToolParamsRaw{
+			Name:      "list_services",
+			Arguments: json.RawMessage(`{"workspaceId":  null }`),
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "workspaceId must be a string") {
+		t.Errorf("takeMCPWorkspaceID(padded null) = %v, want workspaceId must be a string", err)
+	}
+}
+
 func TestMCPWorkspaceSchemasAreStatelessAndCanonical(t *testing.T) {
 	srv := NewServer(&core.Base{}, Deps{})
 	cs := mcpSessionAs(t, srv, "client-1")

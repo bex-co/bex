@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -223,6 +224,9 @@ func takeMCPWorkspaceID(req *mcp.CallToolRequest) (*mcp.CallToolRequest, string,
 
 	workspaceID := ""
 	if raw, exists := args["workspaceId"]; exists {
+		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			return req, "", errors.New("workspaceId must be a string")
+		}
 		if err := json.Unmarshal(raw, &workspaceID); err != nil {
 			return req, "", errors.New("workspaceId must be a string")
 		}
