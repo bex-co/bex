@@ -11,6 +11,7 @@ import type { ConversationState } from "@/features/agent-sessions/lib/conversati
 import { createAgentSessionTransport } from "@/features/agent-sessions/lib/transport";
 import {
   makeFixtureFetch,
+  makeLiveStreams,
   makeManualStream,
   RUNNING_TRANSCRIPT_HEAD,
   TERMINAL_TRANSCRIPT,
@@ -408,6 +409,101 @@ describe("SessionConversationImpl", () => {
     });
     await waitFor(() =>
       expect(screen.getByText(/Task committed\./)).toBeInTheDocument(),
+    );
+  });
+
+  it("ends the stream each re-attach replaces, and the last one when the column leaves (w6/171)", async () => {
+    // A closed session started from Connect: the page attaches while it reads
+    // `resuming`, re-attaches when the sandbox binds and again when the start
+    // settles. The gateway counts every open stream against the person's five
+    // sessions until the client hangs up, so only the newest may stay open.
+    const streams = makeLiveStreams();
+    const transport = createAgentSessionTransport({
+      sessionId: "as-started",
+      mintTicket,
+      fetch: streams.fetch,
+    });
+    const column = (sandboxId: string, settled: boolean) => (
+      <SessionConversationImpl
+        sessionId="as-started"
+        isTerminal={settled}
+        phase={settled ? "completed" : "resuming"}
+        attachSignal={`3:${sandboxId}:${settled}`}
+        transport={transport}
+      />
+    );
+    const open = () => streams.opened.map((s) => !s.signal.aborted);
+
+    const { rerender, unmount } = render(column("", false));
+    await waitFor(() => expect(open()).toEqual([true]));
+    await act(async () => {
+      for (const chunk of RUNNING_TRANSCRIPT_HEAD)
+        streams.opened[0].push(chunk);
+    });
+    await waitFor(() =>
+      expect(screen.getByText("Edit the result file")).toBeInTheDocument(),
+    );
+
+    rerender(column("sbx-1", false));
+    await waitFor(() => expect(open()).toEqual([false, true]));
+
+    rerender(column("sbx-1", true));
+    await waitFor(() => expect(open()).toEqual([false, false, true]));
+    // Ending a replaced stream keeps the transcript it delivered.
+    expect(screen.getByText("Edit the result file")).toBeInTheDocument();
+
+    unmount();
+    expect(open()).toEqual([false, false, false]);
+  });
+
+  it("reads as connecting, not as an empty conversation, while a re-attach replaces its stream", async () => {
+    // Ending the replaced stream settles the mount replay; until the
+    // re-attach's own replay settles, the column is still connecting.
+    const streams = makeLiveStreams();
+    let releaseSecondMint!: () => void;
+    let mints = 0;
+    const heldMint = async () => {
+      const mint = ++mints;
+      if (mint === 2) {
+        await new Promise<void>((resolve) => {
+          releaseSecondMint = resolve;
+        });
+      }
+      return { ticket: `ticket-${mint}` };
+    };
+    const transport = createAgentSessionTransport({
+      sessionId: "as-empty",
+      mintTicket: heldMint,
+      fetch: streams.fetch,
+    });
+    const column = (attachSignal: string) => (
+      <SessionConversationImpl
+        sessionId="as-empty"
+        isTerminal={false}
+        phase="running"
+        attachSignal={attachSignal}
+        transport={transport}
+      />
+    );
+
+    const { rerender } = render(column("1:sbx-1:false"));
+    await waitFor(() => expect(streams.opened).toHaveLength(1));
+    rerender(column("2:sbx-1:false"));
+    expect(streams.opened[0].signal.aborted).toBe(true);
+    // Let the ended stream settle its `useChat` request.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    expect(
+      screen.getByLabelText("Connecting to the session stream…"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No conversation yet.")).not.toBeInTheDocument();
+
+    await act(async () => releaseSecondMint());
+    await waitFor(() => expect(streams.opened).toHaveLength(2));
+    await act(async () => streams.opened[1].done());
+    await waitFor(() =>
+      expect(screen.getByText("No conversation yet.")).toBeInTheDocument(),
     );
   });
 

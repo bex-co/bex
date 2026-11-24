@@ -10,10 +10,10 @@ import {
 } from "react";
 import { useChat } from "@ai-sdk/react";
 import { useQuery } from "@apollo/client/react";
-import type { ChatTransport } from "ai";
 import { AlertCircle, ChevronDown, Loader2, User } from "lucide-react";
 import {
   createAgentSessionTransport,
+  type AgentSessionTransport,
   type MintedTicket,
 } from "@/features/agent-sessions/lib/transport";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -107,7 +107,8 @@ export interface SessionConversationImplProps {
    * remounting — a new turn, a sandbox swap, or a settle each needs a fresh
    * ticket + replay to reach a new pod or pick up a settled turn's final message
    * the live tail can miss. Same `useChat` instance ⇒ no blank / lost scroll;
-   * `keepLastReplay` folds the re-replayed transcript at render.
+   * `keepLastReplay` folds the re-replayed transcript at render. The re-attach
+   * ends the stream it replaces (the transport aborts it, w6/171).
    */
   attachSignal?: string;
   /**
@@ -116,8 +117,11 @@ export interface SessionConversationImplProps {
    * `ai`/transport surface stays inside this dynamically-imported module.
    */
   mintTicket?: () => Promise<MintedTicket>;
-  /** A prebuilt transport — the injectable seam the unit tests drive. */
-  transport?: ChatTransport<AgentUIMessage>;
+  /**
+   * A prebuilt transport — the injectable seam the unit tests drive. The
+   * column owns its stream either way: it closes the transport on unmount.
+   */
+  transport?: AgentSessionTransport;
   /**
    * Lifts the live-steering handle up to the detail page (t004). Called with a
    * fresh handle whenever `sendMessage`/`status` change, and with `null` when
@@ -196,6 +200,10 @@ export function SessionConversationImpl({
     // GET that appended the replayed transcript twice (w3/m44).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectedTransport, sessionId]);
+  // Leaving the page or switching sessions ends the open stream: the gateway
+  // holds a stream nobody reads against the person's session limit for up to
+  // 4 hours (w6/171), and `useChat` never stops one on unmount.
+  useEffect(() => () => transport.close(), [transport]);
 
   const [acpStatus, setAcpStatus] = useState<AcpStatus | null>(null);
   const acpStatusRef = useRef<AcpStatus | null>(null);
@@ -243,35 +251,52 @@ export function SessionConversationImpl({
   // nothing", so calling it ourselves and tracking the promise gives an
   // unambiguous signal instead. `resumeStream` is a stable method bound once
   // per `useChat` instance (recreated only if `id` changes), so this doesn't
-  // re-fire on every render. Keying the settled marker on that method makes a
-  // new instance read as resuming from its very first render.
+  // re-fire on every render. The settled marker is keyed on that method and on
+  // the attach target the resume was for, so a new instance and a changed
+  // `attachSignal` each read as resuming from their very first render, and a
+  // replaced resume settling (a re-attach ends its stream) settles nothing.
   const [settledResume, setSettledResume] = useState<{
     resumeStream: typeof resumeStream;
+    attachSignal: string | undefined;
   } | null>(null);
-  const resuming = settledResume?.resumeStream !== resumeStream;
+  const resuming =
+    settledResume?.resumeStream !== resumeStream ||
+    settledResume.attachSignal !== attachSignal;
+  // The attach target the latest resume is for. Seeded from the first render so
+  // the mount replay owns the initial attach and the re-attach below fires only
+  // on genuine subsequent changes.
+  const lastAttachSignal = useRef(attachSignal);
   useEffect(() => {
     let live = true;
+    const target = lastAttachSignal.current;
     resumeStream()
       // `makeRequest` already routes every failure into `error`/`status`
       // (read below) rather than rejecting; this trace is a backstop in case
       // that internal contract ever changes.
       .catch((err) => console.error(err))
       .finally(() => {
-        if (live) setSettledResume({ resumeStream });
+        if (live && lastAttachSignal.current === target) {
+          setSettledResume({ resumeStream, attachSignal: target });
+        }
       });
     return () => {
       live = false;
     };
   }, [resumeStream]);
 
-  // Re-attach in place when `attachSignal` changes (see the prop doc). Seeded
-  // from the first render so the mount replay above owns the initial attach and
-  // this only fires on genuine subsequent changes.
-  const lastAttachSignal = useRef(attachSignal);
+  // Re-attach in place when `attachSignal` changes (see the prop doc).
   useEffect(() => {
     if (attachSignal === lastAttachSignal.current) return;
     lastAttachSignal.current = attachSignal;
-    resumeStream().catch((err) => console.error(err));
+    let live = true;
+    resumeStream()
+      .catch((err) => console.error(err))
+      .finally(() => {
+        if (live) setSettledResume({ resumeStream, attachSignal });
+      });
+    return () => {
+      live = false;
+    };
   }, [attachSignal, resumeStream]);
 
   // Publish the live-steering handle to the detail page. Withheld (null) while

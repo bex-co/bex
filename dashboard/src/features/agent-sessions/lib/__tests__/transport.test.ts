@@ -6,6 +6,7 @@ import {
 } from "@/features/agent-sessions/lib/transport";
 import {
   makeFixtureFetch,
+  makeLiveStreams,
   TERMINAL_TRANSCRIPT,
 } from "@/features/agent-sessions/lib/mock-stream";
 
@@ -102,5 +103,77 @@ describe("createAgentSessionTransport", () => {
     expect(requests[0].method).toBe("POST");
     expect(requests[0].ticket).toBe("send-1");
     expect(requests[0].url).toBe(agentSessionStreamUrl("as-1"));
+  });
+});
+
+// The gateway counts every open stream against the person's concurrent
+// sessions and ends a live one only when the client hangs up (w6/171).
+describe("createAgentSessionTransport holds one open stream", () => {
+  it("ends the stream a reconnect replaces, and close() ends the last", async () => {
+    const streams = makeLiveStreams();
+    const transport = createAgentSessionTransport({
+      sessionId: "as-1",
+      mintTicket: async () => ({ ticket: "t" }),
+      fetch: streams.fetch,
+    });
+
+    const first = await transport.reconnectToStream({ chatId: "as-1" });
+    expect(streams.opened.map((s) => s.signal.aborted)).toEqual([false]);
+    const second = await transport.reconnectToStream({ chatId: "as-1" });
+
+    expect(streams.opened.map((s) => s.signal.aborted)).toEqual([true, false]);
+    await expect(first!.getReader().read()).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    transport.close();
+    expect(streams.opened[1].signal.aborted).toBe(true);
+    await expect(second!.getReader().read()).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
+
+  it("resolves a reconnect replaced before it connected to nothing, not an error", async () => {
+    let releaseFirstMint!: () => void;
+    let n = 0;
+    const mintTicket = vi.fn(async () => {
+      const mint = ++n;
+      if (mint === 1) {
+        await new Promise<void>((resolve) => {
+          releaseFirstMint = resolve;
+        });
+      }
+      return { ticket: `ticket-${mint}` };
+    });
+    const streams = makeLiveStreams();
+    const transport = createAgentSessionTransport({
+      sessionId: "as-1",
+      mintTicket,
+      fetch: streams.fetch,
+    });
+
+    const first = transport.reconnectToStream({ chatId: "as-1" });
+    const second = await transport.reconnectToStream({ chatId: "as-1" });
+    releaseFirstMint();
+
+    await expect(first).resolves.toBeNull();
+    // Only the second reconnect holds a stream, and it is still open.
+    expect(second).not.toBeNull();
+    expect(streams.opened.map((s) => s.signal.aborted)).toEqual([false]);
+  });
+
+  it("still reports a refused reconnect as an error", async () => {
+    const transport = createAgentSessionTransport({
+      sessionId: "as-1",
+      mintTicket: async () => ({ ticket: "t" }),
+      fetch: (async () =>
+        new Response("not ready", {
+          status: 503,
+        })) as typeof globalThis.fetch,
+    });
+
+    await expect(
+      transport.reconnectToStream({ chatId: "as-1" }),
+    ).rejects.toThrow("not ready");
   });
 });

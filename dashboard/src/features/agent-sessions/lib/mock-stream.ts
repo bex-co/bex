@@ -270,3 +270,54 @@ export function makeManualStream(): ManualStream {
     },
   };
 }
+
+/** One request a {@link makeLiveStreams} fetch answered with an open stream. */
+export interface LiveStream {
+  /** The request's signal: aborted once the client ends the stream. */
+  signal: AbortSignal;
+  push: (chunk: UIMessageChunk) => void;
+  done: () => void;
+}
+
+/**
+ * A fixture `fetch` that answers every request with its own live stream, open
+ * until the test ends it or the request's signal aborts. An abort errors the
+ * body with an `AbortError`, as a browser's `fetch` does, and an already
+ * aborted signal opens nothing. `opened` lists the streams in request order, so
+ * a test can tell which ones the client still holds (w6/171).
+ */
+export function makeLiveStreams(): {
+  fetch: typeof globalThis.fetch;
+  opened: LiveStream[];
+} {
+  const encoder = new TextEncoder();
+  const opened: LiveStream[] = [];
+  const aborted = () =>
+    new DOMException("The operation was aborted.", "AbortError");
+  const fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const signal = init?.signal;
+    if (!signal) throw new Error("makeLiveStreams: request has no signal");
+    if (signal.aborted) throw aborted();
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        controller = c;
+      },
+    });
+    signal.addEventListener("abort", () => controller.error(aborted()), {
+      once: true,
+    });
+    opened.push({
+      signal,
+      push(chunk) {
+        controller.enqueue(encoder.encode(encodeChunk(chunk)));
+      },
+      done() {
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+    return sseResponse(body);
+  }) as typeof globalThis.fetch;
+  return { fetch, opened };
+}
