@@ -214,6 +214,12 @@ func (s *Service) endedView(r store.SandboxRecord) (Sandbox, error) {
 	if err := json.Unmarshal(r.View, &box); err != nil {
 		return Sandbox{}, fmt.Errorf("read sandbox record %s: %w", r.SandboxID, err)
 	}
-	box.Status, box.TerminatedAt, box.Region = StatusTerminated, r.TerminatedAt, s.region()
+	box.Status, box.Region = StatusTerminated, s.region()
+	if r.TerminatedAt != nil {
+		// In UTC, as Render writes it ("…Z") and the SDKs' SandboxEndedError
+		// repeats it, whatever the host's zone the database read used.
+		at := r.TerminatedAt.UTC()
+		box.TerminatedAt = &at
+	}
 	return box, nil
 }

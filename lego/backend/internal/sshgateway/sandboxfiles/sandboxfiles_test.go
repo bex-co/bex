@@ -31,6 +31,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -1193,25 +1195,56 @@ func TestPlatformCopiesAreLimitedPerSession(t *testing.T) {
 
 // A missing remote path is Render's `file_not_found` 404, in a JSON body: the
 // Render SDK raises SandboxFileNotFoundError on that code and otherwise reads a
-// 404 as the sandbox being gone (w32/m284).
+// 404 as the sandbox being gone (w32/m284). The code and status are the ones
+// the SDK v1.10.0 contract marks as the file gateway's (w22/m445), and every
+// such code has its executor exit here.
 func TestAMissingPathIsAFileNotFoundCode(t *testing.T) {
-	for _, method := range []string{http.MethodPut, http.MethodGet} {
-		s := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
-			if input != nil {
-				_, _ = io.Copy(io.Discard, input)
+	exits := map[string]int{"file_not_found": 66}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "sandbox", "testdata", "sdk-v1.10.0-contract.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var contract struct {
+		Codes []struct {
+			Code, AnsweredBy string
+			Status           int
+		}
+	}
+	if err := json.Unmarshal(raw, &contract); err != nil {
+		t.Fatal(err)
+	}
+	answered := 0
+	for _, row := range contract.Codes {
+		if row.AnsweredBy != "file-gateway" {
+			continue
+		}
+		exit, ok := exits[row.Code]
+		if !ok {
+			t.Errorf("the SDK contract names %s as the file gateway's, and no executor exit here answers it", row.Code)
+			continue
+		}
+		answered++
+		for _, method := range []string{http.MethodPut, http.MethodGet} {
+			s := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
+				if input != nil {
+					_, _ = io.Copy(io.Discard, input)
+				}
+				return exit, nil
+			})
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, requestFor(t, method, []byte("data")))
+			var body struct{ Code, Message string }
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("%s: body %q is not JSON: %v", method, w.Body, err)
 			}
-			return 66, nil
-		})
-		w := httptest.NewRecorder()
-		s.Handler().ServeHTTP(w, requestFor(t, method, []byte("data")))
-		var body struct{ Code, Message string }
-		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-			t.Fatalf("%s: body %q is not JSON: %v", method, w.Body, err)
+			if w.Code != row.Status || body.Code != row.Code || body.Message == "" ||
+				w.Header().Get("Content-Type") != "application/json" {
+				t.Fatalf("%s answered %d %q (%s), want %d %s JSON", method, w.Code, w.Body, w.Header().Get("Content-Type"), row.Status, row.Code)
+			}
 		}
-		if w.Code != http.StatusNotFound || body.Code != "file_not_found" || body.Message == "" ||
-			w.Header().Get("Content-Type") != "application/json" {
-			t.Fatalf("%s answered %d %q (%s), want 404 file_not_found JSON", method, w.Code, w.Body, w.Header().Get("Content-Type"))
-		}
+	}
+	if answered != len(exits) {
+		t.Errorf("the SDK contract names %d file-gateway codes, want %d (%v)", answered, len(exits), exits)
 	}
 }
 

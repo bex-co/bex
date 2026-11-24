@@ -1,0 +1,242 @@
+{
+  "_comment": "Render's Python and TypeScript SDK v1.10.0 sandbox contract (w22/m445 t001): which API error code each SDK turns into a named error class, how they detect an ended sandbox, what an image's failureCode is read from, and the requests of the calls v1.9.0 and v1.10.0 added. Read from the SDKs' source at the commits below on 2026-11-23. sdk_compat_test.go drives bex into the situation behind every code (or reads its reason in cannotOccurOnBex) and replays the requests against bex-api's REST routes; file_not_found is answered by the ssh-gateway's file gateway and pinned in internal/sshgateway/sandboxfiles. Paths are relative to the API base (bex serves them under /v1); $OWNER, $GROUP, $SANDBOX, $IMAGE and $ENV stand for the workspace, a group, a sandbox, an image and an environment. The group environment calls are in group-environment-contract.json (w22/m603 t001), not repeated here. To regenerate: clone render-oss/sdk at the two tags and re-read the files named in each SDK's source.",
+  "sdks": {
+    "typescript": {
+      "package": "@renderinc/sdk",
+      "tag": "typescript/v1.10.0",
+      "commit": "0529a77a19fd076ddf0c6eccff99b2fc45423ba1",
+      "released": "2026-11-20T03:21:21Z",
+      "source": [
+        "typescript/src/errors.ts",
+        "typescript/src/utils/http.ts: getApiError, clientErrorForCode",
+        "typescript/src/sandboxes/index.ts: explainEndedSandbox, getTypedApiError, getCredentialApiError, getSnapshotApiError, SandboxImagesClient, SandboxSnapshotsClient.create, copyTo, copyFrom"
+      ]
+    },
+    "python": {
+      "package": "render-sdk",
+      "tag": "python/v1.10.0",
+      "commit": "0529a77a19fd076ddf0c6eccff99b2fc45423ba1",
+      "released": "2026-11-20T03:21:31Z",
+      "module": "render.sandbox (render.experimental.sandbox still imports, deprecated)",
+      "source": [
+        "python/render/sandbox/errors.py",
+        "python/render/sandbox/api.py: _CLIENT_ERRORS_BY_CODE, _raise_for_error_code, _handle_snapshot_api_error, _handle_image_api_error, _handle_credential_api_error, _raise_connect_token_error, _sandbox_ended_error, _raise_sandbox_http_error",
+        "python/render/sandbox/client.py: SandboxClient.create (the wait's CancelledError branch)",
+        "python/render/client/errors.py: ClientError, RateLimitError, ServerError"
+      ]
+    }
+  },
+  "sinceV1_9_0": "No error class or code changed: typescript/src/errors.ts and typescript/src/utils/http.ts are byte-identical at typescript/v1.9.0 (12fb684bb0ad4fc88ba81f39893975f6a4dfdf01), and python/render/sandbox/errors.py equals v1.9.0's python/render/experimental/sandbox/errors.py, with the same _CLIENT_ERRORS_BY_CODE. v1.10.0 moved the Python module and TypeScript sources out of experimental, added the group environment calls and Python's terminate of a canceled create.",
+  "codes": [
+    {
+      "code": "snapshot_creating",
+      "status": 409,
+      "typescript": "SandboxSnapshotNotReadyError",
+      "python": "SnapshotNotReadyError",
+      "when": "snapshots.delete of a snapshot whose capture is still running"
+    },
+    {
+      "code": "snapshot_not_available",
+      "status": 409,
+      "typescript": "SandboxSnapshotNotReadyError",
+      "python": "SnapshotNotReadyError",
+      "when": "create from a snapshot (by id or name) that is not available"
+    },
+    {
+      "code": "snapshot_plan_mismatch",
+      "status": 409,
+      "typescript": "SandboxSnapshotPlanMismatchError",
+      "python": "SnapshotPlanMismatchError",
+      "when": "create from a runtime snapshot on a plan other than its source sandbox's"
+    },
+    {
+      "code": "snapshot_not_found",
+      "status": 404,
+      "typescript": "SandboxSnapshotNotFoundError",
+      "python": "SnapshotNotFoundError",
+      "when": "create naming a snapshot the group does not have",
+      "differences": "TypeScript maps the code on any status; Python only on a 404"
+    },
+    {
+      "code": "default_sandbox_group_not_deletable",
+      "status": 409,
+      "typescript": "SandboxGroupDefaultNotDeletableError",
+      "python": "SandboxGroupDefaultNotDeletableError",
+      "when": "deleteGroup of the workspace's default group"
+    },
+    {
+      "code": "sandbox_group_suspended",
+      "status": 409,
+      "typescript": "SandboxGroupSuspendedError",
+      "python": "SandboxGroupSuspendedError",
+      "when": "create, snapshots.create, images.import, deleteGroup, setDefaultGroup, and the connect-token mint of exec, upload and download, in a suspended group"
+    },
+    {
+      "code": "build_not_succeeded",
+      "status": 409,
+      "typescript": "SandboxImageNotReadyError",
+      "python": "ImageNotReadyError",
+      "when": "create naming an image (by id or name) that has not succeeded"
+    },
+    {
+      "code": "build_not_found",
+      "status": 404,
+      "typescript": "SandboxImageNotFoundError",
+      "python": "ImageNotFoundError",
+      "when": "create naming an image the group does not have; images.get and images.delete of one",
+      "differences": "TypeScript maps the code on any status; Python only on a 404"
+    },
+    {
+      "code": "image_in_use",
+      "status": 409,
+      "typescript": "SandboxImageInUseError",
+      "python": "ImageInUseError",
+      "when": "images.delete of an image that sandboxes or snapshots still use; the message names them"
+    },
+    {
+      "code": "sandbox_not_running",
+      "status": 409,
+      "typescript": "SandboxEndedError",
+      "python": "SandboxEndedError",
+      "when": "the connect-token mint of exec, upload, download, copyTo or copyFrom for a sandbox that has ended; only when the client's follow-up read (see ended) finds it terminated or errored, else ClientError",
+      "differences": "TypeScript also explains a 404 from the mint the same way"
+    },
+    {
+      "code": "file_not_found",
+      "status": 404,
+      "typescript": null,
+      "python": "SandboxFileNotFoundError",
+      "when": "upload or download naming a remote path the sandbox does not have, answered by the file gateway at the token's uri",
+      "answeredBy": "file-gateway",
+      "differences": "Python only; TypeScript reads the gateway's errors without their code (ClientError)"
+    }
+  ],
+  "statuses": [
+    {
+      "id": "snapshotPath404",
+      "status": 404,
+      "on": "a snapshot path: snapshots.get, snapshots.delete",
+      "typescript": "SandboxSnapshotNotFoundError",
+      "python": "SnapshotNotFoundError",
+      "note": "whatever the code"
+    },
+    {
+      "id": "credentialPath404",
+      "status": 404,
+      "on": "a credential path: credentials.get, update, delete, listVersions, restore",
+      "typescript": "SandboxCredentialNotFoundError",
+      "python": "CredentialNotFoundError",
+      "note": "Render sends this 404 without a code"
+    },
+    {
+      "id": "sandboxPath404",
+      "status": 404,
+      "on": "a sandbox path: get, terminate, snapshots.create, and a connect-token mint",
+      "typescript": null,
+      "python": "SandboxNotFoundError",
+      "note": "terminate of an already terminated sandbox answers 204, not this"
+    }
+  ],
+  "generic": "Any other 4xx is ClientError (statusCode, code) in both SDKs, a 429 on a connect-token mint, exec stream or file transfer is Python's RateLimitError, and a 5xx is ServerError; these come from render.client.errors and typescript/src/errors.ts, not the sandbox classes.",
+  "ended": {
+    "mints": [
+      {
+        "method": "POST",
+        "path": "/sandboxes/$SANDBOX/runs/stream/token?ownerId=$OWNER",
+        "calls": "exec"
+      },
+      {
+        "method": "POST",
+        "path": "/sandboxes/$SANDBOX/files/upload/token?ownerId=$OWNER&path=/root/a.txt",
+        "calls": "upload, copyTo"
+      },
+      {
+        "method": "POST",
+        "path": "/sandboxes/$SANDBOX/files/download/token?ownerId=$OWNER&path=/root/a.txt",
+        "calls": "download, copyFrom"
+      }
+    ],
+    "refusal": { "status": 409, "code": "sandbox_not_running" },
+    "read": {
+      "method": "GET",
+      "path": "/sandboxes/$SANDBOX?ownerId=$OWNER",
+      "success": [200],
+      "endedStatuses": ["terminated", "errored"],
+      "endedAtField": "terminatedAt"
+    },
+    "reports": {
+      "typescript": "SandboxEndedError(statusCode, sandboxStatus, code): \"<context>: sandbox <id> was terminated at <terminatedAt>\", or \"errored\"; \" at <terminatedAt>\" only when terminatedAt is set",
+      "python": "SandboxEndedError(sandbox_status, code=sandbox_not_running, status_code=409): \"<action> failed: sandbox <id> was terminated at <terminatedAt>\", or \"errored\"; the time in the API's own Z format"
+    }
+  },
+  "image": {
+    "failureCode": {
+      "field": "failureCode",
+      "readBy": "TypeScript SandboxImage = components.schemas.sandboxBuild; Python's generated SandboxBuild.failure_code",
+      "rule": "a nullable string, null unless status is failed; an unrecognized code reads as internal_error",
+      "values": [
+        "deadline_exceeded",
+        "image_access_denied",
+        "image_not_found",
+        "image_pull_failed",
+        "internal_error",
+        "invalid_image",
+        "missing_boot_tools",
+        "unsupported_platform"
+      ],
+      "valuesSource": "go/pkg/render/internal/client/sandboxes/sandboxes_gen.go SandboxBuildFailureCode at the same commit; the TypeScript and Python schemas name no enum"
+    },
+    "failureReason": "SandboxImageFailedError.failureReason / ImageFailedError.failure_reason, raised by images.waitUntilReady on a failed import"
+  },
+  "requests": {
+    "images.list": {
+      "method": "GET",
+      "path": "/sandbox-groups/$GROUP/builds",
+      "query": ["name", "status (repeated)", "cursor", "limit (1 to 100)"],
+      "success": [200],
+      "reads": "[{build, cursor}], newest first; Python's next page starts at the last item's cursor"
+    },
+    "images.delete": {
+      "method": "DELETE",
+      "path": "/sandbox-groups/$GROUP/builds/$IMAGE",
+      "success": [204],
+      "reads": "nothing; deleting an image that was already deleted succeeds",
+      "refusals": ["404 build_not_found", "409 image_in_use"]
+    },
+    "snapshots.create": {
+      "method": "POST",
+      "path": "/sandboxes/$SANDBOX/snapshots?ownerId=$OWNER",
+      "body": { "kind": "filesystem", "name": "base", "ttlSeconds": 600 },
+      "success": [202],
+      "reads": "id, sandboxGroupId, status, ttlSeconds",
+      "note": "every field is optional; TypeScript sends no body when none is given, Python sends {}; the API defaults kind to runtime; ttlSeconds 0 keeps the snapshot (expiresAt is no longer sent)"
+    },
+    "copyTo": {
+      "method": "POST",
+      "path": "/sandboxes/$SANDBOX/files/upload/token?ownerId=$OWNER&path=<remote>",
+      "success": [201],
+      "then": "the token's method (PUT) to its uri, Authorization: Bearer <token>, Content-Type: application/octet-stream, Content-Length: the file's size; any 2xx",
+      "note": "TypeScript only; the same mint as upload"
+    },
+    "copyFrom": {
+      "method": "POST",
+      "path": "/sandboxes/$SANDBOX/files/download/token?ownerId=$OWNER&path=<remote>",
+      "success": [201],
+      "then": "the token's method (GET) to its uri, Authorization: Bearer <token>; the body is written to the local path",
+      "note": "TypeScript only; the same mint as download"
+    },
+    "create(wait) canceled": {
+      "sdk": "python",
+      "when": "sandboxes.create(wait=True) is canceled (asyncio.CancelledError) after the create returned and before the sandbox is running",
+      "method": "POST",
+      "path": "/sandboxes/$SANDBOX/terminate?ownerId=$OWNER",
+      "success": [204],
+      "note": "errors are suppressed; the TypeScript create raises SandboxCreateWaitError with the id and terminates nothing"
+    },
+    "groupEnvironment": "group-environment-contract.json"
+  },
+  "cannotOccurOnBex": {
+    "snapshot_plan_mismatch": "bex captures filesystem snapshots only (a runtime capture is refused with SANDBOX_SNAPSHOT_RUNTIME_UNSUPPORTED, ADR104 D4), and only a runtime snapshot is tied to a plan; runtime snapshots wait on w2/m322",
+    "sandbox_group_suspended": "bex has no suspended sandbox group: no path suspends one (ADR104 § Groups, docs/render-artifacts/sandbox-groups.md), and Render documents neither what suspends a group nor what lifts it"
+  }
+}

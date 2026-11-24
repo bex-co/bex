@@ -21,15 +21,19 @@ import warnings
 
 from render import Render, RenderAsync
 from render.client.errors import ClientError
-from render.experimental.sandbox import (
+# render.sandbox, which SDK v1.10.0 made the supported path
+# (render.experimental.sandbox is deprecated there), exports every name below
+# at the top level since v1.8.0 as well (w22/m445).
+from render.sandbox import (
     ImageNotFoundError,
+    SandboxExecExit,
+    SandboxExecOutput,
     SandboxFileNotFoundError,
     SandboxGroupDefaultNotDeletableError,
     SandboxNotFoundError,
     SnapshotNotFoundError,
     SnapshotNotReadyError,
 )
-from render.experimental.sandbox.types import SandboxExecExit, SandboxExecOutput
 from render.public_api.api.sandboxes import (
     create_sandbox_group_credential,
     delete_sandbox_group_credential,

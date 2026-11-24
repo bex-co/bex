@@ -52,6 +52,15 @@
         "expect": { "environmentId": "$ENV_A" }
       }
     ],
+    "createTypeScript": [
+      {
+        "method": "POST",
+        "path": "/sandbox-groups",
+        "body": { "ownerId": "$OWNER", "name": "ts-agents", "region": "oregon", "environmentId": "$ENV_A" },
+        "success": [201],
+        "expect": { "environmentId": "$ENV_A" }
+      }
+    ],
     "set": [
       {
         "method": "POST",
@@ -116,7 +125,7 @@
     },
     "protectedEnvironment": {
       "status": 403,
-      "note": "the CLI prints \"you are not allowed to take this action\" for any 403; both SDKs raise a ClientError"
+      "note": "the CLI prints \"you are not allowed to take this action\" for any 403; both SDKs raise a ClientError. It answers a move into or out of a protected environment and, per the SDK v1.10.0 release notes (\"Creating a group in a protected environment requires the Admin role in the workspace\"), a create in one"
     }
   }
 }

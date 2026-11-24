@@ -63,7 +63,7 @@ func loadGroupEnvironmentContract(t *testing.T) groupEnvironmentContract {
 	if err := json.Unmarshal(raw, &c); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"create", "set", "move", "clear", "clearWhenInNone"} {
+	for _, name := range []string{"create", "createTypeScript", "set", "move", "clear", "clearWhenInNone"} {
 		if len(c.Sequences[name]) == 0 {
 			t.Fatalf("the contract has no %q sequence", name)
 		}
@@ -75,12 +75,7 @@ func loadGroupEnvironmentContract(t *testing.T) groupEnvironmentContract {
 // last response body.
 func (f *groupFixture) replay(t *testing.T, name string, steps []contractStep, vars map[string]string) string {
 	t.Helper()
-	bind := func(s string) string {
-		for k, v := range vars {
-			s = strings.ReplaceAll(s, k, v)
-		}
-		return s
-	}
+	bind := func(s string) string { return bindVars(s, vars) }
 	var body string
 	for i, step := range steps {
 		var code int
@@ -116,11 +111,13 @@ func TestRenderClientsMoveAGroupBetweenEnvironments(t *testing.T) {
 		"$ENV_B": f.environment(t, "production", false),
 	}
 
-	// createGroup / create_group / `sandbox-groups create --environment`.
+	// createGroup / create_group / `sandbox-groups create --environment`, and
+	// the TypeScript SDK's body, which also sends its default region.
 	var created Group
 	if err := json.Unmarshal([]byte(f.replay(t, "create", c.Sequences["create"], vars)), &created); err != nil {
 		t.Fatal(err)
 	}
+	f.replay(t, "createTypeScript", c.Sequences["createTypeScript"], vars)
 
 	// setGroupEnvironment(g, A), then (g, B), then (g, null), and null again on
 	// a group in none; the CLI's `environment set` and `remove` send the same.
@@ -138,7 +135,7 @@ func TestRenderClientsMoveAGroupBetweenEnvironments(t *testing.T) {
 
 // The refusals the clients read: an unknown group is 404 "sandbox group not
 // found" on add and on remove, the CLI fake's own answer, and a Developer's
-// move into or out of a protected environment is a 403.
+// create in, or move into or out of, a protected environment is a 403.
 func TestRenderClientsReadTheGroupMoveRefusals(t *testing.T) {
 	c := loadGroupEnvironmentContract(t)
 	f := newGroupFixture(t)
@@ -163,6 +160,19 @@ func TestRenderClientsReadTheGroupMoveRefusals(t *testing.T) {
 	g := f.mustCreateGroupIn(t, "in-prod", prod)
 	f.svc.Base.Authz = managerChecker{admin: false}
 	forbidden := c.Refusals["protectedEnvironment"]
+	// SDK v1.10.0: creating a group in a protected environment needs an Admin,
+	// in either SDK's body, and the refused create leaves no group.
+	before := len(f.listGroups(t))
+	for _, name := range []string{"create", "createTypeScript"} {
+		step := c.Sequences[name][0]
+		body := bindVars(string(step.Body), map[string]string{"$OWNER": f.ws, "$ENV_A": prod})
+		if code, out := f.do(t, step.Method, "/v1"+step.Path, body); code != forbidden.Status || errCode(out) != core.ProtectedPlacementCode {
+			t.Errorf("a Developer's %s in a protected environment = %d %s, want %d %s", name, code, out, forbidden.Status, core.ProtectedPlacementCode)
+		}
+	}
+	if after := len(f.listGroups(t)); after != before {
+		t.Errorf("the refused creates left %d groups, want %d", after, before)
+	}
 	for _, req := range []struct{ method, path, body string }{
 		{http.MethodPost, "/v1/environments/" + staging + "/resources", `{"resourceIds":["` + g.ID + `"]}`},
 		{http.MethodDelete, "/v1/environments/" + prod + "/resources?resourceIds=" + g.ID, ""},

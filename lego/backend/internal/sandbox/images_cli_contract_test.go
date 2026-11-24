@@ -129,36 +129,7 @@ func TestImageRoutesEmitTheCLIContractGolden(t *testing.T) {
 // a known one.
 func TestImageListFiltersByExactNameAndStatus(t *testing.T) {
 	f := newImageFixture(t)
-	ctx := context.Background()
-	seeded := 0
-	seed := func(name, status string) string {
-		t.Helper()
-		seeded++ // a name and digest the group already has is the same build
-		b, _, err := f.st.CreateSandboxBuild(ctx, store.NewSandboxBuild{
-			WorkspaceID: f.ws, SandboxGroupID: f.group.ID, Name: name,
-			SourceRepository: "docker.io", SourceImage: "library/" + name, SourceReference: status,
-			SourceDigest: fmt.Sprintf("sha256:%064x", seeded),
-		}, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if status != store.SandboxBuildPending {
-			if ok, err := f.st.StartSandboxBuild(ctx, b.ID); err != nil || !ok {
-				t.Fatalf("start %s: %v %v", b.ID, ok, err)
-			}
-		}
-		switch status {
-		case store.SandboxBuildSucceeded:
-			if ok, err := f.st.SucceedSandboxBuild(ctx, b.ID, b.SourceDigest, 1); err != nil || !ok {
-				t.Fatalf("succeed %s: %v %v", b.ID, ok, err)
-			}
-		case store.SandboxBuildFailed:
-			if err := f.st.FailSandboxBuild(ctx, b.ID, "image_pull_failed", "pull failed"); err != nil {
-				t.Fatal(err)
-			}
-		}
-		return b.ID
-	}
+	seed := func(name, status string) string { return f.seedBuild(t, name, status).ID }
 	pythonOK := seed("python", store.SandboxBuildSucceeded)
 	pythonFailed := seed("python", store.SandboxBuildFailed)
 	python3 := seed("python3", store.SandboxBuildSucceeded)
