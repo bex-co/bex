@@ -25,9 +25,16 @@ interface SpendCapSectionProps {
   saved: AgentEnvironmentView;
   update: (input: AgentEnvironmentInput) => Promise<AgentEnvironmentView>;
   canManage: boolean;
+  /**
+   * The member's role cannot view billing details (a Contributor or a
+   * Viewer, w9/144): bex-api sends no spend figure, and the section says why.
+   */
+  billingDenied: boolean;
 }
 
-function capDraft(env: AgentEnvironmentView): string {
+/** The cap field's value: empty for a member who may not view it (w9/144). */
+function capDraft(env: AgentEnvironmentView, hidden: boolean): string {
+  if (hidden) return "";
   const cap =
     env.agentModelSpendCapOverrideUsd ?? env.agentModelPlanSpendCapUsd;
   return cap == null ? "" : String(cap);
@@ -39,28 +46,35 @@ function capDraft(env: AgentEnvironmentView): string {
  * the billing trust tier with its next charge point, and the admin-editable
  * monthly cap (up to 10x the plan default; Reset returns to the plan default). Non-admins see the
  * same controls disabled, so the loaded section keeps its skeleton's geometry.
+ * The figures are billing details (w9/144): a member who may not view them
+ * reads the role's reason in the summary's place, with no figure anywhere.
  */
 export function SpendCapSection({
   saved,
   update,
   canManage,
+  billingDenied,
 }: SpendCapSectionProps) {
   const { t, i18n } = useTranslations();
   const inputId = `${useId()}-spend-cap`;
   const usd = (value: number) => money(value, i18n.language);
-  const [draft, setDraft] = useState(() => capDraft(saved));
+  const [draft, setDraft] = useState(() => capDraft(saved, billingDenied));
   const [base, setBase] = useState(saved);
   if (base !== saved) {
     setBase(saved);
-    setDraft(capDraft(saved));
+    setDraft(capDraft(saved, billingDenied));
   }
   const [busy, setBusy] = useState<"save" | "reset" | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
-  const position = spendPosition(saved);
+  const position = billingDenied ? null : spendPosition(saved);
   // The summary and meter show the limit nearest to stopping new model
   // requests, and the spend the mint holds against it.
-  let summary = t("agentEnvironment.spendUnavailable");
+  let summary = t(
+    billingDenied
+      ? "capabilities.reasonCanViewBilling"
+      : "agentEnvironment.spendUnavailable",
+  );
   let meterValue = summary;
   if (position) {
     const params = {
@@ -82,7 +96,7 @@ export function SpendCapSection({
   const planUsd = saved.agentModelPlanSpendCapUsd;
   const value = parseSpendCap(draft, maxUsd);
   const invalid = draft.trim() !== "" && value == null;
-  const unchanged = draft === capDraft(saved);
+  const unchanged = draft === capDraft(saved, billingDenied);
   const shownError = invalid ? "agentEnvironment.spendCapInvalid" : errorKey;
   const helpId = `${inputId}-help`;
   const errorId = `${inputId}-error`;
@@ -106,7 +120,8 @@ export function SpendCapSection({
     }
   }
 
-  const tier = saved.trustTier;
+  // The tier lines are billing details too (w9/144).
+  const tier = billingDenied ? null : saved.trustTier;
   const next = saved.nextChargeThresholdUsd;
   const credit = saved.agentModelCreditUsd;
   const tierLine = tier
@@ -120,11 +135,13 @@ export function SpendCapSection({
         : t("agentEnvironment.spendTierNextCharge", { tier, amount: usd(next) })
       : t("agentEnvironment.spendTierMonthEnd", { tier })
     : null;
-  const tierNote = saved.trustTierLocked
-    ? t("agentEnvironment.spendTierLocked")
-    : tier === NEW_WORKSPACE_TIER && next != null
-      ? t("agentEnvironment.spendTierNew", { amount: usd(next) })
-      : null;
+  const tierNote = !tier
+    ? null
+    : saved.trustTierLocked
+      ? t("agentEnvironment.spendTierLocked")
+      : tier === NEW_WORKSPACE_TIER && next != null
+        ? t("agentEnvironment.spendTierNew", { amount: usd(next) })
+        : null;
 
   return (
     <div className="space-y-3 border-t pt-6" data-testid="spend-cap-section">
@@ -213,7 +230,7 @@ export function SpendCapSection({
           </Button>
         </div>
         <p id={helpId} className="text-muted-foreground text-xs">
-          {planUsd != null && maxUsd != null
+          {!billingDenied && planUsd != null && maxUsd != null
             ? t("agentEnvironment.spendCapHelp", {
                 plan: usd(planUsd),
                 max: usd(maxUsd),

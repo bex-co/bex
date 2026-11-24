@@ -1513,6 +1513,17 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
       "未払いの請求書が支払われるまで、bex 提供のモデルを使用するエージェントセッションは一時停止されます。",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "エージェントのモデル支出の上限に達しました",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "このワークスペースはエージェントのモデル支出の上限に達したため、bex 提供のモデルで新しいセッションを開始できません。ワークスペースの管理者に依頼してください。",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "新規ワークスペースは、最初の支払いが成功するまで、bex 提供のモデルで同時に {limit} 件のエージェントセッションを実行できます。実行中のセッションが終了するまで待つか、いずれかを停止してから、もう一度お試しください。",

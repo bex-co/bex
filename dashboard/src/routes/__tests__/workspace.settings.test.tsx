@@ -186,6 +186,12 @@ const capabilityState = {
   canViewBilling: true,
   canManage: true,
   loading: false,
+  // The pending frame's spend section follows the confirmed billing denial
+  // (w9/144).
+  denied: (action: string) =>
+    !capabilityState.loading &&
+    action === "can_view_billing" &&
+    !capabilityState.canViewBilling,
 };
 vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () => capabilityState,

@@ -1501,6 +1501,17 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "在结清未付发票之前，使用 bex 提供的模型的智能体会话已暂停。",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "已达到智能体模型支出上限",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "此工作区已达到智能体模型支出上限，因此无法启动使用 bex 提供的模型的新会话。请联系工作区管理员。",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "新工作区在首次成功付款前，最多可同时运行 {limit} 个使用 bex 提供的模型的智能体会话。请等待正在运行的会话结束或停止一个会话，然后重试。",

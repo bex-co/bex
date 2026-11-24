@@ -239,6 +239,28 @@ describe("composerSpendGate", () => {
     expect(warning.kind).toBe("warning");
     expect(blocksCreate(warning)).toBe(false);
   });
+
+  // w9/144: without figures (a member who cannot view billing details) the
+  // server's verdict alone refuses, and nothing warns before the cap.
+  it("refuses on the server's verdict alone when the figures are withheld", () => {
+    const reached = composerSpendGate(
+      env(null, null, { agentModelSpendCapReached: true }),
+    );
+    expect(reached.kind).toBe("reachedHidden");
+    expect(blocksCreate(reached)).toBe(true);
+    expect(
+      composerSpendGate(env(null, null, { agentModelSpendCapReached: false }))
+        .kind,
+    ).toBe("none");
+    expect(
+      composerSpendGate(
+        env(null, null, {
+          agentModelSpendCapReached: true,
+          billingBalanceDue: true,
+        }),
+      ).kind,
+    ).toBe("balanceDue");
+  });
 });
 
 describe("canRaiseCap", () => {

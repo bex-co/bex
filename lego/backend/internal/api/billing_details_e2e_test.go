@@ -106,6 +106,8 @@ func TestBillingDetailsPerRoleE2E(t *testing.T) {
 		APIKeys: keys, KeyBinder: resolver,
 		Billing: e2eBillingProvider{},
 		Usage:   &usage.Service{Base: base, Store: st, Billing: e2eInvoiceReader{}},
+		// The agent environment reads its spend position from the same store.
+		AgentEnvironmentStore: st, AgentSpendStore: st,
 	})
 	mux := srv.restHandler()
 	gated := srv.withScopeClassREST(mux, mux)
@@ -208,6 +210,31 @@ func TestBillingDetailsPerRoleE2E(t *testing.T) {
 			t.Errorf("%s's viewerCapabilities = %v, want canViewBilling %v and canManageBilling %v", who, caps, views, manages)
 		}
 
+		// The agent environment is every member's, but its agent model spend,
+		// cap and trust tier are billing details too (w9/144): only the roles
+		// that view billing read them, on each surface. Every member reads
+		// the verdict that refuses a new session's platform-model requests.
+		envREST := rest(id, http.MethodGet, "/v1/agent-environment?ownerId="+ws.ID, "")
+		gqlEnv := graphqlDo(t, srv, id, fmt.Sprintf(`{ agentEnvironment(ownerId: %q) { agentModelSpendMonthToDateUsd agentModelMonthlySpendCapUsd trustTier agentModelSpendCapReached billingBalanceDue } }`, ws.ID))
+		mcpEnv := mcpCall(t, srv, id, "get_agent_environment", map[string]any{})
+		if envREST.Code != http.StatusOK || gqlEnv["errors"] != nil || mcpEnv.IsError {
+			t.Fatalf("%s reads the agent environment: REST %d %s, GraphQL %v, MCP %s", who, envREST.Code, envREST.Body, gqlEnv, mcpText(mcpEnv))
+		}
+		gqlData, _ := gqlEnv["data"].(map[string]any)
+		gqlFields, _ := gqlData["agentEnvironment"].(map[string]any)
+		for surface, fields := range map[string]map[string]any{"REST": jsonObject(envREST.Body.Bytes()), "GraphQL": gqlFields, "MCP": jsonObject(mustJSON(t, mcpEnv.StructuredContent))} {
+			for _, figure := range []string{"agentModelSpendMonthToDateUsd", "agentModelMonthlySpendCapUsd", "trustTier"} {
+				if (fields[figure] != nil) != views {
+					t.Errorf("%s's %s agent environment %s = %v, want present %v", who, surface, figure, fields[figure], views)
+				}
+			}
+			for _, verdict := range []string{"agentModelSpendCapReached", "billingBalanceDue"} {
+				if fields[verdict] != false {
+					t.Errorf("%s's %s agent environment %s = %v, want false", who, surface, verdict, fields[verdict])
+				}
+			}
+		}
+
 		// Editing stays Admin and Billing: Checkout, the Portal and the spend
 		// limit refuse everyone else, the Developer included.
 		if manages {
@@ -229,6 +256,20 @@ func TestBillingDetailsPerRoleE2E(t *testing.T) {
 		}
 	}
 
+	// A key reads the agent model spend as it reads usage: its creator's
+	// role views billing and its grant holds Workspaces Read. The
+	// Developer's key, narrowed to Agents Read, reads the environment
+	// without them.
+	devKey := callers["developer's key"]
+	if rec := rest(session(members["developer"]), http.MethodPatch, "/v1/api-keys/"+devKey.Subject+"?ownerId="+ws.ID,
+		`{"permissions":{"grants":[{"permission":"agents","level":"read"}]}}`); rec.Code != http.StatusOK {
+		t.Fatalf("the Developer narrows their key to Agents Read: %d %s", rec.Code, rec.Body)
+	}
+	envRec := rest(devKey, http.MethodGet, "/v1/agent-environment?ownerId="+ws.ID, "")
+	if env := jsonObject(envRec.Body.Bytes()); envRec.Code != http.StatusOK || env["agentModelSpendMonthToDateUsd"] != nil || env["agentModelSpendCapReached"] != false {
+		t.Errorf("the Agents Read key's agent environment = %d %s, want 200 with no spend figure", envRec.Code, envRec.Body)
+	}
+
 	// The refused spend-limit changes wrote nothing.
 	if out := graphqlDo(t, srv, session(admin), fmt.Sprintf(`{ pipelineSettings(workspaceId: %q) { spendLimitUsd } }`, ws.ID)); !strings.Contains(fmt.Sprint(out["data"]), "25.00") {
 		t.Errorf("the spend limit after the refused changes = %v, want 25.00", out)
@@ -241,4 +282,20 @@ type e2eInvoiceReader struct{}
 
 func (e2eInvoiceReader) BillingFor(context.Context, string, time.Time, time.Time) (*billing.Billing, error) {
 	return &billing.Billing{CurrentCost: &billing.Amount{AmountUSD: "12.34", Currency: "usd"}, Invoices: []billing.Invoice{}}, nil
+}
+
+// jsonObject decodes a JSON object, nil when raw is not one.
+func jsonObject(raw []byte) map[string]any {
+	var out map[string]any
+	_ = json.Unmarshal(raw, &out)
+	return out
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

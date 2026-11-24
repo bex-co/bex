@@ -1585,6 +1585,68 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
     expect(start()).toBeDisabled();
   });
 
+  // w9/144: a Contributor or a Viewer gets no spend figure from bex-api, only
+  // the verdicts that refuse a session; the composer blocks with them and
+  // shows no dollar amount, no Increase cap and no Billing link.
+  describe("for a member who cannot view billing details", () => {
+    function withoutFigures(over: Partial<AgentEnvironmentView> = {}) {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({
+          role: "CONTRIBUTOR",
+          canManage: false,
+          canCreate: false,
+          canViewBilling: false,
+          canManageBilling: false,
+        }),
+      );
+      spending(0, {
+        agentModelSpendMonthToDateUsd: null,
+        agentModelMonthlySpendCapUsd: null,
+        agentModelPlanSpendCapUsd: null,
+        agentModelMaxSpendCapUsd: null,
+        agentModelSpendCapTierLimited: null,
+        trustTierLocked: null,
+        agentModelSpendCapReached: false,
+        ...over,
+      });
+    }
+
+    it("lets a session start below the cap with no banner", async () => {
+      withoutFigures();
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await typeTask(user);
+      expect(banner()).toBeNull();
+      expect(start()).toBeEnabled();
+    });
+
+    it("blocks at the cap without a figure", async () => {
+      withoutFigures({ agentModelSpendCapReached: true });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await typeTask(user);
+      expect(banner()).toHaveTextContent("Agent model spend limit reached");
+      expect(banner()).toHaveTextContent(
+        "new sessions on the bex-provided model can't start. Ask a workspace admin.",
+      );
+      expect(banner()?.textContent).not.toMatch(/\$/);
+      expect(screen.queryByRole("link", { name: "Increase cap" })).toBeNull();
+      expect(start()).toBeDisabled();
+      await user.keyboard("{Enter}");
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("blocks while a payment is due without the Billing link", async () => {
+      withoutFigures({ billingBalanceDue: true });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await typeTask(user);
+      expect(banner()).toHaveTextContent("A payment failed");
+      expect(screen.queryByRole("link", { name: "Go to Billing" })).toBeNull();
+      expect(start()).toBeDisabled();
+    });
+  });
+
   it("shows no spend UI for a workspace on its own model key", async () => {
     spending(500, {
       modelSource: AgentModelSource.Byo,

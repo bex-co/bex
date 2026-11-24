@@ -1787,7 +1787,10 @@ export function WorkspaceSettingsSkeletonSections({
         <NotificationOverridesCardSkeleton />
       </Region>
       <Region name="agents" className="space-y-6">
-        <AgentEnvironmentCardSkeleton readOnly={readOnly} />
+        <AgentEnvironmentCardSkeleton
+          readOnly={readOnly}
+          billingDenied={sections.billingDenied}
+        />
         <AgentSecretsCardSkeleton canManage={sections.canManage} />
         <AgentRepoEnvironmentsCardSkeleton canManage={sections.canManage} />
         <AgentSkillsCardSkeleton canManage={sections.canManage} />

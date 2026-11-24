@@ -131,7 +131,9 @@ type Environment struct {
 	IdleTimeoutConfigurable bool       `json:"idleTimeoutConfigurable"`
 	UpdatedAt               *time.Time `json:"updatedAt"`
 	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
-	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
+	// store is off, and all but AgentModelSpendCapReached and
+	// BillingBalanceDue nil for a member who cannot view billing details
+	// (spendFor). AgentModelMonthlySpendCapUSD is the effective cap:
 	// min(the admin override or the plan default, the trust tier's ceiling).
 	AgentModelMonthlySpendCapUSD  *float64 `json:"agentModelMonthlySpendCapUsd"`
 	AgentModelPlanSpendCapUSD     *float64 `json:"agentModelPlanSpendCapUsd"`
@@ -404,7 +406,9 @@ const automationsGitHubCLIField = "automationsGithubCliEnabled"
 var modelIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/:@~+\[\]-]{0,254}$`)
 
 // Environment reads the workspace's agent environment. Any member may read
-// it: it carries no secret, and the composer and the settings page both show it.
+// it: it carries no secret, and the composer and the settings page both show
+// it. Its spend figures are billing details, for the members who may view
+// billing only (spendFor).
 func (s *Service) Environment(ctx context.Context, ownerID string) (Environment, error) {
 	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, ownerID)
 	if err != nil {
@@ -426,7 +430,7 @@ func (s *Service) Environment(ctx context.Context, ownerID string) (Environment,
 	if err != nil {
 		return Environment{}, err
 	}
-	return withSpend(view, status), nil
+	return s.spendFor(ctx, workspaceID, view, status), nil
 }
 
 // UpdateEnvironment applies a partial update. Admin-only (can_manage on the
@@ -525,7 +529,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	if s.Spend == nil {
 		return view, nil
 	}
-	return withSpend(view, status.WithOverride(row.SpendCapOverrideMicroUSD)), nil
+	return s.spendFor(ctx, workspaceID, view, status.WithOverride(row.SpendCapOverrideMicroUSD)), nil
 }
 
 // errModelKeyWrite is an OpenBao failure while writing the model key. The

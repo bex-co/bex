@@ -1713,6 +1713,17 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
       "Сессии агентов на модели от bex приостановлены, пока не будет оплачен неоплаченный счёт.",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "Достигнут лимит расходов на модель агентов",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "Это рабочее пространство достигло лимита расходов на модель агентов, поэтому новые сеансы с моделью от bex запустить нельзя. Обратитесь к администратору рабочего пространства.",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "Новые рабочие пространства могут одновременно запускать {limit} сессий агентов на модели от bex до первого успешного платежа. Дождитесь завершения выполняющейся сессии или остановите одну из них и повторите попытку.",

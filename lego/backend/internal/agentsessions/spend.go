@@ -191,6 +191,29 @@ func (s *Service) readSpend(ctx context.Context, workspaceID string) (agentsessi
 	return status, nil
 }
 
+// spendFor fills the environment view's spend controls for the caller. The
+// spend figures, the caps and the trust tier are billing details (w9/144):
+// as on Render's "View billing details" (w9/m620) and Devin's organization
+// consumption, which org admins read, a member whose role cannot view
+// billing (can_view_billing: a Contributor or a Viewer) gets none of them.
+// Every member keeps the two verdicts that refuse a new session's
+// platform-model requests, so the composer stops them before they start one;
+// the session's own failure reason would name the same cause. An API key
+// reads the figures as it reads usage (ADR012 § Billing details): its
+// creator's role views billing and its grant holds Workspaces Read. The
+// probe fails closed: a check that cannot be answered withholds the figures.
+func (s *Service) spendFor(ctx context.Context, workspaceID string, view Environment, status agentsession.SpendStatus) Environment {
+	if s.CanDecisionOn(ctx, core.RelCanViewBilling, core.WorkspaceObject(workspaceID)).Allowed() {
+		if granted, err := s.KeyGrantAllows(ctx, core.KeyWorkspaceSettings); err == nil && granted {
+			return withSpend(view, status)
+		}
+	}
+	reached, balanceDue := status.RefusesAtCap(), status.BalanceDue
+	view.AgentModelSpendCapReached = &reached
+	view.BillingBalanceDue = &balanceDue
+	return view
+}
+
 // withSpend fills the environment view's spend-control fields from status.
 func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 	usd := func(micro int64) *float64 { v := pricing.MicroToUSD(micro); return &v }

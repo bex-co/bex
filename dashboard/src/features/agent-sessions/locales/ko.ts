@@ -1505,6 +1505,17 @@ const koAgentSessions: Record<string, TranslationEntry> = {
       "미결제 청구서를 결제할 때까지 bex 제공 모델을 사용하는 에이전트 세션이 일시 중지됩니다.",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "에이전트 모델 지출 한도에 도달했습니다",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "이 워크스페이스가 에이전트 모델 지출 한도에 도달하여 bex 제공 모델로 새 세션을 시작할 수 없습니다. 워크스페이스 관리자에게 문의하세요.",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "신규 워크스페이스는 첫 결제가 성공할 때까지 bex 제공 모델로 에이전트 세션을 동시에 {limit}개까지 실행할 수 있습니다. 실행 중인 세션이 끝나기를 기다리거나 하나를 중지한 후 다시 시도하세요.",

@@ -20,11 +20,17 @@ const LINK_CLASS = "font-medium underline underline-offset-4";
  * payment hold) with an "Increase cap" link for admins only while the
  * workspace's own cap binds below its maximum; and while a failed invoice is
  * unpaid, a refusal that links to Billing. The mint would refuse those
- * sessions' model requests anyway.
+ * sessions' model requests anyway. A member who may not view billing details
+ * (w9/144) gets the refusals without figures and without the Billing link.
  */
 export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
   const { t, i18n } = useTranslations();
-  const { canManage } = useCapabilities();
+  const { canManage, denied } = useCapabilities();
+  const billingLink = denied("can_view_billing") ? null : (
+    <Link to="/billing" className={LINK_CLASS}>
+      {t("agentSessions.spendGoToBilling")}
+    </Link>
+  );
   const usd = (value: number) => money(value, i18n.language);
 
   switch (gate.kind) {
@@ -37,9 +43,17 @@ export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
           <AlertTitle>{t("agentSessions.spendBalanceDueTitle")}</AlertTitle>
           <AlertDescription>
             <p>{t("agentSessions.spendBalanceDueBody")}</p>
-            <Link to="/billing" className={LINK_CLASS}>
-              {t("agentSessions.spendGoToBilling")}
-            </Link>
+            {billingLink}
+          </AlertDescription>
+        </Alert>
+      );
+    case "reachedHidden":
+      return (
+        <Alert variant="destructive" data-testid="composer-spend-banner">
+          <OctagonX />
+          <AlertTitle>{t("agentSessions.spendReachedHiddenTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("agentSessions.spendReachedHiddenBody")}</p>
           </AlertDescription>
         </Alert>
       );
@@ -96,9 +110,7 @@ export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
                 {t("agentSessions.spendIncreaseCap")}
               </Link>
             ) : cause === "locked" ? (
-              <Link to="/billing" className={LINK_CLASS}>
-                {t("agentSessions.spendGoToBilling")}
-              </Link>
+              billingLink
             ) : null}
           </AlertDescription>
         </Alert>

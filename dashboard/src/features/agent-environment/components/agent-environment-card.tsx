@@ -81,7 +81,12 @@ export function AgentEnvironmentCard({ ownerId }: { ownerId: string }) {
     useAgentEnvironment(ownerId);
 
   if (loading) {
-    return <AgentEnvironmentCardSkeleton readOnly={denied("can_manage")} />;
+    return (
+      <AgentEnvironmentCardSkeleton
+        readOnly={denied("can_manage")}
+        billingDenied={denied("can_view_billing")}
+      />
+    );
   }
   if (!environment) {
     return (
@@ -487,7 +492,12 @@ function AgentEnvironmentForm({
 
         <ModelKeySection saved={saved} update={update} canManage={canManage} />
 
-        <SpendCapSection saved={saved} update={update} canManage={canManage} />
+        <SpendCapSection
+          saved={saved}
+          update={update}
+          canManage={canManage}
+          billingDenied={denied("can_view_billing")}
+        />
 
         <AvailableAgentsSection
           saved={saved}

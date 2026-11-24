@@ -1656,6 +1656,17 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
       "As sessões de agente no modelo fornecido pelo bex ficam pausadas até que a fatura pendente seja paga.",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "Limite de gastos com o modelo do agente atingido",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "Este workspace atingiu o limite de gastos com o modelo do agente, então novas sessões com o modelo fornecido pela bex não podem começar. Peça a um administrador do workspace.",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "Workspaces novos podem executar {limit} sessões de agente ao mesmo tempo no modelo fornecido pelo bex até o primeiro pagamento bem-sucedido. Aguarde uma sessão em execução terminar ou pare uma e tente novamente.",

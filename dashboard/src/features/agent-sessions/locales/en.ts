@@ -1594,6 +1594,17 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Agent sessions on the bex-provided model are paused until the outstanding invoice is paid.",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "Agent model spend limit reached",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "This workspace has reached its agent model spend limit, so new sessions on the bex-provided model can't start. Ask a workspace admin.",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "New workspaces can run {limit} agent sessions on the bex-provided model at once until their first successful payment. Wait for a running session to finish or stop one, then try again.",

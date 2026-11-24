@@ -34,6 +34,10 @@ export interface WorkspaceSettingsPendingSections {
    *  editors, Save buttons and Invite, and no Audit Logs (w7/094); an
    *  unknown role keeps the Admin's frame. */
   canManage: boolean | null;
+  /** The caller is known not to view billing details (`can_view_billing`, a
+   *  Contributor or a Viewer): Settings → Agents' spend section reads the
+   *  role's reason with no figure lines (w9/144). */
+  billingDenied: boolean;
   /** The workspace's org, once known: an org that requires 2FA or Google
    *  login gives that card its "required by" note (w7/m466). */
   organization: WorkspaceView["organization"];
@@ -84,6 +88,7 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
     belowPro: shape != null && !proFeaturesPlan(shape.plan),
     belowScale: shape != null && !inboundIpRulesPlan(shape.plan),
     canManage,
+    billingDenied: capabilities.denied("can_view_billing"),
     organization: shape?.organization ?? null,
     loginRequirementStatus:
       currentWorkspace && canManage === false

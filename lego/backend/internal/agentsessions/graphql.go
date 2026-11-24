@@ -969,8 +969,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"agentEnvironment": &graphql.Field{
-			Type: graphql.NewNonNull(agentEnvironmentGQLType),
-			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Type:        graphql.NewNonNull(agentEnvironmentGQLType),
+			Description: "The workspace's agent environment, readable by every member. Its agent-model spend figures, caps and trust tier are billing details: null for a caller who may not view billing (a Contributor, a Viewer, or an API key whose grant lacks Workspaces Read), who still reads agentModelSpendCapReached and billingBalanceDue.",
+			Args:        graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Environment(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},

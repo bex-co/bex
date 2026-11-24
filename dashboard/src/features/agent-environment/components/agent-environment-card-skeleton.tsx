@@ -290,12 +290,16 @@ const longest = (...texts: string[]) =>
  * are data-dependent and omitted, and the model
  * list holds a representative count of rows; every action is disabled until
  * the data arrives. `readOnly` is a caller known not to manage the workspace,
- * whose card opens with the Admin-only note (w7/094).
+ * whose card opens with the Admin-only note (w7/094). `billingDenied` is a
+ * caller known not to view billing details, whose spend section reads the
+ * role's reason with no figure lines (w9/144).
  */
 export function AgentEnvironmentCardSkeleton({
   readOnly = false,
+  billingDenied = false,
 }: {
   readOnly?: boolean;
+  billingDenied?: boolean;
 }) {
   const { t } = useTranslations();
   return (
@@ -496,48 +500,62 @@ export function AgentEnvironmentCardSkeleton({
             }
           />
           <div className="space-y-2">
-            {/* The summary holds its longer, beyond-credits variant. */}
+            {/* The summary holds its longer, beyond-credits variant, or the
+                role's reason for a member who may not view billing. */}
             <p className="text-sm font-medium">
-              <SkeletonText>
-                {longest(
-                  t("agentEnvironment.spendSummary", {
-                    used: WIDE_USD,
-                    cap: WIDE_USD,
-                  }),
-                  t("agentEnvironment.spendSummaryCeiling", {
-                    used: WIDE_USD,
-                    cap: WIDE_USD,
-                    total: WIDE_USD,
-                  }),
-                )}
-              </SkeletonText>
+              {billingDenied ? (
+                t("capabilities.reasonCanViewBilling")
+              ) : (
+                <SkeletonText>
+                  {longest(
+                    t("agentEnvironment.spendSummary", {
+                      used: WIDE_USD,
+                      cap: WIDE_USD,
+                    }),
+                    t("agentEnvironment.spendSummaryCeiling", {
+                      used: WIDE_USD,
+                      cap: WIDE_USD,
+                      total: WIDE_USD,
+                    }),
+                  )}
+                </SkeletonText>
+              )}
             </p>
             <Skeleton className="h-2 w-full rounded-full" />
             {/* Tier line, then the T0 / payment-hold note on its own line,
-                each holding its longest variant. */}
+                each holding its longest variant; blank lines without
+                billing details, as the ready section leaves them. */}
             <p className="text-muted-foreground text-xs">
-              <SkeletonText>
-                {longest(
-                  t("agentEnvironment.spendTierNextCharge", {
-                    tier: "T0",
-                    amount: WIDE_USD,
-                  }),
-                  t("agentEnvironment.spendTierNextChargeCredit", {
-                    tier: "T0",
-                    amount: WIDE_USD,
-                    credit: WIDE_USD,
-                  }),
-                  t("agentEnvironment.spendTierMonthEnd", { tier: "T0" }),
-                )}
-              </SkeletonText>
+              {billingDenied ? (
+                " "
+              ) : (
+                <SkeletonText>
+                  {longest(
+                    t("agentEnvironment.spendTierNextCharge", {
+                      tier: "T0",
+                      amount: WIDE_USD,
+                    }),
+                    t("agentEnvironment.spendTierNextChargeCredit", {
+                      tier: "T0",
+                      amount: WIDE_USD,
+                      credit: WIDE_USD,
+                    }),
+                    t("agentEnvironment.spendTierMonthEnd", { tier: "T0" }),
+                  )}
+                </SkeletonText>
+              )}
             </p>
             <p className="text-muted-foreground text-xs">
-              <SkeletonText>
-                {longest(
-                  t("agentEnvironment.spendTierNew", { amount: WIDE_USD }),
-                  t("agentEnvironment.spendTierLocked"),
-                )}
-              </SkeletonText>
+              {billingDenied ? (
+                " "
+              ) : (
+                <SkeletonText>
+                  {longest(
+                    t("agentEnvironment.spendTierNew", { amount: WIDE_USD }),
+                    t("agentEnvironment.spendTierLocked"),
+                  )}
+                </SkeletonText>
+              )}
             </p>
           </div>
           <div className="space-y-2">
@@ -562,12 +580,16 @@ export function AgentEnvironmentCardSkeleton({
               </Button>
             </div>
             <p className="text-muted-foreground text-xs">
-              <SkeletonText>
-                {t("agentEnvironment.spendCapHelp", {
-                  plan: WIDE_USD,
-                  max: WIDER_USD,
-                })}
-              </SkeletonText>
+              {billingDenied ? (
+                " "
+              ) : (
+                <SkeletonText>
+                  {t("agentEnvironment.spendCapHelp", {
+                    plan: WIDE_USD,
+                    max: WIDER_USD,
+                  })}
+                </SkeletonText>
+              )}
             </p>
           </div>
         </div>

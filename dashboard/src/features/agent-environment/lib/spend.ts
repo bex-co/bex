@@ -133,7 +133,10 @@ export function capCause(env: AgentEnvironmentView): CapCause {
 /**
  * What the new-session composer shows for the workspace's model spend. Only
  * a platform-route workspace is capped: a BYO-key workspace's provider bills
- * it directly, so it never sees spend UI.
+ * it directly, so it never sees spend UI. A member whose role cannot view
+ * billing details gets no spend figure from bex-api (w9/144), only the
+ * verdicts that refuse a session: at the cap, "reachedHidden" says so without
+ * figures, and nothing warns before it.
  */
 export type ComposerSpendGate =
   | { kind: "none" }
@@ -148,6 +151,7 @@ export type ComposerSpendGate =
        */
       canRaiseCap: boolean;
     }
+  | { kind: "reachedHidden" }
   | { kind: "balanceDue" };
 
 export function composerSpendGate(
@@ -158,7 +162,11 @@ export function composerSpendGate(
   }
   if (env.billingBalanceDue) return { kind: "balanceDue" };
   const position = spendPosition(env);
-  if (!position) return { kind: "none" };
+  if (!position) {
+    return env.agentModelSpendCapReached
+      ? { kind: "reachedHidden" }
+      : { kind: "none" };
+  }
   if (position.level === "reached") {
     const cause = capCause(env);
     return {
@@ -185,7 +193,11 @@ export function capCanRise(env: AgentEnvironmentView): boolean {
 
 /** Whether the gate refuses new sessions (the mint would refuse them). */
 export function blocksCreate(gate: ComposerSpendGate): boolean {
-  return gate.kind === "reached" || gate.kind === "balanceDue";
+  return (
+    gate.kind === "reached" ||
+    gate.kind === "reachedHidden" ||
+    gate.kind === "balanceDue"
+  );
 }
 
 /**

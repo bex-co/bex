@@ -145,8 +145,9 @@ func (f *fakeEnvironments) UpsertAgentEnvironmentLocked(ctx context.Context, ws 
 }
 
 // roleChecker models one workspace's roles: admin holds every relation,
-// developer everything but can_manage, viewer only can_view; anyone else
-// (including every subject on any other workspace) is denied.
+// developer everything but can_manage, contributor and billing their
+// model.fga relations, viewer only can_view; anyone else (including every
+// subject on any other workspace) is denied.
 type roleChecker struct {
 	workspace string
 	roles     map[string]string
@@ -161,6 +162,10 @@ func (c roleChecker) Check(_ context.Context, subject, relation, object string) 
 		return true, nil
 	case "developer":
 		return relation != core.RelCanManage, nil
+	case "contributor":
+		return slices.Contains([]string{core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate}, relation), nil
+	case "billing":
+		return slices.Contains([]string{core.RelCanView, core.RelCanViewBilling, core.RelCanManageBilling}, relation), nil
 	case "viewer":
 		return relation == core.RelCanView, nil
 	}
@@ -170,7 +175,7 @@ func (c roleChecker) Check(_ context.Context, subject, relation, object string) 
 func environmentService(ws string, environments EnvironmentStore) *Service {
 	return &Service{
 		Base: &core.Base{Authz: roleChecker{workspace: ws, roles: map[string]string{
-			"admin": "admin", "dev": "developer", "viewer": "viewer",
+			"admin": "admin", "dev": "developer", "contrib": "contributor", "billing": "billing", "viewer": "viewer",
 		}}},
 		Environments: environments,
 		// Production's two agent templates (fakeLifecycle.AgentTemplates).

@@ -709,6 +709,55 @@ describe("AgentEnvironmentCard", () => {
       expect(resetCap()).toBeDisabled();
     });
 
+    // w9/144: the spend is a billing detail. A Contributor and a Viewer read
+    // the role's reason in its place and no dollar figure, even from a copy
+    // that still carries the figures, in the same lines as everyone else.
+    it.each(["CONTRIBUTOR", "VIEWER"] as const)(
+      "shows a %s the role's reason and no spend figure",
+      (role) => {
+        vi.mocked(useCapabilities).mockReturnValue(
+          mockCapabilities({
+            role,
+            canManage: false,
+            canCreate: false,
+            canViewBilling: false,
+            canManageBilling: false,
+          }),
+        );
+        setup({ ...SPEND, agentModelSpendCapOverrideUsd: 50 });
+        const section = screen.getByTestId("spend-cap-section");
+        expect(screen.getByTestId("spend-summary")).toHaveTextContent(
+          "Your role can’t view billing details. Ask a workspace admin.",
+        );
+        expect(section.textContent).not.toMatch(/\$|T0/);
+        const meter = screen.getByRole("progressbar", {
+          name: "Agent model spend",
+        });
+        expect(meter).not.toHaveAttribute("aria-valuenow");
+        expect(meter.getAttribute("aria-valuetext")).not.toMatch(/\$/);
+        expect(capField()).toBeDisabled();
+        expect(capField()).toHaveValue(null);
+        expect(saveCap()).toBeDisabled();
+        expect(resetCap()).toBeDisabled();
+        const readyLines = Array.from(
+          section.querySelectorAll(":scope > div:nth-of-type(2) > p"),
+          (line) => line.textContent,
+        );
+        cleanup();
+
+        // The skeleton draws the same reason and the same blank lines.
+        setup(null, true);
+        const skeleton = screen.getByTestId("spend-cap-section-skeleton");
+        expect(
+          Array.from(
+            skeleton.querySelectorAll(":scope > div:nth-of-type(2) > p"),
+            (line) => line.textContent,
+          ),
+        ).toEqual(readyLines);
+        expect(skeleton.textContent).not.toMatch(/\$|T0/);
+      },
+    );
+
     it("keeps the skeleton's spend section in step with the ready card", () => {
       setup(SPEND);
       const readySection = screen.getByTestId("spend-cap-section");

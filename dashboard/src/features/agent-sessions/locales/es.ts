@@ -1656,6 +1656,17 @@ const esAgentSessions: Record<string, TranslationEntry> = {
       "Las sesiones de agente con el modelo que proporciona bex están en pausa hasta que se pague la factura pendiente.",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "Se alcanzó el límite de gasto del modelo del agente",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "Este espacio de trabajo alcanzó su límite de gasto del modelo del agente, así que no se pueden iniciar sesiones nuevas con el modelo que proporciona bex. Pregunta a un administrador del espacio de trabajo.",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "Los espacios de trabajo nuevos pueden ejecutar {limit} sesiones de agente a la vez con el modelo que proporciona bex hasta su primer pago correcto. Espera a que termine una sesión en ejecución o detén una, y vuelve a intentarlo.",

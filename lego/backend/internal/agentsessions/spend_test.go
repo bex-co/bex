@@ -65,7 +65,7 @@ var paidT1 = store.BillingTrust{LifetimePaidCents: 1000}
 func TestEnvironmentReportsSpendControls(t *testing.T) {
 	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
 	spend.used = 1_234_567
-	got, err := svc.Environment(caller("viewer"), "tea-a")
+	got, err := svc.Environment(caller("dev"), "tea-a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 		t.Fatalf("T0 Pro view = %+v", got)
 	}
 	spend.trust = store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6}
-	got, _ = svc.Environment(caller("viewer"), "tea-a")
+	got, _ = svc.Environment(caller("dev"), "tea-a")
 	if *got.AgentModelMonthlySpendCapUSD != 200 || *got.TrustTier != "T4" || got.NextChargeThresholdUSD != nil ||
 		*got.AgentModelSpendCapTierLimited {
 		t.Fatalf("T4 Pro view = %+v", got)
@@ -85,7 +85,7 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	// until the invoice is paid (ADR091 D10.1, D10.3).
 	spend.trust = store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6, LockedUntil: store.LockedIndefinitely}
 	spend.balanceDue = true
-	got, _ = svc.Environment(caller("viewer"), "tea-a")
+	got, _ = svc.Environment(caller("dev"), "tea-a")
 	if *got.TrustTier != "T0" || !*got.TrustTierLocked || !*got.BillingBalanceDue {
 		t.Fatalf("locked view = %+v", got)
 	}
@@ -110,7 +110,7 @@ func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
 		{"T1 at the Pro cap", paidT1, 200_000_000, true, true},
 	} {
 		spend.trust, spend.used, spend.chargeable = tc.trust, tc.used, tc.chargeable
-		got, err := svc.Environment(caller("viewer"), "tea-a")
+		got, err := svc.Environment(caller("dev"), "tea-a")
 		if err != nil || got.AgentModelSpendCapReached == nil || *got.AgentModelSpendCapReached != tc.want {
 			t.Errorf("%s: reached = %v (%v), want %t", tc.name, got.AgentModelSpendCapReached, err, tc.want)
 		}
@@ -125,13 +125,13 @@ func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("viewer")))
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("dev")))
 	var view map[string]any
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil ||
 		view["agentModelSpendCapReached"] != false || view["agentModelChargesAtThreshold"] != true {
 		t.Fatalf("REST = %d %s", rec.Code, rec.Body.String())
 	}
-	res, err := newMCPClient(t, caller("viewer"), svc).CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+	res, err := newMCPClient(t, caller("dev"), svc).CallTool(caller("dev"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
 	if err != nil || res.IsError {
 		t.Fatalf("MCP = %+v, %v", res, err)
 	}
@@ -139,7 +139,7 @@ func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
 	if out["agentModelSpendCapReached"] != false || out["agentModelChargesAtThreshold"] != true {
 		t.Fatalf("MCP = %+v", out)
 	}
-	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("viewer"),
+	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("dev"),
 		RequestString: `{ agentEnvironment(ownerId: "tea-a") { agentModelSpendCapReached agentModelChargesAtThreshold } }`})
 	data, _ := r.Data.(map[string]any)
 	if env, _ := data["agentEnvironment"].(map[string]any); len(r.Errors) != 0 || env["agentModelSpendCapReached"] != false || env["agentModelChargesAtThreshold"] != true {
@@ -153,30 +153,98 @@ func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
 func TestEnvironmentReportsTheCreditAndUnbilledSpend(t *testing.T) {
 	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
 	spend.used, spend.credit, spend.chargeable = 12_000_000, 5_000_000, true
-	got, err := svc.Environment(caller("viewer"), "tea-a")
+	got, err := svc.Environment(caller("dev"), "tea-a")
 	if err != nil || got.AgentModelCreditUSD == nil || *got.AgentModelCreditUSD != 5 || got.AgentModelUnbilledUSD == nil || *got.AgentModelUnbilledUSD != 7 {
 		t.Fatalf("environment = credit %v unbilled %v (%v), want $5 and $7", got.AgentModelCreditUSD, got.AgentModelUnbilledUSD, err)
 	}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("viewer")))
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("dev")))
 	var view map[string]any
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil || view["agentModelCreditUsd"] != 5.0 || view["agentModelUnbilledUsd"] != 7.0 {
 		t.Fatalf("REST = %d %s", rec.Code, rec.Body.String())
 	}
-	res, err := newMCPClient(t, caller("viewer"), svc).CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+	res, err := newMCPClient(t, caller("dev"), svc).CallTool(caller("dev"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
 	if err != nil || res.IsError {
 		t.Fatalf("MCP = %+v, %v", res, err)
 	}
 	if out, _ := res.StructuredContent.(map[string]any); out["agentModelCreditUsd"] != 5.0 || out["agentModelUnbilledUsd"] != 7.0 {
 		t.Fatalf("MCP = %+v", out)
 	}
-	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("viewer"),
+	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("dev"),
 		RequestString: `{ agentEnvironment(ownerId: "tea-a") { agentModelCreditUsd agentModelUnbilledUsd } }`})
 	data, _ := r.Data.(map[string]any)
 	if env, _ := data["agentEnvironment"].(map[string]any); len(r.Errors) != 0 || env["agentModelCreditUsd"] != 5.0 || env["agentModelUnbilledUsd"] != 7.0 {
 		t.Fatalf("GraphQL = %#v %#v", r.Data, r.Errors)
+	}
+}
+
+// w9/144: the spend figures, the caps and the trust tier are billing details.
+// As Render's "View billing details" is Admin, Developer and Billing (w9/m620)
+// and Devin's organization consumption is its org admins', a Contributor and
+// a Viewer read the agent environment without them on every surface. Every
+// member keeps the two verdicts that refuse a new session's platform-model
+// requests, so the composer can stop them before they start one.
+func TestEnvironmentSpendFiguresAreBillingDetails(t *testing.T) {
+	svc, spend := spendEnvironmentService(store.PlanPro, paidT1)
+	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{AgentModelMonthlySpendCapUSD: ptr(300.0)}); err != nil {
+		t.Fatal(err)
+	}
+	// At the workspace's own $300 cap, with a failed invoice unpaid: both
+	// verdicts hold.
+	spend.used, spend.credit, spend.balanceDue = 300_000_000, 5_000_000, true
+	figures := []string{
+		"agentModelMonthlySpendCapUsd", "agentModelPlanSpendCapUsd", "agentModelSpendCapOverrideUsd",
+		"agentModelMaxSpendCapUsd", "agentModelSpendMonthToDateUsd", "trustTier", "nextChargeThresholdUsd",
+		"agentModelCreditUsd", "agentModelUnbilledUsd", "trustTierLocked", "agentModelSpendCapTierLimited",
+		"agentModelChargesAtThreshold",
+	}
+	verdicts := []string{"agentModelSpendCapReached", "billingBalanceDue"}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	schema := environmentSchema(t, svc)
+	query := `{ agentEnvironment(ownerId: "tea-a") { ` + strings.Join(append(slices.Clone(figures), verdicts...), " ") + ` } }`
+	asMap := func(v any) map[string]any {
+		raw, _ := json.Marshal(v)
+		var out map[string]any
+		_ = json.Unmarshal(raw, &out)
+		return out
+	}
+	for subject, views := range map[string]bool{"admin": true, "dev": true, "billing": true, "contrib": false, "viewer": false} {
+		ctx := caller(subject)
+		got, err := svc.Environment(ctx, "tea-a")
+		if err != nil {
+			t.Fatalf("%s's environment: %v", subject, err)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(ctx))
+		var rest map[string]any
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &rest) != nil {
+			t.Fatalf("%s's REST = %d %s", subject, rec.Code, rec.Body.String())
+		}
+		res, err := newMCPClient(t, ctx, svc).CallTool(ctx, &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+		if err != nil || res.IsError {
+			t.Fatalf("%s's MCP = %+v, %v", subject, res, err)
+		}
+		r := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: query})
+		data, _ := r.Data.(map[string]any)
+		gql, _ := data["agentEnvironment"].(map[string]any)
+		if len(r.Errors) != 0 {
+			t.Fatalf("%s's GraphQL = %#v", subject, r.Errors)
+		}
+		for surface, out := range map[string]map[string]any{"service": asMap(got), "REST": rest, "MCP": asMap(res.StructuredContent), "GraphQL": gql} {
+			for _, field := range figures {
+				if (out[field] != nil) != views {
+					t.Errorf("%s's %s %s = %v, want present %t", subject, surface, field, out[field], views)
+				}
+			}
+			for _, field := range verdicts {
+				if out[field] != true {
+					t.Errorf("%s's %s %s = %v, want true", subject, surface, field, out[field])
+				}
+			}
+		}
 	}
 }
 

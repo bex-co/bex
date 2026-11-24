@@ -1605,6 +1605,17 @@ const deAgentSessions: Record<string, TranslationEntry> = {
       "Agent-Sitzungen mit dem von bex bereitgestellten Modell sind pausiert, bis die offene Rechnung bezahlt ist.",
     description: "Composer refusal body: BILLING_BALANCE_DUE",
   },
+  "agentSessions.spendReachedHiddenTitle": {
+    message: "Ausgabenlimit für Agent-Modelle erreicht",
+    description:
+      "Composer refusal title at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
+  "agentSessions.spendReachedHiddenBody": {
+    message:
+      "Dieser Workspace hat sein Ausgabenlimit für Agent-Modelle erreicht, daher können keine neuen Sitzungen mit dem von bex bereitgestellten Modell starten. Frag einen Workspace-Admin.",
+    description:
+      "Composer refusal body at the spend cap, for a member whose role cannot view billing details (no figures, w9/144)",
+  },
   "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
     message:
       "Neue Workspaces können bis zu ihrer ersten erfolgreichen Zahlung höchstens {limit} Agent-Sitzungen gleichzeitig mit dem von bex bereitgestellten Modell ausführen. Warte, bis eine laufende Sitzung beendet ist, oder beende eine, und versuche es dann erneut.",
