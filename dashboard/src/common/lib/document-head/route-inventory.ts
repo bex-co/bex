@@ -44,6 +44,8 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "blueprint.new.tsx",
     "blueprints.$blueprintId.tsx",
     "blueprints.tsx",
+    "build-sources.tsx",
+    "build-sources_.new.tsx",
     "databases.$databaseId.tsx",
     "env-groups.tsx",
     "env-groups_.$groupId.tsx",

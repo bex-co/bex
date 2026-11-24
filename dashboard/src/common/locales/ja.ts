@@ -125,6 +125,10 @@ const jaCommon: Record<string, TranslationEntry> = {
     message: "環境グループ",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navBuildSources": {
+    message: "ビルドソース",
+    description: "Workspace sidebar link to build sources",
+  },
   "common.navSandboxGroups": {
     message: "サンドボックスグループ",
     description: "Workspace sidebar link to sandbox groups",
@@ -748,6 +752,10 @@ const jaCommon: Record<string, TranslationEntry> = {
   "common.createTypeBlueprint": {
     message: "Blueprint",
     description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeBuildSource": {
+    message: "ビルドソース",
+    description: "Build Source in the New menu",
   },
   "common.createTypeSandboxGroup": {
     message: "サンドボックスグループ",

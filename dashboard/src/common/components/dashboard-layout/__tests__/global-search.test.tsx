@@ -42,6 +42,9 @@ vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
 vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
   useBlueprints: () => ({ blueprints: [], loading: false }),
 }));
+vi.mock("@/features/build-sources/hooks/use-build-sources-list", () => ({
+  useBuildSourcesList: () => ({ buildSources: [], loading: false }),
+}));
 
 function pressCtrlK() {
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });

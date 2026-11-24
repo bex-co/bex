@@ -56,6 +56,7 @@ describe("DashboardSidebar (w1/m45 — Render's nav grouping)", () => {
       ["Projects", "/"],
       ["Blueprints", "/blueprints"],
       ["Environment Groups", "/env-groups"],
+      ["Build Sources", "/build-sources"],
       ["Webhooks", "/webhooks"],
       ["Notifications", "/notifications"],
       ["Billing", "/billing"],

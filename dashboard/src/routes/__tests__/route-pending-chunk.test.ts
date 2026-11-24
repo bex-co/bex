@@ -15,6 +15,10 @@ import {
   SandboxGroupDetailRouteSkeleton,
   SandboxGroupsListRouteSkeleton,
 } from "@/features/sandbox-groups/components/sandbox-group-skeletons";
+import {
+  BuildSourcesListRouteSkeleton,
+  CreateBuildSourceRouteSkeleton,
+} from "@/features/build-sources/components/build-source-skeletons";
 import { Route as AccountSettingsRoute } from "../settings";
 import { Route as WorkspaceSettingsRoute } from "../workspace.settings";
 import { Route as DeploysRoute } from "../services.$serviceId.deploys.index";
@@ -26,6 +30,8 @@ import { Route as OrganizationMembersRoute } from "../org.$orgId.members";
 import { Route as OrganizationSettingsRoute } from "../org.$orgId.settings";
 import { Route as SandboxGroupsRoute } from "../sandbox-groups";
 import { Route as SandboxGroupDetailRoute } from "../sandbox-groups_.$sandboxGroupId";
+import { Route as BuildSourcesRoute } from "../build-sources";
+import { Route as BuildSourcesNewRoute } from "../build-sources_.new";
 
 /**
  * Where a route's `pendingComponent` lands when the router plugin code-splits
@@ -77,6 +83,17 @@ describe("route pending components and code splitting (w3/066)", () => {
       "/sandbox-groups/$sandboxGroupId",
       SandboxGroupDetailRoute,
       SandboxGroupDetailRouteSkeleton,
+    ],
+    // w2/m613: build sources list & create skeletons live in a skeleton-only module.
+    [
+      "/build-sources",
+      BuildSourcesRoute,
+      BuildSourcesListRouteSkeleton,
+    ],
+    [
+      "/build-sources/new",
+      BuildSourcesNewRoute,
+      CreateBuildSourceRouteSkeleton,
     ],
   ] as const)(
     "%s keeps its skeleton out of the page's lazy chunk",

@@ -6,6 +6,7 @@ import {
   FolderKanban,
   KeyRound,
   Layers,
+  Package,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import {
 import { useRouterNavAvailable } from "./use-router-nav-available";
 import { useWorkspaceAdmin } from "@/features/api-keys/hooks/use-workspace-admin";
 import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
+import { useBuildSourcesList } from "@/features/build-sources/hooks/use-build-sources-list";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
@@ -142,6 +144,7 @@ function SearchResults({
   // on purpose: an endpoint is named by its URL, a workspace has a handful, and
   // the Webhooks page is one Navigation result away.
   const { blueprints, loading: blueprintsLoading } = useBlueprints();
+  const { buildSources, loading: buildSourcesLoading } = useBuildSourcesList();
 
   function select(run: () => void) {
     close();
@@ -199,7 +202,8 @@ function SearchResults({
     keyValuesLoading ||
     projectsLoading ||
     envGroupsLoading ||
-    blueprintsLoading;
+    blueprintsLoading ||
+    buildSourcesLoading;
 
   const filteredPages = pages.filter(
     (page) =>
@@ -237,6 +241,20 @@ function SearchResults({
   const filteredBlueprints = blueprints.filter((r) =>
     matchesQuery(`${r.name} ${r.id} ${t("blueprints.resourceType")}`, query),
   );
+  const buildSourceHaystack = (source: (typeof buildSources)[number]) =>
+    [
+      source.name,
+      source.id,
+      source.git?.repoUrl,
+      source.git?.branch,
+      source.image?.imageUrl,
+      t("buildSources.resourceType"),
+    ]
+      .filter(Boolean)
+      .join(" ");
+  const filteredBuildSources = buildSources.filter((r) =>
+    matchesQuery(buildSourceHaystack(r), query),
+  );
 
   // shouldFilter={false} means cmdk never prunes an itemless group for us — an
   // unguarded group would float its heading over zero children (w6/046). Render
@@ -253,6 +271,7 @@ function SearchResults({
     filteredKeyValues.length > 0 ||
     filteredEnvGroups.length > 0 ||
     filteredBlueprints.length > 0 ||
+    filteredBuildSources.length > 0 ||
     loading;
 
   // "No matches" is decided here, from settled lists and the computed matches —
@@ -436,6 +455,26 @@ function SearchResults({
               <SearchResultLabel
                 name={blueprint.name}
                 kind={t("blueprints.resourceType")}
+              />
+            </CommandItem>
+          ))}
+          {filteredBuildSources.map((source) => (
+            <CommandItem
+              key={`build-source:${source.id}`}
+              value={buildSourceHaystack(source)}
+              onSelect={() =>
+                select(() => {
+                  void navigate({
+                    to: "/build-sources",
+                    search: { q: source.name, kind: undefined },
+                  });
+                })
+              }
+            >
+              <Package />
+              <SearchResultLabel
+                name={source.name}
+                kind={t("buildSources.resourceType")}
               />
             </CommandItem>
           ))}

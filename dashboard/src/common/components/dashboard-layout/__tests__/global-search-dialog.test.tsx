@@ -26,6 +26,7 @@ const lists = vi.hoisted(() => ({
   projects: { rows: [] as object[], loading: false },
   envGroups: { rows: [] as object[], loading: false },
   blueprints: { rows: [] as object[], loading: false },
+  buildSources: { rows: [] as object[], loading: false },
 }));
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => ({
@@ -61,6 +62,12 @@ vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
   useBlueprints: () => ({
     blueprints: lists.blueprints.rows,
     loading: lists.blueprints.loading,
+  }),
+}));
+vi.mock("@/features/build-sources/hooks/use-build-sources-list", () => ({
+  useBuildSourcesList: () => ({
+    buildSources: lists.buildSources.rows,
+    loading: lists.buildSources.loading,
   }),
 }));
 
@@ -228,6 +235,13 @@ describe("GlobalSearchDialog", () => {
     projects: { id: "prj-d", name: "discourse-project" },
     envGroups: { id: "evg-d", name: "discourse-env" },
     blueprints: { id: "blp-d", name: "discourse_docker" },
+    buildSources: {
+      id: "bds-d",
+      name: "discourse-build",
+      kind: "git",
+      git: { repoUrl: "https://github.com/acme/discourse", branch: "main" },
+      image: null,
+    },
   } as const;
 
   function typeQuery(value: string) {
@@ -478,6 +492,44 @@ describe("GlobalSearchDialog", () => {
       typeQuery(i18n.t(SERVICE_TYPE_LABEL.cron));
       expect(shown()).toEqual(["nightly", "backup-cron"]);
       await act(() => i18n.changeLanguage("en"));
+    });
+  });
+
+  describe("Build Sources search (w2/m613)", () => {
+    it("finds build sources by name, repo URL, or image URL and navigates to /build-sources", () => {
+      lists.buildSources.rows = [
+        {
+          id: "bds-1",
+          name: "monorepo-api",
+          kind: "git",
+          git: { repoUrl: "https://github.com/acme/payments", branch: "release" },
+          image: null,
+        },
+        {
+          id: "bds-2",
+          name: "edge-proxy",
+          kind: "image",
+          git: null,
+          image: { imageUrl: "ghcr.io/acme/envoy:1.30" },
+        },
+      ];
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+
+      typeQuery("acme/payments");
+      expect(
+        screen.getByRole("option", { name: /monorepo-api.*Build Source/ }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("edge-proxy")).toBeNull();
+
+      typeQuery("envoy:1.30");
+      const imageRow = screen.getByRole("option", {
+        name: /edge-proxy.*Build Source/,
+      });
+      fireEvent.click(imageRow);
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/build-sources",
+        search: { q: "edge-proxy", kind: undefined },
+      });
     });
   });
 });

@@ -30,6 +30,7 @@ import enOnboarding from "@/features/onboarding/locales/en";
 import enAgentEnvironment from "@/features/agent-environment/locales/en";
 import enAgentAutomations from "@/features/agent-automations/locales/en";
 import enSandboxGroups from "@/features/sandbox-groups/locales/en";
+import enBuildSources from "@/features/build-sources/locales/en";
 import enLegal from "@/features/legal/locales/en";
 import enOrganizations from "@/features/organizations/locales/en";
 // Ory's own words for the loading frames of its cards, not the dashboard's
@@ -95,6 +96,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enAgentEnvironment),
   ...extractMessages(enAgentAutomations),
   ...extractMessages(enSandboxGroups),
+  ...extractMessages(enBuildSources),
   ...extractMessages(enLegal),
   ...extractMessages(enOrganizations),
   ...enOryCopy,

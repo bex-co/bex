@@ -92,6 +92,32 @@ vi.mock("@/features/projects/hooks/use-rename-project", () => ({
   useRenameProject: () => ({ rename, busy: false }),
 }));
 
+const buildSourcesState = vi.hoisted(() => ({
+  buildSources: [] as Array<{
+    id: string;
+    name: string;
+    projectId: string | null;
+    kind: "git" | "image";
+    git: { repoUrl: string; branch: string; region: string | null } | null;
+    image: { imageUrl: string } | null;
+    serviceLinks: Array<{ id: string; name: string }>;
+    updatedAt: string | null;
+  }>,
+  loading: false,
+  error: undefined as Error | undefined,
+  refetch: vi.fn(async () => []),
+}));
+vi.mock("@/features/build-sources/hooks/use-build-sources-list", () => ({
+  useBuildSourcesList: ({ projectId }: { projectId?: string | null } = {}) => ({
+    buildSources: projectId
+      ? buildSourcesState.buildSources.filter((b) => b.projectId === projectId)
+      : buildSourcesState.buildSources,
+    loading: buildSourcesState.loading,
+    error: buildSourcesState.error,
+    refetch: buildSourcesState.refetch,
+  }),
+}));
+
 // The Environments panel is an Apollo client of its own (covered by its own
 // tests); stub it here so this route test stays focused on the project page's
 // resource table + rename, without needing an ApolloProvider.
@@ -203,6 +229,9 @@ beforeEach(() => {
   projectsState.projects = [];
   projectsState.loading = false;
   projectsState.error = undefined;
+  buildSourcesState.buildSources = [];
+  buildSourcesState.loading = false;
+  buildSourcesState.error = undefined;
   rename.mockReset();
 });
 

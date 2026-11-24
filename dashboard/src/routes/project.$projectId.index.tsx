@@ -33,6 +33,7 @@ import {
 } from "@/features/projects/lib/resource-filter";
 import { ProjectOverviewPageSkeleton } from "@/common/components/route-skeletons";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
+import { ProjectBuildSourcesSection } from "@/features/build-sources/components/project-build-sources-section";
 
 function filterKey(filter: ProjectResourceFilterState): string {
   return JSON.stringify([filter.environmentId, filter.query, filter.kind]);
@@ -194,6 +195,8 @@ export function ProjectPage() {
                 resourceFilter={resourceFilter}
                 onResourceFilterChange={setResourceFilter}
               />
+
+              <ProjectBuildSourcesSection projectId={projectId} />
             </>
           )}
         </div>

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Route as AgentsRoute } from "../agents";
 import { Route as AgentDetailRoute } from "../agents_.$agentSessionId";
+import { Route as BuildSourcesRoute } from "../build-sources";
+import { Route as BuildSourcesNewRoute } from "../build-sources_.new";
 import { Route as DatabaseRoute } from "../databases.$databaseId";
 import { Route as IndexRoute } from "../index";
 import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
@@ -242,6 +244,30 @@ describe.each([
     StaticDeployRoute,
     { r: "12h" },
     { r: undefined },
+  ],
+  [
+    "/build-sources",
+    BuildSourcesRoute,
+    { q: "  ", kind: "bogus", extra: "ignored" },
+    { q: undefined, kind: undefined },
+  ],
+  [
+    "/build-sources",
+    BuildSourcesRoute,
+    { q: "api", kind: "git" },
+    { q: "api", kind: "git" },
+  ],
+  [
+    "/build-sources/new",
+    BuildSourcesNewRoute,
+    { projectId: "   " },
+    { projectId: undefined },
+  ],
+  [
+    "/build-sources/new",
+    BuildSourcesNewRoute,
+    { projectId: "prj-123" },
+    { projectId: "prj-123" },
   ],
 ])("%s validates %j", (_path, route, input, want) => {
   it("to exactly the keys it owns", () => {

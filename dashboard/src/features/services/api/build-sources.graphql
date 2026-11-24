@@ -1,63 +1,6 @@
-# Build sources (w2/m254, ADR097); siblings: REST /v1/build-sources and MCP.
-fragment BuildSourceFields on BuildSource {
-  id
-  name
-  git {
-    repoUrl
-    branch
-    runtime
-    region
-  }
-  image {
-    imageUrl
-  }
-}
-
-# The picker walks every page, 100 sources (Render's page cap) at a time.
-query BuildSources($ownerId: String, $cursor: String) {
-  buildSources(ownerId: $ownerId, cursor: $cursor, limit: 100) {
-    ...BuildSourceFields
-    cursor
-  }
-}
-
-# The one source a linked service's Source card names.
-query BuildSource($id: String!) {
-  buildSource(id: $id) {
-    ...BuildSourceFields
-  }
-}
-
-# Builds produced by a Build Source (w2/m612 t004): powers the linked-service
-# Manual Deploy "Deploy a specific build…" picker.
-query BuildSourceBuilds(
-  $buildSourceId: String!
-  $cursor: String
-  $limit: Int
-) {
-  builds(buildSourceId: $buildSourceId, cursor: $cursor, limit: $limit) {
-    id
-    buildSourceId
-    cursor
-    createdAt
-    updatedAt
-    buildRun {
-      id
-      status
-      buildStartedAt
-      buildFinishedAt
-      runtime
-      commitId
-      commitUrl
-    }
-    image {
-      sha
-      ref
-      imageUrl
-    }
-  }
-}
-
+# Service-to-Build-Source linking (w2/m254, ADR097).
+# BuildSources/BuildSource/BuildSourceBuilds queries and CRUD live in
+# dashboard/src/features/build-sources/api/build-sources.graphql.
 mutation LinkBuildSource(
   $serviceId: String!
   $buildSourceId: String!

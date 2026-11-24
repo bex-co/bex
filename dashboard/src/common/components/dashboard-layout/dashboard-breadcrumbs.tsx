@@ -16,6 +16,7 @@ import {
   Globe2,
   KeyRound,
   Layers,
+  Package,
   Plus,
   Settings,
   UserRound,
@@ -569,7 +570,11 @@ type PageDefinition = {
   labelKey: keyof typeof en;
   icon: LucideIcon;
   /** The section a create page sits under ("Blueprints › New …"). */
-  parent?: { to: "/blueprints"; labelKey: keyof typeof en; icon: LucideIcon };
+  parent?: {
+    to: "/blueprints" | "/build-sources";
+    labelKey: keyof typeof en;
+    icon: LucideIcon;
+  };
 };
 
 const PAGE_DEFINITIONS: PageDefinition[] = [
@@ -602,6 +607,21 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     match: (path) => path.startsWith("/env-groups"),
     labelKey: "common.navEnvGroups",
     icon: Boxes,
+  },
+  {
+    match: (path) => path === "/build-sources/new",
+    labelKey: "buildSources.createTitle",
+    icon: Plus,
+    parent: {
+      to: "/build-sources",
+      labelKey: "common.navBuildSources",
+      icon: Package,
+    },
+  },
+  {
+    match: (path) => path.startsWith("/build-sources"),
+    labelKey: "common.navBuildSources",
+    icon: Package,
   },
   {
     match: (path) => path.startsWith("/sandbox-groups"),

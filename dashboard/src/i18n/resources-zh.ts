@@ -30,6 +30,7 @@ import zhOnboarding from "@/features/onboarding/locales/zh";
 import zhAgentEnvironment from "@/features/agent-environment/locales/zh";
 import zhAgentAutomations from "@/features/agent-automations/locales/zh";
 import zhSandboxGroups from "@/features/sandbox-groups/locales/zh";
+import zhBuildSources from "@/features/build-sources/locales/zh";
 import zhLegal from "@/features/legal/locales/zh";
 import zhOrganizations from "@/features/organizations/locales/zh";
 import zhOryCopy from "@/features/auth/ory-copy/zh";
@@ -77,6 +78,7 @@ const zh: Record<string, string> = {
   ...extractMessages(zhAgentEnvironment),
   ...extractMessages(zhAgentAutomations),
   ...extractMessages(zhSandboxGroups),
+  ...extractMessages(zhBuildSources),
   ...extractMessages(zhLegal),
   ...extractMessages(zhOrganizations),
   ...zhOryCopy,

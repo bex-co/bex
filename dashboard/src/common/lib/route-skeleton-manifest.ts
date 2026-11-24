@@ -107,6 +107,24 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "blueprints-list",
     regions: ["page-header", "blueprints-table"],
   },
+  "/build-sources": {
+    kind: "render",
+    owner: "routes/build-sources.tsx",
+    shape: "build-sources-list",
+    regions: ["page-header", "filters", "build-sources-list"],
+  },
+  "/build-sources/new": {
+    kind: "render",
+    owner: "routes/build-sources_.new.tsx",
+    shape: "build-source-create",
+    regions: [
+      "page-header",
+      "source-picker",
+      "details",
+      "build-settings",
+      "link-services",
+    ],
+  },
   "/env-groups": {
     kind: "render",
     owner: "routes/env-groups.tsx",

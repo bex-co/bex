@@ -8,6 +8,7 @@ import {
   FolderKanban,
   Layers,
   Network,
+  Package,
   Settings,
   Webhook,
 } from "lucide-react";
@@ -44,6 +45,7 @@ export const NAV_GROUPS: SidebarNavGroup[] = [
         icon: CalendarClock,
       },
       { labelKey: "common.navEnvGroups", to: "/env-groups", icon: Boxes },
+      { labelKey: "common.navBuildSources", to: "/build-sources", icon: Package },
       { labelKey: "common.navSandboxGroups", to: "/sandbox-groups", icon: Box },
     ],
   },

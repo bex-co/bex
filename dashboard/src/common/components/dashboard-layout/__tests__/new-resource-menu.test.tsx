@@ -8,9 +8,20 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Route as IndexRoute } from "@/routes/index";
 import { NewResourceMenu } from "../new-resource-menu";
+import { mockCapabilities } from "@/test/mocks/capabilities";
+
+const capabilitiesState = vi.hoisted(() => ({ canCreate: true }));
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () =>
+    mockCapabilities({ canCreate: capabilitiesState.canCreate }),
+}));
+
+beforeEach(() => {
+  capabilitiesState.canCreate = true;
+});
 
 // The topbar's "+ New" menu is Render's persistent create menu. Its entries
 // either open a create page or land on the overview with the create dialog the
@@ -34,6 +45,7 @@ function renderMenu() {
       "/new/database",
       "/new/redis",
       "/blueprint/new",
+      "/build-sources/new",
       "/webhooks/new",
     ].map((path) =>
       createRoute({
@@ -83,6 +95,7 @@ describe("NewResourceMenu", () => {
       "Key Value",
       "Project",
       "Blueprint",
+      "Build Source",
       "Sandbox Group",
       "Webhook",
     ]);
@@ -126,5 +139,16 @@ describe("NewResourceMenu", () => {
     await user.click(item);
     expect(router.state.location.pathname).toBe("/");
     expect(router.state.location.search).toEqual({ new: "sandbox-group" });
+  });
+
+  it("hides Build Source when the caller lacks can_create (viewer)", async () => {
+    capabilitiesState.canCreate = false;
+    const user = userEvent.setup();
+    renderMenu();
+
+    await user.click(await screen.findByRole("button", { name: /^New/ }));
+    expect(
+      screen.queryByRole("menuitem", { name: "Build Source" }),
+    ).not.toBeInTheDocument();
   });
 });

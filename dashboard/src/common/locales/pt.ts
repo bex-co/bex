@@ -135,6 +135,10 @@ const ptCommon: Record<string, TranslationEntry> = {
     message: "Grupos de ambiente",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navBuildSources": {
+    message: "Fontes de build",
+    description: "Workspace sidebar link to build sources",
+  },
   "common.navSandboxGroups": {
     message: "Grupos de sandbox",
     description: "Workspace sidebar link to sandbox groups",
@@ -784,6 +788,10 @@ const ptCommon: Record<string, TranslationEntry> = {
   "common.createTypeBlueprint": {
     message: "Blueprint",
     description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeBuildSource": {
+    message: "Fonte de build",
+    description: "Build Source in the New menu",
   },
   "common.createTypeSandboxGroup": {
     message: "Grupo de sandbox",

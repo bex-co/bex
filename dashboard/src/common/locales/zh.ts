@@ -124,6 +124,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "环境组",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navBuildSources": {
+    message: "构建源",
+    description: "Workspace sidebar link to build sources",
+  },
   "common.navSandboxGroups": {
     message: "沙箱组",
     description: "Workspace sidebar link to sandbox groups",
@@ -739,6 +743,10 @@ const zhCommon: Record<string, TranslationEntry> = {
   "common.createTypeBlueprint": {
     message: "蓝图",
     description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeBuildSource": {
+    message: "构建源",
+    description: "Build Source in the New menu",
   },
   "common.createTypeSandboxGroup": {
     message: "沙箱组",

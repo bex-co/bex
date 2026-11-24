@@ -122,6 +122,14 @@ vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   }),
 }));
 
+vi.mock("@/features/build-sources/hooks/use-build-sources-list", () => ({
+  useBuildSourcesList: () => ({
+    buildSources: [],
+    loading: false,
+    error: undefined,
+  }),
+}));
+
 vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
   useBlueprints: () => ({
     blueprints: [{ id: "blp-forum", name: "discourse_docker" }],

@@ -1,21 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@apollo/client/react";
-import {
-  BuildSourceBuildsDocument,
-  BuildSourceDocument,
-  BuildSourcesDocument,
-  type BuildSourceFieldsFragment,
-} from "@/graphql/definitions";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useMemo } from "react";
 import { formatRepoLabel } from "@/features/services/lib/repo";
 import {
   isNativeRuntime,
   RUNTIME_COMMANDS,
   type NativeRuntime,
 } from "@/features/services/lib/runtime";
+import { useBuildSourcesList } from "@/features/build-sources/hooks/use-build-sources-list";
+import { useBuildSource as useBuildSourceDetail } from "@/features/build-sources/hooks/use-build-source";
+import { useBuildSourceBuilds as useBuildSourceBuildsList } from "@/features/build-sources/hooks/use-build-source-builds";
+import type {
+  BuildSourceBuildView,
+  BuildSourceView,
+} from "@/features/build-sources/types";
 
-/** The picker's page size: Render's page cap. */
-const BUILD_SOURCES_PAGE = 100;
+export type { BuildSourceBuildView };
 
 /** A build source as the Source card, Update Source dialog, and create wizard show it. */
 export interface BuildSourceOption {
@@ -36,33 +34,18 @@ export interface BuildSourceOption {
   nativeRuntime: NativeRuntime | null;
 }
 
-/** One build of a Build Source (Render's Build object). */
-export interface BuildSourceBuildView {
-  id: string;
-  buildSourceId: string;
-  /** Render buildRun.status: created | in_progress | succeeded | failed | canceled. */
-  status: string;
-  /** True when this build produced a deployable artifact (selectable in Manual Deploy). */
-  succeeded: boolean;
-  commitId: string | null;
-  commitUrl: string | null;
-  imageRef: string | null;
-  imageSha: string | null;
-  createdAt: string | null;
-}
-
-function toOption(b: BuildSourceFieldsFragment | null | undefined) {
+function toOption(b: BuildSourceView | null | undefined): BuildSourceOption | null {
   if (!b?.id) return null;
   const runtime = b.git?.runtime;
   return {
     id: b.id,
-    name: b.name ?? b.id,
+    name: b.name || b.id,
     source: b.git?.repoUrl ?? b.image?.imageUrl ?? "",
-    kind: b.git ? "git" : "image",
-    branch: b.git?.branch ?? null,
-    region: b.git?.region ?? null,
+    kind: b.kind,
+    branch: b.git?.branch || null,
+    region: b.git?.region || null,
     nativeRuntime: b.git && isNativeRuntime(runtime) ? runtime : null,
-  } satisfies BuildSourceOption;
+  };
 }
 
 /** What a build source builds from: repo (+ optional branch) or image URL. */
@@ -80,73 +63,27 @@ export function defaultStartCommand(source: BuildSourceOption): string {
 }
 
 /**
- * Reads the workspace's build sources for the Update Source picker (w2/m254).
- * `enabled` false skips the read until the dialog opens.
+ * Reads the workspace's build sources for `ServiceSourcePicker` and Update Source
+ * (w2/m254, unified with `features/build-sources` in w2/m613 t005 so all caches
+ * stay in sync). `enabled` false skips the read until the dialog opens.
  */
 export function useBuildSources(enabled: boolean) {
-  const { currentWorkspaceId } = useWorkspace();
-  const { data, loading, error, fetchMore } = useQuery(BuildSourcesDocument, {
-    variables: { ownerId: currentWorkspaceId },
-    skip: !enabled || currentWorkspaceId == null,
-    fetchPolicy: "cache-and-network",
-    nextFetchPolicy: "cache-first",
-    errorPolicy: "all",
-  });
-  // A full page means there may be more: fetch the next one and append it,
-  // until a short page ends the list. Each cursor is fetched once, and a page
-  // is merged by id, so a repeated cursor or a doubled effect cannot loop or
-  // duplicate.
-  const pages = data?.buildSources ?? [];
-  const lastCursor = pages.at(-1)?.cursor ?? null;
-  const more = pages.length > 0 && pages.length % BUILD_SOURCES_PAGE === 0;
-  const fetched = useRef(new Set<string>());
-  // The last cursor whose page has settled (arrived or failed).
-  const [settled, setSettled] = useState<string | null>(null);
-  useEffect(() => {
-    if (!more || !lastCursor || loading || fetched.current.has(lastCursor))
-      return;
-    fetched.current.add(lastCursor);
-    fetchMore({
-      variables: { cursor: lastCursor },
-      updateQuery: (prev, { fetchMoreResult }) => {
-        const seen = new Set((prev.buildSources ?? []).map((b) => b?.id));
-        return {
-          ...prev,
-          buildSources: [
-            ...(prev.buildSources ?? []),
-            ...(fetchMoreResult.buildSources ?? []).filter(
-              (b) => !seen.has(b?.id),
-            ),
-          ],
-        };
-      },
-    })
-      .catch(() => {
-        // A failed page ends the walk; the picker keeps what it has.
-      })
-      .finally(() => setSettled(lastCursor));
-  }, [more, lastCursor, loading, fetchMore]);
+  const { buildSources, loading, error } = useBuildSourcesList({ enabled });
   const sources = useMemo(
     () =>
-      (data?.buildSources ?? []).flatMap((b) => {
+      buildSources.flatMap((b) => {
         const option = toOption(b);
         return option ? [option] : [];
       }),
-    [data],
+    [buildSources],
   );
-  // Still loading while a full last page promises a page not yet settled.
-  const pending = more && lastCursor !== null && settled !== lastCursor;
-  return { sources, loading: loading || pending, error };
+  return { sources, loading, error };
 }
 
 /** Reads the one build source a linked service builds from (null id skips). */
 export function useBuildSource(id: string | null) {
-  const { data, loading } = useQuery(BuildSourceDocument, {
-    variables: { id: id ?? "" },
-    skip: !id,
-    errorPolicy: "all",
-  });
-  const source = useMemo(() => toOption(data?.buildSource), [data]);
+  const { buildSource, loading } = useBuildSourceDetail(id);
+  const source = useMemo(() => toOption(buildSource), [buildSource]);
   return { source, loading };
 }
 
@@ -158,40 +95,14 @@ export function useBuildSourceBuilds(
   buildSourceId: string | null,
   enabled: boolean,
 ) {
-  const { data, loading, error, refetch } = useQuery(
-    BuildSourceBuildsDocument,
-    {
-      variables: { buildSourceId: buildSourceId ?? "", limit: 50 },
-      skip: !enabled || !buildSourceId,
-      fetchPolicy: "cache-and-network",
-      nextFetchPolicy: "cache-first",
-      errorPolicy: "all",
-    },
-  );
-  const builds = useMemo<BuildSourceBuildView[]>(
-    () =>
-      (data?.builds ?? []).flatMap((b) => {
-        if (!b?.id) return [];
-        const status = b.buildRun?.status ?? (b.image ? "succeeded" : "");
-        return [
-          {
-            id: b.id,
-            buildSourceId: b.buildSourceId ?? buildSourceId ?? "",
-            status,
-            succeeded: status === "succeeded",
-            commitId: b.buildRun?.commitId ?? null,
-            commitUrl: b.buildRun?.commitUrl ?? null,
-            imageRef: b.image?.imageUrl ?? b.image?.ref ?? null,
-            imageSha: b.image?.sha ?? null,
-            createdAt: b.createdAt ?? null,
-          },
-        ];
-      }),
-    [data, buildSourceId],
+  const { builds, loading, error, refetch } = useBuildSourceBuildsList(
+    buildSourceId,
+    enabled,
+    50,
   );
   return {
     builds,
-    loading: loading && data === undefined,
+    loading,
     error,
     refetch: () => void refetch(),
   };

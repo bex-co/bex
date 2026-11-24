@@ -131,6 +131,13 @@ export const SEARCH_SHORTCUTS: readonly SearchShortcut[] = [
  */
 export const PAGE_KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "/": ["dashboard", "home", "overview"],
+  "/build-sources": [
+    "build",
+    "build source",
+    "build sources",
+    "artifact",
+    "shared build",
+  ],
   "/env-groups": ["env", "env vars", "environment variables", "secrets"],
   "/webhooks": ["webhook", "webhooks", "integration", "integrations"],
   "/billing": ["billing", "payment", "subscription", "plan", "invoice"],

@@ -30,6 +30,7 @@ import esOnboarding from "@/features/onboarding/locales/es";
 import esAgentEnvironment from "@/features/agent-environment/locales/es";
 import esAgentAutomations from "@/features/agent-automations/locales/es";
 import esSandboxGroups from "@/features/sandbox-groups/locales/es";
+import esBuildSources from "@/features/build-sources/locales/es";
 import esLegal from "@/features/legal/locales/es";
 import esOrganizations from "@/features/organizations/locales/es";
 import esOryCopy from "@/features/auth/ory-copy/es";
@@ -77,6 +78,7 @@ const es: Record<string, string> = {
   ...extractMessages(esAgentEnvironment),
   ...extractMessages(esAgentAutomations),
   ...extractMessages(esSandboxGroups),
+  ...extractMessages(esBuildSources),
   ...extractMessages(esLegal),
   ...extractMessages(esOrganizations),
   ...esOryCopy,

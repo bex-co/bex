@@ -41,6 +41,14 @@ vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
 vi.mock("@/features/projects/hooks/use-rename-project", () => ({
   useRenameProject: () => ({ rename: vi.fn(), busy: false }),
 }));
+vi.mock("@/features/build-sources/hooks/use-build-sources-list", () => ({
+  useBuildSourcesList: () => ({
+    buildSources: [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
+}));
 vi.mock("@/features/environments/components/environments-panel", () => ({
   EnvironmentsPanel: ({
     resourceFilter,

@@ -1,0 +1,155 @@
+# Build Sources (ADR097, w2/m254, w2/m612, w2/m613); siblings: REST /v1/build-sources and MCP.
+
+fragment BuildSourceFields on BuildSource {
+  id
+  name
+  ownerId
+  projectId
+  createdAt
+  updatedAt
+  git {
+    repoUrl
+    branch
+    buildCommand
+    buildFilter {
+      paths
+      ignoredPaths
+    }
+    dockerContext
+    dockerfilePath
+    runtime
+    registryCredentialId
+    region
+    rootDir
+  }
+  image {
+    ownerId
+    imageUrl
+    registryCredentialId
+  }
+  serviceLinks {
+    id
+    name
+  }
+}
+
+fragment BuildSourceBuildFields on Build {
+  id
+  buildSourceId
+  cursor
+  createdAt
+  updatedAt
+  buildRun {
+    id
+    status
+    buildStartedAt
+    buildFinishedAt
+    runtime
+    commitId
+    commitUrl
+  }
+  image {
+    sha
+    ref
+    imageUrl
+    registryCredentialId
+  }
+  deploys {
+    serviceId
+    deployId
+  }
+  skippedServices {
+    serviceId
+    reason
+  }
+}
+
+# Walks every page, 100 sources (Render's page cap) at a time.
+query BuildSources($ownerId: String, $projectId: String, $cursor: String) {
+  buildSources(
+    ownerId: $ownerId
+    projectId: $projectId
+    cursor: $cursor
+    limit: 100
+  ) {
+    ...BuildSourceFields
+    cursor
+  }
+}
+
+query BuildSource($id: String!) {
+  buildSource(id: $id) {
+    ...BuildSourceFields
+  }
+}
+
+query BuildSourceBuilds(
+  $buildSourceId: String!
+  $cursor: String
+  $limit: Int
+) {
+  builds(buildSourceId: $buildSourceId, cursor: $cursor, limit: $limit) {
+    ...BuildSourceBuildFields
+  }
+}
+
+query BuildSourceBuild($buildSourceId: String!, $id: String!) {
+  build(buildSourceId: $buildSourceId, id: $id) {
+    ...BuildSourceBuildFields
+  }
+}
+
+mutation CreateBuildSource(
+  $ownerId: String!
+  $name: String!
+  $projectId: String
+  $git: BuildSourceGitInput
+  $image: BuildSourceImageInput
+  $envVars: [EnvVarInput]
+  $secretFiles: [SecretFileInput]
+  $serviceIds: [String!]
+  $envGroupIds: [String!]
+) {
+  createBuildSource(
+    ownerId: $ownerId
+    name: $name
+    projectId: $projectId
+    git: $git
+    image: $image
+    envVars: $envVars
+    secretFiles: $secretFiles
+    serviceIds: $serviceIds
+    envGroupIds: $envGroupIds
+  ) {
+    ...BuildSourceFields
+  }
+}
+
+mutation UpdateBuildSource(
+  $id: String!
+  $name: String
+  $git: BuildSourceGitInput
+  $image: BuildSourceImageInput
+) {
+  updateBuildSource(id: $id, name: $name, git: $git, image: $image) {
+    ...BuildSourceFields
+  }
+}
+
+mutation DeleteBuildSource($id: String!) {
+  deleteBuildSource(id: $id)
+}
+
+mutation TriggerBuild(
+  $buildSourceId: String!
+  $clearCache: String
+  $deploy: BuildDeployScopeInput
+) {
+  triggerBuild(
+    buildSourceId: $buildSourceId
+    clearCache: $clearCache
+    deploy: $deploy
+  ) {
+    ...BuildSourceBuildFields
+  }
+}

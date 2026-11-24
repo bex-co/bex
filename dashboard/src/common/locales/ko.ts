@@ -125,6 +125,10 @@ const koCommon: Record<string, TranslationEntry> = {
     message: "환경 그룹",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navBuildSources": {
+    message: "빌드 소스",
+    description: "Workspace sidebar link to build sources",
+  },
   "common.navSandboxGroups": {
     message: "샌드박스 그룹",
     description: "Workspace sidebar link to sandbox groups",
@@ -748,6 +752,10 @@ const koCommon: Record<string, TranslationEntry> = {
   "common.createTypeBlueprint": {
     message: "Blueprint",
     description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeBuildSource": {
+    message: "빌드 소스",
+    description: "Build Source in the New menu",
   },
   "common.createTypeSandboxGroup": {
     message: "샌드박스 그룹",

@@ -1,5 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { Boxes, FolderKanban, Layers, Plus, Webhook } from "lucide-react";
+import {
+  Boxes,
+  FolderKanban,
+  Layers,
+  Package,
+  Plus,
+  Webhook,
+} from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +17,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { CreateTypeMenuItems } from "@/common/components/dashboard-layout/create-type-menu-items";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 
 /**
  * The global counterpart to Render's persistent “+ New” topbar menu: flat, as
@@ -17,6 +25,7 @@ import { CreateTypeMenuItems } from "@/common/components/dashboard-layout/create
  */
 export function NewResourceMenu() {
   const { t } = useTranslations();
+  const { canCreate } = useCapabilities();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -46,6 +55,14 @@ export function NewResourceMenu() {
             {t("common.createTypeBlueprint")}
           </Link>
         </DropdownMenuItem>
+        {canCreate ? (
+          <DropdownMenuItem asChild>
+            <Link to="/build-sources/new">
+              <Package />
+              {t("common.createTypeBuildSource")}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem asChild>
           <Link to="/" search={{ new: "sandbox-group" }}>
             <Boxes />

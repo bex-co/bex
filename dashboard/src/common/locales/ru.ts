@@ -141,6 +141,10 @@ const ruCommon: Record<string, TranslationEntry> = {
     message: "Группы окружения",
     description: "Workspace sidebar link to environment groups",
   },
+  "common.navBuildSources": {
+    message: "Источники сборки",
+    description: "Workspace sidebar link to build sources",
+  },
   "common.navSandboxGroups": {
     message: "Группы песочниц",
     description: "Workspace sidebar link to sandbox groups",
@@ -801,6 +805,10 @@ const ruCommon: Record<string, TranslationEntry> = {
   "common.createTypeBlueprint": {
     message: "Blueprint",
     description: "Blueprint in the New menu (Render's bare 'Blueprint')",
+  },
+  "common.createTypeBuildSource": {
+    message: "Источник сборки",
+    description: "Build Source in the New menu",
   },
   "common.createTypeSandboxGroup": {
     message: "Группа песочниц",

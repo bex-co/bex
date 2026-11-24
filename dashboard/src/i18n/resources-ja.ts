@@ -30,6 +30,7 @@ import jaOnboarding from "@/features/onboarding/locales/ja";
 import jaAgentEnvironment from "@/features/agent-environment/locales/ja";
 import jaAgentAutomations from "@/features/agent-automations/locales/ja";
 import jaSandboxGroups from "@/features/sandbox-groups/locales/ja";
+import jaBuildSources from "@/features/build-sources/locales/ja";
 import jaLegal from "@/features/legal/locales/ja";
 import jaOrganizations from "@/features/organizations/locales/ja";
 import jaOryCopy from "@/features/auth/ory-copy/ja";
@@ -77,6 +78,7 @@ const ja: Record<string, string> = {
   ...extractMessages(jaAgentEnvironment),
   ...extractMessages(jaAgentAutomations),
   ...extractMessages(jaSandboxGroups),
+  ...extractMessages(jaBuildSources),
   ...extractMessages(jaLegal),
   ...extractMessages(jaOrganizations),
   ...jaOryCopy,
