@@ -1,6 +1,6 @@
 # w6 · m566 — An agent session's sandbox is billed for the CPU it uses and the memory it is allocated, as a Render sandbox is
 
-**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** todo (t001 and t002 done 2026-11-24: on production every agent sandbox's used CPU and allocated memory are recorded as unbilled rows, and all 37 of the first day agree with the pod counter; t003 next)
+**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** blocked (t001–t005 done: from 2026-11-26T00:00:00Z an agent session's sandbox is billed for used CPU and allocated memory, `b8510dadf2`; t006's production check waits for production to run the switch)
 
 ## Tasks (in order)
 
@@ -8,9 +8,9 @@
 | --- | --- | --- | --- |
 | t001 | [Record agent sandboxes' used CPU, shown at $0 beside the weighted charge](done/t001.md) — **DONE** | 1h30m | — |
 | t002 | [Check a day of agent CPU readings against the pod counter](done/t002.md) — **DONE** | 45m | t001 |
-| t003 | [Cut agent sandboxes over to used CPU and allocated memory at one UTC hour](t003.md) | 2h | t002 |
-| t004 | [A session's cost and its spend ceiling price the same CPU and memory](t004.md) | 2h | t003 |
-| t005 | [ADR030 §17, ADR047 D6, ADR023 and the billing page say agent sessions are billed on use](t005.md) | 45m | t003, t004 |
+| t003 | [Cut agent sandboxes over to used CPU and allocated memory at one UTC hour](done/t003.md) — **DONE** | 2h | t002 |
+| t004 | [A session's cost and its spend ceiling price the same CPU and memory](done/t004.md) — **DONE** | 2h | t003 |
+| t005 | [ADR030 §17, ADR047 D6, ADR023 and the billing page say agent sessions are billed on use](done/t005.md) — **DONE** | 45m | t003, t004 |
 | t006 | [Production check: an idle agent sandbox hour and a session's cost after the cutover](t006.md) | 1h | t005 |
 | t007 | [Render parity](t007.md) | 30m | t006 |
 | t008 | [Simplify](t008.md) | 20m | t007 |
@@ -19,7 +19,7 @@
 
 ## Definition of done
 
-- From one UTC hour on, recorded as `sandboxUsage.agentBilledFrom` (or the name t003 chooses) in `lego/backend/internal/pricing/pricing.yaml`, an agent session's running sandbox is billed `sandbox_cpu_seconds` and `sandbox_memory_gb_seconds` at the `sandboxUsage` rates, in every workspace. Earlier usage stays on `sandbox_compute_seconds` and is not re-priced.
+- From one UTC hour on, recorded as `sandboxUsage.agentBilledFrom` (2026-11-26T00:00:00Z) in `lego/backend/internal/pricing/pricing.yaml`, an agent session's running sandbox is billed `sandbox_cpu_seconds` and `sandbox_memory_gb_seconds` at the `sandboxUsage` rates, in every workspace. Earlier usage stays on `sandbox_compute_seconds` and is not re-priced.
 - On production after the cutover, an idle hour of a 4 CPU / 8 GiB agent sandbox previews about $0.106 of memory and almost no CPU, against $0.434 before.
 - A session's `cost.computeUSD` and its `maxSpendUSD` ceiling count the same CPU and memory as the bill, on REST, GraphQL, MCP and the dashboard; a session's cost equals the sum of its sandboxes' rows to the micro-dollar.
 - The billing page's note about billing on use names the agent-session date, and ADR030 §17, ADR047 D6 and ADR023 no longer say an agent session keeps the weighted meter.
@@ -84,3 +84,20 @@
   - **The rows.** `kubectl --context hetzner-prod -n bex-system exec bex-db-1 -c postgres -- psql -U postgres -d bex` with `SET default_transaction_read_only = on`, then: `sandbox_running_intervals WHERE NOT usage_billed AND started_at >= '2026-11-23T17:00Z'`, joined to the `usage_hourly` rows of each `sandbox_id` (`resource_kind = 'sandbox'`) and to `agent_session_sandboxes`.
   - **The counter.** `kubectl --context hetzner-prod -n monitoring exec <prometheus-server pod> -c prometheus-server -- wget -qO- 'http://localhost:9090/api/v1/query?query=sandbox_pod_cpu_usage_seconds_total{namespace="…",pod="…"}[<running s + 390>s]&time=<ended_at + 90 s>'`. The API server's service proxy cannot reach the pod: `i/o timeout`.
 - **Next (worker):** t003, the cutover at one UTC hour, then t004 and t005. t006 waits for production to run the cutover.
+
+## Park record 2026-11-24 (/loopx w6, UTC)
+
+- **Shipped in `b8510dadf2` (t003, t004, t005).**
+  - `pricing.yaml` `sandboxUsage.agentBilledFrom` is **2026-11-26T00:00:00Z**, in every workspace. From it the meter writes an agent session's sandbox's CPU and memory as billed rows and no weighted row.
+  - `outcome.cost.computeUSD` prices the session's sandboxes as the bill does (migration 0345).
+  - `estimatedCost.agentSandboxUsageBilledFrom` is on REST, GraphQL and MCP, and the billing page names it. The ADRs are amended.
+  - Details are in the three task files.
+- **Why the instant is a day out.** It must come after the deploy that carries the code. Production pins have landed about every six hours, so about 26 h after the push leaves room for a red pipeline. A deploy that lands late double-bills nothing: the old binary keeps the weighted charge and the unbilled marks until it is replaced. If the deploy lands after the instant, t006 reads hours after the deploy.
+- **Premise corrected (t004).** The `maxSpendUSD` ceiling bounds model spend only (ADR094 D8, `AgentSessionCeilingHeadroom` over `agent_model_usage_events`), before and after the switch. The "ceiling" half of the definition of done holds with no change: neither the ceiling nor the bill's model spend counts sandbox compute. ADR094 D7 records it.
+- **The gate left.** t006 needs production to carry `b8510dadf2` and an hour of agent usage after the instant: ``pin must carry `b8510dadf2`; date gate: 2026-11-26T02:00Z``.
+- **Worker's next steps (t006, then t007–t010).**
+  1. Confirm the first pin carrying `b8510dadf2` deployed before 2026-11-26T00:00Z. If it did not, use only hours after that deploy.
+  2. Read one hour of an `agent-4c-8g` sandbox that was mostly idle after the instant. Expect `sandbox_memory_gb_seconds` billed (not `unbilled`) at 8 GiB × its running seconds, about $0.1064 for a full hour, almost no `sandbox_cpu_seconds`, and no `sandbox_compute_seconds` row for that hour.
+  3. Read one session whose sandbox ran after the instant. Its `outcome.cost.computeUSD` (REST `GET /v1/agent-sessions/<id>`, signed in through `scripts/qa-login.sh`, or the `bex` workspace's own session) equals its sandboxes' billed rows priced at the sheet's rates, to the micro-dollar: `agent_session_sandboxes` totals against `usage_hourly` sums.
+  4. Record both, with the query and the hours read, in this README. Then do Render parity (t007), Simplify (t008), Test coverage (t009) and Closeout (t010).
+
