@@ -53,6 +53,12 @@ export interface Capabilities {
   canManageBilling: boolean;
   /** Render's "View billing details" (w9/m620): Admin, Developer, Billing. */
   canViewBilling: boolean;
+  /**
+   * Render's "View service events" and "View service metrics" (w9/m621):
+   * Admin, Developer, Contributor, Viewer — never Billing. Gates events,
+   * deploy history and every metric read.
+   */
+  canViewActivity: boolean;
   /** A fresh check is in flight (or no workspace yet). */
   loading: boolean;
   /**
@@ -103,6 +109,7 @@ function booleansFrom(
   | "canManage"
   | "canManageBilling"
   | "canViewBilling"
+  | "canViewActivity"
 > {
   const flag = (key: CapabilityBoolean) =>
     allowsAction(state, workspaceId, actionForBoolean(key), now);
@@ -116,6 +123,7 @@ function booleansFrom(
     canManage: flag("canManage"),
     canManageBilling: flag("canManageBilling"),
     canViewBilling: flag("canViewBilling"),
+    canViewActivity: flag("canViewActivity"),
   };
 }
 
@@ -136,6 +144,9 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CapabilityState>(checkingCapabilities);
   const [clock, setClock] = useState(() => Date.now());
   const lastResolved = useRef<CapabilityState>(checkingCapabilities);
+  // The access generation `lastResolved` was decided under, so a denial never
+  // outlives the identity or role change that bumped it.
+  const lastResolvedGeneration = useRef(-1);
   // refresh() and allows() read the ref, so a check that has begun withdraws
   // eligibility before any rerender; render reads the state copy.
   const eligibility = useRef<Eligibility>(NO_ELIGIBILITY);
@@ -256,6 +267,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
             grants: navigationGrants,
           },
         };
+        lastResolvedGeneration.current = getAccessGeneration();
         setEligibility({
           state: next,
           generation: getAccessGeneration(),
@@ -376,7 +388,17 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
       allows: (action) =>
         eligibility.current.generation === getAccessGeneration() &&
         allowsAction(eligibility.current.state, workspaceId, action),
-      denied: (action) => confirmedDenied(resolved, workspaceId, action),
+      // A confirmed denial holds through the re-check a focus, a reconnect
+      // or an expired answer starts (w9/m621): while it is checking, the last
+      // decided outcome for this workspace and access generation answers, so
+      // a page gated on it never mounts its content for one round trip and
+      // fires reads bex-api only refuses (each refusal audited). Presentation
+      // only: allows() stays fail-closed on the fresh answer.
+      denied: (action) =>
+        confirmedDenied(resolved, workspaceId, action) ||
+        (resolved.status === "checking" &&
+          lastResolvedGeneration.current === generation &&
+          confirmedDenied(lastResolved.current, workspaceId, action)),
       reasonKey: (action) => {
         if (stale) return "capabilities.grantStale";
         return grantReasonKey(resolved, workspaceId, action, clock);
@@ -413,6 +435,7 @@ const FALLBACK: Capabilities = {
   canManage: false,
   canManageBilling: false,
   canViewBilling: false,
+  canViewActivity: false,
   loading: true,
   loaded: false,
   stale: false,

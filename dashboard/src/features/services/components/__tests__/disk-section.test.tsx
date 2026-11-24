@@ -2,6 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { billingCapabilities, viewerCapabilities } from "@/test/mocks/capabilities";
 
 const mockUseDisk = vi.fn();
 const mockUseDiskSnapshots = vi.fn();
@@ -321,6 +323,31 @@ describe("DiskSection", () => {
 
   // Observability is not billing: the chart appears only once a disk exists,
   // and never stands in for the provisioned size the invoice uses.
+  // w9/m621: disk usage is a service metric, which Render's Billing role does
+  // not view; the disk itself stays readable. A Viewer sees the chart.
+  describe("usage per role (w9/m621)", () => {
+    const titles = (container: HTMLElement) =>
+      [...container.querySelectorAll('[data-slot="card-title"]')].map((el) => el.textContent?.trim());
+
+    it("leaves the usage card out for a Billing member, with no metric read", () => {
+      vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+      mockUseDisk.mockReturnValue(attached);
+      const { container } = render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+      expect(titles(container)).toEqual(["Disk Configuration", "Snapshots"]);
+      expect(mockUseDatastoreMetrics).not.toHaveBeenCalled();
+    });
+
+    it("graphs the usage for a Viewer", () => {
+      vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+      mockUseDisk.mockReturnValue(attached);
+      const { container } = render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+      expect(titles(container)).toEqual(["Disk usage", "Disk Configuration", "Snapshots"]);
+      expect(mockUseDatastoreMetrics).toHaveBeenCalled();
+    });
+  });
+
   it("shows no usage chart before a disk is attached", () => {
     render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
 

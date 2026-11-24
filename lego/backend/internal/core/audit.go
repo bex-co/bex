@@ -1787,6 +1787,7 @@ var readRelations = map[string]bool{
 	RelCanViewLogs:      true,
 	RelCanViewSensitive: true,
 	RelCanViewBilling:   true,
+	RelCanViewActivity:  true,
 }
 
 // auditsDenial reports whether a DENIED check of relation records an audit

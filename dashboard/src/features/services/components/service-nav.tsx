@@ -2,6 +2,7 @@ import type {
   SidebarNavGroup,
   SidebarNavItem,
 } from "@/common/components/dashboard-layout/sidebar-nav-groups";
+import { filterNavGroups } from "@/common/components/dashboard-layout/dashboard-nav";
 import {
   Activity,
   ArrowRightLeft,
@@ -57,9 +58,35 @@ function navItem(
   return { labelKey, to: `${base}/$serviceId${suffix}`, icon };
 }
 
+/** The tabs of service activity — events (a cron job's runs among them),
+ *  deploys and metrics — which Render's Billing role does not view. */
+const ACTIVITY_TABS = new Set<SidebarNavItem["labelKey"]>([
+  "services.navDeploys",
+  "services.navRuns",
+  "services.navEvents",
+  "services.navMetrics",
+]);
+
+/**
+ * The service's nav groups. `activityDenied` (w9/m621) is a confirmed
+ * can_view_activity denial, a Billing member's, and drops the activity tabs
+ * with any group they leave empty. While capabilities are still checking it is
+ * false, so an allowed member's nav never shifts.
+ */
 export function serviceNavGroups(
   type: ServiceTypeKey | null,
   base: ServiceBase = "/services",
+  { activityDenied = false }: { activityDenied?: boolean } = {},
+): SidebarNavGroup[] {
+  const groups = serviceNavGroupsForType(type, base);
+  return activityDenied
+    ? filterNavGroups(groups, (item) => !ACTIVITY_TABS.has(item.labelKey))
+    : groups;
+}
+
+function serviceNavGroupsForType(
+  type: ServiceTypeKey | null,
+  base: ServiceBase,
 ): SidebarNavGroup[] {
   const DEPLOYS = navItem(base, "/deploys", "services.navDeploys", Rocket);
   // A cron job's run history, beside its deploys (w2/m360, w3/m554).

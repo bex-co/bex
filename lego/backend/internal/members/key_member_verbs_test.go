@@ -36,11 +36,13 @@ import (
 
 // roleRelations restates deploy/gitops/authz/model.fga's workspace grants.
 var roleRelations = map[string][]string{
-	"admin":       {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling},
-	"developer":   {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys},
-	"contributor": {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanManageSSHKeys},
-	"viewer":      {core.RelCanView, core.RelCanManageSSHKeys},
-	"billing":     {core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling},
+	"admin": {core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive,
+		core.RelCanManageKeys, core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling, core.RelCanViewBilling},
+	"developer": {core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive,
+		core.RelCanManageKeys, core.RelCanManageSSHKeys, core.RelCanViewBilling},
+	"contributor": {core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanManageSSHKeys},
+	"viewer":      {core.RelCanView, core.RelCanViewActivity, core.RelCanManageSSHKeys},
+	"billing":     {core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling, core.RelCanViewBilling},
 }
 
 // rowChecker answers OpenFGA from the fake store's rows, as a converged model

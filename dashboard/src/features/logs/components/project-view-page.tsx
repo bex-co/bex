@@ -74,14 +74,7 @@ export function ProjectViewPage({
   }
   if (!view || !scope) {
     return (
-      <PageFrame
-        width="wide"
-        header={
-          <ObservabilityViewHeader
-            name={t(PROJECT_VIEW_TITLE_KEYS[viewType])}
-          />
-        }
-      >
+      <ProjectViewFrame viewType={viewType}>
         {error && views.length === 0 ? (
           <EmptyState
             role="alert"
@@ -107,7 +100,7 @@ export function ProjectViewPage({
             }
           />
         )}
-      </PageFrame>
+      </ProjectViewFrame>
     );
   }
 
@@ -134,6 +127,27 @@ export function ProjectViewPage({
         onRangeChange: (next) =>
           onSearchChange({ ...search, ...projectLogRangeSearch(next) }),
       })}
+    </PageFrame>
+  );
+}
+
+/** A view page's frame with no view to name it: titled by its type. */
+export function ProjectViewFrame({
+  viewType,
+  children,
+}: {
+  viewType: SavedSearchType;
+  children: ReactNode;
+}) {
+  const { t } = useTranslations();
+  return (
+    <PageFrame
+      width="wide"
+      header={
+        <ObservabilityViewHeader name={t(PROJECT_VIEW_TITLE_KEYS[viewType])} />
+      }
+    >
+      {children}
     </PageFrame>
   );
 }

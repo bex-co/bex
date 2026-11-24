@@ -31,6 +31,17 @@ const koCapabilities: Record<string, TranslationEntry> = {
     description:
       "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
   },
+  "capabilities.reasonCanViewActivity": {
+    message:
+      "현재 역할로는 서비스 이벤트, 배포, 메트릭을 볼 수 없습니다. 워크스페이스 관리자에게 문의하세요.",
+    description:
+      "Why a member without can_view_activity (a Billing member, as on Render) sees no service events, deploys or metrics: the reason on those pages and panels, whose nav entries are hidden",
+  },
+  "capabilities.activityDeniedTitle": {
+    message: "현재 역할로는 사용할 수 없습니다",
+    description:
+      "Title above capabilities.reasonCanViewActivity where a page or panel of service events, deploys or metrics would be",
+  },
   "capabilities.reasonCanManage": {
     message:
       "현재 역할로는 멤버를 관리할 수 없습니다. 워크스페이스 관리자에게 문의하세요.",

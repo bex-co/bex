@@ -31,6 +31,17 @@ const jaCapabilities: Record<string, TranslationEntry> = {
     description:
       "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
   },
+  "capabilities.reasonCanViewActivity": {
+    message:
+      "あなたのロールではサービスのイベント、デプロイ、メトリクスを表示できません。ワークスペースの管理者に依頼してください。",
+    description:
+      "Why a member without can_view_activity (a Billing member, as on Render) sees no service events, deploys or metrics: the reason on those pages and panels, whose nav entries are hidden",
+  },
+  "capabilities.activityDeniedTitle": {
+    message: "あなたのロールでは利用できません",
+    description:
+      "Title above capabilities.reasonCanViewActivity where a page or panel of service events, deploys or metrics would be",
+  },
   "capabilities.reasonCanManage": {
     message:
       "あなたのロールではメンバーを管理できません。ワークスペースの管理者に依頼してください。",

@@ -1,19 +1,19 @@
 # w9 · m621 — A Billing member sees no service events, metrics or deploy history, as on Render
 
-**Worker:** worker9 **Goal:** the Billing role reads on bex what Render's table gives it: billing and non-sensitive resource details, no events, metrics, deploys or logs. **Status:** todo
+**Worker:** worker9 **Goal:** the Billing role reads on bex what Render's table gives it: billing and non-sensitive resource details, no events, metrics, deploys or logs. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A relation for events, metrics and deploy history without the Billing role: model, `RelCan`, audit CHECK migration, capability grant, ADR012's matrix | 40m | — |
-| [t002](t002.md) | Service and workspace events, deploy list and get, and every metric read on the new relation | 1h | t001 |
-| [t003](t003.md) | Dashboard: no Events, Deploys, Metrics or project Observability for a Billing member | 1h | t002 |
-| [t004](t004.md) | Amend ADR087, ADR024 and ADR018's members row; role tests; a live walk on dev-9 | 1h | t002, t003 |
-| [t005](t005.md) | Render parity | 30m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 45m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t001](done/t001.md) | A relation for events, metrics and deploy history without the Billing role: model, `RelCan`, audit CHECK migration, capability grant, ADR012's matrix — **DONE** | 40m | — |
+| [t002](done/t002.md) | Service and workspace events, deploy list and get, and every metric read on the new relation — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Dashboard: no Events, Deploys, Metrics or project Observability for a Billing member — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Amend ADR087, ADR024 and ADR018's members row; role tests; a live walk on dev-9 — **DONE** | 1h | t002, t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -21,7 +21,7 @@ On dev-9, a Billing member is refused service and workspace events, deploy histo
 
 ## Open decision (recorded as a recommendation, not a user decision)
 
-Deploy history is restricted along with events. That is this milestone's recommendation: Render's table denies the Billing role "View service events", and a deploy's start and end are service events (`deploy_started` and `deploy_ended` in Render's event types). The alternative is to keep the deploy list readable for a Billing member. That would be a new divergence, needing the user's sign-off in ADR018. Recorded under Render parity first (ADR008), not as a user decision.
+Deploy history is restricted along with events. That is this milestone's recommendation: Render's table denies the Billing role "View service events", and a deploy's start and end are service events (`deploy_started` and `deploy_ended` in Render's event types). The alternative is to keep the deploy list readable for a Billing member. That would be a new divergence, needing the user's sign-off in ADR018. Recorded under Render parity first (ADR008), not as a user decision. **Shipped as recommended (2026-11-24),** with a cron job's run history beside the deploys: a cron run's start and end are Render's `cron_job_run_started`/`cron_job_run_ended` service events.
 
 ## Source + Goal linkage
 

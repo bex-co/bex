@@ -29,7 +29,9 @@
 #     billing      billing only (+ non-sensitive names)
 #
 # Derived permissions consumed by bex-api (lego/backend/internal/api/authz.go):
-#   can_view            resource lists/details/metrics    viewer and up
+#   can_view            resource lists/details            viewer and up
+#   can_view_activity   events, deploys, metrics          viewer and up, not billing
+#                       (Render's "View service events/metrics", w9/m621)
 #   can_view_logs       service logs                      contributor and up
 #   can_operate         restart/suspend/resume services   contributor and up
 #   can_create          create/delete resources           developer and up
@@ -84,6 +86,7 @@ type workspace
     define billing: [user]
 
     define can_view: viewer or contributor or developer or admin or billing
+    define can_view_activity: viewer or contributor or developer or admin
     define can_view_logs: contributor or developer or admin
     define can_operate: contributor or developer or admin
     define can_create: developer or admin

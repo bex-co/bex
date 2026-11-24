@@ -481,7 +481,7 @@ func FilterOf(statuses []string, createdBefore, createdAfter, updatedBefore, upd
 // ListFilter returns the newest core.MaxPageLimit page (cursor for the
 // rest). A hand-applied App has no history: an empty list, not an error.
 func (s *Service) List(ctx context.Context, service string, filter ListFilter) ([]DeployView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, service)
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +531,7 @@ func (s *Service) listFetched(ctx context.Context, a *appv1alpha1.App, filter Li
 // core.ErrNotFound — the same "not yours" shape GetApp's tenant gate uses,
 // never a cross-app leak through the id alone.
 func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, service)
 	if err != nil {
 		return DeployView{}, err
 	}

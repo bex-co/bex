@@ -1141,7 +1141,7 @@ const (
 // no deploys and no audit target: an empty feed, not an error — the deploy-history
 // precedent.
 func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Event, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, service)
 	if err != nil {
 		return nil, err
 	}
@@ -1280,7 +1280,7 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 			return Event{}, err
 		}
 	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	if err := s.Authorize(ctx, core.RelCanViewActivity); err != nil {
 		return Event{}, err
 	}
 	if !validID {

@@ -305,8 +305,8 @@ var KeyPermissionCatalog = []KeyArea{
 	}},
 	{ID: "deploys", Name: "Deploys", Permissions: []KeyPermission{
 		{ID: "deploys", Name: "Deployment information", Levels: []KeyPermissionLevel{
-			lvl(KeyLevelRead, rels(RelCanView), KeyDeploysView),
-			lvl(KeyLevelRun, rels(RelCanView), KeyDeploysView),
+			lvl(KeyLevelRead, rels(RelCanViewActivity), KeyDeploysView),
+			lvl(KeyLevelRun, rels(RelCanViewActivity), KeyDeploysView),
 		}},
 		{ID: "deploys_run", Name: "Run deployments", Levels: []KeyPermissionLevel{
 			lvl(KeyLevelRun, rels(RelCanOperate), KeyDeploysRun, KeyDeploysRollback),
@@ -314,7 +314,7 @@ var KeyPermissionCatalog = []KeyArea{
 	}},
 	{ID: "monitoring", Name: "Monitoring", Permissions: []KeyPermission{
 		{ID: "monitoring", Name: "Read resource logs, metrics, events, and export settings", Levels: []KeyPermissionLevel{
-			lvl(KeyLevelRead, rels(RelCanView, RelCanViewLogs), KeyMonitoringEvents, KeyMonitoringMetrics, KeyMonitoringLogs, KeyMonitoringStreams),
+			lvl(KeyLevelRead, rels(RelCanViewActivity, RelCanViewLogs), KeyMonitoringEvents, KeyMonitoringMetrics, KeyMonitoringLogs, KeyMonitoringStreams),
 		}},
 	}},
 	{ID: "postgres", Name: "Postgres", Permissions: []KeyPermission{
@@ -748,7 +748,7 @@ func KeyLevelName(l KeyLevel) string {
 // relationRole is the lowest member role holding each relation a catalog
 // level names (deploy/gitops/authz/model.fga).
 var relationRole = map[string]int{
-	RelCanView: 0, RelCanViewLogs: 1, RelCanOperate: 1, RelCanCreate: 2, RelCanViewSensitive: 2, RelCanManage: 3,
+	RelCanView: 0, RelCanViewActivity: 0, RelCanViewLogs: 1, RelCanOperate: 1, RelCanCreate: 2, RelCanViewSensitive: 2, RelCanManage: 3,
 }
 
 var roleNames = []string{"viewer", "contributor", "developer", "admin"}

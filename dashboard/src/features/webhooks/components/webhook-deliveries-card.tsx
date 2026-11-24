@@ -83,8 +83,12 @@ export function WebhookDeliveriesCard({
 }) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const { canManage } = useCapabilities();
+  const { canManage, denied } = useCapabilities();
   const canResend = endpointEnabled && canManage;
+  // A delivery's source event is a service event, which bex-api refuses to a
+  // role that may not view service activity (a Billing member, w9/m621): its
+  // name is then plain text, not a link to a 403.
+  const eventLinked = !denied("can_view_activity");
   const [filter, setFilter] = useState<DeliveryFilter>("all");
   const [sentAfter, setSentAfter] = useState("");
   const [sentBefore, setSentBefore] = useState("");
@@ -248,6 +252,7 @@ export function WebhookDeliveriesCard({
                     delivery={d}
                     serviceIndex={serviceIndex}
                     ownerId={currentWorkspaceId}
+                    eventLinked={eventLinked}
                     canResend={canResend}
                     resending={resendingAttemptId === d.id}
                     onResend={handleResend}
@@ -366,6 +371,7 @@ function DeliveryRow({
   delivery,
   serviceIndex,
   ownerId,
+  eventLinked,
   canResend,
   resending,
   onResend,
@@ -373,6 +379,7 @@ function DeliveryRow({
   delivery: WebhookDeliveryView;
   serviceIndex: ServiceIndex;
   ownerId: string | null;
+  eventLinked: boolean;
   canResend: boolean;
   resending: boolean;
   onResend: (attemptId: string) => Promise<boolean>;
@@ -398,7 +405,7 @@ function DeliveryRow({
       : t("webhooks.transportError");
   }
   const eventURL =
-    delivery.eventId && ownerId
+    delivery.eventId && ownerId && eventLinked
       ? `${config.apiBaseUrl}/v1/events/${encodeURIComponent(delivery.eventId)}?ownerId=${encodeURIComponent(ownerId)}`
       : "";
 

@@ -24,6 +24,7 @@ import {
 } from "@/features/services/lib/service-type";
 import { runsInstances } from "@/features/services/lib/status";
 import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   head: serviceTabHead("services.navMetrics", "/services/$serviceId"),
@@ -65,15 +66,27 @@ function RouteComponent() {
 // selection threaded from the route above (w6/065; static.$serviceId.metrics
 // threads the same pair); a host that doesn't persist (unit tests) falls back
 // to local state.
-export function ServiceMetricsPage({
-  serviceId,
-  range: rangeProp,
-  onRangeChange,
-}: {
+// Behind the role's service-activity gate (w9/m621): no chart, filter or
+// event marker reads for a member who may not view metrics.
+export function ServiceMetricsPage(props: ServiceMetricsPageProps) {
+  return (
+    <ActivityGate>
+      <ServiceMetrics {...props} />
+    </ActivityGate>
+  );
+}
+
+interface ServiceMetricsPageProps {
   serviceId: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
-}) {
+}
+
+function ServiceMetrics({
+  serviceId,
+  range: rangeProp,
+  onRangeChange,
+}: ServiceMetricsPageProps) {
   const [localRange, setLocalRange] =
     useState<RangeSelection>(DEFAULT_RANGE_PRESET);
   const range = rangeProp ?? localRange;

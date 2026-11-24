@@ -3321,6 +3321,7 @@ type ViewerCapabilities {
   canManageKeys: Boolean!
   canOperate: Boolean!
   canView: Boolean!
+  canViewActivity: Boolean!
   canViewBilling: Boolean!
   canViewLogs: Boolean!
   canViewSensitive: Boolean!

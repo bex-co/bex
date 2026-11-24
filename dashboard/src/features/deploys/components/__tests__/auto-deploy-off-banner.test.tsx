@@ -10,6 +10,12 @@ import {
 import { DeployHistorySkeleton } from "../deploy-history-skeleton";
 import { DeployHistoryView } from "../deploy-history-view";
 import { autoDeployOff } from "../../lib/auto-deploy-off";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // w3/064: Render's Deploys page "banner flagging when auto-deploys are
 // disabled" (changelog 2026-09-03).
@@ -201,5 +207,37 @@ describe("auto-deploy-off banner", () => {
     expect(
       await screen.findByRole("link", { name: "Auto-Deploy settings" }),
     ).toBeInTheDocument();
+  });
+});
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// events"; bex-api refuses the deploy history to it (can_view_activity). The
+// history (stubbed here: its own suite covers its reads) never mounts for it,
+// so neither does its useDeploys read. A Viewer reads it as an Admin does.
+describe("deploy history per role (w9/m621)", () => {
+  beforeEach(() => {
+    Object.assign(serverState, {
+      repo: "https://github.com/acme/web",
+      autoDeploy: false,
+      branch: "main",
+      pushDeliveryMethod: null,
+    });
+  });
+
+  it("a Billing member sees why, and no list or banner", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    renderAt("/services/web/deploys");
+
+    expect(await screen.findByText(ACTIVITY_REASON)).toBeInTheDocument();
+    expect(screen.queryByTestId("deploy-list")).toBeNull();
+    expect(screen.queryByTestId("auto-deploy-off-banner")).toBeNull();
+  });
+
+  it("a Viewer reads the history", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    renderAt("/static/web/deploys");
+
+    expect(await screen.findByTestId("deploy-list")).toBeInTheDocument();
+    expect(screen.queryByText(ACTIVITY_REASON)).toBeNull();
   });
 });

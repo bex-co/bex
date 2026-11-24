@@ -124,6 +124,7 @@ var viewerCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"canManage":        gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManage }),
 		"canManageBilling": gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManageBilling }),
 		"canViewBilling":   gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanViewBilling }),
+		"canViewActivity":  gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanViewActivity }),
 		"grants": gqlutil.Typed(
 			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(capabilityGrantGQLType))),
 			func(c Capabilities) any { return c.Grants }),

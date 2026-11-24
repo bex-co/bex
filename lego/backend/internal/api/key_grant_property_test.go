@@ -59,7 +59,8 @@ func TestKeyDecisionIsItsGrantAndItsCreator(t *testing.T) {
 	}
 	roleNames := append([]string{""}, workspaceRoles...) // "": a creator who left
 	relations := []string{core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate,
-		core.RelCanViewSensitive, core.RelCanManage, core.RelCanManageBilling, core.RelCanViewBilling}
+		core.RelCanViewSensitive, core.RelCanManage, core.RelCanManageBilling, core.RelCanViewBilling,
+		core.RelCanViewActivity}
 
 	roles := subjectRoles{}
 	grants := &grantStore{grants: map[string]core.KeyGrant{}}

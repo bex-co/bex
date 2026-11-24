@@ -7,6 +7,12 @@ import { WebhookDeliveriesCard } from "@/features/webhooks/components/webhook-de
 import type { WebhookDeliveryView } from "@/features/webhooks/types";
 import type { ServiceView } from "@/features/services/types";
 import { hydrateAcrossBoundary } from "@/test/hydration";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  billingCapabilities,
+  mockCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 const deliveries: WebhookDeliveryView[] = [
   {
@@ -61,7 +67,14 @@ const loadMore = vi.fn();
 const refresh = vi.fn();
 const resend = vi.fn();
 let hasMore = false;
-let currentRole = "admin";
+// The member's role, and the capabilities the read confirms for it.
+const ROLE_CAPABILITIES = {
+  admin: mockCapabilities,
+  viewer: viewerCapabilities,
+  // w9/m621: a Billing member's role may not view service activity.
+  billing: billingCapabilities,
+};
+let currentRole: keyof typeof ROLE_CAPABILITIES = "admin";
 let currentWorkspaceId = "tea-1";
 const { useWebhookDeliveries } = vi.hoisted(() => ({
   useWebhookDeliveries: vi.fn(),
@@ -114,9 +127,11 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
     currentWorkspaceId,
   }),
 }));
-vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
-  useCapabilities: () => ({ canManage: currentRole === "admin", loaded: true }),
-}));
+beforeEach(() => {
+  vi.mocked(useCapabilities).mockImplementation(() =>
+    ROLE_CAPABILITIES[currentRole](),
+  );
+});
 
 describe("WebhookDeliveriesCard", () => {
   beforeEach(() => {
@@ -289,6 +304,18 @@ describe("WebhookDeliveriesCard", () => {
       "href",
       `${config.apiBaseUrl}/v1/events/evt-failed?ownerId=tea-workspace%2Bone`,
     );
+  });
+
+  // w9/m621: the source event is a service event, which bex-api refuses to a
+  // Billing member, so its name is plain text rather than a link to a 403.
+  it("leaves the source event unlinked for a role that may not view service activity", () => {
+    currentRole = "billing";
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+
+    expect(
+      screen.queryByRole("link", { name: /open source event/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Build Ended")).toBeInTheDocument();
   });
 
   it("requests failed deliveries from the server", async () => {

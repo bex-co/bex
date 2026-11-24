@@ -101,14 +101,32 @@ func keepFilterResource(httpOnly bool) func(savedsearch.Resource) bool {
 }
 
 // resolveMetricScope resolves Render's resource/project/environment/region
-// scope for metrics endpoints (w4/m596).
+// scope for metrics endpoints (w4/m596). A project or environment scope is
+// refused outright to a caller without can_view_activity on its workspace
+// (w9/m621): its reads skip each resource they may not read, so a Billing
+// member would otherwise get an empty answer where every other surface
+// answers 403.
 func (s *Service) resolveMetricScope(ctx context.Context, req savedsearch.ScopeRequest, maxResources int, keep func(savedsearch.Resource) bool) (savedsearch.ResolvedScope, error) {
-	return savedsearch.ResolveScope(ctx, s.Projects, req, savedsearch.ScopePolicy{
+	resolved, err := savedsearch.ResolveScope(ctx, s.Projects, req, savedsearch.ScopePolicy{
 		RequireProjectForEnvironment: false,
 		MaxResources:                 maxResources,
 		Keep:                         keep,
 		Unavailable:                  ErrProjectMetricsUnavailable,
 	})
+	if err != nil || !resolved.Scoped {
+		return resolved, err
+	}
+	if err := s.authorizeScopeActivity(ctx, resolved.WorkspaceID); err != nil {
+		return savedsearch.ResolvedScope{}, err
+	}
+	return resolved, nil
+}
+
+// authorizeScopeActivity refuses a project-wide metrics read to a caller
+// without can_view_activity on the project's workspace (w9/m621), before any
+// per-resource read can turn the refusal into an empty answer.
+func (s *Service) authorizeScopeActivity(ctx context.Context, workspace string) error {
+	return s.AuthorizeOnOwner(core.WithAuditVerb(ctx, AuditVerbMetrics), core.RelCanViewActivity, workspace, "project")
 }
 
 // readableMetricResourceIDs drops resources in a project/environment scope that
@@ -263,6 +281,9 @@ func (s *Service) projectMetrics(ctx context.Context, q ProjectMetricQuery) (Pro
 	if err != nil {
 		return ProjectMetrics{}, err
 	}
+	if err := s.authorizeScopeActivity(ctx, workspace); err != nil {
+		return ProjectMetrics{}, err
+	}
 	scoped := doc.Scope(savedsearch.TypeMetrics, all)
 	if len(scoped) > maxProjectMetricResources {
 		return ProjectMetrics{}, core.NewBadRequestError(ProjectViewTooLargeCode,
@@ -391,19 +412,19 @@ func (s *Service) readProjectResource(ctx context.Context, q MetricQuery, r save
 func (s *Service) authorizeProjectResource(ctx context.Context, r savedsearch.Resource) error {
 	switch r.Type {
 	case savedsearch.KindPostgres:
-		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, r.ID)
+		db, err := s.AuthorizeDatabase(ctx, core.RelCanViewActivity, r.ID)
 		if err != nil {
 			return err
 		}
 		return core.NotFoundIfDeleting(db)
 	case savedsearch.KindKeyValue:
-		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, r.ID)
+		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewActivity, r.ID)
 		if err != nil {
 			return err
 		}
 		return core.NotFoundIfDeleting(kv)
 	default:
-		_, err := s.AuthorizeApp(ctx, core.RelCanView, r.ID)
+		_, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, r.ID)
 		return err
 	}
 }

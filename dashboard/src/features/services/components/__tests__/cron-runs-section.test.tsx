@@ -6,6 +6,13 @@ import type { CronRunView, ServiceView } from "@/features/services/types";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 import { CRON_RUNS_PAGE_SIZE } from "@/features/services/lib/cron-run-list";
 import { ServiceCronRunsSkeleton } from "@/common/components/route-skeletons";
+import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // Links render as plain anchors carrying their target, every other prop passed
 // through, so a test reads the window a row opens without a router.
@@ -35,7 +42,7 @@ let loading = false;
 let error = false;
 
 vi.mock("@/features/services/hooks/use-cron-runs", () => ({
-  useCronRuns: () => ({
+  useCronRuns: vi.fn(() => ({
     runs,
     loading,
     error,
@@ -44,7 +51,7 @@ vi.mock("@/features/services/hooks/use-cron-runs", () => ({
     cancelingId: null,
     cancel,
     loadMore,
-  }),
+  })),
 }));
 
 const ME = "me@example.com";
@@ -107,6 +114,7 @@ beforeEach(() => {
   loadMore.mockReset();
   loadMore.mockResolvedValue(undefined);
   trigger.mockReset();
+  vi.mocked(useCronRuns).mockClear();
 });
 
 const HOUR = 3_600_000;
@@ -137,6 +145,36 @@ const rowLinks = () =>
   rows().map((row) => within(row).getByRole("link", { name: /Cron job run/ }));
 const search = () =>
   screen.getByRole("searchbox", { name: "Search cron job runs" });
+
+// w9/m621: Render shows a cron job's runs as service events, which its
+// Billing role does not view; bex-api refuses the run history to it
+// (can_view_activity). A Viewer reads the runs as an Admin does.
+describe("CronRunsSection per role (w9/m621)", () => {
+  beforeEach(() => {
+    runs = [finished("crr-1", "successful", 21, 14)];
+  });
+
+  it("a Billing member sees why, and the runs are never read", () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    render(<CronRunsSection serviceId="nightly" />);
+
+    expect(screen.getByText(ACTIVITY_REASON)).toBeInTheDocument();
+    expect(rows()).toHaveLength(0);
+    expect(
+      screen.queryByRole("searchbox", { name: "Search cron job runs" }),
+    ).not.toBeInTheDocument();
+    expect(useCronRuns).not.toHaveBeenCalled();
+  });
+
+  it("a Viewer reads the runs", () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    render(<CronRunsSection serviceId="nightly" />);
+
+    expect(rows()).toHaveLength(1);
+    expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
+    expect(useCronRuns).toHaveBeenCalledWith("nightly");
+  });
+});
 
 describe("CronRunsSection rows (w3/m556)", () => {
   it("lists runs as Render's list: RUN with the count, TRIGGER, DURATION, then each run", () => {

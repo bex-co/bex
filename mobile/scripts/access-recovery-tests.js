@@ -47,12 +47,21 @@ const adapters = {
   "react-native": {
     Platform: { OS: "ios", select: (values) => values.ios ?? values.default },
     Appearance: { getColorScheme: () => "light" },
-    StyleSheet: { create: (styles) => styles, hairlineWidth: 1 },
+    StyleSheet: {
+      create: (styles) => styles,
+      flatten: (style) =>
+        Object.assign({}, ...[style].flat(Infinity).filter(Boolean)),
+      hairlineWidth: 1,
+    },
     View: "View",
     Text: "Text",
     Pressable: "Pressable",
     TextInput: "TextInput",
     ActivityIndicator: "ActivityIndicator",
+    TouchableOpacity: "TouchableOpacity",
+    ScrollView: "ScrollView",
+    RefreshControl: "RefreshControl",
+    useWindowDimensions: () => ({ width: 390, height: 844 }),
     Modal: ({ visible, ...props }) =>
       visible ? React.createElement("Modal", props) : null,
     FlatList: ({ data, renderItem, ...props }) =>
@@ -76,6 +85,17 @@ const adapters = {
     router: { replace: (route) => routes.push(route) },
     useRouter: () => notificationRouter,
   },
+  "expo-router/build/react-navigation/bottom-tabs": {
+    BottomTabBarHeightContext: React.createContext(undefined),
+  },
+  "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
+  "react-native-svg": {
+    __esModule: true,
+    default: "Svg",
+    Circle: "Circle",
+    Path: "Path",
+  },
+  "@expo/vector-icons": { Ionicons: "Ionicons" },
   "expo-secure-store": {
     getItemAsync: async () => null,
     setItemAsync: async () => undefined,
@@ -1383,5 +1403,123 @@ test("LogViewer renders ANSI display vectors cleanly, colours Render forms, and 
     assert.equal(historyCalls.at(-1).textMode, undefined);
   } finally {
     await f.close();
+  }
+});
+
+test("a Billing member reads no events, deploys, cron runs or metrics, and still sees the service (w9/m621)", async () => {
+  const {
+    ServiceDetailScreen,
+  } = require("../src/features/services/service-detail-screen");
+  const {
+    PostgresInsightsCard,
+  } = require("../src/features/postgres/postgres-insights-card");
+  const {
+    KeyValueInsightsCard,
+  } = require("../src/features/keyvalue/keyvalue-insights-card");
+  const activityReads = [
+    "MobileDeployHistory",
+    "MobileServiceEvents",
+    "MobileCronRuns",
+    "MobileMetricSnapshot",
+    "MobilePostgresCapacity",
+    "MobileKeyValueInsights",
+  ];
+  // Billing and Viewer on Render: neither reads logs or operates; only
+  // Billing reads billing details, and only Viewer reads activity.
+  const grants = (canViewActivity, canViewBilling) => ({
+    viewerCapabilities: {
+      fresh: true,
+      grants: [
+        ["can_view", "allowed"],
+        ["can_view_activity", canViewActivity],
+        ["can_view_logs", "denied"],
+        ["can_operate", "denied"],
+        ["can_create", "denied"],
+        ["can_view_billing", canViewBilling],
+      ].map(([action, outcome]) => ({ action, outcome, reason: null })),
+    },
+  });
+  const screen = () =>
+    React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(ServiceDetailScreen, { serviceId: "srv-a" }),
+      React.createElement(PostgresInsightsCard, { databaseId: "dpg-a" }),
+      React.createElement(KeyValueInsightsCard, {
+        resourceId: "red-a",
+        status: "available",
+        suspended: "not_suspended",
+      }),
+    );
+  const mount = async (role) => {
+    const f = await fixture();
+    await f.reply("MobileWorkspaces", workspaceData());
+    await f.reply(
+      "MobileViewerCapabilities",
+      role === "billing"
+        ? grants("denied", "allowed")
+        : grants("allowed", "denied"),
+    );
+    await f.update(screen);
+    const sent = f.requests.map((r) => r.operation.operationName);
+    // A cron job's run history mounts once the service has loaded.
+    await replyNotification(f, "MobileServiceSupervision", {
+      service: {
+        __typename: "Service",
+        id: "srv-a",
+        name: "nightly-report",
+        displayName: "Nightly report",
+        type: "cron_job",
+        runtime: "image",
+        phase: "running",
+        suspended: "not_suspended",
+        replicas: 1,
+        revision: "rev-1",
+        region: "fsn1",
+        latestDeployId: "dep-a",
+        updatedAt: "2026-11-24T00:00:00Z",
+      },
+    });
+    sent.push(...f.requests.map((r) => r.operation.operationName));
+    return { f, sent };
+  };
+
+  const billing = await mount("billing");
+  try {
+    assert.deepEqual(
+      billing.sent.filter((name) => activityReads.includes(name)),
+      [],
+    );
+    // The database's own reads stay: reachability, sizes and tables.
+    assert.ok(billing.sent.includes("MobilePostgresSizes"));
+    assert.ok(billing.sent.includes("MobilePostgresTableScans"));
+    const text = treeText(billing.f.root);
+    assert.ok(text.includes("Nightly report"), text);
+    assert.ok(text.includes(translate("service.overview")), text);
+    assert.ok(text.includes(translate("keyValueInsights.connectionHealth")));
+    assert.ok(text.includes(translate("postgresInsights.logicalSize")));
+    for (const hidden of [
+      "service.loadError",
+      "service.partialError",
+      "activity.timelineTitle",
+      "metrics.title",
+      "cron.title",
+      "postgresInsights.diskUsed",
+      "keyValueInsights.storage",
+    ]) {
+      assert.equal(text.includes(translate(hidden)), false, hidden);
+    }
+  } finally {
+    await billing.f.close();
+  }
+
+  // Every other role, down to a Viewer, holds can_view_activity.
+  const viewer = await mount("viewer");
+  try {
+    for (const name of activityReads) {
+      assert.ok(viewer.sent.includes(name), `${name}: ${viewer.sent}`);
+    }
+  } finally {
+    await viewer.f.close();
   }
 });

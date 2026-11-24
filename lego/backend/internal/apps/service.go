@@ -4697,9 +4697,11 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string, cancelActive 
 
 // ListCronRuns returns a cron_job's first-class run history, newest first. The
 // status slice is already bounded by the operator; Page supplies Render-style
-// cursor/limit semantics and an unknown cursor yields an empty tail.
+// cursor/limit semantics and an unknown cursor yields an empty tail. Runs are
+// Render's cron_job_run_started/ended service events, so the history is
+// can_view_activity: every role but Billing (w9/m621).
 func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit int) ([]CronRunView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4785,9 +4787,10 @@ func cronRunRecordView(rec store.CronRunRecord) CronRunView {
 
 // GetCronRun fetches one run by its stable derived id, scoped to its cron_job.
 // A run from another service, an unknown id, or a non-cron service is the same
-// 404 shape so ids cannot be used to probe across resources.
+// 404 shape so ids cannot be used to probe across resources. can_view_activity,
+// as ListCronRuns.
 func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, name)
 	if err != nil {
 		return CronRunView{}, err
 	}

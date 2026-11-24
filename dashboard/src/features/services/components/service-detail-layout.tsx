@@ -19,6 +19,7 @@ import {
   useCachedServiceType,
 } from "@/features/services/hooks/use-cached-service-type";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import {
@@ -62,8 +63,11 @@ export function ServiceDetailLayout({
   const { service, loading, error, refetch, ownerId } = useServer(serviceId);
   // Judge this page's permissions in the service's own workspace (w6/091).
   useAdoptResourceWorkspace(serviceId, routePending ? null : ownerId);
+  // A Billing member views no deploys (w9/m621): the header's latest-deploy
+  // badge is left out and its read never fires.
+  const activityDenied = useCapabilities().denied("can_view_activity");
   const { deploy: latestDeploy, loading: latestDeployLoading } =
-    useLatestDeploy(serviceId);
+    useLatestDeploy(serviceId, { skip: activityDenied });
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const signInAgain = useSignInAgain();

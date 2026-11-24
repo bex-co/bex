@@ -95,3 +95,9 @@ Read on 2026-11-23 from [render.com/docs/team-members](https://render.com/docs/t
 
 - **Billing details are read by Admin, Developer and Billing.** "View billing details" is 🟢 for those three and ❌ for Contributor and Viewer, whose descriptions both say they "can't view sensitive fields (billing info, …)". bex's `can_view_billing` (`developer or admin or billing`) gates the usage with its estimated and real cost, invoices and credit grants, the billing readiness and the pipeline spend limit.
 - **Editing stays Admin and Billing.** "Edit payment method" is 🟢 for Admin and Billing only, and the Billing role "has full access to the workspace's billing settings". `can_manage_billing` keeps Checkout, the Customer Portal and the pipeline spend limit.
+
+## How bex reads it (w9/m621)
+
+- **Events and metrics are every role's but Billing's.** "View service events" and "View service metrics" are 🟢 for Admin, Developer, Contributor and Viewer and ❌ for Billing, whose description grants it only "non-sensitive details of the workspace's resources (such as members and service names)". bex's `can_view_activity` (`viewer or contributor or developer or admin`) gates a service's events, every service, datastore and project metric, and the deploy and cron run history: a deploy's and a cron run's start and end are service events on Render (`deploy_started`, `deploy_ended`, `cron_job_run_started`, `cron_job_run_ended`).
+- **Names and details stay every role's.** The service, datastore and project lists and details stay `can_view`, Billing included.
+- **Logs stay Contributor and up.** "View service logs" is ❌ for Viewer and Billing; `can_view_logs` is unchanged.

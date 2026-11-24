@@ -140,6 +140,101 @@ describe("useCapabilities (fail-closed + freshness)", () => {
     );
   });
 
+  // w9/m621: a page gated on a confirmed denial must not mount its content,
+  // and fire reads bex-api only refuses, for the round trip of every re-check.
+  describe("a confirmed denial through a re-check", () => {
+    const billing = (activity: "allowed" | "denied") => ({
+      data: {
+        viewerCapabilities: {
+          role: "BILLING",
+          grants: [
+            ...allowedGrants,
+            { action: "can_view_activity", outcome: activity, reason: null },
+          ],
+        },
+      },
+    });
+    const settle = () =>
+      act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+    it("stays denied while a focus re-check runs, and flips once one answers allowed", async () => {
+      let answer!: (value: unknown) => void;
+      mockQuery.mockResolvedValueOnce(billing("denied")).mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+      );
+      const { result } = renderHook(() => useCapabilities(), { wrapper });
+      await settle();
+      expect(result.current.denied("can_view_activity")).toBe(true);
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "visible",
+      });
+      act(() => {
+        window.dispatchEvent(new Event("focus"));
+      });
+      expect(result.current.loading).toBe(true);
+      expect(result.current.denied("can_view_activity")).toBe(true);
+      // Never an authorization: the re-check withdraws every grant.
+      expect(result.current.allows("can_view")).toBe(false);
+      expect(result.current.canView).toBe(false);
+
+      answer(billing("allowed"));
+      await settle();
+      expect(result.current.loading).toBe(false);
+      expect(result.current.denied("can_view_activity")).toBe(false);
+      expect(result.current.canViewActivity).toBe(true);
+    });
+
+    it("is not carried into another workspace", async () => {
+      mockQuery
+        .mockResolvedValueOnce(billing("denied"))
+        .mockReturnValue(new Promise(() => undefined));
+      const { result, rerender } = renderHook(() => useCapabilities(), {
+        wrapper,
+      });
+      await settle();
+      expect(result.current.denied("can_view_activity")).toBe(true);
+
+      workspaceId = "tea-2";
+      rerender();
+      expect(result.current.loading).toBe(true);
+      expect(result.current.denied("can_view_activity")).toBe(false);
+    });
+
+    it("is not carried past an access-generation bump, in any commit", async () => {
+      mockQuery
+        .mockResolvedValueOnce(billing("denied"))
+        .mockReturnValue(new Promise(() => undefined));
+      // What the screen committed, before the provider's passive effects.
+      const committed: boolean[] = [];
+      const { result } = renderHook(
+        () => {
+          const value = useCapabilities();
+          useLayoutEffect(() => {
+            committed.push(value.denied("can_view_activity"));
+          });
+          return value;
+        },
+        { wrapper },
+      );
+      await settle();
+      expect(result.current.denied("can_view_activity")).toBe(true);
+
+      committed.length = 0;
+      act(() => {
+        bumpAccessGeneration();
+      });
+      expect(committed.length).toBeGreaterThan(0);
+      expect(committed).not.toContain(true);
+    });
+  });
+
   it("treats a failed check as unavailable, not a role denial", async () => {
     mockQuery.mockRejectedValue(new Error("network"));
     const { result } = renderHook(() => useCapabilities(), { wrapper });

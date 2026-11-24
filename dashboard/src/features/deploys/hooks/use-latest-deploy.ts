@@ -25,14 +25,22 @@ export interface UseLatestDeployResult {
  * document, so the poll interval IS how long the badge can sit on a status the
  * deploy has already left. A settled deploy falls back to the baseline: it will
  * never change again, and only a new deploy (a fresh row) can move this read.
+ *
+ * `skip` (w9/m621): the caller's role may not view service activity (a
+ * Billing member, as on Render), so bex-api would only refuse the read; the
+ * header then shows no deploy badge and nothing polls.
  */
-export function useLatestDeploy(serviceId: string): UseLatestDeployResult {
+export function useLatestDeploy(
+  serviceId: string,
+  { skip = false }: { skip?: boolean } = {},
+): UseLatestDeployResult {
   const { data, loading, error, startPolling, stopPolling } = useQuery(
     DeploysDocument,
     {
       variables: { serviceId, limit: 1 },
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
+      skip,
       skipPollAttempt: skipPollWhenHidden,
     },
   );
@@ -43,10 +51,14 @@ export function useLatestDeploy(serviceId: string): UseLatestDeployResult {
     startPolling,
     stopPolling,
     !first || !isTerminalDeployStatus(first.status ?? ""),
+    !skip,
   );
 
   return {
-    deploy: first ? { id: first.id ?? "", status: first.status ?? "" } : null,
+    deploy:
+      first && !skip
+        ? { id: first.id ?? "", status: first.status ?? "" }
+        : null,
     loading,
     error,
   };

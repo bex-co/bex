@@ -7,6 +7,13 @@ import {
 } from "@/features/metrics/lib/range";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
+import { useServiceEvents } from "@/features/events/hooks/use-service-events";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // The page composes the two chart cards; their internals (Apollo queries,
 // chart rendering) are covered by their own tests — stub them so this test
@@ -35,7 +42,7 @@ vi.mock("@/features/events/components/event-timeline", () => ({
   EventTimeline: () => <p>timeline</p>,
 }));
 vi.mock("@/features/events/hooks/use-service-events", () => ({
-  useServiceEvents: () => ({ events: [] }),
+  useServiceEvents: vi.fn(() => ({ events: [] })),
 }));
 
 const serverState: UseServerResult = {
@@ -51,6 +58,43 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 beforeEach(() => {
   serverState.service = null;
   serverState.loading = false;
+  vi.mocked(useServiceEvents).mockClear();
+});
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// metrics"; bex-api refuses every metric read to it (can_view_activity). A
+// Viewer reads the page as an Admin does.
+describe("ServiceMetricsPage per role (w9/m621)", () => {
+  const webService = {
+    id: "srv-1",
+    type: "web_service",
+    suspended: false,
+    phase: "Running",
+  } as ServiceView;
+
+  it("a Billing member sees why: no filter, card or chart marker reads", () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    serverState.service = webService;
+    render(<ServiceMetricsPage serviceId="srv-1" />);
+
+    expect(screen.getByText(ACTIVITY_REASON)).toBeInTheDocument();
+    for (const part of ["filters", "application card", "network card"]) {
+      expect(screen.queryByText(part)).not.toBeInTheDocument();
+    }
+    expect(useServiceEvents).not.toHaveBeenCalled();
+  });
+
+  it("a Viewer reads the charts and their event markers", () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    serverState.service = webService;
+    render(<ServiceMetricsPage serviceId="srv-1" />);
+
+    expect(screen.getByText("filters")).toBeInTheDocument();
+    expect(screen.getByText("application card")).toBeInTheDocument();
+    expect(screen.getByText("network card")).toBeInTheDocument();
+    expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
+    expect(useServiceEvents).toHaveBeenCalledWith("srv-1", expect.anything());
+  });
 });
 
 describe("metrics range search contract (w6/065)", () => {

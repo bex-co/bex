@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { router } from "expo-router";
@@ -19,11 +19,7 @@ import { recoveryAvailable } from "@/common/hooks/recovery-coordinator";
 import { formatTimestamp, humanizeToken } from "@/common/format-util";
 import { fonts, fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
-  MobileDeployHistoryDocument,
-  MobileServiceEventsDocument,
   MobileServiceSupervisionDocument,
-  type MobileDeployHistoryQuery,
-  type MobileServiceEventsQuery,
   type MobileServiceSupervisionQuery,
 } from "@/generated-graphql";
 import { MetricSnapshots } from "@/features/metrics/metric-snapshots";
@@ -32,10 +28,7 @@ import {
   type CronRunsCardHandle,
 } from "@/features/cron/cron-runs-card";
 import {
-  appendUnique,
   knownEventType,
-  mergeTimeline,
-  type TimelineDeploy,
   type TimelineEvent,
   type TimelineItem,
 } from "@/features/events/timeline";
@@ -43,14 +36,7 @@ import { statusToneColor } from "@/features/resources/resource-groups";
 import { StatusBadge } from "@/features/resources/status-badge";
 import { ServiceActionsCard } from "./service-actions-card";
 import type { ServiceLifecycleResource } from "./lifecycle";
-
-const PAGE_SIZE = 20;
-type DeployNode = NonNullable<
-  NonNullable<MobileDeployHistoryQuery["deploys"]>[number]
->;
-type EventNode = NonNullable<
-  NonNullable<MobileServiceEventsQuery["serviceEvents"]>[number]
->;
+import { useServiceActivity } from "./use-service-activity";
 
 export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
   const capabilities = useCapabilities();
@@ -59,6 +45,12 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
   const recoveryEnvironment = useRecoveryEnvironment();
   const cronRunsRef = useRef<CronRunsCardHandle>(null);
   const pollInterval = recoveryAvailable(recoveryEnvironment) ? 30_000 : 0;
+  // Render's "View service events" and "View service metrics" (w9/m621): the
+  // deploy and event timeline, cron run history and metrics are requested,
+  // and shown, only once the capability read allows can_view_activity
+  // (ADR087 Hide). A Billing member still sees the service, its overview and
+  // actions.
+  const showActivity = capabilities.allows("can_view_activity");
   const serviceQuery = useQuery(MobileServiceSupervisionDocument, {
     variables: { id: serviceId },
     fetchPolicy: "cache-and-network",
@@ -66,125 +58,28 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
     notifyOnNetworkStatusChange: true,
     pollInterval,
   });
-  const deployQuery = useQuery(MobileDeployHistoryDocument, {
-    variables: { serviceId, limit: PAGE_SIZE },
-    fetchPolicy: "cache-and-network",
-    errorPolicy: "all",
-    notifyOnNetworkStatusChange: true,
-    pollInterval,
-  });
-  const eventQuery = useQuery(MobileServiceEventsDocument, {
-    variables: { serviceId, limit: PAGE_SIZE },
-    fetchPolicy: "cache-and-network",
-    errorPolicy: "all",
-    notifyOnNetworkStatusChange: true,
+  const activity = useServiceActivity({
+    serviceId,
+    enabled: showActivity,
     pollInterval,
   });
   const recovery = useRecovery({
     attempt: async () => {
       await Promise.all([
         serviceQuery.refetch(),
-        deployQuery.refetch(),
-        eventQuery.refetch(),
+        activity.refetch(),
         cronRunsRef.current?.refresh() ?? Promise.resolve(),
       ]);
     },
   });
-  const [extraDeploys, setExtraDeploys] = useState<DeployNode[]>([]);
-  const [extraEvents, setExtraEvents] = useState<EventNode[]>([]);
-  const [hasMoreDeploys, setHasMoreDeploys] = useState(true);
-  const [hasMoreEvents, setHasMoreEvents] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  useEffect(() => {
-    setExtraDeploys([]);
-    setExtraEvents([]);
-    setHasMoreDeploys(true);
-    setHasMoreEvents(true);
-  }, [serviceId]);
-
-  const deploys = useMemo(
-    () =>
-      appendUnique(
-        (deployQuery.data?.deploys ?? []).filter(
-          (deploy): deploy is DeployNode => Boolean(deploy),
-        ),
-        extraDeploys,
-        (deploy) => deploy.id ?? null,
-      ),
-    [deployQuery.data, extraDeploys],
-  );
-  const events = useMemo(
-    () =>
-      appendUnique(
-        (eventQuery.data?.serviceEvents ?? []).filter(
-          (event): event is EventNode => Boolean(event),
-        ),
-        extraEvents,
-        (event) => event.id ?? null,
-      ),
-    [eventQuery.data, extraEvents],
-  );
-  const timeline = useMemo(
-    () => mergeTimeline(deploys as TimelineDeploy[], events as TimelineEvent[]),
-    [deploys, events],
-  );
+  const { timeline } = activity;
   const service = serviceQuery.data?.service;
   const serviceName = service?.displayName || service?.name;
   const initialLoading =
-    (serviceQuery.loading || deployQuery.loading || eventQuery.loading) &&
+    (serviceQuery.loading || activity.loading) &&
     !service &&
     timeline.length === 0;
-  const anyError = serviceQuery.error || deployQuery.error || eventQuery.error;
-
-  async function loadMore() {
-    if (loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const requests: Promise<void>[] = [];
-      if (hasMoreDeploys && deploys.at(-1)?.id) {
-        requests.push(
-          deployQuery
-            .fetchMore({
-              variables: { cursor: deploys.at(-1)?.id, limit: PAGE_SIZE },
-            })
-            .then(({ data }) => {
-              const page = (data?.deploys ?? []).filter(
-                (deploy): deploy is DeployNode => Boolean(deploy),
-              );
-              setExtraDeploys((current) =>
-                appendUnique(current, page, (deploy) => deploy.id ?? null),
-              );
-              setHasMoreDeploys(page.length === PAGE_SIZE);
-            }),
-        );
-      } else {
-        setHasMoreDeploys(false);
-      }
-      if (hasMoreEvents && events.at(-1)?.cursor) {
-        requests.push(
-          eventQuery
-            .fetchMore({
-              variables: { cursor: events.at(-1)?.cursor, limit: PAGE_SIZE },
-            })
-            .then(({ data }) => {
-              const page = (data?.serviceEvents ?? []).filter(
-                (event): event is EventNode => Boolean(event),
-              );
-              setExtraEvents((current) =>
-                appendUnique(current, page, (event) => event.id ?? null),
-              );
-              setHasMoreEvents(page.length === PAGE_SIZE);
-            }),
-        );
-      } else {
-        setHasMoreEvents(false);
-      }
-      await Promise.all(requests);
-    } finally {
-      setLoadingMore(false);
-    }
-  }
+  const anyError = serviceQuery.error || activity.error;
 
   return (
     <SafeAreaView
@@ -199,9 +94,8 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
       />
       <DashboardScrollView
         refreshing={
-          serviceQuery.networkStatus === 4 ||
-          deployQuery.networkStatus === 4 ||
-          eventQuery.networkStatus === 4
+          serviceQuery.networkStatus === NetworkStatus.refetch ||
+          activity.refreshing
         }
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
@@ -232,17 +126,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
             {service.id ? (
               <ServiceActionsCard
                 service={serviceLifecycleResource(service)}
-                deploys={deploys.flatMap((deploy) =>
-                  deploy.id
-                    ? [
-                        {
-                          id: deploy.id,
-                          status: deploy.status ?? "unknown",
-                          rollbackOf: deploy.rollbackOf,
-                        },
-                      ]
-                    : [],
-                )}
+                deploys={activity.deployTargets}
                 refreshService={async () => {
                   const result = await serviceQuery.refetch();
                   const refreshed = result.data?.service;
@@ -250,23 +134,16 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
                     ? serviceLifecycleResource(refreshed)
                     : null;
                 }}
-                refreshDeploys={async () => {
-                  const result = await deployQuery.refetch();
-                  return (result.data?.deploys ?? []).flatMap((deploy) =>
-                    deploy?.id
-                      ? [
-                          {
-                            id: deploy.id,
-                            status: deploy.status ?? "unknown",
-                            rollbackOf: deploy.rollbackOf,
-                          },
-                        ]
-                      : [],
-                  );
-                }}
+                refreshDeploys={activity.refetchDeploys}
               />
             ) : null}
-            {service.id && service.type?.toLowerCase() === "cron_job" ? (
+            {/* Render shows cron runs as service events: no run history
+                without can_view_activity, and nothing else on the card works
+                without it (run/cancel need current history evidence, and no
+                role opens logs without viewing events). */}
+            {showActivity &&
+            service.id &&
+            service.type?.toLowerCase() === "cron_job" ? (
               <CronRunsCard
                 key={service.id}
                 ref={cronRunsRef}
@@ -287,7 +164,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
           </>
         ) : null}
 
-        <MetricSnapshots resourceId={serviceId} />
+        {showActivity ? <MetricSnapshots resourceId={serviceId} /> : null}
 
         {capabilities.allows("can_view_logs") ? (
           <DashboardCard title={t("logs.title")}>
@@ -305,28 +182,32 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
           </DashboardCard>
         ) : null}
 
-        <DashboardCard title={t("activity.timelineTitle")} bleed>
-          {timeline.length ? (
-            timeline.map((item) => <TimelineRow key={item.key} item={item} />)
-          ) : !initialLoading ? (
-            <Text style={[styles.empty, { color: theme.mutedForeground }]}>
-              {t("activity.empty")}
-            </Text>
-          ) : null}
-          {(hasMoreDeploys || hasMoreEvents) && timeline.length ? (
-            <View style={styles.loadMore}>
-              <Button
-                type="outline"
-                loading={loadingMore}
-                disabled={loadingMore}
-                onPress={() => void loadMore().catch(() => undefined)}
-                accessibilityLabel={t("activity.loadMore")}
-              >
-                {t("activity.loadMore")}
-              </Button>
-            </View>
-          ) : null}
-        </DashboardCard>
+        {showActivity ? (
+          <DashboardCard title={t("activity.timelineTitle")} bleed>
+            {timeline.length ? (
+              timeline.map((item) => <TimelineRow key={item.key} item={item} />)
+            ) : !initialLoading ? (
+              <Text style={[styles.empty, { color: theme.mutedForeground }]}>
+                {t("activity.empty")}
+              </Text>
+            ) : null}
+            {activity.hasMore && timeline.length ? (
+              <View style={styles.loadMore}>
+                <Button
+                  type="outline"
+                  loading={activity.loadingMore}
+                  disabled={activity.loadingMore}
+                  onPress={() =>
+                    void activity.loadMore().catch(() => undefined)
+                  }
+                  accessibilityLabel={t("activity.loadMore")}
+                >
+                  {t("activity.loadMore")}
+                </Button>
+              </View>
+            ) : null}
+          </DashboardCard>
+        ) : null}
       </DashboardScrollView>
     </SafeAreaView>
   );

@@ -11,6 +11,7 @@ import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useBuildSource } from "@/features/services/hooks/use-build-sources";
 import { useServer } from "@/features/services/hooks/use-server";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { useDeploy } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { deployWindowEnd } from "../lib/deploy-window";
@@ -38,8 +39,17 @@ export interface DeployDetailPageProps {
  * when one is set (w9/003). Rendered inside the `services.$serviceId` layout
  * route's `<Outlet/>`, so the service chrome (header + tab nav) is already in
  * place; this owns only the deploy-specific content.
+ * It sits behind the role's service-activity gate (w9/m621).
  */
-export function DeployDetailPage({
+export function DeployDetailPage(props: DeployDetailPageProps) {
+  return (
+    <ActivityGate>
+      <DeployDetail {...props} />
+    </ActivityGate>
+  );
+}
+
+function DeployDetail({
   serviceId,
   deployId,
   range,

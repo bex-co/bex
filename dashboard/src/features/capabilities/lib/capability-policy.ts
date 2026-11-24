@@ -12,6 +12,7 @@ export const CAPABILITY_ACTIONS = [
   "can_manage",
   "can_manage_billing",
   "can_view_billing",
+  "can_view_activity",
 ] as const;
 
 export type CapabilityAction = (typeof CAPABILITY_ACTIONS)[number];
@@ -56,7 +57,7 @@ export const unavailableCapabilities: CapabilityState = {
   status: "unavailable",
 };
 
-const BOOLEAN_TO_ACTION = {
+export const BOOLEAN_TO_ACTION = {
   canView: "can_view",
   canViewLogs: "can_view_logs",
   canOperate: "can_operate",
@@ -66,6 +67,7 @@ const BOOLEAN_TO_ACTION = {
   canManage: "can_manage",
   canManageBilling: "can_manage_billing",
   canViewBilling: "can_view_billing",
+  canViewActivity: "can_view_activity",
 } as const satisfies Record<string, CapabilityAction>;
 
 export type CapabilityBoolean = keyof typeof BOOLEAN_TO_ACTION;
@@ -84,6 +86,7 @@ export const ROLE_REASON_KEYS: Record<CapabilityAction, string> = {
   can_manage: "capabilities.reasonCanManage",
   can_manage_billing: "capabilities.reasonCanManageBilling",
   can_view_billing: "capabilities.reasonCanViewBilling",
+  can_view_activity: "capabilities.reasonCanViewActivity",
 };
 
 export function toSnapshot(

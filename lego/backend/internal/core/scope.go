@@ -76,6 +76,7 @@ func AdvertisedScopes() []string {
 var relationCapability = map[string]string{
 	RelCanView:          ScopeRead,
 	RelCanViewLogs:      ScopeRead,
+	RelCanViewActivity:  ScopeRead,
 	RelCanOperate:       ScopeWrite,
 	RelCanCreate:        ScopeWrite,
 	RelCanViewSensitive: ScopeSensitive,
@@ -105,6 +106,7 @@ func RelCanRelations() []string {
 		RelCanJoin,
 		RelCanJoinAsAdmin,
 		RelCanViewBilling,
+		RelCanViewActivity,
 	}
 }
 

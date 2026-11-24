@@ -355,7 +355,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	var notBefore time.Time
 	switch q.Kind {
 	case DatastoreDatabase:
-		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
+		db, err := s.AuthorizeDatabase(ctx, core.RelCanViewActivity, q.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -373,7 +373,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, fmt.Errorf("%w: metric %q is key-value-only, not valid for a database resource", core.ErrBadRequest, q.Metric)
 		}
 	case DatastoreKeyValue:
-		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, q.Resource)
+		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewActivity, q.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -401,10 +401,10 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 	case DatastoreService:
 		// A service disk is read against the SERVICE — the App CR is the
-		// resource that owns the claim, so canView on the app is the whole
-		// authorization story (there is no separate disk object in the
+		// resource that owns the claim, so can_view_activity on the app is the
+		// whole authorization story (there is no separate disk object in the
 		// cluster to gate on).
-		app, err := s.AuthorizeApp(ctx, core.RelCanView, q.Resource)
+		app, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, q.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -442,7 +442,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		// AuthorizeDatabase/AuthorizeKeyValue call to make) — fall back to a
 		// bare Authorize against the caller's own workspace so a malformed
 		// request still 403s before revealing the kind was invalid.
-		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		if err := s.Authorize(ctx, core.RelCanViewActivity); err != nil {
 			return nil, err
 		}
 		return nil, fmt.Errorf("%w: unknown datastore kind %q", core.ErrBadRequest, q.Kind)

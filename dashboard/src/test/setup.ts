@@ -55,6 +55,7 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
     canManage: true,
     canManageBilling: true,
     canViewBilling: true,
+    canViewActivity: true,
     loading: false,
     loaded: true,
     stale: false,
@@ -66,6 +67,14 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
     refresh: async () => undefined,
   })),
 }));
+// …and get that default back after every test, so a test that models a lower
+// role needs no reset of its own. A file that unmocks the hook, or mocks it
+// with a plain function, has no mock here to reset.
+afterEach(() => {
+  if (vi.isMockFunction(useCapabilities)) {
+    vi.mocked(useCapabilities).mockReset();
+  }
+});
 
 // The protected-environment gates of a datastore's and an environment group's
 // controls (w4/m594) read the resource's action projection through Apollo, so
@@ -114,6 +123,7 @@ vi.mock("@/features/appearance/hooks/use-account-theme-sync", () => ({
 }));
 
 import i18n from "@/i18n/init";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import zhResources from "@/i18n/resources-zh";
 
 // w9/m60 t003 made non-default locales lazy-loaded in the app (an `import()`

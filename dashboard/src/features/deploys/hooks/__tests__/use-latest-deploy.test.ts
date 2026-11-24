@@ -41,6 +41,21 @@ describe("useLatestDeploy", () => {
     });
   });
 
+  // w9/m621: a Billing member views no deploys, so the header neither reads
+  // nor polls the newest one.
+  it("skips the read and never polls when the role may not view deploys", () => {
+    mockDeploys([{ id: "dep-new", status: "build_in_progress" }]);
+
+    const { result } = renderHook(() => useLatestDeploy("web", { skip: true }));
+
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ skip: true }),
+    );
+    expect(result.current.deploy).toBeNull();
+    expect(startPolling).not.toHaveBeenCalled();
+  });
+
   it("returns null for an empty history", () => {
     mockDeploys([]);
 

@@ -14,7 +14,11 @@ import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { SavedSearchType } from "@/graphql/definitions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import {
+  billingCapabilities,
+  mockCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 const projectsState: {
   projects: ProjectView[];
@@ -189,6 +193,35 @@ describe("ProjectSidebar", () => {
       .getAllByText(/^(Observability|Manage)$/)
       .map((el) => el.textContent);
     expect(labels).toEqual(["Observability", "Manage"]);
+  });
+
+  // w9/m621: Render's role table gives the Billing role no "View service
+  // metrics"; a Viewer has it.
+  it("lists no Service Metrics view to a Billing member, and keeps the log views", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    renderAt("/project/prj-1");
+
+    expect(
+      await screen.findByRole("link", { name: "Application Logs" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Request Logs" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Service Metrics" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lists the Service Metrics view to a Viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    renderAt("/project/prj-1");
+
+    expect(
+      await screen.findByRole("link", { name: "Service Metrics" }),
+    ).toHaveAttribute(
+      "href",
+      "/project/prj-1/observability/metrics?savedSearchId=svs-metrics",
+    );
   });
 
   it("marks the open view active, not Overview, and links back to the project", async () => {

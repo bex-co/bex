@@ -10,7 +10,13 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DeployDetailPage } from "../deploy-detail-page";
-import type { DeployView } from "../../hooks/use-deploy";
+import { useDeploy, type DeployView } from "../../hooks/use-deploy";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 const deployState: {
   deploy: DeployView;
@@ -71,7 +77,7 @@ vi.mock("@/features/services/hooks/use-build-sources", () => ({
   useBuildSource: () => ({ source: buildSourceState.source, loading: false }),
 }));
 vi.mock("../../hooks/use-deploy", () => ({
-  useDeploy: () => deployState,
+  useDeploy: vi.fn(() => deployState),
 }));
 // The canceled-step window has its own real-Apollo suite
 // (deploy-detail-canceled-step.test.tsx); these deploys never need it.
@@ -153,6 +159,33 @@ beforeEach(() => {
   deployState.loading = false;
   deployState.error = undefined;
   deployState.notFound = false;
+  vi.mocked(useDeploy).mockClear();
+});
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// events", which is where Render's deploys live; bex-api refuses the deploy
+// read to it (can_view_activity). A Viewer reads the page as an Admin does.
+describe("DeployDetailPage per role (w9/m621)", () => {
+  it("a Billing member sees why, and the deploy is never read", () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    expect(screen.getByText(ACTIVITY_REASON)).toBeInTheDocument();
+    for (const part of ["deploy-header", "deploy-timeline", "build-log"]) {
+      expect(screen.queryByTestId(part)).not.toBeInTheDocument();
+    }
+    expect(useDeploy).not.toHaveBeenCalled();
+  });
+
+  it("a Viewer reads the deploy", () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    expect(screen.getByTestId("deploy-header")).toBeInTheDocument();
+    expect(screen.getByTestId("deploy-timeline")).toBeInTheDocument();
+    expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
+    expect(useDeploy).toHaveBeenCalledWith("web", "dep-1");
+  });
 });
 
 describe("DeployDetailPage", () => {

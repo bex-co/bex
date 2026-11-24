@@ -5,6 +5,7 @@ import {
   deploysManualOnly,
 } from "@/features/deploys/lib/auto-deploy-off";
 import { useServer } from "@/features/services/hooks/use-server";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import type { ServiceBase } from "@/features/services/lib/service-base";
 import {
   deployListFiltersFromSearch,
@@ -13,7 +14,8 @@ import {
 } from "@/features/deploys/lib/deploy-list-search";
 
 /** A service's deploy history bound to its route's URL search: the Deploys
- *  tab, a static site's history, and a cron job's Builds page (w2/m360). */
+ *  tab, a static site's history, and a cron job's Builds page (w2/m360),
+ *  behind the role's service-activity gate (w9/m621). */
 export function DeployHistoryView({
   serviceId,
   search,
@@ -41,16 +43,21 @@ export function DeployHistoryView({
       }
     />
   );
-  if (!autoDeployOff(service)) return list;
   return (
-    <div className="space-y-4">
-      <AutoDeployOffBanner
-        serviceId={serviceId}
-        branch={service?.branch ?? null}
-        base={base}
-        manual={deploysManualOnly(service)}
-      />
-      {list}
-    </div>
+    <ActivityGate>
+      {autoDeployOff(service) ? (
+        <div className="space-y-4">
+          <AutoDeployOffBanner
+            serviceId={serviceId}
+            branch={service?.branch ?? null}
+            base={base}
+            manual={deploysManualOnly(service)}
+          />
+          {list}
+        </div>
+      ) : (
+        list
+      )}
+    </ActivityGate>
   );
 }

@@ -31,6 +31,17 @@ const deCapabilities: Record<string, TranslationEntry> = {
     description:
       "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
   },
+  "capabilities.reasonCanViewActivity": {
+    message:
+      "Deine Rolle darf Service-Ereignisse, Deployments und Metriken nicht sehen. Frag einen Workspace-Admin.",
+    description:
+      "Why a member without can_view_activity (a Billing member, as on Render) sees no service events, deploys or metrics: the reason on those pages and panels, whose nav entries are hidden",
+  },
+  "capabilities.activityDeniedTitle": {
+    message: "Für deine Rolle nicht verfügbar",
+    description:
+      "Title above capabilities.reasonCanViewActivity where a page or panel of service events, deploys or metrics would be",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Deine Rolle darf Mitglieder nicht verwalten. Frag einen Workspace-Admin.",

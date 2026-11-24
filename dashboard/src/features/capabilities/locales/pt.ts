@@ -31,6 +31,17 @@ const ptCapabilities: Record<string, TranslationEntry> = {
     description:
       "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
   },
+  "capabilities.reasonCanViewActivity": {
+    message:
+      "Sua função não pode ver eventos, deploys nem métricas dos serviços. Peça a um administrador do workspace.",
+    description:
+      "Why a member without can_view_activity (a Billing member, as on Render) sees no service events, deploys or metrics: the reason on those pages and panels, whose nav entries are hidden",
+  },
+  "capabilities.activityDeniedTitle": {
+    message: "Indisponível para sua função",
+    description:
+      "Title above capabilities.reasonCanViewActivity where a page or panel of service events, deploys or metrics would be",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Sua função não pode gerenciar membros. Peça a um administrador do workspace.",

@@ -1683,6 +1683,7 @@ const VIEWER_CAPABILITIES = [
   ["canManage", "can_manage"],
   ["canManageBilling", "can_manage_billing"],
   ["canViewBilling", "can_view_billing"],
+  ["canViewActivity", "can_view_activity"],
 ];
 
 // Resolve one GraphQL operation to canned data. Only the reads the dashboard

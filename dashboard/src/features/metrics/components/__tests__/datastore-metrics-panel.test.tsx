@@ -6,6 +6,12 @@ import { DatastoreMetricsSkeleton } from "@/common/components/route-skeletons";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
 import { RANGE_PRESETS, type RangeBound } from "@/features/metrics/lib/range";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
   useDatastoreMetrics: vi.fn(),
@@ -91,6 +97,44 @@ function headings(container: HTMLElement) {
 function errorResult() {
   return { ...emptyResult(), error: new Error("boom") };
 }
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// metrics"; bex-api refuses a datastore's metrics to it (can_view_activity).
+// A Viewer reads them as an Admin does.
+describe("DatastoreMetricsPanel per role (w9/m621)", () => {
+  beforeEach(() => {
+    mockUseDatastoreMetrics.mockReset();
+    mockUseDatastoreMetrics.mockReturnValue(seriesResult("bytes", [1, 2]));
+    mockUseMetricsRetentionBound.mockReset();
+  });
+
+  it.each(["database", "keyvalue"] as const)(
+    "a Billing member sees why in a %s's panel, and no metric is read",
+    (kind) => {
+      vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+      render(<DatastoreMetricsPanel kind={kind} resource="dpg-abc" />);
+
+      expect(screen.getByText(ACTIVITY_REASON)).toBeInTheDocument();
+      expect(screen.queryByText("Disk")).not.toBeInTheDocument();
+      expect(mockUseDatastoreMetrics).not.toHaveBeenCalled();
+      expect(mockUseMetricsRetentionBound).not.toHaveBeenCalled();
+    },
+  );
+
+  it("a Viewer reads the charts", () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    render(<DatastoreMetricsPanel kind="database" resource="dpg-abc" />);
+
+    expect(screen.getByText("Disk")).toBeInTheDocument();
+    expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "dpg-abc",
+      "disk",
+      expect.anything(),
+    );
+  });
+});
 
 describe("DatastoreMetricsPanel", () => {
   beforeEach(() => {

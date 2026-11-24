@@ -19,6 +19,7 @@ package members
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -95,23 +96,12 @@ func TestViewerCapabilitiesProjection(t *testing.T) {
 	})
 }
 
-// modelRoleChecker answers each relation as model.fga's workspace type grants it
-// to one role (the billing rows only, plus can_view for every member): enough
-// to read a role's billing capabilities off the projection.
+// modelRoleChecker answers each relation as model.fga's workspace type grants
+// it to one role (roleRelations).
 type modelRoleChecker struct{ role string }
 
 func (c modelRoleChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
-	holders := map[string][]string{
-		core.RelCanView:          {"viewer", "contributor", "developer", "admin", "billing"},
-		core.RelCanManageBilling: {"billing", "admin"},
-		core.RelCanViewBilling:   {"developer", "admin", "billing"},
-	}[relation]
-	for _, r := range holders {
-		if r == c.role {
-			return true, nil
-		}
-	}
-	return false, nil
+	return slices.Contains(roleRelations[c.role], relation), nil
 }
 
 // TestViewerCapabilitiesBillingPerRole is Render's "View billing details" and
@@ -145,6 +135,44 @@ func TestViewerCapabilitiesBillingPerRole(t *testing.T) {
 			}
 			if !want.view && (g.Outcome != core.DecisionDenied || g.Reason != core.ReasonInsufficientPermission) {
 				t.Errorf("can_view_billing grant = %+v, want denied/insufficient_permission", g)
+			}
+		})
+	}
+}
+
+// TestViewerCapabilitiesActivityPerRole is Render's "View service events" and
+// "View service metrics" rows (render.com/docs/team-members, read 2026-11-23)
+// on the capability read (w9/m621): every role but Billing reads a service's
+// events, deploy history and metrics. The dashboard hides those tabs and
+// panels on exactly this boolean, and the grant says why Billing is refused.
+func TestViewerCapabilitiesActivityPerRole(t *testing.T) {
+	st := newFakeStore("scale")
+	for role, want := range map[string]bool{
+		"admin":       true,
+		"developer":   true,
+		"contributor": true,
+		"viewer":      true,
+		"billing":     false,
+	} {
+		t.Run(role, func(t *testing.T) {
+			st.seedMember(role+"-1", role)
+			s := svc(st, newFakeGranter(), nil, modelRoleChecker{role: role})
+			caps, err := s.Capabilities(ctxWith(role+"-1"), "tea-1", false)
+			if err != nil {
+				t.Fatalf("Capabilities: %v", err)
+			}
+			if !caps.CanView {
+				t.Error("canView = false; every member reads the workspace's resources")
+			}
+			if caps.CanViewActivity != want {
+				t.Errorf("canViewActivity = %v, want %v", caps.CanViewActivity, want)
+			}
+			g := grantFor(t, caps, core.RelCanViewActivity)
+			if want && g.Outcome != core.DecisionAllowed {
+				t.Errorf("can_view_activity grant = %+v, want allowed", g)
+			}
+			if !want && (g.Outcome != core.DecisionDenied || g.Reason != core.ReasonInsufficientPermission) {
+				t.Errorf("can_view_activity grant = %+v, want denied/insufficient_permission", g)
 			}
 		})
 	}
@@ -307,7 +335,7 @@ func TestViewerCapabilitiesTriState(t *testing.T) {
 			core.RelCanOperate: caps.CanOperate, core.RelCanCreate: caps.CanCreate,
 			core.RelCanViewSensitive: caps.CanViewSensitive, core.RelCanManageKeys: caps.CanManageKeys,
 			core.RelCanManage: caps.CanManage, core.RelCanManageBilling: caps.CanManageBilling,
-			core.RelCanViewBilling: caps.CanViewBilling,
+			core.RelCanViewBilling: caps.CanViewBilling, core.RelCanViewActivity: caps.CanViewActivity,
 		} {
 			if g := grantFor(t, caps, action); b != (g.Outcome == core.DecisionAllowed) {
 				t.Errorf("%s: boolean %v disagrees with grant outcome %q", action, b, g.Outcome)
@@ -321,8 +349,8 @@ func TestViewerCapabilitiesTriState(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Capabilities: %v", err)
 		}
-		if len(caps.Grants) != 9 {
-			t.Fatalf("want 9 grants (one per relation), got %d", len(caps.Grants))
+		if len(caps.Grants) != 10 {
+			t.Fatalf("want 10 grants (one per relation), got %d", len(caps.Grants))
 		}
 		for _, g := range caps.Grants {
 			if g.Outcome != core.DecisionAllowed || g.Reason != "" {

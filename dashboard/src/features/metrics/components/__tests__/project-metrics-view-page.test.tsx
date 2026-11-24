@@ -5,6 +5,12 @@ import { ProjectMetricsViewPage } from "../project-metrics-view-page";
 import type { ProjectMetricsViewProps } from "../project-metrics-view";
 import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { SavedSearchType } from "@/graphql/definitions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // A project's Service Metrics view page (w3/m508): a METRICS saved search by
 // its URL id, its filter document the charts' scope, a service Metrics page's
@@ -14,8 +20,12 @@ const savedSearches: { views: SavedSearch[]; loading: boolean } = {
   views: [],
   loading: false,
 };
+const useSavedSearches = vi.fn();
 vi.mock("@/features/projects/hooks/use-saved-searches", () => ({
-  useSavedSearches: () => ({ ...savedSearches, error: undefined }),
+  useSavedSearches: (projectId: string) => {
+    useSavedSearches(projectId);
+    return { ...savedSearches, error: undefined };
+  },
 }));
 vi.mock("@/features/logs/components/observability-view-actions", () => ({
   ObservabilityViewActions: ({ view }: { view: SavedSearch }) => (
@@ -64,6 +74,7 @@ const STAGING = {
 
 beforeEach(() => {
   viewProps.length = 0;
+  useSavedSearches.mockClear();
   savedSearches.loading = false;
   savedSearches.views = [
     view("svs-app", "Application Logs", SavedSearchType.ApplicationLogs),
@@ -123,5 +134,44 @@ describe("ProjectMetricsViewPage", () => {
     expect(
       container.querySelector('[data-route-skeleton="project-metrics-view"]'),
     ).not.toBeNull();
+  });
+});
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// metrics"; bex-api refuses a project's metrics to it (can_view_activity). A
+// Viewer reads the view as an Admin does.
+describe("ProjectMetricsViewPage per role (w9/m621)", () => {
+  it("a Billing member sees the page's title and why, and nothing is read", () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    render(
+      <ProjectMetricsViewPage
+        projectId="prj-observed"
+        search={{ savedSearchId: "svs-met" }}
+        onSearchChange={() => undefined}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Service Metrics" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(ACTIVITY_REASON)).toBeInTheDocument();
+    expect(screen.queryByText("charts")).not.toBeInTheDocument();
+    expect(viewProps).toHaveLength(0);
+    expect(useSavedSearches).not.toHaveBeenCalled();
+  });
+
+  it("a Viewer reads the view", () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    render(
+      <ProjectMetricsViewPage
+        projectId="prj-observed"
+        search={{ savedSearchId: "svs-met" }}
+        onSearchChange={() => undefined}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Staging metrics" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("charts")).toBeInTheDocument();
+    expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
   });
 });

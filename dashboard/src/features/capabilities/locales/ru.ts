@@ -31,6 +31,17 @@ const ruCapabilities: Record<string, TranslationEntry> = {
     description:
       "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
   },
+  "capabilities.reasonCanViewActivity": {
+    message:
+      "Ваша роль не позволяет просматривать события, деплои и метрики сервисов. Обратитесь к администратору рабочего пространства.",
+    description:
+      "Why a member without can_view_activity (a Billing member, as on Render) sees no service events, deploys or metrics: the reason on those pages and panels, whose nav entries are hidden",
+  },
+  "capabilities.activityDeniedTitle": {
+    message: "Недоступно для вашей роли",
+    description:
+      "Title above capabilities.reasonCanViewActivity where a page or panel of service events, deploys or metrics would be",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Ваша роль не позволяет управлять участниками. Обратитесь к администратору рабочего пространства.",

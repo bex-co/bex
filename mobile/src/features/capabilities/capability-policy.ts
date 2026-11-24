@@ -15,6 +15,10 @@ export const CAPABILITY_ACTIONS = [
   // Render's "View billing details" (w9/m620): Admin, Developer and Billing.
   // It gates the usage glance, which a Contributor and a Viewer do not read.
   "can_view_billing",
+  // Render's "View service events" and "View service metrics" (w9/m621):
+  // every role but Billing. It gates the deploy and event timeline, cron run
+  // history and every metric card, which a Billing member does not read.
+  "can_view_activity",
 ] as const;
 
 export type CapabilityAction = (typeof CAPABILITY_ACTIONS)[number];

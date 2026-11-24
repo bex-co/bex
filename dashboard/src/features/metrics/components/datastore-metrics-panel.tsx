@@ -22,6 +22,7 @@ import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import {
   useTranslations,
   type Translate,
@@ -147,8 +148,18 @@ interface DatastoreMetricsPanelProps {
  * (w7/072): Render's preset ladder from the 12-hour default, bounded by how
  * far back the workspace plan keeps metrics (w7/m427), and every read covers
  * the chosen range.
+ *
+ * It sits behind the role's service-activity gate (w9/m621).
  */
-export function DatastoreMetricsPanel({
+export function DatastoreMetricsPanel(props: DatastoreMetricsPanelProps) {
+  return (
+    <ActivityGate>
+      <DatastoreMetrics {...props} />
+    </ActivityGate>
+  );
+}
+
+function DatastoreMetrics({
   kind,
   resource,
   highAvailabilityEnabled,

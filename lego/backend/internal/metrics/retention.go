@@ -104,11 +104,11 @@ func (s *Service) MetricsRetention(ctx context.Context, resource string) (*Reten
 	var err error
 	switch kind, _ := ids.KindOf(resource); kind {
 	case ids.Postgres:
-		owner, err = s.AuthorizeDatabase(ctx, core.RelCanView, resource)
+		owner, err = s.AuthorizeDatabase(ctx, core.RelCanViewActivity, resource)
 	case ids.KeyValue:
-		owner, err = s.AuthorizeKeyValue(ctx, core.RelCanView, resource)
+		owner, err = s.AuthorizeKeyValue(ctx, core.RelCanViewActivity, resource)
 	default:
-		owner, err = s.AuthorizeApp(ctx, core.RelCanView, resource)
+		owner, err = s.AuthorizeApp(ctx, core.RelCanViewActivity, resource)
 	}
 	if err != nil {
 		return nil, err

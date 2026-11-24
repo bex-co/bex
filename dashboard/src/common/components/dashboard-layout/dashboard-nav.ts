@@ -12,7 +12,7 @@ import {
   Settings,
   Webhook,
 } from "lucide-react";
-import type { SidebarNavGroup } from "./sidebar-nav-groups";
+import type { SidebarNavGroup, SidebarNavItem } from "./sidebar-nav-groups";
 
 // Render parity: one "Projects" entry groups every resource type (services,
 // databases, key value) on a single page (`routes/index.tsx`), rather than a
@@ -87,16 +87,22 @@ export function visibleNavGroups(
     billingDenied?: boolean;
   },
 ): SidebarNavGroup[] {
+  return filterNavGroups(
+    groups,
+    (item) =>
+      ((item.to !== "/agents" && item.to !== "/automations") ||
+        flags.agentsEnabled) &&
+      (item.to !== "/router" || flags.routerAvailable) &&
+      (item.to !== "/billing" || !flags.billingDenied),
+  );
+}
+
+/** `groups` keeping only the items `keep` passes, and no group left empty. */
+export function filterNavGroups(
+  groups: SidebarNavGroup[],
+  keep: (item: SidebarNavItem) => boolean,
+): SidebarNavGroup[] {
   return groups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) =>
-          ((item.to !== "/agents" && item.to !== "/automations") ||
-            flags.agentsEnabled) &&
-          (item.to !== "/router" || flags.routerAvailable) &&
-          (item.to !== "/billing" || !flags.billingDenied),
-      ),
-    }))
+    .map((group) => ({ ...group, items: group.items.filter(keep) }))
     .filter((group) => group.items.length > 0);
 }

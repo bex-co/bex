@@ -89,6 +89,12 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
     },
   });
   const { views, loading: viewsLoading } = useSavedSearches(projectId);
+  // A Billing member views no metrics (w9/m621): its Observability group
+  // lists no Service Metrics view once capabilities confirm the role.
+  const metricsDenied = useCapabilities().denied("can_view_activity");
+  const shownViews = metricsDenied
+    ? views.filter((view) => view.type !== SavedSearchType.Metrics)
+    : views;
 
   return (
     <Sidebar collapsible="icon">
@@ -156,7 +162,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
                       </div>
                     </SidebarMenuItem>
                   ))
-                : views.map((view) => (
+                : shownViews.map((view) => (
                     <SidebarMenuItem key={view.id}>
                       <SidebarMenuButton
                         asChild

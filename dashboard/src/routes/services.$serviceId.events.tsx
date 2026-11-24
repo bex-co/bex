@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { EventIcon } from "@/features/events/components/event-icon";
 import {
@@ -164,7 +165,16 @@ function triggerKey(trigger: TriggerFlags): string | null {
   return null;
 }
 
+/** The Events tab, behind the role's service-activity gate (w9/m621). */
 export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
+  return (
+    <ActivityGate>
+      <ServiceEventsFeed serviceId={serviceId} />
+    </ActivityGate>
+  );
+}
+
+function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   // The service's createdAt bounds the history and autoDeploy words the
   // auto-deploy events; a cron job's runs have their own Runs page (w2/m360).

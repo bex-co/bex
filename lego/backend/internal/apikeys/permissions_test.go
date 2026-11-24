@@ -68,12 +68,13 @@ func (b *grantBinder) APIKeyGrantsOfTenant(_ context.Context, tenantID string) (
 type roleChecker map[string]string
 
 var roleRelations = map[string][]string{
-	"viewer":      {core.RelCanView, core.RelCanManageSSHKeys},
-	"contributor": {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanManageSSHKeys},
+	"viewer":      {core.RelCanView, core.RelCanViewActivity, core.RelCanManageSSHKeys},
+	"contributor": {core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanManageSSHKeys},
 	"billing":     {core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling},
-	"developer":   {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys},
-	"admin": {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
-		core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling},
+	"developer": {core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive,
+		core.RelCanManageKeys, core.RelCanManageSSHKeys},
+	"admin": {core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive,
+		core.RelCanManageKeys, core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling},
 }
 
 func (r roleChecker) Check(_ context.Context, subject, relation, object string) (bool, error) {

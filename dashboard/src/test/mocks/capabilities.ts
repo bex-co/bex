@@ -1,9 +1,20 @@
 import type { Capabilities } from "@/features/capabilities/hooks/use-capabilities";
-import type { CapabilityAction } from "@/features/capabilities/lib/capability-policy";
+import {
+  BOOLEAN_TO_ACTION,
+  ROLE_REASON_KEYS,
+  type CapabilityAction,
+  type CapabilityBoolean,
+} from "@/features/capabilities/lib/capability-policy";
+import enCapabilities from "@/features/capabilities/locales/en";
 
 /** The en `capabilities.reasonCanCreate` sentence a can_create-gated control shows. */
 export const CREATE_REASON =
   "Your role can’t make this change. Ask a workspace admin.";
+
+/** Each action's boolean on `Capabilities`, the policy's map inverted. */
+const BOOLEAN_FOR_ACTION = Object.fromEntries(
+  Object.entries(BOOLEAN_TO_ACTION).map(([key, action]) => [action, key]),
+) as Record<CapabilityAction, CapabilityBoolean>;
 
 /**
  * A fully-permitted capability set (every relation granted, role ADMIN) for
@@ -24,26 +35,14 @@ export function mockCapabilities(
     canManage: true,
     canManageBilling: true,
     canViewBilling: true,
+    canViewActivity: true,
     loading: false,
     loaded: true,
     stale: false,
     unavailable: false,
     generation: 1,
     checkedAt: 1,
-    allows: (action: CapabilityAction) => {
-      const map: Record<CapabilityAction, boolean> = {
-        can_view: true,
-        can_view_logs: true,
-        can_operate: true,
-        can_create: true,
-        can_view_sensitive: true,
-        can_manage_keys: true,
-        can_manage: true,
-        can_manage_billing: true,
-        can_view_billing: true,
-      };
-      return map[action] ?? false;
-    },
+    allows: () => true,
     denied: () => false,
     reasonKey: () => undefined,
     refresh: async () => undefined,
@@ -51,20 +50,7 @@ export function mockCapabilities(
   const merged = { ...base, ...overrides };
   // Keep helpers consistent with boolean overrides when tests only flip can*.
   if (!overrides.allows) {
-    merged.allows = (action) => {
-      const byAction: Record<CapabilityAction, keyof Capabilities> = {
-        can_view: "canView",
-        can_view_logs: "canViewLogs",
-        can_operate: "canOperate",
-        can_create: "canCreate",
-        can_view_sensitive: "canViewSensitive",
-        can_manage_keys: "canManageKeys",
-        can_manage: "canManage",
-        can_manage_billing: "canManageBilling",
-        can_view_billing: "canViewBilling",
-      };
-      return Boolean(merged[byAction[action]]);
-    };
+    merged.allows = (action) => merged[BOOLEAN_FOR_ACTION[action]];
   }
   if (!overrides.denied) {
     merged.denied = (action) =>
@@ -78,19 +64,48 @@ export function mockCapabilities(
         if (merged.unavailable) return "capabilities.grantUnavailable";
         return undefined;
       }
-      const keys: Record<CapabilityAction, string> = {
-        can_view: "capabilities.reasonCanCreate",
-        can_view_logs: "capabilities.reasonCanOperate",
-        can_operate: "capabilities.reasonCanOperate",
-        can_create: "capabilities.reasonCanCreate",
-        can_view_sensitive: "capabilities.reasonCanViewSensitive",
-        can_manage_keys: "capabilities.reasonCanCreate",
-        can_manage: "capabilities.reasonCanManage",
-        can_manage_billing: "capabilities.reasonCanManageBilling",
-        can_view_billing: "capabilities.reasonCanViewBilling",
-      };
-      return keys[action];
+      return ROLE_REASON_KEYS[action];
     };
   }
   return merged;
+}
+
+/** The en `capabilities.reasonCanViewActivity` sentence (w9/m621). */
+export const ACTIVITY_REASON =
+  enCapabilities["capabilities.reasonCanViewActivity"].message;
+
+/**
+ * A Billing member's confirmed grants, as on Render (w9/m620, w9/m621): it
+ * reads the workspace's billing, and no service events, deploys, metrics or
+ * logs, and changes nothing else.
+ */
+export function billingCapabilities(): Capabilities {
+  return mockCapabilities({
+    role: "BILLING",
+    canViewLogs: false,
+    canOperate: false,
+    canCreate: false,
+    canViewSensitive: false,
+    canManageKeys: false,
+    canManage: false,
+    canViewActivity: false,
+  });
+}
+
+/**
+ * A Viewer's confirmed grants (w9/m621): it reads service events, deploys and
+ * metrics, but no logs or billing, and changes nothing.
+ */
+export function viewerCapabilities(): Capabilities {
+  return mockCapabilities({
+    role: "VIEWER",
+    canViewLogs: false,
+    canOperate: false,
+    canCreate: false,
+    canViewSensitive: false,
+    canManageKeys: false,
+    canManage: false,
+    canManageBilling: false,
+    canViewBilling: false,
+  });
 }

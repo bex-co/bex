@@ -119,6 +119,55 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
       "/services/$serviceId/deploys",
     );
   });
+
+  // w9/m621: a Billing member views no service events (a cron job's runs
+  // among them), deploys or metrics, as on Render.
+  describe("for a role confirmed unable to view service activity", () => {
+    const denied = { activityDenied: true };
+
+    it("compute type: drops Deploys, Events and Metrics, keeps the rest", () => {
+      expect(labels(serviceNavGroups("web", "/services", denied))).toEqual([
+        ["services.navSettings"],
+        ["services.navLogs"],
+        [
+          "services.navEnvironment",
+          "services.navDisk",
+          "services.navShell",
+          "services.navCompute",
+        ],
+      ]);
+    });
+
+    it("cron: drops Runs too", () => {
+      expect(labels(serviceNavGroups("cron", "/services", denied))).toEqual([
+        ["services.navSettings"],
+        ["services.navLogs"],
+        ["services.navEnvironment", "services.navShell"],
+      ]);
+    });
+
+    it("static_site: drops Events and the Monitor group Metrics leaves empty", () => {
+      const groups = serviceNavGroups("static", "/static", denied);
+      expect(labels(groups)).toEqual([
+        ["services.navSettings"],
+        [
+          "services.navEnvironment",
+          "services.navRedirects",
+          "services.navHeaders",
+        ],
+      ]);
+      expect(groups.map((group) => group.labelKey)).toEqual([
+        undefined,
+        "common.navManageGroup",
+      ]);
+    });
+
+    it("leaves the tab headings alone: a denied page still names itself", () => {
+      expect(serviceTabLabelKey("/services/srv-1/deploys", "srv-1")).toBe(
+        "services.navDeploys",
+      );
+    });
+  });
 });
 
 describe("serviceTabLabelKey (the detail layout's tab heading)", () => {

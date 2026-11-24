@@ -6713,6 +6713,7 @@ export type ViewerCapabilities = {
   canManageKeys: Scalars['Boolean']['output'];
   canOperate: Scalars['Boolean']['output'];
   canView: Scalars['Boolean']['output'];
+  canViewActivity: Scalars['Boolean']['output'];
   canViewBilling: Scalars['Boolean']['output'];
   canViewLogs: Scalars['Boolean']['output'];
   canViewSensitive: Scalars['Boolean']['output'];

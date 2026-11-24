@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useMemo } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { refetchUnlessSkipped } from "@/common/apollo/refetch-unless-skipped";
 import { CompactSparkline } from "@/common/d3/compact-sparkline";
 import { useFreshness } from "@/common/hooks/freshness";
 import { useRecoveryEnvironment } from "@/common/hooks/use-recovery";
@@ -9,6 +10,7 @@ import { recoveryAvailable } from "@/common/hooks/recovery-coordinator";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import { DashboardCard } from "@/components/dashboard-card";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import {
   formatMetricValue,
   newestMetricTimestamp,
@@ -35,8 +37,14 @@ export const KeyValueInsightsCard = forwardRef<
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const recoveryEnvironment = useRecoveryEnvironment();
+  // Storage, memory and connections are metrics, Render's "View service
+  // metrics" (w9/m621): requested and shown only once the capability read
+  // allows can_view_activity (ADR087 Hide). Availability comes from the
+  // instance's own status and stays for every member.
+  const showMetrics = useCapabilities().allows("can_view_activity");
   const query = useQuery(MobileKeyValueInsightsDocument, {
     variables: { id: resourceId },
+    skip: !showMetrics,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     notifyOnNetworkStatusChange: true,
@@ -46,10 +54,12 @@ export const KeyValueInsightsCard = forwardRef<
     ref,
     () => ({
       refresh: async () => {
-        await query.refetch({ id: resourceId });
+        await refetchUnlessSkipped(!showMetrics, () =>
+          query.refetch({ id: resourceId }),
+        );
       },
     }),
-    [query, resourceId],
+    [query, resourceId, showMetrics],
   );
 
   const snapshot = useMemo(
@@ -90,9 +100,11 @@ export const KeyValueInsightsCard = forwardRef<
         ) : undefined
       }
     >
-      <Text style={[styles.window, { color: theme.mutedForeground }]}>
-        {t("keyValueInsights.window")} · {t(freshness.label)}
-      </Text>
+      {showMetrics ? (
+        <Text style={[styles.window, { color: theme.mutedForeground }]}>
+          {t("keyValueInsights.window")} · {t(freshness.label)}
+        </Text>
+      ) : null}
       <View style={[styles.health, { borderTopColor: theme.border }]}>
         <Text style={[styles.name, { color: theme.mutedForeground }]}>
           {t("keyValueInsights.connectionHealth")}
@@ -104,34 +116,38 @@ export const KeyValueInsightsCard = forwardRef<
           </Text>
         </View>
       </View>
-      <InsightRow
-        title={t("keyValueInsights.storage")}
-        snapshot={snapshot.disk}
-        failure={storageFailure}
-        value={storageValue(snapshot)}
-        freshnessAt={newestMetricTimestamp([
-          snapshot.disk,
-          snapshot.diskCapacity,
-        ])}
-        partial={snapshot.disk.partial || snapshot.diskCapacity.partial}
-        loading={query.loading && !data}
-      />
-      <InsightRow
-        title={t("keyValueInsights.memory")}
-        snapshot={snapshot.memory}
-        failure={keyValueMetricFailure(query.error, "memory")}
-        value={metricValue(snapshot.memory)}
-        freshnessAt={newestMetricTimestamp([snapshot.memory])}
-        loading={query.loading && !data}
-      />
-      <InsightRow
-        title={t("keyValueInsights.connections")}
-        snapshot={snapshot.connections}
-        failure={keyValueMetricFailure(query.error, "connections")}
-        value={metricValue(snapshot.connections)}
-        freshnessAt={newestMetricTimestamp([snapshot.connections])}
-        loading={query.loading && !data}
-      />
+      {showMetrics ? (
+        <>
+          <InsightRow
+            title={t("keyValueInsights.storage")}
+            snapshot={snapshot.disk}
+            failure={storageFailure}
+            value={storageValue(snapshot)}
+            freshnessAt={newestMetricTimestamp([
+              snapshot.disk,
+              snapshot.diskCapacity,
+            ])}
+            partial={snapshot.disk.partial || snapshot.diskCapacity.partial}
+            loading={query.loading && !data}
+          />
+          <InsightRow
+            title={t("keyValueInsights.memory")}
+            snapshot={snapshot.memory}
+            failure={keyValueMetricFailure(query.error, "memory")}
+            value={metricValue(snapshot.memory)}
+            freshnessAt={newestMetricTimestamp([snapshot.memory])}
+            loading={query.loading && !data}
+          />
+          <InsightRow
+            title={t("keyValueInsights.connections")}
+            snapshot={snapshot.connections}
+            failure={keyValueMetricFailure(query.error, "connections")}
+            value={metricValue(snapshot.connections)}
+            freshnessAt={newestMetricTimestamp([snapshot.connections])}
+            loading={query.loading && !data}
+          />
+        </>
+      ) : null}
     </DashboardCard>
   );
 });

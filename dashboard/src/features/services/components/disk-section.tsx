@@ -33,6 +33,7 @@ import {
 } from "@/features/services/hooks/use-disks";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import type { RangeSelection } from "@/features/metrics/lib/range";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { LocalDateTime } from "@/common/components/local-time";
@@ -194,21 +195,25 @@ export function DiskSection({
               only — billing meters PROVISIONED GB (D9), which is why the
               provisioned size rides in the header beside the chart, exactly as
               Render prints "Size 1 GB" above its own. */}
-          <DatastoreMetricsPanel
-            kind="service"
-            resource={serviceId}
-            range={range}
-            onRangeChange={onRangeChange}
-            title={t("services.diskUsageTitle")}
-            description={t("services.diskUsageDescription")}
-            diskHeaderExtra={
-              <span className="text-xs text-muted-foreground">
-                {t("services.diskProvisionedLabel", {
-                  size: String(disk.sizeGB),
-                })}
-              </span>
-            }
-          />
+          {/* Usage is a service metric: left out for a role that may not
+              view it (w9/m621). */}
+          <ActivityGate fallback={null}>
+            <DatastoreMetricsPanel
+              kind="service"
+              resource={serviceId}
+              range={range}
+              onRangeChange={onRangeChange}
+              title={t("services.diskUsageTitle")}
+              description={t("services.diskUsageDescription")}
+              diskHeaderExtra={
+                <span className="text-xs text-muted-foreground">
+                  {t("services.diskProvisionedLabel", {
+                    size: String(disk.sizeGB),
+                  })}
+                </span>
+              }
+            />
+          </ActivityGate>
           <Card>
             <CardHeader>
               <CardTitle>{t("services.diskConfigTitle")}</CardTitle>

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import {
@@ -14,6 +14,12 @@ import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 import type { CachedServiceSource } from "@/features/services/hooks/use-cached-service-type";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
+import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // The layout reads useServer for the header and drives lifecycle.
 const serverState: UseServerResult = {
@@ -104,12 +110,9 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
     refetch: vi.fn(async () => undefined),
   }),
 }));
+const NO_LATEST_DEPLOY = { deploy: null, loading: false, error: undefined };
 vi.mock("@/features/deploys/hooks/use-latest-deploy", () => ({
-  useLatestDeploy: () => ({
-    deploy: null,
-    loading: false,
-    error: undefined,
-  }),
+  useLatestDeploy: vi.fn(() => NO_LATEST_DEPLOY),
 }));
 const run = vi.fn();
 vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
@@ -314,6 +317,45 @@ function renderPendingAt(initialPath: string) {
   render(<RouterProvider router={router} />);
   return { router, resolveLoader };
 }
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// events", which is where Render's deploys live, so the header's latest-deploy
+// badge neither shows nor reads for it. A Viewer sees it as an Admin does.
+describe("service header's latest deploy per role (w9/m621)", () => {
+  beforeEach(() => {
+    vi.mocked(useLatestDeploy).mockClear();
+    vi.mocked(useLatestDeploy).mockImplementation(
+      (_serviceId, { skip = false } = {}) => ({
+        deploy: skip ? null : { id: "dep-1", status: "live" },
+        loading: false,
+        error: undefined,
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.mocked(useLatestDeploy).mockImplementation(() => NO_LATEST_DEPLOY);
+  });
+
+  it("a Billing member gets no badge, and the read is skipped", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    renderAt("/services/app/logs");
+
+    expect(
+      await screen.findByRole("heading", { name: "app" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Latest deploy")).not.toBeInTheDocument();
+    expect(useLatestDeploy).toHaveBeenCalledWith("app", { skip: true });
+    expect(useLatestDeploy).not.toHaveBeenCalledWith("app", { skip: false });
+  });
+
+  it("a Viewer sees the latest deploy", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    renderAt("/services/app/logs");
+
+    expect(await screen.findByText("Latest deploy")).toBeInTheDocument();
+    expect(useLatestDeploy).toHaveBeenCalledWith("app", { skip: false });
+  });
+});
 
 describe("service-detail layout routing", () => {
   it("renders the Logs viewer tab at /services/$serviceId/logs under the shared chrome", async () => {

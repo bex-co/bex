@@ -18,6 +18,11 @@ import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // The Compute page (w6/m483) composes useServer (type gating, plan, replicas),
 // useInstanceTypes + useUpdatePlan (the Compute section), useAutoscaling
@@ -111,13 +116,18 @@ const EMPTY_METRIC: UseMetricsResult = {
 };
 // Keyed by metric id, with a "%" suffix for the percentage read.
 const metricsState = new Map<string, UseMetricsResult>();
+const metricReads = vi.fn();
 vi.mock("@/features/metrics/hooks/use-metrics", () => ({
   useMetrics: (
     _resource: string,
     metric: string,
     opts?: { percentage?: boolean },
-  ) =>
-    metricsState.get(opts?.percentage ? `${metric}%` : metric) ?? EMPTY_METRIC,
+  ) => {
+    metricReads(metric);
+    return (
+      metricsState.get(opts?.percentage ? `${metric}%` : metric) ?? EMPTY_METRIC
+    );
+  },
 }));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
@@ -204,6 +214,39 @@ beforeEach(() => {
   updatePlan.mockClear();
   updatePlan.mockResolvedValue(true);
   metricsState.clear();
+  metricReads.mockClear();
+});
+
+// w9/m621: Recent Metrics are service metrics, which Render's Billing role
+// does not view; the plan and scaling sections stay. A Viewer sees them all.
+describe("ServiceComputePage Recent Metrics per role (w9/m621)", () => {
+  const sections = () =>
+    screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+
+  it("leaves Recent Metrics out for a Billing member, with no metric read", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    serverState.service = svc({ plan: "starter" });
+    renderCompute();
+
+    await screen.findByText("Manual Scaling");
+    expect(sections()).toEqual(["Compute", "Autoscaling", "Manual Scaling"]);
+    expect(metricReads).not.toHaveBeenCalled();
+  });
+
+  it("shows Recent Metrics to a Viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    serverState.service = svc({ plan: "starter" });
+    renderCompute();
+
+    await screen.findByText("Manual Scaling");
+    expect(sections()).toEqual([
+      "Compute",
+      "Autoscaling",
+      "Manual Scaling",
+      "Recent Metrics",
+    ]);
+    expect(metricReads).toHaveBeenCalledWith("cpu");
+  });
 });
 
 describe("ServiceComputePage scaling sections (w7/m43, w6/m483)", () => {

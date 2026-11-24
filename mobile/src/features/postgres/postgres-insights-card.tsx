@@ -10,10 +10,12 @@ import { NetworkStatus } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { StyleSheet, Text, View } from "react-native";
 import { DashboardCard } from "@/components/dashboard-card";
+import { refetchUnlessSkipped } from "@/common/apollo/refetch-unless-skipped";
 import { useFreshness } from "@/common/hooks/freshness";
 import { useRecoveryEnvironment } from "@/common/hooks/use-recovery";
 import { recoveryAvailable } from "@/common/hooks/recovery-coordinator";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { fonts, fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
   MobilePostgresCapacityDocument,
@@ -51,6 +53,11 @@ export const PostgresInsightsCard = forwardRef<
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const recoveryEnvironment = useRecoveryEnvironment();
+  // The disk and connection figures are metrics, Render's "View service
+  // metrics" (w9/m621): requested and shown only once the capability read
+  // allows can_view_activity (ADR087 Hide). Reachability, logical size and
+  // tables come from the database itself and stay for every member.
+  const showMetrics = useCapabilities().allows("can_view_activity");
   const pollInterval = recoveryAvailable(recoveryEnvironment)
     ? POLL_INTERVAL_MS
     : 0;
@@ -61,7 +68,10 @@ export const PostgresInsightsCard = forwardRef<
     notifyOnNetworkStatusChange: true,
     pollInterval,
   };
-  const capacity = useQuery(MobilePostgresCapacityDocument, queryOptions);
+  const capacity = useQuery(MobilePostgresCapacityDocument, {
+    ...queryOptions,
+    skip: !showMetrics,
+  });
   const sizes = useQuery(MobilePostgresSizesDocument, queryOptions);
   const scans = useQuery(MobilePostgresTableScansDocument, queryOptions);
   useImperativeHandle(
@@ -69,13 +79,15 @@ export const PostgresInsightsCard = forwardRef<
     () => ({
       refresh: async () => {
         await Promise.all([
-          capacity.refetch({ id: databaseId }),
+          refetchUnlessSkipped(!showMetrics, () =>
+            capacity.refetch({ id: databaseId }),
+          ),
           sizes.refetch({ id: databaseId }),
           scans.refetch({ id: databaseId }),
         ]);
       },
     }),
-    [capacity, databaseId, scans, sizes],
+    [capacity, databaseId, scans, showMetrics, sizes],
   );
 
   const capacityHasData = Boolean(
@@ -122,10 +134,9 @@ export const PostgresInsightsCard = forwardRef<
       ),
     [sizes.data?.databaseSizes?.tables, scans.data?.databaseTableScans],
   );
-  const capacitySectionState = mergePostgresInsightState(
-    capacityState,
-    sizesState,
-  );
+  const capacitySectionState = showMetrics
+    ? mergePostgresInsightState(capacityState, sizesState)
+    : sizesState;
   const tablesState = mergePostgresInsightState(sizesState, scansState);
 
   return (
@@ -147,18 +158,22 @@ export const PostgresInsightsCard = forwardRef<
           label={t("postgresInsights.logicalSize")}
           value={sizes.data?.databaseSizes?.database?.sizePretty ?? "—"}
         />
-        <InsightRow
-          label={t("postgresInsights.diskUsed")}
-          value={formatMetric(disk.unit, disk.current)}
-        />
-        <InsightRow
-          label={t("postgresInsights.diskCapacity")}
-          value={formatMetric(diskCapacity.unit, diskCapacity.current)}
-        />
-        <InsightRow
-          label={t("postgresInsights.connections")}
-          value={formatMetric(connections.unit, connections.current)}
-        />
+        {showMetrics ? (
+          <>
+            <InsightRow
+              label={t("postgresInsights.diskUsed")}
+              value={formatMetric(disk.unit, disk.current)}
+            />
+            <InsightRow
+              label={t("postgresInsights.diskCapacity")}
+              value={formatMetric(diskCapacity.unit, diskCapacity.current)}
+            />
+            <InsightRow
+              label={t("postgresInsights.connections")}
+              value={formatMetric(connections.unit, connections.current)}
+            />
+          </>
+        ) : null}
       </InsightSection>
 
       <InsightSection title={t("postgresInsights.tables")} state={tablesState}>

@@ -591,7 +591,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 // that checked the window as requested before widening it: bandwidthSources
 // reads whole hours (w8/414).
 func (s *Service) metricsInWindow(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
-	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
+	app, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, q.App)
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
@@ -1419,7 +1419,7 @@ type MonthToDateBandwidth struct {
 // is real (increase() over the elapsed month); a short-retention Prometheus just
 // under-counts (see ADR010-observability.md).
 func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthToDateBandwidth, error) {
-	resolved, err := s.AuthorizeApp(ctx, core.RelCanView, app)
+	resolved, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, app)
 	if err != nil {
 		return MonthToDateBandwidth{}, err
 	}
@@ -1568,7 +1568,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 	if len(resources) == 0 {
 		// Authorize before rejecting an empty selection so the reflection
 		// authz sweep observes ErrForbidden on a denied caller.
-		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		if err := s.Authorize(ctx, core.RelCanViewActivity); err != nil {
 			return nil, err
 		}
 		return nil, fmt.Errorf("%w: at least one resource is required", core.ErrBadRequest)
@@ -1650,7 +1650,7 @@ func (s *Service) authorizeFilterTargets(ctx context.Context, resources []string
 			kind := datastoreKindFor(raw)
 			switch kind {
 			case DatastoreDatabase:
-				db, err := s.AuthorizeDatabase(ctx, core.RelCanView, raw)
+				db, err := s.AuthorizeDatabase(ctx, core.RelCanViewActivity, raw)
 				if err != nil {
 					return nil, err
 				}
@@ -1662,7 +1662,7 @@ func (s *Service) authorizeFilterTargets(ctx context.Context, resources []string
 					resourceID: db.Name, tenant: db.Labels[core.LabelTenant], db: db,
 				}
 			default:
-				kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, raw)
+				kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewActivity, raw)
 				if err != nil {
 					return nil, err
 				}
@@ -1675,7 +1675,7 @@ func (s *Service) authorizeFilterTargets(ctx context.Context, resources []string
 				}
 			}
 		} else {
-			app, err := s.AuthorizeApp(ctx, core.RelCanView, raw)
+			app, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, raw)
 			if err != nil {
 				return nil, err
 			}
@@ -1929,7 +1929,7 @@ func (s *Service) PathFilterSuggestions(ctx context.Context, q PathFilterSuggest
 		// Authorize before rejecting an empty selection so the reflection
 		// authz sweep (which invokes every verb with zero-valued args) observes
 		// ErrForbidden on a denied caller, while an authorized caller gets 400.
-		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		if err := s.Authorize(ctx, core.RelCanViewActivity); err != nil {
 			return nil, err
 		}
 		return nil, fmt.Errorf("%w: at least one resource is required", core.ErrBadRequest)
@@ -1940,7 +1940,7 @@ func (s *Service) PathFilterSuggestions(ctx context.Context, q PathFilterSuggest
 	resolved := make([]*appv1alpha1.App, 0, len(apps))
 	seenApp := make(map[string]struct{}, len(apps))
 	for _, name := range apps {
-		app, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+		app, err := s.AuthorizeApp(ctx, core.RelCanViewActivity, name)
 		if err != nil {
 			return nil, err
 		}

@@ -41,16 +41,14 @@ import (
 // workspaceRoles are the five member roles model.fga's workspace type defines.
 var workspaceRoles = []string{"viewer", "contributor", "developer", "admin", "billing"}
 
-// modelRelations are the ten workspace-derived permissions model.fga defines,
-// every one checked by at least one verb: can_manage_billing gained its Go
-// consumer in w1/m60 — Checkout and the Portal gate on it, so Render's BILLING
-// role reaches billing management (billing or admin) — and can_view_billing in
-// w9/m620: the usage, billing readiness and pipeline settings reads, Render's
-// "View billing details" (developer, admin or billing).
+// modelRelations are the workspace-derived permissions model.fga defines,
+// every one checked by at least one verb (TestRoleGrantsPinnedToModel holds
+// them to the model).
 var modelRelations = []string{
-	core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate,
-	core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys,
-	core.RelCanManage, core.RelCanManageBilling, core.RelCanViewBilling,
+	core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate,
+	core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
+	core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling,
+	core.RelCanViewBilling,
 }
 
 // orgDerivedRelations are the workspace relations model.fga derives from the
@@ -66,16 +64,16 @@ var orgDerivedRelations = []string{core.RelCanJoin, core.RelCanJoinAsAdmin}
 // chain model.fga -> (pin) -> roleGrants -> (matrix) -> verb enforcement means a
 // grant change flows all the way to the verb assertions.
 var roleGrants = map[string]map[string]bool{
-	"viewer": set(core.RelCanView, core.RelCanManageSSHKeys),
-	"contributor": set(core.RelCanView, core.RelCanViewLogs, core.RelCanOperate,
-		core.RelCanManageSSHKeys),
-	"developer": set(core.RelCanView, core.RelCanViewLogs, core.RelCanOperate,
-		core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
-		core.RelCanManageSSHKeys, core.RelCanViewBilling),
-	"admin": set(core.RelCanView, core.RelCanViewLogs, core.RelCanOperate,
-		core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
-		core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling,
-		core.RelCanViewBilling),
+	"viewer": set(core.RelCanView, core.RelCanViewActivity, core.RelCanManageSSHKeys),
+	"contributor": set(core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs,
+		core.RelCanOperate, core.RelCanManageSSHKeys),
+	"developer": set(core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs,
+		core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive,
+		core.RelCanManageKeys, core.RelCanManageSSHKeys, core.RelCanViewBilling),
+	"admin": set(core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs,
+		core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive,
+		core.RelCanManageKeys, core.RelCanManageSSHKeys, core.RelCanManage,
+		core.RelCanManageBilling, core.RelCanViewBilling),
 	"billing": set(core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling,
 		core.RelCanViewBilling),
 }
@@ -362,13 +360,30 @@ var capabilityProjectionVerbs = map[string]string{
 // verb is weakened; this table does not. A Delete regressed from can_create to
 // can_operate turns TestRepresentativeVerbsGateOnExpectedRelation red.
 var representativeVerbRelations = map[string]string{
-	// can_view — viewer and up (reads).
-	"*apps.Service.Get":     core.RelCanView,
-	"*apps.Service.List":    core.RelCanView,
-	"*deploys.Service.List": core.RelCanView,
-	// Cron history is values-free run metadata, readable by every role
-	// (ADR087 matrix row: Show for all five).
-	"*apps.Service.ListCronRuns": core.RelCanView,
+	// can_view — every member role, Billing too (reads of the resources
+	// themselves: Render's Billing role "can also view non-sensitive details
+	// of the workspace's resources (such as members and service names)").
+	"*apps.Service.Get":  core.RelCanView,
+	"*apps.Service.List": core.RelCanView,
+	// can_view_activity — every role but Billing (w9/m621): service events,
+	// deploy history and every metric, Render's "View service events" and
+	// "View service metrics", which its table denies the Billing role. One
+	// moved back to can_view turns this red.
+	"*deploys.Service.List":                  core.RelCanViewActivity,
+	"*deploys.Service.Get":                   core.RelCanViewActivity,
+	"*events.Service.List":                   core.RelCanViewActivity,
+	"*events.Service.Get":                    core.RelCanViewActivity,
+	"*metrics.Service.Metrics":               core.RelCanViewActivity,
+	"*metrics.Service.DatastoreMetrics":      core.RelCanViewActivity,
+	"*metrics.Service.MetricsFilters":        core.RelCanViewActivity,
+	"*metrics.Service.MetricsRetention":      core.RelCanViewActivity,
+	"*metrics.Service.MonthToDateBandwidth":  core.RelCanViewActivity,
+	"*metrics.Service.PathFilterSuggestions": core.RelCanViewActivity,
+	// Cron runs are Render's cron_job_run_started/ended service events, so
+	// their history goes with the events (ADR087's row: every role but
+	// Billing since w9/m621).
+	"*apps.Service.ListCronRuns": core.RelCanViewActivity,
+	"*apps.Service.GetCronRun":   core.RelCanViewActivity,
 	// can_view_logs — contributor and up (viewers can't see logs).
 	"*logs.Service.QueryLogs":             core.RelCanViewLogs,
 	"*keyvalue.Service.QueryKeyValueLogs": core.RelCanViewLogs,

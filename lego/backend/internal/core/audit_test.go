@@ -426,33 +426,40 @@ func TestCanManageBillingIsAuditedWrite(t *testing.T) {
 	}
 }
 
-// TestCanViewBillingIsAuditedRead pins can_view_billing (w9/m620, Render's
-// "View billing details") into the read tier: reading usage, cost or billing
-// readiness records nothing when allowed, and a Contributor's or Viewer's
-// refused read records its denial, as every read relation's does.
-func TestCanViewBillingIsAuditedRead(t *testing.T) {
-	if writeRelations[RelCanViewBilling] {
-		t.Error("RelCanViewBilling is in writeRelations — every allowed billing read would write an audit row")
-	}
-	if !readRelations[RelCanViewBilling] {
-		t.Error("RelCanViewBilling missing from readRelations — a refused billing read would leave no audit trail")
-	}
+// TestRoleScopedReadRelationsAreAuditedReads pins the read relations a role
+// table row added into the read tier: can_view_billing (w9/m620, Render's
+// "View billing details") and can_view_activity (w9/m621, "View service
+// events" and "View service metrics"). An allowed read records nothing, and a
+// refused one (a Viewer's billing read, a Billing member's events read)
+// records its denial, as every read relation's does.
+func TestRoleScopedReadRelationsAreAuditedReads(t *testing.T) {
 	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "session"})
-	allowed := &fakeAuditSink{}
-	b := &Base{Authz: &fakeAllowChecker{}, Audit: allowed}
-	if err := b.authorizeAndRecord(ctx, RelCanViewBilling, DefaultWorkspace, "", "billing.Status", nil, true, nil); err != nil {
-		t.Fatalf("allowed: %v", err)
-	}
-	if allowed.len() != 0 {
-		t.Errorf("an allowed billing read recorded %+v, want nothing", allowed.events)
-	}
-	denied := &fakeAuditSink{}
-	b = &Base{Authz: fakeDenyChecker{}, Audit: denied}
-	if err := b.authorizeAndRecord(ctx, RelCanViewBilling, DefaultWorkspace, "", "billing.Status", nil, true, nil); err == nil {
-		t.Fatal("a denying checker allowed")
-	}
-	if denied.len() != 1 || denied.events[0].Outcome != AuditDenied || denied.events[0].Relation != RelCanViewBilling {
-		t.Errorf("a refused billing read recorded %+v, want one denied can_view_billing row", denied.events)
+	for relation, verb := range map[string]string{
+		RelCanViewBilling:  "billing.Status",
+		RelCanViewActivity: "events.List",
+	} {
+		if writeRelations[relation] {
+			t.Errorf("%s is in writeRelations — every allowed read would write an audit row", relation)
+		}
+		if !readRelations[relation] {
+			t.Errorf("%s missing from readRelations — a refused read would leave no audit trail", relation)
+		}
+		allowed := &fakeAuditSink{}
+		b := &Base{Authz: &fakeAllowChecker{}, Audit: allowed}
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true, nil); err != nil {
+			t.Fatalf("%s allowed: %v", relation, err)
+		}
+		if allowed.len() != 0 {
+			t.Errorf("an allowed %s read recorded %+v, want nothing", relation, allowed.events)
+		}
+		denied := &fakeAuditSink{}
+		b = &Base{Authz: fakeDenyChecker{}, Audit: denied}
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true, nil); err == nil {
+			t.Fatalf("%s: a denying checker allowed", relation)
+		}
+		if denied.len() != 1 || denied.events[0].Outcome != AuditDenied || denied.events[0].Relation != relation {
+			t.Errorf("a refused %s read recorded %+v, want one denied row", relation, denied.events)
+		}
 	}
 }
 

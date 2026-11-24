@@ -49,6 +49,27 @@ describe("capability policy (ADR087)", () => {
     expect(confirmedDenied(viewer, "tea-a", "can_view_billing")).toBe(true);
   });
 
+  // w9/m621: the timeline, cron history and metric cards gate on Render's
+  // "View service events/metrics", which every role but Billing holds. The
+  // grant must survive normalization, or every role would lose them.
+  it("keeps the can_view_activity grant the activity and metric reads gate on", () => {
+    const viewer = ready({ can_view: "allowed", can_view_activity: "allowed" });
+    expect(allowsAction(viewer, "tea-a", "can_view_activity")).toBe(true);
+    const billing = ready({
+      can_view: "allowed",
+      can_view_billing: "allowed",
+      can_view_activity: "denied",
+    });
+    expect(allowsAction(billing, "tea-a", "can_view_activity")).toBe(false);
+    expect(confirmedDenied(billing, "tea-a", "can_view_activity")).toBe(true);
+    // A read that predates the grant answers nothing: hidden, not denied.
+    const older = ready({ can_view: "allowed" });
+    expect(allowsAction(older, "tea-a", "can_view_activity")).toBe(false);
+    expect(confirmedDenied(older, "tea-a", "can_view_activity")).toBe(false);
+    // Losing it is a confirmed downgrade, like any other grant.
+    expect(downgradeDetected(viewer, billing)).toBe(true);
+  });
+
   it("fails closed while checking or unavailable — never permissive-while-unknown", () => {
     for (const state of [checkingCapabilities, unavailableCapabilities]) {
       expect(allowsAction(state, "tea-a", "can_view")).toBe(false);

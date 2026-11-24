@@ -11,6 +11,12 @@ import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { ServiceSidebar } from "../service-sidebar";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  billingCapabilities,
+  mockCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // The sidebar reads the same single-service hook as the detail shell, so the
 // two agree on whether the service exists (w1/m45).
@@ -50,6 +56,65 @@ beforeEach(() => {
     type: "web_service",
   } as ServiceView;
   serverState.loading = false;
+});
+
+// w9/m621: Render's role table gives the Billing role neither "View service
+// events" nor "View service metrics"; a Viewer has both.
+describe("ServiceSidebar per role (w9/m621)", () => {
+  const linkNames = () =>
+    screen
+      .getAllByRole("link")
+      .map((link) => link.textContent)
+      .filter(Boolean);
+
+  it("drops Deploys, Events and Metrics for a Billing member once the role is confirmed", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    renderAt("/services/srv-1/settings");
+
+    await screen.findByRole("link", { name: "Settings" });
+    expect(linkNames()).toEqual([
+      "Dashboard",
+      "Settings",
+      "Logs",
+      "Environment",
+      "Disk",
+      "Shell",
+      "Compute",
+    ]);
+  });
+
+  it("keeps every entry for a Viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    renderAt("/services/srv-1/settings");
+
+    await screen.findByRole("link", { name: "Settings" });
+    expect(linkNames()).toEqual([
+      "Dashboard",
+      "Deploys",
+      "Settings",
+      "Events",
+      "Logs",
+      "Metrics",
+      "Environment",
+      "Disk",
+      "Shell",
+      "Compute",
+    ]);
+  });
+
+  it("keeps every entry while capabilities are still checking", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        loading: true,
+        loaded: false,
+        canViewActivity: false,
+      }),
+    );
+    renderAt("/services/srv-1/settings");
+
+    expect(await screen.findByRole("link", { name: "Deploys" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Metrics" })).toBeVisible();
+  });
 });
 
 describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () => {

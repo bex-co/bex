@@ -141,7 +141,8 @@ type PaymentGate interface {
 // recordAudit swallows sink errors, so a CHECK miss silently drops the row —
 // TestAuditRelationCheckMatchesRelCan pins the latest CHECK to RelCanRelations.
 const (
-	RelCanView          = "can_view"            // viewer and up: lists, details, metrics
+	RelCanView          = "can_view"            // every member role: lists and details
+	RelCanViewActivity  = "can_view_activity"   // viewer and up, not billing: events, deploy history, metrics (Render's "View service events/metrics", w9/m621)
 	RelCanViewLogs      = "can_view_logs"       // contributor and up (Render: viewers can't see logs)
 	RelCanOperate       = "can_operate"         // contributor and up: runtime actions (deploy, restart, suspend/resume, cron runs, cache purge, failover)
 	RelCanCreate        = "can_create"          // developer and up: create/delete resources and change their settings (w9/m619)

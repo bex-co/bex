@@ -18,6 +18,7 @@ import { STRETCHED_LINK_CLASS } from "@/common/lib/stretched-link";
 import { cn } from "@/common/lib/utils/utils";
 import { StatusKindIcon } from "@/features/deploys/components/deploy-status-icon";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { projectionReason } from "@/features/capabilities/lib/resource-actions";
 import { CronTriggerRunButton } from "@/features/services/components/cron-header-actions";
@@ -86,8 +87,19 @@ function triggerLabel(run: CronRunView, t: Translate): string {
  * window. A run in progress has Cancel, at once as on Render. With no runs the
  * page says why in Render's words and offers Trigger Run; Load more reads
  * older runs, which bex keeps past Render's 30.
+ *
+ * Render shows a cron job's runs as service events, so they sit behind the
+ * role's service-activity gate (w9/m621).
  */
 export function CronRunsSection({ serviceId }: { serviceId: string }) {
+  return (
+    <ActivityGate>
+      <CronRuns serviceId={serviceId} />
+    </ActivityGate>
+  );
+}
+
+function CronRuns({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
   const {

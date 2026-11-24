@@ -365,6 +365,10 @@ type Capabilities struct {
 	// workspace's usage, cost, invoices and billing readiness. Admin,
 	// Developer and Billing hold it; Contributor and Viewer do not.
 	CanViewBilling bool `json:"canViewBilling"`
+	// CanViewActivity is Render's "View service events" and "View service
+	// metrics" (w9/m621): service events, deploy history and every metric.
+	// Viewer, Contributor, Developer and Admin hold it; Billing does not.
+	CanViewActivity bool `json:"canViewActivity"`
 	// Grants is the tri-state form of the booleans above (ADR087, w6/m136):
 	// one entry per relation, in the fixed order the booleans declare. A false
 	// boolean cannot say WHY; the matching grant can — denied (an affirmative
@@ -479,7 +483,7 @@ func (s *Service) Capabilities(ctx context.Context, workspaceID string, fresh bo
 	caps := Capabilities{
 		CanView: true,
 		Fresh:   fresh,
-		Grants:  append(make([]CapabilityGrant, 0, 9), CapabilityGrant{Action: core.RelCanView, Outcome: core.DecisionAllowed}),
+		Grants:  append(make([]CapabilityGrant, 0, 10), CapabilityGrant{Action: core.RelCanView, Outcome: core.DecisionAllowed}),
 	}
 	probe := func(relation string, allowed *bool) {
 		d := decide(relation)
@@ -494,6 +498,7 @@ func (s *Service) Capabilities(ctx context.Context, workspaceID string, fresh bo
 	probe(core.RelCanManage, &caps.CanManage)
 	probe(core.RelCanManageBilling, &caps.CanManageBilling)
 	probe(core.RelCanViewBilling, &caps.CanViewBilling)
+	probe(core.RelCanViewActivity, &caps.CanViewActivity)
 	if s.Store != nil {
 		if tenantID, ok := s.Tenant(ctx); ok {
 			if idn, ok := core.IdentityFrom(ctx); ok {
@@ -1597,8 +1602,10 @@ func guardKeyCreatorRole(creatorRole, memberRole, newRole string) error {
 
 // RoleWithin reports whether role grants nothing ceiling does not. The five
 // roles' relations nest in two chains, viewer ⊂ contributor ⊂ developer ⊂
-// admin and viewer ⊂ billing ⊂ admin (deploy/gitops/authz/model.fga);
-// TestRoleWithinMatchesTheModel pins this to the model's grants.
+// admin and billing ⊂ admin (deploy/gitops/authz/model.fga). A Viewer is not
+// within Billing since w9/m621: it reads events, deploys and metrics, which
+// Billing does not. TestRoleWithinMatchesTheModel pins this to the model's
+// grants.
 func RoleWithin(role, ceiling string) bool {
 	switch ceiling {
 	case "admin":
@@ -1608,7 +1615,7 @@ func RoleWithin(role, ceiling string) bool {
 	case "contributor":
 		return role == "contributor" || role == "viewer"
 	case "billing":
-		return role == "billing" || role == "viewer"
+		return role == "billing"
 	case "viewer":
 		return role == "viewer"
 	}

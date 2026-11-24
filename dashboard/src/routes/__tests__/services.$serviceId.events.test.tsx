@@ -13,7 +13,16 @@ import { ServiceEventsPage } from "../services.$serviceId.events";
 import { formatDateTime } from "@/common/lib/format";
 import i18n from "@/i18n/init";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
-import { DeployBuildAvailabilityDocument } from "@/graphql/definitions";
+import {
+  DeployBuildAvailabilityDocument,
+  ServiceEventsDocument,
+} from "@/graphql/definitions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  ACTIVITY_REASON,
+  billingCapabilities,
+  viewerCapabilities,
+} from "@/test/mocks/capabilities";
 
 // The Events tab reads server(id) for the cron-runs section; a null service
 // (the common non-cron case) keeps that section out of the way.
@@ -201,6 +210,49 @@ beforeEach(async () => {
       return [rollbackService, { loading: false }] as never;
     }
     return [cancelDeploy, { loading: false }] as never;
+  });
+});
+
+// w9/m621: Render's role table gives the Billing role no "View service
+// events"; bex-api refuses the feed to it (can_view_activity). A Viewer reads
+// the feed as an Admin does.
+describe("ServiceEventsPage per role (w9/m621)", () => {
+  const requested = () =>
+    mockUseQuery.mock.calls.map(([document]) => document as unknown);
+
+  it("a Billing member sees why, and neither the feed nor its build read is requested", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
+    mockUseQuery.mockReturnValue({
+      data: { serviceEvents: [deployEvent()] },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText(ACTIVITY_REASON)).toBeInTheDocument();
+    expect(screen.getByText("Not available to your role")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(requested()).not.toContain(ServiceEventsDocument);
+    expect(requested()).not.toContain(DeployBuildAvailabilityDocument);
+  });
+
+  it("a Viewer reads the feed", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    mockUseQuery.mockReturnValue({
+      data: { serviceEvents: [deployEvent()] },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByRole("link")).toHaveAttribute(
+      "href",
+      "/services/app/deploys/dep-live-001",
+    );
+    expect(screen.queryByText(ACTIVITY_REASON)).not.toBeInTheDocument();
+    expect(requested()).toContain(ServiceEventsDocument);
   });
 });
 

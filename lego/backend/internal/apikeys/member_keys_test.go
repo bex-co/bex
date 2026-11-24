@@ -68,9 +68,19 @@ func TestEveryMemberRoleMintsAKeyCappedAtTheirRole(t *testing.T) {
 		if binder.creators[all.ID] != subject || binder.bound[all.ID] != "tea-a" {
 			t.Fatalf("%s's key bound to %q as %q, want tea-a as its creator", subject, binder.bound[all.ID], binder.creators[all.ID])
 		}
-		if _, err := svc.CreateAPIKey(asPerson(subject), "", "read", grantEntries("services:read", "deploys:read")); err != nil {
+		if _, err := svc.CreateAPIKey(asPerson(subject), "", "read", grantEntries("services:read")); err != nil {
 			t.Errorf("%s's Read only key: %v", subject, err)
 		}
+	}
+	// Deployment information is Render's service events (w9/m621): a Viewer
+	// and a Contributor grant it, Billing does not hold it to grant.
+	for _, subject := range []string{"viewer", "contrib"} {
+		if _, err := svc.CreateAPIKey(asPerson(subject), "", "deploys", grantEntries("services:read", "deploys:read")); err != nil {
+			t.Errorf("%s's Deploys Read: %v", subject, err)
+		}
+	}
+	if _, err := svc.CreateAPIKey(asPerson("bill"), "", "deploys", grantEntries("deploys:read")); codeOf(err) != core.KeyPermissionAboveRoleCode {
+		t.Errorf("Billing's Deploys Read = %v, want refused", err)
 	}
 	// The role caps the grant: a Viewer names no Write, Run or Read & write.
 	for _, entry := range []string{"services:read_write", "deploys_run:run", "services_env:write", "monitoring:read"} {
@@ -85,7 +95,7 @@ func TestEveryMemberRoleMintsAKeyCappedAtTheirRole(t *testing.T) {
 	if _, err := svc.CreateAPIKey(asPerson("contrib"), "", "create", grantEntries("services:read_write")); codeOf(err) != core.KeyPermissionAboveRoleCode {
 		t.Errorf("Contributor's Services Read & write = %v, want refused", err)
 	}
-	// Billing grants what it holds: the Read levels a Viewer may, no logs.
+	// Billing grants what it holds: no logs, events or metrics.
 	if _, err := svc.CreateAPIKey(asPerson("bill"), "", "logs", grantEntries("monitoring:read")); codeOf(err) != core.KeyPermissionAboveRoleCode {
 		t.Errorf("Billing's Monitoring Read = %v, want refused", err)
 	}
@@ -136,6 +146,14 @@ func TestCatalogMarksAViewersAndABillingMembersLevels(t *testing.T) {
 	}
 	if lv := levels("contrib")["deploys_run:run"]; !lv.Grantable {
 		t.Errorf("Contributor's Run deployments = %+v, want grantable", lv)
+	}
+	// Deployment information is the one Viewer level a Billing member does
+	// not hold (w9/m621): it names can_view_activity, and the level it shows
+	// disabled still names the Viewer as a role that may grant it.
+	for subject, grantable := range map[string]bool{"viewer": true, "bill": false} {
+		if lv := levels(subject)["deploys:read"]; lv.Grantable != grantable || lv.RequiredRole != "viewer" {
+			t.Errorf("%s's Deploys Read = grantable %v needs %q, want %v %q", subject, lv.Grantable, lv.RequiredRole, grantable, "viewer")
+		}
 	}
 }
 

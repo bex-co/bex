@@ -10,6 +10,7 @@ import { serviceNavGroups } from "@/features/services/components/service-nav";
 import { deriveServiceType } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
 import { SidebarNavGroups } from "./sidebar-nav-groups";
@@ -41,6 +42,8 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   // not-found state, and a sidebar of dead links would contradict it. While
   // still loading, keep the nav (a legit id must not flash empty→full).
   const showNav = loading || service !== null;
+  // A Billing member views no service events, deploys or metrics (w9/m621).
+  const activityDenied = useCapabilities().denied("can_view_activity");
 
   return (
     <Sidebar collapsible="icon">
@@ -65,6 +68,7 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
             groups={serviceNavGroups(
               service ? deriveServiceType(service.type) : null,
               base,
+              { activityDenied },
             )}
             linkParams={{ serviceId }}
             isItemActive={(to) =>

@@ -478,8 +478,8 @@ func relationBinding(helper *ast.FuncDecl, call *ast.CallExpr, binding map[strin
 // targetsReadOnly reports whether call's relation argument (relationArg of the
 // callee: AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue and their ...As
 // twins) is PROVABLY a
-// read relation — a literal core.RelCanView/RelCanViewLogs/RelCanViewSensitive
-// selector, or a `relation` parameter binding (see relationBinding) that
+// read relation — a literal core.RelCanView/RelCanViewActivity/RelCanViewLogs/
+// RelCanViewSensitive/RelCanViewBilling selector, or a `relation` parameter binding (see relationBinding) that
 // resolves to one. Anything else (a write relation, or a variable this sweep
 // can't resolve) is not provably read-only — see targetedVerbsIn.
 func targetsReadOnly(call *ast.CallExpr, callee string, binding map[string]string) bool {
@@ -495,7 +495,7 @@ func targetsReadOnly(call *ast.CallExpr, callee string, binding map[string]strin
 		name = binding[a.Name]
 	}
 	switch name {
-	case "RelCanView", "RelCanViewLogs", "RelCanViewSensitive":
+	case "RelCanView", "RelCanViewActivity", "RelCanViewLogs", "RelCanViewSensitive", "RelCanViewBilling":
 		return true
 	default:
 		return false

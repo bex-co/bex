@@ -9,6 +9,7 @@ import { useAutoscaling } from "@/features/services/hooks/use-autoscaling";
 import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useWorkspace } from "@/features/workspaces/context";
+import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { supportsScaling } from "@/features/services/lib/service-type";
 import { hasServed, runsInstances } from "@/features/services/lib/status";
 import { MANUAL_SCALING_ANCHOR } from "@/features/services/lib/compute-page";
@@ -80,10 +81,14 @@ export function ServiceComputePage({ serviceId }: { serviceId: string }) {
               />
             ) : null}
           </ManualScalingSlot>
-          <ScalingRecentMetrics
-            serviceId={serviceId}
-            runsInstances={runsInstances(service)}
-          />
+          {/* Service metrics: left out for a role that may not view
+              them (w9/m621). */}
+          <ActivityGate fallback={null}>
+            <ScalingRecentMetrics
+              serviceId={serviceId}
+              runsInstances={runsInstances(service)}
+            />
+          </ActivityGate>
         </>
       ) : null}
     </div>
