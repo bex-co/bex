@@ -54,7 +54,10 @@ import {
   readReplicaNameProblem,
   type ReadReplicaAddBlock,
 } from "@/features/databases/lib/read-replicas";
-import { highAvailabilityRequested } from "@/features/databases/lib/status";
+import {
+  highAvailabilityRequested,
+  isSuspended,
+} from "@/features/databases/lib/status";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 interface HAPanelProps {
@@ -78,7 +81,10 @@ interface HAPanelProps {
 export function HAPanel({ database, refetch }: HAPanelProps) {
   const { t } = useTranslations();
   // Failover is a lifecycle verb (can_operate); the HA switch and the read
-  // replicas are settings PATCH /v1/postgres changes (can_create).
+  // replicas are settings PATCH /v1/postgres changes (can_create). The verb
+  // refuses a suspended database (409 since w32/111), so the button holds
+  // while suspended the way restart holds its own.
+  const suspended = isSuspended(database);
   const { denied: operateDenied, reason: operateReason } =
     useCapabilityGate("canOperate");
   const { denied: createDenied, reason: createReason } =
@@ -241,12 +247,14 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
             </div>
             <div className="flex items-center gap-3">
               {database.highAvailabilityEnabled ? (
-                <PermissionTooltip reason={operateReason}>
+                <PermissionTooltip
+                  reason={!suspended ? operateReason : undefined}
+                >
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setConfirmOpen(true)}
-                    disabled={operateDenied || loading}
+                    disabled={operateDenied || loading || suspended}
                   >
                     {loading ? <Loader2 className="animate-spin" /> : null}
                     {t("databases.haFailover")}

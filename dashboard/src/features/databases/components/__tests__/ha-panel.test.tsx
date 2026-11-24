@@ -382,6 +382,28 @@ describe("HAPanel high availability switch (w2/m171)", () => {
     ).toBeDisabled();
   });
 
+  // The verb refuses failover on a suspended database (409 since w32/111),
+  // so the panel holds its button the way restart holds its own: an enabled
+  // button must never promise a verb the server refuses on rendered state.
+  it("holds failover while the database is suspended", () => {
+    render(
+      <HAPanel
+        database={{
+          ...DATABASE,
+          plan: "pro",
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: true,
+          suspended: "suspended",
+        }}
+        refetch={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Trigger failover" }),
+    ).toBeDisabled();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
   // Fail-closed: no answer yet is no grant, so every control is held, and
   // none claims a role reason it has not been given.
   it("holds the switch, failover and replicas while capabilities are still checking", () => {
