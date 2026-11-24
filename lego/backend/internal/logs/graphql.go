@@ -55,7 +55,8 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"path": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelPath] }),
 		// A request line's edge-minted Rndr-Id (w8/m125); empty for app lines.
 		"requestId": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelRequestID] }),
-		// A build line's build (w8/m442): its deploy's id; empty for other lines.
+		// A build line's build (w8/m442, w2/m611): a service build's dep- id or
+		// a Build Source build's bld- id; empty for other lines.
 		"build": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelBuild] }),
 	},
 })

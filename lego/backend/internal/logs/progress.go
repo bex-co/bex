@@ -198,6 +198,10 @@ type progressContext struct {
 	name        string
 }
 
+func (pc progressContext) isBuildSource() bool {
+	return pc.serviceType == appv1alpha1.TypeBuildSource
+}
+
 // oidcRefusal is the release whose environment asked for Managed OIDC tokens
 // it does not get (status.managedOIDC): its workspace plan does not include
 // them (w2/m477), or its GCP variables are not ones Google can take (w2/m479).
@@ -438,8 +442,52 @@ func deploySource(d DeployProgress, pc progressContext) (repo, branch string) {
 	return pc.repo, pc.branch
 }
 
+func buildingFromLine(repo, branch, commit string) string {
+	ref := commit
+	if len(ref) > 7 {
+		ref = ref[:7]
+	}
+	if ref == "" {
+		ref = branch
+	}
+	if ref != "" {
+		return fmt.Sprintf("==> Building from %s@%s", repo, ref)
+	}
+	return fmt.Sprintf("==> Building from %s", repo)
+}
+
 func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, holdPreDeployEnd bool) []LogEntry {
 	repo, branch := deploySource(d, pc)
+	isBuildSource := pc.isBuildSource()
+	buildID := publicBuildID(isBuildSource, d.ID)
+	if isBuildSource {
+		// An image-backed Build Source never builds (ADR097); emit no
+		// build or runtime rollout narration for it.
+		if repo == "" {
+			return nil
+		}
+		var out []LogEntry
+		add := func(t time.Time, msg string) { out = append(out, progressEntry(buildID, t, msg)) }
+		if !d.CreatedAt.IsZero() {
+			add(d.CreatedAt, "==> Build queued")
+			if d.Status == deployStatusQueued && d.StartedAt.IsZero() && d.FinishedAt.IsZero() {
+				if line := waitLine(pc.wait); line != "" {
+					add(d.CreatedAt, line)
+				}
+			}
+		}
+		if !d.StartedAt.IsZero() {
+			add(d.StartedAt, buildingFromLine(repo, branch, d.Commit))
+		}
+		// Build Source carriers never run pre-deploy, rollout, port scans,
+		// live URLs, or Managed OIDC (ADR097 §Decision 1, ADR116 D12).
+		if includeClosing && !d.FinishedAt.IsZero() {
+			for _, msg := range closingLines(d, pc.serviceType) {
+				add(d.FinishedAt, msg)
+			}
+		}
+		return out
+	}
 	// A build story is owed only by a deploy that actually built (w4/m110
 	// t004). Every repo-backed deploy used to get one, so a rollback and a
 	// config-change rollout that reused the active artifact each read as a
@@ -460,7 +508,7 @@ func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, ho
 		built = built && d.Built
 	}
 	var out []LogEntry
-	add := func(t time.Time, msg string) { out = append(out, progressEntry(d.ID, t, msg)) }
+	add := func(t time.Time, msg string) { out = append(out, progressEntry(buildID, t, msg)) }
 	if !d.CreatedAt.IsZero() {
 		if built {
 			add(d.CreatedAt, "==> Build queued")
@@ -476,18 +524,7 @@ func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, ho
 	if !d.StartedAt.IsZero() {
 		switch {
 		case built:
-			ref := d.Commit
-			if len(ref) > 7 {
-				ref = ref[:7]
-			}
-			if ref == "" {
-				ref = branch
-			}
-			if ref != "" {
-				add(d.StartedAt, fmt.Sprintf("==> Building from %s@%s", repo, ref))
-			} else {
-				add(d.StartedAt, fmt.Sprintf("==> Building from %s", repo))
-			}
+			add(d.StartedAt, buildingFromLine(repo, branch, d.Commit))
 		case d.Image != "":
 			// Image-backed service, or a rollback — the row carries the exact
 			// image it restores, so name it.
@@ -1050,10 +1087,10 @@ func primaryURLLines(d DeployProgress) []string {
 // directory <dir> does not exist!` before its verdict (EthanM32122/cloaket#1;
 // w8/395). A build's own output is in the log already.
 func closingLines(d DeployProgress, serviceType string) []string {
-	if hasFirstExitVerdict(d) || preDeployTimedOut(d) {
+	if serviceType != appv1alpha1.TypeBuildSource && (hasFirstExitVerdict(d) || preDeployTimedOut(d)) {
 		return nil
 	}
-	verdict, form := rendersVerdict(d)
+	verdict, form := rendersVerdict(d, serviceType)
 	if verdict == "" {
 		return terminalLines(d.Status, serviceType, d.FailureReason)
 	}
@@ -1077,17 +1114,23 @@ func closingLines(d DeployProgress, serviceType string) []string {
 // red, as Render's log API returns them (Ishan2036924/upmyrank-poc,
 // kush252/Sentry-AI); no capture shows the codes on `==> Build failed 😞`,
 // which stays plain (w32/085).
-func rendersVerdict(d DeployProgress) (verdict string, form renderlog.Form) {
+func rendersVerdict(d DeployProgress, serviceType string) (verdict string, form renderlog.Form) {
 	switch d.Status {
 	case "build_failed":
 		if appv1alpha1.IsBuildFailed(strings.TrimSpace(d.FailureReason)) {
 			return buildFailedLine, renderlog.Plain
 		}
 	case deployStatusPreDeployFailed:
+		if serviceType == appv1alpha1.TypeBuildSource {
+			return "", renderlog.Plain
+		}
 		if code := preDeployExitStatus(d); code != nil {
 			return fmt.Sprintf(exitedLineFormat, *code), renderlog.PlatformFailure
 		}
 	case "update_failed":
+		if serviceType == appv1alpha1.TypeBuildSource {
+			return "", renderlog.Plain
+		}
 		switch {
 		case d.TimedOut:
 			return timedOutLine, renderlog.PlatformFailure
@@ -1175,15 +1218,26 @@ func terminalLine(status, serviceType string) string {
 			return "==> Cron job deployed — runs on schedule 🎉"
 		case appv1alpha1.TypeStaticSite:
 			return "==> Your site is live 🎉"
+		case appv1alpha1.TypeBuildSource:
+			return "==> Build succeeded 🎉"
 		}
 		return styled(renderlog.PlatformSuccess, "==> Your service is live 🎉")
 	case "build_failed":
 		return "==> Build failed"
 	case "pre_deploy_failed":
+		if serviceType == appv1alpha1.TypeBuildSource {
+			return "==> Build failed"
+		}
 		return "==> Pre-deploy failed"
 	case "update_failed":
+		if serviceType == appv1alpha1.TypeBuildSource {
+			return "==> Build failed"
+		}
 		return "==> Deploy failed"
 	case "canceled":
+		if serviceType == appv1alpha1.TypeBuildSource {
+			return "==> Build canceled"
+		}
 		return "==> Deploy canceled"
 	}
 	return ""
@@ -1219,6 +1273,31 @@ func (q LogQuery) excludesProgressLines() bool {
 // must never break a log query), and it runs only on the store-backed path — a
 // missing Loki still reports buildStoreUnavailable, so platform lines never
 // masquerade as a successful empty build history.
+func rowStoryEnd(d DeployProgress, pc progressContext) time.Time {
+	if pc.isBuildSource() {
+		return d.FinishedAt
+	}
+	return storyEnd(d, pc.hook)
+}
+
+func rowProgressLines(d DeployProgress, pc progressContext, firstRow bool) []LogEntry {
+	rowPC := pc
+	if !firstRow {
+		// The App's `Ready` condition describes the CURRENT wait, which can
+		// only belong to the newest row; an older row must never borrow it.
+		rowPC.wait = buildWait{}
+	}
+	lines := progressLines(d, rowPC)
+	if !pc.isBuildSource() {
+		lines = append(lines, hookLines(d, pc.hook)...)
+	}
+	return lines
+}
+
+func matchesDeployFilter(q LogQuery, deployID, buildID string) bool {
+	return q.Deploy == "" || deployID == q.Deploy || buildID == q.Deploy
+}
+
 func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource string, pc progressContext, entries []LogEntry) []LogEntry {
 	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) || q.excludesProgressLines() {
 		return entries
@@ -1228,24 +1307,20 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 		return entries
 	}
 	merged := entries
+	isBS := pc.isBuildSource()
 	for i, d := range rows {
 		// Skip rows that ended before the window opened; per-line keep()
 		// applies the exact bounds below. A row's primary URL block and its
 		// initial deploy hook come after the row itself closed, so it ends
-		// with them.
-		if ended := storyEnd(d, pc.hook); !q.Since.IsZero() && !ended.IsZero() && ended.Before(q.Since) {
+		// with them (Build Source carriers have neither).
+		if ended := rowStoryEnd(d, pc); !q.Since.IsZero() && !ended.IsZero() && ended.Before(q.Since) {
 			continue
 		}
-		if !q.keepPod(d.ID) || (q.Deploy != "" && d.ID != q.Deploy) {
+		buildID := publicBuildID(isBS, d.ID)
+		if !q.keepPod(buildID) || !matchesDeployFilter(q, d.ID, buildID) {
 			continue
 		}
-		rowPC := pc
-		if i > 0 {
-			// The App's `Ready` condition describes the CURRENT wait, which can
-			// only belong to the newest row; an older row must never borrow it.
-			rowPC.wait = buildWait{}
-		}
-		for _, e := range append(progressLines(d, rowPC), hookLines(d, pc.hook)...) {
+		for _, e := range rowProgressLines(d, pc, i == 0) {
 			if q.keep(e) {
 				merged = append(merged, e)
 			}
@@ -1258,11 +1333,12 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 	return q.capToLimit(merged)
 }
 
-// progressInstanceValues lists the deploy IDs whose synthetic build progress or
-// initial-deploy-hook lines fall inside q's window, so LogLabelValues(instance)
-// on a type=build (or build-filtered) read discovers the same synthetic
-// instances QueryLogs emits and translateInstanceFilter resolves (w32/105).
-// Best-effort: a DeployProgress error adds nothing so Loki discovery still works.
+// progressInstanceValues lists the deploy/build IDs whose synthetic build
+// progress or initial-deploy-hook lines fall inside q's window, so
+// LogLabelValues(instance) on a type=build (or build-filtered) read discovers
+// the same synthetic instances QueryLogs emits and translateInstanceFilter
+// resolves (w32/105). Best-effort: a DeployProgress error adds nothing so Loki
+// discovery still works.
 func (s *Service) progressInstanceValues(ctx context.Context, q LogQuery, resource string, pc progressContext) []string {
 	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) || q.excludesProgressLines() {
 		return nil
@@ -1278,24 +1354,21 @@ func (s *Service) progressInstanceValues(ctx context.Context, q LogQuery, resour
 	// Label-values discovery uses the stream window [start, end], matching
 	// Loki's /label/pod/values API (which ignores line filters like Search).
 	window := LogQuery{Since: start, End: end}
+	isBS := pc.isBuildSource()
 	var out []string
 	for i, d := range rows {
 		if d.ID == "" {
 			continue
 		}
-		if ended := storyEnd(d, pc.hook); !ended.IsZero() && ended.Before(start) {
+		if ended := rowStoryEnd(d, pc); !ended.IsZero() && ended.Before(start) {
 			continue
 		}
-		if !q.inBuilds(d.ID) || (q.Deploy != "" && d.ID != q.Deploy) {
+		buildID := publicBuildID(isBS, d.ID)
+		if !q.inBuilds(buildID) || !matchesDeployFilter(q, d.ID, buildID) {
 			continue
 		}
-		rowPC := pc
-		if i > 0 {
-			rowPC.wait = buildWait{}
-		}
-		lines := append(progressLines(d, rowPC), hookLines(d, pc.hook)...)
-		if slices.ContainsFunc(lines, window.keep) {
-			out = append(out, d.ID)
+		if slices.ContainsFunc(rowProgressLines(d, pc, i == 0), window.keep) {
+			out = append(out, buildID)
 		}
 	}
 	return out
@@ -1330,7 +1403,7 @@ func preDeployOpen(d DeployProgress) bool {
 // before emitting d's pre-deploy verdict or anything after it. An older deploy
 // whose step already finished before the tail's lower bound is never replayed.
 func (f *progressFollower) needsPreDeploy(d DeployProgress) bool {
-	if f == nil || !f.streamPreDeploy || d.ID == "" || f.preDeployDrained[d.ID] || !f.q.keepPod(d.ID) {
+	if f == nil || !f.streamPreDeploy || f.pc.isBuildSource() || d.ID == "" || f.preDeployDrained[d.ID] || !f.q.keepPod(publicBuildID(f.pc.isBuildSource(), d.ID)) {
 		return false
 	}
 	if preDeployOpen(d) {
@@ -1412,11 +1485,32 @@ func (f *progressFollower) emitReached(ctx context.Context, emit func(LogEntry) 
 		return nil
 	}
 	rows, err := f.s.DeployProgress(ctx, f.resource, time.Time{})
-	if err != nil || len(rows) == 0 || !f.q.keepPod(rows[0].ID) {
+	if err != nil || len(rows) == 0 {
 		return nil
 	}
-	f.row = rows[0]
-	f.refreshWait(ctx, f.row)
+	isBS := f.pc.isBuildSource()
+	idx := -1
+	if len(f.q.Build) == 0 {
+		if f.q.keepPod(publicBuildID(isBS, rows[0].ID)) {
+			idx = 0
+		}
+	} else {
+		for i := range rows {
+			if f.q.keepPod(publicBuildID(isBS, rows[i].ID)) {
+				idx = i
+				break
+			}
+		}
+	}
+	if idx < 0 {
+		return nil
+	}
+	f.row = rows[idx]
+	if idx == 0 {
+		f.refreshWait(ctx, f.row)
+	} else {
+		f.pc.wait = buildWait{}
+	}
 	return f.emitRow(f.row, false, emit)
 }
 

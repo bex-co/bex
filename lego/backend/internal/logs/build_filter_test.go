@@ -200,7 +200,7 @@ func TestASharedGenerationIsTheBuildingRowsBuild(t *testing.T) {
 	index := newBuildIndex("web", []DeployProgress{
 		{ID: "dep-rollout", Generation: 7},
 		{ID: "dep-built", Generation: 7, Built: true},
-	})
+	}, false)
 	if got := index.buildOf(buildPod(7, "zzzzz")); got != "dep-built" {
 		t.Fatalf("gen-7's pod = %q, want dep-built", got)
 	}

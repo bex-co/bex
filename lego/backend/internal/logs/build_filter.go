@@ -24,27 +24,42 @@ import (
 	"strings"
 	"time"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // LabelBuild is the build a build line belongs to: Render's `build` log label
 // and filter, added to its contract on 2026-11-16 (w8/m442, ADR018 round 8).
-// bex's build is its deploy's own, so a service build's ID is its deploy's
-// `dep-` id: the id pipeline_minutes_exhausted's buildId carries (w9/m345) and
-// the instance a deploy's platform lines carry. Render's own value for a
-// service build is not observed yet. bex's sandbox image builds write no log
-// lines, so no line carries an `sbb-` build.
+// A service build's ID is its deploy's `dep-` id (the id
+// pipeline_minutes_exhausted's buildId carries, w9/m345, and the instance a
+// deploy's platform lines carry). A Build Source carrier's build ID is its
+// public `bld-` id (id.Rekind of the carrier's deploy row, ADR097, w2/m611).
+// bex's sandbox image builds write no log lines, so no line carries an `sbb-`
+// build.
 const LabelBuild = "build"
 
-// buildIndex names each build Job of an App by the deploy that ran it, so a
-// build pod's line can carry its build and a build filter can select the Jobs
-// of the builds it names. A build Job is named for its release generation
+// publicBuildID returns the public build identifier for a deploy row: for a
+// Build Source carrier (TypeBuildSource), its public `bld-` id via id.Rekind;
+// for an ordinary service, the deploy's own `dep-` id.
+func publicBuildID(isBuildSource bool, deployID string) string {
+	if isBuildSource {
+		if bld, ok := ids.Rekind(ids.Build, deployID); ok {
+			return bld
+		}
+	}
+	return deployID
+}
+
+// buildIndex names each build Job of an App by the build that ran it (`dep-`
+// for a service, `bld-` for a Build Source carrier), so a build pod's line can
+// carry its build and a build filter can select the Jobs of the builds it
+// names. A build Job is named for its release generation
 // (appv1alpha1.BuildJobName), as scopeToDeploy reads it.
-type buildIndex map[string]string // build Job name → deploy id
+type buildIndex map[string]string // build Job name → public build id
 
 // newBuildIndex indexes rows (newest first). A generation two rows share goes
 // to the row that built: the other ran no build of its own.
-func newBuildIndex(app string, rows []DeployProgress) buildIndex {
+func newBuildIndex(app string, rows []DeployProgress, isBuildSource bool) buildIndex {
 	index := buildIndex{}
 	for _, built := range []bool{true, false} {
 		for _, d := range rows {
@@ -53,7 +68,7 @@ func newBuildIndex(app string, rows []DeployProgress) buildIndex {
 			}
 			job := appv1alpha1.BuildJobName(app, appv1alpha1.BuildRevision(d.Generation))
 			if _, taken := index[job]; !taken {
-				index[job] = d.ID
+				index[job] = publicBuildID(isBuildSource, d.ID)
 			}
 		}
 	}
@@ -162,11 +177,11 @@ func includeJobsMatcher(q LogQuery) string {
 // best-effort, so a failed read of the deploy rows labels nothing; a filter
 // cannot resolve without them, and answers the error rather than another
 // build's lines or an empty page that would read as "no such build".
-func (s *Service) scopeToBuilds(ctx context.Context, resource string, q *LogQuery) (buildIndex, error) {
+func (s *Service) scopeToBuilds(ctx context.Context, resource string, isBuildSource bool, q *LogQuery) (buildIndex, error) {
 	if !slices.Contains(q.Types, LogTypeBuild) {
 		return nil, nil
 	}
-	index, err := s.buildIndexOf(ctx, resource, q.App)
+	index, err := s.buildIndexOf(ctx, resource, q.App, isBuildSource)
 	if err != nil {
 		if len(q.Build) > 0 {
 			return nil, fmt.Errorf("resolve the build filter: %w", err)
@@ -181,7 +196,7 @@ func (s *Service) scopeToBuilds(ctx context.Context, resource string, q *LogQuer
 
 // buildIndexOf indexes the build Jobs of app (its CR name) from the deploy
 // rows of resource (its public id). nil without a deploy source.
-func (s *Service) buildIndexOf(ctx context.Context, resource, app string) (buildIndex, error) {
+func (s *Service) buildIndexOf(ctx context.Context, resource, app string, isBuildSource bool) (buildIndex, error) {
 	if s.DeployProgress == nil {
 		return nil, nil
 	}
@@ -189,5 +204,5 @@ func (s *Service) buildIndexOf(ctx context.Context, resource, app string) (build
 	if err != nil {
 		return nil, err
 	}
-	return newBuildIndex(app, rows), nil
+	return newBuildIndex(app, rows, isBuildSource), nil
 }

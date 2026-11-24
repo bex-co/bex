@@ -640,6 +640,30 @@ func dropStaticSiteRequests(app *appv1alpha1.App, q *LogQuery) bool {
 	return true
 }
 
+// scopeToBuildSource adapts q for a Build Source carrier (TypeBuildSource,
+// w2/m611): carriers run build Jobs only — no app pods, no HTTP edge routes,
+// and no pre-deploy Jobs (ADR097 §Decision 1). Untyped reads without request or
+// level filters default to type=build; reads asking solely for non-build types
+// or non-build filters answer empty.
+func scopeToBuildSource(app *appv1alpha1.App, q *LogQuery) (isBuildSource, empty bool) {
+	if !core.IsBuildSource(app) {
+		return false, false
+	}
+	q.noRequest = true
+	if len(q.Types) == 0 {
+		if len(q.requestFilters()) > 0 || len(q.Level) > 0 {
+			return true, true
+		}
+		q.Types = []string{LogTypeBuild}
+		return true, false
+	}
+	if !slices.Contains(q.Types, LogTypeBuild) {
+		return true, true
+	}
+	q.Types = []string{LogTypeBuild}
+	return true, false
+}
+
 // workspacePlan is a workspace's plan and the log floor its last plan change
 // kept, from one tenant read (core.WorkspaceLogPlanOf). ok is false where no
 // plan applies.
@@ -747,7 +771,7 @@ func (s *Service) LogRetention(ctx context.Context, resource string) (*Retention
 }
 
 // authorizeLogOwner authorizes the caller to read resource's logs and answers
-// the App, managed Postgres or Key Value that owns them.
+// the App, Build Source carrier, managed Postgres or Key Value that owns them.
 func (s *Service) authorizeLogOwner(ctx context.Context, resource string) (client.Object, error) {
 	var owner client.Object
 	var err error
@@ -757,7 +781,7 @@ func (s *Service) authorizeLogOwner(ctx context.Context, resource string) (clien
 	case isKeyValueResource(resource):
 		owner, err = s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, resource)
 	default:
-		owner, err = s.AuthorizeApp(ctx, core.RelCanViewLogs, resource)
+		owner, err = s.AuthorizeApp(logResourceCtx(ctx, resource), core.RelCanViewLogs, resource)
 	}
 	if err != nil {
 		return nil, err
@@ -842,7 +866,10 @@ func (s *Service) scopeToDeploy(ctx context.Context, resource string, app *appv1
 	if err != nil {
 		return
 	}
-	target := slices.IndexFunc(rows, func(d DeployProgress) bool { return d.ID == q.Deploy })
+	isBS := core.IsBuildSource(app)
+	target := slices.IndexFunc(rows, func(d DeployProgress) bool {
+		return d.ID == q.Deploy || (isBS && publicBuildID(true, d.ID) == q.Deploy)
+	})
 	if target < 0 {
 		return
 	}
@@ -979,7 +1006,7 @@ func (q LogQuery) keep(e LogEntry) bool {
 // when no source is wired. It's the unfiltered convenience read; the REST and
 // MCP adapters go through QueryLogs (Render's type/text/time filters).
 func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
-	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, name)
+	app, err := s.AuthorizeApp(logResourceCtx(ctx, name), core.RelCanViewLogs, name)
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
@@ -994,6 +1021,22 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	q.scopeToApp(app)
 	if err := s.applyWorkspacePlan(ctx, app, &q, s.History != nil); err != nil {
 		return nil, err
+	}
+	if core.IsBuildSource(app) {
+		if s.History == nil {
+			return nil, core.ErrLogStoreUnavailable
+		}
+		q.Types = []string{LogTypeBuild}
+		q.noRequest = true
+		q.Limit = tail
+		nq := q.normalized()
+		builds, _ := s.buildIndexOf(ctx, resource, q.App, true)
+		entries, err := s.queryHistory(ctx, app.Namespace, nq, resource, newProgressContext(app))
+		var partial *ScanIncompleteError
+		if errors.As(err, &partial) {
+			entries, err = partial.Entries, nil
+		}
+		return setLogResource(builds.label(entries), resource), err
 	}
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
@@ -1022,7 +1065,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return s.queryDatastoreLogs(ctx, q)
 	}
 	requested := q.App
-	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
+	app, err := s.AuthorizeApp(logResourceCtx(ctx, requested), core.RelCanViewLogs, requested)
 	if err != nil {
 		return nil, err
 	}
@@ -1045,6 +1088,10 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
+	isBuildSource, empty := scopeToBuildSource(app, &q)
+	if empty {
+		return []LogEntry{}, nil
+	}
 	if !q.narrowToBuilds() {
 		return []LogEntry{}, nil // a build filter over lines that carry no build
 	}
@@ -1053,7 +1100,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	}
 	q = q.normalized()
 	s.scopeToDeploy(ctx, resource, app, &q)
-	builds, err := s.scopeToBuilds(ctx, resource, &q)
+	builds, err := s.scopeToBuilds(ctx, resource, isBuildSource, &q)
 	if err != nil {
 		return nil, err
 	}
@@ -1071,7 +1118,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err != nil {
 		return nil, err
 	}
-	s.translateInstanceFilter(ctx, resource, appNS, &q, candidatesFromPods(pods))
+	s.translateInstanceFilter(ctx, resource, appNS, isBuildSource, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
@@ -1219,7 +1266,7 @@ func (s *Service) queryDatastoreLogs(ctx context.Context, q LogQuery) ([]LogEntr
 	if err != nil {
 		return nil, err
 	}
-	s.translateInstanceFilter(ctx, target.resource, target.namespace, &q, candidatesFromPods(pods))
+	s.translateInstanceFilter(ctx, target.resource, target.namespace, false, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		entries, err := s.History(ctx, target.namespace, q)
 		return labelHistory(entries, err, target.resource)
@@ -1323,6 +1370,21 @@ func isKeyValueResource(resource string) bool {
 	return ok && kind == ids.KeyValue
 }
 
+func isBuildSourceResource(resource string) bool {
+	kind, ok := ids.KindOf(resource)
+	return ok && kind == ids.BuildSource
+}
+
+// logResourceCtx opts into Build Source carrier resolution only when the
+// caller explicitly addresses a bds-… resource, keeping service-only lookups
+// and unscoped enumerations carrier-free (w2/m611, ADR097).
+func logResourceCtx(ctx context.Context, resource string) context.Context {
+	if isBuildSourceResource(resource) {
+		return core.WithBuildSources(ctx)
+	}
+	return ctx
+}
+
 // datastoreFilters pins the supported managed-datastore contract: time range,
 // direction, text search, level, limit, and instance. HTTP request/build
 // filters are service concepts; refusing them is safer than silently dropping
@@ -1383,7 +1445,7 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 		return s.datastoreLogLabelValues(ctx, label, q)
 	}
 	requested := q.App
-	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
+	app, err := s.AuthorizeApp(logResourceCtx(ctx, requested), core.RelCanViewLogs, requested)
 	if err != nil {
 		return nil, err
 	}
@@ -1407,6 +1469,10 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
 		return []string{}, nil
 	}
+	isBuildSource, empty := scopeToBuildSource(app, &q)
+	if empty {
+		return []string{}, nil
+	}
 	if !q.narrowToBuilds() {
 		return []string{}, nil // a build filter over lines that carry no build
 	}
@@ -1414,7 +1480,7 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 		return nil, core.ErrLogStoreUnavailable
 	}
 	if len(q.Build) > 0 {
-		if _, err := s.scopeToBuilds(ctx, resource, &q); err != nil {
+		if _, err := s.scopeToBuilds(ctx, resource, isBuildSource, &q); err != nil {
 			return nil, err
 		}
 	}
@@ -1545,7 +1611,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return s.followDatastore(ctx, q, emit, heartbeat)
 	}
 	requested := q.App
-	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
+	app, err := s.AuthorizeApp(logResourceCtx(ctx, requested), core.RelCanViewLogs, requested)
 	if err != nil {
 		return err
 	}
@@ -1565,8 +1631,9 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := s.applyWorkspacePlan(ctx, app, &q, false); err != nil {
 		return err
 	}
+	isBuildSource, _ := scopeToBuildSource(app, &q)
 	if len(q.Build) > 0 {
-		if _, err := s.scopeToBuilds(ctx, resource, &q); err != nil {
+		if _, err := s.scopeToBuilds(ctx, resource, isBuildSource, &q); err != nil {
 			return err
 		}
 	}
@@ -1597,7 +1664,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	// after subscribe is matched against these, not against the names that
 	// resolved from the pods present now.
 	selectors := slices.Clone(q.Instance)
-	s.translateInstanceFilter(ctx, resource, app.Namespace, &q, candidatesFromPods(podsLive))
+	s.translateInstanceFilter(ctx, resource, app.Namespace, isBuildSource, &q, candidatesFromPods(podsLive))
 	// Authorization lifetime (w4/034): admission authorized once above, but an
 	// established tail must not outlive the grant. The watchdog re-checks FRESH
 	// (uncached) on the interval; a deny, a checker failure, or the App's
@@ -1625,7 +1692,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if q.mixesBuild() || (q.renderStream && len(q.Types) == 0) {
 		return s.followPodsAndBuilds(ctx, q, selectors, target, podsLive, resource, newProgressContext(app), emit, heartbeat)
 	}
-	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) && !(staticSite && q.onlyRequest()) {
+	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) && !((staticSite || isBuildSource) && q.onlyRequest()) {
 		// SECURITY (codex #3): a query wanting no produced type (e.g.
 		// type=predeploy) has nothing to stream; it must NOT park on
 		// ctx.Done() holding one of the process-global SSE slots until the
@@ -1719,12 +1786,12 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 	}
 	prog := s.newProgressFollower(q, resource, pc)
 	if prog != nil {
-		prog.streamPreDeploy = true
+		prog.streamPreDeploy = !pc.isBuildSource()
 	}
 	seenPreDeploy := map[string]bool{}
 	for {
 		passStart := time.Now()
-		_ = s.followBuild(ctx, q, resource, prog, send)
+		_ = s.followBuild(ctx, q, resource, pc.isBuildSource(), prog, send)
 		mu.Lock()
 		failed := writeErr
 		mu.Unlock()
@@ -1734,7 +1801,9 @@ func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string,
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		_ = s.followPreDeploy(ctx, q, resource, pc.namespace, prog, seenPreDeploy, send)
+		if !pc.isBuildSource() {
+			_ = s.followPreDeploy(ctx, q, resource, pc.namespace, prog, seenPreDeploy, send)
+		}
 		mu.Lock()
 		failed, resume := writeErr, last.Add(time.Nanosecond)
 		mu.Unlock()
@@ -2026,7 +2095,7 @@ func (s *Service) followDatastore(ctx context.Context, q LogQuery, emit func(Log
 		return err
 	}
 	selectors := slices.Clone(q.Instance)
-	s.translateInstanceFilter(ctx, target.resource, target.namespace, &q, candidatesFromPods(pods))
+	s.translateInstanceFilter(ctx, target.resource, target.namespace, false, &q, candidatesFromPods(pods))
 	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), s.withKeyGrant(target.revalidate))
 	defer stopWatchdog()
 	return s.followPods(ctx, q, selectors, target, pods, emit, heartbeat)
@@ -2377,7 +2446,10 @@ func (s *Service) revalidateTailTarget(ctx context.Context, namespace, name stri
 	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &fresh); err != nil {
 		return err
 	}
-	return s.AuthorizeAppFresh(ctx, core.RelCanViewLogs, &fresh)
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewLogs, &fresh); err != nil {
+		return err
+	}
+	return core.NotFoundIfDeleting(&fresh)
 }
 
 // followBuildLogs streams every currently-running container from the newest
@@ -2394,13 +2466,13 @@ func (s *Service) revalidateTailTarget(ctx context.Context, namespace, name stri
 // the row records the build's start, not after the build (w8/m159 t009); after
 // the pod's streams end, the tail waits for the row's verdict (awaitClose).
 func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error) error {
-	return s.followBuild(ctx, q, resource, s.newProgressFollower(q, resource, pc), emit)
+	return s.followBuild(ctx, q, resource, pc.isBuildSource(), s.newProgressFollower(q, resource, pc), emit)
 }
 
 // followBuild is followBuildLogs with its narration follower supplied, so a
 // tail that follows several builds narrates each platform line once
 // (followBuilds).
-func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, prog *progressFollower, emit func(LogEntry) error) error {
+func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, isBuildSource bool, prog *progressFollower, emit func(LogEntry) error) error {
 	prog.beginBuild()
 	if err := prog.emitReached(ctx, emit); err != nil {
 		return err
@@ -2411,7 +2483,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	}
 	// The pod's build, read as the tail attaches to it: a tail outlives the
 	// deploys that existed when it opened. Labels are best-effort.
-	index, _ := s.buildIndexOf(ctx, resource, q.App)
+	index, _ := s.buildIndexOf(ctx, resource, q.App, isBuildSource)
 	build := index.buildOf(pod.Name)
 	prog.follow()
 	// A phase that ended before the tail's lower bound ran before it; any
@@ -2738,7 +2810,7 @@ func instanceMayMatchBuild(instances []string, appPods []corev1.Pod) bool {
 // match on. Candidates are the authorized live pods plus, when the store is
 // wired, historical pod names from label discovery and, for build reads, the
 // service's own deploy IDs — never a cross-resource enumeration.
-func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, namespace string, q *LogQuery, live []ids.InstanceCandidate) {
+func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, namespace string, isBuildSource bool, q *LogQuery, live []ids.InstanceCandidate) {
 	if len(q.Instance) == 0 {
 		return
 	}
@@ -2775,7 +2847,7 @@ func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, names
 	if s.DeployProgress != nil && q.includesBuild() {
 		if rows, err := s.DeployProgress(ctx, resourceID, q.End); err == nil {
 			for _, d := range rows {
-				addCand(d.ID)
+				addCand(publicBuildID(isBuildSource, d.ID))
 			}
 		}
 	}

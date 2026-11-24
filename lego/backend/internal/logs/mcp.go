@@ -45,7 +45,7 @@ import (
 // logFilters is the filter set both tools share, in Render's shape (repeatable
 // filters are arrays). Embedded so the two tools can never drift apart.
 type logFilters struct {
-	Resource    []string `json:"resource,omitempty" jsonschema:"service, managed Postgres (dpg-), or Key Value (red-) ids to read logs for; required unless project is provided, or narrows project when both are set"`
+	Resource    []string `json:"resource,omitempty" jsonschema:"service (srv-), build source (bds-), managed Postgres (dpg-), or Key Value (red-) ids to read logs for; required unless project is provided, or narrows project when both are set"`
 	Project     string   `json:"project,omitempty" jsonschema:"bex extension (Render REST parity) — project id (prj-...) whose services, cron jobs, Postgres and Key Value instances to read logs for"`
 	Environment string   `json:"environment,omitempty" jsonschema:"bex extension (Render REST parity) — environment id (evm-...) in the project; requires project"`
 	Region      string   `json:"region,omitempty" jsonschema:"bex extension (Render REST parity) — Render region filter (frankfurt|ohio|oregon|singapore|virginia); requires project"`
@@ -56,7 +56,7 @@ type logFilters struct {
 	StatusCode  []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards and /regex/ supported"`
 	Method      []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards and /regex/ supported"`
 	Path        []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards and /regex/ supported"`
-	Build       []string `json:"build,omitempty" jsonschema:"bex extension, Render's REST build filter — filter build logs by build ID (a service build's ID is its deploy's dep- id)"`
+	Build       []string `json:"build,omitempty" jsonschema:"bex extension, Render's REST build filter — filter build logs by build ID (dep- for service builds, bld- for Build Source builds)"`
 	Text        []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings, * wildcards or /regex/ (RE2); match any nonempty value"`
 	TextMode    string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
 	StartTime   string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive); defaults to 1 hour ago (one hour before endTime when endTime is earlier)"`
@@ -131,7 +131,7 @@ var mcpLogDirections = []string{DirectionBackward, DirectionForward}
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_logs",
-		Description: "List log lines for one or more services, managed Postgres databases, or Key Value stores (Render's `resource` array), filtered by text, time range, and instance; service and Postgres logs also support level; service logs additionally support type, host, statusCode, method, and path. " +
+		Description: "List log lines for one or more services, Build Sources (bds-), managed Postgres databases, or Key Value stores (Render's `resource` array), filtered by text, time range, and instance; service and Postgres logs also support level; service logs additionally support type, host, statusCode, method, and path; build logs support build ID filtering (dep- for services, bld- for Build Sources). " +
 			"Timestamp-sorted and aggregated across instances. Returns Render's paging envelope: hasMore, nextStartTime, nextEndTime, and logs. " +
 			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
 			"Without startTime the last hour is read, as on Render. Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
