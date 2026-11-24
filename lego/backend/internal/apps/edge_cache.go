@@ -32,12 +32,18 @@ import (
 
 // viewCacheProfile is the profile a web service reads back, "no-cache" when
 // unset, as Render's default; other types have none.
-func viewCacheProfile(spec appv1alpha1.AppSpec, svcType string) string {
+func viewCacheProfile(a *appv1alpha1.App, svcType string) string {
 	if svcType != appv1alpha1.TypeWebService {
 		return ""
 	}
+	spec := a.Spec
+	// A service whose instances run Free never caches, so it reads as not
+	// caching — judged on the plan the instances run (App.RunningTier), like
+	// purge and the operator, not on the plan saved for the next deploy
+	// (w6/m609): a saved paid plan starts the cache only with the deploy that
+	// applies it, and a saved Free plan stops it only there.
+	spec.Tier = a.RunningTier()
 	if spec.CacheProfile == "" || freeTier(spec.Tier) {
-		// A free web service never caches, so it reads as not caching.
 		return appv1alpha1.CacheProfileNone
 	}
 	return spec.CacheProfile

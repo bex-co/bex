@@ -1251,7 +1251,7 @@ func view(a *appv1alpha1.App) AppView {
 		Name:                      name,
 		Slug:                      a.Spec.PlatformSubdomain(a.Name),
 		DisplayName:               a.Spec.DisplayName,
-		CacheProfile:              viewCacheProfile(a.Spec, svcType),
+		CacheProfile:              viewCacheProfile(a, svcType),
 		Type:                      svcType,
 		Phase:                     phase,
 		UndeployedChanges:         a.Status.UndeployedChanges,
