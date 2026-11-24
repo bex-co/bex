@@ -45,6 +45,14 @@ const (
 	// thing the launcher maps through.
 	renderDisableAnalytics = "RENDER_CLI_DISABLE_ANALYTICS"
 	doNotTrack             = "DO_NOT_TRACK"
+
+	// Upstream's "Update available" notice (v2.38.0, internal/updatenotice)
+	// compares the pinned Render CLI version against render-oss/cli releases
+	// and tells the reader to install Render's CLI from render.com. Its only
+	// off switch is this variable, which it reads before its state file or the
+	// network, so the launcher always sets it: an explicit 0 would still name
+	// Render's release. bex's own release hint (internal/update) is separate.
+	renderDisableUpdateNotifier = "RENDER_CLI_DISABLE_UPDATE_NOTIFIER"
 )
 
 // Apply installs Bex defaults only when their upstream equivalents are absent.
@@ -109,6 +117,9 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) (map[string]string, e
 		if err := set(renderHost, DefaultHost); err != nil {
 			return nil, fmt.Errorf("set %s: %w", renderHost, err)
 		}
+	}
+	if err := set(renderDisableUpdateNotifier, "1"); err != nil {
+		return nil, fmt.Errorf("set %s: %w", renderDisableUpdateNotifier, err)
 	}
 
 	// Telemetry consent now flows toward bex-api (see the const block): map

@@ -61,7 +61,7 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
 | `BEX_API_KEY` | A bex API key for non-interactive use, as `RENDER_API_KEY` is for Render's CLI: the launcher sends it as the bearer, with no login and no exchange ([CI and automation](#ci-and-automation)). It outranks `BEX_ACCESS_TOKEN` and a stored login. It is not persisted by the bridge, and `bex logout` neither revokes nor unsets it. Works since `bex` v0.8.0; v0.7.0 and older ignore it, and take the key in `BEX_ACCESS_TOKEN` instead. |
 | `BEX_ACCESS_TOKEN` | An already-issued OAuth access token for an unattended invocation, used when `BEX_API_KEY` is unset. An API key works here too, because both variables are sent as the bearer. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
-| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.37.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
+| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.38.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. The imported CLI's own post-command "Update available" notice (Render CLI v2.38.0), which names Render CLI releases, never prints: the launcher always sets `RENDER_CLI_DISABLE_UPDATE_NOTIFIER=1`. |
 | `BEX_CLI_DISABLE_ANALYTICS` | Any non-empty value disables CLI usage telemetry (see below). Telemetry is otherwise on once the one-time notice has been shown: one event per invocation to bex-api, never to Render. |
 
 The launcher sends the active workspace from `bex workspace set` or `BEX_WORKSPACE` to the configured API in `X-Bex-Workspace`. Service names on `/v1/services/{name}/…` resolve only in that workspace, including renamed services, deploys, restart, instances and jobs. A missing name returns 404; it never falls through to another workspace. Without a selection, a name must be unique across visible workspaces or the API returns `409 SERVICE_NAME_AMBIGUOUS` with the candidate IDs. Service IDs remain global addresses and authorize against the resource's workspace. This header is a bex extension; Render's corresponding paths accept IDs.
@@ -526,7 +526,7 @@ grep -rnE '"[^"]*\brender [a-z]' "$MOD" --include='*.go' \
   | grep -v '_test.go' | grep -vE 'Example|Short:|Long:|Use:|Deprecated:'
 ```
 
-At the current pin (**v2.37.0**, `11ef59f330de`) it yields the following.
+At the current pin (**v2.38.0**, `09b7802aa379`) it yields the following.
 
 **Resource-not-found, one per resource type** (returned errors, rewritten). Each ends "run `bex workspace set <name|ID>`":
 
@@ -578,6 +578,8 @@ Tests: `TestNameBexInputsRenamesOnlyFilledVariables` and `TestBrandPreRunOutputN
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
+
+**`sandbox-groups environment` (v2.38.0)**: no new run-time hit. The new commands' `render sandbox-groups environment …` lines are help examples, rewritten by the overlay (`TestBexNestedHelp`); their refusals ("no environment found with name …", "multiple environments found with name … please use the environment ID instead") name no command. The two version-check strings changed: `cmd/root.go` now prints `render v…` through a stream (the root `--version` path, which the launcher owns), and the login banner's `render v… is available` is gone. The new post-command release notice (`internal/updatenotice`) is turned off whole, not branded (see `BEX_NO_UPDATE_NOTIFIER` above).
 
 **`sandbox-groups images` (v2.37.0)**: the two new hits, both in `cmd/sandboximageslist.go`, are help text, rewritten by the overlay (`TestBexNestedHelp`). `images delete` prints "Re-run with --confirm to proceed", which names no command. The interactive `sandboxes list` screen shows the workspace name and "Sandboxes" and no product name.
 

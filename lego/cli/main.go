@@ -113,9 +113,9 @@ func main() {
 	}
 
 	// `bex login` gets the explicit check, the way upstream's login ended with
-	// its own release banner — which the bridge suppresses because it
-	// advertised render-oss/cli releases. Every other command keeps the
-	// passive, TTY-only notice.
+	// its own release banner up to v2.37.0, which advertised render-oss/cli
+	// releases. Every other command keeps the passive, TTY-only notice, in
+	// place of upstream's post-command notice, which the bridge turns off.
 	login := loginCommand(os.Args[1:])
 	ttyGate := stderrIsTTY
 	if login != nil {

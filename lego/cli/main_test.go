@@ -1145,6 +1145,11 @@ func TestBexNestedHelp(t *testing.T) {
 		{"sandbox-groups images list", []string{"--name <NAME>", "--status <STATUS>", "\"bex sandboxes create --image NAME\"", "\"bex sandbox-groups images get IMAGE_ID\""}, []string{"render ", "Render"}},
 		{"sandbox-groups images delete", []string{"bex sandbox-groups images delete sbb-abc123 --confirm", "Without --confirm, this command previews"}, []string{"render ", "Render"}},
 		{"sandboxes list", []string{"bex sandboxes list -o text", "interactive list"}, []string{"render ", "Render"}},
+		// v2.38.0 (w22/m604): a group's project environment.
+		{"sandbox-groups", []string{"bex sandbox-groups environment set sbg-abc123 production", "bex sandbox-groups environment remove sbg-abc123"}, []string{"render "}},
+		{"sandbox-groups environment set", []string{"bex sandbox-groups environment set sbg-abc123 production", "an ID or a name in the active workspace"}, []string{"render ", "Render"}},
+		{"sandbox-groups environment remove", []string{"bex sandbox-groups environment remove sbg-abc123 -o json"}, []string{"render ", "Render"}},
+		{"sandbox-groups create", []string{"--environment <ENVIRONMENT>", "bex sandbox-groups create --name agents --environment production", "\"bex sandboxes create\""}, []string{"render ", "Render"}},
 		// v2.35.0 `ea blueprints`: bex's state dir and config-dir input.
 		{"ea blueprints create", []string{"~/.bex/state/manual-env-vars/", "BEX_CLI_CONFIG_DIR", "Bex reads the pushed repository", "render.yaml"}, []string{"~/.render", "RENDER_CLI_CONFIG_DIR", "Render ", "render "}},
 		{"ea blueprints plan", []string{"~/.bex/state/manual-env-vars/", "BEX_CLI_CONFIG_DIR", "\"bex ea blueprints approve\""}, []string{"~/.render", "RENDER_CLI_CONFIG_DIR", "Render ", "render "}},

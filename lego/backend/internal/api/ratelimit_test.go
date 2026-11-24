@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -162,6 +163,12 @@ func TestRateLimiterRESTShape(t *testing.T) {
 	}
 	if body["id"] != "rate_limited" {
 		t.Errorf("REST 429 body.id: want rate_limited, got %v", body["id"])
+	}
+	// The Render CLI prints a 429's message since v2.38.0 ("too many requests:
+	// <message>") and its reader sees no header, so the message says when to
+	// retry, the seconds Retry-After carries (w22/m604).
+	if retry, _ := strconv.Atoi(w.Header().Get("Retry-After")); body["message"] != core.RateLimitExceededMessage(retry) || retry < 1 {
+		t.Errorf("REST 429 body.message = %v with Retry-After %q, want the wait in the message", body["message"], w.Header().Get("Retry-After"))
 	}
 }
 

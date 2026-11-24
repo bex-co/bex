@@ -304,3 +304,17 @@ func drain(bucket *rate.Limiter, now time.Time) int {
 	}
 	return n
 }
+
+// The Render CLI prints a 429's message (v2.38.0), so it names the wait in
+// words a reader can act on, singular for one second (w22/m604).
+func TestRateLimitExceededMessageNamesTheWait(t *testing.T) {
+	for seconds, want := range map[int]string{
+		1:  "rate limit exceeded; retry in 1 second",
+		2:  "rate limit exceeded; retry in 2 seconds",
+		60: "rate limit exceeded; retry in 60 seconds",
+	} {
+		if got := RateLimitExceededMessage(seconds); got != want {
+			t.Errorf("RateLimitExceededMessage(%d) = %q, want %q", seconds, got, want)
+		}
+	}
+}

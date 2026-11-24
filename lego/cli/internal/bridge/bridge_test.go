@@ -24,6 +24,25 @@ func TestApplyUsesBexDefaults(t *testing.T) {
 	}
 }
 
+// Upstream's release notice names Render's CLI, so it is off whatever the
+// caller set: unset, blank, or an explicit 0 (TestUpstreamUpdateNoticeNeverPrints
+// drives the binary).
+func TestApplyAlwaysTurnsUpstreamsUpdateNoticeOff(t *testing.T) {
+	const unset = "<unset>"
+	for _, preset := range []string{unset, "", "0", "false"} {
+		env := map[string]string{}
+		if preset != unset {
+			env[renderDisableUpdateNotifier] = preset
+		}
+		if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if got := env[renderDisableUpdateNotifier]; got != "1" {
+			t.Errorf("with %s preset to %q, apply left it %q, want 1", renderDisableUpdateNotifier, preset, got)
+		}
+	}
+}
+
 func TestApplyMapsBexOverrides(t *testing.T) {
 	env := map[string]string{
 		bexConfigPath: "/tmp/bex.yaml",

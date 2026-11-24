@@ -706,7 +706,7 @@ A caller that exceeds a budget receives:
 
 - **HTTP 429 Too Many Requests**
 - `Retry-After: <seconds>` header — the whole-seconds delay until the next token is available
-- Body: `{"id": "rate_limited", "message": "rate limit exceeded; see Retry-After header"}`
+- Body: `{"id": "rate_limited", "message": "rate limit exceeded; retry in <seconds> seconds"}`, the seconds `Retry-After` carries: the Render CLI prints a 429's message since v2.38.0 (`too many requests: rate limit exceeded; retry in 3 seconds`), and its reader sees no header (w22/m604). A GraphQL field's or MCP tool's own budget words its refusal the same way.
 - `RateLimit-Limit`, `RateLimit-Remaining` (`0`) and `RateLimit-Reset`, which every admitted response carries too, so a client can pace itself (w8/147). On bex's token buckets, Limit is the burst, Remaining is the whole tokens left, and Reset is the seconds until the bucket is full. The tighter of the caller and workspace buckets is reported.
 
 Every other request spends bex's general budget, `BEX_RATE_LIMIT` (500 a minute, a figure of bex's own): a per-caller token-bucket at the shared mux, keyed on the authenticated Identity (OAuth2 `client_id` / Kratos session id), falling back to remote IP for unauthenticated paths, beside one bucket per workspace. The 429 is the same for both:

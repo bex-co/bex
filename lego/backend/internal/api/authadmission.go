@@ -329,6 +329,6 @@ func writeAuthOverloaded(w http.ResponseWriter, r *http.Request) {
 	}
 	core.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
 		"id":      "auth_overloaded",
-		"message": "authentication upstream overloaded; see Retry-After header",
+		"message": "authentication upstream overloaded; retry shortly",
 	})
 }

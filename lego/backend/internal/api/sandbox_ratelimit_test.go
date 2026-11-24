@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -178,7 +179,8 @@ func rateSandbox(t *testing.T, h http.Handler, token string) string {
 
 // The definition of done's first line: one user, two API keys, the 101st
 // create inside a minute is 429 and the first 100 succeed; another user has
-// their own 100. The 429 is the general limiter's, byte for byte.
+// their own 100. The 429 is the general limiter's, but for the wait its
+// message names.
 func TestSandboxCreateIsRefusedAtThe101stAcrossOneUsersAPIKeys(t *testing.T) {
 	_, h, created := rateLimitedSandboxServer(t, 500)
 	if n := send(t, h, 60, http.MethodPost, "/v1/sandboxes", "token-a", rateCreateBody, http.StatusCreated); n != 0 {
@@ -189,8 +191,10 @@ func TestSandboxCreateIsRefusedAtThe101stAcrossOneUsersAPIKeys(t *testing.T) {
 	}
 	refused := do(t, h, http.MethodPost, "/v1/sandboxes", "token-b", rateCreateBody)
 	general := generalRefusal(t)
-	if refused.Code != http.StatusTooManyRequests || refused.Body.String() != general.Body.String() {
-		t.Fatalf("101st create = %d %s, want the general limiter's 429 %s", refused.Code, refused.Body.String(), general.Body.String())
+	retry, _ := strconv.Atoi(refused.Header().Get("Retry-After"))
+	want := strings.Replace(general.Body.String(), core.RateLimitExceededMessage(60), core.RateLimitExceededMessage(retry), 1)
+	if refused.Code != http.StatusTooManyRequests || refused.Body.String() != want {
+		t.Fatalf("101st create = %d %s, want the general limiter's 429 %s", refused.Code, refused.Body.String(), want)
 	}
 	if got := refused.Header().Get("Content-Type"); got != general.Header().Get("Content-Type") {
 		t.Fatalf("Content-Type = %q, want %q", got, general.Header().Get("Content-Type"))

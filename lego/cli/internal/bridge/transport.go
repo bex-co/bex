@@ -85,19 +85,22 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 	return t.base.RoundTrip(clone)
 }
 
-// upstreamLatestRelease is the URL the imported CLI's version client polls
-// (render-oss/cli pkg/client/version: cfg.RepoURL + "/releases/latest").
+// upstreamLatestRelease is the URL the imported CLI's release lookups poll
+// (cfg.RepoURL + "/releases/latest": pkg/client/version, and since v2.38.0
+// internal/updatenotice, both through http.DefaultTransport).
 var upstreamLatestRelease = func() *url.URL {
 	parsed, _ := url.Parse(strings.TrimSuffix(cfg.RepoURL, "/") + "/releases/latest")
 	return parsed
 }()
 
 // isUpstreamReleaseCheck reports whether u is the imported CLI's own release
-// check. After `bex login` upstream compares the pinned Render CLI version
-// against render-oss/cli releases and, whenever upstream has moved on, tells a
-// bex user to install Render's CLI from render.com. Bex's own release channel
-// (internal/update) already owns update hints, so that check is answered
-// locally instead of reaching GitHub.
+// check. Upstream compares the pinned Render CLI version against render-oss/cli
+// releases and, whenever upstream has moved on, tells a bex user to install
+// Render's CLI from render.com: after `bex login` up to v2.37.0, and after any
+// command since v2.38.0 (its "Update available" notice, which Apply also turns
+// off at its own switch, because a cached answer needs no request). Bex's own
+// release channel (internal/update) already owns update hints, so that check is
+// answered locally instead of reaching GitHub.
 func isUpstreamReleaseCheck(u *url.URL) bool {
 	return upstreamLatestRelease != nil &&
 		strings.EqualFold(u.Host, upstreamLatestRelease.Host) &&

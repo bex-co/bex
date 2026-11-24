@@ -220,9 +220,10 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestUpstreamReleaseCheckNeverAdvertisesRenderCLI(t *testing.T) {
-	// `bex login` ends with upstream's version check, which would otherwise
-	// print "render vX is available … render.com/docs/cli" whenever Render
-	// ships a release newer than the pin.
+	// Upstream's release lookups (pkg/client/version, and the v2.38.0
+	// post-command notice's) would otherwise tell a bex user "render vX is
+	// available … render.com/docs/cli" whenever Render ships a release newer
+	// than the pin.
 	// Release builds inject the pinned upstream version; "dev" skips the check.
 	originalVersion := cfg.Version
 	cfg.Version = "2.29.0"

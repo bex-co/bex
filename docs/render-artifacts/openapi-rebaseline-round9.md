@@ -6,7 +6,7 @@ Re-baseline of Render's live public API (`https://api-docs.render.com/openapi/re
 
 - **OpenAPI digest:** `d075b0cbc6fece3751223af91a497bd6a689ec95385e9117996bbda6928072ce` (485,803 bytes)
 - **Guard counts:** 166 paths, 170 schemas, 265 operations (+1 added, 0 removed), 74 request bodies (+1 extension)
-- **CLI pin:** `render-oss/cli` v2.38.0 (2026-11-20 UTC) is newer than bex's v2.37.0 pin; owned by `w22/m604` (promoted from `w22/026`).
+- **CLI pin:** `render-oss/cli` v2.38.0 (2026-11-20 UTC) is newer than bex's v2.37.0 pin; owned by `w22/m604` (promoted from `w22/026`), which moved the pin to v2.38.0 on 2026-11-24.
 
 ## Operation and schema dispositions
 

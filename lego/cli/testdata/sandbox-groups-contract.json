@@ -102,5 +102,274 @@
       "code": "sandbox_group_limit_reached",
       "id": "bad_request"
     }
+  },
+  "environment": {
+    "_comment": "The v2.38.0 client's sandbox-group environment commands (w22/m604 t004): `sandbox-groups create --environment`, `sandbox-groups environment set <group> <environment id or name>` and `sandbox-groups environment remove <group>`. `commands` is each command line, where the group is before and after it, and the requests the pinned client sends in order with the status bex-api answers; `owner`, `project` and `environments` are the objects it reads while resolving the environment in the active workspace (an evm- id reads the environment and its project; a name lists the workspace's projects, then their environments by that name). sandbox_group_environment_contract_test.go runs the pinned commands against these answers and fails when a request differs; lego/backend/internal/sandbox/group_environment_cli_contract_test.go replays every request against bex-api and fails when a status or an object's shape differs. The SDKs' requests for the same moves are in lego/backend/internal/sandbox/testdata/group-environment-contract.json (w22/m603).",
+    "group": "sbg-cph1rs3idesc73a2b2mg",
+    "owner": {
+      "id": "tea-cph1rs3idesc73a2b2mg",
+      "name": "Bex",
+      "email": "bex@example.test",
+      "type": "team"
+    },
+    "project": {
+      "id": "prj-cph1rs3idesc73a2b2mg",
+      "name": "agents",
+      "owner": {
+        "id": "tea-cph1rs3idesc73a2b2mg",
+        "name": "Bex",
+        "email": "bex@example.test",
+        "type": "team"
+      },
+      "environmentIds": [
+        "evm-cph1rs3idesc73a2b2mg",
+        "evm-cph1rs3idesc73a2b2n0"
+      ],
+      "createdAt": "2026-11-10T12:00:00Z",
+      "updatedAt": "2026-11-10T12:00:00Z"
+    },
+    "environments": [
+      {
+        "id": "evm-cph1rs3idesc73a2b2mg",
+        "projectId": "prj-cph1rs3idesc73a2b2mg",
+        "name": "staging",
+        "serviceIds": [],
+        "databaseIds": [],
+        "keyValueIds": [],
+        "databasesIds": [],
+        "redisIds": [],
+        "envGroupIds": [],
+        "protectedStatus": "unprotected",
+        "networkIsolationEnabled": false,
+        "ipAllowList": [
+          { "cidrBlock": "0.0.0.0/0", "description": "Allow all (default)" },
+          { "cidrBlock": "::/0", "description": "Allow all (default)" }
+        ]
+      },
+      {
+        "id": "evm-cph1rs3idesc73a2b2n0",
+        "projectId": "prj-cph1rs3idesc73a2b2mg",
+        "name": "production",
+        "serviceIds": [],
+        "databaseIds": [],
+        "keyValueIds": [],
+        "databasesIds": [],
+        "redisIds": [],
+        "envGroupIds": [],
+        "protectedStatus": "unprotected",
+        "networkIsolationEnabled": false,
+        "ipAllowList": [
+          { "cidrBlock": "0.0.0.0/0", "description": "Allow all (default)" },
+          { "cidrBlock": "::/0", "description": "Allow all (default)" }
+        ]
+      }
+    ],
+    "commands": {
+      "createIn": {
+        "args": [
+          "sandbox-groups",
+          "create",
+          "--name",
+          "agents",
+          "--environment",
+          "staging"
+        ],
+        "before": null,
+        "after": "evm-cph1rs3idesc73a2b2mg",
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/owners/tea-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/projects",
+            "query": "ownerId=tea-cph1rs3idesc73a2b2mg&limit=100",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/environments",
+            "query": "name=staging&projectId=prj-cph1rs3idesc73a2b2mg&limit=100",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/v1/sandbox-groups",
+            "body": {
+              "environmentId": "evm-cph1rs3idesc73a2b2mg",
+              "name": "agents",
+              "ownerId": "tea-cph1rs3idesc73a2b2mg"
+            },
+            "status": 201
+          }
+        ]
+      },
+      "setByID": {
+        "args": [
+          "sandbox-groups",
+          "environment",
+          "set",
+          "sbg-cph1rs3idesc73a2b2mg",
+          "evm-cph1rs3idesc73a2b2mg"
+        ],
+        "before": null,
+        "after": "evm-cph1rs3idesc73a2b2mg",
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/owners/tea-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/environments/evm-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/projects/prj-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/v1/environments/evm-cph1rs3idesc73a2b2mg/resources",
+            "body": { "resourceIds": ["sbg-cph1rs3idesc73a2b2mg"] },
+            "status": 201
+          },
+          {
+            "method": "GET",
+            "path": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg",
+            "status": 200
+          }
+        ]
+      },
+      "setByName": {
+        "args": [
+          "sandbox-groups",
+          "environment",
+          "set",
+          "sbg-cph1rs3idesc73a2b2mg",
+          "production"
+        ],
+        "before": null,
+        "after": "evm-cph1rs3idesc73a2b2n0",
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/owners/tea-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/projects",
+            "query": "ownerId=tea-cph1rs3idesc73a2b2mg&limit=100",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/environments",
+            "query": "name=production&projectId=prj-cph1rs3idesc73a2b2mg&limit=100",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/v1/environments/evm-cph1rs3idesc73a2b2n0/resources",
+            "body": { "resourceIds": ["sbg-cph1rs3idesc73a2b2mg"] },
+            "status": 201
+          },
+          {
+            "method": "GET",
+            "path": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg",
+            "status": 200
+          }
+        ]
+      },
+      "move": {
+        "args": [
+          "sandbox-groups",
+          "environment",
+          "set",
+          "sbg-cph1rs3idesc73a2b2mg",
+          "evm-cph1rs3idesc73a2b2n0"
+        ],
+        "before": "evm-cph1rs3idesc73a2b2mg",
+        "after": "evm-cph1rs3idesc73a2b2n0",
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/owners/tea-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/environments/evm-cph1rs3idesc73a2b2n0",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/projects/prj-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/v1/environments/evm-cph1rs3idesc73a2b2n0/resources",
+            "body": { "resourceIds": ["sbg-cph1rs3idesc73a2b2mg"] },
+            "status": 201
+          },
+          {
+            "method": "GET",
+            "path": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg",
+            "status": 200
+          }
+        ]
+      },
+      "remove": {
+        "args": [
+          "sandbox-groups",
+          "environment",
+          "remove",
+          "sbg-cph1rs3idesc73a2b2mg"
+        ],
+        "before": "evm-cph1rs3idesc73a2b2n0",
+        "after": null,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg",
+            "status": 200
+          },
+          {
+            "method": "DELETE",
+            "path": "/v1/environments/evm-cph1rs3idesc73a2b2n0/resources",
+            "query": "resourceIds=sbg-cph1rs3idesc73a2b2mg",
+            "status": 204
+          },
+          {
+            "method": "GET",
+            "path": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg",
+            "status": 200
+          }
+        ]
+      },
+      "removeWhenInNone": {
+        "args": [
+          "sandbox-groups",
+          "environment",
+          "remove",
+          "sbg-cph1rs3idesc73a2b2mg"
+        ],
+        "before": null,
+        "after": null,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/sandbox-groups/sbg-cph1rs3idesc73a2b2mg",
+            "status": 200
+          }
+        ]
+      }
+    }
   }
 }

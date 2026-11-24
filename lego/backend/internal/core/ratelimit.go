@@ -476,8 +476,19 @@ func ChargeRateLimit(ctx context.Context, h http.Header, now time.Time, code str
 		return states, nil
 	}
 	seconds := SetRateLimitRefusal(h, wait, states...)
-	return nil, NewTooManyRequestsError(code, fmt.Sprintf("rate limit exceeded; retry in %d seconds", seconds),
+	return nil, NewTooManyRequestsError(code, RateLimitExceededMessage(seconds),
 		map[string]any{"retryAfterSeconds": seconds})
+}
+
+// RateLimitExceededMessage is a rate-limit refusal's message on every surface:
+// "rate limit exceeded; retry in 3 seconds". It names the wait, the seconds
+// Retry-After carries, because a reader of the message may see no header: the
+// Render CLI prints a 429's message since v2.38.0 (w22/m604).
+func RateLimitExceededMessage(retryAfterSeconds int) string {
+	if retryAfterSeconds == 1 {
+		return "rate limit exceeded; retry in 1 second"
+	}
+	return fmt.Sprintf("rate limit exceeded; retry in %d seconds", retryAfterSeconds)
 }
 
 // SetRateLimitRefusal writes a refused request's Retry-After (whole seconds,

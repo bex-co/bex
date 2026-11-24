@@ -405,7 +405,7 @@ func TestAuthOverloadedIsDistinguishableFromRateLimited(t *testing.T) {
 
 	rateW := httptest.NewRecorder()
 	rateW.Header().Set("Retry-After", "2")
-	writeTooManyRequests(rateW, gql)
+	writeTooManyRequests(rateW, gql, 2)
 	if rateW.Code != http.StatusTooManyRequests {
 		t.Fatalf("rate GraphQL status = %d, want 429", rateW.Code)
 	}
@@ -421,8 +421,13 @@ func TestAuthOverloadedIsDistinguishableFromRateLimited(t *testing.T) {
 	if !strings.Contains(authREST.Body.String(), `"auth_overloaded"`) {
 		t.Errorf("auth REST body missing auth_overloaded: %s", authREST.Body.String())
 	}
+	// The Render CLI prints this message after "too many requests: " (v2.38.0),
+	// so it names no header its reader cannot see (w22/m604).
+	if !strings.Contains(authREST.Body.String(), `"authentication upstream overloaded; retry shortly"`) {
+		t.Errorf("auth REST body message: %s", authREST.Body.String())
+	}
 	rateREST := httptest.NewRecorder()
-	writeTooManyRequests(rateREST, rest)
+	writeTooManyRequests(rateREST, rest, 2)
 	if !strings.Contains(rateREST.Body.String(), `"rate_limited"`) {
 		t.Errorf("rate REST body missing rate_limited: %s", rateREST.Body.String())
 	}

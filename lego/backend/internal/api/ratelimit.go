@@ -174,8 +174,7 @@ func (rl *RateLimiter) reserve(w http.ResponseWriter, r *http.Request, n int, bu
 	now := rl.clock()
 	states, wait, usedStore := core.TakeRateLimitBuckets(r.Context(), now, n, buckets...)
 	if wait > 0 {
-		core.SetRateLimitRefusal(w.Header(), wait, states...)
-		writeTooManyRequests(w, r)
+		writeTooManyRequests(w, r, core.SetRateLimitRefusal(w.Header(), wait, states...))
 		return false, usedStore
 	}
 	core.SetRateLimitHeaders(w.Header(), false, states...)
@@ -208,8 +207,7 @@ func (rl *RateLimiter) RefusedCredentialMiddleware(next http.Handler) http.Handl
 			if state.RPS > 0 {
 				wait = time.Duration((1 - state.Tokens) / state.RPS * float64(time.Second))
 			}
-			core.SetRateLimitRefusal(w.Header(), wait, state)
-			writeTooManyRequests(w, r)
+			writeTooManyRequests(w, r, core.SetRateLimitRefusal(w.Header(), wait, state))
 			return
 		}
 		sw := &statusWriter{ResponseWriter: w}
@@ -249,8 +247,11 @@ func (rl *RateLimiter) callerKey(r *http.Request) string {
 
 // writeTooManyRequests writes a Render-shaped 429 for the request's surface:
 // a GraphQL error envelope for POST /graphql, the standard Render error body
-// (REST + MCP both speak plain JSON 429).
-func writeTooManyRequests(w http.ResponseWriter, r *http.Request) {
+// (REST + MCP both speak plain JSON 429). The REST message says when to retry,
+// as a GraphQL field's or MCP tool's own budget does (core.ChargeRateLimit):
+// since v2.38.0 the Render CLI prints a 429's message ("too many requests:
+// <message>"), and its reader sees no Retry-After header (w22/m604).
+func writeTooManyRequests(w http.ResponseWriter, r *http.Request, retryAfterSeconds int) {
 	if r.URL.Path == "/graphql" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -265,7 +266,7 @@ func writeTooManyRequests(w http.ResponseWriter, r *http.Request) {
 	}
 	core.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
 		"id":      "rate_limited",
-		"message": "rate limit exceeded; see Retry-After header",
+		"message": core.RateLimitExceededMessage(retryAfterSeconds),
 	})
 }
 
