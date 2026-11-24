@@ -933,17 +933,8 @@ func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.Mai
 	return &appv1alpha1.MaintenanceModeSpec{Enabled: enabled, URI: uri}, nil
 }
 
-// validateMaintenanceEligibility gates ENABLING maintenance mode, not carrying
-// the field. A disabled maintenance mode is a no-op on any plan and any service
-// type, and it is exactly what every read emits — Render's schema requires
-// maintenanceMode on webServiceDetails, so it is never omitted (w4/125,
-// render.go). Gating on presence therefore made the read shape un-echoable:
-// `services create --from <free web service>` sent back the inert
-// `{enabled:false, uri:""}` bex had just published and was refused with
-// "maintenanceMode requires a paid web service plan", so no free web service
-// could be cloned (w9/068). Enabling it still requires a paid web service.
-// imageBackedBranch reports the branch a service actually builds from: none
-// when it runs a prebuilt image, since a branch without a repo names nothing.
+// imageBackedAutoDeploy reports whether git-push auto-deploy is active for
+// spec: false for a prebuilt image, which has no repository to watch.
 func imageBackedAutoDeploy(spec appv1alpha1.AppSpec) bool {
 	return spec.AutoDeploy && !prebuiltImageSource(spec)
 }
@@ -971,8 +962,17 @@ func viewRootDir(spec appv1alpha1.AppSpec) string {
 	return spec.RootDir
 }
 
+// validateMaintenanceEligibility gates activating maintenance mode or setting a
+// custom maintenance page URI, not carrying the inert default value. Only
+// `{enabled: false, uri: ""}` (trimmed) is a no-op on any plan and service
+// type — Render's schema requires maintenanceMode on webServiceDetails
+// (w4/125, render.go), so `services create --from <free web service>` echoes
+// `{enabled: false, uri: ""}` back on create (w9/068), and a downgraded free
+// web service uses the same empty shape to clear a legacy URI. Any write that
+// enables maintenance mode or sets a non-empty URI requires a paid web service
+// (w32/112).
 func validateMaintenanceEligibility(serviceType, tier string, mode *MaintenanceModeView) error {
-	if mode == nil || !mode.Enabled {
+	if mode == nil || (!mode.Enabled && strings.TrimSpace(mode.URI) == "") {
 		return nil
 	}
 	if serviceType != appv1alpha1.TypeWebService {

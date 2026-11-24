@@ -4082,8 +4082,14 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 		}
 	}
 	if final.Spec.MaintenanceMode != nil {
-		if err := s.validateMaintenanceMode(ctx, final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
-			return AppView{}, err
+		nextMode := maintenanceModeView(final.Spec.MaintenanceMode)
+		preservedLegacyFree := !nextMode.Enabled &&
+			(final.Spec.Tier == "" || final.Spec.Tier == "free") &&
+			maintenanceModeView(existing.Spec.MaintenanceMode) == nextMode
+		if !preservedLegacyFree {
+			if err := s.validateMaintenanceMode(ctx, final, nextMode); err != nil {
+				return AppView{}, err
+			}
 		}
 	}
 	assignment, environmentChanged, err := s.stackEnvironmentChange(ctx, req, existing)

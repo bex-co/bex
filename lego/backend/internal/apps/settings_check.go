@@ -593,12 +593,12 @@ func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string
 // toggles nothing.
 func (s *Service) checkMaintenanceMode(ctx context.Context, a *appv1alpha1.App, in MaintenanceModeView) (MaintenanceModeView, error) {
 	in.URI = strings.TrimSpace(in.URI)
-	if err := s.validateMaintenanceMode(ctx, a, in); err != nil {
-		return MaintenanceModeView{}, err
-	}
 	current := maintenanceModeView(a.Spec.MaintenanceMode)
 	if current == in {
 		return in, nil
+	}
+	if err := s.validateMaintenanceMode(ctx, a, in); err != nil {
+		return MaintenanceModeView{}, err
 	}
 	if in.Enabled != current.Enabled {
 		if err := s.requireUnprotected(ctx, a, core.VerbToggleMaintenanceMode); err != nil {

@@ -363,22 +363,36 @@ func TestEnablingMaintenanceModeOnFreePlanStillRefused(t *testing.T) {
 
 	if err := validateMaintenanceEligibility(appv1alpha1.TypeWebService, "free",
 		&MaintenanceModeView{Enabled: false}); err != nil {
-		t.Errorf("disabled maintenanceMode on free = %v, want accepted", err)
+		t.Errorf("disabled empty maintenanceMode on free = %v, want accepted", err)
+	}
+	if err := validateMaintenanceEligibility(appv1alpha1.TypeWebService, "free",
+		&MaintenanceModeView{Enabled: false, URI: "   "}); err != nil {
+		t.Errorf("disabled whitespace maintenanceMode on free = %v, want accepted", err)
 	}
 	err := validateMaintenanceEligibility(appv1alpha1.TypeWebService, "free",
 		&MaintenanceModeView{Enabled: true})
 	if err == nil || !strings.Contains(err.Error(), "paid web service plan") {
 		t.Errorf("enabling maintenanceMode on free = %v, want the paid-plan refusal", err)
 	}
-	// The sibling branch has the same shape: a disabled mode on a non-web type
-	// is inert (GraphQL returns it for every type, w4/125), enabling is not.
+	err = validateMaintenanceEligibility(appv1alpha1.TypeWebService, "free",
+		&MaintenanceModeView{Enabled: false, URI: "https://example.com/maint"})
+	if err == nil || !strings.Contains(err.Error(), "paid web service plan") {
+		t.Errorf("setting maintenanceMode.uri on free = %v, want the paid-plan refusal", err)
+	}
+	// The sibling branch has the same shape: an empty disabled mode on a
+	// non-web type is inert (GraphQL returns it for every type, w4/125),
+	// whereas enabling or setting a custom URI is paid web-service only.
 	if err := validateMaintenanceEligibility(appv1alpha1.TypeCronJob, "starter",
 		&MaintenanceModeView{Enabled: false}); err != nil {
-		t.Errorf("disabled maintenanceMode on a cron = %v, want accepted", err)
+		t.Errorf("disabled empty maintenanceMode on a cron = %v, want accepted", err)
 	}
 	if err := validateMaintenanceEligibility(appv1alpha1.TypeCronJob, "starter",
-		&MaintenanceModeView{Enabled: true}); err == nil {
-		t.Error("enabling maintenanceMode on a cron was accepted")
+		&MaintenanceModeView{Enabled: true}); err == nil || !strings.Contains(err.Error(), "only for web services") {
+		t.Errorf("enabling maintenanceMode on a cron = %v, want web-only refusal", err)
+	}
+	if err := validateMaintenanceEligibility(appv1alpha1.TypeCronJob, "starter",
+		&MaintenanceModeView{Enabled: false, URI: "https://example.com/maint"}); err == nil || !strings.Contains(err.Error(), "only for web services") {
+		t.Errorf("setting maintenanceMode.uri on a cron = %v, want web-only refusal", err)
 	}
 	_ = svc
 }
