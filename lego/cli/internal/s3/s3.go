@@ -135,6 +135,7 @@ func newCommands(d deps) []*cobra.Command {
 			return c.Help()
 		},
 	}
+	usage.MarkHelpOnly(s3)
 	s3.PersistentFlags().StringVar(&g.region, "region", "", "the region requests are signed for, and where mb makes a bucket (default "+defaultRegion+")")
 	s3.AddCommand(
 		lsCommand(d, g), cpCommand(d, g), mvCommand(d, g), rmCommand(d, g), syncCommand(d, g), presignCommand(d, g),

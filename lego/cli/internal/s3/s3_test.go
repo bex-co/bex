@@ -636,3 +636,52 @@ func TestPathElementsCannotClimbOutOfTheirRoute(t *testing.T) {
 		t.Errorf("request path = %v, want the element escaped", got)
 	}
 }
+
+func TestUsesEnvCredentials(t *testing.T) {
+	both := func(k string) (string, bool) {
+		switch k {
+		case accessKeyEnv:
+			return "s3k-12345678901234567890", true
+		case secretKeyEnv:
+			return "secret", true
+		}
+		return "", false
+	}
+	onlyID := func(k string) (string, bool) {
+		if k == accessKeyEnv {
+			return "s3k-12345678901234567890", true
+		}
+		return "", false
+	}
+	none := func(string) (string, bool) { return "", false }
+
+	for _, tc := range []struct {
+		name   string
+		path   string
+		args   []string
+		lookup func(string) (string, bool)
+		want   bool
+	}{
+		{name: "s3 env with both keys", path: "s3 env", lookup: both, want: true},
+		{name: "s3 ls with both keys", path: "s3 ls", lookup: both, want: true},
+		{name: "s3 cp with both keys", path: "s3 cp", lookup: both, want: true},
+		{name: "s3 cors get with both keys", path: "s3 cors get", lookup: both, want: true},
+		{name: "s3 lifecycle set with both keys", path: "s3 lifecycle set", lookup: both, want: true},
+		{name: "s3 info object URI with both keys", path: "s3 info", args: []string{"s3://photos/cat.jpg"}, lookup: both, want: true},
+		{name: "s3 info bare bucket with both keys", path: "s3 info", args: []string{"photos"}, lookup: both, want: false},
+		{name: "s3 info bucket URI without key", path: "s3 info", args: []string{"s3://photos"}, lookup: both, want: false},
+		{name: "s3 info bucket URI with trailing slash only", path: "s3 info", args: []string{"s3://photos/"}, lookup: both, want: false},
+		{name: "s3 info no args", path: "s3 info", lookup: both, want: false},
+		{name: "s3 keys list with both keys", path: "s3 keys list", lookup: both, want: false},
+		{name: "s3 keys create with both keys", path: "s3 keys create", lookup: both, want: false},
+		{name: "s3 keys revoke with both keys", path: "s3 keys revoke", args: []string{"s3k-12345678901234567890"}, lookup: both, want: false},
+		{name: "s3 public with both keys", path: "s3 public", args: []string{"photos", "status"}, lookup: both, want: false},
+		{name: "s3 env with only id", path: "s3 env", lookup: onlyID, want: false},
+		{name: "s3 env with no keys", path: "s3 env", lookup: none, want: false},
+		{name: "non-s3 command", path: "services", lookup: both, want: false},
+	} {
+		if got := UsesEnvCredentials(tc.path, tc.args, tc.lookup); got != tc.want {
+			t.Errorf("%s: UsesEnvCredentials(%q, %v) = %v, want %v", tc.name, tc.path, tc.args, got, tc.want)
+		}
+	}
+}

@@ -70,10 +70,7 @@ func guard(c *cobra.Command) {
 		// Cobra checks the arguments of a runnable command only.
 		if c.Run == nil && c.RunE == nil {
 			c.RunE = func(c *cobra.Command, _ []string) error { return c.Help() }
-			if c.Annotations == nil {
-				c.Annotations = map[string]string{}
-			}
-			c.Annotations[helpOnlyAnnotation] = "true"
+			MarkHelpOnly(c)
 		}
 	}
 	if args := c.Args; args != nil {
@@ -84,8 +81,18 @@ func guard(c *cobra.Command) {
 	}
 }
 
+// MarkHelpOnly marks a group command whose own RunE only prints help, so
+// HelpOnly reports true even when Guard did not install its RunE.
+func MarkHelpOnly(c *cobra.Command) {
+	if c.Annotations == nil {
+		c.Annotations = map[string]string{}
+	}
+	c.Annotations[helpOnlyAnnotation] = "true"
+}
+
 // HelpOnly reports whether c is a group that only prints its help when run,
-// the way a group cobra cannot run does: its run function is Guard's.
+// the way a group cobra cannot run does: its run function is Guard's or marked
+// with MarkHelpOnly.
 func HelpOnly(c *cobra.Command) bool {
 	return c.Annotations[helpOnlyAnnotation] != ""
 }

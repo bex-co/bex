@@ -488,6 +488,7 @@ func withoutRenderEnv(environment []string) []string {
 //     (w4/727). A test that needs a key sets it after this.
 var droppedEnv = append([]string{
 	"BEX_API_KEY", "BEX_ACCESS_TOKEN",
+	"BEX_S3_ACCESS_KEY_ID", "BEX_S3_SECRET_ACCESS_KEY",
 	"CI", "TERM", "COLORTERM", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE",
 }, providerKeyEnvs()...)
 
@@ -1387,12 +1388,13 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	if err := os.WriteFile(blueprint, []byte("services:\n  - type: web\n    name: x\n    runtime: image\n    image:\n      url: nginx\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	run := func(workspace string, args ...string) (int, string) {
+	runWithEnv := func(workspace string, extraEnv []string, args ...string) (int, string) {
 		t.Helper()
 		command := exec.Command(buildBex(), args...)
 		command.Env = append(withoutRenderEnv(updateTestEnv(t.TempDir())),
 			"HOME="+t.TempDir(), "BEX_HOST="+api.URL+"/v1/", "BEX_ACCESS_TOKEN=test-access-token",
 			"BEX_WORKSPACE="+workspace, "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
+		command.Env = append(command.Env, extraEnv...)
 		var stderr bytes.Buffer
 		command.Stderr = &stderr
 		err := command.Run()
@@ -1404,6 +1406,10 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		}
 		return code, stderr.String()
 	}
+	run := func(workspace string, args ...string) (int, string) {
+		t.Helper()
+		return runWithEnv(workspace, nil, args...)
+	}
 	drain := func(recorded *[]string) []string {
 		mu.Lock()
 		defer mu.Unlock()
@@ -1413,7 +1419,24 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	}
 	lookups := func() int { return len(drain(&nameLookups)) }
 
-	for _, workspace := range []string{"stale-ws", "dup-ws"} {
+	openerDir := t.TempDir()
+	for _, tool := range []string{"open", "xdg-open"} {
+		if err := os.WriteFile(filepath.Join(openerDir, tool), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	localFile := filepath.Join(t.TempDir(), "note.txt")
+	if err := os.WriteFile(localFile, []byte("hi\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	claudeDir := stubClaudeOnPath(t)
+	s3KeyEnv := []string{
+		"BEX_S3_ACCESS_KEY_ID=s3k-12345678901234567890",
+		"BEX_S3_SECRET_ACCESS_KEY=test-s3-secret",
+		"BEX_S3_ENDPOINT=http://127.0.0.1:1",
+	}
+
+	for _, workspace := range []string{"stale-ws", "dup-ws", "known"} {
 		for _, args := range [][]string{
 			{"--help"}, {"services", "--help"}, {"--version"},
 			{"workspaces", "-o", "json"}, {"whoami", "-o", "json"},
@@ -1423,7 +1446,11 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 			{"blueprints", "validate", blueprint, "-w" + teamID, "-o", "json"},
 			{"pg"}, {"workspace"},
 			// bex's groups run only to refuse a word (w8/368)
-			{"agent"}, {"agent", "secrets"}, {"s3", "keys"},
+			{"agent"}, {"agent", "secrets"}, {"s3"}, {"s3", "cors"}, {"s3", "lifecycle"}, {"s3", "keys"},
+			// local-only commands added after w8/064 (w32/116)
+			{"skills"}, {"skills", "list", "-o", "json"},
+			{"code"}, {"code", "keys"},
+			{"analytics", "notice"},
 		} {
 			if code, stderr := run(workspace, args...); code != 0 {
 				t.Errorf("BEX_WORKSPACE=%s bex %v exited %d: %s", workspace, args, code, stderr)
@@ -1432,6 +1459,77 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 				t.Errorf("BEX_WORKSPACE=%s bex %v looked the name up %d times; it never reads the active workspace", workspace, args, n)
 			}
 		}
+
+		// Provider launchers from code.Catalog() are purely local.
+		for _, p := range code.Catalog() {
+			env := []string{"PATH=" + claudeDir + string(os.PathListSeparator) + os.Getenv("PATH")}
+			if len(p.KeyEnvs) > 0 {
+				env = append(env, p.KeyEnvs[0]+"=test-provider-key")
+			}
+			if code, stderr := runWithEnv(workspace, env, p.Name, "--version"); code != 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %s --version exited %d: %s", workspace, p.Name, code, stderr)
+			}
+			if n := lookups(); n != 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %s looked the name up %d times; provider launchers never read the active workspace", workspace, p.Name, n)
+			}
+		}
+
+		// `bex docs` opens docs in a browser and never reads the workspace.
+		if code, stderr := runWithEnv(workspace, []string{"PATH=" + openerDir + string(os.PathListSeparator) + os.Getenv("PATH")}, "docs"); code != 0 {
+			t.Errorf("BEX_WORKSPACE=%s bex docs exited %d: %s", workspace, code, stderr)
+		}
+		if n := lookups(); n != 0 {
+			t.Errorf("BEX_WORKSPACE=%s bex docs looked the name up %d times", workspace, n)
+		}
+
+		// Commands that fail for their own non-workspace reasons in non-TTY /
+		// missing-file / missing-arg / unreachable-local-server test runs must
+		// still reach their own handlers with zero /v1/owners?name= lookups.
+		for _, tc := range []struct {
+			args     []string
+			extraEnv []string
+			wantErr  string
+		}{
+			{args: []string{"edit", localFile}, wantErr: "interactive terminal"},
+			{args: []string{localFile}, wantErr: "interactive terminal"},
+			{args: []string{"analytics", "send", filepath.Join(t.TempDir(), "missing-event.json")}, wantErr: ""},
+			{args: []string{"workflows", "init", "-o", "json"}, wantErr: "not supported"},
+			{args: []string{"workflows", "dev"}, wantErr: "requires at least 1 arg"},
+			{args: []string{"workflows", "tasks", "list", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
+			{args: []string{"workflows", "tasks", "runs", "list", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
+			{args: []string{"workflows", "start", "my-task", "--local", "--port", "1", "--input", "[]", "-o", "json"}, wantErr: "127.0.0.1:1"},
+			{args: []string{"workflows", "cancel", "trn-1234", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
+			{args: []string{"workflows", "flows", "list", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
+			{args: []string{"s3", "ls", "-o", "json"}, extraEnv: s3KeyEnv, wantErr: ""},
+			{args: []string{"s3", "info", "s3://photos/cat.jpg", "-o", "json"}, extraEnv: s3KeyEnv, wantErr: ""},
+			{args: []string{"s3", "info", "-o", "json", "s3://photos/cat.jpg"}, extraEnv: s3KeyEnv, wantErr: ""},
+			{args: []string{"s3", "cors", "get", "photos", "-o", "json"}, extraEnv: s3KeyEnv, wantErr: ""},
+		} {
+			code, stderr := runWithEnv(workspace, tc.extraEnv, tc.args...)
+			if code == 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %v unexpectedly exited 0", workspace, tc.args)
+			}
+			if strings.Contains(stderr, "BEX_WORKSPACE") {
+				t.Errorf("BEX_WORKSPACE=%s bex %v failed on workspace resolution: %s", workspace, tc.args, stderr)
+			}
+			if tc.wantErr != "" && !strings.Contains(stderr, tc.wantErr) {
+				t.Errorf("BEX_WORKSPACE=%s bex %v stderr = %q, want substring %q", workspace, tc.args, stderr, tc.wantErr)
+			}
+			if n := lookups(); n != 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %v looked the name up %d times; it never reads the active workspace", workspace, tc.args, n)
+			}
+		}
+
+		// `bex s3 env` with explicit S3 env keys succeeds with zero workspace lookups.
+		if code, stderr := runWithEnv(workspace, s3KeyEnv, "s3", "env", "-o", "json"); code != 0 {
+			t.Errorf("BEX_WORKSPACE=%s bex s3 env (with S3 keys) exited %d: %s", workspace, code, stderr)
+		}
+		if n := lookups(); n != 0 {
+			t.Errorf("BEX_WORKSPACE=%s bex s3 env (with S3 keys) looked the name up %d times", workspace, n)
+		}
+	}
+
+	for _, workspace := range []string{"stale-ws", "dup-ws"} {
 		// A typed-id read tries the name but is not blocked by it.
 		if code, stderr := run(workspace, "pg", "get", "-o", "json", dbID); code != 0 {
 			t.Errorf("BEX_WORKSPACE=%s bex pg get -o json %s exited %d: %s", workspace, dbID, code, stderr)
@@ -1484,16 +1582,75 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		}
 	}
 
-	// Consumers still refuse an unresolvable name rather than guess.
-	if code, stderr := run("stale-ws", "services", "-o", "json"); code != 1 || !strings.Contains(stderr, `no workspace named "stale-ws"`) {
-		t.Errorf("stale services = %d %q, want the unknown-name refusal", code, stderr)
+	// Consumers still refuse an unresolvable name rather than guess, including
+	// commands that superficially resemble exempted ones (`ea objects --local`,
+	// remote `workflows`, `s3` without both env keys, and workspace-scoped `s3`
+	// management commands even when S3 env keys are set).
+	for _, tc := range []struct {
+		args     []string
+		extraEnv []string
+	}{
+		{args: []string{"services", "-o", "json"}},
+		{args: []string{"workspace", "current", "-o", "json"}},
+		{args: []string{"ea", "objects", "list", "--local", "--region", "frankfurt", "-o", "json"}},
+		{args: []string{"workflows", "tasks", "list", "-o", "json"}},
+		{args: []string{"s3", "env", "-o", "json"}},
+		{args: []string{"s3", "env", "-o", "json"}, extraEnv: []string{"BEX_S3_ACCESS_KEY_ID=s3k-only"}},
+		{args: []string{"s3", "keys", "list", "-o", "json"}, extraEnv: s3KeyEnv},
+		{args: []string{"s3", "public", "photos", "status", "-o", "json"}, extraEnv: s3KeyEnv},
+		{args: []string{"s3", "info", "photos", "-o", "json"}, extraEnv: s3KeyEnv},
+		{args: []string{"s3", "info", "s3://photos", "-o", "json"}, extraEnv: s3KeyEnv},
+	} {
+		code, stderr := runWithEnv("stale-ws", tc.extraEnv, tc.args...)
+		if code != 1 || !strings.Contains(stderr, `no workspace named "stale-ws"`) {
+			t.Errorf("stale bex %v = %d %q, want the unknown-name refusal", tc.args, code, stderr)
+		}
+		if n := lookups(); n != 1 {
+			t.Errorf("stale bex %v made %d name lookups, want 1", tc.args, n)
+		}
 	}
 	if code, stderr := run("dup-ws", "services", "-o", "json"); code != 1 || !strings.Contains(stderr, `several workspaces are named "dup-ws"`) {
 		t.Errorf("ambiguous services = %d %q, want the ambiguity refusal", code, stderr)
 	}
+	_ = lookups()
 	if code, stderr := run("known", "services", "-o", "json"); code != 0 {
 		t.Errorf("known services exited %d: %s", code, stderr)
 	}
+	_ = lookups()
+
+	// A detached `bex analytics send` child process spawned by a telemetry-emitting
+	// command must not perform an extra GET /v1/owners?name= lookup even when
+	// BEX_WORKSPACE holds a valid workspace name (w32/116).
+	t.Run("detached analytics send makes zero workspace lookups", func(t *testing.T) {
+		var mu sync.Mutex
+		var telemetryLookups []string
+		stub := &telemetryStub{}
+		baseHandler := stub.handler()
+		telemetryAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/owners" && r.URL.Query().Get("name") != "" {
+				mu.Lock()
+				telemetryLookups = append(telemetryLookups, r.URL.Query().Get("name"))
+				mu.Unlock()
+			}
+			baseHandler.ServeHTTP(w, r)
+		}))
+		t.Cleanup(telemetryAPI.Close)
+
+		home := t.TempDir()
+		seedNoticeMarker(t, home)
+		command := exec.Command(buildBex(), "workspaces", "-o", "json")
+		command.Env = telemetryEnv(t, home, telemetryAPI.URL, "BEX_WORKSPACE=known")
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("bex workspaces: %v\n%s", err, output)
+		}
+		awaitEvents(t, stub, 1)
+		mu.Lock()
+		got := append([]string(nil), telemetryLookups...)
+		mu.Unlock()
+		if len(got) != 0 {
+			t.Errorf("detached analytics send made %d /v1/owners?name= lookups (%v), want 0", len(got), got)
+		}
+	})
 
 	// A name that only starts with the workspace id prefix is still a name:
 	// it used to be sent as ownerId and refused (w32/012).

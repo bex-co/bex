@@ -232,6 +232,41 @@ func (d deps) envKey() (id, secret string, ok bool, err error) {
 	return id, secret, true, nil
 }
 
+// UsesEnvCredentials reports whether the `bex s3` command at path (below the
+// root, e.g. "s3 env" or "s3 info") runs solely on BEX_S3_ACCESS_KEY_ID and
+// BEX_S3_SECRET_ACCESS_KEY without reading the active workspace.
+//
+// `s3 keys`, `s3 public`, and `s3 info <bucket>` (including `s3://<bucket>`
+// without an object key) address bex-api's workspace-scoped routes and still
+// require the active workspace.
+func UsesEnvCredentials(path string, args []string, lookup func(string) (string, bool)) bool {
+	if !strings.HasPrefix(path, "s3 ") {
+		return false
+	}
+	if id, _ := lookup(accessKeyEnv); id == "" {
+		return false
+	}
+	if secret, _ := lookup(secretKeyEnv); secret == "" {
+		return false
+	}
+	switch {
+	case path == "s3 public", path == "s3 keys", strings.HasPrefix(path, "s3 keys "):
+		return false
+	case path == "s3 info":
+		if len(args) == 0 {
+			return false
+		}
+		rest, ok := strings.CutPrefix(args[0], urlScheme)
+		if !ok {
+			return false
+		}
+		_, key, _ := strings.Cut(rest, "/")
+		return key != ""
+	default:
+		return true
+	}
+}
+
 // session resolves the endpoint and a key: the persistent key of the
 // environment when it names one, else the cached ephemeral key of the active
 // workspace while it has more than an hour left, else a fresh one minted for

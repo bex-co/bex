@@ -170,6 +170,7 @@ func corsCommand(d deps, g *globals) *cobra.Command {
 		Args:         usage.SubcommandArgs,
 		RunE:         func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
+	usage.MarkHelpOnly(cors)
 	cors.AddCommand(corsGet(d, g), configSet(d, g, corsRules), configDelete(d, g, corsRules))
 	return cors
 }
@@ -193,6 +194,7 @@ func lifecycleCommand(d deps, g *globals) *cobra.Command {
 		Args:         usage.SubcommandArgs,
 		RunE:         func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
+	usage.MarkHelpOnly(lifecycle)
 	lifecycle.AddCommand(lifecycleGet(d, g), configSet(d, g, lifecycleRules), configDelete(d, g, lifecycleRules))
 	return lifecycle
 }

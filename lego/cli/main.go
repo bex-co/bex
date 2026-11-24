@@ -286,10 +286,28 @@ func stderrIsTTY() bool {
 
 // workspaceIndependent are the command paths (below the root) that never read
 // the active workspace: inventory, identity, an explicit selection, auth,
-// shell completion and Bex's own self-update.
-var workspaceIndependent = []string{
+// shell completion, Bex's own self-update, local tooling (`skills`, `code`
+// and its provider launchers, `edit`, `docs`, `analytics notice`/`send`),
+// and local-only workflow scaffolding/dev server (`workflows init`, `workflows dev`).
+var workspaceIndependent = append([]string{
 	"workspaces", "workspace set", "whoami", "login", "logout", "help",
 	"completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd, "upgrade",
+	"skills", "code", "edit", "docs", "analytics notice", "analytics send",
+	"workflows init", "workflows dev",
+}, codeProviderNames()...)
+
+func codeProviderNames() []string {
+	catalog := code.Catalog()
+	names := make([]string, 0, len(catalog))
+	for _, p := range catalog {
+		names = append(names, p.Name)
+	}
+	return names
+}
+
+func boolFlagTrue(c *cobra.Command, name string) bool {
+	flag := c.Flags().Lookup(name)
+	return flag != nil && flag.Value.String() == "true"
 }
 
 // typedResourceID matches Render's typed ids (srv-…, dpg-…, red-…); it mirrors
@@ -313,10 +331,11 @@ func opensDashboard(root *cobra.Command, args []string) bool {
 }
 
 // workspaceUse classifies the invoked command for ResolveWorkspaceName (w8/064).
-// A group command that only prints help, a nonempty --workspace/-w selection
-// and the commands above need no active workspace; a command whose first
-// positional is a typed resource id reads that id directly. Everything else
-// consumes it.
+// A group command that only prints help, a nonempty --workspace/-w selection,
+// the workspace-independent commands above, `workflows … --local` targeting the
+// local dev server, and `s3` S3-protocol commands with explicit env credentials
+// need no active workspace; a command whose first positional is a typed
+// resource id reads that id directly. Everything else consumes it.
 func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 	target, rest, err := root.Find(args)
 	if err != nil || target == nil {
@@ -330,6 +349,12 @@ func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 		if path == independent || strings.HasPrefix(path, independent+" ") {
 			return bridge.WorkspaceUnused
 		}
+	}
+	if (path == "workflows" || strings.HasPrefix(path, "workflows ")) && boolFlagTrue(target, "local") {
+		return bridge.WorkspaceUnused
+	}
+	if s3.UsesEnvCredentials(path, target.Flags().Args(), os.LookupEnv) {
+		return bridge.WorkspaceUnused
 	}
 	// Initializers run after cobra parses flags, so this is the final value:
 	// an empty one (`--workspace=`, `-w ""`, or an ID then an empty repeat)
