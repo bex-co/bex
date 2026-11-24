@@ -512,7 +512,8 @@ export function SessionDetailHeader({
  * Where the deployment serves no SSH there is no address, so a dangling
  * target is never offered. The `zed://` href is an intentional
  * external-protocol link (the first custom scheme in the dashboard); the
- * browser hands it to the OS, which launches Zed.
+ * browser hands it to the OS, which launches Zed. Narrow screens keep the
+ * icon alone, still named Connect for assistive tech (w10/055).
  */
 function OpenInZedButton({ session }: { session: AgentSessionView }) {
   const { t } = useTranslations();
@@ -521,7 +522,12 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          aria-label={t("agentSessions.connect")}
+        >
           {starting ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (

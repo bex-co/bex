@@ -123,6 +123,21 @@ describe("Open in Zed", () => {
     expect(screen.queryByText("ssh ags-1@ssh.bex.co")).not.toBeInTheDocument();
   });
 
+  // Below sm the "Connect" text is display:none (Tailwind `hidden sm:inline`),
+  // which drops it from the accessible name; jsdom loads no stylesheet, so
+  // apply that phone style by hand (w10/055).
+  it("keeps the trigger named Connect when its phone-width label is hidden", async () => {
+    renderHeader(view());
+    const trigger = screen.getByRole("button", { name: "Connect" });
+    for (const span of trigger.querySelectorAll("span"))
+      span.style.display = "none";
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+    expect(
+      screen.getByRole("menuitem", { name: /open in zed/i }),
+    ).toBeInTheDocument();
+  });
+
   it("hides the whole control when the backend surfaces no address", () => {
     renderHeader(view({ sshAddress: null }));
     expect(
