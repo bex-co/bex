@@ -209,6 +209,11 @@ type deploymentParams struct {
 	// healthProbeImage is the image the no-redirect health probe is installed
 	// from; "" probes with the kubelet's HTTP check instead (health_probe.go).
 	healthProbeImage string
+	// healthProbeInstall is the installer's resources a template stored
+	// before w6/170 carries, kept while nothing else about the template
+	// changes (applyDeploymentSpec); nil gives it the app container's CPU
+	// (healthProbeInstallResources).
+	healthProbeInstall *corev1.ResourceRequirements
 	// keptHealthPath is the HTTP path a template stored before w8/406 still
 	// probes on a private service, kept while nothing else about the template
 	// changes (applyDeploymentSpec); "" for none.
@@ -801,6 +806,15 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		// installed from, until its template changes for another reason, so
 		// an operator upgrade never rolls the fleet.
 		probeStale := !p.worker && (app.Spec.HTTPHealthCheckPath() != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
+		// So is the installer's CPU (w6/170): one installed at 20m keeps it
+		// until the next roll, so the upgrade that gives it the app
+		// container's CPU rolls no service and Recreates no disk service.
+		var keptInstall *corev1.ResourceRequirements
+		if installer := storedHealthProbeInstaller(stored.Spec); installer != nil {
+			keptInstall = installer.Resources.DeepCopy()
+		}
+		installStale := keptInstall != nil &&
+			!apiequality.Semantic.DeepEqual(*keptInstall, healthProbeInstallResources(resourcesForTier(app.Spec.Tier)))
 		// So is a private service's TCP check (w8/406): a release that
 		// still probes its stored path keeps that probe until the next roll.
 		keptPath := storedIneffectiveHealthPath(stored.Spec, app)
@@ -832,7 +846,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			keptMove = diskMove{}
 		}
 		moveStale := keptMove != p.diskMove
-		if drainStale || periodStale || probeStale || pathStale || cacheStale || startupStale || nodeStale || moveStale {
+		if drainStale || periodStale || probeStale || installStale || pathStale || cacheStale || startupStale || nodeStale || moveStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
 			unchanged := dep.DeepCopy()
@@ -842,6 +856,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			kept.diskNode = keptNode
 			kept.diskMove = keptMove
 			kept.healthProbeImage = keptProbeImage
+			kept.healthProbeInstall = keptInstall
 			kept.keptHealthPath = keptPath
 			kept.drainCheck = keptDrainCheck
 			kept.livenessGrace = keptLivenessGrace
@@ -957,8 +972,12 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	withManagedOIDCPod(&dep.Spec.Template, app, p.managedOIDC)
 	dep.Spec.Template.Spec.InitContainers = nil
 	if p.usesHealthProbeBinary(app) {
+		install := healthProbeInstallResources(container.Resources)
+		if p.healthProbeInstall != nil {
+			install = *p.healthProbeInstall
+		}
 		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeVolume())
-		dep.Spec.Template.Spec.InitContainers = []corev1.Container{healthProbeInstallContainer(p.healthProbeImage)}
+		dep.Spec.Template.Spec.InitContainers = []corev1.Container{healthProbeInstallContainer(p.healthProbeImage, install)}
 	}
 	projectKeptEdgeCache(&dep.Spec.Template, p.storedCache)
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets

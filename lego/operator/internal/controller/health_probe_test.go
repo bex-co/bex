@@ -20,9 +20,12 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -67,7 +70,7 @@ func TestHealthPathProjectsTheNoRedirectExecProbe(t *testing.T) {
 		t.Errorf("installer command = %v", init.Command)
 	}
 	if init.SecurityContext == nil || init.SecurityContext.ReadOnlyRootFilesystem == nil || !*init.SecurityContext.ReadOnlyRootFilesystem ||
-		init.SecurityContext.RunAsNonRoot == nil || !*init.SecurityContext.RunAsNonRoot || init.Resources.Limits.Cpu().IsZero() {
+		init.SecurityContext.RunAsNonRoot == nil || !*init.SecurityContext.RunAsNonRoot || init.Resources.Limits.Memory().IsZero() {
 		t.Errorf("installer is not hardened and bounded: %+v", init)
 	}
 	if !slices.ContainsFunc(spec.Volumes, func(v corev1.Volume) bool {
@@ -202,6 +205,114 @@ func TestNoRedirectProbeIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
 	applyDeploymentSpec(roll, restarted, newer)
 	if got := storedHealthProbeImage(roll.Spec.Template.Spec); got != newer.healthProbeImage {
 		t.Fatalf("the next roll installer image = %q, want %q", got, newer.healthProbeImage)
+	}
+}
+
+// healthProbeInstallCPU is the CPU time the installer spends being started and
+// copying the helper, measured on a production tenant node (w6/m547 t011,
+// 2026-11-23): containerd's StartContainer took 2.05 s and the copy 0.59 s
+// under its 20m limit, 2.64 s at 1/50 of a CPU.
+const healthProbeInstallCPU = 53 * time.Millisecond
+
+// healthProbeInstallBound is the most the installer may add to an instance's
+// start on a plan a disk can run on. Under Recreate it is downtime, and the
+// kubelet's next pass after the installer exits (about 0.7 s, its PLEG relist)
+// already uses most of the 1 s a probing disk service may take over one that
+// names its port.
+const healthProbeInstallBound = 200 * time.Millisecond
+
+// The installer runs at the app container's CPU (w6/170). Its CPU limit is the
+// CFS quota runc's init and the copy run under, so at the 20m first shipped
+// every pod that probes by exec started 2.6 s later, and a disk service paid
+// that as downtime on each deploy and restart. Taking the app container's CPU
+// must not move what the pod requests: the larger of its largest init
+// container and its containers' sum is what the scheduler places and the
+// workspace quota charges, and every container's requests equal its limits
+// for Guaranteed QoS.
+func TestHealthProbeInstallerStartsAtTheAppContainersCPU(t *testing.T) {
+	sides := map[string]func(corev1.ResourceRequirements) corev1.ResourceList{
+		"requests": func(r corev1.ResourceRequirements) corev1.ResourceList { return r.Requests },
+		"limits":   func(r corev1.ResourceRequirements) corev1.ResourceList { return r.Limits },
+	}
+	for _, tier := range append(tiers.Compute.IDs(), "") {
+		dep := project(httpHealthApp(func(a *appv1alpha1.App) { a.Spec.Tier = tier }), execParams())
+		spec := dep.Spec.Template.Spec
+		if len(spec.InitContainers) != 1 {
+			t.Fatalf("tier %q: init containers = %v, want the installer", tier, spec.InitContainers)
+		}
+		installer := spec.InitContainers[0].Resources
+		for side, of := range sides {
+			got, gotSet := of(installer)[corev1.ResourceCPU]
+			want, wantSet := of(appContainerOf(t, dep).Resources)[corev1.ResourceCPU]
+			if gotSet != wantSet || got.Cmp(want) != 0 {
+				t.Errorf("tier %q: installer cpu %s = %q (set %v), want the app container's %q (set %v)", tier, side, got.String(), gotSet, want.String(), wantSet)
+			}
+		}
+		if tier == "" {
+			continue // no tier: the LimitRange defaults both containers alike
+		}
+		for side, of := range sides {
+			for kind, quantity := range of(installer) {
+				var containers resource.Quantity
+				for _, c := range spec.Containers {
+					containers.Add(of(c.Resources)[kind])
+				}
+				if quantity.Cmp(containers) > 0 {
+					t.Errorf("tier %q: installer %s %s = %s, above the containers' %s: the pod's %s would grow", tier, kind, side, quantity.String(), containers.String(), side)
+				}
+			}
+		}
+		for _, kind := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
+			if got, want := installer.Requests[kind], installer.Limits[kind]; got.Cmp(want) != 0 {
+				t.Errorf("tier %q: installer %s request %s != limit %s: the pod leaves Guaranteed QoS", tier, kind, got.String(), want.String())
+			}
+		}
+		if tier == tierFree {
+			continue // spec.disk requires a paid tier
+		}
+		cpu := installer.Limits[corev1.ResourceCPU]
+		if start := time.Duration(float64(healthProbeInstallCPU) / cpu.AsApproximateFloat64()); start > healthProbeInstallBound {
+			t.Errorf("tier %q: at a %s CPU limit the installer takes %v, want at most %v: a disk service is down for it on every deploy", tier, cpu.String(), start.Round(10*time.Millisecond), healthProbeInstallBound)
+		}
+	}
+}
+
+// The upgrade that gives the installer the app container's CPU must not roll
+// every service that probes by exec at once, nor Recreate every disk service:
+// a template whose installer runs at 20m keeps it until the next roll.
+func TestHealthProbeInstallerCPUIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
+	starter := func(a *appv1alpha1.App) { a.Spec.Tier = "starter" }
+	disk := func(a *appv1alpha1.App) {
+		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 1}
+	}
+	for name, mutate := range map[string][]func(*appv1alpha1.App){"web service": {starter}, "disk service": {starter, disk}} {
+		app := httpHealthApp(mutate...)
+		p := execParams()
+		stored := project(app, p)
+		legacy := corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("20m"), corev1.ResourceMemory: resource.MustParse("32Mi")}
+		stored.Spec.Template.Spec.InitContainers[0].Resources = corev1.ResourceRequirements{Requests: legacy, Limits: legacy}
+
+		upgraded := stored.DeepCopy()
+		applyDeploymentSpec(upgraded, app, p)
+		if !equalPodTemplate(upgraded.Spec.Template, stored.Spec.Template) {
+			t.Fatalf("%s: an operator upgrade changed an unchanged template (installer %v); that rolls every service at once",
+				name, upgraded.Spec.Template.Spec.InitContainers[0].Resources)
+		}
+
+		// A new operator image alone keeps both the image and the 20m.
+		newer := p
+		newer.healthProbeImage = "ghcr.io/bex-co/bex@sha256:2222"
+		again := stored.DeepCopy()
+		applyDeploymentSpec(again, app, newer)
+		if !equalPodTemplate(again.Spec.Template, stored.Spec.Template) {
+			t.Fatalf("%s: a new operator image rolled a template whose installer runs at 20m", name)
+		}
+
+		next := stored.DeepCopy()
+		applyDeploymentSpec(next, httpHealthApp(append(mutate, restartedAt("2026-11-23T00:00:00Z"))...), p)
+		if got, want := next.Spec.Template.Spec.InitContainers[0].Resources.Limits[corev1.ResourceCPU], resource.MustParse("500m"); got.Cmp(want) != 0 {
+			t.Errorf("%s: the next roll's installer cpu limit = %s, want the Starter instance's %s", name, got.String(), want.String())
+		}
 	}
 }
 

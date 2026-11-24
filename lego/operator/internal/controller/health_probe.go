@@ -156,14 +156,37 @@ func healthProbeExecArgs(exec *corev1.ExecAction) (path, host string, port int, 
 	return path, host, port, true
 }
 
+// healthProbeInstallMemory bounds the installer, which copies a ~5 MiB binary.
+const healthProbeInstallMemory = "32Mi"
+
+// healthProbeInstallResources is the installer's allocation: the app
+// container's CPU, as requests and limits, and healthProbeInstallMemory.
+//
+// The CPU limit decides how fast the installer starts. runc starts a container
+// inside that container's cgroup, so at the 20m first shipped containerd's
+// StartContainer took 2.05–2.22 s and the copy another 0.59 s, which a disk
+// service under Recreate paid as downtime on every deploy and restart (w6/170,
+// after the disk holder's w6/m559). The app container's CPU costs nothing: a
+// pod's request is the larger of its largest init container's and its
+// containers' sum, so the pod's request, its QoS class and the plan's quota
+// stay as they were. An App with no tier names no CPU on either container, and
+// the namespace's LimitRange gives both the same default.
+func healthProbeInstallResources(app corev1.ResourceRequirements) corev1.ResourceRequirements {
+	requests := corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(healthProbeInstallMemory)}
+	limits := corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(healthProbeInstallMemory)}
+	if cpu, ok := app.Requests[corev1.ResourceCPU]; ok {
+		requests[corev1.ResourceCPU] = cpu
+	}
+	if cpu, ok := app.Limits[corev1.ResourceCPU]; ok {
+		limits[corev1.ResourceCPU] = cpu
+	}
+	return corev1.ResourceRequirements{Requests: requests, Limits: limits}
+}
+
 // healthProbeInstallContainer copies the health-probe binary from bex's image
 // into the shared volume before the app starts. bex's own image, pinned by the
 // operator: never re-pulled per pod.
-func healthProbeInstallContainer(image string) corev1.Container {
-	resources := corev1.ResourceList{
-		corev1.ResourceCPU:    resource.MustParse("20m"),
-		corev1.ResourceMemory: resource.MustParse("32Mi"),
-	}
+func healthProbeInstallContainer(image string, resources corev1.ResourceRequirements) corev1.Container {
 	sec := execution.RestrictedContainerSecurityContext()
 	sec.RunAsNonRoot, sec.RunAsUser, sec.ReadOnlyRootFilesystem = new(true), new(int64(65532)), new(true)
 	return corev1.Container{
@@ -171,7 +194,7 @@ func healthProbeInstallContainer(image string) corev1.Container {
 		Image:           image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         []string{"/health-probe", "install", healthProbeBinary},
-		Resources:       corev1.ResourceRequirements{Requests: resources, Limits: resources},
+		Resources:       resources,
 		VolumeMounts:    []corev1.VolumeMount{{Name: healthProbeVolumeName, MountPath: healthProbeMountPath}},
 		SecurityContext: sec,
 	}
@@ -185,13 +208,22 @@ func healthProbeVolume() corev1.Volume {
 	}}
 }
 
+// storedHealthProbeInstaller is the health-probe install container a stored
+// pod spec carries, nil when it probes another way.
+func storedHealthProbeInstaller(spec corev1.PodSpec) *corev1.Container {
+	for i := range spec.InitContainers {
+		if spec.InitContainers[i].Name == healthProbeInitName {
+			return &spec.InitContainers[i]
+		}
+	}
+	return nil
+}
+
 // storedHealthProbeImage is the image of the health-probe install container a
 // stored pod spec carries, "" when it probes another way.
 func storedHealthProbeImage(spec corev1.PodSpec) string {
-	for _, c := range spec.InitContainers {
-		if c.Name == healthProbeInitName {
-			return c.Image
-		}
+	if c := storedHealthProbeInstaller(spec); c != nil {
+		return c.Image
 	}
 	return ""
 }
