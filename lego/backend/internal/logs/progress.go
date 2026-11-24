@@ -1238,6 +1238,49 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 	return q.capToLimit(merged)
 }
 
+// progressInstanceValues lists the deploy IDs whose synthetic build progress or
+// initial-deploy-hook lines fall inside q's window, so LogLabelValues(instance)
+// on a type=build (or build-filtered) read discovers the same synthetic
+// instances QueryLogs emits and translateInstanceFilter resolves (w32/105).
+// Best-effort: a DeployProgress error adds nothing so Loki discovery still works.
+func (s *Service) progressInstanceValues(ctx context.Context, q LogQuery, resource string, pc progressContext) []string {
+	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) || q.excludesProgressLines() {
+		return nil
+	}
+	start, end := lokiRange(q, time.Now())
+	if start.After(end) {
+		return nil
+	}
+	rows, err := s.DeployProgress(ctx, resource, q.End)
+	if err != nil {
+		return nil
+	}
+	// Label-values discovery uses the stream window [start, end], matching
+	// Loki's /label/pod/values API (which ignores line filters like Search).
+	window := LogQuery{Since: start, End: end}
+	var out []string
+	for i, d := range rows {
+		if d.ID == "" {
+			continue
+		}
+		if ended := storyEnd(d, pc.hook); !ended.IsZero() && ended.Before(start) {
+			continue
+		}
+		if !q.inBuilds(d.ID) || (q.Deploy != "" && d.ID != q.Deploy) {
+			continue
+		}
+		rowPC := pc
+		if i > 0 {
+			rowPC.wait = buildWait{}
+		}
+		lines := append(progressLines(d, rowPC), hookLines(d, pc.hook)...)
+		if slices.ContainsFunc(lines, window.keep) {
+			out = append(out, d.ID)
+		}
+	}
+	return out
+}
+
 // progressFollower tracks which platform lines a live build tail has already
 // emitted, so subscribe-time catch-up, wait-loop transitions, the reads while
 // the build streams and the close wait each emit a line exactly once.

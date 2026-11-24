@@ -529,6 +529,14 @@ func (q LogQuery) wants(t string) bool {
 	return slices.Contains(q.Types, t)
 }
 
+// includesBuild reports whether q can read build lines: an explicit `build`
+// type (including `build=` filters after narrowToBuilds) or a type-less Render
+// WebSocket tail (followPodsAndBuilds). Untyped historical and SSE reads carry
+// app and request lines only, and managed datastores carry no build lines.
+func (q LogQuery) includesBuild() bool {
+	return q.App != "" && (slices.Contains(q.Types, LogTypeBuild) || (q.renderStream && len(q.Types) == 0))
+}
+
 // needsStore reports whether the query asks for something only the durable log
 // store can answer: request logs, build logs, or a structured filter over labels
 // the shipper attaches. The pod-log fallback has neither — it reads one
@@ -1413,8 +1421,9 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 	}
 	// app.Namespace is the App's `<ws>` namespace under ADR043 (see QueryLogs);
 	// the discoverable stream labels live there, not in the shared s.Namespace.
+	nq := q.normalized()
 	var values []string
-	for _, part := range q.normalized().storeReads() {
+	for _, part := range nq.storeReads() {
 		vals, err := s.LabelValues(ctx, app.Namespace, label, part)
 		if err != nil {
 			return nil, err
@@ -1422,6 +1431,7 @@ func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, adm
 		values = append(values, vals...)
 	}
 	if label == LabelInstance {
+		values = append(values, s.progressInstanceValues(ctx, nq, resource, newProgressContext(app))...)
 		return projectLogLabelValues(resource, values), nil
 	}
 	if q.noRequest && label == LabelType {
@@ -1939,13 +1949,15 @@ func withoutBuild(types []string) []string {
 // followPodsAndBuilds is a tail of build lines beside app or request lines
 // (w8/m159): the App's pods and request log as followPods streams them, and
 // every build as followBuilds does, onto one transport. Writes and keepalives
-// are serialized; the first producer to fail ends both. A level or instance
-// filter selects app and request lines only (a build line has neither), so
-// with one set there is no build producer.
+// are serialized; the first producer to fail ends both. A positive level filter
+// selects app and request lines only (a build line has none), and a positive
+// instance filter that resolved only to App pods or noSuchInstance cannot match
+// a build pod or deploy narration, so those skip the build producer.
 func (s *Service) followPodsAndBuilds(ctx context.Context, q LogQuery, selectors []string, target tailTarget, pods []corev1.Pod, resource string, pc progressContext, emit func(LogEntry) error, heartbeat func() error) error {
 	rest := q
 	rest.Types = withoutBuild(q.Types)
-	if len(q.Level) > 0 || len(q.Instance) > 0 {
+	if (len(q.Level) > 0 && !q.negates(LabelLevel)) ||
+		(len(q.Instance) > 0 && !q.negates(LabelInstance) && !instanceMayMatchBuild(q.Instance, pods)) {
 		return s.followPods(ctx, rest, selectors, target, pods, emit, heartbeat)
 	}
 	var mu sync.Mutex
@@ -2696,23 +2708,49 @@ func candidatesFromPods(pods []corev1.Pod) []ids.InstanceCandidate {
 	return out
 }
 
+// instanceMayMatchBuild reports whether any resolved instance selector could
+// match a build pod, pre-deploy pod, or synthetic deploy progress line rather
+// than only live App pods or noSuchInstance (w32/105).
+func instanceMayMatchBuild(instances []string, appPods []corev1.Pod) bool {
+	for _, name := range instances {
+		if name == "" || name == noSuchInstance {
+			continue
+		}
+		if !slices.ContainsFunc(appPods, func(p corev1.Pod) bool { return p.Name == name }) {
+			return true
+		}
+	}
+	return false
+}
+
 // translateInstanceFilter rewrites public instance ids (and legacy raw-name /
-// UID-derived selectors) into the internal pod names Loki and the live tail
+// UID-derived selectors) into the internal pod names (and deploy IDs for
+// synthetic build progress/hook narration, w32/105) Loki and the live tail
 // match on. Candidates are the authorized live pods plus, when the store is
-// wired, historical pod names from label discovery — never a cross-resource
-// enumeration.
+// wired, historical pod names from label discovery and, for build reads, the
+// service's own deploy IDs — never a cross-resource enumeration.
 func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, namespace string, q *LogQuery, live []ids.InstanceCandidate) {
 	if len(q.Instance) == 0 {
 		return
 	}
 	cands := append([]ids.InstanceCandidate(nil), live...)
+	seen := make(map[string]struct{}, len(cands))
+	for _, c := range cands {
+		seen[c.Name] = struct{}{}
+	}
+	addCand := func(name string) {
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		cands = append(cands, ids.InstanceCandidate{Name: name})
+	}
 	if s.LabelValues != nil {
 		disc := *q
 		disc.Instance = nil
-		seen := make(map[string]struct{}, len(cands))
-		for _, c := range cands {
-			seen[c.Name] = struct{}{}
-		}
 		// One discovery per store read: a build type beside others is two
 		// (storeReads), and their instances are the union.
 		for _, part := range disc.normalized().storeReads() {
@@ -2721,11 +2759,14 @@ func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, names
 				continue
 			}
 			for _, name := range vals {
-				if _, ok := seen[name]; ok || name == "" {
-					continue
-				}
-				seen[name] = struct{}{}
-				cands = append(cands, ids.InstanceCandidate{Name: name})
+				addCand(name)
+			}
+		}
+	}
+	if s.DeployProgress != nil && q.includesBuild() {
+		if rows, err := s.DeployProgress(ctx, resourceID, q.End); err == nil {
+			for _, d := range rows {
+				addCand(d.ID)
 			}
 		}
 	}
