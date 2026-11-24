@@ -57,6 +57,9 @@ func (w *CheckedDeployWorker) tick(ctx context.Context) error {
 	pending := make([]*appv1alpha1.App, 0)
 	for i := range apps.Items {
 		a := &apps.Items[i]
+		if core.IsBuildSource(a) {
+			continue
+		}
 		if a.Annotations[annotChecksPendingCommit] != "" || a.Annotations[annotChecksDispatch] != "" {
 			pending = append(pending, a)
 		}

@@ -4528,6 +4528,9 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 	// commit provenance that a generic config_change row cannot carry.
 	v, err := s.patchUntracked(ctx, a, func(a *appv1alpha1.App) {
 		core.StampReleaseGeneration(a, previousGeneration+1)
+		// Env-group links staged on a Build Source carrier (or an Auto-Deploy-off
+		// service) ship in the next release, keeping group refs in creation order.
+		rollout.PrepareGroupRefsForRelease(a)
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}
@@ -4571,7 +4574,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 // webhook request path. The App's owner label is authoritative because a git
 // callback has no caller identity from which to resolve a workspace.
 func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, name string) {
-	if s.StartedNotifier == nil {
+	if s.StartedNotifier == nil || core.IsBuildSource(a) {
 		return
 	}
 	tenantID := a.Labels[core.LabelTenant]

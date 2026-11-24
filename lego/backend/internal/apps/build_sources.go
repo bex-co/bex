@@ -672,6 +672,9 @@ func (s *Service) UpdateBuildSource(ctx context.Context, id string, req UpdateBu
 	if _, err := s.patchUntracked(ctx, a, func(app *appv1alpha1.App) {
 		if sourceChanged {
 			next.applySourceChange(app)
+			// Git-backed carriers auto-build on matching pushes (ADR097 § Git-push
+			// auto-builds); keep spec.autoDeploy aligned across image↔git switches.
+			app.Spec.AutoDeploy = app.Spec.Repo != ""
 		}
 		_ = build.apply(app) // validated on the probe above
 		if name != "" {
@@ -780,10 +783,6 @@ func buildSourcePatch(a *appv1alpha1.App, req UpdateBuildSourceRequest) (sourceP
 			return patch, build, fmt.Errorf("%w: git.repoUrl is required to switch an image build source to git", core.ErrBadRequest)
 		}
 		patch.Repo, patch.Branch, patch.RegistryCredentialID = opt(g.RepoURL), opt(g.Branch), g.RegistryCredentialID
-		if imageBacked {
-			empty := ""
-			patch.Image = &empty
-		}
 		build = buildSettings{runtime: opt(g.Runtime), buildCommand: opt(g.BuildCommand), dockerfilePath: opt(g.DockerfilePath),
 			dockerContext: opt(g.DockerContext), rootDir: opt(g.RootDir), buildFilter: g.BuildFilter}
 	}
@@ -792,10 +791,6 @@ func buildSourcePatch(a *appv1alpha1.App, req UpdateBuildSourceRequest) (sourceP
 			return patch, build, fmt.Errorf("%w: image.imageUrl is required to switch a git build source to an image", core.ErrBadRequest)
 		}
 		patch.Image, patch.RegistryCredentialID = opt(img.ImageURL), img.RegistryCredentialID
-		if !imageBacked {
-			empty := ""
-			patch.Repo, patch.Branch = &empty, &empty
-		}
 	}
 	return patch, build, nil
 }

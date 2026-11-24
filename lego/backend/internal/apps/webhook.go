@@ -968,17 +968,20 @@ func (h *GitWebhook) enqueueBlueprintAutoSyncIntents(ctx context.Context, key ve
 // replay claim is allocated. This keeps unrelated valid pushes out of the
 // durable ledger and supplies a stable candidate snapshot to the mutation pass.
 // byID matches by GitHub's repository id where the App carries one
-// (gitRepository.tracks).
+// (gitRepository.tracks). Both ordinary services and git-backed Build Source
+// carriers match (ADR097 § Git-push auto-builds, w2/m610); image-backed Build
+// Sources are excluded, and branch-delete / checksPass paths exclude carriers.
 func (h *GitWebhook) repoCandidates(ctx context.Context, repo gitRepository, byID bool, scope string) ([]appv1alpha1.App, error) {
 	var list appv1alpha1.AppList
 	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, err
 	}
-	// A push does not reach build sources yet (w2/m254 t006 decides).
-	list.Items = core.ServiceApps(list.Items)
 	candidates := make([]appv1alpha1.App, 0)
 	for i := range list.Items {
 		a := &list.Items[i]
+		if core.IsBuildSource(a) && a.Spec.Image != "" {
+			continue
+		}
 		if scope != "" && a.Labels[core.LabelTenant] != scope {
 			continue
 		}
@@ -990,9 +993,16 @@ func (h *GitWebhook) repoCandidates(ctx context.Context, repo gitRepository, byI
 	return candidates, nil
 }
 
+// branchCandidates filters repo candidates for branch-deletion handling. Build
+// Source carriers are excluded: Render exposes no autoDeploy toggle on Build
+// Sources, so deleting a branch must neither disable auto-builds nor emit
+// service-only branch_deleted facts (ADR097 § Git-push auto-builds).
 func branchCandidates(candidates []appv1alpha1.App, branch string) []appv1alpha1.App {
 	matched := make([]appv1alpha1.App, 0, len(candidates))
 	for i := range candidates {
+		if core.IsBuildSource(&candidates[i]) {
+			continue
+		}
 		if branchMatches(candidates[i].Spec.Branch, branch) {
 			matched = append(matched, candidates[i])
 		}
@@ -1004,6 +1014,9 @@ func (h *GitWebhook) recordBranchDeletedCandidates(ctx context.Context, candidat
 	affected := []string{}
 	for i := range candidates {
 		a := &candidates[i]
+		if core.IsBuildSource(a) {
+			continue
+		}
 		h.recordBranchDeletedFact(ctx, a, branch, deliveryKey)
 		if a.Spec.AutoDeploy {
 			if err := h.disableAutoDeploy(ctx, a); err != nil {
@@ -1018,7 +1031,7 @@ func (h *GitWebhook) recordBranchDeletedCandidates(ctx context.Context, candidat
 // recordBranchDeletedFact appends the closed branch_deleted fact — the deleted
 // branch name in branch_from, no commit, no value. Idempotent by delivery+app.
 func (h *GitWebhook) recordBranchDeletedFact(ctx context.Context, app *appv1alpha1.App, branch, deliveryKey string) {
-	if h.Svc.EventFacts == nil {
+	if core.IsBuildSource(app) || h.Svc.EventFacts == nil {
 		return
 	}
 	appID := managedAppID(app)
@@ -1092,9 +1105,12 @@ func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branc
 		if t := a.Labels[core.LabelTenant]; t != "" {
 			tenants[t] = struct{}{}
 		}
-		// autoDeploy gates push-triggered redeploys (Render's autoDeploy: no):
-		// an App that opted out is never bumped by a push, only by an explicit deploy.
-		if !a.Spec.AutoDeploy {
+		// autoDeploy gates push-triggered redeploys on services (Render's
+		// autoDeploy: no). Git-backed Build Sources have no user-facing
+		// autoDeploy toggle on Render: matching pushes always rebuild the
+		// carrier, and each linked service's own autoDeploy governs fan-out
+		// (ADR097 § Git-push auto-builds).
+		if !core.IsBuildSource(a) && !a.Spec.AutoDeploy {
 			continue
 		}
 		if !branchMatches(a.Spec.Branch, branch) {
@@ -1115,8 +1131,9 @@ func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branc
 		// checksPass (w1/m181): the push names the commit to deploy once its
 		// GitHub checks pass (serveCheckSuite). Checks that already passed — a
 		// commit CI checked on another branch before this fast-forward — deploy
-		// it now, since no further suite will complete for it.
-		if a.Spec.AutoDeployTrigger == checksPassTrigger {
+		// it now, since no further suite will complete for it. checksGated
+		// excludes Build Source carriers.
+		if checksGated(a.Spec) {
 			if h.deployIfChecksPass(ctx, a, ev.commitInfo()) {
 				redeployed = append(redeployed, a.Name)
 			}
@@ -1165,7 +1182,7 @@ func commitHasSkipPhrase(message string) bool {
 }
 
 func (h *GitWebhook) recordCommitIgnored(ctx context.Context, app *appv1alpha1.App, ev pushEvent, reason string) {
-	if h.Svc.EventFacts == nil {
+	if core.IsBuildSource(app) || h.Svc.EventFacts == nil {
 		return
 	}
 	appID := managedAppID(app)

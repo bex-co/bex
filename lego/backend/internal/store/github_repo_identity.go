@@ -45,14 +45,14 @@ type RepoIdentityGap struct {
 	Repo     string
 }
 
-// ListRepoIdentityGaps returns every service and live Blueprint that builds
-// from a github.com repository and has no GitHub repository id. The host test
-// is a coarse prefilter; the caller parses each URL itself. A build source is
-// left out: no push reaches one yet (apps.repoCandidates).
+// ListRepoIdentityGaps returns every service, git-backed Build Source carrier,
+// and live Blueprint that builds from a github.com repository and has no GitHub
+// repository id. The host test is a coarse prefilter; the caller parses each
+// URL itself. Image-backed Build Sources carry an empty repo and never match.
 func (s *PGStore) ListRepoIdentityGaps(ctx context.Context) ([]RepoIdentityGap, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT '`+RepoIdentityService+`', a.id, a.tenant_id, a.repo FROM apps a
-		 WHERE a.github_repo_id = 0 AND a.repo ILIKE '%github.com%' AND `+serviceAppsOnly+`
+		 WHERE a.github_repo_id = 0 AND a.repo ILIKE '%github.com%'
 		UNION ALL
 		SELECT '`+RepoIdentityBlueprint+`', id, tenant_id, repo FROM blueprints
 		 WHERE github_repo_id = 0 AND status <> 'disconnected' AND repo ILIKE '%github.com%'

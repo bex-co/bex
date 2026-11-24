@@ -40,6 +40,7 @@ var sqlAppsReadsThatMayIncludeBuildSources = map[string]string{
 	"store/domain_overlap.go:verifiedOverlapElsewhere":          "joins domains to the App that owns each; a carrier claims no domain",
 	"store/environments.go:ListEnvironmentServices":             "filters environment_id, which a carrier never sets (its project scope is scope_project_id)",
 	"store/environments.go:ListWorkspaceEnvironmentServices":    "inner-joins environments on environment_id, which a carrier never sets",
+	"store/github_repo_identity.go:ListRepoIdentityGaps":        "git-backed build sources receive push webhooks too, so the backfill resolves their GitHub repository ids alongside services",
 	"store/grouping_tx.go:ReclaimEmptyBlueprintGroupings":       "counts members by environment_id / project_id, which a carrier never sets",
 	"store/projects.go:ListServicesForProjects":                 "filters project_id, which a carrier never sets",
 	"store/product_inventory.go:populateProductInventorySample": "inventory records every app under its own type, build_source included; a carrier has no domains",

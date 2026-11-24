@@ -130,8 +130,10 @@ func (s *Service) requireChecksPermitted(ctx context.Context, a *appv1alpha1.App
 }
 
 // checksGated reports a spec whose pushes wait for their commit's checks.
+// Build Source carriers never expose or enter checksPass (ADR097 § Git-push
+// auto-builds).
 func checksGated(spec appv1alpha1.AppSpec) bool {
-	return spec.AutoDeploy && spec.AutoDeployTrigger == checksPassTrigger
+	return spec.Type != appv1alpha1.TypeBuildSource && spec.AutoDeploy && spec.AutoDeployTrigger == checksPassTrigger
 }
 
 // awaitChecks persists source-bound acceptance before any remote check reads.

@@ -55,6 +55,16 @@ func TestPGGitHubRepoIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	gitCarrier, err := st.CreateApp(ctx, App{ID: ids.New(ids.BuildSource), TenantID: tenant.ID, Name: "bds-git", DisplayName: "Mono",
+		Repo: "https://github.com/stranger/mono", Type: TypeBuildSource, Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	imgCarrier, err := st.CreateApp(ctx, App{ID: ids.New(ids.BuildSource), TenantID: tenant.ID, Name: "bds-img", DisplayName: "Img",
+		Image: "nginx:1.27", Type: TypeBuildSource, Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	read := func(id string) App {
 		t.Helper()
 		a, err := st.GetApp(ctx, id)
@@ -131,8 +141,19 @@ func TestPGGitHubRepoIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasGap(gaps, RepoIdentityService, public.ID) || !hasGap(gaps, RepoIdentityBlueprint, bp.ID) || hasGap(gaps, RepoIdentityService, created.ID) {
-		t.Errorf("gaps = %+v, want the public service and the Blueprint, not the service with an id", gaps)
+	if !hasGap(gaps, RepoIdentityService, public.ID) || !hasGap(gaps, RepoIdentityService, gitCarrier.ID) ||
+		hasGap(gaps, RepoIdentityService, imgCarrier.ID) || !hasGap(gaps, RepoIdentityBlueprint, bp.ID) || hasGap(gaps, RepoIdentityService, created.ID) {
+		t.Errorf("gaps = %+v, want the public service, git build source, and Blueprint, not image build source or service with an id", gaps)
+	}
+	if set, err := st.SetAppGitHubRepoID(ctx, gitCarrier.ID, "https://github.com/stranger/mono", 88); err != nil || !set {
+		t.Fatalf("SetAppGitHubRepoID(gitCarrier) = %v, %v", set, err)
+	}
+	gaps, err = st.ListRepoIdentityGaps(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasGap(gaps, RepoIdentityService, gitCarrier.ID) {
+		t.Error("a git build source with an id is no longer a gap")
 	}
 	if moved, _ := st.MoveBlueprintRepo(ctx, bp.ID, 0, oldName, newName); moved {
 		t.Error("a Blueprint with no id must not move")
