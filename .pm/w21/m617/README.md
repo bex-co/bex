@@ -1,17 +1,17 @@
 # w21 · m617 — A multi-instance service's instances run on different nodes, as on Render
 
-**Worker:** worker21 **Goal:** a service scaled or autoscaled to N instances runs them on N different nodes when the pool has N, so one node's failure never takes every instance down. **Status:** todo
+**Worker:** worker21 **Goal:** a service scaled or autoscaled to N instances runs them on N different nodes when the pool has N, so one node's failure never takes every instance down. **Status:** in progress (t001–t003, t005, t006 done; t004 has its ADR018 row and waits for production to carry t002)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Measure placement on the mock cluster and record the spread decision in ADR004 | 45m | — |
-| [t002](t002.md) | The operator projects a hostname topology spread for multi-instance services, carried by rollouts the service makes anyway | 1h | t001 |
-| [t003](t003.md) | Mock cluster: a full node makes the second instance add a node, and drain-guard's evacuation still lands | 1h | t002 |
+| [t001](done/t001.md) | Measure placement on the mock cluster and record the spread decision in ADR004 — **DONE** | 45m | — |
+| [t002](done/t002.md) | The operator projects a hostname topology spread for multi-instance services, carried by rollouts the service makes anyway — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Mock cluster: a full node makes the second instance add a node, and drain-guard's evacuation still lands — **DONE** | 1h | t002 |
 | [t004](t004.md) | ADR018 row "Multiple instances run on different nodes" and a production check with a disposable two-instance service | 45m | t003 |
-| [t005](t005.md) | Simplify | 20m | t004 |
-| [t006](t006.md) | Test coverage | 40m | t004 |
+| [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
 ## Definition of done
@@ -21,6 +21,14 @@
 3. No existing single-instance, free or disk-attached service is rolled by the operator upgrade.
 4. On production, a disposable two-instance service runs on two nodes.
 5. ADR004 and ADR018 record the rule and its evidence.
+
+## Evidence (2026-11-24)
+
+1. Holds on the mock cluster: two, three and five instances over four usable nodes, three runs each, ran one per node and 2-1-1-1 ([t001](done/t001.md), [ADR004 § Multiple instances run on different nodes](../../../docs/ADR004-app-deployment.md#multiple-instances-run-on-different-nodes-w21m617)).
+2. Holds on the mock cluster: the second instance waited, the autoscaler added a node within 46 s and the instance ran there at 76 s; before the change it landed beside the first ([t003](done/t003.md)).
+3. Holds by construction and test: the spread is adopted only by a roll the service makes anyway; the envtest stores a pre-change Deployment of each kind (two instances, one, Free, disk) and the upgraded projection writes none of them ([t002](done/t002.md), [t006](done/t006.md)).
+4. Pending: production must carry t002's commit first ([t004](t004.md)).
+5. ADR004 has the rule and the mock evidence; the ADR018 row is in, ◐ until the production reading.
 
 ## Source + Goal linkage
 

@@ -244,6 +244,10 @@ type deploymentParams struct {
 	// managedOIDC is the release's token mounts (managed_oidc.go); the zero
 	// value for none.
 	managedOIDC oidcMounts
+	// spread places the instances on distinct nodes (instance_spread.go).
+	// applyDeploymentSpec sets it, keeping a stored template's own while
+	// nothing else about the template changes.
+	spread bool
 }
 
 // usesHealthProbeBinary reports whether the App's pods carry bex's
@@ -794,84 +798,101 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	p.drainCheck = drain > 0 && p.healthProbeImage != ""
 	p.livenessGrace = p.drainCheck
 	p.openPortCheck = checksAnyOpenPort(dep.Spec.Template, app, p)
-	if stored := dep.Spec.Template; len(stored.Spec.Containers) > 0 {
-		keptDrain, keptDrainCheck := storedDrain(stored.Spec)
-		keptPeriod := storedReadinessPeriod(stored.Spec)
-		keptProbeImage := storedHealthProbeImage(stored.Spec)
-		keptLivenessGrace := storedLivenessGrace(stored.Spec)
-		drainStale := drain > 0 && (keptDrain != drain || keptDrainCheck != p.drainCheck || keptLivenessGrace != p.livenessGrace)
-		periodStale := !p.worker && keptPeriod != healthCheckReadinessPeriodSeconds
-		// The no-redirect probe (w8/m133) is adopted the same lazy way: a
-		// running release keeps its HTTP probe, or the helper image it was
-		// installed from, until its template changes for another reason, so
-		// an operator upgrade never rolls the fleet.
-		probeStale := !p.worker && (app.Spec.HTTPHealthCheckPath() != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
-		// So is the installer's CPU (w6/170): one installed at 20m keeps it
-		// until the next roll, so the upgrade that gives it the app
-		// container's CPU rolls no service and Recreates no disk service.
-		var keptInstall *corev1.ResourceRequirements
-		if installer := storedHealthProbeInstaller(stored.Spec); installer != nil {
-			keptInstall = installer.Resources.DeepCopy()
-		}
-		installStale := keptInstall != nil &&
-			!apiequality.Semantic.DeepEqual(*keptInstall, healthProbeInstallResources(resourcesForTier(app.Spec.Tier)))
-		// So is a private service's TCP check (w8/406): a release that
-		// still probes its stored path keeps that probe until the next roll.
-		keptPath := storedIneffectiveHealthPath(stored.Spec, app)
-		pathStale := keptPath != ""
-		// So is the edge-cache sidecar a template from before the cache
-		// tier carries (keptEdgeCache, w3/m489): it leaves with the next
-		// change for another reason.
-		keptCache := keptEdgeCache(stored)
-		cacheStale := keptCache != nil
-		// A disk-bearing App's 1s startup period (w6/m547) is adopted the
-		// same way, so the operator upgrade that ships it costs no disk
-		// service a Recreate. So is its node preference, which follows the
-		// volume only on a pass that rolls anyway: a hint that changed the
-		// template by itself would roll the instance it describes. With no
-		// instance on a node to read, the stored preference stands.
-		keptStartup := storedStartupPeriod(stored.Spec)
-		startupStale := !p.worker && keptStartup != startupPeriodFor(app)
-		keptNode := storedDiskNode(stored.Spec)
-		if p.diskNode == "" {
-			p.diskNode = keptNode
-		}
-		nodeStale := app.Spec.Disk != nil && keptNode != p.diskNode
-		// So is the second mount of a disk made before w6/m558: it moves
-		// into the service's tree with the next deploy, which builds the
-		// image that works there, and the upgrade that ships it rolls no
-		// disk service.
-		keptMove := p.diskMove
-		if app.Spec.Disk != nil && slices.Equal(storedDiskMountPaths(stored.Spec), []string{app.Spec.Disk.MountPath}) {
-			keptMove = diskMove{}
-		}
-		moveStale := keptMove != p.diskMove
-		if drainStale || periodStale || probeStale || installStale || pathStale || cacheStale || startupStale || nodeStale || moveStale {
-			// Keep whatever the stored template carries when nothing else
-			// about it changes; any other change adopts the current values.
-			unchanged := dep.DeepCopy()
-			kept := p
-			kept.readinessPeriod = keptPeriod
-			kept.startupPeriod = keptStartup
-			kept.diskNode = keptNode
-			kept.diskMove = keptMove
-			kept.healthProbeImage = keptProbeImage
-			kept.healthProbeInstall = keptInstall
-			kept.keptHealthPath = keptPath
-			kept.drainCheck = keptDrainCheck
-			kept.livenessGrace = keptLivenessGrace
-			kept.storedCache = keptCache
-			keptDrainFor := drain
-			if drainStale {
-				keptDrainFor = keptDrain
-			}
-			projectDeployment(unchanged, app, kept, keptDrainFor, probeHost)
-			if apiequality.Semantic.DeepEqual(unchanged.Spec.Template, stored) {
-				drain, p = keptDrainFor, kept
-			}
-		}
+	p.spread = spreadsAcrossNodes(app)
+	if len(dep.Spec.Template.Spec.Containers) > 0 {
+		drain, p = keepStoredTemplate(dep, app, p, drain, probeHost)
 	}
 	projectDeployment(dep, app, p, drain, probeHost)
+}
+
+// keepStoredTemplate returns the drain and params that project dep's stored
+// template unchanged when it differs from the current projection only in
+// values adopted lazily (applyDeploymentSpec), and drain and p otherwise. p
+// comes back with the stored disk node when this pass learned none.
+func keepStoredTemplate(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64, probeHost string) (int64, deploymentParams) {
+	stored := dep.Spec.Template
+	keptDrain, keptDrainCheck := storedDrain(stored.Spec)
+	keptPeriod := storedReadinessPeriod(stored.Spec)
+	keptProbeImage := storedHealthProbeImage(stored.Spec)
+	keptLivenessGrace := storedLivenessGrace(stored.Spec)
+	drainStale := drain > 0 && (keptDrain != drain || keptDrainCheck != p.drainCheck || keptLivenessGrace != p.livenessGrace)
+	periodStale := !p.worker && keptPeriod != healthCheckReadinessPeriodSeconds
+	// The no-redirect probe (w8/m133) is adopted the same lazy way: a
+	// running release keeps its HTTP probe, or the helper image it was
+	// installed from, until its template changes for another reason, so
+	// an operator upgrade never rolls the fleet.
+	probeStale := !p.worker && (app.Spec.HTTPHealthCheckPath() != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
+	// So is the installer's CPU (w6/170): one installed at 20m keeps it
+	// until the next roll, so the upgrade that gives it the app
+	// container's CPU rolls no service and Recreates no disk service.
+	var keptInstall *corev1.ResourceRequirements
+	if installer := storedHealthProbeInstaller(stored.Spec); installer != nil {
+		keptInstall = installer.Resources.DeepCopy()
+	}
+	installStale := keptInstall != nil &&
+		!apiequality.Semantic.DeepEqual(*keptInstall, healthProbeInstallResources(resourcesForTier(app.Spec.Tier)))
+	// So is a private service's TCP check (w8/406): a release that
+	// still probes its stored path keeps that probe until the next roll.
+	keptPath := storedIneffectiveHealthPath(stored.Spec, app)
+	pathStale := keptPath != ""
+	// So is the edge-cache sidecar a template from before the cache
+	// tier carries (keptEdgeCache, w3/m489): it leaves with the next
+	// change for another reason.
+	keptCache := keptEdgeCache(stored)
+	cacheStale := keptCache != nil
+	// A disk-bearing App's 1s startup period (w6/m547) is adopted the
+	// same way, so the operator upgrade that ships it costs no disk
+	// service a Recreate. So is its node preference, which follows the
+	// volume only on a pass that rolls anyway: a hint that changed the
+	// template by itself would roll the instance it describes. With no
+	// instance on a node to read, the stored preference stands.
+	keptStartup := storedStartupPeriod(stored.Spec)
+	startupStale := !p.worker && keptStartup != startupPeriodFor(app)
+	keptNode := storedDiskNode(stored.Spec)
+	if p.diskNode == "" {
+		p.diskNode = keptNode
+	}
+	nodeStale := app.Spec.Disk != nil && keptNode != p.diskNode
+	// So is the second mount of a disk made before w6/m558: it moves
+	// into the service's tree with the next deploy, which builds the
+	// image that works there, and the upgrade that ships it rolls no
+	// disk service.
+	keptMove := p.diskMove
+	if app.Spec.Disk != nil && slices.Equal(storedDiskMountPaths(stored.Spec), []string{app.Spec.Disk.MountPath}) {
+		keptMove = diskMove{}
+	}
+	moveStale := keptMove != p.diskMove
+	// So is the instance spread (w21/m617): the upgrade that ships it
+	// rolls no service, and a template without it gains it on its next
+	// deploy, restart or config change, not on a scale.
+	keptSpread := storedSpread(stored.Spec)
+	spreadStale := keptSpread != p.spread
+	if drainStale || periodStale || probeStale || installStale || pathStale || cacheStale || startupStale || nodeStale || moveStale || spreadStale {
+		// Keep whatever the stored template carries when nothing else
+		// about it changes; any other change adopts the current values.
+		unchanged := dep.DeepCopy()
+		kept := p
+		kept.readinessPeriod = keptPeriod
+		kept.startupPeriod = keptStartup
+		kept.diskNode = keptNode
+		kept.diskMove = keptMove
+		kept.healthProbeImage = keptProbeImage
+		kept.healthProbeInstall = keptInstall
+		kept.keptHealthPath = keptPath
+		kept.drainCheck = keptDrainCheck
+		kept.livenessGrace = keptLivenessGrace
+		kept.storedCache = keptCache
+		kept.spread = keptSpread
+		keptDrainFor := drain
+		if drainStale {
+			keptDrainFor = keptDrain
+		}
+		projectDeployment(unchanged, app, kept, keptDrainFor, probeHost)
+		if apiequality.Semantic.DeepEqual(unchanged.Spec.Template, stored) {
+			return keptDrainFor, kept
+		}
+	}
+	return drain, p
 }
 
 // storedIneffectiveHealthPath is the stored path a stored template still
@@ -1006,6 +1027,9 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	execution.PlaceOnServingPool(&dep.Spec.Template.Spec, tiers.Compute.ServingPool(app.Spec.Tier))
 	// A disk-bearing App's next instance prefers its volume's node (disk.go).
 	preferDiskNode(&dep.Spec.Template.Spec, app, p.diskNode)
+	// A service that can scale runs each instance on a node of its own
+	// (instance_spread.go).
+	applyInstanceSpread(&dep.Spec.Template.Spec, app.Name, p.spread)
 	// Last, always: above is what bex chooses, this is what Kubernetes would have
 	// chosen for the rest. See server_defaults.go.
 	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)

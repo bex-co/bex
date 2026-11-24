@@ -417,6 +417,9 @@ var _ = Describe("Managed OIDC token mounts (w2/m477)", func() {
 			for i, e := range out.Containers[0].Env {
 				out.Containers[0].Env[i].Value = strings.ReplaceAll(e.Value, from, to)
 			}
+			for _, spread := range out.TopologySpreadConstraints {
+				spread.LabelSelector.MatchLabels[labelApp] = strings.ReplaceAll(spread.LabelSelector.MatchLabels[labelApp], from, to)
+			}
 			return *out
 		}
 		Expect(equality.Semantic.DeepEqual(rename(a, "oidc-none-pro", "oidc-none"), b)).To(BeTrue(),
