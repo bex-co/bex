@@ -40,7 +40,9 @@ ref="cpu-runc-ref-$(date -u +%H%M%S)"
 trap 'kubectl -n "$ref_ns" delete pod "$ref" --ignore-not-found --wait=false >/dev/null 2>&1; measure_cleanup' EXIT
 
 echo "==> create a sandbox and find its pod"
-sandbox_id="$(create_sandbox "$fixture_dir/sandbox.json" '{"type":"deny-all"}')"
+# No idle suspension: kubectl exec bypasses bex-api, which sees no activity, so
+# the default 900 s window paused the sandbox mid-leg (run 45396288630).
+sandbox_id="$(create_sandbox "$fixture_dir/sandbox.json" '{"type":"deny-all"}' '"idleTimeoutSeconds":0')"
 wait_status "$sandbox_id" running 300
 read -r pod node _ < <(find_pod "$sandbox_id")
 [ -n "${pod:-}" ] && [ -n "${node:-}" ] || fail "no pod or node found for sandbox $sandbox_id"
