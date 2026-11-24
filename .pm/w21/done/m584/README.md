@@ -1,6 +1,6 @@
 # w21 · m584 — Adopt the bex Postgres operand image with each extension gated on its own, so PostGIS and the rest stop waiting on TimescaleDB's restore
 
-**Worker:** worker21 **Goal:** production managed Postgres runs the bex operand image on every major 13–18; each extension whose own ADR092 gate passes is in the owner allowlist; `pg_repack`, `wal2json` and the `pgaudit` preload ride the same digest, so every managed cluster restarts once. **Status:** blocked — `pin must carry` `b8c7ac47b2` (t001–t004, t007, t008 done; t005's adoption commit shipped)
+**Worker:** worker21 **Goal:** production managed Postgres runs the bex operand image on every major 13–18; each extension whose own ADR092 gate passes is in the owner allowlist; `pg_repack`, `wal2json` and the `pgaudit` preload ride the same digest, so every managed cluster restarts once. **Status:** done (2026-11-24)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | A per-extension gate: TimescaleDB and pg_ivm restore separately, `matrix.json` records each verdict, the allowlist takes only passed extensions, both architectures always run — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | One digest carries every image-level change: `pg_repack` on 16+ with its `repack` schema grants, `wal2json` on 13–18, `pgaudit` in `shared_preload_libraries` — **DONE** | 1h | t001 |
 | [t004](done/t004.md) | Run the gate on 13–18 × arm64 and amd64, and record each digest and each extension's verdict — **DONE** | 45m | t002, t003 |
-| [t005](t005.md) | Write the gated digests into `bexOperandImages` and restart every managed cluster once, off-peak, under ADR092 D4 | 1h | t004 |
-| [t006](t006.md) | Production acceptance, and the w8 extension items told what they wait on now | 45m | t005 |
+| [t005](done/t005.md) | Write the gated digests into `bexOperandImages` and restart every managed cluster once, off-peak, under ADR092 D4 — **DONE** | 1h | t004 |
+| [t006](done/t006.md) | Production acceptance, and the w8 extension items told what they wait on now — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -31,7 +31,7 @@
   - The gate loop at `.github/workflows/pg-operand-image.yml:168` runs arm64 first under `bash -e`, so the amd64 leg, production's architecture, has never run.
   - 12 consecutive runs since 2026-11-04 failed, so nothing was ever published, and `bexOperandImages` is empty (`database_operand.go:36`).
   - This milestone carries the remaining half of w8/m92/t008 (qualification and publication) and w8/m92/t001's adoption. It does not replace the extension milestones' own acceptance.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first); Render's [postgresql-extensions](https://render.com/docs/postgresql-extensions) ("To enable any supported extension, run the CREATE EXTENSION command"); [ADR092](../../../docs/ADR092-postgres-extension-supply.md); [ADR009](../../../docs/ADR009-postgresql-management.md).
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first); Render's [postgresql-extensions](https://render.com/docs/postgresql-extensions) ("To enable any supported extension, run the CREATE EXTENSION command"); [ADR092](../../../../docs/ADR092-postgres-extension-supply.md); [ADR009](../../../../docs/ADR009-postgresql-management.md).
 - **Expected outcome:** a Render-shaped migration that runs `CREATE EXTENSION postgis` works on bex; w8/m92, m104 and m111 resume; later extensions join the allowlist by reload, with no second restart.
 - **Why now:** six milestones and w8/276 have waited since 2026-10-31 on one gate step that only TimescaleDB (and possibly pg_ivm) fails.
 - **Decision state.** The user's 2026-10-29 decision (ADR092: one bex image per major carrying all six extensions, owner-initiated `CREATE EXTENSION` through a closed allowlist, one rolling restart approved) stands unchanged. **Recommendation of the plan, recorded as a recommendation and not as a user decision:** judge ADR092 D3 property 5 per extension, so an extension that fails it stays out of the allowlist instead of holding back the image. It rests on AGENTS.md ("Never park parity work on an optional decision. Ship the parity-sufficient choice") and keeps ADR092 D3's rule against weakening a property: no allowlisted extension loses property 5. It moves toward Render, so no ADR018 sign-off is needed.
@@ -40,3 +40,16 @@
   - pg_ivm's ordinary-owner restore has never run: it sits after TimescaleDB's failing step in the same chain. It may fail too and stay out.
   - Every major's Free gate container peaked at its 256 MiB limit (`cgroup_memory_peak_bytes=268435456`, page cache included). t002 reports anonymous memory so the Free plan's headroom is a number, not a guess.
   - pg_duckdb's own acceptance (file and network behavior) stays with w8/m109.
+
+## Unblock record (2026-11-24)
+
+- **Affected:** t005, t006, t009. **Source:** verified evidence. **Finding:** production's pin `eb52a59622` (`chore(deploy): pin platform images to f46c44d9ddb1`, 2026-11-23T23:57Z) carries `b8c7ac47b2` (`git merge-base --is-ancestor b8c7ac47b2 f46c44d9ddb1` holds), and the bex operator on production runs it (every `bex-system` Deployment on `bex-operator@sha256:3c16403a…`). The `pin must carry` gate has cleared.
+- **Next:** t005 reads each managed cluster's restart and health and records the window in ADR092 D4; t006 runs the production acceptance (Free databases below 16 and on 16+, the existing fixture `qa-m584-existing-pg18`, and the `wal2json` slot on a paid database of at least 10 GB per major, each one disposable); t009 closes.
+
+## Closeout (2026-11-24)
+
+- **Definition of done 1:** `bexOperandImages` pins the six gated digests (`b8c7ac47b2`). All seven managed clusters run them, each started once since pin `f46c44d9ddb1`. Health was read before (t005, 20:10Z) and after (00:20Z), and the rollback is written down and was not needed. Three clusters needed their pod deleted by hand: CloudNativePG reloaded `pgextwlist` into the old image first. The operator fix is filed as w21/125.
+- **2:** run `45254127793` and `deploy/pg-operand/matrix.json` (t004); `TestPGExtensionAllowlistMatchesTheImageGate` passes.
+- **3 and 4:** t006 § Result, on Free 15 and 16, the existing 18 and a paid database per major 13–18, all disposable and deleted.
+- **5:** t006 step 4. The w8 items name what they wait on now.
+- **Record:** ADR092 § D4 (Rollout record, Production acceptance) and ADR018's "Postgres extensions" row.

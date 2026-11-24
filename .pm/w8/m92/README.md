@@ -1,13 +1,13 @@
 # w8 · m92 — Make PostGIS usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** blocked — ADR092 D3 complete ordinary-owner Timescale restore fails in the actual PG14 gate; qualified upstream restore capability is required. Source and bounded consumer are implemented; no adoption or hosted acceptance.
+**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** todo (t008 and t001 done, carried by w21/m584; t002 next)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t008 | [Build the per-major operand image and extension allowlist (ADR092)](t008.md) | 240m | — |
-| t001 | [Supply compatible pinned PostGIS operand images](t001.md) | 70m | t008 |
+| t008 | [Build the per-major operand image and extension allowlist (ADR092)](done/t008.md) — **DONE** (carried by w21/m584) | 240m | — |
+| t001 | [Supply compatible pinned PostGIS operand images](done/t001.md) — **DONE** (carried by w21/m584) | 70m | t008 |
 | t002 | [Reconcile PostGIS in the existing application Database child](t002.md) | 45m | t001 |
 | t003 | [Audit shared image, extension and lifecycle callers](t003.md) | 35m | t002 |
 | t004 | [Verify Render parity across database consumers](t004.md) | 20m | t003 |
@@ -24,7 +24,7 @@ Reviewed compatible PostGIS operand supply plus retained CNPG application-Databa
 ## Source + Goal linkage
 
 - **Source:** Authorized functional CLI sweep403,2026-10-17: both unchanged native psql clients fail the original PostGIS migration on one fresh Bex-created Free PostgreSQL18.6 database; independent SQL/hstore/point controls pass and four catalogs remain identical.
-- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [managed data ADR009](../../../../docs/ADR009-postgresql-management.md) and [ADR018](../../../../docs/ADR018-render-parity.md): supported geospatial migrations should work through ordinary managed database connections.
+- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [managed data ADR009](../../../docs/ADR009-postgresql-management.md) and [ADR018](../../../docs/ADR018-render-parity.md): supported geospatial migrations should work through ordinary managed database connections.
 - **Expected outcome:** Applications can store/query geospatial data without installing server libraries themselves or changing authority/CLI requests.
 - **Why now:** Actual catalog absence and two matching native errors establish this separate gap while vector and ordinary extension/SQL behavior already work. No PostGIS repair is scheduled in the searched board/history.
 - **Render parity:** Included because the shared managed database image/extension change reaches REST/GraphQL/MCP/Blueprint/dashboard/native consumers. Core PostGIS activation only; no general extension catalog/API product.
@@ -42,9 +42,9 @@ Reviewed compatible PostGIS operand supply plus retained CNPG application-Databa
 
 - **涉及 ID：** w8/m92、m104、m109、m110、m111、m112
 - **结论来源：** 用户明确决定，补充上一条「当前没有新 rollout 授权」的复核记录。用户先问「Render 是怎么做的」，然后选择方案；之后指出「Render 公开的只是按库 CREATE EXTENSION 这一层契约，背后靠白名单机制放行非 trusted 扩展，需要写 ADR」。
-- **结论：** 采用 [ADR092](../../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
+- **结论：** 采用 [ADR092](../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
 - **重启已获批准：** 用户批准为采用新镜像对全部托管 Postgres pod **滚动重启一次**。CNPG 1.30.1 已由 w7/m156 原地升级完成，不再与 m65 合并。上一条的「剩余门槛：需要用户接受重启」已解除。
-- **剩余门槛：** 无用户门槛。worker 从 [t008](t008.md) 开始：先在隔离环境按 ADR092 D3 验证各大版本，再按 D4 低峰滚动并逐项验收。
+- **剩余门槛：** 无用户门槛。worker 从 [t008](done/t008.md) 开始：先在隔离环境按 ADR092 D3 验证各大版本，再按 D4 低峰滚动并逐项验收。
 
 
 ## Qualification scope correction — 2026-10-31
@@ -68,7 +68,7 @@ A fresh Free PG18 (`qa-20261101-3093-pgx`, `dpg-dbjbcjluhrks73c4dong`) still run
 ## CI sweep — 2026-11-05 (from w6, `/loopx`-independent)
 
 - `pg-operand-image` has never passed on main. `acde09993` fixed the gate's extension order (`timescaledb` before `pg_duckdb`, duckdb/pg_duckdb#934), so PG 16/17/18 no longer fail on `time_bucket`.
-- Run 42019084199: PG 13/14/15 stop at the fatal ordinary-owner restore check as intended (this milestone's upstream gate, left fatal on purpose); PG 16/17/18 now crash the server right after creating all extensions — filed as [w8/234](../../234.md).
+- Run 42019084199: PG 13/14/15 stop at the fatal ordinary-owner restore check as intended (this milestone's upstream gate, left fatal on purpose); PG 16/17/18 now crash the server right after creating all extensions — filed as [w8/234](../done/234.md).
 - The images are still unreferenced (`bexOperandImages` is empty), so production Postgres is unaffected.
 
 ## Re-homed adoption — 2026-11-23 (`/pmx what are verified to w21`)
@@ -76,5 +76,13 @@ A fresh Free PG18 (`qa-20261101-3093-pgx`, `dpg-dbjbcjluhrks73c4dong`) still run
 - **Affected IDs:** w8/m92 (t008, t001); shared with m104, m109, m110, m111, m112.
 - **Source:** verified evidence, not a user decision. `pg-operand-image.yml` run `45019148603` (2026-11-22) failed on all six majors at one step only, the ordinary-owner restore at `deploy/pg-operand/check.sh:193` (`permission denied to set parameter "timescaledb.restoring"`); every allowlisted extension had been created and used before it, and the platform restore after it passed. The loop at `.github/workflows/pg-operand-image.yml:168` runs arm64 first under `bash -e`, so the amd64 leg has never run. 12 runs since 2026-11-04 failed; nothing was published.
 - **Chosen behavior (the plan's recommendation under ADR008 § Render parity first and AGENTS.md "Never park parity work on an optional decision"):** gate each extension on its own; one that fails ADR092 D3 property 5 stays out of the allowlist instead of holding back the image. No allowlisted extension loses property 5, so D3's rule against weakening a property holds. The user's 2026-10-29 decision (image, on-demand activation, one approved rolling restart) is unchanged.
-- **Where the work goes:** [w21/m584](../../../w21/blocked/m584/README.md) carries t008's remaining qualification and publication and t001's adoption. This milestone keeps t002–t007 (PostGIS reconciliation and acceptance).
+- **Where the work goes:** [w21/m584](../../w21/done/m584/README.md) carries t008's remaining qualification and publication and t001's adoption. This milestone keeps t002–t007 (PostGIS reconciliation and acceptance).
 - **Remaining gate:** w21/m584 closes. Its t006 then closes t008 and t001 here as carried by m584 and resumes t002.
+
+## Unblock record — 2026-11-24 (w21/m584 t006)
+
+- **Affected IDs:** w8/m92 t008, t001 (done, carried by [w21/m584](../../w21/done/m584/README.md)), t002–t007 (todo). **Source:** verified evidence, not a user decision.
+- **Finding:** w21/m584 closed. The six gated digests run on every managed cluster in production since pin `f46c44d9ddb1` (2026-11-24). As the default user over the external URL, this milestone's original migration returns srid 4326, `POINT(0 0)` and 111319.491 m. The databases were new Free ones on 15 and 16, the existing `qa-m584-existing-pg18`, and a new database per major 13–18, all disposable. `CREATE EXTENSION postgis` commits as the owner, and a GiST-indexed `geography` table answers the same distance ([ADR092 § D4](../../../docs/ADR092-postgres-extension-supply.md#d4--rollout-one-rolling-restart-approved)). The approved restart is spent.
+- **Remaining gates:** none outside this milestone.
+- **Next:** t002, the PostGIS reconciliation in the existing application Database child. Then t003–t007, including the hosted acceptance through both native clients that the definition of done names (m584 used `psql` 18.6 only).
+

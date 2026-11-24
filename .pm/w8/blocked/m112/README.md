@@ -1,6 +1,6 @@
 # w8 · m112 — Make documented time-series tables usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary applications can use documented Apache-compatible TimescaleDB hypertables and time bucketing. **Status:** blocked — waits for [w8/m92/t008](../m92/t008.md) to deliver qualified per-major operand images and the allowlist; the single ADR092 D4 rolling restart is already approved; no user-decision gate
+**Worker:** worker8 **Goal:** ordinary applications can use documented Apache-compatible TimescaleDB hypertables and time bucketing. **Status:** blocked — `timescaledb` is in production's image and preload but out of the allowlist (w21/m584, 2026-11-24); needs a captured Render restore of a TimescaleDB export, or the user's decision
 
 ## Tasks (in order)
 
@@ -44,20 +44,27 @@ On existing supported managed PostgreSQL13–18, with compatible extension relea
 - **结论来源：** 用户明确决定，补充上一条「当前没有新 rollout 授权」的复核记录。用户先问「Render 是怎么做的」，然后选择方案；之后指出「Render 公开的只是按库 CREATE EXTENSION 这一层契约，背后靠白名单机制放行非 trusted 扩展，需要写 ADR」。
 - **结论：** 采用 [ADR092](../../../../docs/ADR092-postgres-extension-supply.md)：每个大版本一个 bex 自建 operand 镜像，内置全部 6 个扩展；owner 按需 `CREATE EXTENSION`；用封闭白名单（supautils 或 pgextwlist，按 ADR 的 5 条性质验证后选定）放行非 trusted 扩展。这与上一条记录的工程方案 1(b)+2(b) 一致。
 - **重启已获批准：** 用户批准为采用新镜像对全部托管 Postgres pod **滚动重启一次**。CNPG 1.30.1 已由 w7/m156 原地升级完成，不再与 m65 合并。上一条的「剩余门槛：需要用户接受重启」已解除。
-- **剩余门槛：** 无用户门槛。本项等 [w8/m92/t008](../m92/t008.md) 的共享镜像和白名单落地（上游依赖），之后恢复，完成本扩展的回归和线上验收。
+- **剩余门槛：** 无用户门槛。本项等 [w8/m92/t008](../../m92/done/t008.md) 的共享镜像和白名单落地（上游依赖），之后恢复，完成本扩展的回归和线上验收。
 
 ## Shared operand qualification checkpoint — 2026-10-31
 
-The corrected shared operand/restore source and maintained tests shipped in `fa85c4418`. Historical SQL results remain partial evidence: the renewed complete ordinary-owner restore and original IMMV maintenance checks, actual CNPG 1.30.1 with Free resources, every supported major on both architectures, published-artifact review/adoption and this milestone's original hosted SQL acceptance remain open. The dependency is qualified [w8/m92/t008](../m92/t008.md) output, not another product or restart decision. Preserve the existing ADR092 D4 single rolling-restart approval, every original DoD and all prior evidence.
+The corrected shared operand/restore source and maintained tests shipped in `fa85c4418`. Historical SQL results remain partial evidence: the renewed complete ordinary-owner restore and original IMMV maintenance checks, actual CNPG 1.30.1 with Free resources, every supported major on both architectures, published-artifact review/adoption and this milestone's original hosted SQL acceptance remain open. The dependency is qualified [w8/m92/t008](../../m92/done/t008.md) output, not another product or restart decision. Preserve the existing ADR092 D4 single rolling-restart approval, every original DoD and all prior evidence.
 
 ## The gate that remains after the image — 2026-11-23 (`/pmx what are verified to w21`)
 
 - **Affected IDs:** w8/m112.
 - **Source:** verified evidence and the plan's recommendation, not a user decision.
-  - The image this milestone waited on moves to [w21/m584](../../../w21/blocked/m584/README.md), which admits each extension on its own gate. TimescaleDB fails its ordinary-owner restore on every major (run `45019148603`, `check.sh:193`), so m584 ships with `timescaledb` in the image and its preload but out of the allowlist; admitting it later is a reload.
+  - The image this milestone waited on moves to [w21/m584](../../../w21/done/m584/README.md), which admits each extension on its own gate. TimescaleDB fails its ordinary-owner restore on every major (run `45019148603`, `check.sh:193`), so m584 ships with `timescaledb` in the image and its preload but out of the allowlist; admitting it later is a reload.
   - A `SECURITY DEFINER` wrapper around `timescaledb_pre_restore()` was considered and **rejected**: that function only sets `timescaledb.restoring` (`sql/maintenance_utils.sql:5-17` upstream), and `pg_restore` then writes `_timescaledb_catalog` and `_timescaledb_config`, which ADR092 deliberately never grants because `bgw_job` names the role a job runs as; a grant there lets the owner schedule a job as the superuser.
   - Render's restore guide ([postgresql-backups](https://render.com/docs/postgresql-backups), read 2026-11-23) runs a plain `pg_restore --no-owner --no-privileges` as the database user and says nothing about TimescaleDB, so whether a Render user can restore a TimescaleDB export is unknown.
 - **Recommendation:** capture Render's answer: on a Render PostgreSQL 16 database, as the default user, `CREATE EXTENSION timescaledb`, a hypertable with rows, `pg_dump -Fd`, then `pg_restore --no-owner --no-privileges` into a second database with and without `timescaledb_pre_restore()`.
   - If Render fails too, the owner-restore criterion is stricter than Render: under ADR008, admit `timescaledb` (a reload), record the shared limitation in ADR018, and file the stricter restore as a follow-up.
   - If Render succeeds, read how (catalog ownership, `\dp _timescaledb_catalog.*`, the role's attributes) and match it.
 - **Remaining gate:** w21/m584 closes, and a captured Render restore of a TimescaleDB export (needs the user's Render workspace or API key), or the user's decision without it.
+
+## Gate record — 2026-11-24 (w21/m584 t006)
+
+- **Affected IDs:** w8/m112. **Source:** verified evidence.
+- **Finding:** [w21/m584](../../../w21/done/m584/README.md) closed. Production runs the bex image on every managed cluster since pin `f46c44d9ddb1`, with `timescaledb` in `shared_preload_libraries` (Apache license) and out of `extwlist.extensions`. As the default user on a new database per major 13–18, `CREATE EXTENSION timescaledb` answers `42501 permission denied to create extension "timescaledb"` / `Must be superuser to create this extension`.
+- **Remaining gate:** a captured Render restore of a TimescaleDB export (needs the user's Render workspace or API key), or the user's decision without it. Admitting it afterwards is a reload of `extwlist.extensions`, not a restart.
+
