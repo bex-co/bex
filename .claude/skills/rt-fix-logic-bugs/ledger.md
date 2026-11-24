@@ -47,4 +47,3 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 - 2026-11-19 authz/mint-gate pairing — audited, holds: every AuthorizeMintClass site pairs with a relation Authorize; postgres CreateCredential is deliberately echo-less, its password readable only through sensitive-gated connection info
 - 2026-11-19 authz/MintClass display vs AuthorizeMintClass verb — audited, holds: the display predicate is read-only and the verb re-checks the live registry; nil-resolver and stale-stamp deltas both fail closed
 - 2026-11-19 billing/estimate totals-vs-lines — the total rounded the raw float sum while lines round individually (1c drift on multi-line stacks); fixed this run to sum rounded line cents in MonthlyEstimate and ResourceEstimate.CostUSD; EstimatedCost.TotalUSD still counts sub-cent meters by design, untouched
-
