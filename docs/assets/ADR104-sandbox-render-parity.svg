@@ -19,7 +19,7 @@ rect.b{stroke-width:1.5;rx:8}
 <text x="22" y="90" text-anchor="start" class="lane">1 · CLIENTS — all call bex-api on Render's /v1/sandboxes* paths</text>
 <rect class="b ok" x="30" y="92" width="250" height="56"/>
 <text class="t" x="40" y="112">Render CLI (bex launcher)</text>
-<text class="s" x="40" y="130">pinned v2.35.0; v2.36.0 is out (D10)</text>
+<text class="s" x="40" y="130">pinned v2.38.0, Render's latest (D10)</text>
 <rect class="b plan" x="300" y="92" width="250" height="56"/>
 <text class="t" x="310" y="112">Render SDKs 1.8.0 (Py + TS)</text>
 <text class="s" x="310" y="130">base_url → bex-api · walk: m284</text>
