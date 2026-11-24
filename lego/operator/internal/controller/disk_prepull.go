@@ -62,10 +62,18 @@ import (
 // rollout without a hold: the volume then moves, and the new instance may
 // start on any node.
 //
+// When the volume moves (w6/173), the new instance waits on its node for
+// Hetzner's detach and attach (25-32 s), and the kubelet pulls its images only
+// once the volume is mounted. So once the template is written and the new
+// instance is bound to a node other than the volume's, the same Job starts
+// there for every image the instance runs, which that node may lack, and the
+// pull overlaps the move (prePullOnMove). Nothing waits for it.
+//
 // The operator deletes the Job once the template is written and its pull has
 // ended, never while it still pulls: the kubelet serializes pulls, so the new
 // instance's pull waits for that one and then finds the layers there, where a
-// deletion would cancel it.
+// deletion would cancel it. A move's Job also stays, ended, until the instance
+// has the volume.
 const (
 	diskPrePullPrefix    = "dskpul-"
 	diskPrePullComponent = appv1alpha1.ComponentDiskPrePull
@@ -84,19 +92,27 @@ const (
 	// the workspace's pod quota, or the signature webhook on an unsigned
 	// image, which refuses the new instance too.
 	diskPrePullPodBound = diskHoldMountBound
+	// diskPrePullMoveBound is how long after a moving instance's binding its
+	// pre-pull may start. Its detach and attach take 25-32 s, so a pass sees
+	// the binding well within it. A move's pre-pull that has ended is kept
+	// until its instance has the volume, but its TTL reaps it a minute after
+	// it ends: within this bound, no pass finds it gone and pulls again.
+	diskPrePullMoveBound = time.Duration(diskHolderTTLSeconds) * time.Second
 )
 
-// What a held rollout's write waited for (diskPrePullsTotal).
+// What a held rollout's write waited for (diskPrePullsTotal), and moved for a
+// pre-pull started on the node a moving volume's new instance is bound to.
 const (
 	diskPrePullPulled  = "pulled"
 	diskPrePullFailed  = "failed"
 	diskPrePullTimeout = "timeout"
 	diskPrePullRefused = "refused"
+	diskPrePullMoved   = "moved"
 )
 
 var diskPrePullsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 	Name: "bex_disk_prepulls_total",
-	Help: "Held disk-bearing rollouts whose new template runs an image the running one does not, by what the template write waited for: pulled (every new image was on the volume's node), failed (a pull or the pre-pull's pod failed; the instance's own pull reports it), timeout (the pull was still running past its bound and goes on in the kubelet), refused (the pre-pull Job could not be created).",
+	Help: "Disk pre-pulls. A held rollout whose new template runs an image the running one does not counts what the template write waited for: pulled (every new image was on the volume's node), failed (a pull or the pre-pull's pod failed; the instance's own pull reports it), timeout (the pull was still running past its bound and goes on in the kubelet), refused (the pre-pull Job could not be created). moved counts a pre-pull started on the node a moving volume's new instance is bound to, which pulls while the volume detaches and attaches.",
 }, []string{"result"})
 
 func init() {
@@ -128,9 +144,9 @@ func diskPrePullJob(app *appv1alpha1.App, tier, node string, images []string, te
 			Image: image,
 			// A directory: the exec fails in runc's init, after the pull.
 			Command: []string{"/"},
-			// As the instance pulls: a cached image is still re-checked
-			// against the registry's credentials (w4/426).
-			ImagePullPolicy: tenantImagePullPolicy,
+			// As the instance pulls: a cached tenant image is still
+			// re-checked against the registry's credentials (w4/426).
+			ImagePullPolicy: prePullPolicy(template, image),
 			Resources:       diskHolderResources(),
 			// An explicit non-root user: the kubelet's runAsNonRoot check
 			// would otherwise read the image's user and could stop the
@@ -169,6 +185,18 @@ func diskPrePullJob(app *appv1alpha1.App, tier, node string, images []string, te
 	return job, controllerutil.SetControllerReference(app, job, scheme)
 }
 
+// prePullPolicy is the policy template's instance pulls image with: Always for
+// a tenant's image, IfNotPresent for bex's own helpers. An image the template
+// does not name pulls as a tenant's.
+func prePullPolicy(template *corev1.PodTemplateSpec, image string) corev1.PullPolicy {
+	for _, c := range slices.Concat(template.Spec.InitContainers, template.Spec.Containers) {
+		if c.Image == image && c.ImagePullPolicy != "" {
+			return c.ImagePullPolicy
+		}
+	}
+	return tenantImagePullPolicy
+}
+
 // diskPrePullImages is the images job pulls, in order.
 func diskPrePullImages(job *batchv1.Job) []string {
 	images := make([]string, len(job.Spec.Template.Spec.Containers))
@@ -182,18 +210,19 @@ func diskPrePullImages(job *batchv1.Job) []string {
 // sorted: what a rollout's new instance pulls that the volume's node may not
 // have. A restart or a plan change keeps every image, so it names none.
 func newTemplateImages(stored, projected *corev1.PodSpec) []string {
-	running := map[string]bool{}
-	for _, c := range slices.Concat(stored.InitContainers, stored.Containers) {
-		running[c.Image] = true
-	}
-	var images []string
-	for _, c := range slices.Concat(projected.InitContainers, projected.Containers) {
-		if !running[c.Image] && !slices.Contains(images, c.Image) {
-			images = append(images, c.Image)
-		}
+	running := podImages(stored)
+	return slices.DeleteFunc(podImages(projected), func(image string) bool { return slices.Contains(running, image) })
+}
+
+// podImages is every image spec runs, once each, sorted.
+func podImages(spec *corev1.PodSpec) []string {
+	containers := slices.Concat(spec.InitContainers, spec.Containers)
+	images := make([]string, 0, len(containers))
+	for _, c := range containers {
+		images = append(images, c.Image)
 	}
 	slices.Sort(images)
-	return images
+	return slices.Compact(images)
 }
 
 // prePullState is how far the kubelet is with a pre-pull pod's images.
@@ -312,6 +341,73 @@ func (r *AppReconciler) createDiskPrePull(ctx context.Context, app *appv1alpha1.
 		log.Error(err, "the pre-pull was refused; rolling without it")
 		return diskHoldStep{prePull: diskPrePullRefused}
 	}
+}
+
+// prePullOnMove is the pre-pull's part of a pass that finds a disk-bearing
+// App's template written, whose volume is on node from (w6/173). A new
+// instance bound to another node and not yet mounted waits there for the
+// volume, so the pre-pull starts on that node for every image the instance
+// runs, and the pull overlaps the detach and attach. A held rollout's
+// pre-pull on the node the volume leaves is ended: nothing starts there.
+//
+// It reports a move in progress, during which settleDiskPrePull must leave
+// the pre-pull: one that has ended stays until the instance has the volume,
+// or the next pass would start it again.
+func (r *AppReconciler) prePullOnMove(ctx context.Context, app *appv1alpha1.App, tier, from string, prePull *batchv1.Job, stored *appsv1.Deployment, replicas int32) bool {
+	if replicas == 0 || from == "" || stored.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType ||
+		!mountsDiskClaim(stored.Spec.Template.Spec, app.Name) || deploymentSettled(stored) {
+		return false
+	}
+	log := logf.FromContext(ctx).WithValues("app", app.Name, "from", from)
+	instances, err := r.currentInstances(ctx, stored)
+	if err != nil {
+		log.Error(err, "reading the new instance for the disk pre-pull failed")
+		return false
+	}
+	i := slices.IndexFunc(instances, func(pod *corev1.Pod) bool { return pod.Spec.NodeName != from && !volumesMounted(pod) })
+	if i < 0 {
+		return false
+	}
+	instance := instances[i]
+	node := instance.Spec.NodeName
+	// Every image: the node may lack any of them.
+	images := podImages(&stored.Spec.Template.Spec)
+	switch {
+	case prePull == nil:
+	case !metav1.IsControlledBy(prePull, app):
+		return true // another lifetime's: left alone
+	case diskJobNode(prePull) == node && slices.Equal(diskPrePullImages(prePull), images):
+		return true // the move's own, pulling or pulled
+	default:
+		r.endDiskJob(ctx, prePull, diskHoldEndMoved)
+	}
+	if boundFor(instance) >= diskPrePullMoveBound {
+		return true
+	}
+	job, err := diskPrePullJob(app, tier, node, images, &stored.Spec.Template, r.Scheme)
+	if err == nil {
+		err = r.Create(ctx, job)
+	}
+	switch {
+	case err == nil:
+		log.Info("pulling the instance's images onto the node its disk moves to", "job", job.Name, "node", node, "images", images)
+		diskPrePullsTotal.WithLabelValues(diskPrePullMoved).Inc()
+	case !apierrors.IsAlreadyExists(err):
+		// Quota or admission: the instance pulls after the attach, as before.
+		log.Error(err, "the pre-pull onto the node the disk moves to was refused", "node", node)
+	}
+	return true
+}
+
+// boundFor is how long ago pod was bound to its node, 0 when its status does
+// not say yet.
+func boundFor(pod *corev1.Pod) time.Duration {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled && c.Status == corev1.ConditionTrue && !c.LastTransitionTime.IsZero() {
+			return time.Since(c.LastTransitionTime.Time)
+		}
+	}
+	return 0
 }
 
 // settleDiskPrePull ends prePull once its rollout's template is written and

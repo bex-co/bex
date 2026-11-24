@@ -281,10 +281,11 @@ type diskHoldStep struct {
 }
 
 // holdDiskThroughRollout decides, before a pass writes a disk-bearing App's
-// Deployment, whether the write waits for a holder, and ends a holder its
-// rollout no longer needs. tier is the compute tier the template is projected
-// for, and project is the pass's own write, run here on a copy of the stored
-// Deployment. Every failure is logged and answered without a hold.
+// Deployment, whether the write waits for a holder, ends a holder its rollout
+// no longer needs, and starts the pre-pull of a new instance whose volume
+// moves. tier is the compute tier the template is projected for, and project
+// is the pass's own write, run here on a copy of the stored Deployment. Every
+// failure is logged and answered without a hold.
 func (r *AppReconciler) holdDiskThroughRollout(ctx context.Context, app *appv1alpha1.App, tier string, replicas int32, project func(*appsv1.Deployment) *corev1.PodTemplateSpec) diskHoldStep {
 	if app.Spec.Disk == nil && app.Annotations[annotDiskProvisioned] == "" {
 		return diskHoldStep{} // never had a disk: every stateless App, no API call
@@ -318,12 +319,18 @@ func (r *AppReconciler) holdDiskThroughRollout(ctx context.Context, app *appv1al
 	projected := stored.DeepCopy()
 	project(projected)
 	if equality.Semantic.DeepEqual(stored.Spec.Template, projected.Spec.Template) {
+		// The volume is where the holder holds it, or else on the node the
+		// template prefers: its instance's when the template was written.
+		from := storedDiskNode(stored.Spec.Template.Spec)
 		if holder != nil && metav1.IsControlledBy(holder, app) {
+			from = cmp.Or(diskJobNode(holder), from)
 			if reason := r.diskHoldEnd(ctx, app, holder, stored, replicas); reason != "" {
 				r.endDiskHold(ctx, holder, reason)
 			}
 		}
-		r.settleDiskPrePull(ctx, app, prePull, stored, replicas)
+		if !r.prePullOnMove(ctx, app, tier, from, prePull, stored, replicas) {
+			r.settleDiskPrePull(ctx, app, prePull, stored, replicas)
+		}
 		return diskHoldStep{}
 	}
 	return r.startDiskHold(ctx, app, tier, holder, prePull, stored, projected, replicas)

@@ -622,6 +622,189 @@ func TestTheDiskPrePullIsNoInstanceOfTheRollout(t *testing.T) {
 	}
 }
 
+// w6/173: a new instance bound to a node other than its volume's waits there
+// for the detach and attach, and the kubelet pulls its images only once the
+// volume is mounted. The pre-pull starts on that node as soon as the instance
+// is bound, so the pull overlaps the move.
+func TestDiskPrePullOverlapsAMove(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// change is a rollout whose new instance is then bound to node-b.
+		change func(*diskHoldFixture)
+		// image is what the new instance runs, which node-b may lack.
+		image string
+	}{
+		{"a code deploy on a cordoned node", func(f *diskHoldFixture) { f.cordon(); f.image = "nginx:2" }, "nginx:2"},
+		// The plan keeps the image, but the node it no longer fits on is
+		// the only one known to have it.
+		{"a plan change the volume's node does not fit", func(f *diskHoldFixture) { f.app.Spec.Tier = "standard" }, "nginx:1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newDiskHoldFixture(t)
+			moved := diskPrePullCount(diskPrePullMoved)
+			tc.change(f)
+			if f.apply() > 0 {
+				f.holderPod(f.holder(), true)
+				if wait := f.apply(); wait != 0 {
+					t.Fatalf("wait = %v with the holder mounted, want the template written", wait)
+				}
+			}
+			f.expectImage(tc.image, "once the rollout is written")
+			if f.prePull() != nil {
+				t.Fatal("a pre-pull started before the new instance had a node")
+			}
+
+			// The old instance is gone, and the new one is bound to node-b
+			// and waits there for the volume.
+			f.deleteInstance(f.instance)
+			next := f.runInstance("new", "node-b", corev1.PodPending)
+			if wait := f.apply(); wait != 0 {
+				t.Fatalf("wait = %v, want nothing waited for: the template is written", wait)
+			}
+			prePull := f.prePull()
+			if prePull == nil || diskJobNode(prePull) != "node-b" || !slices.Equal(diskPrePullImages(prePull), []string{tc.image}) {
+				t.Fatalf("pre-pull = %v, want one of %s on node-b", prePull, tc.image)
+			}
+			if f.holder() != nil {
+				t.Error("the holder stayed on node-a while the volume moves")
+			}
+
+			// The pull ends before the volume arrives: the Job stays, and no
+			// pass starts another.
+			pod := f.prePullPod(prePull, pullingState)
+			f.apply()
+			f.endPull(pod, pulledState)
+			f.apply()
+			f.apply()
+			if got := f.prePull(); got == nil || got.UID != prePull.UID {
+				t.Fatalf("pre-pull = %v, want the move's own kept until the instance has the volume", got)
+			}
+
+			// The volume arrives: the pre-pull ends, and none starts again.
+			f.mount(next)
+			f.apply()
+			f.apply()
+			if f.prePull() != nil {
+				t.Error("the pre-pull outlived the instance's mount")
+			}
+			if got := diskPrePullCount(diskPrePullMoved) - moved; got != 1 {
+				t.Errorf("moved count rose by %v, want 1", got)
+			}
+		})
+	}
+}
+
+// A held code deploy's pull still running on the node the volume leaves is of
+// no use there once the new instance is bound elsewhere: the pre-pull follows
+// the instance.
+func TestDiskPrePullFollowsTheInstanceToTheNodeItsVolumeMovesTo(t *testing.T) {
+	f := newDiskHoldFixture(t)
+	f.image = "nginx:2"
+	f.apply()
+	f.holderPod(f.holder(), true)
+	f.prePullPod(f.prePull(), pullingState)
+	f.age(f.prePull(), diskPrePullBound+time.Second)
+	if wait := f.apply(); wait != 0 {
+		t.Fatalf("wait = %v, want the template written at the pull's bound", wait)
+	}
+	held := f.prePull()
+	f.deleteInstance(f.instance)
+	f.runInstance("new", "node-b", corev1.PodPending)
+	f.apply()
+	got := f.prePull()
+	if got == nil || got.UID == held.UID || diskJobNode(got) != "node-b" || !slices.Equal(diskPrePullImages(got), []string{"nginx:2"}) {
+		t.Fatalf("pre-pull = %v, want node-a's replaced by one of nginx:2 on node-b", got)
+	}
+}
+
+// A template can prefer a node its volume is not on: the served release's,
+// restored after a failed rollout that moved it (w6/165). The holder is where
+// the volume is, so an instance bound to the preferred node still moves it.
+func TestDiskPrePullReadsTheVolumesNodeFromItsHolder(t *testing.T) {
+	f := newDiskHoldFixture(t)
+	f.holdThroughRestart()
+	f.deleteInstance(f.instance)
+	dep := f.stored()
+	preferDiskNode(&dep.Spec.Template.Spec, f.app, "node-b")
+	if err := f.c.Update(context.Background(), dep); err != nil {
+		t.Fatal(err)
+	}
+	f.runInstance("new", "node-b", corev1.PodPending)
+	f.apply()
+	if got := f.prePull(); got == nil || diskJobNode(got) != "node-b" {
+		t.Fatalf("pre-pull = %v, want one on node-b: the volume leaves the holder's node-a", got)
+	}
+}
+
+func TestDiskPrePullStartsNoneUnlessTheVolumeMoves(t *testing.T) {
+	restartOnCordonedNode := func(f *diskHoldFixture) {
+		f.cordon()
+		f.app.Spec.RestartedAt = "2026-11-23T12:00:00Z"
+		if wait := f.apply(); wait != 0 {
+			f.t.Fatalf("wait = %v, want the restart written at once on a cordoned node", wait)
+		}
+		f.deleteInstance(f.instance)
+	}
+	for _, tc := range []struct {
+		name  string
+		setup func(*diskHoldFixture)
+	}{{
+		name: "the new instance is bound to the volume's node",
+		setup: func(f *diskHoldFixture) {
+			f.holdThroughRestart()
+			f.deleteInstance(f.instance)
+			f.runInstance("new", "node-a", corev1.PodPending)
+		},
+	}, {
+		name: "the instance runs on the node the volume moved to",
+		setup: func(f *diskHoldFixture) {
+			restartOnCordonedNode(f)
+			f.runInstance("new", "node-b", corev1.PodRunning)
+		},
+	}, {
+		name: "the new instance was bound too long ago",
+		setup: func(f *diskHoldFixture) {
+			restartOnCordonedNode(f)
+			next := f.runInstance("new", "node-b", corev1.PodPending)
+			next.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodScheduled, Status: corev1.ConditionTrue,
+				LastTransitionTime: metav1.NewTime(time.Now().Add(-diskPrePullMoveBound - time.Second))}}
+			f.updateStatus(next)
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newDiskHoldFixture(t)
+			tc.setup(f)
+			f.writes.Store(0)
+			f.apply()
+			if f.prePull() != nil {
+				t.Error("a pre-pull started")
+			}
+			if n := f.writes.Load(); n != 0 {
+				t.Errorf("the pass made %d writes, want none", n)
+			}
+		})
+	}
+}
+
+// The pre-pull pulls each image as the instance would: a tenant's image
+// re-checked against its registry, bex's own helper only when it is missing.
+func TestDiskPrePullPullsEachImageAsTheInstanceDoes(t *testing.T) {
+	template := prePullTemplate()
+	template.Spec.InitContainers = []corev1.Container{{Name: "health-probe", Image: "zot/bex-operator@sha256:probe", ImagePullPolicy: corev1.PullIfNotPresent}}
+	template.Spec.Containers = []corev1.Container{{Name: appContainerName, Image: "zot/blog:2", ImagePullPolicy: corev1.PullAlways}}
+	images := []string{"zot/bex-operator@sha256:probe", "zot/blog:2", "zot/unnamed:1"}
+	job, err := diskPrePullJob(diskHoldApp(), "starter", "node-b", images, template, diskHoldScheme(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	containers := job.Spec.Template.Spec.Containers
+	for i, want := range []corev1.PullPolicy{corev1.PullIfNotPresent, corev1.PullAlways, corev1.PullAlways} {
+		if containers[i].Image != images[i] || containers[i].ImagePullPolicy != want {
+			t.Errorf("container %d pulls %s (%s), want %s (%s)", i, containers[i].Image, containers[i].ImagePullPolicy, images[i], want)
+		}
+	}
+}
+
 func (f *diskHoldFixture) prePull() *batchv1.Job {
 	job := &batchv1.Job{}
 	if err := f.c.Get(context.Background(), client.ObjectKey{Namespace: f.app.Namespace, Name: diskPrePullName(f.app.Name)}, job); err != nil {
@@ -633,8 +816,8 @@ func (f *diskHoldFixture) prePull() *batchv1.Job {
 	return job
 }
 
-// prePullPod is the Job controller's pod for job on node-a, its container in
-// state.
+// prePullPod is the Job controller's pod for job, bound to the node the Job
+// requires, its container in state.
 func (f *diskHoldFixture) prePullPod(job *batchv1.Job, state corev1.ContainerStatus) *corev1.Pod {
 	f.t.Helper()
 	pod := &corev1.Pod{
@@ -642,7 +825,7 @@ func (f *diskHoldFixture) prePullPod(job *batchv1.Job, state corev1.ContainerSta
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(job, batchv1.SchemeGroupVersion.WithKind("Job"))}},
 		Spec: *job.Spec.Template.Spec.DeepCopy(),
 	}
-	pod.Spec.NodeName = "node-a"
+	pod.Spec.NodeName = diskJobNode(job)
 	if err := f.c.Create(context.Background(), pod); err != nil {
 		f.t.Fatal(err)
 	}
