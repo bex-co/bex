@@ -47,7 +47,7 @@
 
 - **The patch (t001, `cce1b285dd`):** `deploy/cnpg-operator/patches/0001-instance-keep-extensions-the-cluster-preloads.patch` on `v1.30.1` (`2a35abb46`, `deploy/cnpg-operator/UPSTREAM`).
 - **The image (t002):** `ghcr.io/bex-co/bex-operator:cnpg-1.30.1-bex.1-07557237b85d3984fdf38665f8310288fb166596@sha256:5f8658442ad6979fb2c9060e3889dd5e54b13f4107d65243c67c79d9f88daa85`, published, signed and verified by `cnpg-operator-image.yml` run 45288684433.
-- **Upstream (t005):** branch `bex-co/cloudnative-pg@bex/keep-preloaded-extensions` (`d7310e91b7`, on upstream `main` `f076d5ba99`); the user's steps are inbox note [w21/123](../../123.md).
+- **Upstream (t005):** branch `bex-co/cloudnative-pg@bex/keep-preloaded-extensions` (`d7310e91b7`, on upstream `main` `f076d5ba99`); the user's steps are inbox note [w21/123](../123.md).
 - **Adoption and gate (t003, t004, `4fdf3e3338`):** `deploy/gitops/base/cnpg-operator.yaml` pins the build; `gitops-validate.sh`, the mock and every `dev-N` follow it. `cnpg-operator-qualify.yml` runs `TestOwnerPgauditAcrossRestartOnCNPG/PG18` on kind on arm64 and amd64: it passed on the build (run 45293927285) and failed on the release at the restart, `pgaudit` gone (run 45293944381). The full `TestApplicationDatabaseExtensionsOnCNPG` covers the same step but its owner export and restore phase has never passed on a real CloudNativePG (w21/124).
 - **Definition of done so far:** item 4 holds (CI and the release's failure). Item 5 holds (the branch, the note, and ADR092's removal condition). Items 1–3 are production's and wait for the pin.
 
