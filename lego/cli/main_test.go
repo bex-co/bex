@@ -1485,6 +1485,10 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		// Commands that fail for their own non-workspace reasons in non-TTY /
 		// missing-file / missing-arg / unreachable-local-server test runs must
 		// still reach their own handlers with zero /v1/owners?name= lookups.
+		// A --local command dials the dev server's URL, http://localhost:1/v1/…;
+		// the dial error names whichever address localhost resolved to first
+		// ([::1] on the CI runner and here), so match the URL, not the address.
+		const localServer = ":1/v1/"
 		for _, tc := range []struct {
 			args     []string
 			extraEnv []string
@@ -1495,11 +1499,11 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 			{args: []string{"analytics", "send", filepath.Join(t.TempDir(), "missing-event.json")}, wantErr: ""},
 			{args: []string{"workflows", "init", "-o", "json"}, wantErr: "not supported"},
 			{args: []string{"workflows", "dev"}, wantErr: "requires at least 1 arg"},
-			{args: []string{"workflows", "tasks", "list", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
-			{args: []string{"workflows", "tasks", "runs", "list", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
-			{args: []string{"workflows", "start", "my-task", "--local", "--port", "1", "--input", "[]", "-o", "json"}, wantErr: "127.0.0.1:1"},
-			{args: []string{"workflows", "cancel", "trn-1234", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
-			{args: []string{"workflows", "flows", "list", "--local", "--port", "1", "-o", "json"}, wantErr: "127.0.0.1:1"},
+			{args: []string{"workflows", "tasks", "list", "--local", "--port", "1", "-o", "json"}, wantErr: localServer},
+			{args: []string{"workflows", "tasks", "runs", "list", "--local", "--port", "1", "-o", "json"}, wantErr: localServer},
+			{args: []string{"workflows", "start", "my-task", "--local", "--port", "1", "--input", "[]", "-o", "json"}, wantErr: localServer},
+			{args: []string{"workflows", "cancel", "trn-1234", "--local", "--port", "1", "-o", "json"}, wantErr: localServer},
+			{args: []string{"workflows", "flows", "list", "--local", "--port", "1", "-o", "json"}, wantErr: localServer},
 			{args: []string{"s3", "ls", "-o", "json"}, extraEnv: s3KeyEnv, wantErr: ""},
 			{args: []string{"s3", "info", "s3://photos/cat.jpg", "-o", "json"}, extraEnv: s3KeyEnv, wantErr: ""},
 			{args: []string{"s3", "info", "-o", "json", "s3://photos/cat.jpg"}, extraEnv: s3KeyEnv, wantErr: ""},
