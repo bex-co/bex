@@ -170,6 +170,9 @@ func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
 	if r := actionByID(t, acts, core.ActionResume); r.Precondition != core.PrecondNotSuspended {
 		t.Errorf("running resume = %+v, want the not_suspended precondition", r)
 	}
+	if rs := actionByID(t, acts, core.ActionRestart); rs.Outcome != core.DecisionAllowed || rs.Precondition != "" {
+		t.Errorf("running restart = %+v, want allowed with no precondition", rs)
+	}
 
 	asleep := databaseForProtection("dpg-asleep", "asleep", true)
 	asleep.Spec.Suspended = true
@@ -184,4 +187,74 @@ func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
 	if r := actionByID(t, acts2, core.ActionResume); r.Precondition != "" {
 		t.Errorf("suspended resume precondition = %q, want none", r.Precondition)
 	}
+	if rs := actionByID(t, acts2, core.ActionRestart); rs.Outcome != core.DecisionAllowed || rs.Precondition != core.PrecondSuspended {
+		t.Errorf("suspended restart = %+v, want allowed with suspended precondition", rs)
+	}
+}
+
+// TestActionCapabilities_RestartBillingAndViewerGuards pins Restart's
+// precondition ladder in ActionCapabilities: suspended wins over billing,
+// billing blocks a running restart, and a viewer pays no billing reads.
+func TestActionCapabilities_RestartBillingAndViewerGuards(t *testing.T) {
+	t.Run("running under billing lock reports billing_blocked", func(t *testing.T) {
+		db := databaseForProtection("dpg-run-bill", "run-bill", false)
+		db.Labels[core.LabelTenant] = "tea-a"
+		svc, _, _ := protectedPostgresService(db)
+		svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+		gate := &refusingBillingGate{}
+		svc.Billing = gate
+
+		acts, err := svc.ActionCapabilities(ctxAs("user-a"), db.Name)
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		if rs := actionByID(t, acts, core.ActionRestart); rs.Outcome != core.DecisionAllowed || rs.Precondition != core.PrecondBillingBlocked {
+			t.Errorf("billing-blocked running restart = %+v, want allowed/%s", rs, core.PrecondBillingBlocked)
+		}
+		if len(gate.calls) != 1 {
+			t.Errorf("billing calls = %d, want 1", len(gate.calls))
+		}
+	})
+
+	t.Run("suspended under billing lock reports suspended on restart", func(t *testing.T) {
+		db := databaseForProtection("dpg-susp-bill", "susp-bill", false)
+		db.Labels[core.LabelTenant] = "tea-a"
+		db.Spec.Suspended = true
+		svc, _, _ := protectedPostgresService(db)
+		svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+		gate := &refusingBillingGate{}
+		svc.Billing = gate
+
+		acts, err := svc.ActionCapabilities(ctxAs("user-a"), db.Name)
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		if rs := actionByID(t, acts, core.ActionRestart); rs.Outcome != core.DecisionAllowed || rs.Precondition != core.PrecondSuspended {
+			t.Errorf("suspended restart under billing lock = %+v, want allowed/%s", rs, core.PrecondSuspended)
+		}
+		if r := actionByID(t, acts, core.ActionResume); r.Outcome != core.DecisionAllowed || r.Precondition != core.PrecondBillingBlocked {
+			t.Errorf("suspended resume under billing lock = %+v, want allowed/%s", r, core.PrecondBillingBlocked)
+		}
+	})
+
+	t.Run("viewer on running database pays zero billing reads", func(t *testing.T) {
+		db := databaseForProtection("dpg-view-bill", "view-bill", false)
+		db.Labels[core.LabelTenant] = "tea-a"
+		svc, _, _ := protectedPostgresService(db)
+		svc.Workspace = fakeWorkspace{"viewer-1": "tea-a"}
+		svc.Authz = operateOnlyDenier{}
+		gate := &refusingBillingGate{}
+		svc.Billing = gate
+
+		acts, err := svc.ActionCapabilities(ctxAs("viewer-1"), db.Name)
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		if rs := actionByID(t, acts, core.ActionRestart); rs.Outcome != core.DecisionDenied || rs.Precondition != "" {
+			t.Errorf("viewer restart = %+v, want denied with no precondition", rs)
+		}
+		if len(gate.calls) != 0 {
+			t.Errorf("viewer paid %d billing reads, want 0", len(gate.calls))
+		}
+	})
 }

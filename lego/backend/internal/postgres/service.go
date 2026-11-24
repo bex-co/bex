@@ -2183,16 +2183,6 @@ func (s *Service) patchDatabaseToPlan(ctx context.Context, d *appv1alpha1.Databa
 	return view, err
 }
 
-// patchDatabase fetches the Database and merge-patches it — the spec-intent
-// writer the operator converges (the App/KeyValue lifecycle discipline).
-func (s *Service) patchDatabase(ctx context.Context, relation, name string, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
-	d, err := s.fetchLiveDatabase(ctx, relation, name)
-	if err != nil {
-		return PostgresView{}, err
-	}
-	return s.patchDatabaseObj(ctx, d, mutate, false)
-}
-
 // SetProjectID assigns the project and atomically drops the former
 // environment and its inherited rules when the project changes.
 // expectedEnvironmentID is the environment the caller observed and authorized

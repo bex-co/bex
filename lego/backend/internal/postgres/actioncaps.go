@@ -28,8 +28,9 @@ import (
 // resume are all can_operate (the roleladder pins), and on a protected member
 // suspend and resume read as the Admin check setSuspended adds there
 // (core.RestrictedDecision, w4/m578); suspend carries the protected-environment
-// confirmation hint for that Admin and resume the dunning gate — computed by
-// the same core predicates setSuspended enforces. view_connection_info
+// confirmation hint for that Admin, resume carries the dunning gate, and
+// restart carries the suspended / dunning preconditions — computed by the same
+// core predicates setSuspended and Restart enforce. view_connection_info
 // (can_view_sensitive) and update_ip_allow_list (can_operate, the PATCH's own
 // permission) read the same way as the verbs a protected environment keeps to
 // Admins (w4/m594), so a client can say so before the click. Delete reads the
@@ -61,14 +62,21 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	admin := sync.OnceValue(func() error { return s.AuthorizeDatabaseFresh(ctx, core.RelCanManage, d) })
 	suspend, isProtected := core.RestrictedDecision("suspend", operate, protected, admin)
 	resume, _ := core.RestrictedDecision("resume", operate, protected, admin)
-	suspendPre, resumePre := core.LifecyclePreconditions(d.Spec.Suspended, isProtected, resume, func() string {
-		return s.BillingPreconditionFor(ctx, d.Labels[core.LabelTenant])
-	})
+	billing := func() string { return s.BillingPreconditionFor(ctx, d.Labels[core.LabelTenant]) }
+	restartPre := ""
+	if operate.Allowed() {
+		if d.Spec.Suspended { // Restart's guard order: state, then billing
+			restartPre = core.PrecondSuspended
+		} else {
+			restartPre = billing()
+		}
+	}
+	suspendPre, resumePre := core.LifecyclePreconditions(d.Spec.Suspended, isProtected, resume, billing)
 	credentials, _ := core.RestrictedDecision(core.VerbViewCredentials, s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
 	accessControl, _ := core.RestrictedDecision(core.VerbChangeAccessControl, operate, protected, admin)
 	remove, _ := core.RestrictedDecision("delete", s.CanDecisionOn(ctx, core.RelCanCreate, workspace), protected, admin)
 	return []core.ActionDecision{
-		core.DecideAction(core.ActionRestart, operate, ""),
+		core.DecideAction(core.ActionRestart, operate, restartPre),
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
 		core.DecideAction(core.ActionViewConnectionInfo, credentials, ""),

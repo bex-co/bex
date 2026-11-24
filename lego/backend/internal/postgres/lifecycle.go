@@ -23,6 +23,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -63,7 +64,7 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		return PostgresView{}, expiredResumeError(d)
 	}
 	if d.Spec.Suspended == suspended {
-		return pgView(d), nil
+		return s.view(d), nil
 	}
 	// Reuse the object already in hand — no second fetch.
 	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
@@ -77,6 +78,12 @@ func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchLiveDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
+		return PostgresView{}, err
+	}
+	if d.Spec.Suspended {
+		return PostgresView{}, fmt.Errorf("%w: Postgres %q is suspended; resume it before restarting", core.ErrConflict, name)
+	}
+	if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
 		return PostgresView{}, err
 	}
 	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
@@ -106,8 +113,11 @@ func (s *Service) Failover(ctx context.Context, name string) error {
 	if err := s.requireUnprotected(ctx, d, "fail over"); err != nil {
 		return err
 	}
-	_, err = s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
+	if d.Spec.Suspended {
+		return fmt.Errorf("%w: Postgres %q is suspended; resume it before failing over", core.ErrConflict, name)
+	}
+	_, err = s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.FailoverAt = s.Now().UTC().Format(time.RFC3339)
-	})
+	}, false)
 	return err
 }
