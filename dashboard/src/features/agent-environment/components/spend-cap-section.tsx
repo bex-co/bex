@@ -15,6 +15,7 @@ import type { AgentEnvironmentInput } from "@/graphql/definitions";
 import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
 import {
   NEW_WORKSPACE_TIER,
+  TOP_TRUST_TIER,
   parseSpendCap,
   spendPosition,
 } from "@/features/agent-environment/lib/spend";
@@ -130,10 +131,18 @@ export function SpendCapSection({
   // so neither the charge line nor the new-workspace note may promise one.
   // An older API sends no verdict, and the tier name alone still reads.
   const chargeApplies = saved.agentModelChargesAtThreshold !== false;
-  // No mid-cycle charge while the tier's ceiling binds: the threshold is
-  // absent (or stale), and month-end copy would promise a charge too.
+  // When ChargesAtThreshold is false, only a chargeable top-tier (T4)
+  // workspace bills at month end: T0–T3 always carry a threshold unless bex
+  // cannot charge the workspace, and a payment hold, unpaid invoice, or BYO
+  // key never sees a mid-cycle charge even when the tier ceiling doesn't bind
+  // (T1–T3 never set a cap ceiling, and an admin override below $10 unbinds T0).
   const noMidCycleCharge =
-    !chargeApplies && (saved.agentModelSpendCapTierLimited ?? false);
+    !chargeApplies &&
+    ((saved.agentModelSpendCapTierLimited ?? false) ||
+      saved.trustTierLocked === true ||
+      saved.billingBalanceDue === true ||
+      saved.modelKeySet === true ||
+      tier !== TOP_TRUST_TIER);
   const tierLine = tier
     ? next != null && chargeApplies
       ? credit != null && credit > 0

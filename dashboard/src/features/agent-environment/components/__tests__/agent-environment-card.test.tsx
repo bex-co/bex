@@ -660,6 +660,61 @@ describe("AgentEnvironmentCard", () => {
       expect(screen.getByTestId("spend-tier-note").textContent?.trim()).toBe(
         "",
       );
+      // T1–T3 never set a cap ceiling (agentModelSpendCapTierLimited is false),
+      // yet an unchargeable / balance-due / BYO workspace there still must not
+      // fall back to month-end copy.
+      rerender({
+        ...SPEND,
+        trustTier: "T1",
+        agentModelSpendCapTierLimited: false,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T1: agent model spend is not charged to a card mid-cycle.",
+      );
+      // A T0 workspace whose admin override sits below the $10 ceiling is not
+      // tier-limited either, and still reads no-mid-cycle-charge when locked.
+      rerender({
+        ...SPEND,
+        trustTier: "T0",
+        agentModelSpendCapTierLimited: false,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: true,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T0: agent model spend is not charged to a card mid-cycle.",
+      );
+      // A BYO-key T4 workspace is never charged by bex either, whereas a
+      // chargeable T4 with agentModelChargesAtThreshold=false still reads the
+      // month-end line.
+      rerender({
+        ...SPEND,
+        trustTier: "T4",
+        agentModelSpendCapTierLimited: false,
+        modelKeySet: true,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T4: agent model spend is not charged to a card mid-cycle.",
+      );
+      rerender({
+        ...SPEND,
+        trustTier: "T4",
+        agentModelSpendCapTierLimited: false,
+        modelKeySet: false,
+        billingBalanceDue: false,
+        nextChargeThresholdUsd: null,
+        agentModelChargesAtThreshold: false,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T4: agent model spend is charged at month end.",
+      );
     });
 
     it("announces unavailable spend instead of an empty 0% bar", () => {

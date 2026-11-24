@@ -12,6 +12,9 @@ export const SPEND_WARNING_RATIO = 0.8;
 /** The trust tier every new (or payment-locked) workspace starts at. */
 export const NEW_WORKSPACE_TIER = "T0";
 
+/** The top trust tier, which has no mid-cycle charge threshold (month-end billing). */
+export const TOP_TRUST_TIER = "T4";
+
 export type SpendLevel = "ok" | "warning" | "reached";
 
 export interface SpendPosition {
