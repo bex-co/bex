@@ -59,8 +59,13 @@ type DeployProgress struct {
 	// Generation is the release generation the deploy ran as — the revision its
 	// build and pre-deploy Jobs are named by (appv1alpha1.BuildRevision), so a
 	// Deploy-scoped read can tell one deploy's pods from another's.
-	Generation       int64
-	Image            string // image-backed deploys; "" for repo builds
+	Generation int64
+	Image      string // image-backed deploys; "" for repo builds
+	// Repo and Branch are the Git source saved on this deploy row (w32/m608),
+	// never borrowed from the current App once recorded. Empty on image
+	// deploys, rollbacks, restarts, and pre-migration rows.
+	Repo             string
+	Branch           string
 	Commit           string // resolved commit sha; "" when unresolved
 	DetectedHTTPPort int32  // verified listener saved on this deploy, never borrowed from the current App
 	FailureReason    string // human-actionable cause on a failed deploy (w5/064); "" when none
@@ -418,8 +423,23 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 	return buildProgressLines(d, pc, true, false)
 }
 
+// deploySource resolves the Git repo and branch used to narrate d (w32/m608).
+// A row that recorded its own Repo always uses its own Repo and Branch, never
+// borrowing from the current App. A row with an explicit Image (prebuilt image,
+// image override, rollback, container restart) never borrows a Git repo. Only
+// pre-migration rows with neither Repo nor Image fall back to pc.
+func deploySource(d DeployProgress, pc progressContext) (repo, branch string) {
+	if d.Repo != "" {
+		return d.Repo, d.Branch
+	}
+	if d.Image != "" {
+		return "", ""
+	}
+	return pc.repo, pc.branch
+}
+
 func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, holdPreDeployEnd bool) []LogEntry {
-	repo := pc.repo
+	repo, branch := deploySource(d, pc)
 	// A build story is owed only by a deploy that actually built (w4/m110
 	// t004). Every repo-backed deploy used to get one, so a rollback and a
 	// config-change rollout that reused the active artifact each read as a
@@ -461,7 +481,7 @@ func buildProgressLines(d DeployProgress, pc progressContext, includeClosing, ho
 				ref = ref[:7]
 			}
 			if ref == "" {
-				ref = pc.branch
+				ref = branch
 			}
 			if ref != "" {
 				add(d.StartedAt, fmt.Sprintf("==> Building from %s@%s", repo, ref))

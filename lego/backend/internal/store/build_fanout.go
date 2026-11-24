@@ -247,7 +247,7 @@ func (s *PGStore) promoteAwaitingBuildDeploy(ctx context.Context, id, appID, ima
 		} else if err != nil {
 			return err
 		}
-		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, replaced(id))
+		status, cancelReason, _, _, err := prepareDeployCreate(ctx, tx, appID, generation, replaced(id))
 		if err != nil {
 			return err
 		}

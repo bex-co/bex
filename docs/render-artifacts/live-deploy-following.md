@@ -65,8 +65,8 @@ bex synthesizes from what its control plane actually observes — the deploy row
 
 | bex phase (deploys row) | timestamp | line (repo-backed) | line (image-backed) |
 | --- | --- | --- | --- |
-| row created | `created_at` | `==> Build queued` | `==> Deploy queued` |
-| `started_at` set | `started_at` | `==> Building from <repo>@<commit\|branch>` | `==> Deploying image <image>` |
+| row created | `created_at` | `==> Build queued` (when the deploy built from Git: its recorded `deploys.repo`, or for pre-migration rows with empty `repo` and `image`, the App's current `repo`; w32/m608) | `==> Deploy queued` |
+| `started_at` set | `started_at` | `==> Building from <repo>@<commit\|branch>` from the deploy's own `deploys.repo` and `deploys.branch` (snapshotted at deploy creation/promotion so switching a service's `--repo`, `--branch`, or `--image` never rewrites historical build logs or log IDs; pre-migration rows with empty `repo` and `image` fall back to the App's current source, w32/m608) | `==> Deploying image <image>` |
 | the release's pre-deploy step starts (`pre_deploy_started_at`, `pre_deploy_command`, w32/m572) | the operator's launch of the step, in microseconds | `==> Starting pre-deploy: <command>`, quoted as configured | same |
 | a native runtime's step container starts (`pre_deploy_container_started_at`, `pre_deploy_native`, w32/m572) | the kubelet's start of the container, in whole seconds, held just after the line before it | `==> Running '<command>'` | none (a Dockerfile or prebuilt image's step prints its output straight after its start) |
 | the step passes (`pre_deploy_finished_at`, w32/m572) | the operator's settling of the step's verdict, in microseconds: after the command's last output line, before the rollout | `==> Pre-deploy complete!` | same |

@@ -1,19 +1,19 @@
 # w32 · m608 — Each deploy records its own Git repo and branch so switching a service's `--repo`, `--branch`, or `--image` never rewrites historical build logs or log IDs
 
-**Worker:** worker32 **Goal:** every Git-backed deploy row records the `repo` and `branch` it ran from, and `buildProgressLines` narrates from that per-deploy record rather than the service's current `App.Spec`, so switching a service's `--repo`, `--branch`, or `--image` leaves every historical deploy's `==> Build queued`, `==> Building from <repo>@<sha|branch>`, and `==> Deploying...` lines — and their deterministic `logID`s — immutable across CLI, REST, subscribe stream, GraphQL, MCP, and the dashboard. **Status:** todo
+**Worker:** worker32 **Goal:** every Git-backed deploy row records the `repo` and `branch` it ran from, and `buildProgressLines` narrates from that per-deploy record rather than the service's current `App.Spec`, so switching a service's `--repo`, `--branch`, or `--image` leaves every historical deploy's `==> Build queued`, `==> Building from <repo>@<sha|branch>`, and `==> Deploying...` lines — and their deterministic `logID`s — immutable across CLI, REST, subscribe stream, GraphQL, MCP, and the dashboard. **Status:** todo (t001–t003, t006, t007 done)
 
 ## Tasks (in order)
 
-| id   | title                                                                                    | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | [Record each deploy's Git repo and branch on its `deploys` row](t001.md)                 | 1h  | —          |
-| t002 | [Narrate deploy progress lines from per-deploy `repo` and `branch`](t002.md)             | 1h  | t001       |
-| t003 | [Document per-deploy source immutability in the progress-line contract](t003.md)         | 20m | t002       |
-| t004 | [Ship and verify on production](t004.md)                                                 | 45m | t002, t003 |
-| t005 | [Render parity](t005.md)                                                                 | 30m | t004       |
-| t006 | [Simplify](t006.md)                                                                      | 15m | t005       |
-| t007 | [Test coverage](t007.md)                                                                 | 30m | t005       |
-| t008 | [Closeout](t008.md)                                                                      | 10m | t006, t007 |
+| id   | title                                                                                               | est | depends_on |
+| ---- | --------------------------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | [Record each deploy's Git repo and branch on its `deploys` row](done/t001.md) — **DONE**            | 1h  | —          |
+| t002 | [Narrate deploy progress lines from per-deploy `repo` and `branch`](done/t002.md) — **DONE**        | 1h  | t001       |
+| t003 | [Document per-deploy source immutability in the progress-line contract](done/t003.md) — **DONE**    | 20m | t002       |
+| t004 | [Ship and verify on production](t004.md)                                                            | 45m | t002, t003 |
+| t005 | [Render parity](t005.md)                                                                            | 30m | t004       |
+| t006 | [Simplify](done/t006.md) — **DONE**                                                                 | 15m | t005       |
+| t007 | [Test coverage](done/t007.md) — **DONE**                                                            | 30m | t005       |
+| t008 | [Closeout](t008.md)                                                                                 | 10m | t006, t007 |
 
 ## Definition of done
 

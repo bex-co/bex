@@ -399,6 +399,13 @@ type Deploy struct {
 	Trigger       string `json:"trigger"`
 	Image         string `json:"image,omitempty"`
 	ResolvedImage string `json:"-"`
+	// Repo and Branch snapshot the Git source this deploy ran from (w32/m608),
+	// recorded at deploy creation/promotion when the deploy builds from a repo
+	// (empty for image-backed, image-override, rollback, restart, linked build
+	// source, and pre-migration rows). Internal-only so public deploy DTOs stay
+	// Render-compatible.
+	Repo   string `json:"-"`
+	Branch string `json:"-"`
 	// BuildID is the build source build this deploy shipped (Render's
 	// deploy.buildId, w2/m254), "" for any other deploy.
 	BuildID string `json:"-"`
@@ -1430,12 +1437,13 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 					return err
 				}
 			}
+			deployRepo, deployBranch := deploySource(a.Repo, a.Branch, a.Image, TriggerCreate)
 			if _, err := tx.Exec(ctx,
 				// The resolved commit's author time and build, as every other
 				// deploy insert writes them (w4/638).
-				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, build_id, status, triggered_by)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), $10, $11)`,
-				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message,
+				`INSERT INTO deploys (id, app_id, trigger, image, repo, branch, generation, commit, commit_message, commit_author_at, build_id, status, triggered_by)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULLIF($11, ''), $12, $13)`,
+				deployID, a.ID, TriggerCreate, a.Image, deployRepo, deployBranch, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message,
 				a.FirstDeployCommit.AuthorAt, a.FirstDeployCommit.BuildID, DeployCreated, core.SubjectFrom(ctx)); err != nil {
 				return err
 			}
@@ -2865,17 +2873,18 @@ func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string
 }
 
 func insertDeploy(ctx context.Context, tx pgx.Tx, d *Deploy, replacedReason string) error {
-	status, cancelReason, err := prepareDeployCreate(ctx, tx, d.AppID, d.Generation, replacedReason)
+	status, cancelReason, appRepo, appBranch, err := prepareDeployCreate(ctx, tx, d.AppID, d.Generation, replacedReason)
 	if err != nil {
 		return err
 	}
 	d.Status, d.CancelReason = status, cancelReason
 	d.OverlapPending = status == DeployQueued
+	d.Repo, d.Branch = deploySource(appRepo, appBranch, d.Image, d.Trigger)
 	return tx.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason, clear_cache, build_id, build_deploy_scope)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END, $13, $14, NULLIF($15, ''), $16)
+		`INSERT INTO deploys (id, app_id, trigger, image, repo, branch, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason, clear_cache, build_id, build_deploy_scope)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CASE WHEN $12 = $14 THEN clock_timestamp() END, $15, $16, NULLIF($17, ''), $18)
 		 RETURNING created_at, updated_at, finished_at`,
-		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason, d.ClearCache, d.BuildID, d.BuildDeployScope,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Repo, d.Branch, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason, d.ClearCache, d.BuildID, d.BuildDeployScope,
 	).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 }
 
@@ -3068,24 +3077,25 @@ func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req Deferr
 		return Deploy{}, false, classify("deploy", err)
 	}
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if err := lockApp(ctx, tx, d.AppID); err != nil {
+		appRepo, appBranch, err := lockAppSource(ctx, tx, d.AppID)
+		if err != nil {
 			return err
 		}
 		if err := proceedToWaitingDeploy(ctx, tx, d.AppID); err != nil {
 			return err
 		}
-		var err error
 		if deferred, err = appWaitsForActiveDeploy(ctx, tx, d.AppID); err != nil || !deferred {
 			return err
 		}
 		if err := cancelPendingDeploys(ctx, tx, d.AppID, replaced); err != nil {
 			return err
 		}
+		d.Repo, d.Branch = deploySource(appRepo, appBranch, cmp.Or(d.Image, req.ImageURL), d.Trigger)
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, triggered_by, clear_cache, status, overlap_pending, restart_deferred, deferred_request)
-			 VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, true, true, $10)
+			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, repo, branch, rollback_of, generation, triggered_by, clear_cache, status, overlap_pending, restart_deferred, deferred_request)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, $9, $10, $11, true, true, $12)
 			 RETURNING created_at, updated_at`,
-			d.ID, d.AppID, d.Trigger, d.Image, d.ResolvedImage, d.RollbackOf, d.TriggeredBy, d.ClearCache, DeployQueued, req,
+			d.ID, d.AppID, d.Trigger, d.Image, d.ResolvedImage, d.Repo, d.Branch, d.RollbackOf, d.TriggeredBy, d.ClearCache, DeployQueued, req,
 		).Scan(&d.CreatedAt, &d.UpdatedAt)
 	})
 	if err != nil {
@@ -3104,21 +3114,25 @@ func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req Deferr
 func (s *PGStore) promoteDeferredDeploy(ctx context.Context, id, appID, image string, generation int64, commit CommitInfo) (Deploy, error) {
 	var d Deploy
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if err := lockApp(ctx, tx, appID); err != nil {
+		appRepo, appBranch, err := lockAppSource(ctx, tx, appID)
+		if err != nil {
 			return err
 		}
 		if err := deferredDeployWaiting(ctx, tx, id, appID, true); err != nil {
 			return err
 		}
-		var err error
+		promoRepo, promoBranch := deploySource(appRepo, appBranch, image, "")
 		d, err = scanDeploy(tx.QueryRow(ctx,
 			`UPDATE deploys
-			 SET image = $2, resolved_image = CASE WHEN trigger = $9 THEN $2 ELSE resolved_image END, generation = $3, commit = $4, commit_message = $5, commit_author_at = $6,
+			 SET image = $2, resolved_image = CASE WHEN trigger = $9 THEN $2 ELSE resolved_image END,
+			     repo = CASE WHEN trigger NOT IN ($9, $10) THEN $11 ELSE '' END,
+			     branch = CASE WHEN trigger NOT IN ($9, $10) THEN $12 ELSE '' END,
+			     generation = $3, commit = $4, commit_message = $5, commit_author_at = $6,
 			     build_id = NULLIF($7, ''), status = $8, overlap_pending = false, restart_deferred = false,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1
 			 RETURNING `+deployColumns,
-			id, image, generation, commit.Hash, commit.Message, commit.AuthorAt, commit.BuildID, DeployCreated, TriggerRollback))
+			id, image, generation, commit.Hash, commit.Message, commit.AuthorAt, commit.BuildID, DeployCreated, TriggerRollback, TriggerRestart, promoRepo, promoBranch))
 		return err
 	})
 	if err != nil {
@@ -3133,6 +3147,21 @@ func (s *PGStore) promoteDeferredDeploy(ctx context.Context, id, appID, image st
 func lockApp(ctx context.Context, tx pgx.Tx, appID string) error {
 	var lockedID string
 	return tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID)
+}
+
+func lockAppSource(ctx context.Context, tx pgx.Tx, appID string) (repo, branch string, err error) {
+	err = tx.QueryRow(ctx, `SELECT COALESCE(repo, ''), branch FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&repo, &branch)
+	return repo, branch, err
+}
+
+// deploySource returns the Git repo and branch a deploy row records (w32/m608).
+// Image-backed deploys, image-override deploys, rollbacks, and restarts do not
+// build from a Git repo and record empty strings.
+func deploySource(repo, branch, image, trigger string) (string, string) {
+	if repo == "" || image != "" || trigger == TriggerRollback || trigger == TriggerRestart {
+		return "", ""
+	}
+	return repo, branch
 }
 
 // appHasActiveDeploy reports a deploy executing for appID; the latest-pending
@@ -3257,9 +3286,10 @@ func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitI
 // new row starts queued while an active deploy is running, or created when the
 // active slot is free. Partial unique indexes are the final
 // one-active-plus-one-pending guard.
-func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64, replacedReason string) (status, cancelReason string, err error) {
-	if err := lockApp(ctx, tx, appID); err != nil {
-		return "", "", err
+func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64, replacedReason string) (status, cancelReason, appRepo, appBranch string, err error) {
+	appRepo, appBranch, err = lockAppSource(ctx, tx, appID)
+	if err != nil {
+		return "", "", "", "", err
 	}
 	var newer string
 	err = tx.QueryRow(ctx,
@@ -3269,24 +3299,24 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 		 LIMIT 1`, appID, openDeployStatuses, generation,
 	).Scan(&newer)
 	if err == nil {
-		return DeployCanceled, supersededByReason(newer), nil
+		return DeployCanceled, supersededByReason(newer), appRepo, appBranch, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	if err := proceedToWaitingDeploy(ctx, tx, appID); err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	if err := cancelPendingDeploys(ctx, tx, appID, replacedReason); err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	waits, err := appWaitsForActiveDeploy(ctx, tx, appID)
 	if err != nil || waits {
-		return DeployQueued, "", err
+		return DeployQueued, "", appRepo, appBranch, err
 	}
 	// Under Override the deploy in progress ends here, as the new one starts;
 	// the operator replaces its release (w4/653).
-	return DeployCreated, "", cancelOpenDeploys(ctx, tx, appID, replacedReason, false)
+	return DeployCreated, "", appRepo, appBranch, cancelOpenDeploys(ctx, tx, appID, replacedReason, false)
 }
 
 // Render's two Overlapping Deploy Policy values (w4/653), tenants'
@@ -3427,7 +3457,7 @@ func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollba
 		return Deploy{}, classify("deploy", err)
 	}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, supersededByReason(d.ID))
+		status, cancelReason, _, _, err := prepareDeployCreate(ctx, tx, appID, generation, supersededByReason(d.ID))
 		if err != nil {
 			return err
 		}
@@ -3664,12 +3694,12 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, build_deploy_scope, awaiting_build, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), COALESCE(rollout_instance_announces, false), rollout_first_exit_at, rollout_first_exit_code, live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false)`
+const deployColumns = `id, app_id, trigger, image, resolved_image, repo, branch, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, build_deploy_scope, awaiting_build, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), COALESCE(rollout_instance_announces, false), rollout_first_exit_at, rollout_first_exit_code, live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false)`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.BuildDeployScope, &d.AwaitingBuild, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
+	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.Repo, &d.Branch, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.BuildDeployScope, &d.AwaitingBuild, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
 		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.Rollout.InstanceAnnounces, &d.Rollout.FirstExitAt, &d.Rollout.FirstExitCode, &d.LiveURLs,
 		&d.PreDeployRun.StartedAt, &d.PreDeployRun.ContainerStartedAt, &d.PreDeployRun.FinishedAt, &d.PreDeployRun.Command, &d.PreDeployRun.Native,
 		&d.PreDeployRun.ExitCode, &d.PreDeployRun.OOMKilled}, extra...)...)

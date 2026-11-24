@@ -274,7 +274,8 @@ func (m *memStore) CreateApp(ctx context.Context, a App) (App, error) {
 		m.disks[d.ID] = d
 	}
 	now := time.Now()
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: TriggerCreate, Image: a.Image, Generation: 1, TriggeredBy: core.SubjectFrom(ctx), Status: DeployCreated, CreatedAt: now, UpdatedAt: now}
+	deployRepo, deployBranch := deploySource(a.Repo, a.Branch, a.Image, TriggerCreate)
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: TriggerCreate, Image: a.Image, Repo: deployRepo, Branch: deployBranch, Generation: 1, TriggeredBy: core.SubjectFrom(ctx), Status: DeployCreated, CreatedAt: now, UpdatedAt: now}
 	m.deploys[d.ID] = d
 	return a, nil
 }
@@ -680,13 +681,15 @@ func (m *memStore) CreateRestartDeploy(_ context.Context, appID, image string, g
 func (m *memStore) createDeploy(appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(string) string) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.apps[appID]; !ok {
+	a, ok := m.apps[appID]
+	if !ok {
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
 	now := time.Now()
 	id := ids.New(ids.Deploy)
 	status, cancelReason := m.prepareDeployCreate(appID, generation, replaced(id), now)
-	d := Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: status, CancelReason: cancelReason, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
+	deployRepo, deployBranch := deploySource(a.Repo, a.Branch, image, trigger)
+	d := Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Repo: deployRepo, Branch: deployBranch, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: status, CancelReason: cancelReason, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
 	}

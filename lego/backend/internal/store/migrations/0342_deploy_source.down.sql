@@ -1,0 +1,3 @@
+ALTER TABLE deploys
+  DROP COLUMN IF EXISTS branch,
+  DROP COLUMN IF EXISTS repo;
