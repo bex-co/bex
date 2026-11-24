@@ -1,6 +1,6 @@
 # w22 · m604 — Render CLI v2.38.0: adopt it, with sandbox-group environments and the new release notice kept off
 
-**Worker:** worker22 **Goal:** the `bex` launcher runs Render CLI v2.38.0: its sandbox-group environment commands work against bex, its new once-a-day release notice never tells a `bex` user to install a Render CLI, a 429 prints bex's message readably, and the scheduled schema-drift job is green again. **Status:** todo (t001–t005 and t007–t010 done; t006 waits for the dispatched drift run, then t011)
+**Worker:** worker22 **Goal:** the `bex` launcher runs Render CLI v2.38.0: its sandbox-group environment commands work against bex, its new once-a-day release notice never tells a `bex` user to install a Render CLI, a 429 prints bex's message readably, and the scheduled schema-drift job is green again. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,12 +11,12 @@
 | t003 | Keep the new release notice off: find its client, URL and cache file, and a test that fails if any notice names a release — **DONE** | 45m | t001                   |
 | t004 | `sandbox-groups environment set`/`remove` and `create --environment` through the launcher, with contract tests both sides — **DONE** | 45m | t002, w22/m603         |
 | t005 | A 429 now prints the API's message: check `SANDBOX_BUILD_LIMIT`, the w22/m443 rate limits and the group concurrency 429 — **DONE**   | 30m | t002                   |
-| t006 | The checklist's graded v2.37.0 → v2.38.0 section, and the drift job dispatched green                                      | 30m | t003, t004, t005       |
+| t006 | The checklist's graded v2.37.0 → v2.38.0 section, and the drift job dispatched green — **DONE**                             | 30m | t003, t004, t005       |
 | t007 | Walk the new commands on production through a launcher built from the tree, once the pin carries w22/m603 — **DONE**                 | 40m | t006                   |
 | t008 | Render parity — **DONE**                                                                                                             | 20m | t004, t005             |
 | t009 | Simplify — **DONE**                                                                                                                  | 20m | t008                   |
 | t010 | Test coverage — **DONE**                                                                                                             | 30m | t008                   |
-| t011 | Closeout                                                                                                                  | 10m | t007, t009, t010       |
+| t011 | Closeout — **DONE**                                                                                                       | 10m | t007, t009, t010       |
 
 ## Definition of done
 
@@ -61,7 +61,7 @@
 
 **t005: 429 messages.** v2.38.0 prints `too many requests: <message>` and never the code. `SANDBOX_BUILD_LIMIT` and the group concurrency 429 already read well. The rate limiter's REST body said "rate limit exceeded; see Retry-After header", which names a header the CLI's reader cannot see, and the auth admission's said the same. Both now say when to retry: `rate limit exceeded; retry in 3 seconds` (`core.RateLimitExceededMessage`, which GraphQL fields' and MCP tools' own budgets already worded so, now with "1 second" singular) and `authentication upstream overloaded; retry shortly` (its GraphQL wording). Each printed line is in the checklist section; `TestPinnedClientPrintsBexTooManyRequestsMessages` drives them through the pinned client.
 
-**t006: the checklist.** `docs/cli-compatibility-checklist.md` has the graded v2.37.0 → v2.38.0 section and the new `sandbox-groups` row; `workflows flows runs steps attempts` is one `[-]` row naming the Workflows non-goal. The drift job is dispatched once this ships.
+**t006: the checklist.** `docs/cli-compatibility-checklist.md` has the graded v2.37.0 → v2.38.0 section and the new `sandbox-groups` row; `workflows flows runs steps attempts` is one `[-]` row naming the Workflows non-goal. After `0476771aa8` shipped, the dispatched `render-schema-drift.yml` run [45364439235](https://github.com/bex-co/bex/actions/runs/45364439235) passed with `render-schema` green ("Render CLI pin v2.38.0 is the latest upstream release"), and so did its other three jobs.
 
 **t008: Render parity.** Compared with v2.38.0's own fake (`internal/fakes/renderapi/environments.go`): the add answers 201 with the environment, the removal 204, an unknown group 404 "sandbox group not found" on both, and bex-api does the same (m603). Every bex 429 body has the `message` the client prints and no code it would print. One drift: bex's own release hint does not follow the new notice's rules (one line for agents, none after JSON or YAML output, `RENDER_CLI_DISABLE_UPDATE_NOTIFIER`), filed as `w22/034`. ADR018 § surface pins states both.
 
@@ -77,3 +77,9 @@
 | The REST 429 message back to "see Retry-After header" | `TestRateLimiterRESTShape` |
 
 **t007: the production walk** is recorded in the checklist section (2026-11-24, pin `ff5de0a130e6`): the launcher built from this tree, as the QA user in `bex-canary`, with an agent marker in its environment and a planted cache naming a newer release. `create --environment` by name, `set` by id, a move to B by name, `remove` and `remove` again each exited 0 and `sandbox-groups list` agreed after each; no release notice printed and the cache was untouched. The project, both environments and the group (all disposable) were deleted, the CLI logged out, and the run's Kratos sessions were logged out.
+
+## Closed (2026-11-24)
+
+**t011: the definition of done holds.** `bex -v` from the tree prints `compatible with Render CLI v2.38.0`. No command prints a Render CLI release notice, and `TestUpstreamUpdateNoticeNeverPrints` fails without the switch. `environment set` by id and by name, `environment remove` and `create --environment` passed on production and in the contract tests on both sides. bex's 429s print readably, each line recorded in the checklist. The checklist has the graded v2.37.0 → v2.38.0 section with `workflows flows runs steps attempts` as one `[-]` row. Drift run 45364439235 has `render-schema` green. The walk ran in `bex-canary` as the QA user, on a project, two environments and a group it created and deleted.
+
+**Shipped:** `0476771aa8` (the pin, the notice switch, the contracts, the 429 messages, the documents and `w22/034`).
