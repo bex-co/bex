@@ -49,7 +49,7 @@ export interface WorkspaceSettingsPendingSections {
 
 /** Which of Workspace Settings' conditional sections a pending frame
  *  previews (w3/m305), from what the shell already knows: Build Pipeline for
- *  billing managers, Audit Logs for admins (both kept until their deciding
+ *  members who may view billing details (w9/m620), Audit Logs for admins (both kept until their deciding
  *  data loads, as the inline skeleton always did) and the Delete card when
  *  there is another workspace to land in.
  *
@@ -73,7 +73,7 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
       : null;
   const canManage = capabilities.loading ? null : capabilities.canManage;
   return {
-    buildPipeline: capabilities.canManageBilling || capabilities.loading,
+    buildPipeline: capabilities.canViewBilling || capabilities.loading,
     // Audit logs are `can_manage`'s; the list's role is "admin" for every
     // member, so it decides only until capabilities do (w7/094).
     auditLogs: canManage !== false && (!shape || shape.role === "admin"),

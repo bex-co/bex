@@ -54,6 +54,7 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
     canManageKeys: true,
     canManage: true,
     canManageBilling: true,
+    canViewBilling: true,
     loading: false,
     loaded: true,
     stale: false,

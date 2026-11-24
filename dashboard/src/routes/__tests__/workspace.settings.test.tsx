@@ -179,10 +179,11 @@ vi.mock("@/features/team/components/leave-workspace-card", () => ({
   LeaveWorkspaceCard: () => <div>Leave workspace card</div>,
 }));
 
-// Build Pipeline (w6/m309) holds billing settings: billing managers only.
-// Workspace privacy (w7/m464) is an admin's (`can_manage`).
+// Build Pipeline (w6/m309) holds a billing setting: every member who may view
+// billing details sees it (Admin, Developer, Billing; w9/m620). Workspace
+// privacy (w7/m464) is an admin's (`can_manage`).
 const capabilityState = {
-  canManageBilling: true,
+  canViewBilling: true,
   canManage: true,
   loading: false,
 };
@@ -275,7 +276,7 @@ const orgWorkspace: WorkspaceView = {
 };
 
 beforeEach(() => {
-  capabilityState.canManageBilling = true;
+  capabilityState.canViewBilling = true;
   capabilityState.canManage = true;
   auditState.forbidden = false;
   workspaceState.currentWorkspace = primaryWorkspace;
@@ -436,7 +437,7 @@ describe("WorkspaceSettingsPage", () => {
     expect(railSections(pending.container)).not.toContain("audit-logs");
   });
 
-  it("shows Build Pipeline to billing managers only (w6/m309)", async () => {
+  it("shows Build Pipeline to members who may view billing details only (w6/m309, w9/m620)", async () => {
     const { unmount } = await renderPage();
     expect(screen.getByText("Build pipeline card")).toBeInTheDocument();
     expect(
@@ -444,7 +445,7 @@ describe("WorkspaceSettingsPage", () => {
     ).toHaveAttribute("href", "#build-pipeline");
     unmount();
 
-    capabilityState.canManageBilling = false;
+    capabilityState.canViewBilling = false;
     await renderPage();
     expect(screen.queryByText("Build pipeline card")).not.toBeInTheDocument();
     expect(
@@ -646,7 +647,7 @@ describe("WorkspaceSettingsPage", () => {
       workspaceState.workspaces = another
         ? [workspace, { ...workspace, id: "tea-secondary", name: "secondary" }]
         : [workspace];
-      capabilityState.canManageBilling = billing;
+      capabilityState.canViewBilling = billing;
       const ready = await renderPage();
       const readyRail = railSections(ready.container);
       for (const id of readyRail) {
@@ -767,7 +768,7 @@ describe("a direct load's pending frame (w3/073)", () => {
     "holds the login requirement controls %s will see",
     async (_who, canManage, controls) => {
       capabilityState.canManage = canManage;
-      capabilityState.canManageBilling = canManage;
+      capabilityState.canViewBilling = canManage;
       const workspace: WorkspaceView = {
         ...orgWorkspace,
         requireTwoFactor: true,

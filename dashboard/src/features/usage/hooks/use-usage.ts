@@ -225,7 +225,10 @@ export interface UseUsageResult {
   error: Error | undefined;
 }
 
-export function useUsage(period?: string): UseUsageResult {
+export function useUsage(
+  period?: string,
+  { skip = false }: { skip?: boolean } = {},
+): UseUsageResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error } = useQuery(UsageDocument, {
@@ -237,7 +240,9 @@ export function useUsage(period?: string): UseUsageResult {
     variables: period
       ? { period, ownerId: currentWorkspaceId }
       : { ownerId: currentWorkspaceId },
-    skip: !resolved,
+    // `skip`: the caller's role may not view billing details (w9/m620), so
+    // the read would only be refused, and each refusal audited.
+    skip: !resolved || skip,
     pollInterval: 60_000,
     skipPollAttempt: skipPollWhenHidden,
     fetchPolicy: PRIMED_FETCH_POLICY,

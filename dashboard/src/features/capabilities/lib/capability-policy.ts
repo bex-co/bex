@@ -11,6 +11,7 @@ export const CAPABILITY_ACTIONS = [
   "can_manage_keys",
   "can_manage",
   "can_manage_billing",
+  "can_view_billing",
 ] as const;
 
 export type CapabilityAction = (typeof CAPABILITY_ACTIONS)[number];
@@ -64,6 +65,7 @@ const BOOLEAN_TO_ACTION = {
   canManageKeys: "can_manage_keys",
   canManage: "can_manage",
   canManageBilling: "can_manage_billing",
+  canViewBilling: "can_view_billing",
 } as const satisfies Record<string, CapabilityAction>;
 
 export type CapabilityBoolean = keyof typeof BOOLEAN_TO_ACTION;
@@ -81,6 +83,7 @@ export const ROLE_REASON_KEYS: Record<CapabilityAction, string> = {
   can_manage_keys: "capabilities.reasonCanCreate",
   can_manage: "capabilities.reasonCanManage",
   can_manage_billing: "capabilities.reasonCanManageBilling",
+  can_view_billing: "capabilities.reasonCanViewBilling",
 };
 
 export function toSnapshot(

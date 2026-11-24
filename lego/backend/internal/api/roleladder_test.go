@@ -41,14 +41,16 @@ import (
 // workspaceRoles are the five member roles model.fga's workspace type defines.
 var workspaceRoles = []string{"viewer", "contributor", "developer", "admin", "billing"}
 
-// modelRelations are the nine workspace-derived permissions model.fga defines,
-// every one now checked by at least one verb: can_manage_billing gained its Go
-// consumer in w1/m60 — the billing verbs (Status/Checkout/Portal) gate on it, so
-// Render's BILLING role reaches billing management (billing or admin).
+// modelRelations are the ten workspace-derived permissions model.fga defines,
+// every one checked by at least one verb: can_manage_billing gained its Go
+// consumer in w1/m60 — Checkout and the Portal gate on it, so Render's BILLING
+// role reaches billing management (billing or admin) — and can_view_billing in
+// w9/m620: the usage, billing readiness and pipeline settings reads, Render's
+// "View billing details" (developer, admin or billing).
 var modelRelations = []string{
 	core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate,
 	core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys,
-	core.RelCanManage, core.RelCanManageBilling,
+	core.RelCanManage, core.RelCanManageBilling, core.RelCanViewBilling,
 }
 
 // orgDerivedRelations are the workspace relations model.fga derives from the
@@ -69,11 +71,13 @@ var roleGrants = map[string]map[string]bool{
 		core.RelCanManageSSHKeys),
 	"developer": set(core.RelCanView, core.RelCanViewLogs, core.RelCanOperate,
 		core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
-		core.RelCanManageSSHKeys),
+		core.RelCanManageSSHKeys, core.RelCanViewBilling),
 	"admin": set(core.RelCanView, core.RelCanViewLogs, core.RelCanOperate,
 		core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
-		core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling),
-	"billing": set(core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling),
+		core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling,
+		core.RelCanViewBilling),
+	"billing": set(core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling,
+		core.RelCanViewBilling),
 }
 
 func set(vals ...string) map[string]bool {
@@ -517,11 +521,19 @@ var representativeVerbRelations = map[string]string{
 	"*members.Service.Invite":      core.RelCanManage,
 	"*members.Service.ChangeRole":  core.RelCanManage,
 	"*github.Service.StartConnect": core.RelCanManage,
-	// can_manage_billing — billing or admin (Render's BILLING role): every billing
-	// verb funnels through billing.authorize(), so all three gate on it (w1/m60).
-	"*billing.Service.Status":   core.RelCanManageBilling,
-	"*billing.Service.Checkout": core.RelCanManageBilling,
-	"*billing.Service.Portal":   core.RelCanManageBilling,
+	// can_manage_billing — billing or admin (Render's BILLING role, "Edit
+	// payment method"): the hosted sessions that bind a payment method (w1/m60)
+	// and the pipeline spend limit.
+	"*billing.Service.Checkout":                 core.RelCanManageBilling,
+	"*billing.Service.Portal":                   core.RelCanManageBilling,
+	"*workspaces.Service.SetPipelineSpendLimit": core.RelCanManageBilling,
+	// can_view_billing — developer, admin or billing (Render's "View billing
+	// details", w9/m620): usage and its cost, invoices, billing readiness and
+	// the pipeline spend limit. A Contributor and a Viewer read none of them;
+	// one moved back to can_view or to can_manage_billing turns this red.
+	"*billing.Service.Status":              core.RelCanViewBilling,
+	"*workspaces.Service.PipelineSettings": core.RelCanViewBilling,
+	"*usage.Service.MonthToDate":           core.RelCanViewBilling,
 	// can_manage_ssh_keys — every member role (their own SSH public keys).
 	"*sshkeys.Service.Create": core.RelCanManageSSHKeys,
 	"*sshkeys.Service.Delete": core.RelCanManageSSHKeys,

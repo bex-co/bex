@@ -17,6 +17,7 @@ import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
 import { TopBar } from "@/components/top-bar";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
+import { useCapabilities } from "@/features/capabilities/capabilities-provider";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useFreshness } from "@/common/hooks/freshness";
 import {
@@ -81,9 +82,13 @@ export function ResourceStatusScreen({
       pollInterval: recoveryAvailable(recoveryEnvironment) ? 30_000 : 0,
     },
   );
+  // The usage glance is billing details (w9/m620): shown, and requested,
+  // only once the capability read allows can_view_billing (ADR087 Hide).
+  const capabilities = useCapabilities();
+  const showUsage = !activityOnly && capabilities.allows("can_view_billing");
   const usageQuery = useQuery(MobileUsageGlanceDocument, {
     variables: { ownerId: selected?.id ?? "" },
-    skip: !selected || activityOnly,
+    skip: !selected || !showUsage,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     notifyOnNetworkStatusChange: true,
@@ -93,7 +98,7 @@ export function ResourceStatusScreen({
     attempt: async () => {
       await Promise.all([
         refetch(),
-        activityOnly || !selected ? Promise.resolve() : usageQuery.refetch(),
+        !showUsage || !selected ? Promise.resolve() : usageQuery.refetch(),
       ]);
     },
   });
@@ -473,7 +478,7 @@ export function ResourceStatusScreen({
             ) : null}
           </>
         )}
-        {!activityOnly ? (
+        {showUsage ? (
           usageQuery.loading && !usageQuery.data && !usageQuery.previousData ? (
             <DashboardCard title={t("usageGlance.title")}>
               <ActivityIndicator

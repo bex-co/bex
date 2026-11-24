@@ -215,7 +215,7 @@ describe("BillingOnboardingView", () => {
     );
 
     expect(
-      screen.getByText(/unavailable or you do not have billing access/),
+      screen.getByText(/Billing details are unavailable right now/),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

@@ -50,6 +50,7 @@ func TestViewerCapabilitiesProjection(t *testing.T) {
 			"canManageKeys":    caps.CanManageKeys,
 			"canManage":        caps.CanManage,
 			"canManageBilling": caps.CanManageBilling,
+			"canViewBilling":   caps.CanViewBilling,
 		} {
 			if !got {
 				t.Errorf("admin %s = false, want true", name)
@@ -75,6 +76,7 @@ func TestViewerCapabilitiesProjection(t *testing.T) {
 			"canManageKeys":    caps.CanManageKeys,
 			"canManage":        caps.CanManage,
 			"canManageBilling": caps.CanManageBilling,
+			"canViewBilling":   caps.CanViewBilling,
 		} {
 			if got {
 				t.Errorf("viewer %s = true, want false", name)
@@ -91,6 +93,61 @@ func TestViewerCapabilitiesProjection(t *testing.T) {
 			t.Fatalf("Capabilities for a non-member = %v, want ErrForbidden", err)
 		}
 	})
+}
+
+// modelRoleChecker answers each relation as model.fga's workspace type grants it
+// to one role (the billing rows only, plus can_view for every member): enough
+// to read a role's billing capabilities off the projection.
+type modelRoleChecker struct{ role string }
+
+func (c modelRoleChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	holders := map[string][]string{
+		core.RelCanView:          {"viewer", "contributor", "developer", "admin", "billing"},
+		core.RelCanManageBilling: {"billing", "admin"},
+		core.RelCanViewBilling:   {"developer", "admin", "billing"},
+	}[relation]
+	for _, r := range holders {
+		if r == c.role {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// TestViewerCapabilitiesBillingPerRole is Render's "View billing details" and
+// "Edit payment method" rows (render.com/docs/team-members, read 2026-11-23)
+// on the capability read (w9/m620): Admin, Developer and Billing view billing
+// details, only Admin and Billing edit it, and Contributor and Viewer do
+// neither. The dashboard gates the Billing page and its controls on exactly
+// these two booleans, and the grant says why a refused one is refused.
+func TestViewerCapabilitiesBillingPerRole(t *testing.T) {
+	st := newFakeStore("scale")
+	for role, want := range map[string]struct{ view, manage bool }{
+		"admin":       {true, true},
+		"developer":   {true, false},
+		"contributor": {false, false},
+		"viewer":      {false, false},
+		"billing":     {true, true},
+	} {
+		t.Run(role, func(t *testing.T) {
+			st.seedMember(role+"-1", role)
+			s := svc(st, newFakeGranter(), nil, modelRoleChecker{role: role})
+			caps, err := s.Capabilities(ctxWith(role+"-1"), "tea-1", false)
+			if err != nil {
+				t.Fatalf("Capabilities: %v", err)
+			}
+			if caps.CanViewBilling != want.view || caps.CanManageBilling != want.manage {
+				t.Errorf("canViewBilling=%v canManageBilling=%v, want %v and %v", caps.CanViewBilling, caps.CanManageBilling, want.view, want.manage)
+			}
+			g := grantFor(t, caps, core.RelCanViewBilling)
+			if want.view && g.Outcome != core.DecisionAllowed {
+				t.Errorf("can_view_billing grant = %+v, want allowed", g)
+			}
+			if !want.view && (g.Outcome != core.DecisionDenied || g.Reason != core.ReasonInsufficientPermission) {
+				t.Errorf("can_view_billing grant = %+v, want denied/insufficient_permission", g)
+			}
+		})
+	}
 }
 
 // grantFor pulls one relation's tri-state grant out of the projection.
@@ -250,6 +307,7 @@ func TestViewerCapabilitiesTriState(t *testing.T) {
 			core.RelCanOperate: caps.CanOperate, core.RelCanCreate: caps.CanCreate,
 			core.RelCanViewSensitive: caps.CanViewSensitive, core.RelCanManageKeys: caps.CanManageKeys,
 			core.RelCanManage: caps.CanManage, core.RelCanManageBilling: caps.CanManageBilling,
+			core.RelCanViewBilling: caps.CanViewBilling,
 		} {
 			if g := grantFor(t, caps, action); b != (g.Outcome == core.DecisionAllowed) {
 				t.Errorf("%s: boolean %v disagrees with grant outcome %q", action, b, g.Outcome)
@@ -263,8 +321,8 @@ func TestViewerCapabilitiesTriState(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Capabilities: %v", err)
 		}
-		if len(caps.Grants) != 8 {
-			t.Fatalf("want 8 grants (one per relation), got %d", len(caps.Grants))
+		if len(caps.Grants) != 9 {
+			t.Fatalf("want 9 grants (one per relation), got %d", len(caps.Grants))
 		}
 		for _, g := range caps.Grants {
 			if g.Outcome != core.DecisionAllowed || g.Reason != "" {

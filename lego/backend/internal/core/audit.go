@@ -1716,8 +1716,9 @@ var writeRelations = map[string]bool{
 }
 
 // readVerbs are the verbs a write relation gates that change nothing: admin
-// and operator reads (billing status, the audit log itself, invites, keys,
-// agent sessions). Like a read relation they record their denials only
+// and operator reads (the audit log itself, invites, keys, agent sessions).
+// The billing reads left this list in w9/m620: can_view_billing is a read
+// relation, so its allowed reads go unrecorded by that rule. Like a read relation they record their denials only
 // (w4/m321): Render's audit log records actions, and in one workspace's day
 // these reads were 392 of 861 rows, every page of the log writing another.
 // Names are callerVerb's; TestReadVerbsNameServiceMethods keeps them real,
@@ -1725,7 +1726,6 @@ var writeRelations = map[string]bool{
 // Verbs that also write (apps.PlanBlueprint persists its plan, a turn ticket
 // is a live credential) are not here.
 var readVerbs = map[string]bool{
-	"billing.Status":                     true,
 	"audit.List":                         true,
 	"audit.ListOrganization":             true,
 	"members.ListOrganizationInvites":    true,
@@ -1733,7 +1733,6 @@ var readVerbs = map[string]bool{
 	"apikeys.ListAPIKeys":                true,
 	"apikeys.PermissionCatalog":          true,
 	"sshkeys.List":                       true,
-	"workspaces.PipelineSettings":        true,
 	"workspaces.WorkspaceCreationPolicy": true,
 	"github.GetClaimSelection":           true,
 	"github.ListRepos":                   true,
@@ -1787,6 +1786,7 @@ var readRelations = map[string]bool{
 	RelCanView:          true,
 	RelCanViewLogs:      true,
 	RelCanViewSensitive: true,
+	RelCanViewBilling:   true,
 }
 
 // auditsDenial reports whether a DENIED check of relation records an audit

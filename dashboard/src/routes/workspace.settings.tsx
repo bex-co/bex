@@ -76,8 +76,10 @@ function WorkspaceSettingsPage() {
     currentWorkspace?.role === "admin" &&
     !audit.forbidden &&
     (capabilities.canManage || capabilities.loading);
-  // Build Pipeline (w6/m309) holds billing settings: billing managers only.
-  const showBuildPipeline = capabilities.canManageBilling;
+  // Build Pipeline (w6/m309) holds a billing setting: shown to every member
+  // who may view billing details (Admin, Developer, Billing; w9/m620), and
+  // changed only by billing managers.
+  const showBuildPipeline = capabilities.canViewBilling;
   // Workspace privacy (w7/m464) is an org workspace's, and its admins'
   // (`can_manage`; the workspace list's role says "admin" for everyone).
   const showPrivacy =

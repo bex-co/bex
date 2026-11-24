@@ -83,6 +83,7 @@ var relationCapability = map[string]string{
 	RelCanManageSSHKeys: ScopeWrite,
 	RelCanManage:        ScopeWrite,
 	RelCanManageBilling: ScopeWrite,
+	RelCanViewBilling:   ScopeRead,
 	RelCanJoin:          ScopeWrite,
 	RelCanJoinAsAdmin:   ScopeWrite,
 }
@@ -103,6 +104,7 @@ func RelCanRelations() []string {
 		RelCanManageBilling,
 		RelCanJoin,
 		RelCanJoinAsAdmin,
+		RelCanViewBilling,
 	}
 }
 

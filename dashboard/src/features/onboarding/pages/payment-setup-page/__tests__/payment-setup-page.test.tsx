@@ -292,7 +292,7 @@ describe("PaymentSetupPage", () => {
     const { router } = renderWall("/setup/payment?next=%2Fservices%2Fnew");
 
     expect(
-      await screen.findByText(/Billing onboarding is unavailable/),
+      await screen.findByText(/Billing details are unavailable right now/),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(billing.refetch).toHaveBeenCalledOnce();

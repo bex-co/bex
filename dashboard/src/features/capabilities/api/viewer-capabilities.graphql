@@ -14,6 +14,7 @@ query ViewerCapabilities($ownerId: String, $fresh: Boolean) {
     canManageKeys
     canManage
     canManageBilling
+    canViewBilling
     fresh
     grants {
       action

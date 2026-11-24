@@ -254,6 +254,11 @@ const esUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "Los detalles de facturación no están disponibles para tu rol",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "No se pudo cargar el uso",
     description: "Error state heading on the Usage page",
@@ -411,8 +416,9 @@ const esUsage: Record<string, TranslationEntry> = {
   },
   "usage.billingUnavailable": {
     message:
-      "La configuración de facturación no está disponible o no tienes acceso a la facturación (rol de facturación o administrador).",
-    description: "Degraded or unauthorized billing onboarding state",
+      "Los detalles de facturación no están disponibles en este momento. Inténtalo de nuevo más tarde.",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "No se pudo abrir Stripe Checkout. Inténtalo de nuevo.",

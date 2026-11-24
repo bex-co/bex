@@ -51,6 +51,8 @@ export interface Capabilities {
   canManageKeys: boolean;
   canManage: boolean;
   canManageBilling: boolean;
+  /** Render's "View billing details" (w9/m620): Admin, Developer, Billing. */
+  canViewBilling: boolean;
   /** A fresh check is in flight (or no workspace yet). */
   loading: boolean;
   /**
@@ -100,6 +102,7 @@ function booleansFrom(
   | "canManageKeys"
   | "canManage"
   | "canManageBilling"
+  | "canViewBilling"
 > {
   const flag = (key: CapabilityBoolean) =>
     allowsAction(state, workspaceId, actionForBoolean(key), now);
@@ -112,6 +115,7 @@ function booleansFrom(
     canManageKeys: flag("canManageKeys"),
     canManage: flag("canManage"),
     canManageBilling: flag("canManageBilling"),
+    canViewBilling: flag("canViewBilling"),
   };
 }
 
@@ -408,6 +412,7 @@ const FALLBACK: Capabilities = {
   canManageKeys: false,
   canManage: false,
   canManageBilling: false,
+  canViewBilling: false,
   loading: true,
   loaded: false,
   stale: false,

@@ -72,13 +72,20 @@ export const NAV_GROUPS: SidebarNavGroup[] = [
 /**
  * The destinations a workspace sees: Agents and Automations only behind the
  * agents flag, Router only where `useRouterNavAvailable` says the workspace is
- * offered it (flag on and the companion service reachable). The sidebar and the
- * ⌘K palette both read this, so a destination added to NAV_GROUPS is searchable
- * without a second edit and never leaks past its gate (w21/031, w21/042).
+ * offered it (flag on and the companion service reachable), and Billing unless
+ * the member's role is confirmed unable to view billing details (a Contributor
+ * or a Viewer, as on Render, w9/m620; while capabilities load it stays, so an
+ * Admin's sidebar never shifts). The sidebar and the ⌘K palette both read
+ * this, so a destination added to NAV_GROUPS is searchable without a second
+ * edit and never leaks past its gate (w21/031, w21/042).
  */
 export function visibleNavGroups(
   groups: SidebarNavGroup[],
-  flags: { agentsEnabled: boolean; routerAvailable: boolean },
+  flags: {
+    agentsEnabled: boolean;
+    routerAvailable: boolean;
+    billingDenied?: boolean;
+  },
 ): SidebarNavGroup[] {
   return groups
     .map((group) => ({
@@ -87,7 +94,8 @@ export function visibleNavGroups(
         (item) =>
           ((item.to !== "/agents" && item.to !== "/automations") ||
             flags.agentsEnabled) &&
-          (item.to !== "/router" || flags.routerAvailable),
+          (item.to !== "/router" || flags.routerAvailable) &&
+          (item.to !== "/billing" || !flags.billingDenied),
       ),
     }))
     .filter((group) => group.items.length > 0);

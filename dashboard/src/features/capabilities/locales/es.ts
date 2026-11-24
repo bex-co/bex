@@ -25,6 +25,12 @@ const esCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message:
+      "Tu rol no puede ver los detalles de facturación. Pregunta a un administrador del espacio de trabajo.",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Tu rol no puede administrar miembros. Pregunta a un administrador del espacio de trabajo.",

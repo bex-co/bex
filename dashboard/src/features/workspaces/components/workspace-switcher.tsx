@@ -28,6 +28,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   workspacePlanNameKey,
   type WorkspaceView,
@@ -122,6 +123,9 @@ export function WorkspaceSwitcher() {
   const { workspaces, currentWorkspace, setCurrentWorkspaceId, loading } =
     useWorkspace();
   const { organizations } = useOrganizations();
+  // Billing details are Admin, Developer and Billing (w9/m620), as in the
+  // sidebar: hidden once the role is confirmed not to hold them.
+  const billingDenied = useCapabilities().denied("can_view_billing");
   const groups = useMemo(
     () => groupSwitcherWorkspaces(workspaces, organizations),
     [workspaces, organizations],
@@ -183,12 +187,14 @@ export function WorkspaceSwitcher() {
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
             align="start"
           >
-            <DropdownMenuItem
-              onSelect={() => void navigate({ to: "/billing" })}
-            >
-              <CreditCard className="size-4" />
-              {t("workspaces.switcherBilling")}
-            </DropdownMenuItem>
+            {billingDenied ? null : (
+              <DropdownMenuItem
+                onSelect={() => void navigate({ to: "/billing" })}
+              >
+                <CreditCard className="size-4" />
+                {t("workspaces.switcherBilling")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onSelect={() => void navigate({ to: "/workspace/settings" })}
             >

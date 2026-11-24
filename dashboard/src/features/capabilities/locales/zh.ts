@@ -21,6 +21,11 @@ const zhCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message: "你的角色无法查看账单详情。请联系工作区管理员。",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message: "你的角色无法管理成员。请联系工作区管理员。",
     description:

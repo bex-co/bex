@@ -145,60 +145,77 @@ func TestBillingNilReaderIsEstimateOnly(t *testing.T) {
 	}
 }
 
-// billingRoleChecker allows the workspace read relation and, when billing is
-// true, the billing relation — modeling a viewer/contributor versus a billing
-// member (or admin) of the same workspace.
-type billingRoleChecker struct{ billing bool }
+// billingRoleChecker answers the relations model.fga grants one workspace role
+// (w9/m620): every member holds can_view; Admin, Developer and Billing hold
+// can_view_billing (Render's "View billing details"); Admin and Billing hold
+// can_manage_billing ("Edit payment method").
+type billingRoleChecker struct{ role string }
 
 func (c billingRoleChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
-	if relation == core.RelCanView {
+	switch relation {
+	case core.RelCanView:
 		return true, nil
+	case core.RelCanViewBilling:
+		return c.role == "admin" || c.role == "developer" || c.role == "billing", nil
+	case core.RelCanManageBilling:
+		return c.role == "admin" || c.role == "billing", nil
 	}
-	return c.billing && relation == core.RelCanManageBilling, nil
+	return false, nil
 }
 
-// TestBillingHiddenFromNonBillingRoles (round-13 #5): usage + the advisory
-// estimate stay readable by every can_view member, but the real Stripe
-// projection (current cost, invoices, credit grants) is a can_manage_billing
-// capability — a viewer/contributor/developer gets a null billing object and
-// the billing reader is never even consulted.
-func TestBillingHiddenFromNonBillingRoles(t *testing.T) {
+// TestBillingDetailsPerRole is Render's "View billing details" row
+// (render.com/docs/team-members, read 2026-11-23) on the usage read (w9/m620):
+// Admin, Developer and Billing read usage, the estimate and the real Stripe
+// projection (current cost, invoices, credit grants); a Contributor and a
+// Viewer, which Render says "can't view sensitive fields (billing info, …)",
+// are refused the whole read and the billing reader is never consulted.
+func TestBillingDetailsPerRole(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		billing bool
+		role string
+		read bool
 	}{
-		{"viewer/contributor/developer", false},
-		{"billing member", true},
+		{"admin", true},
+		{"developer", true},
+		{"billing", true},
+		{"contributor", false},
+		{"viewer", false},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.role, func(t *testing.T) {
 			svc := svcWithTenant(seedStore(), "tea-001")
-			svc.Base.Authz = billingRoleChecker{billing: tc.billing}
+			svc.Base.Authz = billingRoleChecker{role: tc.role}
 			reader := &fakeBillingReader{result: sampleBilling()}
 			svc.Billing = reader
 
 			sum, err := svc.MonthToDate(withIdentity(context.Background()), "")
+			if !tc.read {
+				if !errors.Is(err, core.ErrForbidden) {
+					t.Fatalf("MonthToDate = %v, want ErrForbidden for a %s", err, tc.role)
+				}
+				if sum.EstimatedCost.TotalUSD != "" || len(sum.Services) != 0 {
+					t.Fatalf("a refused read returned figures: %+v", sum)
+				}
+				if len(reader.calls) != 0 {
+					t.Fatalf("BillingFor called %d time(s) for a %s, want 0", len(reader.calls), tc.role)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("MonthToDate: %v", err)
 			}
 			if sum.EstimatedCost.TotalUSD == "" {
-				t.Error("estimate must stay present for every can_view member")
+				t.Error("estimate missing for a member who may view billing details")
 			}
-			if !tc.billing && sum.Billing != nil {
-				t.Fatalf("summary.Billing = %+v, want nil for a non-billing role", sum.Billing)
-			}
-			if !tc.billing && len(reader.calls) != 0 {
-				t.Fatalf("BillingFor called %d time(s) for a non-billing role, want 0", len(reader.calls))
-			}
-			if tc.billing && (sum.Billing == nil || sum.Billing.CurrentCost == nil) {
-				t.Fatalf("summary.Billing = %+v, want the sample for a billing member", sum.Billing)
+			if sum.Billing == nil || sum.Billing.CurrentCost == nil || len(sum.Billing.Invoices) == 0 {
+				t.Fatalf("summary.Billing = %+v, want the real cost and invoices for a %s", sum.Billing, tc.role)
 			}
 		})
 	}
 }
 
-// A billing member revoked moments ago (cached positive on another replica)
-// must not receive the projection — the reveal uses the authoritative fresh
-// decision, the round-5 finding-4 class.
+// A member revoked moments ago (cached positive on another replica) must not
+// receive the real Stripe projection — the reveal re-asserts can_view_billing
+// on the authoritative fresh path, the round-5 finding-4 class. The usage the
+// cached gate already admitted stays estimate-only.
 type staleBillingChecker struct{ billingRoleChecker }
 
 func (c staleBillingChecker) CheckFresh(_ context.Context, _, relation, _ string) (bool, error) {
@@ -207,7 +224,7 @@ func (c staleBillingChecker) CheckFresh(_ context.Context, _, relation, _ string
 
 func TestBillingRevokedMidCacheWindow(t *testing.T) {
 	svc := svcWithTenant(seedStore(), "tea-001")
-	svc.Base.Authz = staleBillingChecker{billingRoleChecker{billing: true}}
+	svc.Base.Authz = staleBillingChecker{billingRoleChecker{role: "developer"}}
 	reader := &fakeBillingReader{result: sampleBilling()}
 	svc.Billing = reader
 
@@ -215,51 +232,55 @@ func TestBillingRevokedMidCacheWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MonthToDate: %v", err)
 	}
-	if sum.Billing != nil {
-		t.Fatalf("summary.Billing = %+v, want nil for a just-revoked billing member", sum.Billing)
+	if sum.Billing != nil || len(reader.calls) != 0 {
+		t.Fatalf("summary.Billing = %+v (reader calls %d), want no projection for a just-revoked member", sum.Billing, len(reader.calls))
 	}
 }
 
-// TestBillingHiddenFromReadOnlyOAuthBillingToken (capability composition on the
-// audit-silent projection): mayManageBilling composes can_manage_billing's
-// mapped OAuth capability, so a third-party human token delegated only
-// bex.read by a billing-role member must NOT receive the real Stripe
-// projection (cost, invoices, credit grants) even though OpenFGA still grants
-// the billing relation. bex.write restores it.
-func TestBillingHiddenFromReadOnlyOAuthBillingToken(t *testing.T) {
-	oauthBilling := func(scopes string) context.Context {
+// TestBillingDetailsOAuthCapability: can_view_billing maps to bex.read
+// (w9/m620), the capability every read takes, so a third-party human token a
+// Developer delegated bex.read to reads the usage and the projection their
+// role reads; a token without bex.read is refused the read with the coded
+// insufficient_token_scope, never served figures. OpenFGA still decides the
+// role: a Contributor's bex.read token is refused (TestBillingDetailsPerRole's
+// checker, through the same gate).
+func TestBillingDetailsOAuthCapability(t *testing.T) {
+	oauth := func(scopes string) context.Context {
 		return core.WithIdentity(context.Background(), core.Identity{
 			Subject: "user:alice", Method: "oauth2", Human: true, CanonicalScopes: scopes,
 		})
 	}
 	for _, tc := range []struct {
 		name   string
+		role   string
 		scopes string
-		want   bool
+		want   error
 	}{
-		{"bex.read only", core.ScopeRead, false},
-		{"bex.read + bex.write", core.ScopeRead + " " + core.ScopeWrite, true},
+		{"developer, bex.read", "developer", core.ScopeRead, nil},
+		{"developer, bex.write only", "developer", core.ScopeWrite, core.ErrForbidden},
+		{"contributor, bex.read", "contributor", core.ScopeRead, core.ErrForbidden},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := svcWithTenant(seedStore(), "tea-001")
-			svc.Base.Authz = billingRoleChecker{billing: true}
+			svc.Base.Authz = billingRoleChecker{role: tc.role}
 			reader := &fakeBillingReader{result: sampleBilling()}
 			svc.Billing = reader
 
-			sum, err := svc.MonthToDate(oauthBilling(tc.scopes), "")
+			sum, err := svc.MonthToDate(oauth(tc.scopes), "")
+			if tc.want != nil {
+				if !errors.Is(err, tc.want) {
+					t.Fatalf("MonthToDate = %v, want %v", err, tc.want)
+				}
+				if len(reader.calls) != 0 {
+					t.Fatalf("BillingFor called %d time(s) for a refused token, want 0", len(reader.calls))
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("MonthToDate: %v", err)
 			}
-			if !tc.want {
-				if sum.Billing != nil {
-					t.Fatalf("summary.Billing = %+v, want nil for a read-only OAuth billing token", sum.Billing)
-				}
-				if len(reader.calls) != 0 {
-					t.Fatalf("BillingFor called %d time(s), want 0 for a read-only OAuth billing token", len(reader.calls))
-				}
-			}
-			if tc.want && (sum.Billing == nil || sum.Billing.CurrentCost == nil) {
-				t.Fatalf("summary.Billing = %+v, want the sample for a write-scoped billing token", sum.Billing)
+			if sum.Billing == nil || sum.Billing.CurrentCost == nil {
+				t.Fatalf("summary.Billing = %+v, want the projection for a Developer's bex.read token", sum.Billing)
 			}
 		})
 	}

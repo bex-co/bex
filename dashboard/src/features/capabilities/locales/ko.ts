@@ -25,6 +25,12 @@ const koCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message:
+      "현재 역할로는 결제 세부 정보를 볼 수 없습니다. 워크스페이스 관리자에게 문의하세요.",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message:
       "현재 역할로는 멤버를 관리할 수 없습니다. 워크스페이스 관리자에게 문의하세요.",

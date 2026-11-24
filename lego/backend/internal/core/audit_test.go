@@ -409,11 +409,11 @@ func TestCallerVerbWalksPastUnexportedHelperMethods(t *testing.T) {
 }
 
 // TestCanManageBillingIsAuditedWrite pins can_manage_billing into the write
-// audit tier (w1/m60). The billing verbs it now gates (billing.Status/Checkout/
-// Portal) are management actions, so a billing check must leave an audit trail —
-// allowed and denied — exactly as the admin-only can_manage it replaced did.
-// Dropping it from writeRelations (so a denied billing check leaves no trail)
-// turns this red.
+// audit tier (w1/m60). The billing verbs it gates (Checkout, Portal and the
+// pipeline spend limit) are management actions, so a billing check must leave
+// an audit trail — allowed and denied — exactly as the admin-only can_manage
+// it replaced did. Dropping it from writeRelations (so a denied billing check
+// leaves no trail) turns this red.
 func TestCanManageBillingIsAuditedWrite(t *testing.T) {
 	if !writeRelations[RelCanManageBilling] {
 		t.Error("RelCanManageBilling missing from writeRelations — a billing management check must be audited (allowed and denied)")
@@ -426,16 +426,46 @@ func TestCanManageBillingIsAuditedWrite(t *testing.T) {
 	}
 }
 
+// TestCanViewBillingIsAuditedRead pins can_view_billing (w9/m620, Render's
+// "View billing details") into the read tier: reading usage, cost or billing
+// readiness records nothing when allowed, and a Contributor's or Viewer's
+// refused read records its denial, as every read relation's does.
+func TestCanViewBillingIsAuditedRead(t *testing.T) {
+	if writeRelations[RelCanViewBilling] {
+		t.Error("RelCanViewBilling is in writeRelations — every allowed billing read would write an audit row")
+	}
+	if !readRelations[RelCanViewBilling] {
+		t.Error("RelCanViewBilling missing from readRelations — a refused billing read would leave no audit trail")
+	}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "session"})
+	allowed := &fakeAuditSink{}
+	b := &Base{Authz: &fakeAllowChecker{}, Audit: allowed}
+	if err := b.authorizeAndRecord(ctx, RelCanViewBilling, DefaultWorkspace, "", "billing.Status", nil, true, nil); err != nil {
+		t.Fatalf("allowed: %v", err)
+	}
+	if allowed.len() != 0 {
+		t.Errorf("an allowed billing read recorded %+v, want nothing", allowed.events)
+	}
+	denied := &fakeAuditSink{}
+	b = &Base{Authz: fakeDenyChecker{}, Audit: denied}
+	if err := b.authorizeAndRecord(ctx, RelCanViewBilling, DefaultWorkspace, "", "billing.Status", nil, true, nil); err == nil {
+		t.Fatal("a denying checker allowed")
+	}
+	if denied.len() != 1 || denied.events[0].Outcome != AuditDenied || denied.events[0].Relation != RelCanViewBilling {
+		t.Errorf("a refused billing read recorded %+v, want one denied can_view_billing row", denied.events)
+	}
+}
+
 // w4/m321: a verb gated by a write relation that changes nothing (an admin or
 // operator read) records its denials only, as a read relation does; a
 // mutation through the same relation still records its success.
 func TestReadVerbsGatedByAWriteRelationRecordDenialsOnly(t *testing.T) {
 	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "session"})
 	for verb, relation := range map[string]string{
-		"billing.Status":      RelCanManageBilling,
 		"audit.List":          RelCanManage,
 		"members.ListInvites": RelCanManage,
 		"agentsessions.Wait":  RelCanOperate,
+		"sshkeys.List":        RelCanManageSSHKeys,
 		// w4/683: the repository environment reads authorize can_create.
 		"agentsessions.RepoEnvironments":      RelCanCreate,
 		"agentsessions.RepoEnvironmentBuilds": RelCanCreate,

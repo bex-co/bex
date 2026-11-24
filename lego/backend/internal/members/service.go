@@ -361,6 +361,10 @@ type Capabilities struct {
 	CanManageKeys    bool   `json:"canManageKeys"`
 	CanManage        bool   `json:"canManage"`
 	CanManageBilling bool   `json:"canManageBilling"`
+	// CanViewBilling is Render's "View billing details" (w9/m620): the
+	// workspace's usage, cost, invoices and billing readiness. Admin,
+	// Developer and Billing hold it; Contributor and Viewer do not.
+	CanViewBilling bool `json:"canViewBilling"`
 	// Grants is the tri-state form of the booleans above (ADR087, w6/m136):
 	// one entry per relation, in the fixed order the booleans declare. A false
 	// boolean cannot say WHY; the matching grant can — denied (an affirmative
@@ -475,7 +479,7 @@ func (s *Service) Capabilities(ctx context.Context, workspaceID string, fresh bo
 	caps := Capabilities{
 		CanView: true,
 		Fresh:   fresh,
-		Grants:  append(make([]CapabilityGrant, 0, 8), CapabilityGrant{Action: core.RelCanView, Outcome: core.DecisionAllowed}),
+		Grants:  append(make([]CapabilityGrant, 0, 9), CapabilityGrant{Action: core.RelCanView, Outcome: core.DecisionAllowed}),
 	}
 	probe := func(relation string, allowed *bool) {
 		d := decide(relation)
@@ -489,6 +493,7 @@ func (s *Service) Capabilities(ctx context.Context, workspaceID string, fresh bo
 	probe(core.RelCanManageKeys, &caps.CanManageKeys)
 	probe(core.RelCanManage, &caps.CanManage)
 	probe(core.RelCanManageBilling, &caps.CanManageBilling)
+	probe(core.RelCanViewBilling, &caps.CanViewBilling)
 	if s.Store != nil {
 		if tenantID, ok := s.Tenant(ctx); ok {
 			if idn, ok := core.IdentityFrom(ctx); ok {

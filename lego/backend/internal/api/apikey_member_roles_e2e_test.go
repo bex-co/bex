@@ -238,7 +238,7 @@ func TestBelowDeveloperAPIKeysE2E(t *testing.T) {
 		}
 	}
 	// Billing data: the Billing member's key reads the Build Pipeline
-	// settings (can_manage_billing); the Viewer's is refused them.
+	// settings (can_view_billing, w9/m620); the Viewer's is refused them.
 	pipeline := fmt.Sprintf(`{ pipelineSettings(workspaceId: %q) { workspaceId } }`, ws.ID)
 	if out := graphqlDo(t, srv, keyOf(keyOfRole["billing"]), pipeline); out["errors"] != nil {
 		t.Errorf("Billing's key reads the pipeline settings: %v", out)

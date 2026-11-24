@@ -43,6 +43,8 @@ import { CreditBalanceCard, InvoiceHistoryCard } from "./billing-summary-cards";
 import { UsageNavigation } from "./usage-navigation";
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
+import { EmptyState } from "@/common/components/empty-state";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { cn } from "@/common/lib/utils/utils";
 
 /**
@@ -55,6 +57,12 @@ import { cn } from "@/common/lib/utils/utils";
  * charge tree (ChargesCard) carries the consumption detail that four separate
  * per-meter usage tables used to spread across the page without ever pricing
  * it.
+ *
+ * Billing details are Render's "View billing details" (w9/m620): Admin,
+ * Developer and Billing. A Contributor or a Viewer, once the capability read
+ * confirms it, gets the page's title and the role's reason instead of the
+ * cards, and the usage read stops; while capabilities are still checking the
+ * page loads as for everyone else, since bex-api refuses the read anyway.
  */
 
 /** Build `count` month options starting `startFrom` months back, newest first. */
@@ -83,8 +91,32 @@ export function UsagePage() {
   const period =
     selectedPeriod === CURRENT_MONTH_SENTINEL ? undefined : selectedPeriod;
 
-  const { summary, loading, error } = useUsage(period);
+  const billingDenied = useCapabilities().denied("can_view_billing");
+  const { summary, loading, error } = useUsage(period, {
+    skip: billingDenied,
+  });
   const billing = summary?.billing ?? null;
+
+  if (billingDenied) {
+    return (
+      <DashboardLayout>
+        <PageFrame
+          header={
+            <PageHeader
+              title={t("usage.pageTitle")}
+              description={t("usage.pageSubtitle")}
+            />
+          }
+        >
+          <EmptyState
+            iconName="LockKeyhole"
+            title={t("usage.billingDetailsDeniedTitle")}
+            description={t("capabilities.reasonCanViewBilling")}
+          />
+        </PageFrame>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

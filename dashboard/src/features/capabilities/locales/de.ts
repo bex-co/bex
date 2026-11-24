@@ -25,6 +25,12 @@ const deCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message:
+      "Deine Rolle darf die Abrechnungsdetails nicht sehen. Frag einen Workspace-Admin.",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Deine Rolle darf Mitglieder nicht verwalten. Frag einen Workspace-Admin.",

@@ -6,6 +6,8 @@ import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-sw
 import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
 import { organization } from "@/features/organizations/__tests__/org-fixtures";
 import type { WorkspaceView } from "@/features/workspaces/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 function renderSwitcher() {
   return render(
@@ -133,6 +135,26 @@ describe("WorkspaceSwitcher", () => {
     );
 
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
+  });
+
+  // w9/m620: billing details are Admin, Developer and Billing, as on Render;
+  // a Contributor's or a Viewer's switcher offers no Billing entry once the
+  // capability read confirms the role.
+  it("offers no Billing entry to a role that may not view billing details", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canViewBilling: false }),
+    );
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Workspace Settings" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Billing" }),
+    ).not.toBeInTheDocument();
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   });
 
   it("navigates to billing, settings, and + New Workspace", async () => {

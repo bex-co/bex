@@ -42,7 +42,7 @@ vi.mock("@/features/webhooks/hooks/use-webhooks", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
-  useCapabilities: () => ({ canManage, loaded: true }),
+  useCapabilities: () => ({ canManage, loaded: true, denied: () => false }),
 }));
 
 let workspacePlan = "pro";

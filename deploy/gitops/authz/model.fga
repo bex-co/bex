@@ -38,6 +38,8 @@
 #   can_manage_ssh_keys own SSH and API keys (w9/m514)    every member role
 #   can_manage          workspace settings/members        admin
 #   can_manage_billing  billing settings                  billing or admin
+#   can_view_billing    usage, cost, invoices, readiness  developer, admin, billing
+#                       (Render's "View billing details", w9/m620)
 #
 # Subjects (`user`) are what the auth gate resolves via api.IdentityFrom: a
 # Hydra client_id (API key) or a Kratos identity id. Each check targets the
@@ -90,6 +92,7 @@ type workspace
     define can_manage_ssh_keys: viewer or contributor or developer or admin or billing
     define can_manage: admin
     define can_manage_billing: billing or admin
+    define can_view_billing: developer or admin or billing
 
 type service
   relations

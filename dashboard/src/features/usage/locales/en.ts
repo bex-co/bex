@@ -248,6 +248,11 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "Billing details aren’t available to your role",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "Could not load usage",
     description: "Error state heading on the Usage page",
@@ -403,9 +408,9 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Hosted billing security note",
   },
   "usage.billingUnavailable": {
-    message:
-      "Billing onboarding is unavailable or you do not have billing access (billing role or admin).",
-    description: "Degraded or unauthorized billing onboarding state",
+    message: "Billing details are unavailable right now. Try again later.",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "Could not open Stripe Checkout. Try again.",

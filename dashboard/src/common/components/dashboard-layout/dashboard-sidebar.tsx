@@ -10,6 +10,7 @@ import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
 import { SidebarNavGroups } from "./sidebar-nav-groups";
 import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useRouterNavAvailable } from "./use-router-nav-available";
 
 // Contextual rails are route-scoped; keep them out of the always-mounted chrome
@@ -101,9 +102,15 @@ function TopLevelNavGroups({
   isItemActive: (to: string) => boolean;
 }) {
   const routerAvailable = useRouterNavAvailable();
+  const billingDenied = useCapabilities().denied("can_view_billing");
   const groups = useMemo(
-    () => visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerAvailable }),
-    [agentsEnabled, routerAvailable],
+    () =>
+      visibleNavGroups(NAV_GROUPS, {
+        agentsEnabled,
+        routerAvailable,
+        billingDenied,
+      }),
+    [agentsEnabled, routerAvailable, billingDenied],
   );
   return <SidebarNavGroups groups={groups} isItemActive={isItemActive} />;
 }

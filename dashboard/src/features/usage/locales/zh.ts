@@ -245,6 +245,11 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "你的角色无法查看账单详情",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "无法加载用量数据",
     description: "Error state heading on the Usage page",
@@ -396,8 +401,9 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Hosted billing security note",
   },
   "usage.billingUnavailable": {
-    message: "账单设置暂不可用，或你没有账单权限（账单角色或管理员）。",
-    description: "Degraded or unauthorized billing onboarding state",
+    message: "账单详情暂不可用，请稍后重试。",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "无法打开 Stripe Checkout，请重试。",

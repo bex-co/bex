@@ -37,7 +37,7 @@ type dryRunKey struct{}
 // PreviewOf marks ctx as a dry-run of a verb the caller is authorized only to
 // view, on the resource labels describe. A preview runs every check its real
 // call runs, but billing gates only for a caller who may perform the call: a
-// 402 discloses payment state that otherwise needs can_manage_billing, and the
+// 402 discloses payment state that otherwise needs can_view_billing, and the
 // real call refuses anyone else before it gets that far. Whether the caller may
 // — every one of relations, probed without an audit row on the object the real
 // call authorizes against — is asked only when a billing gate is reached.

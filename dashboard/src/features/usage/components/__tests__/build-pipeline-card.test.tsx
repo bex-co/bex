@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
 import { usePipelineSettings } from "@/features/usage/hooks/use-pipeline-settings";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 vi.mock("@/features/usage/hooks/use-pipeline-settings", () => ({
   usePipelineSettings: vi.fn(),
@@ -44,6 +46,45 @@ describe("BuildPipelineCard", () => {
     expect(screen.getByText("Spend limit: $40.00 a month")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Remove limit" }));
     expect(save).toHaveBeenCalledWith(null);
+  });
+});
+
+// w9/m620: a Developer views billing details but does not edit them (Render:
+// "Edit payment method" is Admin and Billing only), so the limit reads and
+// Set, Edit and Remove are held, saying why.
+describe("BuildPipelineCard for a member who views but does not manage billing", () => {
+  beforeEach(() => {
+    mocked.mockReset();
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManageBilling: false }),
+    );
+  });
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it("shows the limit with every change held", () => {
+    const save = settings("40.00");
+    render(<BuildPipelineCard workspaceId="tea-a" />);
+    expect(screen.getByText("Spend limit: $40.00 a month")).toBeInTheDocument();
+    for (const name of ["Remove limit", "Edit"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+    }
+    expect(save).not.toHaveBeenCalled();
+    expect(
+      screen.queryByLabelText("Monthly limit (USD)"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds Set when there is no limit", () => {
+    settings(null);
+    render(<BuildPipelineCard workspaceId="tea-a" />);
+    expect(screen.getByText("No spend limit")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Set spend limit" }),
+    ).toBeDisabled();
   });
 });
 

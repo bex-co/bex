@@ -250,6 +250,11 @@ const jaUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "あなたのロールでは請求の詳細を表示できません",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "使用量を読み込めませんでした",
     description: "Error state heading on the Usage page",
@@ -407,8 +412,9 @@ const jaUsage: Record<string, TranslationEntry> = {
   },
   "usage.billingUnavailable": {
     message:
-      "請求のオンボーディングを利用できないか、請求へのアクセス権（請求担当または管理者）がありません。",
-    description: "Degraded or unauthorized billing onboarding state",
+      "現在、請求の詳細を利用できません。しばらくしてからもう一度お試しください。",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "Stripe Checkout を開けませんでした。もう一度お試しください。",

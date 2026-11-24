@@ -316,7 +316,8 @@ func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 			},
 		},
 		// pipelineSettings is the workspace's Build Pipeline settings (w6/m309),
-		// for billing managers. GraphQL-only: Render's REST and MCP have none.
+		// for members who may view billing details (Admin, Developer, Billing;
+		// w9/m620). GraphQL-only: Render's REST and MCP have none.
 		"pipelineSettings": &graphql.Field{
 			Type: pipelineSettingsGQLType,
 			Args: graphql.FieldConfigArgument{"workspaceId": gqlutil.ReqArg(graphql.String)},

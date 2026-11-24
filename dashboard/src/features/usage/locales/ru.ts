@@ -254,6 +254,11 @@ const ruUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "Сведения об оплате недоступны для вашей роли",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "Не удалось загрузить данные об использовании",
     description: "Error state heading on the Usage page",
@@ -410,9 +415,9 @@ const ruUsage: Record<string, TranslationEntry> = {
     description: "Hosted billing security note",
   },
   "usage.billingUnavailable": {
-    message:
-      "Настройка оплаты недоступна, или у вас нет доступа к оплате (роль «Оплата» или администратор).",
-    description: "Degraded or unauthorized billing onboarding state",
+    message: "Сведения об оплате сейчас недоступны. Повторите попытку позже.",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "Не удалось открыть Stripe Checkout. Повторите попытку.",

@@ -250,6 +250,11 @@ const koUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "현재 역할로는 결제 세부 정보를 볼 수 없습니다",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "사용량을 불러오지 못했습니다",
     description: "Error state heading on the Usage page",
@@ -403,8 +408,9 @@ const koUsage: Record<string, TranslationEntry> = {
   },
   "usage.billingUnavailable": {
     message:
-      "결제 온보딩을 사용할 수 없거나 결제 접근 권한(결제 담당자 또는 관리자 역할)이 없습니다.",
-    description: "Degraded or unauthorized billing onboarding state",
+      "지금은 결제 세부 정보를 사용할 수 없습니다. 나중에 다시 시도하세요.",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "Stripe Checkout을 열지 못했습니다. 다시 시도하세요.",

@@ -25,6 +25,12 @@ const jaCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message:
+      "あなたのロールでは請求の詳細を表示できません。ワークスペースの管理者に依頼してください。",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message:
       "あなたのロールではメンバーを管理できません。ワークスペースの管理者に依頼してください。",

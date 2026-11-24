@@ -35,6 +35,20 @@ describe("capability policy (ADR087)", () => {
     expect(allowsAction(state, "tea-a", "can_view_logs")).toBe(false);
   });
 
+  // w9/m620: the usage glance gates on Render's "View billing details", so
+  // the app must keep the server's can_view_billing grant, not drop it as an
+  // unknown action (which would hide the glance from every role).
+  it("keeps the can_view_billing grant the usage glance gates on", () => {
+    const developer = ready({
+      can_view: "allowed",
+      can_view_billing: "allowed",
+    });
+    expect(allowsAction(developer, "tea-a", "can_view_billing")).toBe(true);
+    const viewer = ready({ can_view: "allowed", can_view_billing: "denied" });
+    expect(allowsAction(viewer, "tea-a", "can_view_billing")).toBe(false);
+    expect(confirmedDenied(viewer, "tea-a", "can_view_billing")).toBe(true);
+  });
+
   it("fails closed while checking or unavailable — never permissive-while-unknown", () => {
     for (const state of [checkingCapabilities, unavailableCapabilities]) {
       expect(allowsAction(state, "tea-a", "can_view")).toBe(false);

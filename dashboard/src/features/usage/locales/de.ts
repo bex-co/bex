@@ -255,6 +255,11 @@ const deUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message: "Abrechnungsdetails sind für deine Rolle nicht verfügbar",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "Nutzung konnte nicht geladen werden",
     description: "Error state heading on the Usage page",
@@ -412,8 +417,9 @@ const deUsage: Record<string, TranslationEntry> = {
   },
   "usage.billingUnavailable": {
     message:
-      "Das Abrechnungs-Onboarding ist nicht verfügbar oder du hast keinen Zugriff auf die Abrechnung (Abrechnungsrolle oder Admin).",
-    description: "Degraded or unauthorized billing onboarding state",
+      "Die Abrechnungsdetails sind gerade nicht verfügbar. Versuch es später erneut.",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message:

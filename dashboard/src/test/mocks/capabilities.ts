@@ -23,6 +23,7 @@ export function mockCapabilities(
     canManageKeys: true,
     canManage: true,
     canManageBilling: true,
+    canViewBilling: true,
     loading: false,
     loaded: true,
     stale: false,
@@ -39,6 +40,7 @@ export function mockCapabilities(
         can_manage_keys: true,
         can_manage: true,
         can_manage_billing: true,
+        can_view_billing: true,
       };
       return map[action] ?? false;
     },
@@ -59,6 +61,7 @@ export function mockCapabilities(
         can_manage_keys: "canManageKeys",
         can_manage: "canManage",
         can_manage_billing: "canManageBilling",
+        can_view_billing: "canViewBilling",
       };
       return Boolean(merged[byAction[action]]);
     };
@@ -84,6 +87,7 @@ export function mockCapabilities(
         can_manage_keys: "capabilities.reasonCanCreate",
         can_manage: "capabilities.reasonCanManage",
         can_manage_billing: "capabilities.reasonCanManageBilling",
+        can_view_billing: "capabilities.reasonCanViewBilling",
       };
       return keys[action];
     };

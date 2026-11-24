@@ -304,18 +304,19 @@ func (c *billingRecordChecker) CheckFresh(_ context.Context, _, relation, _ stri
 	return c.grant[relation], nil
 }
 
-// TestBillingVerbsGateOnCanManageBilling pins the w1/m60 flip: every billing
-// verb (Status/Checkout/Portal) must authorize on exactly can_manage_billing —
-// NOT the admin-only can_manage it replaced. Reverting billing.authorize() to
-// core.RelCanManage fails this (the "granted can_manage_billing" leg denies, and
-// the "only can_manage" leg wrongly allows), so the dead-relation regression
-// (w7/014) cannot silently return.
+// TestBillingVerbsGateOnCanManageBilling pins the w1/m60 flip: the hosted
+// sessions (Checkout/Portal), which bind a payment method, authorize on exactly
+// can_manage_billing — NOT the admin-only can_manage it replaced, and not the
+// can_view_billing a Developer holds (Render: "Edit payment method" is Admin
+// and Billing only). Reverting billing.authorize() to core.RelCanManage fails
+// this (the "granted can_manage_billing" leg denies, and the "only can_manage"
+// leg wrongly allows), so the dead-relation regression (w7/014) cannot
+// silently return.
 func TestBillingVerbsGateOnCanManageBilling(t *testing.T) {
 	verbs := []struct {
 		name string
 		call func(*Service, context.Context) error
 	}{
-		{"Status", func(s *Service, ctx context.Context) error { _, err := s.Status(ctx, "tea-a"); return err }},
 		{"Checkout", func(s *Service, ctx context.Context) error {
 			_, err := s.Checkout(ctx, "tea-a", CheckoutRequest{})
 			return err
@@ -344,14 +345,45 @@ func TestBillingVerbsGateOnCanManageBilling(t *testing.T) {
 				}
 			}
 
-			// Granting the admin-only can_manage but NOT can_manage_billing must DENY —
-			// proving the verb no longer gates on can_manage (the w7/014 fix).
-			recAdmin := &billingRecordChecker{grant: map[string]bool{core.RelCanManage: true}}
-			svcAdmin := billingTestService(&billingProviderFake{})
-			svcAdmin.Authz = recAdmin
-			if err := v.call(svcAdmin, billingIdentity(context.Background())); !errors.Is(err, core.ErrForbidden) {
-				t.Fatalf("%s with only can_manage granted: %v — want ErrForbidden (must NOT gate on admin-only can_manage)", v.name, err)
+			// Granting the admin-only can_manage, or a Developer's
+			// can_view_billing, but NOT can_manage_billing must DENY — proving
+			// the verb gates on neither (the w7/014 fix; w9/m620).
+			for _, other := range []string{core.RelCanManage, core.RelCanViewBilling} {
+				recOther := &billingRecordChecker{grant: map[string]bool{other: true}}
+				svcOther := billingTestService(&billingProviderFake{})
+				svcOther.Authz = recOther
+				if err := v.call(svcOther, billingIdentity(context.Background())); !errors.Is(err, core.ErrForbidden) {
+					t.Fatalf("%s with only %s granted: %v — want ErrForbidden", v.name, other, err)
+				}
 			}
 		})
+	}
+}
+
+// TestBillingStatusGatesOnCanViewBilling pins w9/m620: reading billing
+// readiness is Render's "View billing details" (Admin, Developer and Billing),
+// so Status authorizes on exactly can_view_billing. A Developer's grant alone
+// reads it; can_manage_billing alone (no such role exists, but a reverted gate
+// would accept it) and the can_view every Contributor and Viewer holds are
+// refused.
+func TestBillingStatusGatesOnCanViewBilling(t *testing.T) {
+	rec := &billingRecordChecker{grant: map[string]bool{core.RelCanViewBilling: true}}
+	svc := billingTestService(&billingProviderFake{})
+	svc.Authz = rec
+	if _, err := svc.Status(billingIdentity(context.Background()), "tea-a"); err != nil {
+		t.Fatalf("Status with can_view_billing granted: %v — want allowed", err)
+	}
+	for _, relation := range append(rec.relations, rec.freshRelations...) {
+		if relation != core.RelCanViewBilling {
+			t.Fatalf("Status checked relation %q, want only %s", relation, core.RelCanViewBilling)
+		}
+	}
+	for _, other := range []string{core.RelCanView, core.RelCanManageBilling} {
+		recOther := &billingRecordChecker{grant: map[string]bool{other: true}}
+		svcOther := billingTestService(&billingProviderFake{})
+		svcOther.Authz = recOther
+		if _, err := svcOther.Status(billingIdentity(context.Background()), "tea-a"); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("Status with only %s granted: %v — want ErrForbidden", other, err)
+		}
 	}
 }

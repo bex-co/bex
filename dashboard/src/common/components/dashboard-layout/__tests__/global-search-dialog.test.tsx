@@ -4,6 +4,8 @@ import i18n from "@/i18n/init";
 import { SERVICE_TYPE_LABEL } from "@/features/services/lib/service-type";
 import { GlobalSearchDialog } from "../global-search-dialog";
 import { NAV_GROUPS, visibleNavGroups } from "../dashboard-nav";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 // The dialog resolves resources through six feature hooks + the router; mock
 // them so the test drives only the service-result rendering. Only services are
@@ -140,6 +142,31 @@ describe("GlobalSearchDialog", () => {
       }
       expect(names.some((n) => n.includes("Workspace Settings"))).toBe(true);
       expect(names.some((n) => n.includes("Account Settings"))).toBe(true);
+    });
+
+    // w9/m620: Billing is a destination only for a role that may view
+    // billing details (Admin, Developer, Billing), as on Render.
+    it("drops Billing for a role confirmed unable to view billing details, and keeps it while checking", () => {
+      const billing = (flags: { billingDenied?: boolean }) =>
+        visibleNavGroups(NAV_GROUPS, {
+          agentsEnabled: true,
+          routerAvailable: true,
+          ...flags,
+        })
+          .flatMap((group) => group.items)
+          .some((item) => item.to === "/billing");
+      expect(billing({})).toBe(true);
+      expect(billing({ billingDenied: false })).toBe(true);
+      expect(billing({ billingDenied: true })).toBe(false);
+
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "CONTRIBUTOR", canViewBilling: false }),
+      );
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      expect(
+        optionNames().some((n) => n.includes(i18n.t("common.navUsage"))),
+      ).toBe(false);
+      vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
     });
 
     it("finds Agents and Automations by name, in en and zh", async () => {

@@ -28,6 +28,8 @@ import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { usePipelineSettings } from "@/features/usage/hooks/use-pipeline-settings";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { money } from "@/features/usage/lib/charges";
 import {
   BuildPipelineCardHeader,
@@ -40,12 +42,16 @@ const DOLLARS = /^\d+(\.\d{1,2})?$/;
 /**
  * Workspace Settings → Build Pipeline (w6/m309), as on Render: the monthly
  * spend limit on build minutes beyond the plan's included ones. Once reached,
- * builds stop until the next month.
+ * builds stop until the next month. Every member who may view billing details
+ * reads it (Admin, Developer, Billing; w9/m620); only Admin and Billing change
+ * it, so a Developer's Set, Edit and Remove are held with the role's reason.
  */
 export function BuildPipelineCard({ workspaceId }: { workspaceId: string }) {
   const { t, i18n } = useTranslations();
   const { spendLimitUsd, loading, error, saving, save } =
     usePipelineSettings(workspaceId);
+  const { denied: manageDenied, reason: manageReason } =
+    useCapabilityGate("canManageBilling");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const valid = DOLLARS.test(draft.trim());
@@ -82,20 +88,28 @@ export function BuildPipelineCard({ workspaceId }: { workspaceId: string }) {
         </p>
         <div className="flex gap-2">
           {spendLimitUsd ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={() => void save(null)}
-            >
-              {t("usage.pipelineSpendLimitRemove")}
-            </Button>
+            <PermissionTooltip reason={manageReason}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saving || manageDenied}
+                onClick={() => void save(null)}
+              >
+                {t("usage.pipelineSpendLimitRemove")}
+              </Button>
+            </PermissionTooltip>
           ) : null}
-          <Button size="sm" disabled={saving || unreadable} onClick={edit}>
-            {spendLimitUsd
-              ? t("usage.pipelineSpendLimitEdit")
-              : t("usage.pipelineSpendLimitSet")}
-          </Button>
+          <PermissionTooltip reason={manageReason}>
+            <Button
+              size="sm"
+              disabled={saving || unreadable || manageDenied}
+              onClick={edit}
+            >
+              {spendLimitUsd
+                ? t("usage.pipelineSpendLimitEdit")
+                : t("usage.pipelineSpendLimitSet")}
+            </Button>
+          </PermissionTooltip>
         </div>
       </CardContent>
       <Dialog open={open} onOpenChange={setOpen}>

@@ -129,8 +129,12 @@ type LifecycleReader interface {
 	GetBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
 }
 
+// Status is the workspace's billing readiness (payment method, lifecycle,
+// tax). Reading it is Render's "View billing details" (Admin, Developer and
+// Billing, w9/m620); changing what it reports is Checkout and the Portal,
+// which stay can_manage_billing.
 func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, error) {
-	ctx, tenantID, err := s.authorize(ctx, workspaceID)
+	ctx, tenantID, err := s.authorize(ctx, workspaceID, core.RelCanViewBilling)
 	if err != nil {
 		return Readiness{}, err
 	}
@@ -213,7 +217,7 @@ func lifecycleView(state store.BillingLifecycle) LifecycleView {
 }
 
 func (s *Service) Checkout(ctx context.Context, workspaceID string, req CheckoutRequest) (HostedSession, error) {
-	ctx, tenantID, err := s.authorize(ctx, workspaceID)
+	ctx, tenantID, err := s.authorize(ctx, workspaceID, core.RelCanManageBilling)
 	if err != nil {
 		return HostedSession{}, err
 	}
@@ -232,7 +236,7 @@ func (s *Service) Checkout(ctx context.Context, workspaceID string, req Checkout
 }
 
 func (s *Service) Portal(ctx context.Context, workspaceID string, req PortalRequest) (HostedSession, error) {
-	ctx, tenantID, err := s.authorize(ctx, workspaceID)
+	ctx, tenantID, err := s.authorize(ctx, workspaceID, core.RelCanManageBilling)
 	if err != nil {
 		return HostedSession{}, err
 	}
@@ -248,18 +252,19 @@ func (s *Service) Portal(ctx context.Context, workspaceID string, req PortalRequ
 	return session, nil
 }
 
-func (s *Service) authorize(ctx context.Context, workspaceID string) (context.Context, string, error) {
+// authorize resolves the workspace and checks relation on it: can_view_billing
+// (developer, admin or billing) for the readiness read, can_manage_billing
+// (billing or admin, model.fga) for the hosted-session links, which bind a
+// payment method — so a billing-role member manages billing without
+// workspace-admin (w1/m60), and a Developer reads it without changing it.
+func (s *Service) authorize(ctx context.Context, workspaceID, relation string) (context.Context, string, error) {
 	if s == nil || s.Base == nil {
 		return ctx, "", core.ErrBillingUnavailable
 	}
 	if workspaceID != "" {
 		ctx = core.WithWorkspace(ctx, workspaceID)
 	}
-	// Billing setup and hosted-session links expose organization-level financial
-	// controls, gated on the dedicated can_manage_billing relation — held by
-	// Render's BILLING role and by admin (model.fga: `billing or admin`), so a
-	// billing-role member manages billing without workspace-admin (w1/m60).
-	if err := s.Authorize(ctx, core.RelCanManageBilling); err != nil {
+	if err := s.Authorize(ctx, relation); err != nil {
 		return ctx, "", err
 	}
 	if s.Provider == nil {

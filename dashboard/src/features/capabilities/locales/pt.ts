@@ -25,6 +25,12 @@ const ptCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message:
+      "Sua função não pode ver os detalhes de faturamento. Peça a um administrador do workspace.",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Sua função não pode gerenciar membros. Peça a um administrador do workspace.",

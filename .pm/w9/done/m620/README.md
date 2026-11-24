@@ -1,19 +1,19 @@
 # w9 · m620 — Billing details are for Admins, Developers and Billing members only, as on Render
 
-**Worker:** worker9 **Goal:** who reads a workspace's billing details on bex matches Render's "View billing details" row: Admin, Developer and Billing, never Contributor or Viewer. **Status:** todo
+**Worker:** worker9 **Goal:** who reads a workspace's billing details on bex matches Render's "View billing details" row: Admin, Developer and Billing, never Contributor or Viewer. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | `can_view_billing` (developer, admin, billing): model, `RelCan`, audit CHECK migration, capability grant, ADR012's matrix | 45m | — |
-| [t002](t002.md) | Usage, cost estimate, billing projection and billing readiness readable with `can_view_billing`; edits stay `can_manage_billing` | 45m | t001 |
-| [t003](t003.md) | Dashboard: Billing and usage for Admin, Developer and Billing; a Contributor and a Viewer see no billing figures | 1h | t002 |
-| [t004](t004.md) | Role tests on REST, GraphQL and MCP, and a live walk on dev-9 per role | 45m | t002, t003 |
-| [t005](t005.md) | Render parity | 30m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 45m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t001](done/t001.md) | `can_view_billing` (developer, admin, billing): model, `RelCan`, audit CHECK migration, capability grant, ADR012's matrix — **DONE** | 45m | — |
+| [t002](done/t002.md) | Usage, cost estimate, billing projection and billing readiness readable with `can_view_billing`; edits stay `can_manage_billing` — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Dashboard: Billing and usage for Admin, Developer and Billing; a Contributor and a Viewer see no billing figures — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Role tests on REST, GraphQL and MCP, and a live walk on dev-9 per role — **DONE** | 45m | t002, t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 

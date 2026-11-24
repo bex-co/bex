@@ -60,11 +60,12 @@ func (s *Service) pipelineStore() (pipelineSpendLimitStore, error) {
 }
 
 // PipelineSettings reads a workspace's Build Pipeline settings. Spend is
-// billing data, so it is read with the billing relation, as billing.Status
-// is; that relation is audited, and the dashboard asks only for billing
-// managers, so a page view never records a denial.
+// billing data, so it is read with can_view_billing (Admin, Developer and
+// Billing, Render's "View billing details", w9/m620), as billing.Status is;
+// setting it stays can_manage_billing. The dashboard asks only for members
+// holding the read, so a page view never records a denial.
 func (s *Service) PipelineSettings(ctx context.Context, workspaceID string) (PipelineSettings, error) {
-	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManageBilling, workspaceID)
+	id, err := s.AuthorizeWorkspace(ctx, core.RelCanViewBilling, workspaceID)
 	if err != nil {
 		return PipelineSettings{}, err
 	}

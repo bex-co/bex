@@ -354,9 +354,10 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	}
 
 	// BILLING (gwen): can_view holds (read 2xx); resource mutation denied (delete
-	// 403); sensitive read denied (env vars refused). The billing MANAGEMENT verbs
-	// (Status/Checkout/Portal) she IS allowed — they gate on can_manage_billing
-	// (billing or admin), asserted against the real model in (9) just below (w1/m60).
+	// 403); sensitive read denied (env vars refused). The billing verbs she IS
+	// allowed — readiness on can_view_billing (w9/m620), Checkout and the Portal
+	// on can_manage_billing (billing or admin) — are asserted against the real
+	// model in (9) just below (w1/m60).
 	if rec := call(gwen, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusOK {
 		t.Errorf("gwen (billing of bravo) GET bravo-web: %d %s, want 200 — can_view must hold", rec.Code, rec.Body.String())
 	}
@@ -372,21 +373,23 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		t.Errorf("bravo-web was deleted by a contributor/billing member: %v", err)
 	}
 
-	// (9) w1/m60 — the billing MANAGEMENT ladder against the REAL model. The billing
-	// verbs (Status/Checkout/Portal, all funnelling through billing.authorize) gate
-	// on can_manage_billing, which model.fga resolves as `billing or admin`. So the
-	// BILLING role reaches them and every lower/other rung is refused — the exact
-	// per-relation resolution only the deployed model exercises, and the closeout of
-	// the dead-relation finding (w7/014) this milestone fixes. Each verb targets the
-	// NAMED workspace (bravo via the {workspaceId} path), so this checks can_manage_billing
-	// on bravo — where gwen is billing and carl/fred are not — never a caller's home.
+	// (9) w1/m60 — the billing ladder against the REAL model. Checkout and the
+	// Portal gate on can_manage_billing, which model.fga resolves as `billing or
+	// admin`; the readiness read (Status) on can_view_billing, `developer or admin
+	// or billing` (w9/m620, TestBillingDetailsPerRoleE2E walks every role). So
+	// the BILLING role reaches all three and the viewer, contributor and
+	// non-member rungs are refused — the exact per-relation resolution only the
+	// deployed model exercises, and the closeout of the dead-relation finding
+	// (w7/014). Each verb targets the NAMED workspace (bravo via the {workspaceId}
+	// path), so this checks the relation on bravo — where gwen is billing and
+	// carl/fred are not — never a caller's home.
 	billingBase := "/v1/workspaces/" + wsB.ID + "/billing"
 	checkoutBody := `{"successUrl":"https://dashboard.bex.co/usage","cancelUrl":"https://dashboard.bex.co/usage"}`
 	portalBody := `{"returnUrl":"https://dashboard.bex.co/usage"}`
 
 	// gwen (BILLING) — allowed all three billing verbs (can_manage_billing holds).
 	if rec := call(gwen, "GET", billingBase, ""); rec.Code != http.StatusOK {
-		t.Errorf("gwen (billing) GET billing readiness: %d %s, want 200 — can_manage_billing must hold for the billing role", rec.Code, rec.Body.String())
+		t.Errorf("gwen (billing) GET billing readiness: %d %s, want 200 — can_view_billing must hold for the billing role", rec.Code, rec.Body.String())
 	}
 	if rec := call(gwen, "POST", billingBase+"/checkout-session", checkoutBody); rec.Code != http.StatusCreated {
 		t.Errorf("gwen (billing) POST checkout-session: %d %s, want 201 — the billing role manages billing", rec.Code, rec.Body.String())
@@ -400,13 +403,13 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		t.Errorf("dana (admin of bravo) GET billing readiness: %d %s, want 200 — admin retains billing management", rec.Code, rec.Body.String())
 	}
 
-	// Every OTHER rung is refused all three — can_manage_billing does NOT hold. This
-	// is the "denials unchanged" half of the DoD: only the billing rows flipped.
+	// The viewer, contributor and non-member rungs are refused all three —
+	// neither billing relation holds for them.
 	for _, d := range []struct{ subject, role string }{
 		{carl, "viewer"}, {fred, "contributor"}, {erin, "non-member"},
 	} {
 		if rec := call(d.subject, "GET", billingBase, ""); rec.Code != http.StatusForbidden {
-			t.Errorf("%s (%s of bravo) GET billing readiness: %d %s, want 403 — can_manage_billing must NOT hold", d.subject, d.role, rec.Code, rec.Body.String())
+			t.Errorf("%s (%s of bravo) GET billing readiness: %d %s, want 403 — can_view_billing must NOT hold", d.subject, d.role, rec.Code, rec.Body.String())
 		}
 		if rec := call(d.subject, "POST", billingBase+"/checkout-session", checkoutBody); rec.Code != http.StatusForbidden {
 			t.Errorf("%s (%s of bravo) POST checkout-session: %d %s, want 403 — billing management is not theirs", d.subject, d.role, rec.Code, rec.Body.String())

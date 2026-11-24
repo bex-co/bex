@@ -22,6 +22,7 @@ import { DialogDescription, DialogTitle } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentsFeatureEnabled } from "@/config/use-growthbook";
 import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   matchesShortcut,
   PAGE_KEYWORDS,
@@ -156,7 +157,12 @@ function SearchResults({
   // palette's two, Workspace and Account.
   const agentsEnabled = useAgentsFeatureEnabled();
   const routerAvailable = useRouterNavAvailable();
-  const pages = visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerAvailable })
+  const billingDenied = useCapabilities().denied("can_view_billing");
+  const pages = visibleNavGroups(NAV_GROUPS, {
+    agentsEnabled,
+    routerAvailable,
+    billingDenied,
+  })
     .flatMap((group) => group.items)
     .flatMap((item) => {
       const page = (

@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-router";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { DashboardSidebar } from "../dashboard-sidebar";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 // Whether the workspace is offered Router (flag AND companion service). Its own
 // test covers the probe; here only the sidebar's reaction to it matters.
@@ -100,6 +102,18 @@ describe("DashboardSidebar (w1/m45 — Render's nav grouping)", () => {
     renderAt("/");
     await screen.findByText("Integrations");
     expect(screen.queryByRole("link", { name: "Router" })).toBeNull();
+  });
+
+  // w9/m620: billing details are Admin, Developer and Billing, as on Render.
+  it("drops Billing for a Contributor or a Viewer once the role is confirmed", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canViewBilling: false }),
+    );
+    renderAt("/");
+    await screen.findByText("Workspace");
+    expect(screen.queryByRole("link", { name: "Billing" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   });
 
   it("lists Router when the workspace is offered it", async () => {

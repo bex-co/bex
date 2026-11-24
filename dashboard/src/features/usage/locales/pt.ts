@@ -252,6 +252,12 @@ const ptUsage: Record<string, TranslationEntry> = {
     description:
       "Tooltip explaining why resources finishing deletion are included in the used count",
   },
+  "usage.billingDetailsDeniedTitle": {
+    message:
+      "Os detalhes de faturamento não estão disponíveis para a sua função",
+    description:
+      "Billing page heading for a Contributor or a Viewer, whose role may not view billing details (Render's View billing details row, w9/m620)",
+  },
   "usage.errorTitle": {
     message: "Não foi possível carregar o uso",
     description: "Error state heading on the Usage page",
@@ -409,8 +415,9 @@ const ptUsage: Record<string, TranslationEntry> = {
   },
   "usage.billingUnavailable": {
     message:
-      "A configuração de faturamento está indisponível ou você não tem acesso ao faturamento (função de faturamento ou administrador).",
-    description: "Degraded or unauthorized billing onboarding state",
+      "Os detalhes de faturamento estão indisponíveis no momento. Tente novamente mais tarde.",
+    description:
+      "Billing readiness could not be read (a Stripe outage, the integration off). Every role that reaches the card may view billing details since w9/m620, so this is never a role refusal",
   },
   "usage.billingCheckoutError": {
     message: "Não foi possível abrir o Stripe Checkout. Tente novamente.",

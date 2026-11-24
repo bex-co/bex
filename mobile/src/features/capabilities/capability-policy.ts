@@ -12,6 +12,9 @@ export const CAPABILITY_ACTIONS = [
   "can_view_logs",
   "can_operate",
   "can_create",
+  // Render's "View billing details" (w9/m620): Admin, Developer and Billing.
+  // It gates the usage glance, which a Contributor and a Viewer do not read.
+  "can_view_billing",
 ] as const;
 
 export type CapabilityAction = (typeof CAPABILITY_ACTIONS)[number];

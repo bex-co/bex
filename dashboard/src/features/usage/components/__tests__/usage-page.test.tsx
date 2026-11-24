@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { UsagePage } from "../usage-page";
 import { useUsage, type UsageSummary } from "@/features/usage/hooks/use-usage";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 vi.mock("@/features/usage/hooks/use-usage", () => ({
   useUsage: vi.fn(),
@@ -239,6 +241,82 @@ describe("UsagePage", () => {
     expect(screen.getByText("Invoice history")).toBeInTheDocument();
     expect(screen.getByText("$75.48")).toBeInTheDocument();
     expect(screen.getByText("paid")).toBeInTheDocument();
+  });
+});
+
+// w9/m620: billing details are Render's "View billing details" — Admin,
+// Developer and Billing. A Contributor or a Viewer sees the page's title and
+// the role's reason, no card and no figure, and the usage read never runs.
+describe("billing details per role (w9/m620)", () => {
+  beforeEach(() => {
+    mockUseUsage.mockReset();
+    mockUseUsage.mockReturnValue(
+      state({ estimatedCost: { totalUsd: "123.45", resources: [] } }),
+    );
+  });
+  afterEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  });
+
+  it.each(["CONTRIBUTOR", "VIEWER"])(
+    "a %s sees why, and no billing figure",
+    (role) => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({
+          role,
+          canViewBilling: false,
+          canManageBilling: false,
+        }),
+      );
+      render(<UsagePage />);
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Billing" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Billing details aren’t available to your role"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Your role can’t view billing details. Ask a workspace admin.",
+        ),
+      ).toBeInTheDocument();
+      for (const card of [
+        "plan-card",
+        "payment-method-card",
+        "included-usage",
+      ]) {
+        expect(screen.queryByTestId(card)).not.toBeInTheDocument();
+      }
+      expect(screen.queryByText("Charges")).not.toBeInTheDocument();
+      expect(screen.queryByText(/123\.45/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("usage-navigation")).not.toBeInTheDocument();
+      expect(mockUseUsage).toHaveBeenCalledWith(undefined, { skip: true });
+    },
+  );
+
+  it("a Developer reads the page as an Admin does", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManageBilling: false }),
+    );
+    render(<UsagePage />);
+
+    expect(screen.getByTestId("payment-method-card")).toBeInTheDocument();
+    expect(screen.getByText("Charges")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Billing details aren’t available to your role"),
+    ).not.toBeInTheDocument();
+    expect(mockUseUsage).toHaveBeenCalledWith(undefined, { skip: false });
+  });
+
+  it("loads as usual while capabilities are still checking", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ loading: true, loaded: false, canViewBilling: false }),
+    );
+    render(<UsagePage />);
+
+    expect(screen.getByTestId("plan-card")).toBeInTheDocument();
+    expect(mockUseUsage).toHaveBeenCalledWith(undefined, { skip: false });
   });
 });
 

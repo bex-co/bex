@@ -281,11 +281,16 @@ var workspaceResourceNames = map[string]string{
 // default workspace, honored via core.WithWorkspace/Base.Tenant the same way
 // every other read-side verb resolves an explicit target — a workspace the
 // caller is not a member of is core.ErrForbidden.
+//
+// The whole read is billing details (w9/m620): Render's "View billing details"
+// is Admin, Developer and Billing, and its Contributor and Viewer "can't view
+// sensitive fields (billing info, …)", so usage, the estimate and the Stripe
+// projection all gate on can_view_billing.
 func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Time) (Summary, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	// Named, not derived: the REST, GraphQL and MCP adapters each reach this
 	// through a closure, whose name would be the verb recorded.
-	if err := s.AuthorizeAs(ctx, AuditVerbMonthToDate, core.RelCanView); err != nil {
+	if err := s.AuthorizeAs(ctx, AuditVerbMonthToDate, core.RelCanViewBilling); err != nil {
 		return Summary{}, err
 	}
 	if s.Store == nil {
@@ -318,12 +323,12 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	sum.EstimatedCost = pricing.Default.EstimateIncluding(rows, included)
 	sum.AgentModel = summariseAgentModel(rows, sum.EstimatedCost)
 	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
-	// The Stripe projection (real cost, invoices, credit grants) is a billing
-	// capability, not part of the general usage read: model.fga reserves
-	// can_manage_billing for billing/admin, while can_view extends to viewers
-	// and contributors. Attach it only for callers holding the billing relation;
-	// everyone else still gets usage + the advisory estimate (round-13 #5).
-	if s.mayManageBilling(ctx, tenantID) {
+	// The Stripe projection (real cost, invoices, credit grants) reveals what
+	// the workspace was actually charged, so the relation the gate above
+	// granted is re-asserted uncached first: a member revoked inside
+	// PositiveTTL keeps no stale positive on another replica long enough to
+	// read an invoice (round-13 #5). A refusal here keeps the estimate only.
+	if s.AuthorizeFresh(ctx, core.RelCanViewBilling) == nil {
 		sum.Billing = s.readBilling(ctx, tenantID, now)
 	}
 	sum.Coverage = Coverage{State: CoverageUnknown, DegradedSources: []string{}}
@@ -346,40 +351,6 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 		}
 	}
 	return sum, nil
-}
-
-// mayManageBilling reports whether the caller holds the workspace's billing
-// relation (billing or admin), with an authoritative (uncached) decision when
-// the wired checker supports core.FreshChecker — this gates the reveal of real
-// invoices and credit grants, so a just-revoked billing member must not ride a
-// positive cached on another replica. It also composes the relation's mapped
-// OAuth capability (Identity.RequireCapability): a third-party human token
-// carrying only bex.read is treated as NOT privileged even when OpenFGA grants
-// the delegated billing/admin relation. It deliberately uses HoldsFresh,
-// not Authorize: the verb's gate stays can_view (audited there), and this is a
-// field-level projection decision — a denial must not emit a denial audit row
-// for every ordinary viewer usage read (the isWorkspaceAdmin precedent).
-// No checker wired (authz off) keeps the prior billing-on behavior.
-func (s *Service) mayManageBilling(ctx context.Context, tenantID string) bool {
-	if s.Authz == nil {
-		return true
-	}
-	id, ok := core.IdentityFrom(ctx)
-	if !ok {
-		return false
-	}
-	if err := id.RequireCapability(core.RelCanManageBilling); err != nil {
-		return false
-	}
-	// A scoped key sees billing figures only when granted the workspace's
-	// settings, plan and usage (w9/m496).
-	if granted, err := s.KeyGrantAllows(ctx, core.KeyWorkspaceSettings); err != nil || !granted {
-		return false
-	}
-	// HoldsFresh, not the raw checker: an API key's answer is capped by its
-	// creator's (w9/m481).
-	allowed, err := s.HoldsFresh(ctx, core.RelCanManageBilling, core.WorkspaceObject(tenantID))
-	return err == nil && allowed
 }
 
 // readBilling fetches the workspace's real Stripe cost for the month containing

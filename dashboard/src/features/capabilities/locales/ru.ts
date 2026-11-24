@@ -25,6 +25,12 @@ const ruCapabilities: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a billing control for a member without can_manage_billing",
   },
+  "capabilities.reasonCanViewBilling": {
+    message:
+      "Ваша роль не позволяет просматривать сведения об оплате. Обратитесь к администратору рабочего пространства.",
+    description:
+      "Why a member without can_view_billing (a Contributor or a Viewer, as on Render) sees no billing page, nav entry or figures",
+  },
   "capabilities.reasonCanManage": {
     message:
       "Ваша роль не позволяет управлять участниками. Обратитесь к администратору рабочего пространства.",
