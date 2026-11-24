@@ -49,9 +49,18 @@ import (
 // on can_create; its command case stays here because it is still the class.
 //
 // WHERE THE CLASS ENDS. A verb is in it when the API accepts code from OUTSIDE
-// the service's already-approved source: an arbitrary command string, an
-// arbitrary image reference, an arbitrary commit to resurrect — or when it
-// repoints the build at DIFFERENT in-repo content. SetRootDir and
+// the service's already-approved source (an arbitrary command string) or
+// repoints every later build at DIFFERENT in-repo content. A deploy is not in
+// it, whatever version it names (w9/m622): a commit of the service's
+// repository, another tag or digest of its configured image (the same-image
+// rule refuses any other image to every role), a build of its build source, a
+// cleared build cache, or a rollback to one of its own deploys that went live.
+// Those are Render's "Trigger service deploys" and "Trigger rollbacks", which
+// its role table gives a Contributor (render.com/docs/team-members, read
+// 2026-11-23); w1/m68 and codex round-16 #5 had put the commit, the image and
+// the rollback here, a hardening ADR024 now records as reversed on the parity
+// rule. What a deploy may name stays bounded by the saved source, and changing
+// the source is a setting (can_create). SetRootDir and
 // SetDockerfilePath were examined for the m68 pass and deliberately left on
 // can_operate ("selects among content already inside the approved repo");
 // codex round-9 #8 reversed that: an API role and git access are independent
@@ -90,8 +99,8 @@ func (c execSelectionCase) want() string {
 func strp(s string) *string { return &s }
 
 // execSelectionCases is the class. Each entry either supplies executable content
-// (⇒ can_create, developer and up) or is the parameter-free lifecycle call on
-// the same verb (⇒ can_operate, contributor and up).
+// (⇒ can_create, developer and up) or is a deploy of the service's own source
+// (⇒ can_operate, contributor and up, as on Render).
 func execSelectionCases() []execSelectionCase {
 	return []execSelectionCase{{
 		name:              "pre-deploy command",
@@ -124,24 +133,49 @@ func execSelectionCases() []execSelectionCase {
 			return err
 		},
 	}, {
-		name:              "deploy trigger with imageUrl",
-		selectsExecutable: true,
+		name:              "bare deploy trigger",
+		selectsExecutable: false,
 		invoke: func(ctx context.Context, base *core.Base) error {
-			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{ImageURL: "evil.example/x:latest"})
+			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{})
 			return err
 		},
 	}, {
+		// w9/m622: Render's Manual Deploy "Deploy a specific commit".
 		name:              "deploy trigger with commitId",
-		selectsExecutable: true,
+		selectsExecutable: false,
 		invoke: func(ctx context.Context, base *core.Base) error {
 			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{CommitID: "deadbeef"})
 			return err
 		},
 	}, {
-		name:              "bare deploy trigger (lifecycle: redeploy the approved artifact)",
+		// w9/m622: another tag of the configured image (sampleApp runs web:v1).
+		name:              "deploy trigger with imageUrl, another tag of the configured image",
 		selectsExecutable: false,
 		invoke: func(ctx context.Context, base *core.Base) error {
-			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{})
+			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{ImageURL: "web:v2"})
+			return err
+		},
+	}, {
+		// A different image is refused by the same-image rule, to every role
+		// alike, after the role gate: a deploy never chooses another image.
+		name:              "deploy trigger with imageUrl, another image",
+		selectsExecutable: false,
+		invoke: func(ctx context.Context, base *core.Base) error {
+			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{ImageURL: "evil.example/x:latest"})
+			return err
+		},
+	}, {
+		name:              "deploy trigger with buildId",
+		selectsExecutable: false,
+		invoke: func(ctx context.Context, base *core.Base) error {
+			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{BuildID: "bld-prior"})
+			return err
+		},
+	}, {
+		name:              "deploy trigger with clearCache",
+		selectsExecutable: false,
+		invoke: func(ctx context.Context, base *core.Base) error {
+			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{ClearCache: "clear"})
 			return err
 		},
 	}, {
@@ -162,10 +196,11 @@ func execSelectionCases() []execSelectionCase {
 			return err
 		},
 	}, {
-		// codex round-16 #5: deployID selects a prior ResolvedImage that becomes
-		// App.spec.image — executable selection, not lifecycle.
+		// w9/m622: Render's "Trigger rollbacks". deployID names one of the
+		// service's own deploys that went live; codex round-16 #5 had made it
+		// can_create.
 		name:              "deploy rollback",
-		selectsExecutable: true,
+		selectsExecutable: false,
 		invoke: func(ctx context.Context, base *core.Base) error {
 			_, err := (&deploys.Service{Base: base}).Rollback(ctx, "web", "dep-prior")
 			return err
@@ -174,10 +209,10 @@ func execSelectionCases() []execSelectionCase {
 }
 
 // TestExecutableSelectionRequiresCanCreate pins the relation each call in the
-// class gates on. It fails on the pre-m68 code for the five create-like cases
-// (all of which gated on can_operate) and would fail again if the bare
-// deploy trigger's lifecycle branch were over-tightened into can_create,
-// which would take a legitimate contributor capability away.
+// table gates on. It fails if a command or build-input verb falls back to
+// can_operate, and if any deploy or rollback moves back to can_create, which
+// would take Render's "Trigger service deploys" or "Trigger rollbacks" from a
+// Contributor (w9/m622).
 func TestExecutableSelectionRequiresCanCreate(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
 	for _, tc := range execSelectionCases() {
@@ -200,9 +235,10 @@ func TestExecutableSelectionRequiresCanCreate(t *testing.T) {
 
 // TestContributorCannotSelectExecutables is the same table read as the attack:
 // a contributor — who holds can_operate and can_view_logs but not can_create —
-// is refused every call that chooses code, and keeps the bare redeploy.
-// This is the assertion that states the product rule: the contributor role is
-// not a code-execution role.
+// is refused every call that supplies code, and keeps every deploy and
+// rollback of the service's own source. This is the assertion that states the
+// product rule: the contributor role ships the code the service is configured
+// for, and does not choose new code.
 func TestContributorCannotSelectExecutables(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
 	contributor := roleGrants["contributor"]
@@ -226,8 +262,8 @@ func TestContributorCannotSelectExecutables(t *testing.T) {
 					"with the service's secrets and network identity", tc.name, err)
 			}
 			if !tc.selectsExecutable && forbidden {
-				t.Errorf("contributor was refused the lifecycle call %q — over-tightening removes a "+
-					"legitimate contributor capability", tc.name)
+				t.Errorf("contributor was refused %q — Render's role table gives a Contributor every "+
+					"deploy and rollback (w9/m622)", tc.name)
 			}
 		})
 	}
@@ -250,8 +286,6 @@ func TestExecutableSelectionClassIsComplete(t *testing.T) {
 		"*apps.Service.SetPreDeployCommand": "pre-deploy command",
 		"*apps.Service.SetCronJob":          "cron command",
 		"*jobs.Service.Create":              "one-off job command",
-		"*deploys.Service.Trigger":          "deploy trigger with imageUrl",
-		"*deploys.Service.Rollback":         "deploy rollback",
 		"*apps.Service.SetRootDir":          "build root directory",
 		"*apps.Service.SetDockerfilePath":   "dockerfile path",
 	}
@@ -281,9 +315,9 @@ func TestExecutableSelectionClassIsComplete(t *testing.T) {
 				break
 			}
 		}
-		// Variants of an already-pinned verb (cleared command, commitId) are
-		// deliberately not separate pins; they share their verb's entry.
-		if !found && tc.name != "pre-deploy command, cleared" && tc.name != "deploy trigger with commitId" {
+		// A variant of an already-pinned verb (the cleared command) is
+		// deliberately not a separate pin; it shares its verb's entry.
+		if !found && tc.name != "pre-deploy command, cleared" {
 			t.Errorf("case %q selects an executable but maps to no pinned verb — add it to "+
 				"representativeVerbRelations so the reflection guard covers it too", tc.name)
 		}

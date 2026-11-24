@@ -499,7 +499,7 @@ describe.each(consumers)("$name", (consumer) => {
 });
 
 describe("drafts survive a routine refresh", () => {
-  it("keeps a typed specific-commit SHA and still runs the fresh can_create check", async () => {
+  it("keeps a typed specific-commit SHA and still runs the fresh deploy check", async () => {
     renderWithProvider(
       <ManualDeployButton
         service={svc({
@@ -531,13 +531,12 @@ describe("drafts survive a routine refresh", () => {
       commitId: "abc1234",
       disableAutoDeploy: true,
     });
+    // A specific commit is a deploy (w9/m622): the fresh recheck is the
+    // deploy decision's, as for every other Manual Deploy entry.
     expect(
       apolloQuery.mock.calls
         .slice(before)
-        .some(
-          ([opts]) =>
-            opts.query === ViewerCapabilitiesDocument && opts.variables.fresh,
-        ),
+        .some(([opts]) => opts.query === DeployActionsDocument),
     ).toBe(true);
   });
 

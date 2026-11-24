@@ -183,7 +183,7 @@ One phrase per class, not per setter. The per-verb design exists so a confirm ty
 - **`Resume`, `restartServer`, webhook auto-deploy** — unchanged, for the reasons already recorded above.
 - **A bare redeploy** (a deploy trigger with no `imageUrl`/`commitId`) — it runs the configured artifact, whose staging the setter already guarded.
 - **Disabling maintenance mode, and a URI-only edit** — restoring availability, the same reason `Resume` is exempt.
-- **A cron `schedule`-only change** — _when_ the job runs, not _what_ it runs. The service layer already splits these two (`LifecycleOrCreate(command != nil)`), and the guard follows the same split.
+- **A cron `schedule`-only change** — _when_ the job runs, not _what_ it runs. The protection guard splits these two. (Its role gate no longer does: since w9/m619 every cron update is a `can_create` setting.)
 - **`scaleService`** — the minimum is 1 replica, so scaling can never take the service offline. It is capacity, and capacity is billing.
 - **`setPlan`, `setIdleTimeout`** — billing and an operational timer; neither redefines the service nor removes it.
 - **`healthCheckPath`, `port`, `ipAllowList`, `renderSubdomainPolicy`, `autoDeploy`, `buildFilter`, `displayName`, notification settings** — reversible configuration with nothing to lose. A firewall edit is a firewall, per the datastore rule above.

@@ -19,6 +19,8 @@ package deploys
 import (
 	"context"
 	"errors"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,6 +109,82 @@ func TestActionCapabilities_RollbackEligibilityMatchesVerb(t *testing.T) {
 	}
 	if c := actionByID(t, acts, core.ActionCancelDeploy); c.Precondition != "" {
 		t.Fatalf("cancel with an open deploy = %+v, want ready", c)
+	}
+}
+
+// roleRelations answers a check with whether the role holds the relation, as
+// ADR012's matrix grants it.
+type roleRelations map[string]bool
+
+func (r roleRelations) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	return r[relation], nil
+}
+
+// TestActionCapabilities_RollbackPerRoleAgreesWithTheVerb (w9/m622): Render's
+// role table gives "Trigger rollbacks" to an Admin, a Developer and a
+// Contributor and denies it a Viewer and a Billing member. For each role the
+// projection's rollback decision is the verb's own answer, a refused rollback
+// writes nothing, and the deploy decision answers alike. Before w9/m622 both
+// read can_create, so a Contributor was shown no Rollback and refused it.
+func TestActionCapabilities_RollbackPerRoleAgreesWithTheVerb(t *testing.T) {
+	roles := []struct {
+		name string
+		rels []string
+		may  bool
+	}{
+		{"developer", []string{core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate}, true},
+		{"contributor", []string{core.RelCanView, core.RelCanViewActivity, core.RelCanViewLogs, core.RelCanOperate}, true},
+		{"viewer", []string{core.RelCanView, core.RelCanViewActivity}, false},
+		{"billing", []string{core.RelCanView, core.RelCanViewBilling}, false},
+	}
+	for _, role := range roles {
+		t.Run(role.name, func(t *testing.T) {
+			ds := newFakeStore()
+			now := fixedNow()
+			ds.byApp["srv-1"] = []store.Deploy{{
+				ID: "dep-prior", AppID: "srv-1", Status: store.DeployDeactivated, ResolvedImage: "web@sha256:" + strings.Repeat("a", 64),
+				Generation: 1, CreatedAt: now, UpdatedAt: now, FinishedAt: &now,
+			}}
+			svc, cl := newService(ds, sampleApp("web", "srv-1"))
+			grants := roleRelations{}
+			for _, rel := range role.rels {
+				grants[rel] = true
+			}
+			svc.Base.Authz = grants
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: role.name, Method: "session"})
+			before := getApp(t, cl, "web").Spec
+
+			acts, err := svc.ActionCapabilities(ctx, "web")
+			if err != nil {
+				t.Fatalf("ActionCapabilities: %v", err)
+			}
+			for _, action := range []string{core.ActionDeploy, core.ActionRollback} {
+				got := actionByID(t, acts, action)
+				if allowed := got.Outcome == core.DecisionAllowed; allowed != role.may || (allowed && got.Precondition != "") {
+					t.Errorf("%s's %s = %+v, want allowed=%t and ready", role.name, action, got, role.may)
+				}
+			}
+
+			_, err = svc.Rollback(ctx, "web", "dep-prior")
+			if role.may {
+				if err != nil {
+					t.Fatalf("%s's rollback = %v, want accepted", role.name, err)
+				}
+				return
+			}
+			if !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("%s's rollback = %v, want ErrForbidden", role.name, err)
+			}
+			if _, err := svc.Trigger(ctx, "web", TriggerParams{ImageURL: "web:v2"}); !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("%s's deploy of another tag = %v, want ErrForbidden", role.name, err)
+			}
+			if len(ds.byApp["srv-1"]) != 1 {
+				t.Errorf("a refused rollback or deploy opened a deploy: %+v", ds.byApp["srv-1"])
+			}
+			if after := getApp(t, cl, "web").Spec; !reflect.DeepEqual(after, before) {
+				t.Errorf("a refused rollback or deploy changed the service:\n  before %+v\n  after  %+v", before, after)
+			}
+		})
 	}
 }
 

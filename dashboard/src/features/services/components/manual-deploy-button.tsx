@@ -27,7 +27,6 @@ import type { ServiceView } from "@/features/services/types";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   useBoundActionConfirm,
   type ActionConfirmBinding,
@@ -57,8 +56,9 @@ export interface ManualDeployButtonProps {
  * `restartServer`, which keeps the commit or image that is live; a
  * parameter-free `triggerDeploy` would build the branch head (w1/m148). A
  * specific-commit deploy also turns auto-deploy off in the same mutation, as
- * Render's dashboard does, so the next push cannot replace the pin. A specific commit also needs
- * the create grant because it chooses executable content.
+ * Render's dashboard does, so the next push cannot replace the pin. Every item
+ * follows the deploy decision: Render's role table gives a Contributor
+ * "Trigger service deploys", a specific commit or build included (w9/m622).
  */
 export function ManualDeployButton({
   service,
@@ -66,13 +66,8 @@ export function ManualDeployButton({
 }: ManualDeployButtonProps) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const capabilities = useCapabilities();
   const deployActions = useDeployActions(service.id);
   const actionConfirm = useBoundActionConfirm({ resourceId: service.id });
-  const commitConfirm = useBoundActionConfirm({
-    resourceId: service.id,
-    requiredCapability: "can_create",
-  });
   const { deploying, trigger, restart } = useTriggerDeploy();
   const navigate = useNavigate();
   const [storedDialog, setDialog] = useState<{
@@ -83,12 +78,7 @@ export function ManualDeployButton({
   } | null>(null);
   const [checking, setChecking] = useState(false);
   const dialog =
-    storedDialog?.binding ===
-    (storedDialog?.kind === "restart"
-      ? actionConfirm.pending
-      : commitConfirm.pending)
-      ? storedDialog
-      : null;
+    storedDialog?.binding === actionConfirm.pending ? storedDialog : null;
   const commitId = dialog?.kind === "commit" ? dialog.commitId : "";
   const selectedBuildId = dialog?.kind === "build" ? dialog.buildId : "";
   const base = serviceBaseForType(service.type);
@@ -121,17 +111,9 @@ export function ManualDeployButton({
     deployActions.status === "ready" ? "ready" : deployActions.status,
   );
   const permissionReason = gateReason(gate, t);
-  const commitReason =
-    permissionReason ??
-    (capabilities.canCreate
-      ? undefined
-      : t(
-          capabilities.reasonKey("can_create") ?? "capabilities.actionChecking",
-        ));
   // A routine permission refresh keeps an open dialog (and its typed SHA) but
   // blocks confirm, with the reason shown, until access is fresh (w4/m159).
-  const restartBlocked = actionConfirm.blockedReason ?? permissionReason;
-  const commitBlocked = commitConfirm.blockedReason ?? commitReason;
+  const dialogBlocked = actionConfirm.blockedReason ?? permissionReason;
 
   function openDeploy(deployId: string | null) {
     if (!deployId) return;
@@ -142,21 +124,17 @@ export function ManualDeployButton({
   }
 
   function openDialog(kind: "restart" | "commit" | "build") {
-    const needsCreate = kind === "commit" || kind === "build";
-    if (busy || (needsCreate ? commitReason : permissionReason)) return;
-    const confirmation = needsCreate ? commitConfirm : actionConfirm;
-    const binding = confirmation.openConfirm("deploy");
+    if (busy || permissionReason) return;
+    const binding = actionConfirm.openConfirm("deploy");
     if (binding) setDialog({ kind, binding, commitId: "", buildId: "" });
   }
 
   function closeDialog() {
     actionConfirm.clearConfirm();
-    commitConfirm.clearConfirm();
     setDialog(null);
   }
 
   async function runDeploy(
-    confirmation: typeof actionConfirm,
     binding: ActionConfirmBinding | null,
     run: () => Promise<string | null>,
   ) {
@@ -164,25 +142,25 @@ export function ManualDeployButton({
     setChecking(true);
     let dispatched = false;
     try {
-      const { ok } = await confirmation.recheckBeforeDispatch(binding);
+      const { ok } = await actionConfirm.recheckBeforeDispatch(binding);
       if (!ok) return;
       dispatched = true;
       const deployId = await run();
       // The mutation already ran; landing on it is presentation, so only a
       // context change (not a routine refresh) suppresses it.
-      if (confirmation.isIntentCurrent(binding)) openDeploy(deployId);
+      if (actionConfirm.isIntentCurrent(binding)) openDeploy(deployId);
     } finally {
       // An access lapse mid-check leaves an open same-context dialog for a
       // new click; a refusal has already closed it.
       if (dispatched || dialog?.binding !== binding)
-        confirmation.clearConfirm();
+        actionConfirm.clearConfirm();
       setChecking(false);
     }
   }
 
   async function handleDeploy(opts?: { clearCache?: boolean }) {
     if (busy || permissionReason) return;
-    await runDeploy(actionConfirm, actionConfirm.openConfirm("deploy"), () =>
+    await runDeploy(actionConfirm.openConfirm("deploy"), () =>
       opts?.clearCache
         ? trigger(service.id, { clearCache: "clear" })
         : trigger(service.id),
@@ -190,24 +168,24 @@ export function ManualDeployButton({
   }
 
   async function handleRestart() {
-    if (restartBlocked || dialog?.kind !== "restart") return;
-    await runDeploy(actionConfirm, dialog.binding, () => restart(service.id));
+    if (dialogBlocked || dialog?.kind !== "restart") return;
+    await runDeploy(dialog.binding, () => restart(service.id));
   }
 
   async function handleDeployCommit() {
-    if (commitBlocked || !shaValid || dialog?.kind !== "commit") return;
+    if (dialogBlocked || !shaValid || dialog?.kind !== "commit") return;
     const { binding } = dialog;
     // Pinning also turns auto-deploy off, in the same write, so no push can
     // land between the pin and the switch-off (w4/m431).
-    await runDeploy(commitConfirm, binding, () =>
+    await runDeploy(binding, () =>
       trigger(service.id, { commitId: sha, disableAutoDeploy: true }),
     );
   }
 
   async function handleDeployBuild() {
-    if (commitBlocked || !selectedBuildId || dialog?.kind !== "build") return;
+    if (dialogBlocked || !selectedBuildId || dialog?.kind !== "build") return;
     const { binding } = dialog;
-    await runDeploy(commitConfirm, binding, () =>
+    await runDeploy(binding, () =>
       trigger(service.id, { buildId: selectedBuildId }),
     );
   }
@@ -232,7 +210,7 @@ export function ManualDeployButton({
           {buildSourceBacked && (
             <PermissionMenuItem
               disabled={busy}
-              permissionReason={commitReason}
+              permissionReason={permissionReason}
               onSelect={() => openDialog("build")}
             >
               {t("services.deployMenuSpecificBuild")}
@@ -241,7 +219,7 @@ export function ManualDeployButton({
           {canDeployCommit && (
             <PermissionMenuItem
               disabled={busy}
-              permissionReason={commitReason}
+              permissionReason={permissionReason}
               onSelect={() => openDialog("commit")}
             >
               {t("services.deployMenuSpecificCommit")}
@@ -290,10 +268,10 @@ export function ManualDeployButton({
         destructive={false}
         pending={busy}
         closeOnConfirm={false}
-        confirmDisabled={!!restartBlocked}
+        confirmDisabled={!!dialogBlocked}
         onConfirm={() => void handleRestart()}
       >
-        <ConfirmGateStatus reason={restartBlocked} />
+        <ConfirmGateStatus reason={dialogBlocked} />
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -306,7 +284,7 @@ export function ManualDeployButton({
         destructive={false}
         pending={busy}
         closeOnConfirm={false}
-        confirmDisabled={!shaValid || !!commitBlocked}
+        confirmDisabled={!shaValid || !!dialogBlocked}
         onConfirm={() => void handleDeployCommit()}
       >
         <TextField
@@ -318,7 +296,7 @@ export function ManualDeployButton({
           }}
           error={shaError ? t("services.deployCommitInvalid") : undefined}
         />
-        <ConfirmGateStatus reason={commitBlocked} />
+        <ConfirmGateStatus reason={dialogBlocked} />
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -331,7 +309,7 @@ export function ManualDeployButton({
         destructive={false}
         pending={busy}
         closeOnConfirm={false}
-        confirmDisabled={!selectedBuildId || !!commitBlocked}
+        confirmDisabled={!selectedBuildId || !!dialogBlocked}
         onConfirm={() => void handleDeployBuild()}
       >
         {dialog?.kind === "build" && service.buildSourceId ? (
@@ -343,7 +321,7 @@ export function ManualDeployButton({
             }}
           />
         ) : null}
-        <ConfirmGateStatus reason={commitBlocked} />
+        <ConfirmGateStatus reason={dialogBlocked} />
       </ConfirmDialog>
     </>
   );

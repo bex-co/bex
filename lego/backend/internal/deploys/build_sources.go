@@ -210,7 +210,7 @@ func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (cont
 // succeeds or closed terminal if the build fails or is canceled.
 func (s *Service) TriggerBuild(ctx context.Context, id, clearCache string, deploy ...*BuildDeployScope) (TriggerBuildResult, error) {
 	origCtx := ctx
-	ctx, carrier, err := s.buildSourceApp(ctx, core.LifecycleOrCreate(false), id)
+	ctx, carrier, err := s.buildSourceApp(ctx, core.RelCanOperate, id)
 	if err != nil {
 		return TriggerBuildResult{}, err
 	}
@@ -283,7 +283,7 @@ func (s *Service) resolveBuildDeployTargets(origCtx context.Context, carrier *ap
 		var targets []*appv1alpha1.App
 		skipped := []SkippedBuildService{}
 		for _, sid := range serviceIDs {
-			a, err := s.AuthorizeApp(origCtx, core.LifecycleOrCreate(false), sid)
+			a, err := s.AuthorizeApp(origCtx, core.RelCanOperate, sid)
 			if err != nil {
 				return nil, nil, err
 			}

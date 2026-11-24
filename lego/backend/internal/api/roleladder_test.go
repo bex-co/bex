@@ -400,8 +400,8 @@ var representativeVerbRelations = map[string]string{
 	// hide/show matrix from these exact relations, so each is pinned
 	// semantically — a re-gated verb would silently invalidate the shipped
 	// view policy, not just move a permission. Session supervision
-	// (list/detail/transcript/cancel) is contributor-and-up; deploy Cancel is
-	// lifecycle while Rollback (below) stays create-like; datastore
+	// (list/detail/transcript/cancel) is contributor-and-up; deploy Cancel and
+	// Rollback (below) are lifecycle; datastore
 	// suspend/resume/restart mirror the service lifecycle verbs; cron
 	// run-now/cancel are lifecycle with history pinned as a read above.
 	"*agentsessions.Service.List":        core.RelCanOperate,
@@ -419,14 +419,15 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.TriggerCronRun":       core.RelCanOperate,
 	"*apps.Service.CancelCronRun":        core.RelCanOperate,
 	"*apps.Service.CancelCurrentCronRun": core.RelCanOperate,
-	// Trigger is CONDITIONAL (codex round-5 F2): its relation depends on
-	// whether the call supplies executable content. The reflection sweep invokes
-	// it with zero-valued arguments, so what this pin captures is the LIFECYCLE
-	// branch — a bare redeploy, which must stay available to contributors. The
-	// create-like branch is pinned separately by
-	// TestExecutableSelectionRequiresCanCreate, which calls it WITH the
-	// parameters; changing either branch alone turns one of the two red.
-	"*deploys.Service.Trigger": core.RelCanOperate,
+	// Every deploy and rollback is Render's "Trigger service deploys" or
+	// "Trigger rollbacks", a Contributor's on Render (w9/m622). The sweep calls
+	// Trigger with zero-valued arguments, so this pin sees a bare deploy;
+	// TestExecutableSelectionRequiresCanCreate calls it with a commit, an
+	// image tag, a build and a cleared cache, and pins can_operate for each.
+	// Before w9/m622 a chosen commit, image or build, and every rollback,
+	// were can_create (w1/m68, codex round-5 F2 and round-16 #5).
+	"*deploys.Service.Trigger":  core.RelCanOperate,
+	"*deploys.Service.Rollback": core.RelCanOperate,
 	// Restart deploys the live commit, never caller-chosen content, so it stays
 	// a lifecycle verb (w1/m148).
 	"*deploys.Service.Restart": core.RelCanOperate,
@@ -503,9 +504,6 @@ var representativeVerbRelations = map[string]string{
 	// BuildKit executes.
 	"*apps.Service.SetRootDir":        core.RelCanCreate,
 	"*apps.Service.SetDockerfilePath": core.RelCanCreate,
-	// Rollback selects a prior deploy's image (codex round-16 #5) — create-like,
-	// same class as Trigger(imageUrl).
-	"*deploys.Service.Rollback": core.RelCanCreate,
 	// Steering re-dispatches a FRESH sandbox with the same reusable model key and
 	// a caller-supplied prompt + egress allowlist, so it is as create-like as
 	// Create itself — not a lifecycle verb (codex round-4 #3).

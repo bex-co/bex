@@ -646,13 +646,17 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 }
 
 func (s *Service) trigger(ctx context.Context, service string, p TriggerParams, trigger string) (DeployView, error) {
-	// SECURITY (codex round-5 F2): imageUrl and commitId SELECT the executable
-	// content this deploy runs — a different image, or a different commit to
-	// build — so supplying either is create-like (developer and up). A
-	// parameter-free trigger redeploys the artifact the service is already
-	// configured for and stays lifecycle, available to contributors.
-	override := p.ImageURL != "" || p.CommitID != "" || p.BuildID != ""
-	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(override), service)
+	// Every deploy Render's Manual Deploy menu and API offer (the latest
+	// commit, a chosen commit, a chosen build, another tag or digest of the
+	// configured image, a cleared build cache) is Render's "Trigger service
+	// deploys", which its role table gives a Contributor
+	// (render.com/docs/team-members, read 2026-11-23), so each is can_operate
+	// (w9/m622). Until then a chosen commit, image or build needed can_create
+	// (w1/m68, codex round-5 F2). What a deploy may name stays bounded by the
+	// service's saved configuration, which only can_create changes: its
+	// repository, its image (validateTrigger's same-image rule) and its build
+	// source.
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -669,10 +673,10 @@ func (s *Service) trigger(ctx context.Context, service string, p TriggerParams, 
 // rebuild, and deploy" for a service or an environment group (w4/347). Manual
 // Deploy keeps Trigger's api cause; this one reads as config_change, so REST
 // reports service_updated and events carry envUpdated, not manual, as for any
-// other configuration-forced rollout (w6/m51). Parameter-free, so its
-// authorization is lifecycle, like a bare Trigger.
+// other configuration-forced rollout (w6/m51). Its authorization is
+// can_operate, like every Trigger.
 func (s *Service) Rebuild(ctx context.Context, service string) (DeployView, error) {
-	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(false), service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -689,17 +693,16 @@ func (s *Service) Rebuild(ctx context.Context, service string) (DeployView, erro
 // commit-pinned rebuild fallback; this cannot promise historical configuration
 // that was never recorded.
 //
-// Authorization is lifecycle, like a parameter-free trigger: the commit is the
-// one already running, not content the caller selects, so a contributor can
-// restart without create rights. REST, GraphQL (restartServer), MCP and the
-// dashboard all restart through this verb.
+// Authorization is can_operate, like every Trigger, so a Contributor
+// restarts. REST, GraphQL (restartServer), MCP and the dashboard all restart
+// through this verb.
 //
 // server_restarted is recorded once the restart was accepted, whether it runs
 // now or waits for the deploy in flight (w8/379): every refusal below comes
 // after authorization, and a refused restart used to land in the feed and
 // fire the webhook as one.
 func (s *Service) Restart(ctx context.Context, service string) (DeployView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.LifecycleOrCreate(false), service)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -1370,10 +1373,12 @@ var sourceOnlyTriggers = []string{store.TriggerAPI, store.TriggerDeployHook, sto
 // canceled deploy never has one). Selects historical runtime configuration
 // without overwriting the saved settings used by subsequent standard deploys.
 //
-// SECURITY (codex round-16 #2/#5): deployID SELECTs the executable image that
-// becomes the runtime selection, so this is create-like (can_create), not lifecycle —
-// the same executable-selection class as Trigger(imageUrl). It also produces a
-// deploy write, so it shares Trigger's RequireBillingMutation gate.
+// Authorization is can_operate, Render's "Trigger rollbacks", which its role
+// table gives a Contributor (render.com/docs/team-members, read 2026-11-23;
+// w9/m622). deployID can only name one of the service's own deploys that went
+// live, so a rollback restores an artifact and configuration the service
+// already ran. Before w9/m622 it was can_create (codex round-16 #2/#5). It
+// produces a deploy write, so it shares Trigger's RequireBillingMutation gate.
 //
 // opts carries the per-surface differences (at most one is read). It is variadic
 // so there stays exactly ONE exported rollback verb: the audit verb is derived
@@ -1385,7 +1390,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	if len(opts) > 0 {
 		o = opts[0]
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}

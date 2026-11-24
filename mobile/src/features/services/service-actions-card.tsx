@@ -195,12 +195,13 @@ export function ServiceActionsCard({
     return () => deployController?.clear();
   }, [service.id]);
 
-  // ADR087 detail matrix: lifecycle/deploy/cancel require confirmed
-  // can_operate; rollback's create-like class is probed server-side per
-  // action, not from the workspace grant. On confirmed absence the whole
-  // Actions card is absent — never an empty card, never a control that 403s
-  // on tap. Presentation eligibility comes from the server projections;
-  // deploy history only SELECTS the concrete cancel/rollback target row.
+  // ADR087 detail matrix: lifecycle, deploy, cancel and rollback require
+  // confirmed can_operate (a rollback since w9/m622, Render's "Trigger
+  // rollbacks"), each also probed server-side per action. On confirmed
+  // absence the whole Actions card is absent — never an empty card, never a
+  // control that 403s on tap. Presentation eligibility comes from the server
+  // projections; deploy history only SELECTS the concrete cancel/rollback
+  // target row.
   if (!canOperate) {
     return null;
   }

@@ -4,7 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import type { ServiceView } from "@/features/services/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import {
+  toResourceSnapshot,
+  type ResourceActionInput,
+} from "@/features/capabilities/lib/resource-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const mockNavigate = vi.fn();
@@ -49,13 +52,22 @@ vi.mock("@/features/services/hooks/use-build-sources", () => ({
 }));
 
 const refresh = vi.fn();
-const allowedDeploy = [
+const allowedDeploy: ResourceActionInput[] = [
   { action: "deploy", outcome: "allowed", reason: null, precondition: null },
 ];
+const deniedDeploy: ResourceActionInput[] = [
+  {
+    action: "deploy",
+    outcome: "denied",
+    reason: "insufficient_permission",
+    precondition: null,
+  },
+];
+let deployRows = allowedDeploy;
 vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
   useDeployActions: () => ({
     status: "ready",
-    snapshot: toResourceSnapshot(workspaceId, "web", allowedDeploy),
+    snapshot: toResourceSnapshot(workspaceId, "web", deployRows),
     refresh,
   }),
 }));
@@ -116,6 +128,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 
 beforeEach(() => {
   workspaceId = "tea-test";
+  deployRows = allowedDeploy;
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   refresh.mockReset().mockResolvedValue(undefined);
   apolloQuery.mockReset().mockResolvedValue({
@@ -236,29 +249,14 @@ describe("ManualDeployButton permission freshness", () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
-  it("allows a Contributor to deploy latest but disables choosing executable content", async () => {
+  // Render's role table gives a Contributor "Trigger service deploys", and
+  // its Manual Deploy menu offers a specific commit as a deploy (w9/m622).
+  it("offers a Contributor every Manual Deploy entry and deploys a specific commit", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({
-        role: "CONTRIBUTOR",
-        canCreate: false,
-      }),
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
-    const user = userEvent.setup();
-    render(<ManualDeployButton service={svc(repo)} pending={false} />);
-    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
-    expect(
-      screen.getByRole("menuitem", { name: "Deploy latest commit" }),
-    ).not.toHaveAttribute("aria-disabled", "true");
-    const pin = screen.getByRole("menuitem", {
-      name: "Deploy a specific commit",
-    });
-    expect(pin).toHaveAttribute("aria-disabled", "true");
-    await user.click(pin);
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-    expect(trigger).not.toHaveBeenCalled();
-  });
-
-  it("rechecks create permission before deploying a specific commit", async () => {
+    // The fresh recheck reads the deploy decision alone: a Contributor holds
+    // no can_create, and the deploy still goes through.
     apolloQuery.mockResolvedValue({
       data: {
         deployActions: allowedDeploy,
@@ -275,14 +273,62 @@ describe("ManualDeployButton permission freshness", () => {
         },
       },
     });
+    trigger.mockResolvedValue("dep-contrib-pin");
     const user = userEvent.setup();
     render(<ManualDeployButton service={svc(repo)} pending={false} />);
     await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    for (const name of [
+      "Deploy latest commit",
+      "Deploy a specific commit",
+      "Clear build cache & deploy",
+      "Restart service",
+    ]) {
+      expect(screen.getByRole("menuitem", { name })).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    }
     await user.click(
       screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
     );
     await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
     await user.click(screen.getByRole("button", { name: "Deploy commit" }));
+    await waitFor(() =>
+      expect(trigger).toHaveBeenCalledExactlyOnceWith("web", {
+        commitId: "abcdef1",
+        disableAutoDeploy: true,
+      }),
+    );
+  });
+
+  // A Viewer and a Billing member get no deploy: every entry is held with
+  // the role's reason, and choosing one opens nothing.
+  it("holds every entry with the role's reason when the deploy decision is denied", async () => {
+    deployRows = deniedDeploy;
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(repo)} pending={false} />);
+    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    for (const name of [
+      "Deploy latest commit",
+      "Deploy a specific commit",
+      "Clear build cache & deploy",
+      "Restart service",
+    ]) {
+      const item = screen.getByRole("menuitem", { name });
+      expect(item).toHaveAttribute("aria-disabled", "true");
+    }
+    await user.hover(
+      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
+    );
+    expect(
+      await screen.findAllByText(
+        "Your role can’t perform this action. Ask a workspace admin.",
+      ),
+    ).not.toHaveLength(0);
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(trigger).not.toHaveBeenCalled();
   });
 });
@@ -629,7 +675,7 @@ describe("ManualDeployButton — Build-Source-linked service (w2/m612 t004)", ()
     );
   });
 
-  it("gates Deploy a specific build… behind can_create for Contributors", async () => {
+  it("offers Deploy a specific build… to a Contributor, as a deploy (w9/m622)", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
     );
@@ -641,7 +687,7 @@ describe("ManualDeployButton — Build-Source-linked service (w2/m612 t004)", ()
     ).not.toHaveAttribute("aria-disabled", "true");
     expect(
       screen.getByRole("menuitem", { name: "Deploy a specific build…" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).not.toHaveAttribute("aria-disabled", "true");
   });
 
   it("shows empty and error+retry states in the build picker", async () => {

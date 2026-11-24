@@ -65,40 +65,16 @@ type Pending = {
     | "serverActions"
     | "deployActions"
     | "databaseActions"
-    | "keyValueActions"
-    | "viewerCapabilities";
+    | "keyValueActions";
 };
 
 let client: ApolloClient;
 let mode: "allowed" | "hold" | "network-error" | "partial-error";
 let pending: Pending[];
 let capabilityOverrides: Partial<Capabilities>;
-let capabilityOutcome: "allowed" | "denied" | "unavailable";
-let errorField: Pending["field"] | null;
 let requests: { name: string; variables: Record<string, unknown> }[];
 
 function response(field: Pending["field"]): ApolloLink.Result {
-  if (field === "viewerCapabilities")
-    return {
-      data: {
-        viewerCapabilities: {
-          __typename: "ViewerCapabilities",
-          role: "ADMIN",
-          fresh: true,
-          canView: true,
-          canViewLogs: true,
-          canOperate: true,
-          canCreate: capabilityOutcome === "allowed",
-          canViewSensitive: true,
-          canManageKeys: true,
-          canManage: true,
-          canManageBilling: true,
-          grants: [
-            { action: "can_create", outcome: capabilityOutcome, reason: null },
-          ],
-        },
-      },
-    };
   return {
     data: {
       [field]: (field === "deployActions"
@@ -123,8 +99,6 @@ beforeEach(() => {
   workspaceId = "tea-first";
   resetAccessGenerationForTests();
   capabilityOverrides = {};
-  capabilityOutcome = "allowed";
-  errorField = null;
   requests = [];
   vi.mocked(useCapabilities).mockImplementation(() =>
     mockCapabilities({
@@ -149,7 +123,6 @@ beforeEach(() => {
                 ServerActions: "serverActions",
                 DatabaseActions: "databaseActions",
                 KeyValueActions: "keyValueActions",
-                ViewerCapabilities: "viewerCapabilities",
               } as const
             )[operation.operationName ?? ""] ?? "deployActions";
           const request: Pending = {
@@ -170,8 +143,7 @@ beforeEach(() => {
               } else {
                 request.answer({
                   ...response(field),
-                  ...(currentMode === "partial-error" &&
-                  (!errorField || errorField === field)
+                  ...(currentMode === "partial-error"
                     ? {
                         errors: [
                           new GraphQLError("permission evaluation failed"),
@@ -499,31 +471,6 @@ describe("confirmation recheck leases", () => {
     ]);
   });
 
-  it.each(["allowed", "denied", "unavailable"] as const)(
-    "requires a fresh can_create grant for a pinned deploy: %s",
-    async (outcome) => {
-      capabilityOutcome = outcome;
-      const { result } = renderHook(
-        () =>
-          useBoundActionConfirm({
-            resourceId: "srv-first",
-            requiredCapability: "can_create",
-          }),
-        { wrapper: Wrapper },
-      );
-      let allowed = false;
-      await act(async () => {
-        const binding = result.current.openConfirm("deploy");
-        allowed = (await result.current.recheckBeforeDispatch(binding)).ok;
-      });
-      expect(allowed).toBe(outcome === "allowed");
-      expect(requests).toContainEqual({
-        name: "ViewerCapabilities",
-        variables: { ownerId: "tea-first", fresh: true },
-      });
-    },
-  );
-
   it.each(["cancel", "unmount", "replace"])(
     "refuses an in-flight recheck after %s",
     async (change) => {
@@ -553,29 +500,6 @@ describe("confirmation recheck leases", () => {
         expect(result.current.pending?.action).toBe("resume");
     },
   );
-
-  it("refuses partial GraphQL errors in the extra fresh capability check", async () => {
-    mode = "partial-error";
-    errorField = "viewerCapabilities";
-    const { result } = renderHook(
-      () =>
-        useBoundActionConfirm({
-          resourceId: "srv-first",
-          requiredCapability: "can_create",
-        }),
-      { wrapper: Wrapper },
-    );
-    let allowed = true;
-    await act(async () => {
-      const binding = result.current.openConfirm("deploy");
-      allowed = (await result.current.recheckBeforeDispatch(binding)).ok;
-    });
-    expect(
-      requests.some((request) => request.name === "ViewerCapabilities"),
-    ).toBe(true);
-    expect(allowed).toBe(false);
-    expect(result.current.pending).toBeNull();
-  });
 
   it("keeps an open binding through an ordinary poll while shared grants are fresh", async () => {
     const { result, rerender } = renderHook(

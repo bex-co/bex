@@ -17,7 +17,6 @@ import {
 import { useApolloClient } from "@apollo/client/react";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { ViewerCapabilitiesDocument } from "@/graphql/definitions";
 import {
   queryProjection,
   type ProjectionField,
@@ -25,11 +24,6 @@ import {
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
-import {
-  allowsAction,
-  toSnapshot,
-  type CapabilityAction,
-} from "@/features/capabilities/lib/capability-policy";
 import {
   gateAction,
   gateReason,
@@ -45,7 +39,6 @@ export type ActionConfirmBinding = {
   deployId?: string;
   action: ResourceActionId;
   generation: number;
-  requiredCapability?: CapabilityAction;
 };
 
 const SERVER_ACTIONS = new Set<ResourceActionId>([
@@ -73,7 +66,6 @@ type IntentContext = {
   resourceId: string;
   deployId?: string;
   generation: number;
-  requiredCapability?: CapabilityAction;
 };
 
 function sameIntent(binding: ActionConfirmBinding, context: IntentContext) {
@@ -81,8 +73,7 @@ function sameIntent(binding: ActionConfirmBinding, context: IntentContext) {
     context.workspaceId === binding.workspaceId &&
     context.resourceId === binding.resourceId &&
     context.deployId === binding.deployId &&
-    context.generation === binding.generation &&
-    context.requiredCapability === binding.requiredCapability
+    context.generation === binding.generation
   );
 }
 
@@ -91,8 +82,6 @@ export function useBoundActionConfirm(opts: {
   /** The resource's family; a service's by default. */
   kind?: ActionResourceKind;
   deployId?: string;
-  /** Additional fresh workspace grant needed by a more privileged variant. */
-  requiredCapability?: CapabilityAction;
   /** Preserve the selected deploy's rollback eligibility when rechecking. */
   adjustDecision?: (
     action: ResourceActionId,
@@ -221,7 +210,6 @@ export function useBoundActionConfirm(opts: {
         deployId: current.deployId,
         action,
         generation: current.generation,
-        requiredCapability: current.requiredCapability,
       };
       pendingRef.current = next;
       pendingAccessGeneration.current = getAccessGeneration();
@@ -267,10 +255,6 @@ export function useBoundActionConfirm(opts: {
         !ac.signal.aborted &&
         accessGeneration === getAccessGeneration() &&
         isBindingCurrent(target);
-      const context = {
-        fetchOptions: { signal: ac.signal },
-        queryDeduplication: false,
-      };
       try {
         const rows = await queryProjection(
           client,
@@ -281,40 +265,6 @@ export function useBoundActionConfirm(opts: {
         );
         if (!current()) return rejected;
         if (!rows) return refuse(null);
-        if (target.requiredCapability) {
-          const result = await client.query({
-            query: ViewerCapabilitiesDocument,
-            variables: { ownerId: target.workspaceId, fresh: true },
-            fetchPolicy: "no-cache",
-            errorPolicy: "none",
-            context,
-          });
-          if (!current()) return rejected;
-          const payload = result.data?.viewerCapabilities;
-          if (!payload) return refuse(null);
-          const snapshot = toSnapshot(
-            target.workspaceId,
-            payload.grants ?? [],
-            payload.role ?? null,
-          );
-          if (
-            !allowsAction(
-              { status: "ready", snapshot },
-              target.workspaceId,
-              target.requiredCapability,
-            )
-          ) {
-            return refuse({
-              action: target.action,
-              outcome:
-                snapshot.grants[target.requiredCapability] === "denied"
-                  ? "denied"
-                  : "unavailable",
-              reason: "",
-              precondition: "",
-            });
-          }
-        }
         const snapshot = toResourceSnapshot(
           target.workspaceId,
           target.resourceId,

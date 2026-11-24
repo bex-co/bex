@@ -207,9 +207,9 @@ func (s *Service) restorableRollbackTarget(ctx context.Context, a *appv1alpha1.A
 const eligibilityScanLimit = 20
 
 // ActionCapabilities projects the deploy verbs' decisions for ONE service in
-// the acting workspace (ADR087, w6/m136): bare deploy and cancel are
-// lifecycle (can_operate); rollback selects executable content and stays
-// create-like (can_create — the m68/roleladder pin). Preconditions come from
+// the acting workspace (ADR087, w6/m136): deploy, cancel and rollback are
+// can_operate, the relation each verb checks (a rollback since w9/m622,
+// Render's "Trigger rollbacks"). Preconditions come from
 // the same predicates the verbs enforce: Trigger/Rollback share the
 // suspended + billing gates, Cancel needs an open deploy, Rollback an
 // eligible target (RollbackEligible). Read-only and non-auditing beyond its
@@ -228,15 +228,14 @@ func (s *Service) ActionCapabilities(ctx context.Context, service string) ([]cor
 	// scan or billing read for actions it will never enable.
 	object := core.WorkspaceObject(s.WorkspaceOrDefault(ctx))
 	operate := s.CanDecisionOn(ctx, core.RelCanOperate, object)
-	create := s.CanDecisionOn(ctx, core.RelCanCreate, object)
 	deployPre, cancelPre, rollbackPre := "", "", ""
-	if operate.Allowed() || create.Allowed() {
+	if operate.Allowed() {
 		deployPre, cancelPre, rollbackPre = s.deployPreconditions(ctx, a)
 	}
 	return []core.ActionDecision{
 		core.DecideAction(core.ActionDeploy, operate, deployPre),
 		core.DecideAction(core.ActionCancelDeploy, operate, cancelPre),
-		core.DecideAction(core.ActionRollback, create, rollbackPre),
+		core.DecideAction(core.ActionRollback, operate, rollbackPre),
 	}, nil
 }
 

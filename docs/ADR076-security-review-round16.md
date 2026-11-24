@@ -14,7 +14,7 @@ Twelve findings are fixed in place with regression tests; one is a standing acce
 | 2 | Rollback bypasses billing gate | medium | **Fixed** — `RequireBillingMutation` before any rollback write |
 | 3 | Concurrent last-admin demotion/removal | medium | **Fixed** — tenant advisory lock + in-transaction admin count on role update/remove |
 | 4 | Stale platform-client mint cache | medium | **Fixed** — `IsPlatformClientFresh` at `AuthorizeMintClass` |
-| 5 | Contributor rollback selects images | medium | **Fixed** — rollback gates on `can_create`; added to the m68 executable-selection class |
+| 5 | Contributor rollback selects images | medium | **Fixed**, then **reversed on Render parity (w9/m622)** — rollback gated on `can_create`; since w9/m622 it is `can_operate` again, Render's "Trigger rollbacks" |
 | 6 | Web Push SSRF | medium | **Fixed** — `SafeDialContext`, no proxy, no redirects; HTTPS-only registration |
 | 7 | Demoted contributor sandbox exec | medium | **Fixed** — caller-selected sandbox commands require `can_create` |
 | 8 | Cross-site invite auto-redemption | medium | **Fixed** — dashboard requires explicit Accept; navigation alone creates no membership |
@@ -55,6 +55,8 @@ Tests: `TestCreateAPIKeyUsesFreshPlatformClientClassification`.
 `Rollback` authorized `can_operate` then wrote a caller-chosen prior `ResolvedImage` into `App.spec.image`. Contributors hold `can_operate` but not `can_create`.
 
 **Fix.** Gate on `can_create`. Add "deploy rollback" to `execSelectionCases` and pin `*deploys.Service.Rollback` in `representativeVerbRelations`.
+
+**Reversed (w9/m622, 2026-11-24).** Render's role table gives a Contributor "Trigger rollbacks" ([render-artifacts/team-members-roles-2026-11-23.md](render-artifacts/team-members-roles-2026-11-23.md)), so under [Render parity first](ADR008-vision.md#render-parity-first) `Rollback` is `can_operate` again and its `execSelectionCases` entry asserts that. A rollback names only one of the service's own deploys that went live, and it no longer writes `App.spec.image`: it selects the target's release (`ReleaseConfig`) without overwriting saved settings. [ADR024 § The contributor boundary](ADR024-members.md#the-contributor-boundary-deploys-and-runtime-actions-not-settings-w1m68-w9m619-w9m622) records the reasoning and the sign-off that stays open.
 
 ## Finding 6 (medium) — Web Push uses the safe dialer
 

@@ -25,8 +25,7 @@ export function useActionAccess() {
         capabilities.state,
         capabilities.offline,
         capabilities.denied("can_operate") ||
-          ((action === "rollback-service" ||
-            action === "create-agent-session") &&
+          (action === "create-agent-session" &&
             capabilities.denied("can_create")),
       ),
     isCurrent: (binding: string, action: MobileSafeActionId) => {
@@ -35,7 +34,7 @@ export function useActionAccess() {
         binding === current.key &&
         current.capabilities.generation === dataBoundary.getGeneration() &&
         current.capabilities.allows("can_operate") &&
-        ((action !== "rollback-service" && action !== "create-agent-session") ||
+        (action !== "create-agent-session" ||
           current.capabilities.allows("can_create"))
       );
     },
